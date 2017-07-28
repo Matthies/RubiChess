@@ -1,5 +1,6 @@
 #pragma once
 
+
 #if 0
 #define DEBUG
 #endif
@@ -53,9 +54,13 @@
 
 using namespace std;
 
-//#pragma intrinsic(_BitScanForward64)
+#ifdef BITBOARD
+#define ENGINEVER "RubiChess V0.4dev Bitboard";
+#else
+#define ENGINEVER "RubiChess V0.4dev 0x88-Board";
+#endif
 
-//#define BITSET(x) (1ULL << (x))
+
 #define BITSET(x) (mybitset[(x)])
 #define LSB(i,x) _BitScanForward64((DWORD*)&(i), (x))
 #define POPCOUNT(x) (int)(__popcnt64(x))
@@ -530,11 +535,7 @@ public:
     engine();
     ~engine();
     uci *myUci;
-#ifdef BITBOARD
-    const char* name = "RubiChess V0.4b1 Bitboard";
-#else
-    const char* name = "RubiChess V0.4b1 0x88-Board";
-#endif
+	const char* name = ENGINEVER
     const char* author = "Andreas Matthies";
     chessposition *pos;
     transposition *tp;
