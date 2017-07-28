@@ -248,7 +248,7 @@ short alphabeta(engine *en, short alpha, short beta, int depth, bool nullmoveall
                     eval_type = HASHEXACT;
                     if (GETCAPTURE(newmoves->move[i].code) == BLANK)
                     {
-                        pos->history[pos->Piece(GETFROM(newmoves->move[i].code))][GETTO(newmoves->move[i].code)] += depth;
+                        pos->history[pos->Piece(GETFROM(newmoves->move[i].code))][GETTO(newmoves->move[i].code)] += depth * depth;
                     }
                 }
             }

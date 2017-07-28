@@ -1000,7 +1000,6 @@ short chessposition::getValue()
             }
         }
     }
-    ;
     return countMaterial() + getPositionValue();
 }
 
