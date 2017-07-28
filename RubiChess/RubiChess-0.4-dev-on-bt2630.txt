@@ -13,3 +13,5 @@ num passed bestmove foundmove score time
 num passed bestmove foundmove score time
 num passed bestmove foundmove score time
 num passed bestmove foundmove score time
+num passed bestmove foundmove score time
+num passed bestmove foundmove score time
