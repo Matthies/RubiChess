@@ -1,0 +1,15 @@
+num passed bestmove foundmove score time
+num passed bestmove foundmove score time
+num passed bestmove foundmove score time
+num passed bestmove foundmove score time
+num passed bestmove foundmove score time
+num passed bestmove foundmove score time
+1 + "(a)" f5g7 295 0
+num passed bestmove foundmove score time
+num passed bestmove foundmove score time
+num passed bestmove foundmove score time
+num passed bestmove foundmove score time
+num passed bestmove foundmove score time
+num passed bestmove foundmove score time
+num passed bestmove foundmove score time
+num passed bestmove foundmove score time
