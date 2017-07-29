@@ -89,7 +89,7 @@ short getQuiescence(engine *en, short alpha, short beta, int depth, bool force)
 short alphabeta(engine *en, short alpha, short beta, int depth, bool nullmoveallowed)
 {
     short score;
-    short bestscore = SCOREBLACKWINS;
+    short bestscore = SHRT_MIN + 1;
     chessmove best;
     short oldalpha = alpha;
     int eval_type = HASHALPHA;
@@ -108,7 +108,7 @@ short alphabeta(engine *en, short alpha, short beta, int depth, bool nullmoveall
     if (pos->tp->probeHash(&score, &hashmovecode, depth, alpha, beta))
     {
         pos->debug(depth, "(alphabeta) got value %d from TP\n", score);
-        if (pos->rp->getPositionCount(pos->hash) <= 1)
+        if (pos->rp->getPositionCount(pos->hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
             return score;
     }
 
@@ -193,7 +193,16 @@ short alphabeta(engine *en, short alpha, short beta, int depth, bool nullmoveall
             }
             pos->debug(depth, "(alphabeta) played move %s\n", newmoves->move[i].toString().c_str());
 #endif
-            score = -alphabeta(en, -beta, -alpha, depth - 1, true);
+            if (bestscore <= alpha)
+            {
+                score = -alphabeta(en, -beta, -alpha, depth - 1, true);
+            } else {
+                // try a PV-Search
+                score = -alphabeta(en, -alpha - 1, -alpha, depth - 1, true);
+                if (score > alpha && score < beta)
+                    // reasearch with full window
+                    score = -alphabeta(en, -beta, -alpha, depth - 1, true);
+            }
 
 #ifdef DEBUG
             if (en->debug && pos->debughash == pos->hash)
