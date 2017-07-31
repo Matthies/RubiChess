@@ -198,10 +198,14 @@ short alphabeta(engine *en, short alpha, short beta, int depth, bool nullmoveall
                 score = -alphabeta(en, -beta, -alpha, depth - 1, true);
             } else {
                 // try a PV-Search
+				unsigned long nodesbefore = en->nodes;
                 score = -alphabeta(en, -alpha - 1, -alpha, depth - 1, true);
-                if (score > alpha && score < beta)
-                    // reasearch with full window
-                    score = -alphabeta(en, -beta, -alpha, depth - 1, true);
+				if (score > alpha && score < beta)
+				{
+					// reasearch with full window
+					score = -alphabeta(en, -beta, -alpha, depth - 1, true);
+					en->wastednodes += (en->nodes - nodesbefore);
+				}
             }
 
 #ifdef DEBUG
@@ -448,6 +452,7 @@ void searchguide(engine *en)
     en->nodes = 0;
 #ifdef DEBUG
     en->qnodes = 0;
+	en->wastednodes = 0;
 #endif
     en->fh = en->fhf = 0;
 
@@ -493,6 +498,7 @@ void searchguide(engine *en)
 #ifdef DEBUG
     sprintf_s(s, "info string %d%% quiscense\n", (int)en->qnodes * 100 / (en->nodes + en->qnodes));
     cout << s;
+	sprintf_s(s, "info string %d%% wasted by research\n", (int)en->wastednodes * 100 / en->nodes);
 #endif
 
 }

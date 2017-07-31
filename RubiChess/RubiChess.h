@@ -1,7 +1,7 @@
 #pragma once
 
 
-#if 0
+#if 1
 #define DEBUG
 #endif
 
@@ -544,6 +544,7 @@ public:
     unsigned long nodes;
 #ifdef DEBUG
     unsigned long qnodes;
+	unsigned long wastednodes;
 #endif
     long long starttime;
     long long endtime;
