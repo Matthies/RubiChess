@@ -100,6 +100,7 @@ short alphabeta(engine *en, short alpha, short beta, int depth, bool nullmoveall
     int  LegalMoves = 0;
     bool isLegal;
     bool isCheck;
+	bool alpharaised = false;
 
     en->nodes++;
 
@@ -193,7 +194,7 @@ short alphabeta(engine *en, short alpha, short beta, int depth, bool nullmoveall
             }
             pos->debug(depth, "(alphabeta) played move %s\n", newmoves->move[i].toString().c_str());
 #endif
-            if (bestscore <= alpha)
+            if (!alpharaised)
             {
                 score = -alphabeta(en, -beta, -alpha, depth - 1, true);
             } else {
@@ -204,7 +205,9 @@ short alphabeta(engine *en, short alpha, short beta, int depth, bool nullmoveall
 				{
 					// reasearch with full window
 					score = -alphabeta(en, -beta, -alpha, depth - 1, true);
+#ifdef DEBUG
 					en->wastednodes += (en->nodes - nodesbefore);
+#endif
 				}
             }
 
@@ -257,6 +260,7 @@ short alphabeta(engine *en, short alpha, short beta, int depth, bool nullmoveall
                 if (score > alpha && en->stopLevel != ENGINESTOPIMMEDIATELY)
                 {
                     pos->debug(depth, "(alphabeta) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, newmoves->move[i].toString().c_str(), pos->actualpath.toString().c_str());
+					alpharaised = true;
                     alpha = score;
                     eval_type = HASHEXACT;
                     if (GETCAPTURE(newmoves->move[i].code) == BLANK)
@@ -499,6 +503,7 @@ void searchguide(engine *en)
     sprintf_s(s, "info string %d%% quiscense\n", (int)en->qnodes * 100 / (en->nodes + en->qnodes));
     cout << s;
 	sprintf_s(s, "info string %d%% wasted by research\n", (int)en->wastednodes * 100 / en->nodes);
+	cout << s;
 #endif
 
 }
