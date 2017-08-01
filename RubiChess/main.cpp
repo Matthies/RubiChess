@@ -55,6 +55,7 @@ ChangeLog
     - added test for symmetric position evaluation (new parameter -dotests substitutes -hashtest)
     - fixed timemode "time/inc for whole match"
     - testrepetition() stops searching at halfmovecounter reset now
+	- search improvement by adding aspiration windows and principal variation search
 
 
 /* Der Lasker-Test */
