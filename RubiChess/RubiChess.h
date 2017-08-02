@@ -96,15 +96,6 @@ void BitboardDraw(U64 b);
 //
 #define BUFSIZE 4096
 
-#if 0
-enum PieceType : unsigned char { EPT = 0, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, BLANKTYPE };
-enum PieceCode : unsigned char {
-    WEPT = 0, BEPT = 1,
-    WPAWN = 2 * PAWN, WKNIGHT = 2 * KNIGHT, WBISHOP = 2 * BISHOP, WROOK = 2 * ROOK, WQUEEN = 2 * QUEEN, WKING = 2 * KING,
-    BPAWN = WPAWN + 1, BKNIGHT = WKNIGHT + 1, BBISHOP = WBISHOP + 1, BROOK = WROOK + 1, BQUEEN = WQUEEN + 1, BKING = WKING + 1,
-    BLANK
-};
-#else
 #define PieceType int
 #define BLANKTYPE 0
 #define PAWN 1
@@ -128,7 +119,6 @@ enum PieceCode : unsigned char {
 #define BQUEEN 11
 #define WKING 12
 #define BKING 13
-#endif
 
 #define S2MMASK 0x01
 #define WQCMASK 0x02
@@ -200,49 +190,6 @@ const unsigned int lva[] = { 5 << 26, 4 << 26, 3 << 26, 3 << 26, 2 << 26, 1 << 2
 #define GETCASTLE(x) (((x) & 0xf0000000) >> 28)
 
 
-#if 0
-unsigned char chessmove::getFrom()
-{
-#ifdef BITBOARD
-    return (unsigned char)((code & 0x0fc0) >> 6);
-#else
-    /* convert to 0x88 coordinates */
-    return (unsigned char)(((code & 0x0e00) >> 5) | ((code & 0x01c0) >> 6));
-#endif
-}
-
-unsigned char chessmove::getTo()
-{
-#ifdef BITBOARD
-    return (code & 0x003f);
-#else
-    /* convert to 0x88 coordinates */
-    return ((code & 0x0038) << 1) | (code & 0x0007);
-#endif
-}
-
-PieceCode chessmove::getPromotion()
-{
-    return (PieceCode)((code & 0xf000) >> 12);
-}
-
-PieceCode chessmove::getCapture()
-{
-    return (PieceCode)((code & 0xf0000) >> 16);
-}
-
-unsigned char chessmove::getEpt()
-{
-    return (unsigned char)((code & 0x0ff00000) >> 20);
-}
-
-unsigned char chessmove::getCastle()
-{
-    return (unsigned char)((code & 0xf0000000) >> 28);
-}
-#endif
-
-
 class chessmove
 {
 public:
@@ -305,7 +252,6 @@ const int rot00shift[64] = {
     49, 49, 49, 49, 49, 49, 49, 49,
     57, 57, 57, 57, 57, 57, 57, 57
 };
-
 
 const int rot90[64] = {
     0,  8, 16, 24, 32, 40, 48, 56,
@@ -451,10 +397,9 @@ public:
     void debug(int depth, const char* format, ...);
     bool testRepetiton();
     void mirror();
-    //int checkConsistency(bool hashtest);  // helper to debug problems with bitmaps getting out of sync
 };
 
-#else
+#else //BITBOARD
 
 class chessposition
 {
@@ -466,7 +411,6 @@ public:
     unsigned long long hash;
     short value;
     int ply;
-    //unsigned short totalmaterial[2];
     int piecenum[14];
     unsigned char halfmovescounter = 0;
     short fullmovescounter = 0;
@@ -484,7 +428,6 @@ public:
     int *positionvaluetable;
 
     chessposition();
-    //chessposition(bool needspartitionvaluetable);
     ~chessposition();
     bool operator==(chessposition p);
     bool w2m();

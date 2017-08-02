@@ -1597,37 +1597,6 @@ bool chessposition::testRepetiton()
     return (hit >= 2);
 }
 
-#if 0  // enable for debugging play/unplay problems
-int chessposition::checkConsistency(bool hashtest)
-{
-    //return 0;
-    int result = 0;
-    if (hashtest && hash != tp->zb.getHash(this))
-    {
-        result = -1;
-        printf("Error: Hash corruption\n");
-    }
-
-    for (int i = 0; i < 64; i++)
-    {
-        PieceCode pc = mailbox[i];
-        for (PieceCode p = WPAWN; p <= BKING; p++)
-        {
-            if ((piece00[p] & BITSET(i)) && p != pc)
-            {
-                result = -1;
-                printf("Error: Bit %d of piece00[%d] is set although it shouldn't\n", i, p);
-            }
-            if (!(piece00[p] & BITSET(i)) && p == pc)
-            {
-                result = -1;
-                printf("Error: Bit %d of piece00[%d] is not set although it should\n", i, p);
-            }
-        }
-    }
-    return result;
-}
-#endif
 
 #else  // ifdef BITBOARD
 
@@ -1831,8 +1800,6 @@ bool chessposition::applyMove(string s)
 	from = AlgebraicToIndex(s, 0x88);
 	to = AlgebraicToIndex(&s[2], 0x88);
     chessmovelist* cmlist = getMoves();
-    //printf("applyMove: %s\nMovelist: %s\n", s.c_str(), cmlist.toString().c_str());
-    //printf("Hash:%x   Hashmod:%x  Rep:%d\n", hash, hash % 0x10000, rp->getPositionCount(hash));
     if (s.size() > 4)
         promotion = (PieceCode)((GetPieceType(s[4]) << 1) | (state & S2MMASK));
     else
