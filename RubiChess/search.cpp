@@ -353,14 +353,12 @@ static void search_gen1(engine *en)
             // research with lower alpha
             alpha = max(SHRT_MIN + 1, alpha - deltaalpha);
             deltaalpha <<= 1;
-            //printf("info string research with %d %d\n", alpha, beta);
         }
         else if (score == beta)
         {
             // research with hight beta
             beta = min(SHRT_MAX, beta + deltabeta);
             deltabeta <<= 1;
-            //printf("info string research with %d %d\n", alpha, beta);
         }
         else
         {
@@ -391,12 +389,10 @@ static void search_gen1(engine *en)
             }
 
             // next depth with new aspiration window
-#if 1
             deltaalpha = 25;
             deltabeta = 25;
             alpha = score - deltaalpha;
             beta = score + deltaalpha;
-#endif
             depth += depthincrement;
         }
 
