@@ -22,4 +22,3 @@ Rank Name                        ELO   Games   Score   Draws
    4 Rubichess-0.2               -76     250     39%     10%
    5 Rubichess-0.2.1             -78     250     39%     12%
    6 Rubichess-0.1              -561     250      4%      3%
-
