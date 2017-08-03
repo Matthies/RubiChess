@@ -100,7 +100,6 @@ short alphabeta(engine *en, short alpha, short beta, int depth, bool nullmoveall
     int  LegalMoves = 0;
     bool isLegal;
     bool isCheck;
-	bool alpharaised = false;
 
     en->nodes++;
 
@@ -194,7 +193,7 @@ short alphabeta(engine *en, short alpha, short beta, int depth, bool nullmoveall
             }
             pos->debug(depth, "(alphabeta) played move %s\n", newmoves->move[i].toString().c_str());
 #endif
-            if (!alpharaised)
+            if (!eval_type == HASHEXACT)
             {
                 score = -alphabeta(en, -beta, -alpha, depth - 1, true);
             } else {
@@ -260,7 +259,6 @@ short alphabeta(engine *en, short alpha, short beta, int depth, bool nullmoveall
                 if (score > alpha && en->stopLevel != ENGINESTOPIMMEDIATELY)
                 {
                     pos->debug(depth, "(alphabeta) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, newmoves->move[i].toString().c_str(), pos->actualpath.toString().c_str());
-					alpharaised = true;
                     alpha = score;
                     eval_type = HASHEXACT;
                     if (GETCAPTURE(newmoves->move[i].code) == BLANK)
