@@ -145,6 +145,9 @@ s = "8/8/8/8/5P2/5Kp1/2N3pb/N4kr1 w - - 0 1"
 /* Matt in 6 KN 27.07.2017 */
 s = "7k/2p4P/6BP/2p5/1pP5/pP4K1/Pn2P3/B7 w - - 0 1"
 
+/* Matt in 4 KN 03.08.2017 */
+s = "8/7K/4N1p1/2p2prk/2r3pq/6p1/3Q3p/b7 w - - 0 1"
+
 // ToDo:
 TP / Sortierungsproblem:
 position startpos moves d2d4 d7d5 c1f4 g8f6 d1d3 e7e6 b1c3 f8e7 e2e4 d5e4 c3e4 f6d5 g1h3 e8g8 f1e2 f7f5 e4c3 e7b4 e1c1 b4c3 b2c3 d8e7 c1d2 d5f4 h3f4 f8d8 h2h4 e7d6 d2e3 b8c6 e2f3 c6e5 d3b5 e5f3 g2f3 d6a3 b5c4 c7c6 d1g1 a3d6 f4h5 g7g6 c4b4 d6c7 h5f6 g8h8 b4c5 c7g7 f6h5 g7c7 h5f4 a7a5 h4h5 b7b6 c5c4 c6c5 f4g6 h7g6 h5g6 h8g8 h1h4 c5d4 h4d4 c7e5 e3d3 c8a6 c4a6 a5a4 a6b6 d8b8 b6c6 a4a3 c6d7 e5b5 d7b5 b8b5 g1e1 a8a6 c3c4 b5b2 e1g1 b2a2 d4d8 g8g7 d8d7 g7f6 g6g7 a6a8 g7g8q a8g8 g1g8 a2a1 d7a7 f6e5 d3e3 a1e1 e3d2 e1f1 d2e3 f1e1 e3d2
