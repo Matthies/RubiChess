@@ -1,0 +1,25 @@
+ELO-Match zur Verbesserungskontrolle mit folgenden Parametern:
+==============================================================
+cutechess-cli.exe -repeat -recover -rounds 50 -tournament round-robin -pgnout results.pgn
+	-resign movecount=3 score=400 
+	-draw movenumber=34 movecount=8 score=20 
+	-concurrency 6 -openings file=8moves_v3.pgn format=pgn order=random plies=16
+	-engine name=Rubichess-0.1 cmd=rubichess-0.1.exe
+	-engine name=Rubichess-0.2 cmd=rubichess-0.2.exe
+	-engine name=Rubichess-0.2.1 cmd=rubichess-0.2.1.exe
+	-engine name=Rubichess-0.3 cmd=rubichess-0.3.exe
+	-engine name=Rubichess-0.4-Board88 cmd=rubichess-0.4-Board88.exe
+	-engine name=Rubichess-0.4-Bitboard cmd=rubichess-0.4-Bitboard.exe
+	-each proto=uci tc=2.0+2.0
+
+	Hardware: IBM x3500M3 2 Sockel je 4 Kerne und HT
+	Datum: 03.08.2017
+
+Rank Name                        ELO   Games   Score   Draws
+   1 Rubichess-0.4-Bitboard      283     250     84%     10%
+   2 Rubichess-0.4-Board88       216     250     78%      7%
+   3 Rubichess-0.3                48     250     57%     12%
+   4 Rubichess-0.2               -76     250     39%     10%
+   5 Rubichess-0.2.1             -78     250     39%     12%
+   6 Rubichess-0.1              -561     250      4%      3%
+
