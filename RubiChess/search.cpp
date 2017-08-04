@@ -91,12 +91,10 @@ short alphabeta(engine *en, short alpha, short beta, int depth, bool nullmoveall
     short score;
     short bestscore = SHRT_MIN + 1;
     chessmove best;
-    short oldalpha = alpha;
     int eval_type = HASHALPHA;
     chessposition *pos = en->pos;
     chessmovelist* newmoves;
     unsigned long hashmovecode;
-    int col = pos->state & S2MMASK;
     int  LegalMoves = 0;
     bool isLegal;
     bool isCheck;
@@ -145,7 +143,6 @@ short alphabeta(engine *en, short alpha, short beta, int depth, bool nullmoveall
     }
 
      newmoves = pos->getMoves();
-    int currmovenumber = 0;
     if (isCheck)
         depth++;
 
