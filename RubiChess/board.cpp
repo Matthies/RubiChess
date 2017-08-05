@@ -64,7 +64,7 @@ char PieceChar(PieceCode c)
 }
 
 
-chessmove::chessmove(unsigned char from, unsigned char to, PieceCode promote, PieceCode capture, unsigned char ept, unsigned char castle)
+chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, int castle)
 {
 #ifdef BITBOARD
     code = (castle << 28) | (ept << 20) | (capture << 16) | (promote << 12) | (from << 6) | to;
@@ -77,7 +77,7 @@ chessmove::chessmove(unsigned char from, unsigned char to, PieceCode promote, Pi
 #endif
 }
 
-chessmove::chessmove(unsigned char from, unsigned char to, PieceCode promote, PieceCode capture)
+chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture)
 {
 #ifdef BITBOARD
     code = (capture << 16) | (promote << 12) | (from << 6) | to;
@@ -976,7 +976,7 @@ void chessposition::print()
 }
 
 
-short chessposition::getValue()
+int chessposition::getValue()
 {
     // Check for insufficient material using simnple heuristic from chessprogramming site
     if (!(piece00[WPAWN] | piece00[BPAWN]))
@@ -1004,7 +1004,7 @@ short chessposition::getValue()
 }
 
 
-short chessposition::getPositionValue()
+int chessposition::getPositionValue()
 {
     int index;
     int ph = phase();
@@ -1051,7 +1051,7 @@ short chessposition::getPositionValue()
 }
 
 
-short chessposition::countMaterial()
+int chessposition::countMaterial()
 {
     short value = 0;
     for (int p = PAWN; p < KING; p++)
@@ -1257,7 +1257,7 @@ bool chessposition::checkForChess()
 }
 
 
-inline void chessposition::testMove(chessmovelist *movelist, unsigned char from, unsigned char to, PieceCode promote, PieceCode capture)
+inline void chessposition::testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture)
 {
     chessmove cm(from, to, promote, capture);
     if (capture != BLANK)
@@ -1433,7 +1433,7 @@ int chessposition::phase()
 }
 
 
-short chessposition::see(int to)
+int chessposition::see(int to)
 {
     int cheapest = SHRT_MAX;
     int cheapest_from = -1;
@@ -1466,7 +1466,7 @@ short chessposition::see(int to)
 }
 
 
-short chessposition::see(int from, int to)
+int chessposition::see(int from, int to)
 {
     short v;
     PieceCode capture = mailbox[to];
@@ -1498,7 +1498,7 @@ void chessposition::unplayNullMove()
 }
 
 
-void chessposition::simplePlay(unsigned char from, unsigned char to)
+void chessposition::simplePlay(int from, int to)
 {
     if (mailbox[to] != BLANK)
         BitboardClear(to, mailbox[to]);
@@ -1509,7 +1509,7 @@ void chessposition::simplePlay(unsigned char from, unsigned char to)
 }
 
 
-void chessposition::simpleUnplay(unsigned char from, unsigned char to, PieceCode capture)
+void chessposition::simpleUnplay(int from, int to, PieceCode capture)
 {
     state ^= S2MMASK;
     BitboardMove(to, from, mailbox[to]);
@@ -1522,7 +1522,7 @@ void chessposition::simpleUnplay(unsigned char from, unsigned char to, PieceCode
 
 void chessposition::getpvline(int depth)
 {
-    short dummyval;
+    int dummyval;
     chessmove cm;
     pvline.length = 0;
     while (depth >= 0)
@@ -1851,12 +1851,12 @@ void chessposition::print()
         printf("info string Moves in current search: %s\n", actualpath.toString().c_str());
 }
 
-bool chessposition::isOnBoard(unsigned char bIndex)
+bool chessposition::isOnBoard(int bIndex)
 {
     return !(bIndex & 0x88);
 }
 
-bool chessposition::isEmpty(unsigned char bIndex)
+bool chessposition::isEmpty(int bIndex)
 {
     if (bIndex & 0x88)
         return false;
@@ -1869,7 +1869,7 @@ PieceType chessposition::Piece(int index)
     return (PieceType)(board[index] >> 1);
 }
 
-bool chessposition::isOpponent(unsigned char bIndex)
+bool chessposition::isOpponent(int bIndex)
 {
     if (bIndex & 0x88)
         return false;
@@ -1877,7 +1877,7 @@ bool chessposition::isOpponent(unsigned char bIndex)
     return (pct != BLANK && (pct & S2MMASK) ^ (state & S2MMASK));
 }
 
-bool chessposition::isEmptyOrOpponent(unsigned char bIndex)
+bool chessposition::isEmptyOrOpponent(int bIndex)
 {
     if (bIndex & 0x88)
         return false;
@@ -1885,7 +1885,7 @@ bool chessposition::isEmptyOrOpponent(unsigned char bIndex)
     return (pct == BLANK || (pct & S2MMASK) ^ (state & S2MMASK));
 }
 
-bool chessposition::isAttacked(unsigned char bIndex)
+bool chessposition::isAttacked(int bIndex)
 {
     int i;
     unsigned char bSource;
@@ -1943,7 +1943,7 @@ bool chessposition::checkForChess()
     return (isAttacked(kingpos[state & S2MMASK]));
 }
 
-void chessposition::testMove(chessmovelist *movelist, unsigned char from, unsigned char to, PieceCode promote)
+void chessposition::testMove(chessmovelist *movelist, int from, int to, PieceCode promote)
 {
     PieceCode capture = (!ept || to != ept || Piece(from) != PAWN ? board[to] : (PieceCode)(WPAWN | (~state & S2MMASK)));
     chessmove cm(from, to, promote, capture);
@@ -2102,13 +2102,13 @@ chessmovelist* chessposition::getMoves()
 }
 
 
-void chessposition::simplePlay(unsigned char from, unsigned char to)
+void chessposition::simplePlay(int from, int to)
 {
     board[to] = board[from];
     board[from] = BLANK;
 }
 
-void chessposition::simpleUnplay(unsigned char from, unsigned char to, PieceCode capture)
+void chessposition::simpleUnplay(int from, int to, PieceCode capture)
 {
     board[from] = board[to];
     board[to] = capture;
@@ -2397,7 +2397,7 @@ void chessposition::unplayNullMove()
 
 void chessposition::getpvline(int depth)
 {
-    short dummyval;
+    int dummyval;
     chessmove cm;
     pvline.length = 0;
     while (depth >= 0)
@@ -2453,14 +2453,14 @@ void chessposition::countMaterial()
 }
 
 
-unsigned char chessposition::phase()
+int chessposition::phase()
 {
     //return ((24 - piecenum[2] - piecenum[3] - (piecenum[4] << 1) - (piecenum[5] << 2)) * 255 + 12) / 24;
-    return ((24 - piecenum[4] - piecenum[5] - piecenum[6] - piecenum[7] - (piecenum[8] << 1) - (piecenum[9] << 1) - (piecenum[10] << 2) - (piecenum[11] << 2)) * 255 + 12) / 24;
+    return (max(0, (24 - piecenum[4] - piecenum[5] - piecenum[6] - piecenum[7] - (piecenum[8] << 1) - (piecenum[9] << 1) - (piecenum[10] << 2) - (piecenum[11] << 2))) * 255 + 12) / 24;
 }
 
 
-short chessposition::see(int to)
+int chessposition::see(int to)
 {
     int i;
     int cheapest = SHRT_MAX;
@@ -2546,7 +2546,7 @@ short chessposition::see(int to)
 }
 
 
-short chessposition::see(int from, int to)
+int chessposition::see(int from, int to)
 {
     short v;
     state ^= S2MMASK;
@@ -2560,7 +2560,7 @@ short chessposition::see(int from, int to)
 }
 
 /* Value of the position from whites pov */
-short chessposition::getPositionValue()
+int chessposition::getPositionValue()
 {
     int ph = phase();
     short result = 0;
@@ -2631,7 +2631,7 @@ short chessposition::getPositionValue()
 }
 
 
-short chessposition::getValue()
+int chessposition::getValue()
 {
     // Check for insufficient material using simnple heuristic from chessprogramming site
     if (piecenum[WPAWN] == 0 && piecenum[BPAWN] == 0)
