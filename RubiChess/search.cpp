@@ -4,7 +4,7 @@
 
 int getQuiescence(engine *en, int alpha, int beta, int depth, bool force)
 {
-    short score;
+    int score;
     bool isLegal;
     bool isCheck;
     bool LegalMovesPossible = false;
@@ -89,7 +89,7 @@ int getQuiescence(engine *en, int alpha, int beta, int depth, bool force)
 int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
 {
     int score;
-    short bestscore = SHRT_MIN + 1;
+    int bestscore = SHRT_MIN + 1;
     chessmove best;
     int eval_type = HASHALPHA;
     chessposition *pos = en->pos;

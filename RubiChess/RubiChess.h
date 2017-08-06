@@ -214,7 +214,6 @@ public:
     int oldept;
     int oldkingpos[2];
     unsigned long long oldhash;
-    int oldtotalmaterial[2];
     int oldhalfmovescounter;
     int oldfullmovescounter;
 #ifndef BITBOARD
