@@ -190,11 +190,30 @@ const unsigned int lva[] = { 5 << 26, 4 << 26, 3 << 26, 3 << 26, 2 << 26, 1 << 2
 #define GETCASTLE(x) (((x) & 0xf0000000) >> 28)
 
 
+struct chessmovestack
+{
+    int state;
+    int ept;
+    int kingpos[2];
+    unsigned long long hash;
+    int halfmovescounter;
+    int fullmovescounter;
+#ifndef BITBOARD
+    int value;
+    int numFieldchanges;
+    PieceCode code[4];
+    int index[4];
+#endif
+};
+
+
 class chessmove
 {
 public:
     // kqKQepepepepccccppppfffffftttttt
     unsigned long code;
+    unsigned int value;
+
     chessmove();
     chessmove(unsigned long code);
     chessmove(int from, int to, PieceCode promote, PieceCode capture);
@@ -206,22 +225,8 @@ public:
     //static bool asc(const chessmove cm1, const chessmove cm2) { return cm1.value < cm2.value; }
     //static bool desc(const chessmove cm1, const chessmove cm2) { return cm2.value < cm1.value; }
     static bool cptr(chessmove cm1, chessmove cm2);
-
     string toString();
     void print();
-    unsigned int value;
-    int oldstate;
-    int oldept;
-    int oldkingpos[2];
-    unsigned long long oldhash;
-    int oldhalfmovescounter;
-    int oldfullmovescounter;
-#ifndef BITBOARD
-    int oldvalue;
-	int numFieldchanges;
-    PieceCode oldcode[4];
-    int oldindex[4];
-#endif
 };
 
 #define MAXMOVELISTLENGTH 1024

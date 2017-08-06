@@ -62,6 +62,10 @@ char PieceChar(PieceCode c)
 		o += ('A' - 'a');
 	return o;
 }
+ 
+chessmovestack movestack[MAXDEPTH];
+int mstop;
+
 
 
 chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, int castle)
@@ -712,18 +716,6 @@ void chessposition::BitboardSet(int index, PieceCode p)
 void chessposition::BitboardClear(int index, PieceCode p)
 {
 	int s2m = p & 0x1;
-#if 0
-    piece00[p] &= ~BITSET(index);
-    piece90[p] &= ~BITSET(ROT90(index));
-    piecea1h8[p] &= ~BITSET(ROTA1H8(index));
-    pieceh1a8[p] &= ~BITSET(ROTH1A8(index));
-
-    // FIXME: maybe ^= ... is faster
-    occupied00[s2m] &= ~BITSET(index);
-    occupied90[s2m] &= ~BITSET(ROT90(index));
-    occupieda1h8[s2m] &= ~BITSET(ROTA1H8(index));
-    occupiedh1a8[s2m] &= ~BITSET(ROTH1A8(index));
-#else
 	piece00[p] ^= BITSET(index);
 	piece90[p] ^= BITSET(ROT90(index));
 	piecea1h8[p] ^= BITSET(ROTA1H8(index));
@@ -733,7 +725,6 @@ void chessposition::BitboardClear(int index, PieceCode p)
 	occupied90[s2m] ^= BITSET(ROT90(index));
 	occupieda1h8[s2m] ^= BITSET(ROTA1H8(index));
 	occupiedh1a8[s2m] ^= BITSET(ROTH1A8(index));
-#endif
 }
 
 
@@ -1075,13 +1066,13 @@ bool chessposition::playMove(chessmove *cm)
 
     PieceCode promote = GETPROMOTION(cm->code);
 
-    cm->oldept = ept;
-    cm->oldhash = hash;
-    cm->oldstate = state;
-    cm->oldkingpos[0] = kingpos[0];
-    cm->oldkingpos[1] = kingpos[1];
-    cm->oldfullmovescounter = fullmovescounter;
-    cm->oldhalfmovescounter = halfmovescounter;
+    movestack[mstop].ept = ept;
+    movestack[mstop].hash = hash;
+    movestack[mstop].state = state;
+    movestack[mstop].kingpos[0] = kingpos[0];
+    movestack[mstop].kingpos[1] = kingpos[1];
+    movestack[mstop].fullmovescounter = fullmovescounter;
+    movestack[mstop].halfmovescounter = halfmovescounter;
 
     halfmovescounter++;
 
@@ -1174,6 +1165,7 @@ bool chessposition::playMove(chessmove *cm)
     ply++;
     rp->addPosition(hash);
     actualpath.move[actualpath.length++] = *cm;
+    mstop++;
     if (!isLegal)
     {
         unplayMove(cm);
@@ -1196,16 +1188,16 @@ void chessposition::unplayMove(chessmove *cm)
     rp->removePosition(hash);
     ply--;
 
-    //value = cm->oldvalue;
-    hash = cm->oldhash;
-    state = cm->oldstate;
-    kingpos[0] = cm->oldkingpos[0];
-    kingpos[1] = cm->oldkingpos[1];
-    fullmovescounter = cm->oldfullmovescounter;
-    halfmovescounter = cm->oldhalfmovescounter;
-    s2m = state & S2MMASK;
-    ept = cm->oldept;
+    mstop--;
+    ept = movestack[mstop].ept;
+    hash = movestack[mstop].hash;
+    state = movestack[mstop].state;
+    kingpos[0] = movestack[mstop].kingpos[0];
+    kingpos[1] = movestack[mstop].kingpos[1];
+    fullmovescounter = movestack[mstop].fullmovescounter;
+    halfmovescounter = movestack[mstop].halfmovescounter;
 
+    s2m = state & S2MMASK;
     if (promote != BLANK)
     {
         mailbox[from] = (PieceCode)(WPAWN | s2m);
@@ -1786,6 +1778,7 @@ int chessposition::getFromFen(const char* sFen)
             history[i][j] = 0;
         }
     }
+    mstop = 0;
     return 0;
 }
 
@@ -1854,16 +1847,9 @@ bool chessposition::isOnBoard(int bIndex)
     return !(bIndex & 0x88);
 }
 
-inline bool chessposition::isEmpty(int bIndex)
+bool chessposition::isEmpty(int bIndex)
 {
-#if 1
     return (!(bIndex & 0x88) && board[bIndex] == BLANK);
-#else
-    if (bIndex & 0x88)
-        return false;
-    PieceCode pct = board[bIndex];
-    return (pct == BLANK);
-#endif
 }
 
 PieceType chessposition::Piece(int index)
@@ -1873,26 +1859,12 @@ PieceType chessposition::Piece(int index)
 
 bool chessposition::isOpponent(int bIndex)
 {
-#if 1
     return (!(bIndex & 0x88) && board[bIndex] != BLANK && ((board[bIndex] ^ state) & S2MMASK));
-#else
-    if (bIndex & 0x88)
-        return false;
-    PieceCode pct = board[bIndex];
-    return (pct != BLANK && (pct & S2MMASK) ^ (state & S2MMASK));
-#endif
 }
 
 bool chessposition::isEmptyOrOpponent(int bIndex)
 {
-#if 1
     return (!(bIndex & 0x88) && (board[bIndex] == BLANK || ((board[bIndex] ^ state) & S2MMASK)));
-#else
-    if (bIndex & 0x88)
-        return false;
-    PieceCode pct = board[bIndex];
-    return (pct == BLANK || (pct & S2MMASK) ^ (state & S2MMASK));
-#endif
 }
 
 bool chessposition::isAttacked(int bIndex)
@@ -2127,25 +2099,22 @@ void chessposition::simpleUnplay(int from, int to, PieceCode capture)
 
 bool chessposition::playMove(chessmove *cm)
 {
-    cm->oldept = ept;
-    cm->oldvalue = value;
-    cm->oldhash = hash;
-    cm->oldstate = state;
-    cm->oldkingpos[0] = kingpos[0];
-    cm->oldkingpos[1] = kingpos[1];
-    cm->oldfullmovescounter = fullmovescounter;
-    cm->oldhalfmovescounter = halfmovescounter;
-
+    movestack[mstop].ept = ept;
+    movestack[mstop].value = value;
+    movestack[mstop].hash = hash;
+    movestack[mstop].state = state;
+    movestack[mstop].kingpos[0] = kingpos[0];
+    movestack[mstop].kingpos[1] = kingpos[1];
+    movestack[mstop].fullmovescounter = fullmovescounter;
+    movestack[mstop].halfmovescounter = halfmovescounter;
+    movestack[mstop].numFieldchanges = 0;
     int from = GETFROM(cm->code);
     int to = GETTO(cm->code);
     PieceCode promote = GETPROMOTION(cm->code);
-    //PieceCode capture = GETCAPTURE(cm->code);
     int eptnew = 0;
     PieceType pt = Piece(from);
     int oldcastle = (state & CASTLEMASK);
-    //int col = state & S2MMASK;
     bool isLegal;
-    cm->numFieldchanges = 0;
     halfmovescounter++;
 
     if (promote != BLANK)
@@ -2164,11 +2133,8 @@ bool chessposition::playMove(chessmove *cm)
         hash ^= tp->zb.boardtable[(to << 4) | board[to]];
     }
     
-    // Fix hash regarding capture
-    //if (board[to] != BLANK)
-
-    cm->oldindex[cm->numFieldchanges] = to;
-    cm->oldcode[cm->numFieldchanges++] = board[to];
+    movestack[mstop].index[movestack[mstop].numFieldchanges] = to;
+    movestack[mstop].code[movestack[mstop].numFieldchanges++] = board[to];
     board[to] = (promote == BLANK ? board[from] : promote);
 
     // Fix hash regarding to
@@ -2176,8 +2142,8 @@ bool chessposition::playMove(chessmove *cm)
     // Fix hash regarding from
     hash ^= tp->zb.boardtable[(from << 4) | board[from]];
 
-    cm->oldindex[cm->numFieldchanges] = from;
-    cm->oldcode[cm->numFieldchanges++] = board[from];
+    movestack[mstop].index[movestack[mstop].numFieldchanges] = from;
+    movestack[mstop].code[movestack[mstop].numFieldchanges++] = board[from];
     board[from] = BLANK;
     /* PAWN specials */
     if (pt == PAWN)
@@ -2199,8 +2165,8 @@ bool chessposition::playMove(chessmove *cm)
             // Fix hash regarding ep capture
             hash ^= tp->zb.boardtable[(epfield << 4) | board[epfield]];
 
-            cm->oldindex[cm->numFieldchanges] = epfield;
-            cm->oldcode[cm->numFieldchanges++] = board[epfield];
+            movestack[mstop].index[movestack[mstop].numFieldchanges] = epfield;
+            movestack[mstop].code[movestack[mstop].numFieldchanges++] = board[epfield];
             board[epfield] = BLANK;
         }
     }
@@ -2233,8 +2199,8 @@ bool chessposition::playMove(chessmove *cm)
                 rookto = to | 0x01;
             }
 
-            cm->oldindex[cm->numFieldchanges] = rookto;
-            cm->oldcode[cm->numFieldchanges++] = board[rookto];
+            movestack[mstop].index[movestack[mstop].numFieldchanges] = rookto;
+            movestack[mstop].code[movestack[mstop].numFieldchanges++] = board[rookto];
             board[rookto] = board[rookfrom];
 
             // Fix hash regarding rooks to
@@ -2242,8 +2208,8 @@ bool chessposition::playMove(chessmove *cm)
             // Fix hash regarding from
             hash ^= tp->zb.boardtable[(rookfrom << 4) | board[rookfrom]];
 
-            cm->oldindex[cm->numFieldchanges] = rookfrom;
-            cm->oldcode[cm->numFieldchanges++] = board[rookfrom];
+            movestack[mstop].index[movestack[mstop].numFieldchanges] = rookfrom;
+            movestack[mstop].code[movestack[mstop].numFieldchanges++] = board[rookfrom];
             board[rookfrom] = BLANK;
         }
     }
@@ -2279,6 +2245,7 @@ bool chessposition::playMove(chessmove *cm)
     ply++;
     rp->addPosition(hash);
     actualpath.move[actualpath.length++] = *cm;
+    mstop++;
     if (!isLegal)
         unplayMove(cm);
     return isLegal;
@@ -2291,96 +2258,23 @@ void chessposition::unplayMove(chessmove *cm)
     rp->removePosition(hash);
     ply--;
 
-    ept = cm->oldept;
-    value = cm->oldvalue;
-    hash = cm->oldhash;
-    state = cm->oldstate;
-    kingpos[0] = cm->oldkingpos[0];
-    kingpos[1] = cm->oldkingpos[1];
-    fullmovescounter = cm->oldfullmovescounter;
-    halfmovescounter = cm->oldhalfmovescounter;
-    //totalmaterial[0] = cm->oldtotalmaterial[0];
-    //totalmaterial[1] = cm->oldtotalmaterial[1];
-
-    for (int i = 0; i < cm->numFieldchanges; i++)
+    mstop--;
+    ept = movestack[mstop].ept;
+    value = movestack[mstop].value;
+    hash = movestack[mstop].hash;
+    state = movestack[mstop].state;
+    kingpos[0] = movestack[mstop].kingpos[0];
+    kingpos[1] = movestack[mstop].kingpos[1];
+    fullmovescounter = movestack[mstop].fullmovescounter;
+    halfmovescounter = movestack[mstop].halfmovescounter;
+    for (int i = 0; i < movestack[mstop].numFieldchanges; i++)
     {
-        if (board[cm->oldindex[i]] != BLANK)
-            //piecenum[board[cm->oldindex[i]] >> 1]--;
-            piecenum[board[cm->oldindex[i]]]--;
-        if (cm->oldcode[i] != BLANK)
-            //piecenum[cm->oldcode[i] >> 1]++;
-            piecenum[cm->oldcode[i]]++;
-        board[cm->oldindex[i]] = cm->oldcode[i];
+        if (board[movestack[mstop].index[i]] != BLANK)
+            piecenum[board[movestack[mstop].index[i]]]--;
+        if (movestack[mstop].code[i] != BLANK)
+            piecenum[movestack[mstop].code[i]]++;
+        board[movestack[mstop].index[i]] = movestack[mstop].code[i];
     }
-}
-
-
-// faster playmove and unplaymove for testmove without hashing and value evaluation
-void chessposition::playMoveFast(chessmove *cm)
-{
-    cm->oldkingpos[0] = kingpos[0];
-    cm->oldkingpos[1] = kingpos[1];
-    int from = GETFROM(cm->code);
-    int to = GETTO(cm->code);
-    PieceCode promote = GETPROMOTION(cm->code);
-    PieceCode capture = GETCAPTURE(cm->code);
-    cm->numFieldchanges = 0;
-
-    cm->oldindex[cm->numFieldchanges] = to;
-    cm->oldcode[cm->numFieldchanges++] = board[to];
-    board[to] = (promote == BLANK ? board[from] : promote);
-
-    cm->oldindex[cm->numFieldchanges] = from;
-    cm->oldcode[cm->numFieldchanges++] = board[from];
-    board[from] = BLANK;
-    /* PAWN specials */
-    if (Piece(to) == PAWN)
-    {
-        if (ept && to == ept)
-        {
-            int epfield = from & 0x70 | to & 0x07;
-            cm->oldindex[cm->numFieldchanges] = epfield;
-            cm->oldcode[cm->numFieldchanges++] = board[epfield];
-            board[epfield] = BLANK;
-        }
-    }
-    if (Piece(to) == KING)
-    {
-        kingpos[state & S2MMASK] = to;
-        /* handle castle */
-        if (((from & 0x3) ^ (to & 0x3)) == 0x2)
-        {
-            int rookfrom, rookto;
-            if (to & 0x04)
-            {
-                /* king castle */
-                rookfrom = to | 0x01;
-                rookto = from | 0x01;
-            }
-            else {
-                /* queen castle */
-                rookfrom = from & 0x70;
-                rookto = to | 0x01;
-            }
-
-            cm->oldindex[cm->numFieldchanges] = rookto;
-            cm->oldcode[cm->numFieldchanges++] = board[rookto];
-            board[rookto] = board[rookfrom];
-            cm->oldindex[cm->numFieldchanges] = rookfrom;
-            cm->oldcode[cm->numFieldchanges++] = board[rookfrom];
-            board[rookfrom] = BLANK;
-        }
-    }
-
-}
-
-
-void chessposition::unplayMoveFast(chessmove *cm)
-{
-    kingpos[0] = cm->oldkingpos[0];
-    kingpos[1] = cm->oldkingpos[1];
-    for (int i = 0; i < cm->numFieldchanges; i++)
-        board[cm->oldindex[i]] = cm->oldcode[i];
 }
 
 
