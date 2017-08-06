@@ -2,9 +2,9 @@
 #include "RubiChess.h"
 
 
-short getQuiescence(engine *en, short alpha, short beta, int depth, bool force)
+int getQuiescence(engine *en, int alpha, int beta, int depth, bool force)
 {
-    short score;
+    int score;
     bool isLegal;
     bool isCheck;
     bool LegalMovesPossible = false;
@@ -86,10 +86,10 @@ short getQuiescence(engine *en, short alpha, short beta, int depth, bool force)
 }
 
 
-short alphabeta(engine *en, short alpha, short beta, int depth, bool nullmoveallowed)
+int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
 {
-    short score;
-    short bestscore = SHRT_MIN + 1;
+    int score;
+    int bestscore = SHRT_MIN + 1;
     chessmove best;
     int eval_type = HASHALPHA;
     chessposition *pos = en->pos;

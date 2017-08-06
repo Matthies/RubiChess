@@ -152,23 +152,23 @@ const int EPTSIDEMASK[2] = { 0x8, 0x10 };
 
 #ifdef BITBOARD
 /* Offsets for 64Bit  board*/
-const char knightoffset[] = { -6, -10, -15, -17, 6, 10, 15, 17 };
-const char diagonaloffset[] = { -7, -9, 7, 9 };
-const char orthogonaloffset[] = { -8, -1, 1, 8 };
-const char orthogonalanddiagonaloffset[] = { -8, -1, 1, 8, -7, -9, 7, 9 };
+const int knightoffset[] = { -6, -10, -15, -17, 6, 10, 15, 17 };
+const int diagonaloffset[] = { -7, -9, 7, 9 };
+const int orthogonaloffset[] = { -8, -1, 1, 8 };
+const int orthogonalanddiagonaloffset[] = { -8, -1, 1, 8, -7, -9, 7, 9 };
 const int shifting[] = { 0, 0, 0, 1, 2, 3, 0 };
 
 #else
 /* Offsets for 0x88 board */
-const char knightoffset[] = { -0x0e, -0x12, -0x1f, -0x21, 0x0e, 0x12, 0x1f, 0x21 };
-const char diagonaloffset[] = { -0x0f, -0x11, 0x0f, 0x11 };
-const char orthogonaloffset[] = { -0x10, -0x01, 0x01, 0x10 };
-const char orthogonalanddiagonaloffset[] = { -0x10, -0x01, 0x01, 0x10, -0x0f, -0x11, 0x0f, 0x11 };
+const int knightoffset[] = { -0x0e, -0x12, -0x1f, -0x21, 0x0e, 0x12, 0x1f, 0x21 };
+const int diagonaloffset[] = { -0x0f, -0x11, 0x0f, 0x11 };
+const int orthogonaloffset[] = { -0x10, -0x01, 0x01, 0x10 };
+const int orthogonalanddiagonaloffset[] = { -0x10, -0x01, 0x01, 0x10, -0x0f, -0x11, 0x0f, 0x11 };
 #endif
 
 
 //struct pawnmove { char offset; bool blank; };
-const struct { char offset; bool needsblank; } pawnmove[] = { { 0x10, true }, { 0x0f, false }, { 0x11, false } };
+const struct { int offset; bool needsblank; } pawnmove[] = { { 0x10, true }, { 0x0f, false }, { 0x11, false } };
 const int materialvalue[] = { 0, 100, 320, 330, 500, 900, SCOREWHITEWINS };
 // values for move ordering
 const unsigned int mvv[] = { 0U << 29, 1U << 29, 2U << 29, 2U << 29, 3U << 29, 4U << 29, 5U << 29 };
@@ -190,15 +190,34 @@ const unsigned int lva[] = { 5 << 26, 4 << 26, 3 << 26, 3 << 26, 2 << 26, 1 << 2
 #define GETCASTLE(x) (((x) & 0xf0000000) >> 28)
 
 
+struct chessmovestack
+{
+    int state;
+    int ept;
+    int kingpos[2];
+    unsigned long long hash;
+    int halfmovescounter;
+    int fullmovescounter;
+#ifndef BITBOARD
+    int value;
+    int numFieldchanges;
+    PieceCode code[4];
+    int index[4];
+#endif
+};
+
+
 class chessmove
 {
 public:
     // kqKQepepepepccccppppfffffftttttt
     unsigned long code;
+    unsigned int value;
+
     chessmove();
     chessmove(unsigned long code);
-    chessmove(unsigned char from, unsigned char to, PieceCode promote, PieceCode capture);
-    chessmove(unsigned char from, unsigned char to, PieceCode promote, PieceCode capture, unsigned char ept, unsigned char castle);
+    chessmove(int from, int to, PieceCode promote, PieceCode capture);
+    chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, int castle);
     bool operator<(const chessmove cm) const { return value < cm.value; }
     bool operator>(const chessmove cm) const { return value > cm.value; }
     //bool operator<(const chessmove cm) const { return ((code & 0xfff) < (cm.code & 0xfff)); }
@@ -206,23 +225,8 @@ public:
     //static bool asc(const chessmove cm1, const chessmove cm2) { return cm1.value < cm2.value; }
     //static bool desc(const chessmove cm1, const chessmove cm2) { return cm2.value < cm1.value; }
     static bool cptr(chessmove cm1, chessmove cm2);
-
     string toString();
     void print();
-    unsigned int value;
-    unsigned char oldstate;
-    unsigned char oldept;
-    unsigned char oldkingpos[2];
-    unsigned long long oldhash;
-    unsigned short oldtotalmaterial[2];
-    unsigned char oldhalfmovescounter;
-    short oldfullmovescounter;
-#ifndef BITBOARD
-	short oldvalue;
-	int numFieldchanges;
-    PieceCode oldcode[4];
-    unsigned char oldindex[4];
-#endif
 };
 
 #define MAXMOVELISTLENGTH 1024
@@ -337,14 +341,14 @@ public:
     U64 attacks_from[64];
     U64 attacks_to[64];
 
-    unsigned char state;
-    unsigned char ept;
-    unsigned char kingpos[2];
+    int state;
+    int ept;
+    int kingpos[2];
     unsigned long long hash;
     //short value;
     int ply;
-    unsigned char halfmovescounter = 0;
-    short fullmovescounter = 0;
+    int halfmovescounter = 0;
+    int fullmovescounter = 0;
     int maxdebugdepth = -1;
     int mindebugdepth = -1;
     transposition *tp;
@@ -369,17 +373,17 @@ public:
     bool applyMove(string s);
     void print();
     int phase();
-    bool isOnBoard(unsigned char bIndex);
-    bool isEmpty(unsigned char bIndex);
+    bool isOnBoard(int bIndex);
+    bool isEmpty(int bIndex);
     PieceType Piece(int index);
-    bool isOpponent(unsigned char bIndex);
-    bool isEmptyOrOpponent(unsigned char bIndex);
+    bool isOpponent(int bIndex);
+    bool isEmptyOrOpponent(int bIndex);
     bool isAttacked(int index);
     U64 attacksTo(int index, int side);
     bool checkForChess();
-    short see(int to);
-    short see(int from, int to);
-    void testMove(chessmovelist *movelist, unsigned char from, unsigned char to, PieceCode promote, PieceCode capture);
+    int see(int to);
+    int see(int from, int to);
+    void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture);
     chessmovelist* getMoves();
     bool playMove(chessmove *cm);
     void playMoveFast(chessmove *cm);
@@ -387,12 +391,12 @@ public:
     void unplayMoveFast(chessmove *cm);
     void playNullMove();
     void unplayNullMove();
-    void simplePlay(unsigned char from, unsigned char to);
-    void simpleUnplay(unsigned char from, unsigned char to, PieceCode capture);
+    void simplePlay(int from, int to);
+    void simpleUnplay(int from, int to, PieceCode capture);
     void getpvline(int depth);
-    short countMaterial();
-    short getPositionValue();
-    short getValue();
+    int countMaterial();
+    int getPositionValue();
+    int getValue();
     int* GetPositionvalueTable();
     void debug(int depth, const char* format, ...);
     bool testRepetiton();
@@ -405,15 +409,15 @@ class chessposition
 {
 public:
     PieceCode board[128];
-    unsigned char state;
-    unsigned char ept;
-    unsigned char kingpos[2];
+    int state;
+    int ept;
+    int kingpos[2];
     unsigned long long hash;
-    short value;
+    int value;
     int ply;
     int piecenum[14];
-    unsigned char halfmovescounter = 0;
-    short fullmovescounter = 0;
+    int halfmovescounter = 0;
+    int fullmovescounter = 0;
     int maxdebugdepth = -1;
     int mindebugdepth = -1;
     class transposition *tp;
@@ -434,17 +438,17 @@ public:
     int getFromFen(const char* sFen);
     bool applyMove(string s);
     void print();
-    unsigned char phase();
-    bool isOnBoard(unsigned char bIndex);
-    bool isEmpty(unsigned char bIndex);
+    int phase();
+    bool isOnBoard(int bIndex);
+    bool isEmpty(int bIndex);
     PieceType Piece(int index);
-    bool isOpponent(unsigned char bIndex);
-    bool isEmptyOrOpponent(unsigned char bIndex);
-    bool isAttacked(unsigned char bIndex);
+    bool isOpponent(int bIndex);
+    bool isEmptyOrOpponent(int bIndex);
+    bool isAttacked(int bIndex);
     bool checkForChess();
-    short see(int to);
-    short see(int from, int to);
-    void testMove(chessmovelist *movelist, unsigned char from, unsigned char to, PieceCode promote);
+    int see(int to);
+    int see(int from, int to);
+    void testMove(chessmovelist *movelist, int from, int to, PieceCode promote);
     chessmovelist* getMoves();
     bool playMove(chessmove *cm);
     void playMoveFast(chessmove *cm);
@@ -452,12 +456,12 @@ public:
     void unplayMoveFast(chessmove *cm);
     void playNullMove();
     void unplayNullMove();
-    void simplePlay(unsigned char from, unsigned char to);
-    void simpleUnplay(unsigned char from, unsigned char to, PieceCode capture);
+    void simplePlay(int from, int to);
+    void simpleUnplay(int from, int to, PieceCode capture);
     void getpvline(int depth);
     void countMaterial();
-    short getPositionValue();
-    short getValue();
+    int getPositionValue();
+    int getValue();
     int* GetPositionvalueTable();
     void debug(int depth, const char* format, ...);
     bool testRepetiton();
@@ -572,8 +576,8 @@ public:
     void setSize(int sizeMb);
     void clean();
     bool testHash();
-    void addHash(short val, unsigned char valtype, unsigned char depth, unsigned long move);
-    bool probeHash(short *val, unsigned long *movecode, unsigned char depth, short alpha, short beta);
+    void addHash(int val, int valtype, int depth, unsigned long move);
+    bool probeHash(int *val, unsigned long *movecode, int depth, int alpha, int beta);
     short getValue();
     int getValtype();
     int getDepth();
@@ -600,8 +604,8 @@ https://www.gamedev.net/topic/503234-transposition-table-question/
 //
 // search stuff
 //
-short alphabeta(engine *en, short alpha, short beta, int depth, bool nullmoveallowed);
-short getQuiescence(engine *en, short alpha, short beta, int depth, bool force);
+int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed);
+int getQuiescence(engine *en, int alpha, int beta, int depth, bool force);
 void searchguide(engine *en);
 
 

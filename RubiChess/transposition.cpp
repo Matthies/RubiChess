@@ -200,7 +200,7 @@ unsigned int transposition::getUsedinPermill()
 }
 
 
-void transposition::addHash(short val, unsigned char valtype, unsigned char depth, unsigned long move)
+void transposition::addHash(int val, int valtype, int depth, unsigned long move)
 {
     unsigned long long hash = pos->hash;
     unsigned long long index = hash & sizemask;
@@ -220,7 +220,7 @@ void transposition::addHash(short val, unsigned char valtype, unsigned char dept
 }
 
 
-bool transposition::probeHash(short *val, unsigned long *movecode, unsigned char depth, short alpha, short beta)
+bool transposition::probeHash(int *val, unsigned long *movecode, int depth, int alpha, int beta)
 {
     unsigned long long hash = pos->hash;
     unsigned long long index = hash & sizemask;

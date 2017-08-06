@@ -62,14 +62,18 @@ char PieceChar(PieceCode c)
 		o += ('A' - 'a');
 	return o;
 }
+ 
+chessmovestack movestack[MAXDEPTH];
+int mstop;
 
 
-chessmove::chessmove(unsigned char from, unsigned char to, PieceCode promote, PieceCode capture, unsigned char ept, unsigned char castle)
+
+chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, int castle)
 {
 #ifdef BITBOARD
     code = (castle << 28) | (ept << 20) | (capture << 16) | (promote << 12) | (from << 6) | to;
 #else
-    unsigned char f, t;
+    int f, t;
     /* convert 0x88 coordinates to 3bit */
     f = (from >> 1) & 0x38 | (from & 0x7);
     t = (to >> 1) & 0x38 | (to & 0x7);
@@ -77,12 +81,12 @@ chessmove::chessmove(unsigned char from, unsigned char to, PieceCode promote, Pi
 #endif
 }
 
-chessmove::chessmove(unsigned char from, unsigned char to, PieceCode promote, PieceCode capture)
+chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture)
 {
 #ifdef BITBOARD
     code = (capture << 16) | (promote << 12) | (from << 6) | to;
 #else
-    unsigned char f, t;
+    int f, t;
     /* convert 0x88 coordinates to 3bit */
     f = (from >> 1) & 0x38 | (from & 0x7);
     t = (to >> 1) & 0x38 | (to & 0x7);
@@ -387,8 +391,7 @@ void chessposition::mirror()
 
 	countMaterial();
 
-	unsigned char newstate = 0;
-	newstate |= (state & S2MMASK) ^ S2MMASK;
+    int newstate = (state & S2MMASK) ^ S2MMASK;
 	if (state & WQCMASK) newstate |= BQCMASK;
 	if (state & WKCMASK) newstate |= BKCMASK;
 	if (state & BQCMASK) newstate |= WQCMASK;
@@ -397,7 +400,7 @@ void chessposition::mirror()
 	if (ept)
 		ept ^= 0x38;
 
-	unsigned char kingpostemp = kingpos[0];
+    int kingpostemp = kingpos[0];
 	kingpos[0] = kingpos[1] ^= 0x38;
 	kingpos[1] = kingpostemp ^= 0x38;
 
@@ -424,8 +427,7 @@ void chessposition::mirror()
 
 	countMaterial();
 
-	unsigned char newstate = 0;
-	newstate |= (state & S2MMASK) ^ S2MMASK;
+	int newstate = (state & S2MMASK) ^ S2MMASK;
 	if (state & WQCMASK) newstate |= BQCMASK;
 	if (state & WKCMASK) newstate |= BKCMASK;
 	if (state & BQCMASK) newstate |= WQCMASK;
@@ -434,7 +436,7 @@ void chessposition::mirror()
 	if (ept)
 		ept ^= 0x70;
 
-	unsigned char kingpostemp = kingpos[0];
+    int kingpostemp = kingpos[0];
 	kingpos[0] = kingpos[1] ^= 0x70;
 	kingpos[1] = kingpostemp ^= 0x70;
 
@@ -714,18 +716,6 @@ void chessposition::BitboardSet(int index, PieceCode p)
 void chessposition::BitboardClear(int index, PieceCode p)
 {
 	int s2m = p & 0x1;
-#if 0
-    piece00[p] &= ~BITSET(index);
-    piece90[p] &= ~BITSET(ROT90(index));
-    piecea1h8[p] &= ~BITSET(ROTA1H8(index));
-    pieceh1a8[p] &= ~BITSET(ROTH1A8(index));
-
-    // FIXME: maybe ^= ... is faster
-    occupied00[s2m] &= ~BITSET(index);
-    occupied90[s2m] &= ~BITSET(ROT90(index));
-    occupieda1h8[s2m] &= ~BITSET(ROTA1H8(index));
-    occupiedh1a8[s2m] &= ~BITSET(ROTH1A8(index));
-#else
 	piece00[p] ^= BITSET(index);
 	piece90[p] ^= BITSET(ROT90(index));
 	piecea1h8[p] ^= BITSET(ROTA1H8(index));
@@ -735,7 +725,6 @@ void chessposition::BitboardClear(int index, PieceCode p)
 	occupied90[s2m] ^= BITSET(ROT90(index));
 	occupieda1h8[s2m] ^= BITSET(ROTA1H8(index));
 	occupiedh1a8[s2m] ^= BITSET(ROTH1A8(index));
-#endif
 }
 
 
@@ -914,7 +903,7 @@ int chessposition::getFromFen(const char* sFen)
 
 bool chessposition::applyMove(string s)
 {
-    unsigned char from, to;
+    int from, to;
     bool retval = false;
     PieceCode promotion;
 
@@ -976,7 +965,7 @@ void chessposition::print()
 }
 
 
-short chessposition::getValue()
+int chessposition::getValue()
 {
     // Check for insufficient material using simnple heuristic from chessprogramming site
     if (!(piece00[WPAWN] | piece00[BPAWN]))
@@ -1004,11 +993,11 @@ short chessposition::getValue()
 }
 
 
-short chessposition::getPositionValue()
+int chessposition::getPositionValue()
 {
     int index;
     int ph = phase();
-    short result = 0;
+    int result = 0;
     for (int s = 0; s < 2; s++)
     {
         for (int p = PAWN; p <= KING; p++)
@@ -1051,12 +1040,12 @@ short chessposition::getPositionValue()
 }
 
 
-short chessposition::countMaterial()
+int chessposition::countMaterial()
 {
-    short value = 0;
+    int value = 0;
     for (int p = PAWN; p < KING; p++)
     {
-        value += (short)(POPCOUNT(piece00[p << 1]) - POPCOUNT(piece00[(p << 1) | 1])) * materialvalue[p];
+        value += (POPCOUNT(piece00[p << 1]) - POPCOUNT(piece00[(p << 1) | 1])) * materialvalue[p];
     }
 	return value;
 }
@@ -1064,7 +1053,7 @@ short chessposition::countMaterial()
 
 bool chessposition::playMove(chessmove *cm)
 {
-    unsigned char oldcastle = (state & CASTLEMASK);
+    int oldcastle = (state & CASTLEMASK);
     int s2m = state & S2MMASK;
     bool isLegal;
     int from = GETFROM(cm->code);
@@ -1077,13 +1066,13 @@ bool chessposition::playMove(chessmove *cm)
 
     PieceCode promote = GETPROMOTION(cm->code);
 
-    cm->oldept = ept;
-    cm->oldhash = hash;
-    cm->oldstate = state;
-    cm->oldkingpos[0] = kingpos[0];
-    cm->oldkingpos[1] = kingpos[1];
-    cm->oldfullmovescounter = fullmovescounter;
-    cm->oldhalfmovescounter = halfmovescounter;
+    movestack[mstop].ept = ept;
+    movestack[mstop].hash = hash;
+    movestack[mstop].state = state;
+    movestack[mstop].kingpos[0] = kingpos[0];
+    movestack[mstop].kingpos[1] = kingpos[1];
+    movestack[mstop].fullmovescounter = fullmovescounter;
+    movestack[mstop].halfmovescounter = halfmovescounter;
 
     halfmovescounter++;
 
@@ -1119,7 +1108,7 @@ bool chessposition::playMove(chessmove *cm)
         if (ept && to == ept)
         {
             // FIXME: to many mailbox[epfield], this is a pawn we just need to add the color
-            unsigned char epfield = from & 0x38 | to & 0x07;
+            int epfield = from & 0x38 | to & 0x07;
             hash ^= tp->zb.boardtable[(epfield << 4) | mailbox[epfield]];
 
             BitboardClear(epfield, mailbox[epfield]);
@@ -1176,6 +1165,7 @@ bool chessposition::playMove(chessmove *cm)
     ply++;
     rp->addPosition(hash);
     actualpath.move[actualpath.length++] = *cm;
+    mstop++;
     if (!isLegal)
     {
         unplayMove(cm);
@@ -1198,16 +1188,16 @@ void chessposition::unplayMove(chessmove *cm)
     rp->removePosition(hash);
     ply--;
 
-    //value = cm->oldvalue;
-    hash = cm->oldhash;
-    state = cm->oldstate;
-    kingpos[0] = cm->oldkingpos[0];
-    kingpos[1] = cm->oldkingpos[1];
-    fullmovescounter = cm->oldfullmovescounter;
-    halfmovescounter = cm->oldhalfmovescounter;
-    s2m = state & S2MMASK;
-    ept = cm->oldept;
+    mstop--;
+    ept = movestack[mstop].ept;
+    hash = movestack[mstop].hash;
+    state = movestack[mstop].state;
+    kingpos[0] = movestack[mstop].kingpos[0];
+    kingpos[1] = movestack[mstop].kingpos[1];
+    fullmovescounter = movestack[mstop].fullmovescounter;
+    halfmovescounter = movestack[mstop].halfmovescounter;
 
+    s2m = state & S2MMASK;
     if (promote != BLANK)
     {
         mailbox[from] = (PieceCode)(WPAWN | s2m);
@@ -1257,7 +1247,7 @@ bool chessposition::checkForChess()
 }
 
 
-inline void chessposition::testMove(chessmovelist *movelist, unsigned char from, unsigned char to, PieceCode promote, PieceCode capture)
+inline void chessposition::testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture)
 {
     chessmove cm(from, to, promote, capture);
     if (capture != BLANK)
@@ -1433,12 +1423,12 @@ int chessposition::phase()
 }
 
 
-short chessposition::see(int to)
+int chessposition::see(int to)
 {
     int cheapest = SHRT_MAX;
     int cheapest_from = -1;
     int from;
-    short v;
+    int v;
     U64 frombits = attacksTo(to, (mailbox[to] & S2MMASK) ^ S2MMASK);
     while (LSB(from, frombits))
     {
@@ -1466,9 +1456,9 @@ short chessposition::see(int to)
 }
 
 
-short chessposition::see(int from, int to)
+int chessposition::see(int from, int to)
 {
-    short v;
+    int v;
     PieceCode capture = mailbox[to];
     if (capture == BLANK)
         return 0;
@@ -1498,7 +1488,7 @@ void chessposition::unplayNullMove()
 }
 
 
-void chessposition::simplePlay(unsigned char from, unsigned char to)
+void chessposition::simplePlay(int from, int to)
 {
     if (mailbox[to] != BLANK)
         BitboardClear(to, mailbox[to]);
@@ -1509,7 +1499,7 @@ void chessposition::simplePlay(unsigned char from, unsigned char to)
 }
 
 
-void chessposition::simpleUnplay(unsigned char from, unsigned char to, PieceCode capture)
+void chessposition::simpleUnplay(int from, int to, PieceCode capture)
 {
     state ^= S2MMASK;
     BitboardMove(to, from, mailbox[to]);
@@ -1522,7 +1512,7 @@ void chessposition::simpleUnplay(unsigned char from, unsigned char to, PieceCode
 
 void chessposition::getpvline(int depth)
 {
-    short dummyval;
+    int dummyval;
     chessmove cm;
     pvline.length = 0;
     while (depth >= 0)
@@ -1623,7 +1613,7 @@ bool chessposition::operator==(chessposition p)
         {
             for (int f = 0; f < 8; f++)
             {
-                unsigned char i = ((r << 4) | f);
+                int i = ((r << 4) | f);
                 result = result && (board[i] == p.board[i]);
             }
         }
@@ -1788,12 +1778,13 @@ int chessposition::getFromFen(const char* sFen)
             history[i][j] = 0;
         }
     }
+    mstop = 0;
     return 0;
 }
 
 bool chessposition::applyMove(string s)
 {
-    unsigned char from, to;
+    int from, to;
     bool retval = false;
     PieceCode promotion;
 
@@ -1851,17 +1842,14 @@ void chessposition::print()
         printf("info string Moves in current search: %s\n", actualpath.toString().c_str());
 }
 
-bool chessposition::isOnBoard(unsigned char bIndex)
+bool chessposition::isOnBoard(int bIndex)
 {
     return !(bIndex & 0x88);
 }
 
-bool chessposition::isEmpty(unsigned char bIndex)
+bool chessposition::isEmpty(int bIndex)
 {
-    if (bIndex & 0x88)
-        return false;
-    PieceCode pct = board[bIndex];
-    return (pct == BLANK);
+    return (!(bIndex & 0x88) && board[bIndex] == BLANK);
 }
 
 PieceType chessposition::Piece(int index)
@@ -1869,26 +1857,20 @@ PieceType chessposition::Piece(int index)
     return (PieceType)(board[index] >> 1);
 }
 
-bool chessposition::isOpponent(unsigned char bIndex)
+bool chessposition::isOpponent(int bIndex)
 {
-    if (bIndex & 0x88)
-        return false;
-    PieceCode pct = board[bIndex];
-    return (pct != BLANK && (pct & S2MMASK) ^ (state & S2MMASK));
+    return (!(bIndex & 0x88) && board[bIndex] != BLANK && ((board[bIndex] ^ state) & S2MMASK));
 }
 
-bool chessposition::isEmptyOrOpponent(unsigned char bIndex)
+bool chessposition::isEmptyOrOpponent(int bIndex)
 {
-    if (bIndex & 0x88)
-        return false;
-    PieceCode pct = board[bIndex];
-    return (pct == BLANK || (pct & S2MMASK) ^ (state & S2MMASK));
+    return (!(bIndex & 0x88) && (board[bIndex] == BLANK || ((board[bIndex] ^ state) & S2MMASK)));
 }
 
-bool chessposition::isAttacked(unsigned char bIndex)
+bool chessposition::isAttacked(int bIndex)
 {
     int i;
-    unsigned char bSource;
+    int bSource;
     int nextto;
 
     // check for knight attacks
@@ -1943,7 +1925,7 @@ bool chessposition::checkForChess()
     return (isAttacked(kingpos[state & S2MMASK]));
 }
 
-void chessposition::testMove(chessmovelist *movelist, unsigned char from, unsigned char to, PieceCode promote)
+void chessposition::testMove(chessmovelist *movelist, int from, int to, PieceCode promote)
 {
     PieceCode capture = (!ept || to != ept || Piece(from) != PAWN ? board[to] : (PieceCode)(WPAWN | (~state & S2MMASK)));
     chessmove cm(from, to, promote, capture);
@@ -1963,8 +1945,8 @@ void chessposition::testMove(chessmovelist *movelist, unsigned char from, unsign
 
 chessmovelist* chessposition::getMoves()
 {
-    unsigned char targetIndex;
-    unsigned char s2m = state & S2MMASK;
+    int targetIndex;
+    int s2m = state & S2MMASK;
     chessmovelist* result = (chessmovelist*)malloc(sizeof(chessmovelist));
     result->length = 0;
 
@@ -2001,7 +1983,7 @@ chessmovelist* chessposition::getMoves()
 
                                     if (r == (s2m ? 6 : 1) && pawnmove[i].needsblank)
                                     {
-                                        unsigned char targetIndex2 = bIndex + (s2m ? -0x20 : 0x20);
+                                        int targetIndex2 = bIndex + (s2m ? -0x20 : 0x20);
                                         if (isEmpty(targetIndex2))
                                         {
                                             testMove(result, bIndex, targetIndex2, BLANK);
@@ -2102,13 +2084,13 @@ chessmovelist* chessposition::getMoves()
 }
 
 
-void chessposition::simplePlay(unsigned char from, unsigned char to)
+void chessposition::simplePlay(int from, int to)
 {
     board[to] = board[from];
     board[from] = BLANK;
 }
 
-void chessposition::simpleUnplay(unsigned char from, unsigned char to, PieceCode capture)
+void chessposition::simpleUnplay(int from, int to, PieceCode capture)
 {
     board[from] = board[to];
     board[to] = capture;
@@ -2117,48 +2099,42 @@ void chessposition::simpleUnplay(unsigned char from, unsigned char to, PieceCode
 
 bool chessposition::playMove(chessmove *cm)
 {
-    cm->oldept = ept;
-    cm->oldvalue = value;
-    cm->oldhash = hash;
-    cm->oldstate = state;
-    cm->oldkingpos[0] = kingpos[0];
-    cm->oldkingpos[1] = kingpos[1];
-    cm->oldfullmovescounter = fullmovescounter;
-    cm->oldhalfmovescounter = halfmovescounter;
-
+    movestack[mstop].ept = ept;
+    movestack[mstop].value = value;
+    movestack[mstop].hash = hash;
+    movestack[mstop].state = state;
+    movestack[mstop].kingpos[0] = kingpos[0];
+    movestack[mstop].kingpos[1] = kingpos[1];
+    movestack[mstop].fullmovescounter = fullmovescounter;
+    movestack[mstop].halfmovescounter = halfmovescounter;
+    movestack[mstop].numFieldchanges = 0;
     int from = GETFROM(cm->code);
     int to = GETTO(cm->code);
     PieceCode promote = GETPROMOTION(cm->code);
-    PieceCode capture = GETCAPTURE(cm->code);
-    unsigned char eptnew = 0;
+    int eptnew = 0;
     PieceType pt = Piece(from);
-    unsigned char oldcastle = (state & CASTLEMASK);
-    int col = state & S2MMASK;
+    int oldcastle = (state & CASTLEMASK);
     bool isLegal;
-    cm->numFieldchanges = 0;
     halfmovescounter++;
 
     if (promote != BLANK)
     {
-        short valdiff = -materialvalue[PAWN] + materialvalue[promote >> 1];
+        int valdiff = -materialvalue[PAWN] + materialvalue[promote >> 1];
         value += (state & S2MMASK ? -valdiff : valdiff);
         piecenum[board[from]]--;
         piecenum[promote]++;
     }
     if (Piece(to) != BLANKTYPE)
     {
-        short valdiff = materialvalue[Piece(to)];
+        int valdiff = materialvalue[Piece(to)];
         value += (state & S2MMASK ? -valdiff : valdiff);
-        piecenum[capture]--;
+        piecenum[board[to]]--;
         halfmovescounter = 0;
+        hash ^= tp->zb.boardtable[(to << 4) | board[to]];
     }
     
-    // Fix hash regarding capture
-    if (board[to] != BLANK)
-        hash ^= tp->zb.boardtable[(to << 4) | board[to]];
-
-    cm->oldindex[cm->numFieldchanges] = to;
-    cm->oldcode[cm->numFieldchanges++] = board[to];
+    movestack[mstop].index[movestack[mstop].numFieldchanges] = to;
+    movestack[mstop].code[movestack[mstop].numFieldchanges++] = board[to];
     board[to] = (promote == BLANK ? board[from] : promote);
 
     // Fix hash regarding to
@@ -2166,8 +2142,8 @@ bool chessposition::playMove(chessmove *cm)
     // Fix hash regarding from
     hash ^= tp->zb.boardtable[(from << 4) | board[from]];
 
-    cm->oldindex[cm->numFieldchanges] = from;
-    cm->oldcode[cm->numFieldchanges++] = board[from];
+    movestack[mstop].index[movestack[mstop].numFieldchanges] = from;
+    movestack[mstop].code[movestack[mstop].numFieldchanges++] = board[from];
     board[from] = BLANK;
     /* PAWN specials */
     if (pt == PAWN)
@@ -2182,15 +2158,15 @@ bool chessposition::playMove(chessmove *cm)
         }
         else if (ept && to == ept)
         {
-            unsigned char epfield = from & 0x70 | to & 0x07;
+            int epfield = from & 0x70 | to & 0x07;
             value += (state & S2MMASK ? -materialvalue[PAWN] : materialvalue[PAWN]);
             //piecenum[PAWN]--;
             piecenum[board[epfield]]--;
             // Fix hash regarding ep capture
             hash ^= tp->zb.boardtable[(epfield << 4) | board[epfield]];
 
-            cm->oldindex[cm->numFieldchanges] = epfield;
-            cm->oldcode[cm->numFieldchanges++] = board[epfield];
+            movestack[mstop].index[movestack[mstop].numFieldchanges] = epfield;
+            movestack[mstop].code[movestack[mstop].numFieldchanges++] = board[epfield];
             board[epfield] = BLANK;
         }
     }
@@ -2210,7 +2186,7 @@ bool chessposition::playMove(chessmove *cm)
         state &= ((state & S2MMASK) ? ~(BQCMASK | BKCMASK) : ~(WQCMASK | WKCMASK));
         if (((from & 0x3) ^ (to & 0x3)) == 0x2)
         {
-            unsigned char rookfrom, rookto;
+            int rookfrom, rookto;
             if (to & 0x04)
             {
                 /* king castle */
@@ -2223,8 +2199,8 @@ bool chessposition::playMove(chessmove *cm)
                 rookto = to | 0x01;
             }
 
-            cm->oldindex[cm->numFieldchanges] = rookto;
-            cm->oldcode[cm->numFieldchanges++] = board[rookto];
+            movestack[mstop].index[movestack[mstop].numFieldchanges] = rookto;
+            movestack[mstop].code[movestack[mstop].numFieldchanges++] = board[rookto];
             board[rookto] = board[rookfrom];
 
             // Fix hash regarding rooks to
@@ -2232,8 +2208,8 @@ bool chessposition::playMove(chessmove *cm)
             // Fix hash regarding from
             hash ^= tp->zb.boardtable[(rookfrom << 4) | board[rookfrom]];
 
-            cm->oldindex[cm->numFieldchanges] = rookfrom;
-            cm->oldcode[cm->numFieldchanges++] = board[rookfrom];
+            movestack[mstop].index[movestack[mstop].numFieldchanges] = rookfrom;
+            movestack[mstop].code[movestack[mstop].numFieldchanges++] = board[rookfrom];
             board[rookfrom] = BLANK;
         }
     }
@@ -2269,6 +2245,7 @@ bool chessposition::playMove(chessmove *cm)
     ply++;
     rp->addPosition(hash);
     actualpath.move[actualpath.length++] = *cm;
+    mstop++;
     if (!isLegal)
         unplayMove(cm);
     return isLegal;
@@ -2281,96 +2258,23 @@ void chessposition::unplayMove(chessmove *cm)
     rp->removePosition(hash);
     ply--;
 
-    ept = cm->oldept;
-    value = cm->oldvalue;
-    hash = cm->oldhash;
-    state = cm->oldstate;
-    kingpos[0] = cm->oldkingpos[0];
-    kingpos[1] = cm->oldkingpos[1];
-    fullmovescounter = cm->oldfullmovescounter;
-    halfmovescounter = cm->oldhalfmovescounter;
-    //totalmaterial[0] = cm->oldtotalmaterial[0];
-    //totalmaterial[1] = cm->oldtotalmaterial[1];
-
-    for (int i = 0; i < cm->numFieldchanges; i++)
+    mstop--;
+    ept = movestack[mstop].ept;
+    value = movestack[mstop].value;
+    hash = movestack[mstop].hash;
+    state = movestack[mstop].state;
+    kingpos[0] = movestack[mstop].kingpos[0];
+    kingpos[1] = movestack[mstop].kingpos[1];
+    fullmovescounter = movestack[mstop].fullmovescounter;
+    halfmovescounter = movestack[mstop].halfmovescounter;
+    for (int i = 0; i < movestack[mstop].numFieldchanges; i++)
     {
-        if (board[cm->oldindex[i]] != BLANK)
-            //piecenum[board[cm->oldindex[i]] >> 1]--;
-            piecenum[board[cm->oldindex[i]]]--;
-        if (cm->oldcode[i] != BLANK)
-            //piecenum[cm->oldcode[i] >> 1]++;
-            piecenum[cm->oldcode[i]]++;
-        board[cm->oldindex[i]] = cm->oldcode[i];
+        if (board[movestack[mstop].index[i]] != BLANK)
+            piecenum[board[movestack[mstop].index[i]]]--;
+        if (movestack[mstop].code[i] != BLANK)
+            piecenum[movestack[mstop].code[i]]++;
+        board[movestack[mstop].index[i]] = movestack[mstop].code[i];
     }
-}
-
-
-// faster playmove and unplaymove for testmove without hashing and value evaluation
-void chessposition::playMoveFast(chessmove *cm)
-{
-    cm->oldkingpos[0] = kingpos[0];
-    cm->oldkingpos[1] = kingpos[1];
-    int from = GETFROM(cm->code);
-    int to = GETTO(cm->code);
-    PieceCode promote = GETPROMOTION(cm->code);
-    PieceCode capture = GETCAPTURE(cm->code);
-    cm->numFieldchanges = 0;
-
-    cm->oldindex[cm->numFieldchanges] = to;
-    cm->oldcode[cm->numFieldchanges++] = board[to];
-    board[to] = (promote == BLANK ? board[from] : promote);
-
-    cm->oldindex[cm->numFieldchanges] = from;
-    cm->oldcode[cm->numFieldchanges++] = board[from];
-    board[from] = BLANK;
-    /* PAWN specials */
-    if (Piece(to) == PAWN)
-    {
-        if (ept && to == ept)
-        {
-            unsigned char epfield = from & 0x70 | to & 0x07;
-            cm->oldindex[cm->numFieldchanges] = epfield;
-            cm->oldcode[cm->numFieldchanges++] = board[epfield];
-            board[epfield] = BLANK;
-        }
-    }
-    if (Piece(to) == KING)
-    {
-        kingpos[state & S2MMASK] = to;
-        /* handle castle */
-        if (((from & 0x3) ^ (to & 0x3)) == 0x2)
-        {
-            unsigned char rookfrom, rookto;
-            if (to & 0x04)
-            {
-                /* king castle */
-                rookfrom = to | 0x01;
-                rookto = from | 0x01;
-            }
-            else {
-                /* queen castle */
-                rookfrom = from & 0x70;
-                rookto = to | 0x01;
-            }
-
-            cm->oldindex[cm->numFieldchanges] = rookto;
-            cm->oldcode[cm->numFieldchanges++] = board[rookto];
-            board[rookto] = board[rookfrom];
-            cm->oldindex[cm->numFieldchanges] = rookfrom;
-            cm->oldcode[cm->numFieldchanges++] = board[rookfrom];
-            board[rookfrom] = BLANK;
-        }
-    }
-
-}
-
-
-void chessposition::unplayMoveFast(chessmove *cm)
-{
-    kingpos[0] = cm->oldkingpos[0];
-    kingpos[1] = cm->oldkingpos[1];
-    for (int i = 0; i < cm->numFieldchanges; i++)
-        board[cm->oldindex[i]] = cm->oldcode[i];
 }
 
 
@@ -2397,7 +2301,7 @@ void chessposition::unplayNullMove()
 
 void chessposition::getpvline(int depth)
 {
-    short dummyval;
+    int dummyval;
     chessmove cm;
     pvline.length = 0;
     while (depth >= 0)
@@ -2453,21 +2357,21 @@ void chessposition::countMaterial()
 }
 
 
-unsigned char chessposition::phase()
+int chessposition::phase()
 {
     //return ((24 - piecenum[2] - piecenum[3] - (piecenum[4] << 1) - (piecenum[5] << 2)) * 255 + 12) / 24;
-    return ((24 - piecenum[4] - piecenum[5] - piecenum[6] - piecenum[7] - (piecenum[8] << 1) - (piecenum[9] << 1) - (piecenum[10] << 2) - (piecenum[11] << 2)) * 255 + 12) / 24;
+    return (max(0, (24 - piecenum[4] - piecenum[5] - piecenum[6] - piecenum[7] - (piecenum[8] << 1) - (piecenum[9] << 1) - (piecenum[10] << 2) - (piecenum[11] << 2))) * 255 + 12) / 24;
 }
 
 
-short chessposition::see(int to)
+int chessposition::see(int to)
 {
     int i;
     int cheapest = SHRT_MAX;
-    unsigned char cheapest_from = 0x88;
-    unsigned char from;
+    int cheapest_from = 0x88;
+    int from;
     bool nextto;
-    short v;
+    int v;
 
     state ^= S2MMASK;
     for (i = 0; i < 8; i++)
@@ -2546,9 +2450,9 @@ short chessposition::see(int to)
 }
 
 
-short chessposition::see(int from, int to)
+int chessposition::see(int from, int to)
 {
-    short v;
+    int v;
     state ^= S2MMASK;
     PieceCode capture = board[to];
     int material = materialvalue[Piece(to)];
@@ -2560,10 +2464,10 @@ short chessposition::see(int from, int to)
 }
 
 /* Value of the position from whites pov */
-short chessposition::getPositionValue()
+int chessposition::getPositionValue()
 {
     int ph = phase();
-    short result = 0;
+    int result = 0;
     int firstpawn[2][10] = { 0 };
     int lastpawn[2][10] = { 0 };
     int i;
@@ -2631,7 +2535,7 @@ short chessposition::getPositionValue()
 }
 
 
-short chessposition::getValue()
+int chessposition::getValue()
 {
     // Check for insufficient material using simnple heuristic from chessprogramming site
     if (piecenum[WPAWN] == 0 && piecenum[BPAWN] == 0)
@@ -2656,8 +2560,8 @@ short chessposition::getValue()
         }
     }
 
-    short materialVal = value;
-    short positionVal = getPositionValue();
+    int materialVal = value;
+    int positionVal = getPositionValue();
     //printf("(getValue) Materialwert: %d   Positionswert: %d\n", materialVal, positionVal);
     return materialVal + positionVal;
 }
