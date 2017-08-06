@@ -55,9 +55,9 @@
 using namespace std;
 
 #ifdef BITBOARD
-#define ENGINEVER "RubiChess V0.4 Bitboard";
+#define ENGINEVER "RubiChess V0.5-dev Bitboard";
 #else
-#define ENGINEVER "RubiChess V0.4 0x88-Board";
+#define ENGINEVER "RubiChess V0.5-dev 0x88-Board";
 #endif
 
 
