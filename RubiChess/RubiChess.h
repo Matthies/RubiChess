@@ -1,5 +1,6 @@
 #pragma once
 
+using namespace std;
 
 #if 0
 #define DEBUG
@@ -9,7 +10,7 @@
 #define FINDMEMORYLEAKS
 #endif
 
-#if 0
+#if 1
 #define BITBOARD
 #else
 #define OX88
@@ -29,14 +30,13 @@
 #define _CRTDBG_MAP_ALLOC
 #endif
 
-#include <AclAPI.h>
 #include <stdarg.h>
 #include <time.h>
-#include <Windows.h>
 #include <string>
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <string.h>
 #include <sstream>
 #include <vector>
 #include <algorithm>
@@ -46,26 +46,50 @@
 #include <time.h>
 #include <array>
 #include <bitset>
+#include <limits.h>
+
+
+#ifdef _WIN32
+
+#include <AclAPI.h>
 #include <intrin.h>
+#include <Windows.h>
 
 #ifdef FINDMEMORYLEAKS
 #include <crtdbg.h>
 #endif
 
-using namespace std;
+
+#else //_WIN32
+
+#define sprintf_s sprintf
+void Sleep(long x);
+
+#endif
+
+typedef unsigned long long U64;
 
 #ifdef BITBOARD
 #define ENGINEVER "RubiChess V0.5-dev Bitboard";
+
 #else
 #define ENGINEVER "RubiChess V0.5-dev 0x88-Board";
+
 #endif
 
 
+
 #define BITSET(x) (mybitset[(x)])
+#ifdef _WIN32
 #define LSB(i,x) _BitScanForward64((DWORD*)&(i), (x))
-#define POPCOUNT(x) (int)(__popcnt64(x))
 #define MSB(i,x) _BitScanReverse64((DWORD*)&(i), (x))
-typedef unsigned long long U64;
+#define POPCOUNT(x) (int)(__popcnt64(x))
+#else
+//#define LSB(i,x) (!(x) ? false : i = __builtin_ctzll(x), true )
+#define LSB(i,x) (!(x) ? false : i = (63 - __builtin_clzll(x)), true) 
+#define MSB(i,x) (!(x) ? false : i = (63 - __builtin_clzll(x)), true) 
+#define POPCOUNT(x) __builtin_popcountll(x)
+#endif
 #define RANK(x) ((x) >> 3)
 #define FILE(x) ((x) & 0x7)
 #define PROMOTERANK(x) (RANK(x) == 0 || RANK(x) == 7)
@@ -90,13 +114,14 @@ vector<string> SplitString(const char* s);
 unsigned char AlgebraicToIndex(string s, int base);
 string AlgebraicFromShort(string s, chessposition *p);
 void BitboardDraw(U64 b);
+U64 getTime();
 
 //
 // board stuff
 //
 #define BUFSIZE 4096
 
-#define PieceType int
+#define PieceType unsigned int
 #define BLANKTYPE 0
 #define PAWN 1
 #define KNIGHT 2
@@ -105,7 +130,7 @@ void BitboardDraw(U64 b);
 #define QUEEN 5
 #define KING 6
 
-#define PieceCode int
+#define PieceCode unsigned int
 #define BLANK 0
 #define WPAWN 2
 #define BPAWN 3
@@ -366,9 +391,9 @@ public:
     ~chessposition();
     bool operator==(chessposition p);
     bool w2m();
-    void chessposition::BitboardSet(int index, PieceCode p);
-    void chessposition::BitboardClear(int index, PieceCode p);
-    void chessposition::BitboardMove(int from, int to, PieceCode p);
+    void BitboardSet(int index, PieceCode p);
+    void BitboardClear(int index, PieceCode p);
+    void BitboardMove(int from, int to, PieceCode p);
     int getFromFen(const char* sFen);
     bool applyMove(string s);
     void print();
@@ -613,7 +638,7 @@ void searchguide(engine *en);
 // uci stuff
 //
 
-const enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT };
+enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT };
 
 const map<string, GuiToken> GuiCommandMap = {
     { "uci", UCI },

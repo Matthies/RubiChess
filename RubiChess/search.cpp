@@ -195,7 +195,6 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
                 score = -alphabeta(en, -beta, -alpha, depth - 1, true);
             } else {
                 // try a PV-Search
-				unsigned long nodesbefore = en->nodes;
                 score = -alphabeta(en, -alpha - 1, -alpha, depth - 1, true);
 				if (score > alpha && score < beta)
 				{
@@ -298,7 +297,8 @@ static void search_gen1(engine *en)
     int score;
     int matein;
     int alpha, beta;
-    int deltaalpha, deltabeta;
+    int deltaalpha = 25;
+    int deltabeta = 25;
     int depth, maxdepth, depthincrement;
     chessposition *pos = en->pos;
     string pvstring;
@@ -364,9 +364,7 @@ static void search_gen1(engine *en)
             if (en->stopLevel == ENGINERUN || en->stopLevel == ENGINEWANTSTOP || en->stopLevel == ENGINESTOPSOON
                 || (en->stopLevel == ENGINESTOPIMMEDIATELY && pos->bestmove.code > 0))
             {
-                LARGE_INTEGER now;
-                QueryPerformanceCounter(&now);
-                int secondsrun = (int)((now.QuadPart - en->starttime) * 1000 / en->frequency);
+                int secondsrun = (int)((getTime() - en->starttime) * 1000 / en->frequency);
 
                 pos->getpvline(depth);
                 pvstring = pos->pvline.toString();
@@ -408,9 +406,7 @@ void searchguide(engine *en)
 {
     char s[100];
     unsigned long nodes, lastnodes = 0;
-    LARGE_INTEGER now;
-    QueryPerformanceCounter(&now);
-    en->starttime = now.QuadPart;
+    en->starttime = getTime();
     long long difftime1, difftime2;
     en->stopLevel = ENGINERUN;
     int timetouse = (en->isWhite ? en->wtime : en->btime);
@@ -458,8 +454,7 @@ void searchguide(engine *en)
     long long nowtime;
     while (en->stopLevel != ENGINESTOPPED)
     {
-        QueryPerformanceCounter(&now);
-        nowtime = now.QuadPart;
+        nowtime = getTime();
 
         nodes = en->nodes;
         if (nodes != lastnodes && nowtime - lastinfotime > en->frequency)
@@ -486,8 +481,7 @@ void searchguide(engine *en)
         }
     }
     enginethread.join();
-    QueryPerformanceCounter(&now);
-    en->endtime = now.QuadPart;
+    en->endtime = getTime();
     sprintf_s(s, "info nodes %lu nps %llu hashfull %d\n", en->nodes, en->nodes * en->frequency / (en->endtime - en->starttime), pos->tp->getUsedinPermill());
     cout << s;
 #ifdef DEBUG
