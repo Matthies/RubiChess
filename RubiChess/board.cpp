@@ -897,6 +897,7 @@ int chessposition::getFromFen(const char* sFen)
             history[i][j] = 0;
         }
     }
+    mstop = 0;
     return 0;
 }
 
