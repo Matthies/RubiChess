@@ -85,9 +85,8 @@ typedef unsigned long long U64;
 #define MSB(i,x) _BitScanReverse64((DWORD*)&(i), (x))
 #define POPCOUNT(x) (int)(__popcnt64(x))
 #else
-//#define LSB(i,x) (!(x) ? false : i = __builtin_ctzll(x), true )
-#define LSB(i,x) (!(x) ? false : i = (63 - __builtin_clzll(x)), true) 
-#define MSB(i,x) (!(x) ? false : i = (63 - __builtin_clzll(x)), true) 
+#define LSB(i,x) (!(x) ? false : (i = __builtin_ctzll(x), true ))
+#define MSB(i,x) (!(x) ? false : (i = (63 - __builtin_clzll(x)), true))
 #define POPCOUNT(x) __builtin_popcountll(x)
 #endif
 #define RANK(x) ((x) >> 3)
