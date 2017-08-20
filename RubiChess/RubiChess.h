@@ -10,7 +10,7 @@ using namespace std;
 #define FINDMEMORYLEAKS
 #endif
 
-#if 1
+#if 0
 #define BITBOARD
 #else
 #define OX88

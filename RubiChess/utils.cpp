@@ -154,7 +154,7 @@ U64 getTime()
 {
     struct timespec now;
     clock_gettime(CLOCK_REALTIME, &now);
-    return 1000000000 * now.tv_sec + now.tv_nsec;
+    return (U64)(1000000000LL * now.tv_sec + now.tv_nsec);
 }
 
 void Sleep(long x)

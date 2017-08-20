@@ -455,7 +455,6 @@ void searchguide(engine *en)
     while (en->stopLevel != ENGINESTOPPED)
     {
         nowtime = getTime();
-
         nodes = en->nodes;
         if (nodes != lastnodes && nowtime - lastinfotime > en->frequency)
         {
