@@ -49,7 +49,7 @@ zobrist::zobrist()
 	for (i = 0; i < 32; i++)
 	{
 		cstl[i] = 0ULL;
-		for (j = 1; j <= 4; j++)
+		for (j = 0; j < 4; j++)
 		{
 			if (i & (1 << j))
 				cstl[i] ^= castle[j];
@@ -88,11 +88,11 @@ u8 zobrist::getHash(chessposition *p)
 {
     u8 hash = 0;
     int i;
-    unsigned char state = p->state;
+    int state = p->state;
     for (i = WPAWN; i <= BKING; i++)
     {
         U64 pmask = p->piece00[i];
-        DWORD index;
+        unsigned int index;
         while (LSB(index, pmask))
         {
             hash ^= boardtable[(index << 4) | i];
@@ -126,7 +126,7 @@ u8 zobrist::getHash(chessposition *p)
 {
     u8 hash = 0;
     int i;
-    unsigned char state = p->state;
+    int state = p->state;
     for (i = 0; i < 120; i++)
     {
         if (!(i & 0x88) && p->board[i] != BLANK)
@@ -166,7 +166,7 @@ transposition::~transposition()
 
 void transposition::setSize(int sizeMb)
 {
-    int msb;
+    int msb = 0;
     if (size > 0)
         delete table;
     size = (sizeMb << 20) / sizeof(S_TRANSPOSITIONENTRY);
@@ -174,13 +174,13 @@ void transposition::setSize(int sizeMb)
         size = (1ULL << msb);
 
     sizemask = size - 1;
-    table = (S_TRANSPOSITIONENTRY*)malloc(size * sizeof(S_TRANSPOSITIONENTRY));
+    table = (S_TRANSPOSITIONENTRY*)malloc((size_t)(size * sizeof(S_TRANSPOSITIONENTRY)));
     clean();
 }
 
 void transposition::clean()
 {
-	memset(table, 0, size * sizeof(S_TRANSPOSITIONENTRY));
+	memset(table, 0, (size_t)(size * sizeof(S_TRANSPOSITIONENTRY)));
 	used = 0;
 }
 
@@ -208,14 +208,14 @@ void transposition::addHash(int val, int valtype, int depth, unsigned long move)
 
     if (data->hashupper == 0)
 		used++;
-    data->hashupper = (hash >> 32);
-    data->depth = depth;
+    data->hashupper = (unsigned long)(hash >> 32);
+    data->depth = (unsigned char)depth;
     if (MATEFORME(val))
         val += pos->ply;
     else if (MATEFOROPPONENT(val))
         val -= pos->ply;
-    data->value = val;
-    data->flag = valtype;
+    data->value = (short)val;
+    data->flag = (char)valtype;
     data->movecode = move;
 }
 

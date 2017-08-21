@@ -400,6 +400,8 @@ http://www.herderschach.de/index.html
 
 #endif
 
+#ifdef _WIN32
+
 string GetSystemInfo()
 {
     // shameless copy from MSDN example explaining __cpuid
@@ -617,6 +619,14 @@ string GetSystemInfo()
     return CPUBrandString;
 }
 
+#else
+
+string GetSystemInfo()
+{
+    return "some Linux box";
+}
+
+#endif
 
 
 long long perft(chessposition *p, int depth, bool dotests)
@@ -630,11 +640,11 @@ long long perft(chessposition *p, int depth, bool dotests)
             printf("Alarm! Wrong Hash! %llu\n", p->tp->zb.getHash(p));
             p->print();
         }
-        short val1 = p->getValue();
+        int val1 = p->getValue();
         p->mirror();
-        short val2 = p->getValue();
+        int val2 = p->getValue();
         p->mirror();
-        short val3 = p->getValue();
+        int val3 = p->getValue();
         if (!(val1 == val3 && val1 == -val2))
         {
             printf("Mirrortest  :error  (%d / %d / %d)\n", val1, val2, val3);
@@ -725,11 +735,11 @@ void perftest(engine *en, bool dotests, int maxdepth)
     printf("Depth = %d      Hash-/Mirror-Tests %s\n", maxdepth, (dotests ? "enabled" : "disabled"));
     printf("========================================================================\n");
 
-    LARGE_INTEGER now;
     float df;
     U64 totalresult = 0ULL;
-    QueryPerformanceCounter(&now);
-    long long perftstarttime = now.QuadPart;
+
+    long long perftstarttime = getTime();
+    long long perftlasttime = perftstarttime;
 
     while (perftestresults[i].fen != "")
     {
@@ -737,14 +747,13 @@ void perftest(engine *en, bool dotests, int maxdepth)
         int j = 0;
         while (perftestresults[i].nodes[j] > 0 && j <= maxdepth)
         {
-            QueryPerformanceCounter(&now);
-            long long starttime = now.QuadPart;
+            long long starttime = getTime();
 
             U64 result = perft(en->pos, j, dotests);
             totalresult += result;
 
-            QueryPerformanceCounter(&now);
-            df = float(now.QuadPart - starttime) / en->frequency;
+            perftlasttime = getTime();
+            df = float(perftlasttime - starttime) / (float) en->frequency;
             printf("Perft %d depth %d  : %*llu  %*f sec.  %*d nps ", i + 1, j, 10, result, 10, df, 8, (int)(df > 0.0 ? (double)result / df : 0));
             if (result == perftestresults[i].nodes[j])
                 printf("  OK\n");
@@ -755,7 +764,7 @@ void perftest(engine *en, bool dotests, int maxdepth)
         if (perftestresults[++i].fen != "")
             printf("\n");
     }
-    df = float(now.QuadPart - perftstarttime) / en->frequency;
+    df = float(perftlasttime - perftstarttime) / (float)en->frequency;
     printf("========================================================================\n");
     printf("Total:             %*llu  %*f sec.  %*d nps \n", 10, totalresult, 10, df, 8, (int)(df > 0.0 ? (double)totalresult / df : 0));
 }
@@ -808,7 +817,6 @@ void doBenchmark(engine *en)
         }
     };
 
-    LARGE_INTEGER now;
     long long starttime, endtime;
 
     int i = 0;
@@ -819,11 +827,9 @@ void doBenchmark(engine *en)
             en->setOption("clearhash", "true");
 
         en->communicate("position fen " + bm->fen);
-        QueryPerformanceCounter(&now);
-        starttime = now.QuadPart;
+        starttime = getTime();
         en->communicate("go depth " + to_string(bm->depth));
-        QueryPerformanceCounter(&now);
-        endtime = now.QuadPart;
+        endtime = getTime();
         bm->time = endtime - starttime;
         bm->nodes = en->nodes;
         i++;
@@ -840,15 +846,16 @@ void doBenchmark(engine *en)
         struct benchmarkstruct *bm = &benchmark[i];
         totaltime += bm->time;
         totalnodes += bm->nodes;
-        printf("Bench # %2d (%20s / %2d):  %10f sec.  %10lld nps\n", i + 1, bm->name.c_str(), bm->depth, (bm->time / (float)en->frequency), bm->nodes * en->frequency / bm->time);
+        printf("Bench # %2d (%20s / %2d):  %10f sec.  %10lld nps\n", i + 1, bm->name.c_str(), bm->depth, (float)bm->time / (float)en->frequency, bm->nodes * en->frequency / bm->time);
         i++;
     }
     printf("========================================================================\n");
-    printf("Overall:                                 %10f sec.  %*lld nps\n", (totaltime / (float)en->frequency), 10, totalnodes * en->frequency / totaltime);
+    printf("Overall:                                 %10f sec.  %*lld nps\n", ((float)totaltime / (float)en->frequency), 10, totalnodes * en->frequency / totaltime);
 }
 
 
 
+#ifdef _WIN32
 
 void readfromengine(HANDLE pipe, enginestate *es)
 {
@@ -1175,6 +1182,15 @@ void testengine(engine *en, string epdfilename, int startnum, string engineprg, 
 }
 
 
+#else // _WIN32
+
+void testengine(engine *en, string epdfilename, int startnum, string engineprg, string logfilename, string comparefilename, int maxtime, int flags)
+{
+    // not yet implemented
+}
+
+#endif
+
 int main(int argc, char* argv[])
 {
     int startnum = 1;
@@ -1190,11 +1206,11 @@ int main(int argc, char* argv[])
     int flags = 0;
 
     struct arguments {
-        char *cmd;
-        char *info;
+        const char *cmd;
+        const char *info;
         void* variable;
         char type;
-        char *defaultval;
+        const char *defaultval;
     } allowedargs[] = {
         { "-bench", "Do benchmark test for some positions.", &benchmark, 0, NULL },
         { "-perft", "Do performance and move generator testing.", &perfmaxdepth, 1, "0" },

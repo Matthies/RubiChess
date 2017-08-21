@@ -59,7 +59,7 @@ char PieceChar(PieceCode c)
 		break;
 	}
 	if (!color)
-		o += ('A' - 'a');
+		o = (char)(o + ('A' - 'a'));
 	return o;
 }
  
@@ -75,8 +75,8 @@ chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture, int
 #else
     int f, t;
     /* convert 0x88 coordinates to 3bit */
-    f = (from >> 1) & 0x38 | (from & 0x7);
-    t = (to >> 1) & 0x38 | (to & 0x7);
+    f = ((from >> 1) & 0x38) | (from & 0x7);
+    t = ((to >> 1) & 0x38) | (to & 0x7);
     code = (capture << 16) | (promote << 12) | (f << 6) | t;
 #endif
 }
@@ -88,8 +88,8 @@ chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture)
 #else
     int f, t;
     /* convert 0x88 coordinates to 3bit */
-    f = (from >> 1) & 0x38 | (from & 0x7);
-    t = (to >> 1) & 0x38 | (to & 0x7);
+    f = ((from >> 1) & 0x38) | (from & 0x7);
+    t = ((to >> 1) & 0x38) | (to & 0x7);
     code =  (capture << 16) | (promote << 12) | (f << 6) | t;
 #endif
 }
@@ -692,7 +692,7 @@ bool chessposition::w2m()
 }
 
 
-inline PieceType chessposition::Piece(int index)
+PieceType chessposition::Piece(int index)
 {
     return (PieceType)(mailbox[index] >> 1);
 }
@@ -904,7 +904,7 @@ int chessposition::getFromFen(const char* sFen)
 
 bool chessposition::applyMove(string s)
 {
-    int from, to;
+    unsigned int from, to;
     bool retval = false;
     PieceCode promotion;
 
@@ -981,8 +981,8 @@ int chessposition::getValue()
                 if (abs(POPCOUNT(piece00[WBISHOP]) - POPCOUNT(piece00[BBISHOP])) == 2)
                     winpossible = true;
                 // bishop and knight win against bare king
-                if (piece00[WBISHOP] && piece00[WKNIGHT] && !(piece00[BBISHOP] | piece00[BKNIGHT])
-                    || piece00[BBISHOP] && piece00[BKNIGHT] && !(piece00[WBISHOP] | piece00[WKNIGHT]))
+                if ((piece00[WBISHOP] && piece00[WKNIGHT] && !(piece00[BBISHOP] | piece00[BKNIGHT]))
+                    || (piece00[BBISHOP] && piece00[BKNIGHT] && !(piece00[WBISHOP] | piece00[WKNIGHT])))
                     winpossible = true;
 
                 if (!winpossible)
@@ -1109,7 +1109,7 @@ bool chessposition::playMove(chessmove *cm)
         if (ept && to == ept)
         {
             // FIXME: to many mailbox[epfield], this is a pawn we just need to add the color
-            int epfield = from & 0x38 | to & 0x07;
+            int epfield = (from & 0x38) | (to & 0x07);
             hash ^= tp->zb.boardtable[(epfield << 4) | mailbox[epfield]];
 
             BitboardClear(epfield, mailbox[epfield]);
@@ -1215,7 +1215,7 @@ void chessposition::unplayMove(chessmove *cm)
         if (ept && to == ept)
         {
             // special ep capture
-            int epfield = from & 0x38 | to & 0x07;
+            int epfield = (from & 0x38) | (to & 0x07);
             BitboardSet(epfield, capture);
             mailbox[epfield] = capture;
             mailbox[to] = BLANK;
@@ -1392,13 +1392,13 @@ chessmovelist* chessposition::getMoves()
 
 U64 chessposition::attacksTo(int index, int side)
 {
-    return knight_attacks[index] & piece00[(KNIGHT << 1) | side]
-        | king_attacks[index] & piece00[(KING << 1) | side]
-        | pawn_attacks_occupied[index][state & S2MMASK] & piece00[(PAWN << 1) | side]
-        | rank_attacks[index][((occupied00[0] | occupied00[1]) >> ((index & 0x38) + 1)) & 0x3f] & (piece00[(ROOK << 1) | side] | piece00[(QUEEN << 1) | side])
-        | file_attacks[index][((occupied90[0] | occupied90[1]) >> (((index & 0x07) << 3) + 1)) & 0x3f] & (piece00[(ROOK << 1) | side] | piece00[(QUEEN << 1) | side])
-        | diaga1h8_attacks[index][((occupieda1h8[0] | occupieda1h8[1]) >> rota1h8shift[index]) & 0x3f] & (piece00[(BISHOP << 1) | side] | piece00[(QUEEN << 1) | side])
-        | diagh1a8_attacks[index][((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[index]) & 0x3f] & (piece00[(BISHOP << 1) | side] | piece00[(QUEEN << 1) | side]);
+    return (knight_attacks[index] & piece00[(KNIGHT << 1) | side])
+        | (king_attacks[index] & piece00[(KING << 1) | side])
+        | (pawn_attacks_occupied[index][state & S2MMASK] & piece00[(PAWN << 1) | side])
+        | (rank_attacks[index][((occupied00[0] | occupied00[1]) >> ((index & 0x38) + 1)) & 0x3f] & (piece00[(ROOK << 1) | side] | piece00[(QUEEN << 1) | side]))
+        | (file_attacks[index][((occupied90[0] | occupied90[1]) >> (((index & 0x07) << 3) + 1)) & 0x3f] & (piece00[(ROOK << 1) | side] | piece00[(QUEEN << 1) | side]))
+        | (diaga1h8_attacks[index][((occupieda1h8[0] | occupieda1h8[1]) >> rota1h8shift[index]) & 0x3f] & (piece00[(BISHOP << 1) | side] | piece00[(QUEEN << 1) | side]))
+        | (diagh1a8_attacks[index][((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[index]) & 0x3f] & (piece00[(BISHOP << 1) | side] | piece00[(QUEEN << 1) | side]));
 }
 
 
@@ -1785,7 +1785,7 @@ int chessposition::getFromFen(const char* sFen)
 
 bool chessposition::applyMove(string s)
 {
-    int from, to;
+    unsigned int from, to;
     bool retval = false;
     PieceCode promotion;
 
@@ -1955,7 +1955,7 @@ chessmovelist* chessposition::getMoves()
     {
         for (int f = 0; f < 8; f++)
         {
-            unsigned  char bIndex = (r << 4) | f;
+            int bIndex = (r << 4) | f;
 
             PieceCode pc = board[bIndex];
             PieceType pt = (PieceType)(pc >> 1);
@@ -2159,7 +2159,7 @@ bool chessposition::playMove(chessmove *cm)
         }
         else if (ept && to == ept)
         {
-            int epfield = from & 0x70 | to & 0x07;
+            int epfield = (from & 0x70) | (to & 0x07);
             value += (state & S2MMASK ? -materialvalue[PAWN] : materialvalue[PAWN]);
             //piecenum[PAWN]--;
             piecenum[board[epfield]]--;
@@ -2346,10 +2346,7 @@ void chessposition::countMaterial()
             PieceCode pc = board[(r << 4) | f];
             if (pc != BLANK)
             {
-                PieceType pt = (PieceType)(pc >> 1);
                 int col = pc & S2MMASK;
-                //totalmaterial[col] += materialvalue[pc >> 1];
-                //piecenum[pt]++;
                 piecenum[pc]++;
                 value += (col ? -materialvalue[pc >> 1] : materialvalue[pc >> 1]);
             }
@@ -2503,7 +2500,7 @@ int chessposition::getPositionValue()
 
                 //printf("Phase=%d; Value for %c on field %c%c: %d\n", ph, PieceChar(board[i]), 'a'+(i & 0x7), '1'+(i >> 4), *(positionvaluetable + index));
                 result += *(positionvaluetable + index);
-                if (pt == ROOK && (firstpawn[col][f + 1] == 0 || (col && (firstpawn[col][f + 1] > r) || !col && (firstpawn[col][f + 1] < r))))
+                if (pt == ROOK && (firstpawn[col][f + 1] == 0 || ((col && (firstpawn[col][f + 1] > r)) || (!col && (firstpawn[col][f + 1] < r)))))
                     // ROOK on free file
                     result += (col ? -30 : 30);
 
@@ -2627,10 +2624,13 @@ engine::engine()
 
     setOption("hash", "150");
 
+#ifdef _WIN32
     LARGE_INTEGER f;
     QueryPerformanceFrequency(&f);
     frequency = f.QuadPart;
-
+#else
+    frequency = 1000000000LL;
+#endif
 
 }
 
@@ -2653,8 +2653,8 @@ void engine::setOption(string sName, string sValue)
 {
     bool resetTp = false;
     int newint;
-	transform(sName.begin(), sName.end(), sName.begin(), tolower);
-	transform(sValue.begin(), sValue.end(), sValue.begin(), tolower);
+	transform(sName.begin(), sName.end(), sName.begin(), ::tolower);
+	transform(sValue.begin(), sValue.end(), sValue.begin(), ::tolower);
     if (sName == "clear hash")
         pos->tp->clean();
     if (sName == "hash")

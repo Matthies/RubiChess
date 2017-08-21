@@ -36,12 +36,12 @@ vector<string> SplitString(const char* s)
 
 unsigned char AlgebraicToIndex(string s, int base)
 {
-    char file = s[0] - 'a';
-    char rank = s[1] - '1';
+    char file = (char)(s[0] - 'a');
+    char rank = (char)(s[1] - '1');
     if (file >= 0 && file < 8 && rank >= 0 && rank < 8)
-        return (base == 64 ? (rank << 3 | file) : (rank << 4 | file));
+        return (unsigned char)(base == 64 ? (rank << 3 | file) : (rank << 4 | file));
     else
-        return 0x88;
+        return (unsigned char)0x88;
 }
 
 void BitboardDraw(U64 b)
@@ -73,7 +73,7 @@ string AlgebraicFromShort(string s, chessposition *p)
     PieceType promotion = BLANKTYPE;
     chessmovelist* ml = p->getMoves();
     PieceType pt = PAWN;
-    unsigned char to = 0x88, from = 0x88;
+    int to = 0x88, from = 0x88;
     int i = (int)s.size() - 1;
     // Skip check +
     if (i >= 0 && s[i] == '+')
@@ -139,3 +139,30 @@ string AlgebraicFromShort(string s, chessposition *p)
     free(ml);
     return retval;
 }
+
+#ifdef _WIN32
+U64 getTime()
+{
+    LARGE_INTEGER now;
+    QueryPerformanceCounter(&now);
+    return now.QuadPart;
+}
+
+#else
+
+U64 getTime()
+{
+    struct timespec now;
+    clock_gettime(CLOCK_REALTIME, &now);
+    return (U64)(1000000000LL * now.tv_sec + now.tv_nsec);
+}
+
+void Sleep(long x)
+{
+    struct timespec now;
+    now.tv_sec = 0;
+    now.tv_nsec = x * 1000000;
+    nanosleep(&now, NULL);
+}
+
+#endif
