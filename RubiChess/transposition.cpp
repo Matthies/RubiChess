@@ -103,18 +103,6 @@ u8 zobrist::getHash(chessposition *p)
     if (state & S2MMASK)
         hash ^= s2m;
 
-#if 0
-	state >>= 1;
-	for (i = 0; i < 4; i++)
-    {
-        if (state & 1)
-            hash ^= castle[i];
-        state >>= 1;
-    }
-
-	if (p->ept)
-		hash ^= ep[p->ept & 0x7];
-#endif
 	hash ^= cstl[state & CASTLEMASK];
 	hash ^= ept[p->ept];
 
