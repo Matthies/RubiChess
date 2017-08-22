@@ -2,14 +2,23 @@ CXX=g++
 CXXFLAGS=-g -std=c++11 -Wall -O3
 LDFLAGS=-pthread 
 DEPS = RubiChess.h
-OBJ = board.o main.o search.o transposition.o uci.o utils.o
+OBJBOOARD88 = board-Board88.o main-Board88.o search-Board88.o transposition-Board88.o uci-Board88.o utils-Board88.o
+OBJBITBOARD = board-Bitboard.o main-Bitboard.o search-Bitboard.o transposition-Bitboard.o uci-Bitboard.o utils-Bitboard.o
 
-%.o: %.cpp $(DEPS)
+%-Board88.o: %.cpp $(DEPS)
 	$(CXX) -c -o $@ $< $(CXXFLAGS)
 
-RubiChess: $(OBJ)
+%-Bitboard.o: %.cpp $(DEPS)
+	$(CXX) -c -o $@ $< $(CXXFLAGS) -DBITBOARD
+
+all: RubiChess-Board88 RubiChess-Bitboard
+
+RubiChess-Board88: $(OBJBOOARD88)
+	$(CXX) -o $@ $^ $(LDFLAGS)
+
+RubiChess-Bitboard: $(OBJBITBOARD)
 	$(CXX) -o $@ $^ $(LDFLAGS)
 
 clean:
-	rm -r RubiChess *.o
+	$(RM) RubiChess-Bitboard RubiChess-Board88 *.o
 
