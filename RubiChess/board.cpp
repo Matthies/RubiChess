@@ -63,7 +63,7 @@ char PieceChar(PieceCode c)
 	return o;
 }
  
-chessmovestack movestack[MAXDEPTH];
+chessmovestack movestack[MAXMOVELISTLENGTH];
 int mstop;
 
 
@@ -1063,6 +1063,8 @@ bool chessposition::playMove(chessmove *cm)
     PieceCode pto = mailbox[to];
     PieceType ptype = Piece(from);
     int eptnew = GETEPT(cm->code);
+    if (eptnew < 0 || eptnew > 64)
+        printf("ept-Alarm\n");
     int castle = GETCASTLE(cm->code);
 
     PieceCode promote = GETPROMOTION(cm->code);
@@ -1191,6 +1193,8 @@ void chessposition::unplayMove(chessmove *cm)
 
     mstop--;
     ept = movestack[mstop].ept;
+    if (ept < 0 || ept > 64)
+        printf("ept-Alarm\n");
     hash = movestack[mstop].hash;
     state = movestack[mstop].state;
     kingpos[0] = movestack[mstop].kingpos[0];
