@@ -48,15 +48,18 @@ ChangeLog
     - implemented benchmark mode
     - some fixes in uci option handling
 
-    0.4 (release 2017 - xx - xx) :
+    0.4 (release 2017 - 08 - 04) :
     -first rotating bitboard version (choose by #define BITBOARD); 0x88 board still available
     - use 2^x for transposition size and & instead of % which make accessing the TP a lot faster
     - some fixes in the pawn evaulation (got different scores for white and black before)
     - added test for symmetric position evaluation (new parameter -dotests substitutes -hashtest)
     - fixed timemode "time/inc for whole match"
     - testrepetition() stops searching at halfmovecounter reset now
-	- search improvement by adding aspiration windows and principal variation search
-
+	 - search improvement by adding aspiration windows and principal variation search
+	 
+	 0.5 (release 201x - xx - xx) :
+    -moved undo data from chessmove struct to a static stack which speeds up playing moves
+      
 
 /* Der Lasker-Test */
 s = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1"
@@ -153,6 +156,9 @@ s = "kB6/Pp6/8/2p5/2P2p1p/7K/8/7B w - - 0 1"
 
 /* Matt in 4 KN Problem 4408 */
 s = "8/2p5/4K3/2P4p/6kP/7N/5BB1/8 w - - 0 1"
+
+/* Matt in 8 KN Problem 4409 */
+s = "k1K5/p5p1/P7/8/8/8/6P1/4B3 w - - 0 1"
 
 // ToDo:
 TP / Sortierungsproblem:
