@@ -66,33 +66,39 @@ char PieceChar(PieceCode c)
 chessmovestack movestack[MAXMOVELISTLENGTH];
 int mstop;
 
-
-
-chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, int castle)
-{
 #ifdef BITBOARD
-    code = (castle << 28) | (ept << 20) | (capture << 16) | (promote << 12) | (from << 6) | to;
+chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece)
+{
+    //code = (castle << 28) | (ept << 20) | (capture << 16) | (promote << 12) | (from << 6) | to;
+    code = (piece << 28) | (ept << 20) | (capture << 16) | (promote << 12) | (from << 6) | to;
+}
 #else
+chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept)
+{
     int f, t;
     /* convert 0x88 coordinates to 3bit */
     f = ((from >> 1) & 0x38) | (from & 0x7);
     t = ((to >> 1) & 0x38) | (to & 0x7);
     code = (capture << 16) | (promote << 12) | (f << 6) | t;
+}
 #endif
+
+#ifdef BITBOARD
+chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture, PieceCode piece)
+{
+    code = (piece << 28) | (capture << 16) | (promote << 12) | (from << 6) | to;
 }
 
+#else
 chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture)
 {
-#ifdef BITBOARD
-    code = (capture << 16) | (promote << 12) | (from << 6) | to;
-#else
     int f, t;
     /* convert 0x88 coordinates to 3bit */
     f = ((from >> 1) & 0x38) | (from & 0x7);
     t = ((to >> 1) & 0x38) | (to & 0x7);
     code =  (capture << 16) | (promote << 12) | (f << 6) | t;
-#endif
 }
+#endif
 
 chessmove::chessmove()
 {
@@ -487,6 +493,7 @@ U64 passedPawn[64][2];
 U64 filebarrier[64][2];
 U64 neighbourfiles[64];
 U64 kingshield[64][2];
+int castleindex[64][64] = { 0 };
 
 
 void initBitmaphelper()
@@ -495,6 +502,10 @@ void initBitmaphelper()
     int blocked;
     int shift;
     int delta;
+    castleindex[4][2] = WQC;
+    castleindex[4][6] = WKC;
+    castleindex[60][58] = BQC;
+    castleindex[60][62] = BKC;
     for (int from = 0; from < 64; from++)
     {
         mybitset[from] = (1ULL << from);
@@ -1063,7 +1074,6 @@ bool chessposition::playMove(chessmove *cm)
     PieceCode pto = mailbox[to];
     PieceType ptype = Piece(from);
     int eptnew = GETEPT(cm->code);
-    int castle = GETCASTLE(cm->code);
 
     PieceCode promote = GETPROMOTION(cm->code);
 
@@ -1131,10 +1141,11 @@ bool chessposition::playMove(chessmove *cm)
         kingpos[s2m] = to;
         /* handle castle */
         state &= (s2m ? ~(BQCMASK | BKCMASK) : ~(WQCMASK | WKCMASK));
-        if (castle)
+        int c = castleindex[from][to];
+        if (c)
         {
-            int rookfrom = castlerookfrom[castle];
-            int rookto = castlerookto[castle];
+            int rookfrom = castlerookfrom[c];
+            int rookto = castlerookto[c];
 
             BitboardMove(rookfrom, rookto, (PieceCode)(WROOK | s2m));
             mailbox[rookto] = (PieceCode)(WROOK | s2m);
@@ -1180,7 +1191,7 @@ void chessposition::unplayMove(chessmove *cm)
     int from = GETFROM(cm->code);
     int to = GETTO(cm->code);
     PieceCode pto = mailbox[to];
-    int castle = GETCASTLE(cm->code);
+    //int castle = GETCASTLE(cm->code);
     PieceCode promote = GETPROMOTION(cm->code);
     PieceCode capture = GETCAPTURE(cm->code);
     int s2m;
@@ -1230,14 +1241,18 @@ void chessposition::unplayMove(chessmove *cm)
         mailbox[to] = BLANK;
     }
 
-    if (castle)
+    if ((pto >> 1) == KING)
     {
-        int rookfrom = castlerookfrom[castle];
-        int rookto = castlerookto[castle];
+        int c = castleindex[from][to];
+        if (c)
+        {
+            int rookfrom = castlerookfrom[c];
+            int rookto = castlerookto[c];
 
-        BitboardMove(rookto, rookfrom, (PieceCode)(WROOK | s2m));
-        mailbox[rookfrom] = (PieceCode)(WROOK | s2m);
-        mailbox[rookto] = BLANK;
+            BitboardMove(rookto, rookfrom, (PieceCode)(WROOK | s2m));
+            mailbox[rookfrom] = (PieceCode)(WROOK | s2m);
+            mailbox[rookto] = BLANK;
+        }
     }
 }
 
@@ -1248,9 +1263,9 @@ bool chessposition::checkForChess()
 }
 
 
-inline void chessposition::testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture)
+inline void chessposition::testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, PieceCode piece)
 {
-    chessmove cm(from, to, promote, capture);
+    chessmove cm(from, to, promote, capture, piece);
     if (capture != BLANK)
     {
         cm.value = (mvv[capture >> 1] | lva[Piece(from)]);
@@ -1293,22 +1308,22 @@ chessmovelist* chessposition::getMoves()
                 {
                     if (ept && ept == to)
                     {
-                        testMove(result, from, to, BLANK, (PieceCode)(WPAWN | (s2m ^1)));
+                        testMove(result, from, to, BLANK, (PieceCode)(WPAWN | (s2m ^1)), pc);
                     }
                      else if (PROMOTERANK(to))
                     {
-                        testMove(result, from, to, (PieceCode)((QUEEN << 1) | s2m), mailbox[to]);
-                        testMove(result, from, to, (PieceCode)((ROOK << 1) | s2m), mailbox[to]);
-                        testMove(result, from, to, (PieceCode)((BISHOP << 1) | s2m), mailbox[to]);
-                        testMove(result, from, to, (PieceCode)((KNIGHT << 1) | s2m), mailbox[to]);
+                        testMove(result, from, to, (PieceCode)((QUEEN << 1) | s2m), mailbox[to], pc);
+                        testMove(result, from, to, (PieceCode)((ROOK << 1) | s2m), mailbox[to], pc);
+                        testMove(result, from, to, (PieceCode)((BISHOP << 1) | s2m), mailbox[to], pc);
+                        testMove(result, from, to, (PieceCode)((KNIGHT << 1) | s2m), mailbox[to], pc);
                     }
                     else if (!((from ^ to) & 0x8) && epthelper[to] & piece00[pc ^ 1])
                     {
                         // EPT possible for opponent
-                        result->move[result->length++] = chessmove(from, to, BLANK, BLANK, (from + to) >> 1, 0);
+                        result->move[result->length++] = chessmove(from, to, BLANK, BLANK, (from + to) >> 1, pc);
                     }
                     else {
-                        testMove(result, from, to, BLANK, mailbox[to]);
+                        testMove(result, from, to, BLANK, mailbox[to], pc);
                     }
                     tobits ^= BITSET(to);
                 }
@@ -1321,7 +1336,7 @@ chessmovelist* chessposition::getMoves()
                 tobits = (knight_attacks[from] & opponentorfreebits);
                 while (LSB(to, tobits))
                 {
-                    testMove(result, from, to, BLANK, mailbox[to]);
+                    testMove(result, from, to, BLANK, mailbox[to], pc);
                     tobits ^= BITSET(to);
                 }
                 frombits ^= BITSET(from);
@@ -1332,7 +1347,7 @@ chessmovelist* chessposition::getMoves()
             tobits = (king_attacks[from] & opponentorfreebits);
             while (LSB(to, tobits))
             {
-                testMove(result, from, to, BLANK, mailbox[to]);
+                testMove(result, from, to, BLANK, mailbox[to], pc);
                 tobits ^= BITSET(to);
             }
             if (state & QCMASK[s2m])
@@ -1341,7 +1356,7 @@ chessmovelist* chessposition::getMoves()
                 if (!(occupiedbits & (s2m ? 0x0e00000000000000 : 0x000000000000000e))
                     && !isAttacked(from) && !isAttacked(from - 1) && !isAttacked(from - 2))
                 {
-                    result->move[result->length++] = chessmove(from, from - 2, BLANK, BLANK, 0, (1 << s2m) | 1);
+                    result->move[result->length++] = chessmove(from, from - 2, BLANK, BLANK, 0, pc);
                 }
             }
             if (state & KCMASK[s2m])
@@ -1350,7 +1365,7 @@ chessmovelist* chessposition::getMoves()
                 if (!(occupiedbits & (s2m ? 0x6000000000000000 : 0x0000000000000060))
                     && !isAttacked(from) && !isAttacked(from + 1) && !isAttacked(from + 2))
                 {
-                    result->move[result->length++] = chessmove(from, from + 2, BLANK, BLANK, 0, (2 << s2m));
+                    result->move[result->length++] = chessmove(from, from + 2, BLANK, BLANK, 0, pc);
                 }
             }
             break;
@@ -1378,7 +1393,7 @@ chessmovelist* chessposition::getMoves()
                 }
                 while (LSB(to, tobits))
                 {
-                    testMove(result, from, to, BLANK, mailbox[to]);
+                    testMove(result, from, to, BLANK, mailbox[to], pc);
                     tobits ^= BITSET(to);
                 }
                 frombits ^= BITSET(from);

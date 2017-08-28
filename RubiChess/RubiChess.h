@@ -211,8 +211,11 @@ const unsigned int lva[] = { 5 << 26, 4 << 26, 3 << 26, 3 << 26, 2 << 26, 1 << 2
 #define GETPROMOTION(x) (((x) & 0xf000) >> 12)
 #define GETCAPTURE(x) (((x) & 0xf0000) >> 16)
 #define GETEPT(x) (((x) & 0x0ff00000) >> 20)
+#ifdef BITBOARD
+#define GETPIECE(x) (((x) & 0xf0000000) >> 28)
+#else
 #define GETCASTLE(x) (((x) & 0xf0000000) >> 28)
-
+#endif
 
 struct chessmovestack
 {
@@ -235,13 +238,19 @@ class chessmove
 {
 public:
     // kqKQepepepepccccppppfffffftttttt
+    // pcpcepepepepccccppppfffffftttttt
     unsigned long code;
     unsigned int value;
 
     chessmove();
     chessmove(unsigned long code);
+#ifdef BITBOARD
+    chessmove(int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
+    chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
+#else
     chessmove(int from, int to, PieceCode promote, PieceCode capture);
-    chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, int castle);
+    chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept);
+#endif
     bool operator<(const chessmove cm) const { return value < cm.value; }
     bool operator>(const chessmove cm) const { return value > cm.value; }
     //bool operator<(const chessmove cm) const { return ((code & 0xfff) < (cm.code & 0xfff)); }
@@ -407,7 +416,7 @@ public:
     bool checkForChess();
     int see(int to);
     int see(int from, int to);
-    void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture);
+    void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
     chessmovelist* getMoves();
     bool playMove(chessmove *cm);
     void playMoveFast(chessmove *cm);
