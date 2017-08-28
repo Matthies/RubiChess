@@ -117,7 +117,7 @@ string AlgebraicFromShort(string s, chessposition *p)
     for (int i = 0; i < ml->length; i++)
     {
 #ifdef BITBOARD
-        if (pt == (p->mailbox[GETFROM(ml->move[i].code)] >> 1)
+        if (pt == (GETPIECE(ml->move[i].code) >> 1)
             && promotion == (GETPROMOTION(ml->move[i].code) >> 1)
             && ((from & 0x80) || ((from & 0x70) == ((GETFROM(ml->move[i].code) & 0x38) << 1)))
             && ((from & 0x08) || ((from & 0x07) == (GETFROM(ml->move[i].code) & 0x07)))

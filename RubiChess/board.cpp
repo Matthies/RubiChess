@@ -1070,12 +1070,15 @@ bool chessposition::playMove(chessmove *cm)
     bool isLegal;
     int from = GETFROM(cm->code);
     int to = GETTO(cm->code);
-    PieceCode pfrom = mailbox[from];
-    PieceCode pto = mailbox[to];
-    PieceType ptype = Piece(from);
+    //PieceCode pfrom = mailbox[from];
+    PieceCode pfrom = GETPIECE(cm->code);
+    //PieceCode pto = mailbox[to];
+    //PieceType ptype = Piece(from);
+    PieceType ptype = (pfrom >> 1);
     int eptnew = GETEPT(cm->code);
 
     PieceCode promote = GETPROMOTION(cm->code);
+    PieceCode capture = GETCAPTURE(cm->code);
 
     movestack[mstop].ept = ept;
     movestack[mstop].hash = hash;
@@ -1088,10 +1091,11 @@ bool chessposition::playMove(chessmove *cm)
     halfmovescounter++;
 
     // Fix hash regarding capture
-    if (pto != BLANK) // use pto instead of capture here because ep capture has capture set but hits empty field here
+    //if (pto != BLANK) // use pto instead of capture here because ep capture has capture set but hits empty field here
+    if (capture != BLANK && !(eptnew & ISEPCAPTURE))
     {
-        hash ^= tp->zb.boardtable[(to << 4) | pto];
-        BitboardClear(to, pto);
+        hash ^= tp->zb.boardtable[(to << 4) | capture];
+        BitboardClear(to, capture);
         halfmovescounter = 0;
     }
 
@@ -1120,9 +1124,9 @@ bool chessposition::playMove(chessmove *cm)
         {
             // FIXME: to many mailbox[epfield], this is a pawn we just need to add the color
             int epfield = (from & 0x38) | (to & 0x07);
-            hash ^= tp->zb.boardtable[(epfield << 4) | mailbox[epfield]];
+            hash ^= tp->zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
 
-            BitboardClear(epfield, mailbox[epfield]);
+            BitboardClear(epfield, (pfrom ^ S2MMASK));
             mailbox[epfield] = BLANK;
         }
     }
@@ -1268,13 +1272,27 @@ inline void chessposition::testMove(chessmovelist *movelist, int from, int to, P
     chessmove cm(from, to, promote, capture, piece);
     if (capture != BLANK)
     {
-        cm.value = (mvv[capture >> 1] | lva[Piece(from)]);
+        cm.value = (mvv[capture >> 1] | lva[piece >> 1]);
     }
     else {
-        cm.value = history[Piece(from)][to];
+        cm.value = history[piece >> 1][to];
     }
     movelist->move[movelist->length++] = cm;
 }
+
+inline void chessposition::testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece)
+{
+    chessmove cm(from, to, promote, capture, ept, piece);
+    if (capture != BLANK)
+    {
+        cm.value = (mvv[capture >> 1] | lva[piece >> 1]);
+    }
+    else {
+        cm.value = history[piece >> 1][to];
+    }
+    movelist->move[movelist->length++] = cm;
+}
+
 
 
 chessmovelist* chessposition::getMoves()
@@ -1308,7 +1326,7 @@ chessmovelist* chessposition::getMoves()
                 {
                     if (ept && ept == to)
                     {
-                        testMove(result, from, to, BLANK, (PieceCode)(WPAWN | (s2m ^1)), pc);
+                        testMove(result, from, to, BLANK, (PieceCode)(WPAWN | (s2m ^ 1)), ISEPCAPTURE, pc);
                     }
                      else if (PROMOTERANK(to))
                     {
@@ -1320,7 +1338,7 @@ chessmovelist* chessposition::getMoves()
                     else if (!((from ^ to) & 0x8) && epthelper[to] & piece00[pc ^ 1])
                     {
                         // EPT possible for opponent
-                        result->move[result->length++] = chessmove(from, to, BLANK, BLANK, (from + to) >> 1, pc);
+                        testMove(result, from, to, BLANK, BLANK, (from + to) >> 1, pc);
                     }
                     else {
                         testMove(result, from, to, BLANK, mailbox[to], pc);
