@@ -111,7 +111,7 @@ class chessposition;
 //
 vector<string> SplitString(const char* s);
 unsigned char AlgebraicToIndex(string s, int base);
-string AlgebraicFromShort(string s, chessposition *p);
+string AlgebraicFromShort(string s);
 void BitboardDraw(U64 b);
 U64 getTime();
 
@@ -158,7 +158,7 @@ const int QCMASK[2] = { WQCMASK, BQCMASK };
 const int KCMASK[2] = { WKCMASK, BKCMASK };
 const int castlerookfrom[] = {0, 0, 7, 56, 63 };
 const int castlerookto[] = {0, 3, 5, 59, 61 };
-#define MOVEISCAPTURE 0x01;
+#define ISEPCAPTURE 0x40
 
 const int EPTSIDEMASK[2] = { 0x8, 0x10 };
 
@@ -211,8 +211,11 @@ const unsigned int lva[] = { 5 << 26, 4 << 26, 3 << 26, 3 << 26, 2 << 26, 1 << 2
 #define GETPROMOTION(x) (((x) & 0xf000) >> 12)
 #define GETCAPTURE(x) (((x) & 0xf0000) >> 16)
 #define GETEPT(x) (((x) & 0x0ff00000) >> 20)
+#ifdef BITBOARD
+#define GETPIECE(x) (((x) & 0xf0000000) >> 28)
+#else
 #define GETCASTLE(x) (((x) & 0xf0000000) >> 28)
-
+#endif
 
 struct chessmovestack
 {
@@ -234,14 +237,19 @@ struct chessmovestack
 class chessmove
 {
 public:
-    // kqKQepepepepccccppppfffffftttttt
+    // pcpcepepepepccccppppfffffftttttt
     unsigned long code;
     unsigned int value;
 
     chessmove();
     chessmove(unsigned long code);
+#ifdef BITBOARD
+    chessmove(int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
+    chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
+#else
     chessmove(int from, int to, PieceCode promote, PieceCode capture);
-    chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, int castle);
+    chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept);
+#endif
     bool operator<(const chessmove cm) const { return value < cm.value; }
     bool operator>(const chessmove cm) const { return value > cm.value; }
     //bool operator<(const chessmove cm) const { return ((code & 0xfff) < (cm.code & 0xfff)); }
@@ -369,22 +377,18 @@ public:
     int ept;
     int kingpos[2];
     unsigned long long hash;
-    //short value;
     int ply;
     int halfmovescounter = 0;
     int fullmovescounter = 0;
     int maxdebugdepth = -1;
     int mindebugdepth = -1;
-    transposition *tp;
-    repetition *rp;
     chessmovelist pvline;
     chessmovelist actualpath;
     chessmove bestmove;
     unsigned long killer[3][MAXDEPTH];
     unsigned int history[14][128];
     unsigned long long debughash = 0;
-    // value tables for both sides, 7 PieceTypes and 256 phase variations 
-    int *positionvaluetable;
+    int *positionvaluetable; // value tables for both sides, 7 PieceTypes and 256 phase variations 
 
     chessposition();
     ~chessposition();
@@ -407,7 +411,8 @@ public:
     bool checkForChess();
     int see(int to);
     int see(int from, int to);
-    void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture);
+    void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
+    void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
     chessmovelist* getMoves();
     bool playMove(chessmove *cm);
     void playMoveFast(chessmove *cm);
@@ -444,16 +449,13 @@ public:
     int fullmovescounter = 0;
     int maxdebugdepth = -1;
     int mindebugdepth = -1;
-    class transposition *tp;
-    repetition *rp;
     chessmovelist pvline;
     chessmovelist actualpath;
     chessmove bestmove;
     unsigned long killer[3][MAXDEPTH];
     unsigned int history[14][128];
     unsigned long long debughash = 0;
-    // value tables for both sides, 7 PieceTypes and 256 phase variations 
-    int *positionvaluetable;
+    int *positionvaluetable;     // value tables for both sides, 7 PieceTypes and 256 phase variations 
 
     chessposition();
     ~chessposition();
@@ -504,13 +506,9 @@ class engine
 {
 public:
     engine();
-    ~engine();
     uci *myUci;
 	const char* name = ENGINEVER
     const char* author = "Andreas Matthies";
-    chessposition *pos;
-    transposition *tp;
-    repetition *rp;
     bool isWhite;
     unsigned long nodes;
 #ifdef DEBUG
@@ -550,6 +548,8 @@ public:
     int comparescore;
 };
 
+extern chessposition pos;
+
 
 //
 // transposition stuff
@@ -575,7 +575,7 @@ public:
     unsigned long long s2m;
     zobrist();
     unsigned long long getRnd();
-    u8 getHash(class chessposition *p);
+    u8 getHash();
     u8 modHash(int i);
 };
 
@@ -594,7 +594,6 @@ class transposition
 public:
     U64 size;
     U64 sizemask;
-    zobrist zb;
     chessposition *pos;
     transposition();
     ~transposition();
@@ -619,6 +618,10 @@ public:
     void removePosition(unsigned long long hash);
     int getPositionCount(unsigned long long hash);
 };
+
+extern zobrist zb;
+extern repetition rp;
+extern transposition tp;
 
 /*
 http://stackoverflow.com/questions/29990116/alpha-beta-prunning-with-transposition-table-iterative-deepening

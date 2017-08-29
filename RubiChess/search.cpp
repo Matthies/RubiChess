@@ -8,26 +8,25 @@ int getQuiescence(engine *en, int alpha, int beta, int depth, bool force)
     bool isLegal;
     bool isCheck;
     bool LegalMovesPossible = false;
-    chessposition *pos = en->pos;
 
     // test for remis via repetition
-    if (pos->rp->getPositionCount(pos->hash) >= 3 && pos->testRepetiton())
+    if (rp.getPositionCount(pos.hash) >= 3 && pos.testRepetiton())
         return SCOREDRAW;
 
     // test for remis via 50 moves rule
-    if (pos->halfmovescounter >= 100)
+    if (pos.halfmovescounter >= 100)
         return SCOREDRAW;
 
     // FIXME: stand pat usually is not allowed if checked but this somehow works better
-    score = (pos->state & S2MMASK ? -pos->getValue() : pos->getValue());
-    pos->debug(depth, "(getQuiscence) alpha=%d beta=%d patscore=%d\n", alpha, beta, score);
+    score = (pos.state & S2MMASK ? -pos.getValue() : pos.getValue());
+    pos.debug(depth, "(getQuiscence) alpha=%d beta=%d patscore=%d\n", alpha, beta, score);
     if (score >= beta)
         return beta;
     if (score > alpha)
         alpha = score;
 
-    isCheck = pos->checkForChess();
-    chessmovelist* movelist = pos->getMoves();
+    isCheck = pos.checkForChess();
+    chessmovelist* movelist = pos.getMoves();
     //pos->sortMoves(movelist);
 
     for (int i = 0; i < movelist->length; i++)
@@ -38,10 +37,10 @@ int getQuiescence(engine *en, int alpha, int beta, int depth, bool force)
             bool positiveSee = false;
             // FIXME!!! if (pos->mailbox[GETTO(movelist->move[i].code)] != BLANK)
             if (GETCAPTURE(movelist->move[i].code) != BLANK)
-                positiveSee = (pos->see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)) >= 0);
+                positiveSee = (pos.see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)) >= 0);
             if (positiveSee || !LegalMovesPossible)
             {
-                isLegal = pos->playMove(&(movelist->move[i]));
+                isLegal = pos.playMove(&(movelist->move[i]));
 #ifdef DEBUG
                 en->qnodes++;
 #endif
@@ -51,21 +50,21 @@ int getQuiescence(engine *en, int alpha, int beta, int depth, bool force)
                     if (positiveSee)
                     {
                         score = -getQuiescence(en, -beta, -alpha, depth - 1, isCheck);
-                        pos->debug(depth, "(getQuiscence) played move %s score=%d\n", movelist->move[i].toString().c_str(), score);
+                        pos.debug(depth, "(getQuiscence) played move %s score=%d\n", movelist->move[i].toString().c_str(), score);
                     }
-                    pos->unplayMove(&(movelist->move[i]));
+                    pos.unplayMove(&(movelist->move[i]));
                     if (positiveSee)
                     {
                         if (score >= beta)
                         {
                             free(movelist);
-                            pos->debug(depth, "(getQuiscence) beta cutoff\n");
+                            pos.debug(depth, "(getQuiscence) beta cutoff\n");
                             return beta;
                         }
                         if (score > alpha)
                         {
                             alpha = score;
-                            pos->debug(depth, "(getQuiscence) new alpha\n");
+                            pos.debug(depth, "(getQuiscence) new alpha\n");
                         }
                     }
                 }
@@ -78,7 +77,7 @@ int getQuiescence(engine *en, int alpha, int beta, int depth, bool force)
     // No valid move found
     if (isCheck)
         // It's a mate
-        return max(alpha, SCOREBLACKWINS + pos->ply);
+        return max(alpha, SCOREBLACKWINS + pos.ply);
     else
         // It's a stalemate
         return max(alpha, SCOREDRAW);
@@ -92,7 +91,6 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
     int bestscore = SHRT_MIN + 1;
     chessmove best;
     int eval_type = HASHALPHA;
-    chessposition *pos = en->pos;
     chessmovelist* newmoves;
     unsigned long hashmovecode;
     int  LegalMoves = 0;
@@ -101,12 +99,12 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
 
     en->nodes++;
 
-    pos->debug(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
+    pos.debug(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
 
-    if (pos->tp->probeHash(&score, &hashmovecode, depth, alpha, beta))
+    if (tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
     {
-        pos->debug(depth, "(alphabeta) got value %d from TP\n", score);
-        if (pos->rp->getPositionCount(pos->hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
+        pos.debug(depth, "(alphabeta) got value %d from TP\n", score);
+        if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
             return score;
     }
 
@@ -116,33 +114,33 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
     }
 
     // test for remis via repetition
-    if (pos->rp->getPositionCount(pos->hash) >= 3 && pos->testRepetiton())
+    if (rp.getPositionCount(pos.hash) >= 3 && pos.testRepetiton())
         return SCOREDRAW;
 
     // test for remis via 50 moves rule
-    if (pos->halfmovescounter >= 100)
+    if (pos.halfmovescounter >= 100)
         return SCOREDRAW;
 
-    isCheck = pos->checkForChess();
+    isCheck = pos.checkForChess();
 
     // Nullmove
-    if (nullmoveallowed && !isCheck && depth >= 4 && pos->ply > 0 && pos->phase() < 150)
+    if (nullmoveallowed && !isCheck && depth >= 4 && pos.ply > 0 && pos.phase() < 150)
     {
         // FIXME: Something to avoid nullmove in endgame is missing... pos->phase() < 150 needs validation
-        pos->playNullMove();
-        pos->ply++;
+        pos.playNullMove();
+        pos.ply++;
 
         score = -alphabeta(en, -beta, -beta + 1, depth - 4, false);
         
-        pos->unplayNullMove();
-        pos->ply--;
+        pos.unplayNullMove();
+        pos.ply--;
         if (score >= beta && !MATEDETECTED(score))
         {
             return beta;
         }
     }
 
-     newmoves = pos->getMoves();
+     newmoves = pos.getMoves();
     if (isCheck)
         depth++;
 
@@ -155,9 +153,9 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
         }
 
         // killermoves gets score better than non-capture (which have negative value)
-        if (pos->killer[0][pos->ply] == newmoves->move[i].code)
+        if (pos.killer[0][pos.ply] == newmoves->move[i].code)
             newmoves->move[i].value = KILLERVAL1;
-        if (pos->killer[1][pos->ply] == newmoves->move[i].code)
+        if (pos.killer[1][pos.ply] == newmoves->move[i].code)
             newmoves->move[i].value = KILLERVAL2;
     }
 
@@ -171,7 +169,7 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
             }
         }
 
-        isLegal = pos->playMove(&(newmoves->move[i]));
+        isLegal = pos.playMove(&(newmoves->move[i]));
 
         if (isLegal)
         {
@@ -179,51 +177,54 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
 #ifdef DEBUG
             int oldmaxdebugdepth;
             int oldmindebugdepth;
-            if (en->debug && pos->debughash == pos->hash)
+            if (en->debug && pos.debughash == pos.hash)
             {
-                oldmaxdebugdepth = pos->maxdebugdepth;
-                oldmindebugdepth = pos->mindebugdepth;
+                oldmaxdebugdepth = pos.maxdebugdepth;
+                oldmindebugdepth = pos.mindebugdepth;
                 printf("Reached position to debug... starting debug.\n");
-                pos->print();
-                pos->maxdebugdepth = depth;
-                pos->mindebugdepth = -100;
+                pos.print();
+                pos.maxdebugdepth = depth;
+                pos.mindebugdepth = -100;
             }
-            pos->debug(depth, "(alphabeta) played move %s\n", newmoves->move[i].toString().c_str());
+            pos.debug(depth, "(alphabeta) played move %s\n", newmoves->move[i].toString().c_str());
 #endif
             if (!eval_type == HASHEXACT)
             {
                 score = -alphabeta(en, -beta, -alpha, depth - 1, true);
             } else {
                 // try a PV-Search
+#ifdef DEBUG
+                unsigned long nodesbefore = en->nodes;
+#endif
                 score = -alphabeta(en, -alpha - 1, -alpha, depth - 1, true);
-				if (score > alpha && score < beta)
+                if (score > alpha && score < beta)
 				{
 					// reasearch with full window
-					score = -alphabeta(en, -beta, -alpha, depth - 1, true);
 #ifdef DEBUG
-					en->wastednodes += (en->nodes - nodesbefore);
+                    en->wastednodes += (en->nodes - nodesbefore);
 #endif
+                    score = -alphabeta(en, -beta, -alpha, depth - 1, true);
 				}
             }
 
 #ifdef DEBUG
-            if (en->debug && pos->debughash == pos->hash)
+            if (en->debug && pos.debughash == pos.hash)
             {
-                pos->actualpath.length = pos->ply;
+                pos.actualpath.length = pos.ply;
                 printf("Leaving position to debug... stoping debug. Score:%d\n", score);
-                pos->maxdebugdepth = oldmaxdebugdepth;
-                pos->mindebugdepth = oldmindebugdepth;
+                pos.maxdebugdepth = oldmaxdebugdepth;
+                pos.mindebugdepth = oldmindebugdepth;
             }
 #endif
-            pos->unplayMove(&(newmoves->move[i]));
+            pos.unplayMove(&(newmoves->move[i]));
 
             if (score > bestscore)
             {
                 bestscore = score;
                 best = newmoves->move[i];
-                if (pos->ply == 0)
+                if (pos.ply == 0)
                 {
-                    pos->bestmove = best;
+                    pos.bestmove = best;
                     //pos->debug(0, "List of moves now that it is played: %s\n", newmoves->toStringWithValue().c_str());
                 }
 
@@ -233,27 +234,27 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
                     if (GETCAPTURE(best.code) == BLANK)
                     {
 
-                        pos->killer[1][pos->ply] = pos->killer[0][pos->ply];
-                        pos->killer[0][pos->ply] = best.code;
+                        pos.killer[1][pos.ply] = pos.killer[0][pos.ply];
+                        pos.killer[0][pos.ply] = best.code;
                     }
 
                     en->fh++;
                     if (LegalMoves == 1)
                         en->fhf++;
-                    pos->debug(depth, "(alphabetamax) score=%d >= beta=%d  -> cutoff\n", score, beta);
-                    pos->tp->addHash(beta, HASHBETA, depth, 0);
+                    pos.debug(depth, "(alphabetamax) score=%d >= beta=%d  -> cutoff\n", score, beta);
+                    tp.addHash(beta, HASHBETA, depth, 0);
                     free(newmoves);
                     return beta;   // fail hard beta-cutoff
                 }
 
                 if (score > alpha)
                 {
-                    pos->debug(depth, "(alphabeta) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, newmoves->move[i].toString().c_str(), pos->actualpath.toString().c_str());
+                    pos.debug(depth, "(alphabeta) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, newmoves->move[i].toString().c_str(), pos.actualpath.toString().c_str());
                     alpha = score;
                     eval_type = HASHEXACT;
                     if (GETCAPTURE(newmoves->move[i].code) == BLANK)
                     {
-                        pos->history[pos->Piece(GETFROM(newmoves->move[i].code))][GETTO(newmoves->move[i].code)] += depth * depth;
+                        pos.history[pos.Piece(GETFROM(newmoves->move[i].code))][GETTO(newmoves->move[i].code)] += depth * depth;
                     }
                 }
             }
@@ -268,21 +269,21 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
     free(newmoves);
     if (LegalMoves == 0)
     {
-        if (pos->ply == 0)
+        if (pos.ply == 0)
         {
             // No root move; finish the search
-            pos->bestmove.code = 0;
+            pos.bestmove.code = 0;
             en->stopLevel = ENGINEWANTSTOP;
         }
         if (isCheck)
             // It's a mate
-            return SCOREBLACKWINS + pos->ply;
+            return SCOREBLACKWINS + pos.ply;
         else
             // It's a stalemate
             return SCOREDRAW;
     }
 
-    pos->tp->addHash(alpha, eval_type, depth, best.code);
+    tp.addHash(alpha, eval_type, depth, best.code);
     return alpha;
 }
 
@@ -299,10 +300,9 @@ static void search_gen1(engine *en)
     int deltaalpha = 25;
     int deltabeta = 25;
     int depth, maxdepth, depthincrement;
-    chessposition *pos = en->pos;
     string pvstring;
 
-    sprintf_s(s, "info string Phase is %d\n", pos->phase());
+    sprintf_s(s, "info string Phase is %d\n", pos.phase());
     cout << s;
 
 
@@ -327,18 +327,18 @@ static void search_gen1(engine *en)
     do
     {
         matein = MAXDEPTH;
-        pos->maxdebugdepth = -1;
-        pos->mindebugdepth = 0;
+        pos.maxdebugdepth = -1;
+        pos.mindebugdepth = 0;
         if (en->debug)
         {
             // Basic debuging
-            pos->maxdebugdepth = depth;
-            pos->mindebugdepth = depth;
+            pos.maxdebugdepth = depth;
+            pos.mindebugdepth = depth;
             printf("\n\nNext depth: %d\n\n", depth);
         }
 
         // Reset bestmove to detect alpha raise in interrupted serach
-        pos->bestmove.code = 0;
+        pos.bestmove.code = 0;
         score = alphabeta(en, alpha, beta, depth, true);
 
         // new aspiration window
@@ -358,15 +358,15 @@ static void search_gen1(engine *en)
         {
             // search was successfull
             if (en->fh > 0)
-                pos->debug(depth, "Searchorder-Success: %f\n", en->fhf / en->fh);
+                pos.debug(depth, "Searchorder-Success: %f\n", en->fhf / en->fh);
 
             if (en->stopLevel == ENGINERUN || en->stopLevel == ENGINEWANTSTOP || en->stopLevel == ENGINESTOPSOON
-                || (en->stopLevel == ENGINESTOPIMMEDIATELY && pos->bestmove.code > 0))
+                || (en->stopLevel == ENGINESTOPIMMEDIATELY && pos.bestmove.code > 0))
             {
                 int secondsrun = (int)((getTime() - en->starttime) * 1000 / en->frequency);
 
-                pos->getpvline(depth);
-                pvstring = pos->pvline.toString();
+                pos.getpvline(depth);
+                pvstring = pos.pvline.toString();
 
                 if (!MATEDETECTED(score))
                 {
@@ -388,10 +388,10 @@ static void search_gen1(engine *en)
             depth += depthincrement;
         }
 
-        if (pos->pvline.length > 0 && pos->pvline.move[0].code)
-            move = pos->pvline.move[0].toString();
+        if (pos.pvline.length > 0 && pos.pvline.move[0].code)
+            move = pos.pvline.move[0].toString();
         else
-            move = pos->bestmove.toString();
+            move = pos.bestmove.toString();
 
     } while (en->stopLevel == ENGINERUN && depth <= min(maxdepth, abs(matein) * 2));
 
@@ -412,7 +412,6 @@ void searchguide(engine *en)
     int timeinc = (en->isWhite ? en->winc : en->binc);
     int movestogo = 0;
     thread enginethread;
-    chessposition *pos = en->pos;
 
     if (en->movestogo)
         movestogo = en->movestogo;
@@ -457,7 +456,7 @@ void searchguide(engine *en)
         nodes = en->nodes;
         if (nodes != lastnodes && nowtime - lastinfotime > en->frequency)
         {
-            sprintf_s(s, "info nodes %lu nps %llu hashfull %d\n", nodes, (nodes - lastnodes) * en->frequency / (nowtime - lastinfotime), pos->tp->getUsedinPermill());
+            sprintf_s(s, "info nodes %lu nps %llu hashfull %d\n", nodes, (nodes - lastnodes) * en->frequency / (nowtime - lastinfotime), tp.getUsedinPermill());
             cout << s;
             lastnodes = nodes;
             lastinfotime = nowtime;
@@ -480,7 +479,7 @@ void searchguide(engine *en)
     }
     enginethread.join();
     en->endtime = getTime();
-    sprintf_s(s, "info nodes %lu nps %llu hashfull %d\n", en->nodes, en->nodes * en->frequency / (en->endtime - en->starttime), pos->tp->getUsedinPermill());
+    sprintf_s(s, "info nodes %lu nps %llu hashfull %d\n", en->nodes, en->nodes * en->frequency / (en->endtime - en->starttime), tp.getUsedinPermill());
     cout << s;
 #ifdef DEBUG
     sprintf_s(s, "info string %d%% quiscense\n", (int)en->qnodes * 100 / (en->nodes + en->qnodes));

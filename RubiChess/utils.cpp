@@ -66,12 +66,12 @@ void BitboardDraw(U64 b)
 }
 
 
-string AlgebraicFromShort(string s, chessposition *p)
+string AlgebraicFromShort(string s)
 {
     string retval = "";
     int castle0 = 0;
     PieceType promotion = BLANKTYPE;
-    chessmovelist* ml = p->getMoves();
+    chessmovelist* ml = pos.getMoves();
     PieceType pt = PAWN;
     int to = 0x88, from = 0x88;
     int i = (int)s.size() - 1;
@@ -117,14 +117,14 @@ string AlgebraicFromShort(string s, chessposition *p)
     for (int i = 0; i < ml->length; i++)
     {
 #ifdef BITBOARD
-        if (pt == (p->mailbox[GETFROM(ml->move[i].code)] >> 1)
+        if (pt == (GETPIECE(ml->move[i].code) >> 1)
             && promotion == (GETPROMOTION(ml->move[i].code) >> 1)
             && ((from & 0x80) || ((from & 0x70) == ((GETFROM(ml->move[i].code) & 0x38) << 1)))
             && ((from & 0x08) || ((from & 0x07) == (GETFROM(ml->move[i].code) & 0x07)))
             && ((to & 0x80) || ((to & 0x70) == ((GETTO(ml->move[i].code) & 0x38) << 1)))
             && ((to & 0x08) || ((to & 0x07) == (GETTO(ml->move[i].code) & 0x07))))
 #else
-        if (pt == (p->board[GETFROM(ml->move[i].code)] >> 1)
+        if (pt == (pos.board[GETFROM(ml->move[i].code)] >> 1)
             && promotion == (GETPROMOTION(ml->move[i].code) >> 1)
             && ((from & 0x80) || ((from & 0x70) == (GETFROM(ml->move[i].code) & 0x70)))
             && ((from & 0x08) || ((from & 0x07) == (GETFROM(ml->move[i].code) & 0x07)))
