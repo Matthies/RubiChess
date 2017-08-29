@@ -385,7 +385,7 @@ public:
     int fullmovescounter = 0;
     int maxdebugdepth = -1;
     int mindebugdepth = -1;
-    transposition *tp;
+    //transposition *tp;
     chessmovelist pvline;
     chessmovelist actualpath;
     chessmove bestmove;
@@ -455,7 +455,7 @@ public:
     int fullmovescounter = 0;
     int maxdebugdepth = -1;
     int mindebugdepth = -1;
-    class transposition *tp;
+    //class transposition *tp;
     chessmovelist pvline;
     chessmovelist actualpath;
     chessmove bestmove;
@@ -519,7 +519,7 @@ public:
 	const char* name = ENGINEVER
     const char* author = "Andreas Matthies";
     chessposition *pos;
-    transposition *tp;
+    //transposition *tp;
     bool isWhite;
     unsigned long nodes;
 #ifdef DEBUG
@@ -629,6 +629,7 @@ public:
 
 extern zobrist zb;
 extern repetition rp;
+extern transposition tp;
 
 /*
 http://stackoverflow.com/questions/29990116/alpha-beta-prunning-with-transposition-table-iterative-deepening

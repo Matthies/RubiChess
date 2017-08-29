@@ -970,8 +970,8 @@ void chessposition::print()
     printf("info string Value: %d\n", getValue());
     printf("info string Repetitions: %d\n", rp.getPositionCount(hash));
     //printf("info string Possible Moves: %s\n", getMoves().toStringWithValue().c_str());
-    if (tp->size > 0 && tp->testHash())
-        printf("info string Hash-Info: depth=%d Val=%d (%d) Move:%s\n", tp->getDepth(), tp->getValue(), tp->getValtype(), tp->getMove().toString().c_str());
+    if (tp.size > 0 && tp.testHash())
+        printf("info string Hash-Info: depth=%d Val=%d (%d) Move:%s\n", tp.getDepth(), tp.getValue(), tp.getValtype(), tp.getMove().toString().c_str());
     if (actualpath.length)
         printf("info string Moves in current search: %s\n", actualpath.toString().c_str());
 }
@@ -1555,7 +1555,7 @@ void chessposition::getpvline(int depth)
         {
             cm = bestmove;
         }
-        else if (!tp->probeHash(&dummyval, &(cm.code), depth, 0, 0) || cm.code == 0)
+        else if (!tp.probeHash(&dummyval, &(cm.code), depth, 0, 0) || cm.code == 0)
         {
             break;
         }
@@ -1870,8 +1870,8 @@ void chessposition::print()
     printf("info string Value: %d\n", getValue());
     printf("info string Repetitions: %d\n", rp.getPositionCount(hash));
     //printf("info string Possible Moves: %s\n", getMoves().toStringWithValue().c_str());
-    if (tp->size > 0 && tp->testHash())
-        printf("info string Hash-Info: depth=%d Val=%d (%d) Move:%s\n", tp->getDepth(), tp->getValue(), tp->getValtype(), tp->getMove().toString().c_str());
+    if (tp.size > 0 && tp.testHash())
+        printf("info string Hash-Info: depth=%d Val=%d (%d) Move:%s\n", tp.getDepth(), tp.getValue(), tp.getValtype(), tp.getMove().toString().c_str());
     if (actualpath.length)
         printf("info string Moves in current search: %s\n", actualpath.toString().c_str());
 }
@@ -2344,7 +2344,7 @@ void chessposition::getpvline(int depth)
         {
             cm = bestmove;
         }
-        else if (!tp->probeHash(&dummyval, &(cm.code), depth, 0, 0) || cm.code == 0)
+        else if (!tp.probeHash(&dummyval, &(cm.code), depth, 0, 0) || cm.code == 0)
         {
             break;
         }
@@ -2648,9 +2648,9 @@ engine::engine()
     pos = new chessposition();
     //rp = new repetition();
     //pos->rp = rp;
-    tp = new transposition();
-    pos->tp = tp;
-    tp->pos = pos;
+    //tp = new transposition();
+    //pos->tp = tp;
+    tp.pos = pos;
 #ifdef BITBOARD
 	initBitmaphelper();
 #endif
@@ -2670,8 +2670,8 @@ engine::engine()
 engine::~engine()
 {
     delete pos;
-//    delete rp;
-    delete tp;
+    //delete rp;
+    //delete tp;
 #ifdef BITBOARD
 #endif
 }
@@ -2689,7 +2689,7 @@ void engine::setOption(string sName, string sValue)
 	transform(sName.begin(), sName.end(), sName.begin(), ::tolower);
 	transform(sValue.begin(), sValue.end(), sValue.begin(), ::tolower);
     if (sName == "clear hash")
-        pos->tp->clean();
+        tp.clean();
     if (sName == "hash")
     {
         newint = stoi(sValue);
@@ -2704,7 +2704,7 @@ void engine::setOption(string sName, string sValue)
     }
     if (resetTp)
     {
-        pos->tp->setSize(sizeOfTp);
+        tp.setSize(sizeOfTp);
     }
 }
 

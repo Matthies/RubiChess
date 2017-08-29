@@ -302,3 +302,4 @@ int repetition::getPositionCount(unsigned long long hash)
 
 zobrist zb;
 repetition rp;
+transposition tp;

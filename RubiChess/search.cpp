@@ -103,7 +103,7 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
 
     pos->debug(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
 
-    if (pos->tp->probeHash(&score, &hashmovecode, depth, alpha, beta))
+    if (tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
     {
         pos->debug(depth, "(alphabeta) got value %d from TP\n", score);
         if (rp.getPositionCount(pos->hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
@@ -247,7 +247,7 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
                     if (LegalMoves == 1)
                         en->fhf++;
                     pos->debug(depth, "(alphabetamax) score=%d >= beta=%d  -> cutoff\n", score, beta);
-                    pos->tp->addHash(beta, HASHBETA, depth, 0);
+                    tp.addHash(beta, HASHBETA, depth, 0);
                     free(newmoves);
                     return beta;   // fail hard beta-cutoff
                 }
@@ -283,7 +283,7 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
             return SCOREDRAW;
     }
 
-    pos->tp->addHash(alpha, eval_type, depth, best.code);
+    tp.addHash(alpha, eval_type, depth, best.code);
     return alpha;
 }
 
@@ -458,7 +458,7 @@ void searchguide(engine *en)
         nodes = en->nodes;
         if (nodes != lastnodes && nowtime - lastinfotime > en->frequency)
         {
-            sprintf_s(s, "info nodes %lu nps %llu hashfull %d\n", nodes, (nodes - lastnodes) * en->frequency / (nowtime - lastinfotime), pos->tp->getUsedinPermill());
+            sprintf_s(s, "info nodes %lu nps %llu hashfull %d\n", nodes, (nodes - lastnodes) * en->frequency / (nowtime - lastinfotime), tp.getUsedinPermill());
             cout << s;
             lastnodes = nodes;
             lastinfotime = nowtime;
@@ -481,7 +481,7 @@ void searchguide(engine *en)
     }
     enginethread.join();
     en->endtime = getTime();
-    sprintf_s(s, "info nodes %lu nps %llu hashfull %d\n", en->nodes, en->nodes * en->frequency / (en->endtime - en->starttime), pos->tp->getUsedinPermill());
+    sprintf_s(s, "info nodes %lu nps %llu hashfull %d\n", en->nodes, en->nodes * en->frequency / (en->endtime - en->starttime), tp.getUsedinPermill());
     cout << s;
 #ifdef DEBUG
     sprintf_s(s, "info string %d%% quiscense\n", (int)en->qnodes * 100 / (en->nodes + en->qnodes));
