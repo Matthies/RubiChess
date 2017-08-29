@@ -299,3 +299,5 @@ int repetition::getPositionCount(unsigned long long hash)
 {
 	return table[hash & 0xffff];
 }
+
+zobrist zb;

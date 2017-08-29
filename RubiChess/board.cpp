@@ -898,7 +898,7 @@ int chessposition::getFromFen(const char* sFen)
 
     actualpath.length = 0;
     countMaterial();
-    hash = tp->zb.getHash(this);
+    hash = zb.getHash(this);
     rp->clean();
     rp->addPosition(hash);
     for (int i = 0; i < 14; i++)
@@ -1094,7 +1094,7 @@ bool chessposition::playMove(chessmove *cm)
     //if (pto != BLANK) // use pto instead of capture here because ep capture has capture set but hits empty field here
     if (capture != BLANK && !(eptnew & ISEPCAPTURE))
     {
-        hash ^= tp->zb.boardtable[(to << 4) | capture];
+        hash ^= zb.boardtable[(to << 4) | capture];
         BitboardClear(to, capture);
         halfmovescounter = 0;
     }
@@ -1110,8 +1110,8 @@ bool chessposition::playMove(chessmove *cm)
 		BitboardSet(to, promote);
 	}
 
-    hash ^= tp->zb.boardtable[(to << 4) | mailbox[to]];
-    hash ^= tp->zb.boardtable[(from << 4) | pfrom];
+    hash ^= zb.boardtable[(to << 4) | mailbox[to]];
+    hash ^= zb.boardtable[(from << 4) | pfrom];
 
     mailbox[from] = BLANK;
 
@@ -1124,7 +1124,7 @@ bool chessposition::playMove(chessmove *cm)
         {
             // FIXME: to many mailbox[epfield], this is a pawn we just need to add the color
             int epfield = (from & 0x38) | (to & 0x07);
-            hash ^= tp->zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
+            hash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
 
             BitboardClear(epfield, (pfrom ^ S2MMASK));
             mailbox[epfield] = BLANK;
@@ -1154,8 +1154,8 @@ bool chessposition::playMove(chessmove *cm)
             BitboardMove(rookfrom, rookto, (PieceCode)(WROOK | s2m));
             mailbox[rookto] = (PieceCode)(WROOK | s2m);
 
-            hash ^= tp->zb.boardtable[(rookto << 4) | (PieceCode)(WROOK | s2m)];
-            hash ^= tp->zb.boardtable[(rookfrom << 4) | (PieceCode)(WROOK | s2m)];
+            hash ^= zb.boardtable[(rookto << 4) | (PieceCode)(WROOK | s2m)];
+            hash ^= zb.boardtable[(rookfrom << 4) | (PieceCode)(WROOK | s2m)];
 
             mailbox[rookfrom] = BLANK;
         }
@@ -1164,19 +1164,19 @@ bool chessposition::playMove(chessmove *cm)
     isLegal = !checkForChess();
     state ^= S2MMASK;
 
-    hash ^= tp->zb.s2m;
+    hash ^= zb.s2m;
 
     if (!(state & S2MMASK))
         fullmovescounter++;
 
 	// Fix hash regarding ept
-	hash ^= tp->zb.ept[ept];
+	hash ^= zb.ept[ept];
     ept = eptnew;
-	hash ^= tp->zb.ept[ept];
+	hash ^= zb.ept[ept];
 
     // Fix hash regarding castle rights
     oldcastle ^= (state & CASTLEMASK);
-	hash ^= tp->zb.cstl[oldcastle];
+	hash ^= zb.cstl[oldcastle];
 
     ply++;
     rp->addPosition(hash);
@@ -1507,7 +1507,7 @@ int chessposition::see(int from, int to)
 void chessposition::playNullMove()
 {
     state ^= S2MMASK;
-    hash ^= tp->zb.s2m;
+    hash ^= zb.s2m;
     chessmove cm;
 
     actualpath.move[actualpath.length++].code = 0;
@@ -1517,7 +1517,7 @@ void chessposition::playNullMove()
 void chessposition::unplayNullMove()
 {
     state ^= S2MMASK;
-    hash ^= tp->zb.s2m;
+    hash ^= zb.s2m;
     actualpath.length--;
 }
 
@@ -1802,7 +1802,7 @@ int chessposition::getFromFen(const char* sFen)
 
     actualpath.length = 0;
     countMaterial();
-    hash = tp->zb.getHash(this);
+    hash = zb.getHash(this);
     rp->clean();
     rp->addPosition(hash);
     for (int i = 0; i < 14; i++)
@@ -2164,7 +2164,7 @@ bool chessposition::playMove(chessmove *cm)
         value += (state & S2MMASK ? -valdiff : valdiff);
         piecenum[board[to]]--;
         halfmovescounter = 0;
-        hash ^= tp->zb.boardtable[(to << 4) | board[to]];
+        hash ^= zb.boardtable[(to << 4) | board[to]];
     }
     
     movestack[mstop].index[movestack[mstop].numFieldchanges] = to;
@@ -2172,9 +2172,9 @@ bool chessposition::playMove(chessmove *cm)
     board[to] = (promote == BLANK ? board[from] : promote);
 
     // Fix hash regarding to
-    hash ^= tp->zb.boardtable[(to << 4) | board[to]];
+    hash ^= zb.boardtable[(to << 4) | board[to]];
     // Fix hash regarding from
-    hash ^= tp->zb.boardtable[(from << 4) | board[from]];
+    hash ^= zb.boardtable[(from << 4) | board[from]];
 
     movestack[mstop].index[movestack[mstop].numFieldchanges] = from;
     movestack[mstop].code[movestack[mstop].numFieldchanges++] = board[from];
@@ -2197,7 +2197,7 @@ bool chessposition::playMove(chessmove *cm)
             //piecenum[PAWN]--;
             piecenum[board[epfield]]--;
             // Fix hash regarding ep capture
-            hash ^= tp->zb.boardtable[(epfield << 4) | board[epfield]];
+            hash ^= zb.boardtable[(epfield << 4) | board[epfield]];
 
             movestack[mstop].index[movestack[mstop].numFieldchanges] = epfield;
             movestack[mstop].code[movestack[mstop].numFieldchanges++] = board[epfield];
@@ -2238,9 +2238,9 @@ bool chessposition::playMove(chessmove *cm)
             board[rookto] = board[rookfrom];
 
             // Fix hash regarding rooks to
-            hash ^= tp->zb.boardtable[(rookto << 4) | board[rookto]];
+            hash ^= zb.boardtable[(rookto << 4) | board[rookto]];
             // Fix hash regarding from
-            hash ^= tp->zb.boardtable[(rookfrom << 4) | board[rookfrom]];
+            hash ^= zb.boardtable[(rookfrom << 4) | board[rookfrom]];
 
             movestack[mstop].index[movestack[mstop].numFieldchanges] = rookfrom;
             movestack[mstop].code[movestack[mstop].numFieldchanges++] = board[rookfrom];
@@ -2252,20 +2252,20 @@ bool chessposition::playMove(chessmove *cm)
     state ^= S2MMASK;
 
     // Fix hash regarding s2m
-    hash ^= tp->zb.s2m;
+    hash ^= zb.s2m;
 
 	if (!(state & S2MMASK))
 		fullmovescounter++;
 
     // Fix hash regarding old ep field
     if (ept)
-        hash ^= tp->zb.ep[ept & 0x7];
+        hash ^= zb.ep[ept & 0x7];
 
     ept = eptnew;
 
     // Fix hash regarding new ep field
     if (ept)
-        hash ^= tp->zb.ep[ept & 0x7];
+        hash ^= zb.ep[ept & 0x7];
 
     // Fix hash regarding castle rights
     oldcastle ^= (state & CASTLEMASK);
@@ -2273,7 +2273,7 @@ bool chessposition::playMove(chessmove *cm)
     {
         oldcastle >>= 1;
         if (oldcastle & 1)
-            hash ^= tp->zb.castle[i];
+            hash ^= zb.castle[i];
     }
 
     ply++;
@@ -2317,7 +2317,7 @@ void chessposition::playNullMove()
     state ^= S2MMASK;
 
     // Fix hash regarding s2m
-    hash ^= tp->zb.s2m;
+    hash ^= zb.s2m;
     chessmove cm;
 
     actualpath.move[actualpath.length++] = cm;
@@ -2328,7 +2328,7 @@ void chessposition::unplayNullMove()
     state ^= S2MMASK;
 
     // Fix hash regarding s2m
-    hash ^= tp->zb.s2m;
+    hash ^= zb.s2m;
     actualpath.length--;
 }
 

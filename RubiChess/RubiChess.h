@@ -605,7 +605,6 @@ class transposition
 public:
     U64 size;
     U64 sizemask;
-    zobrist zb;
     chessposition *pos;
     transposition();
     ~transposition();
@@ -630,6 +629,9 @@ public:
     void removePosition(unsigned long long hash);
     int getPositionCount(unsigned long long hash);
 };
+
+extern zobrist zb;
+
 
 /*
 http://stackoverflow.com/questions/29990116/alpha-beta-prunning-with-transposition-table-iterative-deepening

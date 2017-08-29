@@ -647,9 +647,9 @@ long long perft(chessposition *p, int depth, bool dotests)
 
     if (dotests)
     {
-        if (p->hash != p->tp->zb.getHash(p))
+        if (p->hash != zb.getHash(p))
         {
-            printf("Alarm! Wrong Hash! %llu\n", p->tp->zb.getHash(p));
+            printf("Alarm! Wrong Hash! %llu\n", zb.getHash(p));
             p->print();
         }
         int val1 = p->getValue();
