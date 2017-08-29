@@ -898,7 +898,7 @@ int chessposition::getFromFen(const char* sFen)
 
     actualpath.length = 0;
     countMaterial();
-    hash = zb.getHash(this);
+    hash = zb.getHash();
     rp.clean();
     rp.addPosition(hash);
     for (int i = 0; i < 14; i++)
@@ -1802,7 +1802,7 @@ int chessposition::getFromFen(const char* sFen)
 
     actualpath.length = 0;
     countMaterial();
-    hash = zb.getHash(this);
+    hash = zb.getHash();
     rp.clean();
     rp.addPosition(hash);
     for (int i = 0; i < 14; i++)
@@ -2645,12 +2645,12 @@ bool chessposition::testRepetiton()
 engine::engine()
 {
     // Allocate all needed objects and connect them
-    pos = new chessposition();
+    //pos = new chessposition();
     //rp = new repetition();
     //pos->rp = rp;
     //tp = new transposition();
     //pos->tp = tp;
-    tp.pos = pos;
+    tp.pos = &pos;
 #ifdef BITBOARD
 	initBitmaphelper();
 #endif
@@ -2669,7 +2669,7 @@ engine::engine()
 
 engine::~engine()
 {
-    delete pos;
+    //delete pos;
     //delete rp;
     //delete tp;
 #ifdef BITBOARD
@@ -2679,7 +2679,7 @@ engine::~engine()
 
 int engine::getScoreFromEnginePoV()
 {
-	return (isWhite ? pos->getValue() : -pos->getValue());
+	return (isWhite ? pos.getValue() : -pos.getValue());
 }
 
 void engine::setOption(string sName, string sValue)
@@ -2736,7 +2736,7 @@ void engine::communicate(string inputstring)
                 else if (commandargs[ci] == "off")
                     debug = false;
                 else if (commandargs[ci] == "this")
-                    pos->debughash = pos->hash;
+                    pos.debughash = pos.hash;
 			}
             break;
         case UCI:
@@ -2816,17 +2816,17 @@ void engine::communicate(string inputstring)
             }
             if (fen == "")
                 break;
-            pos->getFromFen(fen.c_str());
+            pos.getFromFen(fen.c_str());
             for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
             {
-                if (!pos->applyMove(*it))
+                if (!pos.applyMove(*it))
 					printf("info string Alarm! Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
             }
-            pos->ply = 0;
+            pos.ply = 0;
 
             if (debug)
             {
-                pos->print();
+                pos.print();
             }
             break;
         case GO:
@@ -2891,7 +2891,7 @@ void engine::communicate(string inputstring)
                 else
                     ci++;
             }
-            isWhite = (pos->w2m());
+            isWhite = (pos.w2m());
             searchthread = new thread(&searchguide, this);
             if (inputstring != "")
             {
@@ -2917,4 +2917,5 @@ void engine::communicate(string inputstring)
 	} while (command != QUIT && inputstring == "");
 }
 
-    
+
+chessposition pos;

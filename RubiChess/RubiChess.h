@@ -111,7 +111,7 @@ class chessposition;
 //
 vector<string> SplitString(const char* s);
 unsigned char AlgebraicToIndex(string s, int base);
-string AlgebraicFromShort(string s, chessposition *p);
+string AlgebraicFromShort(string s);
 void BitboardDraw(U64 b);
 U64 getTime();
 
@@ -518,7 +518,7 @@ public:
     uci *myUci;
 	const char* name = ENGINEVER
     const char* author = "Andreas Matthies";
-    chessposition *pos;
+    //chessposition *pos;
     //transposition *tp;
     bool isWhite;
     unsigned long nodes;
@@ -558,6 +558,8 @@ public:
     int comparescore;
 };
 
+extern chessposition pos;
+
 
 //
 // transposition stuff
@@ -583,7 +585,7 @@ public:
     unsigned long long s2m;
     zobrist();
     unsigned long long getRnd();
-    u8 getHash(class chessposition *p);
+    u8 getHash();
     u8 modHash(int i);
 };
 

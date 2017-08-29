@@ -641,33 +641,33 @@ string GetSystemInfo()
 #endif
 
 
-long long perft(chessposition *p, int depth, bool dotests)
+long long perft(int depth, bool dotests)
 {
     long long retval = 0;
 
     if (dotests)
     {
-        if (p->hash != zb.getHash(p))
+        if (pos.hash != zb.getHash())
         {
-            printf("Alarm! Wrong Hash! %llu\n", zb.getHash(p));
-            p->print();
+            printf("Alarm! Wrong Hash! %llu\n", zb.getHash());
+            pos.print();
         }
-        int val1 = p->getValue();
-        p->mirror();
-        int val2 = p->getValue();
-        p->mirror();
-        int val3 = p->getValue();
+        int val1 = pos.getValue();
+        pos.mirror();
+        int val2 = pos.getValue();
+        pos.mirror();
+        int val3 = pos.getValue();
         if (!(val1 == val3 && val1 == -val2))
         {
             printf("Mirrortest  :error  (%d / %d / %d)\n", val1, val2, val3);
-            p->print();
-			p->mirror();
-			p->print();
-			p->mirror();
-			p->print();
+            pos.print();
+            pos.mirror();
+            pos.print();
+            pos.mirror();
+            pos.print();
 		}
     }
-    chessmovelist* movelist = p->getMoves();
+    chessmovelist* movelist = pos.getMoves();
     //movelist->sort();
     //printf("Path: %s \nMovelist : %s\n", p->actualpath.toString().c_str(), movelist->toString().c_str());
 
@@ -677,11 +677,11 @@ long long perft(chessposition *p, int depth, bool dotests)
     {
         for (int i = 0; i < movelist->length; i++)
         {
-            if (p->playMove(&movelist->move[i]))
+            if (pos.playMove(&movelist->move[i]))
             {
                 //printf("%s ok ", movelist->move[i].toString().c_str());
                 retval++;
-                p->unplayMove(&movelist->move[i]);
+                pos.unplayMove(&movelist->move[i]);
             }
         }
     }
@@ -690,11 +690,11 @@ long long perft(chessposition *p, int depth, bool dotests)
     {
         for (int i = 0; i < movelist->length; i++)
         {
-            if (p->playMove(&movelist->move[i]))
+            if (pos.playMove(&movelist->move[i]))
             {
                 //printf("\nMove: %s  ", movelist->move[i].toString().c_str());
-                retval += perft(p, depth - 1, dotests);
-                p->unplayMove(&movelist->move[i]);
+                retval += perft(depth - 1, dotests);
+                pos.unplayMove(&movelist->move[i]);
             }
         }
     }
@@ -755,13 +755,13 @@ void perftest(engine *en, bool dotests, int maxdepth)
 
     while (perftestresults[i].fen != "")
     {
-        en->pos->getFromFen(perftestresults[i].fen.c_str());
+        pos.getFromFen(perftestresults[i].fen.c_str());
         int j = 0;
         while (perftestresults[i].nodes[j] > 0 && j <= maxdepth)
         {
             long long starttime = getTime();
 
-            U64 result = perft(en->pos, j, dotests);
+            U64 result = perft(j, dotests);
             totalresult += result;
 
             perftlasttime = getTime();
@@ -968,7 +968,7 @@ void testengine(engine *en, string epdfilename, int startnum, string engineprg, 
     struct enginestate es;
     string line;
     thread *readThread;
-    chessposition *p = en->pos;
+    //chessposition *p = en->pos;
     ifstream comparefile;
     bool compare = false;
     char buf[1024];
@@ -1058,7 +1058,7 @@ void testengine(engine *en, string epdfilename, int startnum, string engineprg, 
             // split fen from operation part
             for (int i = 0; i < 4; i++)
                 fenstr = fenstr + fv[i] + " ";
-            if (p->getFromFen(fenstr.c_str()) == 0 && ++linenum >= startnum)
+            if (pos.getFromFen(fenstr.c_str()) == 0 && ++linenum >= startnum)
             {
                 // Get data from compare file
                 es.doCompare = false;
@@ -1118,7 +1118,7 @@ void testengine(engine *en, string epdfilename, int startnum, string engineprg, 
                             fv[i] = fv[i].substr(0, smk);
                         if (moveliststr != "")
                             moveliststr += " ";
-                        moveliststr += AlgebraicFromShort(fv[i], p);
+                        moveliststr += AlgebraicFromShort(fv[i]);
                         if (smk != string::npos)
                         {
                             if (searchbestmove)
