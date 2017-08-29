@@ -2623,6 +2623,7 @@ engine::engine()
 #endif
 
     setOption("hash", "150");
+    setOption("Move Overhead", "50");
 
 #ifdef _WIN32
     LARGE_INTEGER f;
@@ -2673,6 +2674,13 @@ void engine::setOption(string sName, string sValue)
     {
         pos->tp->setSize(sizeOfTp);
     }
+    if (sName == "move overhead")
+    {
+        newint = stoi(sValue);
+        if (newint < 0 || newint > 5000)
+            return;
+        moveOverhead = newint;
+    }
 }
 
 void engine::communicate(string inputstring)
@@ -2711,6 +2719,7 @@ void engine::communicate(string inputstring)
             myUci->send("id author %s\n", author);
             myUci->send("option name Clear Hash type button\n");
             myUci->send("option name Hash type spin default 150 min 1 max 1048576\n");
+            myUci->send("option name Move Overhead type spin default 50 min 0 max 5000\n");
             myUci->send("uciok\n", author);
             break;
 		case SETOPTION:

@@ -525,6 +525,7 @@ public:
     bool infinite;
     bool debug = false;
     int sizeOfTp = 0;
+    int moveOverhead;
     int stopLevel;
     void communicate(string inputstring);
     int getScoreFromEnginePoV();

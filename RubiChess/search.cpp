@@ -217,12 +217,6 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
 #endif
             pos->unplayMove(&(newmoves->move[i]));
 
-            if (en->stopLevel == ENGINESTOPIMMEDIATELY)
-            {
-                free(newmoves);
-                return alpha;
-            }
-
             if (score > bestscore)
             {
                 bestscore = score;
@@ -252,7 +246,7 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
                     return beta;   // fail hard beta-cutoff
                 }
 
-                if (score > alpha && en->stopLevel != ENGINESTOPIMMEDIATELY)
+                if (score > alpha)
                 {
                     pos->debug(depth, "(alphabeta) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, newmoves->move[i].toString().c_str(), pos->actualpath.toString().c_str());
                     alpha = score;
@@ -262,6 +256,11 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
                         pos->history[pos->Piece(GETFROM(newmoves->move[i].code))][GETTO(newmoves->move[i].code)] += depth * depth;
                     }
                 }
+            }
+            if (en->stopLevel == ENGINESTOPIMMEDIATELY)
+            {
+                free(newmoves);
+                return alpha;
             }
         }
     }
@@ -420,14 +419,14 @@ void searchguide(engine *en)
     if (timeinc)
     {
         difftime1 = en->starttime + timeinc * en->frequency / 1000 ;
-        difftime2 = en->starttime + (timetouse - 50) * en->frequency / 1000;
+        difftime2 = en->starttime + (timetouse - en->moveOverhead) * en->frequency / 1000;
     }
     else if (movestogo)
     {
         if (movestogo == 1)
         {
             // we exactly know how much time we can consume; stop 50ms before timeout 
-            difftime1 = difftime2 = en->starttime + (timetouse - 50) * en->frequency / 1000;
+            difftime1 = difftime2 = en->starttime + (timetouse - en->moveOverhead) * en->frequency / 1000;
 
         }
         else {
