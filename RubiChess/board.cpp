@@ -899,8 +899,8 @@ int chessposition::getFromFen(const char* sFen)
     actualpath.length = 0;
     countMaterial();
     hash = zb.getHash(this);
-    rp->clean();
-    rp->addPosition(hash);
+    rp.clean();
+    rp.addPosition(hash);
     for (int i = 0; i < 14; i++)
     {
         for (int j = 0; j < 128; j++)
@@ -968,7 +968,7 @@ void chessposition::print()
     printf("info string Fullmoves: %d\n", fullmovescounter);
     printf("info string Hash: %llu\n", hash);
     printf("info string Value: %d\n", getValue());
-    printf("info string Repetitions: %d\n", rp->getPositionCount(hash));
+    printf("info string Repetitions: %d\n", rp.getPositionCount(hash));
     //printf("info string Possible Moves: %s\n", getMoves().toStringWithValue().c_str());
     if (tp->size > 0 && tp->testHash())
         printf("info string Hash-Info: depth=%d Val=%d (%d) Move:%s\n", tp->getDepth(), tp->getValue(), tp->getValtype(), tp->getMove().toString().c_str());
@@ -1179,7 +1179,7 @@ bool chessposition::playMove(chessmove *cm)
 	hash ^= zb.cstl[oldcastle];
 
     ply++;
-    rp->addPosition(hash);
+    rp.addPosition(hash);
     actualpath.move[actualpath.length++] = *cm;
     mstop++;
     if (!isLegal)
@@ -1201,7 +1201,7 @@ void chessposition::unplayMove(chessmove *cm)
     int s2m;
 
     actualpath.length--;
-    rp->removePosition(hash);
+    rp.removePosition(hash);
     ply--;
 
     mstop--;
@@ -1803,8 +1803,8 @@ int chessposition::getFromFen(const char* sFen)
     actualpath.length = 0;
     countMaterial();
     hash = zb.getHash(this);
-    rp->clean();
-    rp->addPosition(hash);
+    rp.clean();
+    rp.addPosition(hash);
     for (int i = 0; i < 14; i++)
     {
         for (int j = 0; j < 128; j++)
@@ -1868,7 +1868,7 @@ void chessposition::print()
     printf("info string Fullmoves: %d\n", fullmovescounter);
     printf("info string Hash: %llu\n", hash);
     printf("info string Value: %d\n", getValue());
-    printf("info string Repetitions: %d\n", rp->getPositionCount(hash));
+    printf("info string Repetitions: %d\n", rp.getPositionCount(hash));
     //printf("info string Possible Moves: %s\n", getMoves().toStringWithValue().c_str());
     if (tp->size > 0 && tp->testHash())
         printf("info string Hash-Info: depth=%d Val=%d (%d) Move:%s\n", tp->getDepth(), tp->getValue(), tp->getValtype(), tp->getMove().toString().c_str());
@@ -2277,7 +2277,7 @@ bool chessposition::playMove(chessmove *cm)
     }
 
     ply++;
-    rp->addPosition(hash);
+    rp.addPosition(hash);
     actualpath.move[actualpath.length++] = *cm;
     mstop++;
     if (!isLegal)
@@ -2289,7 +2289,7 @@ bool chessposition::playMove(chessmove *cm)
 void chessposition::unplayMove(chessmove *cm)
 {
     actualpath.length--;
-    rp->removePosition(hash);
+    rp.removePosition(hash);
     ply--;
 
     mstop--;
@@ -2646,8 +2646,8 @@ engine::engine()
 {
     // Allocate all needed objects and connect them
     pos = new chessposition();
-    rp = new repetition();
-    pos->rp = rp;
+    //rp = new repetition();
+    //pos->rp = rp;
     tp = new transposition();
     pos->tp = tp;
     tp->pos = pos;
@@ -2670,7 +2670,7 @@ engine::engine()
 engine::~engine()
 {
     delete pos;
-    delete rp;
+//    delete rp;
     delete tp;
 #ifdef BITBOARD
 #endif

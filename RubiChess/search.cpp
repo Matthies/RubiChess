@@ -11,7 +11,7 @@ int getQuiescence(engine *en, int alpha, int beta, int depth, bool force)
     chessposition *pos = en->pos;
 
     // test for remis via repetition
-    if (pos->rp->getPositionCount(pos->hash) >= 3 && pos->testRepetiton())
+    if (rp.getPositionCount(pos->hash) >= 3 && pos->testRepetiton())
         return SCOREDRAW;
 
     // test for remis via 50 moves rule
@@ -106,7 +106,7 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
     if (pos->tp->probeHash(&score, &hashmovecode, depth, alpha, beta))
     {
         pos->debug(depth, "(alphabeta) got value %d from TP\n", score);
-        if (pos->rp->getPositionCount(pos->hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
+        if (rp.getPositionCount(pos->hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
             return score;
     }
 
@@ -116,7 +116,7 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
     }
 
     // test for remis via repetition
-    if (pos->rp->getPositionCount(pos->hash) >= 3 && pos->testRepetiton())
+    if (rp.getPositionCount(pos->hash) >= 3 && pos->testRepetiton())
         return SCOREDRAW;
 
     // test for remis via 50 moves rule
