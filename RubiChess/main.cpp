@@ -968,7 +968,6 @@ void testengine(engine *en, string epdfilename, int startnum, string engineprg, 
     struct enginestate es;
     string line;
     thread *readThread;
-    //chessposition *p = en->pos;
     ifstream comparefile;
     bool compare = false;
     char buf[1024];

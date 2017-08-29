@@ -158,7 +158,6 @@ const int QCMASK[2] = { WQCMASK, BQCMASK };
 const int KCMASK[2] = { WKCMASK, BKCMASK };
 const int castlerookfrom[] = {0, 0, 7, 56, 63 };
 const int castlerookto[] = {0, 3, 5, 59, 61 };
-//#define MOVEISCAPTURE 0x01
 #define ISEPCAPTURE 0x40
 
 const int EPTSIDEMASK[2] = { 0x8, 0x10 };
@@ -238,7 +237,6 @@ struct chessmovestack
 class chessmove
 {
 public:
-    // kqKQepepepepccccppppfffffftttttt
     // pcpcepepepepccccppppfffffftttttt
     unsigned long code;
     unsigned int value;
@@ -379,21 +377,18 @@ public:
     int ept;
     int kingpos[2];
     unsigned long long hash;
-    //short value;
     int ply;
     int halfmovescounter = 0;
     int fullmovescounter = 0;
     int maxdebugdepth = -1;
     int mindebugdepth = -1;
-    //transposition *tp;
     chessmovelist pvline;
     chessmovelist actualpath;
     chessmove bestmove;
     unsigned long killer[3][MAXDEPTH];
     unsigned int history[14][128];
     unsigned long long debughash = 0;
-    // value tables for both sides, 7 PieceTypes and 256 phase variations 
-    int *positionvaluetable;
+    int *positionvaluetable; // value tables for both sides, 7 PieceTypes and 256 phase variations 
 
     chessposition();
     ~chessposition();
@@ -419,7 +414,6 @@ public:
     void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
     void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
     chessmovelist* getMoves();
-    chessmovelist* getMovesTo(int to);
     bool playMove(chessmove *cm);
     void playMoveFast(chessmove *cm);
     void unplayMove(chessmove *cm);
@@ -455,15 +449,13 @@ public:
     int fullmovescounter = 0;
     int maxdebugdepth = -1;
     int mindebugdepth = -1;
-    //class transposition *tp;
     chessmovelist pvline;
     chessmovelist actualpath;
     chessmove bestmove;
     unsigned long killer[3][MAXDEPTH];
     unsigned int history[14][128];
     unsigned long long debughash = 0;
-    // value tables for both sides, 7 PieceTypes and 256 phase variations 
-    int *positionvaluetable;
+    int *positionvaluetable;     // value tables for both sides, 7 PieceTypes and 256 phase variations 
 
     chessposition();
     ~chessposition();
@@ -514,12 +506,9 @@ class engine
 {
 public:
     engine();
-    ~engine();
     uci *myUci;
 	const char* name = ENGINEVER
     const char* author = "Andreas Matthies";
-    //chessposition *pos;
-    //transposition *tp;
     bool isWhite;
     unsigned long nodes;
 #ifdef DEBUG

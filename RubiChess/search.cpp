@@ -8,7 +8,6 @@ int getQuiescence(engine *en, int alpha, int beta, int depth, bool force)
     bool isLegal;
     bool isCheck;
     bool LegalMovesPossible = false;
-    //chessposition *pos = en->pos;
 
     // test for remis via repetition
     if (rp.getPositionCount(pos.hash) >= 3 && pos.testRepetiton())
@@ -92,7 +91,6 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
     int bestscore = SHRT_MIN + 1;
     chessmove best;
     int eval_type = HASHALPHA;
-    //chessposition *pos = en->pos;
     chessmovelist* newmoves;
     unsigned long hashmovecode;
     int  LegalMoves = 0;
@@ -303,7 +301,6 @@ static void search_gen1(engine *en)
     int deltaalpha = 25;
     int deltabeta = 25;
     int depth, maxdepth, depthincrement;
-    //chessposition *pos = en->pos;
     string pvstring;
 
     sprintf_s(s, "info string Phase is %d\n", pos.phase());
@@ -416,7 +413,6 @@ void searchguide(engine *en)
     int timeinc = (en->isWhite ? en->winc : en->binc);
     int movestogo = 0;
     thread enginethread;
-    //chessposition *pos = en->pos;
 
     if (en->movestogo)
         movestogo = en->movestogo;

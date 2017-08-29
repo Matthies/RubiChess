@@ -69,7 +69,6 @@ int mstop;
 #ifdef BITBOARD
 chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece)
 {
-    //code = (castle << 28) | (ept << 20) | (capture << 16) | (promote << 12) | (from << 6) | to;
     code = (piece << 28) | (ept << 20) | (capture << 16) | (promote << 12) | (from << 6) | to;
 }
 #else
@@ -513,8 +512,6 @@ void initBitmaphelper()
 
     for (int from = 0; from < 64; from++)
     {
-        //rot90[from] = (((from & 0x38) >> 3) | ((from & 0x07) << 3));
-
         king_attacks[from] = knight_attacks[from] = 0ULL;
         pawn_attacks_free[from][0] = pawn_attacks_occupied[from][0] = pawn_attacks_free_double[from][0] = 0ULL;
         pawn_attacks_free[from][1] = pawn_attacks_occupied[from][1] = pawn_attacks_free_double[from][1] = 0ULL;
@@ -1070,10 +1067,7 @@ bool chessposition::playMove(chessmove *cm)
     bool isLegal;
     int from = GETFROM(cm->code);
     int to = GETTO(cm->code);
-    //PieceCode pfrom = mailbox[from];
     PieceCode pfrom = GETPIECE(cm->code);
-    //PieceCode pto = mailbox[to];
-    //PieceType ptype = Piece(from);
     PieceType ptype = (pfrom >> 1);
     int eptnew = GETEPT(cm->code);
 
@@ -1091,7 +1085,6 @@ bool chessposition::playMove(chessmove *cm)
     halfmovescounter++;
 
     // Fix hash regarding capture
-    //if (pto != BLANK) // use pto instead of capture here because ep capture has capture set but hits empty field here
     if (capture != BLANK && !(eptnew & ISEPCAPTURE))
     {
         hash ^= zb.boardtable[(to << 4) | capture];
@@ -1122,7 +1115,6 @@ bool chessposition::playMove(chessmove *cm)
 
         if (ept && to == ept)
         {
-            // FIXME: to many mailbox[epfield], this is a pawn we just need to add the color
             int epfield = (from & 0x38) | (to & 0x07);
             hash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
 
@@ -1195,7 +1187,6 @@ void chessposition::unplayMove(chessmove *cm)
     int from = GETFROM(cm->code);
     int to = GETTO(cm->code);
     PieceCode pto = mailbox[to];
-    //int castle = GETCASTLE(cm->code);
     PieceCode promote = GETPROMOTION(cm->code);
     PieceCode capture = GETCAPTURE(cm->code);
     int s2m;
@@ -2194,7 +2185,6 @@ bool chessposition::playMove(chessmove *cm)
         {
             int epfield = (from & 0x70) | (to & 0x07);
             value += (state & S2MMASK ? -materialvalue[PAWN] : materialvalue[PAWN]);
-            //piecenum[PAWN]--;
             piecenum[board[epfield]]--;
             // Fix hash regarding ep capture
             hash ^= zb.boardtable[(epfield << 4) | board[epfield]];
@@ -2369,7 +2359,6 @@ void chessposition::getpvline(int depth)
 void chessposition::countMaterial()
 {
     value = 0;
-    //totalmaterial[0] = totalmaterial[1] = 0;
     for (int i = 0; i < 14; i++)
         piecenum[i] = 0;
     for (int r = 0; r < 8; r++)
@@ -2390,7 +2379,6 @@ void chessposition::countMaterial()
 
 int chessposition::phase()
 {
-    //return ((24 - piecenum[2] - piecenum[3] - (piecenum[4] << 1) - (piecenum[5] << 2)) * 255 + 12) / 24;
     return (max(0, (24 - piecenum[4] - piecenum[5] - piecenum[6] - piecenum[7] - (piecenum[8] << 1) - (piecenum[9] << 1) - (piecenum[10] << 2) - (piecenum[11] << 2))) * 255 + 12) / 24;
 }
 
@@ -2502,7 +2490,6 @@ int chessposition::getPositionValue()
     int firstpawn[2][10] = { 0 };
     int lastpawn[2][10] = { 0 };
     int i;
-    //printf("Phase=%d\n", ph);
 
     for (int f = 0; f < 8; f++)
     {
@@ -2530,8 +2517,6 @@ int chessposition::getPositionValue()
                 PieceType pt = Piece(i);
                 int col = board[i] & S2MMASK;
                 int index = i | (ph << 7) | (pt << 15) | (col << 18);
-
-                //printf("Phase=%d; Value for %c on field %c%c: %d\n", ph, PieceChar(board[i]), 'a'+(i & 0x7), '1'+(i >> 4), *(positionvaluetable + index));
                 result += *(positionvaluetable + index);
                 if (pt == ROOK && (firstpawn[col][f + 1] == 0 || ((col && (firstpawn[col][f + 1] > r)) || (!col && (firstpawn[col][f + 1] < r)))))
                     // ROOK on free file
@@ -2593,7 +2578,6 @@ int chessposition::getValue()
 
     int materialVal = value;
     int positionVal = getPositionValue();
-    //printf("(getValue) Materialwert: %d   Positionswert: %d\n", materialVal, positionVal);
     return materialVal + positionVal;
 }
 
@@ -2601,7 +2585,6 @@ int chessposition::getValue()
 /* test the actualmove for three-fold-repetition as the repetition table may give false positive due to table collisions */
 bool chessposition::testRepetiton()
 {
-    //chessposition oldp = *this;
     unsigned long long h = hash;
     chessmovelist ml = actualpath;
     int hit = 0;
@@ -2632,11 +2615,9 @@ bool chessposition::testRepetiton()
     if (h != hash)
     {
         printf("Alarm! testRepetitin landet bei falschem Hash-Wert.\n");
-        //oldp.print();
         print();
     }
 
-    //print();
     return (hit >= 2);
 }
 #endif
@@ -2644,12 +2625,6 @@ bool chessposition::testRepetiton()
 
 engine::engine()
 {
-    // Allocate all needed objects and connect them
-    //pos = new chessposition();
-    //rp = new repetition();
-    //pos->rp = rp;
-    //tp = new transposition();
-    //pos->tp = tp;
     tp.pos = &pos;
 #ifdef BITBOARD
 	initBitmaphelper();
@@ -2666,16 +2641,6 @@ engine::engine()
 #endif
 
 }
-
-engine::~engine()
-{
-    //delete pos;
-    //delete rp;
-    //delete tp;
-#ifdef BITBOARD
-#endif
-}
-
 
 int engine::getScoreFromEnginePoV()
 {
