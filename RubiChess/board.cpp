@@ -892,7 +892,7 @@ int chessposition::getFromFen(const char* sFen)
     rp->addPosition(hash);
     for (int i = 0; i < 14; i++)
     {
-        for (int j = 0; j < 128; j++)
+        for (int j = 0; j < 64; j++)
         {
             history[i][j] = 0;
         }
