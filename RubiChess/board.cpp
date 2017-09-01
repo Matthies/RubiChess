@@ -1540,7 +1540,7 @@ void chessposition::getpvline(int depth)
     int dummyval;
     chessmove cm;
     pvline.length = 0;
-    while (depth >= 0)
+    while (depth > 0)
     {
         if (pvline.length == 0 && bestmove.code > 0)
         {
@@ -1553,7 +1553,7 @@ void chessposition::getpvline(int depth)
 
         if (!playMove(&cm))
         {
-            printf("Alarm. Ungültiger Zug %s in pvline\n", cm.toString().c_str());
+            printf("info string Alarm - Illegaler Zug %s in pvline\n", cm.toString().c_str());
             print();
         }
         pvline.move[pvline.length++] = cm;

@@ -140,7 +140,7 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
         }
     }
 
-     newmoves = pos.getMoves();
+    newmoves = pos.getMoves();
     if (isCheck)
         depth++;
 
@@ -301,10 +301,6 @@ static void search_gen1(engine *en)
     int deltabeta = 25;
     int depth, maxdepth, depthincrement;
     string pvstring;
-
-    sprintf_s(s, "info string Phase is %d\n", pos.phase());
-    cout << s;
-
 
     depthincrement = 1;
     if (en->mate > 0)
