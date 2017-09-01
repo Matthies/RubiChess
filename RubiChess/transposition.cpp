@@ -51,7 +51,7 @@ zobrist::zobrist()
 		cstl[i] = 0ULL;
 		for (j = 0; j < 4; j++)
 		{
-			if (i & (1 << j))
+			if (i & (1 << (j+1)))
 				cstl[i] ^= castle[j];
 		}
 	}
