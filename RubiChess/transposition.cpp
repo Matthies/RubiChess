@@ -51,7 +51,7 @@ zobrist::zobrist()
 		cstl[i] = 0ULL;
 		for (j = 0; j < 4; j++)
 		{
-			if (i & (1 << j))
+			if (i & (1 << (j+1)))
 				cstl[i] ^= castle[j];
 		}
 	}
@@ -84,14 +84,14 @@ u8 zobrist::modHash(int i)
 
 #ifdef BITBOARD
 
-u8 zobrist::getHash(chessposition *p)
+u8 zobrist::getHash()
 {
     u8 hash = 0;
     int i;
-    int state = p->state;
+    int state = pos.state;
     for (i = WPAWN; i <= BKING; i++)
     {
-        U64 pmask = p->piece00[i];
+        U64 pmask = pos.piece00[i];
         unsigned int index;
         while (LSB(index, pmask))
         {
@@ -104,22 +104,22 @@ u8 zobrist::getHash(chessposition *p)
         hash ^= s2m;
 
 	hash ^= cstl[state & CASTLEMASK];
-	hash ^= ept[p->ept];
+	hash ^= ept[pos.ept];
 
     return hash;
 }
 
 #else
-u8 zobrist::getHash(chessposition *p)
+u8 zobrist::getHash()
 {
     u8 hash = 0;
     int i;
-    int state = p->state;
+    int state = pos.state;
     for (i = 0; i < 120; i++)
     {
-        if (!(i & 0x88) && p->board[i] != BLANK)
+        if (!(i & 0x88) && pos.board[i] != BLANK)
         {
-            hash ^= boardtable[(i << 4)  | p->board[i]];
+            hash ^= boardtable[(i << 4)  | pos.board[i]];
         }
     }
     if (state & S2MMASK)
@@ -133,8 +133,8 @@ u8 zobrist::getHash(chessposition *p)
         state >>= 1;
     }
 
-    if (p->ept)
-        hash ^= ep[p->ept & 0x7];
+    if (pos.ept)
+        hash ^= ep[pos.ept & 0x7];
 
     return hash;
 }
@@ -299,3 +299,7 @@ int repetition::getPositionCount(unsigned long long hash)
 {
 	return table[hash & 0xffff];
 }
+
+zobrist zb;
+repetition rp;
+transposition tp;

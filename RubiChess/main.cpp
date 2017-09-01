@@ -160,6 +160,10 @@ s = "8/2p5/4K3/2P4p/6kP/7N/5BB1/8 w - - 0 1"
 /* Matt in 8 KN Problem 4409 */
 s = "k1K5/p5p1/P7/8/8/8/6P1/4B3 w - - 0 1"
 
+/* Matt in 3 KN Problem 4410a+b */
+s = "8/8/3n4/3k4/1K1Nn3/5N2/8/3Q4 w - - 0 1"
+s = "8/8/3n4/3k4/1K1Nn3/4QN2/8/8 w - - 0 1"
+
 // ToDo:
 TP / Sortierungsproblem:
 position startpos moves d2d4 d7d5 c1f4 g8f6 d1d3 e7e6 b1c3 f8e7 e2e4 d5e4 c3e4 f6d5 g1h3 e8g8 f1e2 f7f5 e4c3 e7b4 e1c1 b4c3 b2c3 d8e7 c1d2 d5f4 h3f4 f8d8 h2h4 e7d6 d2e3 b8c6 e2f3 c6e5 d3b5 e5f3 g2f3 d6a3 b5c4 c7c6 d1g1 a3d6 f4h5 g7g6 c4b4 d6c7 h5f6 g8h8 b4c5 c7g7 f6h5 g7c7 h5f4 a7a5 h4h5 b7b6 c5c4 c6c5 f4g6 h7g6 h5g6 h8g8 h1h4 c5d4 h4d4 c7e5 e3d3 c8a6 c4a6 a5a4 a6b6 d8b8 b6c6 a4a3 c6d7 e5b5 d7b5 b8b5 g1e1 a8a6 c3c4 b5b2 e1g1 b2a2 d4d8 g8g7 d8d7 g7f6 g6g7 a6a8 g7g8q a8g8 g1g8 a2a1 d7a7 f6e5 d3e3 a1e1 e3d2 e1f1 d2e3 f1e1 e3d2
@@ -406,6 +410,17 @@ Analyse: Da steht ein weißer Bauer auf b7. Wie kommt der da hin? Vermutlich noch
 
     -> gelöst am 15.7. war ein "Bauer schlägt eigenes EP nach Nullmove"-Problem
 
+01.09.17: Falsche Züge in PV-Line, z.B.
+info depth 8 time 3415 score cp 4 pv d4b2 d8b6 f2f4 g4f3 b2c3 c3e5 ... ergibt
+position fen rnbqkbnr / ppp1pp1p / 3p4 / 6p1 / 8 / BP6 / P1PPPPPP / RN1QKBNR w KQkq - 0 1 moves b1c3 b8c6 e2e3 g8f6 d2d4 g5g4 f1b5 c8d7 g1e2 e7e6 e1g1 h8g8 e2f4 f8e7 d4d5 e6d5 f4d5 c6e5 b5d3 g8g5 d3e4 f6e4 c3e4 g5f5 e4g3 f5g5 g3e4 g5f5 e4g3 f5g5 c2c4 d7e6 g3e4 g5f5 e4g3 f5g5 g3e4 g5f5 a3b2 a8b8 b2d4 c7c5 d5e7 e8e7 d4b2 d8b6 f2f4 g4f3 b2c3 c3e5
+
+info depth 5 time 61 score cp 15 pv f7f6 e5f6 a7a6 g7f6 ergibt... ergibt
+position fen r1bqkbnr / 1ppppppp / 2n5 / p7 / 8 / 5N1P / PPPPPPP1 / RNBQKB1R w KQkq - 0 1 moves e2e4 d7d5 e4e5 e7e6 d2d4 c8d7 f1d3 c6b4 c1f4 c7c5 b1c3 b4d3 d1d3 d8b6 e1c1 c5c4 d3e2 f8b4 e2d2 g8e7 a2a3 b4c3 d2c3 e8g8 h3h4 e7f5 g2g4 f5e7 g4g5 a8a7 h4h5 f7f6 e5f6 a7a6 g7f6
+Vermutung: s2m ist nicht korrekt im Hash kodiert, da der falsche Zug immer von der falschen Seite gemacht wird. Oder Nullmove.
+Im move steckt keine Info, welche Seite zieht und in playMove wird ebenfalls nicht geprüft, ob die ziehende Seite zur Steinfarbe passt
+Deswegen wird der Zug in getpvline nicht als illegal erkannt. Aber wie kommt er da hin? Hash-Kollision??
+Wohl kaum, dann könnte dort ja jeder beliebige Zug stehen und nicht immer ein passender der falschen Farbe.
+
 http://pwnedthegameofchess.com/engine/
 http://www.herderschach.de/index.html
 
@@ -641,33 +656,33 @@ string GetSystemInfo()
 #endif
 
 
-long long perft(chessposition *p, int depth, bool dotests)
+long long perft(int depth, bool dotests)
 {
     long long retval = 0;
 
     if (dotests)
     {
-        if (p->hash != p->tp->zb.getHash(p))
+        if (pos.hash != zb.getHash())
         {
-            printf("Alarm! Wrong Hash! %llu\n", p->tp->zb.getHash(p));
-            p->print();
+            printf("Alarm! Wrong Hash! %llu\n", zb.getHash());
+            pos.print();
         }
-        int val1 = p->getValue();
-        p->mirror();
-        int val2 = p->getValue();
-        p->mirror();
-        int val3 = p->getValue();
+        int val1 = pos.getValue();
+        pos.mirror();
+        int val2 = pos.getValue();
+        pos.mirror();
+        int val3 = pos.getValue();
         if (!(val1 == val3 && val1 == -val2))
         {
             printf("Mirrortest  :error  (%d / %d / %d)\n", val1, val2, val3);
-            p->print();
-			p->mirror();
-			p->print();
-			p->mirror();
-			p->print();
+            pos.print();
+            pos.mirror();
+            pos.print();
+            pos.mirror();
+            pos.print();
 		}
     }
-    chessmovelist* movelist = p->getMoves();
+    chessmovelist* movelist = pos.getMoves();
     //movelist->sort();
     //printf("Path: %s \nMovelist : %s\n", p->actualpath.toString().c_str(), movelist->toString().c_str());
 
@@ -677,11 +692,11 @@ long long perft(chessposition *p, int depth, bool dotests)
     {
         for (int i = 0; i < movelist->length; i++)
         {
-            if (p->playMove(&movelist->move[i]))
+            if (pos.playMove(&movelist->move[i]))
             {
                 //printf("%s ok ", movelist->move[i].toString().c_str());
                 retval++;
-                p->unplayMove(&movelist->move[i]);
+                pos.unplayMove(&movelist->move[i]);
             }
         }
     }
@@ -690,11 +705,11 @@ long long perft(chessposition *p, int depth, bool dotests)
     {
         for (int i = 0; i < movelist->length; i++)
         {
-            if (p->playMove(&movelist->move[i]))
+            if (pos.playMove(&movelist->move[i]))
             {
                 //printf("\nMove: %s  ", movelist->move[i].toString().c_str());
-                retval += perft(p, depth - 1, dotests);
-                p->unplayMove(&movelist->move[i]);
+                retval += perft(depth - 1, dotests);
+                pos.unplayMove(&movelist->move[i]);
             }
         }
     }
@@ -755,13 +770,13 @@ void perftest(engine *en, bool dotests, int maxdepth)
 
     while (perftestresults[i].fen != "")
     {
-        en->pos->getFromFen(perftestresults[i].fen.c_str());
+        pos.getFromFen(perftestresults[i].fen.c_str());
         int j = 0;
         while (perftestresults[i].nodes[j] > 0 && j <= maxdepth)
         {
             long long starttime = getTime();
 
-            U64 result = perft(en->pos, j, dotests);
+            U64 result = perft(j, dotests);
             totalresult += result;
 
             perftlasttime = getTime();
@@ -968,7 +983,6 @@ void testengine(engine *en, string epdfilename, int startnum, string engineprg, 
     struct enginestate es;
     string line;
     thread *readThread;
-    chessposition *p = en->pos;
     ifstream comparefile;
     bool compare = false;
     char buf[1024];
@@ -1058,7 +1072,7 @@ void testengine(engine *en, string epdfilename, int startnum, string engineprg, 
             // split fen from operation part
             for (int i = 0; i < 4; i++)
                 fenstr = fenstr + fv[i] + " ";
-            if (p->getFromFen(fenstr.c_str()) == 0 && ++linenum >= startnum)
+            if (pos.getFromFen(fenstr.c_str()) == 0 && ++linenum >= startnum)
             {
                 // Get data from compare file
                 es.doCompare = false;
@@ -1118,7 +1132,7 @@ void testengine(engine *en, string epdfilename, int startnum, string engineprg, 
                             fv[i] = fv[i].substr(0, smk);
                         if (moveliststr != "")
                             moveliststr += " ";
-                        moveliststr += AlgebraicFromShort(fv[i], p);
+                        moveliststr += AlgebraicFromShort(fv[i]);
                         if (smk != string::npos)
                         {
                             if (searchbestmove)
