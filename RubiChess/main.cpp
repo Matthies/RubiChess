@@ -410,6 +410,17 @@ Analyse: Da steht ein weißer Bauer auf b7. Wie kommt der da hin? Vermutlich noch
 
     -> gelöst am 15.7. war ein "Bauer schlägt eigenes EP nach Nullmove"-Problem
 
+01.09.17: Falsche Züge in PV-Line, z.B.
+info depth 8 time 3415 score cp 4 pv d4b2 d8b6 f2f4 g4f3 b2c3 c3e5 ... ergibt
+position fen rnbqkbnr / ppp1pp1p / 3p4 / 6p1 / 8 / BP6 / P1PPPPPP / RN1QKBNR w KQkq - 0 1 moves b1c3 b8c6 e2e3 g8f6 d2d4 g5g4 f1b5 c8d7 g1e2 e7e6 e1g1 h8g8 e2f4 f8e7 d4d5 e6d5 f4d5 c6e5 b5d3 g8g5 d3e4 f6e4 c3e4 g5f5 e4g3 f5g5 g3e4 g5f5 e4g3 f5g5 c2c4 d7e6 g3e4 g5f5 e4g3 f5g5 g3e4 g5f5 a3b2 a8b8 b2d4 c7c5 d5e7 e8e7 d4b2 d8b6 f2f4 g4f3 b2c3 c3e5
+
+info depth 5 time 61 score cp 15 pv f7f6 e5f6 a7a6 g7f6 ergibt... ergibt
+position fen r1bqkbnr / 1ppppppp / 2n5 / p7 / 8 / 5N1P / PPPPPPP1 / RNBQKB1R w KQkq - 0 1 moves e2e4 d7d5 e4e5 e7e6 d2d4 c8d7 f1d3 c6b4 c1f4 c7c5 b1c3 b4d3 d1d3 d8b6 e1c1 c5c4 d3e2 f8b4 e2d2 g8e7 a2a3 b4c3 d2c3 e8g8 h3h4 e7f5 g2g4 f5e7 g4g5 a8a7 h4h5 f7f6 e5f6 a7a6 g7f6
+Vermutung: s2m ist nicht korrekt im Hash kodiert, da der falsche Zug immer von der falschen Seite gemacht wird. Oder Nullmove.
+Im move steckt keine Info, welche Seite zieht und in playMove wird ebenfalls nicht geprüft, ob die ziehende Seite zur Steinfarbe passt
+Deswegen wird der Zug in getpvline nicht als illegal erkannt. Aber wie kommt er da hin? Hash-Kollision??
+Wohl kaum, dann könnte dort ja jeder beliebige Zug stehen und nicht immer ein passender der falschen Farbe.
+
 http://pwnedthegameofchess.com/engine/
 http://www.herderschach.de/index.html
 
