@@ -1077,7 +1077,7 @@ bool chessposition::playMove(chessmove *cm)
     /*
         this test should not be necessary but maybe it help to find the pvline bug
     */
-    if (s2m ^ (from & S2MMASK))
+    if (s2m ^ (pfrom & S2MMASK))
         return false;
 
     movestack[mstop].ept = ept;
