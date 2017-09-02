@@ -92,7 +92,7 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
     chessmove best;
     int eval_type = HASHALPHA;
     chessmovelist* newmoves;
-    unsigned long hashmovecode;
+    unsigned long hashmovecode = 0;
     int  LegalMoves = 0;
     bool isLegal;
     bool isCheck;
@@ -333,7 +333,7 @@ static void search_gen1(engine *en)
             printf("\n\nNext depth: %d\n\n", depth);
         }
 
-        // Reset bestmove to detect alpha raise in interrupted serach
+        // Reset bestmove to detect alpha raise in interrupted search
         pos.bestmove.code = 0;
         score = alphabeta(en, alpha, beta, depth, true);
 
