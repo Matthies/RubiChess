@@ -379,47 +379,57 @@ position startpos moves b1c3 c7c5 g1f3 g8f6 e2e4 b8c6 f1c4 e7e6 d1e2 c6b4 d2d4 c
 -> hoffentlich gelöst durch if (isCheck) depth++; sowie verbesserte getQuiescence, die auch bei vorangegangenem Schach weiterspielt
 
 Ein weiterer Kanididat:
-position fen r1bq1rk1/pp2bpp1/2np1n2/2p1p3/2P1P1Pp/2NPB2P/PP3PB1/R2QK1NR w KQ - 0 1 moves g1f3 c8e6 f3h4 f6g4 h3g4 e7h4 g2f3 c6d4 c3d5 h4e7 e1f1 f7f6 f1g1 d8d7 h1h4 f6f5 g4g5 f5f4 e3d4 c5d4 h4h5 e6f7 h5h1 e7g5 f3g4 d7c6 d1f1 f8e8 f1h3 f7d5 c4d5
+position fen r1bq1rk1 / pp2bpp1 / 2np1n2 / 2p1p3 / 2P1P1Pp / 2NPB2P / PP3PB1 / R2QK1NR w KQ - 0 1 moves g1f3 c8e6 f3h4 f6g4 h3g4 e7h4 g2f3 c6d4 c3d5 h4e7 e1f1 f7f6 f1g1 d8d7 h1h4 f6f5 g4g5 f5f4 e3d4 c5d4 h4h5 e6f7 h5h1 e7g5 f3g4 d7c6 d1f1 f8e8 f1h3 f7d5 c4d5
 c6c5 darf nicht gespielt werden; die frühe 0.3 erkennt das sehr spät
 
 
 27.05.17: In Spiel 54 von Current vs a wurde Zugwiederholung nicht erkannt und dadurch bessere Position verspielt
 
-15.06.17: In 2n5/2K4b/2N1p3/2pkr2r/n6p/1P3P2/N2P3Q/8 w - - 0 1 (KN 8.6.17) wurde das Matt in 4 wegen schlechtem Null Move Pruning erst in Tiefe 10 nach über 6 Minuten erkannt
+15.06.17 : In 2n5 / 2K4b / 2N1p3 / 2pkr2r / n6p / 1P3P2 / N2P3Q / 8 w - -0 1 (KN 8.6.17) wurde das Matt in 4 wegen schlechtem Null Move Pruning erst in Tiefe 10 nach über 6 Minuten erkannt
 
 
-14.07.17 (erste Bitboard Version): Probleme mit falschem Eintrag in pvline
-2017-07-14 13:25:46,803-->2:position fen rn1qkb1r/pp3ppp/2p1pn2/3p4/4P3/2N2B1P/PPPP1PP1/R1BQK2R w KQkq - 0 1 moves d2d4 d5e4 f3e4 f8b4 c1g5
-2017-07-14 13:25:46,803-->2:go wtime 3981 btime 3971 winc 3000 binc 3000
-2017-07-14 13:25:46,813<--2:info string Phase is 21
-2017-07-14 13:25:46,823<--2:info depth 1 time 0 score cp 33 pv b8d7 d1e2 
-2017 - 07 - 14 13 : 25 : 46, 833<--2 : info depth 2 time 0 score cp 33 pv b8d7 d1e2 b4c3
-2017 - 07 - 14 13 : 25 : 46, 843<--2 : info depth 3 time 0 score cp 33 pv b8d7 d1e2 b4c3 b2c3
-2017 - 07 - 14 13 : 25 : 46, 853<--2 : info depth 4 time 0 score cp 33 pv b8d7 d1e2 b4c3 b2c3 d8b6
-2017 - 07 - 14 13 : 25 : 46, 863<--2 : info depth 5 time 0 score cp 33 pv b8d7 d1e2 b4c3 b2c3 d8b6 g5f6
-2017 - 07 - 14 13 : 25 : 46, 873<--2 : info depth 6 time 0 score cp 33 pv b8d7 d1e2 b4c3 b2c3 d8b6 g5f6 d7f6
-2017 - 07 - 14 13 : 25 : 47, 253<--2 : info depth 7 time 437 score cp 33 pv b8d7 d1f3 b4c3 b2c3 d8a5 g5f6 d7f6 e4d3
-2017 - 07 - 14 13 : 25 : 47, 823<--2 : info nodes 707058 nps 706652 hashfull 535
-2017 - 07 - 14 13 : 25 : 48, 623<--2 : Alarm.Ungültiger Zug e8c8 in pvline
-2017 - 07 - 14 13 : 25 : 48, 633<--2 : info depth 8 time 1804 score cp 55 pv b4c3 b2c3 b8d7 d1f3 d8a5 g5f6 d7f6 e1g1 e8c8
-2017 - 07 - 14 13 : 26 : 30, 794 * ***Tour**LOOPWATCH - MOVE - ABORTED - after very long movetime
+14.07.17 (erste Bitboard Version) : Probleme mit falschem Eintrag in pvline
+2017 - 07 - 14 13 : 25 : 46, 803-- > 2:position fen rn1qkb1r / pp3ppp / 2p1pn2 / 3p4 / 4P3 / 2N2B1P / PPPP1PP1 / R1BQK2R w KQkq - 0 1 moves d2d4 d5e4 f3e4 f8b4 c1g5
+2017 - 07 - 14 13 : 25 : 46, 803-- > 2:go wtime 3981 btime 3971 winc 3000 binc 3000
+2017 - 07 - 14 13 : 25 : 46, 813 < --2 : info string Phase is 21
+    2017 - 07 - 14 13 : 25 : 46, 823 < --2 : info depth 1 time 0 score cp 33 pv b8d7 d1e2
+    2017 - 07 - 14 13 : 25 : 46, 833 < --2 : info depth 2 time 0 score cp 33 pv b8d7 d1e2 b4c3
+    2017 - 07 - 14 13 : 25 : 46, 843 < --2 : info depth 3 time 0 score cp 33 pv b8d7 d1e2 b4c3 b2c3
+    2017 - 07 - 14 13 : 25 : 46, 853 < --2 : info depth 4 time 0 score cp 33 pv b8d7 d1e2 b4c3 b2c3 d8b6
+    2017 - 07 - 14 13 : 25 : 46, 863 < --2 : info depth 5 time 0 score cp 33 pv b8d7 d1e2 b4c3 b2c3 d8b6 g5f6
+    2017 - 07 - 14 13 : 25 : 46, 873 < --2 : info depth 6 time 0 score cp 33 pv b8d7 d1e2 b4c3 b2c3 d8b6 g5f6 d7f6
+    2017 - 07 - 14 13 : 25 : 47, 253 < --2 : info depth 7 time 437 score cp 33 pv b8d7 d1f3 b4c3 b2c3 d8a5 g5f6 d7f6 e4d3
+    2017 - 07 - 14 13 : 25 : 47, 823 < --2 : info nodes 707058 nps 706652 hashfull 535
+    2017 - 07 - 14 13 : 25 : 48, 623 < --2 : Alarm.Ungültiger Zug e8c8 in pvline
+    2017 - 07 - 14 13 : 25 : 48, 633 < --2 : info depth 8 time 1804 score cp 55 pv b4c3 b2c3 b8d7 d1f3 d8a5 g5f6 d7f6 e1g1 e8c8
+    2017 - 07 - 14 13 : 26 : 30, 794 * ***Tour**LOOPWATCH - MOVE - ABORTED - after very long movetime
 
-position fen rn1qkb1r/pp3ppp/2p1pn2/3p4/4P3/2N2B1P/PPPP1PP1/R1BQK2R w KQkq - 0 1 moves d2d4 d5e4 f3e4 f8b4 c1g5   b4c3 b2c3 b8d7 d1f3 d8a5 g5f6 d7f6 e1g1 e8c8
+    position fen rn1qkb1r / pp3ppp / 2p1pn2 / 3p4 / 4P3 / 2N2B1P / PPPP1PP1 / R1BQK2R w KQkq - 0 1 moves d2d4 d5e4 f3e4 f8b4 c1g5   b4c3 b2c3 b8d7 d1f3 d8a5 g5f6 d7f6 e1g1 e8c8
 
-Analyse: Da steht ein weißer Bauer auf b7. Wie kommt der da hin? Vermutlich noch ein Play/Unplay-Fehler.
+    Analyse : Da steht ein weißer Bauer auf b7.Wie kommt der da hin ? Vermutlich noch ein Play / Unplay - Fehler.
 
-    -> gelöst am 15.7. war ein "Bauer schlägt eigenes EP nach Nullmove"-Problem
+    ->gelöst am 15.7.war ein "Bauer schlägt eigenes EP nach Nullmove" - Problem
 
-01.09.17: Falsche Züge in PV-Line, z.B.
-info depth 8 time 3415 score cp 4 pv d4b2 d8b6 f2f4 g4f3 b2c3 c3e5 ... ergibt
-position fen rnbqkbnr / ppp1pp1p / 3p4 / 6p1 / 8 / BP6 / P1PPPPPP / RN1QKBNR w KQkq - 0 1 moves b1c3 b8c6 e2e3 g8f6 d2d4 g5g4 f1b5 c8d7 g1e2 e7e6 e1g1 h8g8 e2f4 f8e7 d4d5 e6d5 f4d5 c6e5 b5d3 g8g5 d3e4 f6e4 c3e4 g5f5 e4g3 f5g5 g3e4 g5f5 e4g3 f5g5 c2c4 d7e6 g3e4 g5f5 e4g3 f5g5 g3e4 g5f5 a3b2 a8b8 b2d4 c7c5 d5e7 e8e7 d4b2 d8b6 f2f4 g4f3 b2c3 c3e5
+    01.09.17 : Falsche Züge in PV - Line, z.B.
+    info depth 8 time 3415 score cp 4 pv d4b2 d8b6 f2f4 g4f3 b2c3 c3e5 ... ergibt
+    position fen rnbqkbnr / ppp1pp1p / 3p4 / 6p1 / 8 / BP6 / P1PPPPPP / RN1QKBNR w KQkq - 0 1 moves b1c3 b8c6 e2e3 g8f6 d2d4 g5g4 f1b5 c8d7 g1e2 e7e6 e1g1 h8g8 e2f4 f8e7 d4d5 e6d5 f4d5 c6e5 b5d3 g8g5 d3e4 f6e4 c3e4 g5f5 e4g3 f5g5 g3e4 g5f5 e4g3 f5g5 c2c4 d7e6 g3e4 g5f5 e4g3 f5g5 g3e4 g5f5 a3b2 a8b8 b2d4 c7c5 d5e7 e8e7 d4b2 d8b6 f2f4 g4f3 b2c3 c3e5
 
-info depth 5 time 61 score cp 15 pv f7f6 e5f6 a7a6 g7f6 ergibt... ergibt
-position fen r1bqkbnr / 1ppppppp / 2n5 / p7 / 8 / 5N1P / PPPPPPP1 / RNBQKB1R w KQkq - 0 1 moves e2e4 d7d5 e4e5 e7e6 d2d4 c8d7 f1d3 c6b4 c1f4 c7c5 b1c3 b4d3 d1d3 d8b6 e1c1 c5c4 d3e2 f8b4 e2d2 g8e7 a2a3 b4c3 d2c3 e8g8 h3h4 e7f5 g2g4 f5e7 g4g5 a8a7 h4h5 f7f6 e5f6 a7a6 g7f6
-Vermutung: s2m ist nicht korrekt im Hash kodiert, da der falsche Zug immer von der falschen Seite gemacht wird. Oder Nullmove.
-Im move steckt keine Info, welche Seite zieht und in playMove wird ebenfalls nicht geprüft, ob die ziehende Seite zur Steinfarbe passt
-Deswegen wird der Zug in getpvline nicht als illegal erkannt. Aber wie kommt er da hin? Hash-Kollision??
-Wohl kaum, dann könnte dort ja jeder beliebige Zug stehen und nicht immer ein passender der falschen Farbe.
+    info depth 5 time 61 score cp 15 pv f7f6 e5f6 a7a6 g7f6 ... ergibt
+    position fen r1bqkbnr / 1ppppppp / 2n5 / p7 / 8 / 5N1P / PPPPPPP1 / RNBQKB1R w KQkq - 0 1 moves e2e4 d7d5 e4e5 e7e6 d2d4 c8d7 f1d3 c6b4 c1f4 c7c5 b1c3 b4d3 d1d3 d8b6 e1c1 c5c4 d3e2 f8b4 e2d2 g8e7 a2a3 b4c3 d2c3 e8g8 h3h4 e7f5 g2g4 f5e7 g4g5 a8a7 h4h5 f7f6 e5f6 a7a6 g7f6
+    Vermutung : s2m ist nicht korrekt im Hash kodiert, da der falsche Zug immer von der falschen Seite gemacht wird.Oder Nullmove.
+    Im move steckt keine Info, welche Seite zieht und in playMove wird ebenfalls nicht geprüft, ob die ziehende Seite zur Steinfarbe passt
+    Deswegen wird der Zug in getpvline nicht als illegal erkannt.Aber wie kommt er da hin ? Hash - Kollision ? ?
+    Wohl kaum, dann könnte dort ja jeder beliebige Zug stehen und nicht immer ein passender der falschen Farbe.
+    weiteres Beispiel(b1b7 in depth 10; Turm zieht vorher auf b1 und dann direkt weiter) :
+position fen rnbqkbnr/pppp1pp1/4p2p/8/8/3P4/PPPNPPPP/R1BQKBNR w KQkq - 0 1 moves g1f3 b8c6 e2e4 d7d5 e4d5 e6d5 d1e2 d8e7 d2b3 c8g4 e2e7 g8e7 f1e2 e7f5 h2h3 g4f3 e2f3 c6d4 b3d4 f5d4 f3d1 d4e6 c1e3 d5d4 e3d2 f8d6 d1g4 e8g8 e1c1 a8e8 d1e1 e8e7 e1e2 f7f5 g4f3 c7c6 h1e1 f8f6 h3h4 d6c5 h4h5 a7a6 d2f4 c5b4 f4d2 b4d2 c1d2 g8f8 d2d1 f8e8 d1c1 e8d7 e2e5 f6f7 e5a5 e6g5 e1e7 d7e7 f3e2 e7d6 f2f4 g5e6 g2g3 c6c5 e2f3 f7c7 b2b4 c7e7 a2a4 e7d7 b4b5 a6b5 a5b5 e6d8 b5b6 d6c7 b6g6 d7e7 f3d5 e7d7 d5f3 d7e7 a4a5 c7b8 f3d5 b8c7 c1d2 e7d7 d5f3 d7e7 c2c3 c7c8 f3d5 c8d7 c3d4 c5d4 d2c2 d7c8 c2b3 e7c7 b3b4 c8b8 d5c4 b8c8 g6d6 c7e7 b4c5 e7c7 c5b5 c7e7 b5b6 e7e2 d6d4 d8c6 d4d5 c6e7 d5e5 e2b2 c4b5 e7c6 e5f5 c6d8 f5e5 d8c6 a5a6 c6e5 a6b7 c8b8 f4e5 b2e2 d3d4 e2e3 g3g4 e3e4 b5c6 e4d4 e5e6 d4b4 b6c5 b4b1
+...
+info depth 9 time 162 score cp 415 pv e6e7 b1e1 e7e8Q e1e8 c6e8 b8b7 e8c6 b7c7 c6d5
+info depth 10 time 537 score cp 438 pv e6e7 b1e1 c5d6 g7g6 h5g6 e1d1 d6c5 d1b1 b1b7
+
+02.09.17: Hier findet er gar keinen Zug (zählt bis Tiefe 256 und dann bestmove (none)):
+position fen rnb1kbnr/pp1pppp/1q6/1Bp5/8/4P3/PPPP1PPP/RNBQK1NR w KQkq - 0 1 moves b1c3 g8f6 g1f3 b8c6 d2d4 c5d4 e3d4 a7a6 d4d5 a6b5 d5c6 b6c6 e1g1 b5b4 c3e2 d7d6 e2d4 c6d5 d1e2 c8g4 f1d1 e7e5 c1g5 f6e4 d4b5 d5c6 b5c7 c6c7 e2e4 g4f3 g2f3 c7c6 e4b4 f7f6 g5e3 c6c2 b4b7 a8a2 b7b5 e8e7 b5b7 e7e8 b7b5 e8e7 b5b7 e7e8 b7b5
+... nicht reproduzierbar
+
 
 http://pwnedthegameofchess.com/engine/
 http://www.herderschach.de/index.html
