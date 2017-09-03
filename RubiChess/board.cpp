@@ -963,7 +963,7 @@ void chessposition::print()
     printf("info string EPT: %0x\n", ept);
     printf("info string Halfmoves: %d\n", halfmovescounter);
     printf("info string Fullmoves: %d\n", fullmovescounter);
-    printf("info string Hash: %llu\n", hash);
+    printf("info string Hash: %llu (%llx)  (getHash(): %llu)\n", hash, hash, zb.getHash());
     printf("info string Value: %d\n", getValue());
     printf("info string Repetitions: %d\n", rp.getPositionCount(hash));
     //printf("info string Possible Moves: %s\n", getMoves().toStringWithValue().c_str());
@@ -1091,7 +1091,7 @@ bool chessposition::playMove(chessmove *cm)
     halfmovescounter++;
 
     // Fix hash regarding capture
-    if (capture != BLANK && !(eptnew & ISEPCAPTURE))
+    if (capture != BLANK && !GETEPCAPTURE(cm->code))
     {
         hash ^= zb.boardtable[(to << 4) | capture];
         BitboardClear(to, capture);
@@ -1170,7 +1170,7 @@ bool chessposition::playMove(chessmove *cm)
 	// Fix hash regarding ept
 	hash ^= zb.ept[ept];
     ept = eptnew;
-	hash ^= zb.ept[ept];
+    hash ^= zb.ept[ept];
 
     // Fix hash regarding castle rights
     oldcastle ^= (state & CASTLEMASK);
@@ -1505,8 +1505,6 @@ void chessposition::playNullMove()
 {
     state ^= S2MMASK;
     hash ^= zb.s2m;
-    chessmove cm;
-
     actualpath.move[actualpath.length++].code = 0;
 }
 
@@ -1561,6 +1559,7 @@ void chessposition::getpvline(int depth)
         {
             printf("info string Alarm - Illegaler Zug %s in pvline\n", cm.toString().c_str());
             print();
+            tp.printHashentry();
         }
         pvline.move[pvline.length++] = cm;
         if (pvline.length == MAXMOVELISTLENGTH)
@@ -1608,11 +1607,6 @@ bool chessposition::testRepetiton()
             }
         }
         i++;
-    }
-    if (h != hash)
-    {
-        printf("Alarm! testRepetitin landet bei falschem Hash-Wert.\n");
-        print();
     }
 
     return (hit >= 2);

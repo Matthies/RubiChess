@@ -208,6 +208,26 @@ void transposition::addHash(int val, int valtype, int depth, unsigned long move)
 }
 
 
+void transposition::printHashentry()
+{
+    unsigned long long hash = pos->hash;
+    unsigned long long index = hash & sizemask;
+    S_TRANSPOSITIONENTRY data = table[index];
+    printf("Hashentry for %llx\n", hash);
+    if ((data.hashupper) == (hash >> 32))
+    {
+        printf("Match in upper part: %x / %x\n", data.hashupper, (int)(hash >> 32));
+        printf("Move code: %x\n", data.movecode);
+        printf("Depth:     %d\n", data.depth);
+        printf("Value:     %d\n", data.value);
+        printf("Valuetype: %d\n", data.flag);
+    }
+    else {
+        printf("No match in upper part: %x / %x", data.hashupper, (int)(hash >> 32));
+    }
+}
+
+
 bool transposition::probeHash(int *val, unsigned long *movecode, int depth, int alpha, int beta)
 {
     unsigned long long hash = pos->hash;

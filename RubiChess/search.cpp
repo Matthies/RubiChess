@@ -88,8 +88,8 @@ int getQuiescence(engine *en, int alpha, int beta, int depth, bool force)
 int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
 {
     int score;
-    int bestscore = SHRT_MIN + 1;
-    chessmove best;
+    int bestscore = SHRT_MIN + 1;  // FIXME: Why not SHRT_MIN?
+    chessmove best(0);
     int eval_type = HASHALPHA;
     chessmovelist* newmoves;
     unsigned long hashmovecode = 0;

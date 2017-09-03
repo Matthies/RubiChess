@@ -158,7 +158,6 @@ const int QCMASK[2] = { WQCMASK, BQCMASK };
 const int KCMASK[2] = { WKCMASK, BKCMASK };
 const int castlerookfrom[] = {0, 0, 7, 56, 63 };
 const int castlerookto[] = {0, 3, 5, 59, 61 };
-#define ISEPCAPTURE 0x40
 
 const int EPTSIDEMASK[2] = { 0x8, 0x10 };
 
@@ -202,15 +201,18 @@ const unsigned int lva[] = { 5 << 26, 4 << 26, 3 << 26, 3 << 26, 2 << 26, 1 << 2
 #define KILLERVAL2 (KILLERVAL1 - 1)
 
 #ifdef BITBOARD
+#define ISEPCAPTURE 0x40
 #define GETFROM(x) (((x) & 0x0fc0) >> 6)
 #define GETTO(x) ((x) & 0x003f)
+#define GETEPT(x) (((x) & 0x03f00000) >> 20)
+#define GETEPCAPTURE(x) (((x) >> 20) & ISEPCAPTURE)
 #else
 #define GETFROM(x) ((((x) & 0x0e00) >> 5) | (((x) & 0x01c0) >> 6))
 #define GETTO(x) ((((x) & 0x0038) << 1) | ((x) & 0x0007))
+#define GETEPT(x) (((x) & 0x0ff00000) >> 20)
 #endif
 #define GETPROMOTION(x) (((x) & 0xf000) >> 12)
 #define GETCAPTURE(x) (((x) & 0xf0000) >> 16)
-#define GETEPT(x) (((x) & 0x0ff00000) >> 20)
 #ifdef BITBOARD
 #define GETPIECE(x) (((x) & 0xf0000000) >> 28)
 #else
@@ -601,6 +603,7 @@ public:
     void clean();
     bool testHash();
     void addHash(int val, int valtype, int depth, unsigned long move);
+    void printHashentry();
     bool probeHash(int *val, unsigned long *movecode, int depth, int alpha, int beta);
     short getValue();
     int getValtype();
