@@ -6,7 +6,7 @@ using namespace std;
 #define DEBUG
 #endif
 
-#if 1
+#if 0
 #define DEBUGEVAL
 #endif
 
