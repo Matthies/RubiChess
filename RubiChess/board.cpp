@@ -474,6 +474,19 @@ void chessposition::debug(int depth, const char* format, ...)
 }
 #endif
 
+#ifdef DEBUGEVAL
+void chessposition::debugeval(const char* format, ...)
+{
+    va_list argptr;
+    va_start(argptr, format);
+    vfprintf(stdout, format, argptr);
+    va_end(argptr);
+}
+#else
+void chessposition::debugeval(const char* format, ...)
+{
+}
+#endif
 
 
 #ifdef BITBOARD
@@ -998,6 +1011,8 @@ int chessposition::getValue()
             }
         }
     }
+    
+    debugeval("Material value: %d\n", countMaterial());
     return countMaterial() + getPositionValue();
 }
 
@@ -1007,6 +1022,9 @@ int chessposition::getPositionValue()
     int index;
     int ph = phase();
     int result = 0;
+#ifdef DEBUGEVAL
+    int positionvalue = 0;
+#endif
     for (int s = 0; s < 2; s++)
     {
         for (int p = PAWN; p <= KING; p++)
@@ -1018,25 +1036,40 @@ int chessposition::getPositionValue()
             {
                 int pvtindex = index | (ph << 6) | (p << 14) | (s << 17);
                 result += *(positionvaluetable + pvtindex);
+#ifdef DEBUGEVAL
+                positionvalue += *(positionvaluetable + pvtindex);
+#endif
                 pb ^= BITSET(index);
                 if (p == PAWN)
                 {
                     if (!(passedPawn[index][s] & piece00[pc ^ S2MMASK]))
+                    {
                         // passed pawn
                         result += (S2MSIGN(s) * 40);
+                        debugeval("Passed Pawn Bonus: %d\n", (S2MSIGN(s) * 40));
+                    }
                     if (!(piece00[pc] & neighbourfiles[index]))
+                    {
                         // isolated pawn
                         result -= S2MSIGN(s) * 20;
+                        debugeval("Isolated Pawn Penalty: %d\n", -(S2MSIGN(s) * 20));
+                    }
                     else if (POPCOUNT((piece90[pc] >> rot90shift[index]) & 0x3f) > 1)
+                    {
                         // double pawn
                         result -= S2MSIGN(s) * 15;
+                        debugeval("Double Pawn Penalty: %d\n", -(S2MSIGN(s) * 15));
+                    }
 
                 }
                 if (shifting[p] & 0x2) // rook and queen
                 {
                     if (!(filebarrier[index][s] & piece00[WPAWN | s]))
+                    {
                         // free file
                         result += S2MSIGN(s) * 30;
+                        debugeval("Slider on free file Bonus: %d\n", (S2MSIGN(s) * 30));
+                    }
                 }
 
             }
@@ -1044,7 +1077,10 @@ int chessposition::getPositionValue()
     }
 	// some kind of king safety
 	result += (255 - ph) * (POPCOUNT(piece00[WPAWN] & kingshield[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshield[kingpos[1]][1])) * 15 / 255;
-
+#ifdef DEBUGEVAL
+    debugeval("King safety: %d\n", (255 - ph) * (POPCOUNT(piece00[WPAWN] & kingshield[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshield[kingpos[1]][1])) * 15 / 255);
+    debugeval("Positional value: %d\n", positionvalue);
+#endif
     return result;
 }
 

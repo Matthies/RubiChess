@@ -7,6 +7,10 @@ using namespace std;
 #endif
 
 #if 0
+#define DEBUGEVAL
+#endif
+
+#if 0
 #define FINDMEMORYLEAKS
 #endif
 
@@ -430,6 +434,7 @@ public:
     int getValue();
     int* GetPositionvalueTable();
     void debug(int depth, const char* format, ...);
+    void debugeval(const char* format, ...);
     bool testRepetiton();
     void mirror();
 };
@@ -492,6 +497,7 @@ public:
     int getValue();
     int* GetPositionvalueTable();
     void debug(int depth, const char* format, ...);
+    void debugeval(const char* format, ...);
     bool testRepetiton();
     void mirror();
 };
