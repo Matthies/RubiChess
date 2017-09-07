@@ -152,7 +152,7 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
             newmoves->move[i].value = PVVAL;
         }
 
-        // killermoves gets score better than non-capture (which have negative value)
+        // killermoves gets score better than non-capture
         if (pos.killer[0][pos.ply] == newmoves->move[i].code)
             newmoves->move[i].value = KILLERVAL1;
         if (pos.killer[1][pos.ply] == newmoves->move[i].code)
