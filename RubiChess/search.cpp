@@ -402,7 +402,8 @@ void searchguide(engine *en)
     char s[100];
     unsigned long nodes, lastnodes = 0;
     en->starttime = getTime();
-    long long difftime1, difftime2;
+    long long difftime1 = 0;    // time to send STOPSOON signal
+    long long difftime2 = 0;    // time to send STOPPIMMEDIATELY signal
     en->stopLevel = ENGINERUN;
     int timetouse = (en->isWhite ? en->wtime : en->btime);
     int timeinc = (en->isWhite ? en->winc : en->binc);
@@ -411,24 +412,19 @@ void searchguide(engine *en)
 
     if (en->movestogo)
         movestogo = en->movestogo;
-    if (timeinc)
-    {
-        difftime1 = en->starttime + timeinc * en->frequency / 1000 ;
-        difftime2 = en->starttime + (timetouse - en->moveOverhead) * en->frequency / 1000;
-    }
-    else if (movestogo)
-    {
-        if (movestogo == 1)
-        {
-            // we exactly know how much time we can consume; stop 50ms before timeout 
-            difftime1 = difftime2 = en->starttime + (timetouse - en->moveOverhead) * en->frequency / 1000;
 
-        }
-        else {
-            // consume about 0.6 .. 1.6 x average move time
-            difftime1 = en->starttime + timetouse * en->frequency * 6 / movestogo / 10000;
-            difftime2 = en->starttime + max(en->frequency, (timetouse * en->frequency * 16 / movestogo / 10000) - en->frequency);
-        }
+    if (movestogo)
+    {
+        // should garantee timetouse > 0
+            // stop soon at 0.6 x average movetime
+            difftime1 = en->starttime + timetouse * en->frequency * 6 / movestogo / 10000; 
+            // stop immediately at 1.6 x average movetime
+            difftime2 = en->starttime + max(timetouse - en->moveOverhead,  16 * timetouse / movestogo / 10) * en->frequency / 1000;
+    }
+    else if (timetouse) {
+        // sudden death; lets try not to run out of time for TIMETOUSESLOTS moves
+        difftime1 = en->starttime + (timetouse + timeinc) * en->frequency * 6 / TIMETOUSESLOTS / 10000;
+        difftime2 = en->starttime + max(timetouse - en->moveOverhead, 16 * (timetouse + timeinc) / TIMETOUSESLOTS / 10) * en->frequency / 1000;
     }
     else {
         difftime1 = difftime2 = 0;
