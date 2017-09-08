@@ -356,25 +356,26 @@ static void search_gen1(engine *en)
             if (en->fh > 0)
                 pos.debug(depth, "Searchorder-Success: %f\n", en->fhf / en->fh);
 
-            if (en->stopLevel == ENGINERUN || en->stopLevel == ENGINEWANTSTOP || en->stopLevel == ENGINESTOPSOON
-                || (en->stopLevel == ENGINESTOPIMMEDIATELY && pos.bestmove.code > 0))
+            // The only case that bestmove is not set can happen if alphabeta hit the TP table
+            // so get bestmovecode from there
+            if (!pos.bestmove.code)
+                tp.probeHash(&score, &pos.bestmove.code, MAXDEPTH, alpha, beta);
+
+            int secondsrun = (int)((getTime() - en->starttime) * 1000 / en->frequency);
+
+            pos.getpvline(depth);
+            pvstring = pos.pvline.toString();
+
+            if (!MATEDETECTED(score))
             {
-                int secondsrun = (int)((getTime() - en->starttime) * 1000 / en->frequency);
-
-                pos.getpvline(depth);
-                pvstring = pos.pvline.toString();
-
-                if (!MATEDETECTED(score))
-                {
-                    sprintf_s(s, "info depth %d time %d score cp %d pv %s\n", depth, secondsrun, score, pvstring.c_str());
-                }
-                else
-                {
-                    matein = (score > 0 ? (SCOREWHITEWINS - score + 1) / 2 : (SCOREBLACKWINS - score) / 2);
-                    sprintf_s(s, "info depth %d time %d score mate %d pv %s\n", depth, secondsrun, matein, pvstring.c_str());
-                }
-                cout << s;
+                sprintf_s(s, "info depth %d time %d score cp %d pv %s\n", depth, secondsrun, score, pvstring.c_str());
             }
+            else
+            {
+                matein = (score > 0 ? (SCOREWHITEWINS - score + 1) / 2 : (SCOREBLACKWINS - score) / 2);
+                sprintf_s(s, "info depth %d time %d score mate %d pv %s\n", depth, secondsrun, matein, pvstring.c_str());
+            }
+            cout << s;
 
             // next depth with new aspiration window
             deltaalpha = 25;
