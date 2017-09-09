@@ -1110,12 +1110,6 @@ bool chessposition::playMove(chessmove *cm)
     PieceCode promote = GETPROMOTION(cm->code);
     PieceCode capture = GETCAPTURE(cm->code);
 
-    /*
-        this test should not be necessary but maybe it help to find the pvline bug
-    */
-    if (s2m ^ (pfrom & S2MMASK))
-        return false;
-
     movestack[mstop].ept = ept;
     movestack[mstop].hash = hash;
     movestack[mstop].state = state;
