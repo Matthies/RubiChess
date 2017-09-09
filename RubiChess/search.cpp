@@ -417,15 +417,15 @@ void searchguide(engine *en)
     if (movestogo)
     {
         // should garantee timetouse > 0
-            // stop soon at 0.8 x average movetime
-            difftime1 = en->starttime + timetouse * en->frequency * 8 / movestogo / 10000; 
-            // stop immediately at 1.6 x average movetime
-            difftime2 = en->starttime + min(timetouse - en->moveOverhead,  16 * timetouse / movestogo / 10) * en->frequency / 1000;
+            // stop soon at 1.0 x average movetime
+            difftime1 = en->starttime + timetouse * en->frequency * 10 / movestogo / 10000; 
+            // stop immediately at 8 x average movetime
+            difftime2 = en->starttime + min(timetouse - en->moveOverhead,  8 * timetouse / movestogo) * en->frequency / 1000;
     }
     else if (timetouse) {
-        // sudden death; lets try not to run out of time for TIMETOUSESLOTS moves
-        difftime1 = en->starttime + (timetouse + timeinc * TIMETOUSESLOTS) * en->frequency * 8 / TIMETOUSESLOTS / 10000;
-        difftime2 = en->starttime + min(timetouse - en->moveOverhead, 16 * (timetouse + timeinc * TIMETOUSESLOTS) / TIMETOUSESLOTS / 10) * en->frequency / 1000;
+        // sudden death; split the remaining time for TIMETOUSESLOTS moves
+        difftime1 = en->starttime + (timetouse + timeinc) * en->frequency * 10 / TIMETOUSESLOTS / 10000;
+        difftime2 = en->starttime + min(timetouse - en->moveOverhead, 8 * (timetouse + timeinc) / TIMETOUSESLOTS) * en->frequency / 1000;
     }
     else {
         difftime1 = difftime2 = 0;
