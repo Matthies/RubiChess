@@ -193,6 +193,7 @@ void chessmovelist::sort()
 }
 
 
+const int passedpawnbonus[2][8] = { { 0, 10, 20, 30, 40, 60, 80, 0 }, { 0, -80, -60, -40, -30, -20, -10, 0 } };
 int* chessposition::GetPositionvalueTable()
 {
 #ifdef BITBOARD
@@ -214,11 +215,11 @@ int* chessposition::GetPositionvalueTable()
 		},
 		{
 			0,   0,   0,   0,   0,   0,   0,   0,
-			100, 100, 100, 100, 100, 100, 100, 100,
-			60,  60,  60,  60,  60,  60,  60,  60,
-			30,  30,  30,  30,  30,  30,  30,  30,
-			15,  15,  15,  15,  15,  15,  15,  15,
-			5,   5,   5,   5,   5,   5,   5,   5,
+			35,  35,  35,  35,  35,  35,  35,  35,
+			15,  25,  25,  25,  25,  25,  25,  15,
+			10,  15,  15,  15,  15,  15,  15,  10,
+			5,   10,  10,  10,  10,  10,  10,  5,
+			2,   5,   5,   5,   5,   5,   5,   2,
 			0,   0,   0,   0,   0,   0,   0,   0,
 			0,   0,   0,   0,   0,   0,   0,   0
 		},
@@ -1046,7 +1047,7 @@ int chessposition::getPositionValue()
                     if (!(passedPawn[index][s] & piece00[pc ^ S2MMASK]))
                     {
                         // passed pawn
-                        result += (S2MSIGN(s) * 40);
+                        result += passedpawnbonus[s][RANK(index)];
                         debugeval("Passed Pawn Bonus: %d\n", (S2MSIGN(s) * 40));
                     }
                     if (!(piece00[pc] & neighbourfiles[index]))
