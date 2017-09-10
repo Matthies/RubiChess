@@ -1073,6 +1073,13 @@ int chessposition::getPositionValue()
                     }
                 }
 
+                if (shifting[p] & 0x1) // bishop and queen)
+                {
+                    U64 diagmobility = ~occupied00[s]
+                        & ((diaga1h8_attacks[index][((occupieda1h8[0] | occupieda1h8[1]) >> rota1h8shift[index]) & 0x3f])
+                            | (diagh1a8_attacks[index][((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[index]) & 0x3f]));
+                    result += (S2MSIGN(s) * POPCOUNT(diagmobility) * 4);
+                }
             }
         }
     }
