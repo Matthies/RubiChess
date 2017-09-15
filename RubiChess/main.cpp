@@ -728,7 +728,7 @@ long long perft(int depth, bool dotests)
     return retval;
 }
 
-void perftest(engine *en, bool dotests, int maxdepth)
+void perftest(bool dotests, int maxdepth)
 {
     struct perftestresultstruct
     {
@@ -767,7 +767,7 @@ void perftest(engine *en, bool dotests, int maxdepth)
     };
 
     int i = 0;
-    printf("\n\nPerft results for %s (Build %s %s)\n", en->name, __DATE__, __TIME__);
+    printf("\n\nPerft results for %s (Build %s %s)\n", en.name, __DATE__, __TIME__);
     printf("System: %s\n", GetSystemInfo().c_str());
     printf("Depth = %d      Hash-/Mirror-Tests %s\n", maxdepth, (dotests ? "enabled" : "disabled"));
     printf("========================================================================\n");
@@ -790,7 +790,7 @@ void perftest(engine *en, bool dotests, int maxdepth)
             totalresult += result;
 
             perftlasttime = getTime();
-            df = float(perftlasttime - starttime) / (float) en->frequency;
+            df = float(perftlasttime - starttime) / (float) en.frequency;
             printf("Perft %d depth %d  : %*llu  %*f sec.  %*d nps ", i + 1, j, 10, result, 10, df, 8, (int)(df > 0.0 ? (double)result / df : 0));
             if (result == perftestresults[i].nodes[j])
                 printf("  OK\n");
@@ -801,13 +801,13 @@ void perftest(engine *en, bool dotests, int maxdepth)
         if (perftestresults[++i].fen != "")
             printf("\n");
     }
-    df = float(perftlasttime - perftstarttime) / (float)en->frequency;
+    df = float(perftlasttime - perftstarttime) / (float)en.frequency;
     printf("========================================================================\n");
     printf("Total:             %*llu  %*f sec.  %*d nps \n", 10, totalresult, 10, df, 8, (int)(df > 0.0 ? (double)totalresult / df : 0));
 }
 
 
-void doBenchmark(engine *en)
+void doBenchmark()
 {
     struct benchmarkstruct
     {
@@ -861,21 +861,21 @@ void doBenchmark(engine *en)
     {
         struct benchmarkstruct *bm = &benchmark[i];
         if (bm->resethash)
-            en->setOption("clearhash", "true");
+            en.setOption("clearhash", "true");
 
-        en->communicate("position fen " + bm->fen);
+        en.communicate("position fen " + bm->fen);
         starttime = getTime();
-        en->communicate("go depth " + to_string(bm->depth));
+        en.communicate("go depth " + to_string(bm->depth));
         endtime = getTime();
         bm->time = endtime - starttime;
-        bm->nodes = en->nodes;
+        bm->nodes = en.nodes;
         i++;
     }
 
     i = 0;
     long long totaltime = 0;
     long long totalnodes = 0;
-    printf("\n\nBenchmark results for %s (Build %s %s):\n", en->name, __DATE__, __TIME__);
+    printf("\n\nBenchmark results for %s (Build %s %s):\n", en.name, __DATE__, __TIME__);
     printf("System: %s\n", GetSystemInfo().c_str());
     printf("========================================================================\n");
     while (benchmark[i].fen != "")
@@ -883,11 +883,11 @@ void doBenchmark(engine *en)
         struct benchmarkstruct *bm = &benchmark[i];
         totaltime += bm->time;
         totalnodes += bm->nodes;
-        printf("Bench # %2d (%20s / %2d):  %10f sec.  %10lld nps\n", i + 1, bm->name.c_str(), bm->depth, (float)bm->time / (float)en->frequency, bm->nodes * en->frequency / bm->time);
+        printf("Bench # %2d (%20s / %2d):  %10f sec.  %10lld nps\n", i + 1, bm->name.c_str(), bm->depth, (float)bm->time / (float)en.frequency, bm->nodes * en.frequency / bm->time);
         i++;
     }
     printf("========================================================================\n");
-    printf("Overall:                                 %10f sec.  %*lld nps\n", ((float)totaltime / (float)en->frequency), 10, totalnodes * en->frequency / totaltime);
+    printf("Overall:                                 %10f sec.  %*lld nps\n", ((float)totaltime / (float)en.frequency), 10, totalnodes * en.frequency / totaltime);
 }
 
 
@@ -988,7 +988,7 @@ BOOL writetoengine(HANDLE pipe, char *s)
     return WriteFile(pipe, s, (DWORD)strlen(s), &written, NULL);
 }
 
-void testengine(engine *en, string epdfilename, int startnum, string engineprg, string logfilename, string comparefilename, int maxtime, int flags)
+void testengine(string epdfilename, int startnum, string engineprg, string logfilename, string comparefilename, int maxtime, int flags)
 {
     struct enginestate es;
     string line;
@@ -1275,9 +1275,9 @@ int main(int argc, char* argv[])
 
     cout.setf(ios_base::unitbuf);
 
-    engine *myEngine = new engine();
+    //engine *myEngine = new engine();
 
-    printf("%s (Build %s %s)\n UCI compatible chess engine by %s\nParameterlist:\n", myEngine->name, __DATE__, __TIME__, myEngine->author);
+    printf("%s (Build %s %s)\n UCI compatible chess engine by %s\nParameterlist:\n", en.name, __DATE__, __TIME__, en.author);
 
     for (int j = 0; allowedargs[j].cmd; j++)
     {
@@ -1312,21 +1312,20 @@ int main(int argc, char* argv[])
     if (perfmaxdepth)
     {
         // do a perft test
-        perftest(myEngine, dotests, perfmaxdepth);
+        perftest(dotests, perfmaxdepth);
     } else if (benchmark)
     {
         // benchmark mode
-        doBenchmark(myEngine);
+        doBenchmark();
     } else if (enginetest)
     {
         //engine test mode
-        testengine(myEngine, epdfile, startnum, engineprg, logfile, comparefile, maxtime, flags);
+        testengine(epdfile, startnum, engineprg, logfile, comparefile, maxtime, flags);
     }
     else {
         // usual uci mode
-        myEngine->communicate("");
+        en.communicate("");
     }
 
-    delete myEngine;
     return 0;
 }

@@ -557,6 +557,7 @@ public:
 };
 
 extern chessposition pos;
+extern engine en;
 
 
 //
@@ -642,9 +643,10 @@ https://www.gamedev.net/topic/503234-transposition-table-question/
 // search stuff
 //
 #define TIMETOUSESLOTS 32
-int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed);
-int getQuiescence(engine *en, int alpha, int beta, int depth, bool force);
-void searchguide(engine *en);
+int rootsearch(int alpha, int beta, int depth);
+int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed);
+int getQuiescence(int alpha, int beta, int depth, bool force);
+void searchguide();
 
 
 //

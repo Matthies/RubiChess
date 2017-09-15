@@ -2679,8 +2679,8 @@ engine::engine()
 #else
     frequency = 1000000000LL;
 #endif
-
 }
+
 
 int engine::getScoreFromEnginePoV()
 {
@@ -2905,7 +2905,7 @@ void engine::communicate(string inputstring)
                     ci++;
             }
             isWhite = (pos.w2m());
-            searchthread = new thread(&searchguide, this);
+            searchthread = new thread(&searchguide);
             if (inputstring != "")
             {
                 // bench mode; wait for end of search
@@ -2932,3 +2932,4 @@ void engine::communicate(string inputstring)
 
 
 chessposition pos;
+engine en;
