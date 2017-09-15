@@ -218,6 +218,14 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
 #endif
             pos.unplayMove(&(newmoves->move[i]));
 
+            if (en->stopLevel == ENGINESTOPIMMEDIATELY && LegalMoves > 1)
+            {
+                // At least one move is found and we can safely exit here
+                // Lets hope this doesn't take too much time...
+                free(newmoves);
+                return alpha;
+            }
+
             if (score > bestscore)
             {
                 bestscore = score;
@@ -247,7 +255,7 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
                     return beta;   // fail hard beta-cutoff
                 }
 
-                if (score > alpha)
+                if (score > alpha && en->stopLevel != ENGINESTOPIMMEDIATELY)
                 {
                     pos.debug(depth, "(alphabeta) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, newmoves->move[i].toString().c_str(), pos.actualpath.toString().c_str());
                     alpha = score;
@@ -257,11 +265,6 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
                         pos.history[pos.Piece(GETFROM(newmoves->move[i].code))][GETTO(newmoves->move[i].code)] += depth * depth;
                     }
                 }
-            }
-            if (en->stopLevel == ENGINESTOPIMMEDIATELY)
-            {
-                free(newmoves);
-                return alpha;
             }
         }
     }
@@ -424,7 +427,7 @@ void searchguide(engine *en)
     }
     else if (timetouse) {
         // sudden death; split the remaining time for TIMETOUSESLOTS moves
-        difftime1 = en->starttime + (timetouse + timeinc) * en->frequency * 10 / TIMETOUSESLOTS / 10000;
+        difftime1 = en->starttime + max(timeinc, (timetouse + timeinc) / TIMETOUSESLOTS) * en->frequency  / 1000;
         difftime2 = en->starttime + min(timetouse - en->moveOverhead, 8 * (timetouse + timeinc) / TIMETOUSESLOTS) * en->frequency / 1000;
     }
     else {
