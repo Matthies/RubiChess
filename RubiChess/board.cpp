@@ -1545,6 +1545,7 @@ void chessposition::playNullMove()
     state ^= S2MMASK;
     hash ^= zb.s2m;
     actualpath.move[actualpath.length++].code = 0;
+    pos.ply++;
 }
 
 
@@ -1553,6 +1554,7 @@ void chessposition::unplayNullMove()
     state ^= S2MMASK;
     hash ^= zb.s2m;
     actualpath.length--;
+    pos.ply--;
 }
 
 
@@ -2347,9 +2349,8 @@ void chessposition::playNullMove()
 
     // Fix hash regarding s2m
     hash ^= zb.s2m;
-    chessmove cm;
-
-    actualpath.move[actualpath.length++] = cm;
+    actualpath.move[actualpath.length++].code = 0;
+    pos.ply++;
 }
 
 void chessposition::unplayNullMove()
@@ -2359,6 +2360,7 @@ void chessposition::unplayNullMove()
     // Fix hash regarding s2m
     hash ^= zb.s2m;
     actualpath.length--;
+    pos.ply--;
 }
 
 
