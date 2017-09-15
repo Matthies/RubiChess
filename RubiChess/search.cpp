@@ -208,11 +208,7 @@ int rootsearch(int alpha, int beta, int depth)
             {
                 bestscore = score;
                 best = newmoves->move[i];
-                if (pos.ply == 0)
-                {
-                    pos.bestmove = best;
-                    //pos->debug(0, "List of moves now that it is played: %s\n", newmoves->toStringWithValue().c_str());
-                }
+                pos.bestmove = best;
 
                 if (score >= beta)
                 {
@@ -254,7 +250,7 @@ int rootsearch(int alpha, int beta, int depth)
         en.stopLevel = ENGINEWANTSTOP;
         if (isCheck)
             // It's a mate
-            return SCOREBLACKWINS + pos.ply;
+            return SCOREBLACKWINS;
         else
             // It's a stalemate
             return SCOREDRAW;
@@ -262,9 +258,6 @@ int rootsearch(int alpha, int beta, int depth)
 
     tp.addHash(alpha, eval_type, depth, best.code);
     return alpha;
-
-
-
 }
 
 
@@ -336,9 +329,9 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
         // killermoves gets score better than non-capture
         if (pos.killer[0][pos.ply] == m->code)
-            newmoves->move[i].value = KILLERVAL1;
+            m->value = KILLERVAL1;
         if (pos.killer[1][pos.ply] == m->code)
-            newmoves->move[i].value = KILLERVAL2;
+            m->value = KILLERVAL2;
     }
 
     for (int i = 0; i < newmoves->length; i++)
