@@ -51,7 +51,7 @@ int getQuiescence(int alpha, int beta, int depth, bool force)
                     LegalMovesPossible = true;
                     if (positiveSee)
                     {
-                        score = -getQuiescence(en, -beta, -alpha, depth - 1, isCheck);
+                        score = -getQuiescence(-beta, -alpha, depth - 1, isCheck);
 #ifdef DEBUG
                         pos.debug(depth, "(getQuiscence) played move %s score=%d\n", movelist->move[i].toString().c_str(), score);
 #endif
@@ -106,12 +106,11 @@ int rootsearch(int alpha, int beta, int depth)
     chessmove *m;
 
     en.nodes++;
-
+#ifdef DEBUG
     pos.debug(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
-
+#endif
     if (tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
     {
-        pos.debug(depth, "(alphabeta) got value %d from TP\n", score);
         if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
             return score;
     }
@@ -230,11 +229,12 @@ int rootsearch(int alpha, int beta, int depth)
                         pos.killer[1][0] = pos.killer[0][0];
                         pos.killer[0][0] = best.code;
                     }
-
+#ifdef DEBUG
                     en.fh++;
                     if (LegalMoves == 1)
                         en.fhf++;
                     pos.debug(depth, "(alphabetamax) score=%d >= beta=%d  -> cutoff\n", score, beta);
+#endif
                     tp.addHash(beta, HASHBETA, depth, 0);
                     free(newmoves);
                     return beta;   // fail hard beta-cutoff
@@ -242,7 +242,9 @@ int rootsearch(int alpha, int beta, int depth)
 
                 if (score > alpha && en.stopLevel != ENGINESTOPIMMEDIATELY)
                 {
+#ifdef DEBUG
                     pos.debug(depth, "(alphabeta) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, m->toString().c_str(), pos.actualpath.toString().c_str());
+#endif
                     alpha = score;
                     eval_type = HASHEXACT;
                     if (GETCAPTURE(m->code) == BLANK)
@@ -290,7 +292,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 #ifdef DEBUG
     int oldmaxdebugdepth;
     int oldmindebugdepth;
-    if (en->debug && pos.debughash == pos.hash)
+    if (en.debug && pos.debughash == pos.hash)
     {
         oldmaxdebugdepth = pos.maxdebugdepth;
         oldmindebugdepth = pos.mindebugdepth;
@@ -378,7 +380,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         {
             LegalMoves++;
 #ifdef DEBUG
-            pos.debug(depth, "(alphabeta) played move %s   nodes:%d\n", newmoves->move[i].toString().c_str(), en->nodes);
+            pos.debug(depth, "(alphabeta) played move %s   nodes:%d\n", newmoves->move[i].toString().c_str(), en.nodes);
 #endif
 
             if (!eval_type == HASHEXACT)
@@ -400,7 +402,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 				}
             }
 
-            pos.unplayMove(&(newmoves->move[i]));
+            pos.unplayMove(m);
 
 #ifdef DEBUG
             if (en.debug && pos.debughash == pos.hash)
@@ -411,7 +413,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                 pos.mindebugdepth = oldmindebugdepth;
             }
 #endif
-            if (en->stopLevel == ENGINESTOPIMMEDIATELY && LegalMoves > 1)
+            if (en.stopLevel == ENGINESTOPIMMEDIATELY && LegalMoves > 1)
             {
                 // At least one move is found and we can safely exit here
                 // Lets hope this doesn't take too much time...
@@ -422,11 +424,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             if (score > bestscore)
             {
                 bestscore = score;
-                best = newmoves->move[i];
-                if (pos.ply == 0)
-                {
-                    pos.bestmove = best;
-                }
+                bestcode = m->code;
 
                 if (score >= beta)
                 {
@@ -438,10 +436,10 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                         pos.killer[0][pos.ply] = m->code;
                     }
 
+#ifdef DEBUG
                     en.fh++;
                     if (LegalMoves == 1)
-                        en->fhf++;
-#ifdef DEBUG
+                        en.fhf++;
                     pos.debug(depth, "(alphabetamax) score=%d >= beta=%d  -> cutoff\n", score, beta);
 #endif
                     tp.addHash(beta, HASHBETA, depth, 0);
@@ -549,8 +547,8 @@ static void search_gen1()
         {
             // search was successfull
 #ifdef DEBUG
-            if (en->fh > 0)
-                pos.debug(depth, "Searchorder-Success: %f\n", en->fhf / en->fh);
+            if (en.fh > 0)
+                pos.debug(depth, "Searchorder-Success: %f\n", en.fhf / en.fh);
 #endif
             // The only case that bestmove is not set can happen if alphabeta hit the TP table
             // so get bestmovecode from there

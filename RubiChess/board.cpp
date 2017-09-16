@@ -478,10 +478,6 @@ void chessposition::debugeval(const char* format, ...)
     vfprintf(stdout, format, argptr);
     va_end(argptr);
 }
-#else
-void chessposition::debugeval(const char* format, ...)
-{
-}
 #endif
 
 
@@ -1008,8 +1004,9 @@ int chessposition::getValue()
             }
         }
     }
-    
+#ifdef DEBUGEVAL
     debugeval("Material value: %d\n", countMaterial());
+#endif
     return countMaterial() + getPositionValue();
 }
 
@@ -1044,19 +1041,25 @@ int chessposition::getPositionValue()
                     {
                         // passed pawn
                         result += passedpawnbonus[s][RANK(index)];
+#ifdef DEBUGEVAL
                         debugeval("Passed Pawn Bonus: %d\n", (S2MSIGN(s) * 40));
+#endif
                     }
                     if (!(piece00[pc] & neighbourfiles[index]))
                     {
                         // isolated pawn
                         result -= S2MSIGN(s) * 20;
+#ifdef DEBUGEVAL
                         debugeval("Isolated Pawn Penalty: %d\n", -(S2MSIGN(s) * 20));
+#endif
                     }
                     else if (POPCOUNT((piece90[pc] >> rot90shift[index]) & 0x3f) > 1)
                     {
                         // double pawn
                         result -= S2MSIGN(s) * 15;
+#ifdef DEBUGEVAL
                         debugeval("Double Pawn Penalty: %d\n", -(S2MSIGN(s) * 15));
+#endif
                     }
                 }
                 if (shifting[p] & 0x2) // rook and queen
@@ -1065,7 +1068,9 @@ int chessposition::getPositionValue()
                     {
                         // free file
                         result += S2MSIGN(s) * 15;
+#ifdef DEBUGEVAL
                         debugeval("Slider on free file Bonus: %d\n", (S2MSIGN(s) * 15));
+#endif
                     }
                 }
 

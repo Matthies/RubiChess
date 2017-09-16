@@ -433,8 +433,12 @@ public:
     int getPositionValue();
     int getValue();
     int* GetPositionvalueTable();
+#ifdef DEBUG
     void debug(int depth, const char* format, ...);
+#endif
+#ifdef DEBUGEVAL
     void debugeval(const char* format, ...);
+#endif
     bool testRepetiton();
     void mirror();
 };
@@ -496,8 +500,12 @@ public:
     int getPositionValue();
     int getValue();
     int* GetPositionvalueTable();
+#ifdef DEBUG
     void debug(int depth, const char* format, ...);
+#endif
+#ifdef DEBUGEVAL
     void debugeval(const char* format, ...);
+#endif
     bool testRepetiton();
     void mirror();
 };
