@@ -205,6 +205,7 @@ void transposition::addHash(int val, int valtype, int depth, unsigned long move)
     data->value = (short)val;
     data->flag = (char)valtype;
     data->movecode = move;
+    pos->debug(depth, "addHash: hash=%llu move=%x type=%d val=%d\n", hash, move, valtype, val);
 }
 
 
@@ -236,6 +237,7 @@ bool transposition::probeHash(int *val, unsigned long *movecode, int depth, int 
     if ((data.hashupper) == (hash >> 32))
     {
         *movecode = data.movecode;
+        pos->debug(depth, "probeHash: hash=%llu move=%x type=%d val=%d\n", hash, *movecode, data.flag, data.value);
         if (data.depth >= depth)
         {
             *val = data.value;

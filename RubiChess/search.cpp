@@ -97,6 +97,20 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
     bool isLegal;
     bool isCheck;
 
+#ifdef DEBUG
+    int oldmaxdebugdepth;
+    int oldmindebugdepth;
+    if (en->debug && pos.debughash == pos.hash)
+    {
+        oldmaxdebugdepth = pos.maxdebugdepth;
+        oldmindebugdepth = pos.mindebugdepth;
+        printf("Reached position to debug... starting debug.\n");
+        pos.print();
+        pos.maxdebugdepth = depth;
+        pos.mindebugdepth = -100;
+    }
+#endif
+
     en->nodes++;
 
     pos.debug(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
@@ -174,20 +188,8 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
         if (isLegal)
         {
             LegalMoves++;
-#ifdef DEBUG
-            int oldmaxdebugdepth;
-            int oldmindebugdepth;
-            if (en->debug && pos.debughash == pos.hash)
-            {
-                oldmaxdebugdepth = pos.maxdebugdepth;
-                oldmindebugdepth = pos.mindebugdepth;
-                printf("Reached position to debug... starting debug.\n");
-                pos.print();
-                pos.maxdebugdepth = depth;
-                pos.mindebugdepth = -100;
-            }
-            pos.debug(depth, "(alphabeta) played move %s\n", newmoves->move[i].toString().c_str());
-#endif
+            pos.debug(depth, "(alphabeta) played move %s   nodes:%d\n", newmoves->move[i].toString().c_str(), en->nodes);
+
             if (!eval_type == HASHEXACT)
             {
                 score = -alphabeta(en, -beta, -alpha, depth - 1, true);
@@ -207,6 +209,8 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
 				}
             }
 
+            pos.unplayMove(&(newmoves->move[i]));
+
 #ifdef DEBUG
             if (en->debug && pos.debughash == pos.hash)
             {
@@ -216,8 +220,6 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
                 pos.mindebugdepth = oldmindebugdepth;
             }
 #endif
-            pos.unplayMove(&(newmoves->move[i]));
-
             if (en->stopLevel == ENGINESTOPIMMEDIATELY && LegalMoves > 1)
             {
                 // At least one move is found and we can safely exit here
@@ -233,7 +235,6 @@ int alphabeta(engine *en, int alpha, int beta, int depth, bool nullmoveallowed)
                 if (pos.ply == 0)
                 {
                     pos.bestmove = best;
-                    //pos->debug(0, "List of moves now that it is played: %s\n", newmoves->toStringWithValue().c_str());
                 }
 
                 if (score >= beta)
@@ -333,7 +334,7 @@ static void search_gen1(engine *en)
             // Basic debuging
             pos.maxdebugdepth = depth;
             pos.mindebugdepth = depth;
-            printf("\n\nNext depth: %d\n\n", depth);
+            pos.debug(depth, "Next depth: %d\n", depth);
         }
 
         // Reset bestmove to detect alpha raise in interrupted search
