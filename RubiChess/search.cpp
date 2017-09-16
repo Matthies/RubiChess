@@ -95,6 +95,7 @@ int rootsearch(int alpha, int beta, int depth)
     chessmove best(0);
     int eval_type = HASHALPHA;
     chessmovelist* newmoves;
+    chessmove *m;
 
     en.nodes++;
 
@@ -123,17 +124,18 @@ int rootsearch(int alpha, int beta, int depth)
 
     for (int i = 0; i < newmoves->length; i++)
     {
+        m = &newmoves->move[i];
         //PV moves gets top score
-        if (hashmovecode == newmoves->move[i].code)
+        if (hashmovecode == m->code)
         {
-            newmoves->move[i].value = PVVAL;
+            m->value = PVVAL;
         }
 
         // killermoves gets score better than non-capture
-        if (pos.killer[0][0] == newmoves->move[i].code)
-            newmoves->move[i].value = KILLERVAL1;
-        if (pos.killer[1][0] == newmoves->move[i].code)
-            newmoves->move[i].value = KILLERVAL2;
+        if (pos.killer[0][0] == m->code)
+            m->value = KILLERVAL1;
+        if (pos.killer[1][0] == m->code)
+            m->value = KILLERVAL2;
     }
 
     for (int i = 0; i < newmoves->length; i++)
@@ -146,7 +148,8 @@ int rootsearch(int alpha, int beta, int depth)
             }
         }
 
-        isLegal = pos.playMove(&(newmoves->move[i]));
+        m = &newmoves->move[i];
+        isLegal = pos.playMove(m);
 
         if (isLegal)
         {
@@ -194,7 +197,7 @@ int rootsearch(int alpha, int beta, int depth)
                 pos.mindebugdepth = oldmindebugdepth;
             }
 #endif
-            pos.unplayMove(&(newmoves->move[i]));
+            pos.unplayMove(m);
 
             if (en.stopLevel == ENGINESTOPIMMEDIATELY && LegalMoves > 1)
             {
@@ -207,7 +210,7 @@ int rootsearch(int alpha, int beta, int depth)
             if (score > bestscore)
             {
                 bestscore = score;
-                best = newmoves->move[i];
+                best = *m;
                 pos.bestmove = best;
 
                 if (score >= beta)
@@ -231,12 +234,12 @@ int rootsearch(int alpha, int beta, int depth)
 
                 if (score > alpha && en.stopLevel != ENGINESTOPIMMEDIATELY)
                 {
-                    pos.debug(depth, "(alphabeta) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, newmoves->move[i].toString().c_str(), pos.actualpath.toString().c_str());
+                    pos.debug(depth, "(alphabeta) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, m->toString().c_str(), pos.actualpath.toString().c_str());
                     alpha = score;
                     eval_type = HASHEXACT;
-                    if (GETCAPTURE(newmoves->move[i].code) == BLANK)
+                    if (GETCAPTURE(m->code) == BLANK)
                     {
-                        pos.history[pos.Piece(GETFROM(newmoves->move[i].code))][GETTO(newmoves->move[i].code)] += depth * depth;
+                        pos.history[pos.Piece(GETFROM(m->code))][GETTO(m->code)] += depth * depth;
                     }
                 }
             }
@@ -268,6 +271,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     int  LegalMoves = 0;
     bool isLegal;
     bool isCheck;
+    int bestscore = SHRT_MIN + 1;  // FIXME: Why not SHRT_MIN?
     unsigned long bestcode = 0;
     int eval_type = HASHALPHA;
     chessmovelist* newmoves;
@@ -402,37 +406,41 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                 return alpha;
             }
 
-            if (score >= beta)
+            if (score > bestscore)
             {
-                // Killermove
-                if (GETCAPTURE(m->code) == BLANK)
-                {
-
-                    pos.killer[1][pos.ply] = pos.killer[0][pos.ply];
-                    pos.killer[0][pos.ply] = m->code;
-                }
-
-                en.fh++;
-                if (LegalMoves == 1)
-                    en.fhf++;
-                pos.debug(depth, "(alphabetamax) score=%d >= beta=%d  -> cutoff\n", score, beta);
-                tp.addHash(beta, HASHBETA, depth, 0);
-                free(newmoves);
-                return beta;   // fail hard beta-cutoff
-            }
-
-            if (score > alpha && en.stopLevel != ENGINESTOPIMMEDIATELY)
-            {
-                pos.debug(depth, "(alphabeta) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, m->toString().c_str(), pos.actualpath.toString().c_str());
-                alpha = score;
+                bestscore = score;
                 bestcode = m->code;
-                eval_type = HASHEXACT;
-                if (GETCAPTURE(m->code) == BLANK)
+
+                if (score >= beta)
                 {
-                    pos.history[pos.Piece(GETFROM(m->code))][GETTO(m->code)] += depth * depth;
+                    // Killermove
+                    if (GETCAPTURE(m->code) == BLANK)
+                    {
+
+                        pos.killer[1][pos.ply] = pos.killer[0][pos.ply];
+                        pos.killer[0][pos.ply] = m->code;
+                    }
+
+                    en.fh++;
+                    if (LegalMoves == 1)
+                        en.fhf++;
+                    pos.debug(depth, "(alphabetamax) score=%d >= beta=%d  -> cutoff\n", score, beta);
+                    tp.addHash(beta, HASHBETA, depth, 0);
+                    free(newmoves);
+                    return beta;   // fail hard beta-cutoff
+                }
+
+                if (score > alpha && en.stopLevel != ENGINESTOPIMMEDIATELY)
+                {
+                    pos.debug(depth, "(alphabeta) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, m->toString().c_str(), pos.actualpath.toString().c_str());
+                    alpha = score;
+                    eval_type = HASHEXACT;
+                    if (GETCAPTURE(m->code) == BLANK)
+                    {
+                        pos.history[pos.Piece(GETFROM(m->code))][GETTO(m->code)] += depth * depth;
+                    }
                 }
             }
-
         }
     }
 
