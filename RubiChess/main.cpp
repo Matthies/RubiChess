@@ -55,10 +55,16 @@ ChangeLog
     - added test for symmetric position evaluation (new parameter -dotests substitutes -hashtest)
     - fixed timemode "time/inc for whole match"
     - testrepetition() stops searching at halfmovecounter reset now
-	 - search improvement by adding aspiration windows and principal variation search
+    - search improvement by adding aspiration windows and principal variation search
 	 
 	 0.5 (release 201x - xx - xx) :
     -moved undo data from chessmove struct to a static stack which speeds up playing moves
+    - More speed by making engine, position, tables global instead of paasing them by parameters
+    - Better evaluation: Ballanced pawn/minors, diagonal mobility, progress of passed pawns
+    - improved time management, especially sudden death mode
+    - avoids wrong best move from last search when under time pressure
+    - really disabled all the debug code if DEBUG is not defined
+
       
 
 /* Der Lasker-Test */
@@ -163,6 +169,12 @@ s = "k1K5/p5p1/P7/8/8/8/6P1/4B3 w - - 0 1"
 /* Matt in 3 KN Problem 4410a+b */
 s = "8/8/3n4/3k4/1K1Nn3/5N2/8/3Q4 w - - 0 1"
 s = "8/8/3n4/3k4/1K1Nn3/4QN2/8/8 w - - 0 1"
+
+/* Matt in 3 KN Problem 4411 */
+s = "6K1/3N1N2/6k1/3P1p1p/P4p1p/4bP1p/4P2P/3Q4 w - - 0 1"
+
+/* Matt in 3 KN Problem 4412 */
+s = "8/8/5Q2/4r3/3k4/4p3/1P2K3/7B w - - 0 1"
 
 // ToDo:
 TP / Sortierungsproblem:
