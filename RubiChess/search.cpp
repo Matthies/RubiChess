@@ -264,14 +264,14 @@ int rootsearch(int alpha, int beta, int depth)
 int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 {
     int score;
-    int eval_type = HASHALPHA;
-    chessmovelist* newmoves;
     unsigned long hashmovecode = 0;
     int  LegalMoves = 0;
     bool isLegal;
     bool isCheck;
-    chessmove *m;
     unsigned long bestcode = 0;
+    int eval_type = HASHALPHA;
+    chessmovelist* newmoves;
+    chessmove *m;
 
     en.nodes++;
 
@@ -401,6 +401,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                 free(newmoves);
                 return alpha;
             }
+
             if (score >= beta)
             {
                 // Killermove
