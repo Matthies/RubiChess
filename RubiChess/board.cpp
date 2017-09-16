@@ -468,11 +468,6 @@ void chessposition::debug(int depth, const char* format, ...)
 	vfprintf(stdout, format, argptr);
 	va_end(argptr);
 }
-
-#else
-void chessposition::debug(int depth, const char* format, ...)
-{
-}
 #endif
 
 #ifdef DEBUGEVAL
