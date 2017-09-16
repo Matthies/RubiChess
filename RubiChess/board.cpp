@@ -2762,7 +2762,7 @@ void engine::communicate(string inputstring)
             myUci->send("uciok\n", author);
             break;
 		case SETOPTION:
-            if (searchthread)
+            if (en.stopLevel != ENGINESTOPPED)
             {
                 myUci->send("info string Changing option while searching is not supported.\n");
                 break;

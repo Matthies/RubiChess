@@ -540,7 +540,7 @@ public:
     bool debug = false;
     int sizeOfTp = 0;
     int moveOverhead;
-    int stopLevel;
+    int stopLevel = ENGINESTOPPED;
     void communicate(string inputstring);
     int getScoreFromEnginePoV();
     void setOption(string sName, string sValue);
