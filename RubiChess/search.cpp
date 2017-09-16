@@ -19,9 +19,7 @@ int getQuiescence(int alpha, int beta, int depth, bool force)
 
     // FIXME: stand pat usually is not allowed if checked but this somehow works better
     score = (pos.state & S2MMASK ? -pos.getValue() : pos.getValue());
-#ifdef DEBUG
-    pos.debug(depth, "(getQuiscence) alpha=%d beta=%d patscore=%d\n", alpha, beta, score);
-#endif
+    PDEBUG(depth, "(getQuiscence) alpha=%d beta=%d patscore=%d\n", alpha, beta, score);
     if (score >= beta)
         return beta;
     if (score > alpha)
@@ -52,9 +50,7 @@ int getQuiescence(int alpha, int beta, int depth, bool force)
                     if (positiveSee)
                     {
                         score = -getQuiescence(-beta, -alpha, depth - 1, isCheck);
-#ifdef DEBUG
-                        pos.debug(depth, "(getQuiscence) played move %s score=%d\n", movelist->move[i].toString().c_str(), score);
-#endif
+                        PDEBUG(depth, "(getQuiscence) played move %s score=%d\n", movelist->move[i].toString().c_str(), score);
                     }
                     pos.unplayMove(&(movelist->move[i]));
                     if (positiveSee)
@@ -62,17 +58,13 @@ int getQuiescence(int alpha, int beta, int depth, bool force)
                         if (score >= beta)
                         {
                             free(movelist);
-#ifdef DEBUG
-                            pos.debug(depth, "(getQuiscence) beta cutoff\n");
-#endif
+                            PDEBUG(depth, "(getQuiscence) beta cutoff\n");
                             return beta;
                         }
                         if (score > alpha)
                         {
                             alpha = score;
-#ifdef DEBUG
-                            pos.debug(depth, "(getQuiscence) new alpha\n");
-#endif
+                            PDEBUG(depth, "(getQuiscence) new alpha\n");
                         }
                     }
                 }
@@ -106,9 +98,23 @@ int rootsearch(int alpha, int beta, int depth)
     chessmove *m;
 
     en.nodes++;
+
 #ifdef DEBUG
-    pos.debug(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
+    int oldmaxdebugdepth;
+    int oldmindebugdepth;
+    if (en.debug && pos.debughash == pos.hash)
+    {
+        oldmaxdebugdepth = pos.maxdebugdepth;
+        oldmindebugdepth = pos.mindebugdepth;
+        printf("Reached position to debug... starting debug.\n");
+        pos.print();
+        pos.maxdebugdepth = depth;
+        pos.mindebugdepth = -100;
+    }
 #endif
+
+    PDEBUG(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
+
     if (tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
     {
         if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
@@ -161,20 +167,7 @@ int rootsearch(int alpha, int beta, int depth)
         if (isLegal)
         {
             LegalMoves++;
-#ifdef DEBUG
-            int oldmaxdebugdepth;
-            int oldmindebugdepth;
-            if (en.debug && pos.debughash == pos.hash)
-            {
-                oldmaxdebugdepth = pos.maxdebugdepth;
-                oldmindebugdepth = pos.mindebugdepth;
-                printf("Reached position to debug... starting debug.\n");
-                pos.print();
-                pos.maxdebugdepth = depth;
-                pos.mindebugdepth = -100;
-            }
-            pos.debug(depth, "(alphabeta) played move %s\n", newmoves->move[i].toString().c_str());
-#endif
+            PDEBUG(depth, "(alphabeta neu) played move %s   nodes:%d\n", newmoves->move[i].toString().c_str(), en.nodes);
             if (!eval_type == HASHEXACT)
             {
                 score = -alphabeta(-beta, -alpha, depth - 1, true);
@@ -233,8 +226,8 @@ int rootsearch(int alpha, int beta, int depth)
                     en.fh++;
                     if (LegalMoves == 1)
                         en.fhf++;
-                    pos.debug(depth, "(alphabetamax) score=%d >= beta=%d  -> cutoff\n", score, beta);
 #endif
+                    PDEBUG(depth, "(alphabetamax) score=%d >= beta=%d  -> cutoff\n", score, beta);
                     tp.addHash(beta, HASHBETA, depth, 0);
                     free(newmoves);
                     return beta;   // fail hard beta-cutoff
@@ -242,9 +235,7 @@ int rootsearch(int alpha, int beta, int depth)
 
                 if (score > alpha && en.stopLevel != ENGINESTOPIMMEDIATELY)
                 {
-#ifdef DEBUG
-                    pos.debug(depth, "(alphabeta) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, m->toString().c_str(), pos.actualpath.toString().c_str());
-#endif
+                    PDEBUG(depth, "(alphabeta) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, m->toString().c_str(), pos.actualpath.toString().c_str());
                     alpha = score;
                     eval_type = HASHEXACT;
                     if (GETCAPTURE(m->code) == BLANK)
@@ -301,14 +292,13 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         pos.maxdebugdepth = depth;
         pos.mindebugdepth = -100;
     }
-    pos.debug(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
 #endif
+
+    PDEBUG(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
 
     if (tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
     {
-#ifdef DEBUG
-        pos.debug(depth, "(alphabeta) got value %d from TP\n", score);
-#endif
+        PDEBUG(depth, "(alphabeta) got value %d from TP\n", score);
         if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
             return score;
     }
@@ -379,10 +369,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         if (isLegal)
         {
             LegalMoves++;
-#ifdef DEBUG
-            pos.debug(depth, "(alphabeta) played move %s   nodes:%d\n", newmoves->move[i].toString().c_str(), en.nodes);
-#endif
-
+            PDEBUG(depth, "(alphabeta) played move %s   nodes:%d\n", newmoves->move[i].toString().c_str(), en.nodes);
             if (!eval_type == HASHEXACT)
             {
                 score = -alphabeta(-beta, -alpha, depth - 1, true);
@@ -440,8 +427,8 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                     en.fh++;
                     if (LegalMoves == 1)
                         en.fhf++;
-                    pos.debug(depth, "(alphabetamax) score=%d >= beta=%d  -> cutoff\n", score, beta);
 #endif
+                    PDEBUG(depth, "(alphabetamax) score=%d >= beta=%d  -> cutoff\n", score, beta);
                     tp.addHash(beta, HASHBETA, depth, 0);
                     free(newmoves);
                     return beta;   // fail hard beta-cutoff
@@ -449,9 +436,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
                 if (score > alpha && en.stopLevel != ENGINESTOPIMMEDIATELY)
                 {
-#ifdef DEBUG
-                    pos.debug(depth, "(alphabeta) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, newmoves->move[i].toString().c_str(), pos.actualpath.toString().c_str());
-#endif
+                    PDEBUG(depth, "(alphabeta) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, newmoves->move[i].toString().c_str(), pos.actualpath.toString().c_str());
                     alpha = score;
                     eval_type = HASHEXACT;
                     if (GETCAPTURE(m->code) == BLANK)
@@ -521,9 +506,7 @@ static void search_gen1()
             // Basic debuging
             pos.maxdebugdepth = depth;
             pos.mindebugdepth = depth;
-#ifdef DEBUG
-            pos.debug(depth, "Next depth: %d\n", depth);
-#endif
+            PDEBUG(depth, "Next depth: %d\n", depth);
         }
 
         // Reset bestmove to detect alpha raise in interrupted search
@@ -546,10 +529,7 @@ static void search_gen1()
         else
         {
             // search was successfull
-#ifdef DEBUG
-            if (en.fh > 0)
-                pos.debug(depth, "Searchorder-Success: %f\n", en.fhf / en.fh);
-#endif
+            PDEBUG(depth, "Searchorder-Success: %f\n", (en.fh > 0 ? en.fhf / en.fh : 0.0));
             // The only case that bestmove is not set can happen if alphabeta hit the TP table
             // so get bestmovecode from there
             if (!pos.bestmove.code)

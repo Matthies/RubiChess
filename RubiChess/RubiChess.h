@@ -567,6 +567,11 @@ public:
 extern chessposition pos;
 extern engine en;
 
+#ifdef DEBUG
+#define PDEBUG(d, f, ...)  pos.debug(d, f, ##__VA_ARGS__)
+#else
+#define PDEBUG(d, f, ...)
+#endif
 
 //
 // transposition stuff
