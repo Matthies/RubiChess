@@ -1232,7 +1232,7 @@ void testengine(string epdfilename, int startnum, string engineprg, string logfi
 
 #else // _WIN32
 
-void testengine(engine *en, string epdfilename, int startnum, string engineprg, string logfilename, string comparefilename, int maxtime, int flags)
+void testengine(string epdfilename, int startnum, string engineprg, string logfilename, string comparefilename, int maxtime, int flags)
 {
     // not yet implemented
 }

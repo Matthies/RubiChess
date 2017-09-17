@@ -217,14 +217,14 @@ void transposition::printHashentry()
     printf("Hashentry for %llx\n", hash);
     if ((data.hashupper) == (hash >> 32))
     {
-        printf("Match in upper part: %x / %x\n", data.hashupper, (int)(hash >> 32));
-        printf("Move code: %x\n", data.movecode);
+        printf("Match in upper part: %x / %x\n", (unsigned int)data.hashupper, (unsigned int)(hash >> 32));
+        printf("Move code: %x\n", (unsigned int)data.movecode);
         printf("Depth:     %d\n", data.depth);
         printf("Value:     %d\n", data.value);
         printf("Valuetype: %d\n", data.flag);
     }
     else {
-        printf("No match in upper part: %x / %x", data.hashupper, (int)(hash >> 32));
+        printf("No match in upper part: %x / %x", (unsigned int)data.hashupper, (unsigned int)(hash >> 32));
     }
 }
 
