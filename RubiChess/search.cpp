@@ -577,8 +577,8 @@ void searchguide()
     char s[100];
     unsigned long nodes, lastnodes = 0;
     en.starttime = getTime();
-    long long difftime1 = 0;    // time to send STOPSOON signal
-    long long difftime2 = 0;    // time to send STOPPIMMEDIATELY signal
+    long long endtime1 = 0;    // time to send STOPSOON signal
+    long long endtime2 = 0;    // time to send STOPPIMMEDIATELY signal
     en.stopLevel = ENGINERUN;
     int timetouse = (en.isWhite ? en.wtime : en.btime);
     int timeinc = (en.isWhite ? en.winc : en.binc);
@@ -591,18 +591,21 @@ void searchguide()
     if (movestogo)
     {
         // should garantee timetouse > 0
-            // stop soon at 1.0 x average movetime
-            difftime1 = en.starttime + timetouse * en.frequency * 10 / movestogo / 10000; 
-            // stop immediately at 8 x average movetime
-            difftime2 = en.starttime + min(timetouse - en.moveOverhead,  8 * timetouse / movestogo) * en.frequency / 1000;
+        // stop soon at 0.8 x average movetime
+        endtime1 = en.starttime + timetouse * en.frequency * 8 / movestogo / 10000;
+        // stop immediately at 1.6 x average movetime
+        endtime2 = en.starttime + min(timetouse - en.moveOverhead,  16 * timetouse / movestogo / 10) * en.frequency / 1000;
+            printf("info string difftime1=%lld  difftime2=%lld\n", (endtime1 - en.starttime) * 1000 / en.frequency , (endtime2 - en.starttime) * 1000 / en.frequency);
     }
     else if (timetouse) {
-        // sudden death; split the remaining time for TIMETOUSESLOTS moves
-        difftime1 = en.starttime + max(timeinc, (timetouse + timeinc) / TIMETOUSESLOTS) * en.frequency  / 1000;
-        difftime2 = en.starttime + min(timetouse - en.moveOverhead, 8 * (timetouse + timeinc) / TIMETOUSESLOTS) * en.frequency / 1000;
+        // sudden death; split the remaining time for TIMETOUSESLOTS moves; TRIMESLOTS is 32 for now
+        // stop soon after one timeslot
+        endtime1 = en.starttime + max(timeinc, (timetouse + timeinc) / TIMETOUSESLOTS) * en.frequency  / 1000;
+        // stop immediately after 8 timeslots
+        endtime2 = en.starttime + min(timetouse - en.moveOverhead, 8 * (timetouse + timeinc) / TIMETOUSESLOTS) * en.frequency / 1000;
     }
     else {
-        difftime1 = difftime2 = 0;
+        endtime1 = endtime2 = 0;
     }
 
     en.nodes = 0;
@@ -630,11 +633,11 @@ void searchguide()
         }
         if (en.stopLevel != ENGINESTOPPED)
         {
-            if (difftime2 && nowtime >= difftime2 && en.stopLevel < ENGINESTOPIMMEDIATELY)
+            if (endtime2 && nowtime >= endtime2 && en.stopLevel < ENGINESTOPIMMEDIATELY)
             {
                 en.stopLevel = ENGINESTOPIMMEDIATELY;
             }
-            else if (difftime1 && nowtime >= difftime1 && en.stopLevel < ENGINESTOPSOON)
+            else if (endtime1 && nowtime >= endtime2 && en.stopLevel < ENGINESTOPSOON)
             {
                 en.stopLevel = ENGINESTOPSOON;
                 Sleep(10);
