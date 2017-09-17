@@ -591,11 +591,11 @@ void searchguide()
     if (movestogo)
     {
         // should garantee timetouse > 0
-        // stop soon at 0.8 x average movetime
-        endtime1 = en.starttime + timetouse * en.frequency * 8 / movestogo / 10000;
-        // stop immediately at 1.6 x average movetime
-        endtime2 = en.starttime + min(timetouse - en.moveOverhead,  16 * timetouse / movestogo / 10) * en.frequency / 1000;
-            printf("info string difftime1=%lld  difftime2=%lld\n", (endtime1 - en.starttime) * 1000 / en.frequency , (endtime2 - en.starttime) * 1000 / en.frequency);
+        // stop soon at 0.7 x average movetime
+        endtime1 = en.starttime + timetouse * en.frequency * 7 / movestogo / 10000;
+        // stop immediately at 1.3 x average movetime
+        endtime2 = en.starttime + min(timetouse - en.moveOverhead,  13 * timetouse / movestogo / 10) * en.frequency / 1000;
+        //printf("info string difftime1=%lld  difftime2=%lld\n", (endtime1 - en.starttime) * 1000 / en.frequency , (endtime2 - en.starttime) * 1000 / en.frequency);
     }
     else if (timetouse) {
         // sudden death; split the remaining time for TIMETOUSESLOTS moves; TRIMESLOTS is 32 for now
