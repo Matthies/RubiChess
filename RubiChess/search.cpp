@@ -601,8 +601,8 @@ void searchguide()
         // sudden death; split the remaining time for TIMETOUSESLOTS moves; TRIMESLOTS is 32 for now
         // stop soon after one timeslot
         endtime1 = en.starttime + max(timeinc, (timetouse + timeinc) / TIMETOUSESLOTS) * en.frequency  / 1000;
-        // stop immediately after 8 timeslots
-        endtime2 = en.starttime + min(timetouse - en.moveOverhead, 8 * (timetouse + timeinc) / TIMETOUSESLOTS) * en.frequency / 1000;
+        // stop immediately after 3 timeslots
+        endtime2 = en.starttime + min(timetouse - en.moveOverhead, 3 * (timetouse + timeinc) / TIMETOUSESLOTS) * en.frequency / 1000;
     }
     else {
         endtime1 = endtime2 = 0;
