@@ -617,7 +617,6 @@ public:
     U64 size;
     U64 sizemask;
     chessposition *pos;
-    transposition();
     ~transposition();
     void setSize(int sizeMb);
     void clean();

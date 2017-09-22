@@ -141,11 +141,6 @@ u8 zobrist::getHash()
 #endif
 
 
-transposition::transposition()
-{
-    size = 0;
-}
-
 transposition::~transposition()
 {
     if (size > 0)

@@ -204,7 +204,7 @@ int rootsearch(int alpha, int beta, int depth)
                 // At least one move is found and we can safely exit here
                 // Lets hope this doesn't take too much time...
                 free(newmoves);
-                return alpha;
+                return bestscore;
             }
 
             if (score > bestscore)
@@ -233,7 +233,7 @@ int rootsearch(int alpha, int beta, int depth)
                     return beta;   // fail hard beta-cutoff
                 }
 
-                if (score > alpha && en.stopLevel != ENGINESTOPIMMEDIATELY)
+                if (score > alpha)
                 {
                     PDEBUG(depth, "(alphabeta) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, m->toString().c_str(), pos.actualpath.toString().c_str());
                     alpha = score;
@@ -434,7 +434,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                     return beta;   // fail hard beta-cutoff
                 }
 
-                if (score > alpha && en.stopLevel != ENGINESTOPIMMEDIATELY)
+                if (score > alpha)
                 {
                     PDEBUG(depth, "(alphabeta) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, newmoves->move[i].toString().c_str(), pos.actualpath.toString().c_str());
                     alpha = score;
