@@ -602,7 +602,7 @@ void searchguide()
         // stop soon after one timeslot
         endtime1 = en.starttime + max(timeinc, (timetouse + timeinc) / TIMETOUSESLOTS) * en.frequency  / 1000;
         // stop immediately after 3 timeslots
-        endtime2 = en.starttime + min(timetouse - en.moveOverhead, 3 * (timetouse + timeinc) / TIMETOUSESLOTS) * en.frequency / 1000;
+        endtime2 = en.starttime + min(timetouse - en.moveOverhead, max(timeinc, 3 * (timetouse + timeinc) / TIMETOUSESLOTS)) * en.frequency / 1000;
     }
     else {
         endtime1 = endtime2 = 0;
