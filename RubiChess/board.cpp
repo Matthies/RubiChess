@@ -2559,7 +2559,7 @@ int chessposition::getPositionValue()
                 int col = board[i] & S2MMASK;
                 int index = i | (ph << 7) | (pt << 15) | (col << 18);
                 result += *(positionvaluetable + index);
-                if (pt == ROOK && (firstpawn[col][f + 1] == 0 || ((col && (firstpawn[col][f + 1] > r)) || (!col && (firstpawn[col][f + 1] < r)))))
+                if ((pt == ROOK || pt == QUEEN) && (firstpawn[col][f + 1] == 0 || ((col && (firstpawn[col][f + 1] > r)) || (!col && (firstpawn[col][f + 1] < r)))))
                     // ROOK on free file
                     result += (col ? -15 : 15);
 
@@ -2579,12 +2579,12 @@ int chessposition::getPositionValue()
                 if ((!lastpawn[opcol][f] || factor * lastpawn[opcol][f] <= factor * pawnrank)
                     && (!lastpawn[opcol][f + 1] || factor * lastpawn[opcol][f + 1] <= factor * pawnrank)
                     && (!lastpawn[opcol][f + 2] || factor * lastpawn[opcol][f + 2] <= factor * pawnrank))
-                    result += (factor * 15);
+                    //result += (factor * 20);
+                    result += passedpawnbonus[col][pawnrank];
             }
             if (pawnrank && !firstpawn[col][f] && !firstpawn[col][f + 2])
                 // isolated pawn
                 result -= (factor * 20);
-
         }
     }
 
