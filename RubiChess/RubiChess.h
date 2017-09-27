@@ -98,11 +98,10 @@ typedef unsigned long long U64;
 #define PROMOTERANK(x) (RANK(x) == 0 || RANK(x) == 7)
 
 #define ROT90(x) (rot90[x])
-//#define ROT90(x) ((((x) & 0x38) >> 3) | (((x) & 0x07) << 3))
 #define ROTA1H8(x) (rota1h8[x])
 #define ROTH1A8(x) (roth1a8[x])
-
 #define S2MSIGN(s) (s ? -1 : 1)
+
 // Forward definitions
 class transposition;
 class repetition;
