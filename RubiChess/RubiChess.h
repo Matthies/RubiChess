@@ -529,6 +529,9 @@ public:
 #ifdef DEBUG
     unsigned long qnodes;
 	unsigned long wastednodes;
+    unsigned long pvnodes;
+    unsigned long nopvnodes;
+
 #endif
     long long starttime;
     long long endtime;

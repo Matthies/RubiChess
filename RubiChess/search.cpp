@@ -135,6 +135,9 @@ int rootsearch(int alpha, int beta, int depth)
     if (isCheck)
         depth++;
 
+#ifdef DEBUG
+    en.nopvnodes++;
+#endif
     for (int i = 0; i < newmoves->length; i++)
     {
         m = &newmoves->move[i];
@@ -142,6 +145,9 @@ int rootsearch(int alpha, int beta, int depth)
         if (hashmovecode == m->code)
         {
             m->value = PVVAL;
+#ifdef DEBUG
+            en.pvnodes++;
+#endif
         }
 
         // killermoves gets score better than non-capture
@@ -337,6 +343,9 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     if (isCheck)
         depth++;
 
+#ifdef DEBUG
+    en.nopvnodes++;
+#endif
     for (int i = 0; i < newmoves->length; i++)
     {
         m = &newmoves->move[i];
@@ -344,6 +353,9 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         if (hashmovecode == m->code)
         {
             m->value = PVVAL;
+#ifdef DEBUG
+            en.pvnodes++;
+#endif
         }
 
         // killermoves gets score better than non-capture
@@ -429,7 +441,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                         en.fhf++;
 #endif
                     PDEBUG(depth, "(alphabetamax) score=%d >= beta=%d  -> cutoff\n", score, beta);
-                    tp.addHash(beta, HASHBETA, depth, 0);
+                    tp.addHash(beta, HASHBETA, depth, bestcode);
                     free(newmoves);
                     return beta;   // fail hard beta-cutoff
                 }
@@ -612,6 +624,8 @@ void searchguide()
 #ifdef DEBUG
     en.qnodes = 0;
 	en.wastednodes = 0;
+    en.pvnodes = 0;
+    en.nopvnodes = 0;
 #endif
     en.fh = en.fhf = 0;
 
@@ -656,6 +670,8 @@ void searchguide()
     cout << s;
 	sprintf_s(s, "info string %d%% wasted by research\n", (int)en.wastednodes * 100 / en.nodes);
 	cout << s;
+    sprintf_s(s, "info string %d/%d (%d%%) pv nodes\n", en.pvnodes, en.nopvnodes, (int)en.pvnodes * 100 / en.nopvnodes);
+    cout << s;
 #endif
 
 }
