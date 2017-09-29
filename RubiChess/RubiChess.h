@@ -74,10 +74,10 @@ void Sleep(long x);
 typedef unsigned long long U64;
 
 #ifdef BITBOARD
-#define ENGINEVER "RubiChess V0.5-beta1 Bitboard";
+#define ENGINEVER "RubiChess V0.5 Bitboard";
 
 #else
-#define ENGINEVER "RubiChess V0.5-beta1 0x88-Board";
+#define ENGINEVER "RubiChess V0.5 0x88-Board";
 
 #endif
 
