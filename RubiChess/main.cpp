@@ -64,7 +64,7 @@ ChangeLog
     - improved time management, especially sudden death mode
     - avoids wrong best move from last search when under time pressure
     - really disabled all the debug code if DEBUG is not defined
-
+    - First Linux release.
       
 
 /* Der Lasker-Test */
