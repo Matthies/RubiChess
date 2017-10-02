@@ -20,6 +20,14 @@ using namespace std;
 #define OX88
 #endif
 
+#ifdef BITBOARD
+#if 1
+#define MAGICBITBOARD
+#else
+#define ROTATEDBITBOARD
+#endif
+#endif
+
 #ifdef FINDMEMORYLEAKS
 #ifdef _DEBUG  
 #define DEBUG_CLIENTBLOCK   new( _CLIENT_BLOCK, __FILE__, __LINE__)  
@@ -97,9 +105,11 @@ typedef unsigned long long U64;
 #define FILE(x) ((x) & 0x7)
 #define PROMOTERANK(x) (RANK(x) == 0 || RANK(x) == 7)
 
+#ifdef ROTATEDBITBOARD
 #define ROT90(x) (rot90[x])
 #define ROTA1H8(x) (rota1h8[x])
 #define ROTH1A8(x) (roth1a8[x])
+#endif
 #define S2MSIGN(s) (s ? -1 : 1)
 
 // Forward definitions
@@ -282,7 +292,7 @@ public:
 
 
 #ifdef BITBOARD
-
+#ifdef ROTATEDBITBOARD
 const int rot00shift[64] = {
      1,  1,  1,  1,  1,  1,  1,  1,
      9,  9,  9,  9,  9,  9,  9,  9,
@@ -360,23 +370,22 @@ const int roth1a8shift[64] = {
     22, 29, 37, 44, 50, 55, 59, 62,
     29, 37, 44, 50, 55, 59, 62, 64
 };
-
+#endif //ROTATEDBITBOARD
 
 class chessposition
 {
 public:
     U64 piece00[14];
+    U64 occupied00[2];
+#ifdef ROTATEDBITBOARD
     U64 piece90[14];
     U64 piecea1h8[14];
     U64 pieceh1a8[14];
-    U64 occupied00[2];
     U64 occupied90[2];
     U64 occupieda1h8[2];
     U64 occupiedh1a8[2];
+#endif
     PieceCode mailbox[64]; // redundand for faster "which piece is on field x"
-
-    U64 attacks_from[64];
-    U64 attacks_to[64];
 
     int state;
     int ept;

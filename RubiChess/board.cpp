@@ -482,7 +482,6 @@ void chessposition::debugeval(const char* format, ...)
 
 
 #ifdef BITBOARD
-
 U64 knight_attacks[64];
 U64 king_attacks[64];
 U64 pawn_attacks_free[64][2];
@@ -498,6 +497,20 @@ U64 filebarrier[64][2];
 U64 neighbourfiles[64];
 U64 kingshield[64][2];
 int castleindex[64][64] = { 0 };
+
+#ifdef MAGICBITBOARD
+// shameless copy from http://chessprogramming.wikispaces.com/Magic+Bitboards#Plain
+U64 mBishopAttacks[64][512];
+U64 mRookAttacks[64][4096];
+
+struct SMagic {
+    U64 mask;  // to mask relevant squares of both lines (no outer squares)
+    U64 magic; // magic 64-bit factor
+};
+
+SMagic mBishopTbl[64];
+SMagic mRookTbl[64];
+#endif
 
 
 void initBitmaphelper()
@@ -664,8 +677,6 @@ void initBitmaphelper()
                 }
                 blocked |= (1 << (++delta) & (j << 1));
             }
-
-
         }
 
         epthelper[from] = 0ULL;
@@ -683,7 +694,6 @@ void initBitmaphelper()
 chessposition::chessposition()
 {
     positionvaluetable = GetPositionvalueTable();
-
 }
 
 
@@ -715,14 +725,16 @@ void chessposition::BitboardSet(int index, PieceCode p)
 {
     int s2m = p & 0x1;
     piece00[p] |= BITSET(index);
+    occupied00[s2m] |= BITSET(index);
+#ifdef ROTATEDBITBOARD
     piece90[p] |= BITSET(ROT90(index));
     piecea1h8[p] |= BITSET(ROTA1H8(index));
     pieceh1a8[p] |= BITSET(ROTH1A8(index));
 
-    occupied00[s2m] |= BITSET(index);
     occupied90[s2m] |= BITSET(ROT90(index));
     occupieda1h8[s2m] |= BITSET(ROTA1H8(index));
     occupiedh1a8[s2m] |= BITSET(ROTH1A8(index));
+#endif
 }
 
 
@@ -730,14 +742,16 @@ void chessposition::BitboardClear(int index, PieceCode p)
 {
 	int s2m = p & 0x1;
 	piece00[p] ^= BITSET(index);
-	piece90[p] ^= BITSET(ROT90(index));
+    occupied00[s2m] ^= BITSET(index);
+#ifdef ROTATEDBITBOARD
+    piece90[p] ^= BITSET(ROT90(index));
 	piecea1h8[p] ^= BITSET(ROTA1H8(index));
 	pieceh1a8[p] ^= BITSET(ROTH1A8(index));
 
-	occupied00[s2m] ^= BITSET(index);
 	occupied90[s2m] ^= BITSET(ROT90(index));
 	occupieda1h8[s2m] ^= BITSET(ROTA1H8(index));
 	occupiedh1a8[s2m] ^= BITSET(ROTH1A8(index));
+#endif
 }
 
 
@@ -745,14 +759,16 @@ void chessposition::BitboardMove(int from, int to, PieceCode p)
 {
     int s2m = p & 0x1;
     piece00[p] ^= (BITSET(from) | BITSET(to));
+    occupied00[s2m] ^= (BITSET(from) | BITSET(to));
+#ifdef ROTATEDBITBOARD
     piece90[p] ^= (BITSET(ROT90(from)) | BITSET(ROT90(to)));
     piecea1h8[p] ^= (BITSET(ROTA1H8(from)) | BITSET(ROTA1H8(to)));
     pieceh1a8[p] ^= (BITSET(ROTH1A8(from)) | BITSET(ROTH1A8(to)));
 
-    occupied00[s2m] ^= (BITSET(from) | BITSET(to));
     occupied90[s2m] ^= (BITSET(ROT90(from)) | BITSET(ROT90(to)));
     occupieda1h8[s2m] ^= (BITSET(ROTA1H8(from)) | BITSET(ROTA1H8(to)));
     occupiedh1a8[s2m] ^= (BITSET(ROTH1A8(from)) | BITSET(ROTH1A8(to)));
+#endif
 }
 
 
@@ -763,13 +779,23 @@ int chessposition::getFromFen(const char* sFen)
     int numToken = (int)token.size();
 
     for (int i = 0; i < 14; i++)
-        piece00[i] = piece90[i] = piecea1h8[i] = pieceh1a8[i] = 0;
+    {
+        piece00[i] = 0ULL;
+#ifdef ROTATEDBITBOARD
+        piece90[i] = piecea1h8[i] = pieceh1a8[i] = 0ULL;
+#endif
+    }
 
     for (int i = 0; i < 64; i++)
         mailbox[i] = BLANK;
 
     for (int i = 0; i < 2; i++)
-        occupied00[i] = occupied90[i] = occupieda1h8[i] = occupiedh1a8[i] = 0;
+    {
+        occupied00[i] = 0ULL;
+#ifdef ROTATEDBITBOARD
+        occupied90[i] = occupieda1h8[i] = occupiedh1a8[i] = 0ULL;
+#endif
+    }
 
     // At least four token are needed (EPD style string)
     if (numToken < 4)
@@ -1053,6 +1079,7 @@ int chessposition::getPositionValue()
                         debugeval("Isolated Pawn Penalty: %d\n", -(S2MSIGN(s) * 20));
 #endif
                     }
+#ifdef ROTATEDBITBOARD //FIXME
                     else if (POPCOUNT((piece90[pc] >> rot90shift[index]) & 0x3f) > 1)
                     {
                         // double pawn
@@ -1061,6 +1088,7 @@ int chessposition::getPositionValue()
                         debugeval("Double Pawn Penalty: %d\n", -(S2MSIGN(s) * 15));
 #endif
                     }
+#endif
                 }
                 if (shifting[p] & 0x2) // rook and queen
                 {
@@ -1074,6 +1102,7 @@ int chessposition::getPositionValue()
                     }
                 }
 
+#ifdef ROTATEDBITBOARD //FIXME
                 if (shifting[p] & 0x1) // bishop and queen)
                 {
                     U64 diagmobility = ~occupied00[s]
@@ -1081,6 +1110,7 @@ int chessposition::getPositionValue()
                             | (diagh1a8_attacks[index][((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[index]) & 0x3f]));
                     result += (S2MSIGN(s) * POPCOUNT(diagmobility) * scalephaseto4);
                 }
+#endif
             }
         }
     }
@@ -1339,7 +1369,6 @@ chessmovelist* chessposition::getMoves()
     U64 opponentorfreebits = ~occupied00[s2m];
     U64 frombits, tobits;
     int from, to;
-    int mask;
     PieceCode pc;
 
     chessmovelist* result = (chessmovelist*)malloc(sizeof(chessmovelist));
@@ -1429,21 +1458,25 @@ chessmovelist* chessposition::getMoves()
             {
                 if (shifting[p] & 0x1)
                 {
+#ifdef ROTATEDBITBOARD
                     // a1h8 attacks
-                    mask = (((occupieda1h8[0] | occupieda1h8[1]) >> rota1h8shift[from]) & 0x3f);
+                    int mask = (((occupieda1h8[0] | occupieda1h8[1]) >> rota1h8shift[from]) & 0x3f);
                     tobits |= (diaga1h8_attacks[from][mask] & opponentorfreebits);
                     // h1a8 attacks
                     mask = (((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[from]) & 0x3f);
                     tobits |= (diagh1a8_attacks[from][mask] & opponentorfreebits);
+#endif
                 }
                 if (shifting[p] & 0x2)
                 {
+#ifdef ROTATEDBITBOARD
                     // rank attacks
-                    mask = (((occupied00[0] | occupied00[1]) >> rot00shift[from]) & 0x3f);
+                    int mask = (((occupied00[0] | occupied00[1]) >> rot00shift[from]) & 0x3f);
                     tobits |= (rank_attacks[from][mask] & opponentorfreebits);
                     // file attacks
                     mask = (((occupied90[0] | occupied90[1]) >> rot90shift[from]) & 0x3f);
                     tobits |= (file_attacks[from][mask] & opponentorfreebits);
+#endif
                 }
                 while (LSB(to, tobits))
                 {
@@ -1459,6 +1492,7 @@ chessmovelist* chessposition::getMoves()
 }
 
 
+#ifdef ROTATEDBITBOARD
 U64 chessposition::attacksTo(int index, int side)
 {
     return (knight_attacks[index] & piece00[(KNIGHT << 1) | side])
@@ -1483,6 +1517,17 @@ bool chessposition::isAttacked(int index)
         || diaga1h8_attacks[index][((occupieda1h8[0] | occupieda1h8[1]) >> rota1h8shift[index]) & 0x3f] & (piece00[(BISHOP << 1) | opponent] | piece00[(QUEEN << 1) | opponent])
         || diagh1a8_attacks[index][((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[index]) & 0x3f] & (piece00[(BISHOP << 1) | opponent] | piece00[(QUEEN << 1) | opponent]);
 }
+#else
+U64 chessposition::attacksTo(int index, int side)
+{
+    return 0ULL;
+}
+
+bool chessposition::isAttacked(int index)
+{
+    return false;
+}
+#endif
 
 
 int chessposition::phase()
