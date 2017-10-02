@@ -487,15 +487,18 @@ U64 king_attacks[64];
 U64 pawn_attacks_free[64][2];
 U64 pawn_attacks_free_double[64][2];
 U64 pawn_attacks_occupied[64][2];
+#ifdef ROTATEDBITBOARD
 U64 rank_attacks[64][64];
 U64 file_attacks[64][64];
 U64 diaga1h8_attacks[64][64];
 U64 diagh1a8_attacks[64][64];
+#endif
 U64 epthelper[64];
 U64 passedPawn[64][2];
 U64 filebarrier[64][2];
 U64 neighbourfiles[64];
 U64 kingshield[64][2];
+U64 filemask[64];
 int castleindex[64][64] = { 0 };
 
 #ifdef MAGICBITBOARD
@@ -510,15 +513,16 @@ struct SMagic {
 
 SMagic mBishopTbl[64];
 SMagic mRookTbl[64];
+
+#define MAGICBISHOPINDEX(m,x) ((((m) & mBishopTbl[x].mask) * mBishopTbl[x].magic) >> (64 - 9))
+#define MAGICROOKINDEX(m,x) ((((m) & mRookTbl[x].mask) * mRookTbl[x].magic) >> (64 - 12))
+
 #endif
 
 
 void initBitmaphelper()
 {
     int to;
-    int blocked;
-    int shift;
-    int delta;
     castleindex[4][2] = WQC;
     castleindex[4][6] = WKC;
     castleindex[60][58] = BQC;
@@ -537,11 +541,14 @@ void initBitmaphelper()
         filebarrier[from][0] = filebarrier[from][1] = 0ULL;
 		kingshield[from][0] = kingshield[from][1] = 0ULL;
         neighbourfiles[from] = 0ULL;
+        filemask[from] = 0ULL;
 
         for (int j = 0; j < 64; j++)
         {
             if (abs(FILE(from) - FILE(j)) == 1)
                 neighbourfiles[from] |= BITSET(j);
+            if (FILE(from) == FILE(j))
+                filemask[from] |= BITSET(j);
         }
 
         for (int j = 0; j < 8; j++)
@@ -588,6 +595,10 @@ void initBitmaphelper()
         }
 
         // Slider attacks
+#ifdef ROTATEDBITBOARD
+        int blocked;
+        int shift;
+        int delta;
         for (int j = 0; j < 64; j++)
         {
             // rank attacks
@@ -678,7 +689,9 @@ void initBitmaphelper()
                 blocked |= (1 << (++delta) & (j << 1));
             }
         }
+#else   //ROTATEDBITBOARD
 
+#endif
         epthelper[from] = 0ULL;
         if (RANK(from) == 3 || RANK(from) == 4)
         {
@@ -997,7 +1010,7 @@ void chessposition::print()
     printf("info string Hash: %llu (%llx)  (getHash(): %llu)\n", hash, hash, zb.getHash());
     printf("info string Value: %d\n", getValue());
     printf("info string Repetitions: %d\n", rp.getPositionCount(hash));
-    printf("info string Phase: %d", phase());
+    printf("info string Phase: %d\n", phase());
     //printf("info string Possible Moves: %s\n", getMoves().toStringWithValue().c_str());
     if (tp.size > 0 && tp.testHash())
         printf("info string Hash-Info: depth=%d Val=%d (%d) Move:%s\n", tp.getDepth(), tp.getValue(), tp.getValtype(), tp.getMove().toString().c_str());
@@ -1079,8 +1092,7 @@ int chessposition::getPositionValue()
                         debugeval("Isolated Pawn Penalty: %d\n", -(S2MSIGN(s) * 20));
 #endif
                     }
-#ifdef ROTATEDBITBOARD //FIXME
-                    else if (POPCOUNT((piece90[pc] >> rot90shift[index]) & 0x3f) > 1)
+                    else if (POPCOUNT((piece00[pc] & filemask[index])) > 1)
                     {
                         // double pawn
                         result -= S2MSIGN(s) * 15;
@@ -1088,7 +1100,6 @@ int chessposition::getPositionValue()
                         debugeval("Double Pawn Penalty: %d\n", -(S2MSIGN(s) * 15));
 #endif
                     }
-#endif
                 }
                 if (shifting[p] & 0x2) // rook and queen
                 {
@@ -1102,15 +1113,18 @@ int chessposition::getPositionValue()
                     }
                 }
 
-#ifdef ROTATEDBITBOARD //FIXME
                 if (shifting[p] & 0x1) // bishop and queen)
                 {
+#ifdef ROTATEDBITBOARD
                     U64 diagmobility = ~occupied00[s]
                         & ((diaga1h8_attacks[index][((occupieda1h8[0] | occupieda1h8[1]) >> rota1h8shift[index]) & 0x3f])
                             | (diagh1a8_attacks[index][((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[index]) & 0x3f]));
+#else
+                    U64 diagmobility = ~occupied00[s]
+                        & (mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)]);
+#endif
                     result += (S2MSIGN(s) * POPCOUNT(diagmobility) * scalephaseto4);
                 }
-#endif
             }
         }
     }
@@ -1465,17 +1479,21 @@ chessmovelist* chessposition::getMoves()
                     // h1a8 attacks
                     mask = (((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[from]) & 0x3f);
                     tobits |= (diagh1a8_attacks[from][mask] & opponentorfreebits);
+#else
+                    tobits |= mBishopAttacks[from][MAGICBISHOPINDEX(occupiedbits, from)];
 #endif
                 }
                 if (shifting[p] & 0x2)
                 {
 #ifdef ROTATEDBITBOARD
                     // rank attacks
-                    int mask = (((occupied00[0] | occupied00[1]) >> rot00shift[from]) & 0x3f);
+                    int mask = ((occupiedbits >> rot00shift[from]) & 0x3f);
                     tobits |= (rank_attacks[from][mask] & opponentorfreebits);
                     // file attacks
                     mask = (((occupied90[0] | occupied90[1]) >> rot90shift[from]) & 0x3f);
                     tobits |= (file_attacks[from][mask] & opponentorfreebits);
+#else
+                    tobits |= mRookAttacks[from][MAGICROOKINDEX(occupiedbits, from)];
 #endif
                 }
                 while (LSB(to, tobits))
@@ -1520,12 +1538,22 @@ bool chessposition::isAttacked(int index)
 #else
 U64 chessposition::attacksTo(int index, int side)
 {
-    return 0ULL;
+    return (knight_attacks[index] & piece00[(KNIGHT << 1) | side])
+        | (king_attacks[index] & piece00[(KING << 1) | side])
+        | (pawn_attacks_occupied[index][state & S2MMASK] & piece00[(PAWN << 1) | side])
+        | (mRookAttacks[index][MAGICROOKINDEX((occupied00[0] | occupied00[1]), index)] & (piece00[(ROOK << 1) | side] | piece00[(QUEEN << 1) | side]))
+        | (mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)] & (piece00[(BISHOP << 1) | side] | piece00[(QUEEN << 1) | side]));
 }
 
 bool chessposition::isAttacked(int index)
 {
-    return false;
+    int opponent = (state & S2MMASK) ^ 1;
+
+    return knight_attacks[index] & piece00[(KNIGHT << 1) | opponent]
+        || king_attacks[index] & piece00[(KING << 1) | opponent]
+        || pawn_attacks_occupied[index][state & S2MMASK] & piece00[(PAWN << 1) | opponent]
+        || mRookAttacks[index][MAGICROOKINDEX((occupied00[0] | occupied00[1]), index)] & (piece00[(ROOK << 1) | opponent] | piece00[(QUEEN << 1) | opponent])
+        || mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)] & (piece00[(BISHOP << 1) | opponent] | piece00[(QUEEN << 1) | opponent]);
 }
 #endif
 
