@@ -503,8 +503,10 @@ int castleindex[64][64] = { 0 };
 
 #ifdef MAGICBITBOARD
 // shameless copy from http://chessprogramming.wikispaces.com/Magic+Bitboards#Plain
-U64 mBishopAttacks[64][512];
-U64 mRookAttacks[64][4096];
+#define BISHOPINDEXBITS 9
+#define ROOKINDEXBITS 12
+U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
+U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 
 struct SMagic {
     U64 mask;  // to mask relevant squares of both lines (no outer squares)
@@ -514,10 +516,209 @@ struct SMagic {
 SMagic mBishopTbl[64];
 SMagic mRookTbl[64];
 
-#define MAGICBISHOPINDEX(m,x) ((((m) & mBishopTbl[x].mask) * mBishopTbl[x].magic) >> (64 - 9))
-#define MAGICROOKINDEX(m,x) ((((m) & mRookTbl[x].mask) * mRookTbl[x].magic) >> (64 - 12))
-
+#define MAGICBISHOPINDEX(m,x) ((((m) & mBishopTbl[x].mask) * mBishopTbl[x].magic) >> (64 - BISHOPINDEXBITS))
+#define MAGICROOKINDEX(m,x) ((((m) & mRookTbl[x].mask) * mRookTbl[x].magic) >> (64 - ROOKINDEXBITS))
+#define MAGICBISHOPATTACKS(m,x) (mBishopAttacks[x][MAGICBISHOPINDEX(m,x)])
+#define MAGICROOKATTACKS(m,x) (mRookAttacks[x][MAGICROOKINDEX(m,x)])
 #endif
+
+const U64 RMagic[64] = {
+    0x80004000976080ULL,
+    0x1040400010002000ULL,
+    0x4880200210000980ULL,
+    0x5280080010000482ULL,
+    0x200040200081020ULL,
+    0x2100080100020400ULL,
+    0x4280008001000200ULL,
+    0x1000a4425820300ULL,
+    0x29002100800040ULL,
+    0x4503400040201004ULL,
+    0x209002001004018ULL,
+    0x1131000a10002100ULL,
+    0x9000800120500ULL,
+    0x10e001804820010ULL,
+    0x29000402000100ULL,
+    0x2002000d01c40292ULL,
+    0x80084000200c40ULL,
+    0x10004040002002ULL,
+    0x201030020004014ULL,
+    0x80012000a420020ULL,
+    0x129010008001204ULL,
+    0x6109010008040002ULL,
+    0x950010100020004ULL,
+    0x803a0000c50284ULL,
+    0x80004100210080ULL,
+    0x200240100140ULL,
+    0x20004040100800ULL,
+    0x4018090300201000ULL,
+    0x4802010a00102004ULL,
+    0x2001000900040002ULL,
+    0x4a02104001002a8ULL,
+    0x2188108200204401ULL,
+    0x40400020800080ULL,
+    0x880402000401004ULL,
+    0x10040800202000ULL,
+    0x604410a02001020ULL,
+    0x200200206a001410ULL,
+    0x86000400810080ULL,
+    0x428200040600080bULL,
+    0x2001000041000082ULL,
+    0x80002000484000ULL,
+    0x210002002c24000ULL,
+    0x401a200100410014ULL,
+    0x5021000a30009ULL,
+    0x218000509010010ULL,
+    0x4000400410080120ULL,
+    0x20801040010ULL,
+    0x29040040820011ULL,
+    0x4080400024800280ULL,
+    0x500200040100440ULL,
+    0x2880142001004100ULL,
+    0x412020400a001200ULL,
+    0x18c028004080080ULL,
+    0x884001020080401ULL,
+    0x210810420400ULL,
+    0x801048745040200ULL,
+    0x4401002040120082ULL,
+    0x408200210012ULL,
+    0x110008200441ULL,
+    0x2010002004100901ULL,
+    0x801000800040211ULL,
+    0x480d000400820801ULL,
+    0x820104201280084ULL,
+    0x1001040311802142ULL,
+};
+
+const U64 BMagic[64] = {
+    0x1024b002420160ULL,
+    0x1008080140420021ULL,
+    0x2012080041080024ULL,
+    0xc282601408c0802ULL,
+    0x2004042000000002ULL,
+    0x12021004022080ULL,
+    0x880414820100000ULL,
+    0x4501002211044000ULL,
+    0x20402222121600ULL,
+    0x1081088a28022020ULL,
+    0x1004c2810851064ULL,
+    0x2040080841004918ULL,
+    0x1448020210201017ULL,
+    0x4808110108400025ULL,
+    0x10504404054004ULL,
+    0x800010422092400ULL,
+    0x40000870450250ULL,
+    0x402040408080518ULL,
+    0x1000980a404108ULL,
+    0x1020804110080ULL,
+    0x8200c02082005ULL,
+    0x40802009a0800ULL,
+    0x1000201012100ULL,
+    0x111080200820180ULL,
+    0x904122104101024ULL,
+    0x4008200405244084ULL,
+    0x44040002182400ULL,
+    0x4804080004021002ULL,
+    0x6401004024004040ULL,
+    0x404010001300a20ULL,
+    0x428020200a20100ULL,
+    0x300460100420200ULL,
+    0x404200c062000ULL,
+    0x22101400510141ULL,
+    0x104044400180031ULL,
+    0x2040040400280211ULL,
+    0x8020400401010ULL,
+    0x20100110401a0040ULL,
+    0x100101005a2080ULL,
+    0x1a008300042411ULL,
+    0x120a025004504000ULL,
+    0x4001084242101000ULL,
+    0xa020202010a4200ULL,
+    0x4000002018000100ULL,
+    0x80104000044ULL,
+    0x1004009806004043ULL,
+    0x100401080a000112ULL,
+    0x1041012101000608ULL,
+    0x40400c250100140ULL,
+    0x80a10460a100002ULL,
+    0x2210030401240002ULL,
+    0x6040aa108481b20ULL,
+    0x4009004050410002ULL,
+    0x8106003420200e0ULL,
+    0x1410500a08206000ULL,
+    0x92548802004000ULL,
+    0x1040041241028ULL,
+    0x120042025011ULL,
+    0x8060104054400ULL,
+    0x20004404020a0a01ULL,
+    0x40008010020214ULL,
+    0x4000050209802c1ULL,
+    0x208244210400ULL,
+    0x10140848044010ULL,
+};
+
+
+#if 0
+U64 find_magic(int index, int m, U64 mask) {
+    U64 b[4096], a[4096], used[4096], magic;
+    int i, j, k, n, fail;
+
+    n = POPCOUNT(mask);
+
+    for (i = 0; i < (1 << n); i++) {
+        b[i] = index_to_uint64(i, n, mask);
+        a[i] = bishop ? batt(sq, b[i]) : ratt(sq, b[i]);
+    }
+    for (k = 0; k < 100000000; k++) {
+        magic = random_uint64_fewbits();
+        if (count_1s((mask * magic) & 0xFF00000000000000ULL) < 6) continue;
+        for (i = 0; i < 4096; i++) used[i] = 0ULL;
+        for (i = 0, fail = 0; !fail && i < (1 << n); i++) {
+            j = ((b[i] * magic) >> (64 - m));
+            if (used[j] == 0ULL)
+                used[j] = a[i];
+            else if (used[j] != a[i])
+                fail = 1;
+        }
+        if (!fail) return magic;
+    }
+    printf("***Failed***\n");
+    return 0ULL;
+}
+#endif
+
+
+U64 patternToMask(int i, int d, int p)
+{
+    U64 occ = 0ULL;
+    int j = i;
+    while (ISNEIGHBOUR(j, j - d)) j -= d;
+    while (p)
+    {
+        if (p & 1)
+            occ |= (1ULL << j);
+        p >>= 1;
+        if (!ISNEIGHBOUR(j, j + d))
+            p = 0;
+        j += d;
+    }
+    return occ;
+}
+
+
+U64 getAttacks(int index, U64 occ, int delta)
+{
+    U64 attacks = 0ULL;
+    U64 blocked = 0ULL;
+    for (int shift = index + delta; ISNEIGHBOUR(shift, shift - delta); shift += delta)
+    {
+        if (!blocked)
+        {
+            attacks |= BITSET(shift);
+        }
+        blocked |= ((1ULL << shift) & occ);
+    }
+    return attacks;
+}
 
 
 void initBitmaphelper()
@@ -595,99 +796,56 @@ void initBitmaphelper()
         }
 
         // Slider attacks
+#ifdef MAGICBITBOARD
+        // Fill the mask
+        mBishopTbl[from].mask = 0ULL;
+        mRookTbl[from].mask = 0ULL;
+        for (int j = 0; j < 64; j++)
+        {
+            if (from == j)
+                continue;
+            if (RANK(from) == RANK(j) && !OUTERFILE(j))
+                mRookTbl[from].mask |= BITSET(j);
+            if (FILE(from) == FILE(j) && !PROMOTERANK(j))
+                mRookTbl[from].mask |= BITSET(j);
+            if (abs(RANK(from) - RANK(j)) == abs(FILE(from) - FILE(j)) && !OUTERFILE(j) && !PROMOTERANK(j))
+                mBishopTbl[from].mask |= BITSET(j);
+        }
+        printf("%d\n", from);
+        pos.BitboardPrint(mBishopTbl[from].mask);
+        printf("\n");
+        pos.BitboardPrint(mRookTbl[from].mask);
+        printf("\n");
+        // Search for magic
+        //mRookTbl[from].magic = find_magic(from, mRookTbl[from].mask);
+        mRookTbl[from].magic = RMagic[from];
+        mBishopTbl[from].magic = BMagic[from];
+
+        printf("%llx\n", MAGICROOKINDEX(mRookTbl[from].magic, from));
+        printf("%llx\n", MAGICBISHOPINDEX(mBishopTbl[from].magic, from));
+
+
+
+#endif
 #ifdef ROTATEDBITBOARD
-        int blocked;
-        int shift;
-        int delta;
+        U64 occ;
         for (int j = 0; j < 64; j++)
         {
             // rank attacks
-            rank_attacks[from][j] = 0ULL;
-            blocked = 0;
-            for (shift = from - 1; RANK(shift) == RANK(from); shift--)
-            {
-                if (!blocked)
-                {
-                    rank_attacks[from][j] |= BITSET(shift);
-                }
-                blocked |= (1 << FILE(shift) & (j << 1));
-            }
-            blocked = 0;
-            for (shift = from + 1; RANK(shift) == RANK(from); shift++)
-            {
-                if (!blocked)
-                {
-                    rank_attacks[from][j] |= BITSET(shift);
-                }
-                blocked |= (1 << FILE(shift) & (j << 1));
-            }
+            occ = patternToMask(from, 1, j << 1);
+            rank_attacks[from][j] = (getAttacks(from, occ, -1) | getAttacks(from, occ, 1));
 
             // file attacks
-            file_attacks[from][j] = 0ULL;
-            blocked = 0;
-            for (shift = from - 8; shift >= 0; shift -= 8)
-            {
-                if (!blocked)
-                {
-                    file_attacks[from][j] |= BITSET(shift);
-                }
-                blocked |= (1 << RANK(shift) & (j << 1));
-            }
-            blocked = 0;
-            for (shift = from + 8; shift < 64; shift += 8)
-            {
-                if (!blocked)
-                {
-                    file_attacks[from][j] |= BITSET(shift);
-                }
-                blocked |= (1 << RANK(shift) & (j << 1));
-            }
+            occ = patternToMask(from, 8, j << 1);
+            file_attacks[from][j] = (getAttacks(from, occ, -8) | getAttacks(from, occ, 8));
 
             // diagonala1h8 attacks
-            diaga1h8_attacks[from][j] = 0ULL;
-            blocked = 0;
-            delta = min(FILE(from), RANK(from));
-            for (shift = from - 9; shift >= 0 && FILE(shift) != 7; shift -= 9)
-            {
-                if (!blocked)
-                {
-                    diaga1h8_attacks[from][j] |= BITSET(shift);
-                }
-                blocked |= (1 << (--delta) & (j << 1));
-            }
-            blocked = 0;
-            delta = min(FILE(from), RANK(from));
-            for (shift = from + 9; shift < 64 && FILE(shift) != 0; shift += 9)
-            {
-                if (!blocked)
-                {
-                    diaga1h8_attacks[from][j] |= BITSET(shift);
-                }
-                blocked |= (1 << (++delta) & (j << 1));
-            }
+            occ = patternToMask(from, 9, j << 1);
+            diaga1h8_attacks[from][j] = (getAttacks(from, occ, -9) | getAttacks(from, occ, 9));
 
             // diagonalh1a8 attacks
-            diagh1a8_attacks[from][j] = 0ULL;
-            blocked = 0;
-            delta = min(7 - FILE(from), RANK(from));
-            for (shift = from - 7; shift >= 0 && FILE(shift) != 0; shift -= 7)
-            {
-                if (!blocked)
-                {
-                    diagh1a8_attacks[from][j] |= BITSET(shift);
-                }
-                blocked |= (1 << (--delta) & (j << 1));
-            }
-            blocked = 0;
-            delta = min(7 - FILE(from), RANK(from));
-            for (shift = from + 7; shift < 64 && FILE(shift) != 7; shift += 7)
-            {
-                if (!blocked)
-                {
-                    diagh1a8_attacks[from][j] |= BITSET(shift);
-                }
-                blocked |= (1 << (++delta) & (j << 1));
-            }
+            occ = patternToMask(from, 7, j << 1);
+            diagh1a8_attacks[from][j] = (getAttacks(from, occ, -7) | getAttacks(from, occ, 7));
         }
 #else   //ROTATEDBITBOARD
 
@@ -782,6 +940,18 @@ void chessposition::BitboardMove(int from, int to, PieceCode p)
     occupieda1h8[s2m] ^= (BITSET(ROTA1H8(from)) | BITSET(ROTA1H8(to)));
     occupiedh1a8[s2m] ^= (BITSET(ROTH1A8(from)) | BITSET(ROTH1A8(to)));
 #endif
+}
+
+void chessposition::BitboardPrint(U64 b)
+{
+    for (int r = 7; r >= 0; r--)
+    {
+        for (int f = 0; f < 8; f++)
+        {
+            printf("%s", (b & BITSET(r * 8 + f) ? "x" : "."));
+        }
+        printf("\n");
+    }
 }
 
 
@@ -1480,7 +1650,7 @@ chessmovelist* chessposition::getMoves()
                     mask = (((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[from]) & 0x3f);
                     tobits |= (diagh1a8_attacks[from][mask] & opponentorfreebits);
 #else
-                    tobits |= mBishopAttacks[from][MAGICBISHOPINDEX(occupiedbits, from)];
+                    tobits |= MAGICBISHOPATTACKS(occupiedbits, from);
 #endif
                 }
                 if (shifting[p] & 0x2)
@@ -1493,7 +1663,7 @@ chessmovelist* chessposition::getMoves()
                     mask = (((occupied90[0] | occupied90[1]) >> rot90shift[from]) & 0x3f);
                     tobits |= (file_attacks[from][mask] & opponentorfreebits);
 #else
-                    tobits |= mRookAttacks[from][MAGICROOKINDEX(occupiedbits, from)];
+                    tobits |= MAGICROOKATTACKS(occupiedbits, from);
 #endif
                 }
                 while (LSB(to, tobits))
@@ -1541,8 +1711,8 @@ U64 chessposition::attacksTo(int index, int side)
     return (knight_attacks[index] & piece00[(KNIGHT << 1) | side])
         | (king_attacks[index] & piece00[(KING << 1) | side])
         | (pawn_attacks_occupied[index][state & S2MMASK] & piece00[(PAWN << 1) | side])
-        | (mRookAttacks[index][MAGICROOKINDEX((occupied00[0] | occupied00[1]), index)] & (piece00[(ROOK << 1) | side] | piece00[(QUEEN << 1) | side]))
-        | (mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)] & (piece00[(BISHOP << 1) | side] | piece00[(QUEEN << 1) | side]));
+        | (MAGICROOKATTACKS(occupied00[0] | occupied00[1], index) & (piece00[(ROOK << 1) | side] | piece00[(QUEEN << 1) | side]))
+        | (MAGICBISHOPATTACKS(occupied00[0] | occupied00[1], index) & (piece00[(BISHOP << 1) | side] | piece00[(QUEEN << 1) | side]));
 }
 
 bool chessposition::isAttacked(int index)
@@ -1552,8 +1722,8 @@ bool chessposition::isAttacked(int index)
     return knight_attacks[index] & piece00[(KNIGHT << 1) | opponent]
         || king_attacks[index] & piece00[(KING << 1) | opponent]
         || pawn_attacks_occupied[index][state & S2MMASK] & piece00[(PAWN << 1) | opponent]
-        || mRookAttacks[index][MAGICROOKINDEX((occupied00[0] | occupied00[1]), index)] & (piece00[(ROOK << 1) | opponent] | piece00[(QUEEN << 1) | opponent])
-        || mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)] & (piece00[(BISHOP << 1) | opponent] | piece00[(QUEEN << 1) | opponent]);
+        || MAGICROOKATTACKS(occupied00[0] | occupied00[1], index) & (piece00[(ROOK << 1) | opponent] | piece00[(QUEEN << 1) | opponent])
+        || MAGICBISHOPATTACKS(occupied00[0] | occupied00[1], index) & (piece00[(BISHOP << 1) | opponent] | piece00[(QUEEN << 1) | opponent]);
 }
 #endif
 

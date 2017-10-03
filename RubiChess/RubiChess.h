@@ -104,6 +104,8 @@ typedef unsigned long long U64;
 #define RANK(x) ((x) >> 3)
 #define FILE(x) ((x) & 0x7)
 #define PROMOTERANK(x) (RANK(x) == 0 || RANK(x) == 7)
+#define OUTERFILE(x) (FILE(x) == 0 || FILE(x) == 7)
+#define ISNEIGHBOUR(x,y) ((x) >= 0 && (x) < 64 && (y) >= 0 && (y) < 64 && abs(RANK(x) - RANK(y)) <= 1 && abs(FILE(x) - FILE(y)) <= 1)
 
 #ifdef ROTATEDBITBOARD
 #define ROT90(x) (rot90[x])
@@ -411,6 +413,7 @@ public:
     void BitboardSet(int index, PieceCode p);
     void BitboardClear(int index, PieceCode p);
     void BitboardMove(int from, int to, PieceCode p);
+    void BitboardPrint(U64 b);
     int getFromFen(const char* sFen);
     bool applyMove(string s);
     void print();
