@@ -522,170 +522,6 @@ SMagic mRookTbl[64];
 #define MAGICROOKATTACKS(m,x) (mRookAttacks[x][MAGICROOKINDEX(m,x)])
 #endif
 
-const U64 RMagic[64] = {
-    0x80004000976080ULL,
-    0x1040400010002000ULL,
-    0x4880200210000980ULL,
-    0x5280080010000482ULL,
-    0x200040200081020ULL,
-    0x2100080100020400ULL,
-    0x4280008001000200ULL,
-    0x1000a4425820300ULL,
-    0x29002100800040ULL,
-    0x4503400040201004ULL,
-    0x209002001004018ULL,
-    0x1131000a10002100ULL,
-    0x9000800120500ULL,
-    0x10e001804820010ULL,
-    0x29000402000100ULL,
-    0x2002000d01c40292ULL,
-    0x80084000200c40ULL,
-    0x10004040002002ULL,
-    0x201030020004014ULL,
-    0x80012000a420020ULL,
-    0x129010008001204ULL,
-    0x6109010008040002ULL,
-    0x950010100020004ULL,
-    0x803a0000c50284ULL,
-    0x80004100210080ULL,
-    0x200240100140ULL,
-    0x20004040100800ULL,
-    0x4018090300201000ULL,
-    0x4802010a00102004ULL,
-    0x2001000900040002ULL,
-    0x4a02104001002a8ULL,
-    0x2188108200204401ULL,
-    0x40400020800080ULL,
-    0x880402000401004ULL,
-    0x10040800202000ULL,
-    0x604410a02001020ULL,
-    0x200200206a001410ULL,
-    0x86000400810080ULL,
-    0x428200040600080bULL,
-    0x2001000041000082ULL,
-    0x80002000484000ULL,
-    0x210002002c24000ULL,
-    0x401a200100410014ULL,
-    0x5021000a30009ULL,
-    0x218000509010010ULL,
-    0x4000400410080120ULL,
-    0x20801040010ULL,
-    0x29040040820011ULL,
-    0x4080400024800280ULL,
-    0x500200040100440ULL,
-    0x2880142001004100ULL,
-    0x412020400a001200ULL,
-    0x18c028004080080ULL,
-    0x884001020080401ULL,
-    0x210810420400ULL,
-    0x801048745040200ULL,
-    0x4401002040120082ULL,
-    0x408200210012ULL,
-    0x110008200441ULL,
-    0x2010002004100901ULL,
-    0x801000800040211ULL,
-    0x480d000400820801ULL,
-    0x820104201280084ULL,
-    0x1001040311802142ULL,
-};
-
-const U64 BMagic[64] = {
-    0x1024b002420160ULL,
-    0x1008080140420021ULL,
-    0x2012080041080024ULL,
-    0xc282601408c0802ULL,
-    0x2004042000000002ULL,
-    0x12021004022080ULL,
-    0x880414820100000ULL,
-    0x4501002211044000ULL,
-    0x20402222121600ULL,
-    0x1081088a28022020ULL,
-    0x1004c2810851064ULL,
-    0x2040080841004918ULL,
-    0x1448020210201017ULL,
-    0x4808110108400025ULL,
-    0x10504404054004ULL,
-    0x800010422092400ULL,
-    0x40000870450250ULL,
-    0x402040408080518ULL,
-    0x1000980a404108ULL,
-    0x1020804110080ULL,
-    0x8200c02082005ULL,
-    0x40802009a0800ULL,
-    0x1000201012100ULL,
-    0x111080200820180ULL,
-    0x904122104101024ULL,
-    0x4008200405244084ULL,
-    0x44040002182400ULL,
-    0x4804080004021002ULL,
-    0x6401004024004040ULL,
-    0x404010001300a20ULL,
-    0x428020200a20100ULL,
-    0x300460100420200ULL,
-    0x404200c062000ULL,
-    0x22101400510141ULL,
-    0x104044400180031ULL,
-    0x2040040400280211ULL,
-    0x8020400401010ULL,
-    0x20100110401a0040ULL,
-    0x100101005a2080ULL,
-    0x1a008300042411ULL,
-    0x120a025004504000ULL,
-    0x4001084242101000ULL,
-    0xa020202010a4200ULL,
-    0x4000002018000100ULL,
-    0x80104000044ULL,
-    0x1004009806004043ULL,
-    0x100401080a000112ULL,
-    0x1041012101000608ULL,
-    0x40400c250100140ULL,
-    0x80a10460a100002ULL,
-    0x2210030401240002ULL,
-    0x6040aa108481b20ULL,
-    0x4009004050410002ULL,
-    0x8106003420200e0ULL,
-    0x1410500a08206000ULL,
-    0x92548802004000ULL,
-    0x1040041241028ULL,
-    0x120042025011ULL,
-    0x8060104054400ULL,
-    0x20004404020a0a01ULL,
-    0x40008010020214ULL,
-    0x4000050209802c1ULL,
-    0x208244210400ULL,
-    0x10140848044010ULL,
-};
-
-
-#if 0
-U64 find_magic(int index, int m, U64 mask) {
-    U64 b[4096], a[4096], used[4096], magic;
-    int i, j, k, n, fail;
-
-    n = POPCOUNT(mask);
-
-    for (i = 0; i < (1 << n); i++) {
-        b[i] = index_to_uint64(i, n, mask);
-        a[i] = bishop ? batt(sq, b[i]) : ratt(sq, b[i]);
-    }
-    for (k = 0; k < 100000000; k++) {
-        magic = random_uint64_fewbits();
-        if (count_1s((mask * magic) & 0xFF00000000000000ULL) < 6) continue;
-        for (i = 0; i < 4096; i++) used[i] = 0ULL;
-        for (i = 0, fail = 0; !fail && i < (1 << n); i++) {
-            j = ((b[i] * magic) >> (64 - m));
-            if (used[j] == 0ULL)
-                used[j] = a[i];
-            else if (used[j] != a[i])
-                fail = 1;
-        }
-        if (!fail) return magic;
-    }
-    printf("***Failed***\n");
-    return 0ULL;
-}
-#endif
-
 
 U64 patternToMask(int i, int d, int p)
 {
@@ -720,10 +556,37 @@ U64 getAttacks(int index, U64 occ, int delta)
     return attacks;
 }
 
+U64 getOccupiedFromMBIndex(int j, U64 mask)
+{
+    U64 occ = 0ULL;
+    int k;
+    int i = 0;
+    while (LSB(k, mask))
+    {
+        if (j & BITSET(i))
+            occ |= (1ULL << k);
+        mask ^= BITSET(k);
+        i++;
+    }
+    return occ;
+}
+
+U64 getMagicCandidate(U64 mask)
+{
+    U64 magic;
+    do {
+        magic = zb.getRnd() & zb.getRnd() & zb.getRnd();
+    } while (POPCOUNT((mask * magic) & 0xFF00000000000000ULL) < 6);
+    return magic;
+}
+
+
 
 void initBitmaphelper()
 {
     int to;
+    printf("Initializing tables, searching for magics .");
+
     castleindex[4][2] = WQC;
     castleindex[4][6] = WKC;
     castleindex[60][58] = BQC;
@@ -810,47 +673,60 @@ void initBitmaphelper()
             if (abs(RANK(from) - RANK(j)) == abs(FILE(from) - FILE(j)) && !OUTERFILE(j) && !PROMOTERANK(j))
                 mBishopTbl[from].mask |= BITSET(j);
         }
-        // Search for magic... later
-        //mRookTbl[from].magic = find_magic(from, mRookTbl[from].mask);
-        mRookTbl[from].magic = RMagic[from];
-        mBishopTbl[from].magic = BMagic[from];
 
-        for (int j = 0; j < (1 << BISHOPINDEXBITS); j++) {
-            // First get the subset of mask corresponding to j
-            U64 mask = mBishopTbl[from].mask;
-            U64 occ = 0ULL;
-            int k;
-            int i = 0;
-            while (LSB(k, mask))
-            {
-                if (j & BITSET(i))
-                    occ |= (1ULL << k);
-                mask ^= BITSET(k);
-                i++;
+        // Search for magic numbers and initialize the attack tables
+        while (true)
+        {
+            bool magicOk = true;
+            
+            // Clear attack bitmaps to detect hash collisions
+            for (int j = 0; j < (1 << BISHOPINDEXBITS); j++)
+                mBishopAttacks[from][j] = 0ULL;
+            
+            // Get a random number with few bits set as a possible magic number
+            mBishopTbl[from].magic = getMagicCandidate(mBishopTbl[from].mask);
+
+            for (int j = 0; magicOk && j < (1 << BISHOPINDEXBITS); j++) {
+                // First get the subset of mask corresponding to j
+                U64 occ = getOccupiedFromMBIndex(j, mBishopTbl[from].mask);
+                // Now get the attack bitmap for this subset and store to attack table
+                U64 attack = (getAttacks(from, occ, -7) | getAttacks(from, occ, 7) | getAttacks(from, occ, -9) | getAttacks(from, occ, 9));
+                int hashindex = MAGICBISHOPINDEX(occ, from);
+                if (mBishopAttacks[from][hashindex] == 0ULL)
+                    mBishopAttacks[from][hashindex] = attack;
+                else if (mBishopAttacks[from][hashindex] != attack)
+                    magicOk = false;
             }
-            // Now get the attack bitmap for this subset and store to attack table
-            U64 attack = (getAttacks(from, occ, -7) | getAttacks(from, occ, 7) | getAttacks(from, occ, -9) | getAttacks(from, occ, 9));
-            mBishopAttacks[from][MAGICBISHOPINDEX(occ,from)] = attack;
+            if (magicOk)
+                break;
         }
 
-        for (int j = 0; j < (1 << ROOKINDEXBITS); j++) {
-            // First get the subset of mask corresponding to j
-            U64 mask = mRookTbl[from].mask;
-            U64 occ = 0ULL;
-            int k;
-            int i = 0;
-            while (LSB(k, mask))
-            {
-                if (j & BITSET(i))
-                    occ |= (1ULL << k);
-                mask ^= BITSET(k);
-                i++;
-            }
-            // Now get the attack bitmap for this subset and store to attack table
-            U64 attack = (getAttacks(from, occ, -1) | getAttacks(from, occ, 1) | getAttacks(from, occ, -8) | getAttacks(from, occ, 8));
-            mRookAttacks[from][MAGICROOKINDEX(occ, from)] = attack;
-        }
+        while (true)
+        {
+            bool magicOk = true;
 
+            // Clear attack bitmaps to detect hash collisions
+            for (int j = 0; j < (1 << ROOKINDEXBITS); j++)
+                mRookAttacks[from][j] = 0ULL;
+
+            // Get a random number with few bits set as a possible magic number
+            mRookTbl[from].magic = getMagicCandidate(mRookTbl[from].mask);
+
+            for (int j = 0; magicOk && j < (1 << ROOKINDEXBITS); j++) {
+                // First get the subset of mask corresponding to j
+                U64 occ = getOccupiedFromMBIndex(j, mRookTbl[from].mask);
+                // Now get the attack bitmap for this subset and store to attack table
+                U64 attack = (getAttacks(from, occ, -1) | getAttacks(from, occ, 1) | getAttacks(from, occ, -8) | getAttacks(from, occ, 8));
+                int hashindex = MAGICROOKINDEX(occ, from);
+                if (mRookAttacks[from][hashindex] == 0ULL)
+                    mRookAttacks[from][hashindex] = attack;
+                else if (mRookAttacks[from][hashindex] != attack)
+                    magicOk = false;
+            }
+            if (magicOk)
+                break;
+        }
+        printf(".");
 
 #endif
 #ifdef ROTATEDBITBOARD
@@ -885,6 +761,7 @@ void initBitmaphelper()
                 epthelper[from] |= BITSET(from + 1);
         }
 	}
+    printf(" Ready.\n");
 }
 
 
@@ -3201,6 +3078,6 @@ void engine::communicate(string inputstring)
 	} while (command != QUIT && inputstring == "");
 }
 
-
+zobrist zb;
 chessposition pos;
 engine en;
