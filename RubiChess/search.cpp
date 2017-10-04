@@ -234,7 +234,7 @@ int rootsearch(int alpha, int beta, int depth)
                         en.fhf++;
 #endif
                     PDEBUG(depth, "(alphabetamax) score=%d >= beta=%d  -> cutoff\n", score, beta);
-                    tp.addHash(beta, HASHBETA, depth, 0);
+                    tp.addHash(beta, HASHBETA, depth, best.code);
                     free(newmoves);
                     return beta;   // fail hard beta-cutoff
                 }
