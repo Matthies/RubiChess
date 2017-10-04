@@ -791,7 +791,6 @@ void initBitmaphelper()
 							kingshield[from][s] |= BITSET(r);
 					}
                 }
-
             }
         }
 
@@ -811,19 +810,46 @@ void initBitmaphelper()
             if (abs(RANK(from) - RANK(j)) == abs(FILE(from) - FILE(j)) && !OUTERFILE(j) && !PROMOTERANK(j))
                 mBishopTbl[from].mask |= BITSET(j);
         }
-        printf("%d\n", from);
-        pos.BitboardPrint(mBishopTbl[from].mask);
-        printf("\n");
-        pos.BitboardPrint(mRookTbl[from].mask);
-        printf("\n");
-        // Search for magic
+        // Search for magic... later
         //mRookTbl[from].magic = find_magic(from, mRookTbl[from].mask);
         mRookTbl[from].magic = RMagic[from];
         mBishopTbl[from].magic = BMagic[from];
 
-        printf("%llx\n", MAGICROOKINDEX(mRookTbl[from].magic, from));
-        printf("%llx\n", MAGICBISHOPINDEX(mBishopTbl[from].magic, from));
+        for (int j = 0; j < (1 << BISHOPINDEXBITS); j++) {
+            // First get the subset of mask corresponding to j
+            U64 mask = mBishopTbl[from].mask;
+            U64 occ = 0ULL;
+            int k;
+            int i = 0;
+            while (LSB(k, mask))
+            {
+                if (j & BITSET(i))
+                    occ |= (1ULL << k);
+                mask ^= BITSET(k);
+                i++;
+            }
+            // Now get the attack bitmap for this subset and store to attack table
+            U64 attack = (getAttacks(from, occ, -7) | getAttacks(from, occ, 7) | getAttacks(from, occ, -9) | getAttacks(from, occ, 9));
+            mBishopAttacks[from][MAGICBISHOPINDEX(occ,from)] = attack;
+        }
 
+        for (int j = 0; j < (1 << ROOKINDEXBITS); j++) {
+            // First get the subset of mask corresponding to j
+            U64 mask = mRookTbl[from].mask;
+            U64 occ = 0ULL;
+            int k;
+            int i = 0;
+            while (LSB(k, mask))
+            {
+                if (j & BITSET(i))
+                    occ |= (1ULL << k);
+                mask ^= BITSET(k);
+                i++;
+            }
+            // Now get the attack bitmap for this subset and store to attack table
+            U64 attack = (getAttacks(from, occ, -1) | getAttacks(from, occ, 1) | getAttacks(from, occ, -8) | getAttacks(from, occ, 8));
+            mRookAttacks[from][MAGICROOKINDEX(occ, from)] = attack;
+        }
 
 
 #endif
@@ -1181,7 +1207,7 @@ void chessposition::print()
     printf("info string Value: %d\n", getValue());
     printf("info string Repetitions: %d\n", rp.getPositionCount(hash));
     printf("info string Phase: %d\n", phase());
-    //printf("info string Possible Moves: %s\n", getMoves().toStringWithValue().c_str());
+    printf("info string Pseudo-legal Moves: %s\n", getMoves()->toStringWithValue().c_str());
     if (tp.size > 0 && tp.testHash())
         printf("info string Hash-Info: depth=%d Val=%d (%d) Move:%s\n", tp.getDepth(), tp.getValue(), tp.getValtype(), tp.getMove().toString().c_str());
     if (actualpath.length)
@@ -1650,7 +1676,7 @@ chessmovelist* chessposition::getMoves()
                     mask = (((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[from]) & 0x3f);
                     tobits |= (diagh1a8_attacks[from][mask] & opponentorfreebits);
 #else
-                    tobits |= MAGICBISHOPATTACKS(occupiedbits, from);
+                    tobits |= (MAGICBISHOPATTACKS(occupiedbits, from) & opponentorfreebits);
 #endif
                 }
                 if (shifting[p] & 0x2)
@@ -1663,7 +1689,7 @@ chessmovelist* chessposition::getMoves()
                     mask = (((occupied90[0] | occupied90[1]) >> rot90shift[from]) & 0x3f);
                     tobits |= (file_attacks[from][mask] & opponentorfreebits);
 #else
-                    tobits |= MAGICROOKATTACKS(occupiedbits, from);
+                    tobits |= (MAGICROOKATTACKS(occupiedbits, from) & opponentorfreebits);
 #endif
                 }
                 while (LSB(to, tobits))
