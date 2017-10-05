@@ -6,66 +6,8 @@
 
 ChangeLog
 
-0.1 (release 2017 - 02 - 24) :
-    -0x88 board representation with(hopefully) bugfree move generation and play / unplay
-    - alpha - beta - search implemented with pv move ordering and some 'prefer captures' heuristic
-    - basic implementation of transposition table; not yet very powerfull as it is cannot deal with non - exact values and is reset after every iterative seach
-    - getPositionValue: expensive but quite strong position evaluation bases on counting dominated fields
-    - basic UCI protocol implementation so that it can play tournaments in Arena
-    - perft implemented
-    - testengine mode for bulk testing of EPD files
 
-    0.2 (release 2017 - 03 - 19) :
-    -improved use of transposition table which is not reset anymore and can deal with alpha and beta bound entries
-    - alphabeta now uses a quiscence based on SEE evaluation for captures to go
-    - null move pruning added
-    - move ordering now uses killer moves
-    - simplified unplay to just reset the old values stored by play procedure instead of emulating the reverse play
-    - getPositionValue changed to some simple rules
-    + prefer central fields for knight and bishop
-    + prefer open files for rook and queen
-    + prefer border positions for king in the beginning to force castles
-    + pawns: prefer central pawns, penalty for double pawns, move forward in endgame
 
-    0.2.1 (release 2017 - 03 - 28) :
-    -tuned attack detection, move generation, SEE, play / unplay to get more speed out of it; perft shows ~10 % better performance
-    - added history heuristic for move ordering; improvement visible in wacnew / 199 where next depth is reached in half time compared to 0.2
-    - implemented 50 - moves rule
-    - fixed bug in en passant hashing
-    - fixed bug : ENGINESTOPSOON did not take move of last iteration
-    - improved testengine mode(compare mode, avoid moves, exit flags)
-
-    0.3 (release 2017 - 06 - 05) :
-    -now really fixed ep hashing(code got lost somehow before releasing 0.2.1)
-    - new evaluation using phase triggered value tables and some pawn specials
-    - getMoves now returns pseudo legal moves to avoid time consuming play / unplay
-    - both of these changes leads to speed improvement ~40 % compared to 0.2.1
-    - improved quiscense serach although this might not be the end of story
-    - implemented simple heuristic for insufficient material
-    - improved time management for tournament mode and switched to QueryPerformanceCounter API
-    - fixed memory leaks
-    - removed undotest flag
-    - implemented benchmark mode
-    - some fixes in uci option handling
-
-    0.4 (release 2017 - 08 - 04) :
-    -first rotating bitboard version (choose by #define BITBOARD); 0x88 board still available
-    - use 2^x for transposition size and & instead of % which make accessing the TP a lot faster
-    - some fixes in the pawn evaulation (got different scores for white and black before)
-    - added test for symmetric position evaluation (new parameter -dotests substitutes -hashtest)
-    - fixed timemode "time/inc for whole match"
-    - testrepetition() stops searching at halfmovecounter reset now
-    - search improvement by adding aspiration windows and principal variation search
-	 
-	 0.5 (release 201x - xx - xx) :
-    -moved undo data from chessmove struct to a static stack which speeds up playing moves
-    - More speed by making engine, position, tables global instead of paasing them by parameters
-    - Better evaluation: Ballanced pawn/minors, diagonal mobility, progress of passed pawns
-    - improved time management, especially sudden death mode
-    - avoids wrong best move from last search when under time pressure
-    - really disabled all the debug code if DEBUG is not defined
-    - First Linux release.
-      
 
 /* Der Lasker-Test */
 s = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1"

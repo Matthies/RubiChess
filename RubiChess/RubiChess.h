@@ -23,9 +23,13 @@
 #ifdef BITBOARD
 #if 1
 #define MAGICBITBOARD
+#define BOARDVERSION "Magic Bitboard"
 #else
 #define ROTATEDBITBOARD
+#define BOARDVERSION "Rotated Bitboard"
 #endif
+#else
+#define BOARDVERSION "Board88"
 #endif
 
 #ifdef FINDMEMORYLEAKS
@@ -81,19 +85,7 @@ void Sleep(long x);
 
 #endif
 
-
-#ifdef BITBOARD
-#ifdef ROTATEDBITBOARD
-#define BOARDVERSION "Rotated Bitboard"
-#else
-#define BOARDVERSION "Magic Bitboard"
-#endif
-#else
-#define BOARDVERSION "Board88"
-#endif
-
 #define ENGINEVER "RubiChess " VERNUM " " BOARDVERSION
-
 
 #define BITSET(x) (mybitset[(x)])
 #ifdef _WIN32
