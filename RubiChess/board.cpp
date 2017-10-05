@@ -501,7 +501,7 @@ U64 kingshield[64][2];
 U64 filemask[64];
 int castleindex[64][64] = { 0 };
 
-#ifdef MAGICBITBOARD
+#ifndef ROTATEDBITBOARD
 // shameless copy from http://chessprogramming.wikispaces.com/Magic+Bitboards#Plain
 #define BISHOPINDEXBITS 9
 #define ROOKINDEXBITS 12
@@ -527,9 +527,11 @@ U64 patternToMask(int i, int d, int p)
 {
     U64 occ = 0ULL;
     int j = i;
+    // run to lower border
     while (ISNEIGHBOUR(j, j - d)) j -= d;
     while (p)
     {
+        // loop steps to upper border
         if (p & 1)
             occ |= (1ULL << j);
         p >>= 1;
@@ -556,6 +558,7 @@ U64 getAttacks(int index, U64 occ, int delta)
     return attacks;
 }
 
+
 U64 getOccupiedFromMBIndex(int j, U64 mask)
 {
     U64 occ = 0ULL;
@@ -571,6 +574,7 @@ U64 getOccupiedFromMBIndex(int j, U64 mask)
     return occ;
 }
 
+
 U64 getMagicCandidate(U64 mask)
 {
     U64 magic;
@@ -581,12 +585,9 @@ U64 getMagicCandidate(U64 mask)
 }
 
 
-
 void initBitmaphelper()
 {
     int to;
-    printf("Initializing tables, searching for magics .");
-
     castleindex[4][2] = WQC;
     castleindex[4][6] = WKC;
     castleindex[60][58] = BQC;
@@ -596,6 +597,9 @@ void initBitmaphelper()
         mybitset[from] = (1ULL << from);
     }
 
+#ifndef ROTATEDBITBOARD
+    printf("Searching for magics, may take a while .");
+#endif
     for (int from = 0; from < 64; from++)
     {
         king_attacks[from] = knight_attacks[from] = 0ULL;
@@ -658,7 +662,27 @@ void initBitmaphelper()
         }
 
         // Slider attacks
-#ifdef MAGICBITBOARD
+#ifdef ROTATEDBITBOARD
+        U64 occ;
+        for (int j = 0; j < 64; j++)
+        {
+            // rank attacks
+            occ = patternToMask(from, 1, j << 1);
+            rank_attacks[from][j] = (getAttacks(from, occ, -1) | getAttacks(from, occ, 1));
+
+            // file attacks
+            occ = patternToMask(from, 8, j << 1);
+            file_attacks[from][j] = (getAttacks(from, occ, -8) | getAttacks(from, occ, 8));
+
+            // diagonala1h8 attacks
+            occ = patternToMask(from, 9, j << 1);
+            diaga1h8_attacks[from][j] = (getAttacks(from, occ, -9) | getAttacks(from, occ, 9));
+
+            // diagonalh1a8 attacks
+            occ = patternToMask(from, 7, j << 1);
+            diagh1a8_attacks[from][j] = (getAttacks(from, occ, -7) | getAttacks(from, occ, 7));
+        }
+#else   // MAGICBITBOARD
         // Fill the mask
         mBishopTbl[from].mask = 0ULL;
         mRookTbl[from].mask = 0ULL;
@@ -727,30 +751,7 @@ void initBitmaphelper()
                 break;
         }
         printf(".");
-
-#endif
-#ifdef ROTATEDBITBOARD
-        U64 occ;
-        for (int j = 0; j < 64; j++)
-        {
-            // rank attacks
-            occ = patternToMask(from, 1, j << 1);
-            rank_attacks[from][j] = (getAttacks(from, occ, -1) | getAttacks(from, occ, 1));
-
-            // file attacks
-            occ = patternToMask(from, 8, j << 1);
-            file_attacks[from][j] = (getAttacks(from, occ, -8) | getAttacks(from, occ, 8));
-
-            // diagonala1h8 attacks
-            occ = patternToMask(from, 9, j << 1);
-            diaga1h8_attacks[from][j] = (getAttacks(from, occ, -9) | getAttacks(from, occ, 9));
-
-            // diagonalh1a8 attacks
-            occ = patternToMask(from, 7, j << 1);
-            diagh1a8_attacks[from][j] = (getAttacks(from, occ, -7) | getAttacks(from, occ, 7));
-        }
-#else   //ROTATEDBITBOARD
-
+        fflush(stdout);
 #endif
         epthelper[from] = 0ULL;
         if (RANK(from) == 3 || RANK(from) == 4)
@@ -761,7 +762,9 @@ void initBitmaphelper()
                 epthelper[from] |= BITSET(from + 1);
         }
 	}
-    printf(" Ready.\n");
+#ifdef MAGICBITBOARD
+    printf(" ready.\n");
+#endif
 }
 
 

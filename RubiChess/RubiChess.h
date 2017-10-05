@@ -1,6 +1,6 @@
 #pragma once
 
-using namespace std;
+#define VERNUM "0.6-dev"
 
 #if 0
 #define DEBUG
@@ -42,6 +42,8 @@ using namespace std;
 #define _CRTDBG_MAP_ALLOC
 #endif
 
+using namespace std;
+
 #include <stdarg.h>
 #include <time.h>
 #include <string>
@@ -79,16 +81,18 @@ void Sleep(long x);
 
 #endif
 
-typedef unsigned long long U64;
 
 #ifdef BITBOARD
-#define ENGINEVER "RubiChess V0.6dev Bitboard";
-
+#ifdef ROTATEDBITBOARD
+#define BOARDVERSION "Rotated Bitboard"
 #else
-#define ENGINEVER "RubiChess V0.6dev 0x88-Board";
-
+#define BOARDVERSION "Magic Bitboard"
+#endif
+#else
+#define BOARDVERSION "Board88"
 #endif
 
+#define ENGINEVER "RubiChess " VERNUM " " BOARDVERSION
 
 
 #define BITSET(x) (mybitset[(x)])
@@ -113,6 +117,9 @@ typedef unsigned long long U64;
 #define ROTH1A8(x) (roth1a8[x])
 #endif
 #define S2MSIGN(s) (s ? -1 : 1)
+
+
+typedef unsigned long long U64;
 
 // Forward definitions
 class transposition;
@@ -534,7 +541,7 @@ class engine
 public:
     engine();
     uci *myUci;
-	const char* name = ENGINEVER
+    const char* name = ENGINEVER;
     const char* author = "Andreas Matthies";
     bool isWhite;
     unsigned long nodes;
