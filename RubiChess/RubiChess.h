@@ -1,6 +1,6 @@
 #pragma once
 
-using namespace std;
+#define VERNUM "0.6-dev"
 
 #if 0
 #define DEBUG
@@ -20,6 +20,14 @@ using namespace std;
 #define OX88
 #endif
 
+#ifdef BITBOARD
+#if 1
+#define MAGICBITBOARD
+#else
+#define ROTATEDBITBOARD
+#endif
+#endif
+
 #ifdef FINDMEMORYLEAKS
 #ifdef _DEBUG  
 #define DEBUG_CLIENTBLOCK   new( _CLIENT_BLOCK, __FILE__, __LINE__)  
@@ -33,6 +41,8 @@ using namespace std;
 
 #define _CRTDBG_MAP_ALLOC
 #endif
+
+using namespace std;
 
 #include <stdarg.h>
 #include <time.h>
@@ -71,16 +81,18 @@ void Sleep(long x);
 
 #endif
 
-typedef unsigned long long U64;
 
 #ifdef BITBOARD
-#define ENGINEVER "RubiChess V0.6dev Bitboard";
-
+#ifdef ROTATEDBITBOARD
+#define BOARDVERSION "Rotated Bitboard"
 #else
-#define ENGINEVER "RubiChess V0.6dev 0x88-Board";
-
+#define BOARDVERSION "Magic Bitboard"
+#endif
+#else
+#define BOARDVERSION "Board88"
 #endif
 
+#define ENGINEVER "RubiChess " VERNUM " " BOARDVERSION
 
 
 #define BITSET(x) (mybitset[(x)])
@@ -96,11 +108,18 @@ typedef unsigned long long U64;
 #define RANK(x) ((x) >> 3)
 #define FILE(x) ((x) & 0x7)
 #define PROMOTERANK(x) (RANK(x) == 0 || RANK(x) == 7)
+#define OUTERFILE(x) (FILE(x) == 0 || FILE(x) == 7)
+#define ISNEIGHBOUR(x,y) ((x) >= 0 && (x) < 64 && (y) >= 0 && (y) < 64 && abs(RANK(x) - RANK(y)) <= 1 && abs(FILE(x) - FILE(y)) <= 1)
 
+#ifdef ROTATEDBITBOARD
 #define ROT90(x) (rot90[x])
 #define ROTA1H8(x) (rota1h8[x])
 #define ROTH1A8(x) (roth1a8[x])
+#endif
 #define S2MSIGN(s) (s ? -1 : 1)
+
+
+typedef unsigned long long U64;
 
 // Forward definitions
 class transposition;
@@ -282,7 +301,7 @@ public:
 
 
 #ifdef BITBOARD
-
+#ifdef ROTATEDBITBOARD
 const int rot00shift[64] = {
      1,  1,  1,  1,  1,  1,  1,  1,
      9,  9,  9,  9,  9,  9,  9,  9,
@@ -360,23 +379,22 @@ const int roth1a8shift[64] = {
     22, 29, 37, 44, 50, 55, 59, 62,
     29, 37, 44, 50, 55, 59, 62, 64
 };
-
+#endif //ROTATEDBITBOARD
 
 class chessposition
 {
 public:
     U64 piece00[14];
+    U64 occupied00[2];
+#ifdef ROTATEDBITBOARD
     U64 piece90[14];
     U64 piecea1h8[14];
     U64 pieceh1a8[14];
-    U64 occupied00[2];
     U64 occupied90[2];
     U64 occupieda1h8[2];
     U64 occupiedh1a8[2];
+#endif
     PieceCode mailbox[64]; // redundand for faster "which piece is on field x"
-
-    U64 attacks_from[64];
-    U64 attacks_to[64];
 
     int state;
     int ept;
@@ -402,6 +420,7 @@ public:
     void BitboardSet(int index, PieceCode p);
     void BitboardClear(int index, PieceCode p);
     void BitboardMove(int from, int to, PieceCode p);
+    void BitboardPrint(U64 b);
     int getFromFen(const char* sFen);
     bool applyMove(string s);
     void print();
@@ -522,7 +541,7 @@ class engine
 public:
     engine();
     uci *myUci;
-	const char* name = ENGINEVER
+    const char* name = ENGINEVER;
     const char* author = "Andreas Matthies";
     bool isWhite;
     unsigned long nodes;

@@ -482,30 +482,112 @@ void chessposition::debugeval(const char* format, ...)
 
 
 #ifdef BITBOARD
-
 U64 knight_attacks[64];
 U64 king_attacks[64];
 U64 pawn_attacks_free[64][2];
 U64 pawn_attacks_free_double[64][2];
 U64 pawn_attacks_occupied[64][2];
+#ifdef ROTATEDBITBOARD
 U64 rank_attacks[64][64];
 U64 file_attacks[64][64];
 U64 diaga1h8_attacks[64][64];
 U64 diagh1a8_attacks[64][64];
+#endif
 U64 epthelper[64];
 U64 passedPawn[64][2];
 U64 filebarrier[64][2];
 U64 neighbourfiles[64];
 U64 kingshield[64][2];
+U64 filemask[64];
 int castleindex[64][64] = { 0 };
+
+#ifndef ROTATEDBITBOARD
+// shameless copy from http://chessprogramming.wikispaces.com/Magic+Bitboards#Plain
+#define BISHOPINDEXBITS 9
+#define ROOKINDEXBITS 12
+U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
+U64 mRookAttacks[64][1 << ROOKINDEXBITS];
+
+struct SMagic {
+    U64 mask;  // to mask relevant squares of both lines (no outer squares)
+    U64 magic; // magic 64-bit factor
+};
+
+SMagic mBishopTbl[64];
+SMagic mRookTbl[64];
+
+#define MAGICBISHOPINDEX(m,x) ((((m) & mBishopTbl[x].mask) * mBishopTbl[x].magic) >> (64 - BISHOPINDEXBITS))
+#define MAGICROOKINDEX(m,x) ((((m) & mRookTbl[x].mask) * mRookTbl[x].magic) >> (64 - ROOKINDEXBITS))
+#define MAGICBISHOPATTACKS(m,x) (mBishopAttacks[x][MAGICBISHOPINDEX(m,x)])
+#define MAGICROOKATTACKS(m,x) (mRookAttacks[x][MAGICROOKINDEX(m,x)])
+#endif
+
+
+U64 patternToMask(int i, int d, int p)
+{
+    U64 occ = 0ULL;
+    int j = i;
+    // run to lower border
+    while (ISNEIGHBOUR(j, j - d)) j -= d;
+    while (p)
+    {
+        // loop steps to upper border
+        if (p & 1)
+            occ |= (1ULL << j);
+        p >>= 1;
+        if (!ISNEIGHBOUR(j, j + d))
+            p = 0;
+        j += d;
+    }
+    return occ;
+}
+
+
+U64 getAttacks(int index, U64 occ, int delta)
+{
+    U64 attacks = 0ULL;
+    U64 blocked = 0ULL;
+    for (int shift = index + delta; ISNEIGHBOUR(shift, shift - delta); shift += delta)
+    {
+        if (!blocked)
+        {
+            attacks |= BITSET(shift);
+        }
+        blocked |= ((1ULL << shift) & occ);
+    }
+    return attacks;
+}
+
+
+U64 getOccupiedFromMBIndex(int j, U64 mask)
+{
+    U64 occ = 0ULL;
+    int k;
+    int i = 0;
+    while (LSB(k, mask))
+    {
+        if (j & BITSET(i))
+            occ |= (1ULL << k);
+        mask ^= BITSET(k);
+        i++;
+    }
+    return occ;
+}
+
+
+U64 getMagicCandidate(U64 mask)
+{
+    U64 magic;
+    do {
+        magic = zb.getRnd() & zb.getRnd() & zb.getRnd();
+    } while (POPCOUNT((mask * magic) & 0xFF00000000000000ULL) < 6);
+    return magic;
+}
 
 
 void initBitmaphelper()
 {
     int to;
-    int blocked;
-    int shift;
-    int delta;
     castleindex[4][2] = WQC;
     castleindex[4][6] = WKC;
     castleindex[60][58] = BQC;
@@ -515,6 +597,9 @@ void initBitmaphelper()
         mybitset[from] = (1ULL << from);
     }
 
+#ifndef ROTATEDBITBOARD
+    printf("Searching for magics, may take a while .");
+#endif
     for (int from = 0; from < 64; from++)
     {
         king_attacks[from] = knight_attacks[from] = 0ULL;
@@ -524,11 +609,14 @@ void initBitmaphelper()
         filebarrier[from][0] = filebarrier[from][1] = 0ULL;
 		kingshield[from][0] = kingshield[from][1] = 0ULL;
         neighbourfiles[from] = 0ULL;
+        filemask[from] = 0ULL;
 
         for (int j = 0; j < 64; j++)
         {
             if (abs(FILE(from) - FILE(j)) == 1)
                 neighbourfiles[from] |= BITSET(j);
+            if (FILE(from) == FILE(j))
+                filemask[from] |= BITSET(j);
         }
 
         for (int j = 0; j < 8; j++)
@@ -570,104 +658,101 @@ void initBitmaphelper()
 							kingshield[from][s] |= BITSET(r);
 					}
                 }
-
             }
         }
 
         // Slider attacks
+#ifdef ROTATEDBITBOARD
+        U64 occ;
         for (int j = 0; j < 64; j++)
         {
             // rank attacks
-            rank_attacks[from][j] = 0ULL;
-            blocked = 0;
-            for (shift = from - 1; RANK(shift) == RANK(from); shift--)
-            {
-                if (!blocked)
-                {
-                    rank_attacks[from][j] |= BITSET(shift);
-                }
-                blocked |= (1 << FILE(shift) & (j << 1));
-            }
-            blocked = 0;
-            for (shift = from + 1; RANK(shift) == RANK(from); shift++)
-            {
-                if (!blocked)
-                {
-                    rank_attacks[from][j] |= BITSET(shift);
-                }
-                blocked |= (1 << FILE(shift) & (j << 1));
-            }
+            occ = patternToMask(from, 1, j << 1);
+            rank_attacks[from][j] = (getAttacks(from, occ, -1) | getAttacks(from, occ, 1));
 
             // file attacks
-            file_attacks[from][j] = 0ULL;
-            blocked = 0;
-            for (shift = from - 8; shift >= 0; shift -= 8)
-            {
-                if (!blocked)
-                {
-                    file_attacks[from][j] |= BITSET(shift);
-                }
-                blocked |= (1 << RANK(shift) & (j << 1));
-            }
-            blocked = 0;
-            for (shift = from + 8; shift < 64; shift += 8)
-            {
-                if (!blocked)
-                {
-                    file_attacks[from][j] |= BITSET(shift);
-                }
-                blocked |= (1 << RANK(shift) & (j << 1));
-            }
+            occ = patternToMask(from, 8, j << 1);
+            file_attacks[from][j] = (getAttacks(from, occ, -8) | getAttacks(from, occ, 8));
 
             // diagonala1h8 attacks
-            diaga1h8_attacks[from][j] = 0ULL;
-            blocked = 0;
-            delta = min(FILE(from), RANK(from));
-            for (shift = from - 9; shift >= 0 && FILE(shift) != 7; shift -= 9)
-            {
-                if (!blocked)
-                {
-                    diaga1h8_attacks[from][j] |= BITSET(shift);
-                }
-                blocked |= (1 << (--delta) & (j << 1));
-            }
-            blocked = 0;
-            delta = min(FILE(from), RANK(from));
-            for (shift = from + 9; shift < 64 && FILE(shift) != 0; shift += 9)
-            {
-                if (!blocked)
-                {
-                    diaga1h8_attacks[from][j] |= BITSET(shift);
-                }
-                blocked |= (1 << (++delta) & (j << 1));
-            }
+            occ = patternToMask(from, 9, j << 1);
+            diaga1h8_attacks[from][j] = (getAttacks(from, occ, -9) | getAttacks(from, occ, 9));
 
             // diagonalh1a8 attacks
-            diagh1a8_attacks[from][j] = 0ULL;
-            blocked = 0;
-            delta = min(7 - FILE(from), RANK(from));
-            for (shift = from - 7; shift >= 0 && FILE(shift) != 0; shift -= 7)
-            {
-                if (!blocked)
-                {
-                    diagh1a8_attacks[from][j] |= BITSET(shift);
-                }
-                blocked |= (1 << (--delta) & (j << 1));
-            }
-            blocked = 0;
-            delta = min(7 - FILE(from), RANK(from));
-            for (shift = from + 7; shift < 64 && FILE(shift) != 7; shift += 7)
-            {
-                if (!blocked)
-                {
-                    diagh1a8_attacks[from][j] |= BITSET(shift);
-                }
-                blocked |= (1 << (++delta) & (j << 1));
-            }
-
-
+            occ = patternToMask(from, 7, j << 1);
+            diagh1a8_attacks[from][j] = (getAttacks(from, occ, -7) | getAttacks(from, occ, 7));
+        }
+#else   // MAGICBITBOARD
+        // Fill the mask
+        mBishopTbl[from].mask = 0ULL;
+        mRookTbl[from].mask = 0ULL;
+        for (int j = 0; j < 64; j++)
+        {
+            if (from == j)
+                continue;
+            if (RANK(from) == RANK(j) && !OUTERFILE(j))
+                mRookTbl[from].mask |= BITSET(j);
+            if (FILE(from) == FILE(j) && !PROMOTERANK(j))
+                mRookTbl[from].mask |= BITSET(j);
+            if (abs(RANK(from) - RANK(j)) == abs(FILE(from) - FILE(j)) && !OUTERFILE(j) && !PROMOTERANK(j))
+                mBishopTbl[from].mask |= BITSET(j);
         }
 
+        // Search for magic numbers and initialize the attack tables
+        while (true)
+        {
+            bool magicOk = true;
+            
+            // Clear attack bitmaps to detect hash collisions
+            for (int j = 0; j < (1 << BISHOPINDEXBITS); j++)
+                mBishopAttacks[from][j] = 0ULL;
+            
+            // Get a random number with few bits set as a possible magic number
+            mBishopTbl[from].magic = getMagicCandidate(mBishopTbl[from].mask);
+
+            for (int j = 0; magicOk && j < (1 << BISHOPINDEXBITS); j++) {
+                // First get the subset of mask corresponding to j
+                U64 occ = getOccupiedFromMBIndex(j, mBishopTbl[from].mask);
+                // Now get the attack bitmap for this subset and store to attack table
+                U64 attack = (getAttacks(from, occ, -7) | getAttacks(from, occ, 7) | getAttacks(from, occ, -9) | getAttacks(from, occ, 9));
+                int hashindex = MAGICBISHOPINDEX(occ, from);
+                if (mBishopAttacks[from][hashindex] == 0ULL)
+                    mBishopAttacks[from][hashindex] = attack;
+                else if (mBishopAttacks[from][hashindex] != attack)
+                    magicOk = false;
+            }
+            if (magicOk)
+                break;
+        }
+
+        while (true)
+        {
+            bool magicOk = true;
+
+            // Clear attack bitmaps to detect hash collisions
+            for (int j = 0; j < (1 << ROOKINDEXBITS); j++)
+                mRookAttacks[from][j] = 0ULL;
+
+            // Get a random number with few bits set as a possible magic number
+            mRookTbl[from].magic = getMagicCandidate(mRookTbl[from].mask);
+
+            for (int j = 0; magicOk && j < (1 << ROOKINDEXBITS); j++) {
+                // First get the subset of mask corresponding to j
+                U64 occ = getOccupiedFromMBIndex(j, mRookTbl[from].mask);
+                // Now get the attack bitmap for this subset and store to attack table
+                U64 attack = (getAttacks(from, occ, -1) | getAttacks(from, occ, 1) | getAttacks(from, occ, -8) | getAttacks(from, occ, 8));
+                int hashindex = MAGICROOKINDEX(occ, from);
+                if (mRookAttacks[from][hashindex] == 0ULL)
+                    mRookAttacks[from][hashindex] = attack;
+                else if (mRookAttacks[from][hashindex] != attack)
+                    magicOk = false;
+            }
+            if (magicOk)
+                break;
+        }
+        printf(".");
+        fflush(stdout);
+#endif
         epthelper[from] = 0ULL;
         if (RANK(from) == 3 || RANK(from) == 4)
         {
@@ -677,13 +762,15 @@ void initBitmaphelper()
                 epthelper[from] |= BITSET(from + 1);
         }
 	}
+#ifdef MAGICBITBOARD
+    printf(" ready.\n");
+#endif
 }
 
 
 chessposition::chessposition()
 {
     positionvaluetable = GetPositionvalueTable();
-
 }
 
 
@@ -715,14 +802,16 @@ void chessposition::BitboardSet(int index, PieceCode p)
 {
     int s2m = p & 0x1;
     piece00[p] |= BITSET(index);
+    occupied00[s2m] |= BITSET(index);
+#ifdef ROTATEDBITBOARD
     piece90[p] |= BITSET(ROT90(index));
     piecea1h8[p] |= BITSET(ROTA1H8(index));
     pieceh1a8[p] |= BITSET(ROTH1A8(index));
 
-    occupied00[s2m] |= BITSET(index);
     occupied90[s2m] |= BITSET(ROT90(index));
     occupieda1h8[s2m] |= BITSET(ROTA1H8(index));
     occupiedh1a8[s2m] |= BITSET(ROTH1A8(index));
+#endif
 }
 
 
@@ -730,14 +819,16 @@ void chessposition::BitboardClear(int index, PieceCode p)
 {
 	int s2m = p & 0x1;
 	piece00[p] ^= BITSET(index);
-	piece90[p] ^= BITSET(ROT90(index));
+    occupied00[s2m] ^= BITSET(index);
+#ifdef ROTATEDBITBOARD
+    piece90[p] ^= BITSET(ROT90(index));
 	piecea1h8[p] ^= BITSET(ROTA1H8(index));
 	pieceh1a8[p] ^= BITSET(ROTH1A8(index));
 
-	occupied00[s2m] ^= BITSET(index);
 	occupied90[s2m] ^= BITSET(ROT90(index));
 	occupieda1h8[s2m] ^= BITSET(ROTA1H8(index));
 	occupiedh1a8[s2m] ^= BITSET(ROTH1A8(index));
+#endif
 }
 
 
@@ -745,14 +836,28 @@ void chessposition::BitboardMove(int from, int to, PieceCode p)
 {
     int s2m = p & 0x1;
     piece00[p] ^= (BITSET(from) | BITSET(to));
+    occupied00[s2m] ^= (BITSET(from) | BITSET(to));
+#ifdef ROTATEDBITBOARD
     piece90[p] ^= (BITSET(ROT90(from)) | BITSET(ROT90(to)));
     piecea1h8[p] ^= (BITSET(ROTA1H8(from)) | BITSET(ROTA1H8(to)));
     pieceh1a8[p] ^= (BITSET(ROTH1A8(from)) | BITSET(ROTH1A8(to)));
 
-    occupied00[s2m] ^= (BITSET(from) | BITSET(to));
     occupied90[s2m] ^= (BITSET(ROT90(from)) | BITSET(ROT90(to)));
     occupieda1h8[s2m] ^= (BITSET(ROTA1H8(from)) | BITSET(ROTA1H8(to)));
     occupiedh1a8[s2m] ^= (BITSET(ROTH1A8(from)) | BITSET(ROTH1A8(to)));
+#endif
+}
+
+void chessposition::BitboardPrint(U64 b)
+{
+    for (int r = 7; r >= 0; r--)
+    {
+        for (int f = 0; f < 8; f++)
+        {
+            printf("%s", (b & BITSET(r * 8 + f) ? "x" : "."));
+        }
+        printf("\n");
+    }
 }
 
 
@@ -763,13 +868,23 @@ int chessposition::getFromFen(const char* sFen)
     int numToken = (int)token.size();
 
     for (int i = 0; i < 14; i++)
-        piece00[i] = piece90[i] = piecea1h8[i] = pieceh1a8[i] = 0;
+    {
+        piece00[i] = 0ULL;
+#ifdef ROTATEDBITBOARD
+        piece90[i] = piecea1h8[i] = pieceh1a8[i] = 0ULL;
+#endif
+    }
 
     for (int i = 0; i < 64; i++)
         mailbox[i] = BLANK;
 
     for (int i = 0; i < 2; i++)
-        occupied00[i] = occupied90[i] = occupieda1h8[i] = occupiedh1a8[i] = 0;
+    {
+        occupied00[i] = 0ULL;
+#ifdef ROTATEDBITBOARD
+        occupied90[i] = occupieda1h8[i] = occupiedh1a8[i] = 0ULL;
+#endif
+    }
 
     // At least four token are needed (EPD style string)
     if (numToken < 4)
@@ -971,8 +1086,8 @@ void chessposition::print()
     printf("info string Hash: %llu (%llx)  (getHash(): %llu)\n", hash, hash, zb.getHash());
     printf("info string Value: %d\n", getValue());
     printf("info string Repetitions: %d\n", rp.getPositionCount(hash));
-    printf("info string Phase: %d", phase());
-    //printf("info string Possible Moves: %s\n", getMoves().toStringWithValue().c_str());
+    printf("info string Phase: %d\n", phase());
+    printf("info string Pseudo-legal Moves: %s\n", getMoves()->toStringWithValue().c_str());
     if (tp.size > 0 && tp.testHash())
         printf("info string Hash-Info: depth=%d Val=%d (%d) Move:%s\n", tp.getDepth(), tp.getValue(), tp.getValtype(), tp.getMove().toString().c_str());
     if (actualpath.length)
@@ -1053,7 +1168,7 @@ int chessposition::getPositionValue()
                         debugeval("Isolated Pawn Penalty: %d\n", -(S2MSIGN(s) * 20));
 #endif
                     }
-                    else if (POPCOUNT((piece90[pc] >> rot90shift[index]) & 0x3f) > 1)
+                    else if (POPCOUNT((piece00[pc] & filemask[index])) > 1)
                     {
                         // double pawn
                         result -= S2MSIGN(s) * 15;
@@ -1076,9 +1191,14 @@ int chessposition::getPositionValue()
 
                 if (shifting[p] & 0x1) // bishop and queen)
                 {
+#ifdef ROTATEDBITBOARD
                     U64 diagmobility = ~occupied00[s]
                         & ((diaga1h8_attacks[index][((occupieda1h8[0] | occupieda1h8[1]) >> rota1h8shift[index]) & 0x3f])
                             | (diagh1a8_attacks[index][((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[index]) & 0x3f]));
+#else
+                    U64 diagmobility = ~occupied00[s]
+                        & (mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)]);
+#endif
                     result += (S2MSIGN(s) * POPCOUNT(diagmobility) * scalephaseto4);
                 }
             }
@@ -1339,7 +1459,6 @@ chessmovelist* chessposition::getMoves()
     U64 opponentorfreebits = ~occupied00[s2m];
     U64 frombits, tobits;
     int from, to;
-    int mask;
     PieceCode pc;
 
     chessmovelist* result = (chessmovelist*)malloc(sizeof(chessmovelist));
@@ -1429,21 +1548,29 @@ chessmovelist* chessposition::getMoves()
             {
                 if (shifting[p] & 0x1)
                 {
+#ifdef ROTATEDBITBOARD
                     // a1h8 attacks
-                    mask = (((occupieda1h8[0] | occupieda1h8[1]) >> rota1h8shift[from]) & 0x3f);
+                    int mask = (((occupieda1h8[0] | occupieda1h8[1]) >> rota1h8shift[from]) & 0x3f);
                     tobits |= (diaga1h8_attacks[from][mask] & opponentorfreebits);
                     // h1a8 attacks
                     mask = (((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[from]) & 0x3f);
                     tobits |= (diagh1a8_attacks[from][mask] & opponentorfreebits);
+#else
+                    tobits |= (MAGICBISHOPATTACKS(occupiedbits, from) & opponentorfreebits);
+#endif
                 }
                 if (shifting[p] & 0x2)
                 {
+#ifdef ROTATEDBITBOARD
                     // rank attacks
-                    mask = (((occupied00[0] | occupied00[1]) >> rot00shift[from]) & 0x3f);
+                    int mask = ((occupiedbits >> rot00shift[from]) & 0x3f);
                     tobits |= (rank_attacks[from][mask] & opponentorfreebits);
                     // file attacks
                     mask = (((occupied90[0] | occupied90[1]) >> rot90shift[from]) & 0x3f);
                     tobits |= (file_attacks[from][mask] & opponentorfreebits);
+#else
+                    tobits |= (MAGICROOKATTACKS(occupiedbits, from) & opponentorfreebits);
+#endif
                 }
                 while (LSB(to, tobits))
                 {
@@ -1459,6 +1586,7 @@ chessmovelist* chessposition::getMoves()
 }
 
 
+#ifdef ROTATEDBITBOARD
 U64 chessposition::attacksTo(int index, int side)
 {
     return (knight_attacks[index] & piece00[(KNIGHT << 1) | side])
@@ -1483,6 +1611,27 @@ bool chessposition::isAttacked(int index)
         || diaga1h8_attacks[index][((occupieda1h8[0] | occupieda1h8[1]) >> rota1h8shift[index]) & 0x3f] & (piece00[(BISHOP << 1) | opponent] | piece00[(QUEEN << 1) | opponent])
         || diagh1a8_attacks[index][((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[index]) & 0x3f] & (piece00[(BISHOP << 1) | opponent] | piece00[(QUEEN << 1) | opponent]);
 }
+#else
+U64 chessposition::attacksTo(int index, int side)
+{
+    return (knight_attacks[index] & piece00[(KNIGHT << 1) | side])
+        | (king_attacks[index] & piece00[(KING << 1) | side])
+        | (pawn_attacks_occupied[index][state & S2MMASK] & piece00[(PAWN << 1) | side])
+        | (MAGICROOKATTACKS(occupied00[0] | occupied00[1], index) & (piece00[(ROOK << 1) | side] | piece00[(QUEEN << 1) | side]))
+        | (MAGICBISHOPATTACKS(occupied00[0] | occupied00[1], index) & (piece00[(BISHOP << 1) | side] | piece00[(QUEEN << 1) | side]));
+}
+
+bool chessposition::isAttacked(int index)
+{
+    int opponent = (state & S2MMASK) ^ 1;
+
+    return knight_attacks[index] & piece00[(KNIGHT << 1) | opponent]
+        || king_attacks[index] & piece00[(KING << 1) | opponent]
+        || pawn_attacks_occupied[index][state & S2MMASK] & piece00[(PAWN << 1) | opponent]
+        || MAGICROOKATTACKS(occupied00[0] | occupied00[1], index) & (piece00[(ROOK << 1) | opponent] | piece00[(QUEEN << 1) | opponent])
+        || MAGICBISHOPATTACKS(occupied00[0] | occupied00[1], index) & (piece00[(BISHOP << 1) | opponent] | piece00[(QUEEN << 1) | opponent]);
+}
+#endif
 
 
 int chessposition::phase()
@@ -2932,6 +3081,6 @@ void engine::communicate(string inputstring)
 	} while (command != QUIT && inputstring == "");
 }
 
-
+zobrist zb;
 chessposition pos;
 engine en;
