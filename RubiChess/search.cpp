@@ -5,6 +5,7 @@
 int getQuiescence(int alpha, int beta, int depth, bool force)
 {
     int score;
+    int bestscore = SHRT_MIN + 1;
     bool isLegal;
     bool isCheck;
     bool LegalMovesPossible = false;
@@ -21,7 +22,7 @@ int getQuiescence(int alpha, int beta, int depth, bool force)
     score = (pos.state & S2MMASK ? -pos.getValue() : pos.getValue());
     PDEBUG(depth, "(getQuiscence) alpha=%d beta=%d patscore=%d\n", alpha, beta, score);
     if (score >= beta)
-        return beta;
+        return score;
     if (score > alpha)
         alpha = score;
 
@@ -53,13 +54,14 @@ int getQuiescence(int alpha, int beta, int depth, bool force)
                         PDEBUG(depth, "(getQuiscence) played move %s score=%d\n", movelist->move[i].toString().c_str(), score);
                     }
                     pos.unplayMove(&(movelist->move[i]));
-                    if (positiveSee)
+                    if (positiveSee && score > bestscore)
                     {
+                        bestscore = score;
                         if (score >= beta)
                         {
                             free(movelist);
                             PDEBUG(depth, "(getQuiscence) beta cutoff\n");
-                            return beta;
+                            return score;
                         }
                         if (score > alpha)
                         {
@@ -73,14 +75,14 @@ int getQuiescence(int alpha, int beta, int depth, bool force)
     }
     free(movelist);
     if (LegalMovesPossible)
-        return alpha;
+        return bestscore;
     // No valid move found
     if (isCheck)
         // It's a mate
-        return max(alpha, SCOREBLACKWINS + pos.ply);
+        return SCOREBLACKWINS + pos.ply;
     else
         // It's a stalemate
-        return max(alpha, SCOREDRAW);
+        return SCOREDRAW;
 }
 
 
@@ -333,9 +335,9 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         score = -alphabeta(-beta, -beta + 1, depth - 4, false);
         
         pos.unplayNullMove();
-        if (score >= beta && !MATEDETECTED(score))
+        if (score >= beta)
         {
-            return beta;
+            return score;
         }
     }
 
@@ -443,7 +445,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                     PDEBUG(depth, "(alphabetamax) score=%d >= beta=%d  -> cutoff\n", score, beta);
                     tp.addHash(beta, HASHBETA, depth, bestcode);
                     free(newmoves);
-                    return beta;   // fail hard beta-cutoff
+                    return score;   // fail soft beta-cutoff
                 }
 
                 if (score > alpha)
@@ -472,7 +474,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     }
 
     tp.addHash(alpha, eval_type, depth, bestcode);
-    return alpha;
+    return bestscore;
 }
 
 
