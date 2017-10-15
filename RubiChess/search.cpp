@@ -18,15 +18,17 @@ int getQuiescence(int alpha, int beta, int depth, bool force)
     if (pos.halfmovescounter >= 100)
         return SCOREDRAW;
 
-    // FIXME: stand pat usually is not allowed if checked but this somehow works better
-    score = (pos.state & S2MMASK ? -pos.getValue() : pos.getValue());
-    PDEBUG(depth, "(getQuiscence) alpha=%d beta=%d patscore=%d\n", alpha, beta, score);
-    if (score >= beta)
-        return score;
-    if (score > alpha)
-        alpha = score;
-
     isCheck = pos.checkForChess();
+    if (!isCheck)
+    {
+        // FIXME: stand pat usually is not allowed if checked but this somehow works better
+        bestscore = (pos.state & S2MMASK ? -pos.getValue() : pos.getValue());
+        PDEBUG(depth, "(getQuiscence) alpha=%d beta=%d patscore=%d\n", alpha, beta, score);
+        if (bestscore >= beta)
+            return bestscore;
+        if (bestscore > alpha)
+            alpha = bestscore;
+    }
     chessmovelist* movelist = pos.getMoves();
     //pos->sortMoves(movelist);
 
@@ -39,7 +41,7 @@ int getQuiescence(int alpha, int beta, int depth, bool force)
             // FIXME!!! if (pos->mailbox[GETTO(movelist->move[i].code)] != BLANK)
             if (GETCAPTURE(movelist->move[i].code) != BLANK)
                 positiveSee = (pos.see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)) >= 0);
-            if (positiveSee || !LegalMovesPossible)
+            if (force || isCheck || positiveSee || !LegalMovesPossible)
             {
                 isLegal = pos.playMove(&(movelist->move[i]));
 #ifdef DEBUG
@@ -48,13 +50,13 @@ int getQuiescence(int alpha, int beta, int depth, bool force)
                 if (isLegal)
                 {
                     LegalMovesPossible = true;
-                    if (positiveSee)
+                    if (positiveSee || isCheck || force)
                     {
-                        score = -getQuiescence(-beta, -alpha, depth - 1, isCheck);
+                        score = -getQuiescence(-beta, -alpha, depth - 1, isCheck && depth > -3);
                         PDEBUG(depth, "(getQuiscence) played move %s score=%d\n", movelist->move[i].toString().c_str(), score);
                     }
                     pos.unplayMove(&(movelist->move[i]));
-                    if (positiveSee && score > bestscore)
+                    if ((positiveSee || isCheck || force) && score > bestscore)
                     {
                         bestscore = score;
                         if (score >= beta)
@@ -175,7 +177,7 @@ int rootsearch(int alpha, int beta, int depth)
         if (isLegal)
         {
             LegalMoves++;
-            PDEBUG(depth, "(alphabeta neu) played move %s   nodes:%d\n", newmoves->move[i].toString().c_str(), en.nodes);
+            PDEBUG(depth, "(rootsearch) played move %s   nodes:%d\n", newmoves->move[i].toString().c_str(), en.nodes);
             if (!eval_type == HASHEXACT)
             {
                 score = -alphabeta(-beta, -alpha, depth - 1, true);
@@ -235,7 +237,7 @@ int rootsearch(int alpha, int beta, int depth)
                     if (LegalMoves == 1)
                         en.fhf++;
 #endif
-                    PDEBUG(depth, "(alphabetamax) score=%d >= beta=%d  -> cutoff\n", score, beta);
+                    PDEBUG(depth, "(rootsearch) score=%d >= beta=%d  -> cutoff\n", score, beta);
                     tp.addHash(beta, HASHBETA, depth, best.code);
                     free(newmoves);
                     return beta;   // fail hard beta-cutoff
@@ -243,7 +245,7 @@ int rootsearch(int alpha, int beta, int depth)
 
                 if (score > alpha)
                 {
-                    PDEBUG(depth, "(alphabeta) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, m->toString().c_str(), pos.actualpath.toString().c_str());
+                    PDEBUG(depth, "(rootsearch) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, m->toString().c_str(), pos.actualpath.toString().c_str());
                     alpha = score;
                     eval_type = HASHEXACT;
                     if (GETCAPTURE(m->code) == BLANK)
@@ -285,6 +287,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     int eval_type = HASHALPHA;
     chessmovelist* newmoves;
     chessmove *m;
+    int extend = 0;
 
     en.nodes++;
 
@@ -334,10 +337,19 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
         score = -alphabeta(-beta, -beta + 1, depth - 4, false);
         
-        pos.unplayNullMove();
         if (score >= beta)
         {
+            pos.unplayNullMove();
+            PDEBUG(depth, "Nullmove beta cuttoff score=%d >= beta=%d\n", score, beta);
             return score;
+        }
+        else {
+            if (score < alpha - 300)
+            {
+                PDEBUG(depth, "Nullmove a=%d b=%d score=%d thread detected => extension\n", alpha, beta, score);
+                extend++;
+            }
+            pos.unplayNullMove();
         }
     }
 
@@ -392,14 +404,14 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 #ifdef DEBUG
                 unsigned long nodesbefore = en.nodes;
 #endif
-                score = -alphabeta(-alpha - 1, -alpha, depth - 1, true);
+                score = -alphabeta(-alpha - 1, -alpha, depth + extend - 1, true);
                 if (score > alpha && score < beta)
 				{
 					// reasearch with full window
 #ifdef DEBUG
                     en.wastednodes += (en.nodes - nodesbefore);
 #endif
-                    score = -alphabeta(-beta, -alpha, depth - 1, true);
+                    score = -alphabeta(-beta, -alpha, depth + extend - 1, true);
 				}
             }
 
@@ -442,8 +454,8 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                     if (LegalMoves == 1)
                         en.fhf++;
 #endif
-                    PDEBUG(depth, "(alphabetamax) score=%d >= beta=%d  -> cutoff\n", score, beta);
-                    tp.addHash(beta, HASHBETA, depth, bestcode);
+                    PDEBUG(depth, "(alphabeta) score=%d >= beta=%d  -> cutoff\n", score, beta);
+                    tp.addHash(score, HASHBETA, depth, bestcode);
                     free(newmoves);
                     return score;   // fail soft beta-cutoff
                 }
@@ -473,7 +485,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             return SCOREDRAW;
     }
 
-    tp.addHash(alpha, eval_type, depth, bestcode);
+    tp.addHash(bestscore, eval_type, depth, bestcode);
     return bestscore;
 }
 
