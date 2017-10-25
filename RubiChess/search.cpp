@@ -19,11 +19,15 @@ int getQuiescence(int alpha, int beta, int depth, bool force)
         return SCOREDRAW;
 
     isCheck = pos.checkForChess();
-    if (!isCheck)
+    if (isCheck)
+    {
+        return alphabeta(alpha, beta, 1, false);
+    }
+    else //if (!isCheck)
     {
         // FIXME: stand pat usually is not allowed if checked but this somehow works better
         bestscore = (pos.state & S2MMASK ? -pos.getValue() : pos.getValue());
-        PDEBUG(depth, "(getQuiscence) alpha=%d beta=%d patscore=%d\n", alpha, beta, score);
+        PDEBUG(depth, "(getQuiscence) alpha=%d beta=%d patscore=%d\n", alpha, beta, bestscore);
         if (bestscore >= beta)
             return bestscore;
         if (bestscore > alpha)
@@ -35,7 +39,7 @@ int getQuiescence(int alpha, int beta, int depth, bool force)
     for (int i = 0; i < movelist->length; i++)
     {
         //pos->debug(depth, "(getQuiscence) testing move %s... LegalMovesPossible=%d isCheck=%d Capture=%d Promotion=%d see=%d \n", movelist->move[i].toString().c_str(), (LegalMovesPossible?1:0), (isCheck ? 1 : 0), movelist->move[i].getCapture(), movelist->move[i].getPromotion(), pos->see(movelist->move[i].getFrom(), movelist->move[i].getTo()));
-        if (isCheck || GETCAPTURE(movelist->move[i].code) != BLANK || GETPROMOTION(movelist->move[i].code) != BLANK || !LegalMovesPossible || force)
+        if (/*isCheck || */GETCAPTURE(movelist->move[i].code) != BLANK || GETPROMOTION(movelist->move[i].code) != BLANK || !LegalMovesPossible || force)
         {
             bool positiveSee = false;
             // FIXME!!! if (pos->mailbox[GETTO(movelist->move[i].code)] != BLANK)
@@ -355,7 +359,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
     newmoves = pos.getMoves();
     if (isCheck)
-        depth++;
+        ;// depth++;
 
 #ifdef DEBUG
     en.nopvnodes++;
