@@ -2,7 +2,7 @@
 #include "RubiChess.h"
 
 
-int getQuiescence(int alpha, int beta, int depth, bool force)
+int getQuiescence(int alpha, int beta, int depth)
 {
     int score;
     int bestscore = SHRT_MIN + 1;
@@ -20,32 +20,27 @@ int getQuiescence(int alpha, int beta, int depth, bool force)
 
     isCheck = pos.checkForChess();
     if (isCheck)
-    {
         return alphabeta(alpha, beta, 1, false);
-    }
-    else //if (!isCheck)
-    {
-        // FIXME: stand pat usually is not allowed if checked but this somehow works better
-        bestscore = (pos.state & S2MMASK ? -pos.getValue() : pos.getValue());
-        PDEBUG(depth, "(getQuiscence) alpha=%d beta=%d patscore=%d\n", alpha, beta, bestscore);
-        if (bestscore >= beta)
-            return bestscore;
-        if (bestscore > alpha)
-            alpha = bestscore;
-    }
+
+    bestscore = (pos.state & S2MMASK ? -pos.getValue() : pos.getValue());
+    PDEBUG(depth, "(getQuiscence) alpha=%d beta=%d patscore=%d\n", alpha, beta, bestscore);
+    if (bestscore >= beta)
+        return bestscore;
+    if (bestscore > alpha)
+        alpha = bestscore;
+
     chessmovelist* movelist = pos.getMoves();
     //pos->sortMoves(movelist);
 
     for (int i = 0; i < movelist->length; i++)
     {
         //pos->debug(depth, "(getQuiscence) testing move %s... LegalMovesPossible=%d isCheck=%d Capture=%d Promotion=%d see=%d \n", movelist->move[i].toString().c_str(), (LegalMovesPossible?1:0), (isCheck ? 1 : 0), movelist->move[i].getCapture(), movelist->move[i].getPromotion(), pos->see(movelist->move[i].getFrom(), movelist->move[i].getTo()));
-        if (/*isCheck || */GETCAPTURE(movelist->move[i].code) != BLANK || GETPROMOTION(movelist->move[i].code) != BLANK || !LegalMovesPossible || force)
+        if (GETCAPTURE(movelist->move[i].code) != BLANK || GETPROMOTION(movelist->move[i].code) != BLANK || !LegalMovesPossible)
         {
             bool positiveSee = false;
-            // FIXME!!! if (pos->mailbox[GETTO(movelist->move[i].code)] != BLANK)
             if (GETCAPTURE(movelist->move[i].code) != BLANK)
                 positiveSee = (pos.see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)) >= 0);
-            if (force || isCheck || positiveSee || !LegalMovesPossible)
+            if (positiveSee || !LegalMovesPossible)
             {
                 isLegal = pos.playMove(&(movelist->move[i]));
 #ifdef DEBUG
@@ -54,13 +49,13 @@ int getQuiescence(int alpha, int beta, int depth, bool force)
                 if (isLegal)
                 {
                     LegalMovesPossible = true;
-                    if (positiveSee || isCheck || force)
+                    if (positiveSee)
                     {
-                        score = -getQuiescence(-beta, -alpha, depth - 1, isCheck && depth > -3);
+                        score = -getQuiescence(-beta, -alpha, depth - 1);
                         PDEBUG(depth, "(getQuiscence) played move %s score=%d\n", movelist->move[i].toString().c_str(), score);
                     }
                     pos.unplayMove(&(movelist->move[i]));
-                    if ((positiveSee || isCheck || force) && score > bestscore)
+                    if (positiveSee && score > bestscore)
                     {
                         bestscore = score;
                         if (score >= beta)
@@ -99,7 +94,7 @@ int rootsearch(int alpha, int beta, int depth)
     int  LegalMoves = 0;
     bool isLegal;
     bool isCheck;
-    int bestscore = SHRT_MIN + 1;  // FIXME: Why not SHRT_MIN?
+    int bestscore = SHRT_MIN + 1;
     chessmove best(0);
     int eval_type = HASHALPHA;
     chessmovelist* newmoves;
@@ -286,7 +281,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     int  LegalMoves = 0;
     bool isLegal;
     bool isCheck;
-    int bestscore = SHRT_MIN + 1;  // FIXME: Why not SHRT_MIN?
+    int bestscore = SHRT_MIN + 1;
     unsigned long bestcode = 0;
     int eval_type = HASHALPHA;
     chessmovelist* newmoves;
@@ -320,7 +315,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
     if (depth <= 0)
     {
-        return getQuiescence(alpha, beta, depth, false);
+        return getQuiescence(alpha, beta, depth);
     }
 
     // test for remis via repetition
@@ -348,18 +343,18 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             return score;
         }
         else {
+#if 0 // disabled for now; first working on better quiescense
             if (score < alpha - 300)
             {
                 PDEBUG(depth, "Nullmove a=%d b=%d score=%d thread detected => extension\n", alpha, beta, score);
                 extend++;
             }
+#endif
             pos.unplayNullMove();
         }
     }
 
     newmoves = pos.getMoves();
-    if (isCheck)
-        ;// depth++;
 
 #ifdef DEBUG
     en.nopvnodes++;
