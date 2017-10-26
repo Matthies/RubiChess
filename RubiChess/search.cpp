@@ -87,192 +87,6 @@ int getQuiescence(int alpha, int beta, int depth)
 }
 
 
-int rootsearch(int alpha, int beta, int depth)
-{
-    int score;
-    unsigned long hashmovecode = 0;
-    int  LegalMoves = 0;
-    bool isLegal;
-    bool isCheck;
-    int bestscore = SHRT_MIN + 1;
-    chessmove best(0);
-    int eval_type = HASHALPHA;
-    chessmovelist* newmoves;
-    chessmove *m;
-
-    en.nodes++;
-
-#ifdef DEBUG
-    int oldmaxdebugdepth;
-    int oldmindebugdepth;
-    if (en.debug && pos.debughash == pos.hash)
-    {
-        oldmaxdebugdepth = pos.maxdebugdepth;
-        oldmindebugdepth = pos.mindebugdepth;
-        printf("Reached position to debug... starting debug.\n");
-        pos.print();
-        pos.maxdebugdepth = depth;
-        pos.mindebugdepth = -100;
-    }
-#endif
-
-    PDEBUG(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
-
-    if (tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
-    {
-        if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
-            return score;
-    }
-
-    // test for remis via repetition
-    if (rp.getPositionCount(pos.hash) >= 3 && pos.testRepetiton())
-        return SCOREDRAW;
-
-    // test for remis via 50 moves rule
-    if (pos.halfmovescounter >= 100)
-        return SCOREDRAW;
-
-    isCheck = pos.checkForChess();
-
-    newmoves = pos.getMoves();
-    if (isCheck)
-        depth++;
-
-#ifdef DEBUG
-    en.nopvnodes++;
-#endif
-    for (int i = 0; i < newmoves->length; i++)
-    {
-        m = &newmoves->move[i];
-        //PV moves gets top score
-        if (hashmovecode == m->code)
-        {
-            m->value = PVVAL;
-#ifdef DEBUG
-            en.pvnodes++;
-#endif
-        }
-
-        // killermoves gets score better than non-capture
-        if (pos.killer[0][0] == m->code)
-            m->value = KILLERVAL1;
-        if (pos.killer[1][0] == m->code)
-            m->value = KILLERVAL2;
-    }
-
-    for (int i = 0; i < newmoves->length; i++)
-    {
-        for (int j = i + 1; j < newmoves->length; j++)
-        {
-            if (newmoves->move[i] < newmoves->move[j])
-            {
-                swap(newmoves->move[i], newmoves->move[j]);
-            }
-        }
-
-        m = &newmoves->move[i];
-        isLegal = pos.playMove(m);
-
-        if (isLegal)
-        {
-            LegalMoves++;
-            PDEBUG(depth, "(rootsearch) played move %s   nodes:%d\n", newmoves->move[i].toString().c_str(), en.nodes);
-            if (!eval_type == HASHEXACT)
-            {
-                score = -alphabeta(-beta, -alpha, depth - 1, true);
-            }
-            else {
-                // try a PV-Search
-#ifdef DEBUG
-                unsigned long nodesbefore = en.nodes;
-#endif
-                score = -alphabeta(-alpha - 1, -alpha, depth - 1, true);
-                if (score > alpha && score < beta)
-                {
-                    // reasearch with full window
-#ifdef DEBUG
-                    en.wastednodes += (en.nodes - nodesbefore);
-#endif
-                    score = -alphabeta(-beta, -alpha, depth - 1, true);
-                }
-            }
-
-#ifdef DEBUG
-            if (en.debug && pos.debughash == pos.hash)
-            {
-                pos.actualpath.length = pos.ply;
-                printf("Leaving position to debug... stoping debug. Score:%d\n", score);
-                pos.maxdebugdepth = oldmaxdebugdepth;
-                pos.mindebugdepth = oldmindebugdepth;
-            }
-#endif
-            pos.unplayMove(m);
-
-            if (en.stopLevel == ENGINESTOPIMMEDIATELY && LegalMoves > 1)
-            {
-                // At least one move is found and we can safely exit here
-                // Lets hope this doesn't take too much time...
-                free(newmoves);
-                return bestscore;
-            }
-
-            if (score > bestscore)
-            {
-                bestscore = score;
-                best = *m;
-                pos.bestmove = best;
-
-                if (score >= beta)
-                {
-                    // Killermove
-                    if (GETCAPTURE(best.code) == BLANK)
-                    {
-
-                        pos.killer[1][0] = pos.killer[0][0];
-                        pos.killer[0][0] = best.code;
-                    }
-#ifdef DEBUG
-                    en.fh++;
-                    if (LegalMoves == 1)
-                        en.fhf++;
-#endif
-                    PDEBUG(depth, "(rootsearch) score=%d >= beta=%d  -> cutoff\n", score, beta);
-                    tp.addHash(beta, HASHBETA, depth, best.code);
-                    free(newmoves);
-                    return beta;   // fail hard beta-cutoff
-                }
-
-                if (score > alpha)
-                {
-                    PDEBUG(depth, "(rootsearch) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, m->toString().c_str(), pos.actualpath.toString().c_str());
-                    alpha = score;
-                    eval_type = HASHEXACT;
-                    if (GETCAPTURE(m->code) == BLANK)
-                    {
-                        pos.history[pos.Piece(GETFROM(m->code))][GETTO(m->code)] += depth * depth;
-                    }
-                }
-            }
-        }
-    }
-
-    free(newmoves);
-    if (LegalMoves == 0)
-    {
-        pos.bestmove.code = 0;
-        en.stopLevel = ENGINEWANTSTOP;
-        if (isCheck)
-            // It's a mate
-            return SCOREBLACKWINS;
-        else
-            // It's a stalemate
-            return SCOREDRAW;
-    }
-
-    tp.addHash(alpha, eval_type, depth, best.code);
-    return alpha;
-}
-
 
 int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 {
@@ -486,6 +300,194 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
     tp.addHash(bestscore, eval_type, depth, bestcode);
     return bestscore;
+}
+
+
+
+int rootsearch(int alpha, int beta, int depth)
+{
+    int score;
+    unsigned long hashmovecode = 0;
+    int  LegalMoves = 0;
+    bool isLegal;
+    bool isCheck;
+    int bestscore = SHRT_MIN + 1;
+    chessmove best(0);
+    int eval_type = HASHALPHA;
+    chessmovelist* newmoves;
+    chessmove *m;
+
+    en.nodes++;
+
+#ifdef DEBUG
+    int oldmaxdebugdepth;
+    int oldmindebugdepth;
+    if (en.debug && pos.debughash == pos.hash)
+    {
+        oldmaxdebugdepth = pos.maxdebugdepth;
+        oldmindebugdepth = pos.mindebugdepth;
+        printf("Reached position to debug... starting debug.\n");
+        pos.print();
+        pos.maxdebugdepth = depth;
+        pos.mindebugdepth = -100;
+    }
+#endif
+
+    PDEBUG(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
+
+    if (tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
+    {
+        if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
+            return score;
+    }
+
+    // test for remis via repetition
+    if (rp.getPositionCount(pos.hash) >= 3 && pos.testRepetiton())
+        return SCOREDRAW;
+
+    // test for remis via 50 moves rule
+    if (pos.halfmovescounter >= 100)
+        return SCOREDRAW;
+
+    isCheck = pos.checkForChess();
+
+    newmoves = pos.getMoves();
+    if (isCheck)
+        depth++;
+
+#ifdef DEBUG
+    en.nopvnodes++;
+#endif
+    for (int i = 0; i < newmoves->length; i++)
+    {
+        m = &newmoves->move[i];
+        //PV moves gets top score
+        if (hashmovecode == m->code)
+        {
+            m->value = PVVAL;
+#ifdef DEBUG
+            en.pvnodes++;
+#endif
+        }
+
+        // killermoves gets score better than non-capture
+        if (pos.killer[0][0] == m->code)
+            m->value = KILLERVAL1;
+        if (pos.killer[1][0] == m->code)
+            m->value = KILLERVAL2;
+    }
+
+    for (int i = 0; i < newmoves->length; i++)
+    {
+        for (int j = i + 1; j < newmoves->length; j++)
+        {
+            if (newmoves->move[i] < newmoves->move[j])
+            {
+                swap(newmoves->move[i], newmoves->move[j]);
+            }
+        }
+
+        m = &newmoves->move[i];
+        isLegal = pos.playMove(m);
+
+        if (isLegal)
+        {
+            LegalMoves++;
+            PDEBUG(depth, "(rootsearch) played move %s   nodes:%d\n", newmoves->move[i].toString().c_str(), en.nodes);
+            if (!eval_type == HASHEXACT)
+            {
+                score = -alphabeta(-beta, -alpha, depth - 1, true);
+            }
+            else {
+                // try a PV-Search
+#ifdef DEBUG
+                unsigned long nodesbefore = en.nodes;
+#endif
+                score = -alphabeta(-alpha - 1, -alpha, depth - 1, true);
+                if (score > alpha && score < beta)
+                {
+                    // reasearch with full window
+#ifdef DEBUG
+                    en.wastednodes += (en.nodes - nodesbefore);
+#endif
+                    score = -alphabeta(-beta, -alpha, depth - 1, true);
+                }
+            }
+
+#ifdef DEBUG
+            if (en.debug && pos.debughash == pos.hash)
+            {
+                pos.actualpath.length = pos.ply;
+                printf("Leaving position to debug... stoping debug. Score:%d\n", score);
+                pos.maxdebugdepth = oldmaxdebugdepth;
+                pos.mindebugdepth = oldmindebugdepth;
+            }
+#endif
+            pos.unplayMove(m);
+
+            if (en.stopLevel == ENGINESTOPIMMEDIATELY && LegalMoves > 1)
+            {
+                // At least one move is found and we can safely exit here
+                // Lets hope this doesn't take too much time...
+                free(newmoves);
+                return bestscore;
+            }
+
+            if (score > bestscore)
+            {
+                bestscore = score;
+                best = *m;
+                pos.bestmove = best;
+
+                if (score >= beta)
+                {
+                    // Killermove
+                    if (GETCAPTURE(best.code) == BLANK)
+                    {
+
+                        pos.killer[1][0] = pos.killer[0][0];
+                        pos.killer[0][0] = best.code;
+                    }
+#ifdef DEBUG
+                    en.fh++;
+                    if (LegalMoves == 1)
+                        en.fhf++;
+#endif
+                    PDEBUG(depth, "(rootsearch) score=%d >= beta=%d  -> cutoff\n", score, beta);
+                    tp.addHash(beta, HASHBETA, depth, best.code);
+                    free(newmoves);
+                    return beta;   // fail hard beta-cutoff
+                }
+
+                if (score > alpha)
+                {
+                    PDEBUG(depth, "(rootsearch) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, m->toString().c_str(), pos.actualpath.toString().c_str());
+                    alpha = score;
+                    eval_type = HASHEXACT;
+                    if (GETCAPTURE(m->code) == BLANK)
+                    {
+                        pos.history[pos.Piece(GETFROM(m->code))][GETTO(m->code)] += depth * depth;
+                    }
+                }
+            }
+        }
+    }
+
+    free(newmoves);
+    if (LegalMoves == 0)
+    {
+        pos.bestmove.code = 0;
+        en.stopLevel = ENGINEWANTSTOP;
+        if (isCheck)
+            // It's a mate
+            return SCOREBLACKWINS;
+        else
+            // It's a stalemate
+            return SCOREDRAW;
+    }
+
+    tp.addHash(alpha, eval_type, depth, best.code);
+    return alpha;
 }
 
 
