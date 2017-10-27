@@ -179,17 +179,20 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         //PV moves gets top score
         if (hashmovecode == m->code)
         {
-            m->value = PVVAL;
 #ifdef DEBUG
             en.pvnodes++;
 #endif
+            m->value = PVVAL;
         }
-
         // killermoves gets score better than non-capture
-        if (pos.killer[0][pos.ply] == m->code)
+        else if (pos.killer[0][0] == m->code)
+        {
             m->value = KILLERVAL1;
-        if (pos.killer[1][pos.ply] == m->code)
+        }
+        else if (pos.killer[1][0] == m->code)
+        {
             m->value = KILLERVAL2;
+        }
     }
 
     for (int i = 0; i < newmoves->length; i++)
@@ -364,17 +367,20 @@ int rootsearch(int alpha, int beta, int depth)
         //PV moves gets top score
         if (hashmovecode == m->code)
         {
-            m->value = PVVAL;
 #ifdef DEBUG
             en.pvnodes++;
 #endif
+            m->value = PVVAL;
         }
-
         // killermoves gets score better than non-capture
-        if (pos.killer[0][0] == m->code)
+        else if (pos.killer[0][pos.ply] == m->code)
+        {
             m->value = KILLERVAL1;
-        if (pos.killer[1][0] == m->code)
+        }
+        else if (pos.killer[1][pos.ply] == m->code)
+        {
             m->value = KILLERVAL2;
+        }
     }
 
     for (int i = 0; i < newmoves->length; i++)
