@@ -1,0 +1,15 @@
+info string  0 / 11  0% quiscense
+info string  0 / 11  0% wasted by failed PV search
+info string  0 / 11  0% wasted by wrong aspiration window
+info string  1 / 8  12% pv nodes
+info string Effective branching factor: 2.24 
+info string  1447652 / 3635038  39% quiscense
+info string  443511 / 2187386  20% wasted by failed PV search
+info string  1325778 / 2187386  60% wasted by wrong aspiration window
+info string  36160 / 468624  7% pv nodes
+info string Effective branching factor: 16.31 5.46 3.51 3.37 3.70 2.62 3.62 
+info string  2863214 / 6681990  42% quiscense
+info string  793703 / 3818776  20% wasted by failed PV search
+info string  2676724 / 3818776  70% wasted by wrong aspiration window
+info string  84262 / 874775  9% pv nodes
+info string Effective branching factor: 1.41 

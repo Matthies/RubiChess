@@ -2815,6 +2815,13 @@ bool chessposition::testRepetiton()
 
 engine::engine()
 {
+#ifdef DEBUG
+    int p = GetCurrentProcessId();
+    char s[256];
+    sprintf_s(s, "RubiChess-debug-%d.txt", p);
+    fdebug.open(s, fstream::out | fstream::app);
+#endif
+
     tp.pos = &pos;
 #ifdef BITBOARD
 	initBitmaphelper();

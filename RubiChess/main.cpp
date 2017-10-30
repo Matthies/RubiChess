@@ -727,7 +727,7 @@ void perftest(bool dotests, int maxdepth)
     };
 
     int i = 0;
-    printf("\n\nPerft results for %s (Build %s %s)\n", en.name, __DATE__, __TIME__);
+    printf("\n\nPerft results for %s (Build %s)\n", en.name, BUILD);
     printf("System: %s\n", GetSystemInfo().c_str());
     printf("Depth = %d      Hash-/Mirror-Tests %s\n", maxdepth, (dotests ? "enabled" : "disabled"));
     printf("========================================================================\n");
@@ -835,7 +835,7 @@ void doBenchmark()
     i = 0;
     long long totaltime = 0;
     long long totalnodes = 0;
-    printf("\n\nBenchmark results for %s (Build %s %s):\n", en.name, __DATE__, __TIME__);
+    printf("\n\nBenchmark results for %s (Build %s):\n", en.name, BUILD);
     printf("System: %s\n", GetSystemInfo().c_str());
     printf("========================================================================\n");
     while (benchmark[i].fen != "")
@@ -1235,9 +1235,7 @@ int main(int argc, char* argv[])
 
     cout.setf(ios_base::unitbuf);
 
-    //engine *myEngine = new engine();
-
-    printf("%s (Build %s %s)\n UCI compatible chess engine by %s\nParameterlist:\n", en.name, __DATE__, __TIME__, en.author);
+    printf("%s (Build %s)\n UCI compatible chess engine by %s\nParameterlist:\n", en.name, BUILD, en.author);
 
     for (int j = 0; allowedargs[j].cmd; j++)
     {

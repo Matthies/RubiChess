@@ -86,6 +86,7 @@ void Sleep(long x);
 #endif
 
 #define ENGINEVER "RubiChess " VERNUM " " BOARDVERSION
+#define BUILD __DATE__ " " __TIME__
 
 #define BITSET(x) (mybitset[(x)])
 #ifdef _WIN32
@@ -539,10 +540,12 @@ public:
     unsigned long nodes;
 #ifdef DEBUG
     unsigned long qnodes;
-	unsigned long wastednodes;
+	unsigned long wastedpvsnodes;
+    unsigned long wastedaspnodes;
     unsigned long pvnodes;
     unsigned long nopvnodes;
-
+    unsigned long npd[MAXDEPTH];
+    fstream fdebug;
 #endif
     long long starttime;
     long long endtime;
