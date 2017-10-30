@@ -162,13 +162,12 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             return score;
         }
         else {
-#if 0 // disabled for now; first working on better quiescense
-            if (score < alpha - 300)
+            // Some kind of threat extension, should work in a fail soft environment
+            if (score < alpha - 100)
             {
                 PDEBUG(depth, "Nullmove a=%d b=%d score=%d thread detected => extension\n", alpha, beta, score);
                 extend++;
             }
-#endif
             pos.unplayNullMove();
         }
     }
