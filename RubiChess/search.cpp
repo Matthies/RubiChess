@@ -100,7 +100,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     int eval_type = HASHALPHA;
     chessmovelist* newmoves;
     chessmove *m;
-    int extend = 0;
+    int extendall = 0;
     int reduction = 0;
 
     en.nodes++;
@@ -146,6 +146,8 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
     chessmove lastmove = pos.actualpath.move[pos.actualpath.length - 1];
     // Here some reduction/extension depending on the lastmove...
+    if (depth > 2 && !ISTACTICAL(lastmove.code) && !isCheck)
+        reduction++;
 
     // Nullmove
     if (nullmoveallowed && !isCheck && depth >= 4 && pos.phase() < 150)
@@ -163,10 +165,10 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         }
         else {
             // Some kind of threat extension, should work in a fail soft environment
-            if (score < alpha - 100)
+            if (score < alpha - 200)
             {
                 PDEBUG(depth, "Nullmove a=%d b=%d score=%d thread detected => extension\n", alpha, beta, score);
-                extend++;
+                extendall++;
             }
             pos.unplayNullMove();
         }
@@ -211,6 +213,10 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
         m = &newmoves->move[i];
         isLegal = pos.playMove(m);
+        int extendthis = 0;
+        // dont reduce if move gives check
+        if (reduction && pos.checkForChess())
+            extendthis = 1;
 
         if (isLegal)
         {
@@ -218,20 +224,20 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             PDEBUG(depth, "(alphabeta) played move %s   nodes:%d\n", newmoves->move[i].toString().c_str(), en.nodes);
             if (!eval_type == HASHEXACT)
             {
-                score = -alphabeta(-beta, -alpha, depth - 1, true);
+                score = -alphabeta(-beta, -alpha, depth + extendall + extendthis - reduction - 1, true);
             } else {
                 // try a PV-Search
 #ifdef DEBUG
                 unsigned long nodesbefore = en.nodes;
 #endif
-                score = -alphabeta(-alpha - 1, -alpha, depth + extend - 1, true);
+                score = -alphabeta(-alpha - 1, -alpha, depth + extendall - 1, true);
                 if (score > alpha && score < beta)
 				{
 					// reasearch with full window
 #ifdef DEBUG
                     en.wastedpvsnodes += (en.nodes - nodesbefore);
 #endif
-                    score = -alphabeta(-beta, -alpha, depth + extend - 1, true);
+                    score = -alphabeta(-beta, -alpha, depth + extendall + extendthis - reduction - 1, true);
 				}
             }
 
