@@ -101,7 +101,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     chessmovelist* newmoves;
     chessmove *m;
     int extendall = 0;
-    int reduction = 0;
+    int reduction;
 
     en.nodes++;
 
@@ -146,8 +146,6 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
     chessmove lastmove = pos.actualpath.move[pos.actualpath.length - 1];
     // Here some reduction/extension depending on the lastmove...
-    if (depth > 2 && !ISTACTICAL(lastmove.code) && !isCheck)
-        reduction++;
 
     // Nullmove
     if (nullmoveallowed && !isCheck && depth >= 4 && pos.phase() < 150)
@@ -164,12 +162,13 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             return score;
         }
         else {
-            // Some kind of threat extension, should work in a fail soft environment
-            if (score < alpha - 200)
+#if 0 // disabled for now; first working on better quiescense
+            if (score < alpha - 300)
             {
                 PDEBUG(depth, "Nullmove a=%d b=%d score=%d thread detected => extension\n", alpha, beta, score);
                 extendall++;
             }
+#endif
             pos.unplayNullMove();
         }
     }
@@ -213,18 +212,21 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
         m = &newmoves->move[i];
         isLegal = pos.playMove(m);
-        int extendthis = 0;
-        // dont reduce if move gives check
-        if (reduction && pos.checkForChess())
-            extendthis = 1;
-
         if (isLegal)
         {
             LegalMoves++;
             PDEBUG(depth, "(alphabeta) played move %s   nodes:%d\n", newmoves->move[i].toString().c_str(), en.nodes);
+
+            reduction = 0;
+            if (!extendall && depth > 2 && LegalMoves > 3 && !ISTACTICAL(m->code) && !isCheck)
+                reduction = 2;
+
             if (!eval_type == HASHEXACT)
             {
-                score = -alphabeta(-beta, -alpha, depth + extendall + extendthis - reduction - 1, true);
+                score = -alphabeta(-beta, -alpha, depth + extendall - reduction - 1, true);
+                if (reduction && score > alpha)
+                    // research without reduction
+                    score = -alphabeta(-beta, -alpha, depth - 1, true);
             } else {
                 // try a PV-Search
 #ifdef DEBUG
@@ -237,7 +239,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 #ifdef DEBUG
                     en.wastedpvsnodes += (en.nodes - nodesbefore);
 #endif
-                    score = -alphabeta(-beta, -alpha, depth + extendall + extendthis - reduction - 1, true);
+                    score = -alphabeta(-beta, -alpha, depth + extendall - reduction - 1, true);
 				}
             }
 
@@ -270,7 +272,6 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                     // Killermove
                     if (GETCAPTURE(m->code) == BLANK)
                     {
-
                         pos.killer[1][pos.ply] = pos.killer[0][pos.ply];
                         pos.killer[0][pos.ply] = m->code;
                     }

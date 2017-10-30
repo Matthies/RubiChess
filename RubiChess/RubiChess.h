@@ -205,7 +205,6 @@ const int orthogonalanddiagonaloffset[] = { -0x10, -0x01, 0x01, 0x10, -0x0f, -0x
 #endif
 
 
-//struct pawnmove { char offset; bool blank; };
 const struct { int offset; bool needsblank; } pawnmove[] = { { 0x10, true }, { 0x0f, false }, { 0x11, false } };
 const int materialvalue[] = { 0, 100, 320, 330, 500, 900, SCOREWHITEWINS };
 // values for move ordering
