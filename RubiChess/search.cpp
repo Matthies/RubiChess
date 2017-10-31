@@ -219,7 +219,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
             reduction = 0;
             if (!extendall && depth > 2 && LegalMoves > 3 && !ISTACTICAL(m->code) && !isCheck)
-                reduction = 2;
+                reduction = 1;
 
             if (!eval_type == HASHEXACT)
             {
@@ -416,7 +416,7 @@ int rootsearch(int alpha, int beta, int depth)
 
             reduction = 0;
             if (!extendall && depth > 2 && LegalMoves > 3 && !ISTACTICAL(m->code) && !isCheck)
-                reduction = 2;
+                reduction = 1;
 
             if (!eval_type == HASHEXACT)
             {
