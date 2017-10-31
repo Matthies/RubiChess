@@ -226,7 +226,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                 score = -alphabeta(-beta, -alpha, depth + extendall - reduction - 1, true);
                 if (reduction && score > alpha)
                     // research without reduction
-                    score = -alphabeta(-beta, -alpha, depth - 1, true);
+                    score = -alphabeta(-beta, -alpha, depth + extendall - 1, true);
             } else {
                 // try a PV-Search
 #ifdef DEBUG
@@ -330,6 +330,8 @@ int rootsearch(int alpha, int beta, int depth)
     int eval_type = HASHALPHA;
     chessmovelist* newmoves;
     chessmove *m;
+    int extendall = 0;
+    int reduction;
 
     en.nodes++;
 
@@ -411,23 +413,31 @@ int rootsearch(int alpha, int beta, int depth)
         {
             LegalMoves++;
             PDEBUG(depth, "(rootsearch) played move %s   nodes:%d\n", newmoves->move[i].toString().c_str(), en.nodes);
+
+            reduction = 0;
+            if (!extendall && depth > 2 && LegalMoves > 3 && !ISTACTICAL(m->code) && !isCheck)
+                reduction = 2;
+
             if (!eval_type == HASHEXACT)
             {
-                score = -alphabeta(-beta, -alpha, depth - 1, true);
+                score = -alphabeta(-beta, -alpha, depth + extendall - reduction - 1, true);
+                if (reduction && score > alpha)
+                    // research without reduction
+                    score = -alphabeta(-beta, -alpha, depth + extendall - 1, true);
             }
             else {
                 // try a PV-Search
 #ifdef DEBUG
                 unsigned long nodesbefore = en.nodes;
 #endif
-                score = -alphabeta(-alpha - 1, -alpha, depth - 1, true);
+                score = -alphabeta(-alpha - 1, -alpha, depth + extendall - 1, true);
                 if (score > alpha && score < beta)
                 {
                     // reasearch with full window
 #ifdef DEBUG
                     en.wastedpvsnodes += (en.nodes - nodesbefore);
 #endif
-                    score = -alphabeta(-beta, -alpha, depth - 1, true);
+                    score = -alphabeta(-beta, -alpha, depth + extendall - reduction - 1, true);
                 }
             }
 
