@@ -86,6 +86,7 @@ void Sleep(long x);
 #endif
 
 #define ENGINEVER "RubiChess " VERNUM " " BOARDVERSION
+#define BUILD __DATE__ " " __TIME__
 
 #define BITSET(x) (mybitset[(x)])
 #ifdef _WIN32
@@ -204,7 +205,6 @@ const int orthogonalanddiagonaloffset[] = { -0x10, -0x01, 0x01, 0x10, -0x0f, -0x
 #endif
 
 
-//struct pawnmove { char offset; bool blank; };
 const struct { int offset; bool needsblank; } pawnmove[] = { { 0x10, true }, { 0x0f, false }, { 0x11, false } };
 const int materialvalue[] = { 0, 100, 320, 330, 500, 900, SCOREWHITEWINS };
 // values for move ordering
@@ -227,6 +227,7 @@ const unsigned int lva[] = { 5 << 26, 4 << 26, 3 << 26, 3 << 26, 2 << 26, 1 << 2
 #endif
 #define GETPROMOTION(x) (((x) & 0xf000) >> 12)
 #define GETCAPTURE(x) (((x) & 0xf0000) >> 16)
+#define ISTACTICAL(x) ((x) & 0xff000)
 #ifdef BITBOARD
 #define GETPIECE(x) (((x) & 0xf0000000) >> 28)
 #else
@@ -539,10 +540,12 @@ public:
     unsigned long nodes;
 #ifdef DEBUG
     unsigned long qnodes;
-	unsigned long wastednodes;
+	unsigned long wastedpvsnodes;
+    unsigned long wastedaspnodes;
     unsigned long pvnodes;
     unsigned long nopvnodes;
-
+    unsigned long npd[MAXDEPTH];
+    fstream fdebug;
 #endif
     long long starttime;
     long long endtime;

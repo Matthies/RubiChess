@@ -100,7 +100,8 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     int eval_type = HASHALPHA;
     chessmovelist* newmoves;
     chessmove *m;
-    int extend = 0;
+    int extendall = 0;
+    int reduction;
 
     en.nodes++;
 
@@ -141,6 +142,10 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         return SCOREDRAW;
 
     isCheck = pos.checkForChess();
+    // FIXME: Maybe some check extension? This is handled by quiescience search now
+
+    chessmove lastmove = pos.actualpath.move[pos.actualpath.length - 1];
+    // Here some reduction/extension depending on the lastmove...
 
     // Nullmove
     if (nullmoveallowed && !isCheck && depth >= 4 && pos.phase() < 150)
@@ -161,7 +166,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             if (score < alpha - 300)
             {
                 PDEBUG(depth, "Nullmove a=%d b=%d score=%d thread detected => extension\n", alpha, beta, score);
-                extend++;
+                extendall++;
             }
 #endif
             pos.unplayNullMove();
@@ -207,27 +212,34 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
         m = &newmoves->move[i];
         isLegal = pos.playMove(m);
-
         if (isLegal)
         {
             LegalMoves++;
             PDEBUG(depth, "(alphabeta) played move %s   nodes:%d\n", newmoves->move[i].toString().c_str(), en.nodes);
+
+            reduction = 0;
+            if (!extendall && depth > 2 && LegalMoves > 3 && !ISTACTICAL(m->code) && !isCheck)
+                reduction = 1;
+
             if (!eval_type == HASHEXACT)
             {
-                score = -alphabeta(-beta, -alpha, depth - 1, true);
+                score = -alphabeta(-beta, -alpha, depth + extendall - reduction - 1, true);
+                if (reduction && score > alpha)
+                    // research without reduction
+                    score = -alphabeta(-beta, -alpha, depth + extendall - 1, true);
             } else {
                 // try a PV-Search
 #ifdef DEBUG
                 unsigned long nodesbefore = en.nodes;
 #endif
-                score = -alphabeta(-alpha - 1, -alpha, depth + extend - 1, true);
+                score = -alphabeta(-alpha - 1, -alpha, depth + extendall - 1, true);
                 if (score > alpha && score < beta)
 				{
 					// reasearch with full window
 #ifdef DEBUG
-                    en.wastednodes += (en.nodes - nodesbefore);
+                    en.wastedpvsnodes += (en.nodes - nodesbefore);
 #endif
-                    score = -alphabeta(-beta, -alpha, depth + extend - 1, true);
+                    score = -alphabeta(-beta, -alpha, depth + extendall - reduction - 1, true);
 				}
             }
 
@@ -260,7 +272,6 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                     // Killermove
                     if (GETCAPTURE(m->code) == BLANK)
                     {
-
                         pos.killer[1][pos.ply] = pos.killer[0][pos.ply];
                         pos.killer[0][pos.ply] = m->code;
                     }
@@ -319,6 +330,8 @@ int rootsearch(int alpha, int beta, int depth)
     int eval_type = HASHALPHA;
     chessmovelist* newmoves;
     chessmove *m;
+    int extendall = 0;
+    int reduction;
 
     en.nodes++;
 
@@ -400,23 +413,31 @@ int rootsearch(int alpha, int beta, int depth)
         {
             LegalMoves++;
             PDEBUG(depth, "(rootsearch) played move %s   nodes:%d\n", newmoves->move[i].toString().c_str(), en.nodes);
+
+            reduction = 0;
+            if (!extendall && depth > 2 && LegalMoves > 3 && !ISTACTICAL(m->code) && !isCheck)
+                reduction = 1;
+
             if (!eval_type == HASHEXACT)
             {
-                score = -alphabeta(-beta, -alpha, depth - 1, true);
+                score = -alphabeta(-beta, -alpha, depth + extendall - reduction - 1, true);
+                if (reduction && score > alpha)
+                    // research without reduction
+                    score = -alphabeta(-beta, -alpha, depth + extendall - 1, true);
             }
             else {
                 // try a PV-Search
 #ifdef DEBUG
                 unsigned long nodesbefore = en.nodes;
 #endif
-                score = -alphabeta(-alpha - 1, -alpha, depth - 1, true);
+                score = -alphabeta(-alpha - 1, -alpha, depth + extendall - 1, true);
                 if (score > alpha && score < beta)
                 {
                     // reasearch with full window
 #ifdef DEBUG
-                    en.wastednodes += (en.nodes - nodesbefore);
+                    en.wastedpvsnodes += (en.nodes - nodesbefore);
 #endif
-                    score = -alphabeta(-beta, -alpha, depth - 1, true);
+                    score = -alphabeta(-beta, -alpha, depth + extendall - reduction - 1, true);
                 }
             }
 
@@ -544,6 +565,10 @@ static void search_gen1()
 
         // Reset bestmove to detect alpha raise in interrupted search
         pos.bestmove.code = 0;
+#ifdef DEBUG
+        unsigned long nodesbefore = en.nodes;
+        en.npd[depth] = 0;
+#endif
         score = rootsearch(alpha, beta, depth);
 
         // new aspiration window
@@ -552,12 +577,18 @@ static void search_gen1()
             // research with lower alpha
             alpha = max(SHRT_MIN + 1, alpha - deltaalpha);
             deltaalpha <<= 1;
+#ifdef DEBUG
+            en.wastedaspnodes += (en.nodes - nodesbefore);
+#endif
         }
         else if (score == beta)
         {
-            // research with hight beta
+            // research with higher beta
             beta = min(SHRT_MAX, beta + deltabeta);
             deltabeta <<= 1;
+#ifdef DEBUG
+            en.wastedaspnodes += (en.nodes - nodesbefore);
+#endif
         }
         else
         {
@@ -589,6 +620,13 @@ static void search_gen1()
             deltabeta = 25;
             alpha = score - deltaalpha;
             beta = score + deltaalpha;
+
+#ifdef DEBUG
+            if (en.stopLevel == ENGINERUN)
+            {
+                en.npd[depth] = en.nodes - en.npd[depth - 1];
+            }
+#endif
             depth += depthincrement;
         }
 
@@ -644,9 +682,11 @@ void searchguide()
     en.nodes = 0;
 #ifdef DEBUG
     en.qnodes = 0;
-	en.wastednodes = 0;
+	en.wastedpvsnodes = 0;
+    en.wastedaspnodes = 0;
     en.pvnodes = 0;
     en.nopvnodes = 0;
+    en.npd[0] = 1;
 #endif
     en.fh = en.fhf = 0;
 
@@ -687,12 +727,29 @@ void searchguide()
     sprintf_s(s, "info nodes %lu nps %llu hashfull %d\n", en.nodes, en.nodes * en.frequency / (en.endtime - en.starttime), tp.getUsedinPermill());
     cout << s;
 #ifdef DEBUG
-    sprintf_s(s, "info string %d%% quiscense\n", (int)en.qnodes * 100 / (en.nodes + en.qnodes));
-    cout << s;
-	sprintf_s(s, "info string %d%% wasted by research\n", (int)en.wastednodes * 100 / en.nodes);
-	cout << s;
-    sprintf_s(s, "info string %d/%d (%d%%) pv nodes\n", en.pvnodes, en.nopvnodes, (int)en.pvnodes * 100 / en.nopvnodes);
-    cout << s;
+    if (en.nodes)
+    {
+        sprintf_s(s, "quiscense;%d;%d;%d\n", en.qnodes, en.nodes + en.qnodes, (int)en.qnodes * 100 / (en.nodes + en.qnodes));
+        en.fdebug << s;
+        sprintf_s(s, "pvs;%d;%d;%d\n", en.wastedpvsnodes, en.nodes, (int)en.wastedpvsnodes * 100 / en.nodes);
+        en.fdebug << s;
+        sprintf_s(s, "asp;%d;%d;%d\n", en.wastedaspnodes, en.nodes, (int)en.wastedaspnodes * 100 / en.nodes);
+        en.fdebug << s;
+    }
+    if (en.nopvnodes)
+    {
+        sprintf_s(s, "pv;%d;%d;%d\n", en.pvnodes, en.nopvnodes, (int)en.pvnodes * 100 / en.nopvnodes);
+        en.fdebug << s;
+    }
+    sprintf_s(s, "ebf;");
+    en.fdebug << s;
+    for (int d = 2; en.npd[d] && en.npd[d - 2]; d++)
+    {
+        sprintf_s(s, "%0.2f;", sqrt((double)en.npd[d] / (double)en.npd[d - 2]));
+        en.fdebug << s;
+    }
+    sprintf_s(s, "\n");
+    en.fdebug << s;
 #endif
 
 }
