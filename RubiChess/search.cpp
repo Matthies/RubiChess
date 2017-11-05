@@ -669,11 +669,12 @@ void searchguide()
         //printf("info string difftime1=%lld  difftime2=%lld\n", (endtime1 - en.starttime) * 1000 / en.frequency , (endtime2 - en.starttime) * 1000 / en.frequency);
     }
     else if (timetouse) {
-        // sudden death; split the remaining time for TIMETOUSESLOTS moves; TRIMESLOTS is 32 for now
-        // stop soon after one timeslot
-        endtime1 = en.starttime + max(timeinc, (timetouse + timeinc) / TIMETOUSESLOTS) * en.frequency  / 1000;
-        // stop immediately after 3 timeslots
-        endtime2 = en.starttime + min(timetouse - en.moveOverhead, max(timeinc, 3 * (timetouse + timeinc) / TIMETOUSESLOTS)) * en.frequency / 1000;
+        int ph = pos.phase();
+        // sudden death; split the remaining time in (256-phase) timeslots
+        // stop soon after 6 timeslot
+        endtime1 = en.starttime + max(timeinc, 6 * (timetouse + timeinc) / (256 - ph)) * en.frequency  / 1000;
+        // stop immediately after 10 timeslots
+        endtime2 = en.starttime + min(timetouse - en.moveOverhead, max(timeinc, 10 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
     }
     else {
         endtime1 = endtime2 = 0;
