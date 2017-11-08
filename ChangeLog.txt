@@ -7,6 +7,8 @@ ChangeLog
     - Switched to fail soft environment
     - Fixed a bug where pv move value gets overwritten by killer history value which results in bad move order and sometimes even worse bestmove
     - Simplified/fixed quiescence search (again)
+	- Introduced LMR (quite simple right now)
+	- Improved sudden death time management again; ELO in 10+0.1 is now almost equal to 40/10
 
 0.5 (release 2017 - 09 - 29) :
     - Moved undo data from chessmove struct to a static stack which speeds up playing moves

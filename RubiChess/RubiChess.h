@@ -671,7 +671,6 @@ https://www.gamedev.net/topic/503234-transposition-table-question/
 //
 // search stuff
 //
-#define TIMETOUSESLOTS 32
 int rootsearch(int alpha, int beta, int depth);
 int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed);
 int getQuiescence(int alpha, int beta, int depth);
