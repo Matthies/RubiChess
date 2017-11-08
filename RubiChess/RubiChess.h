@@ -426,6 +426,7 @@ public:
     bool isAttacked(int index);
     U64 attacksTo(int index, int side);
     bool checkForChess();
+    int getLeastValuablePieceIndex(U64 attadef, unsigned int bySide, PieceCode *piece);
     int see(int to);
     int see(int from, int to);
     void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);

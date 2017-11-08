@@ -1634,6 +1634,7 @@ bool chessposition::isAttacked(int index)
 #endif
 
 
+
 int chessposition::phase()
 {
     int p = max(0, (24 - POPCOUNT(piece00[4]) - POPCOUNT(piece00[5]) - POPCOUNT(piece00[6]) - POPCOUNT(piece00[7]) - (POPCOUNT(piece00[8]) << 1) - (POPCOUNT(piece00[9]) << 1) - (POPCOUNT(piece00[10]) << 2) - (POPCOUNT(piece00[11]) << 2)));
@@ -1642,6 +1643,7 @@ int chessposition::phase()
 }
 
 
+#if 0
 int chessposition::see(int to)
 {
     int cheapest = SHRT_MAX;
@@ -1674,7 +1676,6 @@ int chessposition::see(int to)
     return v;
 }
 
-
 int chessposition::see(int from, int to)
 {
     int v;
@@ -1687,7 +1688,54 @@ int chessposition::see(int from, int to)
     simpleUnplay(from, to, capture);
     return v;
 }
+#else
 
+int chessposition::getLeastValuablePieceIndex(U64 attadef, unsigned int bySide, PieceCode *piece)
+{
+    int i;
+    for (*piece = WPAWN + bySide; *piece <= WKING + bySide; *piece += 2) {
+        U64 subset = attadef & piece00[*piece];
+        if (LSB(i, subset))
+            return i;
+    }
+    if (attadef)
+        printf("Alarm");
+    return -1;
+}
+
+
+int chessposition::see(int from, int to)
+{
+    int gain[32], d = 0;
+    int side = (mailbox[to] & S2MMASK) ^ S2MMASK;
+    int fromlist[32], capturelist[32];
+    PieceCode aPiece = mailbox[from];
+    U64 attadef = attacksTo(to, side);
+    gain[d] = materialvalue[Piece(to)];
+    do {
+        d++;
+        gain[d] = materialvalue[Piece(from)] - gain[d - 1];
+        if (max(-gain[d - 1], gain[d]) < 0)
+            break;
+
+        capturelist[d] = mailbox[to];
+        fromlist[d] = from;
+        simplePlay(from, to);
+        side ^= S2MMASK;
+        attadef = attacksTo(to, side);
+        if (!attadef)
+            simpleUnplay(fromlist[d], to, capturelist[d]);
+        else
+            from = getLeastValuablePieceIndex(attadef, side, &aPiece);
+    } while (attadef);
+    while (--d)
+    {
+        gain[d - 1] = -max(-gain[d - 1], gain[d]);
+        simpleUnplay(fromlist[d], to, capturelist[d]);
+    }
+    return gain[0];
+}
+#endif
 
 void chessposition::playNullMove()
 {
@@ -1709,7 +1757,7 @@ void chessposition::unplayNullMove()
 
 void chessposition::simplePlay(int from, int to)
 {
-    if (mailbox[to] != BLANK)
+    if (mailbox[to] != BLANK) // disabled test as long as this is only used in captures
         BitboardClear(to, mailbox[to]);
     BitboardMove(from, to, mailbox[from]);
     mailbox[to] = mailbox[from];
@@ -1724,7 +1772,7 @@ void chessposition::simpleUnplay(int from, int to, PieceCode capture)
     BitboardMove(to, from, mailbox[to]);
     mailbox[from] = mailbox[to];
     mailbox[to] = capture;
-    if (capture != BLANK)
+    if (capture != BLANK) // disabled test as long as this is only used in captures
         BitboardSet(to, capture);
 }
 
