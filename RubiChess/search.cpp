@@ -725,8 +725,11 @@ void searchguide()
     }
     enginethread.join();
     en.endtime = getTime();
-    sprintf_s(s, "info nodes %lu nps %llu hashfull %d\n", en.nodes, en.nodes * en.frequency / (en.endtime - en.starttime), tp.getUsedinPermill());
-    cout << s;
+    if (en.endtime > en.starttime)
+    {
+        sprintf_s(s, "info nodes %lu nps %llu hashfull %d\n", en.nodes, en.nodes * en.frequency / (en.endtime - en.starttime), tp.getUsedinPermill());
+        cout << s;
+    }
 #ifdef DEBUG
     if (en.nodes)
     {
