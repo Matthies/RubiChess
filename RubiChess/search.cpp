@@ -614,20 +614,26 @@ static void search_gen1()
                 sprintf_s(s, "info depth %d time %d score mate %d pv %s\n", depth, secondsrun, matein, pvstring.c_str());
             }
             cout << s;
-
-            // next depth with new aspiration window
-            deltaalpha = 25;
-            deltabeta = 25;
-            alpha = score - deltaalpha;
-            beta = score + deltaalpha;
+            if (score >= en.terminationscore)
+            {
+                // bench mode reached needed score
+                en.stopLevel = ENGINEWANTSTOP;
+            }
+            else {
+                // next depth with new aspiration window
+                deltaalpha = 25;
+                deltabeta = 25;
+                alpha = score - deltaalpha;
+                beta = score + deltaalpha;
 
 #ifdef DEBUG
-            if (en.stopLevel == ENGINERUN)
-            {
-                en.npd[depth] = en.nodes - en.npd[depth - 1];
-            }
+                if (en.stopLevel == ENGINERUN)
+                {
+                    en.npd[depth] = en.nodes - en.npd[depth - 1];
+                }
 #endif
-            depth += depthincrement;
+                depth += depthincrement;
+            }
         }
 
         if (pos.pvline.length > 0 && pos.pvline.move[0].code)

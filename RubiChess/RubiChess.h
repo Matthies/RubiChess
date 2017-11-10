@@ -556,6 +556,7 @@ public:
     bool debug = false;
     int sizeOfTp = 0;
     int moveOverhead;
+    int terminationscore = SHRT_MAX;
     int stopLevel = ENGINESTOPPED;
     void communicate(string inputstring);
     int getScoreFromEnginePoV();
