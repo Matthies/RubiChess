@@ -144,7 +144,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     isCheck = pos.checkForChess();
     // FIXME: Maybe some check extension? This is handled by quiescience search now
 
-    chessmove lastmove = pos.actualpath.move[pos.actualpath.length - 1];
+    // chessmove lastmove = pos.actualpath.move[pos.actualpath.length - 1];
     // Here some reduction/extension depending on the lastmove...
 
     // Nullmove
