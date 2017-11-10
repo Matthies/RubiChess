@@ -1634,6 +1634,7 @@ bool chessposition::isAttacked(int index)
 #endif
 
 
+
 int chessposition::phase()
 {
     int p = max(0, (24 - POPCOUNT(piece00[4]) - POPCOUNT(piece00[5]) - POPCOUNT(piece00[6]) - POPCOUNT(piece00[7]) - (POPCOUNT(piece00[8]) << 1) - (POPCOUNT(piece00[9]) << 1) - (POPCOUNT(piece00[10]) << 2) - (POPCOUNT(piece00[11]) << 2)));
@@ -1642,6 +1643,7 @@ int chessposition::phase()
 }
 
 
+#ifdef ROTATEDBITBOARD  // FIXME use the old one for now; could be optimized as well
 int chessposition::see(int to)
 {
     int cheapest = SHRT_MAX;
@@ -1674,7 +1676,6 @@ int chessposition::see(int to)
     return v;
 }
 
-
 int chessposition::see(int from, int to)
 {
     int v;
@@ -1687,6 +1688,80 @@ int chessposition::see(int from, int to)
     simpleUnplay(from, to, capture);
     return v;
 }
+
+#else
+
+int chessposition::getLeastValuablePieceIndex(int to, unsigned int bySide, PieceCode *piece)
+{
+    int i;
+    if (LSB(i, pawn_attacks_occupied[to][state & S2MMASK] & piece00[(PAWN << 1) | bySide]))
+    {
+        *piece = WPAWN + bySide;
+        return i;
+    }
+    if (LSB(i, knight_attacks[to] & piece00[(KNIGHT << 1) | bySide]))
+    {
+        *piece = WKNIGHT + bySide;
+        return i;
+    }
+    if (LSB(i, MAGICBISHOPATTACKS(occupied00[0] | occupied00[1], to) & (piece00[(BISHOP << 1) | bySide])))
+    {
+        *piece = WBISHOP + bySide;
+        return i;
+    }
+    if (LSB(i, MAGICROOKATTACKS(occupied00[0] | occupied00[1], to) & (piece00[(ROOK << 1) | bySide])))
+    {
+        *piece = WROOK + bySide;
+        return i;
+    }
+    if (LSB(i, (MAGICBISHOPATTACKS(occupied00[0] | occupied00[1], to) & (piece00[(QUEEN << 1) | bySide])) | (MAGICROOKATTACKS(occupied00[0] | occupied00[1], to) & (piece00[(QUEEN << 1) | bySide]))))
+    {
+        *piece = WQUEEN + bySide;
+        return i;
+    }
+    if (LSB(i, king_attacks[to] & piece00[(KING << 1) | bySide]))
+    {
+        *piece = WKING + bySide;
+        return i;
+    }
+    return -1;
+}
+
+
+int chessposition::see(int from, int to)
+{
+    PieceType bPiece = mailbox[to];
+    if (bPiece == BLANK)
+        // ep capture is always okay
+        return 0;
+    PieceCode aPiece = mailbox[from];
+    int gain[32], d = 0;
+    int side = (mailbox[to] & S2MMASK) ^ S2MMASK;
+    int fromlist[32];
+
+    gain[0] = materialvalue[bPiece >> 1];
+    do {
+        d++;
+        gain[d] = materialvalue[aPiece >> 1] - gain[d - 1];
+        if (max(-gain[d - 1], gain[d]) < 0)
+            break;
+
+        fromlist[d] = from;
+        BitboardClear(from, aPiece);
+        side ^= S2MMASK;
+        bPiece = aPiece;
+        from = getLeastValuablePieceIndex(to, side, &aPiece);
+        if (from < 0)
+            BitboardSet(fromlist[d], bPiece);
+    } while (from >= 0);
+    while (--d)
+    {
+        gain[d - 1] = -max(-gain[d - 1], gain[d]);
+        BitboardSet(fromlist[d], mailbox[fromlist[d]]);
+    }
+    return gain[0];
+}
+#endif
 
 
 void chessposition::playNullMove()
@@ -1707,10 +1782,10 @@ void chessposition::unplayNullMove()
 }
 
 
-void chessposition::simplePlay(int from, int to)
+#ifdef ROTATEDBITBOARD
+void chessposition::simplePlay(int from, int to)    // mailbox[to] != BLANK
 {
-    if (mailbox[to] != BLANK)
-        BitboardClear(to, mailbox[to]);
+    BitboardClear(to, mailbox[to]);
     BitboardMove(from, to, mailbox[from]);
     mailbox[to] = mailbox[from];
     mailbox[from] = BLANK;
@@ -1718,15 +1793,15 @@ void chessposition::simplePlay(int from, int to)
 }
 
 
-void chessposition::simpleUnplay(int from, int to, PieceCode capture)
+void chessposition::simpleUnplay(int from, int to, PieceCode capture)   // capture != BLANK
 {
     state ^= S2MMASK;
     BitboardMove(to, from, mailbox[to]);
     mailbox[from] = mailbox[to];
     mailbox[to] = capture;
-    if (capture != BLANK)
-        BitboardSet(to, capture);
+    BitboardSet(to, capture);
 }
+#endif
 
 
 void chessposition::getpvline(int depth)

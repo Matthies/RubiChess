@@ -426,15 +426,15 @@ public:
     bool isAttacked(int index);
     U64 attacksTo(int index, int side);
     bool checkForChess();
+    int getLeastValuablePieceIndex(int to, unsigned int bySide, PieceCode *piece);
     int see(int to);
+    int seeold(int from, int to);
     int see(int from, int to);
     void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
     void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
     chessmovelist* getMoves();
     bool playMove(chessmove *cm);
-    void playMoveFast(chessmove *cm);
     void unplayMove(chessmove *cm);
-    void unplayMoveFast(chessmove *cm);
     void playNullMove();
     void unplayNullMove();
     void simplePlay(int from, int to);
