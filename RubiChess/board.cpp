@@ -1676,6 +1676,7 @@ int chessposition::see(int to)
     return v;
 }
 
+
 int chessposition::see(int from, int to)
 {
     int v;
