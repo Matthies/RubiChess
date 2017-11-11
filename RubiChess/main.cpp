@@ -637,6 +637,11 @@ long long perft(int depth, bool dotests)
             printf("Alarm! Wrong Hash! %llu\n", zb.getHash());
             pos.print();
         }
+        if (pos.pawnhash != zb.getPawnHash())
+        {
+            printf("Alarm! Wrong Pawn Hash! %llu\n", zb.getPawnHash());
+            pos.print();
+        }
         int val1 = pos.getValue();
         pos.mirror();
         int val2 = pos.getValue();
@@ -646,11 +651,20 @@ long long perft(int depth, bool dotests)
         {
             printf("Mirrortest  :error  (%d / %d / %d)\n", val1, val2, val3);
             pos.print();
+            printf("Material value: %d\n", pos.countMaterial());
+            printf("Position value: %d\n", pos.getPositionValue());
+            printf("Pawn value: %d\n", pos.getPawnValue());
             pos.mirror();
             pos.print();
+            printf("Material value: %d\n", pos.countMaterial());
+            printf("Position value: %d\n", pos.getPositionValue());
+            printf("Pawn value: %d\n", pos.getPawnValue());
             pos.mirror();
             pos.print();
-		}
+            printf("Material value: %d\n", pos.countMaterial());
+            printf("Position value: %d\n", pos.getPositionValue());
+            printf("Pawn value: %d\n", pos.getPawnValue());
+        }
     }
     chessmovelist* movelist = pos.getMoves();
     //movelist->sort();

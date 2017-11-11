@@ -709,6 +709,8 @@ void searchguide()
         if (nodes != lastnodes && nowtime - lastinfotime > en.frequency)
         {
             sprintf_s(s, "info nodes %lu nps %llu hashfull %d\n", nodes, (nodes - lastnodes) * en.frequency / (nowtime - lastinfotime), tp.getUsedinPermill());
+            // enable so see the pawn hash usage
+            //sprintf_s(s, "info nodes %lu nps %llu hashfull %d\n", nodes, (nodes - lastnodes) * en.frequency / (nowtime - lastinfotime), pwnhsh.getUsedinPermill());
             cout << s;
             lastnodes = nodes;
             lastinfotime = nowtime;

@@ -208,6 +208,8 @@ void chessposition::mirror()
 			{
 				newmailbox[mirrorindex] = mailbox[index] ^ S2MMASK;
 				BitboardClear(index, mailbox[index]);
+                if ((mailbox[index] >> 1) == PAWN)
+                    pawnhash ^= zb.boardtable[(index << 4) | mailbox[index]];
 			}
 			else {
 				newmailbox[mirrorindex] = BLANK;
@@ -218,8 +220,12 @@ void chessposition::mirror()
 	for (int i = 0; i < 64; i++)
 	{
 		mailbox[i] = newmailbox[i];
-		if (mailbox[i] != BLANK)
-			BitboardSet(i, mailbox[i]);
+        if (mailbox[i] != BLANK)
+        {
+            BitboardSet(i, mailbox[i]);
+            if ((mailbox[i] >> 1) == PAWN)
+                pawnhash ^= zb.boardtable[(i << 4) | mailbox[i]];
+        }
 	}
 
 	countMaterial();
@@ -832,6 +838,7 @@ int chessposition::getFromFen(const char* sFen)
     actualpath.length = 0;
     countMaterial();
     hash = zb.getHash();
+    pawnhash = zb.getPawnHash();
     rp.clean();
     rp.addPosition(hash);
     for (int i = 0; i < 14; i++)
@@ -900,6 +907,7 @@ void chessposition::print()
     printf("info string Halfmoves: %d\n", halfmovescounter);
     printf("info string Fullmoves: %d\n", fullmovescounter);
     printf("info string Hash: %llu (%llx)  (getHash(): %llu)\n", hash, hash, zb.getHash());
+    printf("info string Pawn Hash: %llu (%llx)  (getPawnHash(): %llu)\n", pawnhash, pawnhash, zb.getPawnHash());
     printf("info string Value: %d\n", getValue());
     printf("info string Repetitions: %d\n", rp.getPositionCount(hash));
     printf("info string Phase: %d\n", phase());
@@ -928,6 +936,7 @@ bool chessposition::playMove(chessmove *cm)
 
     movestack[mstop].ept = ept;
     movestack[mstop].hash = hash;
+    movestack[mstop].pawnhash = pawnhash;
     movestack[mstop].state = state;
     movestack[mstop].kingpos[0] = kingpos[0];
     movestack[mstop].kingpos[1] = kingpos[1];
@@ -940,6 +949,8 @@ bool chessposition::playMove(chessmove *cm)
     if (capture != BLANK && !GETEPCAPTURE(cm->code))
     {
         hash ^= zb.boardtable[(to << 4) | capture];
+        if ((capture >> 1) == PAWN)
+            pawnhash ^= zb.boardtable[(to << 4) | capture];
         BitboardClear(to, capture);
         halfmovescounter = 0;
     }
@@ -953,7 +964,9 @@ bool chessposition::playMove(chessmove *cm)
 		mailbox[to] = promote;
 		BitboardClear(from, pfrom);
 		BitboardSet(to, promote);
-	}
+        // just double the hash-switch for target to make the pawn vanish
+        pawnhash ^= zb.boardtable[(to << 4) | mailbox[to]];
+    }
 
     hash ^= zb.boardtable[(to << 4) | mailbox[to]];
     hash ^= zb.boardtable[(from << 4) | pfrom];
@@ -963,12 +976,15 @@ bool chessposition::playMove(chessmove *cm)
     /* PAWN specials */
     if (ptype == PAWN)
     {
+        pawnhash ^= zb.boardtable[(to << 4) | mailbox[to]];
+        pawnhash ^= zb.boardtable[(from << 4) | pfrom];
         halfmovescounter = 0;
 
         if (ept && to == ept)
         {
             int epfield = (from & 0x38) | (to & 0x07);
             hash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
+            pawnhash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
 
             BitboardClear(epfield, (pfrom ^ S2MMASK));
             mailbox[epfield] = BLANK;
@@ -1050,6 +1066,7 @@ void chessposition::unplayMove(chessmove *cm)
     mstop--;
     ept = movestack[mstop].ept;
     hash = movestack[mstop].hash;
+    pawnhash = movestack[mstop].pawnhash;
     state = movestack[mstop].state;
     kingpos[0] = movestack[mstop].kingpos[0];
     kingpos[1] = movestack[mstop].kingpos[1];
@@ -2466,6 +2483,7 @@ engine::engine()
 #endif
 
     tp.pos = &pos;
+    pwnhsh.pos = &pos;
 #ifdef BITBOARD
 	initBitmaphelper();
 #endif
@@ -2510,7 +2528,8 @@ void engine::setOption(string sName, string sValue)
     }
     if (resetTp)
     {
-        tp.setSize(sizeOfTp);
+        int restMb = min (16, tp.setSize(sizeOfTp));
+        pwnhsh.setSize(restMb);
     }
     if (sName == "move overhead")
     {

@@ -240,6 +240,7 @@ struct chessmovestack
     int ept;
     int kingpos[2];
     unsigned long long hash;
+    unsigned long long pawnhash;
     int halfmovescounter;
     int fullmovescounter;
 #ifndef BITBOARD
@@ -414,6 +415,7 @@ public:
     int ept;
     int kingpos[2];
     unsigned long long hash;
+    unsigned long long pawnhash;
     int ply;
     int halfmovescounter = 0;
     int fullmovescounter = 0;
@@ -426,6 +428,7 @@ public:
     unsigned int history[14][64];
     unsigned long long debughash = 0;
     int *positionvaluetable; // value tables for both sides, 7 PieceTypes and 256 phase variations 
+    int ph; // to store the phase during different evaluation functions
 
     chessposition();
     ~chessposition();
@@ -487,6 +490,7 @@ public:
     int ept;
     int kingpos[2];
     unsigned long long hash;
+    unsigned long long pawnhash;
     int value;
     int ply;
     int piecenum[14];
@@ -501,6 +505,7 @@ public:
     unsigned int history[14][128];
     unsigned long long debughash = 0;
     int *positionvaluetable;     // value tables for both sides, 7 PieceTypes and 256 phase variations 
+    int ph; // to store the phase during different evaluation functions
 
     chessposition();
     ~chessposition();
@@ -528,7 +533,7 @@ public:
     void simplePlay(int from, int to);
     void simpleUnplay(int from, int to, PieceCode capture);
     void getpvline(int depth);
-    void countMaterial();
+    int countMaterial();
     int getPositionValue();
     int getPawnValue();
     int getValue();
@@ -637,6 +642,7 @@ public:
     zobrist();
     unsigned long long getRnd();
     u8 getHash();
+    u8 getPawnHash();
     u8 modHash(int i);
 };
 
@@ -657,7 +663,7 @@ public:
     U64 sizemask;
     chessposition *pos;
     ~transposition();
-    void setSize(int sizeMb);
+    int setSize(int sizeMb);    // returns the number of Mb not used by allignment
     void clean();
     bool testHash();
     void addHash(int val, int valtype, int depth, unsigned long move);
@@ -667,6 +673,27 @@ public:
     int getValtype();
     int getDepth();
     class chessmove getMove();
+    unsigned int getUsedinPermill();
+};
+
+typedef struct pawnhashentry {
+    unsigned long hashupper;
+    short value;
+} S_PAWNHASHENTRY;
+
+class pawnhash
+{
+    S_PAWNHASHENTRY *table;
+    U64 used;
+public:
+    U64 size;
+    U64 sizemask;
+    chessposition *pos;
+    ~pawnhash();
+    void setSize(int sizeMb);
+    void clean();
+    void addHash(int val);
+    bool probeHash(int *val);
     unsigned int getUsedinPermill();
 };
 
@@ -683,6 +710,8 @@ public:
 extern zobrist zb;
 extern repetition rp;
 extern transposition tp;
+extern pawnhash pwnhsh;
+
 
 /*
 http://stackoverflow.com/questions/29990116/alpha-beta-prunning-with-transposition-table-iterative-deepening

@@ -109,6 +109,24 @@ u8 zobrist::getHash()
     return hash;
 }
 
+u8 zobrist::getPawnHash()
+{
+    u8 hash = 0;
+    int state = pos.state;
+    for (int i = WPAWN; i <= BPAWN; i++)
+    {
+        U64 pmask = pos.piece00[i];
+        unsigned int index;
+        while (LSB(index, pmask))
+        {
+            hash ^= boardtable[(index << 4) | i];
+            pmask ^= (1ULL << index);
+        }
+    }
+
+    return hash;
+}
+
 #else
 u8 zobrist::getHash()
 {
@@ -138,6 +156,24 @@ u8 zobrist::getHash()
 
     return hash;
 }
+
+
+u8 zobrist::getPawnHash()
+{
+    u8 hash = 0;
+    int i;
+    int state = pos.state;
+    for (i = 0; i < 120; i++)
+    {
+        if (!(i & 0x88) && (pos.board[i] >> 1) == PAWN)
+        {
+            hash ^= boardtable[(i << 4) | pos.board[i]];
+        }
+    }
+
+    return hash;
+}
+
 #endif
 
 
@@ -147,18 +183,23 @@ transposition::~transposition()
         delete table;
 }
 
-void transposition::setSize(int sizeMb)
+int transposition::setSize(int sizeMb)
 {
+    int restMb;
     int msb = 0;
     if (size > 0)
         delete table;
-    size = (sizeMb << 20) / sizeof(S_TRANSPOSITIONENTRY);
-    if (MSB(msb, size))
+    U64 maxsize = (sizeMb << 20) / sizeof(S_TRANSPOSITIONENTRY);
+    if (MSB(msb, maxsize))
+    {
         size = (1ULL << msb);
+        restMb = (int)((maxsize ^ size) >> 20) * sizeof(S_TRANSPOSITIONENTRY);  // return rest for pawnhash
+    }
 
     sizemask = size - 1;
     table = (S_TRANSPOSITIONENTRY*)malloc((size_t)(size * sizeof(S_TRANSPOSITIONENTRY)));
     clean();
+    return restMb;
 }
 
 void transposition::clean()
@@ -295,6 +336,67 @@ chessmove transposition::getMove()
 }
 #endif
 
+
+pawnhash::~pawnhash()
+{
+    if (size > 0)
+        delete table;
+}
+
+void pawnhash::setSize(int sizeMb)
+{
+    int msb = 0;
+    if (size > 0)
+        delete table;
+    size = (sizeMb << 20) / sizeof(S_PAWNHASHENTRY);
+    if (MSB(msb, size))
+        size = (1ULL << msb);
+
+    sizemask = size - 1;
+    table = (S_PAWNHASHENTRY*)malloc((size_t)(size * sizeof(S_PAWNHASHENTRY)));
+    clean();
+}
+
+void pawnhash::clean()
+{
+    memset(table, 0, (size_t)(size * sizeof(S_PAWNHASHENTRY)));
+    used = 0;
+}
+
+bool pawnhash::probeHash(int *val)
+{
+    unsigned long long hash = pos->pawnhash;
+    unsigned long long index = hash & sizemask;
+    S_PAWNHASHENTRY data = table[index];
+    if ((data.hashupper) == (hash >> 32))
+    {
+        *val = data.value;
+        return true;
+    }
+    return false;
+}
+
+void pawnhash::addHash(int val)
+{
+    unsigned long long hash = pos->pawnhash;
+    unsigned long long index = hash & sizemask;
+    S_PAWNHASHENTRY *data = &table[index];
+
+    if (data->hashupper == 0)
+        used++;
+    data->hashupper = (unsigned long)(hash >> 32);
+    data->value = (short)val;
+}
+
+unsigned int pawnhash::getUsedinPermill()
+{
+    if (size > 0)
+        return (unsigned int)(used * 1000 / size);
+    else
+        return 0;
+}
+
+
 void repetition::clean()
 {
 	memset(table, 0, 0x10000);
@@ -317,3 +419,4 @@ int repetition::getPositionCount(unsigned long long hash)
 
 repetition rp;
 transposition tp;
+pawnhash pwnhsh;

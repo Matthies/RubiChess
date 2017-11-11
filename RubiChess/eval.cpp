@@ -15,6 +15,9 @@ extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 #endif
 
 const int passedpawnbonus[2][8] = { { 0, 10, 20, 30, 40, 60, 80, 0 }, { 0, -80, -60, -40, -30, -20, -10, 0 } };
+const int isolatedpawnpenalty = -20;
+const int doublepawnpenalty = -15;
+
 const int PV[][64] = {
     //PAWN
     {
@@ -176,15 +179,56 @@ void chessposition::CreatePositionvalueTable()
     }
 }
 
+#ifdef BITBOARD
 
 int chessposition::getPawnValue()
 {
     int val;
+    int index;
+
+    if (pwnhsh.probeHash(&val))
+        return val;
+
+    val = 0;
+    for (int pc = WPAWN; pc <= BPAWN; pc++)
+    {
+        int s = pc & S2MMASK;
+        U64 pb = piece00[pc];
+        while (LSB(index, pb))
+        {
+            if (!(passedPawn[index][s] & piece00[BPAWN - s]))
+            {
+                // passed pawn
+                val += passedpawnbonus[s][RANK(index)];
+#ifdef DEBUGEVAL
+                debugeval("Passed Pawn Bonus: %d\n", passedpawnbonus[s][RANK(index)]);
+#endif
+            }
+            if (!(piece00[pc] & neighbourfiles[index]))
+            {
+                // isolated pawn
+                val += S2MSIGN(s) * isolatedpawnpenalty;
+#ifdef DEBUGEVAL
+                debugeval("Isolated Pawn Penalty: %d\n", S2MSIGN(s) * isolatedpawnpenalty);
+#endif
+            }
+            else if (POPCOUNT((piece00[pc] & filemask[index])) > 1)
+            {
+                // double pawn
+                val += S2MSIGN(s) * doublepawnpenalty;
+#ifdef DEBUGEVAL
+                debugeval("Double Pawn Penalty: %d\n", S2MSIGN(s) * doublepawnpenalty);
+#endif
+            }
+            pb ^= BITSET(index);
+        }
+    }
+
+    pwnhsh.addHash(val);
     return val;
 }
 
 
-#ifdef BITBOARD
 
 int chessposition::getValue()
 {
@@ -212,91 +256,67 @@ int chessposition::getValue()
     }
 #ifdef DEBUGEVAL
     debugeval("Material value: %d\n", countMaterial());
+    debugeval("Position value: %d\n", getPositionValue());
+    debugeval("Pawn value: %d\n", getPawnValue());
 #endif
-    return countMaterial() + getPositionValue();
+    return countMaterial() + getPositionValue() + getPawnValue();
 }
 
 
 int chessposition::getPositionValue()
 {
     int index;
-    int ph = phase();
+    ph = phase();
     int scalephaseto4 = (~ph & 0xff) >> 6;
     int result = 0;
 #ifdef DEBUGEVAL
     int positionvalue = 0;
 #endif
-    for (int s = 0; s < 2; s++)
+
+    for (int pc = WPAWN; pc <= BKING; pc++)
     {
-        for (int p = PAWN; p <= KING; p++)
+        int p = pc >> 1;
+        int s = pc & S2MMASK;
+        U64 pb = piece00[pc];
+
+        while (LSB(index, pb))
         {
-            PieceCode pc = (p << 1) | s;
-            U64 pb = piece00[pc];
-
-            while (LSB(index, pb))
+            int pvtindex = index | (ph << 6) | (p << 14) | (s << 17);
+            result += *(positionvaluetable + pvtindex);
+#ifdef DEBUGEVAL
+            positionvalue += *(positionvaluetable + pvtindex);
+#endif
+            pb ^= BITSET(index);
+            if (shifting[p] & 0x2) // rook and queen
             {
-                int pvtindex = index | (ph << 6) | (p << 14) | (s << 17);
-                result += *(positionvaluetable + pvtindex);
-#ifdef DEBUGEVAL
-                positionvalue += *(positionvaluetable + pvtindex);
-#endif
-                pb ^= BITSET(index);
-                if (p == PAWN)
+                if (!(filebarrier[index][s] & piece00[WPAWN | s]))
                 {
-                    if (!(passedPawn[index][s] & piece00[pc ^ S2MMASK]))
-                    {
-                        // passed pawn
-                        result += passedpawnbonus[s][RANK(index)];
+                    // free file
+                    result += S2MSIGN(s) * 15;
 #ifdef DEBUGEVAL
-                        debugeval("Passed Pawn Bonus: %d\n", (S2MSIGN(s) * 40));
+                    debugeval("Slider on free file Bonus: %d\n", (S2MSIGN(s) * 15));
 #endif
-                    }
-                    if (!(piece00[pc] & neighbourfiles[index]))
-                    {
-                        // isolated pawn
-                        result -= S2MSIGN(s) * 20;
-#ifdef DEBUGEVAL
-                        debugeval("Isolated Pawn Penalty: %d\n", -(S2MSIGN(s) * 20));
-#endif
-                    }
-                    else if (POPCOUNT((piece00[pc] & filemask[index])) > 1)
-                    {
-                        // double pawn
-                        result -= S2MSIGN(s) * 15;
-#ifdef DEBUGEVAL
-                        debugeval("Double Pawn Penalty: %d\n", -(S2MSIGN(s) * 15));
-#endif
-                    }
                 }
-                if (shifting[p] & 0x2) // rook and queen
-                {
-                    if (!(filebarrier[index][s] & piece00[WPAWN | s]))
-                    {
-                        // free file
-                        result += S2MSIGN(s) * 15;
-#ifdef DEBUGEVAL
-                        debugeval("Slider on free file Bonus: %d\n", (S2MSIGN(s) * 15));
-#endif
-                    }
-                }
+            }
 
-                if (shifting[p] & 0x1) // bishop and queen)
-                {
+            if (shifting[p] & 0x1) // bishop and queen)
+            {
 #ifdef ROTATEDBITBOARD
-                    U64 diagmobility = ~occupied00[s]
-                        & ((diaga1h8_attacks[index][((occupieda1h8[0] | occupieda1h8[1]) >> rota1h8shift[index]) & 0x3f])
-                            | (diagh1a8_attacks[index][((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[index]) & 0x3f]));
+                U64 diagmobility = ~occupied00[s]
+                    & ((diaga1h8_attacks[index][((occupieda1h8[0] | occupieda1h8[1]) >> rota1h8shift[index]) & 0x3f])
+                        | (diagh1a8_attacks[index][((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[index]) & 0x3f]));
 #else
-                    U64 diagmobility = ~occupied00[s]
-                        & (mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)]);
+                U64 diagmobility = ~occupied00[s]
+                    & (mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)]);
 #endif
-                    result += (S2MSIGN(s) * POPCOUNT(diagmobility) * scalephaseto4);
-                }
+                result += (S2MSIGN(s) * POPCOUNT(diagmobility) * scalephaseto4);
             }
         }
     }
-	// some kind of king safety
+
+    // some kind of king safety
 	result += (255 - ph) * (POPCOUNT(piece00[WPAWN] & kingshield[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshield[kingpos[1]][1])) * 15 / 255;
+
 #ifdef DEBUGEVAL
     debugeval("King safety: %d\n", (255 - ph) * (POPCOUNT(piece00[WPAWN] & kingshield[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshield[kingpos[1]][1])) * 15 / 255);
     debugeval("Positional value: %d\n", positionvalue);
@@ -317,6 +337,22 @@ int chessposition::countMaterial()
 
 
 #else //BITBOARD
+
+int chessposition::getPawnValue()
+{
+    // not implemented for now
+#if 0
+    if (pwnhsh.probeHash(&val))
+        return val;
+
+    // calculate the pawn value
+
+    pwnhsh.addHash(val);
+    return val;
+#endif
+    return 0;
+}
+
 
 int chessposition::getValue()
 {
@@ -353,7 +389,7 @@ int chessposition::getValue()
 /* Value of the position from whites pov */
 int chessposition::getPositionValue()
 {
-    int ph = phase();
+    ph = phase();
     int result = 0;
     int firstpawn[2][10] = { 0 };
     int lastpawn[2][10] = { 0 };
@@ -420,7 +456,7 @@ int chessposition::getPositionValue()
 
 
 
-void chessposition::countMaterial()
+int chessposition::countMaterial()
 {
     value = 0;
     for (int i = 0; i < 14; i++)
@@ -438,6 +474,7 @@ void chessposition::countMaterial()
             }
         }
     }
+    return value;
 }
 
 #endif
