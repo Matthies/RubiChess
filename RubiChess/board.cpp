@@ -586,7 +586,7 @@ void initBitmaphelper()
 
 chessposition::chessposition()
 {
-    positionvaluetable = GetPositionvalueTable();
+    CreatePositionvalueTable();
 }
 
 
@@ -1572,7 +1572,7 @@ chessposition::chessposition()
 {
     for (int i = 0; i < 128; i++)
         board[i] = BLANK;
-    positionvaluetable = GetPositionvalueTable();
+    CreatePositionvalueTable();
 }
 
 

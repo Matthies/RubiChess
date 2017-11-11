@@ -295,6 +295,8 @@ public:
 
 #ifdef BITBOARD
 
+#define BOARDSIZE 64
+
 #ifndef ROTATEDBITBOARD
 
 struct SMagic {
@@ -460,8 +462,9 @@ public:
     void getpvline(int depth);
     int countMaterial();
     int getPositionValue();
+    int getPawnValue();
     int getValue();
-    int* GetPositionvalueTable();
+    void CreatePositionvalueTable();
 #ifdef DEBUG
     void debug(int depth, const char* format, ...);
 #endif
@@ -473,6 +476,8 @@ public:
 };
 
 #else //BITBOARD
+
+#define BOARDSIZE 128
 
 class chessposition
 {
@@ -517,9 +522,7 @@ public:
     void testMove(chessmovelist *movelist, int from, int to, PieceCode promote);
     chessmovelist* getMoves();
     bool playMove(chessmove *cm);
-    void playMoveFast(chessmove *cm);
     void unplayMove(chessmove *cm);
-    void unplayMoveFast(chessmove *cm);
     void playNullMove();
     void unplayNullMove();
     void simplePlay(int from, int to);
@@ -527,8 +530,9 @@ public:
     void getpvline(int depth);
     void countMaterial();
     int getPositionValue();
+    int getPawnValue();
     int getValue();
-    int* GetPositionvalueTable();
+    void CreatePositionvalueTable();
 #ifdef DEBUG
     void debug(int depth, const char* format, ...);
 #endif
