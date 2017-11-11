@@ -153,6 +153,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="board.cpp" />
+    <ClCompile Include="eval.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="search.cpp" />
     <ClCompile Include="transposition.cpp" />
