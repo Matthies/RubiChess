@@ -294,7 +294,26 @@ public:
 
 
 #ifdef BITBOARD
-#ifdef ROTATEDBITBOARD
+
+#ifndef ROTATEDBITBOARD
+
+struct SMagic {
+    U64 mask;  // to mask relevant squares of both lines (no outer squares)
+    U64 magic; // magic 64-bit factor
+};
+
+extern SMagic mBishopTbl[64];
+extern SMagic mRookTbl[64];
+
+#define BISHOPINDEXBITS 9
+#define ROOKINDEXBITS 12
+#define MAGICBISHOPINDEX(m,x) (int)((((m) & mBishopTbl[x].mask) * mBishopTbl[x].magic) >> (64 - BISHOPINDEXBITS))
+#define MAGICROOKINDEX(m,x) (int)((((m) & mRookTbl[x].mask) * mRookTbl[x].magic) >> (64 - ROOKINDEXBITS))
+#define MAGICBISHOPATTACKS(m,x) (mBishopAttacks[x][MAGICBISHOPINDEX(m,x)])
+#define MAGICROOKATTACKS(m,x) (mRookAttacks[x][MAGICROOKINDEX(m,x)])
+
+#else // ROTATEDBITBOARD
+
 const int rot00shift[64] = {
      1,  1,  1,  1,  1,  1,  1,  1,
      9,  9,  9,  9,  9,  9,  9,  9,
