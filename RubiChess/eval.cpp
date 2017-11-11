@@ -17,6 +17,7 @@ extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 const int passedpawnbonus[2][8] = { { 0, 10, 20, 30, 40, 60, 80, 0 }, { 0, -80, -60, -40, -30, -20, -10, 0 } };
 const int isolatedpawnpenalty = -20;
 const int doublepawnpenalty = -15;
+const int protectedpawn = 15;
 
 const int PV[][64] = {
     //PAWN
@@ -212,13 +213,21 @@ int chessposition::getPawnValue()
                 debugeval("Isolated Pawn Penalty: %d\n", S2MSIGN(s) * isolatedpawnpenalty);
 #endif
             }
-            else if (POPCOUNT((piece00[pc] & filemask[index])) > 1)
+            else
             {
-                // double pawn
-                val += S2MSIGN(s) * doublepawnpenalty;
+                if (POPCOUNT((piece00[pc] & filemask[index])) > 1)
+                {
+                    // double pawn
+                    val += S2MSIGN(s) * doublepawnpenalty;
 #ifdef DEBUGEVAL
-                debugeval("Double Pawn Penalty: %d\n", S2MSIGN(s) * doublepawnpenalty);
+                    debugeval("Double Pawn Penalty: %d\n", S2MSIGN(s) * doublepawnpenalty);
 #endif
+                }
+                if (pawn_attacks_occupied[index][s ^ S2MMASK] & piece00[pc])
+                {
+                    // pawn is protected by other pawn
+                    val += S2MSIGN(s) * protectedpawn;
+                }
             }
             pb ^= BITSET(index);
         }

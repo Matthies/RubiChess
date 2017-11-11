@@ -296,6 +296,8 @@ public:
 
 #ifdef BITBOARD
 
+extern U64 pawn_attacks_occupied[64][2];
+
 #define BOARDSIZE 64
 
 #ifndef ROTATEDBITBOARD
@@ -684,8 +686,12 @@ typedef struct pawnhashentry {
 class pawnhash
 {
     S_PAWNHASHENTRY *table;
-    U64 used;
 public:
+#ifdef DEBUG
+    U64 used;
+    int hit;
+    int query;
+#endif
     U64 size;
     U64 sizemask;
     chessposition *pos;

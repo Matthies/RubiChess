@@ -762,6 +762,13 @@ void searchguide()
     }
     sprintf_s(s, "\n");
     en.fdebug << s;
+    if (pwnhsh.query > 0)
+    {
+        sprintf_s(s, "info string pawnhash-hits: %0.2f%%\n", (float)pwnhsh.hit / (float)pwnhsh.query * 100.0f);
+        cout << s;
+
+    }
+
 #endif
 
 }

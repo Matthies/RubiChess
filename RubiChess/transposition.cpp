@@ -360,7 +360,11 @@ void pawnhash::setSize(int sizeMb)
 void pawnhash::clean()
 {
     memset(table, 0, (size_t)(size * sizeof(S_PAWNHASHENTRY)));
+#ifdef DEBUG
     used = 0;
+    hit = 0;
+    query = 0;
+#endif
 }
 
 bool pawnhash::probeHash(int *val)
@@ -368,8 +372,14 @@ bool pawnhash::probeHash(int *val)
     unsigned long long hash = pos->pawnhash;
     unsigned long long index = hash & sizemask;
     S_PAWNHASHENTRY data = table[index];
+#ifdef DEBUG
+    query++;
+#endif
     if ((data.hashupper) == (hash >> 32))
     {
+#ifdef DEBUG
+        hit++;
+#endif
         *val = data.value;
         return true;
     }
@@ -381,19 +391,24 @@ void pawnhash::addHash(int val)
     unsigned long long hash = pos->pawnhash;
     unsigned long long index = hash & sizemask;
     S_PAWNHASHENTRY *data = &table[index];
-
+#ifdef DEBUG
     if (data->hashupper == 0)
         used++;
+#endif
     data->hashupper = (unsigned long)(hash >> 32);
     data->value = (short)val;
 }
 
 unsigned int pawnhash::getUsedinPermill()
 {
+#ifdef DEBUG
     if (size > 0)
         return (unsigned int)(used * 1000 / size);
     else
         return 0;
+#else
+    return 0;
+#endif
 }
 
 
