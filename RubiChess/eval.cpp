@@ -17,7 +17,7 @@ extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 const int passedpawnbonus[2][8] = { { 0, 10, 20, 30, 40, 60, 80, 0 }, { 0, -80, -60, -40, -30, -20, -10, 0 } };
 const int isolatedpawnpenalty = -20;
 const int doublepawnpenalty = -15;
-const int protectedpawn = 0;
+const int protectedpawn = 10;
 const int kingshieldbonus = 15;
 
 const int PV[][64] = {
@@ -327,7 +327,7 @@ int chessposition::getPositionValue()
     }
 
     // some kind of king safety
-	result += (255 - ph) * (POPCOUNT(piece00[WPAWN] & kingshield[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshield[kingpos[1]][1])) * kingshieldbonus / 255;
+	result += (255 - ph) * (POPCOUNT(occupied00[0] & kingshield[kingpos[0]][0]) - POPCOUNT(occupied00[1] & kingshield[kingpos[1]][1])) * kingshieldbonus / 255;
 
 #ifdef DEBUGEVAL
     debugeval("King safety: %d\n", (255 - ph) * (POPCOUNT(piece00[WPAWN] & kingshield[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshield[kingpos[1]][1])) * 15 / 255);
