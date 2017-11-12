@@ -228,7 +228,7 @@ void chessposition::mirror()
         }
 	}
 
-	countMaterial();
+	//countMaterial();
 
     int newstate = (state & S2MMASK) ^ S2MMASK;
 	if (state & WQCMASK) newstate |= BQCMASK;
@@ -264,7 +264,7 @@ void chessposition::mirror()
 	for (int i = 0; i < 128; i++)
 		board[i] = newboard[i];
 
-	countMaterial();
+	//countMaterial();
 
 	int newstate = (state & S2MMASK) ^ S2MMASK;
 	if (state & WQCMASK) newstate |= BQCMASK;
@@ -836,7 +836,7 @@ int chessposition::getFromFen(const char* sFen)
         fullmovescounter = stoi(token[5]);
 
     actualpath.length = 0;
-    countMaterial();
+    //countMaterial();
     hash = zb.getHash();
     pawnhash = zb.getPawnHash();
     rp.clean();
@@ -1762,7 +1762,7 @@ int chessposition::getFromFen(const char* sFen)
         fullmovescounter = stoi(token[5]);
 
     actualpath.length = 0;
-    countMaterial();
+    //countMaterial();
     hash = zb.getHash();
     rp.clean();
     rp.addPosition(hash);

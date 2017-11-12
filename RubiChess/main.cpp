@@ -651,17 +651,17 @@ long long perft(int depth, bool dotests)
         {
             printf("Mirrortest  :error  (%d / %d / %d)\n", val1, val2, val3);
             pos.print();
-            printf("Material value: %d\n", pos.countMaterial());
+//            printf("Material value: %d\n", pos.countMaterial());
             printf("Position value: %d\n", pos.getPositionValue());
             printf("Pawn value: %d\n", pos.getPawnValue());
             pos.mirror();
             pos.print();
-            printf("Material value: %d\n", pos.countMaterial());
+//            printf("Material value: %d\n", pos.countMaterial());
             printf("Position value: %d\n", pos.getPositionValue());
             printf("Pawn value: %d\n", pos.getPawnValue());
             pos.mirror();
             pos.print();
-            printf("Material value: %d\n", pos.countMaterial());
+//            printf("Material value: %d\n", pos.countMaterial());
             printf("Position value: %d\n", pos.getPositionValue());
             printf("Pawn value: %d\n", pos.getPawnValue());
         }

@@ -17,7 +17,8 @@ extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 const int passedpawnbonus[2][8] = { { 0, 10, 20, 30, 40, 60, 80, 0 }, { 0, -80, -60, -40, -30, -20, -10, 0 } };
 const int isolatedpawnpenalty = -20;
 const int doublepawnpenalty = -15;
-const int protectedpawn = 15;
+const int protectedpawn = 0;
+const int kingshieldbonus = 15;
 
 const int PV[][64] = {
     //PAWN
@@ -175,6 +176,8 @@ void chessposition::CreatePositionvalueTable()
 #endif
                 positionvaluetable[index1] = (PV[(p - 1) << 1][j1] * (255 - ph) + PV[((p - 1) << 1) | 1][j1] * ph) / 255;
                 positionvaluetable[index2] = -(PV[(p - 1) << 1][j2] * (255 - ph) + PV[((p - 1) << 1) | 1][j2] * ph) / 255;
+                positionvaluetable[index1] += materialvalue[p];
+                positionvaluetable[index2] -= materialvalue[p];
             }
         }
     }
@@ -264,11 +267,11 @@ int chessposition::getValue()
         }
     }
 #ifdef DEBUGEVAL
-    debugeval("Material value: %d\n", countMaterial());
+    //debugeval("Material value: %d\n", countMaterial());
     debugeval("Position value: %d\n", getPositionValue());
     debugeval("Pawn value: %d\n", getPawnValue());
 #endif
-    return countMaterial() + getPositionValue() + getPawnValue();
+    return /*countMaterial() +*/ getPositionValue() + getPawnValue();
 }
 
 
@@ -324,7 +327,7 @@ int chessposition::getPositionValue()
     }
 
     // some kind of king safety
-	result += (255 - ph) * (POPCOUNT(piece00[WPAWN] & kingshield[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshield[kingpos[1]][1])) * 15 / 255;
+	result += (255 - ph) * (POPCOUNT(piece00[WPAWN] & kingshield[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshield[kingpos[1]][1])) * kingshieldbonus / 255;
 
 #ifdef DEBUGEVAL
     debugeval("King safety: %d\n", (255 - ph) * (POPCOUNT(piece00[WPAWN] & kingshield[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshield[kingpos[1]][1])) * 15 / 255);
@@ -333,7 +336,7 @@ int chessposition::getPositionValue()
     return result;
 }
 
-
+#if 0
 int chessposition::countMaterial()
 {
     int value = 0;
@@ -343,7 +346,7 @@ int chessposition::countMaterial()
     }
 	return value;
 }
-
+#endif
 
 #else //BITBOARD
 
@@ -464,7 +467,7 @@ int chessposition::getPositionValue()
 }
 
 
-
+#if 0
 int chessposition::countMaterial()
 {
     value = 0;
@@ -485,6 +488,6 @@ int chessposition::countMaterial()
     }
     return value;
 }
-
+#endif
 #endif
 
