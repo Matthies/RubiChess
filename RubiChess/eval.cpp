@@ -391,9 +391,10 @@ int chessposition::getValue()
         }
     }
 
-    int materialVal = value;
-    int positionVal = getPositionValue();
-    return materialVal + positionVal;
+    //int materialVal = value;
+    //int positionVal = getPositionValue();
+    //return materialVal + positionVal;
+    return getPositionValue();
 }
 
 
@@ -467,10 +468,10 @@ int chessposition::getPositionValue()
 }
 
 
-#if 0
-int chessposition::countMaterial()
+#if 1
+void chessposition::countMaterial()
 {
-    value = 0;
+    //value = 0;
     for (int i = 0; i < 14; i++)
         piecenum[i] = 0;
     for (int r = 0; r < 8; r++)
@@ -482,11 +483,11 @@ int chessposition::countMaterial()
             {
                 int col = pc & S2MMASK;
                 piecenum[pc]++;
-                value += (col ? -materialvalue[pc >> 1] : materialvalue[pc >> 1]);
+                //value += (col ? -materialvalue[pc >> 1] : materialvalue[pc >> 1]);
             }
         }
     }
-    return value;
+    //return value;
 }
 #endif
 #endif

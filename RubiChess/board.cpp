@@ -264,7 +264,7 @@ void chessposition::mirror()
 	for (int i = 0; i < 128; i++)
 		board[i] = newboard[i];
 
-	//countMaterial();
+	countMaterial();
 
 	int newstate = (state & S2MMASK) ^ S2MMASK;
 	if (state & WQCMASK) newstate |= BQCMASK;
@@ -1600,7 +1600,7 @@ chessposition::~chessposition()
 
 bool chessposition::operator==(chessposition p)
 {
-    bool result = (state == p.state && ept == p.ept && halfmovescounter == p.halfmovescounter && value == p.value && hash == p.hash
+    bool result = (state == p.state && ept == p.ept && halfmovescounter == p.halfmovescounter && hash == p.hash
         && kingpos[0] == p.kingpos[0] && kingpos[1] == p.kingpos[1]);
     if (result)
     {
@@ -1762,7 +1762,7 @@ int chessposition::getFromFen(const char* sFen)
         fullmovescounter = stoi(token[5]);
 
     actualpath.length = 0;
-    //countMaterial();
+    countMaterial();
     hash = zb.getHash();
     rp.clean();
     rp.addPosition(hash);
@@ -2095,7 +2095,7 @@ void chessposition::simpleUnplay(int from, int to, PieceCode capture)
 bool chessposition::playMove(chessmove *cm)
 {
     movestack[mstop].ept = ept;
-    movestack[mstop].value = value;
+    //movestack[mstop].value = value;
     movestack[mstop].hash = hash;
     movestack[mstop].state = state;
     movestack[mstop].kingpos[0] = kingpos[0];
@@ -2115,14 +2115,14 @@ bool chessposition::playMove(chessmove *cm)
     if (promote != BLANK)
     {
         int valdiff = -materialvalue[PAWN] + materialvalue[promote >> 1];
-        value += (state & S2MMASK ? -valdiff : valdiff);
+        //value += (state & S2MMASK ? -valdiff : valdiff);
         piecenum[board[from]]--;
         piecenum[promote]++;
     }
     if (Piece(to) != BLANKTYPE)
     {
         int valdiff = materialvalue[Piece(to)];
-        value += (state & S2MMASK ? -valdiff : valdiff);
+        //value += (state & S2MMASK ? -valdiff : valdiff);
         piecenum[board[to]]--;
         halfmovescounter = 0;
         hash ^= zb.boardtable[(to << 4) | board[to]];
@@ -2154,7 +2154,7 @@ bool chessposition::playMove(chessmove *cm)
         else if (ept && to == ept)
         {
             int epfield = (from & 0x70) | (to & 0x07);
-            value += (state & S2MMASK ? -materialvalue[PAWN] : materialvalue[PAWN]);
+            //value += (state & S2MMASK ? -materialvalue[PAWN] : materialvalue[PAWN]);
             piecenum[board[epfield]]--;
             // Fix hash regarding ep capture
             hash ^= zb.boardtable[(epfield << 4) | board[epfield]];
@@ -2254,7 +2254,7 @@ void chessposition::unplayMove(chessmove *cm)
 
     mstop--;
     ept = movestack[mstop].ept;
-    value = movestack[mstop].value;
+    //value = movestack[mstop].value;
     hash = movestack[mstop].hash;
     state = movestack[mstop].state;
     kingpos[0] = movestack[mstop].kingpos[0];

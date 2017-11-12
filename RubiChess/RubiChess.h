@@ -244,7 +244,7 @@ struct chessmovestack
     int halfmovescounter;
     int fullmovescounter;
 #ifndef BITBOARD
-    int value;
+    //int value;
     int numFieldchanges;
     PieceCode code[4];
     int index[4];
@@ -465,7 +465,7 @@ public:
     void simplePlay(int from, int to);
     void simpleUnplay(int from, int to, PieceCode capture);
     void getpvline(int depth);
-    int countMaterial();
+    //int countMaterial();
     int getPositionValue();
     int getPawnValue();
     int getValue();
@@ -493,7 +493,7 @@ public:
     int kingpos[2];
     unsigned long long hash;
     unsigned long long pawnhash;
-    int value;
+    //int value;
     int ply;
     int piecenum[14];
     int halfmovescounter = 0;
@@ -535,7 +535,7 @@ public:
     void simplePlay(int from, int to);
     void simpleUnplay(int from, int to, PieceCode capture);
     void getpvline(int depth);
-    int countMaterial();
+    void countMaterial();
     int getPositionValue();
     int getPawnValue();
     int getValue();
