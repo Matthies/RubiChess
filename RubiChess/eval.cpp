@@ -18,9 +18,9 @@ extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 const int passedpawnbonus[2][8] = { { 0, 10, 20, 30, 40, 60, 80, 0 }, { 0, -80, -60, -40, -30, -20, -10, 0 } };
 const int isolatedpawnpenalty = -20;
 const int doublepawnpenalty = -15;
-const int protectedpawn = 0;// 10;
+const int protectedpawn = 5;
 const int kingshieldbonus = 15;
-const double kingdangerfactor = 0.0;
+const double kingdangerfactor = 0.2;
 int squaredistance[BOARDSIZE][BOARDSIZE];
 int kingdanger[BOARDSIZE][BOARDSIZE][7];
 
@@ -201,7 +201,7 @@ void chessposition::CreatePositionvalueTable()
             }
             for (int j = 0; j < BOARDSIZE; j++)
             {
-                kingdanger[i][j][p] = (int)((4 - squaredistance[i][j]) * sqrt(materialvalue[p]) * kingdangerfactor);
+                kingdanger[i][j][p] = (int)(pow((7 - squaredistance[i][j]), 2) * sqrt(materialvalue[p]) * kingdangerfactor);
             }
         }
     }

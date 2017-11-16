@@ -6,7 +6,7 @@
 #define DEBUG
 #endif
 
-#if 0
+#if 1
 #define DEBUGEVAL
 #endif
 
