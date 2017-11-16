@@ -1025,6 +1025,8 @@ int chessposition::getFromFen(const char* sFen)
             history[i][j] = 0;
         }
     }
+    for (int i = 0; i < MAXDEPTH; i++)
+        killer[0][i] = killer[1][i] = 0;
     mstop = 0;
     return 0;
 }

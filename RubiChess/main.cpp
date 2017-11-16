@@ -860,17 +860,17 @@ void doBenchmark()
     long long totalnodes = 0;
     printf("\n\nBenchmark results for %s (Build %s):\n", en.name, BUILD);
     printf("System: %s\n", GetSystemInfo().c_str());
-    printf("========================================================================\n");
+    printf("==========================================================================================\n");
     while (benchmark[i].fen != "")
     {
         struct benchmarkstruct *bm = &benchmark[i];
         totaltime += bm->time;
         totalnodes += bm->nodes;
-        printf("Bench # %2d (%20s / %2d):  %10f sec.  %10lld nps\n", i + 1, bm->name.c_str(), bm->depth, (float)bm->time / (float)en.frequency, bm->nodes * en.frequency / bm->time);
+        printf("Bench # %2d (%20s / %2d):  %10f sec.  %10lld nodes %10lld nps\n", i + 1, bm->name.c_str(), bm->depth, (float)bm->time / (float)en.frequency, bm->nodes, bm->nodes * en.frequency / bm->time);
         i++;
     }
-    printf("========================================================================\n");
-    printf("Overall:                                 %10f sec.  %*lld nps\n", ((float)totaltime / (float)en.frequency), 10, totalnodes * en.frequency / totaltime);
+    printf("==========================================================================================\n");
+    printf("Overall:                                 %10f sec.  %10lld nodes %*lld nps\n", ((float)totaltime / (float)en.frequency), totalnodes, 10, totalnodes * en.frequency / totaltime);
 }
 
 

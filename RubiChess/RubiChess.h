@@ -401,7 +401,7 @@ public:
     chessmovelist pvline;
     chessmovelist actualpath;
     chessmove bestmove;
-    unsigned long killer[3][MAXDEPTH];
+    unsigned long killer[2][MAXDEPTH];
     unsigned int history[14][64];
     unsigned long long debughash = 0;
     int *positionvaluetable; // value tables for both sides, 7 PieceTypes and 256 phase variations 
