@@ -834,7 +834,7 @@ void doBenchmark()
     {
         struct benchmarkstruct *bm = &benchmark[i];
         if (bm->resethash)
-            en.setOption("clearhash", "true");
+            en.setOption("clear hash", "true");
 
         en.communicate("position fen " + bm->fen);
         starttime = getTime();

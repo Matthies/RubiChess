@@ -1531,7 +1531,8 @@ chessmovelist* chessposition::getMoves()
                 if (!(occupiedbits & (s2m ? 0x0e00000000000000 : 0x000000000000000e))
                     && !isAttacked(from) && !isAttacked(from - 1) && !isAttacked(from - 2))
                 {
-                    result->move[result->length++] = chessmove(from, from - 2, BLANK, BLANK, 0, pc);
+                    result->move[result->length] = chessmove(from, from - 2, BLANK, BLANK, 0, pc);
+                    result->move[result->length++].value = history[KING][from - 2];
                 }
             }
             if (state & KCMASK[s2m])
@@ -1540,7 +1541,8 @@ chessmovelist* chessposition::getMoves()
                 if (!(occupiedbits & (s2m ? 0x6000000000000000 : 0x0000000000000060))
                     && !isAttacked(from) && !isAttacked(from + 1) && !isAttacked(from + 2))
                 {
-                    result->move[result->length++] = chessmove(from, from + 2, BLANK, BLANK, 0, pc);
+                    result->move[result->length] = chessmove(from, from + 2, BLANK, BLANK, 0, pc);
+                    result->move[result->length++].value = history[KING][from + 2];
                 }
             }
             break;
