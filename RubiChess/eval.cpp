@@ -12,13 +12,17 @@ extern U64 kingshield[64][2];
 extern U64 filemask[64];
 extern U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
+
 #endif
 
 const int passedpawnbonus[2][8] = { { 0, 10, 20, 30, 40, 60, 80, 0 }, { 0, -80, -60, -40, -30, -20, -10, 0 } };
 const int isolatedpawnpenalty = -20;
 const int doublepawnpenalty = -15;
-const int protectedpawn = 10;
+const int protectedpawn = 0;// 10;
 const int kingshieldbonus = 15;
+const double kingdangerfactor = 0.0;
+int squaredistance[BOARDSIZE][BOARDSIZE];
+int kingdanger[BOARDSIZE][BOARDSIZE][7];
 
 const int PV[][64] = {
     //PAWN
@@ -150,8 +154,24 @@ const int PV[][64] = {
 };
 
 
+
 void chessposition::CreatePositionvalueTable()
 {
+    int rs = 0;
+    for (int b = BOARDSIZE; b ^ 0x8; b >>= 1)
+        rs++;
+    for (int i = 0; i < BOARDSIZE; i++)
+    {
+        int fi = i & 7;
+        int ri = i >> rs;
+        for (int j = 0; j < BOARDSIZE; j++)
+        {
+            int fj = j & 7;
+            int rj = j >> rs;
+            squaredistance[i][j] = max(abs(fi - fj), abs(ri - rj));
+        }
+    }
+
     positionvaluetable = new int[2 * 8 * 256 * BOARDSIZE];  // color piecetype phase boardindex
 
     for (int i = 0; i < BOARDSIZE; i++)
@@ -179,9 +199,14 @@ void chessposition::CreatePositionvalueTable()
                 positionvaluetable[index1] += materialvalue[p];
                 positionvaluetable[index2] -= materialvalue[p];
             }
+            for (int j = 0; j < BOARDSIZE; j++)
+            {
+                kingdanger[i][j][p] = (int)((4 - squaredistance[i][j]) * sqrt(materialvalue[p]) * kingdangerfactor);
+            }
         }
     }
 }
+
 
 #ifdef BITBOARD
 
@@ -190,9 +215,10 @@ int chessposition::getPawnValue()
     int val;
     int index;
 
+#if 1
     if (pwnhsh.probeHash(&val))
         return val;
-
+#endif
     val = 0;
     for (int pc = WPAWN; pc <= BPAWN; pc++)
     {
@@ -200,7 +226,7 @@ int chessposition::getPawnValue()
         U64 pb = piece00[pc];
         while (LSB(index, pb))
         {
-            if (!(passedPawn[index][s] & piece00[BPAWN - s]))
+            if (!(passedPawn[index][s] & piece00[pc ^ S2MMASK]))
             {
                 // passed pawn
                 val += passedpawnbonus[s][RANK(index)];
@@ -283,6 +309,7 @@ int chessposition::getPositionValue()
     int result = 0;
 #ifdef DEBUGEVAL
     int positionvalue = 0;
+    int kingdangervalue[2] = { 0, 0 };
 #endif
 
     for (int pc = WPAWN; pc <= BKING; pc++)
@@ -295,8 +322,10 @@ int chessposition::getPositionValue()
         {
             int pvtindex = index | (ph << 6) | (p << 14) | (s << 17);
             result += *(positionvaluetable + pvtindex);
+            result += S2MSIGN(s) * kingdanger[index][pos.kingpos[1 - s]][p];
 #ifdef DEBUGEVAL
             positionvalue += *(positionvaluetable + pvtindex);
+            kingdangervalue[s] += S2MSIGN(s) * kingdanger[index][pos.kingpos[1 - s]][p];
 #endif
             pb ^= BITSET(index);
             if (shifting[p] & 0x2) // rook and queen
@@ -327,11 +356,12 @@ int chessposition::getPositionValue()
     }
 
     // some kind of king safety
-	result += (255 - ph) * (POPCOUNT(occupied00[0] & kingshield[kingpos[0]][0]) - POPCOUNT(occupied00[1] & kingshield[kingpos[1]][1])) * kingshieldbonus / 255;
+	result += (255 - ph) * (POPCOUNT(piece00[WPAWN] & kingshield[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshield[kingpos[1]][1])) * kingshieldbonus / 255;
 
 #ifdef DEBUGEVAL
-    debugeval("King safety: %d\n", (255 - ph) * (POPCOUNT(piece00[WPAWN] & kingshield[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshield[kingpos[1]][1])) * 15 / 255);
-    debugeval("Positional value: %d\n", positionvalue);
+    debugeval("(getPositionValue)  King safety: %d\n", (255 - ph) * (POPCOUNT(piece00[WPAWN] & kingshield[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshield[kingpos[1]][1])) * 15 / 255);
+    debugeval("(getPositionValue)  Position value: %d\n", positionvalue);
+    debugeval("(getPositionValue)  Kingdanger value: %d / %d\n", kingdangervalue[0], kingdangervalue[1]);
 #endif
     return result;
 }
@@ -435,6 +465,8 @@ int chessposition::getPositionValue()
                 int col = board[i] & S2MMASK;
                 int index = i | (ph << 7) | (pt << 15) | (col << 18);
                 result += *(positionvaluetable + index);
+                result += S2MSIGN(col) * kingdanger[index][pos.kingpos[1 - col]][pt];
+
                 if ((pt == ROOK || pt == QUEEN) && (firstpawn[col][f + 1] == 0 || ((col && (firstpawn[col][f + 1] > r)) || (!col && (firstpawn[col][f + 1] < r)))))
                     // ROOK on free file
                     result += (col ? -15 : 15);

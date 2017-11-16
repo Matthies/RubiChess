@@ -552,6 +552,10 @@ public:
 
 #endif
 
+extern int squaredistance[BOARDSIZE][BOARDSIZE];
+extern int kingdanger[BOARDSIZE][BOARDSIZE][7];
+
+
 #define ENGINERUN 0
 #define ENGINEWANTSTOP 1
 #define ENGINESTOPSOON 2

@@ -2528,7 +2528,7 @@ void engine::setOption(string sName, string sValue)
     }
     if (resetTp)
     {
-        int restMb = min (16, tp.setSize(sizeOfTp));
+        int restMb = max (16, tp.setSize(sizeOfTp));
         pwnhsh.setSize(restMb);
     }
     if (sName == "move overhead")
