@@ -20,7 +20,10 @@ const int isolatedpawnpenalty = -20;
 const int doublepawnpenalty = -15;
 const int protectedpawn = 5;
 const int kingshieldbonus = 15;
+const int doublebishopbonus = 20;   // not yet used
 const double kingdangerfactor = 0.2;
+const double kingdangerexponent = 1.2;
+
 int squaredistance[BOARDSIZE][BOARDSIZE];
 int kingdanger[BOARDSIZE][BOARDSIZE][7];
 
@@ -201,7 +204,7 @@ void chessposition::CreatePositionvalueTable()
             }
             for (int j = 0; j < BOARDSIZE; j++)
             {
-                kingdanger[i][j][p] = (int)(pow((7 - squaredistance[i][j]), 2) * sqrt(materialvalue[p]) * kingdangerfactor);
+                kingdanger[i][j][p] = (int)(pow((7 - squaredistance[i][j]), kingdangerexponent) * sqrt(materialvalue[p]) * kingdangerfactor);
             }
         }
     }
