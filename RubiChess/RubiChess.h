@@ -234,6 +234,78 @@ const unsigned int lva[] = { 5 << 26, 4 << 26, 3 << 26, 3 << 26, 2 << 26, 1 << 2
 #define GETCASTLE(x) (((x) & 0xf0000000) >> 28)
 #endif
 
+#ifdef BITBOARD
+// index -> bitboard with only index bit set; use BITSET(i) macro
+extern U64 mybitset[64];
+
+// passedPawnMask[18][WHITE]:
+// 01110000
+// 01110000
+// 01110000
+// 01110000
+// 01110000
+// 00o00000
+// 00000000
+// 00000000
+extern U64 passedPawnMask[64][2];
+
+// filebarrierMask[18][WHITE]:
+// 00100000
+// 00100000
+// 00100000
+// 00100000
+// 00100000
+// 00o00000
+// 00000000
+// 00000000
+extern U64 filebarrierMask[64][2];
+
+// neighbourfilesMask[18]:
+// 01010000
+// 01010000
+// 01010000
+// 01010000
+// 01010000
+// 01o10000
+// 01010000
+// 01010000
+extern U64 neighbourfilesMask[64];
+
+// phalanxMask[18]:
+// 00000000
+// 00000000
+// 00000000
+// 00000000
+// 00000000
+// 0xox0000
+// 00000000
+// 000000o0
+extern U64 phalanxMask[64];
+
+// kingshieldMask[6][WHITE]:
+// 00000000
+// 00000000
+// 00000000
+// 00000000
+// 00000000
+// 00000xxx
+// 00000xxx
+// 000000o0
+extern U64 kingshieldMask[64][2];
+
+// fileMask[18]:
+// 00100000
+// 00100000
+// 00100000
+// 00100000
+// 00100000
+// 00x00000
+// 00100000
+// 00100000
+extern U64 fileMask[64];
+
+#endif
+
 struct chessmovestack
 {
     int state;
@@ -316,6 +388,9 @@ extern SMagic mRookTbl[64];
 #define MAGICROOKINDEX(m,x) (int)((((m) & mRookTbl[x].mask) * mRookTbl[x].magic) >> (64 - ROOKINDEXBITS))
 #define MAGICBISHOPATTACKS(m,x) (mBishopAttacks[x][MAGICBISHOPINDEX(m,x)])
 #define MAGICROOKATTACKS(m,x) (mRookAttacks[x][MAGICROOKINDEX(m,x)])
+
+extern U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
+extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 
 #else // ROTATEDBITBOARD
 

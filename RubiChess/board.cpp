@@ -327,11 +327,12 @@ U64 diaga1h8_attacks[64][64];
 U64 diagh1a8_attacks[64][64];
 #endif
 U64 epthelper[64];
-U64 passedPawn[64][2];
-U64 filebarrier[64][2];
-U64 neighbourfiles[64];
-U64 kingshield[64][2];
-U64 filemask[64];
+U64 passedPawnMask[64][2];
+U64 filebarrierMask[64][2];
+U64 neighbourfilesMask[64];
+U64 phalanxMask[64];
+U64 kingshieldMask[64][2];
+U64 filemaskMask[64];
 int castleindex[64][64] = { 0 };
 
 #ifndef ROTATEDBITBOARD
@@ -427,18 +428,23 @@ void initBitmaphelper()
         king_attacks[from] = knight_attacks[from] = 0ULL;
         pawn_attacks_free[from][0] = pawn_attacks_occupied[from][0] = pawn_attacks_free_double[from][0] = 0ULL;
         pawn_attacks_free[from][1] = pawn_attacks_occupied[from][1] = pawn_attacks_free_double[from][1] = 0ULL;
-        passedPawn[from][0] = passedPawn[from][1] = 0ULL;
-        filebarrier[from][0] = filebarrier[from][1] = 0ULL;
-		kingshield[from][0] = kingshield[from][1] = 0ULL;
-        neighbourfiles[from] = 0ULL;
-        filemask[from] = 0ULL;
+        passedPawnMask[from][0] = passedPawnMask[from][1] = 0ULL;
+        filebarrierMask[from][0] = filebarrierMask[from][1] = 0ULL;
+        phalanxMask[from] = 0ULL;
+		kingshieldMask[from][0] = kingshieldMask[from][1] = 0ULL;
+        neighbourfilesMask[from] = 0ULL;
+        filemaskMask[from] = 0ULL;
 
         for (int j = 0; j < 64; j++)
         {
             if (abs(FILE(from) - FILE(j)) == 1)
-                neighbourfiles[from] |= BITSET(j);
+            {
+                neighbourfilesMask[from] |= BITSET(j);
+                if (RANK(from) == RANK(j))
+                    phalanxMask[from] |= BITSET(j);
+            }
             if (FILE(from) == FILE(j))
-                filemask[from] |= BITSET(j);
+                filemaskMask[from] |= BITSET(j);
         }
 
         for (int j = 0; j < 8; j++)
@@ -466,18 +472,18 @@ void initBitmaphelper()
             // Captures
             for (int d = -1; d <= 1; d++)
             {
-                to = from + (1 - 2 * s) * 8 + d;
+                to = from + S2MSIGN(s) * 8 + d;
                 if (abs(FILE(from) - FILE(to)) <= 1 && to >= 0 && to < 64)
                 {
                     if (d)
                         pawn_attacks_occupied[from][s] |= BITSET(to);
                     for (int r = to; r >= 0 && r < 64; r += S2MSIGN(s) * 8)
                     {
-                        passedPawn[from][s] |= BITSET(r);
+                        passedPawnMask[from][s] |= BITSET(r);
                         if (!d)
-                            filebarrier[from][s] |= BITSET(r);
+                            filebarrierMask[from][s] |= BITSET(r);
 						if (abs(RANK(from) - RANK(r)) <= 2)
-							kingshield[from][s] |= BITSET(r);
+							kingshieldMask[from][s] |= BITSET(r);
 					}
                 }
             }

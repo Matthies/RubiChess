@@ -3,23 +3,12 @@
 
 // Evaluation stuff
 
-#ifdef BITBOARD
-extern U64 mybitset[64];
-extern U64 passedPawn[64][2];
-extern U64 filebarrier[64][2];
-extern U64 neighbourfiles[64];
-extern U64 kingshield[64][2];
-extern U64 filemask[64];
-extern U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
-extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
-
-#endif
-
 const int passedpawnbonus[2][8] = { { 0, 10, 20, 30, 40, 60, 80, 0 }, { 0, -80, -60, -40, -30, -20, -10, 0 } };
 const int isolatedpawnpenalty = -20;
 const int doublepawnpenalty = -15;
 const int protectedpawn = 5;
 const int kingshieldbonus = 15;
+const int backwardpawnpenalty = -20;
 const int doublebishopbonus = 20;   // not yet used
 const double kingdangerfactor = 0.2;
 const double kingdangerexponent = 1.2;
@@ -229,7 +218,7 @@ int chessposition::getPawnValue()
         U64 pb = piece00[pc];
         while (LSB(index, pb))
         {
-            if (!(passedPawn[index][s] & piece00[pc ^ S2MMASK]))
+            if (!(passedPawnMask[index][s] & piece00[pc ^ S2MMASK]))
             {
                 // passed pawn
                 val += passedpawnbonus[s][RANK(index)];
@@ -237,7 +226,7 @@ int chessposition::getPawnValue()
                 debugeval("Passed Pawn Bonus: %d\n", passedpawnbonus[s][RANK(index)]);
 #endif
             }
-            if (!(piece00[pc] & neighbourfiles[index]))
+            if (!(piece00[pc] & neighbourfilesMask[index]))
             {
                 // isolated pawn
                 val += S2MSIGN(s) * isolatedpawnpenalty;
@@ -247,7 +236,7 @@ int chessposition::getPawnValue()
             }
             else
             {
-                if (POPCOUNT((piece00[pc] & filemask[index])) > 1)
+                if (mailbox[index - S2MSIGN(s) * 8] == pc)
                 {
                     // double pawn
                     val += S2MSIGN(s) * doublepawnpenalty;
@@ -259,6 +248,21 @@ int chessposition::getPawnValue()
                 {
                     // pawn is protected by other pawn
                     val += S2MSIGN(s) * protectedpawn;
+                }
+                else {
+                    if (!((passedPawnMask[index][1 - s] | phalanxMask[index]) & piece00[pc]))
+                    {
+                        U64 opponentpawns = piece00[pc ^ S2MMASK] & passedPawnMask[index][s];
+                        if (opponentpawns)
+                        {
+                            int mostdangerous;
+                            if (s)
+                                MSB(mostdangerous, opponentpawns);
+                            else
+                                LSB(mostdangerous, opponentpawns);
+                            // FIXME: Go on here!
+                        }
+                    }
                 }
             }
             pb ^= BITSET(index);
@@ -333,7 +337,7 @@ int chessposition::getPositionValue()
             pb ^= BITSET(index);
             if (shifting[p] & 0x2) // rook and queen
             {
-                if (!(filebarrier[index][s] & piece00[WPAWN | s]))
+                if (!(filebarrierMask[index][s] & piece00[WPAWN | s]))
                 {
                     // free file
                     result += S2MSIGN(s) * 15;
@@ -359,7 +363,7 @@ int chessposition::getPositionValue()
     }
 
     // some kind of king safety
-	result += (255 - ph) * (POPCOUNT(piece00[WPAWN] & kingshield[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshield[kingpos[1]][1])) * kingshieldbonus / 255;
+	result += (255 - ph) * (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])) * kingshieldbonus / 255;
 
 #ifdef DEBUGEVAL
     debugeval("(getPositionValue)  King safety: %d\n", (255 - ph) * (POPCOUNT(piece00[WPAWN] & kingshield[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshield[kingpos[1]][1])) * 15 / 255);
