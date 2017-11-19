@@ -6,9 +6,11 @@
 const int passedpawnbonus[2][8] = { { 0, 10, 20, 30, 40, 60, 80, 0 }, { 0, -80, -60, -40, -30, -20, -10, 0 } };
 const int isolatedpawnpenalty = -20;
 const int doublepawnpenalty = -15;
-const int protectedpawn = 5;
+const int protectedpawnbonus = 5;
+const int phalanxbonus = 5;
+const int attackingpawnbonus[2][8] = { { 0, 0, 0, 5, 10, 15, 0, 0 },{ 0, 0, -15, -10, -5, 0, 0, 0 } };
 const int kingshieldbonus = 15;
-const int backwardpawnpenalty = -20;
+const int backwardpawnpenalty = -15;
 const int doublebishopbonus = 20;   // not yet used
 const double kingdangerfactor = 0.2;
 const double kingdangerexponent = 1.2;
@@ -244,24 +246,31 @@ int chessposition::getPawnValue()
                     debugeval("Double Pawn Penalty: %d\n", S2MSIGN(s) * doublepawnpenalty);
 #endif
                 }
+                if (pawn_attacks_occupied[index][s] & piece00[pc ^ S2MMASK])
+                    // pawn attacks opponent pawn
+                    val += S2MSIGN(s) * attackingpawnbonus[s][RANK(index)];
                 if (pawn_attacks_occupied[index][s ^ S2MMASK] & piece00[pc])
                 {
                     // pawn is protected by other pawn
-                    val += S2MSIGN(s) * protectedpawn;
+                    val += S2MSIGN(s) * protectedpawnbonus;
                 }
-                else {
-                    if (!((passedPawnMask[index][1 - s] | phalanxMask[index]) & piece00[pc]))
+                if (phalanxMask[index] & piece00[pc])
+                    // pawn phalanx
+                    val += S2MSIGN(s) * phalanxbonus;
+                if (!((passedPawnMask[index][1 - s] | phalanxMask[index]) & piece00[pc]))
+                {
+                    // test for backward pawn
+                    U64 opponentpawns = piece00[pc ^ S2MMASK] & passedPawnMask[index][s];
+                    U64 mypawns = piece00[pc] & neighbourfilesMask[index];
+                    U64 pawnstoreach = opponentpawns | mypawns;
+                    int nextpawn;
+                    if (s ? MSB(nextpawn, pawnstoreach) : LSB(nextpawn, pawnstoreach))
                     {
-                        U64 opponentpawns = piece00[pc ^ S2MMASK] & passedPawnMask[index][s];
-                        if (opponentpawns)
-                        {
-                            int mostdangerous;
-                            if (s)
-                                MSB(mostdangerous, opponentpawns);
-                            else
-                                LSB(mostdangerous, opponentpawns);
-                            // FIXME: Go on here!
-                        }
+                        U64 nextpawnrank = rankMask[nextpawn];
+                        U64 shiftneigbours = (s ? nextpawnrank >> 8 : nextpawnrank << 8);
+                        if ((nextpawnrank | (shiftneigbours & neighbourfilesMask[index])) & opponentpawns)
+                            // backward pawn detected
+                            val += S2MSIGN(s) * backwardpawnpenalty;
                     }
                 }
             }

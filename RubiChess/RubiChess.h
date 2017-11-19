@@ -304,6 +304,17 @@ extern U64 kingshieldMask[64][2];
 // 00100000
 extern U64 fileMask[64];
 
+// rankMask[18]:
+// 00000000
+// 00000000
+// 00000000
+// 00000000
+// 00000000
+// 11x11111
+// 00000000
+// 00000000
+extern U64 rankMask[64];
+
 #endif
 
 struct chessmovestack

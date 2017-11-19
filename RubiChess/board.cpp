@@ -332,7 +332,8 @@ U64 filebarrierMask[64][2];
 U64 neighbourfilesMask[64];
 U64 phalanxMask[64];
 U64 kingshieldMask[64][2];
-U64 filemaskMask[64];
+U64 fileMask[64];
+U64 rankMask[64];
 int castleindex[64][64] = { 0 };
 
 #ifndef ROTATEDBITBOARD
@@ -433,7 +434,8 @@ void initBitmaphelper()
         phalanxMask[from] = 0ULL;
 		kingshieldMask[from][0] = kingshieldMask[from][1] = 0ULL;
         neighbourfilesMask[from] = 0ULL;
-        filemaskMask[from] = 0ULL;
+        fileMask[from] = 0ULL;
+        rankMask[from] = 0ULL;
 
         for (int j = 0; j < 64; j++)
         {
@@ -444,7 +446,9 @@ void initBitmaphelper()
                     phalanxMask[from] |= BITSET(j);
             }
             if (FILE(from) == FILE(j))
-                filemaskMask[from] |= BITSET(j);
+                fileMask[from] |= BITSET(j);
+            if (RANK(from) == RANK(j))
+                rankMask[from] |= BITSET(j);
         }
 
         for (int j = 0; j < 8; j++)
