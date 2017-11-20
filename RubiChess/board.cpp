@@ -2566,24 +2566,30 @@ void engine::communicate(string inputstring)
 	string sName, sValue;
 	bool bMoves;
     thread *searchthread = NULL;
+    bool pendingisready = false;
     do
     {
+        if (pendingisready && searchthread == nullptr)
+        {
+            myUci->send("readyok\n");
+            pendingisready = false;
+        }
         commandargs.clear();
         command = myUci->parse(&commandargs, inputstring);
         ci = 0;
         cs = commandargs.size();
         switch (command)
         {
-		case UCIDEBUG:
-			if (ci < cs)
-			{
+        case UCIDEBUG:
+            if (ci < cs)
+            {
                 if (commandargs[ci] == "on")
                     debug = true;
                 else if (commandargs[ci] == "off")
                     debug = false;
                 else if (commandargs[ci] == "this")
                     pos.debughash = pos.hash;
-			}
+            }
             break;
         case UCI:
             myUci->send("id name %s\n", name);
@@ -2593,44 +2599,47 @@ void engine::communicate(string inputstring)
             myUci->send("option name Move Overhead type spin default 50 min 0 max 5000\n");
             myUci->send("uciok\n", author);
             break;
-		case SETOPTION:
+        case SETOPTION:
             if (en.stopLevel != ENGINESTOPPED)
             {
                 myUci->send("info string Changing option while searching is not supported.\n");
                 break;
             }
-			bGetName = bGetValue = false;
-			sName = sValue = "";
-			while (ci < cs)
-			{
-				if (commandargs[ci] == "name")
-				{
-					setOption(sName, sValue);
-					bGetName = true;
-					bGetValue = false;
-					sName = "";
-				} else if (commandargs[ci] == "value")
-				{
-					bGetValue = true;
-					bGetName = false;
-					sValue = "";
-				} else if (bGetName)
-				{
-					if (sName != "")
-						sName += " ";
-					sName += commandargs[ci];
-				} else if (bGetValue)
-				{
-					if (sValue != "")
-						sValue += " ";
-					sValue += commandargs[ci];
-				}
-				ci++;
-			}
-			setOption(sName, sValue);
-			break;
+            bGetName = bGetValue = false;
+            sName = sValue = "";
+            while (ci < cs)
+            {
+                if (commandargs[ci] == "name")
+                {
+                    setOption(sName, sValue);
+                    bGetName = true;
+                    bGetValue = false;
+                    sName = "";
+                }
+                else if (commandargs[ci] == "value")
+                {
+                    bGetValue = true;
+                    bGetName = false;
+                    sValue = "";
+                }
+                else if (bGetName)
+                {
+                    if (sName != "")
+                        sName += " ";
+                    sName += commandargs[ci];
+                }
+                else if (bGetValue)
+                {
+                    if (sValue != "")
+                        sValue += " ";
+                    sValue += commandargs[ci];
+                }
+                ci++;
+            }
+            setOption(sName, sValue);
+            break;
         case ISREADY:
-            myUci->send("readyok\n");
+            pendingisready = true;
             break;
         case POSITION:
             if (cs == 0)
