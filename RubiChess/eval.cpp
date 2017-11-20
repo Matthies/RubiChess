@@ -225,7 +225,7 @@ int chessposition::getPawnValue()
                 // passed pawn
                 val += passedpawnbonus[s][RANK(index)];
 #ifdef DEBUGEVAL
-                debugeval("Passed Pawn Bonus: %d\n", passedpawnbonus[s][RANK(index)]);
+                debugeval("Passed Pawn Bonus(%d): %d\n", index, passedpawnbonus[s][RANK(index)]);
 #endif
             }
             if (!(piece00[pc] & neighbourfilesMask[index]))
@@ -233,7 +233,7 @@ int chessposition::getPawnValue()
                 // isolated pawn
                 val += S2MSIGN(s) * isolatedpawnpenalty;
 #ifdef DEBUGEVAL
-                debugeval("Isolated Pawn Penalty: %d\n", S2MSIGN(s) * isolatedpawnpenalty);
+                debugeval("Isolated Pawn Penalty(%d): %d\n", index, S2MSIGN(s) * isolatedpawnpenalty);
 #endif
             }
             else
@@ -243,20 +243,33 @@ int chessposition::getPawnValue()
                     // double pawn
                     val += S2MSIGN(s) * doublepawnpenalty;
 #ifdef DEBUGEVAL
-                    debugeval("Double Pawn Penalty: %d\n", S2MSIGN(s) * doublepawnpenalty);
+                    debugeval("Double Pawn Penalty(%d): %d\n", index, S2MSIGN(s) * doublepawnpenalty);
 #endif
                 }
                 if (pawn_attacks_occupied[index][s] & piece00[pc ^ S2MMASK])
+                {
                     // pawn attacks opponent pawn
                     val += S2MSIGN(s) * attackingpawnbonus[s][RANK(index)];
+#ifdef DEBUGEVAL
+                    debugeval("Attacking Pawn Bonus(%d): %d\n", index, S2MSIGN(s) * attackingpawnbonus[s][RANK(index)]);
+#endif
+                }
                 if (pawn_attacks_occupied[index][s ^ S2MMASK] & piece00[pc])
                 {
                     // pawn is protected by other pawn
                     val += S2MSIGN(s) * protectedpawnbonus;
+#ifdef DEBUGEVAL
+                    debugeval("Protected Pawn Bonus(%d): %d\n", index, S2MSIGN(s) * protectedpawnbonus);
+#endif
                 }
                 if (phalanxMask[index] & piece00[pc])
+                {
                     // pawn phalanx
                     val += S2MSIGN(s) * phalanxbonus;
+#ifdef DEBUGEVAL
+                    debugeval("Phalanx Bonus(%d): %d\n", index, S2MSIGN(s) * phalanxbonus);
+#endif
+                }
                 if (!((passedPawnMask[index][1 - s] | phalanxMask[index]) & piece00[pc]))
                 {
                     // test for backward pawn
@@ -269,8 +282,13 @@ int chessposition::getPawnValue()
                         U64 nextpawnrank = rankMask[nextpawn];
                         U64 shiftneigbours = (s ? nextpawnrank >> 8 : nextpawnrank << 8);
                         if ((nextpawnrank | (shiftneigbours & neighbourfilesMask[index])) & opponentpawns)
+                        {
                             // backward pawn detected
                             val += S2MSIGN(s) * backwardpawnpenalty;
+#ifdef DEBUGEVAL
+                            debugeval("Backward Pawn Penalty(%d): %d\n", index, S2MSIGN(s) * backwardpawnpenalty);
+#endif
+                        }
                     }
                 }
             }
@@ -278,6 +296,9 @@ int chessposition::getPawnValue()
         }
     }
 
+#ifdef DEBUGEVAL
+    debugeval("Total Pawn value: %d\n", val);
+#endif
     pwnhsh.addHash(val);
     return val;
 }
@@ -308,12 +329,7 @@ int chessposition::getValue()
             }
         }
     }
-#ifdef DEBUGEVAL
-    //debugeval("Material value: %d\n", countMaterial());
-    debugeval("Position value: %d\n", getPositionValue());
-    debugeval("Pawn value: %d\n", getPawnValue());
-#endif
-    return /*countMaterial() +*/ getPositionValue() + getPawnValue();
+    return getPositionValue() + getPawnValue();
 }
 
 
@@ -375,7 +391,7 @@ int chessposition::getPositionValue()
 	result += (255 - ph) * (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])) * kingshieldbonus / 255;
 
 #ifdef DEBUGEVAL
-    debugeval("(getPositionValue)  King safety: %d\n", (255 - ph) * (POPCOUNT(piece00[WPAWN] & kingshield[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshield[kingpos[1]][1])) * 15 / 255);
+    debugeval("(getPositionValue)  King safety: %d\n", (255 - ph) * (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])) * 15 / 255);
     debugeval("(getPositionValue)  Position value: %d\n", positionvalue);
     debugeval("(getPositionValue)  Kingdanger value: %d / %d\n", kingdangervalue[0], kingdangervalue[1]);
 #endif

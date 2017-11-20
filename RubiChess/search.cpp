@@ -642,7 +642,7 @@ static void search_gen1()
             move = pos.bestmove.toString();
 
     } while (en.stopLevel == ENGINERUN && depth <= min(maxdepth, abs(matein) * 2));
-
+    
     en.stopLevel = ENGINESTOPPED;
     sprintf_s(s, "bestmove %s\n", move.c_str());
     cout << s;
