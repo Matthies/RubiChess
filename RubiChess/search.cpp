@@ -770,5 +770,5 @@ void searchguide()
     }
 
 #endif
-
+    en.stopLevel = ENGINETERMINATEDSEARCH;
 }

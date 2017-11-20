@@ -647,6 +647,7 @@ extern int kingdanger[BOARDSIZE][BOARDSIZE][7];
 #define ENGINESTOPSOON 2
 #define ENGINESTOPIMMEDIATELY 3
 #define ENGINESTOPPED 4
+#define ENGINETERMINATEDSEARCH 5
 
 class engine
 {

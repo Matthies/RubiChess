@@ -2565,11 +2565,11 @@ void engine::communicate(string inputstring)
 	bool bGetName, bGetValue;
 	string sName, sValue;
 	bool bMoves;
-    thread *searchthread = NULL;
+    thread *searchthread = nullptr;
     bool pendingisready = false;
     do
     {
-        if (pendingisready && searchthread == nullptr)
+        if (pendingisready && (searchthread == nullptr || en.stopLevel == ENGINETERMINATEDSEARCH))
         {
             myUci->send("readyok\n");
             pendingisready = false;
