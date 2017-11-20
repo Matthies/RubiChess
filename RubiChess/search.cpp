@@ -761,5 +761,5 @@ void searchguide()
     sprintf_s(s, "\n");
     en.fdebug << s;
 #endif
-
+    en.stopLevel = ENGINETERMINATEDSEARCH;
 }
