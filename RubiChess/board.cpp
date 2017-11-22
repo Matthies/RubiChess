@@ -2971,13 +2971,45 @@ void engine::communicate(string inputstring)
 	bool bMoves;
     thread *searchthread = nullptr;
     bool pendingisready = false;
+    bool pendingposition = false;
     do
     {
-        if (pendingisready && (searchthread == nullptr || en.stopLevel == ENGINETERMINATEDSEARCH))
+        while (pendingisready || pendingposition)
         {
-            myUci->send("readyok\n");
-            pendingisready = false;
+            if (pendingposition)
+            {
+                // new position first stops current search
+                if (stopLevel == ENGINERUN)
+                    stopLevel = ENGINESTOPIMMEDIATELY;
+                if (searchthread)
+                {
+                    if (searchthread->joinable())
+                        searchthread->join();
+                    delete searchthread;
+                    searchthread = nullptr;
+                }
+
+                pos.getFromFen(fen.c_str());
+                for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
+                {
+                    if (!pos.applyMove(*it))
+                        printf("info string Alarm! Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
+                }
+                pos.ply = 0;
+
+                if (debug)
+                {
+                    pos.print();
+                }
+                pendingposition = false;
+            }
+            if (pendingisready)
+            {
+                myUci->send("readyok\n");
+                pendingisready = false;
+            }
         }
+        
         commandargs.clear();
         command = myUci->parse(&commandargs, inputstring);
         ci = 0;
@@ -3074,20 +3106,8 @@ void engine::communicate(string inputstring)
                 }
                 ci++;
             }
-            if (fen == "")
-                break;
-            pos.getFromFen(fen.c_str());
-            for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
-            {
-                if (!pos.applyMove(*it))
-					printf("info string Alarm! Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
-            }
-            pos.ply = 0;
 
-            if (debug)
-            {
-                pos.print();
-            }
+            pendingposition = (fen != "");
             break;
         case GO:
 			searchmoves.clear();
