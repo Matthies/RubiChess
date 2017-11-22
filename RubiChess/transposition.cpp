@@ -367,36 +367,22 @@ void pawnhash::clean()
 #endif
 }
 
-bool pawnhash::probeHash(int *val)
+bool pawnhash::probeHash(pawnhashentry **entry)
 {
     unsigned long long hash = pos->pawnhash;
     unsigned long long index = hash & sizemask;
-    S_PAWNHASHENTRY data = table[index];
+    *entry = &table[index];
 #ifdef DEBUG
     query++;
 #endif
-    if ((data.hashupper) == (hash >> 32))
+    if (((*entry)->hashupper) == (hash >> 32))
     {
 #ifdef DEBUG
         hit++;
 #endif
-        *val = data.value;
         return true;
     }
     return false;
-}
-
-void pawnhash::addHash(int val)
-{
-    unsigned long long hash = pos->pawnhash;
-    unsigned long long index = hash & sizemask;
-    S_PAWNHASHENTRY *data = &table[index];
-#ifdef DEBUG
-    if (data->hashupper == 0)
-        used++;
-#endif
-    data->hashupper = (unsigned long)(hash >> 32);
-    data->value = (short)val;
 }
 
 unsigned int pawnhash::getUsedinPermill()

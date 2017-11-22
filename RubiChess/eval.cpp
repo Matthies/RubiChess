@@ -3,17 +3,16 @@
 
 // Evaluation stuff
 
-const int passedpawnbonus[2][8] = { { 0, 10, 20, 30, 40, 60, 80, 0 }, { 0, -80, -60, -40, -30, -20, -10, 0 } };
+const int passedpawnbonus[2][8] = { { 0, 20, 30, 50, 70, 100, 150, 0 }, { 0, -150, -100, -70, -50, -30, -20, 0 } };
 const int isolatedpawnpenalty = -20;
 const int doublepawnpenalty = -15;
-const int protectedpawnbonus = 5;
-const int phalanxbonus = 5;
+const int connectedbonus = 10;
 const int attackingpawnbonus[2][8] = { { 0, 0, 0, 5, 10, 15, 0, 0 },{ 0, 0, -15, -10, -5, 0, 0, 0 } };
 const int kingshieldbonus = 15;
-const int backwardpawnpenalty = -15;
+const int backwardpawnpenalty = -20;
 const int doublebishopbonus = 20;   // not yet used
-const double kingdangerfactor = 0.2;
-const double kingdangerexponent = 1.2;
+const double kingdangerfactor = 0.15;
+const double kingdangerexponent = 1.1;
 
 int squaredistance[BOARDSIZE][BOARDSIZE];
 int kingdanger[BOARDSIZE][BOARDSIZE][7];
@@ -206,101 +205,115 @@ void chessposition::CreatePositionvalueTable()
 
 int chessposition::getPawnValue()
 {
-    int val;
+    int val = 0;
     int index;
+    pawnhashentry *entry;
 
-#if 1
-    if (pwnhsh.probeHash(&val))
-        return val;
-#endif
-    val = 0;
-    for (int pc = WPAWN; pc <= BPAWN; pc++)
+    if (!pwnhsh.probeHash(&entry))
     {
-        int s = pc & S2MMASK;
-        U64 pb = piece00[pc];
-        while (LSB(index, pb))
+        entry->value = 0;
+        for (int pc = WPAWN; pc <= BPAWN; pc++)
         {
-            if (!(passedPawnMask[index][s] & piece00[pc ^ S2MMASK]))
+            int s = pc & S2MMASK;
+            entry->passedpawnbb[s] = 0ULL;
+            entry->isolatedpawnbb[s] = 0ULL;
+            entry->backwardpawnbb[s] = 0ULL;
+            U64 pb = piece00[pc];
+            while (LSB(index, pb))
             {
-                // passed pawn
-                val += passedpawnbonus[s][RANK(index)];
-#ifdef DEBUGEVAL
-                debugeval("Passed Pawn Bonus(%d): %d\n", index, passedpawnbonus[s][RANK(index)]);
-#endif
-            }
-            if (!(piece00[pc] & neighbourfilesMask[index]))
-            {
-                // isolated pawn
-                val += S2MSIGN(s) * isolatedpawnpenalty;
-#ifdef DEBUGEVAL
-                debugeval("Isolated Pawn Penalty(%d): %d\n", index, S2MSIGN(s) * isolatedpawnpenalty);
-#endif
-            }
-            else
-            {
-                if (mailbox[index - S2MSIGN(s) * 8] == pc)
+                if (!(passedPawnMask[index][s] & piece00[pc ^ S2MMASK]))
                 {
-                    // double pawn
-                    val += S2MSIGN(s) * doublepawnpenalty;
-#ifdef DEBUGEVAL
-                    debugeval("Double Pawn Penalty(%d): %d\n", index, S2MSIGN(s) * doublepawnpenalty);
-#endif
+                    // passed pawn
+                    entry->passedpawnbb[s] |= BITSET(index);
                 }
-                if (pawn_attacks_occupied[index][s] & piece00[pc ^ S2MMASK])
+
+                if (!(piece00[pc] & neighbourfilesMask[index]))
                 {
-                    // pawn attacks opponent pawn
-                    val += S2MSIGN(s) * attackingpawnbonus[s][RANK(index)];
-#ifdef DEBUGEVAL
-                    debugeval("Attacking Pawn Bonus(%d): %d\n", index, S2MSIGN(s) * attackingpawnbonus[s][RANK(index)]);
-#endif
+                    // isolated pawn
+                    entry->isolatedpawnbb[s] |= BITSET(index);
                 }
-                if (pawn_attacks_occupied[index][s ^ S2MMASK] & piece00[pc])
+                else
                 {
-                    // pawn is protected by other pawn
-                    val += S2MSIGN(s) * protectedpawnbonus;
-#ifdef DEBUGEVAL
-                    debugeval("Protected Pawn Bonus(%d): %d\n", index, S2MSIGN(s) * protectedpawnbonus);
-#endif
-                }
-                if (phalanxMask[index] & piece00[pc])
-                {
-                    // pawn phalanx
-                    val += S2MSIGN(s) * phalanxbonus;
-#ifdef DEBUGEVAL
-                    debugeval("Phalanx Bonus(%d): %d\n", index, S2MSIGN(s) * phalanxbonus);
-#endif
-                }
-                if (!((passedPawnMask[index][1 - s] | phalanxMask[index]) & piece00[pc]))
-                {
-                    // test for backward pawn
-                    U64 opponentpawns = piece00[pc ^ S2MMASK] & passedPawnMask[index][s];
-                    U64 mypawns = piece00[pc] & neighbourfilesMask[index];
-                    U64 pawnstoreach = opponentpawns | mypawns;
-                    int nextpawn;
-                    if (s ? MSB(nextpawn, pawnstoreach) : LSB(nextpawn, pawnstoreach))
+                    if (pawn_attacks_occupied[index][s] & piece00[pc ^ S2MMASK])
                     {
-                        U64 nextpawnrank = rankMask[nextpawn];
-                        U64 shiftneigbours = (s ? nextpawnrank >> 8 : nextpawnrank << 8);
-                        if ((nextpawnrank | (shiftneigbours & neighbourfilesMask[index])) & opponentpawns)
-                        {
-                            // backward pawn detected
-                            val += S2MSIGN(s) * backwardpawnpenalty;
+                        // pawn attacks opponent pawn
+                        entry->value += S2MSIGN(s) * attackingpawnbonus[s][RANK(index)];
 #ifdef DEBUGEVAL
-                            debugeval("Backward Pawn Penalty(%d): %d\n", index, S2MSIGN(s) * backwardpawnpenalty);
+                        debugeval("Attacking Pawn Bonus(%d): %d\n", index, S2MSIGN(s) * attackingpawnbonus[s][RANK(index)]);
 #endif
+                    }
+#if 1
+                    if ((pawn_attacks_occupied[index][s ^ S2MMASK] & piece00[pc]) || (phalanxMask[index] & piece00[pc]))
+                    {
+                        // pawn is protected by other pawn
+                        val += S2MSIGN(s) * connectedbonus;
+#ifdef DEBUGEVAL
+                        debugeval("Connected Pawn Bonus(%d): %d\n", index, S2MSIGN(s) * connectedbonus);
+#endif
+                    }
+#endif
+                    if (!((passedPawnMask[index][1 - s] | phalanxMask[index]) & piece00[pc]))
+                    {
+                        // test for backward pawn
+                        U64 opponentpawns = piece00[pc ^ S2MMASK] & passedPawnMask[index][s];
+                        U64 mypawns = piece00[pc] & neighbourfilesMask[index];
+                        U64 pawnstoreach = opponentpawns | mypawns;
+                        int nextpawn;
+                        if (s ? MSB(nextpawn, pawnstoreach) : LSB(nextpawn, pawnstoreach))
+                        {
+                            U64 nextpawnrank = rankMask[nextpawn];
+                            U64 shiftneigbours = (s ? nextpawnrank >> 8 : nextpawnrank << 8);
+                            if ((nextpawnrank | (shiftneigbours & neighbourfilesMask[index])) & opponentpawns)
+                            {
+                                // backward pawn detected
+                                entry->backwardpawnbb[s] |= BITSET(index);
+                            }
                         }
                     }
                 }
+                pb ^= BITSET(index);
             }
-            pb ^= BITSET(index);
         }
     }
 
+    val = 0;
+    for (int s = 0; s < 2; s++)
+    {
+        U64 bb;
+        bb = entry->passedpawnbb[s];
+        while (LSB(index, bb))
+        {
+            val += ph * passedpawnbonus[s][RANK(index)] / 255;
+            bb ^= BITSET(index);
 #ifdef DEBUGEVAL
-    debugeval("Total Pawn value: %d\n", val);
+            debugeval("Passed Pawn Bonus(%d): %d\n", index, passedpawnbonus[s][RANK(index)]);
 #endif
-    pwnhsh.addHash(val);
-    return val;
+        }
+
+        // isolated pawns
+        val += S2MSIGN(s) * POPCOUNT(entry->isolatedpawnbb[s]) * isolatedpawnpenalty;
+#ifdef DEBUGEVAL
+        debugeval("Isolated Pawn Penalty(%d): %d\n", s, S2MSIGN(s) * POPCOUNT(entry->isolatedpawnbb[s]) * isolatedpawnpenalty);
+#endif
+
+        // doubled pawns
+        val += S2MSIGN(s) * doublepawnpenalty * POPCOUNT(piece00[WPAWN | s] & (s ? piece00[WPAWN | s] >> 8 : piece00[WPAWN | s] << 8));
+#ifdef DEBUGEVAL
+        debugeval("Double Pawn Penalty(%d): %d\n", s, S2MSIGN(s) * doublepawnpenalty * POPCOUNT(piece00[WPAWN | s] & (s ? piece00[WPAWN | s] >> 8 : piece00[WPAWN | s] << 8)));
+#endif
+
+        // backward pawns
+        val += S2MSIGN(s) * POPCOUNT(entry->backwardpawnbb[s]) * backwardpawnpenalty * ph / 255;
+#ifdef DEBUGEVAL
+        debugeval("Backward Pawn Penalty(%d): %d\n", s, S2MSIGN(s) * POPCOUNT(entry->backwardpawnbb[s]) * backwardpawnpenalty * ph / 255);
+#endif
+
+    }
+
+#ifdef DEBUGEVAL
+    debugeval("Total Pawn value: %d\n", val + entry->value);
+#endif
+    return val + entry->value;
 }
 
 
@@ -354,7 +367,7 @@ int chessposition::getPositionValue()
         {
             int pvtindex = index | (ph << 6) | (p << 14) | (s << 17);
             result += *(positionvaluetable + pvtindex);
-            result += S2MSIGN(s) * kingdanger[index][pos.kingpos[1 - s]][p];
+            //result += S2MSIGN(s) * kingdanger[index][pos.kingpos[1 - s]][p];
 #ifdef DEBUGEVAL
             positionvalue += *(positionvaluetable + pvtindex);
             kingdangervalue[s] += S2MSIGN(s) * kingdanger[index][pos.kingpos[1 - s]][p];

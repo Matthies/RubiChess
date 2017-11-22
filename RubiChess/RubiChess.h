@@ -771,6 +771,9 @@ public:
 
 typedef struct pawnhashentry {
     unsigned long hashupper;
+    U64 passedpawnbb[2];
+    U64 isolatedpawnbb[2];
+    U64 backwardpawnbb[2];
     short value;
 } S_PAWNHASHENTRY;
 
@@ -789,8 +792,7 @@ public:
     ~pawnhash();
     void setSize(int sizeMb);
     void clean();
-    void addHash(int val);
-    bool probeHash(int *val);
+    bool probeHash(pawnhashentry **entry);
     unsigned int getUsedinPermill();
 };
 
