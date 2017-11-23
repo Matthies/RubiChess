@@ -2974,7 +2974,7 @@ void engine::communicate(string inputstring)
     bool pendingposition = false;
     do
     {
-        while (pendingisready || pendingposition)
+        if (pendingisready || pendingposition)
         {
             if (pendingposition)
             {
@@ -3009,192 +3009,193 @@ void engine::communicate(string inputstring)
                 pendingisready = false;
             }
         }
-        
-        commandargs.clear();
-        command = myUci->parse(&commandargs, inputstring);
-        ci = 0;
-        cs = commandargs.size();
-        switch (command)
-        {
-        case UCIDEBUG:
-            if (ci < cs)
+        else {
+            commandargs.clear();
+            command = myUci->parse(&commandargs, inputstring);
+            ci = 0;
+            cs = commandargs.size();
+            switch (command)
             {
-                if (commandargs[ci] == "on")
-                    debug = true;
-                else if (commandargs[ci] == "off")
-                    debug = false;
-                else if (commandargs[ci] == "this")
-                    pos.debughash = pos.hash;
-            }
-            break;
-        case UCI:
-            myUci->send("id name %s\n", name);
-            myUci->send("id author %s\n", author);
-            myUci->send("option name Clear Hash type button\n");
-            myUci->send("option name Hash type spin default 150 min 1 max 1048576\n");
-            myUci->send("option name Move Overhead type spin default 50 min 0 max 5000\n");
-            myUci->send("uciok\n", author);
-            break;
-        case SETOPTION:
-            if (en.stopLevel != ENGINESTOPPED)
-            {
-                myUci->send("info string Changing option while searching is not supported.\n");
+            case UCIDEBUG:
+                if (ci < cs)
+                {
+                    if (commandargs[ci] == "on")
+                        debug = true;
+                    else if (commandargs[ci] == "off")
+                        debug = false;
+                    else if (commandargs[ci] == "this")
+                        pos.debughash = pos.hash;
+                }
                 break;
-            }
-            bGetName = bGetValue = false;
-            sName = sValue = "";
-            while (ci < cs)
-            {
-                if (commandargs[ci] == "name")
-                {
-                    setOption(sName, sValue);
-                    bGetName = true;
-                    bGetValue = false;
-                    sName = "";
-                }
-                else if (commandargs[ci] == "value")
-                {
-                    bGetValue = true;
-                    bGetName = false;
-                    sValue = "";
-                }
-                else if (bGetName)
-                {
-                    if (sName != "")
-                        sName += " ";
-                    sName += commandargs[ci];
-                }
-                else if (bGetValue)
-                {
-                    if (sValue != "")
-                        sValue += " ";
-                    sValue += commandargs[ci];
-                }
-                ci++;
-            }
-            setOption(sName, sValue);
-            break;
-        case ISREADY:
-            pendingisready = true;
-            break;
-        case POSITION:
-            if (cs == 0)
+            case UCI:
+                myUci->send("id name %s\n", name);
+                myUci->send("id author %s\n", author);
+                myUci->send("option name Clear Hash type button\n");
+                myUci->send("option name Hash type spin default 150 min 1 max 1048576\n");
+                myUci->send("option name Move Overhead type spin default 50 min 0 max 5000\n");
+                myUci->send("uciok\n", author);
                 break;
-            bMoves = false;
-			moves.clear();
-            fen = "";
-
-			if (commandargs[ci] == "startpos")
-            {
-                ci++;
-                fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-            }
-            else if (commandargs[ci] == "fen")
-            {
-                while (++ci < cs && commandargs[ci] != "moves")
-                    fen = fen + commandargs[ci] + " ";
-            }
-            while (ci < cs)
-            {
-                if (commandargs[ci] == "moves")
+            case SETOPTION:
+                if (en.stopLevel != ENGINESTOPPED)
                 {
-                    bMoves = true;
+                    myUci->send("info string Changing option while searching is not supported.\n");
+                    break;
                 }
-                else if (bMoves)
+                bGetName = bGetValue = false;
+                sName = sValue = "";
+                while (ci < cs)
                 {
-                    moves.push_back(commandargs[ci]);
-                }
-                ci++;
-            }
-
-            pendingposition = (fen != "");
-            break;
-        case GO:
-			searchmoves.clear();
-			wtime = btime = winc = binc = movestogo = mate = maxdepth = 0;
-            infinite = false;
-            while (ci < cs)
-            {
-                if (commandargs[ci] == "searchmoves")
-                {
-                    while (++ci < cs && AlgebraicToIndex(commandargs[ci], 0x88) != 0x88 && AlgebraicToIndex(&commandargs[ci][2], 0x88) != 0x88)
-                        searchmoves.push_back(commandargs[ci]);
-                }
-
-                else if (commandargs[ci] == "wtime")
-                {
-                    if (++ci < cs)
-                        wtime = stoi(commandargs[ci++]);
-                }
-                else if (commandargs[ci] == "btime")
-                {
-                    if (++ci < cs)
-                        btime = stoi(commandargs[ci++]);
-                }
-                else if (commandargs[ci] == "winc")
-                {
-                    if (++ci < cs)
-                        winc = stoi(commandargs[ci++]);
-                }
-                else if (commandargs[ci] == "binc")
-                {
-                    if (++ci < cs)
-                        binc = stoi(commandargs[ci++]);
-                }
-                else if (commandargs[ci] == "movetime")
-                {
-                    movestogo = 1;
-                    winc = binc = 0;
-                    if (++ci < cs)
-                        wtime = btime = stoi(commandargs[ci++]);
-                }
-                else if (commandargs[ci] == "movestogo")
-				{
-					if (++ci < cs)
-						movestogo = stoi(commandargs[ci++]);
-				}
-				else if (commandargs[ci] == "mate")
-				{
-					if (++ci < cs)
-						mate = stoi(commandargs[ci++]);
-				}
-                else if (commandargs[ci] == "depth")
-                {
-                    if (++ci < cs)
-                        maxdepth = stoi(commandargs[ci++]);
-                }
-                else if (commandargs[ci] == "infinite")
-                {
-                    infinite = true;
+                    if (commandargs[ci] == "name")
+                    {
+                        setOption(sName, sValue);
+                        bGetName = true;
+                        bGetValue = false;
+                        sName = "";
+                    }
+                    else if (commandargs[ci] == "value")
+                    {
+                        bGetValue = true;
+                        bGetName = false;
+                        sValue = "";
+                    }
+                    else if (bGetName)
+                    {
+                        if (sName != "")
+                            sName += " ";
+                        sName += commandargs[ci];
+                    }
+                    else if (bGetValue)
+                    {
+                        if (sValue != "")
+                            sValue += " ";
+                        sValue += commandargs[ci];
+                    }
                     ci++;
                 }
-                else
+                setOption(sName, sValue);
+                break;
+            case ISREADY:
+                pendingisready = true;
+                break;
+            case POSITION:
+                if (cs == 0)
+                    break;
+                bMoves = false;
+                moves.clear();
+                fen = "";
+
+                if (commandargs[ci] == "startpos")
+                {
                     ci++;
+                    fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+                }
+                else if (commandargs[ci] == "fen")
+                {
+                    while (++ci < cs && commandargs[ci] != "moves")
+                        fen = fen + commandargs[ci] + " ";
+                }
+                while (ci < cs)
+                {
+                    if (commandargs[ci] == "moves")
+                    {
+                        bMoves = true;
+                    }
+                    else if (bMoves)
+                    {
+                        moves.push_back(commandargs[ci]);
+                    }
+                    ci++;
+                }
+
+                pendingposition = (fen != "");
+                break;
+            case GO:
+                searchmoves.clear();
+                wtime = btime = winc = binc = movestogo = mate = maxdepth = 0;
+                infinite = false;
+                while (ci < cs)
+                {
+                    if (commandargs[ci] == "searchmoves")
+                    {
+                        while (++ci < cs && AlgebraicToIndex(commandargs[ci], 0x88) != 0x88 && AlgebraicToIndex(&commandargs[ci][2], 0x88) != 0x88)
+                            searchmoves.push_back(commandargs[ci]);
+                    }
+
+                    else if (commandargs[ci] == "wtime")
+                    {
+                        if (++ci < cs)
+                            wtime = stoi(commandargs[ci++]);
+                    }
+                    else if (commandargs[ci] == "btime")
+                    {
+                        if (++ci < cs)
+                            btime = stoi(commandargs[ci++]);
+                    }
+                    else if (commandargs[ci] == "winc")
+                    {
+                        if (++ci < cs)
+                            winc = stoi(commandargs[ci++]);
+                    }
+                    else if (commandargs[ci] == "binc")
+                    {
+                        if (++ci < cs)
+                            binc = stoi(commandargs[ci++]);
+                    }
+                    else if (commandargs[ci] == "movetime")
+                    {
+                        movestogo = 1;
+                        winc = binc = 0;
+                        if (++ci < cs)
+                            wtime = btime = stoi(commandargs[ci++]);
+                    }
+                    else if (commandargs[ci] == "movestogo")
+                    {
+                        if (++ci < cs)
+                            movestogo = stoi(commandargs[ci++]);
+                    }
+                    else if (commandargs[ci] == "mate")
+                    {
+                        if (++ci < cs)
+                            mate = stoi(commandargs[ci++]);
+                    }
+                    else if (commandargs[ci] == "depth")
+                    {
+                        if (++ci < cs)
+                            maxdepth = stoi(commandargs[ci++]);
+                    }
+                    else if (commandargs[ci] == "infinite")
+                    {
+                        infinite = true;
+                        ci++;
+                    }
+                    else
+                        ci++;
+                }
+                isWhite = (pos.w2m());
+                searchthread = new thread(&searchguide);
+                if (inputstring != "")
+                {
+                    // bench mode; wait for end of search
+                    searchthread->join();
+                    delete searchthread;
+                    searchthread = nullptr;
+                }
+                break;
+            case STOP:
+            case QUIT:
+                stopLevel = ENGINESTOPIMMEDIATELY;
+                if (searchthread && searchthread->joinable())
+                {
+                    searchthread->join();
+                    delete searchthread;
+                    searchthread = nullptr;
+                }
+                break;
+            default:
+                break;
             }
-            isWhite = (pos.w2m());
-            searchthread = new thread(&searchguide);
-            if (inputstring != "")
-            {
-                // bench mode; wait for end of search
-                searchthread->join();
-                delete searchthread;
-                searchthread = nullptr;
-            }
-            break;
-		case STOP:
-        case QUIT:
-			stopLevel = ENGINESTOPIMMEDIATELY;
-            if (searchthread && searchthread->joinable())
-            {
-                searchthread->join();
-                delete searchthread;
-                searchthread = nullptr;
-            }
-            break;
-        default:
-            break;
-		}
-	} while (command != QUIT && inputstring == "");
+        }
+	} while (command != QUIT && (inputstring == "" || pendingposition));
 }
 
 zobrist zb;
