@@ -237,9 +237,9 @@ int chessposition::getPawnValue()
                     if (pawn_attacks_occupied[index][s] & piece00[pc ^ S2MMASK])
                     {
                         // pawn attacks opponent pawn
-                        entry->value += S2MSIGN(s) * attackingpawnbonus[s][RANK(index)];
+                        entry->value += attackingpawnbonus[s][RANK(index)];
 #ifdef DEBUGEVAL
-                        debugeval("Attacking Pawn Bonus(%d): %d\n", index, S2MSIGN(s) * attackingpawnbonus[s][RANK(index)]);
+                        debugeval("Attacking Pawn Bonus(%d): %d\n", index, attackingpawnbonus[s][RANK(index)]);
 #endif
                     }
 #if 1
