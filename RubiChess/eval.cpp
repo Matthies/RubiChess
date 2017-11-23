@@ -242,7 +242,6 @@ int chessposition::getPawnValue()
                         debugeval("Attacking Pawn Bonus(%d): %d\n", index, attackingpawnbonus[s][RANK(index)]);
 #endif
                     }
-#if 1
                     if ((pawn_attacks_occupied[index][s ^ S2MMASK] & piece00[pc]) || (phalanxMask[index] & piece00[pc]))
                     {
                         // pawn is protected by other pawn
@@ -251,7 +250,6 @@ int chessposition::getPawnValue()
                         debugeval("Connected Pawn Bonus(%d): %d\n", index, S2MSIGN(s) * connectedbonus);
 #endif
                     }
-#endif
                     if (!((passedPawnMask[index][1 - s] | phalanxMask[index]) & piece00[pc]))
                     {
                         // test for backward pawn
@@ -367,6 +365,7 @@ int chessposition::getPositionValue()
         {
             int pvtindex = index | (ph << 6) | (p << 14) | (s << 17);
             result += *(positionvaluetable + pvtindex);
+            // Kingdanger disabled for now; doesn't work this way, maybe just needs some tuning
             //result += S2MSIGN(s) * kingdanger[index][pos.kingpos[1 - s]][p];
 #ifdef DEBUGEVAL
             positionvalue += *(positionvaluetable + pvtindex);
@@ -411,17 +410,6 @@ int chessposition::getPositionValue()
     return result;
 }
 
-#if 0
-int chessposition::countMaterial()
-{
-    int value = 0;
-    for (int p = PAWN; p < KING; p++)
-    {
-        value += (POPCOUNT(piece00[p << 1]) - POPCOUNT(piece00[(p << 1) | 1])) * materialvalue[p];
-    }
-	return value;
-}
-#endif
 
 #else //BITBOARD
 
@@ -466,9 +454,6 @@ int chessposition::getValue()
         }
     }
 
-    //int materialVal = value;
-    //int positionVal = getPositionValue();
-    //return materialVal + positionVal;
     return getPositionValue();
 }
 
@@ -545,10 +530,8 @@ int chessposition::getPositionValue()
 }
 
 
-#if 1
 void chessposition::countMaterial()
 {
-    //value = 0;
     for (int i = 0; i < 14; i++)
         piecenum[i] = 0;
     for (int r = 0; r < 8; r++)
@@ -560,12 +543,9 @@ void chessposition::countMaterial()
             {
                 int col = pc & S2MMASK;
                 piecenum[pc]++;
-                //value += (col ? -materialvalue[pc >> 1] : materialvalue[pc >> 1]);
             }
         }
     }
-    //return value;
 }
-#endif
 #endif
 
