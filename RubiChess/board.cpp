@@ -228,8 +228,6 @@ void chessposition::mirror()
         }
 	}
 
-	//countMaterial();
-
     int newstate = (state & S2MMASK) ^ S2MMASK;
 	if (state & WQCMASK) newstate |= BQCMASK;
 	if (state & WKCMASK) newstate |= BKCMASK;
@@ -846,7 +844,6 @@ int chessposition::getFromFen(const char* sFen)
         fullmovescounter = stoi(token[5]);
 
     actualpath.length = 0;
-    //countMaterial();
     hash = zb.getHash();
     pawnhash = zb.getPawnHash();
     rp.clean();
@@ -2129,14 +2126,12 @@ bool chessposition::playMove(chessmove *cm)
     if (promote != BLANK)
     {
         int valdiff = -materialvalue[PAWN] + materialvalue[promote >> 1];
-        //value += (state & S2MMASK ? -valdiff : valdiff);
         piecenum[board[from]]--;
         piecenum[promote]++;
     }
     if (Piece(to) != BLANKTYPE)
     {
         int valdiff = materialvalue[Piece(to)];
-        //value += (state & S2MMASK ? -valdiff : valdiff);
         piecenum[board[to]]--;
         halfmovescounter = 0;
         hash ^= zb.boardtable[(to << 4) | board[to]];
@@ -2168,7 +2163,6 @@ bool chessposition::playMove(chessmove *cm)
         else if (ept && to == ept)
         {
             int epfield = (from & 0x70) | (to & 0x07);
-            //value += (state & S2MMASK ? -materialvalue[PAWN] : materialvalue[PAWN]);
             piecenum[board[epfield]]--;
             // Fix hash regarding ep capture
             hash ^= zb.boardtable[(epfield << 4) | board[epfield]];

@@ -6,11 +6,12 @@
 const int passedpawnbonus[2][8] = { { 0, 20, 30, 50, 70, 100, 150, 0 }, { 0, -150, -100, -70, -50, -30, -20, 0 } };
 const int isolatedpawnpenalty = -20;
 const int doublepawnpenalty = -15;
-const int connectedbonus = 10;
+const int connectedbonus = 0;  // tried 10 but that seems not to work very well; best results without connected bonus due to a bug
 const int attackingpawnbonus[2][8] = { { 0, 0, 0, 5, 10, 15, 0, 0 },{ 0, 0, -15, -10, -5, 0, 0, 0 } };
 const int kingshieldbonus = 15;
 const int backwardpawnpenalty = -20;
 const int doublebishopbonus = 20;   // not yet used
+const int slideronfreefilebonus = 15;
 const double kingdangerfactor = 0.15;
 const double kingdangerexponent = 1.1;
 
@@ -245,7 +246,7 @@ int chessposition::getPawnValue()
                     if ((pawn_attacks_occupied[index][s ^ S2MMASK] & piece00[pc]) || (phalanxMask[index] & piece00[pc]))
                     {
                         // pawn is protected by other pawn
-                        val += S2MSIGN(s) * connectedbonus;
+                        entry->value += S2MSIGN(s) * connectedbonus;
 #ifdef DEBUGEVAL
                         debugeval("Connected Pawn Bonus(%d): %d\n", index, S2MSIGN(s) * connectedbonus);
 #endif
@@ -274,14 +275,13 @@ int chessposition::getPawnValue()
         }
     }
 
-    val = 0;
     for (int s = 0; s < 2; s++)
     {
         U64 bb;
         bb = entry->passedpawnbb[s];
         while (LSB(index, bb))
         {
-            val += ph * passedpawnbonus[s][RANK(index)] / 255;
+            val += ph * passedpawnbonus[s][RANK(index)] / 256;
             bb ^= BITSET(index);
 #ifdef DEBUGEVAL
             debugeval("Passed Pawn Bonus(%d): %d\n", index, passedpawnbonus[s][RANK(index)]);
@@ -301,9 +301,9 @@ int chessposition::getPawnValue()
 #endif
 
         // backward pawns
-        val += S2MSIGN(s) * POPCOUNT(entry->backwardpawnbb[s]) * backwardpawnpenalty * ph / 255;
+        val += S2MSIGN(s) * POPCOUNT(entry->backwardpawnbb[s]) * backwardpawnpenalty * ph / 256;
 #ifdef DEBUGEVAL
-        debugeval("Backward Pawn Penalty(%d): %d\n", s, S2MSIGN(s) * POPCOUNT(entry->backwardpawnbb[s]) * backwardpawnpenalty * ph / 255);
+        debugeval("Backward Pawn Penalty(%d): %d\n", s, S2MSIGN(s) * POPCOUNT(entry->backwardpawnbb[s]) * backwardpawnpenalty * ph / 256);
 #endif
 
     }
@@ -340,6 +340,7 @@ int chessposition::getValue()
             }
         }
     }
+    ph = phase();
     return getPositionValue() + getPawnValue();
 }
 
@@ -347,7 +348,6 @@ int chessposition::getValue()
 int chessposition::getPositionValue()
 {
     int index;
-    ph = phase();
     int scalephaseto4 = (~ph & 0xff) >> 6;
     int result = 0;
 #ifdef DEBUGEVAL
@@ -377,7 +377,7 @@ int chessposition::getPositionValue()
                 if (!(filebarrierMask[index][s] & piece00[WPAWN | s]))
                 {
                     // free file
-                    result += S2MSIGN(s) * 15;
+                    result += S2MSIGN(s) * slideronfreefilebonus;
 #ifdef DEBUGEVAL
                     debugeval("Slider on free file Bonus: %d\n", (S2MSIGN(s) * 15));
 #endif
@@ -400,10 +400,10 @@ int chessposition::getPositionValue()
     }
 
     // some kind of king safety
-	result += (255 - ph) * (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])) * kingshieldbonus / 255;
+	result += (256 - ph) * (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])) * kingshieldbonus / 256;
 
 #ifdef DEBUGEVAL
-    debugeval("(getPositionValue)  King safety: %d\n", (255 - ph) * (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])) * 15 / 255);
+    debugeval("(getPositionValue)  King safety: %d\n", (256 - ph) * (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])) * 15 / 256);
     debugeval("(getPositionValue)  Position value: %d\n", positionvalue);
     debugeval("(getPositionValue)  Kingdanger value: %d / %d\n", kingdangervalue[0], kingdangervalue[1]);
 #endif
@@ -499,7 +499,7 @@ int chessposition::getPositionValue()
 
                 if ((pt == ROOK || pt == QUEEN) && (firstpawn[col][f + 1] == 0 || ((col && (firstpawn[col][f + 1] > r)) || (!col && (firstpawn[col][f + 1] < r)))))
                     // ROOK on free file
-                    result += (col ? -15 : 15);
+                    result += S2MSIGN(col) * slideronfreefilebonus;
 
             }
         }
@@ -509,20 +509,18 @@ int chessposition::getPositionValue()
         for (int col = 0; col < 2; col++)
         {
             int opcol = 1 - col;
-            int factor = (col ? -1 : 1);
             int pawnrank = firstpawn[col][f + 1];
             if (pawnrank)
             {
                 // check for passed pawn
-                if ((!lastpawn[opcol][f] || factor * lastpawn[opcol][f] <= factor * pawnrank)
-                    && (!lastpawn[opcol][f + 1] || factor * lastpawn[opcol][f + 1] <= factor * pawnrank)
-                    && (!lastpawn[opcol][f + 2] || factor * lastpawn[opcol][f + 2] <= factor * pawnrank))
-                    //result += (factor * 20);
+                if ((!lastpawn[opcol][f] || S2MSIGN(col) * lastpawn[opcol][f] <= S2MSIGN(col) * pawnrank)
+                        && (!lastpawn[opcol][f + 1] || S2MSIGN(col) * lastpawn[opcol][f + 1] <= S2MSIGN(col) * pawnrank)
+                        && (!lastpawn[opcol][f + 2] || S2MSIGN(col) * lastpawn[opcol][f + 2] <= S2MSIGN(col) * pawnrank))
                     result += passedpawnbonus[col][pawnrank];
             }
             if (pawnrank && !firstpawn[col][f] && !firstpawn[col][f + 2])
                 // isolated pawn
-                result -= (factor * 20);
+                result += S2MSIGN(col) * isolatedpawnpenalty;
         }
     }
 

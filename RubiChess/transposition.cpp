@@ -382,6 +382,7 @@ bool pawnhash::probeHash(pawnhashentry **entry)
 #endif
         return true;
     }
+    (*entry)->hashupper = (hash >> 32);
     return false;
 }
 
