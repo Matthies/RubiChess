@@ -112,7 +112,6 @@ u8 zobrist::getHash()
 u8 zobrist::getPawnHash()
 {
     u8 hash = 0;
-    int state = pos.state;
     for (int i = WPAWN; i <= BPAWN; i++)
     {
         U64 pmask = pos.piece00[i];
@@ -162,7 +161,6 @@ u8 zobrist::getPawnHash()
 {
     u8 hash = 0;
     int i;
-    int state = pos.state;
     for (i = 0; i < 120; i++)
     {
         if (!(i & 0x88) && (pos.board[i] >> 1) == PAWN)
@@ -185,7 +183,7 @@ transposition::~transposition()
 
 int transposition::setSize(int sizeMb)
 {
-    int restMb;
+    int restMb = 0;
     int msb = 0;
     if (size > 0)
         delete table;

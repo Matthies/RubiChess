@@ -2125,13 +2125,11 @@ bool chessposition::playMove(chessmove *cm)
 
     if (promote != BLANK)
     {
-        int valdiff = -materialvalue[PAWN] + materialvalue[promote >> 1];
         piecenum[board[from]]--;
         piecenum[promote]++;
     }
     if (Piece(to) != BLANKTYPE)
     {
-        int valdiff = materialvalue[Piece(to)];
         piecenum[board[to]]--;
         halfmovescounter = 0;
         hash ^= zb.boardtable[(to << 4) | board[to]];

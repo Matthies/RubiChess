@@ -539,7 +539,6 @@ void chessposition::countMaterial()
             PieceCode pc = board[(r << 4) | f];
             if (pc != BLANK)
             {
-                int col = pc & S2MMASK;
                 piecenum[pc]++;
             }
         }
