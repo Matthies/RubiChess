@@ -642,7 +642,7 @@ static void search_gen1()
             move = pos.bestmove.toString();
 
     } while (en.stopLevel == ENGINERUN && depth <= min(maxdepth, abs(matein) * 2));
-
+    
     en.stopLevel = ENGINESTOPPED;
     sprintf_s(s, "bestmove %s\n", move.c_str());
     cout << s;
@@ -709,6 +709,8 @@ void searchguide()
         if (nodes != lastnodes && nowtime - lastinfotime > en.frequency)
         {
             sprintf_s(s, "info nodes %lu nps %llu hashfull %d\n", nodes, (nodes - lastnodes) * en.frequency / (nowtime - lastinfotime), tp.getUsedinPermill());
+            // enable so see the pawn hash usage
+            //sprintf_s(s, "info nodes %lu nps %llu hashfull %d\n", nodes, (nodes - lastnodes) * en.frequency / (nowtime - lastinfotime), pwnhsh.getUsedinPermill());
             cout << s;
             lastnodes = nodes;
             lastinfotime = nowtime;
@@ -760,6 +762,13 @@ void searchguide()
     }
     sprintf_s(s, "\n");
     en.fdebug << s;
+    if (pwnhsh.query > 0)
+    {
+        sprintf_s(s, "info string pawnhash-hits: %0.2f%%\n", (float)pwnhsh.hit / (float)pwnhsh.query * 100.0f);
+        cout << s;
+
+    }
+
 #endif
     en.stopLevel = ENGINETERMINATEDSEARCH;
 }

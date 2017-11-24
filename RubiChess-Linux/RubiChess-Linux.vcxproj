@@ -104,6 +104,7 @@
   <PropertyGroup Label="UserMacros" />
   <ItemGroup>
     <ClCompile Include="..\RubiChess\board.cpp" />
+    <ClCompile Include="..\RubiChess\eval.cpp" />
     <ClCompile Include="..\RubiChess\main.cpp" />
     <ClCompile Include="..\RubiChess\search.cpp" />
     <ClCompile Include="..\RubiChess\transposition.cpp" />

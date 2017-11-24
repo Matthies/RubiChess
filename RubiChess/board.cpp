@@ -193,179 +193,6 @@ void chessmovelist::sort()
 }
 
 
-const int passedpawnbonus[2][8] = { { 0, 10, 20, 30, 40, 60, 80, 0 }, { 0, -80, -60, -40, -30, -20, -10, 0 } };
-int* chessposition::GetPositionvalueTable()
-{
-#ifdef BITBOARD
-	int *positionvalue = new int[2 * 8 * 256 * 64];  // color piecetype phase boardindex
-#else
-	int *positionvalue = new int[2 * 8 * 256 * 128];  // color piecetype phase boardindex
-#endif
-	const int PV[][64] = {
-		//PAWN
-		{
-			0,   0,   0,   0,   0,   0,   0,   0,
-			50,  50,  50,  50,  50,  50,  50,  50,
-			20,  20,  20,  20,  20,  20,  20,  20,
-			0,   0,   0,   10,  10,  0,   0,   0,
-			0,   -20, 10,  20,  20,  -20, -20, 0,
-			0,   -10, 10,  10,  10,  -10, -10, 0,
-			0,  10,  0,  -20, -20,  0,   10,  10,
-			0,   0,   0,   0,   0,   0,   0,   0
-		},
-		{
-			0,   0,   0,   0,   0,   0,   0,   0,
-			35,  35,  35,  35,  35,  35,  35,  35,
-			15,  25,  25,  25,  25,  25,  25,  15,
-			10,  15,  15,  15,  15,  15,  15,  10,
-			5,   10,  10,  10,  10,  10,  10,  5,
-			2,   5,   5,   5,   5,   5,   5,   2,
-			0,   0,   0,   0,   0,   0,   0,   0,
-			0,   0,   0,   0,   0,   0,   0,   0
-		},
-		//KNIGHT
-        {
-            -25, -15, -10,    0,  0, -10, -15,  -25,
-            -15, -10,   0,  10,  10,   0, -10,  -15,
-            -10,   0,  10,  15,  15,  10,  0,   -10,
-            0,   5,  15,  25,  25,  15,  5,    0,
-            0,   5,  15,  25,  25,  15,  5,    0,
-            -10,   0,  10,  15,  15,  10,  0,   -10,
-            -15, -10,   0,  10,  10,   0, -10,  -15,
-            -25, -15, -10,    0,  0, -10, -15,  -25,
-        },
-        {
-            -25, -15, -10,    0,  0, -10, -15,  -25,
-            -15, -10,   0,  10,  10,   0, -10,  -15,
-            -10,   0,  10,  15,  15,  10,  0,   -10,
-              0,   5,  15,  25,  25,  15,  5,    0,
-              0,   5,  15,  25,  25,  15,  5,    0,
-            -10,   0,  10,  15,  15,  10,  0,   -10,
-            -15, -10,   0,  10,  10,   0, -10,  -15,
-            -25, -15, -10,    0,  0, -10, -15,  -25,
-        },
-        //BISHOP
-        {
-            -25, -15, -10,    0,  0, -10, -15,  -25,
-            -15, -10,   0,  10,  10,   0, -10,  -15,
-            -10,   0,  10,  15,  15,  10,  0,   -10,
-            0,   5,  15,  25,  25,  15,  5,    0,
-            0,   5,  15,  25,  25,  15,  5,    0,
-            -10,   0,  10,  15,  15,  10,  0,   -10,
-            -15, -10,   0,  10,  10,   0, -10,  -15,
-            -25, -15, -10,    0,  0, -10, -15,  -25,
-        },
-        {
-            -25, -15, -10,    0,  0, -10, -15,  -25,
-            -15, -10,   0,  10,  10,   0, -10,  -15,
-            -10,   0,  10,  15,  15,  10,  0,   -10,
-            0,   5,  15,  25,  25,  15,  5,    0,
-            0,   5,  15,  25,  25,  15,  5,    0,
-            -10,   0,  10,  15,  15,  10,  0,   -10,
-            -15, -10,   0,  10,  10,   0, -10,  -15,
-            -25, -15, -10,    0,  0, -10, -15,  -25,
-        },
-        //ROOK
-		{
-			-10, -10, -10, -10, -10, -10, -10, -10,
-			-10,  0,   0,   0,   0,   0,   0, -10,
-			-10,  0,   0,   0,   0,   0,   0, -10,
-			-10,  0,   0,   0,   0,   0,   0, -10,
-			-10,  0,   0,   0,   0,   0,   0, -10,
-			-10,  0,   0,   0,   0,   0,   0, -10,
-			-10,  0,   0,   0,   0,   0,   0, -10,
-			-10, -10, -10, -10, -10, -10, -10, -10
-		},
-		{
-			-10, -10, -10, -10, -10, -10, -10, -10,
-			-10,  0,   0,   0,   0,   0,   0, -10,
-			-10,  0,   0,   0,   0,   0,   0, -10,
-			-10,  0,   0,   0,   0,   0,   0, -10,
-			-10,  0,   0,   0,   0,   0,   0, -10,
-			-10,  0,   0,   0,   0,   0,   0, -10,
-			-10,  0,   0,   0,   0,   0,   0, -10,
-			-10, -10, -10, -10, -10, -10, -10, -10
-		},
-		//QUEEN
-		{
-			-10, -10, -10, -10, -10, -10, -10, -10,
-			-10,  0,   0,   0,   0,   0,   0, -10,
-			-10,  0,   0,   0,   0,   0,   0, -10,
-			-10,  0,   0,   0,   0,   0,   0, -10,
-			-10,  0,   0,   0,   0,   0,   0, -10,
-			-10,  0,   0,   0,   0,   0,   0, -10,
-			-10,  0,   0,   0,   0,   0,   0, -10,
-			-10, -10, -10, -10, -10, -10, -10, -10
-		},
-		{
-			-10, -10, -10, -10, -10, -10, -10, -10,
-			-10,  0,   0,   0,   0,   0,   0, -10,
-			-10,  0,   0,   0,   0,   0,   0, -10,
-			-10,  0,   0,   0,   0,   0,   0, -10,
-			-10,  0,   0,   0,   0,   0,   0, -10,
-			-10,  0,   0,   0,   0,   0,   0, -10,
-			-10,  0,   0,   0,   0,   0,   0, -10,
-			-10, -10, -10, -10, -10, -10, -10, -10
-		},
-		//KING
-		{
-			-30, -30, -30, -30, -30, -30, -30, -30,
-			-30, -30, -30, -30, -30, -30, -30, -30,
-			-30, -30, -30, -30, -30, -30, -30, -30,
-			-30, -30, -30, -30, -30, -30, -30, -30,
-			-30, -30, -30, -30, -30, -30, -30, -30,
-			-30, -30, -30, -30, -30, -30, -30, -30,
-			-30, -30, -40, -40, -40, -30, -30, -30,
-			10,  10,  20,   0,   0,   0,   20,  10
-		},
-		{
-			-30, -30, -20, -20, -20, -20, -30, -30,
-			-30, -20, -20, -20, -20, -20, -20, -30,
-			-20, -20, -10, -10, -10, -10, -20, -20,
-			-20, -20, -10,   0,   0, -10, -20, -20,
-			-20, -20, -10,   0,   0, -10, -20, -20,
-			-20, -20, -10, -10, -10, -10, -20, -20,
-			-30, -20, -20, -20, -20, -20, -20, -30,
-			-30, -30, -20, -20, -20, -20, -30, -30
-		}
-	};
-
-#ifdef BITBOARD
-	for (int i = 0; i < 64; i++)
-	{
-		if (1)
-		{
-			int j1 = (i ^ 0x38);
-			int j2 = i;
-#else
-	for (int i = 0; i < 128; i++)
-	{
-		if (!(i & 0x88))
-		{
-			int j1 = (i & 0x7) + ((7 - ((i & 0x70) >> 4)) << 3);
-			int j2 = (i & 0x7) + ((i & 0x70) >> 1);
-#endif
-			for (int p = PAWN; p <= KING; p++)
-			{
-				for (int ph = 0; ph < 256; ph++)
-				{
-#ifdef BITBOARD
-					int index1 = i | (ph << 6) | (p << 14);
-					int index2 = index1 | (1 << 17);
-#else
-					int index1 = i | (ph << 7) | (p << 15);
-					int index2 = index1 | (1 << 18);
-#endif
-					positionvalue[index1] = (PV[(p - 1) << 1][j1] * (255 - ph) + PV[((p - 1) << 1) | 1][j1] * ph) / 255;
-					positionvalue[index2] = -(PV[(p - 1) << 1][j2] * (255 - ph) + PV[((p - 1) << 1) | 1][j2] * ph) / 255;
-				}
-			}
-		}
-	}
-	return positionvalue;
-}
-
-
 
 void chessposition::mirror()
 {
@@ -381,6 +208,8 @@ void chessposition::mirror()
 			{
 				newmailbox[mirrorindex] = mailbox[index] ^ S2MMASK;
 				BitboardClear(index, mailbox[index]);
+                if ((mailbox[index] >> 1) == PAWN)
+                    pawnhash ^= zb.boardtable[(index << 4) | mailbox[index]];
 			}
 			else {
 				newmailbox[mirrorindex] = BLANK;
@@ -391,11 +220,13 @@ void chessposition::mirror()
 	for (int i = 0; i < 64; i++)
 	{
 		mailbox[i] = newmailbox[i];
-		if (mailbox[i] != BLANK)
-			BitboardSet(i, mailbox[i]);
+        if (mailbox[i] != BLANK)
+        {
+            BitboardSet(i, mailbox[i]);
+            if ((mailbox[i] >> 1) == PAWN)
+                pawnhash ^= zb.boardtable[(i << 4) | mailbox[i]];
+        }
 	}
-
-	countMaterial();
 
     int newstate = (state & S2MMASK) ^ S2MMASK;
 	if (state & WQCMASK) newstate |= BQCMASK;
@@ -494,32 +325,23 @@ U64 diaga1h8_attacks[64][64];
 U64 diagh1a8_attacks[64][64];
 #endif
 U64 epthelper[64];
-U64 passedPawn[64][2];
-U64 filebarrier[64][2];
-U64 neighbourfiles[64];
-U64 kingshield[64][2];
-U64 filemask[64];
+U64 passedPawnMask[64][2];
+U64 filebarrierMask[64][2];
+U64 neighbourfilesMask[64];
+U64 phalanxMask[64];
+U64 kingshieldMask[64][2];
+U64 fileMask[64];
+U64 rankMask[64];
 int castleindex[64][64] = { 0 };
 
 #ifndef ROTATEDBITBOARD
 // shameless copy from http://chessprogramming.wikispaces.com/Magic+Bitboards#Plain
-#define BISHOPINDEXBITS 9
-#define ROOKINDEXBITS 12
 U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 U64 mRookAttacks[64][1 << ROOKINDEXBITS];
-
-struct SMagic {
-    U64 mask;  // to mask relevant squares of both lines (no outer squares)
-    U64 magic; // magic 64-bit factor
-};
 
 SMagic mBishopTbl[64];
 SMagic mRookTbl[64];
 
-#define MAGICBISHOPINDEX(m,x) (int)((((m) & mBishopTbl[x].mask) * mBishopTbl[x].magic) >> (64 - BISHOPINDEXBITS))
-#define MAGICROOKINDEX(m,x) (int)((((m) & mRookTbl[x].mask) * mRookTbl[x].magic) >> (64 - ROOKINDEXBITS))
-#define MAGICBISHOPATTACKS(m,x) (mBishopAttacks[x][MAGICBISHOPINDEX(m,x)])
-#define MAGICROOKATTACKS(m,x) (mRookAttacks[x][MAGICROOKINDEX(m,x)])
 #endif
 
 
@@ -605,18 +427,26 @@ void initBitmaphelper()
         king_attacks[from] = knight_attacks[from] = 0ULL;
         pawn_attacks_free[from][0] = pawn_attacks_occupied[from][0] = pawn_attacks_free_double[from][0] = 0ULL;
         pawn_attacks_free[from][1] = pawn_attacks_occupied[from][1] = pawn_attacks_free_double[from][1] = 0ULL;
-        passedPawn[from][0] = passedPawn[from][1] = 0ULL;
-        filebarrier[from][0] = filebarrier[from][1] = 0ULL;
-		kingshield[from][0] = kingshield[from][1] = 0ULL;
-        neighbourfiles[from] = 0ULL;
-        filemask[from] = 0ULL;
+        passedPawnMask[from][0] = passedPawnMask[from][1] = 0ULL;
+        filebarrierMask[from][0] = filebarrierMask[from][1] = 0ULL;
+        phalanxMask[from] = 0ULL;
+		kingshieldMask[from][0] = kingshieldMask[from][1] = 0ULL;
+        neighbourfilesMask[from] = 0ULL;
+        fileMask[from] = 0ULL;
+        rankMask[from] = 0ULL;
 
         for (int j = 0; j < 64; j++)
         {
             if (abs(FILE(from) - FILE(j)) == 1)
-                neighbourfiles[from] |= BITSET(j);
+            {
+                neighbourfilesMask[from] |= BITSET(j);
+                if (RANK(from) == RANK(j))
+                    phalanxMask[from] |= BITSET(j);
+            }
             if (FILE(from) == FILE(j))
-                filemask[from] |= BITSET(j);
+                fileMask[from] |= BITSET(j);
+            if (RANK(from) == RANK(j))
+                rankMask[from] |= BITSET(j);
         }
 
         for (int j = 0; j < 8; j++)
@@ -644,18 +474,18 @@ void initBitmaphelper()
             // Captures
             for (int d = -1; d <= 1; d++)
             {
-                to = from + (1 - 2 * s) * 8 + d;
+                to = from + S2MSIGN(s) * 8 + d;
                 if (abs(FILE(from) - FILE(to)) <= 1 && to >= 0 && to < 64)
                 {
                     if (d)
                         pawn_attacks_occupied[from][s] |= BITSET(to);
                     for (int r = to; r >= 0 && r < 64; r += S2MSIGN(s) * 8)
                     {
-                        passedPawn[from][s] |= BITSET(r);
+                        passedPawnMask[from][s] |= BITSET(r);
                         if (!d)
-                            filebarrier[from][s] |= BITSET(r);
+                            filebarrierMask[from][s] |= BITSET(r);
 						if (abs(RANK(from) - RANK(r)) <= 2)
-							kingshield[from][s] |= BITSET(r);
+							kingshieldMask[from][s] |= BITSET(r);
 					}
                 }
             }
@@ -770,7 +600,7 @@ void initBitmaphelper()
 
 chessposition::chessposition()
 {
-    positionvaluetable = GetPositionvalueTable();
+    CreatePositionvalueTable();
 }
 
 
@@ -1014,8 +844,8 @@ int chessposition::getFromFen(const char* sFen)
         fullmovescounter = stoi(token[5]);
 
     actualpath.length = 0;
-    countMaterial();
     hash = zb.getHash();
+    pawnhash = zb.getPawnHash();
     rp.clean();
     rp.addPosition(hash);
     for (int i = 0; i < 14; i++)
@@ -1086,6 +916,7 @@ void chessposition::print()
     printf("info string Halfmoves: %d\n", halfmovescounter);
     printf("info string Fullmoves: %d\n", fullmovescounter);
     printf("info string Hash: %llu (%llx)  (getHash(): %llu)\n", hash, hash, zb.getHash());
+    printf("info string Pawn Hash: %llu (%llx)  (getPawnHash(): %llu)\n", pawnhash, pawnhash, zb.getPawnHash());
     printf("info string Value: %d\n", getValue());
     printf("info string Repetitions: %d\n", rp.getPositionCount(hash));
     printf("info string Phase: %d\n", phase());
@@ -1096,135 +927,6 @@ void chessposition::print()
         printf("info string Moves in current search: %s\n", actualpath.toString().c_str());
 }
 
-
-int chessposition::getValue()
-{
-    // Check for insufficient material using simnple heuristic from chessprogramming site
-    if (!(piece00[WPAWN] | piece00[BPAWN]))
-    {
-        if (!(piece00[WQUEEN] | piece00[BQUEEN] | piece00[WROOK] | piece00[BROOK]))
-        {
-            if (POPCOUNT(piece00[WBISHOP] | piece00[WKNIGHT]) <= 2
-                && POPCOUNT(piece00[BBISHOP] | piece00[BKNIGHT]) <= 2)
-            {
-                bool winpossible = false;
-                // two bishop win if opponent has none
-                if (abs(POPCOUNT(piece00[WBISHOP]) - POPCOUNT(piece00[BBISHOP])) == 2)
-                    winpossible = true;
-                // bishop and knight win against bare king
-                if ((piece00[WBISHOP] && piece00[WKNIGHT] && !(piece00[BBISHOP] | piece00[BKNIGHT]))
-                    || (piece00[BBISHOP] && piece00[BKNIGHT] && !(piece00[WBISHOP] | piece00[WKNIGHT])))
-                    winpossible = true;
-
-                if (!winpossible)
-                    return SCOREDRAW;
-            }
-        }
-    }
-#ifdef DEBUGEVAL
-    debugeval("Material value: %d\n", countMaterial());
-#endif
-    return countMaterial() + getPositionValue();
-}
-
-
-int chessposition::getPositionValue()
-{
-    int index;
-    int ph = phase();
-    int scalephaseto4 = (~ph & 0xff) >> 6;
-    int result = 0;
-#ifdef DEBUGEVAL
-    int positionvalue = 0;
-#endif
-    for (int s = 0; s < 2; s++)
-    {
-        for (int p = PAWN; p <= KING; p++)
-        {
-            PieceCode pc = (p << 1) | s;
-            U64 pb = piece00[pc];
-
-            while (LSB(index, pb))
-            {
-                int pvtindex = index | (ph << 6) | (p << 14) | (s << 17);
-                result += *(positionvaluetable + pvtindex);
-#ifdef DEBUGEVAL
-                positionvalue += *(positionvaluetable + pvtindex);
-#endif
-                pb ^= BITSET(index);
-                if (p == PAWN)
-                {
-                    if (!(passedPawn[index][s] & piece00[pc ^ S2MMASK]))
-                    {
-                        // passed pawn
-                        result += passedpawnbonus[s][RANK(index)];
-#ifdef DEBUGEVAL
-                        debugeval("Passed Pawn Bonus: %d\n", (S2MSIGN(s) * 40));
-#endif
-                    }
-                    if (!(piece00[pc] & neighbourfiles[index]))
-                    {
-                        // isolated pawn
-                        result -= S2MSIGN(s) * 20;
-#ifdef DEBUGEVAL
-                        debugeval("Isolated Pawn Penalty: %d\n", -(S2MSIGN(s) * 20));
-#endif
-                    }
-                    else if (POPCOUNT((piece00[pc] & filemask[index])) > 1)
-                    {
-                        // double pawn
-                        result -= S2MSIGN(s) * 15;
-#ifdef DEBUGEVAL
-                        debugeval("Double Pawn Penalty: %d\n", -(S2MSIGN(s) * 15));
-#endif
-                    }
-                }
-                if (shifting[p] & 0x2) // rook and queen
-                {
-                    if (!(filebarrier[index][s] & piece00[WPAWN | s]))
-                    {
-                        // free file
-                        result += S2MSIGN(s) * 15;
-#ifdef DEBUGEVAL
-                        debugeval("Slider on free file Bonus: %d\n", (S2MSIGN(s) * 15));
-#endif
-                    }
-                }
-
-                if (shifting[p] & 0x1) // bishop and queen)
-                {
-#ifdef ROTATEDBITBOARD
-                    U64 diagmobility = ~occupied00[s]
-                        & ((diaga1h8_attacks[index][((occupieda1h8[0] | occupieda1h8[1]) >> rota1h8shift[index]) & 0x3f])
-                            | (diagh1a8_attacks[index][((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[index]) & 0x3f]));
-#else
-                    U64 diagmobility = ~occupied00[s]
-                        & (mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)]);
-#endif
-                    result += (S2MSIGN(s) * POPCOUNT(diagmobility) * scalephaseto4);
-                }
-            }
-        }
-    }
-	// some kind of king safety
-	result += (255 - ph) * (POPCOUNT(piece00[WPAWN] & kingshield[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshield[kingpos[1]][1])) * 15 / 255;
-#ifdef DEBUGEVAL
-    debugeval("King safety: %d\n", (255 - ph) * (POPCOUNT(piece00[WPAWN] & kingshield[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshield[kingpos[1]][1])) * 15 / 255);
-    debugeval("Positional value: %d\n", positionvalue);
-#endif
-    return result;
-}
-
-
-int chessposition::countMaterial()
-{
-    int value = 0;
-    for (int p = PAWN; p < KING; p++)
-    {
-        value += (POPCOUNT(piece00[p << 1]) - POPCOUNT(piece00[(p << 1) | 1])) * materialvalue[p];
-    }
-	return value;
-}
 
 
 bool chessposition::playMove(chessmove *cm)
@@ -1243,6 +945,7 @@ bool chessposition::playMove(chessmove *cm)
 
     movestack[mstop].ept = ept;
     movestack[mstop].hash = hash;
+    movestack[mstop].pawnhash = pawnhash;
     movestack[mstop].state = state;
     movestack[mstop].kingpos[0] = kingpos[0];
     movestack[mstop].kingpos[1] = kingpos[1];
@@ -1255,6 +958,8 @@ bool chessposition::playMove(chessmove *cm)
     if (capture != BLANK && !GETEPCAPTURE(cm->code))
     {
         hash ^= zb.boardtable[(to << 4) | capture];
+        if ((capture >> 1) == PAWN)
+            pawnhash ^= zb.boardtable[(to << 4) | capture];
         BitboardClear(to, capture);
         halfmovescounter = 0;
     }
@@ -1268,7 +973,9 @@ bool chessposition::playMove(chessmove *cm)
 		mailbox[to] = promote;
 		BitboardClear(from, pfrom);
 		BitboardSet(to, promote);
-	}
+        // just double the hash-switch for target to make the pawn vanish
+        pawnhash ^= zb.boardtable[(to << 4) | mailbox[to]];
+    }
 
     hash ^= zb.boardtable[(to << 4) | mailbox[to]];
     hash ^= zb.boardtable[(from << 4) | pfrom];
@@ -1278,12 +985,15 @@ bool chessposition::playMove(chessmove *cm)
     /* PAWN specials */
     if (ptype == PAWN)
     {
+        pawnhash ^= zb.boardtable[(to << 4) | mailbox[to]];
+        pawnhash ^= zb.boardtable[(from << 4) | pfrom];
         halfmovescounter = 0;
 
         if (ept && to == ept)
         {
             int epfield = (from & 0x38) | (to & 0x07);
             hash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
+            pawnhash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
 
             BitboardClear(epfield, (pfrom ^ S2MMASK));
             mailbox[epfield] = BLANK;
@@ -1365,6 +1075,7 @@ void chessposition::unplayMove(chessmove *cm)
     mstop--;
     ept = movestack[mstop].ept;
     hash = movestack[mstop].hash;
+    pawnhash = movestack[mstop].pawnhash;
     state = movestack[mstop].state;
     kingpos[0] = movestack[mstop].kingpos[0];
     kingpos[1] = movestack[mstop].kingpos[1];
@@ -1889,7 +1600,7 @@ chessposition::chessposition()
 {
     for (int i = 0; i < 128; i++)
         board[i] = BLANK;
-    positionvaluetable = GetPositionvalueTable();
+    CreatePositionvalueTable();
 }
 
 
@@ -1900,7 +1611,7 @@ chessposition::~chessposition()
 
 bool chessposition::operator==(chessposition p)
 {
-    bool result = (state == p.state && ept == p.ept && halfmovescounter == p.halfmovescounter && value == p.value && hash == p.hash
+    bool result = (state == p.state && ept == p.ept && halfmovescounter == p.halfmovescounter && hash == p.hash
         && kingpos[0] == p.kingpos[0] && kingpos[1] == p.kingpos[1]);
     if (result)
     {
@@ -2395,7 +2106,7 @@ void chessposition::simpleUnplay(int from, int to, PieceCode capture)
 bool chessposition::playMove(chessmove *cm)
 {
     movestack[mstop].ept = ept;
-    movestack[mstop].value = value;
+    //movestack[mstop].value = value;
     movestack[mstop].hash = hash;
     movestack[mstop].state = state;
     movestack[mstop].kingpos[0] = kingpos[0];
@@ -2414,15 +2125,11 @@ bool chessposition::playMove(chessmove *cm)
 
     if (promote != BLANK)
     {
-        int valdiff = -materialvalue[PAWN] + materialvalue[promote >> 1];
-        value += (state & S2MMASK ? -valdiff : valdiff);
         piecenum[board[from]]--;
         piecenum[promote]++;
     }
     if (Piece(to) != BLANKTYPE)
     {
-        int valdiff = materialvalue[Piece(to)];
-        value += (state & S2MMASK ? -valdiff : valdiff);
         piecenum[board[to]]--;
         halfmovescounter = 0;
         hash ^= zb.boardtable[(to << 4) | board[to]];
@@ -2454,7 +2161,6 @@ bool chessposition::playMove(chessmove *cm)
         else if (ept && to == ept)
         {
             int epfield = (from & 0x70) | (to & 0x07);
-            value += (state & S2MMASK ? -materialvalue[PAWN] : materialvalue[PAWN]);
             piecenum[board[epfield]]--;
             // Fix hash regarding ep capture
             hash ^= zb.boardtable[(epfield << 4) | board[epfield]];
@@ -2554,7 +2260,7 @@ void chessposition::unplayMove(chessmove *cm)
 
     mstop--;
     ept = movestack[mstop].ept;
-    value = movestack[mstop].value;
+    //value = movestack[mstop].value;
     hash = movestack[mstop].hash;
     state = movestack[mstop].state;
     kingpos[0] = movestack[mstop].kingpos[0];
@@ -2623,27 +2329,6 @@ void chessposition::getpvline(int depth)
     }
     for (int i = pvline.length; i;)
         unplayMove(&(pvline.move[--i]));
-}
-
-
-void chessposition::countMaterial()
-{
-    value = 0;
-    for (int i = 0; i < 14; i++)
-        piecenum[i] = 0;
-    for (int r = 0; r < 8; r++)
-    {
-        for (int f = 0; f < 8; f++)
-        {
-            PieceCode pc = board[(r << 4) | f];
-            if (pc != BLANK)
-            {
-                int col = pc & S2MMASK;
-                piecenum[pc]++;
-                value += (col ? -materialvalue[pc >> 1] : materialvalue[pc >> 1]);
-            }
-        }
-    }
 }
 
 
@@ -2752,105 +2437,6 @@ int chessposition::see(int from, int to)
     return v;
 }
 
-/* Value of the position from whites pov */
-int chessposition::getPositionValue()
-{
-    int ph = phase();
-    int result = 0;
-    int firstpawn[2][10] = { 0 };
-    int lastpawn[2][10] = { 0 };
-    int i;
-
-    for (int f = 0; f < 8; f++)
-    {
-        int pawnsonfile[2] = { 0,0 };
-        for (int r = 0; r < 8; r++)
-        {
-            i = (r << 4) | f;
-            if (Piece(i) == PAWN)
-            {
-                int col = board[i] & S2MMASK;
-                if (++pawnsonfile[col] > 1)
-                    // double pawn penalty
-                    result += (col ? -15 : 15);
-                if (col == 1 || !lastpawn[col][f + 1])
-                    lastpawn[col][f + 1] = r;
-                if (col == 0 || !firstpawn[col][f + 1])
-                    firstpawn[col][f + 1] = r;
-            }
-        }
-        for (int r = 0; r < 8; r++)
-        {
-            i = (r << 4) | f;
-            if (board[i] != BLANK)
-            {
-                PieceType pt = Piece(i);
-                int col = board[i] & S2MMASK;
-                int index = i | (ph << 7) | (pt << 15) | (col << 18);
-                result += *(positionvaluetable + index);
-                if ((pt == ROOK || pt == QUEEN) && (firstpawn[col][f + 1] == 0 || ((col && (firstpawn[col][f + 1] > r)) || (!col && (firstpawn[col][f + 1] < r)))))
-                    // ROOK on free file
-                    result += (col ? -15 : 15);
-
-            }
-        }
-    }
-    for (int f = 0; f < 8; f++)
-    {
-        for (int col = 0; col < 2; col++)
-        {
-            int opcol = 1 - col;
-            int factor = (col ? -1 : 1);
-            int pawnrank = firstpawn[col][f + 1];
-            if (pawnrank)
-            {
-                // check for passed pawn
-                if ((!lastpawn[opcol][f] || factor * lastpawn[opcol][f] <= factor * pawnrank)
-                    && (!lastpawn[opcol][f + 1] || factor * lastpawn[opcol][f + 1] <= factor * pawnrank)
-                    && (!lastpawn[opcol][f + 2] || factor * lastpawn[opcol][f + 2] <= factor * pawnrank))
-                    //result += (factor * 20);
-                    result += passedpawnbonus[col][pawnrank];
-            }
-            if (pawnrank && !firstpawn[col][f] && !firstpawn[col][f + 2])
-                // isolated pawn
-                result -= (factor * 20);
-        }
-    }
-
-    return result;
-}
-
-
-int chessposition::getValue()
-{
-    // Check for insufficient material using simnple heuristic from chessprogramming site
-    if (piecenum[WPAWN] == 0 && piecenum[BPAWN] == 0)
-    {
-        if (piecenum[WQUEEN] == 0 && piecenum[BQUEEN] == 0 && piecenum[WROOK] == 0 && piecenum[BROOK] == 0)
-        {
-            if (piecenum[WBISHOP] + piecenum[WKNIGHT] <= 2
-                && piecenum[BBISHOP] + piecenum[BKNIGHT] <= 2)
-            {
-                bool winpossible = false;
-                // two bishop win if opponent has none
-                if (abs(piecenum[WBISHOP] - piecenum[BBISHOP]) == 2)
-                    winpossible = true;
-                // bishop and knight win against bare king
-                if (piecenum[WBISHOP] * piecenum[WKNIGHT] > piecenum[BBISHOP] + piecenum[BKNIGHT]
-                    || piecenum[BBISHOP] * piecenum[BKNIGHT] > piecenum[WBISHOP] + piecenum[WKNIGHT])
-                    winpossible = true;
-
-                if (!winpossible)
-                    return SCOREDRAW;
-            }
-        }
-    }
-
-    int materialVal = value;
-    int positionVal = getPositionValue();
-    return materialVal + positionVal;
-}
-
 
 /* test the actualmove for three-fold-repetition as the repetition table may give false positive due to table collisions */
 bool chessposition::testRepetiton()
@@ -2903,6 +2489,7 @@ engine::engine()
 #endif
 
     tp.pos = &pos;
+    pwnhsh.pos = &pos;
 #ifdef BITBOARD
 	initBitmaphelper();
 #endif
@@ -2947,7 +2534,8 @@ void engine::setOption(string sName, string sValue)
     }
     if (resetTp)
     {
-        tp.setSize(sizeOfTp);
+        int restMb = max (16, tp.setSize(sizeOfTp));
+        pwnhsh.setSize(restMb);
     }
     if (sName == "move overhead")
     {

@@ -234,16 +234,100 @@ const unsigned int lva[] = { 5 << 26, 4 << 26, 3 << 26, 3 << 26, 2 << 26, 1 << 2
 #define GETCASTLE(x) (((x) & 0xf0000000) >> 28)
 #endif
 
+#ifdef BITBOARD
+// index -> bitboard with only index bit set; use BITSET(i) macro
+extern U64 mybitset[64];
+
+// passedPawnMask[18][WHITE]:
+// 01110000
+// 01110000
+// 01110000
+// 01110000
+// 01110000
+// 00o00000
+// 00000000
+// 00000000
+extern U64 passedPawnMask[64][2];
+
+// filebarrierMask[18][WHITE]:
+// 00100000
+// 00100000
+// 00100000
+// 00100000
+// 00100000
+// 00o00000
+// 00000000
+// 00000000
+extern U64 filebarrierMask[64][2];
+
+// neighbourfilesMask[18]:
+// 01010000
+// 01010000
+// 01010000
+// 01010000
+// 01010000
+// 01o10000
+// 01010000
+// 01010000
+extern U64 neighbourfilesMask[64];
+
+// phalanxMask[18]:
+// 00000000
+// 00000000
+// 00000000
+// 00000000
+// 00000000
+// 0xox0000
+// 00000000
+// 000000o0
+extern U64 phalanxMask[64];
+
+// kingshieldMask[6][WHITE]:
+// 00000000
+// 00000000
+// 00000000
+// 00000000
+// 00000000
+// 00000xxx
+// 00000xxx
+// 000000o0
+extern U64 kingshieldMask[64][2];
+
+// fileMask[18]:
+// 00100000
+// 00100000
+// 00100000
+// 00100000
+// 00100000
+// 00x00000
+// 00100000
+// 00100000
+extern U64 fileMask[64];
+
+// rankMask[18]:
+// 00000000
+// 00000000
+// 00000000
+// 00000000
+// 00000000
+// 11x11111
+// 00000000
+// 00000000
+extern U64 rankMask[64];
+
+#endif
+
 struct chessmovestack
 {
     int state;
     int ept;
     int kingpos[2];
     unsigned long long hash;
+    unsigned long long pawnhash;
     int halfmovescounter;
     int fullmovescounter;
 #ifndef BITBOARD
-    int value;
+    //int value;
     int numFieldchanges;
     PieceCode code[4];
     int index[4];
@@ -294,7 +378,33 @@ public:
 
 
 #ifdef BITBOARD
-#ifdef ROTATEDBITBOARD
+
+extern U64 pawn_attacks_occupied[64][2];
+
+#define BOARDSIZE 64
+
+#ifndef ROTATEDBITBOARD
+
+struct SMagic {
+    U64 mask;  // to mask relevant squares of both lines (no outer squares)
+    U64 magic; // magic 64-bit factor
+};
+
+extern SMagic mBishopTbl[64];
+extern SMagic mRookTbl[64];
+
+#define BISHOPINDEXBITS 9
+#define ROOKINDEXBITS 12
+#define MAGICBISHOPINDEX(m,x) (int)((((m) & mBishopTbl[x].mask) * mBishopTbl[x].magic) >> (64 - BISHOPINDEXBITS))
+#define MAGICROOKINDEX(m,x) (int)((((m) & mRookTbl[x].mask) * mRookTbl[x].magic) >> (64 - ROOKINDEXBITS))
+#define MAGICBISHOPATTACKS(m,x) (mBishopAttacks[x][MAGICBISHOPINDEX(m,x)])
+#define MAGICROOKATTACKS(m,x) (mRookAttacks[x][MAGICROOKINDEX(m,x)])
+
+extern U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
+extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
+
+#else // ROTATEDBITBOARD
+
 const int rot00shift[64] = {
      1,  1,  1,  1,  1,  1,  1,  1,
      9,  9,  9,  9,  9,  9,  9,  9,
@@ -393,6 +503,7 @@ public:
     int ept;
     int kingpos[2];
     unsigned long long hash;
+    unsigned long long pawnhash;
     int ply;
     int halfmovescounter = 0;
     int fullmovescounter = 0;
@@ -405,6 +516,7 @@ public:
     unsigned int history[14][64];
     unsigned long long debughash = 0;
     int *positionvaluetable; // value tables for both sides, 7 PieceTypes and 256 phase variations 
+    int ph; // to store the phase during different evaluation functions
 
     chessposition();
     ~chessposition();
@@ -439,10 +551,11 @@ public:
     void simplePlay(int from, int to);
     void simpleUnplay(int from, int to, PieceCode capture);
     void getpvline(int depth);
-    int countMaterial();
+    //int countMaterial();
     int getPositionValue();
+    int getPawnValue();
     int getValue();
-    int* GetPositionvalueTable();
+    void CreatePositionvalueTable();
 #ifdef DEBUG
     void debug(int depth, const char* format, ...);
 #endif
@@ -455,6 +568,8 @@ public:
 
 #else //BITBOARD
 
+#define BOARDSIZE 128
+
 class chessposition
 {
 public:
@@ -463,7 +578,8 @@ public:
     int ept;
     int kingpos[2];
     unsigned long long hash;
-    int value;
+    unsigned long long pawnhash;
+    //int value;
     int ply;
     int piecenum[14];
     int halfmovescounter = 0;
@@ -477,6 +593,7 @@ public:
     unsigned int history[14][128];
     unsigned long long debughash = 0;
     int *positionvaluetable;     // value tables for both sides, 7 PieceTypes and 256 phase variations 
+    int ph; // to store the phase during different evaluation functions
 
     chessposition();
     ~chessposition();
@@ -498,9 +615,7 @@ public:
     void testMove(chessmovelist *movelist, int from, int to, PieceCode promote);
     chessmovelist* getMoves();
     bool playMove(chessmove *cm);
-    void playMoveFast(chessmove *cm);
     void unplayMove(chessmove *cm);
-    void unplayMoveFast(chessmove *cm);
     void playNullMove();
     void unplayNullMove();
     void simplePlay(int from, int to);
@@ -508,8 +623,9 @@ public:
     void getpvline(int depth);
     void countMaterial();
     int getPositionValue();
+    int getPawnValue();
     int getValue();
-    int* GetPositionvalueTable();
+    void CreatePositionvalueTable();
 #ifdef DEBUG
     void debug(int depth, const char* format, ...);
 #endif
@@ -521,6 +637,10 @@ public:
 };
 
 #endif
+
+extern int squaredistance[BOARDSIZE][BOARDSIZE];
+extern int kingdanger[BOARDSIZE][BOARDSIZE][7];
+
 
 #define ENGINERUN 0
 #define ENGINEWANTSTOP 1
@@ -615,6 +735,7 @@ public:
     zobrist();
     unsigned long long getRnd();
     u8 getHash();
+    u8 getPawnHash();
     u8 modHash(int i);
 };
 
@@ -635,7 +756,7 @@ public:
     U64 sizemask;
     chessposition *pos;
     ~transposition();
-    void setSize(int sizeMb);
+    int setSize(int sizeMb);    // returns the number of Mb not used by allignment
     void clean();
     bool testHash();
     void addHash(int val, int valtype, int depth, unsigned long move);
@@ -645,6 +766,33 @@ public:
     int getValtype();
     int getDepth();
     class chessmove getMove();
+    unsigned int getUsedinPermill();
+};
+
+typedef struct pawnhashentry {
+    unsigned long hashupper;
+    U64 passedpawnbb[2];
+    U64 isolatedpawnbb[2];
+    U64 backwardpawnbb[2];
+    short value;
+} S_PAWNHASHENTRY;
+
+class pawnhash
+{
+    S_PAWNHASHENTRY *table;
+public:
+#ifdef DEBUG
+    U64 used;
+    int hit;
+    int query;
+#endif
+    U64 size;
+    U64 sizemask;
+    chessposition *pos;
+    ~pawnhash();
+    void setSize(int sizeMb);
+    void clean();
+    bool probeHash(pawnhashentry **entry);
     unsigned int getUsedinPermill();
 };
 
@@ -661,6 +809,8 @@ public:
 extern zobrist zb;
 extern repetition rp;
 extern transposition tp;
+extern pawnhash pwnhsh;
+
 
 /*
 http://stackoverflow.com/questions/29990116/alpha-beta-prunning-with-transposition-table-iterative-deepening
