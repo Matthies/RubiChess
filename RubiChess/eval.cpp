@@ -470,16 +470,15 @@ int chessposition::getPositionValue()
 
     for (int f = 0; f < 8; f++)
     {
-        int pawnsonfile[2] = { 0,0 };
         for (int r = 0; r < 8; r++)
         {
             i = (r << 4) | f;
             if (Piece(i) == PAWN)
             {
                 int col = board[i] & S2MMASK;
-                if (++pawnsonfile[col] > 1)
+                if (board[i + S2MSIGN(col) * 16] == board[i])
                     // double pawn penalty
-                    result += (col ? -15 : 15);
+                    result += S2MSIGN(col) * doublepawnpenalty;
                 if (col == 1 || !lastpawn[col][f + 1])
                     lastpawn[col][f + 1] = r;
                 if (col == 0 || !firstpawn[col][f + 1])
@@ -515,7 +514,8 @@ int chessposition::getPositionValue()
                 if ((!lastpawn[opcol][f] || S2MSIGN(col) * lastpawn[opcol][f] <= S2MSIGN(col) * pawnrank)
                         && (!lastpawn[opcol][f + 1] || S2MSIGN(col) * lastpawn[opcol][f + 1] <= S2MSIGN(col) * pawnrank)
                         && (!lastpawn[opcol][f + 2] || S2MSIGN(col) * lastpawn[opcol][f + 2] <= S2MSIGN(col) * pawnrank))
-                    result += passedpawnbonus[col][pawnrank];
+                    //result += passedpawnbonus[col][pawnrank];
+                    result += ph * passedpawnbonus[col][pawnrank] / 256;
             }
             if (pawnrank && !firstpawn[col][f] && !firstpawn[col][f + 2])
                 // isolated pawn
