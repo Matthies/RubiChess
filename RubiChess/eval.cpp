@@ -495,7 +495,6 @@ int chessposition::getPositionValue()
                 int col = board[i] & S2MMASK;
                 int index = i | (ph << 7) | (pt << 15) | (col << 18);
                 result += *(positionvaluetable + index);
-                result += S2MSIGN(col) * kingdanger[index][pos.kingpos[1 - col]][pt];
 
                 if ((pt == ROOK || pt == QUEEN) && (firstpawn[col][f + 1] == 0 || ((col && (firstpawn[col][f + 1] > r)) || (!col && (firstpawn[col][f + 1] < r)))))
                     // ROOK on free file
