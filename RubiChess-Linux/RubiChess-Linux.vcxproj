@@ -159,6 +159,9 @@
     <Link>
       <LibraryDependencies>pthread;%(LibraryDependencies)</LibraryDependencies>
     </Link>
+    <ClCompile>
+      <PreprocessorDefinitions>BITBOARD;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Board88-Debug|x86'">
     <Link>

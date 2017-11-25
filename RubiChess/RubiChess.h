@@ -769,7 +769,7 @@ public:
 };
 
 typedef struct pawnhashentry {
-    unsigned long hashupper;
+   uint32_t hashupper;
     U64 passedpawnbb[2];
     U64 isolatedpawnbb[2];
     U64 backwardpawnbb[2];

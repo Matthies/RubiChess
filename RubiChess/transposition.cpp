@@ -191,7 +191,7 @@ int transposition::setSize(int sizeMb)
     if (MSB(msb, maxsize))
     {
         size = (1ULL << msb);
-        restMb = (int)((maxsize ^ size) >> 20) * sizeof(S_TRANSPOSITIONENTRY);  // return rest for pawnhash
+        restMb = (int)(((maxsize ^ size) >> 20) * sizeof(S_TRANSPOSITIONENTRY));  // return rest for pawnhash
     }
 
     sizemask = size - 1;
@@ -380,7 +380,7 @@ bool pawnhash::probeHash(pawnhashentry **entry)
 #endif
         return true;
     }
-    (*entry)->hashupper = (hash >> 32);
+    (*entry)->hashupper = (uint32_t)(hash >> 32);
     return false;
 }
 
