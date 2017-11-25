@@ -104,7 +104,7 @@ chessmove::chessmove()
     code = 0;
 }
 
-chessmove::chessmove(unsigned long newcode)
+chessmove::chessmove(uint32_t newcode)
 {
     code = newcode;
 }

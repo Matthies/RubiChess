@@ -91,12 +91,12 @@ int getQuiescence(int alpha, int beta, int depth)
 int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 {
     int score;
-    unsigned long hashmovecode = 0;
+    uint32_t hashmovecode = 0;
     int  LegalMoves = 0;
     bool isLegal;
     bool isCheck;
     int bestscore = SHRT_MIN + 1;
-    unsigned long bestcode = 0;
+    uint32_t bestcode = 0;
     int eval_type = HASHALPHA;
     chessmovelist* newmoves;
     chessmove *m;
@@ -321,7 +321,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 int rootsearch(int alpha, int beta, int depth)
 {
     int score;
-    unsigned long hashmovecode = 0;
+    uint32_t hashmovecode = 0;
     int  LegalMoves = 0;
     bool isLegal;
     bool isCheck;

@@ -339,11 +339,11 @@ class chessmove
 {
 public:
     // pcpcepepepepccccppppfffffftttttt
-    unsigned long code;
+    uint32_t code;
     unsigned int value;
 
     chessmove();
-    chessmove(unsigned long code);
+    chessmove(uint32_t code);
 #ifdef BITBOARD
     chessmove(int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
     chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
@@ -551,7 +551,6 @@ public:
     void simplePlay(int from, int to);
     void simpleUnplay(int from, int to, PieceCode capture);
     void getpvline(int depth);
-    //int countMaterial();
     int getPositionValue();
     int getPawnValue();
     int getValue();
@@ -740,8 +739,8 @@ public:
 };
 
 typedef struct transpositionentry {
-    unsigned long hashupper;
-    unsigned long movecode;
+    uint32_t hashupper;
+    uint32_t movecode;
     short value;
     unsigned char depth;
     char flag;
@@ -759,9 +758,9 @@ public:
     int setSize(int sizeMb);    // returns the number of Mb not used by allignment
     void clean();
     bool testHash();
-    void addHash(int val, int valtype, int depth, unsigned long move);
+    void addHash(int val, int valtype, int depth, uint32_t move);
     void printHashentry();
-    bool probeHash(int *val, unsigned long *movecode, int depth, int alpha, int beta);
+    bool probeHash(int *val, uint32_t *movecode, int depth, int alpha, int beta);
     short getValue();
     int getValtype();
     int getDepth();

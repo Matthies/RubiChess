@@ -222,7 +222,7 @@ unsigned int transposition::getUsedinPermill()
 }
 
 
-void transposition::addHash(int val, int valtype, int depth, unsigned long move)
+void transposition::addHash(int val, int valtype, int depth, uint32_t move)
 {
     unsigned long long hash = pos->hash;
     unsigned long long index = hash & sizemask;
@@ -230,7 +230,7 @@ void transposition::addHash(int val, int valtype, int depth, unsigned long move)
 
     if (data->hashupper == 0)
 		used++;
-    data->hashupper = (unsigned long)(hash >> 32);
+    data->hashupper = (uint32_t)(hash >> 32);
     data->depth = (unsigned char)depth;
     if (MATEFORME(val))
         val += pos->ply;
@@ -262,7 +262,7 @@ void transposition::printHashentry()
 }
 
 
-bool transposition::probeHash(int *val, unsigned long *movecode, int depth, int alpha, int beta)
+bool transposition::probeHash(int *val, uint32_t *movecode, int depth, int alpha, int beta)
 {
     unsigned long long hash = pos->hash;
     unsigned long long index = hash & sizemask;
