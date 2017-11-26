@@ -1,6 +1,6 @@
 #pragma once
 
-#define VERNUM "0.6"
+#define VERNUM "0.7-dev"
 
 #if 0
 #define DEBUG

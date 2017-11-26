@@ -1,5 +1,6 @@
 ChangeLog
 =========
+0.7 (release 201x - xx - xx) :
 
 0.6 (release 2017 - 11 - 26) :
     - Store best move in transposition table even for beta cutoff which is important for move ordering
