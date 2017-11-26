@@ -1,7 +1,7 @@
 ChangeLog
 =========
 
-0.6 (release 201x - xx - xx) :
+0.6 (release 2017 - 11 - 26) :
     - Store best move in transposition table even for beta cutoff which is important for move ordering
     - New magic bitboard implementation about 24 % faster than rotating bitboards (still compilable via define)
     - Switched to fail soft environment
@@ -9,6 +9,7 @@ ChangeLog
     - Simplified/fixed quiescence search (again)
 	- Introduced LMR (quite simple right now)
 	- Improved sudden death time management again; ELO in 10+0.1 is now almost equal to 40/10
+	- Improved evaluation of pawns now using a pawn hash (only used in Bitboard version)
 
 0.5 (release 2017 - 09 - 29) :
     - Moved undo data from chessmove struct to a static stack which speeds up playing moves
