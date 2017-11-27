@@ -65,6 +65,7 @@ using namespace std;
 #include <array>
 #include <bitset>
 #include <limits.h>
+#include <math.h>
 
 
 #ifdef _WIN32
