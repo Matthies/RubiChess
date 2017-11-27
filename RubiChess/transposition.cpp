@@ -187,7 +187,7 @@ int transposition::setSize(int sizeMb)
     int msb = 0;
     if (size > 0)
         delete table;
-    U64 maxsize = (sizeMb << 20) / sizeof(S_TRANSPOSITIONENTRY);
+    U64 maxsize = ((U64)sizeMb << 20) / sizeof(S_TRANSPOSITIONENTRY);
     if (MSB(msb, maxsize))
     {
         size = (1ULL << msb);
@@ -346,7 +346,7 @@ void pawnhash::setSize(int sizeMb)
     int msb = 0;
     if (size > 0)
         delete table;
-    size = (sizeMb << 20) / sizeof(S_PAWNHASHENTRY);
+    size = ((U64)sizeMb << 20) / sizeof(S_PAWNHASHENTRY);
     if (MSB(msb, size))
         size = (1ULL << msb);
 
