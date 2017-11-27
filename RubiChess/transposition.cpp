@@ -39,28 +39,28 @@ zobrist::zobrist()
 #endif
     }
 #ifdef BITBOARD
-	// make hashing simpler but stay compatible to board88
-	unsigned long long castle[4];
-	unsigned long long ep[8];
-	for (i = 0; i < 4; i++)
-		castle[i] = getRnd();
-	for (i = 0; i < 8; i++)
-		ep[i] = getRnd();
-	for (i = 0; i < 32; i++)
-	{
-		cstl[i] = 0ULL;
-		for (j = 0; j < 4; j++)
-		{
-			if (i & (1 << (j+1)))
-				cstl[i] ^= castle[j];
-		}
-	}
-	for (i = 0; i < 64; i++)
-	{
-		ept[i] = 0ULL;
-		if (RANK(i) == 2 || RANK(i) == 5)
-			ept[i] = ep[FILE(i)];
-	}
+    // make hashing simpler but stay compatible to board88
+    unsigned long long castle[4];
+    unsigned long long ep[8];
+    for (i = 0; i < 4; i++)
+        castle[i] = getRnd();
+    for (i = 0; i < 8; i++)
+        ep[i] = getRnd();
+    for (i = 0; i < 32; i++)
+    {
+        cstl[i] = 0ULL;
+        for (j = 0; j < 4; j++)
+        {
+            if (i & (1 << (j+1)))
+                cstl[i] ^= castle[j];
+        }
+    }
+    for (i = 0; i < 64; i++)
+    {
+        ept[i] = 0ULL;
+        if (RANK(i) == 2 || RANK(i) == 5)
+            ept[i] = ep[FILE(i)];
+    }
 
 #else
     for (i = 0; i < 4; i++)
@@ -103,8 +103,8 @@ u8 zobrist::getHash()
     if (state & S2MMASK)
         hash ^= s2m;
 
-	hash ^= cstl[state & CASTLEMASK];
-	hash ^= ept[pos.ept];
+    hash ^= cstl[state & CASTLEMASK];
+    hash ^= ept[pos.ept];
 
     return hash;
 }
@@ -202,8 +202,8 @@ int transposition::setSize(int sizeMb)
 
 void transposition::clean()
 {
-	memset(table, 0, (size_t)(size * sizeof(S_TRANSPOSITIONENTRY)));
-	used = 0;
+    memset(table, 0, (size_t)(size * sizeof(S_TRANSPOSITIONENTRY)));
+    used = 0;
 }
 
 bool transposition::testHash()
@@ -216,9 +216,9 @@ bool transposition::testHash()
 unsigned int transposition::getUsedinPermill()
 {
     if (size > 0)
-		return (unsigned int) (used * 1000 / size);
-	else
-		return 0;
+        return (unsigned int) (used * 1000 / size);
+    else
+        return 0;
 }
 
 
@@ -229,7 +229,7 @@ void transposition::addHash(int val, int valtype, int depth, uint32_t move)
     S_TRANSPOSITIONENTRY *data = &table[index];
 
     if (data->hashupper == 0)
-		used++;
+        used++;
     data->hashupper = (uint32_t)(hash >> 32);
     data->depth = (unsigned char)depth;
     if (MATEFORME(val))
@@ -399,22 +399,22 @@ unsigned int pawnhash::getUsedinPermill()
 
 void repetition::clean()
 {
-	memset(table, 0, 0x10000);
+    memset(table, 0, 0x10000);
 }
 
 void repetition::addPosition(unsigned long long hash)
 {
-	table[hash & 0xffff]++;
+    table[hash & 0xffff]++;
 }
 
 void repetition::removePosition(unsigned long long hash)
 {
-	table[hash & 0xffff]--;
+    table[hash & 0xffff]--;
 }
 
 int repetition::getPositionCount(unsigned long long hash)
 {
-	return table[hash & 0xffff];
+    return table[hash & 0xffff];
 }
 
 repetition rp;
