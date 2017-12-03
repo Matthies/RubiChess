@@ -99,8 +99,15 @@ void Sleep(long x);
 #define MSB(i,x) (!(x) ? false : (i = (63 - __builtin_clzll(x)), true))
 #define POPCOUNT(x) __builtin_popcountll(x)
 #endif
+#ifdef BITBOARD
 #define RANK(x) ((x) >> 3)
 #define FILE(x) ((x) & 0x7)
+#define INDEX(r,f) (((r) << 3) | (f))
+#else
+#define RANK(x) ((x) >> 4)
+#define FILE(x) ((x) & 0x7)
+#define INDEX(r, f) (((r) << 4) | (f))
+#endif
 #define PROMOTERANK(x) (RANK(x) == 0 || RANK(x) == 7)
 #define OUTERFILE(x) (FILE(x) == 0 || FILE(x) == 7)
 #define ISNEIGHBOUR(x,y) ((x) >= 0 && (x) < 64 && (y) >= 0 && (y) < 64 && abs(RANK(x) - RANK(y)) <= 1 && abs(FILE(x) - FILE(y)) <= 1)
@@ -127,6 +134,7 @@ class chessposition;
 //
 vector<string> SplitString(const char* s);
 unsigned char AlgebraicToIndex(string s, int base);
+string IndexToAlgebraic(int i);
 string AlgebraicFromShort(string s);
 void BitboardDraw(U64 b);
 U64 getTime();
@@ -528,6 +536,7 @@ public:
     void BitboardMove(int from, int to, PieceCode p);
     void BitboardPrint(U64 b);
     int getFromFen(const char* sFen);
+    string toFen();
     bool applyMove(string s);
     void print();
     int phase();
@@ -573,7 +582,7 @@ public:
 class chessposition
 {
 public:
-    PieceCode board[128];
+    PieceCode mailbox[128];
     int state;
     int ept;
     int kingpos[2];

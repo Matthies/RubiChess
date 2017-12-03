@@ -475,8 +475,8 @@ int chessposition::getPositionValue()
             i = (r << 4) | f;
             if (Piece(i) == PAWN)
             {
-                int col = board[i] & S2MMASK;
-                if (board[i + S2MSIGN(col) * 16] == board[i])
+                int col = mailbox[i] & S2MMASK;
+                if (mailbox[i + S2MSIGN(col) * 16] == mailbox[i])
                     // double pawn penalty
                     result += S2MSIGN(col) * doublepawnpenalty;
                 if (col == 1 || !lastpawn[col][f + 1])
@@ -488,10 +488,10 @@ int chessposition::getPositionValue()
         for (int r = 0; r < 8; r++)
         {
             i = (r << 4) | f;
-            if (board[i] != BLANK)
+            if (mailbox[i] != BLANK)
             {
                 PieceType pt = Piece(i);
-                int col = board[i] & S2MMASK;
+                int col = mailbox[i] & S2MMASK;
                 int index = i | (ph << 7) | (pt << 15) | (col << 18);
                 result += *(positionvaluetable + index);
 
@@ -535,7 +535,7 @@ void chessposition::countMaterial()
     {
         for (int f = 0; f < 8; f++)
         {
-            PieceCode pc = board[(r << 4) | f];
+            PieceCode pc = mailbox[(r << 4) | f];
             if (pc != BLANK)
             {
                 piecenum[pc]++;

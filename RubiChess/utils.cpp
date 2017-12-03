@@ -33,6 +33,13 @@ vector<string> SplitString(const char* s)
     return result;
 }
 
+string IndexToAlgebraic(int i)
+{
+    string s;
+    s.push_back(FILE(i) + 'a');
+    s.push_back(RANK(i) + '1');
+    return s;
+}
 
 unsigned char AlgebraicToIndex(string s, int base)
 {
@@ -124,7 +131,7 @@ string AlgebraicFromShort(string s)
             && ((to & 0x80) || ((to & 0x70) == ((GETTO(ml->move[i].code) & 0x38) << 1)))
             && ((to & 0x08) || ((to & 0x07) == (GETTO(ml->move[i].code) & 0x07))))
 #else
-        if (pt == (pos.board[GETFROM(ml->move[i].code)] >> 1)
+        if (pt == (pos.mailbox[GETFROM(ml->move[i].code)] >> 1)
             && promotion == (GETPROMOTION(ml->move[i].code) >> 1)
             && ((from & 0x80) || ((from & 0x70) == (GETFROM(ml->move[i].code) & 0x70)))
             && ((from & 0x08) || ((from & 0x07) == (GETFROM(ml->move[i].code) & 0x07)))
@@ -139,6 +146,8 @@ string AlgebraicFromShort(string s)
     free(ml);
     return retval;
 }
+
+
 
 #ifdef _WIN32
 U64 getTime()

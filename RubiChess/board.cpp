@@ -202,8 +202,8 @@ void chessposition::mirror()
     {
         for (int f = 0; f < 8; f++)
         {
-            int index = (r << 3) | f;
-            int mirrorindex = ((7 - r) << 3) | f;
+            int index = INDEX(r, f);
+            int mirrorindex = INDEX(7 - r, f);
             if (mailbox[index] != BLANK)
             {
                 newmailbox[mirrorindex] = mailbox[index] ^ S2MMASK;
@@ -247,11 +247,11 @@ void chessposition::mirror()
     {
         for (int f = 0; f < 8; f++)
         {
-            int index = (r << 4) | f;
-            int mirrorindex = ((7 - r) << 4) | f;
-            if (board[index] != BLANK)
+            int index = INDEX(r, f);
+            int mirrorindex = INDEX(7 - r, f);
+            if (mailbox[index] != BLANK)
             {
-                newboard[mirrorindex] = board[index] ^ S2MMASK;
+                newboard[mirrorindex] = mailbox[index] ^ S2MMASK;
             }
             else {
                 newboard[mirrorindex] = BLANK;
@@ -260,7 +260,7 @@ void chessposition::mirror()
     }
 
     for (int i = 0; i < 128; i++)
-        board[i] = newboard[i];
+        mailbox[i] = newboard[i];
 
     countMaterial();
 
@@ -691,6 +691,93 @@ void chessposition::BitboardPrint(U64 b)
 }
 
 
+string chessposition::toFen()
+{
+    int index;
+    string s = "";
+    for (int r = 7; r >= 0; r--)
+    {
+        int blanknum = 0;
+        for (int f = 0; f < 8; f++)
+        {
+            char c = 0;
+            index = INDEX(r, f);
+            switch (Piece(index))
+            {
+            case PAWN:
+                c = 'p';
+                break;
+            case BISHOP:
+                c = 'b';
+                break;
+            case KNIGHT:
+                c = 'n';
+                break;
+            case ROOK:
+                c = 'r';
+                break;
+            case QUEEN:
+                c = 'q';
+                break;
+            case KING:
+                c = 'k';
+                break;
+            default:
+                blanknum++;
+
+            }
+            if (c)
+            {
+                if (!(mailbox[index] & S2MMASK))
+                {
+                    c += 'A' - 'a';
+                }
+                if (blanknum)
+                {
+                    s += to_string(blanknum);
+                    blanknum = 0;
+                }
+                s += c;
+            }
+        }
+        if (blanknum)
+            s += to_string(blanknum);
+        if (r)
+            s += "/";
+    }
+    s += " ";
+
+    // side 2 move
+    s += ((state & S2MMASK) ? "b " : "w ");
+
+    // castle rights
+    if (!(state & CASTLEMASK))
+        s += "-";
+    else
+    {
+        if (state & WQCMASK)
+            s += "Q";
+        if (state & WKCMASK)
+            s += "K";
+        if (state & BQCMASK)
+            s += "q";
+        if (state & BKCMASK)
+            s += "k";
+    }
+    s += " ";
+
+    // EPT
+    if (!ept)
+        s += "-";
+    else
+        s += IndexToAlgebraic(ept);
+
+    // halfmove and fullmove counter
+    s += " " + to_string(halfmovescounter) + " " + to_string(fullmovescounter);
+    return s;
+}
+
+
 int chessposition::getFromFen(const char* sFen)
 {
     string s;
@@ -728,13 +815,13 @@ int chessposition::getFromFen(const char* sFen)
     {
         PieceCode p;
         int num = 1;
-        int index = (rank << 3) | file;
+        int index = INDEX(rank, file);
         char c = s[i];
         switch (c)
         {
         case 'k':
             p = BKING;
-            kingpos[1] = ((rank << 3) | file);
+            kingpos[1] = index;
             break;
         case 'q':
             p = BQUEEN;
@@ -753,7 +840,7 @@ int chessposition::getFromFen(const char* sFen)
             break;
         case 'K':
             p = WKING;
-            kingpos[0] = ((rank << 3) | file);
+            kingpos[0] = index;
             break;
         case 'Q':
             p = WQUEEN;
@@ -903,7 +990,7 @@ void chessposition::print()
         printf("info string ");
         for (int f = 0; f < 8; f++)
         {
-            char pc = PieceChar(mailbox[(r << 3) | f]);
+            char pc = PieceChar(mailbox[INDEX(r, f)]);
             if (pc == 0)
                 pc = '.';
             printf("%c", pc);
@@ -1599,7 +1686,7 @@ bool chessposition::testRepetiton()
 chessposition::chessposition()
 {
     for (int i = 0; i < 128; i++)
-        board[i] = BLANK;
+        mailbox[i] = BLANK;
     CreatePositionvalueTable();
 }
 
@@ -1619,8 +1706,8 @@ bool chessposition::operator==(chessposition p)
         {
             for (int f = 0; f < 8; f++)
             {
-                int i = ((r << 4) | f);
-                result = result && (board[i] == p.board[i]);
+                int i = INDEX(r, f);
+                result = result && (mailbox[i] == p.mailbox[i]);
             }
         }
         for (int i = 0; i < 7; i++)
@@ -1652,58 +1739,58 @@ int chessposition::getFromFen(const char* sFen)
     int file = 0;
     for (unsigned int i = 0; i < s.length(); i++)
     {
-        int bIndex = (rank << 4) | file;
+        int bIndex = INDEX(rank, file);
         char c = s[i];
         switch (c)
         {
         case 'k':
-            board[bIndex] = BKING;
+            mailbox[bIndex] = BKING;
             kingpos[1] = bIndex;
             file++;
             break;
         case 'q':
-            board[bIndex] = BQUEEN;
+            mailbox[bIndex] = BQUEEN;
             file++;
             break;
         case 'r':
-            board[bIndex] = BROOK;
+            mailbox[bIndex] = BROOK;
             file++;
             break;
         case 'b':
-            board[bIndex] = BBISHOP;
+            mailbox[bIndex] = BBISHOP;
             file++;
             break;
         case 'n':
-            board[bIndex] = BKNIGHT;
+            mailbox[bIndex] = BKNIGHT;
             file++;
             break;
         case 'p':
-            board[bIndex] = BPAWN;
+            mailbox[bIndex] = BPAWN;
             file++;
             break;
         case 'K':
-            board[bIndex] = WKING;
+            mailbox[bIndex] = WKING;
             kingpos[0] = bIndex;
             file++;
             break;
         case 'Q':
-            board[bIndex] = WQUEEN;
+            mailbox[bIndex] = WQUEEN;
             file++;
             break;
         case 'R':
-            board[bIndex] = WROOK;
+            mailbox[bIndex] = WROOK;
             file++;
             break;
         case 'B':
-            board[bIndex] = WBISHOP;
+            mailbox[bIndex] = WBISHOP;
             file++;
             break;
         case 'N':
-            board[bIndex] = WKNIGHT;
+            mailbox[bIndex] = WKNIGHT;
             file++;
             break;
         case 'P':
-            board[bIndex] = WPAWN;
+            mailbox[bIndex] = WPAWN;
             file++;
             break;
         case '/':
@@ -1713,7 +1800,7 @@ int chessposition::getFromFen(const char* sFen)
         default:	/* digit */
             for (int i = 0; i < (c - '0'); i++)
             {
-                board[bIndex++] = BLANK;
+                mailbox[bIndex++] = BLANK;
                 file++;
             }
             break;
@@ -1826,7 +1913,7 @@ void chessposition::print()
         printf("info string ");
         for (int f = 0; f < 8; f++)
         {
-            char pc = PieceChar(board[(r << 4) | f]);
+            char pc = PieceChar(mailbox[INDEX(r, f)]);
             if (pc == 0)
                 pc = '.';
             printf("%c", pc);
@@ -1855,22 +1942,22 @@ bool chessposition::isOnBoard(int bIndex)
 
 bool chessposition::isEmpty(int bIndex)
 {
-    return (!(bIndex & 0x88) && board[bIndex] == BLANK);
+    return (!(bIndex & 0x88) && mailbox[bIndex] == BLANK);
 }
 
 PieceType chessposition::Piece(int index)
 {
-    return (PieceType)(board[index] >> 1);
+    return (PieceType)(mailbox[index] >> 1);
 }
 
 bool chessposition::isOpponent(int bIndex)
 {
-    return (!(bIndex & 0x88) && board[bIndex] != BLANK && ((board[bIndex] ^ state) & S2MMASK));
+    return (!(bIndex & 0x88) && mailbox[bIndex] != BLANK && ((mailbox[bIndex] ^ state) & S2MMASK));
 }
 
 bool chessposition::isEmptyOrOpponent(int bIndex)
 {
-    return (!(bIndex & 0x88) && (board[bIndex] == BLANK || ((board[bIndex] ^ state) & S2MMASK)));
+    return (!(bIndex & 0x88) && (mailbox[bIndex] == BLANK || ((mailbox[bIndex] ^ state) & S2MMASK)));
 }
 
 bool chessposition::isAttacked(int bIndex)
@@ -1933,7 +2020,7 @@ bool chessposition::checkForChess()
 
 void chessposition::testMove(chessmovelist *movelist, int from, int to, PieceCode promote)
 {
-    PieceCode capture = (!ept || to != ept || Piece(from) != PAWN ? board[to] : (PieceCode)(WPAWN | (~state & S2MMASK)));
+    PieceCode capture = (!ept || to != ept || Piece(from) != PAWN ? mailbox[to] : (PieceCode)(WPAWN | (~state & S2MMASK)));
     chessmove cm(from, to, promote, capture);
     if (true || !checkForChess())
     {
@@ -1960,9 +2047,9 @@ chessmovelist* chessposition::getMoves()
     {
         for (int f = 0; f < 8; f++)
         {
-            int bIndex = (r << 4) | f;
+            int bIndex = INDEX(r, f);
 
-            PieceCode pc = board[bIndex];
+            PieceCode pc = mailbox[bIndex];
             PieceType pt = (PieceType)(pc >> 1);
             if (!((pc & S2MMASK) ^ s2m) && pt != BLANKTYPE) /* piece of side to move */
             {
@@ -2092,14 +2179,14 @@ chessmovelist* chessposition::getMoves()
 
 void chessposition::simplePlay(int from, int to)
 {
-    board[to] = board[from];
-    board[from] = BLANK;
+    mailbox[to] = mailbox[from];
+    mailbox[from] = BLANK;
 }
 
 void chessposition::simpleUnplay(int from, int to, PieceCode capture)
 {
-    board[from] = board[to];
-    board[to] = capture;
+    mailbox[from] = mailbox[to];
+    mailbox[to] = capture;
 }
 
 
@@ -2125,28 +2212,28 @@ bool chessposition::playMove(chessmove *cm)
 
     if (promote != BLANK)
     {
-        piecenum[board[from]]--;
+        piecenum[mailbox[from]]--;
         piecenum[promote]++;
     }
     if (Piece(to) != BLANKTYPE)
     {
-        piecenum[board[to]]--;
+        piecenum[mailbox[to]]--;
         halfmovescounter = 0;
-        hash ^= zb.boardtable[(to << 4) | board[to]];
+        hash ^= zb.boardtable[(to << 4) | mailbox[to]];
     }
     
     movestack[mstop].index[movestack[mstop].numFieldchanges] = to;
-    movestack[mstop].code[movestack[mstop].numFieldchanges++] = board[to];
-    board[to] = (promote == BLANK ? board[from] : promote);
+    movestack[mstop].code[movestack[mstop].numFieldchanges++] = mailbox[to];
+    mailbox[to] = (promote == BLANK ? mailbox[from] : promote);
 
     // Fix hash regarding to
-    hash ^= zb.boardtable[(to << 4) | board[to]];
+    hash ^= zb.boardtable[(to << 4) | mailbox[to]];
     // Fix hash regarding from
-    hash ^= zb.boardtable[(from << 4) | board[from]];
+    hash ^= zb.boardtable[(from << 4) | mailbox[from]];
 
     movestack[mstop].index[movestack[mstop].numFieldchanges] = from;
-    movestack[mstop].code[movestack[mstop].numFieldchanges++] = board[from];
-    board[from] = BLANK;
+    movestack[mstop].code[movestack[mstop].numFieldchanges++] = mailbox[from];
+    mailbox[from] = BLANK;
     /* PAWN specials */
     if (pt == PAWN)
     {
@@ -2154,20 +2241,20 @@ bool chessposition::playMove(chessmove *cm)
         /* doublemove*/
         if (!((from & 0x10) ^ (to & 0x10)))
         {
-            if (board[to + 1] == (board[to] ^ S2MMASK) || board[to - 1] == (board[to] ^ S2MMASK))
+            if (mailbox[to + 1] == (mailbox[to] ^ S2MMASK) || mailbox[to - 1] == (mailbox[to] ^ S2MMASK))
                 /* en passant */
                 eptnew = (from + to) >> 1;
         }
         else if (ept && to == ept)
         {
             int epfield = (from & 0x70) | (to & 0x07);
-            piecenum[board[epfield]]--;
+            piecenum[mailbox[epfield]]--;
             // Fix hash regarding ep capture
-            hash ^= zb.boardtable[(epfield << 4) | board[epfield]];
+            hash ^= zb.boardtable[(epfield << 4) | mailbox[epfield]];
 
             movestack[mstop].index[movestack[mstop].numFieldchanges] = epfield;
-            movestack[mstop].code[movestack[mstop].numFieldchanges++] = board[epfield];
-            board[epfield] = BLANK;
+            movestack[mstop].code[movestack[mstop].numFieldchanges++] = mailbox[epfield];
+            mailbox[epfield] = BLANK;
         }
     }
     if (to == 0x00 || from == 0x00)
@@ -2200,17 +2287,17 @@ bool chessposition::playMove(chessmove *cm)
             }
 
             movestack[mstop].index[movestack[mstop].numFieldchanges] = rookto;
-            movestack[mstop].code[movestack[mstop].numFieldchanges++] = board[rookto];
-            board[rookto] = board[rookfrom];
+            movestack[mstop].code[movestack[mstop].numFieldchanges++] = mailbox[rookto];
+            mailbox[rookto] = mailbox[rookfrom];
 
             // Fix hash regarding rooks to
-            hash ^= zb.boardtable[(rookto << 4) | board[rookto]];
+            hash ^= zb.boardtable[(rookto << 4) | mailbox[rookto]];
             // Fix hash regarding from
-            hash ^= zb.boardtable[(rookfrom << 4) | board[rookfrom]];
+            hash ^= zb.boardtable[(rookfrom << 4) | mailbox[rookfrom]];
 
             movestack[mstop].index[movestack[mstop].numFieldchanges] = rookfrom;
-            movestack[mstop].code[movestack[mstop].numFieldchanges++] = board[rookfrom];
-            board[rookfrom] = BLANK;
+            movestack[mstop].code[movestack[mstop].numFieldchanges++] = mailbox[rookfrom];
+            mailbox[rookfrom] = BLANK;
         }
     }
 
@@ -2269,11 +2356,11 @@ void chessposition::unplayMove(chessmove *cm)
     halfmovescounter = movestack[mstop].halfmovescounter;
     for (int i = 0; i < movestack[mstop].numFieldchanges; i++)
     {
-        if (board[movestack[mstop].index[i]] != BLANK)
-            piecenum[board[movestack[mstop].index[i]]]--;
+        if (mailbox[movestack[mstop].index[i]] != BLANK)
+            piecenum[mailbox[movestack[mstop].index[i]]]--;
         if (movestack[mstop].code[i] != BLANK)
             piecenum[movestack[mstop].code[i]]++;
-        board[movestack[mstop].index[i]] = movestack[mstop].code[i];
+        mailbox[movestack[mstop].index[i]] = movestack[mstop].code[i];
     }
 }
 
@@ -2413,7 +2500,7 @@ int chessposition::see(int to)
     }
     else
     {
-        PieceCode capture = board[to];
+        PieceCode capture = mailbox[to];
         int material = materialvalue[Piece(to)];
         simplePlay(cheapest_from, to);
         v = max(0, material - see(to));
@@ -2428,7 +2515,7 @@ int chessposition::see(int from, int to)
 {
     int v;
     state ^= S2MMASK;
-    PieceCode capture = board[to];
+    PieceCode capture = mailbox[to];
     int material = materialvalue[Piece(to)];
     simplePlay(from, to);
     v = material - see(to);

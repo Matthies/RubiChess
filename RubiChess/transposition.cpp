@@ -134,9 +134,9 @@ u8 zobrist::getHash()
     int state = pos.state;
     for (i = 0; i < 120; i++)
     {
-        if (!(i & 0x88) && pos.board[i] != BLANK)
+        if (!(i & 0x88) && pos.mailbox[i] != BLANK)
         {
-            hash ^= boardtable[(i << 4)  | pos.board[i]];
+            hash ^= boardtable[(i << 4)  | pos.mailbox[i]];
         }
     }
     if (state & S2MMASK)
@@ -163,9 +163,9 @@ u8 zobrist::getPawnHash()
     int i;
     for (i = 0; i < 120; i++)
     {
-        if (!(i & 0x88) && (pos.board[i] >> 1) == PAWN)
+        if (!(i & 0x88) && (pos.mailbox[i] >> 1) == PAWN)
         {
-            hash ^= boardtable[(i << 4) | pos.board[i]];
+            hash ^= boardtable[(i << 4) | pos.mailbox[i]];
         }
     }
 
