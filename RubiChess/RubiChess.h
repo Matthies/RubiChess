@@ -391,6 +391,7 @@ public:
 extern U64 pawn_attacks_occupied[64][2];
 
 #define BOARDSIZE 64
+#define RANKMASK 0x38
 
 #ifndef ROTATEDBITBOARD
 
@@ -506,7 +507,7 @@ public:
     U64 occupieda1h8[2];
     U64 occupiedh1a8[2];
 #endif
-    PieceCode mailbox[64]; // redundand for faster "which piece is on field x"
+    PieceCode mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
 
     int state;
     int ept;
@@ -578,6 +579,7 @@ public:
 #else //BITBOARD
 
 #define BOARDSIZE 128
+#define RANKMASK 0x70
 
 class chessposition
 {
@@ -612,7 +614,6 @@ public:
     bool applyMove(string s);
     void print();
     int phase();
-    bool isOnBoard(int bIndex);
     bool isEmpty(int bIndex);
     PieceType Piece(int index);
     bool isOpponent(int bIndex);
