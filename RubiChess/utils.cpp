@@ -148,6 +148,11 @@ string AlgebraicFromShort(string s)
 }
 
 
+bool PGNtoFEN(string pgnfilename, string fenfilename)
+{
+
+}
+
 
 #ifdef _WIN32
 U64 getTime()
