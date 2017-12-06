@@ -324,12 +324,8 @@ chessmove transposition::getMove()
 {
     unsigned long long hash = pos->hash;
     unsigned long long index = hash & sizemask;
-#ifdef BITBOARD
-    chessmove cm(table[index].movecode);
-#else
     chessmove cm;
     cm.code = table[index].movecode;
-#endif
     return cm;
 }
 #endif

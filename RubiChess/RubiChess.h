@@ -237,11 +237,7 @@ const unsigned int lva[] = { 5 << 26, 4 << 26, 3 << 26, 3 << 26, 2 << 26, 1 << 2
 #define GETPROMOTION(x) (((x) & 0xf000) >> 12)
 #define GETCAPTURE(x) (((x) & 0xf0000) >> 16)
 #define ISTACTICAL(x) ((x) & 0xff000)
-#ifdef BITBOARD
 #define GETPIECE(x) (((x) & 0xf0000000) >> 28)
-#else
-#define GETCASTLE(x) (((x) & 0xf0000000) >> 28)
-#endif
 
 #ifdef BITBOARD
 // index -> bitboard with only index bit set; use BITSET(i) macro
@@ -352,21 +348,15 @@ public:
     unsigned int value;
 
     chessmove();
-    chessmove(uint32_t code);
 #ifdef BITBOARD
     chessmove(int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
     chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
 #else
-    chessmove(int from, int to, PieceCode promote, PieceCode capture);
-    chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept);
+    chessmove(int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
+    chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
 #endif
     bool operator<(const chessmove cm) const { return value < cm.value; }
     bool operator>(const chessmove cm) const { return value > cm.value; }
-    //bool operator<(const chessmove cm) const { return ((code & 0xfff) < (cm.code & 0xfff)); }
-    bool operator ==(const chessmove cm) const { return code == cm.code; }
-    //static bool asc(const chessmove cm1, const chessmove cm2) { return cm1.value < cm2.value; }
-    //static bool desc(const chessmove cm1, const chessmove cm2) { return cm2.value < cm1.value; }
-    static bool cptr(chessmove cm1, chessmove cm2);
     string toString();
     void print();
 };
@@ -541,7 +531,6 @@ public:
     bool applyMove(string s);
     void print();
     int phase();
-    bool isOnBoard(int bIndex);
     bool isEmpty(int bIndex);
     PieceType Piece(int index);
     bool isOpponent(int bIndex);
@@ -622,7 +611,8 @@ public:
     bool checkForChess();
     int see(int to);
     int see(int from, int to);
-    void testMove(chessmovelist *movelist, int from, int to, PieceCode promote);
+    void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
+    void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
     chessmovelist* getMoves();
     bool playMove(chessmove *cm);
     void unplayMove(chessmove *cm);

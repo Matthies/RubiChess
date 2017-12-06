@@ -66,49 +66,33 @@ char PieceChar(PieceCode c)
 chessmovestack movestack[MAXMOVELISTLENGTH];
 int mstop;
 
-#ifdef BITBOARD
+
 chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece)
 {
+#ifndef BITBOARD
+    /* convert 0x88 coordinates to 3bit */
+    from = ((from >> 1) & 0x38) | (from & 0x7);
+    to = ((to >> 1) & 0x38) | (to & 0x7);
+#endif
     code = (piece << 28) | (ept << 20) | (capture << 16) | (promote << 12) | (from << 6) | to;
 }
-#else
-chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept)
-{
-    int f, t;
-    /* convert 0x88 coordinates to 3bit */
-    f = ((from >> 1) & 0x38) | (from & 0x7);
-    t = ((to >> 1) & 0x38) | (to & 0x7);
-    code = (capture << 16) | (promote << 12) | (f << 6) | t;
-}
-#endif
 
-#ifdef BITBOARD
+
 chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture, PieceCode piece)
 {
+#ifndef BITBOARD
+    /* convert 0x88 coordinates to 3bit */
+    from = ((from >> 1) & 0x38) | (from & 0x7);
+    to = ((to >> 1) & 0x38) | (to & 0x7);
+#endif
     code = (piece << 28) | (capture << 16) | (promote << 12) | (from << 6) | to;
 }
 
-#else
-chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture)
-{
-    int f, t;
-    /* convert 0x88 coordinates to 3bit */
-    f = ((from >> 1) & 0x38) | (from & 0x7);
-    t = ((to >> 1) & 0x38) | (to & 0x7);
-    code =  (capture << 16) | (promote << 12) | (f << 6) | t;
-}
-#endif
 
 chessmove::chessmove()
 {
     code = 0;
 }
-
-chessmove::chessmove(uint32_t newcode)
-{
-    code = newcode;
-}
-
 
 string chessmove::toString()
 {
@@ -134,12 +118,6 @@ string chessmove::toString()
 void chessmove::print()
 {
     cout << toString();
-}
-
-
-bool chessmove::cptr(chessmove cm1, chessmove cm2)
-{
-    return (materialvalue[GETCAPTURE(cm1.code) >> 1] < materialvalue[GETCAPTURE(cm2.code) >> 1]);
 }
 
 
@@ -535,7 +513,7 @@ void chessposition::getpvline(int depth)
     pvline.length = 0;
     while (depth > 0)
     {
-        if (pvline.length == 0 && bestmove.code > 0)
+        if (pvline.length == 0 && bestmove.code != 0)
         {
             cm = bestmove;
         }
@@ -567,6 +545,34 @@ void chessposition::getpvline(int depth)
 bool chessposition::checkForChess()
 {
     return (isAttacked(kingpos[state & S2MMASK]));
+}
+
+
+inline void chessposition::testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, PieceCode piece)
+{
+    chessmove cm(from, to, promote, capture, piece);
+    if (capture != BLANK)
+    {
+        cm.value = (mvv[capture >> 1] | lva[piece >> 1]);
+    }
+    else {
+        cm.value = history[piece >> 1][to];
+    }
+    movelist->move[movelist->length++] = cm;
+}
+
+
+inline void chessposition::testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece)
+{
+    chessmove cm(from, to, promote, capture, ept, piece);
+    if (capture != BLANK)
+    {
+        cm.value = (mvv[capture >> 1] | lva[piece >> 1]);
+    }
+    else {
+        cm.value = history[piece >> 1][to];
+    }
+    movelist->move[movelist->length++] = cm;
 }
 
 
@@ -1290,33 +1296,6 @@ void chessposition::unplayMove(chessmove *cm)
 }
 
 
-inline void chessposition::testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, PieceCode piece)
-{
-    chessmove cm(from, to, promote, capture, piece);
-    if (capture != BLANK)
-    {
-        cm.value = (mvv[capture >> 1] | lva[piece >> 1]);
-    }
-    else {
-        cm.value = history[piece >> 1][to];
-    }
-    movelist->move[movelist->length++] = cm;
-}
-
-inline void chessposition::testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece)
-{
-    chessmove cm(from, to, promote, capture, ept, piece);
-    if (capture != BLANK)
-    {
-        cm.value = (mvv[capture >> 1] | lva[piece >> 1]);
-    }
-    else {
-        cm.value = history[piece >> 1][to];
-    }
-    movelist->move[movelist->length++] = cm;
-}
-
-
 
 chessmovelist* chessposition::getMoves()
 {
@@ -1396,8 +1375,7 @@ chessmovelist* chessposition::getMoves()
                 if (!(occupiedbits & (s2m ? 0x0e00000000000000 : 0x000000000000000e))
                     && !isAttacked(from) && !isAttacked(from - 1) && !isAttacked(from - 2))
                 {
-                    result->move[result->length] = chessmove(from, from - 2, BLANK, BLANK, 0, pc);
-                    result->move[result->length++].value = history[KING][from - 2];
+                    testMove(result, from, from - 2, BLANK, BLANK, pc);
                 }
             }
             if (state & KCMASK[s2m])
@@ -1406,8 +1384,7 @@ chessmovelist* chessposition::getMoves()
                 if (!(occupiedbits & (s2m ? 0x6000000000000000 : 0x0000000000000060))
                     && !isAttacked(from) && !isAttacked(from + 1) && !isAttacked(from + 2))
                 {
-                    result->move[result->length] = chessmove(from, from + 2, BLANK, BLANK, 0, pc);
-                    result->move[result->length++].value = history[KING][from + 2];
+                    testMove(result, from, from + 2, BLANK, BLANK, pc);
                 }
             }
             break;
@@ -1761,24 +1738,6 @@ bool chessposition::isAttacked(int bIndex)
 }
 
 
-void chessposition::testMove(chessmovelist *movelist, int from, int to, PieceCode promote)
-{
-    PieceCode capture = (!ept || to != ept || Piece(from) != PAWN ? mailbox[to] : (PieceCode)(WPAWN | (~state & S2MMASK)));
-    chessmove cm(from, to, promote, capture);
-    if (true || !checkForChess())
-    {
-        if (capture != BLANK)
-        {
-            cm.value = (mvv[capture >> 1] | lva[Piece(from)]);
-        }
-        else {
-            cm.value = history[Piece(from)][to];
-        }
-        movelist->move[movelist->length++] = cm;
-    }
-}
-
-
 chessmovelist* chessposition::getMoves()
 {
     int targetIndex;
@@ -1793,6 +1752,7 @@ chessmovelist* chessposition::getMoves()
             int bIndex = INDEX(r, f);
 
             PieceCode pc = mailbox[bIndex];
+            PieceCode pctarget;
             PieceType pt = (PieceType)(pc >> 1);
             if (!((pc & S2MMASK) ^ s2m) && pt != BLANKTYPE) /* piece of side to move */
             {
@@ -1804,25 +1764,28 @@ chessmovelist* chessposition::getMoves()
                         targetIndex = bIndex + (s2m ? -pawnmove[i].offset : pawnmove[i].offset);
                         if (!(targetIndex & 0x88))
                         {
+                            pctarget = mailbox[targetIndex];
                             if (pawnmove[i].needsblank ? isEmpty(targetIndex) : (isOpponent(targetIndex) || (ept && ept == targetIndex)))
                             {
                                 if (r == (s2m ? 1 : 6))
                                 {
-                                    testMove(result, bIndex, targetIndex, (PieceCode)((QUEEN << 1) | s2m));
-                                    testMove(result, bIndex, targetIndex, (PieceCode)((ROOK << 1) | s2m));
-                                    testMove(result, bIndex, targetIndex, (PieceCode)((BISHOP << 1) | s2m));
-                                    testMove(result, bIndex, targetIndex, (PieceCode)((KNIGHT << 1) | s2m));
+                                    testMove(result, bIndex, targetIndex, (PieceCode)((QUEEN << 1) | s2m), pctarget, pc);
+                                    testMove(result, bIndex, targetIndex, (PieceCode)((ROOK << 1) | s2m), pctarget, pc);
+                                    testMove(result, bIndex, targetIndex, (PieceCode)((BISHOP << 1) | s2m), pctarget, pc);
+                                    testMove(result, bIndex, targetIndex, (PieceCode)((KNIGHT << 1) | s2m), pctarget, pc);
                                 }
                                 else
                                 {
-                                    testMove(result, bIndex, targetIndex, BLANK);
+                                    if (ept && ept == targetIndex)
+                                        pctarget = (PieceCode)(WPAWN | (~state & S2MMASK));
+                                    testMove(result, bIndex, targetIndex, BLANK, pctarget, pc);
 
                                     if (r == (s2m ? 6 : 1) && pawnmove[i].needsblank)
                                     {
                                         int targetIndex2 = bIndex + (s2m ? -0x20 : 0x20);
                                         if (isEmpty(targetIndex2))
                                         {
-                                            testMove(result, bIndex, targetIndex2, BLANK);
+                                            testMove(result, bIndex, targetIndex2, BLANK, BLANK, pc);
                                         }
                                     }
                                 }
@@ -1836,7 +1799,7 @@ chessmovelist* chessposition::getMoves()
                         targetIndex = bIndex + knightoffset[o];
                         if (isEmptyOrOpponent(targetIndex))
                         {
-                            testMove(result, bIndex, targetIndex, BLANK);
+                            testMove(result, bIndex, targetIndex, BLANK, mailbox[targetIndex], pc);
                         }
                     }
                     break;
@@ -1849,7 +1812,7 @@ chessmovelist* chessposition::getMoves()
                             targetIndex += diagonaloffset[i];
                             if (isEmptyOrOpponent(targetIndex))
                             {
-                                testMove(result, bIndex, targetIndex, BLANK);
+                                testMove(result, bIndex, targetIndex, BLANK, mailbox[targetIndex], pc);
                             }
                         } while (isEmpty(targetIndex));
                     }
@@ -1863,7 +1826,7 @@ chessmovelist* chessposition::getMoves()
                             targetIndex += orthogonaloffset[i];
                             if (isEmptyOrOpponent(targetIndex))
                             {
-                                testMove(result, bIndex, targetIndex, BLANK);
+                                testMove(result, bIndex, targetIndex, BLANK, mailbox[targetIndex], pc);
                             }
                         } while (isEmpty(targetIndex));
                     }
@@ -1877,7 +1840,7 @@ chessmovelist* chessposition::getMoves()
                             targetIndex += orthogonalanddiagonaloffset[i];
                             if (isEmptyOrOpponent(targetIndex))
                             {
-                                testMove(result, bIndex, targetIndex, BLANK);
+                                testMove(result, bIndex, targetIndex, BLANK, mailbox[targetIndex], pc);
                             }
                         } while (isEmpty(targetIndex));
                     }
@@ -1888,7 +1851,7 @@ chessmovelist* chessposition::getMoves()
                         targetIndex = bIndex + orthogonalanddiagonaloffset[i];
                         if (isEmptyOrOpponent(targetIndex))
                         {
-                            testMove(result, bIndex, targetIndex, BLANK);
+                            testMove(result, bIndex, targetIndex, BLANK, mailbox[targetIndex], pc);
                         }
                     }
                     if (state & (s2m ? BQCMASK : WQCMASK))
@@ -1897,7 +1860,7 @@ chessmovelist* chessposition::getMoves()
                         if (isEmpty(bIndex - 1) && isEmpty(bIndex - 2) && isEmpty(bIndex - 3)
                             && !isAttacked(bIndex) && !isAttacked(bIndex - 1) && !isAttacked(bIndex - 2))
                         {
-                            result->move[result->length++] = chessmove(bIndex, bIndex - 2, BLANK, BLANK);
+                            testMove(result, bIndex, bIndex - 2, BLANK, BLANK, pc);
                         }
                     }
                     if (state & (s2m ? BKCMASK : WKCMASK))
@@ -1906,7 +1869,7 @@ chessmovelist* chessposition::getMoves()
                         if (isEmpty(bIndex + 1) && isEmpty(bIndex + 2)
                             && !isAttacked(bIndex) && !isAttacked(bIndex + 1) && !isAttacked(bIndex + 2))
                         {
-                            result->move[result->length++] = chessmove(bIndex, bIndex + 2, BLANK, BLANK);
+                            testMove(result, bIndex, bIndex + 2, BLANK, BLANK, pc);
                         }
                     }
                     break;

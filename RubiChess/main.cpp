@@ -804,7 +804,7 @@ void doBenchmark()
             0,
             1
         },
-        {   
+        {
             "Lasker Test",
             "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1",
             28,
