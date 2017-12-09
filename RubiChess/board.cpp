@@ -608,6 +608,93 @@ void chessposition::print()
 }
 
 
+string chessposition::toFen()
+{
+    int index;
+    string s = "";
+    for (int r = 7; r >= 0; r--)
+    {
+        int blanknum = 0;
+        for (int f = 0; f < 8; f++)
+        {
+            char c = 0;
+            index = INDEX(r, f);
+            switch (Piece(index))
+            {
+            case PAWN:
+                c = 'p';
+                break;
+            case BISHOP:
+                c = 'b';
+                break;
+            case KNIGHT:
+                c = 'n';
+                break;
+            case ROOK:
+                c = 'r';
+                break;
+            case QUEEN:
+                c = 'q';
+                break;
+            case KING:
+                c = 'k';
+                break;
+            default:
+                blanknum++;
+
+            }
+            if (c)
+            {
+                if (!(mailbox[index] & S2MMASK))
+                {
+                    c += 'A' - 'a';
+                }
+                if (blanknum)
+                {
+                    s += to_string(blanknum);
+                    blanknum = 0;
+                }
+                s += c;
+            }
+        }
+        if (blanknum)
+            s += to_string(blanknum);
+        if (r)
+            s += "/";
+    }
+    s += " ";
+
+    // side 2 move
+    s += ((state & S2MMASK) ? "b " : "w ");
+
+    // castle rights
+    if (!(state & CASTLEMASK))
+        s += "-";
+    else
+    {
+        if (state & WKCMASK)
+            s += "K";
+        if (state & WQCMASK)
+            s += "Q";
+        if (state & BKCMASK)
+            s += "k";
+        if (state & BQCMASK)
+            s += "q";
+    }
+    s += " ";
+
+    // EPT
+    if (!ept)
+        s += "-";
+    else
+        s += IndexToAlgebraic(ept);
+
+    // halfmove and fullmove counter
+    s += " " + to_string(halfmovescounter) + " " + to_string(fullmovescounter);
+    return s;
+}
+
+
 
 #ifdef DEBUG
 void chessposition::debug(int depth, const char* format, ...)
@@ -1005,93 +1092,6 @@ void chessposition::BitboardPrint(U64 b)
         }
         printf("\n");
     }
-}
-
-
-string chessposition::toFen()
-{
-    int index;
-    string s = "";
-    for (int r = 7; r >= 0; r--)
-    {
-        int blanknum = 0;
-        for (int f = 0; f < 8; f++)
-        {
-            char c = 0;
-            index = INDEX(r, f);
-            switch (Piece(index))
-            {
-            case PAWN:
-                c = 'p';
-                break;
-            case BISHOP:
-                c = 'b';
-                break;
-            case KNIGHT:
-                c = 'n';
-                break;
-            case ROOK:
-                c = 'r';
-                break;
-            case QUEEN:
-                c = 'q';
-                break;
-            case KING:
-                c = 'k';
-                break;
-            default:
-                blanknum++;
-
-            }
-            if (c)
-            {
-                if (!(mailbox[index] & S2MMASK))
-                {
-                    c += 'A' - 'a';
-                }
-                if (blanknum)
-                {
-                    s += to_string(blanknum);
-                    blanknum = 0;
-                }
-                s += c;
-            }
-        }
-        if (blanknum)
-            s += to_string(blanknum);
-        if (r)
-            s += "/";
-    }
-    s += " ";
-
-    // side 2 move
-    s += ((state & S2MMASK) ? "b " : "w ");
-
-    // castle rights
-    if (!(state & CASTLEMASK))
-        s += "-";
-    else
-    {
-        if (state & WQCMASK)
-            s += "Q";
-        if (state & WKCMASK)
-            s += "K";
-        if (state & BQCMASK)
-            s += "q";
-        if (state & BKCMASK)
-            s += "k";
-    }
-    s += " ";
-
-    // EPT
-    if (!ept)
-        s += "-";
-    else
-        s += IndexToAlgebraic(ept);
-
-    // halfmove and fullmove counter
-    s += " " + to_string(halfmovescounter) + " " + to_string(fullmovescounter);
-    return s;
 }
 
 

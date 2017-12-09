@@ -393,6 +393,8 @@ info depth 10 time 537 score cp 438 pv e6e7 b1e1 c5d6 g7g6 h5g6 e1d1 d6c5 d1b1 b
 position fen rnb1kbnr/pp1pppp/1q6/1Bp5/8/4P3/PPPP1PPP/RNBQK1NR w KQkq - 0 1 moves b1c3 g8f6 g1f3 b8c6 d2d4 c5d4 e3d4 a7a6 d4d5 a6b5 d5c6 b6c6 e1g1 b5b4 c3e2 d7d6 e2d4 c6d5 d1e2 c8g4 f1d1 e7e5 c1g5 f6e4 d4b5 d5c6 b5c7 c6c7 e2e4 g4f3 g2f3 c7c6 e4b4 f7f6 g5e3 c6c2 b4b7 a8a2 b7b5 e8e7 b5b7 e7e8 b7b5 e8e7 b5b7 e7e8 b7b5
 ... nicht reproduzierbar
 
+08.12.17: Interesting position from TCEC rapid: 1r3r2/1b1n1pk1/p5Bb/q2p2N1/2p2P1Q/2P5/6PP/3R1R1K w - - 0 28
+White is about to win, Hannibal misses Rd1e1 and evals ~ +1 but wins later; Rubisoft completely wrong with ~- 1.5
 
 http://pwnedthegameofchess.com/engine/
 http://www.herderschach.de/index.html
@@ -1238,6 +1240,8 @@ int main(int argc, char* argv[])
     string engineprg = "";
     string logfile = "";
     string comparefile = "";
+    string pgnconvertfile = "";
+    string fentuningfile = "";
     int maxtime = 0;
     int flags = 0;
 
@@ -1259,6 +1263,10 @@ int main(int argc, char* argv[])
         { "-startnum", "number of the test in epd to start with (use with -enginetest)", &startnum, 1, "1" },
         { "-compare", "for fast comparision against logfile from other engine (use with -enginetest)", &comparefile, 2, "" },
         { "-flags", "1=skip easy (0 sec.) compares; 2=break 5 seconds after first find; 4=break after compare time is over (use with -enginetest)", &flags, 1, "0" },
+#ifdef EVALTUNE
+        { "-pgnfile", "converts games in a PGN file to fen for tuning them later", &pgnconvertfile, 2, "" },
+        { "-fentuning", "reads FENs from file and tunes eval parameters against it", &fentuningfile, 2, "" },
+#endif
         { NULL, NULL, NULL, 0, NULL }
     };
 
@@ -1320,6 +1328,16 @@ int main(int argc, char* argv[])
         //engine test mode
         testengine(epdfile, startnum, engineprg, logfile, comparefile, maxtime, flags);
     }
+#ifdef EVALTUNE
+    else if (pgnconvertfile != "")
+    {
+        PGNtoFEN(pgnconvertfile);
+    }
+    else if (fentuningfile != "")
+    {
+        TexelTune(fentuningfile);
+    }
+#endif
     else {
         // usual uci mode
         en.communicate("");

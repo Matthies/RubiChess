@@ -6,6 +6,10 @@
 #define DEBUG
 #endif
 
+#if 1
+#define EVALTUNE
+#endif
+
 #if 0
 #define DEBUGEVAL
 #endif
@@ -66,6 +70,7 @@ using namespace std;
 #include <bitset>
 #include <limits.h>
 #include <math.h>
+#include <regex>
 
 
 #ifdef _WIN32
@@ -137,6 +142,10 @@ unsigned char AlgebraicToIndex(string s, int base);
 string IndexToAlgebraic(int i);
 string AlgebraicFromShort(string s);
 void BitboardDraw(U64 b);
+#ifdef EVALTUNE
+bool PGNtoFEN(string pgnfilename);
+void TexelTune(string fenfilename);
+#endif
 U64 getTime();
 
 //
@@ -600,6 +609,7 @@ public:
     bool operator==(chessposition p);
     bool w2m();
     int getFromFen(const char* sFen);
+    string toFen();
     bool applyMove(string s);
     void print();
     int phase();
