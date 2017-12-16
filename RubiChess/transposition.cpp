@@ -264,6 +264,10 @@ void transposition::printHashentry()
 
 bool transposition::probeHash(int *val, uint32_t *movecode, int depth, int alpha, int beta)
 {
+#ifdef EVALTUNE
+    // don't use transposition table when tuning evaluation
+    return false;
+#endif
     unsigned long long hash = pos->hash;
     unsigned long long index = hash & sizemask;
     S_TRANSPOSITIONENTRY data = table[index];
@@ -373,6 +377,10 @@ bool pawnhash::probeHash(pawnhashentry **entry)
     {
 #ifdef DEBUG
         hit++;
+#endif
+#ifdef EVALTUNE
+        // don't use pawn hash when tuning evaluation
+        return false;
 #endif
         return true;
     }

@@ -142,11 +142,30 @@ unsigned char AlgebraicToIndex(string s, int base);
 string IndexToAlgebraic(int i);
 string AlgebraicFromShort(string s);
 void BitboardDraw(U64 b);
+U64 getTime();
 #ifdef EVALTUNE
+typedef void(*initevalfunc)(void);
 bool PGNtoFEN(string pgnfilename);
 void TexelTune(string fenfilename);
+void registerTuner(int *addr, string name, int def, int index1, int bound1, int index2, int bound2, initevalfunc init, bool notune);
+
+struct tuningintparameter
+{
+    int *addr;
+    string name;
+    int default;
+    int tuned;
+    int index1;
+    int bound1;
+    int index2;
+    int bound2;
+    void(*init)();
+    bool notune;
+};
+
+extern int tuningratio;
+
 #endif
-U64 getTime();
 
 //
 // board stuff
@@ -224,7 +243,7 @@ const int orthogonalanddiagonaloffset[] = { -0x10, -0x01, 0x01, 0x10, -0x0f, -0x
 
 
 const struct { int offset; bool needsblank; } pawnmove[] = { { 0x10, true }, { 0x0f, false }, { 0x11, false } };
-const int materialvalue[] = { 0, 100, 320, 330, 500, 900, SCOREWHITEWINS };
+extern int materialvalue[];
 // values for move ordering
 const unsigned int mvv[] = { 0U << 29, 1U << 29, 2U << 29, 2U << 29, 3U << 29, 4U << 29, 5U << 29 };
 const unsigned int lva[] = { 5 << 26, 4 << 26, 3 << 26, 3 << 26, 2 << 26, 1 << 26, 0 << 26 };
@@ -524,11 +543,12 @@ public:
     unsigned long killer[2][MAXDEPTH];
     unsigned int history[14][64];
     unsigned long long debughash = 0;
-    int *positionvaluetable; // value tables for both sides, 7 PieceTypes and 256 phase variations 
+    int positionvaluetable[2 * 8 * 256 * BOARDSIZE]; // value tables for both sides, 7 PieceTypes and 256 phase variations 
     int ph; // to store the phase during different evaluation functions
 
     chessposition();
     ~chessposition();
+    void init();
     bool operator==(chessposition p);
     bool w2m();
     void BitboardSet(int index, PieceCode p);
@@ -563,7 +583,6 @@ public:
     int getPositionValue();
     int getPawnValue();
     int getValue();
-    void CreatePositionvalueTable();
 #ifdef DEBUG
     void debug(int depth, const char* format, ...);
 #endif
@@ -647,6 +666,8 @@ public:
 };
 
 #endif
+
+void CreatePositionvalueTable();
 
 extern int squaredistance[BOARDSIZE][BOARDSIZE];
 extern int kingdanger[BOARDSIZE][BOARDSIZE][7];

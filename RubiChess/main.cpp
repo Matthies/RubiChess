@@ -1266,6 +1266,7 @@ int main(int argc, char* argv[])
 #ifdef EVALTUNE
         { "-pgnfile", "converts games in a PGN file to fen for tuning them later", &pgnconvertfile, 2, "" },
         { "-fentuning", "reads FENs from file and tunes eval parameters against it", &fentuningfile, 2, "" },
+        { "-tuningratio", "use only every <n>th double move from the FEN to speed up the analysis", &tuningratio, 1, "1" },
 #endif
         { NULL, NULL, NULL, 0, NULL }
     };
@@ -1280,6 +1281,8 @@ int main(int argc, char* argv[])
     // Set flag to the new value.  
     _CrtSetDbgFlag(tmpFlag);
 #endif
+
+    pos.init();
 
     cout.setf(ios_base::unitbuf);
 

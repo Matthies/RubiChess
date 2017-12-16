@@ -161,6 +161,7 @@ string AlgebraicFromShort(string s)
 bool PGNtoFEN(string pgnfilename)
 {
     string line;
+    string line1, line2;
     string rest_of_last_line = "";
     string fenfilename = pgnfilename + ".fen";
     // Open the pgn file for reading
@@ -181,6 +182,8 @@ bool PGNtoFEN(string pgnfilename)
     int result = 0;
     while (getline(pgnfile, line))
     {
+        line2 = line1;
+        line1 = line;
         //printf(">%s<\n", line.c_str());
 
         smatch match;
@@ -208,6 +211,14 @@ bool PGNtoFEN(string pgnfilename)
             pos.getFromFen(fen.c_str());
             fenfile << to_string(result) + "#" + fen + "#\n";
         }
+        // Don't export games that were lost on time or by stalled connection
+        if (regex_search(line, match, regex("\\[Termination\\s+\".*(forfeit|stalled).*\"")))
+        {
+            printf("Swap this match: %s\n", line.c_str());
+            newgamestarts = 0;
+            valueChecked = true;
+        }
+
         // search for the moves
         if (newgamestarts == 2 && !regex_search(line, match, regex("\\[.*\\]")))
         {
@@ -226,6 +237,7 @@ bool PGNtoFEN(string pgnfilename)
                     {
                         printf("Alarm: %s\n", match.str().c_str());
                         pos.print();
+                        printf("last Lines:\n%s\n%s\n\n", line2.c_str(), line1.c_str());
                     }
                     fen = pos.toFen();
                     //printf("FEN: %s\n", fen.c_str());
@@ -253,6 +265,89 @@ bool PGNtoFEN(string pgnfilename)
 }
 
 
+tuningintparameter tip[10000];
+int tipnum = 0;
+
+void registerTuner(int *addr, string name, int def, int index1, int bound1, int index2, int bound2, initevalfunc init, bool notune)
+{
+    tip[tipnum].addr = addr;
+    tip[tipnum].name = name;
+    tip[tipnum].default = def;
+    tip[tipnum].index1 = index1;
+    tip[tipnum].bound1 = bound1;
+    tip[tipnum].index2 = index2;
+    tip[tipnum].bound2 = bound2;
+    tip[tipnum].init = init;
+    tip[tipnum].notune = notune;
+    tipnum++;
+}
+
+
+static string nameTunedParameter(int i)
+{
+    string name = tip[i].name;
+    if (tip[i].bound2 > 0)
+    {
+        name += "[" + to_string(tip[i].index2) + "][" + to_string(tip[i].index1) + "]";
+    }
+    else if (tip[i].bound1 > 0)
+    {
+        name += "[" + to_string(tip[i].index1) + "] = { ";
+    }
+    return name;
+}
+
+
+static void printTunedParameters()
+{
+    int i1, i2, b1, b2;
+    string lastname = "";
+    string output = "";
+    bool wait;
+    for (int i = 0; i < tipnum; i++)
+    {
+        if (lastname != tip[i].name)
+        {
+            if (output != "")
+            {
+                output += ";\n";
+                printf("%s", output.c_str());
+                output = "";
+            }
+            lastname = tip[i].name;
+            output = "int " + tip[i].name;
+            if (tip[i].bound2 > 0)
+            {
+                output += "[" + to_string(tip[i].bound2) + "][" + to_string(tip[i].bound1) + "] = { { ";
+            }
+            else if (tip[i].bound1 > 0)
+            {
+                output += "[" + to_string(tip[i].bound1) + "] = { ";
+            }
+            else {
+                output += " = ";
+            }
+        }
+
+        output = output + to_string(*tip[i].addr);
+
+        if (tip[i].index1 < tip[i].bound1 - 1)
+            output += ", ";
+        else if (tip[i].index1 == tip[i].bound1 - 1)
+        {
+            output += " }";
+            if (tip[i].index2 < tip[i].bound2 - 1)
+                output += ",\n  { ";
+            else if (tip[i].index2 == tip[i].bound2 - 1)
+                output += " }";
+        }
+    }
+    output += ";\n";
+    printf("%s", output.c_str());
+}
+
+int tuningratio = 1;
+
 static double TexelEvalError(string fenfilename, double k)
 {
     string line;
@@ -260,6 +355,8 @@ static double TexelEvalError(string fenfilename, double k)
     double Ri, Qi;
     double E = 0.0;
     int n = 0;
+    int c = tuningratio;
+    int bw = 0;
     ifstream fenfile(fenfilename);
     if (!fenfile.is_open())
     {
@@ -268,21 +365,29 @@ static double TexelEvalError(string fenfilename, double k)
     }
     while (getline(fenfile, line))
     {
-       //cout << line + "\n";
-        if (regex_search(line, match, regex("(.*)#(.*)#(.*)")))
+        bw = 1 - bw;
+        if (bw)
+            c++;
+        if (c > tuningratio)
+            c = 1;
+        if (c == tuningratio)
         {
-            Ri = (stoi(match.str(1)) + 1) / 2.0;
-            pos.getFromFen(match.str(2).c_str());
-            Qi = getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
-            if (!pos.w2m())
-                Qi = -Qi;
-            //printf("Ri=%f Qi=%f\n", Ri, Qi);
-            n++;
-            double sigmoid = 1 / (1 + pow(10.0, -k * Qi / 400.0));
-            E += (Ri - sigmoid) * (Ri - sigmoid);
+            //cout << line + "\n";
+            if (regex_search(line, match, regex("(.*)#(.*)#(.*)")))
+            {
+                Ri = (stoi(match.str(1)) + 1) / 2.0;
+                pos.getFromFen(match.str(2).c_str());
+                Qi = getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
+                if (!pos.w2m())
+                    Qi = -Qi;
+                //printf("Ri=%f Qi=%f\n", Ri, Qi);
+                n++;
+                double sigmoid = 1 / (1 + pow(10.0, -k * Qi / 400.0));
+                E += (Ri - sigmoid) * (Ri - sigmoid);
+            }
+            else
+                printf("Alarm");
         }
-        else
-            printf("Alarm");
     }
     return E / n;
 }
@@ -290,24 +395,111 @@ static double TexelEvalError(string fenfilename, double k)
 
 void TexelTune(string fenfilename)
 {
-    double E;
-    double k = 2.00;
-    double delta = 0.5;
-    double lastE = TexelEvalError(fenfilename, k - delta);
+    double k = 1.121574;
+    int direction = 0;
+    double Error, lastError;
+    double EDefault;
+    double E[2];
+    double Emin = 0.0;
+    int pmin;
+#if 0
+    double bound[2] = { 0.0, 2.0 };
+    double x, lastx;
+    //double delta;
+    lastx = (bound[0] + bound[1]) / 2;
 
-    while (abs(delta) > 0.0001)
+    E[0] = TexelEvalError(fenfilename, bound[0]);
+    E[1] = TexelEvalError(fenfilename, bound[1]);
+    lastError = TexelEvalError(fenfilename, lastx);
+    if (lastError > E[0] || lastError > E[1])
     {
-        E = TexelEvalError(fenfilename, k);
-        printf("k=%0.4f  E=%0.10f  \n", k, E);
-        if (E > lastE)
-            delta = -delta / 2;
-        k += delta;
-        lastE = E;
-
-
+        printf("Tuning Error! Wrong bounds.\n");
+        return;
     }
-    printf("Texel-Tune:%f\n", TexelEvalError(fenfilename, k));
+
+    while (bound[1] - bound[0] > 0.001)
+    {
+        x = (lastx + bound[direction]) / 2;
+        Error = TexelEvalError(fenfilename, x);
+        if (Error > lastError)
+        {
+            bound[direction] = x;
+            E[direction] = Error;
+        }
+        else {
+            E[1 - direction] = lastError;
+            bound[1 - direction] = lastx;
+            lastx = x;
+            lastError = Error;
+        }
+        direction = 1 - direction;
+    }
+    printf("Tuningscore b0=%0.10f (%0.10f) b1=%0.10f (%0.10f)", bound[0], E[0], bound[1], E[1]);
+    k = (bound[0] + bound[1]) / 2;
+#endif
+
+
+    do
+    {
+        //printf("Error with default values: %0.10f\n", EDefault = TexelEvalError(fenfilename, k));
+        for (int i = 0; i < tipnum; i++)
+        {
+            if (tip[i].notune == false)
+            {
+                printTunedParameters();
+                printf("Tuning %s (default:%d)\n", nameTunedParameter(i).c_str(), tip[i].default);
+
+                int pbound[2] = { SHRT_MAX, SHRT_MIN };
+                int delta = 1;
+                direction = 0;
+                // direction=0: go right; delta > 0; direction=1: go right; delta
+
+                int lastp = *tip[i].addr;
+                int p = lastp + delta;
+
+                //*tip[i].addr = lastp;
+                if (tip->init)
+                    tip->init();
+                pmin = lastp;
+                Emin = TexelEvalError(fenfilename, k);
+                lastError = Emin;
+                do
+                {
+                    *tip[i].addr = p;
+                    if (tip->init)
+                        tip->init();
+                    Error = TexelEvalError(fenfilename, k);
+                    printf("Min: %d/%0.10f  This: %d/%0.10f  bounds: %d/%d  delta=%d  direction:%d\n", pmin, Emin, p, Error, pbound[0], pbound[1], delta, direction);
+                    if (Error >= Emin)
+                    {
+                        direction = (p > pmin ? 1 : 0);
+                        pbound[direction] = p;
+                        E[direction] = Error;
+                        delta = (direction ? -1 : 1);
+                        p = pmin + delta;
+                    }
+                    else
+                    {
+                        pbound[direction] = pmin;
+                        E[direction] = Emin;
+                        Emin = Error;
+                        pmin = p;
+                        delta *= 2;
+                        p = p + delta;
+                    }
+                } while (abs(pbound[1] - pbound[0]) > 2);
+                *tip[i].addr = pmin;
+                if (tip->init)
+                    tip->init();
+                printf("%s new tuned value: %d (Default:%d)\n", tip[i].name.c_str(), *tip[i].addr, tip[i].default);
+            }
+        }
+        printf("\nTuning-Summary:\n");
+        printf("Error changed from %0.10f to %0.10f\n", EDefault, Emin);
+        printTunedParameters();
+    } while (EDefault > lastError);
 }
+
 #endif //EVALTUNE
 
 

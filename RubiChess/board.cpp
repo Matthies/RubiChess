@@ -1015,13 +1015,13 @@ void initBitmaphelper()
 
 chessposition::chessposition()
 {
-    CreatePositionvalueTable();
+    //init();
 }
 
 
 chessposition::~chessposition()
 {
-    delete positionvaluetable;
+    //delete positionvaluetable;
 }
 
 

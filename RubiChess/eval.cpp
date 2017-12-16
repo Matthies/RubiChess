@@ -3,42 +3,60 @@
 
 // Evaluation stuff
 
-const int passedpawnbonus[2][8] = { { 0, 20, 30, 50, 70, 100, 150, 0 }, { 0, -150, -100, -70, -50, -30, -20, 0 } };
-const int isolatedpawnpenalty = -20;
-const int doublepawnpenalty = -15;
-const int connectedbonus = 0;  // tried 10 but that seems not to work very well; best results without connected bonus due to a bug
-const int attackingpawnbonus[2][8] = { { 0, 0, 0, 5, 10, 15, 0, 0 },{ 0, 0, -15, -10, -5, 0, 0, 0 } };
-const int kingshieldbonus = 15;
-const int backwardpawnpenalty = -20;
-const int doublebishopbonus = 20;   // not yet used
-const int slideronfreefilebonus = 15;
-const double kingdangerfactor = 0.15;
-const double kingdangerexponent = 1.1;
+#if 0
+
+int materialvalue[] = { 0, 100, 320, 330, 500, 900, SCOREWHITEWINS };
+
+int passedpawnbonus[8] = { 0, 20, 30, 50, 70, 100, 150, 0 };
+int isolatedpawnpenalty = -20;
+int doublepawnpenalty = -15;
+int connectedbonus = 0;  // tried 10 but that seems not to work very well; best results without connected bonus due to a bug
+int attackingpawnbonus[8] = { 0, 0, 0, 5, 10, 15, 0, 0 };
+int kingshieldbonus = 15;
+int backwardpawnpenalty = -20;
+int doublebishopbonus = 20;   // not yet used
+int slideronfreefilebonus = 15;
+#else
+// tuned values, first try
+int materialvalue[] = { 0, 100, 315, 328, 517, 1033, SCOREWHITEWINS };
+int passedpawnbonus[8] = { 0, 16, 5, 33, 72, 125, 212, 0 };
+int isolatedpawnpenalty = -18;
+int doublepawnpenalty = -23;
+int connectedbonus = -4;  // tried 10 but that seems not to work very well; best results without connected bonus due to a bug
+int attackingpawnbonus[8] = { 0, 0, 0, 5, 10, 15, 0, 0 };
+int kingshieldbonus = 8;
+int backwardpawnpenalty = -34;
+int doublebishopbonus = 20;   // not yet used
+int slideronfreefilebonus = 24;
+
+#endif
+double kingdangerfactor = 0.15;
+double kingdangerexponent = 1.1;
 
 int squaredistance[BOARDSIZE][BOARDSIZE];
 int kingdanger[BOARDSIZE][BOARDSIZE][7];
+int passedpawnbonusperside[2][8];
+int attackingpawnbonusperside[2][8];
 
-const int PV[][64] = {
+
+int PVBASE[][64] = {
+#if 1
+    { -9999, -9999, -9999, -9999, -9999, -9999, -9999, -9999, 89, 48, 53, 41, 3, 42, 42, 44, 49, 35, 31, 13, 10, 18, 34, 29, 13, 2, 4, 14, 13, -4, 0,
+    4, 4, -7, 8, 25, 23, -16, -15, 2, 0, -1, 7, 6, -2, -9, -2, 12, -1, 5, 0, -27, -18, 5, 9, -1, -9999, -9999, -9999, -9999, -9999, -9999, -9999, -9999 },
+    { -118, -25, -20, 7, -32, -14, -53, -88, -20, -25, 14, 16, -8, 0, -2, -56, -18, 14, 40, 33, 29, 41, 34, -7, -6, 12, 28, 37, 34, 29, 8, 29, -4, 12,
+    21, 26, 31, 24, 9, -13, -18, 12, 16, 19, 19, 20, 6, -9, -13, -12, -8, 5, 5, 6, -24, -13, -34, -17, -36, -23, -3, -31, -30, -18 },
+
+#else
     //PAWN
     {
-        0,   0,   0,   0,   0,   0,   0,   0,
+        -9999, -9999, -9999, -9999, -9999, -9999, -9999, -9999,
         50,  50,  50,  50,  50,  50,  50,  50,
         20,  20,  20,  20,  20,  20,  20,  20,
         0,   0,   0,   10,  10,  0,   0,   0,
         0,   -20, 10,  20,  20,  -20, -20, 0,
         0,   -10, 10,  10,  10,  -10, -10, 0,
         0,  10,  0,  -20, -20,  0,   10,  10,
-        0,   0,   0,   0,   0,   0,   0,   0
-    },
-    {
-        0,   0,   0,   0,   0,   0,   0,   0,
-        35,  35,  35,  35,  35,  35,  35,  35,
-        15,  25,  25,  25,  25,  25,  25,  15,
-        10,  15,  15,  15,  15,  15,  15,  10,
-        5,   10,  10,  10,  10,  10,  10,  5,
-        2,   5,   5,   5,   5,   5,   5,   2,
-        0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0
+        -9999, -9999, -9999, -9999, -9999, -9999, -9999, -9999
     },
     //KNIGHT
     {
@@ -51,27 +69,8 @@ const int PV[][64] = {
         -15, -10,   0,  10,  10,   0, -10,  -15,
         -25, -15, -10,    0,  0, -10, -15,  -25,
     },
-    {
-        -25, -15, -10,    0,  0, -10, -15,  -25,
-        -15, -10,   0,  10,  10,   0, -10,  -15,
-        -10,   0,  10,  15,  15,  10,  0,   -10,
-        0,   5,  15,  25,  25,  15,  5,    0,
-        0,   5,  15,  25,  25,  15,  5,    0,
-        -10,   0,  10,  15,  15,  10,  0,   -10,
-        -15, -10,   0,  10,  10,   0, -10,  -15,
-        -25, -15, -10,    0,  0, -10, -15,  -25,
-    },
+#endif
     //BISHOP
-    {
-        -25, -15, -10,    0,  0, -10, -15,  -25,
-        -15, -10,   0,  10,  10,   0, -10,  -15,
-        -10,   0,  10,  15,  15,  10,  0,   -10,
-        0,   5,  15,  25,  25,  15,  5,    0,
-        0,   5,  15,  25,  25,  15,  5,    0,
-        -10,   0,  10,  15,  15,  10,  0,   -10,
-        -15, -10,   0,  10,  10,   0, -10,  -15,
-        -25, -15, -10,    0,  0, -10, -15,  -25,
-    },
     {
         -25, -15, -10,    0,  0, -10, -15,  -25,
         -15, -10,   0,  10,  10,   0, -10,  -15,
@@ -93,27 +92,7 @@ const int PV[][64] = {
         -10,  0,   0,   0,   0,   0,   0, -10,
         -10, -10, -10, -10, -10, -10, -10, -10
     },
-    {
-        -10, -10, -10, -10, -10, -10, -10, -10,
-        -10,  0,   0,   0,   0,   0,   0, -10,
-        -10,  0,   0,   0,   0,   0,   0, -10,
-        -10,  0,   0,   0,   0,   0,   0, -10,
-        -10,  0,   0,   0,   0,   0,   0, -10,
-        -10,  0,   0,   0,   0,   0,   0, -10,
-        -10,  0,   0,   0,   0,   0,   0, -10,
-        -10, -10, -10, -10, -10, -10, -10, -10
-    },
     //QUEEN
-    {
-        -10, -10, -10, -10, -10, -10, -10, -10,
-        -10,  0,   0,   0,   0,   0,   0, -10,
-        -10,  0,   0,   0,   0,   0,   0, -10,
-        -10,  0,   0,   0,   0,   0,   0, -10,
-        -10,  0,   0,   0,   0,   0,   0, -10,
-        -10,  0,   0,   0,   0,   0,   0, -10,
-        -10,  0,   0,   0,   0,   0,   0, -10,
-        -10, -10, -10, -10, -10, -10, -10, -10
-    },
     {
         -10, -10, -10, -10, -10, -10, -10, -10,
         -10,  0,   0,   0,   0,   0,   0, -10,
@@ -134,22 +113,120 @@ const int PV[][64] = {
         -30, -30, -30, -30, -30, -30, -30, -30,
         -30, -30, -40, -40, -40, -30, -30, -30,
         10,  10,  20,   0,   0,   0,   20,  10
-    },
+    }
+};
+
+int PVPHASEDIFF[][64] = {
+    //PAWN
     {
-        -30, -30, -20, -20, -20, -20, -30, -30,
-        -30, -20, -20, -20, -20, -20, -20, -30,
-        -20, -20, -10, -10, -10, -10, -20, -20,
-        -20, -20, -10,   0,   0, -10, -20, -20,
-        -20, -20, -10,   0,   0, -10, -20, -20,
-        -20, -20, -10, -10, -10, -10, -20, -20,
-        -30, -20, -20, -20, -20, -20, -20, -30,
-        -30, -30, -20, -20, -20, -20, -30, -30
+        -9999, -9999, -9999, -9999, -9999, -9999, -9999, -9999,
+        -15, -15, -15 , -15, -15, -15, -15, -15,
+        -5,   5,   5,   5,   5,   5,   5,  -5,
+        10,  15,  15,   5,   5,  15,  15,  10,
+        5,   30,   0, -10, -10,  30,  30,  5,
+        2,  15,  -5,  -5,  -5,  15,  15,   2,
+        0,  -10,  0,  20,  20,   0, -10, -10,
+        -9999, -9999, -9999, -9999, -9999, -9999, -9999, -9999
+    },
+    //KNIGHT
+    {
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0
+    },
+    //BISHOP
+    {
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0
+    },
+    //ROOK
+    {
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0
+    },
+    //QUEEN
+    {
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0,  0,  0
+    },
+    //KING
+    {
+          0,   0,  10,  10,  10,  10,   0,   0,
+          0,  10,  10,  10,  10,  10,  10,   0,
+         10,  10,  20,  20,  20,  20,  10,  10,
+         10,  10,  20,  30,  30,  20,  10,  10,
+         10,  10,  20,  30,  30,  20,  10,  10,
+         10,  10,  20,  20,  20,  20,  10,  10,
+          0,  10,  20,  20,  20,  10,  10,   0,
+        -40, -40, -40, -20, -20, -20, -50, -40
     }
 };
 
 
+#ifdef EVALTUNE
+void registeralltuners()
+{
+    int i, j;
+#if 0
+    for (i = KNIGHT; i < KING; i++)
+        registerTuner(&materialvalue[i], "materialvalue[" + to_string(i) + "]", materialvalue[i], -100, 100, &CreatePositionvalueTable);
+#endif
+#if 1
+    for (i = /*0*/2; i < 6; i++)
+    {
+        for (j = 0; j < 64; j++)
+        {
+            registerTuner(&PVBASE[i][j], "PVBASE", PVBASE[i][j], j, 64, i, 6, &CreatePositionvalueTable, PVBASE[i][j] <= -9999);
+        }
+    }
+#endif
+#if 0
+    for (i = 0; i < 8; i++)
+    {
+        registerTuner(&passedpawnbonus[i], "passedpawnbonus", passedpawnbonus[i], i, 8, 0, 0, &CreatePositionvalueTable, i == 0 || i == 7);
+        //registerTuner(&attackingpawnbonus[i], "attackingpawnbonus[" + to_string(i) + "]", attackingpawnbonus[i], -100, 100, &CreatePositionvalueTable);
 
-void chessposition::CreatePositionvalueTable()
+    }
+    registerTuner(&isolatedpawnpenalty, "isolatedpawnpenalty", isolatedpawnpenalty, 0, 0, 0, 0, NULL, false);
+    registerTuner(&doublepawnpenalty, "doublepawnpenalty", doublepawnpenalty, 0, 0, 0, 0, NULL, false);
+    registerTuner(&connectedbonus, "connectedbonus", connectedbonus, 0, 0, 0, 0, NULL, false);
+    registerTuner(&kingshieldbonus, "kingshieldbonus", kingshieldbonus, 0, 0, 0, 0, NULL, false);
+    registerTuner(&backwardpawnpenalty, "backwardpawnpenalty", backwardpawnpenalty, 0, 0, 0, 0, NULL, false);
+    registerTuner(&slideronfreefilebonus, "slideronfreefilebonus", slideronfreefilebonus, 0, 0, 0, 0, NULL, false);
+    //registerTuner(&doublepawnpenalty, "doublepawnpenalty", doublepawnpenalty, -100, 100, NULL);
+#endif
+
+//    const double kingdangerfactor = 0.15;
+//    const double kingdangerexponent = 1.1;
+
+}
+#endif
+
+
+void chessposition::init()
 {
     int rs = 0;
     for (int b = BOARDSIZE; b ^ 0x8; b >>= 1)
@@ -165,8 +242,27 @@ void chessposition::CreatePositionvalueTable()
             squaredistance[i][j] = max(abs(fi - fj), abs(ri - rj));
         }
     }
+#ifdef EVALTUNE
+    registeralltuners();
+#endif
 
-    positionvaluetable = new int[2 * 8 * 256 * BOARDSIZE];  // color piecetype phase boardindex
+    CreatePositionvalueTable();
+}
+
+
+
+void CreatePositionvalueTable()
+{
+    for (int r = 0; r < 8; r++)
+    {
+        passedpawnbonusperside[0][r] = passedpawnbonus[r];
+        passedpawnbonusperside[1][7 - r] = -passedpawnbonus[r];
+        attackingpawnbonusperside[0][r] = attackingpawnbonus[r];
+        attackingpawnbonusperside[1][7 - r] = -attackingpawnbonus[r];
+
+    }
+
+    //positionvaluetable = new int[2 * 8 * 256 * BOARDSIZE];  // color piecetype phase boardindex
 
     for (int i = 0; i < BOARDSIZE; i++)
     {
@@ -188,10 +284,10 @@ void chessposition::CreatePositionvalueTable()
                 int index1 = i | (ph << 7) | (p << 15);
                 int index2 = index1 | (1 << 18);
 #endif
-                positionvaluetable[index1] = (PV[(p - 1) << 1][j1] * (255 - ph) + PV[((p - 1) << 1) | 1][j1] * ph) / 255;
-                positionvaluetable[index2] = -(PV[(p - 1) << 1][j2] * (255 - ph) + PV[((p - 1) << 1) | 1][j2] * ph) / 255;
-                positionvaluetable[index1] += materialvalue[p];
-                positionvaluetable[index2] -= materialvalue[p];
+                pos.positionvaluetable[index1] = (PVBASE[(p - 1)][j1] * (255 - ph) + (PVBASE[(p - 1)][j1] + PVPHASEDIFF[(p - 1)][j1]) * ph) / 255;
+                pos.positionvaluetable[index2] = -(PVBASE[(p - 1)][j2] * (255 - ph) + (PVBASE[(p - 1)][j2] + PVPHASEDIFF[(p - 1)][j2])* ph) / 255;
+                pos.positionvaluetable[index1] += materialvalue[p];
+                pos.positionvaluetable[index2] -= materialvalue[p];
             }
             for (int j = 0; j < BOARDSIZE; j++)
             {
@@ -238,7 +334,7 @@ int chessposition::getPawnValue()
                     if (pawn_attacks_occupied[index][s] & piece00[pc ^ S2MMASK])
                     {
                         // pawn attacks opponent pawn
-                        entry->value += attackingpawnbonus[s][RANK(index)];
+                        entry->value += attackingpawnbonusperside[s][RANK(index)];
 #ifdef DEBUGEVAL
                         debugeval("Attacking Pawn Bonus(%d): %d\n", index, attackingpawnbonus[s][RANK(index)]);
 #endif
@@ -281,7 +377,7 @@ int chessposition::getPawnValue()
         bb = entry->passedpawnbb[s];
         while (LSB(index, bb))
         {
-            val += ph * passedpawnbonus[s][RANK(index)] / 256;
+            val += ph * passedpawnbonusperside[s][RANK(index)] / 256;
             bb ^= BITSET(index);
 #ifdef DEBUGEVAL
             debugeval("Passed Pawn Bonus(%d): %d\n", index, passedpawnbonus[s][RANK(index)]);
