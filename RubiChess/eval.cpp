@@ -209,12 +209,21 @@ void registeralltuners()
     for (i = KNIGHT; i < KING; i++)
         registerTuner(&materialvalue[i], "materialvalue[" + to_string(i) + "]", materialvalue[i], -100, 100, &CreatePositionvalueTable);
 #endif
-#if 1
+#if 0
     for (i = 0; i < 6; i++)
     {
         for (j = 0; j < 64; j++)
         {
             registerTuner(&PVBASE[i][j], "PVBASE", PVBASE[i][j], j, 64, i, 6, &CreatePositionvalueTable, PVBASE[i][j] <= -9999);
+        }
+    }
+#endif
+#if 1
+    for (i = 0; i < 6; i++)
+    {
+        for (j = 0; j < 64; j++)
+        {
+            registerTuner(&PVPHASEDIFF[i][j], "PVPHASEDIFF", PVPHASEDIFF[i][j], j, 64, i, 6, &CreatePositionvalueTable, PVPHASEDIFF[i][j] <= -9999);
         }
     }
 #endif
