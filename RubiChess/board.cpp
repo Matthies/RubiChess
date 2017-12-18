@@ -1021,7 +1021,7 @@ chessposition::chessposition()
 
 chessposition::~chessposition()
 {
-    //delete positionvaluetable;
+    delete positionvaluetable;
 }
 
 

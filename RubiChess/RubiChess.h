@@ -543,7 +543,7 @@ public:
     unsigned long killer[2][MAXDEPTH];
     unsigned int history[14][64];
     unsigned long long debughash = 0;
-    int positionvaluetable[2 * 8 * 256 * BOARDSIZE]; // value tables for both sides, 7 PieceTypes and 256 phase variations 
+    int *positionvaluetable; // value tables for both sides, 7 PieceTypes and 256 phase variations 
     int ph; // to store the phase during different evaluation functions
 
     chessposition();
