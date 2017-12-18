@@ -625,6 +625,7 @@ public:
 
     chessposition();
     ~chessposition();
+    void init();
     bool operator==(chessposition p);
     bool w2m();
     int getFromFen(const char* sFen);
@@ -654,7 +655,6 @@ public:
     int getPositionValue();
     int getPawnValue();
     int getValue();
-    void CreatePositionvalueTable();
 #ifdef DEBUG
     void debug(int depth, const char* format, ...);
 #endif

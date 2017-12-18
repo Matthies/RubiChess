@@ -212,6 +212,7 @@ int PVPHASEDIFF[][64] = {
       -39,  -39,  -43,  -10,  -36,  -13,  -51,  -70  }
  };
 #else
+    // values before tuning up to version 0.6
     //PAWN
     {
         -9999, -9999, -9999, -9999, -9999, -9999, -9999, -9999,
@@ -719,7 +720,7 @@ int chessposition::getPositionValue()
                         && (!lastpawn[opcol][f + 1] || S2MSIGN(col) * lastpawn[opcol][f + 1] <= S2MSIGN(col) * pawnrank)
                         && (!lastpawn[opcol][f + 2] || S2MSIGN(col) * lastpawn[opcol][f + 2] <= S2MSIGN(col) * pawnrank))
                     //result += passedpawnbonus[col][pawnrank];
-                    result += ph * passedpawnbonus[col][pawnrank] / 256;
+                    result += ph * passedpawnbonusperside[col][pawnrank] / 256;
             }
             if (pawnrank && !firstpawn[col][f] && !firstpawn[col][f + 2])
                 // isolated pawn
