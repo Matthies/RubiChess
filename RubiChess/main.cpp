@@ -938,7 +938,7 @@ void readfromengine(HANDLE pipe, enginestate *es)
                         es->enginesbestmove = token[1];
                         string myPv = token[1];
                         if (strstr(es->bestmoves.c_str(), myPv.c_str()) != NULL
-                            || es->bestmoves == "" && strstr(es->avoidmoves.c_str(), myPv.c_str()) == NULL)
+                            || (es->bestmoves == "" && strstr(es->avoidmoves.c_str(), myPv.c_str()) == NULL))
                         {
                             if (es->firstbesttimesec < 0)
                             {
@@ -984,7 +984,7 @@ void readfromengine(HANDLE pipe, enginestate *es)
     } while (true);
 }
 
-BOOL writetoengine(HANDLE pipe, char *s)
+BOOL writetoengine(HANDLE pipe, const char *s)
 {
     DWORD written;
     return WriteFile(pipe, s, (DWORD)strlen(s), &written, NULL);
@@ -1135,7 +1135,7 @@ void testengine(string epdfilename, int startnum, string engineprg, string logfi
                 bool searchavoidmove = false;
                 es.bestmoves = "";
                 string moveliststr;
-                for (int i = 4; i < fv.size(); i++)
+                for (unsigned int i = 4; i < fv.size(); i++)
                 {
                     if (searchbestmove || searchavoidmove)
                     {
@@ -1193,8 +1193,8 @@ void testengine(string epdfilename, int startnum, string engineprg, string logfi
                     if (!engineStopped
                         && ((now - es.starttime) / CLOCKS_PER_SEC > maxtime
                             || es.score > SCOREWHITEWINS - MAXDEPTH
-                            || (flags & 0x2) && es.doCompare && es.comparesuccess && (now - es.starttime) / CLOCKS_PER_SEC > es.comparetime)
-                            || (flags & 0x2) && es.firstbesttimesec >= 0 && ((now - es.starttime) / CLOCKS_PER_SEC) > es.firstbesttimesec + 5)
+                            || ((flags & 0x2) && es.doCompare && es.comparesuccess && (now - es.starttime) / CLOCKS_PER_SEC > es.comparetime)
+                            || ((flags & 0x2) && es.firstbesttimesec >= 0 && ((now - es.starttime) / CLOCKS_PER_SEC) > es.firstbesttimesec + 5)))
                     {
                         bSuccess = writetoengine(g_hChildStd_IN_Wr, "stop\n");
                         engineStopped = true;

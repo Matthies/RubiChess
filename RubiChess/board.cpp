@@ -2259,7 +2259,7 @@ void engine::communicate(string inputstring)
     vector<string> moves;
     vector<string> searchmoves;
     vector<string> commandargs;
-    GuiToken command;
+    GuiToken command = UNKNOWN;
     size_t ci, cs;
     bool bGetName, bGetValue;
     string sName, sValue;

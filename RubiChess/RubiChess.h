@@ -6,7 +6,7 @@
 #define DEBUG
 #endif
 
-#if 1
+#if 0
 #define EVALTUNE
 #endif
 
@@ -153,7 +153,7 @@ struct tuningintparameter
 {
     int *addr;
     string name;
-    int default;
+    int defval;
     int tuned;
     int index1;
     int bound1;
