@@ -518,6 +518,9 @@ int rootsearch(int alpha, int beta, int depth)
 }
 
 
+#ifdef DEBUG
+int aspirationdelta[MAXDEPTH][2000] = { 0 };
+#endif
 
 static void search_gen1()
 {
@@ -566,6 +569,7 @@ static void search_gen1()
         // Reset bestmove to detect alpha raise in interrupted search
         pos.bestmove.code = 0;
 #ifdef DEBUG
+        int oldscore = 0;
         unsigned long nodesbefore = en.nodes;
         en.npd[depth] = 0;
 #endif
@@ -630,6 +634,13 @@ static void search_gen1()
                 if (en.stopLevel == ENGINERUN)
                 {
                     en.npd[depth] = en.nodes - en.npd[depth - 1];
+                    if (depth >= 2)
+                    {
+                        int deltascore = (score - oldscore) + 1000;
+                        if (deltascore >= 0 && deltascore < 2000)
+                            aspirationdelta[depth][deltascore]++;
+                    }
+                    oldscore = score;
                 }
 #endif
                 depth += depthincrement;
@@ -766,7 +777,7 @@ void searchguide()
     {
         sprintf_s(s, "info string pawnhash-hits: %0.2f%%\n", (float)pwnhsh.hit / (float)pwnhsh.query * 100.0f);
         cout << s;
-
+        en.fdebug << s;
     }
 
 #endif

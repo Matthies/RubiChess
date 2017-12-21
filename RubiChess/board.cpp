@@ -2546,6 +2546,11 @@ void engine::setOption(string sName, string sValue)
     }
 }
 
+
+#ifdef DEBUG
+extern int aspirationdelta[MAXDEPTH][2000];
+#endif
+
 void engine::communicate(string inputstring)
 {
     string fen;
@@ -2784,6 +2789,33 @@ void engine::communicate(string inputstring)
             }
         }
     } while (command != QUIT && (inputstring == "" || pendingposition));
+
+#ifdef DEBUG
+    char s[16384];
+    cout << "Score delta table:\n";
+    int depth = 2;
+    int mind, maxd;
+    do
+    {
+        mind = 2000;
+        maxd = -1;
+        for (int i = 0; i < 2000; i++)
+        {
+            if (aspirationdelta[depth][i] > 0)
+            {
+                if (mind > i)
+                    mind = i;
+                maxd = i;
+            }
+        }
+        for (int i = mind; i <= maxd; i++)
+        {
+            sprintf(s, "%d;%d;%d\n", depth, i - 1000, aspirationdelta[depth][i]);
+            en.fdebug << s;
+        }
+        depth++;
+    } while (maxd >= 0);
+#endif
 }
 
 zobrist zb;

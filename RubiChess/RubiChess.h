@@ -2,7 +2,7 @@
 
 #define VERNUM "0.7-dev"
 
-#if 0
+#if 1
 #define DEBUG
 #endif
 
