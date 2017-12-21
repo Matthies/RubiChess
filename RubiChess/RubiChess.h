@@ -6,7 +6,7 @@
 #define DEBUG
 #endif
 
-#if 0
+#if 1
 #define EVALTUNE
 #endif
 
@@ -147,13 +147,14 @@ U64 getTime();
 typedef void(*initevalfunc)(void);
 bool PGNtoFEN(string pgnfilename);
 void TexelTune(string fenfilename);
-void registerTuner(int *addr, string name, int def, int index1, int bound1, int index2, int bound2, initevalfunc init, bool notune);
+void registerTuner(int *addr, string name, int def, int index1, int bound1, int index2, int bound2, initevalfunc init, bool notune, int initialdelta = 1);
 
 struct tuningintparameter
 {
     int *addr;
     string name;
     int defval;
+    int initialdelta;
     int tuned;
     int index1;
     int bound1;
@@ -164,6 +165,12 @@ struct tuningintparameter
 };
 
 extern int tuningratio;
+
+#define CONSTEVAL
+
+#else //EVALTUNE
+
+#define CONSTEVAL const
 
 #endif
 

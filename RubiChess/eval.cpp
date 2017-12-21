@@ -3,7 +3,121 @@
 
 // Evaluation stuff
 
-#if 0
+int doublebishopbonus =    24;
+int passedpawnbonus[8] = {     0,   21,   19,   41,   70,  140,  211,    0  };
+int attackingpawnbonus[8] = {     0,  -41,    1,  -18,    5,   32,    0,    0  };
+int isolatedpawnpenalty =   -14;
+int doublepawnpenalty =   -24;
+int connectedbonus =     0;
+int kingshieldbonus =    14;
+int backwardpawnpenalty =   -18;
+int slideronfreefilebonus =    22;
+int scalephaseshift = 6;
+
+int materialvalue[7] = {     0,  100,  319,  330,  512, 1005,32509  };
+CONSTEVAL int PVBASE[6][64] = {
+  { -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999,
+       49,   82,   73,   52,   52,   75,   58,   50,
+       33,   32,   16,    0,   12,    8,   37,   26,
+       11,   -1,    4,    6,   13,  -10,  -10,   -8,
+        2,  -12,    4,   28,   16,   -9,  -23,   -2,
+        2,   -4,   12,   -5,   -3,  -11,   -4,    6,
+       -6,    2,   -4,  -14,  -26,    0,   14,   -1,
+    -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999  },
+  {  -130,  -45,  -18,   -8,   -3,  -38,  -59,  -77,
+      -41,  -32,   -1,   17,   -4,   19,  -19,   17,
+      -23,   22,   36,   43,   54,   40,   34,  -25,
+        3,   15,   34,   40,   37,   40,   14,   24,
+       -5,   10,   29,   24,   32,   21,    7,   -7,
+      -21,    5,   15,   19,   10,   20,   29,  -25,
+      -41,   -9,    3,    6,   13,    2,  -35,  -18,
+      -58,  -26,  -13,   -3,  -21,  -28,  -17, -136  },
+  {    -7,  -21,   40,  -14,   -7,    9,  -21,  -10,
+      -19,   24,    0,    8,    9,   20,   16,  -35,
+        3,   34,   23,   29,   38,   35,   19,   16,
+        3,   13,   35,   40,   33,   28,   11,   18,
+       12,   12,   23,   35,   28,    8,   10,   -4,
+       -1,   24,   17,   14,   18,   22,   21,    0,
+      -32,    8,    5,    2,    7,    2,   26,    0,
+      -61,  -44,   -9,  -25,  -13,  -16,   -6,  -12  },
+  {    17,   14,   -4,   17,   11,   13,    4,   12,
+       25,   21,   27,   29,   38,   20,   13,   10,
+       12,   13,   13,   15,   14,   14,    9,    1,
+        4,    7,   13,   15,   15,    6,    2,   -2,
+       -8,    0,   -2,    1,   -3,    3,  -15,  -20,
+      -17,  -12,   -3,   -8,   -1,  -12,  -12,   -7,
+      -25,    0,    4,   -4,   -4,    6,   -7,  -23,
+      -13,   -7,   -2,    4,    1,   14,  -13,  -26  },
+  {   -21,    4,   -5,  -21,   12,   26,  -33,  -12,
+      -14,  -30,    6,    6,    5,    7,  -14,   29,
+      -16,  -12,   -4,   23,   36,   60,   34,   22,
+      -24,  -12,   -8,   15,   27,   17,   -6,  -18,
+      -16,   -5,  -17,   -9,   -2,   -9,  -18,  -32,
+      -23,  -15,  -11,   -5,    0,  -15,  -14,  -14,
+      -11,  -20,    2,   -6,    3,  -11,   -4,   -6,
+      -26,  -21,   -4,    6,  -19,  -34,  -77,  -66  },
+  {  -109,  -44,   13,  -40,   31,   13,   -6,  -99,
+      -55,    8,  -14,   37,   10,   24,   17,  -32,
+        0,   28,   11,    7,    4,   17,   30,    1,
+        6,    3,   -7,  -29,  -23,  -15,   -9,   -6,
+      -39,   -8,  -15,  -32,  -37,  -15,   -9,  -26,
+      -44,  -17,  -34,  -21,  -25,  -28,  -12,  -23,
+      -24,  -19,  -30,  -28,  -27,  -19,  -15,   -5,
+        1,   18,   22,  -12,    7,  -13,   18,   10  }
+ };
+int PVPHASEDIFF[6][64] = {
+  { -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999,
+      -23,  -12,  -21,  -17,  -23,  -15,  -12,  -18,
+        3,    1,    7,  -13,  -10,    0,    6,   -6,
+       11,   22,    0,   -9,   -6,   13,   15,   19,
+        7,   26,    1,  -31,  -27,   29,   30,    5,
+        3,   12,  -12,   -3,    2,   18,   16,  -11,
+        6,   -6,    3,   -9,  -10,   -3,  -11,   -9,
+    -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999  },
+  {     0,    7,    0,   -6,    1,    1,    5,    0,
+        0,   14,    0,    0,    1,    0,    0,    1,
+        0,    0,    0,  -10,    0,    0,   -3,    0,
+        3,    0,    0,    0,    0,    0,    0,  -15,
+        0,    0,    0,   -1,    0,    0,    0,    0,
+        0,   -1,    0,    0,    0,  -15,   -1,    0,
+        1,    1,    8,    0,   -7,    0,    0,    0,
+        0,    0,    0,    4,    0,    2,   16,    0  },
+  {     0,    1,    0,   -1,    4,    3,    9,   31,
+        6,    0,    7,    0,    0,    0,    0,   34,
+        0,   -1,   -1,    0,    0,    0,  -14,    0,
+       -1,    0,    0,    0,    0,   -7,    0,  -15,
+      -15,   -4,    0,   -3,    0,    0,    0,    0,
+        0,    0,   -7,    0,    0,  -15,   -3,    0,
+        1,    4,   -7,   -7,   -7,   -6,  -15,    1,
+        7,    0,    0,    0,    2,   15,    0,    2  },
+  {     0,    0,   15,    0,    0,    0,    0,    0,
+        0,    0,    0,    0,    0,    0,    0,    0,
+        0,    0,    0,    0,    0,    0,    0,    0,
+       -1,   -1,    0,    0,   -2,   -1,   -1,    0,
+        0,    0,    9,   -1,    7,   -1,    0,    0,
+        0,    0,    0,    1,    1,    0,    0,    0,
+        0,    0,    0,    1,    0,    0,    0,    4,
+        3,    1,   10,    0,    0,  -20,    0,    0  },
+  {     0,  -17,    0,   31,    0,    0,    2,   11,
+        0,   31,   -2,   -1,    0,    0,   48,    0,
+       30,    0,    5,    0,  -15,   -2,   -9,    0,
+        0,    0,    0,    0,   -2,   -1,   62,   30,
+        0,    0,    0,   63,   32,   31,   17,    3,
+        0,    2,    2,    0,    0,   61,    2,    7,
+       31,    0,    0,    1,    0,    3,    0,    0,
+        1,   31,    1,  -32,    0,    2,    2,    2  },
+  {     2,    8,   38,   27,   24,   10,    2,    7,
+        3,   14,   24,   34,   13,   23,   25,    2,
+       11,   24,   27,   32,   27,   26,   16,   17,
+       17,   18,   34,   44,   40,   26,   10,    9,
+       18,   17,   27,   41,   36,   27,   18,   12,
+       14,   14,   26,   27,   31,   29,   12,   13,
+        1,   14,   23,   24,   23,   11,   10,    1,
+      -39,  -39,  -43,  -10,  -36,  -13,  -51,  -70  }
+ };
+
+
+#if 0 // release 0.6
 
 int materialvalue[] = { 0, 100, 320, 330, 500, 900, SCOREWHITEWINS };
 
@@ -16,7 +130,9 @@ int kingshieldbonus = 15;
 int backwardpawnpenalty = -20;
 int doublebishopbonus = 20;   // not yet used
 int slideronfreefilebonus = 15;
-#else
+#endif
+
+#if 0 //tuned7
 // tuned values, first try
 int materialvalue[] = { 0, 100, 315, 328, 517, 1033, SCOREWHITEWINS };
 int passedpawnbonus[8] = { 0, 16, 5, 33, 72, 125, 212, 0 };
@@ -26,8 +142,9 @@ int connectedbonus = -4;  // tried 10 but that seems not to work very well; best
 int attackingpawnbonus[8] = { 0, 0, 0, 5, 10, 15, 0, 0 };
 int kingshieldbonus = 8;
 int backwardpawnpenalty = -34;
-int doublebishopbonus = 20;   // not yet used
+int doublebishopbonus = 21;
 int slideronfreefilebonus = 24;
+int scalephaseshift = 6;
 
 #endif
 double kingdangerfactor = 0.15;
@@ -38,9 +155,9 @@ int kingdanger[BOARDSIZE][BOARDSIZE][7];
 int passedpawnbonusperside[2][8];
 int attackingpawnbonusperside[2][8];
 
+#if 0 // tuned7
 
 int PVBASE[][64] = {
-#if 1
       { -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999,
        89,   48,   53,   41,    3,   42,   42,   44,
        49,   35,   31,   13,   10,   18,   34,   29,
@@ -89,7 +206,9 @@ int PVBASE[][64] = {
       -44,  -17,  -34,  -21,  -25,  -28,  -12,  -23,
       -24,  -19,  -30,  -28,  -27,  -19,  -15,   -5,
         1,   18,   22,  -12,    7,  -13,   18,   10  }
-#else
+#endif
+
+#if 0
     // values before tuning up to version 0.6
     //PAWN
     {
@@ -157,11 +276,11 @@ int PVBASE[][64] = {
         -30, -30, -40, -40, -40, -30, -30, -30,
         10,  10,  20,   0,   0,   0,   20,  10
     }
-#endif
 };
+#endif
 
+#if 0  // tuned7
 int PVPHASEDIFF[][64] = {
-#if 1
   { -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999,
       -23,  -12,  -21,  -17,  -23,  -15,  -12,  -18,
         3,    1,    7,  -13,  -10,    0,    6,   -6,
@@ -211,7 +330,8 @@ int PVPHASEDIFF[][64] = {
         1,   14,   23,   24,   23,   11,   10,    1,
       -39,  -39,  -43,  -10,  -36,  -13,  -51,  -70  }
  };
-#else
+#endif
+#if 0
     // values before tuning up to version 0.6
     //PAWN
     {
@@ -286,10 +406,26 @@ int PVPHASEDIFF[][64] = {
 void registeralltuners()
 {
     int i, j;
+    registerTuner(&scalephaseshift, "scalephaseshift", scalephaseshift, 0, 0, 0, 0, NULL, false);
+#if 0
+    // tuning other values
+    for (i = 0; i < 8; i++)
+        registerTuner(&passedpawnbonus[i], "passedpawnbonus", passedpawnbonus[i], i, 8, 0, 0, &CreatePositionvalueTable, i == 0 || i == 7);
+    for (i = 0; i < 8; i++)
+        registerTuner(&attackingpawnbonus[i], "attackingpawnbonus", attackingpawnbonus[i], i, 8, 0, 0 , &CreatePositionvalueTable, i == 0 || i == 7);
+    registerTuner(&isolatedpawnpenalty, "isolatedpawnpenalty", isolatedpawnpenalty, 0, 0, 0, 0, NULL, false);
+    registerTuner(&doublepawnpenalty, "doublepawnpenalty", doublepawnpenalty, 0, 0, 0, 0, NULL, false);
+    registerTuner(&connectedbonus, "connectedbonus", connectedbonus, 0, 0, 0, 0, NULL, false);
+    registerTuner(&kingshieldbonus, "kingshieldbonus", kingshieldbonus, 0, 0, 0, 0, NULL, false);
+    registerTuner(&backwardpawnpenalty, "backwardpawnpenalty", backwardpawnpenalty, 0, 0, 0, 0, NULL, false);
+    registerTuner(&slideronfreefilebonus, "slideronfreefilebonus", slideronfreefilebonus, 0, 0, 0, 0, NULL, false);
+    registerTuner(&doublebishopbonus, "doublebishopbonus", doublebishopbonus, 0, 0, 0, 0, NULL, false);
+    registerTuner(&scalephasefactor, "scalephasefactor", scalephasefactor, 0, 0, 0, 0, NULL, false, 8);
+#endif
 #if 0
     // tuning material value
-    for (i = KNIGHT; i < KING; i++)
-        registerTuner(&materialvalue[i], "materialvalue[" + to_string(i) + "]", materialvalue[i], -100, 100, &CreatePositionvalueTable);
+    for (i = BLANK; i <= KING; i++)
+        registerTuner(&materialvalue[i], "materialvalue", materialvalue[i], i, 7, 0, 0, &CreatePositionvalueTable, i <= PAWN || i >= KING);
 #endif
 #if 1
     // tuning the psqt base at game start
@@ -297,11 +433,11 @@ void registeralltuners()
     {
         for (j = 0; j < 64; j++)
         {
-            registerTuner(&PVBASE[i][j], "PVBASE", PVBASE[i][j], j, 64, i, 6, &CreatePositionvalueTable, PVBASE[i][j] <= -9999);
+            registerTuner(&PVBASE[i][j], "PVBASE", PVBASE[i][j], j, 64, i, 6, &CreatePositionvalueTable, PVBASE[i][j] <= -9999 || i <= 1 || (i == 2 && j <= 26));
         }
     }
 #endif
-#if 0
+#if 1
     //tuning the psqt development
     for (i = 0; i < 6; i++)
     {
@@ -311,26 +447,6 @@ void registeralltuners()
         }
     }
 #endif
-#if 0
-    // tuning other values
-    for (i = 0; i < 8; i++)
-    {
-        registerTuner(&passedpawnbonus[i], "passedpawnbonus", passedpawnbonus[i], i, 8, 0, 0, &CreatePositionvalueTable, i == 0 || i == 7);
-        //registerTuner(&attackingpawnbonus[i], "attackingpawnbonus[" + to_string(i) + "]", attackingpawnbonus[i], -100, 100, &CreatePositionvalueTable);
-
-    }
-    registerTuner(&isolatedpawnpenalty, "isolatedpawnpenalty", isolatedpawnpenalty, 0, 0, 0, 0, NULL, false);
-    registerTuner(&doublepawnpenalty, "doublepawnpenalty", doublepawnpenalty, 0, 0, 0, 0, NULL, false);
-    registerTuner(&connectedbonus, "connectedbonus", connectedbonus, 0, 0, 0, 0, NULL, false);
-    registerTuner(&kingshieldbonus, "kingshieldbonus", kingshieldbonus, 0, 0, 0, 0, NULL, false);
-    registerTuner(&backwardpawnpenalty, "backwardpawnpenalty", backwardpawnpenalty, 0, 0, 0, 0, NULL, false);
-    registerTuner(&slideronfreefilebonus, "slideronfreefilebonus", slideronfreefilebonus, 0, 0, 0, 0, NULL, false);
-    //registerTuner(&doublepawnpenalty, "doublepawnpenalty", doublepawnpenalty, -100, 100, NULL);
-#endif
-
-//    const double kingdangerfactor = 0.15;
-//    const double kingdangerexponent = 1.1;
-
 }
 #endif
 
@@ -355,6 +471,7 @@ void chessposition::init()
     registeralltuners();
 #endif
 
+    positionvaluetable = NULL;
     CreatePositionvalueTable();
 }
 
@@ -371,7 +488,8 @@ void CreatePositionvalueTable()
 
     }
 
-    pos.positionvaluetable = new int[2 * 8 * 256 * BOARDSIZE];  // color piecetype phase boardindex
+    if (!pos.positionvaluetable)
+        pos.positionvaluetable = new int[2 * 8 * 256 * BOARDSIZE];  // color piecetype phase boardindex
 
     for (int i = 0; i < BOARDSIZE; i++)
     {
@@ -553,7 +671,7 @@ int chessposition::getValue()
 int chessposition::getPositionValue()
 {
     int index;
-    int scalephaseto4 = (~ph & 0xff) >> 6;
+    int scalephase = (~ph & 0xff) >> scalephaseshift; ;
     int result = 0;
 #ifdef DEBUGEVAL
     int positionvalue = 0;
@@ -599,10 +717,17 @@ int chessposition::getPositionValue()
                 U64 diagmobility = ~occupied00[s]
                     & (mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)]);
 #endif
-                result += (S2MSIGN(s) * POPCOUNT(diagmobility) * scalephaseto4);
+                result += (S2MSIGN(s) * POPCOUNT(diagmobility) * scalephase);
             }
         }
     }
+
+    // bonus for double bishop
+    if (POPCOUNT(piece00[WBISHOP]) >= 2)
+        result += doublebishopbonus;
+    if (POPCOUNT(piece00[BBISHOP]) >= 2)
+        result -= doublebishopbonus;
+
 
     // some kind of king safety
 	result += (256 - ph) * (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])) * kingshieldbonus / 256;
