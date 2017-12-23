@@ -262,3 +262,6 @@ __pycache__/
 
 # Linux object files
 *.o
+
+# Executables
+*.exe
