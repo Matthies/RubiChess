@@ -7,6 +7,10 @@
 #endif
 
 #if 0
+#define EVALTUNE
+#endif
+
+#if 0
 #define DEBUGEVAL
 #endif
 
@@ -66,6 +70,7 @@ using namespace std;
 #include <bitset>
 #include <limits.h>
 #include <math.h>
+#include <regex>
 
 
 #ifdef _WIN32
@@ -99,8 +104,15 @@ void Sleep(long x);
 #define MSB(i,x) (!(x) ? false : (i = (63 - __builtin_clzll(x)), true))
 #define POPCOUNT(x) __builtin_popcountll(x)
 #endif
+#ifdef BITBOARD
 #define RANK(x) ((x) >> 3)
 #define FILE(x) ((x) & 0x7)
+#define INDEX(r,f) (((r) << 3) | (f))
+#else
+#define RANK(x) ((x) >> 4)
+#define FILE(x) ((x) & 0x7)
+#define INDEX(r, f) (((r) << 4) | (f))
+#endif
 #define PROMOTERANK(x) (RANK(x) == 0 || RANK(x) == 7)
 #define OUTERFILE(x) (FILE(x) == 0 || FILE(x) == 7)
 #define ISNEIGHBOUR(x,y) ((x) >= 0 && (x) < 64 && (y) >= 0 && (y) < 64 && abs(RANK(x) - RANK(y)) <= 1 && abs(FILE(x) - FILE(y)) <= 1)
@@ -127,9 +139,40 @@ class chessposition;
 //
 vector<string> SplitString(const char* s);
 unsigned char AlgebraicToIndex(string s, int base);
+string IndexToAlgebraic(int i);
 string AlgebraicFromShort(string s);
 void BitboardDraw(U64 b);
 U64 getTime();
+#ifdef EVALTUNE
+typedef void(*initevalfunc)(void);
+bool PGNtoFEN(string pgnfilename);
+void TexelTune(string fenfilename);
+void registerTuner(int *addr, string name, int def, int index1, int bound1, int index2, int bound2, initevalfunc init, bool notune, int initialdelta = 1);
+
+struct tuningintparameter
+{
+    int *addr;
+    string name;
+    int defval;
+    int initialdelta;
+    int tuned;
+    int index1;
+    int bound1;
+    int index2;
+    int bound2;
+    void(*init)();
+    bool notune;
+};
+
+extern int tuningratio;
+
+#define CONSTEVAL
+
+#else //EVALTUNE
+
+#define CONSTEVAL const
+
+#endif
 
 //
 // board stuff
@@ -207,7 +250,7 @@ const int orthogonalanddiagonaloffset[] = { -0x10, -0x01, 0x01, 0x10, -0x0f, -0x
 
 
 const struct { int offset; bool needsblank; } pawnmove[] = { { 0x10, true }, { 0x0f, false }, { 0x11, false } };
-const int materialvalue[] = { 0, 100, 320, 330, 500, 900, SCOREWHITEWINS };
+extern CONSTEVAL int materialvalue[];
 // values for move ordering
 const unsigned int mvv[] = { 0U << 29, 1U << 29, 2U << 29, 2U << 29, 3U << 29, 4U << 29, 5U << 29 };
 const unsigned int lva[] = { 5 << 26, 4 << 26, 3 << 26, 3 << 26, 2 << 26, 1 << 26, 0 << 26 };
@@ -229,11 +272,7 @@ const unsigned int lva[] = { 5 << 26, 4 << 26, 3 << 26, 3 << 26, 2 << 26, 1 << 2
 #define GETPROMOTION(x) (((x) & 0xf000) >> 12)
 #define GETCAPTURE(x) (((x) & 0xf0000) >> 16)
 #define ISTACTICAL(x) ((x) & 0xff000)
-#ifdef BITBOARD
 #define GETPIECE(x) (((x) & 0xf0000000) >> 28)
-#else
-#define GETCASTLE(x) (((x) & 0xf0000000) >> 28)
-#endif
 
 #ifdef BITBOARD
 // index -> bitboard with only index bit set; use BITSET(i) macro
@@ -344,21 +383,15 @@ public:
     unsigned int value;
 
     chessmove();
-    chessmove(uint32_t code);
 #ifdef BITBOARD
     chessmove(int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
     chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
 #else
-    chessmove(int from, int to, PieceCode promote, PieceCode capture);
-    chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept);
+    chessmove(int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
+    chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
 #endif
     bool operator<(const chessmove cm) const { return value < cm.value; }
     bool operator>(const chessmove cm) const { return value > cm.value; }
-    //bool operator<(const chessmove cm) const { return ((code & 0xfff) < (cm.code & 0xfff)); }
-    bool operator ==(const chessmove cm) const { return code == cm.code; }
-    //static bool asc(const chessmove cm1, const chessmove cm2) { return cm1.value < cm2.value; }
-    //static bool desc(const chessmove cm1, const chessmove cm2) { return cm2.value < cm1.value; }
-    static bool cptr(chessmove cm1, chessmove cm2);
     string toString();
     void print();
 };
@@ -383,6 +416,7 @@ public:
 extern U64 pawn_attacks_occupied[64][2];
 
 #define BOARDSIZE 64
+#define RANKMASK 0x38
 
 #ifndef ROTATEDBITBOARD
 
@@ -498,7 +532,7 @@ public:
     U64 occupieda1h8[2];
     U64 occupiedh1a8[2];
 #endif
-    PieceCode mailbox[64]; // redundand for faster "which piece is on field x"
+    PieceCode mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
 
     int state;
     int ept;
@@ -521,6 +555,7 @@ public:
 
     chessposition();
     ~chessposition();
+    void init();
     bool operator==(chessposition p);
     bool w2m();
     void BitboardSet(int index, PieceCode p);
@@ -528,10 +563,10 @@ public:
     void BitboardMove(int from, int to, PieceCode p);
     void BitboardPrint(U64 b);
     int getFromFen(const char* sFen);
+    string toFen();
     bool applyMove(string s);
     void print();
     int phase();
-    bool isOnBoard(int bIndex);
     bool isEmpty(int bIndex);
     PieceType Piece(int index);
     bool isOpponent(int bIndex);
@@ -555,7 +590,6 @@ public:
     int getPositionValue();
     int getPawnValue();
     int getValue();
-    void CreatePositionvalueTable();
 #ifdef DEBUG
     void debug(int depth, const char* format, ...);
 #endif
@@ -569,11 +603,12 @@ public:
 #else //BITBOARD
 
 #define BOARDSIZE 128
+#define RANKMASK 0x70
 
 class chessposition
 {
 public:
-    PieceCode board[128];
+    PieceCode mailbox[128];
     int state;
     int ept;
     int kingpos[2];
@@ -597,13 +632,14 @@ public:
 
     chessposition();
     ~chessposition();
+    void init();
     bool operator==(chessposition p);
     bool w2m();
     int getFromFen(const char* sFen);
+    string toFen();
     bool applyMove(string s);
     void print();
     int phase();
-    bool isOnBoard(int bIndex);
     bool isEmpty(int bIndex);
     PieceType Piece(int index);
     bool isOpponent(int bIndex);
@@ -612,7 +648,8 @@ public:
     bool checkForChess();
     int see(int to);
     int see(int from, int to);
-    void testMove(chessmovelist *movelist, int from, int to, PieceCode promote);
+    void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
+    void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
     chessmovelist* getMoves();
     bool playMove(chessmove *cm);
     void unplayMove(chessmove *cm);
@@ -625,7 +662,6 @@ public:
     int getPositionValue();
     int getPawnValue();
     int getValue();
-    void CreatePositionvalueTable();
 #ifdef DEBUG
     void debug(int depth, const char* format, ...);
 #endif
@@ -637,6 +673,8 @@ public:
 };
 
 #endif
+
+void CreatePositionvalueTable();
 
 extern int squaredistance[BOARDSIZE][BOARDSIZE];
 extern int kingdanger[BOARDSIZE][BOARDSIZE][7];

@@ -134,9 +134,9 @@ u8 zobrist::getHash()
     int state = pos.state;
     for (i = 0; i < 120; i++)
     {
-        if (!(i & 0x88) && pos.board[i] != BLANK)
+        if (!(i & 0x88) && pos.mailbox[i] != BLANK)
         {
-            hash ^= boardtable[(i << 4)  | pos.board[i]];
+            hash ^= boardtable[(i << 4)  | pos.mailbox[i]];
         }
     }
     if (state & S2MMASK)
@@ -163,9 +163,9 @@ u8 zobrist::getPawnHash()
     int i;
     for (i = 0; i < 120; i++)
     {
-        if (!(i & 0x88) && (pos.board[i] >> 1) == PAWN)
+        if (!(i & 0x88) && (pos.mailbox[i] >> 1) == PAWN)
         {
-            hash ^= boardtable[(i << 4) | pos.board[i]];
+            hash ^= boardtable[(i << 4) | pos.mailbox[i]];
         }
     }
 
@@ -264,6 +264,10 @@ void transposition::printHashentry()
 
 bool transposition::probeHash(int *val, uint32_t *movecode, int depth, int alpha, int beta)
 {
+#ifdef EVALTUNE
+    // don't use transposition table when tuning evaluation
+    return false;
+#endif
     unsigned long long hash = pos->hash;
     unsigned long long index = hash & sizemask;
     S_TRANSPOSITIONENTRY data = table[index];
@@ -324,12 +328,8 @@ chessmove transposition::getMove()
 {
     unsigned long long hash = pos->hash;
     unsigned long long index = hash & sizemask;
-#ifdef BITBOARD
-    chessmove cm(table[index].movecode);
-#else
     chessmove cm;
     cm.code = table[index].movecode;
-#endif
     return cm;
 }
 #endif
@@ -377,6 +377,10 @@ bool pawnhash::probeHash(pawnhashentry **entry)
     {
 #ifdef DEBUG
         hit++;
+#endif
+#ifdef EVALTUNE
+        // don't use pawn hash when tuning evaluation
+        return false;
 #endif
         return true;
     }
