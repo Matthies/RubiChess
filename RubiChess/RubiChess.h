@@ -250,7 +250,7 @@ const int orthogonalanddiagonaloffset[] = { -0x10, -0x01, 0x01, 0x10, -0x0f, -0x
 
 
 const struct { int offset; bool needsblank; } pawnmove[] = { { 0x10, true }, { 0x0f, false }, { 0x11, false } };
-extern int materialvalue[];
+extern CONSTEVAL int materialvalue[];
 // values for move ordering
 const unsigned int mvv[] = { 0U << 29, 1U << 29, 2U << 29, 2U << 29, 3U << 29, 4U << 29, 5U << 29 };
 const unsigned int lva[] = { 5 << 26, 4 << 26, 3 << 26, 3 << 26, 2 << 26, 1 << 26, 0 << 26 };
