@@ -173,6 +173,15 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         }
     }
 
+    // futility pruning
+    const int futilityMargin = 20;
+    bool futility = false;
+    if (depth == 1)
+    {
+        score = S2MSIGN(pos.state & S2MMASK) * pos.getValue();
+        futility = (score < alpha - futility);
+    }
+
     newmoves = pos.getMoves();
 
 #ifdef DEBUG
@@ -217,30 +226,36 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             LegalMoves++;
             PDEBUG(depth, "(alphabeta) played move %s   nodes:%d\n", newmoves->move[i].toString().c_str(), en.nodes);
 
-            reduction = 0;
-            if (!extendall && depth > 2 && LegalMoves > 3 && !ISTACTICAL(m->code) && !isCheck)
-                reduction = 1;
-
-            if (!eval_type == HASHEXACT)
+            // Check for valid futility pruning
+            bool avoidFutilityPrune = !futility || ISTACTICAL(m->code) || pos.checkForChess();
+            if (avoidFutilityPrune)
             {
-                score = -alphabeta(-beta, -alpha, depth + extendall - reduction - 1, true);
-                if (reduction && score > alpha)
-                    // research without reduction
-                    score = -alphabeta(-beta, -alpha, depth + extendall - 1, true);
-            } else {
-                // try a PV-Search
-#ifdef DEBUG
-                unsigned long nodesbefore = en.nodes;
-#endif
-                score = -alphabeta(-alpha - 1, -alpha, depth + extendall - 1, true);
-                if (score > alpha && score < beta)
-				{
-					// reasearch with full window
-#ifdef DEBUG
-                    en.wastedpvsnodes += (en.nodes - nodesbefore);
-#endif
+                reduction = 0;
+                if (!extendall && depth > 2 && LegalMoves > 3 && !ISTACTICAL(m->code) && !isCheck)
+                    reduction = 1;
+
+                if (!eval_type == HASHEXACT)
+                {
                     score = -alphabeta(-beta, -alpha, depth + extendall - reduction - 1, true);
-				}
+                    if (reduction && score > alpha)
+                        // research without reduction
+                        score = -alphabeta(-beta, -alpha, depth + extendall - 1, true);
+                }
+                else {
+                    // try a PV-Search
+#ifdef DEBUG
+                    unsigned long nodesbefore = en.nodes;
+#endif
+                    score = -alphabeta(-alpha - 1, -alpha, depth + extendall - 1, true);
+                    if (score > alpha && score < beta)
+                    {
+                        // reasearch with full window
+#ifdef DEBUG
+                        en.wastedpvsnodes += (en.nodes - nodesbefore);
+#endif
+                        score = -alphabeta(-beta, -alpha, depth + extendall - reduction - 1, true);
+                    }
+                }
             }
 
             pos.unplayMove(m);

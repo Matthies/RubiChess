@@ -2814,7 +2814,7 @@ void engine::communicate(string inputstring)
             en.fdebug << s;
         }
         depth++;
-    } while (maxd >= 0);
+    } while (maxd >= 0 && depth < 20);
 #endif
 }
 
