@@ -10,18 +10,11 @@ int getQuiescence(int alpha, int beta, int depth)
     bool isCheck;
     bool LegalMovesPossible = false;
 
-    // test for remis via repetition
-    if (rp.getPositionCount(pos.hash) >= 3 && pos.testRepetiton())
-        return SCOREDRAW;
-
-    // test for remis via 50 moves rule
-    if (pos.halfmovescounter >= 100)
-        return SCOREDRAW;
-
     isCheck = pos.checkForChess();
+#if 0
     if (isCheck)
         return alphabeta(alpha, beta, 1, false);
-
+#endif
     bestscore = (pos.state & S2MMASK ? -pos.getValue() : pos.getValue());
     PDEBUG(depth, "(getQuiscence) alpha=%d beta=%d patscore=%d\n", alpha, beta, bestscore);
     if (bestscore >= beta)
@@ -35,40 +28,38 @@ int getQuiescence(int alpha, int beta, int depth)
     for (int i = 0; i < movelist->length; i++)
     {
         //pos->debug(depth, "(getQuiscence) testing move %s... LegalMovesPossible=%d isCheck=%d Capture=%d Promotion=%d see=%d \n", movelist->move[i].toString().c_str(), (LegalMovesPossible?1:0), (isCheck ? 1 : 0), movelist->move[i].getCapture(), movelist->move[i].getPromotion(), pos->see(movelist->move[i].getFrom(), movelist->move[i].getTo()));
-        if (GETCAPTURE(movelist->move[i].code) != BLANK || GETPROMOTION(movelist->move[i].code) != BLANK || !LegalMovesPossible)
+        bool MoveIsUsefull = ISPROMOTION(movelist->move[i].code)
+            || (ISCAPTURE(movelist->move[i].code) && (pos.see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)) >= 0))
+            || (isCheck && depth >= -2);
+
+        if (MoveIsUsefull || !LegalMovesPossible)
         {
-            bool positiveSee = false;
-            if (GETCAPTURE(movelist->move[i].code) != BLANK)
-                positiveSee = (pos.see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)) >= 0);
-            if (positiveSee || !LegalMovesPossible)
-            {
-                isLegal = pos.playMove(&(movelist->move[i]));
+            isLegal = pos.playMove(&(movelist->move[i]));
 #ifdef DEBUG
-                en.qnodes++;
+            en.qnodes++;
 #endif
-                if (isLegal)
+            if (isLegal)
+            {
+                LegalMovesPossible = true;
+                if (MoveIsUsefull)
                 {
-                    LegalMovesPossible = true;
-                    if (positiveSee)
+                    score = -getQuiescence(-beta, -alpha, depth - 1);
+                    PDEBUG(depth, "(getQuiscence) played move %s score=%d\n", movelist->move[i].toString().c_str(), score);
+                }
+                pos.unplayMove(&(movelist->move[i]));
+                if (MoveIsUsefull && score > bestscore)
+                {
+                    bestscore = score;
+                    if (score >= beta)
                     {
-                        score = -getQuiescence(-beta, -alpha, depth - 1);
-                        PDEBUG(depth, "(getQuiscence) played move %s score=%d\n", movelist->move[i].toString().c_str(), score);
+                        free(movelist);
+                        PDEBUG(depth, "(getQuiscence) beta cutoff\n");
+                        return score;
                     }
-                    pos.unplayMove(&(movelist->move[i]));
-                    if (positiveSee && score > bestscore)
+                    if (score > alpha)
                     {
-                        bestscore = score;
-                        if (score >= beta)
-                        {
-                            free(movelist);
-                            PDEBUG(depth, "(getQuiscence) beta cutoff\n");
-                            return score;
-                        }
-                        if (score > alpha)
-                        {
-                            alpha = score;
-                            PDEBUG(depth, "(getQuiscence) new alpha\n");
-                        }
+                        alpha = score;
+                        PDEBUG(depth, "(getQuiscence) new alpha\n");
                     }
                 }
             }
@@ -128,11 +119,6 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             return score;
     }
 
-    if (depth <= 0)
-    {
-        return getQuiescence(alpha, beta, depth);
-    }
-
     // test for remis via repetition
     if (rp.getPositionCount(pos.hash) >= 3 && pos.testRepetiton())
         return SCOREDRAW;
@@ -140,6 +126,11 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     // test for remis via 50 moves rule
     if (pos.halfmovescounter >= 100)
         return SCOREDRAW;
+
+    if (depth <= 0)
+    {
+        return getQuiescence(alpha, beta, depth);
+    }
 
     isCheck = pos.checkForChess();
     // FIXME: Maybe some check extension? This is handled by quiescience search now

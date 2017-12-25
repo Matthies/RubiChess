@@ -272,6 +272,8 @@ const unsigned int lva[] = { 5 << 26, 4 << 26, 3 << 26, 3 << 26, 2 << 26, 1 << 2
 #define GETPROMOTION(x) (((x) & 0xf000) >> 12)
 #define GETCAPTURE(x) (((x) & 0xf0000) >> 16)
 #define ISTACTICAL(x) ((x) & 0xff000)
+#define ISPROMOTION(x) ((x) & 0xf000)
+#define ISCAPTURE(x) ((x) & 0xf0000)
 #define GETPIECE(x) (((x) & 0xf0000000) >> 28)
 
 #ifdef BITBOARD
