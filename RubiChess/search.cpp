@@ -341,7 +341,7 @@ int rootsearch(int alpha, int beta, int depth)
     bool isLegal;
     bool isCheck;
     int bestscore = SHRT_MIN + 1;
-    chessmove best(0);
+    chessmove best;
     int eval_type = HASHALPHA;
     chessmovelist* newmoves;
     chessmove *m;
