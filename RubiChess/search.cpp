@@ -179,7 +179,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     if (depth == 1)
     {
         score = S2MSIGN(pos.state & S2MMASK) * pos.getValue();
-        futility = (score < alpha - futility);
+        futility = (score < alpha - futilityMargin);
     }
 
     newmoves = pos.getMoves();
