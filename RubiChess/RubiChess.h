@@ -704,6 +704,8 @@ public:
     unsigned long wastedaspnodes;
     unsigned long pvnodes;
     unsigned long nopvnodes;
+    unsigned long fpnodes;
+    unsigned long wrongfp;
     unsigned long npd[MAXDEPTH];
     fstream fdebug;
 #endif

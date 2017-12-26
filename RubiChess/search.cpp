@@ -11,7 +11,7 @@ int getQuiescence(int alpha, int beta, int depth)
     bool LegalMovesPossible = false;
 
     isCheck = pos.checkForChess();
-#if 0
+#if 1
     if (isCheck)
         return alphabeta(alpha, beta, 1, false);
 #endif
@@ -28,9 +28,9 @@ int getQuiescence(int alpha, int beta, int depth)
     for (int i = 0; i < movelist->length; i++)
     {
         //pos->debug(depth, "(getQuiscence) testing move %s... LegalMovesPossible=%d isCheck=%d Capture=%d Promotion=%d see=%d \n", movelist->move[i].toString().c_str(), (LegalMovesPossible?1:0), (isCheck ? 1 : 0), movelist->move[i].getCapture(), movelist->move[i].getPromotion(), pos->see(movelist->move[i].getFrom(), movelist->move[i].getTo()));
-        bool MoveIsUsefull = ISPROMOTION(movelist->move[i].code)
-            || (ISCAPTURE(movelist->move[i].code) && (pos.see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)) >= 0))
-            || (isCheck && depth >= -2);
+        bool MoveIsUsefull = (ISCAPTURE(movelist->move[i].code) && (pos.see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)) >= 0));
+        // FIXME: Promotion should be handled but it seems to slow down
+        // || ISPROMOTION(movelist->move[i].code);
 
         if (MoveIsUsefull || !LegalMovesPossible)
         {
@@ -134,6 +134,10 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
     isCheck = pos.checkForChess();
     // FIXME: Maybe some check extension? This is handled by quiescience search now
+#if 0
+    if (isCheck)
+        extendall = 1;
+#endif
 
     // chessmove lastmove = pos.actualpath.move[pos.actualpath.length - 1];
     // Here some reduction/extension depending on the lastmove...
@@ -165,12 +169,13 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     }
 
     // futility pruning
-    const int futilityMargin = 20;
+    const int futilityMargin = 120;
     bool futility = false;
+    int futilityscore;
     if (depth == 1)
     {
-        score = S2MSIGN(pos.state & S2MMASK) * pos.getValue();
-        futility = (score < alpha - futilityMargin);
+        futilityscore = S2MSIGN(pos.state & S2MMASK) * pos.getValue();
+        futility = (futilityscore < alpha - futilityMargin);
     }
 
     newmoves = pos.getMoves();
@@ -218,8 +223,13 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             PDEBUG(depth, "(alphabeta) played move %s   nodes:%d\n", newmoves->move[i].toString().c_str(), en.nodes);
 
             // Check for valid futility pruning
-            bool avoidFutilityPrune = !futility || ISTACTICAL(m->code) || pos.checkForChess();
-            if (avoidFutilityPrune)
+            bool avoidFutilityPrune = !futility || ISTACTICAL(m->code) || pos.checkForChess() || alpha > 900;
+#ifdef DEBUG
+            if (!avoidFutilityPrune)
+                en.fpnodes++;
+#endif
+
+            if (avoidFutilityPrune) // disable this test to debug wrongfp
             {
                 reduction = 0;
                 if (!extendall && depth > 2 && LegalMoves > 3 && !ISTACTICAL(m->code) && !isCheck)
@@ -247,6 +257,15 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                         score = -alphabeta(-beta, -alpha, depth + extendall - reduction - 1, true);
                     }
                 }
+#ifdef DEBUG
+                if (score > alpha && !avoidFutilityPrune)
+                {
+                    en.wrongfp++;
+                    //printf("Wrong pruning: Futility-Score:%d Move:%s Score:%d\nPosition:\n", futilityscore, m->toString().c_str(), score);
+                    pos.print();
+                    printf("\n\n");
+                }
+#endif
             }
 
             pos.unplayMove(m);
@@ -710,6 +729,8 @@ void searchguide()
     en.wastedaspnodes = 0;
     en.pvnodes = 0;
     en.nopvnodes = 0;
+    en.fpnodes = 0;
+    en.wrongfp = 0;
     en.npd[0] = 1;
 #endif
     en.fh = en.fhf = 0;
@@ -760,25 +781,38 @@ void searchguide()
     {
         sprintf_s(s, "quiscense;%d;%d;%d\n", en.qnodes, en.nodes + en.qnodes, (int)en.qnodes * 100 / (en.nodes + en.qnodes));
         en.fdebug << s;
+        cout << s;
         sprintf_s(s, "pvs;%d;%d;%d\n", en.wastedpvsnodes, en.nodes, (int)en.wastedpvsnodes * 100 / en.nodes);
         en.fdebug << s;
+        cout << s;
         sprintf_s(s, "asp;%d;%d;%d\n", en.wastedaspnodes, en.nodes, (int)en.wastedaspnodes * 100 / en.nodes);
         en.fdebug << s;
+        cout << s;
+    }
+    if (en.fpnodes)
+    {
+        sprintf_s(s, "futilityprune;%d;%d;%d\n", en.fpnodes, en.wrongfp, (int)en.wrongfp * 100 / en.fpnodes);
+        en.fdebug << s;
+        cout << s;
     }
     if (en.nopvnodes)
     {
         sprintf_s(s, "pv;%d;%d;%d\n", en.pvnodes, en.nopvnodes, (int)en.pvnodes * 100 / en.nopvnodes);
         en.fdebug << s;
+        cout << s;
     }
     sprintf_s(s, "ebf;");
     en.fdebug << s;
+    cout << s;
     for (int d = 2; en.npd[d] && en.npd[d - 2]; d++)
     {
         sprintf_s(s, "%0.2f;", sqrt((double)en.npd[d] / (double)en.npd[d - 2]));
         en.fdebug << s;
+        cout << s;
     }
     sprintf_s(s, "\n");
     en.fdebug << s;
+    cout << s;
     if (pwnhsh.query > 0)
     {
         sprintf_s(s, "info string pawnhash-hits: %0.2f%%\n", (float)pwnhsh.hit / (float)pwnhsh.query * 100.0f);

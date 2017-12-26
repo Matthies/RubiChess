@@ -590,7 +590,7 @@ void chessposition::print()
         }
         printf("\n");
     }
-
+    printf("info string FEN: %s\n", toFen().c_str());
     printf("info string State: %0x\n", state);
     printf("info string EPT: %0x\n", ept);
     printf("info string Halfmoves: %d\n", halfmovescounter);
