@@ -2,10 +2,12 @@
 #include "RubiChess.h"
 
 
+const int deltapruningmargin = 200;
+
 int getQuiescence(int alpha, int beta, int depth)
 {
-    int score;
-    int bestscore = SHRT_MIN + 1;
+    int patscore, score;
+    int bestscore;
     bool isLegal;
     bool isCheck;
     bool LegalMovesPossible = false;
@@ -15,8 +17,8 @@ int getQuiescence(int alpha, int beta, int depth)
     if (isCheck)
         return alphabeta(alpha, beta, 1, false);
 #endif
-    bestscore = (pos.state & S2MMASK ? -pos.getValue() : pos.getValue());
-    PDEBUG(depth, "(getQuiscence) alpha=%d beta=%d patscore=%d\n", alpha, beta, bestscore);
+    bestscore = patscore = (pos.state & S2MMASK ? -pos.getValue() : pos.getValue());
+    PDEBUG(depth, "(getQuiscence) alpha=%d beta=%d patscore=%d\n", alpha, beta, patscore);
     if (bestscore >= beta)
         return bestscore;
     if (bestscore > alpha)
@@ -28,7 +30,18 @@ int getQuiescence(int alpha, int beta, int depth)
     for (int i = 0; i < movelist->length; i++)
     {
         //pos->debug(depth, "(getQuiscence) testing move %s... LegalMovesPossible=%d isCheck=%d Capture=%d Promotion=%d see=%d \n", movelist->move[i].toString().c_str(), (LegalMovesPossible?1:0), (isCheck ? 1 : 0), movelist->move[i].getCapture(), movelist->move[i].getPromotion(), pos->see(movelist->move[i].getFrom(), movelist->move[i].getTo()));
-        bool MoveIsUsefull = (ISCAPTURE(movelist->move[i].code) && (pos.see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)) >= 0));
+        bool MoveIsUsefull = (
+            ISCAPTURE(movelist->move[i].code) 
+            && (pos.see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)) >= 0)
+            && (true || patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin > alpha));
+#ifdef DEBUG
+        if (ISCAPTURE(movelist->move[i].code) && patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin <= alpha)
+        {
+            en.dpnodes++;
+            //printf("delta prune: patscore:%d move:%s  alpha=%d\n", patscore, movelist->move[i].toString().c_str(), alpha);
+            //pos.print();
+        }
+#endif
         // FIXME: Promotion should be handled but it seems to slow down
         // || ISPROMOTION(movelist->move[i].code);
 
@@ -731,6 +744,7 @@ void searchguide()
     en.nopvnodes = 0;
     en.fpnodes = 0;
     en.wrongfp = 0;
+    en.dpnodes = 0;
     en.npd[0] = 1;
 #endif
     en.fh = en.fhf = 0;
@@ -782,6 +796,13 @@ void searchguide()
         sprintf_s(s, "quiscense;%d;%d;%d\n", en.qnodes, en.nodes + en.qnodes, (int)en.qnodes * 100 / (en.nodes + en.qnodes));
         en.fdebug << s;
         cout << s;
+        if (en.dpnodes)
+        {
+            sprintf_s(s, "deltaprune;%d;%d\n", en.dpnodes, (int)en.dpnodes * 100 / en.qnodes);
+            en.fdebug << s;
+            cout << s;
+        }
+
         sprintf_s(s, "pvs;%d;%d;%d\n", en.wastedpvsnodes, en.nodes, (int)en.wastedpvsnodes * 100 / en.nodes);
         en.fdebug << s;
         cout << s;

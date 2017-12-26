@@ -706,6 +706,7 @@ public:
     unsigned long nopvnodes;
     unsigned long fpnodes;
     unsigned long wrongfp;
+    unsigned long dpnodes;
     unsigned long npd[MAXDEPTH];
     fstream fdebug;
 #endif
