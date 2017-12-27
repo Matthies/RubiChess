@@ -252,10 +252,11 @@ const int orthogonalanddiagonaloffset[] = { -0x10, -0x01, 0x01, 0x10, -0x0f, -0x
 const struct { int offset; bool needsblank; } pawnmove[] = { { 0x10, true }, { 0x0f, false }, { 0x11, false } };
 extern CONSTEVAL int materialvalue[];
 // values for move ordering
-const unsigned int mvv[] = { 0U << 29, 1U << 29, 2U << 29, 2U << 29, 3U << 29, 4U << 29, 5U << 29 };
-const unsigned int lva[] = { 5 << 26, 4 << 26, 3 << 26, 3 << 26, 2 << 26, 1 << 26, 0 << 26 };
-#define PVVAL (7 << 29)
-#define KILLERVAL1 (1 << 28)
+const int mvv[] = { 0U << 28, 1U << 28, 2U << 28, 2U << 28, 3U << 28, 4U << 28, 5U << 28 };
+const int lva[] = { 5 << 25, 4 << 25, 3 << 25, 3 << 25, 2 << 25, 1 << 25, 0 << 25 };
+#define CAPTUREVAL (2 << 27)
+#define PVVAL (7 << 28)
+#define KILLERVAL1 (1 << 27)
 #define KILLERVAL2 (KILLERVAL1 - 1)
 
 #ifdef BITBOARD
@@ -382,7 +383,7 @@ class chessmove
 public:
     // pcpcepepepepccccppppfffffftttttt
     uint32_t code;
-    unsigned int value;
+    int value;
 
     chessmove();
 #ifdef BITBOARD

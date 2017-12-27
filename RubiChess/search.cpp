@@ -198,8 +198,6 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         futility = (score < alpha - futilityMargin);
 #ifdef DEBUG
         futilityscore = score;
-        if (futility)
-            printf("futilityscore:%d alpha:%d\n", futilityscore, alpha);
 #endif
     }
 
@@ -257,10 +255,14 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 #endif
             if (avoidFutilityPrune) // disable this test to debug wrongfp
             {
+                //extendall = 0; //FIXME: Indroduce extend variable for move specific extension
                 reduction = 0;
                 if (!extendall && depth > 2 && LegalMoves > 3 && !ISTACTICAL(m->code) && !isCheck)
                     reduction = 1;
-
+#if 0
+                else if (ISTACTICAL(m->code) && GETPIECE(m->code) <= GETCAPTURE(m->code))
+                    extendall = 1;
+#endif
                 if (!eval_type == HASHEXACT)
                 {
                     score = -alphabeta(-beta, -alpha, depth + extendall - reduction - 1, true);

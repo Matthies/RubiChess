@@ -2517,7 +2517,7 @@ void engine::communicate(string inputstring)
         }
         for (int i = mind; i <= maxd; i++)
         {
-            sprintf(s, "%d;%d;%d\n", depth, i - 1000, aspirationdelta[depth][i]);
+            sprintf_s(s, "%d;%d;%d\n", depth, i - 1000, aspirationdelta[depth][i]);
             en.fdebug << s;
         }
         depth++;
