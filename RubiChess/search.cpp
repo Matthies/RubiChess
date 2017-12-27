@@ -35,10 +35,10 @@ int getQuiescence(int alpha, int beta, int depth)
     for (int i = 0; i < movelist->length; i++)
     {
         //pos->debug(depth, "(getQuiscence) testing move %s... LegalMovesPossible=%d isCheck=%d Capture=%d Promotion=%d see=%d \n", movelist->move[i].toString().c_str(), (LegalMovesPossible?1:0), (isCheck ? 1 : 0), movelist->move[i].getCapture(), movelist->move[i].getPromotion(), pos->see(movelist->move[i].getFrom(), movelist->move[i].getTo()));
-        bool MoveIsUsefull = (
-            ISCAPTURE(movelist->move[i].code) 
+        bool MoveIsUsefull = (ISPROMOTION(movelist->move[i].code) ||
+            (ISCAPTURE(movelist->move[i].code) 
             && (pos.see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)) >= 0)
-            && (true || patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin > alpha));
+            && (patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin > alpha)));
         // FIXME: Promotion should be handled but it seems to slow down
         // || ISPROMOTION(movelist->move[i].code);
 #ifdef DEBUG
@@ -289,9 +289,9 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                 if (score > alpha && !avoidFutilityPrune)
                 {
                     en.wrongfp++;
-                    //printf("Wrong pruning: Futility-Score:%d Move:%s Score:%d\nPosition:\n", futilityscore, m->toString().c_str(), score);
-                    //pos.print();
-                    //printf("\n\n");
+                    printf("Wrong pruning: Futility-Score:%d Move:%s Score:%d\nPosition:\n", futilityscore, m->toString().c_str(), score);
+                    pos.print();
+                    printf("\n\n");
                 }
 #endif
             }
