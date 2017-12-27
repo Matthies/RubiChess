@@ -12,33 +12,35 @@ int getQuiescence(int alpha, int beta, int depth)
     bool isCheck;
     bool LegalMovesPossible = false;
 
-    en.nodes++;
+    //en.nodes++;   // FIXME: Should quiescience nodes count for the statistics?
 
     isCheck = pos.checkForChess();
-#if 0
+
     if (isCheck)
-        return alphabeta(alpha, beta, 1, false);
-#endif
-    if (!isCheck)
     {
-        bestscore = (pos.state & S2MMASK ? -pos.getValue() : pos.getValue());
-        patscore = bestscore;
-        PDEBUG(depth, "(getQuiscence) alpha=%d beta=%d patscore=%d\n", alpha, beta, patscore);
-        if (bestscore >= beta)
-            return bestscore;
-        if (bestscore > alpha)
-            alpha = bestscore;
+        return alphabeta(alpha, beta, 1, false);
     }
+
+    bestscore = (pos.state & S2MMASK ? -pos.getValue() : pos.getValue());
+    patscore = bestscore;
+    PDEBUG(depth, "(getQuiscence) alpha=%d beta=%d patscore=%d\n", alpha, beta, patscore);
+    if (bestscore >= beta)
+        return bestscore;
+    if (bestscore > alpha)
+        alpha = bestscore;
+
     chessmovelist* movelist = pos.getMoves();
     //pos->sortMoves(movelist);
 
     for (int i = 0; i < movelist->length; i++)
     {
         //pos->debug(depth, "(getQuiscence) testing move %s... LegalMovesPossible=%d isCheck=%d Capture=%d Promotion=%d see=%d \n", movelist->move[i].toString().c_str(), (LegalMovesPossible?1:0), (isCheck ? 1 : 0), movelist->move[i].getCapture(), movelist->move[i].getPromotion(), pos->see(movelist->move[i].getFrom(), movelist->move[i].getTo()));
-        bool MoveIsUsefull = (isCheck ||
-            (ISCAPTURE(movelist->move[i].code) 
+        bool MoveIsUsefull = (
+            ISCAPTURE(movelist->move[i].code) 
             && (pos.see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)) >= 0)
-            && (true || patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin > alpha)));
+            && (true || patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin > alpha));
+        // FIXME: Promotion should be handled but it seems to slow down
+        // || ISPROMOTION(movelist->move[i].code);
 #ifdef DEBUG
         if (ISCAPTURE(movelist->move[i].code) && patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin <= alpha)
         {
@@ -47,8 +49,6 @@ int getQuiescence(int alpha, int beta, int depth)
             //pos.print();
         }
 #endif
-        // FIXME: Promotion should be handled but it seems to slow down
-        // || ISPROMOTION(movelist->move[i].code);
 
         if (MoveIsUsefull || !LegalMovesPossible)
         {
@@ -99,7 +99,7 @@ int getQuiescence(int alpha, int beta, int depth)
 
 int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 {
-    int score = SHRT_MIN + 1;
+    int score;
     uint32_t hashmovecode = 0;
     int  LegalMoves = 0;
     bool isLegal;
@@ -187,14 +187,17 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     }
 
     // futility pruning
-    const int futilityMargin = 120;
+    const int futilityMargin = 130;
     bool futility = false;
+#ifdef DEBUG
     int futilityscore;
+#endif
     if (depth == 1)
     {
-        futilityscore = S2MSIGN(pos.state & S2MMASK) * pos.getValue();
-        futility = (futilityscore < alpha - futilityMargin);
+        score = S2MSIGN(pos.state & S2MMASK) * pos.getValue();
+        futility = (score < alpha - futilityMargin);
 #ifdef DEBUG
+        futilityscore = score;
         if (futility)
             printf("futilityscore:%d alpha:%d\n", futilityscore, alpha);
 #endif
