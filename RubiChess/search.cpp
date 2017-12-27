@@ -7,33 +7,38 @@ const int deltapruningmargin = 200;
 int getQuiescence(int alpha, int beta, int depth)
 {
     int patscore, score;
-    int bestscore;
+    int bestscore = SHRT_MIN + 1;
     bool isLegal;
     bool isCheck;
     bool LegalMovesPossible = false;
 
+    en.nodes++;
+
     isCheck = pos.checkForChess();
-#if 1
+#if 0
     if (isCheck)
         return alphabeta(alpha, beta, 1, false);
 #endif
-    bestscore = patscore = (pos.state & S2MMASK ? -pos.getValue() : pos.getValue());
-    PDEBUG(depth, "(getQuiscence) alpha=%d beta=%d patscore=%d\n", alpha, beta, patscore);
-    if (bestscore >= beta)
-        return bestscore;
-    if (bestscore > alpha)
-        alpha = bestscore;
-
+    if (!isCheck)
+    {
+        bestscore = (pos.state & S2MMASK ? -pos.getValue() : pos.getValue());
+        patscore = bestscore;
+        PDEBUG(depth, "(getQuiscence) alpha=%d beta=%d patscore=%d\n", alpha, beta, patscore);
+        if (bestscore >= beta)
+            return bestscore;
+        if (bestscore > alpha)
+            alpha = bestscore;
+    }
     chessmovelist* movelist = pos.getMoves();
     //pos->sortMoves(movelist);
 
     for (int i = 0; i < movelist->length; i++)
     {
         //pos->debug(depth, "(getQuiscence) testing move %s... LegalMovesPossible=%d isCheck=%d Capture=%d Promotion=%d see=%d \n", movelist->move[i].toString().c_str(), (LegalMovesPossible?1:0), (isCheck ? 1 : 0), movelist->move[i].getCapture(), movelist->move[i].getPromotion(), pos->see(movelist->move[i].getFrom(), movelist->move[i].getTo()));
-        bool MoveIsUsefull = (
-            ISCAPTURE(movelist->move[i].code) 
+        bool MoveIsUsefull = (isCheck ||
+            (ISCAPTURE(movelist->move[i].code) 
             && (pos.see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)) >= 0)
-            && (true || patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin > alpha));
+            && (true || patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin > alpha)));
 #ifdef DEBUG
         if (ISCAPTURE(movelist->move[i].code) && patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin <= alpha)
         {
@@ -94,7 +99,7 @@ int getQuiescence(int alpha, int beta, int depth)
 
 int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 {
-    int score;
+    int score = SHRT_MIN + 1;
     uint32_t hashmovecode = 0;
     int  LegalMoves = 0;
     bool isLegal;
@@ -189,6 +194,10 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     {
         futilityscore = S2MSIGN(pos.state & S2MMASK) * pos.getValue();
         futility = (futilityscore < alpha - futilityMargin);
+#ifdef DEBUG
+        if (futility)
+            printf("futilityscore:%d alpha:%d\n", futilityscore, alpha);
+#endif
     }
 
     newmoves = pos.getMoves();
@@ -239,9 +248,10 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             bool avoidFutilityPrune = !futility || ISTACTICAL(m->code) || pos.checkForChess() || alpha > 900;
 #ifdef DEBUG
             if (!avoidFutilityPrune)
+            {
                 en.fpnodes++;
+            }
 #endif
-
             if (avoidFutilityPrune) // disable this test to debug wrongfp
             {
                 reduction = 0;
@@ -275,8 +285,8 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                 {
                     en.wrongfp++;
                     //printf("Wrong pruning: Futility-Score:%d Move:%s Score:%d\nPosition:\n", futilityscore, m->toString().c_str(), score);
-                    pos.print();
-                    printf("\n\n");
+                    //pos.print();
+                    //printf("\n\n");
                 }
 #endif
             }
