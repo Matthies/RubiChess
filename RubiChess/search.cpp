@@ -13,17 +13,17 @@ int getQuiescence(int alpha, int beta, int depth)
     bool LegalMovesPossible = false;
 
     //en.nodes++;   // FIXME: Should quiescience nodes count for the statistics?
+#ifdef DEBUG
+    en.qnodes++;
+#endif
 
     isCheck = pos.checkForChess();
-
     if (isCheck)
-    {
         return alphabeta(alpha, beta, 1, false);
-    }
 
     bestscore = (pos.state & S2MMASK ? -pos.getValue() : pos.getValue());
     patscore = bestscore;
-    PDEBUG(depth, "(getQuiscence) alpha=%d beta=%d patscore=%d\n", alpha, beta, patscore);
+    PDEBUG(depth, "(getQuiscence) qnode=%d alpha=%d beta=%d patscore=%d\n", en.qnodes, alpha, beta, patscore);
     if (bestscore >= beta)
         return bestscore;
     if (bestscore > alpha)
@@ -34,13 +34,11 @@ int getQuiescence(int alpha, int beta, int depth)
 
     for (int i = 0; i < movelist->length; i++)
     {
-        //pos->debug(depth, "(getQuiscence) testing move %s... LegalMovesPossible=%d isCheck=%d Capture=%d Promotion=%d see=%d \n", movelist->move[i].toString().c_str(), (LegalMovesPossible?1:0), (isCheck ? 1 : 0), movelist->move[i].getCapture(), movelist->move[i].getPromotion(), pos->see(movelist->move[i].getFrom(), movelist->move[i].getTo()));
+        PDEBUG(depth, "(getQuiscence) testing move %s ... LegalMovesPossible=%d Capture=%d Promotion=%d see=%d \n", movelist->move[i].toString().c_str(), (LegalMovesPossible?1:0), GETCAPTURE(movelist->move[i].code), GETPROMOTION(movelist->move[i].code), pos.see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)));
         bool MoveIsUsefull = (ISPROMOTION(movelist->move[i].code) ||
             (ISCAPTURE(movelist->move[i].code) 
             && (pos.see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)) >= 0)
             && (patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin > alpha)));
-        // FIXME: Promotion should be handled but it seems to slow down
-        // || ISPROMOTION(movelist->move[i].code);
 #ifdef DEBUG
         if (ISCAPTURE(movelist->move[i].code) && patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin <= alpha)
         {
@@ -53,9 +51,6 @@ int getQuiescence(int alpha, int beta, int depth)
         if (MoveIsUsefull || !LegalMovesPossible)
         {
             isLegal = pos.playMove(&(movelist->move[i]));
-#ifdef DEBUG
-            en.qnodes++;
-#endif
             if (isLegal)
             {
                 LegalMovesPossible = true;
@@ -260,6 +255,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                 if (!extendall && depth > 2 && LegalMoves > 3 && !ISTACTICAL(m->code) && !isCheck)
                     reduction = 1;
 #if 0
+                // disabled; capture extension doesn't seem to work
                 else if (ISTACTICAL(m->code) && GETPIECE(m->code) <= GETCAPTURE(m->code))
                     extendall = 1;
 #endif

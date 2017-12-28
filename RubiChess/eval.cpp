@@ -286,7 +286,7 @@ int chessposition::getPawnValue()
                         // pawn attacks opponent pawn
                         entry->value += attackingpawnbonusperside[s][RANK(index)];
 #ifdef DEBUGEVAL
-                        debugeval("Attacking Pawn Bonus(%d): %d\n", index, attackingpawnbonus[s][RANK(index)]);
+                        debugeval("Attacking Pawn Bonus(%d): %d\n", index, attackingpawnbonusperside[s][RANK(index)]);
 #endif
                     }
                     if ((pawn_attacks_occupied[index][s ^ S2MMASK] & piece00[pc]) || (phalanxMask[index] & piece00[pc]))
@@ -330,7 +330,7 @@ int chessposition::getPawnValue()
             val += ph * passedpawnbonusperside[s][RANK(index)] / 256;
             bb ^= BITSET(index);
 #ifdef DEBUGEVAL
-            debugeval("Passed Pawn Bonus(%d): %d\n", index, passedpawnbonus[s][RANK(index)]);
+            debugeval("Passed Pawn Bonus(%d): %d\n", index, passedpawnbonusperside[s][RANK(index)]);
 #endif
         }
 
