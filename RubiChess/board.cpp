@@ -1458,6 +1458,7 @@ bool chessposition::isAttacked(int index)
         || diagh1a8_attacks[index][((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[index]) & 0x3f] & (piece00[(BISHOP << 1) | opponent] | piece00[(QUEEN << 1) | opponent]);
 }
 #else
+#if 0 // not used anymore
 U64 chessposition::attacksTo(int index, int side)
 {
     return (knight_attacks[index] & piece00[(KNIGHT << 1) | side])
@@ -1466,6 +1467,7 @@ U64 chessposition::attacksTo(int index, int side)
         | (MAGICROOKATTACKS(occupied00[0] | occupied00[1], index) & (piece00[(ROOK << 1) | side] | piece00[(QUEEN << 1) | side]))
         | (MAGICBISHOPATTACKS(occupied00[0] | occupied00[1], index) & (piece00[(BISHOP << 1) | side] | piece00[(QUEEN << 1) | side]));
 }
+#endif
 
 bool chessposition::isAttacked(int index)
 {
@@ -1541,7 +1543,7 @@ int chessposition::see(int from, int to)
 int chessposition::getLeastValuablePieceIndex(int to, unsigned int bySide, PieceCode *piece)
 {
     int i;
-    if (LSB(i, pawn_attacks_occupied[to][bySide ^ S2MMASK] & piece00[(PAWN << 1) | bySide]))
+    if (LSB(i, pawn_attacks_occupied[to][state & S2MMASK] & piece00[(PAWN << 1) | bySide]))
     {
         *piece = WPAWN + bySide;
         return i;
