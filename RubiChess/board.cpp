@@ -1543,7 +1543,7 @@ int chessposition::see(int from, int to)
 int chessposition::getLeastValuablePieceIndex(int to, unsigned int bySide, PieceCode *piece)
 {
     int i;
-    if (LSB(i, pawn_attacks_occupied[to][state & S2MMASK] & piece00[(PAWN << 1) | bySide]))
+    if (LSB(i, pawn_attacks_occupied[to][bySide ^ S2MMASK] & piece00[(PAWN << 1) | bySide]))
     {
         *piece = WPAWN + bySide;
         return i;
