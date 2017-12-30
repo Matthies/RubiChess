@@ -1,17 +1,4 @@
-Bitboard-0.6:				14542128
-Board88-0.6:				12014657
+Bitboard-0.6:			14542128
+Board88-0.6:			12014657
 Board-Killer-Reset_Fix:		12036704
 Board-Castle-Value_Fix:		12026556
-
-Bitboard+tuned+fp+dp+see-pawn-capture-bugfix+retune:
-Benchmark results for RubiChess 0.7-dev Magic Bitboard (Build Dec 29 2017 23:03:17):
-System: Intel(R) Core(TM) i5-6200U CPU @ 2.30GHz
-==========================================================================================
-Bench #  1 (       Startposition /  8):    0.218032 sec.      168586 nodes     773215 nps
-Bench #  2 (         Lasker Test / 28):    0.213015 sec.      280869 nodes    1318539 nps
-Bench #  3 (           Matt in 6 /  0):    0.163449 sec.      383809 nodes    2348194 nps
-Bench #  4 (          Wacnew 167 /  0):    1.521283 sec.     1535462 nodes    1009320 nps
-Bench #  5 (          Wacnew 212 /  0):    5.820463 sec.     5491347 nodes     943455 nps
-Bench #  6 (            Carlos 6 /  0):    4.534245 sec.     3661083 nodes     807429 nps
-==========================================================================================
-Overall:                                  12.470487 sec.    11521156 nodes     923873 nps
