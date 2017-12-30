@@ -2,3 +2,5 @@ Bitboard-0.6:			14542128
 Board88-0.6:			12014657
 Board-Killer-Reset_Fix:		12036704
 Board-Castle-Value_Fix:		12026556
+Bitboard+Texeltuning:		14068870
+Bitboard+FP+DP+retune:		11521156
