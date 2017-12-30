@@ -590,7 +590,7 @@ void chessposition::print()
         }
         printf("\n");
     }
-
+    printf("info string FEN: %s\n", toFen().c_str());
     printf("info string State: %0x\n", state);
     printf("info string EPT: %0x\n", ept);
     printf("info string Halfmoves: %d\n", halfmovescounter);
@@ -1437,7 +1437,7 @@ U64 chessposition::attacksTo(int index, int side)
 {
     return (knight_attacks[index] & piece00[(KNIGHT << 1) | side])
         | (king_attacks[index] & piece00[(KING << 1) | side])
-        | (pawn_attacks_occupied[index][state & S2MMASK] & piece00[(PAWN << 1) | side])
+        | (pawn_attacks_occupied[index][side ^ S2MMASK] & piece00[(PAWN << 1) | side])
         | (rank_attacks[index][((occupied00[0] | occupied00[1]) >> ((index & 0x38) + 1)) & 0x3f] & (piece00[(ROOK << 1) | side] | piece00[(QUEEN << 1) | side]))
         | (file_attacks[index][((occupied90[0] | occupied90[1]) >> (((index & 0x07) << 3) + 1)) & 0x3f] & (piece00[(ROOK << 1) | side] | piece00[(QUEEN << 1) | side]))
         | (diaga1h8_attacks[index][((occupieda1h8[0] | occupieda1h8[1]) >> rota1h8shift[index]) & 0x3f] & (piece00[(BISHOP << 1) | side] | piece00[(QUEEN << 1) | side]))
@@ -1458,14 +1458,16 @@ bool chessposition::isAttacked(int index)
         || diagh1a8_attacks[index][((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[index]) & 0x3f] & (piece00[(BISHOP << 1) | opponent] | piece00[(QUEEN << 1) | opponent]);
 }
 #else
+#if 0 // not used anymore
 U64 chessposition::attacksTo(int index, int side)
 {
     return (knight_attacks[index] & piece00[(KNIGHT << 1) | side])
         | (king_attacks[index] & piece00[(KING << 1) | side])
-        | (pawn_attacks_occupied[index][state & S2MMASK] & piece00[(PAWN << 1) | side])
+        | (pawn_attacks_occupied[index][side ^ S2MMASK] & piece00[(PAWN << 1) | side])
         | (MAGICROOKATTACKS(occupied00[0] | occupied00[1], index) & (piece00[(ROOK << 1) | side] | piece00[(QUEEN << 1) | side]))
         | (MAGICBISHOPATTACKS(occupied00[0] | occupied00[1], index) & (piece00[(BISHOP << 1) | side] | piece00[(QUEEN << 1) | side]));
 }
+#endif
 
 bool chessposition::isAttacked(int index)
 {
@@ -1541,7 +1543,7 @@ int chessposition::see(int from, int to)
 int chessposition::getLeastValuablePieceIndex(int to, unsigned int bySide, PieceCode *piece)
 {
     int i;
-    if (LSB(i, pawn_attacks_occupied[to][state & S2MMASK] & piece00[(PAWN << 1) | bySide]))
+    if (LSB(i, pawn_attacks_occupied[to][bySide ^ S2MMASK] & piece00[(PAWN << 1) | bySide]))
     {
         *piece = WPAWN + bySide;
         return i;
@@ -1583,7 +1585,7 @@ int chessposition::see(int from, int to)
         return 0;
     PieceCode aPiece = mailbox[from];
     int gain[32], d = 0;
-    int side = (mailbox[to] & S2MMASK) ^ S2MMASK;
+    int side = (aPiece & S2MMASK);
     int fromlist[32];
 
     gain[0] = materialvalue[bPiece >> 1];
@@ -2253,6 +2255,11 @@ void engine::setOption(string sName, string sValue)
     }
 }
 
+
+#ifdef DEBUG
+extern int aspirationdelta[MAXDEPTH][2000];
+#endif
+
 void engine::communicate(string inputstring)
 {
     string fen;
@@ -2491,6 +2498,33 @@ void engine::communicate(string inputstring)
             }
         }
     } while (command != QUIT && (inputstring == "" || pendingposition));
+
+#ifdef DEBUG
+    char s[16384];
+    cout << "Score delta table:\n";
+    int depth = 2;
+    int mind, maxd;
+    do
+    {
+        mind = 2000;
+        maxd = -1;
+        for (int i = 0; i < 2000; i++)
+        {
+            if (aspirationdelta[depth][i] > 0)
+            {
+                if (mind > i)
+                    mind = i;
+                maxd = i;
+            }
+        }
+        for (int i = mind; i <= maxd; i++)
+        {
+            sprintf_s(s, "%d;%d;%d\n", depth, i - 1000, aspirationdelta[depth][i]);
+            en.fdebug << s;
+        }
+        depth++;
+    } while (maxd >= 0 && depth < 20);
+#endif
 }
 
 zobrist zb;

@@ -396,6 +396,9 @@ position fen rnb1kbnr/pp1pppp/1q6/1Bp5/8/4P3/PPPP1PPP/RNBQK1NR w KQkq - 0 1 move
 08.12.17: Interesting position from TCEC rapid: 1r3r2/1b1n1pk1/p5Bb/q2p2N1/2p2P1Q/2P5/6PP/3R1R1K w - - 0 28
 White is about to win, Hannibal misses Rd1e1 and evals ~ +1 but wins later; Rubisoft completely wrong with ~- 1.5
 
+26.12.17: r1b3k1/pp1q1ppp/2p2n2/8/2PPr3/P1P5/2Q1B1PP/R1B2RK1 b - - 1 14 
+Quite late recognizing that Re4xd4 is a mistake
+
 http://pwnedthegameofchess.com/engine/
 http://www.herderschach.de/index.html
 

@@ -1,9 +1,12 @@
 ChangeLog
 =========
 0.7 (release 201x - xx - xx) :
-	- Texel-Tuning!!! Implemented a tuner and tuned all the evaluation parameters which gains about 150 ELO. Thanks to Peter Österlund.
-	- ...
-
+    - Texel-Tuning!!! Implemented a tuner and tuned all the evaluation parameters which gains about 150 ELO. Thanks to Peter Österlund.
+    - Improved search:
+        - futility pruning implemented with margin 130
+        - delta pruning implemented
+        - quiescience search now handles promotion moves
+ 
 0.6 (release 2017 - 11 - 26) :
     - Store best move in transposition table even for beta cutoff which is important for move ordering
     - New magic bitboard implementation about 24 % faster than rotating bitboards (still compilable via define)

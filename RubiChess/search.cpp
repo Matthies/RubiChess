@@ -2,28 +2,28 @@
 #include "RubiChess.h"
 
 
+const int deltapruningmargin = 200;
+
 int getQuiescence(int alpha, int beta, int depth)
 {
-    int score;
+    int patscore, score;
     int bestscore = SHRT_MIN + 1;
     bool isLegal;
     bool isCheck;
     bool LegalMovesPossible = false;
 
-    // test for remis via repetition
-    if (rp.getPositionCount(pos.hash) >= 3 && pos.testRepetiton())
-        return SCOREDRAW;
-
-    // test for remis via 50 moves rule
-    if (pos.halfmovescounter >= 100)
-        return SCOREDRAW;
+    //en.nodes++;   // FIXME: Should quiescience nodes count for the statistics?
+#ifdef DEBUG
+    en.qnodes++;
+#endif
 
     isCheck = pos.checkForChess();
     if (isCheck)
         return alphabeta(alpha, beta, 1, false);
 
     bestscore = (pos.state & S2MMASK ? -pos.getValue() : pos.getValue());
-    PDEBUG(depth, "(getQuiscence) alpha=%d beta=%d patscore=%d\n", alpha, beta, bestscore);
+    patscore = bestscore;
+    PDEBUG(depth, "(getQuiscence) qnode=%d alpha=%d beta=%d patscore=%d\n", en.qnodes, alpha, beta, patscore);
     if (bestscore >= beta)
         return bestscore;
     if (bestscore > alpha)
@@ -34,41 +34,45 @@ int getQuiescence(int alpha, int beta, int depth)
 
     for (int i = 0; i < movelist->length; i++)
     {
-        //pos->debug(depth, "(getQuiscence) testing move %s... LegalMovesPossible=%d isCheck=%d Capture=%d Promotion=%d see=%d \n", movelist->move[i].toString().c_str(), (LegalMovesPossible?1:0), (isCheck ? 1 : 0), movelist->move[i].getCapture(), movelist->move[i].getPromotion(), pos->see(movelist->move[i].getFrom(), movelist->move[i].getTo()));
-        if (GETCAPTURE(movelist->move[i].code) != BLANK || GETPROMOTION(movelist->move[i].code) != BLANK || !LegalMovesPossible)
-        {
-            bool positiveSee = false;
-            if (GETCAPTURE(movelist->move[i].code) != BLANK)
-                positiveSee = (pos.see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)) >= 0);
-            if (positiveSee || !LegalMovesPossible)
-            {
-                isLegal = pos.playMove(&(movelist->move[i]));
+        PDEBUG(depth, "(getQuiscence) testing move %s ... LegalMovesPossible=%d Capture=%d Promotion=%d see=%d \n", movelist->move[i].toString().c_str(), (LegalMovesPossible?1:0), GETCAPTURE(movelist->move[i].code), GETPROMOTION(movelist->move[i].code), pos.see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)));
+        bool MoveIsUsefull = (ISPROMOTION(movelist->move[i].code) ||
+            (ISCAPTURE(movelist->move[i].code) 
+            && (pos.see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)) >= 0)
+            && (patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin > alpha)));
 #ifdef DEBUG
-                en.qnodes++;
+        if (ISCAPTURE(movelist->move[i].code) && patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin <= alpha)
+        {
+            en.dpnodes++;
+            //printf("delta prune: patscore:%d move:%s  alpha=%d\n", patscore, movelist->move[i].toString().c_str(), alpha);
+            //pos.print();
+        }
 #endif
-                if (isLegal)
+
+        if (MoveIsUsefull || !LegalMovesPossible)
+        {
+            isLegal = pos.playMove(&(movelist->move[i]));
+            if (isLegal)
+            {
+                LegalMovesPossible = true;
+                if (MoveIsUsefull)
                 {
-                    LegalMovesPossible = true;
-                    if (positiveSee)
+                    score = -getQuiescence(-beta, -alpha, depth - 1);
+                    PDEBUG(depth, "(getQuiscence) played move %s score=%d\n", movelist->move[i].toString().c_str(), score);
+                }
+                pos.unplayMove(&(movelist->move[i]));
+                if (MoveIsUsefull && score > bestscore)
+                {
+                    bestscore = score;
+                    if (score >= beta)
                     {
-                        score = -getQuiescence(-beta, -alpha, depth - 1);
-                        PDEBUG(depth, "(getQuiscence) played move %s score=%d\n", movelist->move[i].toString().c_str(), score);
+                        free(movelist);
+                        PDEBUG(depth, "(getQuiscence) beta cutoff\n");
+                        return score;
                     }
-                    pos.unplayMove(&(movelist->move[i]));
-                    if (positiveSee && score > bestscore)
+                    if (score > alpha)
                     {
-                        bestscore = score;
-                        if (score >= beta)
-                        {
-                            free(movelist);
-                            PDEBUG(depth, "(getQuiscence) beta cutoff\n");
-                            return score;
-                        }
-                        if (score > alpha)
-                        {
-                            alpha = score;
-                            PDEBUG(depth, "(getQuiscence) new alpha\n");
-                        }
+                        alpha = score;
+                        PDEBUG(depth, "(getQuiscence) new alpha\n");
                     }
                 }
             }
@@ -128,11 +132,6 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             return score;
     }
 
-    if (depth <= 0)
-    {
-        return getQuiescence(alpha, beta, depth);
-    }
-
     // test for remis via repetition
     if (rp.getPositionCount(pos.hash) >= 3 && pos.testRepetiton())
         return SCOREDRAW;
@@ -141,8 +140,17 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     if (pos.halfmovescounter >= 100)
         return SCOREDRAW;
 
+    if (depth <= 0)
+    {
+        return getQuiescence(alpha, beta, depth);
+    }
+
     isCheck = pos.checkForChess();
     // FIXME: Maybe some check extension? This is handled by quiescience search now
+#if 0
+    if (isCheck)
+        extendall = 1;
+#endif
 
     // chessmove lastmove = pos.actualpath.move[pos.actualpath.length - 1];
     // Here some reduction/extension depending on the lastmove...
@@ -171,6 +179,21 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 #endif
             pos.unplayNullMove();
         }
+    }
+
+    // futility pruning
+    const int futilityMargin = 130;
+    bool futility = false;
+#ifdef DEBUG
+    int futilityscore;
+#endif
+    if (depth == 1)
+    {
+        score = S2MSIGN(pos.state & S2MMASK) * pos.getValue();
+        futility = (score < alpha - futilityMargin);
+#ifdef DEBUG
+        futilityscore = score;
+#endif
     }
 
     newmoves = pos.getMoves();
@@ -217,30 +240,56 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             LegalMoves++;
             PDEBUG(depth, "(alphabeta) played move %s   nodes:%d\n", newmoves->move[i].toString().c_str(), en.nodes);
 
-            reduction = 0;
-            if (!extendall && depth > 2 && LegalMoves > 3 && !ISTACTICAL(m->code) && !isCheck)
-                reduction = 1;
-
-            if (!eval_type == HASHEXACT)
+            // Check for valid futility pruning
+            bool avoidFutilityPrune = !futility || ISTACTICAL(m->code) || pos.checkForChess() || alpha > 900;
+#ifdef DEBUG
+            if (!avoidFutilityPrune)
             {
-                score = -alphabeta(-beta, -alpha, depth + extendall - reduction - 1, true);
-                if (reduction && score > alpha)
-                    // research without reduction
-                    score = -alphabeta(-beta, -alpha, depth + extendall - 1, true);
-            } else {
-                // try a PV-Search
-#ifdef DEBUG
-                unsigned long nodesbefore = en.nodes;
+                en.fpnodes++;
+            }
 #endif
-                score = -alphabeta(-alpha - 1, -alpha, depth + extendall - 1, true);
-                if (score > alpha && score < beta)
-				{
-					// reasearch with full window
-#ifdef DEBUG
-                    en.wastedpvsnodes += (en.nodes - nodesbefore);
+            if (avoidFutilityPrune) // disable this test to debug wrongfp
+            {
+                //extendall = 0; //FIXME: Indroduce extend variable for move specific extension
+                reduction = 0;
+                if (!extendall && depth > 2 && LegalMoves > 3 && !ISTACTICAL(m->code) && !isCheck)
+                    reduction = 1;
+#if 0
+                // disabled; capture extension doesn't seem to work
+                else if (ISTACTICAL(m->code) && GETPIECE(m->code) <= GETCAPTURE(m->code))
+                    extendall = 1;
 #endif
+                if (!eval_type == HASHEXACT)
+                {
                     score = -alphabeta(-beta, -alpha, depth + extendall - reduction - 1, true);
-				}
+                    if (reduction && score > alpha)
+                        // research without reduction
+                        score = -alphabeta(-beta, -alpha, depth + extendall - 1, true);
+                }
+                else {
+                    // try a PV-Search
+#ifdef DEBUG
+                    unsigned long nodesbefore = en.nodes;
+#endif
+                    score = -alphabeta(-alpha - 1, -alpha, depth + extendall - 1, true);
+                    if (score > alpha && score < beta)
+                    {
+                        // reasearch with full window
+#ifdef DEBUG
+                        en.wastedpvsnodes += (en.nodes - nodesbefore);
+#endif
+                        score = -alphabeta(-beta, -alpha, depth + extendall - reduction - 1, true);
+                    }
+                }
+#ifdef DEBUG
+                if (score > alpha && !avoidFutilityPrune)
+                {
+                    en.wrongfp++;
+                    printf("Wrong pruning: Futility-Score:%d Move:%s Score:%d\nPosition:\n", futilityscore, m->toString().c_str(), score);
+                    pos.print();
+                    printf("\n\n");
+                }
+#endif
             }
 
             pos.unplayMove(m);
@@ -518,6 +567,9 @@ int rootsearch(int alpha, int beta, int depth)
 }
 
 
+#ifdef DEBUG
+int aspirationdelta[MAXDEPTH][2000] = { 0 };
+#endif
 
 static void search_gen1()
 {
@@ -566,6 +618,7 @@ static void search_gen1()
         // Reset bestmove to detect alpha raise in interrupted search
         pos.bestmove.code = 0;
 #ifdef DEBUG
+        int oldscore = 0;
         unsigned long nodesbefore = en.nodes;
         en.npd[depth] = 0;
 #endif
@@ -630,6 +683,13 @@ static void search_gen1()
                 if (en.stopLevel == ENGINERUN)
                 {
                     en.npd[depth] = en.nodes - en.npd[depth - 1];
+                    if (depth >= 2)
+                    {
+                        int deltascore = (score - oldscore) + 1000;
+                        if (deltascore >= 0 && deltascore < 2000)
+                            aspirationdelta[depth][deltascore]++;
+                    }
+                    oldscore = score;
                 }
 #endif
                 depth += depthincrement;
@@ -693,6 +753,9 @@ void searchguide()
     en.wastedaspnodes = 0;
     en.pvnodes = 0;
     en.nopvnodes = 0;
+    en.fpnodes = 0;
+    en.wrongfp = 0;
+    en.dpnodes = 0;
     en.npd[0] = 1;
 #endif
     en.fh = en.fhf = 0;
@@ -743,30 +806,50 @@ void searchguide()
     {
         sprintf_s(s, "quiscense;%d;%d;%d\n", en.qnodes, en.nodes + en.qnodes, (int)en.qnodes * 100 / (en.nodes + en.qnodes));
         en.fdebug << s;
+        cout << s;
+        if (en.dpnodes)
+        {
+            sprintf_s(s, "deltaprune;%d;%d\n", en.dpnodes, (int)en.dpnodes * 100 / en.qnodes);
+            en.fdebug << s;
+            cout << s;
+        }
+
         sprintf_s(s, "pvs;%d;%d;%d\n", en.wastedpvsnodes, en.nodes, (int)en.wastedpvsnodes * 100 / en.nodes);
         en.fdebug << s;
+        cout << s;
         sprintf_s(s, "asp;%d;%d;%d\n", en.wastedaspnodes, en.nodes, (int)en.wastedaspnodes * 100 / en.nodes);
         en.fdebug << s;
+        cout << s;
+    }
+    if (en.fpnodes)
+    {
+        sprintf_s(s, "futilityprune;%d;%d;%d\n", en.fpnodes, en.wrongfp, (int)en.wrongfp * 100 / en.fpnodes);
+        en.fdebug << s;
+        cout << s;
     }
     if (en.nopvnodes)
     {
         sprintf_s(s, "pv;%d;%d;%d\n", en.pvnodes, en.nopvnodes, (int)en.pvnodes * 100 / en.nopvnodes);
         en.fdebug << s;
+        cout << s;
     }
     sprintf_s(s, "ebf;");
     en.fdebug << s;
+    cout << s;
     for (int d = 2; en.npd[d] && en.npd[d - 2]; d++)
     {
         sprintf_s(s, "%0.2f;", sqrt((double)en.npd[d] / (double)en.npd[d - 2]));
         en.fdebug << s;
+        cout << s;
     }
     sprintf_s(s, "\n");
     en.fdebug << s;
+    cout << s;
     if (pwnhsh.query > 0)
     {
         sprintf_s(s, "info string pawnhash-hits: %0.2f%%\n", (float)pwnhsh.hit / (float)pwnhsh.query * 100.0f);
         cout << s;
-
+        en.fdebug << s;
     }
 
 #endif

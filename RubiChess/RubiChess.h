@@ -252,10 +252,10 @@ const int orthogonalanddiagonaloffset[] = { -0x10, -0x01, 0x01, 0x10, -0x0f, -0x
 const struct { int offset; bool needsblank; } pawnmove[] = { { 0x10, true }, { 0x0f, false }, { 0x11, false } };
 extern CONSTEVAL int materialvalue[];
 // values for move ordering
-const unsigned int mvv[] = { 0U << 29, 1U << 29, 2U << 29, 2U << 29, 3U << 29, 4U << 29, 5U << 29 };
-const unsigned int lva[] = { 5 << 26, 4 << 26, 3 << 26, 3 << 26, 2 << 26, 1 << 26, 0 << 26 };
-#define PVVAL (7 << 29)
-#define KILLERVAL1 (1 << 28)
+const int mvv[] = { 0U << 28, 1U << 28, 2U << 28, 2U << 28, 3U << 28, 4U << 28, 5U << 28 };
+const int lva[] = { 5 << 25, 4 << 25, 3 << 25, 3 << 25, 2 << 25, 1 << 25, 0 << 25 };
+#define PVVAL (7 << 28)
+#define KILLERVAL1 (1 << 27)
 #define KILLERVAL2 (KILLERVAL1 - 1)
 
 #ifdef BITBOARD
@@ -272,6 +272,8 @@ const unsigned int lva[] = { 5 << 26, 4 << 26, 3 << 26, 3 << 26, 2 << 26, 1 << 2
 #define GETPROMOTION(x) (((x) & 0xf000) >> 12)
 #define GETCAPTURE(x) (((x) & 0xf0000) >> 16)
 #define ISTACTICAL(x) ((x) & 0xff000)
+#define ISPROMOTION(x) ((x) & 0xf000)
+#define ISCAPTURE(x) ((x) & 0xf0000)
 #define GETPIECE(x) (((x) & 0xf0000000) >> 28)
 
 #ifdef BITBOARD
@@ -380,7 +382,7 @@ class chessmove
 public:
     // pcpcepepepepccccppppfffffftttttt
     uint32_t code;
-    unsigned int value;
+    int value;
 
     chessmove();
 #ifdef BITBOARD
@@ -517,6 +519,10 @@ const int roth1a8shift[64] = {
     22, 29, 37, 44, 50, 55, 59, 62,
     29, 37, 44, 50, 55, 59, 62, 64
 };
+
+extern U64 diaga1h8_attacks[64][64];
+extern U64 diagh1a8_attacks[64][64];
+
 #endif //ROTATEDBITBOARD
 
 class chessposition
@@ -702,6 +708,9 @@ public:
     unsigned long wastedaspnodes;
     unsigned long pvnodes;
     unsigned long nopvnodes;
+    unsigned long fpnodes;
+    unsigned long wrongfp;
+    unsigned long dpnodes;
     unsigned long npd[MAXDEPTH];
     fstream fdebug;
 #endif
