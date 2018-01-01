@@ -18,7 +18,7 @@ int getQuiescence(int alpha, int beta, int depth)
 
 
     patscore = (pos.state & S2MMASK ? -pos.getValue() : pos.getValue());
-    bestscore = patscore;
+    bestscore = patscore; //search5: SHRT_MIN + 1; 
     if (!pos.isCheck)
     {
         PDEBUG(depth, "(getQuiscence) qnode=%d alpha=%d beta=%d patscore=%d\n", en.qnodes, alpha, beta, patscore);
@@ -35,7 +35,7 @@ int getQuiescence(int alpha, int beta, int depth)
     {
         bool noDeltaprune = (patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin > alpha);
         PDEBUG(depth, "(getQuiscence) testing move %s ... LegalMovesPossible=%d Capture=%d Promotion=%d see=%d \n", movelist->move[i].toString().c_str(), (LegalMovesPossible?1:0), GETCAPTURE(movelist->move[i].code), GETPROMOTION(movelist->move[i].code), pos.see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)));
-        bool MoveIsUsefull = ((((pos.isCheck && noDeltaprune) || pos.evadedCheck) && depth >= -2) 
+        bool MoveIsUsefull = ((((pos.isCheck && noDeltaprune) /*|| pos.evadedCheck*/) && true/*depth >= -2*/) 
             || ISPROMOTION(movelist->move[i].code)
             || (ISCAPTURE(movelist->move[i].code) 
                 && noDeltaprune
@@ -263,8 +263,10 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 #endif
                 if (!eval_type == HASHEXACT)
                 {
+#if 0
                     if (ISCAPTURE(m->code) && materialvalue[GETPIECE(m->code) >> 1] - materialvalue[GETCAPTURE(m->code) >> 1] < 30)
                         moveExtension = 1;
+#endif
                     effectiveDepth = depth + moveExtension + extendall - reduction;
                     score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
                     if (reduction && score > alpha)
