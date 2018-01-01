@@ -369,7 +369,6 @@ struct chessmovestack
     int halfmovescounter;
     int fullmovescounter;
     int isCheck;
-    int evadedCheck;
 #ifndef BITBOARD
     //int value;
     int numFieldchanges;
@@ -561,7 +560,6 @@ public:
     int *positionvaluetable; // value tables for both sides, 7 PieceTypes and 256 phase variations 
     int ph; // to store the phase during different evaluation functions
     int isCheck;
-    int evadedCheck;
     chessposition();
     ~chessposition();
     void init();
@@ -582,7 +580,6 @@ public:
     bool isEmptyOrOpponent(int bIndex);
     bool isAttacked(int index);
     U64 attacksTo(int index, int side);
-    //bool checkForChess();
     int getLeastValuablePieceIndex(int to, unsigned int bySide, PieceCode *piece);
     int see(int to);
     int see(int from, int to);
@@ -638,6 +635,7 @@ public:
     unsigned long long debughash = 0;
     int *positionvaluetable;     // value tables for both sides, 7 PieceTypes and 256 phase variations 
     int ph; // to store the phase during different evaluation functions
+    int isCheck;
 
     chessposition();
     ~chessposition();
@@ -654,7 +652,6 @@ public:
     bool isOpponent(int bIndex);
     bool isEmptyOrOpponent(int bIndex);
     bool isAttacked(int bIndex);
-    bool checkForChess();
     int see(int to);
     int see(int from, int to);
     void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
