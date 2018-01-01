@@ -340,6 +340,9 @@ int chessposition::getFromFen(const char* sFen)
     if (numToken > 5)
         fullmovescounter = stoi(token[5]);
 
+    isCheck = isAttacked(kingpos[state & S2MMASK]);
+    evadedCheck = 0;
+
     actualpath.length = 0;
 #ifndef BITBOARD
     countMaterial();
@@ -541,12 +544,12 @@ void chessposition::getpvline(int depth)
 }
 
 
-
+#if 0
 bool chessposition::checkForChess()
 {
     return (isAttacked(kingpos[state & S2MMASK]));
 }
-
+#endif
 
 inline void chessposition::testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, PieceCode piece)
 {
@@ -1117,6 +1120,8 @@ bool chessposition::playMove(chessmove *cm)
     movestack[mstop].kingpos[1] = kingpos[1];
     movestack[mstop].fullmovescounter = fullmovescounter;
     movestack[mstop].halfmovescounter = halfmovescounter;
+    movestack[mstop].isCheck = isCheck;
+    movestack[mstop].evadedCheck = evadedCheck;
 
     halfmovescounter++;
 
@@ -1196,8 +1201,11 @@ bool chessposition::playMove(chessmove *cm)
         }
     }
 
-    isLegal = !checkForChess();
+    evadedCheck = isCheck;
+    isLegal = !isAttacked(kingpos[state & S2MMASK]);
+    //isLegal = !checkForChess();
     state ^= S2MMASK;
+    isCheck = isAttacked(kingpos[state & S2MMASK]);
 
     hash ^= zb.s2m;
 
@@ -1247,6 +1255,8 @@ void chessposition::unplayMove(chessmove *cm)
     kingpos[1] = movestack[mstop].kingpos[1];
     fullmovescounter = movestack[mstop].fullmovescounter;
     halfmovescounter = movestack[mstop].halfmovescounter;
+    evadedCheck = movestack[mstop].evadedCheck;
+    isCheck = movestack[mstop].isCheck;
 
     s2m = state & S2MMASK;
     if (promote != BLANK)
