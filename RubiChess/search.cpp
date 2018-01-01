@@ -11,7 +11,8 @@ int getQuiescence(int alpha, int beta, int depth)
     bool isLegal;
     bool LegalMovesPossible = false;
 
-    en.nodes++;   // FIXME: Should quiescience nodes count for the statistics?
+    // FIXME: Should quiescience nodes count for the statistics?
+    //en.nodes++;
 #ifdef DEBUG
     en.qnodes++;
 #endif
