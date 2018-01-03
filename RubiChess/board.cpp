@@ -340,6 +340,8 @@ int chessposition::getFromFen(const char* sFen)
     if (numToken > 5)
         fullmovescounter = stoi(token[5]);
 
+    isCheck = isAttacked(kingpos[state & S2MMASK]);
+
     actualpath.length = 0;
 #ifndef BITBOARD
     countMaterial();
@@ -540,12 +542,6 @@ void chessposition::getpvline(int depth)
         unplayMove(&(pvline.move[--i]));
 }
 
-
-
-bool chessposition::checkForChess()
-{
-    return (isAttacked(kingpos[state & S2MMASK]));
-}
 
 
 inline void chessposition::testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, PieceCode piece)
@@ -1117,6 +1113,7 @@ bool chessposition::playMove(chessmove *cm)
     movestack[mstop].kingpos[1] = kingpos[1];
     movestack[mstop].fullmovescounter = fullmovescounter;
     movestack[mstop].halfmovescounter = halfmovescounter;
+    movestack[mstop].isCheck = isCheck;
 
     halfmovescounter++;
 
@@ -1196,8 +1193,9 @@ bool chessposition::playMove(chessmove *cm)
         }
     }
 
-    isLegal = !checkForChess();
+    isLegal = !isAttacked(kingpos[state & S2MMASK]);
     state ^= S2MMASK;
+    isCheck = isAttacked(kingpos[state & S2MMASK]);
 
     hash ^= zb.s2m;
 
@@ -1247,6 +1245,7 @@ void chessposition::unplayMove(chessmove *cm)
     kingpos[1] = movestack[mstop].kingpos[1];
     fullmovescounter = movestack[mstop].fullmovescounter;
     halfmovescounter = movestack[mstop].halfmovescounter;
+    isCheck = movestack[mstop].isCheck;
 
     s2m = state & S2MMASK;
     if (promote != BLANK)
@@ -1908,6 +1907,7 @@ bool chessposition::playMove(chessmove *cm)
     movestack[mstop].kingpos[1] = kingpos[1];
     movestack[mstop].fullmovescounter = fullmovescounter;
     movestack[mstop].halfmovescounter = halfmovescounter;
+    movestack[mstop].isCheck = isCheck;
     movestack[mstop].numFieldchanges = 0;
     int from = GETFROM(cm->code);
     int to = GETTO(cm->code);
@@ -2016,8 +2016,9 @@ bool chessposition::playMove(chessmove *cm)
         }
     }
 
-    isLegal = !checkForChess();
+    isLegal = !isAttacked(kingpos[state & S2MMASK]);
     state ^= S2MMASK;
+    isCheck = isAttacked(kingpos[state & S2MMASK]);
 
     // Fix hash regarding s2m
     hash ^= zb.s2m;
@@ -2069,6 +2070,7 @@ void chessposition::unplayMove(chessmove *cm)
     kingpos[1] = movestack[mstop].kingpos[1];
     fullmovescounter = movestack[mstop].fullmovescounter;
     halfmovescounter = movestack[mstop].halfmovescounter;
+    isCheck = movestack[mstop].isCheck;
     for (int i = 0; i < movestack[mstop].numFieldchanges; i++)
     {
         if (mailbox[movestack[mstop].index[i]] != BLANK)

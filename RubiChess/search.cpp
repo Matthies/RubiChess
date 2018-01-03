@@ -7,38 +7,41 @@ const int deltapruningmargin = 200;
 int getQuiescence(int alpha, int beta, int depth)
 {
     int patscore, score;
-    int bestscore = SHRT_MIN + 1;
+    int bestscore;
     bool isLegal;
-    bool isCheck;
     bool LegalMovesPossible = false;
 
-    //en.nodes++;   // FIXME: Should quiescience nodes count for the statistics?
+    // FIXME: Should quiescience nodes count for the statistics?
+    //en.nodes++;
 #ifdef DEBUG
     en.qnodes++;
 #endif
 
-    isCheck = pos.checkForChess();
-    if (isCheck)
-        return alphabeta(alpha, beta, 1, false);
 
-    bestscore = (pos.state & S2MMASK ? -pos.getValue() : pos.getValue());
-    patscore = bestscore;
-    PDEBUG(depth, "(getQuiscence) qnode=%d alpha=%d beta=%d patscore=%d\n", en.qnodes, alpha, beta, patscore);
-    if (bestscore >= beta)
-        return bestscore;
-    if (bestscore > alpha)
-        alpha = bestscore;
+    patscore = (pos.state & S2MMASK ? -pos.getValue() : pos.getValue());
+    bestscore = patscore;
+    if (!pos.isCheck)
+    {
+        PDEBUG(depth, "(getQuiscence) qnode=%d alpha=%d beta=%d patscore=%d\n", en.qnodes, alpha, beta, patscore);
+        if (patscore >= beta)
+            return patscore;
+        if (patscore > alpha)
+            alpha = patscore;
+    }
 
     chessmovelist* movelist = pos.getMoves();
     //pos->sortMoves(movelist);
 
     for (int i = 0; i < movelist->length; i++)
     {
+        bool noDeltaprune = (patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin > alpha);
         PDEBUG(depth, "(getQuiscence) testing move %s ... LegalMovesPossible=%d Capture=%d Promotion=%d see=%d \n", movelist->move[i].toString().c_str(), (LegalMovesPossible?1:0), GETCAPTURE(movelist->move[i].code), GETPROMOTION(movelist->move[i].code), pos.see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)));
-        bool MoveIsUsefull = (ISPROMOTION(movelist->move[i].code) ||
-            (ISCAPTURE(movelist->move[i].code) 
-            && (pos.see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)) >= 0)
-            && (patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin > alpha)));
+        bool MoveIsUsefull = ((pos.isCheck && noDeltaprune)
+            || ISPROMOTION(movelist->move[i].code)
+            || (ISCAPTURE(movelist->move[i].code) 
+                && noDeltaprune
+                && (pos.see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)) >= 0)
+            ));
 #ifdef DEBUG
         if (ISCAPTURE(movelist->move[i].code) && patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin <= alpha)
         {
@@ -82,7 +85,7 @@ int getQuiescence(int alpha, int beta, int depth)
     if (LegalMovesPossible)
         return bestscore;
     // No valid move found
-    if (isCheck)
+    if (pos.isCheck)
         // It's a mate
         return SCOREBLACKWINS + pos.ply;
     else
@@ -98,7 +101,6 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     uint32_t hashmovecode = 0;
     int  LegalMoves = 0;
     bool isLegal;
-    bool isCheck;
     int bestscore = SHRT_MIN + 1;
     uint32_t bestcode = 0;
     int eval_type = HASHALPHA;
@@ -106,6 +108,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     chessmove *m;
     int extendall = 0;
     int reduction;
+    int effectiveDepth;
 
     en.nodes++;
 
@@ -145,10 +148,9 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         return getQuiescence(alpha, beta, depth);
     }
 
-    isCheck = pos.checkForChess();
     // FIXME: Maybe some check extension? This is handled by quiescience search now
-#if 0
-    if (isCheck)
+#if 1
+    if (pos.isCheck)
         extendall = 1;
 #endif
 
@@ -156,7 +158,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     // Here some reduction/extension depending on the lastmove...
 
     // Nullmove
-    if (nullmoveallowed && !isCheck && depth >= 4 && pos.phase() < 150)
+    if (nullmoveallowed && !pos.isCheck && depth >= 4 && pos.phase() < 150)
     {
         // FIXME: Something to avoid nullmove in endgame is missing... pos->phase() < 150 needs validation
         pos.playNullMove();
@@ -234,6 +236,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         }
 
         m = &newmoves->move[i];
+        int moveExtension = 0;
         isLegal = pos.playMove(m);
         if (isLegal)
         {
@@ -241,7 +244,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             PDEBUG(depth, "(alphabeta) played move %s   nodes:%d\n", newmoves->move[i].toString().c_str(), en.nodes);
 
             // Check for valid futility pruning
-            bool avoidFutilityPrune = !futility || ISTACTICAL(m->code) || pos.checkForChess() || alpha > 900;
+            bool avoidFutilityPrune = !futility || ISTACTICAL(m->code) || pos.isCheck || alpha > 900;
 #ifdef DEBUG
             if (!avoidFutilityPrune)
             {
@@ -252,7 +255,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             {
                 //extendall = 0; //FIXME: Indroduce extend variable for move specific extension
                 reduction = 0;
-                if (!extendall && depth > 2 && LegalMoves > 3 && !ISTACTICAL(m->code) && !isCheck)
+                if (!extendall && depth > 2 && LegalMoves > 3 && !ISTACTICAL(m->code) && !pos.isCheck)
                     reduction = 1;
 #if 0
                 // disabled; capture extension doesn't seem to work
@@ -261,24 +264,33 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 #endif
                 if (!eval_type == HASHEXACT)
                 {
-                    score = -alphabeta(-beta, -alpha, depth + extendall - reduction - 1, true);
+#if 0
+                    if (ISCAPTURE(m->code) && materialvalue[GETPIECE(m->code) >> 1] - materialvalue[GETCAPTURE(m->code) >> 1] < 30)
+                        moveExtension = 1;
+#endif
+                    effectiveDepth = depth + moveExtension + extendall - reduction;
+                    score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
                     if (reduction && score > alpha)
+                    {
                         // research without reduction
                         score = -alphabeta(-beta, -alpha, depth + extendall - 1, true);
+                        effectiveDepth--;
+                    }
                 }
                 else {
                     // try a PV-Search
 #ifdef DEBUG
                     unsigned long nodesbefore = en.nodes;
 #endif
-                    score = -alphabeta(-alpha - 1, -alpha, depth + extendall - 1, true);
+                    effectiveDepth = depth + extendall;
+                    score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1, true);
                     if (score > alpha && score < beta)
                     {
                         // reasearch with full window
 #ifdef DEBUG
                         en.wastedpvsnodes += (en.nodes - nodesbefore);
 #endif
-                        score = -alphabeta(-beta, -alpha, depth + extendall - reduction - 1, true);
+                        score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
                     }
                 }
 #ifdef DEBUG
@@ -331,7 +343,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                         en.fhf++;
 #endif
                     PDEBUG(depth, "(alphabeta) score=%d >= beta=%d  -> cutoff\n", score, beta);
-                    tp.addHash(score, HASHBETA, depth, bestcode);
+                    tp.addHash(score, HASHBETA, effectiveDepth, bestcode);
                     free(newmoves);
                     return score;   // fail soft beta-cutoff
                 }
@@ -341,7 +353,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                     PDEBUG(depth, "(alphabeta) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, newmoves->move[i].toString().c_str(), pos.actualpath.toString().c_str());
                     alpha = score;
                     eval_type = HASHEXACT;
-                    if (GETCAPTURE(m->code) == BLANK)
+                    if (!ISCAPTURE(m->code))
                     {
                         pos.history[pos.Piece(GETFROM(m->code))][GETTO(m->code)] += depth * depth;
                     }
@@ -353,7 +365,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     free(newmoves);
     if (LegalMoves == 0)
     {
-        if (isCheck)
+        if (pos.isCheck)
             // It's a mate
             return SCOREBLACKWINS + pos.ply;
         else
@@ -373,7 +385,6 @@ int rootsearch(int alpha, int beta, int depth)
     uint32_t hashmovecode = 0;
     int  LegalMoves = 0;
     bool isLegal;
-    bool isCheck;
     int bestscore = SHRT_MIN + 1;
     chessmove best;
     int eval_type = HASHALPHA;
@@ -414,10 +425,8 @@ int rootsearch(int alpha, int beta, int depth)
     if (pos.halfmovescounter >= 100)
         return SCOREDRAW;
 
-    isCheck = pos.checkForChess();
-
     newmoves = pos.getMoves();
-    if (isCheck)
+    if (pos.isCheck)
         depth++;
 
 #ifdef DEBUG
@@ -464,7 +473,7 @@ int rootsearch(int alpha, int beta, int depth)
             PDEBUG(depth, "(rootsearch) played move %s   nodes:%d\n", newmoves->move[i].toString().c_str(), en.nodes);
 
             reduction = 0;
-            if (!extendall && depth > 2 && LegalMoves > 3 && !ISTACTICAL(m->code) && !isCheck)
+            if (!extendall && depth > 2 && LegalMoves > 3 && !ISTACTICAL(m->code) && !pos.isCheck)
                 reduction = 1;
 
             if (!eval_type == HASHEXACT)
@@ -540,7 +549,7 @@ int rootsearch(int alpha, int beta, int depth)
                     PDEBUG(depth, "(rootsearch) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, m->toString().c_str(), pos.actualpath.toString().c_str());
                     alpha = score;
                     eval_type = HASHEXACT;
-                    if (GETCAPTURE(m->code) == BLANK)
+                    if (!ISCAPTURE(m->code))
                     {
                         pos.history[pos.Piece(GETFROM(m->code))][GETTO(m->code)] += depth * depth;
                     }
@@ -554,7 +563,7 @@ int rootsearch(int alpha, int beta, int depth)
     {
         pos.bestmove.code = 0;
         en.stopLevel = ENGINEWANTSTOP;
-        if (isCheck)
+        if (pos.isCheck)
             // It's a mate
             return SCOREBLACKWINS;
         else
