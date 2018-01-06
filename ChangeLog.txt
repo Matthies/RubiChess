@@ -6,7 +6,7 @@ ChangeLog
         + futility pruning implemented with margin 130
         + delta pruning implemented
         + quiescience search now handles promotion moves
-	+ fixed bug in SEE (missing pawn attacks) and retuned
+        + fixed bug in SEE (missing pawn attacks) and retuned
     - Total score against 0.6 (4000 games in 10+0.1, 2moves_v1 book): 214.97ELO +/- 11.33
  
 0.6 (release 2017 - 11 - 26) :
