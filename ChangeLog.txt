@@ -1,11 +1,13 @@
 ChangeLog
 =========
-0.7 (release 201x - xx - xx) :
+0.7 (release 2018-01-06, Pre-Release for Graham division 9 tournament) :
     - Texel-Tuning!!! Implemented a tuner and tuned all the evaluation parameters which gains about 150 ELO. Thanks to Peter Österlund.
     - Improved search:
-        - futility pruning implemented with margin 130
-        - delta pruning implemented
-        - quiescience search now handles promotion moves
+        + futility pruning implemented with margin 130
+        + delta pruning implemented
+        + quiescience search now handles promotion moves
+	+ fixed bug in SEE (missing pawn attacks) and retuned
+    - Total score against 0.6 (4000 games in 10+0.1, 2moves_v1 book): 214.97ELO +/- 11.33
  
 0.6 (release 2017 - 11 - 26) :
     - Store best move in transposition table even for beta cutoff which is important for move ordering
@@ -13,29 +15,29 @@ ChangeLog
     - Switched to fail soft environment
     - Fixed a bug where pv move value gets overwritten by killer history value which results in bad move order and sometimes even worse bestmove
     - Simplified/fixed quiescence search (again)
-	- Introduced LMR (quite simple right now)
-	- Improved sudden death time management again; ELO in 10+0.1 is now almost equal to 40/10
-	- Improved evaluation of pawns now using a pawn hash (only used in Bitboard version)
+    - Introduced LMR (quite simple right now)
+    - Improved sudden death time management again; ELO in 10+0.1 is now almost equal to 40/10
+    - Improved evaluation of pawns now using a pawn hash (only used in Bitboard version)
 
-0.5 (release 2017 - 09 - 29) :
+0.5 (release 2017-09-29):
     - Moved undo data from chessmove struct to a static stack which speeds up playing moves
     - More speed by making engine, position, tables global instead of passing them by parameters
-    - Better evaluation : Ballanced pawn / minors, diagonal mobility, progress of passed pawns
+    - Better evaluation: Ballanced pawn / minors, diagonal mobility, progress of passed pawns
     - Improved time management, especially sudden death mode
     - Avoids wrong best move from last search when under time pressure
     - Really disabled all the debug code if DEBUG is not defined
     - First Linux release.
 
-0.4 (release 2017 - 08 - 04) :
+0.4 (release 2017-08-04):
     - First rotating bitboard version (choose by #define BITBOARD); 0x88 board still available
     - Use 2^x for transposition size and & instead of % which make accessing the TP a lot faster
-    - Some fixes in the pawn evaulation(got different scores for white and black before)
-    - Added test for symmetric position evaluation(new parameter - dotests substitutes - hashtest)
+    - Some fixes in the pawn evaulation (got different scores for white and black before)
+    - Added test for symmetric position evaluation (new parameter - dotests substitutes - hashtest)
     - Fixed timemode "time/inc for whole match"
     - Testrepetition() stops searching at halfmovecounter reset now
     - Search improvement by adding aspiration windows and principal variation search
 
-0.3 (release 2017 - 06 - 05) :
+0.3 (release 2017-06-05) :
     - Now really fixed en passant hashing (code got lost somehow before releasing 0.2.1)
     - New evaluation using phase triggered value tables and some pawn specials
     - Function 'getMoves' now returns pseudo legal moves to avoid time consuming play/unplay
@@ -48,15 +50,15 @@ ChangeLog
     - Implemented benchmark mode
     - Some fixes in uci option handling
 
-0.2.1 (release 2017 - 03 - 28) :
+0.2.1 (release 2017-03-28):
     - Tuned attack detection, move generation, SEE, play/unplay to get more speed out of it; perft shows ~10 % better performance
     - Added history heuristic for move ordering; improvement visible in wacnew/199 where next depth is reached in half time compared to 0.2
     - Implemented 50-moves rule
     - Fixed bug in en passant hashing
-    - Fixed bug : ENGINESTOPSOON did not take move of last iteration
-    - Improved testengine mode(compare mode, avoid moves, exit flags)
+    - Fixed bug: ENGINESTOPSOON did not take move of last iteration
+    - Improved testengine mode (compare mode, avoid moves, exit flags)
 
-0.2 (release 2017 - 03 - 19) :
+0.2 (release 2017-03-19):
     - Improved use of transposition table which is not reset anymore and can deal with alpha and beta bound entries
     - Alphabeta now uses a quiscence based on SEE evaluation for captures to go
     - Null move pruning added
@@ -68,12 +70,11 @@ ChangeLog
         + prefer border positions for king in the beginning to force castles
         + pawns: prefer central pawns, penalty for double pawns, move forward in endgame
 
-0.1 (release 2017 - 02 - 24) :
+0.1 (release 2017-02-24):
     - 0x88 board representation with (hopefully) bugfree move generation and play/unplay
     - Alpha-beta-search implemented with pv move ordering and some 'prefer captures' heuristic
-    - Basic implementation of transposition table; not yet very powerfull as it is cannot deal with non - exact values and is reset after every iterative seach
+    - Basic implementation of transposition table; not yet very powerfull as it is cannot deal with non-exact values and is reset after every iterative seach
     - getPositionValue: expensive but quite strong position evaluation bases on counting dominated fields
     - Basic UCI protocol implementation so that it can play tournaments in Arena
     - perft implemented
     - testengine mode for bulk testing of EPD files
-
