@@ -723,6 +723,7 @@ public:
     bool debug = false;
     int sizeOfTp = 0;
     int moveOverhead;
+    int MultiPV;
     int terminationscore = SHRT_MAX;
     int stopLevel = ENGINESTOPPED;
     void communicate(string inputstring);

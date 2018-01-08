@@ -148,11 +148,8 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         return getQuiescence(alpha, beta, depth);
     }
 
-    // FIXME: Maybe some check extension? This is handled by quiescience search now
-#if 1
     if (pos.isCheck)
         extendall = 1;
-#endif
 
     // chessmove lastmove = pos.actualpath.move[pos.actualpath.length - 1];
     // Here some reduction/extension depending on the lastmove...
@@ -265,6 +262,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                 if (!eval_type == HASHEXACT)
                 {
 #if 0
+                    // disabled; even 'good capture' extension doesn't seem to work
                     if (ISCAPTURE(m->code) && materialvalue[GETPIECE(m->code) >> 1] - materialvalue[GETCAPTURE(m->code) >> 1] < 30)
                         moveExtension = 1;
 #endif

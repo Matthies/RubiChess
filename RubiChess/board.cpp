@@ -2207,6 +2207,7 @@ engine::engine()
 
     setOption("hash", "150");
     setOption("Move Overhead", "50");
+    setOption("MultiPV", "1");
 
 #ifdef _WIN32
     LARGE_INTEGER f;
@@ -2231,6 +2232,12 @@ void engine::setOption(string sName, string sValue)
     transform(sValue.begin(), sValue.end(), sValue.begin(), ::tolower);
     if (sName == "clear hash")
         tp.clean();
+    if (sName == "multipv")
+    {
+        newint = stoi(sValue);
+        if (newint >= 1 && newint <= 64)
+            MultiPV = newint;
+    }
     if (sName == "hash")
     {
         newint = stoi(sValue);
@@ -2337,6 +2344,7 @@ void engine::communicate(string inputstring)
                 myUci->send("option name Clear Hash type button\n");
                 myUci->send("option name Hash type spin default 150 min 1 max 1048576\n");
                 myUci->send("option name Move Overhead type spin default 50 min 0 max 5000\n");
+                myUci->send("option name MultiPV type spin default 1 min 1 max 64\n");
                 myUci->send("uciok\n", author);
                 break;
             case SETOPTION:
