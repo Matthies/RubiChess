@@ -400,6 +400,8 @@ public:
 };
 
 #define MAXMOVELISTLENGTH 1024
+#define MAXMULTIPV 64
+
 class chessmovelist
 {
 public:
@@ -553,7 +555,8 @@ public:
     int mindebugdepth = -1;
     chessmovelist pvline;
     chessmovelist actualpath;
-    chessmove bestmove;
+    chessmove bestmove[MAXMULTIPV];
+    int bestmovescore[MAXMULTIPV];
     unsigned long killer[2][MAXDEPTH];
     unsigned int history[14][64];
     unsigned long long debughash = 0;
@@ -592,7 +595,7 @@ public:
     void unplayNullMove();
     void simplePlay(int from, int to);
     void simpleUnplay(int from, int to, PieceCode capture);
-    void getpvline(int depth);
+    void getpvline(int depth, int pvnum);
     int getPositionValue();
     int getPawnValue();
     int getValue();

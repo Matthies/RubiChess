@@ -495,7 +495,7 @@ void chessposition::playNullMove()
     state ^= S2MMASK;
     hash ^= zb.s2m;
     actualpath.move[actualpath.length++].code = 0;
-    pos.ply++;
+    ply++;
 }
 
 
@@ -504,20 +504,20 @@ void chessposition::unplayNullMove()
     state ^= S2MMASK;
     hash ^= zb.s2m;
     actualpath.length--;
-    pos.ply--;
+    ply--;
 }
 
 
-void chessposition::getpvline(int depth)
+void chessposition::getpvline(int depth, int pvnum)
 {
     int dummyval;
     chessmove cm;
     pvline.length = 0;
     while (depth > 0)
     {
-        if (pvline.length == 0 && bestmove.code != 0)
+        if (pvline.length == 0 && bestmove[pvnum].code != 0)
         {
-            cm = bestmove;
+            cm = bestmove[pvnum];
         }
         else if (!tp.probeHash(&dummyval, &(cm.code), depth, 0, 0) || cm.code == 0)
         {
@@ -2235,7 +2235,7 @@ void engine::setOption(string sName, string sValue)
     if (sName == "multipv")
     {
         newint = stoi(sValue);
-        if (newint >= 1 && newint <= 64)
+        if (newint >= 1 && newint <= MAXMULTIPV)
             MultiPV = newint;
     }
     if (sName == "hash")
@@ -2344,7 +2344,7 @@ void engine::communicate(string inputstring)
                 myUci->send("option name Clear Hash type button\n");
                 myUci->send("option name Hash type spin default 150 min 1 max 1048576\n");
                 myUci->send("option name Move Overhead type spin default 50 min 0 max 5000\n");
-                myUci->send("option name MultiPV type spin default 1 min 1 max 64\n");
+                myUci->send("option name MultiPV type spin default 1 min 1 max %d\n", MAXMULTIPV);
                 myUci->send("uciok\n", author);
                 break;
             case SETOPTION:

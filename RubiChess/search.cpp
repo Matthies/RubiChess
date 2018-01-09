@@ -383,15 +383,19 @@ int rootsearch(int alpha, int beta, int depth)
     uint32_t hashmovecode = 0;
     int  LegalMoves = 0;
     bool isLegal;
-    int bestscore = SHRT_MIN + 1;
-    chessmove best;
+    //int bestscore = SHRT_MIN + 1;
+    //chessmove best;
     int eval_type = HASHALPHA;
     chessmovelist* newmoves;
     chessmove *m;
     int extendall = 0;
     int reduction;
+    int lastmoveindex = 0;
 
     en.nodes++;
+
+    for (int i = 0; i < en.MultiPV; i++)
+        pos.bestmovescore[i] = SHRT_MIN + 1;
 
 #ifdef DEBUG
     int oldmaxdebugdepth;
@@ -408,13 +412,13 @@ int rootsearch(int alpha, int beta, int depth)
 #endif
 
     PDEBUG(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
-
+#if 0 //FIXME: Disable TT is needed for MultiPV but is this good? 
     if (tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
     {
         if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
             return score;
     }
-
+#endif
     // test for remis via repetition
     if (rp.getPositionCount(pos.hash) >= 3 && pos.testRepetiton())
         return SCOREDRAW;
@@ -513,23 +517,31 @@ int rootsearch(int alpha, int beta, int depth)
                 // At least one move is found and we can safely exit here
                 // Lets hope this doesn't take too much time...
                 free(newmoves);
-                return bestscore;
+                return pos.bestmovescore[0];
             }
 
-            if (score > bestscore)
+            if (score > pos.bestmovescore[lastmoveindex])
             {
-                bestscore = score;
-                best = *m;
-                pos.bestmove = best;
+                //best = *m;
+                int newindex = lastmoveindex;
+                while (newindex > 0 && score > pos.bestmovescore[newindex - 1])
+                {
+                    pos.bestmovescore[newindex] = pos.bestmovescore[newindex - 1];
+                    pos.bestmove[newindex] = pos.bestmove[newindex - 1];
+                    newindex--;
+                }
+                pos.bestmovescore[newindex] = score;
+                pos.bestmove[newindex] =*m;
+                if (lastmoveindex < en.MultiPV - 1)
+                    lastmoveindex++;
 
                 if (score >= beta)
                 {
                     // Killermove
-                    if (GETCAPTURE(best.code) == BLANK)
+                    if (GETCAPTURE(m->code) == BLANK)
                     {
-
                         pos.killer[1][0] = pos.killer[0][0];
-                        pos.killer[0][0] = best.code;
+                        pos.killer[0][0] = m->code;
                     }
 #ifdef DEBUG
                     en.fh++;
@@ -537,15 +549,15 @@ int rootsearch(int alpha, int beta, int depth)
                         en.fhf++;
 #endif
                     PDEBUG(depth, "(rootsearch) score=%d >= beta=%d  -> cutoff\n", score, beta);
-                    tp.addHash(beta, HASHBETA, depth, best.code);
+                    tp.addHash(beta, HASHBETA, depth, m->code);
                     free(newmoves);
                     return beta;   // fail hard beta-cutoff
                 }
 
-                if (score > alpha)
+                if (pos.bestmovescore[en.MultiPV - 1] > alpha)
                 {
                     PDEBUG(depth, "(rootsearch) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, m->toString().c_str(), pos.actualpath.toString().c_str());
-                    alpha = score;
+                    alpha = pos.bestmovescore[lastmoveindex];
                     eval_type = HASHEXACT;
                     if (!ISCAPTURE(m->code))
                     {
@@ -559,7 +571,7 @@ int rootsearch(int alpha, int beta, int depth)
     free(newmoves);
     if (LegalMoves == 0)
     {
-        pos.bestmove.code = 0;
+        pos.bestmove[0].code = 0;
         en.stopLevel = ENGINEWANTSTOP;
         if (pos.isCheck)
             // It's a mate
@@ -569,8 +581,8 @@ int rootsearch(int alpha, int beta, int depth)
             return SCOREDRAW;
     }
 
-    tp.addHash(alpha, eval_type, depth, best.code);
-    return alpha;
+    tp.addHash(pos.bestmovescore[0], eval_type, depth, pos.bestmove[0].code);
+    return pos.bestmovescore[0];
 }
 
 
@@ -623,25 +635,17 @@ static void search_gen1()
         }
 
         // Reset bestmove to detect alpha raise in interrupted search
-        pos.bestmove.code = 0;
+        pos.bestmove[0].code = 0;
 #ifdef DEBUG
         int oldscore = 0;
         unsigned long nodesbefore = en.nodes;
         en.npd[depth] = 0;
 #endif
         score = rootsearch(alpha, beta, depth);
+        //printf("info string Rootsearch: alpha=%d beta=%d depth=%d score=%d bestscore[0]=%d bestscore[%d]=%d\n", alpha, beta, depth, score, pos.bestmovescore[0], en.MultiPV - 1,  pos.bestmovescore[en.MultiPV - 1]);
 
         // new aspiration window
-        if (score == alpha)
-        {
-            // research with lower alpha
-            alpha = max(SHRT_MIN + 1, alpha - deltaalpha);
-            deltaalpha <<= 1;
-#ifdef DEBUG
-            en.wastedaspnodes += (en.nodes - nodesbefore);
-#endif
-        }
-        else if (score == beta)
+        if (score >= beta)
         {
             // research with higher beta
             beta = min(SHRT_MAX, beta + deltabeta);
@@ -650,30 +654,42 @@ static void search_gen1()
             en.wastedaspnodes += (en.nodes - nodesbefore);
 #endif
         }
+        else if (pos.bestmovescore[en.MultiPV - 1] <= alpha)
+        {
+            // research with lower alpha
+            alpha = max(SHRT_MIN + 1, alpha - deltaalpha);
+            deltaalpha <<= 1;
+#ifdef DEBUG
+            en.wastedaspnodes += (en.nodes - nodesbefore);
+#endif
+        }
         else
         {
-            // search was successfull
-            PDEBUG(depth, "Searchorder-Success: %f\n", (en.fh > 0 ? en.fhf / en.fh : 0.0));
-            // The only case that bestmove is not set can happen if alphabeta hit the TP table
-            // so get bestmovecode from there
-            if (!pos.bestmove.code)
-                tp.probeHash(&score, &pos.bestmove.code, MAXDEPTH, alpha, beta);
-
             int secondsrun = (int)((getTime() - en.starttime) * 1000 / en.frequency);
 
-            pos.getpvline(depth);
-            pvstring = pos.pvline.toString();
+            // search was successfull
+            PDEBUG(depth, "Searchorder-Success: %f\n", (en.fh > 0 ? en.fhf / en.fh : 0.0));
+            for (int i = 0; i < en.MultiPV; i++)
+            {
+                // The only case that bestmove is not set can happen if rootsearch hit the TP table
+                // so get bestmovecode from there
+                if (!pos.bestmove[i].code)
+                    tp.probeHash(&score, &pos.bestmove[i].code, MAXDEPTH, alpha, beta);
 
-            if (!MATEDETECTED(score))
-            {
-                sprintf_s(s, "info depth %d time %d score cp %d pv %s\n", depth, secondsrun, score, pvstring.c_str());
+                pos.getpvline(depth, i);
+                pvstring = pos.pvline.toString();
+
+                if (!MATEDETECTED(pos.bestmovescore[i]))
+                {
+                    sprintf_s(s, "info depth %d multipv %d time %d score cp %d pv %s\n", depth, i + 1, secondsrun, pos.bestmovescore[i], pvstring.c_str());
+                }
+                else
+                {
+                    matein = (pos.bestmovescore[i] > 0 ? (SCOREWHITEWINS - pos.bestmovescore[i] + 1) / 2 : (SCOREBLACKWINS - pos.bestmovescore[i]) / 2);
+                    sprintf_s(s, "info depth %d multipv %d time %d score mate %d pv %s\n", depth, i + 1, secondsrun, matein, pvstring.c_str());
+                }
+                cout << s;
             }
-            else
-            {
-                matein = (score > 0 ? (SCOREWHITEWINS - score + 1) / 2 : (SCOREBLACKWINS - score) / 2);
-                sprintf_s(s, "info depth %d time %d score mate %d pv %s\n", depth, secondsrun, matein, pvstring.c_str());
-            }
-            cout << s;
             if (score >= en.terminationscore)
             {
                 // bench mode reached needed score
@@ -683,7 +699,7 @@ static void search_gen1()
                 // next depth with new aspiration window
                 deltaalpha = 25;
                 deltabeta = 25;
-                alpha = score - deltaalpha;
+                alpha = pos.bestmovescore[en.MultiPV - 1] - deltaalpha;
                 beta = score + deltaalpha;
 
 #ifdef DEBUG
@@ -706,7 +722,7 @@ static void search_gen1()
         if (pos.pvline.length > 0 && pos.pvline.move[0].code)
             move = pos.pvline.move[0].toString();
         else
-            move = pos.bestmove.toString();
+            move = pos.bestmove[0].toString();
 
     } while (en.stopLevel == ENGINERUN && depth <= min(maxdepth, abs(matein) * 2));
     
