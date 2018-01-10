@@ -380,7 +380,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 int rootsearch(int alpha, int beta, int depth)
 {
     int score;
-    uint32_t hashmovecode = 0;
+    //uint32_t hashmovecode = 0;
     int  LegalMoves = 0;
     bool isLegal;
     //int bestscore = SHRT_MIN + 1;
@@ -412,10 +412,10 @@ int rootsearch(int alpha, int beta, int depth)
 #endif
 
     PDEBUG(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
-    if (en.MultiPV == 1 && tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
+    if (en.MultiPV == 1 && tp.probeHash(&pos.bestmovescore[0], &pos.bestmove[0].code, depth, alpha, beta))
     {
         if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
-            return score;
+            return pos.bestmovescore[0];
     }
 
     // test for remis via repetition
@@ -437,7 +437,7 @@ int rootsearch(int alpha, int beta, int depth)
     {
         m = &newmoves->move[i];
         //PV moves gets top score
-        if (hashmovecode == m->code)
+        if (pos.bestmove[0].code == m->code)
         {
 #ifdef DEBUG
             en.pvnodes++;
