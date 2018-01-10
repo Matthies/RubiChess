@@ -412,13 +412,12 @@ int rootsearch(int alpha, int beta, int depth)
 #endif
 
     PDEBUG(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
-#if 0 //FIXME: Disable TT is needed for MultiPV but is this good? 
-    if (tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
+    if (en.MultiPV == 1 && tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
     {
         if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
             return score;
     }
-#endif
+
     // test for remis via repetition
     if (rp.getPositionCount(pos.hash) >= 3 && pos.testRepetiton())
         return SCOREDRAW;
