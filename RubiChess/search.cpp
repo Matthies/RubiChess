@@ -679,9 +679,7 @@ static void search_gen1()
             PDEBUG(depth, "Searchorder-Success: %f\n", (en.fh > 0 ? en.fhf / en.fh : 0.0));
             int i = 0;
             int maxmoveindex = min(en.MultiPV, pos.rootmoves.length);
-            while (i < maxmoveindex
-                && (pos.bestmove[i].code || (pos.bestmove[i].code = tp.getMoveCode()))
-                && pos.bestmovescore[i] > SHRT_MIN + 1)
+            do
             {
                 // The only case that bestmove is not set can happen if rootsearch hit the TP table
                 // so get bestmovecode from there
@@ -690,6 +688,15 @@ static void search_gen1()
 
                 pos.getpvline(depth, i);
                 pvstring = pos.pvline.toString();
+                if (i == 0)
+                {
+                    // get bestmove
+                    if (pos.pvline.length > 0 && pos.pvline.move[0].code)
+                        move = pos.pvline.move[0].toString();
+                    else
+                        move = pos.bestmove[0].toString();
+                }
+
 
                 if (!MATEDETECTED(pos.bestmovescore[i]))
                 {
@@ -702,7 +709,10 @@ static void search_gen1()
                 }
                 cout << s;
                 i++;
-            }
+            } while (i < maxmoveindex
+                && (pos.bestmove[i].code || (pos.bestmove[i].code = tp.getMoveCode()))
+                && pos.bestmovescore[i] > SHRT_MIN + 1);
+
             if (score >= en.terminationscore)
             {
                 // bench mode reached needed score
@@ -731,11 +741,6 @@ static void search_gen1()
                 depth += depthincrement;
             }
         }
-
-        if (pos.pvline.length > 0 && pos.pvline.move[0].code)
-            move = pos.pvline.move[0].toString();
-        else
-            move = pos.bestmove[0].toString();
 
     } while (en.stopLevel == ENGINERUN && depth <= min(maxdepth, abs(matein) * 2));
     
