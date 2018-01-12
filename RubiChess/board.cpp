@@ -397,6 +397,20 @@ bool chessposition::applyMove(string s)
 }
 
 
+void chessposition::getRootMoves()
+{
+    chessmovelist *movelist = getMoves();
+    rootmoves.length = 0;
+    for (int i = 0; i < movelist->length; i++)
+    {
+        if (playMove(&movelist->move[i]))
+        {
+            rootmoves.move[rootmoves.length++] = movelist->move[i];
+            unplayMove(&movelist->move[i]);
+        }
+    }
+}
+
 
 /* test the actualmove for three-fold-repetition as the repetition table may give false positive due to table collisions */
 bool chessposition::testRepetiton()
@@ -598,7 +612,11 @@ void chessposition::print()
     printf("info string Phase: %d\n", phase());
     printf("info string Pseudo-legal Moves: %s\n", getMoves()->toStringWithValue().c_str());
     if (tp.size > 0 && tp.testHash())
-        printf("info string Hash-Info: depth=%d Val=%d (%d) Move:%s\n", tp.getDepth(), tp.getValue(), tp.getValtype(), tp.getMove().toString().c_str());
+    {
+        chessmove cm;
+        cm.code = tp.getMoveCode();
+        printf("info string Hash-Info: depth=%d Val=%d (%d) Move:%s\n", tp.getDepth(), tp.getValue(), tp.getValtype(), cm.toString().c_str());
+    }
     if (actualpath.length)
         printf("info string Moves in current search: %s\n", actualpath.toString().c_str());
 }
@@ -2307,6 +2325,7 @@ void engine::communicate(string inputstring)
                         printf("info string Alarm! Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
                 }
                 pos.ply = 0;
+                pos.getRootMoves();
 
                 if (debug)
                 {
