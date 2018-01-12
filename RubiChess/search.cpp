@@ -458,11 +458,11 @@ int rootsearch(int alpha, int beta, int depth)
             m->value = KILLERVAL2;
         } else if (ISCAPTURE(m->code))
         {
-            ;// m->value = (mvv[GETCAPTURE(m->code) >> 1] | lva[GETPIECE(m->code) >> 1]);
+            m->value = (mvv[GETCAPTURE(m->code) >> 1] | lva[GETPIECE(m->code) >> 1]);
         }
         else
         {
-            ;// m->value = pos.history[GETPIECE(m->code) >> 1][GETTO(m->code)];
+            m->value = pos.history[GETPIECE(m->code) >> 1][GETTO(m->code)];
         }
     }
 
@@ -482,7 +482,7 @@ int rootsearch(int alpha, int beta, int depth)
         if (true || isLegal)
         {
             //LegalMoves++;
-            PDEBUG(depth, "(rootsearch) played move %s   nodes:%d\n", pos.rootmoves.move[i].toString().c_str(), en.nodes);
+            PDEBUG(depth, "(rootsearch) played move %s (%d)   nodes:%d\n", pos.rootmoves.move[i].toString().c_str(), pos.rootmoves.move[i].value, en.nodes);
 
             reduction = 0;
             if (!extendall && depth > 2 && i > 2 && !ISTACTICAL(m->code) && !pos.isCheck)
