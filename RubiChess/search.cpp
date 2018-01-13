@@ -565,7 +565,7 @@ int rootsearch(int alpha, int beta, int depth)
             }
 #ifdef DEBUG
             en.fh++;
-            if (i == 1)
+            if (i == 0)
                 en.fhf++;
 #endif
             PDEBUG(depth, "(rootsearch) score=%d >= beta=%d  -> cutoff\n", score, beta);
@@ -783,9 +783,11 @@ static void search_gen1()
                 // next depth with new aspiration window
                 deltaalpha = 25;
                 deltabeta = 25;
-                alpha = pos.bestmovescore[en.MultiPV - 1] - deltaalpha;
-                beta = score + deltaalpha;
-
+                if (isMultiPV)
+                    alpha = pos.bestmovescore[en.MultiPV - 1] - deltaalpha;
+                else
+                    alpha = score - deltaalpha;
+                beta = score + deltabeta;
 #ifdef DEBUG
                 if (en.stopLevel == ENGINERUN)
                 {
