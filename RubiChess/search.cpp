@@ -532,8 +532,8 @@ int rootsearch(int alpha, int beta, int depth)
             return bestscore;
         }
 
-        if (isMultiPV && score <= pos.bestmovescore[lastmoveindex]
-            || !isMultiPV && score <= bestscore)
+        if ((isMultiPV && score <= pos.bestmovescore[lastmoveindex])
+            || (!isMultiPV && score <= bestscore))
             continue;
 
         bestscore = score;
@@ -758,6 +758,11 @@ static void search_gen1()
 
                 pos.getpvline(depth, 0);
                 pvstring = pos.pvline.toString();
+                if (pos.pvline.length > 0 && pos.pvline.move[0].code)
+                    move = pos.pvline.move[0].toString();
+                else
+                    move = pos.bestmove[0].toString();
+
                 if (!MATEDETECTED(score))
                 {
                     sprintf_s(s, "info depth %d time %d score cp %d pv %s\n", depth, secondsrun, score, pvstring.c_str());
