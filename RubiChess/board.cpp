@@ -409,6 +409,7 @@ void chessposition::getRootMoves()
             unplayMove(&movelist->move[i]);
         }
     }
+    delete movelist;
 }
 
 
