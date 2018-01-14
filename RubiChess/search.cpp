@@ -536,7 +536,7 @@ int rootsearch(int alpha, int beta, int depth)
 #endif
             pos.unplayMove(m);
 
-            if (en.stopLevel == ENGINESTOPIMMEDIATELY && i > 0)
+            if (en.stopLevel == ENGINESTOPIMMEDIATELY && LegalMoves > 1)
             {
                 // At least one move is found and we can safely exit here
                 // Lets hope this doesn't take too much time...
@@ -608,7 +608,7 @@ int rootsearch(int alpha, int beta, int depth)
     }
 
     free(newmoves);
-    if (pos.rootmoves == 0)
+    if (LegalMoves == 0)
     {
         pos.bestmove[0].code = 0;
         en.stopLevel = ENGINEWANTSTOP;
@@ -702,20 +702,20 @@ static void search_gen1()
         //printf("info string Rootsearch: alpha=%d beta=%d depth=%d score=%d bestscore[0]=%d bestscore[%d]=%d\n", alpha, beta, depth, score, pos.bestmovescore[0], en.MultiPV - 1,  pos.bestmovescore[en.MultiPV - 1]);
 
         // new aspiration window
-        if (score >= beta)
-        {
-            // research with higher beta
-            beta = min(SHRT_MAX, beta + deltabeta);
-            deltabeta <<= 1;
-#ifdef DEBUG
-            en.wastedaspnodes += (en.nodes - nodesbefore);
-#endif
-        }
-        else if (score == alpha)
+        if (score == alpha)
         {
             // research with lower alpha
             alpha = max(SHRT_MIN + 1, alpha - deltaalpha);
             deltaalpha <<= 1;
+#ifdef DEBUG
+            en.wastedaspnodes += (en.nodes - nodesbefore);
+#endif
+        }
+        else if (score == beta)
+        {
+            // research with higher beta
+            beta = min(SHRT_MAX, beta + deltabeta);
+            deltabeta <<= 1;
 #ifdef DEBUG
             en.wastedaspnodes += (en.nodes - nodesbefore);
 #endif
