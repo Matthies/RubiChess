@@ -1,6 +1,6 @@
 #pragma once
 
-#define VERNUM "0.7-Graham"
+#define VERNUM "0.7-dev"
 
 #if 0
 #define DEBUG
@@ -400,6 +400,8 @@ public:
 };
 
 #define MAXMOVELISTLENGTH 1024
+#define MAXMULTIPV 64
+
 class chessmovelist
 {
 public:
@@ -553,13 +555,15 @@ public:
     int mindebugdepth = -1;
     chessmovelist pvline;
     chessmovelist actualpath;
-    chessmove bestmove;
+    chessmove bestmove[MAXMULTIPV];
+    int bestmovescore[MAXMULTIPV];
     unsigned long killer[2][MAXDEPTH];
     unsigned int history[14][64];
     unsigned long long debughash = 0;
     int *positionvaluetable; // value tables for both sides, 7 PieceTypes and 256 phase variations 
     int ph; // to store the phase during different evaluation functions
     int isCheck;
+    int rootmoves;  // precalculated and used for MultiPV mode
     chessposition();
     ~chessposition();
     void init();
@@ -586,13 +590,14 @@ public:
     void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
     void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
     chessmovelist* getMoves();
+    void getRootMoves();
     bool playMove(chessmove *cm);
     void unplayMove(chessmove *cm);
     void playNullMove();
     void unplayNullMove();
     void simplePlay(int from, int to);
     void simpleUnplay(int from, int to, PieceCode capture);
-    void getpvline(int depth);
+    void getpvline(int depth, int pvnum);
     int getPositionValue();
     int getPawnValue();
     int getValue();
@@ -629,14 +634,15 @@ public:
     int mindebugdepth = -1;
     chessmovelist pvline;
     chessmovelist actualpath;
-    chessmove bestmove;
+    chessmove bestmove[MAXMULTIPV];
+    int bestmovescore[MAXMULTIPV];
     unsigned long killer[3][MAXDEPTH];
     unsigned int history[14][128];
     unsigned long long debughash = 0;
     int *positionvaluetable;     // value tables for both sides, 7 PieceTypes and 256 phase variations 
     int ph; // to store the phase during different evaluation functions
     int isCheck;
-
+    int rootmoves;  // precalculated and used for MultiPV mode
     chessposition();
     ~chessposition();
     void init();
@@ -657,13 +663,14 @@ public:
     void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
     void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
     chessmovelist* getMoves();
+    void getRootMoves();
     bool playMove(chessmove *cm);
     void unplayMove(chessmove *cm);
     void playNullMove();
     void unplayNullMove();
     void simplePlay(int from, int to);
     void simpleUnplay(int from, int to, PieceCode capture);
-    void getpvline(int depth);
+    void getpvline(int depth, int pvnum);
     void countMaterial();
     int getPositionValue();
     int getPawnValue();
@@ -723,6 +730,7 @@ public:
     bool debug = false;
     int sizeOfTp = 0;
     int moveOverhead;
+    int MultiPV;
     int terminationscore = SHRT_MAX;
     int stopLevel = ENGINESTOPPED;
     void communicate(string inputstring);
@@ -812,7 +820,7 @@ public:
     short getValue();
     int getValtype();
     int getDepth();
-    class chessmove getMove();
+    uint32_t getMoveCode();
     unsigned int getUsedinPermill();
 };
 

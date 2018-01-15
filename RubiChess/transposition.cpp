@@ -323,16 +323,13 @@ int transposition::getDepth()
     return table[index].depth;
 }
 
-#if 1  //FIXME: Hier muss die neue Struktur von classnmove noch movecode angepasst werden 
-chessmove transposition::getMove()
+uint32_t transposition::getMoveCode()
 {
     unsigned long long hash = pos->hash;
     unsigned long long index = hash & sizemask;
     chessmove cm;
-    cm.code = table[index].movecode;
-    return cm;
+    return table[index].movecode;
 }
-#endif
 
 
 pawnhash::~pawnhash()

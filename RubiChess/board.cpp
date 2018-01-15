@@ -397,6 +397,22 @@ bool chessposition::applyMove(string s)
 }
 
 
+void chessposition::getRootMoves()
+{
+    // Precalculating the list of legal moves didn't work well for some unknown reason but we need the number of legal moves in MultiPV mode
+    chessmovelist *movelist = getMoves();
+    rootmoves = 0;
+    for (int i = 0; i < movelist->length; i++)
+    {
+        if (playMove(&movelist->move[i]))
+        {
+            rootmoves++;
+            unplayMove(&movelist->move[i]);
+        }
+    }
+    delete movelist;
+}
+
 
 /* test the actualmove for three-fold-repetition as the repetition table may give false positive due to table collisions */
 bool chessposition::testRepetiton()
@@ -495,7 +511,7 @@ void chessposition::playNullMove()
     state ^= S2MMASK;
     hash ^= zb.s2m;
     actualpath.move[actualpath.length++].code = 0;
-    pos.ply++;
+    ply++;
 }
 
 
@@ -504,20 +520,20 @@ void chessposition::unplayNullMove()
     state ^= S2MMASK;
     hash ^= zb.s2m;
     actualpath.length--;
-    pos.ply--;
+    ply--;
 }
 
 
-void chessposition::getpvline(int depth)
+void chessposition::getpvline(int depth, int pvnum)
 {
     int dummyval;
     chessmove cm;
     pvline.length = 0;
     while (depth > 0)
     {
-        if (pvline.length == 0 && bestmove.code != 0)
+        if (pvline.length == 0 && bestmove[pvnum].code != 0)
         {
-            cm = bestmove;
+            cm = bestmove[pvnum];
         }
         else if (!tp.probeHash(&dummyval, &(cm.code), depth, 0, 0) || cm.code == 0)
         {
@@ -598,7 +614,11 @@ void chessposition::print()
     printf("info string Phase: %d\n", phase());
     printf("info string Pseudo-legal Moves: %s\n", getMoves()->toStringWithValue().c_str());
     if (tp.size > 0 && tp.testHash())
-        printf("info string Hash-Info: depth=%d Val=%d (%d) Move:%s\n", tp.getDepth(), tp.getValue(), tp.getValtype(), tp.getMove().toString().c_str());
+    {
+        chessmove cm;
+        cm.code = tp.getMoveCode();
+        printf("info string Hash-Info: depth=%d Val=%d (%d) Move:%s\n", tp.getDepth(), tp.getValue(), tp.getValtype(), cm.toString().c_str());
+    }
     if (actualpath.length)
         printf("info string Moves in current search: %s\n", actualpath.toString().c_str());
 }
@@ -2207,6 +2227,7 @@ engine::engine()
 
     setOption("hash", "150");
     setOption("Move Overhead", "50");
+    setOption("MultiPV", "1");
 
 #ifdef _WIN32
     LARGE_INTEGER f;
@@ -2231,6 +2252,12 @@ void engine::setOption(string sName, string sValue)
     transform(sValue.begin(), sValue.end(), sValue.begin(), ::tolower);
     if (sName == "clear hash")
         tp.clean();
+    if (sName == "multipv")
+    {
+        newint = stoi(sValue);
+        if (newint >= 1 && newint <= MAXMULTIPV)
+            MultiPV = newint;
+    }
     if (sName == "hash")
     {
         newint = stoi(sValue);
@@ -2300,6 +2327,7 @@ void engine::communicate(string inputstring)
                         printf("info string Alarm! Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
                 }
                 pos.ply = 0;
+                pos.getRootMoves();
 
                 if (debug)
                 {
@@ -2337,6 +2365,7 @@ void engine::communicate(string inputstring)
                 myUci->send("option name Clear Hash type button\n");
                 myUci->send("option name Hash type spin default 150 min 1 max 1048576\n");
                 myUci->send("option name Move Overhead type spin default 50 min 0 max 5000\n");
+                myUci->send("option name MultiPV type spin default 1 min 1 max %d\n", MAXMULTIPV);
                 myUci->send("uciok\n", author);
                 break;
             case SETOPTION:
