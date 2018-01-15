@@ -399,14 +399,13 @@ bool chessposition::applyMove(string s)
 
 void chessposition::getRootMoves()
 {
+    // Precalculating the list of legal moves didn't work well for some unknown reason but we need the number of legal moves in MultiPV mode
     chessmovelist *movelist = getMoves();
-    //rootmoves.length = 0;
     rootmoves = 0;
     for (int i = 0; i < movelist->length; i++)
     {
         if (playMove(&movelist->move[i]))
         {
-            //rootmoves.move[rootmoves.length++] = movelist->move[i];
             rootmoves++;
             unplayMove(&movelist->move[i]);
         }

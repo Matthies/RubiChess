@@ -425,10 +425,7 @@ int rootsearch(int alpha, int beta, int depth)
     if (!isMultiPV && tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
     {
         if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
-        {
-            //pos.bestmovescore[0] = score;
             return score;
-        }
     }
 
     // test for remis via repetition
@@ -439,7 +436,6 @@ int rootsearch(int alpha, int beta, int depth)
     if (pos.halfmovescounter >= 100)
         return SCOREDRAW;
 
-    //pos.getRootMoves();
     newmoves = pos.getMoves();
     if (pos.isCheck)
         depth++;
@@ -467,16 +463,6 @@ int rootsearch(int alpha, int beta, int depth)
         {
             m->value = KILLERVAL2;
         }
-#if 0
-        else if (ISCAPTURE(m->code))
-        {
-            m->value = (mvv[GETCAPTURE(m->code) >> 1] | lva[GETPIECE(m->code) >> 1]);
-        }
-        else
-        {
-            m->value = pos.history[GETPIECE(m->code) >> 1][GETTO(m->code)];
-        }
-#endif
     }
 
     for (int i = 0; i < newmoves->length; i++)
@@ -490,12 +476,11 @@ int rootsearch(int alpha, int beta, int depth)
         }
 
         m = &newmoves->move[i];
-        //// rootmoves are always legal
         isLegal = pos.playMove(m);
+
         if (isLegal)
         {
             LegalMoves++;
-            //PDEBUG(depth, "(rootsearch) played move %s (%d)   nodes:%d\n", pos.rootmoves.move[i].toString().c_str(), pos.rootmoves.move[i].value, en.nodes);
             PDEBUG(depth, "(rootsearch) played move %s (%d)   nodes:%d\n", newmoves->move[i].toString().c_str(), newmoves->move[i].value, en.nodes);
 
             reduction = 0;
@@ -604,7 +589,6 @@ int rootsearch(int alpha, int beta, int depth)
                 }
             }
         }
-        
     }
 
     free(newmoves);
@@ -728,7 +712,8 @@ static void search_gen1()
             PDEBUG(depth, "Searchorder-Success: %f\n", (en.fh > 0 ? en.fhf / en.fh : 0.0));
             if (isMultiPV)
             {
-                // FIXME: This is a bit ugly... a more consistent code with SinglePV would be better
+                // FIXME: This is a bit ugly... code more consistent with SinglePV would be better
+                // but I had to fight against performance regression so I devided it this way
                 int i = 0;
                 int maxmoveindex = min(en.MultiPV, pos.rootmoves);
                 do

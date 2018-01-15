@@ -329,7 +329,6 @@ uint32_t transposition::getMoveCode()
     unsigned long long index = hash & sizemask;
     chessmove cm;
     return table[index].movecode;
-    //return cm;
 }
 
 
