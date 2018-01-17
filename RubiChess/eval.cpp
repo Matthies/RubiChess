@@ -3,6 +3,7 @@
 
 // Evaluation stuff
 
+CONSTEVAL int tempo = 2;
 CONSTEVAL int passedpawnbonus[8] = {     0,   20,   15,   41,   78,  145,  165,    0  };
 CONSTEVAL int attackingpawnbonus[8] = {     0,   -6,   -9,  -16,    5,   32,    0,    0  };
 CONSTEVAL int isolatedpawnpenalty =   -16;
@@ -128,6 +129,7 @@ int attackingpawnbonusperside[2][8];
 void registeralltuners()
 {
     int i, j;
+    registerTuner(&tempo, "tempo", tempo, 0, 0, 0, 0, NULL, false);
 #if 1
     // tuning other values
     for (i = 0; i < 8; i++)
@@ -395,7 +397,7 @@ int chessposition::getPositionValue()
 {
     int index;
     int scalephase = (~ph & 0xff) >> scalephaseshift; ;
-    int result = 0;
+    int result = S2MSIGN(state & S2MMASK) * tempo;
 #ifdef DEBUGEVAL
     int positionvalue = 0;
     int kingdangervalue[2] = { 0, 0 };
