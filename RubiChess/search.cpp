@@ -108,7 +108,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     chessmove *m;
     int extendall = 0;
     int reduction;
-    int effectiveDepth = depth;
+    int effectiveDepth;
 
     en.nodes++;
 

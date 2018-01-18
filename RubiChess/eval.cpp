@@ -518,7 +518,7 @@ int chessposition::getValue()
 int chessposition::getPositionValue()
 {
     ph = phase();
-    int result = 0;
+    int result = S2MSIGN(state & S2MMASK) * tempo;
     int firstpawn[2][10] = { 0 };
     int lastpawn[2][10] = { 0 };
     int i;
