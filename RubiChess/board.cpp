@@ -401,6 +401,7 @@ void chessposition::getRootMoves()
 {
     // Precalculating the list of legal moves didn't work well for some unknown reason but we need the number of legal moves in MultiPV mode
     chessmovelist *movelist = getMoves();
+    int bestval = SCOREBLACKWINS;
     rootmoves = 0;
     for (int i = 0; i < movelist->length; i++)
     {
@@ -408,6 +409,11 @@ void chessposition::getRootMoves()
         {
             rootmoves++;
             unplayMove(&movelist->move[i]);
+            if (bestval < movelist->move[i].value)
+            {
+                defaultmove = movelist->move[i];
+                bestval = movelist->move[i].value;
+            }
         }
     }
     delete movelist;
