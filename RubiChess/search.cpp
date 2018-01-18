@@ -108,7 +108,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     chessmove *m;
     int extendall = 0;
     int reduction;
-    int effectiveDepth;
+    int effectiveDepth = depth;
 
     en.nodes++;
 
@@ -841,7 +841,6 @@ static void search_gen1()
 
 void searchguide()
 {
-    unsigned long long nodes, lastnodes = 0;
     en.starttime = getTime();
     en.moveoutput = false;
     long long endtime1 = 0;    // time to send STOPSOON signal
@@ -895,13 +894,10 @@ void searchguide()
     else
         enginethread = thread(&search_gen1<SinglePVSearch>);
 
-    long long lastinfotime = en.starttime;
-
     long long nowtime;
     while (en.stopLevel != ENGINESTOPPED)
     {
         nowtime = getTime();
-        nodes = en.nodes;
 
         if (nowtime - en.starttime > 3 * en.frequency)
             en.moveoutput = true;
