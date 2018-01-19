@@ -859,9 +859,9 @@ void searchguide()
     {
         // should garantee timetouse > 0
         // stop soon at 0.7 x average movetime
-        endtime1 = en.starttime + timetouse * en.frequency * 7 / movestogo / 10000;
+        endtime1 = en.starttime + timetouse * en.frequency * 7 / (movestogo + 1) / 10000;
         // stop immediately at 1.3 x average movetime
-        endtime2 = en.starttime + min(timetouse - en.moveOverhead,  13 * timetouse / movestogo / 10) * en.frequency / 1000;
+        endtime2 = en.starttime + min(timetouse - en.moveOverhead,  13 * timetouse / (movestogo + 1) / 10) * en.frequency / 1000;
         //printf("info string difftime1=%lld  difftime2=%lld\n", (endtime1 - en.starttime) * 1000 / en.frequency , (endtime2 - en.starttime) * 1000 / en.frequency);
     }
     else if (timetouse) {
