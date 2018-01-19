@@ -5,4 +5,6 @@ Board-Castle-Value_Fix:		12026556
 Bitboard+Texeltuning:		14068870
 Bitboard+FP+DP+retune:		11521156
 Bitboard-07-Graham:		 1913318
+Bitboard-0.7:			 2533454
+Board88-0.7:			 1440095
 

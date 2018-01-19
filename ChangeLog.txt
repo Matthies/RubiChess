@@ -1,5 +1,11 @@
 ChangeLog
 =========
+0.7 (release 2018-01-19) :
+    - Introduced small tempo value for evaluation
+    - Implemented MultiPV mode for analysis
+    - Fixed bug that writes wrong values of incomplete/interrupted search to hash (responsible(?) for blunder in game 65 of Graham div 9)
+    - use additional move buffer in calculation of remeaining time in move/time mode
+ 
 0.7 (release 2018-01-06, Pre-Release for Graham division 9 tournament) :
     - Texel-Tuning!!! Implemented a tuner and tuned all the evaluation parameters which gains about 150 ELO. Thanks to Peter Österlund.
     - Improved search:
