@@ -225,6 +225,7 @@ const int EPTSIDEMASK[2] = { 0x8, 0x10 };
 #define HASHBETA 0x02
 
 #define MAXDEPTH 256
+#define NOSCORE SHRT_MIN
 #define SCOREBLACKWINS (SHRT_MIN + 3 + MAXDEPTH)
 #define SCOREWHITEWINS (-SCOREBLACKWINS)
 #define SCOREDRAW 0
@@ -564,6 +565,7 @@ public:
     int ph; // to store the phase during different evaluation functions
     int isCheck;
     int rootmoves;  // precalculated and used for MultiPV mode
+    chessmove defaultmove; // fallback if search in time trouble didn't finish a single iteration 
     chessposition();
     ~chessposition();
     void init();
@@ -643,6 +645,7 @@ public:
     int ph; // to store the phase during different evaluation functions
     int isCheck;
     int rootmoves;  // precalculated and used for MultiPV mode
+    chessmove defaultmove; // fallback if search in time trouble didn't finish a single iteration 
     chessposition();
     ~chessposition();
     void init();
@@ -708,7 +711,7 @@ public:
     const char* name = ENGINEVER;
     const char* author = "Andreas Matthies";
     bool isWhite;
-    unsigned long nodes;
+    unsigned long long nodes;
 #ifdef DEBUG
     unsigned long qnodes;
 	unsigned long wastedpvsnodes;
@@ -728,6 +731,7 @@ public:
     unsigned int wtime, btime, winc, binc, movestogo, depth, maxnodes, mate, movetime, maxdepth;
     bool infinite;
     bool debug = false;
+    bool moveoutput;
     int sizeOfTp = 0;
     int moveOverhead;
     int MultiPV;
