@@ -384,20 +384,25 @@ c6c5 darf nicht gespielt werden; die frühe 0.3 erkennt das sehr spät
     Deswegen wird der Zug in getpvline nicht als illegal erkannt.Aber wie kommt er da hin ? Hash - Kollision ? ?
     Wohl kaum, dann könnte dort ja jeder beliebige Zug stehen und nicht immer ein passender der falschen Farbe.
     weiteres Beispiel(b1b7 in depth 10; Turm zieht vorher auf b1 und dann direkt weiter) :
-position fen rnbqkbnr/pppp1pp1/4p2p/8/8/3P4/PPPNPPPP/R1BQKBNR w KQkq - 0 1 moves g1f3 b8c6 e2e4 d7d5 e4d5 e6d5 d1e2 d8e7 d2b3 c8g4 e2e7 g8e7 f1e2 e7f5 h2h3 g4f3 e2f3 c6d4 b3d4 f5d4 f3d1 d4e6 c1e3 d5d4 e3d2 f8d6 d1g4 e8g8 e1c1 a8e8 d1e1 e8e7 e1e2 f7f5 g4f3 c7c6 h1e1 f8f6 h3h4 d6c5 h4h5 a7a6 d2f4 c5b4 f4d2 b4d2 c1d2 g8f8 d2d1 f8e8 d1c1 e8d7 e2e5 f6f7 e5a5 e6g5 e1e7 d7e7 f3e2 e7d6 f2f4 g5e6 g2g3 c6c5 e2f3 f7c7 b2b4 c7e7 a2a4 e7d7 b4b5 a6b5 a5b5 e6d8 b5b6 d6c7 b6g6 d7e7 f3d5 e7d7 d5f3 d7e7 a4a5 c7b8 f3d5 b8c7 c1d2 e7d7 d5f3 d7e7 c2c3 c7c8 f3d5 c8d7 c3d4 c5d4 d2c2 d7c8 c2b3 e7c7 b3b4 c8b8 d5c4 b8c8 g6d6 c7e7 b4c5 e7c7 c5b5 c7e7 b5b6 e7e2 d6d4 d8c6 d4d5 c6e7 d5e5 e2b2 c4b5 e7c6 e5f5 c6d8 f5e5 d8c6 a5a6 c6e5 a6b7 c8b8 f4e5 b2e2 d3d4 e2e3 g3g4 e3e4 b5c6 e4d4 e5e6 d4b4 b6c5 b4b1
-...
-info depth 9 time 162 score cp 415 pv e6e7 b1e1 e7e8Q e1e8 c6e8 b8b7 e8c6 b7c7 c6d5
-info depth 10 time 537 score cp 438 pv e6e7 b1e1 c5d6 g7g6 h5g6 e1d1 d6c5 d1b1 b1b7
+    position fen rnbqkbnr / pppp1pp1 / 4p2p / 8 / 8 / 3P4 / PPPNPPPP / R1BQKBNR w KQkq - 0 1 moves g1f3 b8c6 e2e4 d7d5 e4d5 e6d5 d1e2 d8e7 d2b3 c8g4 e2e7 g8e7 f1e2 e7f5 h2h3 g4f3 e2f3 c6d4 b3d4 f5d4 f3d1 d4e6 c1e3 d5d4 e3d2 f8d6 d1g4 e8g8 e1c1 a8e8 d1e1 e8e7 e1e2 f7f5 g4f3 c7c6 h1e1 f8f6 h3h4 d6c5 h4h5 a7a6 d2f4 c5b4 f4d2 b4d2 c1d2 g8f8 d2d1 f8e8 d1c1 e8d7 e2e5 f6f7 e5a5 e6g5 e1e7 d7e7 f3e2 e7d6 f2f4 g5e6 g2g3 c6c5 e2f3 f7c7 b2b4 c7e7 a2a4 e7d7 b4b5 a6b5 a5b5 e6d8 b5b6 d6c7 b6g6 d7e7 f3d5 e7d7 d5f3 d7e7 a4a5 c7b8 f3d5 b8c7 c1d2 e7d7 d5f3 d7e7 c2c3 c7c8 f3d5 c8d7 c3d4 c5d4 d2c2 d7c8 c2b3 e7c7 b3b4 c8b8 d5c4 b8c8 g6d6 c7e7 b4c5 e7c7 c5b5 c7e7 b5b6 e7e2 d6d4 d8c6 d4d5 c6e7 d5e5 e2b2 c4b5 e7c6 e5f5 c6d8 f5e5 d8c6 a5a6 c6e5 a6b7 c8b8 f4e5 b2e2 d3d4 e2e3 g3g4 e3e4 b5c6 e4d4 e5e6 d4b4 b6c5 b4b1
+    ...
+    info depth 9 time 162 score cp 415 pv e6e7 b1e1 e7e8Q e1e8 c6e8 b8b7 e8c6 b7c7 c6d5
+    info depth 10 time 537 score cp 438 pv e6e7 b1e1 c5d6 g7g6 h5g6 e1d1 d6c5 d1b1 b1b7
 
-02.09.17: Hier findet er gar keinen Zug (zählt bis Tiefe 256 und dann bestmove (none)):
-position fen rnb1kbnr/pp1pppp/1q6/1Bp5/8/4P3/PPPP1PPP/RNBQK1NR w KQkq - 0 1 moves b1c3 g8f6 g1f3 b8c6 d2d4 c5d4 e3d4 a7a6 d4d5 a6b5 d5c6 b6c6 e1g1 b5b4 c3e2 d7d6 e2d4 c6d5 d1e2 c8g4 f1d1 e7e5 c1g5 f6e4 d4b5 d5c6 b5c7 c6c7 e2e4 g4f3 g2f3 c7c6 e4b4 f7f6 g5e3 c6c2 b4b7 a8a2 b7b5 e8e7 b5b7 e7e8 b7b5 e8e7 b5b7 e7e8 b7b5
-... nicht reproduzierbar
+    02.09.17: Hier findet er gar keinen Zug(zählt bis Tiefe 256 und dann bestmove(none)) :
+    position fen rnb1kbnr / pp1pppp / 1q6 / 1Bp5 / 8 / 4P3 / PPPP1PPP / RNBQK1NR w KQkq - 0 1 moves b1c3 g8f6 g1f3 b8c6 d2d4 c5d4 e3d4 a7a6 d4d5 a6b5 d5c6 b6c6 e1g1 b5b4 c3e2 d7d6 e2d4 c6d5 d1e2 c8g4 f1d1 e7e5 c1g5 f6e4 d4b5 d5c6 b5c7 c6c7 e2e4 g4f3 g2f3 c7c6 e4b4 f7f6 g5e3 c6c2 b4b7 a8a2 b7b5 e8e7 b5b7 e7e8 b7b5 e8e7 b5b7 e7e8 b7b5
+    ... nicht reproduzierbar
 
-08.12.17: Interesting position from TCEC rapid: 1r3r2/1b1n1pk1/p5Bb/q2p2N1/2p2P1Q/2P5/6PP/3R1R1K w - - 0 28
-White is about to win, Hannibal misses Rd1e1 and evals ~ +1 but wins later; Rubisoft completely wrong with ~- 1.5
+    08.12.17 : Interesting position from TCEC rapid : 1r3r2 / 1b1n1pk1 / p5Bb / q2p2N1 / 2p2P1Q / 2P5 / 6PP / 3R1R1K w - -0 28
+    White is about to win, Hannibal misses Rd1e1 and evals ~+ 1 but wins later; Rubisoft completely wrong with ~- 1.5
 
-26.12.17: r1b3k1/pp1q1ppp/2p2n2/8/2PPr3/P1P5/2Q1B1PP/R1B2RK1 b - - 1 14 
-Quite late recognizing that Re4xd4 is a mistake
+    26.12.17: r1b3k1 / pp1q1ppp / 2p2n2 / 8 / 2PPr3 / P1P5 / 2Q1B1PP / R1B2RK1 b - -1 14
+    Quite late recognizing that Re4xd4 is a mistake
+
+
+    28.01.18 : Interesting position in the Graham gauntlet; Rubi takes too long  (> 14min) to notice incoming 3-fold
+    3r4/1Pkr3p/p2p4/2P2P1p/8/8/P1q3PP/1R2Q2K b - - 0 2 
+    Kc7-b8 is the only winning move
 
 http://pwnedthegameofchess.com/engine/
 http://www.herderschach.de/index.html
