@@ -828,6 +828,9 @@ static void search_gen1()
         }
         if (inWindow == 1)
             depth += depthincrement;
+        if (pos.rootmoves == 1 && depth > 4)
+            // early exit as there is exactly one possible move
+            en.stopLevel = ENGINEWANTSTOP;
     } while (en.stopLevel == ENGINERUN && depth <= min(maxdepth, abs(matein) * 2));
     
     en.stopLevel = ENGINESTOPPED;
