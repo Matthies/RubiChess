@@ -828,8 +828,8 @@ static void search_gen1()
         }
         if (inWindow == 1)
             depth += depthincrement;
-        if (pos.rootmoves == 1 && depth > 4)
-            // early exit as there is exactly one possible move
+        if (pos.rootmoves == 1 && depth > 4 && en.endtime1)
+            // early exit in playing mode as there is exactly one possible move
             en.stopLevel = ENGINEWANTSTOP;
     } while (en.stopLevel == ENGINERUN && depth <= min(maxdepth, abs(matein) * 2));
     
@@ -846,8 +846,6 @@ void searchguide()
 {
     en.starttime = getTime();
     en.moveoutput = false;
-    long long endtime1 = 0;    // time to send STOPSOON signal
-    long long endtime2 = 0;    // time to send STOPPIMMEDIATELY signal
     en.stopLevel = ENGINERUN;
     int timetouse = (en.isWhite ? en.wtime : en.btime);
     int timeinc = (en.isWhite ? en.winc : en.binc);
@@ -861,21 +859,21 @@ void searchguide()
     {
         // should garantee timetouse > 0
         // stop soon at 0.7 x average movetime
-        endtime1 = en.starttime + timetouse * en.frequency * 7 / (movestogo + 1) / 10000;
+        en.endtime1 = en.starttime + timetouse * en.frequency * 7 / (movestogo + 1) / 10000;
         // stop immediately at 1.3 x average movetime
-        endtime2 = en.starttime + min(timetouse - en.moveOverhead,  13 * timetouse / (movestogo + 1) / 10) * en.frequency / 1000;
+        en.endtime2 = en.starttime + min(timetouse - en.moveOverhead,  13 * timetouse / (movestogo + 1) / 10) * en.frequency / 1000;
         //printf("info string difftime1=%lld  difftime2=%lld\n", (endtime1 - en.starttime) * 1000 / en.frequency , (endtime2 - en.starttime) * 1000 / en.frequency);
     }
     else if (timetouse) {
         int ph = pos.phase();
         // sudden death; split the remaining time in (256-phase) timeslots
         // stop soon after 6 timeslot
-        endtime1 = en.starttime + max(timeinc, 6 * (timetouse + timeinc) / (256 - ph)) * en.frequency  / 1000;
+        en.endtime1 = en.starttime + max(timeinc, 6 * (timetouse + timeinc) / (256 - ph)) * en.frequency  / 1000;
         // stop immediately after 10 timeslots
-        endtime2 = en.starttime + min(timetouse - en.moveOverhead, max(timeinc, 10 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
+        en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, max(timeinc, 10 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
     }
     else {
-        endtime1 = endtime2 = 0;
+        en.endtime1 = en.endtime2 = 0;
     }
 
     en.nodes = 0;
@@ -907,11 +905,11 @@ void searchguide()
 
         if (en.stopLevel != ENGINESTOPPED)
         {
-            if (endtime2 && nowtime >= endtime2 && en.stopLevel < ENGINESTOPIMMEDIATELY)
+            if (en.endtime2 && nowtime >= en.endtime2 && en.stopLevel < ENGINESTOPIMMEDIATELY)
             {
                 en.stopLevel = ENGINESTOPIMMEDIATELY;
             }
-            else if (endtime1 && nowtime >= endtime2 && en.stopLevel < ENGINESTOPSOON)
+            else if (en.endtime1 && nowtime >= en.endtime2 && en.stopLevel < ENGINESTOPSOON)
             {
                 en.stopLevel = ENGINESTOPSOON;
                 Sleep(10);
