@@ -2234,6 +2234,7 @@ engine::engine()
     setOption("hash", "150");
     setOption("Move Overhead", "50");
     setOption("MultiPV", "1");
+    setOption("Ponder", "false");
 
 #ifdef _WIN32
     LARGE_INTEGER f;
@@ -2254,10 +2255,16 @@ void engine::setOption(string sName, string sValue)
 {
     bool resetTp = false;
     int newint;
+    string lValue;
     transform(sName.begin(), sName.end(), sName.begin(), ::tolower);
-    transform(sValue.begin(), sValue.end(), sValue.begin(), ::tolower);
+    transform(sValue.begin(), sValue.end(), lValue.begin(), ::tolower);
     if (sName == "clear hash")
         tp.clean();
+    if (sName == "ponder")
+    {
+        ponder = (lValue == "true");
+    }
+
     if (sName == "multipv")
     {
         newint = stoi(sValue);
@@ -2372,6 +2379,7 @@ void engine::communicate(string inputstring)
                 myUci->send("option name Hash type spin default 150 min 1 max 1048576\n");
                 myUci->send("option name Move Overhead type spin default 50 min 0 max 5000\n");
                 myUci->send("option name MultiPV type spin default 1 min 1 max %d\n", MAXMULTIPV);
+                myUci->send("option name Ponder type check default false\n");
                 myUci->send("uciok\n", author);
                 break;
             case SETOPTION:

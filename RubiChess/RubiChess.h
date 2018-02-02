@@ -740,6 +740,8 @@ public:
     int sizeOfTp = 0;
     int moveOverhead;
     int MultiPV;
+    bool ponder;
+    bool pondersearch;
     int terminationscore = SHRT_MAX;
     int stopLevel = ENGINESTOPPED;
     void communicate(string inputstring);
