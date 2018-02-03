@@ -725,7 +725,8 @@ public:
     fstream fdebug;
 #endif
     long long starttime;
-    long long endtime;
+    long long endtime1; // time to send STOPSOON signal
+    long long endtime2; // time to send STOPPIMMEDIATELY signal
     long long frequency;
     float fh, fhf;
     unsigned int wtime, btime, winc, binc, movestogo, depth, maxnodes, mate, movetime, maxdepth;
