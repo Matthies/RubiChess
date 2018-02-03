@@ -713,15 +713,15 @@ public:
     bool isWhite;
     unsigned long long nodes;
 #ifdef DEBUG
-    unsigned long qnodes;
-	unsigned long wastedpvsnodes;
-    unsigned long wastedaspnodes;
-    unsigned long pvnodes;
-    unsigned long nopvnodes;
-    unsigned long fpnodes;
-    unsigned long wrongfp;
-    unsigned long dpnodes;
-    unsigned long npd[MAXDEPTH];
+    unsigned long long qnodes;
+	unsigned long long wastedpvsnodes;
+    unsigned long long wastedaspnodes;
+    unsigned long long pvnodes;
+    unsigned long long nopvnodes;
+    unsigned long long fpnodes;
+    unsigned long long wrongfp;
+    unsigned long long dpnodes;
+    unsigned long long npd[MAXDEPTH];
     fstream fdebug;
 #endif
     long long starttime;

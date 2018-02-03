@@ -278,7 +278,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                 else {
                     // try a PV-Search
 #ifdef DEBUG
-                    unsigned long nodesbefore = en.nodes;
+                    unsigned long long nodesbefore = en.nodes;
 #endif
                     effectiveDepth = depth + extendall;
                     score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1, true);
@@ -503,7 +503,7 @@ int rootsearch(int alpha, int beta, int depth)
             else {
                 // try a PV-Search
 #ifdef DEBUG
-                unsigned long nodesbefore = en.nodes;
+                unsigned long long nodesbefore = en.nodes;
 #endif
                 score = -alphabeta(-alpha - 1, -alpha, depth + extendall - 1, true);
                 if (score > alpha && score < beta)
@@ -691,7 +691,7 @@ static void search_gen1()
         inWindow = 1;
 #ifdef DEBUG
         int oldscore = 0;
-        unsigned long nodesbefore = en.nodes;
+        unsigned long long nodesbefore = en.nodes;
         en.npd[depth] = 0;
 #endif
         score = rootsearch<RT>(alpha, beta, depth);
@@ -920,34 +920,35 @@ void searchguide()
     }
     enginethread.join();
 #ifdef DEBUG
+    char s[256];
     if (en.nodes)
     {
-        sprintf_s(s, "quiscense;%d;%d;%d\n", en.qnodes, en.nodes + en.qnodes, (int)en.qnodes * 100 / (en.nodes + en.qnodes));
+        sprintf_s(s, "quiscense;%llu;%llu;%llu\n", en.qnodes, en.nodes + en.qnodes, (int)en.qnodes * 100 / (en.nodes + en.qnodes));
         en.fdebug << s;
         cout << s;
         if (en.dpnodes)
         {
-            sprintf_s(s, "deltaprune;%d;%d\n", en.dpnodes, (int)en.dpnodes * 100 / en.qnodes);
+            sprintf_s(s, "deltaprune;%llu;%llu\n", en.dpnodes, (int)en.dpnodes * 100 / en.qnodes);
             en.fdebug << s;
             cout << s;
         }
 
-        sprintf_s(s, "pvs;%d;%d;%d\n", en.wastedpvsnodes, en.nodes, (int)en.wastedpvsnodes * 100 / en.nodes);
+        sprintf_s(s, "pvs;%llu;%llu;%llu\n", en.wastedpvsnodes, en.nodes, (int)en.wastedpvsnodes * 100 / en.nodes);
         en.fdebug << s;
         cout << s;
-        sprintf_s(s, "asp;%d;%d;%d\n", en.wastedaspnodes, en.nodes, (int)en.wastedaspnodes * 100 / en.nodes);
+        sprintf_s(s, "asp;%llu;%llu;%llu\n", en.wastedaspnodes, en.nodes, (int)en.wastedaspnodes * 100 / en.nodes);
         en.fdebug << s;
         cout << s;
     }
     if (en.fpnodes)
     {
-        sprintf_s(s, "futilityprune;%d;%d;%d\n", en.fpnodes, en.wrongfp, (int)en.wrongfp * 100 / en.fpnodes);
+        sprintf_s(s, "futilityprune;%llu;%llu;%llu\n", en.fpnodes, en.wrongfp, (int)en.wrongfp * 100 / en.fpnodes);
         en.fdebug << s;
         cout << s;
     }
     if (en.nopvnodes)
     {
-        sprintf_s(s, "pv;%d;%d;%d\n", en.pvnodes, en.nopvnodes, (int)en.pvnodes * 100 / en.nopvnodes);
+        sprintf_s(s, "pv;%llu;%llu;%llu\n", en.pvnodes, en.nopvnodes, (int)en.pvnodes * 100 / en.nopvnodes);
         en.fdebug << s;
         cout << s;
     }
