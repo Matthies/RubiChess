@@ -821,7 +821,10 @@ static void search_gen1()
                 else
                 {
                     matein = (score > 0 ? (SCOREWHITEWINS - score + 1) / 2 : (SCOREBLACKWINS - score) / 2);
-                    sprintf_s(s, "info depth %d time %d score mate %d pv %s\n", depth, secondsrun, matein, pvstring.c_str());
+                    sprintf_s(s, "info depth %d time %d score mate %d nodes %llu nps %llu hashfull %d pv %s\n",
+                        depth, secondsrun, matein, en.nodes,
+                        (nowtime > en.starttime ? en.nodes * en.frequency / (nowtime - en.starttime) : 1),
+                        tp.getUsedinPermill(), pvstring.c_str());
                 }
                 cout << s;
             }
