@@ -238,7 +238,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         if (isLegal)
         {
             LegalMoves++;
-            PDEBUG(depth, "(alphabeta) played move %s   nodes:%d\n", newmoves->move[i].toString().c_str(), en.nodes);
+            PDEBUG(depth, "(alphabeta) played move %s (%d)   nodes:%d\n", m->toString().c_str(), m->value, en.nodes);
 
             // Check for valid futility pruning
             bool avoidFutilityPrune = !futility || ISTACTICAL(m->code) || pos.isCheck || alpha > 900;
@@ -487,7 +487,7 @@ int rootsearch(int alpha, int beta, int depth)
                 sprintf_s(s, "info depth %d currmove %s currmovenumber %d\n", depth, m->toString().c_str(), LegalMoves);
                 cout << s;
             }
-            PDEBUG(depth, "(rootsearch) played move %s (%d)   nodes:%d\n", newmoves->move[i].toString().c_str(), newmoves->move[i].value, en.nodes);
+            PDEBUG(depth, "(rootsearch) played move %s (%d)   nodes:%d\n", m->toString().c_str(), m->value, en.nodes);
 
             reduction = 0;
             if (!extendall && depth > 2 && LegalMoves > 3 && !ISTACTICAL(m->code) && !pos.isCheck)
