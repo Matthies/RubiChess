@@ -484,7 +484,7 @@ int rootsearch(int alpha, int beta, int depth)
             if (en.moveoutput)
             {
                 char s[256];
-                sprintf_s(s, "info depth %d currmove %s currmovenumber %d\n", depth, m->toString().c_str(), LegalMoves);
+                sprintf_s(s, "info depth %d currmove %s currmovenumber %d nodes %llu\n", depth, m->toString().c_str(), LegalMoves, en.nodes);
                 cout << s;
             }
             PDEBUG(depth, "(rootsearch) played move %s (%d)   nodes:%d\n", m->toString().c_str(), m->value, en.nodes);
