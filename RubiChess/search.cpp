@@ -181,15 +181,15 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     }
 
     // futility pruning
-    const int futilityMargin = 130;
+    const int futilityMargin[] = { 0, 130, 300 };
     bool futility = false;
 #ifdef DEBUG
     int futilityscore;
 #endif
-    if (depth == 1)
+    if (depth <= 2)
     {
         score = S2MSIGN(pos.state & S2MMASK) * pos.getValue();
-        futility = (score < alpha - futilityMargin);
+        futility = (score < alpha - futilityMargin[depth]);
 #ifdef DEBUG
         futilityscore = score;
 #endif
@@ -295,7 +295,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                 if (score > alpha && !avoidFutilityPrune)
                 {
                     en.wrongfp++;
-                    printf("Wrong pruning: Futility-Score:%d Move:%s Score:%d\nPosition:\n", futilityscore, m->toString().c_str(), score);
+                    printf("Wrong pruning: Depth:%d  Futility-Score:%d  Move:%s  Score:%d\nPosition:\n", depth, futilityscore, m->toString().c_str(), score);
                     pos.print();
                     printf("\n\n");
                 }
