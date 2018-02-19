@@ -181,12 +181,12 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     }
 
     // futility pruning
-    const int futilityMargin[] = { 0, 130, 300 };
+    const int futilityMargin[] = { 0, 130, 300, 470 };
     bool futility = false;
 #ifdef DEBUG
     int futilityscore;
 #endif
-    if (depth <= 2)
+    if (depth <= 3)
     {
         score = S2MSIGN(pos.state & S2MMASK) * pos.getValue();
         futility = (score < alpha - futilityMargin[depth]);
