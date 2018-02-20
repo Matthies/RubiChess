@@ -181,7 +181,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     }
 
     // futility pruning
-    const int futilityMargin[] = { 0, 130, 300, 470 };
+    const int futilityMargin[] = { 0, 130, 280, 430 };
     bool futility = false;
 #ifdef DEBUG
     int futilityscore;

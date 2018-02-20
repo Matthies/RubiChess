@@ -1,0 +1,67 @@
+Margin 130,300:
+STC:
+Score of RubiChess-Bitboard-efp vs RubiChess-Bitboard-Master: 312 - 203 - 236  [0.573] 751
+Elo difference: 50.79 +/- 20.69
+SPRT: llr 2.2, lbound -2.2, ubound 2.2 - H1 was accepted
+
+LTC:
+Score of RubiChess-Bitboard-efp vs RubiChess-Bitboard-Master: 315 - 214 - 321  [0.559] 850
+Elo difference: 41.48 +/- 18.47
+SPRT: llr 2.22, lbound -2.2, ubound 2.2 - H1 was accepted
+
+
+Margin 130,350: keine Verbesserung
+Score of RubiChess-Bitboard-efp350 vs RubiChess-Bitboard-efp: 778 - 784 - 746  [0.499] 2308
+Elo difference: -0.90 +/- 11.65
+SPRT: llr -0.481, lbound -2.2, ubound 2.2
+
+---------------------------------------
+Ab hier Test gegen 130,300
+
+Margin depth 3 (Margin 130,300,470):
+STC:
+Score of RubiChess-Bitboard-eefp vs RubiChess-Bitboard-efp: 553 - 438 - 460  [0.540] 1451
+Elo difference: 27.59 +/- 14.79
+SPRT: llr 2.21, lbound -2.2, ubound 2.2 - H1 was accepted
+
+LTC scheitert vermutlich:
+Score of RubiChess-Bitboard-eefp vs RubiChess-Bitboard-efp: 103 - 105 - 129  [0.497] 337
+Elo difference: -2.06 +/- 29.17
+SPRT: llr -0.103, lbound -2.2, ubound 2.2
+
+eefp2 (Margin 150,300,450):
+STC: Abbruch weil sehr schlecht:
+Score of RubiChess-Bitboard-eefp2 vs RubiChess-Bitboard-efp: 74 - 90 - 89  [0.468] 253
+Elo difference: -22.00 +/- 34.57
+SPRT: llr -0.397, lbound -2.2, ubound 2.2
+
+
+eefp3 (Margin 130,260,390):
+STC:
+Score of RubiChess-Bitboard-eefp3 vs RubiChess-Bitboard-efp: 978 - 855 - 866  [0.523] 2699
+Elo difference: 15.84 +/- 10.80
+SPRT: llr 2.2, lbound -2.2, ubound 2.2 - H1 was accepted
+
+LTC: wenig vielversprechend
+Score of RubiChess-Bitboard-eefp3 vs RubiChess-Bitboard-efp: 58 - 61 - 82  [0.493] 201
+Elo difference: -5.19 +/- 37.05
+SPRT: llr -0.108, lbound -2.2, ubound 2.2
+
+
+eefp4 (Margin 130,300,500):
+STC: nach einem sentationell guten Start wurde es immer schlechter, schlieﬂlich...
+Score of RubiChess-Bitboard-eefp4 vs RubiChess-Bitboard-efp: 863 - 824 - 869  [0.508] 2556
+Elo difference: 5.30 +/- 10.93
+SPRT: llr 0.449, lbound -2.2, ubound 2.2
+
+LTC:
+...
+
+
+eefp5 (Margin 130,280,430)
+STC:
+...
+
+LTC:
+...
+
