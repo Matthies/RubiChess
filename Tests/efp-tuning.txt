@@ -60,8 +60,21 @@ LTC:
 
 eefp5 (Margin 130,280,430)
 STC:
-...
+Score of RubiChess-Bitboard-eefp5 vs RubiChess-Bitboard-efp: 1233 - 1104 - 1083  [0.519] 3420
+Elo difference: 13.11 +/- 9.62
+SPRT: llr 2.2, lbound -2.2, ubound 2.2 - H1 was accepted
 
 LTC:
-...
+Score of RubiChess-Bitboard-eefp5 vs RubiChess-Bitboard-efp: 510 - 472 - 583  [0.512] 1565
+Elo difference: 8.44 +/- 13.62
+SPRT: llr 0.614, lbound -2.2, ubound 2.2
+
+rfp1
+    const int futilityMargin[] = { 0, 130, 280, 430 };
+    const int revFutilityMargin[] = { 0, 300, 500, 900 };
+STC:
+Score of RubiChess-Bitboard-rfp1 vs RubiChess-Bitboard-eefp5: 1040 - 991 - 969  [0.508] 3000
+Elo difference: 5.68 +/- 10.22
+SPRT: llr 0.583, lbound -2.2, ubound 2.2
+
 

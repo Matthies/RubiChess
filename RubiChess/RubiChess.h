@@ -15,6 +15,10 @@
 #endif
 
 #if 0
+#define FPDEBUG
+#endif
+
+#if 0
 #define FINDMEMORYLEAKS
 #endif
 
@@ -712,14 +716,16 @@ public:
     const char* author = "Andreas Matthies";
     bool isWhite;
     unsigned long long nodes;
+#ifdef FPDEBUG
+    unsigned long long fpnodes;
+    unsigned long long wrongfp;
+#endif
 #ifdef DEBUG
     unsigned long long qnodes;
 	unsigned long long wastedpvsnodes;
     unsigned long long wastedaspnodes;
     unsigned long long pvnodes;
     unsigned long long nopvnodes;
-    unsigned long long fpnodes;
-    unsigned long long wrongfp;
     unsigned long long dpnodes;
     unsigned long long npd[MAXDEPTH];
     fstream fdebug;

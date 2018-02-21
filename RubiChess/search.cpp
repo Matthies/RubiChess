@@ -182,15 +182,19 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
     // futility pruning
     const int futilityMargin[] = { 0, 130, 280, 430 };
+    const int revFutilityMargin[] = { 0, 300, 500, 900 };
     bool futility = false;
-#ifdef DEBUG
+#ifdef FPDEBUG
     int futilityscore;
 #endif
     if (depth <= 3)
     {
         score = S2MSIGN(pos.state & S2MMASK) * pos.getValue();
+        // reverse futility pruning
+        if (score - revFutilityMargin[depth] > beta)
+            return score;
         futility = (score < alpha - futilityMargin[depth]);
-#ifdef DEBUG
+#ifdef FPDEBUG
         futilityscore = score;
 #endif
     }
@@ -242,13 +246,15 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
             // Check for valid futility pruning
             bool avoidFutilityPrune = !futility || ISTACTICAL(m->code) || pos.isCheck || alpha > 900;
-#ifdef DEBUG
+#ifdef FPDEBUG
             if (!avoidFutilityPrune)
             {
                 en.fpnodes++;
             }
+            if (true) // disable futility pruning to debug the result in wrongfp
+#else
+            if (avoidFutilityPrune)
 #endif
-            if (avoidFutilityPrune) // disable this test to debug wrongfp
             {
                 //extendall = 0; //FIXME: Indroduce extend variable for move specific extension
                 reduction = 0;
@@ -291,7 +297,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                         score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
                     }
                 }
-#ifdef DEBUG
+#ifdef FPDEBUG
                 if (score > alpha && !avoidFutilityPrune)
                 {
                     en.wrongfp++;
@@ -886,10 +892,12 @@ void searchguide()
     en.wastedaspnodes = 0;
     en.pvnodes = 0;
     en.nopvnodes = 0;
-    en.fpnodes = 0;
-    en.wrongfp = 0;
     en.dpnodes = 0;
     en.npd[0] = 1;
+#endif
+#ifdef FPDEBUG
+    en.fpnodes = 0;
+    en.wrongfp = 0;
 #endif
     en.fh = en.fhf = 0;
 
@@ -923,6 +931,15 @@ void searchguide()
         }
     }
     enginethread.join();
+#ifdef FPDEBUG
+    if (en.fpnodes)
+    {
+        char s[256];
+        sprintf_s(s, "futilityprune;%llu;%llu;%llu\n", en.fpnodes, en.wrongfp, (int)en.wrongfp * 100 / en.fpnodes);
+        //en.fdebug << s;
+        cout << s;
+    }
+#endif
 #ifdef DEBUG
     char s[256];
     if (en.nodes)
@@ -941,12 +958,6 @@ void searchguide()
         en.fdebug << s;
         cout << s;
         sprintf_s(s, "asp;%llu;%llu;%llu\n", en.wastedaspnodes, en.nodes, (int)en.wastedaspnodes * 100 / en.nodes);
-        en.fdebug << s;
-        cout << s;
-    }
-    if (en.fpnodes)
-    {
-        sprintf_s(s, "futilityprune;%llu;%llu;%llu\n", en.fpnodes, en.wrongfp, (int)en.wrongfp * 100 / en.fpnodes);
         en.fdebug << s;
         cout << s;
     }
