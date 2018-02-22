@@ -69,6 +69,7 @@ Score of RubiChess-Bitboard-eefp5 vs RubiChess-Bitboard-efp: 510 - 472 - 583  [0
 Elo difference: 8.44 +/- 13.62
 SPRT: llr 0.614, lbound -2.2, ubound 2.2
 
+
 rfp1
     const int futilityMargin[] = { 0, 130, 280, 430 };
     const int revFutilityMargin[] = { 0, 300, 500, 900 };
@@ -76,5 +77,13 @@ STC:
 Score of RubiChess-Bitboard-rfp1 vs RubiChess-Bitboard-eefp5: 1040 - 991 - 969  [0.508] 3000
 Elo difference: 5.68 +/- 10.22
 SPRT: llr 0.583, lbound -2.2, ubound 2.2
+ReCheck with swapped sides in cutechess (somebody said that this matters)
+Score of RubiChess-Bitboard-eefp5 vs RubiChess-Bitboard-rfp1: 317 - 358 - 327  [0.480] 1002
+Elo difference: -14.22 +/- 17.65
+SPRT: llr -0.723, lbound -2.2, ubound 2.2
 
+LTC:
+Score of RubiChess-Bitboard-rfp1 vs RubiChess-Bitboard-eefp5: 653 - 582 - 765  [0.518] 2000
+Elo difference: 12.34 +/- 11.96
+SPRT: llr 1.32, lbound -2.2, ubound 2.2
 
