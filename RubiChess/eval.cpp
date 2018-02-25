@@ -2,7 +2,20 @@
 #include "RubiChess.h"
 
 // Evaluation stuff
-
+#if 1 // retuned after adding mobility for orthogonal shifters
+CONSTEVAL int tempo = 4;
+CONSTEVAL int passedpawnbonus[8] = { 0,   14,   14,   38,   72,  114,  131,    0 };
+CONSTEVAL int attackingpawnbonus[8] = { 0,  -15,   -7,  -12,    3,   38,    0,    0 };
+CONSTEVAL int isolatedpawnpenalty = -16;
+CONSTEVAL int doublepawnpenalty = -23;
+CONSTEVAL int connectedbonus = 0;
+CONSTEVAL int kingshieldbonus = 16;
+CONSTEVAL int backwardpawnpenalty = -22;
+CONSTEVAL int slideronfreefilebonus = 13;
+CONSTEVAL int doublebishopbonus = 27;
+CONSTEVAL int scalephaseshift = 6;
+CONSTEVAL int materialvalue[7] = { 0,  100,  322,  329,  488,  986,32509 };
+#else
 CONSTEVAL int tempo = 2;
 CONSTEVAL int passedpawnbonus[8] = {     0,   20,   15,   41,   78,  145,  165,    0  };
 CONSTEVAL int attackingpawnbonus[8] = {     0,   -6,   -9,  -16,    5,   32,    0,    0  };
@@ -15,6 +28,7 @@ CONSTEVAL int slideronfreefilebonus =    22;
 CONSTEVAL int doublebishopbonus =    23;
 CONSTEVAL int scalephaseshift =     6;
 CONSTEVAL int materialvalue[7] = {     0,  100,  319,  329,  509, 1003,32509  };
+#endif
 CONSTEVAL int PVBASE[6][64] = {
   { -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999,
        58,   84,   79,   52,   52,   62,   57,   50,
@@ -422,6 +436,19 @@ int chessposition::getPositionValue()
             pb ^= BITSET(index);
             if (shifting[p] & 0x2) // rook and queen
             {
+#ifdef ROTATEDBITBOARD
+                tobits |= (rank_attacks[from][mask] & opponentorfreebits);
+
+                U64 mobility = ~occupied00[s]
+                    & ((rank_attacks[index][((occupied00[0] | occupied00[1]) >> rotshift[index]) & 0x3f])
+                        | (file_attacks[index][((occupied90[0] | occupied90[1]) >> rot90shift[index]) & 0x3f]));
+#else
+                U64 mobility = ~occupied00[s]
+                    & (mRookAttacks[index][MAGICROOKINDEX((occupied00[0] | occupied00[1]), index)]);
+#endif
+                result += (S2MSIGN(s) * POPCOUNT(mobility) * scalephase);
+
+                // extrabonus for shifter on open file
                 if (!(filebarrierMask[index][s] & piece00[WPAWN | s]))
                 {
                     // free file
@@ -435,14 +462,14 @@ int chessposition::getPositionValue()
             if (shifting[p] & 0x1) // bishop and queen)
             {
 #ifdef ROTATEDBITBOARD
-                U64 diagmobility = ~occupied00[s]
+                U64 mobility = ~occupied00[s]
                     & ((diaga1h8_attacks[index][((occupieda1h8[0] | occupieda1h8[1]) >> rota1h8shift[index]) & 0x3f])
                         | (diagh1a8_attacks[index][((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[index]) & 0x3f]));
 #else
-                U64 diagmobility = ~occupied00[s]
+                U64 mobility = ~occupied00[s]
                     & (mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)]);
 #endif
-                result += (S2MSIGN(s) * POPCOUNT(diagmobility) * scalephase);
+                result += (S2MSIGN(s) * POPCOUNT(mobility) * scalephase);
             }
         }
     }
