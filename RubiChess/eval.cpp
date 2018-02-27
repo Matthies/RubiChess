@@ -2,68 +2,67 @@
 #include "RubiChess.h"
 
 // Evaluation stuff
-
-CONSTEVAL int tempo = 2;
-CONSTEVAL int passedpawnbonus[8] = {     0,   20,   15,   41,   78,  145,  165,    0  };
-CONSTEVAL int attackingpawnbonus[8] = {     0,   -6,   -9,  -16,    5,   32,    0,    0  };
-CONSTEVAL int isolatedpawnpenalty =   -16;
-CONSTEVAL int doublepawnpenalty =   -25;
-CONSTEVAL int connectedbonus =     1;
-CONSTEVAL int kingshieldbonus =    14;
-CONSTEVAL int backwardpawnpenalty =   -25;
-CONSTEVAL int slideronfreefilebonus =    22;
-CONSTEVAL int doublebishopbonus =    23;
-CONSTEVAL int scalephaseshift =     6;
-CONSTEVAL int materialvalue[7] = {     0,  100,  319,  329,  509, 1003,32509  };
+CONSTEVAL int tempo = 4;
+CONSTEVAL int passedpawnbonus[8] = { 0,   14,   14,   38,   72,  114,  131,    0 };
+CONSTEVAL int attackingpawnbonus[8] = { 0,  -15,   -7,  -12,    3,   38,    0,    0 };
+CONSTEVAL int isolatedpawnpenalty = -16;
+CONSTEVAL int doublepawnpenalty = -23;
+CONSTEVAL int connectedbonus = 0;
+CONSTEVAL int kingshieldbonus = 16;
+CONSTEVAL int backwardpawnpenalty = -22;
+CONSTEVAL int slideronfreefilebonus = 13;
+CONSTEVAL int doublebishopbonus = 27;
+CONSTEVAL int scalephaseshift = 6;
+CONSTEVAL int materialvalue[7] = { 0,  100,  322,  329,  488,  986,32509 };
 CONSTEVAL int PVBASE[6][64] = {
   { -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999,
-       58,   84,   79,   52,   52,   62,   57,   50,
-       31,   25,   15,    2,   17,   23,   36,   23,
-        8,   -3,    0,   10,   13,  -10,  -12,   -8,
-        2,  -14,    5,   31,   16,   -5,  -20,   -2,
-        3,   -4,   11,   -6,   -5,  -10,   -3,    6,
-       -8,   -2,   -5,  -18,  -28,   -2,   13,   -5,
+       61,   55,   59,   56,   57,   57,   35,   82,
+       29,   23,    9,   25,   18,   19,   14,   11,
+        6,   -5,  -14,    8,   13,  -10,  -10,   -5,
+        4,  -16,    0,   30,   18,  -10,  -18,   -9,
+        1,   -3,    6,   -9,   -4,  -12,   -2,   10,
+       -5,   -5,   -9,  -25,  -24,   -1,    9,  -12,
     -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999  },
-  {  -133,  -44,  -12,    2,   -3,  -47,  -54,  -79,
-      -45,  -30,   -6,   17,   -3,   18,  -27,   15,
-      -28,   32,   33,   42,   53,   39,   43,  -29,
-        3,   14,   33,   37,   37,   38,   12,   36,
-      -11,    7,   26,   20,   28,   21,    8,  -10,
-      -24,    4,   14,   19,    9,   21,   46,  -27,
-      -51,  -20,    0,    9,   16,    1,  -40,  -21,
-      -71,  -29,  -14,   -6,  -25,  -29,  -14, -141  },
-  {   -12,  -26,   40,  -11,   -5,    3,  -25,  -17,
-      -25,   23,    1,    8,   12,   22,   12,  -35,
-        5,   35,   21,   30,   38,   35,   27,   18,
-        7,   12,   36,   41,   37,   25,   12,   17,
-       12,   12,   21,   32,   31,    9,   11,   -4,
-       -1,   29,   14,   13,   17,   16,   22,    0,
-      -18,    8,    5,   -1,    7,   -5,   30,   -1,
-      -68,  -46,  -10,  -27,  -15,  -16,  -10,  -14  },
-  {    11,   18,   18,   34,   16,   19,    4,   19,
-       27,   25,   32,   40,   30,   25,   29,   35,
-       12,   26,   28,   22,   28,   22,   22,   11,
-       11,    3,   17,   12,    6,   16,   10,  -11,
-       -7,   -9,   -6,    1,  -15,    3,   -2,  -15,
-      -22,   -4,   -2,   -5,   -2,   -5,  -20,  -26,
-      -35,  -16,  -11,   -8,  -13,    7,  -17,  -51,
-      -10,   -3,    0,    8,    2,    6,  -25,  -25  },
-  {   -37,   24,   23,    6,   53,   38,   14,  -20,
-      -31,  -58,  -23,   -3,   13,   24,   -1,   22,
-      -35,  -12,  -16,   12,   28,   51,   36,   27,
-      -35,  -28,  -22,    5,   23,    9,   -9,   -3,
-      -33,  -11,  -19,  -26,   -5,   -9,   -4,  -29,
-      -13,  -19,  -18,   -3,   -7,  -17,    1,  -11,
-      -30,   -4,    2,  -10,    7,   -8,   -8,  -57,
-      -13,  -24,   -1,    9,  -25,  -62,  -36,  -22  },
-  {  -117,  -44,  -42,  -19, -100,  -33,  120,  -51,
-      -69,    9,   -8,  -92,  -20,  -34,   14,   14,
-        9,  -46,  -19,  -24,   -1,    8,  -10,  -24,
-      -59,   -3,  -25,  -23,  -29,  -11,    9,  -32,
-      -29,  -25,  -19,  -22,  -26,  -16,  -16,  -25,
-      -39,  -18,  -21,  -25,  -18,  -20,   -4,  -22,
-      -25,  -13,  -28,  -29,  -25,  -14,   -9,   -8,
-      -10,   11,   24,  -28,   -6,  -31,   21,   14  }
+  {  -143,  -29,  -25,   16,   14,  -49,  -11,  -63,
+      -41,  -12,   -4,   36,   19,   20,  -44,  -37,
+      -14,   14,   34,   55,   50,   34,   32,   -8,
+       11,   10,   35,   33,   38,   36,   21,   50,
+      -11,    1,   20,   22,   24,   18,    5,  -11,
+      -28,   12,    9,   15,    8,   22,   34,  -24,
+      -59,  -22,  -10,   13,   12,    7,  -37,    1,
+      -69,  -24,  -24,  -33,  -19,  -21,  -16,  -46  },
+  {   -12,    0,   13,   -1,  -24,  -37,  -12,   -3,
+      -30,   11,    2,   12,    4,    4,   -2,  -42,
+       12,   19,   27,   27,   29,   55,   35,   10,
+       -7,    6,   18,   43,   37,   12,    7,    4,
+        3,    9,   13,   35,   27,    5,   19,    0,
+        4,   20,   11,   13,    8,   20,   21,   -1,
+       16,    4,   20,   -1,   10,  -14,   27,  -22,
+      -42,  -45,  -13,   -6,  -16,  -14,   10,  -20  },
+  {     2,   28,   17,   16,   20,   35,   22,   23,
+       29,   29,   29,   42,   34,   30,   24,   37,
+       20,   12,   22,   37,   19,   22,    8,   22,
+        9,   -2,    8,    8,    3,    7,   -4,    1,
+       -7,  -15,   -8,   -1,  -16,   -3,   -3,  -32,
+      -32,   -9,   -2,   -6,   -8,   -7,  -16,  -28,
+      -35,  -16,  -11,   -2,   -8,   15,  -14,  -60,
+      -12,   -6,   -3,    3,    8,    6,  -25,  -21  },
+  {    -7,   10,    3,   -6,   41,    9,   63,   -3,
+      -25,  -50,    8,   33,   29,   32,    1,   26,
+      -32,   -5,  -12,    6,   50,   60,   57,   -2,
+      -31,  -32,   -5,  -18,    9,    9,  -11,  -18,
+      -29,  -30,  -31,  -23,  -17,   -9,   -4,  -31,
+      -33,  -23,  -20,   -5,  -12,  -14,    1,   -9,
+      -31,  -10,   -2,   -3,    3,   -8,   -4,  -62,
+      -14,  -48,    0,   12,  -21,  -51,  -92,  -19  },
+  {   -15,  -37,  -51,   11,  -21,  -21, -60/*-362*/,  -72,
+      -30,  -18,  -23,    1,   18,  -50,  -67,  -32,
+      -75,   13,    0,   10,    5,  -22,    2,  -19,
+        0,   -9,  -13,   -9,  -14,  -17,   -1,   -7,
+      -21,   -3,  -17,  -17,  -21,  -11,  -24,  -14,
+      -17,  -15,  -30,  -18,  -14,  -24,  -11,  -21,
+        5,  -14,  -24,  -34,  -28,  -20,  -11,   -9,
+      -21,   10,   23,  -36,    4,  -37,   21,   19  }
  };
 CONSTEVAL int PVPHASEDIFF[6][64] = {
   { -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999,
@@ -116,6 +115,7 @@ CONSTEVAL int PVPHASEDIFF[6][64] = {
       -36,  -39,  -51,   -3,  -36,    0,  -51,  -63  }
  };
 
+
 //double kingdangerfactor = 0.15;
 //double kingdangerexponent = 1.1;
 
@@ -129,9 +129,9 @@ int attackingpawnbonusperside[2][8];
 void registeralltuners()
 {
     int i, j;
-    registerTuner(&tempo, "tempo", tempo, 0, 0, 0, 0, NULL, false);
 #if 1
     // tuning other values
+    registerTuner(&tempo, "tempo", tempo, 0, 0, 0, 0, NULL, false);
     for (i = 0; i < 8; i++)
         registerTuner(&passedpawnbonus[i], "passedpawnbonus", passedpawnbonus[i], i, 8, 0, 0, &CreatePositionvalueTable, i == 0 || i == 7);
     for (i = 0; i < 8; i++)
@@ -422,6 +422,19 @@ int chessposition::getPositionValue()
             pb ^= BITSET(index);
             if (shifting[p] & 0x2) // rook and queen
             {
+#ifdef ROTATEDBITBOARD
+                tobits |= (rank_attacks[from][mask] & opponentorfreebits);
+
+                U64 mobility = ~occupied00[s]
+                    & ((rank_attacks[index][((occupied00[0] | occupied00[1]) >> rotshift[index]) & 0x3f])
+                        | (file_attacks[index][((occupied90[0] | occupied90[1]) >> rot90shift[index]) & 0x3f]));
+#else
+                U64 mobility = ~occupied00[s]
+                    & (mRookAttacks[index][MAGICROOKINDEX((occupied00[0] | occupied00[1]), index)]);
+#endif
+                result += (S2MSIGN(s) * POPCOUNT(mobility) * scalephase);
+
+                // extrabonus for shifter on open file
                 if (!(filebarrierMask[index][s] & piece00[WPAWN | s]))
                 {
                     // free file
@@ -435,14 +448,14 @@ int chessposition::getPositionValue()
             if (shifting[p] & 0x1) // bishop and queen)
             {
 #ifdef ROTATEDBITBOARD
-                U64 diagmobility = ~occupied00[s]
+                U64 mobility = ~occupied00[s]
                     & ((diaga1h8_attacks[index][((occupieda1h8[0] | occupieda1h8[1]) >> rota1h8shift[index]) & 0x3f])
                         | (diagh1a8_attacks[index][((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[index]) & 0x3f]));
 #else
-                U64 diagmobility = ~occupied00[s]
+                U64 mobility = ~occupied00[s]
                     & (mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)]);
 #endif
-                result += (S2MSIGN(s) * POPCOUNT(diagmobility) * scalephase);
+                result += (S2MSIGN(s) * POPCOUNT(mobility) * scalephase);
             }
         }
     }

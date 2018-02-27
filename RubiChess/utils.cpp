@@ -227,10 +227,21 @@ bool PGNtoFEN(string pgnfilename)
             do
             {
                 foundInLine = false;
-                if (valueChecked && regex_search(line, match, regex("([O\\-]{3,5})|([KQRBN]?[a-h]*[1-8]*x?[a-h]+[1-8]+(=[QRBN])?)\\+?")))
+                if (regex_search(line, match, regex("^(\\s*\\d+\\.\\s+)")))
+                {
+                    // skip move number
+                    line = match.suffix();
+                }
+                if (regex_search(line, match, regex("^\\s*(([O\\-]{3,5})\\+?|([KQRBN]?[a-h]*[1-8]*x?[a-h]+[1-8]+(=[QRBN])?)\\+?)")))
                 {
                     // Found move
-                    //printf("%s\n", match.str().c_str());
+                   //printf("%s\n", match.str().c_str());
+                    if (!valueChecked)
+                    {
+                        // Score tag of last move missing; just output without score
+                        fenfile << to_string(result) + "#" + fen + "#0\n";
+                    }
+
                     foundInLine = true;
                     valueChecked = false;
                     string move = AlgebraicFromShort(match.str());
@@ -244,19 +255,22 @@ bool PGNtoFEN(string pgnfilename)
                     //printf("FEN: %s\n", fen.c_str());
                     line = match.suffix();
                 }
-                if (!valueChecked && regex_search(line, match, regex("\\{((\\+|\\-)?((\\d+\\.\\d+)|(M\\d+)))\\/")))
+                if (!valueChecked)
                 {
-                    foundInLine = true;
-                    valueChecked = true;
-                    string scorestr = match.str(1);
-                    // Only output if no mate score detected
-                    if (!(scorestr[0] == 'M' || scorestr[1] == 'M'))
+                    if (regex_search(line, match, regex("^\\s*(\\{((\\+|\\-)?((\\d+\\.\\d+)|(M\\d+)))\\/[^\\}]*\\})")))
                     {
-                        score = stod(match.str(1));
-                        //printf("score:%f\n", score);
+                        foundInLine = true;
+                        string scorestr = match.str(2);
+                        // Only output if no mate score detected
+                        if (!(scorestr[0] == 'M' || scorestr[1] == 'M'))
+                        {
+                            score = stod(match.str(2));
+                            //printf("score:%f\n", score);
+                            if (abs(score) < 30)
+                                fenfile << to_string(result) + "#" + fen + "#" + to_string(score) + "\n";
+                        }
                         line = match.suffix();
-                        if (abs(score) < 30)
-                            fenfile << to_string(result) + "#" + fen + "#" + to_string(score) + "\n";
+                        valueChecked = true;
                     }
                 }
             } while (foundInLine);
