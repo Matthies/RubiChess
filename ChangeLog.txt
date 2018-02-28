@@ -1,5 +1,10 @@
 ChangeLog
 =========
+0.8 (release 2018-xx-xx) :
+	- Fast move after depth 4 for singular root move
+	- Extended and reverse futility pruning up to depth 3
+	- Added mobility for rook/queen and retuned with fresh games pgn
+
 0.7 (release 2018-01-19) :
     - Introduced small tempo value for evaluation
     - Implemented MultiPV mode for analysis
