@@ -155,12 +155,12 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     // Here some reduction/extension depending on the lastmove...
 
     // Nullmove
-    if (nullmoveallowed && !pos.isCheck && depth >= 4 && pos.phase() < 250)
+    if (nullmoveallowed && !pos.isCheck && depth >= 3 && pos.phase() < 250)
     {
         // FIXME: Something to avoid nullmove in endgame is missing... pos->phase() < 250 needs validation
         pos.playNullMove();
 
-        score = -alphabeta(-beta, -beta + 1, depth - 2, false);
+        score = -alphabeta(-beta, -beta + 1, depth - 3, false);
         
         if (score >= beta)
         {
