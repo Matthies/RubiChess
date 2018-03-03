@@ -159,8 +159,8 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     {
         // FIXME: Something to avoid nullmove in endgame is missing... pos->phase() < 250 needs validation
         pos.playNullMove();
-
-        score = -alphabeta(-beta, -beta + 1, depth - 3, false);
+        int R = depth > 6 ? 4 : 3;
+        score = -alphabeta(-beta, -beta + 1, depth - R, false);
         
         if (score >= beta)
         {
