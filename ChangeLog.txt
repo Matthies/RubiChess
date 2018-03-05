@@ -4,6 +4,7 @@ ChangeLog
 	- Fast move after depth 4 for singular root move
 	- Extended and reverse futility pruning up to depth 3
 	- Added mobility for rook/queen and retuned with fresh games pgn
+	- Null move pruning improved: prune even in later game phase and with variable depth reduction
 
 0.7 (release 2018-01-19) :
     - Introduced small tempo value for evaluation
