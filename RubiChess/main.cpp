@@ -845,7 +845,7 @@ void doBenchmark()
         { 
             "Carlos 6",
             "rn1q1r2/1bp1bpk1/p3p2p/1p2N1pn/3P4/1BN1P1B1/PPQ2PPP/2R2RK1 w - - 0 1",
-            0,
+            13,
             300,
             1
         },
@@ -866,15 +866,15 @@ void doBenchmark()
         en.communicate("position fen " + bm->fen);
         starttime = getTime();
         int dp = bm->depth;
-        if (dp)
-        {
-            en.terminationscore = SHRT_MAX;
-            en.communicate("go depth " + to_string(dp));
-        }
-        else {
+        if (bm->terminationscore)
             en.terminationscore = bm->terminationscore;
+        else
+            en.terminationscore = SHRT_MAX;
+        if (dp)
+            en.communicate("go depth " + to_string(dp));
+        else
             en.communicate("go infinite");
-        }
+
         endtime = getTime();
         bm->time = endtime - starttime;
         bm->nodes = en.nodes;
