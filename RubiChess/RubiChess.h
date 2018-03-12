@@ -136,7 +136,7 @@ class transposition;
 class repetition;
 class uci;
 class chessposition;
-
+struct pawnhashentry;
 
 //
 // utils stuff
@@ -530,6 +530,8 @@ const int roth1a8shift[64] = {
 
 extern U64 diaga1h8_attacks[64][64];
 extern U64 diagh1a8_attacks[64][64];
+extern U64 rank_attacks[64][64];
+extern U64 file_attacks[64][64];
 
 #endif //ROTATEDBITBOARD
 
@@ -605,7 +607,7 @@ public:
     void simpleUnplay(int from, int to, PieceCode capture);
     void getpvline(int depth, int pvnum);
     int getPositionValue();
-    int getPawnValue();
+    int getPawnValue(pawnhashentry **entry);
     int getValue();
 #ifdef DEBUG
     void debug(int depth, const char* format, ...);
@@ -840,6 +842,7 @@ typedef struct pawnhashentry {
     U64 passedpawnbb[2];
     U64 isolatedpawnbb[2];
     U64 backwardpawnbb[2];
+    int semiopen[2]; 
     short value;
 } S_PAWNHASHENTRY;
 

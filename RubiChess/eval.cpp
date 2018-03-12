@@ -10,9 +10,9 @@ CONSTEVAL int doublepawnpenalty = -23;
 CONSTEVAL int connectedbonus = 0;
 CONSTEVAL int kingshieldbonus = 16;
 CONSTEVAL int backwardpawnpenalty = -22;
-CONSTEVAL int slideronfreefilebonus = 13;
+CONSTEVAL int slideronfreefilebonus[2] = { 12,   17 };
 CONSTEVAL int doublebishopbonus = 27;
-CONSTEVAL int scalephaseshift = 6;
+CONSTEVAL int shiftmobilitybonus = 3;
 CONSTEVAL int materialvalue[7] = { 0,  100,  322,  329,  488,  986,32509 };
 CONSTEVAL int PVBASE[6][64] = {
   { -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999,
@@ -252,41 +252,44 @@ void CreatePositionvalueTable()
 
 #ifdef BITBOARD
 
-int chessposition::getPawnValue()
+int chessposition::getPawnValue(pawnhashentry **entry)
 {
     int val = 0;
     int index;
-    pawnhashentry *entry;
 
-    if (!pwnhsh.probeHash(&entry))
+    bool hashexist = pwnhsh.probeHash(entry);
+    pawnhashentry *entryptr = *entry;
+    if (!hashexist)
     {
-        entry->value = 0;
+        entryptr->value = 0;
         for (int pc = WPAWN; pc <= BPAWN; pc++)
         {
             int s = pc & S2MMASK;
-            entry->passedpawnbb[s] = 0ULL;
-            entry->isolatedpawnbb[s] = 0ULL;
-            entry->backwardpawnbb[s] = 0ULL;
+            entryptr->semiopen[s] = 0xff; 
+            entryptr->passedpawnbb[s] = 0ULL;
+            entryptr->isolatedpawnbb[s] = 0ULL;
+            entryptr->backwardpawnbb[s] = 0ULL;
             U64 pb = piece00[pc];
             while (LSB(index, pb))
             {
+                entryptr->semiopen[s] &= ~BITSET(FILE(index)); 
                 if (!(passedPawnMask[index][s] & piece00[pc ^ S2MMASK]))
                 {
                     // passed pawn
-                    entry->passedpawnbb[s] |= BITSET(index);
+                    entryptr->passedpawnbb[s] |= BITSET(index);
                 }
 
                 if (!(piece00[pc] & neighbourfilesMask[index]))
                 {
                     // isolated pawn
-                    entry->isolatedpawnbb[s] |= BITSET(index);
+                    entryptr->isolatedpawnbb[s] |= BITSET(index);
                 }
                 else
                 {
                     if (pawn_attacks_occupied[index][s] & piece00[pc ^ S2MMASK])
                     {
                         // pawn attacks opponent pawn
-                        entry->value += attackingpawnbonusperside[s][RANK(index)];
+                        entryptr->value += attackingpawnbonusperside[s][RANK(index)];
 #ifdef DEBUGEVAL
                         debugeval("Attacking Pawn Bonus(%d): %d\n", index, attackingpawnbonusperside[s][RANK(index)]);
 #endif
@@ -294,7 +297,7 @@ int chessposition::getPawnValue()
                     if ((pawn_attacks_occupied[index][s ^ S2MMASK] & piece00[pc]) || (phalanxMask[index] & piece00[pc]))
                     {
                         // pawn is protected by other pawn
-                        entry->value += S2MSIGN(s) * connectedbonus;
+                        entryptr->value += S2MSIGN(s) * connectedbonus;
 #ifdef DEBUGEVAL
                         debugeval("Connected Pawn Bonus(%d): %d\n", index, S2MSIGN(s) * connectedbonus);
 #endif
@@ -313,7 +316,7 @@ int chessposition::getPawnValue()
                             if ((nextpawnrank | (shiftneigbours & neighbourfilesMask[index])) & opponentpawns)
                             {
                                 // backward pawn detected
-                                entry->backwardpawnbb[s] |= BITSET(index);
+                                entryptr->backwardpawnbb[s] |= BITSET(index);
                             }
                         }
                     }
@@ -326,7 +329,7 @@ int chessposition::getPawnValue()
     for (int s = 0; s < 2; s++)
     {
         U64 bb;
-        bb = entry->passedpawnbb[s];
+        bb = entryptr->passedpawnbb[s];
         while (LSB(index, bb))
         {
             val += ph * passedpawnbonusperside[s][RANK(index)] / 256;
@@ -337,7 +340,7 @@ int chessposition::getPawnValue()
         }
 
         // isolated pawns
-        val += S2MSIGN(s) * POPCOUNT(entry->isolatedpawnbb[s]) * isolatedpawnpenalty;
+        val += S2MSIGN(s) * POPCOUNT(entryptr->isolatedpawnbb[s]) * isolatedpawnpenalty;
 #ifdef DEBUGEVAL
         debugeval("Isolated Pawn Penalty(%d): %d\n", s, S2MSIGN(s) * POPCOUNT(entry->isolatedpawnbb[s]) * isolatedpawnpenalty);
 #endif
@@ -349,7 +352,7 @@ int chessposition::getPawnValue()
 #endif
 
         // backward pawns
-        val += S2MSIGN(s) * POPCOUNT(entry->backwardpawnbb[s]) * backwardpawnpenalty * ph / 256;
+        val += S2MSIGN(s) * POPCOUNT(entryptr->backwardpawnbb[s]) * backwardpawnpenalty * ph / 256;
 #ifdef DEBUGEVAL
         debugeval("Backward Pawn Penalty(%d): %d\n", s, S2MSIGN(s) * POPCOUNT(entry->backwardpawnbb[s]) * backwardpawnpenalty * ph / 256);
 #endif
@@ -359,7 +362,7 @@ int chessposition::getPawnValue()
 #ifdef DEBUGEVAL
     debugeval("Total Pawn value: %d\n", val + entry->value);
 #endif
-    return val + entry->value;
+    return val + entryptr->value;
 }
 
 
@@ -389,19 +392,22 @@ int chessposition::getValue()
         }
     }
     ph = phase();
-    return getPositionValue() + getPawnValue();
+    return getPositionValue();
 }
 
 
 int chessposition::getPositionValue()
 {
+    pawnhashentry *phentry;
     int index;
-    int scalephase = (~ph & 0xff) >> scalephaseshift; ;
     int result = S2MSIGN(state & S2MMASK) * tempo;
+
 #ifdef DEBUGEVAL
     int positionvalue = 0;
     int kingdangervalue[2] = { 0, 0 };
 #endif
+
+    result += getPawnValue(&phentry);
 
     for (int pc = WPAWN; pc <= BKING; pc++)
     {
@@ -423,26 +429,18 @@ int chessposition::getPositionValue()
             if (shifting[p] & 0x2) // rook and queen
             {
 #ifdef ROTATEDBITBOARD
-                tobits |= (rank_attacks[from][mask] & opponentorfreebits);
-
                 U64 mobility = ~occupied00[s]
-                    & ((rank_attacks[index][((occupied00[0] | occupied00[1]) >> rotshift[index]) & 0x3f])
+                    & ((rank_attacks[index][((occupied00[0] | occupied00[1]) >> rot00shift[index]) & 0x3f])
                         | (file_attacks[index][((occupied90[0] | occupied90[1]) >> rot90shift[index]) & 0x3f]));
 #else
                 U64 mobility = ~occupied00[s]
                     & (mRookAttacks[index][MAGICROOKINDEX((occupied00[0] | occupied00[1]), index)]);
 #endif
-                result += (S2MSIGN(s) * POPCOUNT(mobility) * scalephase);
+                result += (S2MSIGN(s) * POPCOUNT(mobility) * shiftmobilitybonus);
 
-                // extrabonus for shifter on open file
-                if (!(filebarrierMask[index][s] & piece00[WPAWN | s]))
-                {
-                    // free file
-                    result += S2MSIGN(s) * slideronfreefilebonus;
-#ifdef DEBUGEVAL
-                    debugeval("Slider on free file Bonus: %d\n", (S2MSIGN(s) * 15));
-#endif
-                }
+                // extrabonus for rook on (semi-)open file  
+                if (p == ROOK && (phentry->semiopen[s] & BITSET(FILE(index))))
+                    result += S2MSIGN(s) * slideronfreefilebonus[bool(phentry->semiopen[1 - s] & BITSET(FILE(index)))];
             }
 
             if (shifting[p] & 0x1) // bishop and queen)
@@ -455,7 +453,7 @@ int chessposition::getPositionValue()
                 U64 mobility = ~occupied00[s]
                     & (mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)]);
 #endif
-                result += (S2MSIGN(s) * POPCOUNT(mobility) * scalephase);
+                result += (S2MSIGN(s) * POPCOUNT(mobility) * shiftmobilitybonus);
             }
         }
     }
@@ -565,7 +563,7 @@ int chessposition::getPositionValue()
 
                 if ((pt == ROOK || pt == QUEEN) && (firstpawn[col][f + 1] == 0 || ((col && (firstpawn[col][f + 1] > r)) || (!col && (firstpawn[col][f + 1] < r)))))
                     // ROOK on free file
-                    result += S2MSIGN(col) * slideronfreefilebonus;
+                    result += S2MSIGN(col) * slideronfreefilebonus[0];
 
             }
         }
