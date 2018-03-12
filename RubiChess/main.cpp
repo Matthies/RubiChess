@@ -666,17 +666,14 @@ long long perft(int depth, bool dotests)
             pos.print();
 //            printf("Material value: %d\n", pos.countMaterial());
             printf("Position value: %d\n", pos.getPositionValue());
-            printf("Pawn value: %d\n", pos.getPawnValue());
             pos.mirror();
             pos.print();
 //            printf("Material value: %d\n", pos.countMaterial());
             printf("Position value: %d\n", pos.getPositionValue());
-            printf("Pawn value: %d\n", pos.getPawnValue());
             pos.mirror();
             pos.print();
 //            printf("Material value: %d\n", pos.countMaterial());
             printf("Position value: %d\n", pos.getPositionValue());
-            printf("Pawn value: %d\n", pos.getPawnValue());
         }
     }
     chessmovelist* movelist = pos.getMoves();
