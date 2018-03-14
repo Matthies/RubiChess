@@ -1,0 +1,109 @@
+-----------------------------Rating.dat:-----------------------------
+
+14.03.2018 17:15:16 :
+
+    Program                          Elo    +   -   Games   Score   Av.Op.  Draws
+
+  1 OliThink                       : 2455   66  63   200    90.0 %   2073   13.0 %
+  2 Alex                           : 2331   56  54   200    81.5 %   2073   13.0 %
+  3 Baislicka                      : 2171   48  48   200    63.7 %   2073    8.5 %
+  4 Queen                          : 2084   44  44   200    51.5 %   2073   18.0 %
+  5 GunBorg                        : 2084   43  43   200    51.5 %   2073   20.0 %
+  6 RubiChess-Bitboard             : 2080   15  15  1800    45.3 %   2113   14.1 %
+  7 Alarm                          : 2035   44  44   200    44.5 %   2073   17.0 %
+  8 AliChess                       : 2031   45  46   200    44.0 %   2073   13.0 %
+  9 Knockout                       : 2006   46  46   200    40.5 %   2073   12.0 %
+ 10 RubiChess-Board88              : 1882   51  52   200    25.0 %   2073   12.0 %
+
+
+----------------------------Programs.dat:----------------------------
+Individual statistics:
+
+1 OliThink                  : 2455  200 (+167,= 26,-  7), 90.0 %
+
+RubiChess-Bitboard            : 200 (+167,= 26,-  7), 90.0 %
+
+2 Alex                      : 2331  200 (+150,= 26,- 24), 81.5 %
+
+RubiChess-Bitboard            : 200 (+150,= 26,- 24), 81.5 %
+
+3 Baislicka                 : 2171  200 (+119,= 17,- 64), 63.8 %
+
+RubiChess-Bitboard            : 200 (+119,= 17,- 64), 63.7 %
+
+4 Queen                     : 2084  200 (+ 85,= 36,- 79), 51.5 %
+
+RubiChess-Bitboard            : 200 (+ 85,= 36,- 79), 51.5 %
+
+5 GunBorg                   : 2084  200 (+ 83,= 40,- 77), 51.5 %
+
+RubiChess-Bitboard            : 200 (+ 83,= 40,- 77), 51.5 %
+
+6 RubiChess-Bitboard        : 2080  1800 (+689,=253,-858), 45.3 %
+
+RubiChess-Board88             : 200 (+138,= 24,- 38), 75.0 %
+Alex                          : 200 (+ 24,= 26,-150), 18.5 %
+AliChess                      : 200 (+ 99,= 26,- 75), 56.0 %
+Baislicka                     : 200 (+ 64,= 17,-119), 36.2 %
+Queen                         : 200 (+ 79,= 36,- 85), 48.5 %
+OliThink                      : 200 (+  7,= 26,-167), 10.0 %
+Knockout                      : 200 (+107,= 24,- 69), 59.5 %
+Alarm                         : 200 (+ 94,= 34,- 72), 55.5 %
+GunBorg                       : 200 (+ 77,= 40,- 83), 48.5 %
+
+7 Alarm                     : 2035  200 (+ 72,= 34,- 94), 44.5 %
+
+RubiChess-Bitboard            : 200 (+ 72,= 34,- 94), 44.5 %
+
+8 AliChess                  : 2031  200 (+ 75,= 26,- 99), 44.0 %
+
+RubiChess-Bitboard            : 200 (+ 75,= 26,- 99), 44.0 %
+
+9 Knockout                  : 2006  200 (+ 69,= 24,-107), 40.5 %
+
+RubiChess-Bitboard            : 200 (+ 69,= 24,-107), 40.5 %
+
+10 RubiChess-Board88         : 1882  200 (+ 38,= 24,-138), 25.0 %
+
+RubiChess-Bitboard            : 200 (+ 38,= 24,-138), 25.0 %
+
+
+----------------------------General.dat:-----------------------------
+
+Games        :   1800 (finished)
+
+White Wins   :    798 (44.3 %)
+Black Wins   :    749 (41.6 %)
+Draws        :    253 (14.1 %)
+Unfinished   :      0
+
+White Perf.  : 51.4 %
+Black Perf.  : 48.6 %
+
+ECO A =      0 Games ( 0.0 %)
+ECO B =      0 Games ( 0.0 %)
+ECO C =      0 Games ( 0.0 %)
+ECO D =      0 Games ( 0.0 %)
+ECO E =      0 Games ( 0.0 %)
+
+
+----------------------------Cluster.dat:-----------------------------
+Cluster No. 1:
+
+RubiChess-Bitboard             (9)
+RubiChess-Board88              (1)
+Alex                           (1)
+AliChess                       (1)
+Baislicka                      (1)
+Queen                          (1)
+OliThink                       (1)
+Knockout                       (1)
+Alarm                          (1)
+GunBorg                        (1)
+
+10 programs, 1800 games
+
+itoffset = 6.990094
+
+
+

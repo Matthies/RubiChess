@@ -116,9 +116,6 @@ CONSTEVAL int PVPHASEDIFF[6][64] = {
  };
 
 
-//double kingdangerfactor = 0.15;
-//double kingdangerexponent = 1.1;
-
 int squaredistance[BOARDSIZE][BOARDSIZE];
 int kingdanger[BOARDSIZE][BOARDSIZE][7];
 int passedpawnbonusperside[2][8];
@@ -129,6 +126,21 @@ int attackingpawnbonusperside[2][8];
 void registeralltuners()
 {
     int i, j;
+
+#if 0 // averaging psqt (...OLD[][]) to a symmetric 4x8 map
+    for (i = 0; i < 6; i++)
+    {
+        for (int y = 0; y < 8; y++)
+        {
+            for (int x = 0; x < 4; x++)
+            {
+                PVBASE[i][y * 4 + x] = (PVBASEOLD[i][y * 8 + x] + PVBASEOLD[i][y * 8 + 7 - x]) / 2;
+                PVPHASEDIFF[i][y * 4 + x] = (PVPHASEDIFFOLD[i][y * 8 + x] + PVPHASEDIFFOLD[i][y * 8 + 7 - x]) / 2;
+            }
+        }
+    }
+#endif
+
 #if 1
     // tuning other values
     registerTuner(&tempo, "tempo", tempo, 0, 0, 0, 0, NULL, false);
@@ -141,9 +153,10 @@ void registeralltuners()
     registerTuner(&connectedbonus, "connectedbonus", connectedbonus, 0, 0, 0, 0, NULL, false);
     registerTuner(&kingshieldbonus, "kingshieldbonus", kingshieldbonus, 0, 0, 0, 0, NULL, false);
     registerTuner(&backwardpawnpenalty, "backwardpawnpenalty", backwardpawnpenalty, 0, 0, 0, 0, NULL, false);
-    registerTuner(&slideronfreefilebonus, "slideronfreefilebonus", slideronfreefilebonus, 0, 0, 0, 0, NULL, false);
     registerTuner(&doublebishopbonus, "doublebishopbonus", doublebishopbonus, 0, 0, 0, 0, NULL, false);
-    registerTuner(&scalephaseshift, "scalephaseshift", scalephaseshift, 0, 0, 0, 0, NULL, false);
+    registerTuner(&shiftmobilitybonus, "shiftmobilitybonus", shiftmobilitybonus, 0, 0, 0, 0, NULL, false);
+    for (i = 0; i < 2; i++)
+        registerTuner(&slideronfreefilebonus[i], "slideronfreefilebonus", slideronfreefilebonus[i], i, 2, 0, 0, NULL, false);
 #endif
 #if 1
     // tuning material value

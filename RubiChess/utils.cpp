@@ -161,10 +161,13 @@ string AlgebraicFromShort(string s)
 #ifdef EVALTUNE
 bool PGNtoFEN(string pgnfilename)
 {
+    int gamescount = 0;
+    bool mateFound;
     string line;
     string line1, line2;
     string rest_of_last_line = "";
     string fenfilename = pgnfilename + ".fen";
+    string fenmovefilename = pgnfilename + ".fenmove";
     // Open the pgn file for reading
     ifstream pgnfile(pgnfilename);
     if (!pgnfile.is_open())
@@ -178,9 +181,19 @@ bool PGNtoFEN(string pgnfilename)
         printf("Cannot open %s for writing.\n", fenfilename.c_str());
         return false;
     }
+    ofstream fenmovefile(fenmovefilename);
+    if (!fenmovefile.is_open())
+    {
+        printf("Cannot open %s for writing.\n", fenmovefilename.c_str());
+        return false;
+    }
 
     int newgamestarts = 0;
     int result = 0;
+    string newfen;
+    string moves;
+    string lastmove;
+    bool valueChecked;
     while (getline(pgnfile, line))
     {
         line2 = line1;
@@ -188,13 +201,16 @@ bool PGNtoFEN(string pgnfilename)
         //printf(">%s<\n", line.c_str());
 
         smatch match;
-        string fen, newfen;
-        string moves = "";
+        string fen;
         double score;
-        bool valueChecked = true;
         // We assume that the [Result] section comes first, the the [FEN] section
         if (regex_search(line, match, regex("\\[Result\\s+\"(.*)\\-(.*)\"")))
         {
+            gamescount++;
+            // Write last game
+            if (newgamestarts == 2)
+                fenmovefile << to_string(result) + "#" + newfen + " moves " + moves + "\n";
+
             if (match.str(1) == "0")
                 result = -1;
             else if (match.str(1) == "1")
@@ -202,6 +218,8 @@ bool PGNtoFEN(string pgnfilename)
             else
                 result = 0;
             newgamestarts = 1;
+            moves = "";
+            mateFound = false;
         }
         if (newgamestarts == 1 && regex_search(line, match, regex("\\[FEN\\s+\"(.*)\"")))
         {
@@ -235,19 +253,20 @@ bool PGNtoFEN(string pgnfilename)
                 if (regex_search(line, match, regex("^\\s*(([O\\-]{3,5})\\+?|([KQRBN]?[a-h]*[1-8]*x?[a-h]+[1-8]+(=[QRBN])?)\\+?)")))
                 {
                     // Found move
-                   //printf("%s\n", match.str().c_str());
+                    //printf("%s\n", match.str().c_str());
                     if (!valueChecked)
                     {
                         // Score tag of last move missing; just output without score
                         fenfile << to_string(result) + "#" + fen + "#0\n";
+                        moves = moves + lastmove + " ";
                     }
 
                     foundInLine = true;
                     valueChecked = false;
-                    string move = AlgebraicFromShort(match.str());
-                    if (move == "" || !pos.applyMove(move))
+                    lastmove = AlgebraicFromShort(match.str());
+                    if (lastmove == "" || !pos.applyMove(lastmove))
                     {
-                        printf("Alarm: %s\n", match.str().c_str());
+                        printf("Alarm (game %d): %s\n", gamescount, match.str().c_str());
                         pos.print();
                         printf("last Lines:\n%s\n%s\n\n", line2.c_str(), line1.c_str());
                     }
@@ -262,12 +281,13 @@ bool PGNtoFEN(string pgnfilename)
                         foundInLine = true;
                         string scorestr = match.str(2);
                         // Only output if no mate score detected
-                        if (!(scorestr[0] == 'M' || scorestr[1] == 'M'))
+                        if ((scorestr[0] == 'M' || scorestr[1] == 'M')
+                            || (score = stod(match.str(2))) >= 30)
+                            mateFound = true;
+                        if (!mateFound)
                         {
-                            score = stod(match.str(2));
-                            //printf("score:%f\n", score);
-                            if (abs(score) < 30)
-                                fenfile << to_string(result) + "#" + fen + "#" + to_string(score) + "\n";
+                            fenfile << to_string(result) + "#" + fen + "#" + to_string(score) + "\n";
+                            moves = moves + lastmove + " ";
                         }
                         line = match.suffix();
                         valueChecked = true;
@@ -350,7 +370,7 @@ static void printTunedParameters()
         if (tip[i].index1 < tip[i].bound1 - 1)
         {
             output += ",";
-            if (!((tip[i].index1 + 1) & 0x7))
+            if (!((tip[i].index1 + 1) & (tip[i].bound2 ? 0x3 : 0x7)))
                 output += "\n    ";
         }
         else if (tip[i].index1 == tip[i].bound1 - 1)
@@ -371,6 +391,9 @@ int tuningratio = 1;
 
 static double TexelEvalError(string fenfilename, double k)
 {
+    long long starttime = getTime();
+    int gamescount = 0;
+    bool fenmovemode = (fenfilename.find(".fenmove") != string::npos);
     string line;
     smatch match;
     double Ri, Qi;
@@ -386,30 +409,74 @@ static double TexelEvalError(string fenfilename, double k)
     }
     while (getline(fenfile, line))
     {
-        bw = 1 - bw;
-        if (bw)
-            c++;
-        if (c > tuningratio)
-            c = 1;
-        if (c == tuningratio)
+        //cout << line + "\n";
+        if (!fenmovemode)
         {
-            //cout << line + "\n";
             if (regex_search(line, match, regex("(.*)#(.*)#(.*)")))
             {
+                bw = 1 - bw;
+                if (bw)
+                    c++;
+                if (c > tuningratio)
+                    c = 1;
+                if (c == tuningratio)
+                {
+
+                    Ri = (stoi(match.str(1)) + 1) / 2.0;
+                    pos.getFromFen(match.str(2).c_str());
+                    Qi = getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
+                    if (!pos.w2m())
+                        Qi = -Qi;
+                    //printf("Ri=%f Qi=%f\n", Ri, Qi);
+                    n++;
+                    double sigmoid = 1 / (1 + pow(10.0, -k * Qi / 400.0));
+                    E += (Ri - sigmoid) * (Ri - sigmoid);
+                }
+            }
+        }
+        else
+        {
+            if (regex_search(line, match, regex("(.*)#(.*)moves(.*)")))
+            {
+                gamescount++;
                 Ri = (stoi(match.str(1)) + 1) / 2.0;
                 pos.getFromFen(match.str(2).c_str());
-                Qi = getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
-                if (!pos.w2m())
-                    Qi = -Qi;
-                //printf("Ri=%f Qi=%f\n", Ri, Qi);
-                n++;
-                double sigmoid = 1 / (1 + pow(10.0, -k * Qi / 400.0));
-                E += (Ri - sigmoid) * (Ri - sigmoid);
-            }
-            else
-                printf("Alarm");
+                vector<string> movelist = SplitString(match.str(3).c_str());
+                vector<string>::iterator move = movelist.begin();
+                bool gameend;
+                do
+                {
+                    bw = 1 - bw;
+                    if (bw)
+                        c++;
+                    if (c > tuningratio)
+                        c = 1;
+                    if (c == tuningratio)
+                    {
+                        Qi = getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
+                        if (!pos.w2m())
+                            Qi = -Qi;
+                        //printf("Ri=%f Qi=%f\n", Ri, Qi);
+                        n++;
+                        double sigmoid = 1 / (1 + pow(10.0, -k * Qi / 400.0));
+                        E += (Ri - sigmoid) * (Ri - sigmoid);
+                }
+                    gameend = (move == movelist.end());
+                    if (!gameend)
+                    {
+                        if (!pos.applyMove(*move))
+                        {
+                            printf("Alarm (game %d)! Zug %s konnte nicht ausgef?hrt werden.\nLine: %s\n", gamescount, move->c_str(), line.c_str());
+                            pos.print();
+                        }
+                        move++;
+                    }
+
+            } while (!gameend);
         }
     }
+}
+    printf("Tuning-Zeit: %10f sec.", (float)(getTime() - starttime) / (float)en.frequency);
     return E / n;
 }
 
@@ -459,7 +526,6 @@ void TexelTune(string fenfilename)
     printf("Tuningscore b0=%0.10f (%0.10f) b1=%0.10f (%0.10f)", bound[0], E[0], bound[1], E[1]);
     k = (bound[0] + bound[1]) / 2;
 #endif
-
 
     do
     {

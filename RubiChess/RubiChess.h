@@ -1,6 +1,6 @@
 #pragma once
 
-#define VERNUM "0.8-dev"
+#define VERNUM "0.8"
 
 #if 0
 #define DEBUG
@@ -31,10 +31,10 @@
 #ifdef BITBOARD
 #if 1
 #define MAGICBITBOARD
-#define BOARDVERSION "Magic Bitboard"
+#define BOARDVERSION "MB"
 #else
 #define ROTATEDBITBOARD
-#define BOARDVERSION "Rotated Bitboard"
+#define BOARDVERSION "RB"
 #endif
 #else
 #define BOARDVERSION "Board88"
@@ -697,10 +697,6 @@ public:
 #endif
 
 void CreatePositionvalueTable();
-
-extern int squaredistance[BOARDSIZE][BOARDSIZE];
-extern int kingdanger[BOARDSIZE][BOARDSIZE][7];
-
 
 #define ENGINERUN 0
 #define ENGINEWANTSTOP 1
