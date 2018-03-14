@@ -1,12 +1,12 @@
 ChangeLog
 =========
 0.8 (release 2018-03-14) :
-	- Fast move after depth 4 for singular root move
-	- Extended and reverse futility pruning up to depth 3
-	- Added mobility for rook/queen and retuned with fresh games pgn
-	- Seperate evaluation for semi- and open file excluding the queen now
-	- Null move pruning improved: prune even in later game phase and with variable depth reduction
-	- Improved tuning: Can create and read fen+moves files now which is 5x faster
+    - Fast move after depth 4 for singular root move
+    - Extended and reverse futility pruning up to depth 3
+    - Added mobility for rook/queen and retuned with fresh games pgn
+    - Seperate evaluation for semi- and open file bonus for rooks; excluding the queen now
+    - Null move pruning improved: prune even in later game phase and with variable depth reduction
+    - Improved tuning: Can create and read fen+moves files now which is 5x faster
 
 0.7 (release 2018-01-19) :
     - Introduced small tempo value for evaluation
@@ -23,7 +23,7 @@ ChangeLog
         + fixed bug in SEE (missing pawn attacks) and retuned
     - Total score against 0.6 (4000 games in 10+0.1, 2moves_v1 book): 214.97ELO +/- 11.33
  
-0.6 (release 2017 - 11 - 26) :
+0.6 (release 2017-11-26) :
     - Store best move in transposition table even for beta cutoff which is important for move ordering
     - New magic bitboard implementation about 24 % faster than rotating bitboards (still compilable via define)
     - Switched to fail soft environment
