@@ -1,5 +1,8 @@
 ChangeLog
 =========
+0.9 (release 2018-xx-xx) :
+    - ...
+
 0.8 (release 2018-03-14) :
     - Fast move after depth 4 for singular root move
     - Extended and reverse futility pruning up to depth 3
