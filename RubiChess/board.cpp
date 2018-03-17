@@ -2255,9 +2255,9 @@ void engine::setOption(string sName, string sValue)
 {
     bool resetTp = false;
     int newint;
-    string lValue;
+    string lValue = sValue;
     transform(sName.begin(), sName.end(), sName.begin(), ::tolower);
-    transform(sValue.begin(), sValue.end(), lValue.begin(), ::tolower);
+    transform(lValue.begin(), lValue.end(), lValue.begin(), ::tolower);
     if (sName == "clear hash")
         tp.clean();
     if (sName == "ponder")
@@ -2457,6 +2457,7 @@ void engine::communicate(string inputstring)
                 pendingposition = (fen != "");
                 break;
             case GO:
+                resetPonder();
                 searchmoves.clear();
                 wtime = btime = winc = binc = movestogo = mate = maxdepth = 0;
                 infinite = false;
@@ -2515,6 +2516,11 @@ void engine::communicate(string inputstring)
                         infinite = true;
                         ci++;
                     }
+                    else if (commandargs[ci] == "ponder")
+                    {
+                        pondersearch = PONDERING;
+                        ci++;
+                    }
                     else
                         ci++;
                 }
@@ -2527,6 +2533,9 @@ void engine::communicate(string inputstring)
                     delete searchthread;
                     searchthread = nullptr;
                 }
+                break;
+            case PONDERHIT:
+                HitPonder();
                 break;
             case STOP:
             case QUIT:

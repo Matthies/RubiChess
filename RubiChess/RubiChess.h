@@ -733,7 +733,7 @@ public:
     long long endtime2; // time to send STOPPIMMEDIATELY signal
     long long frequency;
     float fh, fhf;
-    unsigned int wtime, btime, winc, binc, movestogo, depth, maxnodes, mate, movetime, maxdepth;
+    int wtime, btime, winc, binc, movestogo, depth, maxnodes, mate, movetime, maxdepth;
     bool infinite;
     bool debug = false;
     bool moveoutput;
@@ -741,12 +741,16 @@ public:
     int moveOverhead;
     int MultiPV;
     bool ponder;
-    bool pondersearch;
+    enum { NO, PONDERING, HITPONDER } pondersearch;
     int terminationscore = SHRT_MAX;
     int stopLevel = ENGINESTOPPED;
     void communicate(string inputstring);
     int getScoreFromEnginePoV();
     void setOption(string sName, string sValue);
+    bool isPondering() { return (pondersearch == PONDERING); }
+    void HitPonder() { pondersearch = HITPONDER; }
+    bool testPonderHit() { return (pondersearch == HITPONDER); }
+    void resetPonder() { pondersearch = NO; }
 };
 
 PieceType GetPieceType(char c);
