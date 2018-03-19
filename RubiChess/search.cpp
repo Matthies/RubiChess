@@ -645,6 +645,8 @@ template <RootsearchType RT>
 static void search_gen1()
 {
     string bestmovestr = "";
+    string newbestmovestr;
+    string pondermovestr = "";
     char s[16384];
 
     int score;
@@ -811,10 +813,22 @@ static void search_gen1()
 
                 pos.getpvline(depth, 0);
                 pvstring = pos.pvline.toString();
+                bool getponderfrompvline = false;
                 if (pos.pvline.length > 0 && pos.pvline.move[0].code)
-                    bestmovestr = pos.pvline.move[0].toString();
-                else
-                    bestmovestr = pos.bestmove[0].toString();
+                {
+                    newbestmovestr= pos.pvline.move[0].toString();
+                    getponderfrompvline = (en.ponder && pos.pvline.length > 1 && pos.pvline.move[1].code);
+                }
+                else {
+                    newbestmovestr = pos.bestmove[0].toString();
+                }
+                if (newbestmovestr != bestmovestr)
+                {
+                    bestmovestr = newbestmovestr;
+                    pondermovestr = "";
+                }
+                if (getponderfrompvline)
+                    pondermovestr = " ponder " + pos.pvline.move[1].toString();
 
                 if (!MATEDETECTED(score))
                 {
@@ -845,44 +859,45 @@ static void search_gen1()
     if (bestmovestr == "")
         // not a single move found (serious time trouble); fall back to default move
         bestmovestr = pos.defaultmove.toString();
-    sprintf_s(s, "bestmove %s\n", bestmovestr.c_str());
+    sprintf_s(s, "bestmove %s%s\n", bestmovestr.c_str(), pondermovestr.c_str());
     cout << s;
 }
 
-
-void searchguide()
+void startSearchTime()
 {
-    en.starttime = getTime();
-    en.moveoutput = false;
-    en.stopLevel = ENGINERUN;
     int timetouse = (en.isWhite ? en.wtime : en.btime);
     int timeinc = (en.isWhite ? en.winc : en.binc);
-    int movestogo = 0;
-    thread enginethread;
+    en.starttime = getTime();
 
     if (en.movestogo)
-        movestogo = en.movestogo;
-
-    if (movestogo)
     {
         // should garantee timetouse > 0
         // stop soon at 0.7 x average movetime
-        en.endtime1 = en.starttime + timetouse * en.frequency * 7 / (movestogo + 1) / 10000;
+        en.endtime1 = en.starttime + timetouse * en.frequency * 7 / (en.movestogo + 1) / 10000;
         // stop immediately at 1.3 x average movetime
-        en.endtime2 = en.starttime + min(timetouse - en.moveOverhead,  13 * timetouse / (movestogo + 1) / 10) * en.frequency / 1000;
+        en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, 13 * timetouse / (en.movestogo + 1) / 10) * en.frequency / 1000;
         //printf("info string difftime1=%lld  difftime2=%lld\n", (endtime1 - en.starttime) * 1000 / en.frequency , (endtime2 - en.starttime) * 1000 / en.frequency);
     }
     else if (timetouse) {
         int ph = pos.phase();
         // sudden death; split the remaining time in (256-phase) timeslots
         // stop soon after 6 timeslot
-        en.endtime1 = en.starttime + max(timeinc, 6 * (timetouse + timeinc) / (256 - ph)) * en.frequency  / 1000;
+        en.endtime1 = en.starttime + max(timeinc, 6 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
         // stop immediately after 10 timeslots
         en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, max(timeinc, 10 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
     }
     else {
         en.endtime1 = en.endtime2 = 0;
     }
+}
+
+void searchguide()
+{
+    en.moveoutput = false;
+    en.stopLevel = ENGINERUN;
+    thread enginethread;
+
+    startSearchTime();
 
     en.nodes = 0;
 #ifdef DEBUG
@@ -915,7 +930,16 @@ void searchguide()
 
         if (en.stopLevel != ENGINESTOPPED)
         {
-            if (en.endtime2 && nowtime >= en.endtime2 && en.stopLevel < ENGINESTOPIMMEDIATELY)
+            if (en.isPondering())
+            {
+                Sleep(10);
+            }
+            else if (en.testPonderHit())
+            {
+                startSearchTime();
+                en.resetPonder();
+            }
+            else if (en.endtime2 && nowtime >= en.endtime2 && en.stopLevel < ENGINESTOPIMMEDIATELY)
             {
                 en.stopLevel = ENGINESTOPIMMEDIATELY;
             }
