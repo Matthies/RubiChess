@@ -867,6 +867,8 @@ void startSearchTime()
 {
     int timetouse = (en.isWhite ? en.wtime : en.btime);
     int timeinc = (en.isWhite ? en.winc : en.binc);
+    int opponentTimetouse = (en.isWhite ? en.btime : en.wtime);
+    int opponentTimeinc = (en.isWhite ? en.binc : en.winc);
     en.starttime = getTime();
 
     if (en.movestogo)
@@ -880,11 +882,40 @@ void startSearchTime()
     }
     else if (timetouse) {
         int ph = pos.phase();
-        // sudden death; split the remaining time in (256-phase) timeslots
-        // stop soon after 6 timeslot
-        en.endtime1 = en.starttime + max(timeinc, 6 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
-        // stop immediately after 10 timeslots
-        en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, max(timeinc, 10 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
+        if (timeinc)
+        {
+            // sudden death with increment; split the remaining time in (256-phase) timeslots
+            // stop soon after 6 timeslot
+            en.endtime1 = en.starttime + max(timeinc, 6 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
+            // stop immediately after 10 timeslots
+            en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, max(timeinc, 10 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
+        }
+        else {
+            // sudden death without increment; play for another 25..40 moves
+
+            // TM2: Consider to stop after 1/40 of remaining time
+            //en.endtime1 = en.starttime + timetouse / 40 * en.frequency / 1000;
+            // TM3: Consider to stop after 1/40 (later 1/25) of remaining time
+            //en.endtime1 = en.starttime + timetouse / (25 + 15 * (256 - ph) / 256) * en.frequency / 1000;
+            // TM4: Consider to stop after 1/25 (later 1/40) of remaining time
+            //en.endtime1 = en.starttime + timetouse / (40 - 15 * (256 - ph) / 256) * en.frequency / 1000;
+            // TM5: Consider to stop after 1/60 of remaining time
+            en.endtime1 = en.starttime + timetouse / 60 * en.frequency / 1000;
+
+            // TM2: stop immediately after 1/25 of remaining time
+            //en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, timetouse / 25) * en.frequency / 1000;
+            // TM3: stop immediately after 1/25 (later 1/20) of remaining time
+            //en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, timetouse / (20 + 5 * (256 - ph) / 256)) * en.frequency / 1000;
+            // TM4: stop immediately after 1/20 (later 1/25) of remaining time
+            //en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, timetouse / (25 - 5 * (256 - ph) / 256)) * en.frequency / 1000;
+            // TM5: stop immediately after 1/40 of remaining time
+            en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, timetouse / 40) * en.frequency / 1000;
+
+            //tm3 vs tm2: -22 ELO nach 1100 Spielen TC 10sek.
+            //tm4 vs tm2: -38 ELO nach 1000 Spielen TC 10sek.
+            //tm5 vs tm2: +23 ELO nach 800 Spielen TC 10sek.
+
+        }
     }
     else {
         en.endtime1 = en.endtime2 = 0;
