@@ -867,8 +867,6 @@ void startSearchTime()
 {
     int timetouse = (en.isWhite ? en.wtime : en.btime);
     int timeinc = (en.isWhite ? en.winc : en.binc);
-    int opponentTimetouse = (en.isWhite ? en.btime : en.wtime);
-    int opponentTimeinc = (en.isWhite ? en.binc : en.winc);
     en.starttime = getTime();
 
     if (en.movestogo)
