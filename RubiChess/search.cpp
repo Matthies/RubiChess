@@ -891,29 +891,16 @@ void startSearchTime()
             en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, max(timeinc, 10 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
         }
         else {
-            // sudden death without increment; play for another 25..40 moves
+            // sudden death without increment; play for another x;y moves
+            // Tried several combination "stop soon at time/x ; stop immediately at time/y"
+            // Bad results: 60;40 30;20 35;25 and several with phase driven x;y
+            // Best results at TC 300 against ELO2300 engines:
+            //  40;25:  56,1% + 57,1%
+            //  45;30:  55,5% + 53,4%
+            // So I use the first one although 45;30 is ~22ELO better against 40;25 in TC 10 and TC 60
 
-            // TM2: Consider to stop after 1/40 of remaining time
-            //en.endtime1 = en.starttime + timetouse / 40 * en.frequency / 1000;
-            // TM3: Consider to stop after 1/40 (later 1/25) of remaining time
-            //en.endtime1 = en.starttime + timetouse / (25 + 15 * (256 - ph) / 256) * en.frequency / 1000;
-            // TM4: Consider to stop after 1/25 (later 1/40) of remaining time
-            //en.endtime1 = en.starttime + timetouse / (40 - 15 * (256 - ph) / 256) * en.frequency / 1000;
-            // TM5: Consider to stop after 1/60 of remaining time
-            en.endtime1 = en.starttime + timetouse / 60 * en.frequency / 1000;
-
-            // TM2: stop immediately after 1/25 of remaining time
-            //en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, timetouse / 25) * en.frequency / 1000;
-            // TM3: stop immediately after 1/25 (later 1/20) of remaining time
-            //en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, timetouse / (20 + 5 * (256 - ph) / 256)) * en.frequency / 1000;
-            // TM4: stop immediately after 1/20 (later 1/25) of remaining time
-            //en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, timetouse / (25 - 5 * (256 - ph) / 256)) * en.frequency / 1000;
-            // TM5: stop immediately after 1/40 of remaining time
-            en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, timetouse / 40) * en.frequency / 1000;
-
-            //tm3 vs tm2: -22 ELO nach 1100 Spielen TC 10sek.
-            //tm4 vs tm2: -38 ELO nach 1000 Spielen TC 10sek.
-            //tm5 vs tm2: +23 ELO nach 800 Spielen TC 10sek.
+            en.endtime1 = en.starttime + timetouse / 40 * en.frequency / 1000;
+            en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, timetouse / 25) * en.frequency / 1000;
 
         }
     }
