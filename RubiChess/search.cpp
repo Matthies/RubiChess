@@ -880,11 +880,27 @@ void startSearchTime()
     }
     else if (timetouse) {
         int ph = pos.phase();
-        // sudden death; split the remaining time in (256-phase) timeslots
-        // stop soon after 6 timeslot
-        en.endtime1 = en.starttime + max(timeinc, 6 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
-        // stop immediately after 10 timeslots
-        en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, max(timeinc, 10 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
+        if (timeinc)
+        {
+            // sudden death with increment; split the remaining time in (256-phase) timeslots
+            // stop soon after 6 timeslot
+            en.endtime1 = en.starttime + max(timeinc, 6 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
+            // stop immediately after 10 timeslots
+            en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, max(timeinc, 10 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
+        }
+        else {
+            // sudden death without increment; play for another x;y moves
+            // Tried several combination "stop soon at time/x ; stop immediately at time/y"
+            // Bad results: 60;40 30;20 35;25 and several with phase driven x;y
+            // Best results at TC 300 against ELO2300 engines:
+            //  40;25:  56,1% + 57,1%
+            //  45;30:  55,5% + 53,4%
+            // So I use the first one although 45;30 is ~22ELO better against 40;25 in TC 10 and TC 60
+
+            en.endtime1 = en.starttime + timetouse / 40 * en.frequency / 1000;
+            en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, timetouse / 25) * en.frequency / 1000;
+
+        }
     }
     else {
         en.endtime1 = en.endtime2 = 0;
