@@ -1,7 +1,8 @@
 ChangeLog
 =========
-0.9 (release 2018-xx-xx) :
-    - ...
+0.8.1 (release 2018-03-24) :
+    - Implemented ponder mode (works if ponder move can be read from tt)
+    - Implemented / fixed "suddendeath without increment" timecontrol
 
 0.8 (release 2018-03-14) :
     - Fast move after depth 4 for singular root move
