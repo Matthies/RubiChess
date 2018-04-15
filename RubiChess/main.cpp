@@ -247,6 +247,11 @@ long long perft(int depth, bool dotests)
             printf("Alarm! Wrong Pawn Hash! %llu\n", zb.getPawnHash());
             pos.print();
         }
+        if (pos.materialhash != zb.getMaterialHash())
+        {
+            printf("Alarm! Wrong Material Hash! %llu\n", zb.getMaterialHash());
+            pos.print();
+        }
         int val1 = pos.getValue();
         pos.mirror();
         int val2 = pos.getValue();

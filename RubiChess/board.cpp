@@ -348,6 +348,7 @@ int chessposition::getFromFen(const char* sFen)
 #endif
     hash = zb.getHash();
     pawnhash = zb.getPawnHash();
+    materialhash = zb.getMaterialHash();
     rp.clean();
     rp.addPosition(hash);
     for (int i = 0; i < 14; i++)
@@ -1134,6 +1135,7 @@ bool chessposition::playMove(chessmove *cm)
     movestack[mstop].ept = ept;
     movestack[mstop].hash = hash;
     movestack[mstop].pawnhash = pawnhash;
+    movestack[mstop].materialhash = materialhash;
     movestack[mstop].state = state;
     movestack[mstop].kingpos[0] = kingpos[0];
     movestack[mstop].kingpos[1] = kingpos[1];
@@ -1150,6 +1152,7 @@ bool chessposition::playMove(chessmove *cm)
         if ((capture >> 1) == PAWN)
             pawnhash ^= zb.boardtable[(to << 4) | capture];
         BitboardClear(to, capture);
+        materialhash ^= zb.boardtable[(POPCOUNT(piece00[capture]) << 4) | capture];
         halfmovescounter = 0;
     }
 
@@ -1160,8 +1163,10 @@ bool chessposition::playMove(chessmove *cm)
     }
     else {
         mailbox[to] = promote;
+        materialhash ^= zb.boardtable[(POPCOUNT(piece00[pfrom]) << 4) | pfrom];
         BitboardClear(from, pfrom);
         BitboardSet(to, promote);
+        materialhash ^= zb.boardtable[(POPCOUNT(piece00[promote]) << 4) | promote];
         // just double the hash-switch for target to make the pawn vanish
         pawnhash ^= zb.boardtable[(to << 4) | mailbox[to]];
     }
@@ -1183,6 +1188,7 @@ bool chessposition::playMove(chessmove *cm)
             int epfield = (from & 0x38) | (to & 0x07);
             hash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
             pawnhash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
+            materialhash ^= zb.boardtable[(POPCOUNT(piece00[(pfrom ^ S2MMASK)]) << 4) | (pfrom ^ S2MMASK)];
 
             BitboardClear(epfield, (pfrom ^ S2MMASK));
             mailbox[epfield] = BLANK;
@@ -1266,6 +1272,7 @@ void chessposition::unplayMove(chessmove *cm)
     ept = movestack[mstop].ept;
     hash = movestack[mstop].hash;
     pawnhash = movestack[mstop].pawnhash;
+    materialhash = movestack[mstop].materialhash;
     state = movestack[mstop].state;
     kingpos[0] = movestack[mstop].kingpos[0];
     kingpos[1] = movestack[mstop].kingpos[1];

@@ -175,6 +175,25 @@ u8 zobrist::getPawnHash()
 #endif
 
 
+u8 zobrist::getMaterialHash()
+{
+    u8 hash = 0;
+    for (PieceCode pc = WPAWN; pc <= BKING; pc++)
+    {
+        int count = 0;
+        for (int j = 0; j < BOARDSIZE; j++)
+        {
+#ifndef BITBOARD
+            if (!(i & 0x88)
+#endif
+                if (pos.mailbox[j] != BLANK)
+                    hash ^= zb.boardtable[(count++ << 4) | pc];
+        }
+    }
+    return hash;
+}
+
+
 transposition::~transposition()
 {
     if (size > 0)

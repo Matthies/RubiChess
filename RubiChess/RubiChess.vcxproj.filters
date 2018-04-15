@@ -36,6 +36,9 @@
     <ClCompile Include="eval.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="tbprobe.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RubiChess.h">

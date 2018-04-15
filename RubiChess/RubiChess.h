@@ -371,6 +371,7 @@ struct chessmovestack
     int kingpos[2];
     unsigned long long hash;
     unsigned long long pawnhash;
+    unsigned long long materialhash;
     int halfmovescounter;
     int fullmovescounter;
     int isCheck;
@@ -555,6 +556,7 @@ public:
     int kingpos[2];
     unsigned long long hash;
     unsigned long long pawnhash;
+    unsigned long long materialhash;
     int ply;
     int halfmovescounter = 0;
     int fullmovescounter = 0;
@@ -806,6 +808,7 @@ public:
     unsigned long long getRnd();
     u8 getHash();
     u8 getPawnHash();
+    u8 getMaterialHash();
     u8 modHash(int i);
 };
 

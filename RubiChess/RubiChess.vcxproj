@@ -160,6 +160,7 @@
     <ClCompile Include="eval.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="search.cpp" />
+    <ClCompile Include="tbprobe.cpp" />
     <ClCompile Include="transposition.cpp" />
     <ClCompile Include="uci.cpp" />
     <ClCompile Include="utils.cpp" />
