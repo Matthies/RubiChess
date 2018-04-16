@@ -382,7 +382,10 @@ static int probe_ab(int alpha, int beta, int *success)
                 if (*success == 0) return 0;
                 if (v > alpha) {
                     if (v >= beta)
+                    {
+                        free(movelist);
                         return v;
+                    }
                     alpha = v;
                 }
             }
@@ -390,6 +393,8 @@ static int probe_ab(int alpha, int beta, int *success)
     }
 
     v = probe_wdl_table(success);
+
+    free(movelist);
 
     return alpha >= v ? alpha : v;
 }
@@ -413,6 +418,7 @@ int probe_wdl(int *success)
 {
   *success = 1;
   int best_cap = -3, best_ep = -3;
+  int i;
 
   // Generate (at least) all legal captures including (under)promotions.
   chessmovelist* movelist = pos.getMoves();
@@ -420,7 +426,7 @@ int probe_wdl(int *success)
   // We do capture resolution, letting best_cap keep track of the best
   // capture without ep rights and letting best_ep keep track of still
   // better ep captures if they exist.
-  for (int i = 0; i < movelist->length; i++)
+  for (i = 0; i < movelist->length; i++)
   {
       chessmove *m = &movelist->move[i];
       if (ISCAPTURE(m->code) || ISPROMOTION(m->code) || pos.isCheck)
@@ -433,6 +439,7 @@ int probe_wdl(int *success)
               if (v > best_cap) {
                   if (v == 2) {
                       *success = 2;
+                      free(movelist);
                       return 2;
                   }
                   if (!GETEPCAPTURE(m->code))
@@ -457,6 +464,7 @@ int probe_wdl(int *success)
   if (best_ep > best_cap) {
     if (best_ep > v) { // ep capture (possibly cursed losing) is best.
       *success = 2;
+      free(movelist);
       return best_ep;
     }
     best_cap = best_ep;
@@ -469,33 +477,36 @@ int probe_wdl(int *success)
     // No need to test for the stalemate case here: either there are
     // non-ep captures, or best_cap == best_ep >= v anyway.
     *success = 1 + (best_cap > 0);
+    free(movelist);
     return best_cap;
   }
 
   // Now handle the stalemate case.
   if (best_ep > -3 && v == 0) {
     // Check for stalemate in the position with ep captures.
-    for (moves = stack; moves < end; moves++) {
-      Move move = moves->move;
-      if (type_of(move) == ENPASSANT) continue;
-      if (pos.legal(move, ci.pinned)) break;
-    }
-    if (moves == end && !pos.checkers()) {
-      end = generate<QUIETS>(pos, end);
-      for (; moves < end; moves++) {
-        Move move = moves->move;
-        if (pos.legal(move, ci.pinned))
-          break;
+      for (i = 0; i < movelist->length; i++)
+      {
+          chessmove *m = &movelist->move[i];
+          if (GETEPCAPTURE(m->code))
+              continue;
+
+          if (pos.playMove(m))
+          {
+              pos.unplayMove(m);
+              break;
+          }
       }
-    }
-    if (moves == end) { // Stalemate detected.
+
+    if (i == movelist->length) { // Stalemate detected.
       *success = 2;
+      free(movelist);
       return best_ep;
     }
   }
 
   // Stalemate / en passant not an issue, so v is the correct value.
 
+  free(movelist);
   return v;
 }
 
@@ -531,95 +542,98 @@ static int wdl_to_dtz[] = {
 // In short, if a move is available resulting in dtz + 50-move-counter <= 99,
 // then do not accept moves leading to dtz + 50-move-counter == 100.
 //
-int probe_dtz(Position& pos, int *success)
+int probe_dtz(int *success)
 {
-  int wdl = probe_wdl(pos, success);
-  if (*success == 0) return 0;
-
-  // If draw, then dtz = 0.
-  if (wdl == 0) return 0;
-
-  // Check for winning (cursed) capture or ep capture as only best move.
-  if (*success == 2)
-    return wdl_to_dtz[wdl + 2];
-
-  ExtMove stack[192];
-  ExtMove *moves, *end = NULL;
-  StateInfo st;
-  CheckInfo ci(pos);
-
-  // If winning, check for a winning pawn move.
-  if (wdl > 0) {
-    // Generate at least all legal non-capturing pawn moves
-    // including non-capturing promotions.
-    // (The call to generate<>() in fact generates all moves.)
-    if (!pos.checkers())
-      end = generate<NON_EVASIONS>(pos, stack);
-    else
-      end = generate<EVASIONS>(pos, stack);
-
-    for (moves = stack; moves < end; moves++) {
-      Move move = moves->move;
-      if (type_of(pos.moved_piece(move)) != PAWN || pos.capture(move)
-                || !pos.legal(move, ci.pinned))
-        continue;
-      pos.do_move(move, st, ci, pos.gives_check(move, ci));
-      int v = -probe_wdl(pos, success);
-      pos.undo_move(move);
-      if (*success == 0) return 0;
-      if (v == wdl)
-        return wdl_to_dtz[wdl + 2];
-    }
-  }
-
-  // If we are here, we know that the best move is not an ep capture.
-  // In other words, the value of wdl corresponds to the WDL value of
-  // the position without ep rights. It is therefore safe to probe the
-  // DTZ table with the current value of wdl.
-
-  int dtz = probe_dtz_table(pos, wdl, success);
-  if (*success >= 0)
-    return wdl_to_dtz[wdl + 2] + ((wdl > 0) ? dtz : -dtz);
-
-  // *success < 0 means we need to probe DTZ for the other side to move.
-  int best;
-  if (wdl > 0) {
-    best = INT32_MAX;
-    // If wdl > 0, we already generated all moves.
-  } else {
-    // If (cursed) loss, the worst case is a losing capture or pawn move
-    // as the "best" move, leading to dtz of -1 or -101.
-    // In case of mate, this will cause -1 to be returned.
-    best = wdl_to_dtz[wdl + 2];
-    if (!pos.checkers())
-      end = generate<NON_EVASIONS>(pos, stack);
-    else
-      end = generate<EVASIONS>(pos, stack);
-  }
-
-  for (moves = stack; moves < end; moves++) {
-    Move move = moves->move;
-    // We can skip pawn moves and captures.
-    // If wdl > 0, we already caught them. If wdl < 0, the initial value
-    // of best already takes account of them.
-    if (pos.capture(move) || type_of(pos.moved_piece(move)) == PAWN
-              || !pos.legal(move, ci.pinned))
-      continue;
-    pos.do_move(move, st, ci, pos.gives_check(move, ci));
-    int v = -probe_dtz(pos, success);
-    pos.undo_move(move);
+    int wdl = probe_wdl(success);
     if (*success == 0) return 0;
-    if (wdl > 0) {
-      if (v > 0 && v + 1 < best)
-        best = v + 1;
-    } else {
-      if (v -1 < best)
-        best = v - 1;
-    }
-  }
-  return best;
-}
 
+    // If draw, then dtz = 0.
+    if (wdl == 0) return 0;
+
+    // Check for winning (cursed) capture or ep capture as only best move.
+    if (*success == 2)
+        return wdl_to_dtz[wdl + 2];
+
+    // If winning, check for a winning pawn move.
+    if (wdl > 0) {
+        // Generate at least all legal non-capturing pawn moves
+        // including non-capturing promotions.
+        chessmovelist* movelist = pos.getMoves();
+
+        for (int i = 0; i < movelist->length; i++)
+        {
+            chessmove *m = &movelist->move[i];
+            if (ISCAPTURE(m->code) || (GETPIECE(m->code) >> 1) != PAWN)
+                continue;
+
+            if (pos.playMove(m))
+            {
+                int v = -probe_wdl(success);
+                pos.unplayMove(m);
+                if (*success == 0) return 0;
+                if (v == wdl)
+                {
+                    free(movelist);
+                    return wdl_to_dtz[wdl + 2];
+                }
+            }
+}
+        free(movelist);
+  }
+
+    // If we are here, we know that the best move is not an ep capture.
+    // In other words, the value of wdl corresponds to the WDL value of
+    // the position without ep rights. It is therefore safe to probe the
+    // DTZ table with the current value of wdl.
+
+    int dtz = probe_dtz_table(wdl, success);
+    if (*success >= 0)
+        return wdl_to_dtz[wdl + 2] + ((wdl > 0) ? dtz : -dtz);
+
+    // *success < 0 means we need to probe DTZ for the other side to move.
+    int best;
+    if (wdl > 0) {
+        best = INT32_MAX;
+        // If wdl > 0, we already generated all moves.
+    }
+    else {
+        // If (cursed) loss, the worst case is a losing capture or pawn move
+        // as the "best" move, leading to dtz of -1 or -101.
+        // In case of mate, this will cause -1 to be returned.
+        best = wdl_to_dtz[wdl + 2];
+
+        chessmovelist* movelist = pos.getMoves();
+
+        for (int i = 0; i < movelist->length; i++)
+        {
+            chessmove *m = &movelist->move[i];
+            if (ISCAPTURE(m->code) || (GETPIECE(m->code) >> 1) == PAWN)
+                continue;
+
+            if (pos.playMove(m))
+            {
+                int v = -probe_dtz(success);
+                pos.unplayMove(m);
+                if (*success == 0)
+                {
+                    free(movelist);
+                    return 0;
+                }
+                if (wdl > 0) {
+                    if (v > 0 && v + 1 < best)
+                        best = v + 1;
+                }
+                else {
+                    if (v - 1 < best)
+                        best = v - 1;
+                }
+            }
+        }
+        free(movelist);
+        return best;
+    }
+
+#if 0
 // Check whether there has been at least one repetition of positions
 // since the last capture or pawn move.
 static int has_repeated(StateInfo *st)
@@ -638,13 +652,14 @@ static int has_repeated(StateInfo *st)
     st = st->previous;
   }
 }
+#endif
 
-static Value wdl_to_value[5] = {
-  -VALUE_MATE + MAX_PLY + 1,
-  VALUE_DRAW - 2,
-  VALUE_DRAW,
-  VALUE_DRAW + 2,
-  VALUE_MATE - MAX_PLY - 1
+static int wdl_to_value[5] = {
+    SCOREBLACKWINS,
+    SCOREDRAW - 2,
+    SCOREDRAW,
+    SCOREDRAW + 2,
+    SCOREWHITEWINS
 };
 
 // Use the DTZ tables to filter out moves that don't preserve the win or draw.
