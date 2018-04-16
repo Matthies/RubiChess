@@ -360,43 +360,38 @@ static ExtMove *add_underprom_caps(Position& pos, MoveStack *stack, MoveStack *e
 
   return extra;
 }
+#endif
 
+#if 1
 static int probe_ab(int alpha, int beta, int *success)
 {
-  int v;
-  ExtMove stack[64];
-  ExtMove *moves, *end;
-  StateInfo st;
+    int v;
 
-  // Generate (at least) all legal captures including (under)promotions.
-  // It is OK to generate more, as long as they are filtered out below.
-  if (!pos.checkers()) {
-    end = generate<CAPTURES>(pos, stack);
-    // Since underpromotion captures are not included, we need to add them.
-    end = add_underprom_caps(pos, stack, end);
-  } else
-    end = generate<EVASIONS>(pos, stack);
-
-  CheckInfo ci(pos);
-
-  for (moves = stack; moves < end; moves++) {
-    Move capture = moves->move;
-    if (!pos.capture(capture) || !pos.legal(capture, ci.pinned))
-      continue;
-    pos.do_move(capture, st, ci, pos.gives_check(capture, ci));
-    v = -probe_ab(pos, -beta, -alpha, success);
-    pos.undo_move(capture);
-    if (*success == 0) return 0;
-    if (v > alpha) {
-      if (v >= beta)
-	return v;
-      alpha = v;
+    // Generate (at least) all legal captures including (under)promotions.
+    // It is OK to generate more, as long as they are filtered out below.
+    chessmovelist* movelist = pos.getMoves();
+    for (int i = 0; i < movelist->length; i++)
+    {
+        chessmove *m = &movelist->move[i];
+        if (ISCAPTURE(m->code) || ISPROMOTION(m->code) || pos.isCheck)
+        {
+            if (pos.playMove(m))
+            {
+                v = -probe_ab(-beta, -alpha, success);
+                pos.unplayMove(m);
+                if (*success == 0) return 0;
+                if (v > alpha) {
+                    if (v >= beta)
+                        return v;
+                    alpha = v;
+                }
+            }
+        }
     }
-  }
 
-  v = probe_wdl_table(pos, success);
+    v = probe_wdl_table(success);
 
-  return alpha >= v ? alpha : v;
+    return alpha >= v ? alpha : v;
 }
 
 // Probe the WDL table for a particular position.
@@ -417,48 +412,40 @@ static int probe_ab(int alpha, int beta, int *success)
 int probe_wdl(int *success)
 {
   *success = 1;
-
-  // Generate (at least) all legal en passant captures.
-  ExtMove stack[192];
-  ExtMove *moves, *end;
-  StateInfo st;
+  int best_cap = -3, best_ep = -3;
 
   // Generate (at least) all legal captures including (under)promotions.
-  if (!pos.checkers()) {
-    end = generate<CAPTURES>(pos, stack);
-    end = add_underprom_caps(pos, stack, end);
-  } else
-    end = generate<EVASIONS>(pos, stack);
-
-  CheckInfo ci(pos);
-
-  int best_cap = -3, best_ep = -3;
+  chessmovelist* movelist = pos.getMoves();
 
   // We do capture resolution, letting best_cap keep track of the best
   // capture without ep rights and letting best_ep keep track of still
   // better ep captures if they exist.
+  for (int i = 0; i < movelist->length; i++)
+  {
+      chessmove *m = &movelist->move[i];
+      if (ISCAPTURE(m->code) || ISPROMOTION(m->code) || pos.isCheck)
+      {
+          if (pos.playMove(m))
+          {
+              int v = -probe_ab(-2, -best_cap, success);
+              pos.unplayMove(m);
+              if (*success == 0) return 0;
+              if (v > best_cap) {
+                  if (v == 2) {
+                      *success = 2;
+                      return 2;
+                  }
+                  if (!GETEPCAPTURE(m->code))
+                      best_cap = v;
+                  else if (v > best_ep)
+                      best_ep = v;
+              }
 
-  for (moves = stack; moves < end; moves++) {
-    Move capture = moves->move;
-    if (!pos.capture(capture) || !pos.legal(capture, ci.pinned))
-      continue;
-    pos.do_move(capture, st, ci, pos.gives_check(capture, ci));
-    int v = -probe_ab(pos, -2, -best_cap, success);
-    pos.undo_move(capture);
-    if (*success == 0) return 0;
-    if (v > best_cap) {
-      if (v == 2) {
-	*success = 2;
-	return 2;
+          }
       }
-      if (type_of(capture) != ENPASSANT)
-        best_cap = v;
-      else if (v > best_ep)
-        best_ep = v;
-    }
   }
 
-  int v = probe_wdl_table(pos, success);
+  int v = probe_wdl_table(success);
   if (*success == 0) return 0;
 
   // Now max(v, best_cap) is the WDL value of the position without ep rights.
@@ -666,11 +653,11 @@ static Value wdl_to_value[5] = {
 //
 // A return value of 0 indicates that not all probes were successful and that
 // no moves were filtered out.
-int root_probe(Position& pos, Value &TBScore)
+int root_probe(int &TBScore)
 {
   int success;
 
-  int dtz = probe_dtz(pos, &success);
+  int dtz = probe_dtz(&success);
   if (!success) return 0;
 
   StateInfo st;

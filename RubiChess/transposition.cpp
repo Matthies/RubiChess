@@ -186,7 +186,7 @@ u8 zobrist::getMaterialHash()
 #ifndef BITBOARD
             if (!(i & 0x88)
 #endif
-                if (pos.mailbox[j] != BLANK)
+                if (pos.mailbox[j] == pc)
                     hash ^= zb.boardtable[(count++ << 4) | pc];
         }
     }

@@ -1163,10 +1163,10 @@ bool chessposition::playMove(chessmove *cm)
     }
     else {
         mailbox[to] = promote;
-        materialhash ^= zb.boardtable[(POPCOUNT(piece00[pfrom]) << 4) | pfrom];
         BitboardClear(from, pfrom);
-        BitboardSet(to, promote);
+        materialhash ^= zb.boardtable[(POPCOUNT(piece00[pfrom]) << 4) | pfrom];
         materialhash ^= zb.boardtable[(POPCOUNT(piece00[promote]) << 4) | promote];
+        BitboardSet(to, promote);
         // just double the hash-switch for target to make the pawn vanish
         pawnhash ^= zb.boardtable[(to << 4) | mailbox[to]];
     }
@@ -1186,12 +1186,11 @@ bool chessposition::playMove(chessmove *cm)
         if (ept && to == ept)
         {
             int epfield = (from & 0x38) | (to & 0x07);
+            BitboardClear(epfield, (pfrom ^ S2MMASK));
+            mailbox[epfield] = BLANK;
             hash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
             pawnhash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
             materialhash ^= zb.boardtable[(POPCOUNT(piece00[(pfrom ^ S2MMASK)]) << 4) | (pfrom ^ S2MMASK)];
-
-            BitboardClear(epfield, (pfrom ^ S2MMASK));
-            mailbox[epfield] = BLANK;
         }
     }
 
