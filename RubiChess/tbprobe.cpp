@@ -544,6 +544,8 @@ static int wdl_to_dtz[] = {
 //
 int probe_dtz(int *success)
 {
+    chessmovelist* movelist;
+
     int wdl = probe_wdl(success);
     if (*success == 0) return 0;
 
@@ -558,7 +560,7 @@ int probe_dtz(int *success)
     if (wdl > 0) {
         // Generate at least all legal non-capturing pawn moves
         // including non-capturing promotions.
-        chessmovelist* movelist = pos.getMoves();
+        movelist = pos.getMoves();
 
         for (int i = 0; i < movelist->length; i++)
         {
@@ -601,37 +603,37 @@ int probe_dtz(int *success)
         // as the "best" move, leading to dtz of -1 or -101.
         // In case of mate, this will cause -1 to be returned.
         best = wdl_to_dtz[wdl + 2];
+        movelist = pos.getMoves();
+    }
+    for (int i = 0; i < movelist->length; i++)
+    {
+        chessmove *m = &movelist->move[i];
+        if (ISCAPTURE(m->code) || (GETPIECE(m->code) >> 1) == PAWN)
+            continue;
 
-        chessmovelist* movelist = pos.getMoves();
-
-        for (int i = 0; i < movelist->length; i++)
+        if (pos.playMove(m))
         {
-            chessmove *m = &movelist->move[i];
-            if (ISCAPTURE(m->code) || (GETPIECE(m->code) >> 1) == PAWN)
-                continue;
-
-            if (pos.playMove(m))
+            int v = -probe_dtz(success);
+            pos.unplayMove(m);
+            if (*success == 0)
             {
-                int v = -probe_dtz(success);
-                pos.unplayMove(m);
-                if (*success == 0)
-                {
-                    free(movelist);
-                    return 0;
-                }
-                if (wdl > 0) {
-                    if (v > 0 && v + 1 < best)
-                        best = v + 1;
-                }
-                else {
-                    if (v - 1 < best)
-                        best = v - 1;
-                }
+                free(movelist);
+                return 0;
+            }
+            if (wdl > 0) {
+                if (v > 0 && v + 1 < best)
+                    best = v + 1;
+            }
+            else {
+                if (v - 1 < best)
+                    best = v - 1;
+
             }
         }
-        free(movelist);
-        return best;
     }
+    free(movelist);
+    return best;
+}
 
 #if 0
 // Check whether there has been at least one repetition of positions
@@ -654,7 +656,7 @@ static int has_repeated(StateInfo *st)
 }
 #endif
 
-static int wdl_to_value[5] = {
+static int wdl_to_Value[5] = {
     SCOREBLACKWINS,
     SCOREDRAW - 2,
     SCOREDRAW,
@@ -670,112 +672,140 @@ static int wdl_to_value[5] = {
 // no moves were filtered out.
 int root_probe(int &TBScore)
 {
-  int success;
+    int success;
 
-  int dtz = probe_dtz(&success);
-  if (!success) return 0;
+    int dtz = probe_dtz(&success);
+    if (!success)
+        return 0;
 
-  StateInfo st;
-  CheckInfo ci(pos);
-
-  // Probe each move.
-  for (size_t i = 0; i < Search::RootMoves.size(); i++) {
-    Move move = Search::RootMoves[i].pv[0];
-    pos.do_move(move, st, ci, pos.gives_check(move, ci));
-    int v = 0;
-    if (pos.checkers() && dtz > 0) {
-      ExtMove s[192];
-      if (generate<LEGAL>(pos, s) == s)
-	v = 1;
-    }
-    if (!v) {
-      if (st.rule50 != 0) {
-	v = -probe_dtz(pos, &success);
-	if (v > 0) v++;
-	else if (v < 0) v--;
-      } else {
-	v = -probe_wdl(pos, &success);
-	v = wdl_to_dtz[v + 2];
-      }
-    }
-    pos.undo_move(move);
-    if (!success) return 0;
-    Search::RootMoves[i].score = (Value)v;
-  }
-
-  // Obtain 50-move counter for the root position.
-  // In Stockfish there seems to be no clean way, so we do it like this:
-  int cnt50 = st.previous->rule50;
-
-  // Use 50-move counter to determine whether the root position is
-  // won, lost or drawn.
-  int wdl = 0;
-  if (dtz > 0)
-    wdl = (dtz + cnt50 <= 100) ? 2 : 1;
-  else if (dtz < 0)
-    wdl = (-dtz + cnt50 <= 100) ? -2 : -1;
-
-  // Determine the score to report to the user.
-  TBScore = wdl_to_Value[wdl + 2];
-  // If the position is winning or losing, but too few moves left, adjust the
-  // score to show how close it is to winning or losing.
-  // NOTE: int(PawnValueEg) is used as scaling factor in score_to_uci().
-  if (wdl == 1 && dtz <= 100)
-    TBScore = (Value)(((200 - dtz - cnt50) * int(PawnValueEg)) / 200);
-  else if (wdl == -1 && dtz >= -100)
-    TBScore = -(Value)(((200 + dtz - cnt50) * int(PawnValueEg)) / 200);
-
-  // Now be a bit smart about filtering out moves.
-  size_t j = 0;
-  if (dtz > 0) { // winning (or 50-move rule draw)
-    int best = 0xffff;
-    for (size_t i = 0; i < Search::RootMoves.size(); i++) {
-      int v = Search::RootMoves[i].score;
-      if (v > 0 && v < best)
-	best = v;
-    }
-    int max = best;
-    // If the current phase has not seen repetitions, then try all moves
-    // that stay safely within the 50-move budget, if there are any.
-    if (!has_repeated(st.previous) && best + cnt50 <= 99)
-      max = 99 - cnt50;
-    for (size_t i = 0; i < Search::RootMoves.size(); i++) {
-      int v = Search::RootMoves[i].score;
-      if (v > 0 && v <= max)
-	Search::RootMoves[j++] = Search::RootMoves[i];
-    }
-  } else if (dtz < 0) {
-    int best = 0;
-    for (size_t i = 0; i < Search::RootMoves.size(); i++) {
-      int v = Search::RootMoves[i].score;
-      if (v < best)
-	best = v;
-    }
-    // Try all moves, unless we approach or have a 50-move rule draw.
-    if (-best * 2 + cnt50 < 100)
-      return 1;
-    for (size_t i = 0; i < Search::RootMoves.size(); i++) {
-      if (Search::RootMoves[i].score == best)
-	Search::RootMoves[j++] = Search::RootMoves[i];
-    }
-  } else { // drawing
-    // Try all moves that preserve the draw.
-    for (size_t i = 0; i < Search::RootMoves.size(); i++) {
-      if (Search::RootMoves[i].score == 0)
-	Search::RootMoves[j++] = Search::RootMoves[i];
-    }
-  }
-  Search::RootMoves.resize(j, Search::RootMove(MOVE_NONE));
-
-  return 1;
+    // Probe each move.
+    for (int i = 0; i < pos.rootmoves->length; i++)
+    {
+        chessmove *m = &pos.rootmoves->move[i];
+        pos.playMove(m);
+        int v = 0;
+        if (pos.isCheck && dtz > 0) {
+            chessmovelist* nextmovelist = pos.getMoves();
+            bool foundevasion = false;
+            for (int j = 0; j < nextmovelist->length; j++)
+            {
+                if (pos.playMove(&nextmovelist->move[j]))
+                {
+                    foundevasion = true;
+                    pos.unplayMove(&nextmovelist->move[j]);
+                    break;
+                }
+            }
+            free(nextmovelist);
+            if (!foundevasion)
+                v = 1;
+        }
+        if (!v) {
+            if (pos.halfmovescounter != 0) {
+                v = -probe_dtz(&success);
+                if (v > 0) v++;
+                else if (v < 0) v--;
+            }
+            else {
+                v = -probe_wdl(&success);
+                v = wdl_to_dtz[v + 2];
+            }
 }
 
+        if (!success)
+        {
+            return 0;
+        }
+        m->value = v;
+
+        pos.unplayMove(m);
+  }
+
+    // Obtain 50-move counter for the root position.
+    // In Stockfish there seems to be no clean way, so we do it like this:
+    int cnt50 = pos.halfmovescounter;
+
+    // Use 50-move counter to determine whether the root position is
+    // won, lost or drawn.
+    int wdl = 0;
+    if (dtz > 0)
+        wdl = (dtz + cnt50 <= 100) ? 2 : 1;
+    else if (dtz < 0)
+        wdl = (-dtz + cnt50 <= 100) ? -2 : -1;
+
+    // Determine the score to report to the user.
+    TBScore = wdl_to_Value[wdl + 2];
+    // If the position is winning or losing, but too few moves left, adjust the
+    // score to show how close it is to winning or losing.
+    // NOTE: int(PawnValueEg) is used as scaling factor in score_to_uci().
+    if (wdl == 1 && dtz <= 100)
+        TBScore = 100 - (dtz + cnt50) / 2;
+    else if (wdl == -1 && dtz >= -100)
+        TBScore = -(100 + (dtz - cnt50) / 2);
+
+    // Now be a bit smart about filtering out moves.
+    size_t j = 0;
+    if (dtz > 0) { // winning (or 50-move rule draw)
+        int best = 0xffff;
+        for (int i = 0; i < pos.rootmoves->length; i++)
+        {
+            chessmove *m = &pos.rootmoves->move[i];
+            int v = m->value;
+            if (v > 0 && v < best)
+                best = v;
+        }
+
+        int max = best;
+        // If the current phase has not seen repetitions, then try all moves
+        // that stay safely within the 50-move budget, if there are any.
+        if (!pos.testRepetiton() && best + cnt50 <= 99)
+            max = 99 - cnt50;
+
+        for (int i = 0; i < pos.rootmoves->length; i++)
+        {
+            int v = pos.rootmoves->move[i].value;
+            if (v > 0 && v <= max)
+                pos.rootmoves->move[j++] = pos.rootmoves->move[i];
+        }
+    }
+    else if (dtz < 0) {
+        int best = 0;
+        for (int i = 0; i < pos.rootmoves->length; i++)
+        {
+            int v = pos.rootmoves->move[i].value;
+            if (v < best)
+                best = v;
+        }
+        // Try all moves, unless we approach or have a 50-move rule draw.
+        if (-best * 2 + cnt50 < 100)
+            return 1;
+
+        for (int i = 0; i < pos.rootmoves->length; i++)
+        {
+            if (pos.rootmoves->move[i].value == best)
+                pos.rootmoves->move[j++] = pos.rootmoves->move[i];
+        }
+    }
+    else { // drawing
+           // Try all moves that preserve the draw.
+        for (int i = 0; i < pos.rootmoves->length; i++)
+        {
+            if (pos.rootmoves->move[i].value == 0)
+                pos.rootmoves->move[j++] = pos.rootmoves->move[i];
+        }
+    }
+    //Search::RootMoves.resize(j, Search::RootMove(MOVE_NONE));
+
+    return 1;
+}
+
+#if 0
 // Use the WDL tables to filter out moves that don't preserve the win or draw.
 // This is a fallback for the case that some or all DTZ tables are missing.
 //
 // A return value of 0 indicates that not all probes were successful and that
 // no moves were filtered out.
-int root_probe_wdl(Position& pos, Value& TBScore)
+int root_probe_wdl(int& TBScore)
 {
   int success;
 
@@ -809,5 +839,6 @@ int root_probe_wdl(Position& pos, Value& TBScore)
 
   return 1;
 }
+#endif
 
 #endif

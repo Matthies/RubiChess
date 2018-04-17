@@ -1,7 +1,6 @@
 
 #include "RubiChess.h"
 
-
 #ifdef _WIN32
 
 string GetSystemInfo()

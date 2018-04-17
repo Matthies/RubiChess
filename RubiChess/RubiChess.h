@@ -76,6 +76,7 @@ using namespace std;
 #include <math.h>
 #include <regex>
 
+#include "tbprobe.h"
 
 #ifdef _WIN32
 
@@ -572,7 +573,7 @@ public:
     int *positionvaluetable; // value tables for both sides, 7 PieceTypes and 256 phase variations 
     int ph; // to store the phase during different evaluation functions
     int isCheck;
-    int rootmoves;  // precalculated and used for MultiPV mode
+    chessmovelist *rootmoves = nullptr;
     chessmove defaultmove; // fallback if search in time trouble didn't finish a single iteration 
     chessposition();
     ~chessposition();
@@ -743,6 +744,7 @@ public:
     int moveOverhead;
     int MultiPV;
     bool ponder;
+    string SyzygyPath;
     enum { NO, PONDERING, HITPONDER } pondersearch;
     int terminationscore = SHRT_MAX;
     int stopLevel = ENGINESTOPPED;

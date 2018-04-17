@@ -401,14 +401,20 @@ bool chessposition::applyMove(string s)
 void chessposition::getRootMoves()
 {
     // Precalculating the list of legal moves didn't work well for some unknown reason but we need the number of legal moves in MultiPV mode
+    if (rootmoves)
+    {
+        delete rootmoves;
+        rootmoves = nullptr;
+    }
+    rootmoves = new chessmovelist;
+    rootmoves->length = 0;
     chessmovelist *movelist = getMoves();
     int bestval = SCOREBLACKWINS;
-    rootmoves = 0;
     for (int i = 0; i < movelist->length; i++)
     {
         if (playMove(&movelist->move[i]))
         {
-            rootmoves++;
+            rootmoves->move[rootmoves->length++] = movelist->move[i];
             unplayMove(&movelist->move[i]);
             if (bestval < movelist->move[i].value)
             {
@@ -1044,6 +1050,8 @@ chessposition::chessposition()
 
 chessposition::~chessposition()
 {
+    if (rootmoves)
+        delete rootmoves;
     delete positionvaluetable;
 }
 
@@ -2241,6 +2249,8 @@ engine::engine()
     setOption("Move Overhead", "50");
     setOption("MultiPV", "1");
     setOption("Ponder", "false");
+    setOption("SyzygyPath", "<empty>");
+
 
 #ifdef _WIN32
     LARGE_INTEGER f;
@@ -2301,6 +2311,11 @@ void engine::setOption(string sName, string sValue)
             return;
         moveOverhead = newint;
     }
+    if (sName == "syzygypath")
+    {
+        SyzygyPath = sValue;
+        init_tablebases((char *)SyzygyPath.c_str());
+    }
 }
 
 
@@ -2347,6 +2362,39 @@ void engine::communicate(string inputstring)
                 }
                 pos.ply = 0;
                 pos.getRootMoves();
+                // TB
+                int use_tb = TBlargest;
+                int tb_position = 0;
+                int TBScore;
+                if (POPCOUNT(pos.occupied00[0] | pos.occupied00[1]) <= TBlargest)
+                {
+                    if ((tb_position = root_probe(TBScore))) {
+                        // The current root position is in the tablebases.
+                        // RootMoves now contains only moves that preserve the draw or win.
+
+                        // Do not probe tablebases during the search.
+                        use_tb = 0;
+
+                        // It might be a good idea to mangle the hash key (xor it
+                        // with a fixed value) in order to "clear" the hash table of
+                        // the results of previous probes. However, that would have to
+                        // be done from within the Position class, so we skip it for now.
+
+                        // Optional: decrease target time.
+                    }
+#if 0
+                    else // If DTZ tables are missing, use WDL tables as a fallback
+                    {
+                        // Filter out moves that do not preserve a draw or win
+                        tb_position = root_probe_wdl(TBScore);
+
+                        // Only probe during search if winning
+                        if (TBScore <= SCOREDRAW)
+                            use_tb = 0;
+                    }
+#endif
+                }
+
 
                 if (debug)
                 {
@@ -2386,6 +2434,7 @@ void engine::communicate(string inputstring)
                 myUci->send("option name Move Overhead type spin default 50 min 0 max 5000\n");
                 myUci->send("option name MultiPV type spin default 1 min 1 max %d\n", MAXMULTIPV);
                 myUci->send("option name Ponder type check default false\n");
+                myUci->send("option name SyzygyPath type string default <empty>\n");
                 myUci->send("uciok\n", author);
                 break;
             case SETOPTION:
