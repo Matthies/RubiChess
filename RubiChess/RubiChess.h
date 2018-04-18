@@ -573,7 +573,7 @@ public:
     int *positionvaluetable; // value tables for both sides, 7 PieceTypes and 256 phase variations 
     int ph; // to store the phase during different evaluation functions
     int isCheck;
-    chessmovelist *rootmoves = nullptr;
+    chessmovelist rootmovelist;
     chessmove defaultmove; // fallback if search in time trouble didn't finish a single iteration 
     chessposition();
     ~chessposition();

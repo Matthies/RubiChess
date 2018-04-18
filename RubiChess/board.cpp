@@ -401,20 +401,13 @@ bool chessposition::applyMove(string s)
 void chessposition::getRootMoves()
 {
     // Precalculating the list of legal moves didn't work well for some unknown reason but we need the number of legal moves in MultiPV mode
-    if (rootmoves)
-    {
-        delete rootmoves;
-        rootmoves = nullptr;
-    }
-    rootmoves = new chessmovelist;
-    rootmoves->length = 0;
     chessmovelist *movelist = getMoves();
     int bestval = SCOREBLACKWINS;
     for (int i = 0; i < movelist->length; i++)
     {
         if (playMove(&movelist->move[i]))
         {
-            rootmoves->move[rootmoves->length++] = movelist->move[i];
+            rootmovelist.move[rootmovelist.length++] = movelist->move[i];
             unplayMove(&movelist->move[i]);
             if (bestval < movelist->move[i].value)
             {
@@ -1050,8 +1043,6 @@ chessposition::chessposition()
 
 chessposition::~chessposition()
 {
-    if (rootmoves)
-        delete rootmoves;
     delete positionvaluetable;
 }
 
@@ -2249,7 +2240,7 @@ engine::engine()
     setOption("Move Overhead", "50");
     setOption("MultiPV", "1");
     setOption("Ponder", "false");
-    setOption("SyzygyPath", "<empty>");
+    setOption("SyzygyPath", /*"<empty>"*/ "C:\\_Lokale_Daten_ungesichert\\tb");
 
 
 #ifdef _WIN32

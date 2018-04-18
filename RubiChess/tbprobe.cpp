@@ -46,7 +46,7 @@ static void prt_str(char *str, int color)
     for (i = POPCOUNT(pos.piece00[(pt << 1) | color]); i > 0; i--)
       *str++ = pchr[6 - pt];
   *str++ = 'v';
-  color = ~color;
+  color ^= S2MMASK;
   for (pt = KING; pt >= PAWN; pt--)
     for (i = POPCOUNT(pos.piece00[(pt << 1) | color]); i > 0; i--)
       *str++ = pchr[6 - pt];
@@ -679,9 +679,9 @@ int root_probe(int &TBScore)
         return 0;
 
     // Probe each move.
-    for (int i = 0; i < pos.rootmoves->length; i++)
+    for (int i = 0; i < pos.rootmovelist.length; i++)
     {
-        chessmove *m = &pos.rootmoves->move[i];
+        chessmove *m = &pos.rootmovelist.move[i];
         pos.playMove(m);
         int v = 0;
         if (pos.isCheck && dtz > 0) {
@@ -747,9 +747,9 @@ int root_probe(int &TBScore)
     size_t j = 0;
     if (dtz > 0) { // winning (or 50-move rule draw)
         int best = 0xffff;
-        for (int i = 0; i < pos.rootmoves->length; i++)
+        for (int i = 0; i < pos.rootmovelist.length; i++)
         {
-            chessmove *m = &pos.rootmoves->move[i];
+            chessmove *m = &pos.rootmovelist.move[i];
             int v = m->value;
             if (v > 0 && v < best)
                 best = v;
@@ -761,18 +761,18 @@ int root_probe(int &TBScore)
         if (!pos.testRepetiton() && best + cnt50 <= 99)
             max = 99 - cnt50;
 
-        for (int i = 0; i < pos.rootmoves->length; i++)
+        for (int i = 0; i < pos.rootmovelist.length; i++)
         {
-            int v = pos.rootmoves->move[i].value;
+            int v = pos.rootmovelist.move[i].value;
             if (v > 0 && v <= max)
-                pos.rootmoves->move[j++] = pos.rootmoves->move[i];
+                pos.rootmovelist.move[j++] = pos.rootmovelist.move[i];
         }
     }
     else if (dtz < 0) {
         int best = 0;
-        for (int i = 0; i < pos.rootmoves->length; i++)
+        for (int i = 0; i < pos.rootmovelist.length; i++)
         {
-            int v = pos.rootmoves->move[i].value;
+            int v = pos.rootmovelist.move[i].value;
             if (v < best)
                 best = v;
         }
@@ -780,18 +780,18 @@ int root_probe(int &TBScore)
         if (-best * 2 + cnt50 < 100)
             return 1;
 
-        for (int i = 0; i < pos.rootmoves->length; i++)
+        for (int i = 0; i < pos.rootmovelist.length; i++)
         {
-            if (pos.rootmoves->move[i].value == best)
-                pos.rootmoves->move[j++] = pos.rootmoves->move[i];
+            if (pos.rootmovelist.move[i].value == best)
+                pos.rootmovelist.move[j++] = pos.rootmovelist.move[i];
         }
     }
     else { // drawing
            // Try all moves that preserve the draw.
-        for (int i = 0; i < pos.rootmoves->length; i++)
+        for (int i = 0; i < pos.rootmovelist.length; i++)
         {
-            if (pos.rootmoves->move[i].value == 0)
-                pos.rootmoves->move[j++] = pos.rootmoves->move[i];
+            if (pos.rootmovelist.move[i].value == 0)
+                pos.rootmovelist.move[j++] = pos.rootmovelist.move[i];
         }
     }
     //Search::RootMoves.resize(j, Search::RootMove(MOVE_NONE));

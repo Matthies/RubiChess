@@ -407,7 +407,7 @@ int rootsearch(int alpha, int beta, int depth)
     if (isMultiPV)
     {
         lastmoveindex = 0;
-        maxmoveindex = min(en.MultiPV, pos.rootmoves->length);
+        maxmoveindex = min(en.MultiPV, pos.rootmovelist.length);
         for (int i = 0; i < maxmoveindex; i++)
             pos.bestmovescore[i] = SHRT_MIN + 1;
     }
@@ -771,7 +771,7 @@ static void search_gen1()
                     // FIXME: This is a bit ugly... code more consistent with SinglePV would be better
                     // but I had to fight against performance regression so I devided it this way
                     int i = 0;
-                    int maxmoveindex = min(en.MultiPV, pos.rootmoves->length);
+                    int maxmoveindex = min(en.MultiPV, pos.rootmovelist.length);
                     do
                     {
                         // The only case that bestmove is not set can happen if rootsearch hit the TP table
@@ -850,7 +850,7 @@ static void search_gen1()
         }
         if (inWindow == 1)
             depth += depthincrement;
-        if (pos.rootmoves->length == 1 && depth > 4 && en.endtime1)
+        if (pos.rootmovelist.length == 1 && depth > 4 && en.endtime1)
             // early exit in playing mode as there is exactly one possible move
             en.stopLevel = ENGINEWANTSTOP;
     } while (en.stopLevel == ENGINERUN && depth <= min(maxdepth, abs(matein) * 2));
