@@ -710,6 +710,8 @@ static void search_gen1()
             // research with lower alpha
             alpha = max(SHRT_MIN + 1, alpha - deltaalpha);
             deltaalpha <<= 1;
+            if (deltaalpha > 1000)
+                deltaalpha = SHRT_MAX << 1;
             inWindow = 0;
 #ifdef DEBUG
             en.wastedaspnodes += (en.nodes - nodesbefore);
@@ -720,6 +722,8 @@ static void search_gen1()
             // research with higher beta
             beta = min(SHRT_MAX, beta + deltabeta);
             deltabeta <<= 1;
+            if (deltabeta > 1000)
+                deltabeta = SHRT_MAX << 1;
             inWindow = 2;
 #ifdef DEBUG
             en.wastedaspnodes += (en.nodes - nodesbefore);

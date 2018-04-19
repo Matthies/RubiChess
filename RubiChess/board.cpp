@@ -420,6 +420,43 @@ void chessposition::getRootMoves()
     delete movelist;
 }
 
+void chessposition::tbFilterRootMoves()
+{
+    // TB
+    useTb = TBlargest;
+    int tb_position = 0;
+    int TBScore;
+    if (POPCOUNT(pos.occupied00[0] | pos.occupied00[1]) <= TBlargest)
+    {
+        if ((tb_position = root_probe(TBScore))) {
+            // The current root position is in the tablebases.
+            // RootMoves now contains only moves that preserve the draw or win.
+
+            // Do not probe tablebases during the search.
+            useTb = 0;
+
+            // It might be a good idea to mangle the hash key (xor it
+            // with a fixed value) in order to "clear" the hash table of
+            // the results of previous probes. However, that would have to
+            // be done from within the Position class, so we skip it for now.
+
+            // Optional: decrease target time.
+        }
+#if 0
+        else // If DTZ tables are missing, use WDL tables as a fallback
+        {
+            // Filter out moves that do not preserve a draw or win
+            tb_position = root_probe_wdl(TBScore);
+
+            // Only probe during search if winning
+            if (TBScore <= SCOREDRAW)
+                use_tb = 0;
+        }
+#endif
+    }
+}
+
+
 
 /* test the actualmove for three-fold-repetition as the repetition table may give false positive due to table collisions */
 bool chessposition::testRepetiton()
@@ -2354,39 +2391,7 @@ void engine::communicate(string inputstring)
                 }
                 pos.ply = 0;
                 pos.getRootMoves();
-                // TB
-                int use_tb = TBlargest;
-                int tb_position = 0;
-                int TBScore;
-                if (POPCOUNT(pos.occupied00[0] | pos.occupied00[1]) <= TBlargest)
-                {
-                    if ((tb_position = root_probe(TBScore))) {
-                        // The current root position is in the tablebases.
-                        // RootMoves now contains only moves that preserve the draw or win.
-
-                        // Do not probe tablebases during the search.
-                        use_tb = 0;
-
-                        // It might be a good idea to mangle the hash key (xor it
-                        // with a fixed value) in order to "clear" the hash table of
-                        // the results of previous probes. However, that would have to
-                        // be done from within the Position class, so we skip it for now.
-
-                        // Optional: decrease target time.
-                    }
-#if 0
-                    else // If DTZ tables are missing, use WDL tables as a fallback
-                    {
-                        // Filter out moves that do not preserve a draw or win
-                        tb_position = root_probe_wdl(TBScore);
-
-                        // Only probe during search if winning
-                        if (TBScore <= SCOREDRAW)
-                            use_tb = 0;
-                    }
-#endif
-                }
-
+                pos.tbFilterRootMoves();
 
                 if (debug)
                 {

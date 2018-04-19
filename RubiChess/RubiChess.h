@@ -573,6 +573,7 @@ public:
     int *positionvaluetable; // value tables for both sides, 7 PieceTypes and 256 phase variations 
     int ph; // to store the phase during different evaluation functions
     int isCheck;
+    int useTb;
     chessmovelist rootmovelist;
     chessmove defaultmove; // fallback if search in time trouble didn't finish a single iteration 
     chessposition();
@@ -602,6 +603,7 @@ public:
     void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
     chessmovelist* getMoves();
     void getRootMoves();
+    void tbFilterRootMoves();
     bool playMove(chessmove *cm);
     void unplayMove(chessmove *cm);
     void playNullMove();

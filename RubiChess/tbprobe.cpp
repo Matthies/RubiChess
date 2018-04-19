@@ -544,7 +544,7 @@ static int wdl_to_dtz[] = {
 //
 int probe_dtz(int *success)
 {
-    chessmovelist* movelist;
+    chessmovelist* movelist = nullptr;
 
     int wdl = probe_wdl(success);
     if (*success == 0) return 0;
@@ -579,9 +579,8 @@ int probe_dtz(int *success)
                     return wdl_to_dtz[wdl + 2];
                 }
             }
-}
-        free(movelist);
-  }
+        }
+    }
 
     // If we are here, we know that the best move is not an ep capture.
     // In other words, the value of wdl corresponds to the WDL value of
@@ -631,7 +630,8 @@ int probe_dtz(int *success)
             }
         }
     }
-    free(movelist);
+    if (movelist)
+        free(movelist);
     return best;
 }
 
@@ -710,16 +710,15 @@ int root_probe(int &TBScore)
                 v = -probe_wdl(&success);
                 v = wdl_to_dtz[v + 2];
             }
-}
+        }
 
+        pos.unplayMove(m);
         if (!success)
         {
             return 0;
         }
         m->value = v;
-
-        pos.unplayMove(m);
-  }
+    }
 
     // Obtain 50-move counter for the root position.
     // In Stockfish there seems to be no clean way, so we do it like this:
@@ -766,7 +765,7 @@ int root_probe(int &TBScore)
             int v = pos.rootmovelist.move[i].value;
             if (v > 0 && v <= max)
                 pos.rootmovelist.move[j++] = pos.rootmovelist.move[i];
-        }
+}
     }
     else if (dtz < 0) {
         int best = 0;
