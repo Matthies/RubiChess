@@ -119,7 +119,7 @@ static int probe_wdl_table(int *success)
     key = pos.materialhash;
 
     // Test for KvK.
-    if (key == (zb.boardtable[WKING << 4] ^ zb.boardtable[BKING << 4]))
+    if (key == (zb.boardtable[WKING] ^ zb.boardtable[BKING]))
         return 0;
 
     ptr2 = TB_hash[key >> (64 - TBHASHBITS)];
@@ -657,11 +657,11 @@ static int has_repeated(StateInfo *st)
 #endif
 
 static int wdl_to_Value[5] = {
-    SCOREBLACKWINS,
+    -SCORETBWIN,
     SCOREDRAW - 2,
     SCOREDRAW,
     SCOREDRAW + 2,
-    SCOREWHITEWINS
+    SCORETBWIN
 };
 
 // Use the DTZ tables to filter out moves that don't preserve the win or draw.
@@ -763,9 +763,9 @@ int root_probe(int &TBScore)
         for (int i = 0; i < pos.rootmovelist.length; i++)
         {
             int v = pos.rootmovelist.move[i].value;
-            if (v > 0 && v <= max)
-                pos.rootmovelist.move[j++] = pos.rootmovelist.move[i];
-}
+            if (v <= 0 || v > max)
+                pos.rootmovelist.move[i].value = TBFILTER;
+        }
     }
     else if (dtz < 0) {
         int best = 0;
@@ -777,23 +777,31 @@ int root_probe(int &TBScore)
         }
         // Try all moves, unless we approach or have a 50-move rule draw.
         if (-best * 2 + cnt50 < 100)
-            return 1;
+        {
+            for (int i = 0; i < pos.rootmovelist.length; i++)
+                if (pos.rootmovelist.move[i].value > TBFILTER)
+                    pos.rootmovelist.move[i].value += TBScore;
 
+            return 1;
+        }
         for (int i = 0; i < pos.rootmovelist.length; i++)
         {
-            if (pos.rootmovelist.move[i].value == best)
-                pos.rootmovelist.move[j++] = pos.rootmovelist.move[i];
+            if (pos.rootmovelist.move[i].value != best)
+                pos.rootmovelist.move[i].value = TBFILTER;
         }
     }
     else { // drawing
            // Try all moves that preserve the draw.
         for (int i = 0; i < pos.rootmovelist.length; i++)
         {
-            if (pos.rootmovelist.move[i].value == 0)
-                pos.rootmovelist.move[j++] = pos.rootmovelist.move[i];
+            if (pos.rootmovelist.move[i].value < 0)
+                pos.rootmovelist.move[i].value = TBFILTER;
         }
     }
     //Search::RootMoves.resize(j, Search::RootMove(MOVE_NONE));
+    for (int i = 0; i < pos.rootmovelist.length; i++)
+        if (pos.rootmovelist.move[i].value > TBFILTER)
+            pos.rootmovelist.move[i].value += TBScore;
 
     return 1;
 }

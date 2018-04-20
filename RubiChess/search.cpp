@@ -147,9 +147,9 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         if (success) {
             en.tbhits++;
             if (v < -1)
-                score = SCOREBLACKWINS + pos.ply;
+                score = -SCORETBWIN + pos.ply;
             else if (v > 1)
-                score = SCOREWHITEWINS - pos.ply;
+                score = SCORETBWIN - pos.ply;
             else 
                 score = SCOREDRAW + v;
             tp.addHash(score, HASHEXACT, depth, 0);
@@ -512,6 +512,10 @@ int rootsearch(int alpha, int beta, int depth)
         }
 
         m = &pos.rootmovelist.move[i];
+
+        if (m->value == TBFILTER)
+            continue;
+
         isLegal = pos.playMove(m);
 
         if (isLegal)
@@ -562,6 +566,8 @@ int rootsearch(int alpha, int beta, int depth)
             }
 #endif
             pos.unplayMove(m);
+            if (pos.tbPosition)
+                score = m->value;
 
             if (en.stopLevel == ENGINESTOPIMMEDIATELY)
             {

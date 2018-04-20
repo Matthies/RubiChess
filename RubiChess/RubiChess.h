@@ -234,6 +234,8 @@ const int EPTSIDEMASK[2] = { 0x8, 0x10 };
 #define SCOREBLACKWINS (SHRT_MIN + 3 + MAXDEPTH)
 #define SCOREWHITEWINS (-SCOREBLACKWINS)
 #define SCOREDRAW 0
+#define SCORETBWIN 13280
+
 #define MATEFORME(s) (s > SCOREWHITEWINS - MAXDEPTH)
 #define MATEFOROPPONENT(s) (s < SCOREBLACKWINS + MAXDEPTH)
 #define MATEDETECTED(s) (MATEFORME(s) || MATEFOROPPONENT(s))
@@ -263,6 +265,7 @@ const int lva[] = { 5 << 25, 4 << 25, 3 << 25, 3 << 25, 2 << 25, 1 << 25, 0 << 2
 #define PVVAL (7 << 28)
 #define KILLERVAL1 (1 << 27)
 #define KILLERVAL2 (KILLERVAL1 - 1)
+#define TBFILTER INT32_MIN
 
 #ifdef BITBOARD
 #define ISEPCAPTURE 0x40
