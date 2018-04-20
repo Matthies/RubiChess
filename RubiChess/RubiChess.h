@@ -574,6 +574,7 @@ public:
     int ph; // to store the phase during different evaluation functions
     int isCheck;
     int useTb;
+    int tbPosition;
     chessmovelist rootmovelist;
     chessmove defaultmove; // fallback if search in time trouble didn't finish a single iteration 
     chessposition();
@@ -719,6 +720,7 @@ public:
     const char* author = "Andreas Matthies";
     bool isWhite;
     unsigned long long nodes;
+    unsigned long long tbhits;
 #ifdef FPDEBUG
     unsigned long long fpnodes;
     unsigned long long wrongfp;

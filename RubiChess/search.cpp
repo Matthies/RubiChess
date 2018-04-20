@@ -135,6 +135,28 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             return score;
     }
 
+    // TB
+    // The test for rule50_count() == 0 is required to prevent probing in case
+    // the root position is a TB position but only WDL tables are available.
+    // In that case the search should not probe before a pawn move or capture
+    // is made.
+    if (POPCOUNT(pos.occupied00[0] | pos.occupied00[1]) <= pos.useTb && pos.halfmovescounter == 0)
+    {
+        int success;
+        int v = probe_wdl(&success);
+        if (success) {
+            en.tbhits++;
+            if (v < -1)
+                score = SCOREBLACKWINS + pos.ply;
+            else if (v > 1)
+                score = SCOREWHITEWINS - pos.ply;
+            else 
+                score = SCOREDRAW + v;
+            tp.addHash(score, HASHEXACT, depth, 0);
+            return score;
+        }
+    }
+
     // test for remis via repetition
     if (rp.getPositionCount(pos.hash) >= 3 && pos.testRepetiton())
         return SCOREDRAW;
@@ -393,7 +415,7 @@ int rootsearch(int alpha, int beta, int depth)
     bool isLegal;
     int bestscore = NOSCORE;
     int eval_type = HASHALPHA;
-    chessmovelist* newmoves;
+    //chessmovelist* newmoves;
     chessmove *m;
     int extendall = 0;
     int reduction;
@@ -429,7 +451,7 @@ int rootsearch(int alpha, int beta, int depth)
     PDEBUG(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
     if (!isMultiPV && tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
     {
-        if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
+        if (rp.getPositionCount(pos.hash) <= 1 && hashmovecode)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
             return score;
     }
 
@@ -441,46 +463,55 @@ int rootsearch(int alpha, int beta, int depth)
     if (pos.halfmovescounter >= 100)
         return SCOREDRAW;
 
-    newmoves = pos.getMoves();
+   // newmoves = pos.getMoves();
     if (pos.isCheck)
         depth++;
 
 #ifdef DEBUG
     en.nopvnodes++;
 #endif
-    for (int i = 0; i < newmoves->length; i++)
+    for (int i = 0; i < pos.rootmovelist.length; i++)
     {
-        m = &newmoves->move[i];
-        //PV moves gets top score
-        if (hashmovecode == m->code)
+        m = &pos.rootmovelist.move[i];
+        if (!pos.tbPosition)
         {
+            //PV moves gets top score
+            if (hashmovecode == m->code)
+            {
 #ifdef DEBUG
-            en.pvnodes++;
+                en.pvnodes++;
 #endif
-            m->value = PVVAL;
-        }
-        // killermoves gets score better than non-capture
-        else if (pos.killer[0][pos.ply] == m->code)
-        {
-            m->value = KILLERVAL1;
-        }
-        else if (pos.killer[1][pos.ply] == m->code)
-        {
-            m->value = KILLERVAL2;
+                m->value = PVVAL;
+            }
+            // killermoves gets score better than non-capture
+            else if (pos.killer[0][pos.ply] == m->code)
+            {
+                m->value = KILLERVAL1;
+            }
+            else if (pos.killer[1][pos.ply] == m->code)
+            {
+                m->value = KILLERVAL2;
+            } else if (int capture = GETCAPTURE(m->code) != BLANK)
+            {
+                m->value = (mvv[capture >> 1] | lva[GETPIECE(m->code) >> 1]);
+            }
+            else {
+                m->value = pos.history[GETPIECE(m->code) >> 1][GETTO(m->code)];
+            }
         }
     }
 
-    for (int i = 0; i < newmoves->length; i++)
+    for (int i = 0; i < pos.rootmovelist.length; i++)
     {
-        for (int j = i + 1; j < newmoves->length; j++)
+        for (int j = i + 1; j < pos.rootmovelist.length; j++)
         {
-            if (newmoves->move[i] < newmoves->move[j])
+            if (pos.rootmovelist.move[i] < pos.rootmovelist.move[j])
             {
-                swap(newmoves->move[i], newmoves->move[j]);
+                swap(pos.rootmovelist.move[i], pos.rootmovelist.move[j]);
             }
         }
 
-        m = &newmoves->move[i];
+        m = &pos.rootmovelist.move[i];
         isLegal = pos.playMove(m);
 
         if (isLegal)
@@ -489,7 +520,7 @@ int rootsearch(int alpha, int beta, int depth)
             if (en.moveoutput)
             {
                 char s[256];
-                sprintf_s(s, "info depth %d currmove %s currmovenumber %d nodes %llu\n", depth, m->toString().c_str(), LegalMoves, en.nodes);
+                sprintf_s(s, "info depth %d currmove %s currmovenumber %d nodes %llu tbhits %llu\n", depth, m->toString().c_str(), LegalMoves, en.nodes, en.tbhits);
                 cout << s;
             }
             PDEBUG(depth, "(rootsearch) played move %s (%d)   nodes:%d\n", m->toString().c_str(), m->value, en.nodes);
@@ -535,7 +566,7 @@ int rootsearch(int alpha, int beta, int depth)
             if (en.stopLevel == ENGINESTOPIMMEDIATELY)
             {
                 // FIXME: Removed condition LegalMoves > 1; is this okay??
-                free(newmoves);
+                //free(newmoves);
                 return bestscore;
             }
 
@@ -578,7 +609,7 @@ int rootsearch(int alpha, int beta, int depth)
                 PDEBUG(depth, "(rootsearch) score=%d >= beta=%d  -> cutoff\n", score, beta);
                 if (en.stopLevel != ENGINESTOPIMMEDIATELY)
                     tp.addHash(beta, HASHBETA, depth, m->code);
-                free(newmoves);
+                //free(newmoves);
                 return beta;   // fail hard beta-cutoff
             }
 
@@ -602,7 +633,7 @@ int rootsearch(int alpha, int beta, int depth)
         }
     }
 
-    free(newmoves);
+    //free(newmoves);
     if (LegalMoves == 0)
     {
         pos.bestmove[0].code = 0;
@@ -836,18 +867,18 @@ static void search_gen1()
 
                 if (!MATEDETECTED(score))
                 {
-                    sprintf_s(s, "info depth %d time %d score cp %d %s nodes %llu nps %llu hashfull %d pv %s\n",
+                    sprintf_s(s, "info depth %d time %d score cp %d %s nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
                         depth, secondsrun, score, boundscore[inWindow], en.nodes,
                         (nowtime > en.starttime ? en.nodes * en.frequency / (nowtime - en.starttime) : 1),
-                        tp.getUsedinPermill(), pvstring.c_str());
+                        en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
                 }
                 else
                 {
                     matein = (score > 0 ? (SCOREWHITEWINS - score + 1) / 2 : (SCOREBLACKWINS - score) / 2);
-                    sprintf_s(s, "info depth %d time %d score mate %d nodes %llu nps %llu hashfull %d pv %s\n",
+                    sprintf_s(s, "info depth %d time %d score mate %d nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
                         depth, secondsrun, matein, en.nodes,
                         (nowtime > en.starttime ? en.nodes * en.frequency / (nowtime - en.starttime) : 1),
-                        tp.getUsedinPermill(), pvstring.c_str());
+                        en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
                 }
                 cout << s;
             }
@@ -920,6 +951,7 @@ void searchguide()
     startSearchTime();
 
     en.nodes = 0;
+    en.tbhits = 0;
 #ifdef DEBUG
     en.qnodes = 0;
 	en.wastedpvsnodes = 0;
