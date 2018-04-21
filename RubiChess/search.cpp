@@ -158,7 +158,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     }
 
     // test for remis via repetition
-    if (rp.getPositionCount(pos.hash) >= 3 && pos.testRepetiton())
+    if (rp.getPositionCount(pos.hash) >= 3 && pos.testRepetiton() >= 2)
         return SCOREDRAW;
 
     // test for remis via 50 moves rule
@@ -456,7 +456,7 @@ int rootsearch(int alpha, int beta, int depth)
     }
 
     // test for remis via repetition
-    if (rp.getPositionCount(pos.hash) >= 3 && pos.testRepetiton())
+    if (rp.getPositionCount(pos.hash) >= 3 && pos.testRepetiton() >= 2)
         return SCOREDRAW;
 
     // test for remis via 50 moves rule

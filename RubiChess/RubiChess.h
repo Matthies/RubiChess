@@ -624,7 +624,7 @@ public:
 #ifdef DEBUGEVAL
     void debugeval(const char* format, ...);
 #endif
-    bool testRepetiton();
+    int testRepetiton();
     void mirror();
 };
 

@@ -459,7 +459,7 @@ void chessposition::tbFilterRootMoves()
 
 
 /* test the actualmove for three-fold-repetition as the repetition table may give false positive due to table collisions */
-bool chessposition::testRepetiton()
+int chessposition::testRepetiton()
 {
     unsigned long long h = hash;
     chessmovelist ml = actualpath;
@@ -493,7 +493,7 @@ bool chessposition::testRepetiton()
         i++;
     }
 
-    return (hit >= 2);
+    return hit;
 }
 
 
