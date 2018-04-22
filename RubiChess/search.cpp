@@ -451,7 +451,7 @@ int rootsearch(int alpha, int beta, int depth)
     PDEBUG(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
     if (!isMultiPV && tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
     {
-        if (hashmovecode && rp.getPositionCount(pos.hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
+        if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
             return score;
     }
 
@@ -847,10 +847,13 @@ static void search_gen1()
                 }
             }
             else {
-                // The only case that bestmove is not set can happen if alphabeta hit the TP table
-                // so get bestmovecode from there
+                // The only two cases that bestmove is not set can happen if alphabeta hit the TP table or we are in TB
+                // so get bestmovecode from there or it was a TB hit so just get the first rootmove
                 if (!pos.bestmove[0].code)
                     tp.probeHash(&score, &pos.bestmove[0].code, MAXDEPTH, alpha, beta);
+                // still no bestmove...
+                if (!pos.bestmove[0].code)
+                    pos.bestmove[0].code = pos.rootmovelist.move[0].code;
 
                 pos.getpvline(depth, 0);
                 pvstring = pos.pvline.toString();

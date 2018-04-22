@@ -423,7 +423,6 @@ void chessposition::getRootMoves()
 
 void chessposition::tbFilterRootMoves()
 {
-    // TB
     useTb = TBlargest;
     tbPosition = 0;
     int TBScore;
@@ -442,6 +441,18 @@ void chessposition::tbFilterRootMoves()
             // be done from within the Position class, so we skip it for now.
 
             // Optional: decrease target time.
+
+            // Sort the moves
+            for (int i = 0; i < pos.rootmovelist.length; i++)
+            {
+                for (int j = i + 1; j < pos.rootmovelist.length; j++)
+                {
+                    if (pos.rootmovelist.move[i] < pos.rootmovelist.move[j])
+                    {
+                        swap(pos.rootmovelist.move[i], pos.rootmovelist.move[j]);
+                    }
+                }
+            }
         }
 #if 0
         else // If DTZ tables are missing, use WDL tables as a fallback
