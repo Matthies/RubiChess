@@ -451,7 +451,7 @@ int rootsearch(int alpha, int beta, int depth)
     PDEBUG(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
     if (!isMultiPV && tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
     {
-        if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
+        if (hashmovecode && rp.getPositionCount(pos.hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
             return score;
     }
 
