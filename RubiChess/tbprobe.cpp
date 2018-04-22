@@ -377,7 +377,9 @@ static int probe_ab(int alpha, int beta, int *success)
         {
             if (pos.playMove(m))
             {
+                //printf("probe_ab (ply=%d) testing capture/promotion/evasion move %s...\n", pos.ply, pos.actualpath.toString().c_str());
                 v = -probe_ab(-beta, -alpha, success);
+                //printf("probe_ab (ply=%d) tested  capture/promotion/evasion move %s... v=%d\n", pos.ply, pos.actualpath.toString().c_str(), v);
                 pos.unplayMove(m);
                 if (*success == 0) return 0;
                 if (v > alpha) {
@@ -429,11 +431,13 @@ int probe_wdl(int *success)
   for (i = 0; i < movelist->length; i++)
   {
       chessmove *m = &movelist->move[i];
-      if (ISCAPTURE(m->code) || ISPROMOTION(m->code) || pos.isCheck)
+      if (ISCAPTURE(m->code))
       {
           if (pos.playMove(m))
           {
+              //printf("probe_wdl (ply=%d) testing capture/promotion/evasion move %s...\n", pos.ply, pos.actualpath.toString().c_str());
               int v = -probe_ab(-2, -best_cap, success);
+              //printf("probe_wdl (ply=%d) tested  capture/promotion/evasion move %s... v=%d\n", pos.ply, pos.actualpath.toString().c_str(), v);
               pos.unplayMove(m);
               if (*success == 0) return 0;
               if (v > best_cap) {
@@ -570,7 +574,9 @@ int probe_dtz(int *success)
 
             if (pos.playMove(m))
             {
+                //printf("probe_dtz (ply=%d)testing non-capture pawn move %s...\n", pos.ply, pos.actualpath.toString().c_str());
                 int v = -probe_wdl(success);
+                //printf("probe_dtz (ply=%d)tested  non-capture pawn move %s... v=%d\n", pos.ply, pos.actualpath.toString().c_str(), v);
                 pos.unplayMove(m);
                 if (*success == 0) return 0;
                 if (v == wdl)
@@ -606,13 +612,18 @@ int probe_dtz(int *success)
     }
     for (int i = 0; i < movelist->length; i++)
     {
+        // We can skip pawn moves and captures.
+        // If wdl > 0, we already caught them. If wdl < 0, the initial value
+        // of best already takes account of them.
         chessmove *m = &movelist->move[i];
         if (ISCAPTURE(m->code) || (GETPIECE(m->code) >> 1) == PAWN)
             continue;
 
         if (pos.playMove(m))
         {
+            //printf("probe_dtz (ply=%d) testing non-pawn non-capture %s... \n", pos.ply, pos.actualpath.toString().c_str());
             int v = -probe_dtz(success);
+            //printf("probe_dtz (ply=%d) tested  non-pawn non-capture %s... v=%d\n", pos.ply, pos.actualpath.toString().c_str(), v);
             pos.unplayMove(m);
             if (*success == 0)
             {
@@ -683,6 +694,7 @@ int root_probe(int &TBScore)
     {
         chessmove *m = &pos.rootmovelist.move[i];
         pos.playMove(m);
+        //printf("root_probe (ply=%d) Testing move %s...\n", pos.ply, m->toString().c_str());
         int v = 0;
         if (pos.isCheck && dtz > 0) {
             chessmovelist* nextmovelist = pos.getMoves();
@@ -712,6 +724,7 @@ int root_probe(int &TBScore)
             }
         }
 
+        //printf("root_probe (ply=%d) Tested  move %s... value=%d\n", pos.ply, pos.actualpath.toString().c_str(), v);
         pos.unplayMove(m);
         if (!success)
         {
@@ -765,6 +778,10 @@ int root_probe(int &TBScore)
             int v = pos.rootmovelist.move[i].value;
             if (v <= 0 || v > max)
                 pos.rootmovelist.move[i].value = TBFILTER;
+            else
+                pos.rootmovelist.move[i].value = SCORETBWIN - pos.rootmovelist.move[i].value;
+
+            //printf("Move %s set new value %d\n", pos.rootmovelist.move[i].toString().c_str(), pos.rootmovelist.move[i].value);
         }
     }
     else if (dtz < 0) {
@@ -799,10 +816,14 @@ int root_probe(int &TBScore)
         }
     }
     //Search::RootMoves.resize(j, Search::RootMove(MOVE_NONE));
+#if 0
     for (int i = 0; i < pos.rootmovelist.length; i++)
         if (pos.rootmovelist.move[i].value > TBFILTER)
+        {
             pos.rootmovelist.move[i].value += TBScore;
-
+            printf("Move %s set new value %d\n", pos.rootmovelist.move[i].toString().c_str(), pos.rootmovelist.move[i].value);
+        }
+#endif
     return 1;
 }
 

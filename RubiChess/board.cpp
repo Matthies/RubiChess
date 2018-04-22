@@ -2278,7 +2278,7 @@ engine::engine()
     setOption("Move Overhead", "50");
     setOption("MultiPV", "1");
     setOption("Ponder", "false");
-    setOption("SyzygyPath", /*"<empty>"*/ "C:\\_Lokale_Daten_ungesichert\\tb");
+    setOption("SyzygyPath", /*"<empty>"*/ "C:\\tb");
 
 
 #ifdef _WIN32
