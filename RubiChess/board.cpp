@@ -409,6 +409,7 @@ void chessposition::getRootMoves()
         if (playMove(&movelist->move[i]))
         {
             rootmovelist.move[rootmovelist.length++] = movelist->move[i];
+            //rootmovelist.move[rootmovelist.length - 1].order = rootmovelist.length - 1;
             unplayMove(&movelist->move[i]);
             if (bestval < movelist->move[i].value)
             {
@@ -2278,7 +2279,7 @@ engine::engine()
     setOption("Move Overhead", "50");
     setOption("MultiPV", "1");
     setOption("Ponder", "false");
-    setOption("SyzygyPath", /*"<empty>"*/ "C:\\tb");
+    setOption("SyzygyPath", "<empty>" /*"C:\\tb"*/);
 
 
 #ifdef _WIN32

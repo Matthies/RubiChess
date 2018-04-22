@@ -412,7 +412,7 @@ int rootsearch(int alpha, int beta, int depth)
     int score;
     uint32_t hashmovecode = 0;
     int  LegalMoves = 0;
-    bool isLegal;
+    //bool isLegal;
     int bestscore = NOSCORE;
     int eval_type = HASHALPHA;
     //chessmovelist* newmoves;
@@ -451,7 +451,7 @@ int rootsearch(int alpha, int beta, int depth)
     PDEBUG(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
     if (!isMultiPV && tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
     {
-        if (rp.getPositionCount(pos.hash) <= 1 && hashmovecode)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
+        if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
             return score;
     }
 
@@ -463,7 +463,7 @@ int rootsearch(int alpha, int beta, int depth)
     if (pos.halfmovescounter >= 100)
         return SCOREDRAW;
 
-   // newmoves = pos.getMoves();
+    //newmoves = pos.getMoves();
     if (pos.isCheck)
         depth++;
 
@@ -491,9 +491,9 @@ int rootsearch(int alpha, int beta, int depth)
             else if (pos.killer[1][pos.ply] == m->code)
             {
                 m->value = KILLERVAL2;
-            } else if (int capture = GETCAPTURE(m->code) != BLANK)
+            } else if (GETCAPTURE(m->code) != BLANK)
             {
-                m->value = (mvv[capture >> 1] | lva[GETPIECE(m->code) >> 1]);
+                m->value = (mvv[GETCAPTURE(m->code) >> 1] | lva[GETPIECE(m->code) >> 1]);
             }
             else {
                 m->value = pos.history[GETPIECE(m->code) >> 1][GETTO(m->code)];
@@ -512,13 +512,13 @@ int rootsearch(int alpha, int beta, int depth)
         }
 
         m = &pos.rootmovelist.move[i];
-
         if (m->value == TBFILTER)
             continue;
 
-        isLegal = pos.playMove(m);
+        //isLegal = pos.playMove(m);
+        pos.playMove(m);
 
-        if (isLegal)
+        if (true)//(isLegal)
         {
             LegalMoves++;
             if (en.moveoutput)
@@ -747,7 +747,7 @@ static void search_gen1()
             // research with lower alpha
             alpha = max(SHRT_MIN + 1, alpha - deltaalpha);
             deltaalpha <<= 1;
-            if (deltaalpha > 1000)
+            if (alpha > 1000)
                 deltaalpha = SHRT_MAX << 1;
             inWindow = 0;
 #ifdef DEBUG
@@ -759,7 +759,7 @@ static void search_gen1()
             // research with higher beta
             beta = min(SHRT_MAX, beta + deltabeta);
             deltabeta <<= 1;
-            if (deltabeta > 1000)
+            if (beta > 1000)
                 deltabeta = SHRT_MAX << 1;
             inWindow = 2;
 #ifdef DEBUG
