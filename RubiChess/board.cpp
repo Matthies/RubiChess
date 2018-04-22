@@ -2279,7 +2279,8 @@ engine::engine()
     setOption("Move Overhead", "50");
     setOption("MultiPV", "1");
     setOption("Ponder", "false");
-    setOption("SyzygyPath", "<empty>" /*"C:\\tb"*/);
+    //setOption("SyzygyPath", "<empty>");
+    setOption("SyzygyPath", "C:\\tb");
 
 
 #ifdef _WIN32

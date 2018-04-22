@@ -167,7 +167,7 @@ static int probe_wdl_table(int *success)
     }
     else {
         cmirror = pos.w2m() ? 0 : 8;
-        mirror = pos.w2m() == 0 ? 0 : 0x38;
+        mirror = pos.w2m() ? 0 : 0x38;
         bside = 0;
     }
 
