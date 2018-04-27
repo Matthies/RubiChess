@@ -409,7 +409,7 @@ void chessposition::getRootMoves()
         if (playMove(&movelist->move[i]))
         {
             rootmovelist.move[rootmovelist.length++] = movelist->move[i];
-            //rootmovelist.move[rootmovelist.length - 1].order = rootmovelist.length - 1;
+            rootmovelist.move[rootmovelist.length - 1].order = rootmovelist.length - 1;
             unplayMove(&movelist->move[i]);
             if (bestval < movelist->move[i].value)
             {
