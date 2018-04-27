@@ -404,8 +404,8 @@ public:
     chessmove(int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
     chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
 #endif
-    bool operator<(const chessmove cm) const { return (value < cm.value) || ((value == cm.value) && (order > cm.order)); }
-    bool operator>(const chessmove cm) const { return (value > cm.value) || ((value == cm.value) && (order < cm.order)); }
+    bool operator<(const chessmove cm) const { return (value < cm.value); }// || ((value == cm.value) && (order > cm.order)); }
+    bool operator>(const chessmove cm) const { return (value > cm.value); }// || ((value == cm.value) && (order < cm.order)); }
     string toString();
     void print();
 };

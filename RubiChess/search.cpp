@@ -470,6 +470,18 @@ int rootsearch(int alpha, int beta, int depth)
 #ifdef DEBUG
     en.nopvnodes++;
 #endif
+
+    for (int i = 0; i < pos.rootmovelist.length; i++)
+    {
+        for (int j = i + 1; j < pos.rootmovelist.length; j++)
+        {
+            if (pos.rootmovelist.move[i].order > pos.rootmovelist.move[j].order)
+            {
+                swap(pos.rootmovelist.move[i], pos.rootmovelist.move[j]);
+            }
+        }
+    }
+
     for (int i = 0; i < pos.rootmovelist.length; i++)
     {
         m = &pos.rootmovelist.move[i];
