@@ -636,8 +636,7 @@ int rootsearch(int alpha, int beta, int depth)
                     en.fhf++;
 #endif
                 PDEBUG(depth, "(rootsearch) score=%d >= beta=%d  -> cutoff\n", score, beta);
-                if (en.stopLevel != ENGINESTOPIMMEDIATELY)
-                    tp.addHash(beta, HASHBETA, depth, m->code);
+                tp.addHash(beta, HASHBETA, depth, m->code);
                 //free(newmoves);
                 return beta;   // fail hard beta-cutoff
             }
@@ -679,13 +678,11 @@ int rootsearch(int alpha, int beta, int depth)
     {
         if (eval_type == HASHEXACT)
         {
-            if (en.stopLevel != ENGINESTOPIMMEDIATELY)
-                tp.addHash(pos.bestmovescore[0], eval_type, depth, pos.bestmove[0].code);
+            tp.addHash(pos.bestmovescore[0], eval_type, depth, pos.bestmove[0].code);
             return pos.bestmovescore[maxmoveindex - 1];
         }
         else {
-            if (en.stopLevel != ENGINESTOPIMMEDIATELY)
-                tp.addHash(alpha, eval_type, depth, pos.bestmove[0].code);
+            tp.addHash(alpha, eval_type, depth, pos.bestmove[0].code);
             return alpha;
         }
     }
