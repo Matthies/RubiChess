@@ -690,7 +690,8 @@ int rootsearch(int alpha, int beta, int depth)
         }
     }
     else {
-        tp.addHash(alpha, eval_type, depth, pos.bestmove[0].code);
+		if (en.stopLevel != ENGINESTOPIMMEDIATELY)
+			tp.addHash(alpha, eval_type, depth, pos.bestmove[0].code);
         return alpha;
     }
 
