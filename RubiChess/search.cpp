@@ -412,10 +412,8 @@ int rootsearch(int alpha, int beta, int depth)
     int score;
     uint32_t hashmovecode = 0;
     int  LegalMoves = 0;
-    bool isLegal;
     int bestscore = NOSCORE;
     int eval_type = HASHALPHA;
-    chessmovelist* newmoves;
     chessmove *m;
     int extendall = 0;
     int reduction;
@@ -463,7 +461,6 @@ int rootsearch(int alpha, int beta, int depth)
     if (pos.halfmovescounter >= 100)
         return SCOREDRAW;
 
-    newmoves = pos.getMoves();
     if (pos.isCheck)
         depth++;
 
@@ -471,22 +468,13 @@ int rootsearch(int alpha, int beta, int depth)
     en.nopvnodes++;
 #endif
 
-    for (int i = 0; i < pos.rootmovelist.length; i++)
+    if (!pos.tbPosition)
     {
-        for (int j = i + 1; j < pos.rootmovelist.length; j++)
+        // Reset move values
+        for (int i = 0; i < pos.rootmovelist.length; i++)
         {
-            if (pos.rootmovelist.move[i].order > pos.rootmovelist.move[j].order)
-            {
-                swap(pos.rootmovelist.move[i], pos.rootmovelist.move[j]);
-            }
-        }
-    }
+            m = &pos.rootmovelist.move[i];
 
-    for (int i = 0; i < pos.rootmovelist.length; i++)
-    {
-        m = &pos.rootmovelist.move[i];
-        if (!pos.tbPosition)
-        {
             //PV moves gets top score
             if (hashmovecode == m->code)
             {
@@ -503,35 +491,13 @@ int rootsearch(int alpha, int beta, int depth)
             else if (pos.killer[1][pos.ply] == m->code)
             {
                 m->value = KILLERVAL2;
-            } else if (GETCAPTURE(m->code) != BLANK)
+            }
+            else if (GETCAPTURE(m->code) != BLANK)
             {
                 m->value = (mvv[GETCAPTURE(m->code) >> 1] | lva[GETPIECE(m->code) >> 1]);
             }
             else {
                 m->value = pos.history[GETPIECE(m->code) >> 1][GETTO(m->code)];
-            }
-            for (int k = 0; k < newmoves->length; k++)
-            {
-                chessmove* n = &newmoves->move[k];
-
-                if (hashmovecode == n->code)
-                {
-#ifdef DEBUG
-                    en.pvnodes++;
-#endif
-                    n->value = PVVAL;
-                }
-                // killermoves gets score better than non-capture
-                else if (pos.killer[0][pos.ply] == n->code)
-                {
-                    n->value = KILLERVAL1;
-                }
-                else if (pos.killer[1][pos.ply] == n->code)
-                {
-                    n->value = KILLERVAL2;
-                }
-                if (n->code == m->code && n->value != m->value)
-                    printf("Alarm");
             }
         }
     }
@@ -550,7 +516,6 @@ int rootsearch(int alpha, int beta, int depth)
         if (m->value == TBFILTER)
             continue;
 
-        //isLegal = pos.playMove(m);
         pos.playMove(m);
 
         if (true)//(isLegal)
@@ -673,7 +638,6 @@ int rootsearch(int alpha, int beta, int depth)
         }
     }
 
-    //free(newmoves);
     if (LegalMoves == 0)
     {
         pos.bestmove[0].code = 0;
@@ -780,7 +744,7 @@ static void search_gen1()
             alpha = max(SHRT_MIN + 1, alpha - deltaalpha);
             deltaalpha <<= 1;
             if (alpha > 1000)
-                ;// deltaalpha = SHRT_MAX << 1;
+                deltaalpha = SHRT_MAX << 1;
             inWindow = 0;
 #ifdef DEBUG
             en.wastedaspnodes += (en.nodes - nodesbefore);
@@ -792,7 +756,7 @@ static void search_gen1()
             beta = min(SHRT_MAX, beta + deltabeta);
             deltabeta <<= 1;
             if (beta > 1000)
-                ;// deltabeta = SHRT_MAX << 1;
+                deltabeta = SHRT_MAX << 1;
             inWindow = 2;
 #ifdef DEBUG
             en.wastedaspnodes += (en.nodes - nodesbefore);
@@ -928,6 +892,9 @@ static void search_gen1()
             depth += depthincrement;
         if (pos.rootmovelist.length == 1 && depth > 4 && en.endtime1)
             // early exit in playing mode as there is exactly one possible move
+            en.stopLevel = ENGINEWANTSTOP;
+        if (pos.tbPosition && abs(score) >= SCORETBWIN - 100)
+            // early exit in TB win/lose position
             en.stopLevel = ENGINEWANTSTOP;
     } while (en.stopLevel == ENGINERUN && depth <= min(maxdepth, abs(matein) * 2));
     

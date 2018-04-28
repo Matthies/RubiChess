@@ -2,9 +2,7 @@
   Copyright (c) 2013-2015 Ronald de Man
   This file may be redistributed and/or modified without restrictions.
 
-  tbprobe.cpp contains the Stockfish-specific routines of the
-  tablebase probing code. It should be relatively easy to adapt
-  this code to other chess engines.
+  Adapted to RubiChess by Andreas Matthies
 */
 
 // The probing code currently expects a little-endian architecture (e.g. x86).
@@ -12,22 +10,17 @@
 // Define DECOMP64 when compiling for a 64-bit platform.
 // 32-bit is only supported for 5-piece tables, because tables are mmap()ed
 // into memory.
+#define IS_64BIT
 #ifdef IS_64BIT
 #define DECOMP64
 #endif
 
-#include "RubiChess.h"
 
+#include "RubiChess.h"
 #include "tbprobe.h"
 #include "tbcore.h"
 
 #define SYZYGY2RUBI_PT(x) ((((x) & 0x7) << 1) | (((x) & 0x8) >> 3))
-
-#if 0
-namespace Zobrist {
-  extern Key psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
-}
-#endif
 
 int TBlargest = 0;
 
@@ -681,7 +674,7 @@ static int wdl_to_Value[5] = {
 //
 // A return value of 0 indicates that not all probes were successful and that
 // no moves were filtered out.
-int root_probe(int &TBScore)
+int root_probe()
 {
     int success;
 
@@ -734,7 +727,6 @@ int root_probe(int &TBScore)
     }
 
     // Obtain 50-move counter for the root position.
-    // In Stockfish there seems to be no clean way, so we do it like this:
     int cnt50 = pos.halfmovescounter;
 
     // Use 50-move counter to determine whether the root position is
@@ -744,16 +736,6 @@ int root_probe(int &TBScore)
         wdl = (dtz + cnt50 <= 100) ? 2 : 1;
     else if (dtz < 0)
         wdl = (-dtz + cnt50 <= 100) ? -2 : -1;
-
-    // Determine the score to report to the user.
-    TBScore = wdl_to_Value[wdl + 2];
-    // If the position is winning or losing, but too few moves left, adjust the
-    // score to show how close it is to winning or losing.
-    // NOTE: int(PawnValueEg) is used as scaling factor in score_to_uci().
-    if (wdl == 1 && dtz <= 100)
-        TBScore = 100 - (dtz + cnt50) / 2;
-    else if (wdl == -1 && dtz >= -100)
-        TBScore = -(100 + (dtz - cnt50) / 2);
 
     // Now be a bit smart about filtering out moves.
     size_t j = 0;
@@ -776,12 +758,25 @@ int root_probe(int &TBScore)
         for (int i = 0; i < pos.rootmovelist.length; i++)
         {
             int v = pos.rootmovelist.move[i].value;
-            if (v <= 0 || v > max)
+            if (v <= 0)
+            {
+                // Bad move, filter it out
                 pos.rootmovelist.move[i].value = TBFILTER;
+            }
+            else if (best + cnt50 <= 100 || !en.Syzygy50MoveRule)
+            {
+                // We can win
+                if (v + cnt50 > 100 && en.Syzygy50MoveRule)
+                    // Cursed win; filter this move
+                    pos.rootmovelist.move[i].value = TBFILTER;
+                else
+                    pos.rootmovelist.move[i].value = SCORETBWIN - v;
+            }
             else
-                pos.rootmovelist.move[i].value = SCORETBWIN - pos.rootmovelist.move[i].value;
-
-            //printf("Move %s set new value %d\n", pos.rootmovelist.move[i].toString().c_str(), pos.rootmovelist.move[i].value);
+            {
+                // Win might be cursed
+                pos.rootmovelist.move[i].value = 100 - v;
+            }
         }
     }
     else if (dtz < 0) {
@@ -792,19 +787,19 @@ int root_probe(int &TBScore)
             if (v < best)
                 best = v;
         }
-        // Try all moves, unless we approach or have a 50-move rule draw.
-        if (-best * 2 + cnt50 < 100)
-        {
-            for (int i = 0; i < pos.rootmovelist.length; i++)
-                if (pos.rootmovelist.move[i].value > TBFILTER)
-                    pos.rootmovelist.move[i].value += TBScore;
-
-            return 1;
-        }
         for (int i = 0; i < pos.rootmovelist.length; i++)
         {
-            if (pos.rootmovelist.move[i].value != best)
-                pos.rootmovelist.move[i].value = TBFILTER;
+            int v = pos.rootmovelist.move[i].value;
+            if (en.Syzygy50MoveRule && -best + cnt50 > 100)
+            {
+                // We can reach a draw by 50-moves-rule so filter moves that don't preserve this
+                if (-v + cnt50 <= 100)
+                    pos.rootmovelist.move[i].value = TBFILTER;
+            }
+            else {
+                // We will lose
+                pos.rootmovelist.move[i].value = -SCORETBWIN - v;
+            }
         }
     }
     else { // drawing

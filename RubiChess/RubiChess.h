@@ -234,7 +234,7 @@ const int EPTSIDEMASK[2] = { 0x8, 0x10 };
 #define SCOREBLACKWINS (SHRT_MIN + 3 + MAXDEPTH)
 #define SCOREWHITEWINS (-SCOREBLACKWINS)
 #define SCOREDRAW 0
-#define SCORETBWIN 13280
+#define SCORETBWIN 30000
 
 #define MATEFORME(s) (s > SCOREWHITEWINS - MAXDEPTH)
 #define MATEFOROPPONENT(s) (s < SCOREBLACKWINS + MAXDEPTH)
@@ -394,7 +394,6 @@ public:
     // pcpcepepepepccccppppfffffftttttt
     uint32_t code;
     int value;
-    int order;
 
     chessmove();
 #ifdef BITBOARD
@@ -404,8 +403,8 @@ public:
     chessmove(int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
     chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
 #endif
-    bool operator<(const chessmove cm) const { return (value < cm.value); }// || ((value == cm.value) && (order > cm.order)); }
-    bool operator>(const chessmove cm) const { return (value > cm.value); }// || ((value == cm.value) && (order < cm.order)); }
+    bool operator<(const chessmove cm) const { return (value < cm.value); }
+    bool operator>(const chessmove cm) const { return (value > cm.value); }
     string toString();
     void print();
 };
@@ -753,6 +752,7 @@ public:
     int MultiPV;
     bool ponder;
     string SyzygyPath;
+    bool Syzygy50MoveRule;
     enum { NO, PONDERING, HITPONDER } pondersearch;
     int terminationscore = SHRT_MAX;
     int stopLevel = ENGINESTOPPED;

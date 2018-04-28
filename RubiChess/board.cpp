@@ -409,7 +409,6 @@ void chessposition::getRootMoves()
         if (playMove(&movelist->move[i]))
         {
             rootmovelist.move[rootmovelist.length++] = movelist->move[i];
-            rootmovelist.move[rootmovelist.length - 1].order = rootmovelist.length - 1;
             unplayMove(&movelist->move[i]);
             if (bestval < movelist->move[i].value)
             {
@@ -425,10 +424,10 @@ void chessposition::tbFilterRootMoves()
 {
     useTb = TBlargest;
     tbPosition = 0;
-    int TBScore;
     if (POPCOUNT(pos.occupied00[0] | pos.occupied00[1]) <= TBlargest)
     {
-        if ((tbPosition = root_probe(TBScore))) {
+        if ((tbPosition = root_probe())) {
+            en.tbhits++;
             // The current root position is in the tablebases.
             // RootMoves now contains only moves that preserve the draw or win.
 
@@ -439,8 +438,6 @@ void chessposition::tbFilterRootMoves()
             // with a fixed value) in order to "clear" the hash table of
             // the results of previous probes. However, that would have to
             // be done from within the Position class, so we skip it for now.
-
-            // Optional: decrease target time.
 
             // Sort the moves
             for (int i = 0; i < pos.rootmovelist.length; i++)
@@ -2292,6 +2289,7 @@ engine::engine()
     setOption("Ponder", "false");
     //setOption("SyzygyPath", "<empty>");
     setOption("SyzygyPath", "C:\\tb");
+    setOption("Syzygy50MoveRule", "true");
 
 
 #ifdef _WIN32
@@ -2357,6 +2355,10 @@ void engine::setOption(string sName, string sValue)
     {
         SyzygyPath = sValue;
         init_tablebases((char *)SyzygyPath.c_str());
+    }
+    if (sName == "syzygy50moverule")
+    {
+        Syzygy50MoveRule = (lValue == "true");
     }
 }
 
@@ -2445,6 +2447,7 @@ void engine::communicate(string inputstring)
                 myUci->send("option name MultiPV type spin default 1 min 1 max %d\n", MAXMULTIPV);
                 myUci->send("option name Ponder type check default false\n");
                 myUci->send("option name SyzygyPath type string default <empty>\n");
+                myUci->send("option name Syzygy50MoveRule type check default true\n");
                 myUci->send("uciok\n", author);
                 break;
             case SETOPTION:
