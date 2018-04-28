@@ -5,11 +5,12 @@
 #ifndef TBCORE_H
 #define TBCORE_H
 
+#ifdef _WIN32
 #define __attribute__(A) /* do nothing */
 #define DECOMP64
 #define __builtin_bswap32(x) _byteswap_ulong(x)
 #define __builtin_bswap64(x) _byteswap_uint64(x)
-
+#endif
 
 
 #ifndef _WIN32

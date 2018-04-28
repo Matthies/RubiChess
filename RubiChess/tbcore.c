@@ -14,6 +14,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <unistd.h>
 #ifndef _WIN32
 #include <sys/mman.h>
 #endif
@@ -64,10 +65,10 @@ static FD open_tb(const char *str, const char *suffix)
   char file[256];
 
   for (i = 0; i < num_paths; i++) {
-    strcpy_s(file, paths[i]);
-    strcat_s(file, "/");
-    strcat_s(file, str);
-    strcat_s(file, suffix);
+    strcpy(file, paths[i]);
+    strcat(file, "/");
+    strcat(file, str);
+    strcat(file, suffix);
 #ifndef _WIN32
     fd = open(file, O_RDONLY);
 #else
@@ -277,7 +278,7 @@ void init_tablebases(char *path)
   if (strlen(p) == 0 || !strcmp(p, "<empty>")) return;
 
   path_string = (char *)malloc(strlen(p) + 1);
-  strcpy_s(path_string, strlen(p) + 1, p);
+  strcpy(path_string, p);
   num_paths = 0;
   for (i = 0;; i++) {
     if (path_string[i] != SEP_CHAR)

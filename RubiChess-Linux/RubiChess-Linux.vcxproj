@@ -102,22 +102,65 @@
   <ImportGroup Label="Shared" />
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Debug|ARM'">
+    <IncludePath>$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Release|ARM'">
+    <IncludePath>$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Board88-Debug|ARM'">
+    <IncludePath>$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Board88-Release|ARM'">
+    <IncludePath>$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Debug|x64'">
+    <IncludePath>$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Release|x64'">
+    <IncludePath>$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Board88-Debug|x64'">
+    <IncludePath>$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Board88-Release|x64'">
+    <IncludePath>$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Debug|x86'">
+    <IncludePath>$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Release|x86'">
+    <IncludePath>$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Board88-Debug|x86'">
+    <IncludePath>$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Board88-Release|x86'">
+    <IncludePath>$(IncludePath)</IncludePath>
+  </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="..\RubiChess\board.cpp" />
     <ClCompile Include="..\RubiChess\eval.cpp" />
     <ClCompile Include="..\RubiChess\main.cpp" />
     <ClCompile Include="..\RubiChess\search.cpp" />
+    <ClCompile Include="..\RubiChess\tbprobe.cpp" />
     <ClCompile Include="..\RubiChess\transposition.cpp" />
     <ClCompile Include="..\RubiChess\uci.cpp" />
     <ClCompile Include="..\RubiChess\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\RubiChess\RubiChess.h" />
+    <ClInclude Include="..\RubiChess\tbcore.h" />
+    <ClInclude Include="..\RubiChess\tbprobe.h" />
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Board88-Debug|ARM'">
     <Link>
       <LibraryDependencies>pthread;%(LibraryDependencies)</LibraryDependencies>
     </Link>
+    <ClCompile>
+      <AdditionalOptions>
+      </AdditionalOptions>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Debug|ARM'">
     <Link>
@@ -125,12 +168,18 @@
     </Link>
     <ClCompile>
       <PreprocessorDefinitions>BITBOARD</PreprocessorDefinitions>
+      <AdditionalOptions>
+      </AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Board88-Release|ARM'">
     <Link>
       <LibraryDependencies>pthread;%(LibraryDependencies)</LibraryDependencies>
     </Link>
+    <ClCompile>
+      <AdditionalOptions>
+      </AdditionalOptions>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Release|ARM'">
     <Link>
@@ -138,22 +187,36 @@
     </Link>
     <ClCompile>
       <PreprocessorDefinitions>BITBOARD;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalOptions>
+      </AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Board88-Debug|x64'">
     <Link>
       <LibraryDependencies>pthread;%(LibraryDependencies)</LibraryDependencies>
     </Link>
+    <ClCompile>
+      <AdditionalOptions>
+      </AdditionalOptions>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Debug|x64'">
     <Link>
       <LibraryDependencies>pthread;%(LibraryDependencies)</LibraryDependencies>
     </Link>
+    <ClCompile>
+      <AdditionalOptions>
+      </AdditionalOptions>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Board88-Release|x64'">
     <Link>
       <LibraryDependencies>pthread;%(LibraryDependencies)</LibraryDependencies>
     </Link>
+    <ClCompile>
+      <AdditionalOptions>
+      </AdditionalOptions>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Release|x64'">
     <Link>
@@ -161,27 +224,45 @@
     </Link>
     <ClCompile>
       <PreprocessorDefinitions>BITBOARD;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalOptions>
+      </AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Board88-Debug|x86'">
     <Link>
       <LibraryDependencies>pthread;%(LibraryDependencies)</LibraryDependencies>
     </Link>
+    <ClCompile>
+      <AdditionalOptions>
+      </AdditionalOptions>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Debug|x86'">
     <Link>
       <LibraryDependencies>pthread;%(LibraryDependencies)</LibraryDependencies>
     </Link>
+    <ClCompile>
+      <AdditionalOptions>
+      </AdditionalOptions>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Board88-Release|x86'">
     <Link>
       <LibraryDependencies>pthread;%(LibraryDependencies)</LibraryDependencies>
     </Link>
+    <ClCompile>
+      <AdditionalOptions>
+      </AdditionalOptions>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Release|x86'">
     <Link>
       <LibraryDependencies>pthread;%(LibraryDependencies)</LibraryDependencies>
     </Link>
+    <ClCompile>
+      <AdditionalOptions>
+      </AdditionalOptions>
+    </ClCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
