@@ -385,6 +385,9 @@ bool chessposition::applyMove(string s)
         {
             if (playMove(&(cmlist->move[i])))
             {
+                if (halfmovescounter == 0)
+                    // Keep the list short, we have to keep below MAXMOVELISTLENGTH
+                    actualpath.length = 0;
                 retval = true;
             }
             else {

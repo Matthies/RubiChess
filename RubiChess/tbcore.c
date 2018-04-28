@@ -14,8 +14,8 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <unistd.h>
 #ifndef _WIN32
+#include <unistd.h>
 #include <sys/mman.h>
 #endif
 #include "tbcore.h"

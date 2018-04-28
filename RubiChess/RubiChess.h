@@ -409,7 +409,7 @@ public:
     void print();
 };
 
-#define MAXMOVELISTLENGTH 1024
+#define MAXMOVELISTLENGTH 256
 #define MAXMULTIPV 64
 
 class chessmovelist
