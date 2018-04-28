@@ -415,8 +415,8 @@ public:
 class chessmovelist
 {
 public:
+    int length;
     chessmove move[MAXMOVELISTLENGTH];
-    int length = 0;
     chessmovelist();
     string toString();
     string toStringWithValue();
