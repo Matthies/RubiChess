@@ -577,6 +577,7 @@ public:
     int ph; // to store the phase during different evaluation functions
     int isCheck;
     int useTb;
+    int useRootmoveScore;
     int tbPosition;
     chessmovelist rootmovelist;
     chessmove defaultmove; // fallback if search in time trouble didn't finish a single iteration 
@@ -636,12 +637,13 @@ public:
 class chessposition
 {
 public:
-    PieceCode mailbox[128];
+    PieceCode mailbox[BOARDSIZE];
     int state;
     int ept;
     int kingpos[2];
     unsigned long long hash;
     unsigned long long pawnhash;
+    unsigned long long materialhash;
     //int value;
     int ply;
     int piecenum[14];
@@ -659,7 +661,10 @@ public:
     int *positionvaluetable;     // value tables for both sides, 7 PieceTypes and 256 phase variations 
     int ph; // to store the phase during different evaluation functions
     int isCheck;
-    int rootmoves;  // precalculated and used for MultiPV mode
+    int useTb = 0;
+    int useRootmoveScore = 0;
+    int tbPosition = 0;
+    chessmovelist rootmovelist;
     chessmove defaultmove; // fallback if search in time trouble didn't finish a single iteration 
     chessposition();
     ~chessposition();
@@ -699,7 +704,7 @@ public:
 #ifdef DEBUGEVAL
     void debugeval(const char* format, ...);
 #endif
-    bool testRepetiton();
+    int testRepetiton();
     void mirror();
 };
 

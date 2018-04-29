@@ -426,10 +426,12 @@ void chessposition::getRootMoves()
     delete movelist;
 }
 
+#ifdef BITBOARD
 void chessposition::tbFilterRootMoves()
 {
     useTb = TBlargest;
     tbPosition = 0;
+    useRootmoveScore = 0;
     if (POPCOUNT(pos.occupied00[0] | pos.occupied00[1]) <= TBlargest)
     {
         if ((tbPosition = root_probe())) {
@@ -439,12 +441,17 @@ void chessposition::tbFilterRootMoves()
 
             // Do not probe tablebases during the search.
             useTb = 0;
+            useRootmoveScore = 1;
+        }
+        else // If DTZ tables are missing, use WDL tables as a fallback
+        {
+            // Filter out moves that do not preserve a draw or win
+            tbPosition = root_probe_wdl();
+            // useRootmoveScore is set within root_probe_wdl
+        }
 
-            // It might be a good idea to mangle the hash key (xor it
-            // with a fixed value) in order to "clear" the hash table of
-            // the results of previous probes. However, that would have to
-            // be done from within the Position class, so we skip it for now.
-
+        if (tbPosition)
+        {
             // Sort the moves
             for (int i = 0; i < pos.rootmovelist.length; i++)
             {
@@ -457,20 +464,10 @@ void chessposition::tbFilterRootMoves()
                 }
             }
         }
-#if 0
-        else // If DTZ tables are missing, use WDL tables as a fallback
-        {
-            // Filter out moves that do not preserve a draw or win
-            tb_position = root_probe_wdl(TBScore);
-
-            // Only probe during search if winning
-            if (TBScore <= SCOREDRAW)
-                use_tb = 0;
-        }
-#endif
     }
 }
 
+#endif
 
 
 /* test the actualmove for three-fold-repetition as the repetition table may give false positive due to table collisions */
@@ -2293,8 +2290,8 @@ engine::engine()
     setOption("Move Overhead", "50");
     setOption("MultiPV", "1");
     setOption("Ponder", "false");
-    //setOption("SyzygyPath", "<empty>");
-    setOption("SyzygyPath", "C:\\tb");
+    setOption("SyzygyPath", "<empty>");
+    //setOption("SyzygyPath", "C:\\tb");
     setOption("Syzygy50MoveRule", "true");
 
 
@@ -2357,6 +2354,7 @@ void engine::setOption(string sName, string sValue)
             return;
         moveOverhead = newint;
     }
+#ifdef BITBOARD
     if (sName == "syzygypath")
     {
         SyzygyPath = sValue;
@@ -2366,6 +2364,7 @@ void engine::setOption(string sName, string sValue)
     {
         Syzygy50MoveRule = (lValue == "true");
     }
+#endif
 }
 
 
@@ -2412,8 +2411,9 @@ void engine::communicate(string inputstring)
                 }
                 pos.ply = 0;
                 pos.getRootMoves();
+#ifdef BITBOARD
                 pos.tbFilterRootMoves();
-
+#endif
                 if (debug)
                 {
                     pos.print();

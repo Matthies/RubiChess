@@ -24,6 +24,7 @@
 
 int TBlargest = 0;
 
+#ifdef BITBOARD
 #include "tbcore.c"
 
 // Given a position with 6 or fewer pieces, produce a text string
@@ -639,26 +640,6 @@ int probe_dtz(int *success)
     return best;
 }
 
-#if 0
-// Check whether there has been at least one repetition of positions
-// since the last capture or pawn move.
-static int has_repeated(StateInfo *st)
-{
-  while (1) {
-    int i = 4, e = std::min(st->rule50, st->pliesFromNull);
-    if (e < i)
-      return 0;
-    StateInfo *stp = st->previous->previous;
-    do {
-      stp = stp->previous->previous;
-      if (stp->key == st->key)
-	return 1;
-      i += 2;
-    } while (i <= e);
-    st = st->previous;
-  }
-}
-#endif
 
 static int wdl_to_Value[5] = {
     -SCORETBWIN,
@@ -810,58 +791,54 @@ int root_probe()
                 pos.rootmovelist.move[i].value = TBFILTER;
         }
     }
-    //Search::RootMoves.resize(j, Search::RootMove(MOVE_NONE));
-#if 0
-    for (int i = 0; i < pos.rootmovelist.length; i++)
-        if (pos.rootmovelist.move[i].value > TBFILTER)
-        {
-            pos.rootmovelist.move[i].value += TBScore;
-            printf("Move %s set new value %d\n", pos.rootmovelist.move[i].toString().c_str(), pos.rootmovelist.move[i].value);
-        }
-#endif
+
     return 1;
 }
 
-#if 0
+#if 1
 // Use the WDL tables to filter out moves that don't preserve the win or draw.
 // This is a fallback for the case that some or all DTZ tables are missing.
 //
 // A return value of 0 indicates that not all probes were successful and that
 // no moves were filtered out.
-int root_probe_wdl(int& TBScore)
+int root_probe_wdl()
 {
-  int success;
+    int success;
 
-  int wdl = probe_wdl(pos, &success);
-  if (!success) return false;
-  TBScore = wdl_to_Value[wdl + 2];
+    int wdl = probe_wdl(&success);
+    if (!success)
+        return false;
 
-  StateInfo st;
-  CheckInfo ci(pos);
+    int best = -2;
 
-  int best = -2;
+    // Probe each move.
+    for (int i = 0; i < pos.rootmovelist.length; i++)
+    {
+        chessmove *m = &pos.rootmovelist.move[i];
+        pos.playMove(m);
+        int v = -probe_wdl(&success);
+        pos.unplayMove(m);
+        if (!success) return false;
+        m->value = v;
 
-  // Probe each move.
-  for (size_t i = 0; i < Search::RootMoves.size(); i++) {
-    Move move = Search::RootMoves[i].pv[0];
-    pos.do_move(move, st, ci, pos._check(move, ci));
-    int v = -probe_wdl(pos, &success);
-    pos.undo_move(move);
-    if (!success) return false;
-    Search::RootMoves[i].score = (Value)v;
-    if (v > best)
-      best = v;
-  }
+        if (v > best)
+            best = v;
+    }
 
-  size_t j = 0;
-  for (size_t i = 0; i < Search::RootMoves.size(); i++) {
-    if (Search::RootMoves[i].score == best)
-      Search::RootMoves[j++] = Search::RootMoves[i];
-  }
-  Search::RootMoves.resize(j, Search::RootMove(MOVE_NONE));
+    for (int i = 0; i < pos.rootmovelist.length; i++)
+    {
+        chessmove *m = &pos.rootmovelist.move[i];
+        if (m->value < best)
+            m->value = TBFILTER;
+    }
 
-  return 1;
+    if (best > 0)
+        pos.useRootmoveScore = 1;
+
+    return 1;
 }
+#endif
+
 #endif
 
 #endif

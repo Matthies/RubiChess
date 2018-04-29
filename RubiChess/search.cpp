@@ -135,6 +135,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             return score;
     }
 
+#ifdef BITBOARD
     // TB
     // The test for rule50_count() == 0 is required to prevent probing in case
     // the root position is a TB position but only WDL tables are available.
@@ -156,6 +157,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             return score;
         }
     }
+#endif
 
     // test for remis via repetition
     if (rp.getPositionCount(pos.hash) >= 3 && pos.testRepetiton() >= 2)
@@ -566,7 +568,7 @@ int rootsearch(int alpha, int beta, int depth)
             }
 #endif
             pos.unplayMove(m);
-            if (pos.tbPosition)
+            if (pos.useRootmoveScore)
                 score = m->value;
 
             if (en.stopLevel == ENGINESTOPIMMEDIATELY)
