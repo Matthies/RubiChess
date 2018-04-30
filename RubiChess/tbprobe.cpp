@@ -337,26 +337,7 @@ static int probe_dtz_table(int wdl, int *success)
   return res;
 }
 
-#if 0
-// Add underpromotion captures to list of captures.
-static ExtMove *add_underprom_caps(Position& pos, MoveStack *stack, MoveStack *end)
-{
-  ExtMove *moves, *extra = end;
 
-  for (moves = stack; moves < end; moves++) {
-    Move move = moves->move;
-    if (type_of(move) == PROMOTION && !pos.empty(to_sq(move))) {
-      (*extra++).move = (Move)(move - (1 << 12));
-      (*extra++).move = (Move)(move - (2 << 12));
-      (*extra++).move = (Move)(move - (3 << 12));
-    }
-  }
-
-  return extra;
-}
-#endif
-
-#if 1
 static int probe_ab(int alpha, int beta, int *success)
 {
     int v;
@@ -451,7 +432,11 @@ int probe_wdl(int *success)
   }
 
   int v = probe_wdl_table(success);
-  if (*success == 0) return 0;
+  if (*success == 0)
+  {
+      free(movelist);
+      return 0;
+  }
 
   // Now max(v, best_cap) is the WDL value of the position without ep rights.
   // If the position without ep rights is not stalemate or no ep captures
@@ -545,10 +530,12 @@ int probe_dtz(int *success)
     chessmovelist* movelist = nullptr;
 
     int wdl = probe_wdl(success);
-    if (*success == 0) return 0;
+    if (*success == 0)
+        return 0;
 
     // If draw, then dtz = 0.
-    if (wdl == 0) return 0;
+    if (wdl == 0)
+        return 0;
 
     // Check for winning (cursed) capture or ep capture as only best move.
     if (*success == 2)
@@ -572,7 +559,11 @@ int probe_dtz(int *success)
                 int v = -probe_wdl(success);
                 //printf("probe_dtz (ply=%d)tested  non-capture pawn move %s... v=%d\n", pos.ply, pos.actualpath.toString().c_str(), v);
                 pos.unplayMove(m);
-                if (*success == 0) return 0;
+                if (*success == 0)
+                {
+                    free(movelist);
+                    return 0;
+                }
                 if (v == wdl)
                 {
                     free(movelist);
@@ -818,7 +809,8 @@ int root_probe_wdl()
         pos.playMove(m);
         int v = -probe_wdl(&success);
         pos.unplayMove(m);
-        if (!success) return false;
+        if (!success)
+            return false;
         m->value = v;
 
         if (v > best)
@@ -837,8 +829,6 @@ int root_probe_wdl()
 
     return 1;
 }
-#endif
-
 #endif
 
 #endif
