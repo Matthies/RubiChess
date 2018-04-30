@@ -409,21 +409,35 @@ public:
     void print();
 };
 
-#define MAXMOVELISTLENGTH 256
 #define MAXMULTIPV 64
+
+#define MAXMOVELISTLENGTH 256	// for lists of possible pseudo-legal moves
+#define MAXMOVESEQUENCELENGTH 2048	// for move sequences in a game
+
+
+// FIXME: This is ugly! Almost the same classes with doubled code.
+class chessmovesequencelist
+{
+public:
+	int length;
+	chessmove move[MAXMOVESEQUENCELENGTH];
+	chessmovesequencelist();
+	string toString();
+	void print();
+};
+
 
 class chessmovelist
 {
 public:
     int length;
     chessmove move[MAXMOVELISTLENGTH];
-    chessmovelist();
-    string toString();
-    string toStringWithValue();
-    void print();
-    void resetvalue();
-    void sort();
+	chessmovelist();
+	string toString();
+	string toStringWithValue();
+	void print();
 };
+
 
 
 #ifdef BITBOARD
@@ -566,8 +580,8 @@ public:
     int fullmovescounter = 0;
     int maxdebugdepth = -1;
     int mindebugdepth = -1;
-    chessmovelist pvline;
-    chessmovelist actualpath;
+	chessmovesequencelist pvline;
+	chessmovesequencelist actualpath;
     chessmove bestmove[MAXMULTIPV];
     int bestmovescore[MAXMULTIPV];
     unsigned long killer[2][MAXDEPTH];
@@ -651,8 +665,8 @@ public:
     int fullmovescounter = 0;
     int maxdebugdepth = -1;
     int mindebugdepth = -1;
-    chessmovelist pvline;
-    chessmovelist actualpath;
+	chessmovesequencelist pvline;
+	chessmovesequencelist actualpath;
     chessmove bestmove[MAXMULTIPV];
     int bestmovescore[MAXMULTIPV];
     unsigned long killer[3][MAXDEPTH];
