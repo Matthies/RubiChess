@@ -63,7 +63,7 @@ char PieceChar(PieceCode c)
     return o;
 }
  
-chessmovestack movestack[MAXMOVELISTLENGTH];
+chessmovestack movestack[MAXMOVESEQUENCELENGTH];
 int mstop;
 
 
@@ -151,23 +151,25 @@ void chessmovelist::print()
     printf("%s", toString().c_str());
 }
 
-void chessmovelist::resetvalue()
+
+chessmovesequencelist::chessmovesequencelist()
 {
-    for (int i = 0; i < length; i++)
-        move[i].value = SHRT_MIN;
+	length = 0;
 }
 
-void chessmovelist::sort()
+string chessmovesequencelist::toString()
 {
-    chessmove temp;
-    for (int i = 0; i < length; i++)
-        for (int j = i+1; j < length; j++)
-            if (move[j] < move[i])
-            {
-                temp = move[i];
-                move[i] = move[j];
-                move[j] = temp;
-            }
+	string s = "";
+	for (int i = 0; i < length; i++)
+	{
+		s = s + move[i].toString() + " ";
+	}
+	return s;
+}
+
+void chessmovesequencelist::print()
+{
+	printf("%s", toString().c_str());
 }
 
 
@@ -474,32 +476,33 @@ void chessposition::tbFilterRootMoves()
 int chessposition::testRepetiton()
 {
     unsigned long long h = hash;
-    chessmovelist ml = actualpath;
+    chessmovesequencelist *ml = &actualpath;
+	int oldlength = ml->length;
     int hit = 0;
     int i;
-    for (i = ml.length; i > 0;)
+    for (i = oldlength; i > 0;)
     {
-        if (ml.move[--i].code == 0)
+        if (ml->move[--i].code == 0)
             unplayNullMove();
         else
-            unplayMove(&ml.move[i]);
+            unplayMove(&ml->move[i]);
         if (hash == h)
             hit++;
         if (halfmovescounter == 0)
             break;
     }
-    for (; i < ml.length;)
+    for (; i < oldlength;)
     {
-        if (ml.move[i].code == 0)
+        if (ml->move[i].code == 0)
         {
             playNullMove();
         }
         else
         {
-            if (!playMove(&ml.move[i]))
+            if (!playMove(&ml->move[i]))
             {
-                printf("Alarm. Wie kommt ein illegaler Zug %s (%d) in die actuallist\n", ml.move[i].toString().c_str(), i);
-                ml.print();
+                printf("Alarm. Wie kommt ein illegaler Zug %s (%d) in die actuallist\n", ml->move[i].toString().c_str(), i);
+                ml->print();
             }
         }
         i++;
@@ -603,11 +606,6 @@ void chessposition::getpvline(int depth, int pvnum)
             tp.printHashentry();
         }
         pvline.move[pvline.length++] = cm;
-        if (pvline.length == MAXMOVELISTLENGTH)
-        {
-            printf("Movelistalarm!!!\n");
-            break;
-        }
         depth--;
     }
     for (int i = pvline.length; i;)
@@ -2291,7 +2289,9 @@ engine::engine()
     setOption("MultiPV", "1");
     setOption("Ponder", "false");
     setOption("SyzygyPath", "<empty>");
+	//setOption("SyzygyPath", "C:\\_Lokale_Daten_ungesichert\\tb");
     //setOption("SyzygyPath", "C:\\tb");
+
     setOption("Syzygy50MoveRule", "true");
 
 
