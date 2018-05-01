@@ -409,14 +409,16 @@ bool chessposition::applyMove(string s)
 void chessposition::getRootMoves()
 {
     // Precalculating the list of legal moves didn't work well for some unknown reason but we need the number of legal moves in MultiPV mode
+    if (rootmovelist)
+        delete rootmovelist;
     chessmovelist *movelist = getMoves();
+    rootmovelist = new chessmovelist;
     int bestval = SCOREBLACKWINS;
-    rootmovelist.length = 0;
     for (int i = 0; i < movelist->length; i++)
     {
         if (playMove(&movelist->move[i]))
         {
-            rootmovelist.move[rootmovelist.length++] = movelist->move[i];
+            rootmovelist->move[rootmovelist->length++] = movelist->move[i];
             unplayMove(&movelist->move[i]);
             if (bestval < movelist->move[i].value)
             {
@@ -455,13 +457,13 @@ void chessposition::tbFilterRootMoves()
         if (tbPosition)
         {
             // Sort the moves
-            for (int i = 0; i < pos.rootmovelist.length; i++)
+            for (int i = 0; i < pos.rootmovelist->length; i++)
             {
-                for (int j = i + 1; j < pos.rootmovelist.length; j++)
+                for (int j = i + 1; j < pos.rootmovelist->length; j++)
                 {
-                    if (pos.rootmovelist.move[i] < pos.rootmovelist.move[j])
+                    if (pos.rootmovelist->move[i] < pos.rootmovelist->move[j])
                     {
-                        swap(pos.rootmovelist.move[i], pos.rootmovelist.move[j]);
+                        swap(pos.rootmovelist->move[i], pos.rootmovelist->move[j]);
                     }
                 }
             }
@@ -1085,12 +1087,15 @@ void initBitmaphelper()
 
 chessposition::chessposition()
 {
+    rootmovelist = nullptr;
     //init();
 }
 
 
 chessposition::~chessposition()
 {
+    if (rootmovelist)
+        delete rootmovelist;
     delete positionvaluetable;
 }
 

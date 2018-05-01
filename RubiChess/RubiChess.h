@@ -582,7 +582,7 @@ public:
     int maxdebugdepth = -1;
     int mindebugdepth = -1;
 #endif
-    chessmovelist rootmovelist;
+    chessmovelist *rootmovelist;
     chessmovesequencelist pvline;
     chessmovesequencelist actualpath;
     chessmove bestmove[MAXMULTIPV];
@@ -682,7 +682,7 @@ public:
     int useTb = 0;
     int useRootmoveScore = 0;
     int tbPosition = 0;
-    chessmovelist rootmovelist;
+    chessmovelist *rootmovelist;
     chessmove defaultmove; // fallback if search in time trouble didn't finish a single iteration 
     chessposition();
     ~chessposition();

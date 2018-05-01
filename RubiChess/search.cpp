@@ -428,7 +428,7 @@ int rootsearch(int alpha, int beta, int depth)
     if (isMultiPV)
     {
         lastmoveindex = 0;
-        maxmoveindex = min(en.MultiPV, pos.rootmovelist.length);
+        maxmoveindex = min(en.MultiPV, pos.rootmovelist->length);
         for (int i = 0; i < maxmoveindex; i++)
             pos.bestmovescore[i] = SHRT_MIN + 1;
     }
@@ -472,9 +472,9 @@ int rootsearch(int alpha, int beta, int depth)
     if (!pos.tbPosition)
     {
         // Reset move values
-        for (int i = 0; i < pos.rootmovelist.length; i++)
+        for (int i = 0; i < pos.rootmovelist->length; i++)
         {
-            m = &pos.rootmovelist.move[i];
+            m = &pos.rootmovelist->move[i];
 
             //PV moves gets top score
             if (hashmovecode == m->code)
@@ -503,17 +503,17 @@ int rootsearch(int alpha, int beta, int depth)
         }
     }
 
-    for (int i = 0; i < pos.rootmovelist.length; i++)
+    for (int i = 0; i < pos.rootmovelist->length; i++)
     {
-        for (int j = i + 1; j < pos.rootmovelist.length; j++)
+        for (int j = i + 1; j < pos.rootmovelist->length; j++)
         {
-            if (pos.rootmovelist.move[i] < pos.rootmovelist.move[j])
+            if (pos.rootmovelist->move[i] < pos.rootmovelist->move[j])
             {
-                swap(pos.rootmovelist.move[i], pos.rootmovelist.move[j]);
+                swap(pos.rootmovelist->move[i], pos.rootmovelist->move[j]);
             }
         }
 
-        m = &pos.rootmovelist.move[i];
+        m = &pos.rootmovelist->move[i];
 
         pos.playMove(m);
 
@@ -698,7 +698,7 @@ static void search_gen1()
     alpha = SHRT_MIN + 1;
     beta = SHRT_MAX;
     
-    if (pos.rootmovelist.length == 0)
+    if (pos.rootmovelist->length == 0)
     {
         pos.bestmove[0].code = 0;
         score =  (pos.isCheck ? SCOREBLACKWINS : SCOREDRAW);
@@ -730,7 +730,7 @@ static void search_gen1()
         unsigned long long nodesbefore = en.nodes;
         en.npd[depth] = 0;
 #endif
-        if (pos.rootmovelist.length == 0)
+        if (pos.rootmovelist->length == 0)
         {
             pos.bestmove[0].code = 0;
             score =  (pos.isCheck ? SCOREBLACKWINS : SCOREDRAW);
@@ -812,7 +812,7 @@ static void search_gen1()
                     // FIXME: This is a bit ugly... code more consistent with SinglePV would be better
                     // but I had to fight against performance regression so I devided it this way
                     int i = 0;
-                    int maxmoveindex = min(en.MultiPV, pos.rootmovelist.length);
+                    int maxmoveindex = min(en.MultiPV, pos.rootmovelist->length);
                     do
                     {
                         // The only case that bestmove is not set can happen if rootsearch hit the TP table
@@ -854,7 +854,7 @@ static void search_gen1()
                     tp.probeHash(&score, &pos.bestmove[0].code, MAXDEPTH, alpha, beta);
                 // still no bestmove...
                 if (!pos.bestmove[0].code)
-                    pos.bestmove[0].code = pos.rootmovelist.move[0].code;
+                    pos.bestmove[0].code = pos.rootmovelist->move[0].code;
 
                 pos.getpvline(depth, 0);
                 pvstring = pos.pvline.toString();
@@ -896,7 +896,7 @@ static void search_gen1()
         }
         if (inWindow == 1)
             depth += depthincrement;
-        if (pos.rootmovelist.length == 1 && depth > 4 && en.endtime1)
+        if (pos.rootmovelist->length == 1 && depth > 4 && en.endtime1)
             // early exit in playing mode as there is exactly one possible move
             en.stopLevel = ENGINEWANTSTOP;
         if (pos.tbPosition && abs(score) >= SCORETBWIN - 100)
