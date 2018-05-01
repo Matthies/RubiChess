@@ -718,6 +718,7 @@ static void search_gen1()
     do
     {
         matein = MAXDEPTH;
+#ifdef DEBUG
         pos.maxdebugdepth = -1;
         pos.mindebugdepth = 0;
         if (en.debug)
@@ -727,7 +728,7 @@ static void search_gen1()
             pos.mindebugdepth = depth;
             PDEBUG(depth, "Next depth: %d\n", depth);
         }
-
+#endif
         // Reset bestmove to detect alpha raise in interrupted search
         pos.bestmove[0].code = 0;
         inWindow = 1;

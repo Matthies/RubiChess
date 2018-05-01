@@ -412,7 +412,7 @@ public:
 #define MAXMULTIPV 64
 
 #define MAXMOVELISTLENGTH 256	// for lists of possible pseudo-legal moves
-#define MAXMOVESEQUENCELENGTH 2048	// for move sequences in a game
+#define MAXMOVESEQUENCELENGTH 512	// for move sequences in a game
 
 
 // FIXME: This is ugly! Almost the same classes with doubled code.
@@ -578,22 +578,26 @@ public:
     int ply;
     int halfmovescounter = 0;
     int fullmovescounter = 0;
+#ifdef DEBUG
     int maxdebugdepth = -1;
     int mindebugdepth = -1;
+#endif
 	chessmovesequencelist pvline;
 	chessmovesequencelist actualpath;
     chessmove bestmove[MAXMULTIPV];
     int bestmovescore[MAXMULTIPV];
     unsigned long killer[2][MAXDEPTH];
     unsigned int history[14][64];
+    chessmovelist rootmovelist;
+#ifdef DEBUG    
     unsigned long long debughash = 0;
+#endif
     int *positionvaluetable; // value tables for both sides, 7 PieceTypes and 256 phase variations 
     int ph; // to store the phase during different evaluation functions
     int isCheck;
     int useTb;
     int useRootmoveScore;
     int tbPosition;
-    chessmovelist rootmovelist;
     chessmove defaultmove; // fallback if search in time trouble didn't finish a single iteration 
     chessposition();
     ~chessposition();

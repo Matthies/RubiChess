@@ -2440,8 +2440,10 @@ void engine::communicate(string inputstring)
                         debug = true;
                     else if (commandargs[ci] == "off")
                         debug = false;
+#ifdef DEBUG
                     else if (commandargs[ci] == "this")
                         pos.debughash = pos.hash;
+#endif
                 }
                 break;
             case UCI:
