@@ -582,13 +582,13 @@ public:
     int maxdebugdepth = -1;
     int mindebugdepth = -1;
 #endif
-	chessmovesequencelist pvline;
-	chessmovesequencelist actualpath;
+    chessmovelist rootmovelist;
+    chessmovesequencelist pvline;
+    chessmovesequencelist actualpath;
     chessmove bestmove[MAXMULTIPV];
     int bestmovescore[MAXMULTIPV];
     unsigned long killer[2][MAXDEPTH];
     unsigned int history[14][64];
-    chessmovelist rootmovelist;
 #ifdef DEBUG    
     unsigned long long debughash = 0;
 #endif

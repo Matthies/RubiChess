@@ -413,7 +413,6 @@ int rootsearch(int alpha, int beta, int depth)
 {
     int score;
     uint32_t hashmovecode = 0;
-    int  LegalMoves = 0;
     int bestscore = NOSCORE;
     int eval_type = HASHALPHA;
     chessmove *m;
@@ -515,24 +514,22 @@ int rootsearch(int alpha, int beta, int depth)
         }
 
         m = &pos.rootmovelist.move[i];
-        if (m->value == TBFILTER)
-            continue;
 
         pos.playMove(m);
 
         if (true)//(isLegal)
         {
-            LegalMoves++;
+            //LegalMoves++;
             if (en.moveoutput)
             {
                 char s[256];
-                sprintf_s(s, "info depth %d currmove %s currmovenumber %d nodes %llu tbhits %llu\n", depth, m->toString().c_str(), LegalMoves, en.nodes, en.tbhits);
+                sprintf_s(s, "info depth %d currmove %s currmovenumber %d nodes %llu tbhits %llu\n", depth, m->toString().c_str(), i + 1, en.nodes, en.tbhits);
                 cout << s;
             }
             PDEBUG(depth, "(rootsearch) played move %s (%d)   nodes:%d\n", m->toString().c_str(), m->value, en.nodes);
 
             reduction = 0;
-            if (!extendall && depth > 2 && LegalMoves > 3 && !ISTACTICAL(m->code) && !pos.isCheck)
+            if (!extendall && depth > 2 && i > 2 && !ISTACTICAL(m->code) && !pos.isCheck)
                 reduction = 1;
 
             if (!eval_type == HASHEXACT)
@@ -640,18 +637,6 @@ int rootsearch(int alpha, int beta, int depth)
         }
     }
 
-    if (LegalMoves == 0)
-    {
-        pos.bestmove[0].code = 0;
-        en.stopLevel = ENGINEWANTSTOP;
-        if (pos.isCheck)
-            // It's a mate
-            return SCOREBLACKWINS;
-        else
-            // It's a stalemate
-            return SCOREDRAW;
-    }
-
     if (isMultiPV)
     {
         if (eval_type == HASHEXACT)
@@ -682,7 +667,6 @@ static void search_gen1()
     string bestmovestr = "";
     string newbestmovestr;
     string pondermovestr = "";
-    char s[16384];
 
     int score;
     int matein;
@@ -713,6 +697,15 @@ static void search_gen1()
 
     alpha = SHRT_MIN + 1;
     beta = SHRT_MAX;
+    
+    if (pos.rootmovelist.length == 0)
+    {
+        pos.bestmove[0].code = 0;
+        score =  (pos.isCheck ? SCOREBLACKWINS : SCOREDRAW);
+        
+    }
+
+
 
     // iterative deepening
     do
@@ -737,63 +730,71 @@ static void search_gen1()
         unsigned long long nodesbefore = en.nodes;
         en.npd[depth] = 0;
 #endif
-        score = rootsearch<RT>(alpha, beta, depth);
-        //printf("info string Rootsearch: alpha=%d beta=%d depth=%d score=%d bestscore[0]=%d bestscore[%d]=%d\n", alpha, beta, depth, score, pos.bestmovescore[0], en.MultiPV - 1,  pos.bestmovescore[en.MultiPV - 1]);
+        if (pos.rootmovelist.length == 0)
+        {
+            pos.bestmove[0].code = 0;
+            score =  (pos.isCheck ? SCOREBLACKWINS : SCOREDRAW);
+            en.stopLevel = ENGINESTOPPED;
+        } else
+        {
+            score = rootsearch<RT>(alpha, beta, depth);
+            //printf("info string Rootsearch: alpha=%d beta=%d depth=%d score=%d bestscore[0]=%d bestscore[%d]=%d\n", alpha, beta, depth, score, pos.bestmovescore[0], en.MultiPV - 1,  pos.bestmovescore[en.MultiPV - 1]);
 
-        // new aspiration window
-        if (score == alpha)
-        {
-            // research with lower alpha
-            alpha = max(SHRT_MIN + 1, alpha - deltaalpha);
-            deltaalpha <<= 1;
-            if (alpha > 1000)
-                deltaalpha = SHRT_MAX << 1;
-            inWindow = 0;
-#ifdef DEBUG
-            en.wastedaspnodes += (en.nodes - nodesbefore);
-#endif
-        }
-        else if (score == beta)
-        {
-            // research with higher beta
-            beta = min(SHRT_MAX, beta + deltabeta);
-            deltabeta <<= 1;
-            if (beta > 1000)
-                deltabeta = SHRT_MAX << 1;
-            inWindow = 2;
-#ifdef DEBUG
-            en.wastedaspnodes += (en.nodes - nodesbefore);
-#endif
-        }
-        else
-        {
-            if (score >= en.terminationscore)
+            // new aspiration window
+            if (score == alpha)
             {
-                // bench mode reached needed score
-                en.stopLevel = ENGINEWANTSTOP;
-            }
-            else {
-                // next depth with new aspiration window
-                deltaalpha = 25;
-                deltabeta = 25;
-                if (isMultiPV)
-                    alpha = pos.bestmovescore[en.MultiPV - 1] - deltaalpha;
-                else
-                    alpha = score - deltaalpha;
-                beta = score + deltabeta;
+                // research with lower alpha
+                alpha = max(SHRT_MIN + 1, alpha - deltaalpha);
+                deltaalpha <<= 1;
+                if (alpha > 1000)
+                    deltaalpha = SHRT_MAX << 1;
+                inWindow = 0;
 #ifdef DEBUG
-                if (en.stopLevel == ENGINERUN)
-                {
-                    en.npd[depth] = en.nodes - en.npd[depth - 1];
-                    if (depth >= 2)
-                    {
-                        int deltascore = (score - oldscore) + 1000;
-                        if (deltascore >= 0 && deltascore < 2000)
-                            aspirationdelta[depth][deltascore]++;
-                    }
-                    oldscore = score;
-                }
+                en.wastedaspnodes += (en.nodes - nodesbefore);
 #endif
+            }
+            else if (score == beta)
+            {
+                // research with higher beta
+                beta = min(SHRT_MAX, beta + deltabeta);
+                deltabeta <<= 1;
+                if (beta > 1000)
+                    deltabeta = SHRT_MAX << 1;
+                inWindow = 2;
+#ifdef DEBUG
+                en.wastedaspnodes += (en.nodes - nodesbefore);
+#endif
+            }
+            else
+            {
+                if (score >= en.terminationscore)
+                {
+                    // bench mode reached needed score
+                    en.stopLevel = ENGINEWANTSTOP;
+                }
+                else {
+                    // next depth with new aspiration window
+                    deltaalpha = 25;
+                    deltabeta = 25;
+                    if (isMultiPV)
+                        alpha = pos.bestmovescore[en.MultiPV - 1] - deltaalpha;
+                    else
+                        alpha = score - deltaalpha;
+                    beta = score + deltabeta;
+#ifdef DEBUG
+                    if (en.stopLevel == ENGINERUN)
+                    {
+                        en.npd[depth] = en.nodes - en.npd[depth - 1];
+                        if (depth >= 2)
+                        {
+                            int deltascore = (score - oldscore) + 1000;
+                            if (deltascore >= 0 && deltascore < 2000)
+                                aspirationdelta[depth][deltascore]++;
+                        }
+                        oldscore = score;
+                    }
+#endif
+                }
             }
         }
         if (score > NOSCORE)
@@ -829,6 +830,7 @@ static void search_gen1()
                             else
                                 bestmovestr = pos.bestmove[0].toString();
                         }
+                        char s[4096];
                         if (!MATEDETECTED(pos.bestmovescore[i]))
                         {
                             sprintf_s(s, "info depth %d multipv %d time %d score cp %d %s pv %s\n", depth, i + 1, secondsrun, pos.bestmovescore[i], boundscore[inWindow], pvstring.c_str());
@@ -873,6 +875,7 @@ static void search_gen1()
                 if (getponderfrompvline)
                     pondermovestr = " ponder " + pos.pvline.move[1].toString();
 
+                char s[4096];
                 if (!MATEDETECTED(score))
                 {
                     sprintf_s(s, "info depth %d time %d score cp %d %s nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
@@ -905,9 +908,12 @@ static void search_gen1()
     if (bestmovestr == "")
         // not a single move found (serious time trouble); fall back to default move
         bestmovestr = pos.defaultmove.toString();
+
+    char s[64];
     sprintf_s(s, "bestmove %s%s\n", bestmovestr.c_str(), pondermovestr.c_str());
     cout << s;
 }
+
 
 void startSearchTime()
 {
