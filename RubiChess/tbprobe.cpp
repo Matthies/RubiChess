@@ -655,9 +655,9 @@ int root_probe()
         return 0;
 
     // Probe each move.
-    for (int i = 0; i < pos.rootmovelist->length; i++)
+    for (int i = 0; i < pos.rootmovelist.length; i++)
     {
-        chessmove *m = &pos.rootmovelist->move[i];
+        chessmove *m = &pos.rootmovelist.move[i];
         pos.playMove(m);
         //printf("root_probe (ply=%d) Testing move %s...\n", pos.ply, m->toString().c_str());
         int v = 0;
@@ -713,9 +713,9 @@ int root_probe()
     size_t j = 0;
     if (dtz > 0) { // winning (or 50-move rule draw)
         int best = 0xffff;
-        for (int i = 0; i < pos.rootmovelist->length; i++)
+        for (int i = 0; i < pos.rootmovelist.length; i++)
         {
-            chessmove *m = &pos.rootmovelist->move[i];
+            chessmove *m = &pos.rootmovelist.move[i];
             int v = m->value;
             if (v > 0 && v < best)
                 best = v;
@@ -727,59 +727,59 @@ int root_probe()
         if (!pos.testRepetiton() && best + cnt50 <= 99)
             max = 99 - cnt50;
 
-        for (int i = 0; i < pos.rootmovelist->length; i++)
+        for (int i = 0; i < pos.rootmovelist.length; i++)
         {
-            int v = pos.rootmovelist->move[i].value;
+            int v = pos.rootmovelist.move[i].value;
             if (v <= 0)
             {
                 // Bad move, filter it out
-                pos.rootmovelist->move[i].value = TBFILTER;
+                pos.rootmovelist.move[i].value = TBFILTER;
             }
             else if (best + cnt50 <= 100 || !en.Syzygy50MoveRule)
             {
                 // We can win
                 if (v + cnt50 > 100 && en.Syzygy50MoveRule)
                     // Cursed win; filter this move
-                    pos.rootmovelist->move[i].value = TBFILTER;
+                    pos.rootmovelist.move[i].value = TBFILTER;
                 else
-                    pos.rootmovelist->move[i].value = SCORETBWIN - v;
+                    pos.rootmovelist.move[i].value = SCORETBWIN - v;
             }
             else
             {
                 // Win might be cursed
-                pos.rootmovelist->move[i].value = 100 - v;
+                pos.rootmovelist.move[i].value = 100 - v;
             }
         }
     }
     else if (dtz < 0) {
         int best = 0;
-        for (int i = 0; i < pos.rootmovelist->length; i++)
+        for (int i = 0; i < pos.rootmovelist.length; i++)
         {
-            int v = pos.rootmovelist->move[i].value;
+            int v = pos.rootmovelist.move[i].value;
             if (v < best)
                 best = v;
         }
-        for (int i = 0; i < pos.rootmovelist->length; i++)
+        for (int i = 0; i < pos.rootmovelist.length; i++)
         {
-            int v = pos.rootmovelist->move[i].value;
+            int v = pos.rootmovelist.move[i].value;
             if (en.Syzygy50MoveRule && -best + cnt50 > 100)
             {
                 // We can reach a draw by 50-moves-rule so filter moves that don't preserve this
                 if (-v + cnt50 <= 100)
-                    pos.rootmovelist->move[i].value = TBFILTER;
+                    pos.rootmovelist.move[i].value = TBFILTER;
             }
             else {
                 // We will lose
-                pos.rootmovelist->move[i].value = -SCORETBWIN - v;
+                pos.rootmovelist.move[i].value = -SCORETBWIN - v;
             }
         }
     }
     else { // drawing
            // Try all moves that preserve the draw.
-        for (int i = 0; i < pos.rootmovelist->length; i++)
+        for (int i = 0; i < pos.rootmovelist.length; i++)
         {
-            if (pos.rootmovelist->move[i].value < 0)
-                pos.rootmovelist->move[i].value = TBFILTER;
+            if (pos.rootmovelist.move[i].value < 0)
+                pos.rootmovelist.move[i].value = TBFILTER;
         }
     }
 
@@ -803,9 +803,9 @@ int root_probe_wdl()
     int best = -2;
 
     // Probe each move.
-    for (int i = 0; i < pos.rootmovelist->length; i++)
+    for (int i = 0; i < pos.rootmovelist.length; i++)
     {
-        chessmove *m = &pos.rootmovelist->move[i];
+        chessmove *m = &pos.rootmovelist.move[i];
         pos.playMove(m);
         int v = -probe_wdl(&success);
         pos.unplayMove(m);
@@ -817,9 +817,9 @@ int root_probe_wdl()
             best = v;
     }
 
-    for (int i = 0; i < pos.rootmovelist->length; i++)
+    for (int i = 0; i < pos.rootmovelist.length; i++)
     {
-        chessmove *m = &pos.rootmovelist->move[i];
+        chessmove *m = &pos.rootmovelist.move[i];
         if (m->value < best)
             m->value = TBFILTER;
     }
