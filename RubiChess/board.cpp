@@ -63,7 +63,7 @@ char PieceChar(PieceCode c)
     return o;
 }
  
-chessmovestack movestack[MAXMOVELISTLENGTH];
+chessmovestack movestack[MAXMOVESEQUENCELENGTH];
 int mstop;
 
 
@@ -151,23 +151,25 @@ void chessmovelist::print()
     printf("%s", toString().c_str());
 }
 
-void chessmovelist::resetvalue()
+
+chessmovesequencelist::chessmovesequencelist()
 {
-    for (int i = 0; i < length; i++)
-        move[i].value = SHRT_MIN;
+	length = 0;
 }
 
-void chessmovelist::sort()
+string chessmovesequencelist::toString()
 {
-    chessmove temp;
-    for (int i = 0; i < length; i++)
-        for (int j = i+1; j < length; j++)
-            if (move[j] < move[i])
-            {
-                temp = move[i];
-                move[i] = move[j];
-                move[j] = temp;
-            }
+	string s = "";
+	for (int i = 0; i < length; i++)
+	{
+		s = s + move[i].toString() + " ";
+	}
+	return s;
+}
+
+void chessmovesequencelist::print()
+{
+	printf("%s", toString().c_str());
 }
 
 
@@ -348,6 +350,7 @@ int chessposition::getFromFen(const char* sFen)
 #endif
     hash = zb.getHash();
     pawnhash = zb.getPawnHash();
+    materialhash = zb.getMaterialHash();
     rp.clean();
     rp.addPosition(hash);
     for (int i = 0; i < 14; i++)
@@ -384,6 +387,12 @@ bool chessposition::applyMove(string s)
         {
             if (playMove(&(cmlist->move[i])))
             {
+                if (halfmovescounter == 0)
+                {
+                    // Keep the list short, we have to keep below MAXMOVELISTLENGTH
+                    actualpath.length = 0;
+                    mstop = 0;
+                }
                 retval = true;
             }
             else {
@@ -402,12 +411,12 @@ void chessposition::getRootMoves()
     // Precalculating the list of legal moves didn't work well for some unknown reason but we need the number of legal moves in MultiPV mode
     chessmovelist *movelist = getMoves();
     int bestval = SCOREBLACKWINS;
-    rootmoves = 0;
+    rootmovelist.length = 0;
     for (int i = 0; i < movelist->length; i++)
     {
         if (playMove(&movelist->move[i]))
         {
-            rootmoves++;
+            rootmovelist.move[rootmovelist.length++] = movelist->move[i];
             unplayMove(&movelist->move[i]);
             if (bestval < movelist->move[i].value)
             {
@@ -419,43 +428,87 @@ void chessposition::getRootMoves()
     delete movelist;
 }
 
+#ifdef BITBOARD
+void chessposition::tbFilterRootMoves()
+{
+    useTb = TBlargest;
+    tbPosition = 0;
+    useRootmoveScore = 0;
+    if (POPCOUNT(pos.occupied00[0] | pos.occupied00[1]) <= TBlargest)
+    {
+        if ((tbPosition = root_probe())) {
+            en.tbhits++;
+            // The current root position is in the tablebases.
+            // RootMoves now contains only moves that preserve the draw or win.
+
+            // Do not probe tablebases during the search.
+            useTb = 0;
+            useRootmoveScore = 1;
+        }
+        else // If DTZ tables are missing, use WDL tables as a fallback
+        {
+            // Filter out moves that do not preserve a draw or win
+            tbPosition = root_probe_wdl();
+            // useRootmoveScore is set within root_probe_wdl
+        }
+
+        if (tbPosition)
+        {
+            // Sort the moves
+            for (int i = 0; i < pos.rootmovelist.length; i++)
+            {
+                for (int j = i + 1; j < pos.rootmovelist.length; j++)
+                {
+                    if (pos.rootmovelist.move[i] < pos.rootmovelist.move[j])
+                    {
+                        swap(pos.rootmovelist.move[i], pos.rootmovelist.move[j]);
+                    }
+                }
+            }
+        }
+    }
+}
+
+#endif
+
 
 /* test the actualmove for three-fold-repetition as the repetition table may give false positive due to table collisions */
-bool chessposition::testRepetiton()
+int chessposition::testRepetiton()
 {
     unsigned long long h = hash;
-    chessmovelist ml = actualpath;
+    chessmovesequencelist *ml = &actualpath;
+	int oldlength = ml->length;
     int hit = 0;
     int i;
-    for (i = ml.length; i > 0;)
+    for (i = oldlength; i > 0;)
     {
-        if (ml.move[--i].code == 0)
+        if (ml->move[--i].code == 0)
             unplayNullMove();
         else
-            unplayMove(&ml.move[i]);
+            unplayMove(&ml->move[i]);
         if (hash == h)
             hit++;
         if (halfmovescounter == 0)
             break;
     }
-    for (; i < ml.length;)
+    for (; i < oldlength;)
     {
-        if (ml.move[i].code == 0)
+        if (ml->move[i].code == 0)
         {
             playNullMove();
         }
         else
         {
-            if (!playMove(&ml.move[i]))
+            if (!playMove(&ml->move[i]))
             {
-                printf("Alarm. Wie kommt ein illegaler Zug %s (%d) in die actuallist\n", ml.move[i].toString().c_str(), i);
-                ml.print();
+                printf("Alarm. Wie kommt ein illegaler Zug %s (%d) in die actuallist\n", ml->move[i].toString().c_str(), i);
+                ml->print();
             }
         }
         i++;
     }
 
-    return (hit >= 2);
+    return hit;
 }
 
 
@@ -553,11 +606,6 @@ void chessposition::getpvline(int depth, int pvnum)
             tp.printHashentry();
         }
         pvline.move[pvline.length++] = cm;
-        if (pvline.length == MAXMOVELISTLENGTH)
-        {
-            printf("Movelistalarm!!!\n");
-            break;
-        }
         depth--;
     }
     for (int i = pvline.length; i;)
@@ -1134,6 +1182,7 @@ bool chessposition::playMove(chessmove *cm)
     movestack[mstop].ept = ept;
     movestack[mstop].hash = hash;
     movestack[mstop].pawnhash = pawnhash;
+    movestack[mstop].materialhash = materialhash;
     movestack[mstop].state = state;
     movestack[mstop].kingpos[0] = kingpos[0];
     movestack[mstop].kingpos[1] = kingpos[1];
@@ -1150,6 +1199,7 @@ bool chessposition::playMove(chessmove *cm)
         if ((capture >> 1) == PAWN)
             pawnhash ^= zb.boardtable[(to << 4) | capture];
         BitboardClear(to, capture);
+        materialhash ^= zb.boardtable[(POPCOUNT(piece00[capture]) << 4) | capture];
         halfmovescounter = 0;
     }
 
@@ -1161,6 +1211,8 @@ bool chessposition::playMove(chessmove *cm)
     else {
         mailbox[to] = promote;
         BitboardClear(from, pfrom);
+        materialhash ^= zb.boardtable[(POPCOUNT(piece00[pfrom]) << 4) | pfrom];
+        materialhash ^= zb.boardtable[(POPCOUNT(piece00[promote]) << 4) | promote];
         BitboardSet(to, promote);
         // just double the hash-switch for target to make the pawn vanish
         pawnhash ^= zb.boardtable[(to << 4) | mailbox[to]];
@@ -1181,11 +1233,11 @@ bool chessposition::playMove(chessmove *cm)
         if (ept && to == ept)
         {
             int epfield = (from & 0x38) | (to & 0x07);
-            hash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
-            pawnhash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
-
             BitboardClear(epfield, (pfrom ^ S2MMASK));
             mailbox[epfield] = BLANK;
+            hash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
+            pawnhash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
+            materialhash ^= zb.boardtable[(POPCOUNT(piece00[(pfrom ^ S2MMASK)]) << 4) | (pfrom ^ S2MMASK)];
         }
     }
 
@@ -1266,6 +1318,7 @@ void chessposition::unplayMove(chessmove *cm)
     ept = movestack[mstop].ept;
     hash = movestack[mstop].hash;
     pawnhash = movestack[mstop].pawnhash;
+    materialhash = movestack[mstop].materialhash;
     state = movestack[mstop].state;
     kingpos[0] = movestack[mstop].kingpos[0];
     kingpos[1] = movestack[mstop].kingpos[1];
@@ -2235,6 +2288,12 @@ engine::engine()
     setOption("Move Overhead", "50");
     setOption("MultiPV", "1");
     setOption("Ponder", "false");
+    setOption("SyzygyPath", "<empty>");
+	//setOption("SyzygyPath", "C:\\_Lokale_Daten_ungesichert\\tb");
+    //setOption("SyzygyPath", "C:\\tb");
+
+    setOption("Syzygy50MoveRule", "true");
+
 
 #ifdef _WIN32
     LARGE_INTEGER f;
@@ -2295,6 +2354,17 @@ void engine::setOption(string sName, string sValue)
             return;
         moveOverhead = newint;
     }
+#ifdef BITBOARD
+    if (sName == "syzygypath")
+    {
+        SyzygyPath = sValue;
+        init_tablebases((char *)SyzygyPath.c_str());
+    }
+    if (sName == "syzygy50moverule")
+    {
+        Syzygy50MoveRule = (lValue == "true");
+    }
+#endif
 }
 
 
@@ -2341,7 +2411,9 @@ void engine::communicate(string inputstring)
                 }
                 pos.ply = 0;
                 pos.getRootMoves();
-
+#ifdef BITBOARD
+                pos.tbFilterRootMoves();
+#endif
                 if (debug)
                 {
                     pos.print();
@@ -2368,8 +2440,10 @@ void engine::communicate(string inputstring)
                         debug = true;
                     else if (commandargs[ci] == "off")
                         debug = false;
+#ifdef DEBUG
                     else if (commandargs[ci] == "this")
                         pos.debughash = pos.hash;
+#endif
                 }
                 break;
             case UCI:
@@ -2380,6 +2454,8 @@ void engine::communicate(string inputstring)
                 myUci->send("option name Move Overhead type spin default 50 min 0 max 5000\n");
                 myUci->send("option name MultiPV type spin default 1 min 1 max %d\n", MAXMULTIPV);
                 myUci->send("option name Ponder type check default false\n");
+                myUci->send("option name SyzygyPath type string default <empty>\n");
+                myUci->send("option name Syzygy50MoveRule type check default true\n");
                 myUci->send("uciok\n", author);
                 break;
             case SETOPTION:

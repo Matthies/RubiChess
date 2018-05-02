@@ -76,6 +76,7 @@ using namespace std;
 #include <math.h>
 #include <regex>
 
+#include "tbprobe.h"
 
 #ifdef _WIN32
 
@@ -233,6 +234,8 @@ const int EPTSIDEMASK[2] = { 0x8, 0x10 };
 #define SCOREBLACKWINS (SHRT_MIN + 3 + MAXDEPTH)
 #define SCOREWHITEWINS (-SCOREBLACKWINS)
 #define SCOREDRAW 0
+#define SCORETBWIN 30000
+
 #define MATEFORME(s) (s > SCOREWHITEWINS - MAXDEPTH)
 #define MATEFOROPPONENT(s) (s < SCOREBLACKWINS + MAXDEPTH)
 #define MATEDETECTED(s) (MATEFORME(s) || MATEFOROPPONENT(s))
@@ -262,6 +265,7 @@ const int lva[] = { 5 << 25, 4 << 25, 3 << 25, 3 << 25, 2 << 25, 1 << 25, 0 << 2
 #define PVVAL (7 << 28)
 #define KILLERVAL1 (1 << 27)
 #define KILLERVAL2 (KILLERVAL1 - 1)
+#define TBFILTER INT32_MIN
 
 #ifdef BITBOARD
 #define ISEPCAPTURE 0x40
@@ -371,6 +375,7 @@ struct chessmovestack
     int kingpos[2];
     unsigned long long hash;
     unsigned long long pawnhash;
+    unsigned long long materialhash;
     int halfmovescounter;
     int fullmovescounter;
     int isCheck;
@@ -398,27 +403,41 @@ public:
     chessmove(int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
     chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
 #endif
-    bool operator<(const chessmove cm) const { return value < cm.value; }
-    bool operator>(const chessmove cm) const { return value > cm.value; }
+    bool operator<(const chessmove cm) const { return (value < cm.value); }
+    bool operator>(const chessmove cm) const { return (value > cm.value); }
     string toString();
     void print();
 };
 
-#define MAXMOVELISTLENGTH 1024
 #define MAXMULTIPV 64
+
+#define MAXMOVELISTLENGTH 256	// for lists of possible pseudo-legal moves
+#define MAXMOVESEQUENCELENGTH 512	// for move sequences in a game
+
+
+// FIXME: This is ugly! Almost the same classes with doubled code.
+class chessmovesequencelist
+{
+public:
+	int length;
+	chessmove move[MAXMOVESEQUENCELENGTH];
+	chessmovesequencelist();
+	string toString();
+	void print();
+};
+
 
 class chessmovelist
 {
 public:
+    int length;
     chessmove move[MAXMOVELISTLENGTH];
-    int length = 0;
-    chessmovelist();
-    string toString();
-    string toStringWithValue();
-    void print();
-    void resetvalue();
-    void sort();
+	chessmovelist();
+	string toString();
+	string toStringWithValue();
+	void print();
 };
+
 
 
 #ifdef BITBOARD
@@ -555,22 +574,30 @@ public:
     int kingpos[2];
     unsigned long long hash;
     unsigned long long pawnhash;
+    unsigned long long materialhash;
     int ply;
     int halfmovescounter = 0;
     int fullmovescounter = 0;
+#ifdef DEBUG
     int maxdebugdepth = -1;
     int mindebugdepth = -1;
-    chessmovelist pvline;
-    chessmovelist actualpath;
+#endif
+    chessmovelist rootmovelist;
+    chessmovesequencelist pvline;
+    chessmovesequencelist actualpath;
     chessmove bestmove[MAXMULTIPV];
     int bestmovescore[MAXMULTIPV];
     unsigned long killer[2][MAXDEPTH];
     unsigned int history[14][64];
+#ifdef DEBUG    
     unsigned long long debughash = 0;
+#endif
     int *positionvaluetable; // value tables for both sides, 7 PieceTypes and 256 phase variations 
     int ph; // to store the phase during different evaluation functions
     int isCheck;
-    int rootmoves;  // precalculated and used for MultiPV mode
+    int useTb;
+    int useRootmoveScore;
+    int tbPosition;
     chessmove defaultmove; // fallback if search in time trouble didn't finish a single iteration 
     chessposition();
     ~chessposition();
@@ -599,6 +626,7 @@ public:
     void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
     chessmovelist* getMoves();
     void getRootMoves();
+    void tbFilterRootMoves();
     bool playMove(chessmove *cm);
     void unplayMove(chessmove *cm);
     void playNullMove();
@@ -615,7 +643,7 @@ public:
 #ifdef DEBUGEVAL
     void debugeval(const char* format, ...);
 #endif
-    bool testRepetiton();
+    int testRepetiton();
     void mirror();
 };
 
@@ -627,12 +655,13 @@ public:
 class chessposition
 {
 public:
-    PieceCode mailbox[128];
+    PieceCode mailbox[BOARDSIZE];
     int state;
     int ept;
     int kingpos[2];
     unsigned long long hash;
     unsigned long long pawnhash;
+    unsigned long long materialhash;
     //int value;
     int ply;
     int piecenum[14];
@@ -640,8 +669,8 @@ public:
     int fullmovescounter = 0;
     int maxdebugdepth = -1;
     int mindebugdepth = -1;
-    chessmovelist pvline;
-    chessmovelist actualpath;
+	chessmovesequencelist pvline;
+	chessmovesequencelist actualpath;
     chessmove bestmove[MAXMULTIPV];
     int bestmovescore[MAXMULTIPV];
     unsigned long killer[3][MAXDEPTH];
@@ -650,7 +679,10 @@ public:
     int *positionvaluetable;     // value tables for both sides, 7 PieceTypes and 256 phase variations 
     int ph; // to store the phase during different evaluation functions
     int isCheck;
-    int rootmoves;  // precalculated and used for MultiPV mode
+    int useTb = 0;
+    int useRootmoveScore = 0;
+    int tbPosition = 0;
+    chessmovelist rootmovelist;
     chessmove defaultmove; // fallback if search in time trouble didn't finish a single iteration 
     chessposition();
     ~chessposition();
@@ -690,7 +722,7 @@ public:
 #ifdef DEBUGEVAL
     void debugeval(const char* format, ...);
 #endif
-    bool testRepetiton();
+    int testRepetiton();
     void mirror();
 };
 
@@ -714,6 +746,7 @@ public:
     const char* author = "Andreas Matthies";
     bool isWhite;
     unsigned long long nodes;
+    unsigned long long tbhits;
 #ifdef FPDEBUG
     unsigned long long fpnodes;
     unsigned long long wrongfp;
@@ -741,6 +774,8 @@ public:
     int moveOverhead;
     int MultiPV;
     bool ponder;
+    string SyzygyPath;
+    bool Syzygy50MoveRule;
     enum { NO, PONDERING, HITPONDER } pondersearch;
     int terminationscore = SHRT_MAX;
     int stopLevel = ENGINESTOPPED;
@@ -806,6 +841,7 @@ public:
     unsigned long long getRnd();
     u8 getHash();
     u8 getPawnHash();
+    u8 getMaterialHash();
     u8 modHash(int i);
 };
 

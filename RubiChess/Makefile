@@ -11,7 +11,7 @@ ifeq ($(OS),Windows_NT)
 endif
 DEPS = RubiChess.h
 OBJBOOARD88 = board-Board88.o eval-Board88.o main-Board88.o search-Board88.o transposition-Board88.o uci-Board88.o utils-Board88.o
-OBJBITBOARD = board-Bitboard.o eval-Bitboard.o main-Bitboard.o search-Bitboard.o transposition-Bitboard.o uci-Bitboard.o utils-Bitboard.o
+OBJBITBOARD = board-Bitboard.o eval-Bitboard.o main-Bitboard.o search-Bitboard.o transposition-Bitboard.o uci-Bitboard.o utils-Bitboard.o tbprobe-Bitboard.o
 EXE1 = RubiChess-Bitboard
 EXE2 = RubiChess-Board88
 PGOBENCH1 = ./$(EXE1) -bench
