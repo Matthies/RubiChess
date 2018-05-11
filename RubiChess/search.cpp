@@ -109,6 +109,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     int extendall = 0;
     int reduction;
     int effectiveDepth;
+    int nmrefutetarget = -1;
 
     en.nodes++;
 
@@ -199,6 +200,14 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                 extendall++;
             }
 #endif
+            int dummyscore;
+            uint32_t nmrefutemove = 0;
+            tp.probeHash(&dummyscore, &nmrefutemove, MAXDEPTH, 0, 0);
+            if (ISCAPTURE(nmrefutemove))
+            {
+                nmrefutetarget = GETTO(nmrefutemove);
+            }
+
             pos.unplayNullMove();
         }
     }
@@ -246,6 +255,10 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         else if (pos.killer[1][0] == m->code)
         {
             m->value = KILLERVAL2;
+        }
+        else if (!ISCAPTURE(m->code) && GETFROM(m->code) == nmrefutetarget)
+        {
+            m->value += NMREFUTEVAL;
         }
     }
 

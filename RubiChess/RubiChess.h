@@ -265,6 +265,7 @@ const int lva[] = { 5 << 25, 4 << 25, 3 << 25, 3 << 25, 2 << 25, 1 << 25, 0 << 2
 #define PVVAL (7 << 28)
 #define KILLERVAL1 (1 << 27)
 #define KILLERVAL2 (KILLERVAL1 - 1)
+#define NMREFUTEVAL (1 << 26)
 #define TBFILTER INT32_MIN
 
 #ifdef BITBOARD
