@@ -608,7 +608,7 @@ int rootsearch(int alpha, int beta, int depth)
                 }
 #ifdef DEBUG
                 en.fh++;
-                if (LegalMoves == 1)
+                if (i == 0)
                     en.fhf++;
 #endif
                 PDEBUG(depth, "(rootsearch) score=%d >= beta=%d  -> cutoff\n", score, beta);
