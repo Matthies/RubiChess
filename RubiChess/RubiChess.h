@@ -933,6 +933,7 @@ int rootsearch(int alpha, int beta, int depth);
 int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed);
 int getQuiescence(int alpha, int beta, int depth);
 void searchguide();
+void searchinit();
 
 
 //
