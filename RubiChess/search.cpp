@@ -10,7 +10,7 @@ void searchinit()
 {
 	for (int d = 0; d < MAXDEPTH; d++)
 		for (int m = 0; m < 64; m++)
-			reductiontable[d][m] = (int)round(log(d) * log(m) / 2.0);
+			reductiontable[d][m] = (int)round(log(d) * log(m) / 1.9);
 }
 
 
