@@ -4,6 +4,16 @@
 
 const int deltapruningmargin = 200;
 
+int reductiontable[MAXDEPTH][64];
+
+void searchinit()
+{
+	for (int d = 0; d < MAXDEPTH; d++)
+		for (int m = 0; m < 64; m++)
+			reductiontable[d][m] = (int)round(log(d) * log(m) / 1.9);
+}
+
+
 int getQuiescence(int alpha, int beta, int depth)
 {
     int patscore, score;
@@ -99,7 +109,6 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 {
     int score;
     uint32_t hashmovecode = 0;
-    int  LegalMoves = 0;
     bool isLegal;
     int bestscore = NOSCORE;
     uint32_t bestcode = 0;
@@ -109,6 +118,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     int extendall = 0;
     int reduction;
     int effectiveDepth;
+    int nmrefutetarget = -1;
 
     en.nodes++;
 
@@ -199,6 +209,14 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                 extendall++;
             }
 #endif
+            int dummyscore;
+            uint32_t nmrefutemove = 0;
+            tp.probeHash(&dummyscore, &nmrefutemove, MAXDEPTH, 0, 0);
+            if (ISCAPTURE(nmrefutemove))
+            {
+                nmrefutetarget = GETTO(nmrefutemove);
+            }
+
             pos.unplayNullMove();
         }
     }
@@ -247,9 +265,14 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         {
             m->value = KILLERVAL2;
         }
+        else if (!ISCAPTURE(m->code) && GETFROM(m->code) == nmrefutetarget)
+        {
+            m->value |= NMREFUTEVAL;
+        }
     }
 
-    for (int i = 0; i < newmoves->length; i++)
+	int  LegalMoves = 0;
+	for (int i = 0; i < newmoves->length; i++)
     {
         for (int j = i + 1; j < newmoves->length; j++)
         {
@@ -281,8 +304,11 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             {
                 //extendall = 0; //FIXME: Indroduce extend variable for move specific extension
                 reduction = 0;
-                if (!extendall && depth > 2 && LegalMoves > 3 && !ISTACTICAL(m->code) && !pos.isCheck)
-                    reduction = 1;
+				// Late move reduction
+				if (!extendall && depth > 2 && !ISTACTICAL(m->code) && !pos.isCheck)
+				{
+					reduction = reductiontable[depth][min(63, LegalMoves)];
+				}
 #if 0
                 // disabled; capture extension doesn't seem to work
                 else if (ISTACTICAL(m->code) && GETPIECE(m->code) <= GETCAPTURE(m->code))

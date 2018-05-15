@@ -265,6 +265,7 @@ const int lva[] = { 5 << 25, 4 << 25, 3 << 25, 3 << 25, 2 << 25, 1 << 25, 0 << 2
 #define PVVAL (7 << 28)
 #define KILLERVAL1 (1 << 27)
 #define KILLERVAL2 (KILLERVAL1 - 1)
+#define NMREFUTEVAL (1 << 26)
 #define TBFILTER INT32_MIN
 
 #ifdef BITBOARD
@@ -932,6 +933,7 @@ int rootsearch(int alpha, int beta, int depth);
 int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed);
 int getQuiescence(int alpha, int beta, int depth);
 void searchguide();
+void searchinit();
 
 
 //

@@ -884,6 +884,7 @@ int main(int argc, char* argv[])
 #endif
 
     pos.init();
+	searchinit();
 
     cout.setf(ios_base::unitbuf);
 

@@ -1,0 +1,24 @@
+lmr3 (log-Reduction / 1.95)
+10+0.1:
+Score of RubiChess-Bitboard-lmr3 vs RubiChess-Bitboard-ms: 460 - 347 - 376  [0.548] 1183
+Elo difference: 33.29 +/- 16.38
+SPRT: llr 2.22, lbound -2.2, ubound 2.2 - H1 was accepted
+
+60+0.6:
+Score of RubiChess-Bitboard-lmr3 vs RubiChess-Bitboard-ms: 395 - 297 - 487  [0.542] 1179
+Elo difference: 28.95 +/- 15.20
+SPRT: llr 2.21, lbound -2.2, ubound 2.2 - H1 was accepted
+
+
+Regression test with ... / 2.0: (lmr4)
+Score of RubiChess-Bitboard-lmr4 vs RubiChess-Bitboard-lmr3: 401 - 438 - 461  [0.486] 1300
+Elo difference: -9.89 +/- 15.16
+SPRT: llr -0.594, lbound -2.2, ubound 2.2
+-> probably regression
+
+Regression test with ... / 1.9: (lmr5)
+Score of RubiChess-Bitboard-lmr5 vs RubiChess-Bitboard-lmr3: 3495 - 3486 - 4019  [0.500] 11000
+Elo difference: 0.28 +/- 5.17
+SPRT: llr 0.738, lbound -2.2, ubound 2.2
+
+
