@@ -633,7 +633,7 @@ int chessposition::getPositionValue()
 
 			if (p == KNIGHT)
 			{
-				mobility = knight_attacks[index];
+				mobility = knight_attacks[index] & ~occupied00[s];
 				result += (S2MSIGN(s) * POPCOUNT(mobility) * knightmobilitybonus);
 			}
 
