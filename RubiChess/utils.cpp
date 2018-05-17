@@ -308,7 +308,7 @@ void registerTuner(int *addr, string name, int def, int index1, int bound1, int 
     tip[tipnum].addr = addr;
     tip[tipnum].name = name;
     tip[tipnum].defval = def;
-    tip[tipnum].initialdelta = initialdelta;
+	tip[tipnum].initialdelta = initialdelta;
     tip[tipnum].index1 = index1;
     tip[tipnum].bound1 = bound1;
     tip[tipnum].index2 = index2;
@@ -370,7 +370,7 @@ static void printTunedParameters()
         if (tip[i].index1 < tip[i].bound1 - 1)
         {
             output += ",";
-            if (!((tip[i].index1 + 1) & (tip[i].bound2 ? 0x3 : 0x7)))
+            if (!((tip[i].index1 + 1) & (tip[i].bound2 ? 0x7 : 0x7)))
                 output += "\n    ";
         }
         else if (tip[i].index1 == tip[i].bound1 - 1)
@@ -424,7 +424,8 @@ static double TexelEvalError(string fenfilename, double k)
 
                     Ri = (stoi(match.str(1)) + 1) / 2.0;
                     pos.getFromFen(match.str(2).c_str());
-                    Qi = getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
+					pos.ply = 0;
+					Qi = getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
                     if (!pos.w2m())
                         Qi = -Qi;
                     //printf("Ri=%f Qi=%f\n", Ri, Qi);
@@ -441,7 +442,8 @@ static double TexelEvalError(string fenfilename, double k)
                 gamescount++;
                 Ri = (stoi(match.str(1)) + 1) / 2.0;
                 pos.getFromFen(match.str(2).c_str());
-                vector<string> movelist = SplitString(match.str(3).c_str());
+				pos.ply = 0;
+				vector<string> movelist = SplitString(match.str(3).c_str());
                 vector<string>::iterator move = movelist.begin();
                 bool gameend;
                 do
@@ -456,7 +458,7 @@ static double TexelEvalError(string fenfilename, double k)
                         Qi = getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
                         if (!pos.w2m())
                             Qi = -Qi;
-                        //printf("Ri=%f Qi=%f\n", Ri, Qi);
+                        //printf("FEN=%s Ri=%f Qi=%f\n", pos.toFen().c_str(), Ri, Qi);
                         n++;
                         double sigmoid = 1 / (1 + pow(10.0, -k * Qi / 400.0));
                         E += (Ri - sigmoid) * (Ri - sigmoid);
@@ -476,7 +478,7 @@ static double TexelEvalError(string fenfilename, double k)
         }
     }
 }
-    printf("Tuning-Zeit: %10f sec.", (float)(getTime() - starttime) / (float)en.frequency);
+    printf("Positions: %d  Tuning-Zeit: %10f sec.", n, (float)(getTime() - starttime) / (float)en.frequency);
     return E / n;
 }
 

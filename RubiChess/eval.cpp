@@ -2,6 +2,15 @@
 #include "RubiChess.h"
 
 // Evaluation stuff
+//CONSTEVAL int kingattackweight[7] = { 0, 0, 20, 20, 30, 60, 0 };
+#if 0
+CONSTEVAL int knightmobilitybonus = 2;
+//CONSTEVAL int kingattackweight[7] = { 0,    0,    2,   -3,    3,   12,    0 };
+CONSTEVAL int kingattackweight[7] = { 0,    0,    10,   10,    20,   40,    0 }; // try to retune psqt mit festen
+#else
+CONSTEVAL int knightmobilitybonus = 3;
+CONSTEVAL int kingattackweight[7] = { 0,    0,    2,   -1,    3,    8,    0 };
+#endif
 CONSTEVAL int tempo = 4;
 CONSTEVAL int passedpawnbonus[8] = { 0,   14,   14,   38,   72,  114,  131,    0 };
 CONSTEVAL int attackingpawnbonus[8] = { 0,  -15,   -7,  -12,    3,   38,    0,    0 };
@@ -14,6 +23,7 @@ CONSTEVAL int slideronfreefilebonus[2] = { 12,   17 };
 CONSTEVAL int doublebishopbonus = 27;
 CONSTEVAL int shiftmobilitybonus = 3;
 CONSTEVAL int materialvalue[7] = { 0,  100,  322,  329,  488,  986,32509 };
+#if 1
 CONSTEVAL int PVBASE[6][64] = {
   { -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999,
        61,   55,   59,   56,   57,   57,   35,   82,
@@ -23,6 +33,7 @@ CONSTEVAL int PVBASE[6][64] = {
         1,   -3,    6,   -9,   -4,  -12,   -2,   10,
        -5,   -5,   -9,  -25,  -24,   -1,    9,  -12,
     -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999  },
+#if 0 //original
   {  -143,  -29,  -25,   16,   14,  -49,  -11,  -63,
       -41,  -12,   -4,   36,   19,   20,  -44,  -37,
       -14,   14,   34,   55,   50,   34,   32,   -8,
@@ -31,6 +42,46 @@ CONSTEVAL int PVBASE[6][64] = {
       -28,   12,    9,   15,    8,   22,   34,  -24,
       -59,  -22,  -10,   13,   12,    7,  -37,    1,
       -69,  -24,  -24,  -33,  -19,  -21,  -16,  -46  },
+#else
+//teletune-08
+	  {  -158,  -32,  -14,    3,    5,  -18,  -68,  -83,
+      -37,  -28,   -3,   26,   -6,    7,  -53,  -51,
+      -10,    4,   -1,   15,   14,   44,   13,  -24,
+      -15,    6,    3,   14,    9,    6,    5,   17,
+      -19,   -4,   -3,    9,    2,   -5,    2,  -17,
+      -34,  -17,  -10,  -13,   -9,    3,   18,  -30,
+      -89,  -44,  -23,   -1,   -5,    3,  -62,  -26,
+      -23,  -29,  -49,  -43,  -41,  -31,  -25,    5  },
+#endif
+#if 0
+	// texeltune-kd-10000
+  {  -132,  -11,  -10,   -3,    5,    4,  -32,   -6,
+      -30,  -12,   -4,   19,    7,   20,    7,   39,
+       20,  -11,   14,   23,   -4,   37,   38,   -2,
+      -35,    9,   19,   14,   25,   26,   27,   31,
+      -22,    7,    3,   -2,    3,    4,   -8,  -11,
+      -25,  -11,   -1,    0,  -18,    8,   28,  -27,
+      -22,  -64,   -2,    1,    4,   14,  -56,  -34,
+      -41,  -26,  -36,  -22,  -18,  -38,  -10,  -97  },
+#endif
+#if 0 // tuned bishop instead of knight :-(
+	    {     7,   -3,   15,   14,
+       16,  -16,   -1,  -17,
+      -35,    6,    7,    2,
+      -12,    5,   -2,  -27,
+       12,   33,   14,   24,
+       23,   20,   40,    7,
+        4,   13,   23,   33,
+       25,   27,   -6,    4,
+        2,   11,   15,   26,
+       25,    1,    5,   -6,
+        0,   26,   12,   20,
+        9,   18,   14,   15,
+       61,   -1,   19,    5,
+       18,  -10,   34,  -23,
+      -54,   -4,   -9,    6,
+        4,  -11,  -11,  -35  },
+#endif
   {   -12,    0,   13,   -1,  -24,  -37,  -12,   -3,
       -30,   11,    2,   12,    4,    4,   -2,  -42,
        12,   19,   27,   27,   29,   55,   35,   10,
@@ -64,6 +115,106 @@ CONSTEVAL int PVBASE[6][64] = {
         5,  -14,  -24,  -34,  -28,  -20,  -11,   -9,
       -21,   10,   23,  -36,    4,  -37,   21,   19  }
  };
+#else
+CONSTEVAL int PVBASE[6][64] = {
+  { -9999,-9999,-9999,-9999,
+    -9999,-9999,-9999,-9999,
+       61,   55,   59,   56,
+       57,   57,   35,   82,
+       29,   23,    9,   25,
+       18,   19,   14,   11,
+        6,   -5,  -14,    8,
+       13,  -10,  -10,   -5,
+        4,  -16,    0,   30,
+       18,  -10,  -18,   -9,
+        1,   -3,    6,   -9,
+       -4,  -12,   -2,   10,
+       -5,   -5,   -9,  -25,
+      -24,   -1,    9,  -12,
+    -9999,-9999,-9999,-9999,
+    -9999,-9999,-9999,-9999  },
+  {  -143,  -29,  -25,   16,
+       14,  -49,  -11,  -63,
+      -41,  -12,   -4,   36,
+       19,   20,  -44,  -37,
+      -14,   14,   34,   55,
+       50,   34,   32,   -8,
+       11,   10,   35,   33,
+       38,   36,   21,   50,
+      -11,    1,   20,   22,
+       24,   18,    5,  -11,
+      -28,   12,    9,   15,
+        8,   22,   34,  -24,
+      -59,  -22,  -10,   13,
+       12,    7,  -37,    1,
+      -69,  -24,  -24,  -33,
+      -19,  -21,  -16,  -46  },
+  {    -1,  -20,    5,  -12,
+        2,  -48,  -37,  -50,
+      -39,    9,   -2,   -8,
+      -40,  -13,  -27,  -83,
+       11,   32,    5,    1,
+       -2,   -7,   14,  -24,
+        1,    6,    2,   11,
+       -4,    1,  -37,  -29,
+       -6,  -11,   -2,    6,
+        7,  -21,  -13,  -40,
+      -14,   14,   -3,   11,
+       -7,   10,    5,    2,
+       53,   -6,    7,   -2,
+       15,  -18,   28,  -33,
+      -59,  -24,  -18,   -1,
+       -3,  -13,  -23,  -46  },
+  {     7,    5,    2,    4,
+        6,    8,   22,   16,
+       17,   13,   21,   17,
+       19,   20,   13,   33,
+       20,    9,   20,    9,
+       -4,  -10,   16,   -8,
+        3,   -9,    9,    1,
+        1,  -10,    2,   -8,
+      -15,    1,   -9,    4,
+      -19,  -25,  -18,  -42,
+      -20,  -12,    7,   -6,
+      -11,  -22,  -15,  -40,
+      -15,   -7,   12,    3,
+      -13,    3,  -16,  -43,
+        0,    0,   10,   11,
+       18,   15,  -30,  -14  },
+  {    17,   36,   16,   -5,
+       39,   44,   13,   12,
+        6,   -7,   43,   26,
+       23,   16,  -25,   11,
+       -5,   -5,    5,   -9,
+       21,   28,   52,   11,
+      -10,  -19,  -24,  -24,
+      -62,  -21,  -58,  -50,
+      -15,  -22,  -33,  -47,
+      -46,  -39,    6,  -58,
+      -20,   -9,  -23,  -34,
+      -16,  -11,   -3,  -14,
+      -11,   -9,   -7,  -12,
+        7,   22,   27,  -11,
+        6,  -31,  -10,   22,
+        2,  -53,   82,   45  },
+  {   -12,   52,  -35,  -35,
+      -21,   58,  109,  -88,
+      -23,   29,  -11,  -30,
+      -40,   35,   65,   26,
+       26,  -28,   -6,  -39,
+        5,   10,   48,    6,
+      -21,    3,  -18,  -25,
+      -14,    8,   10,    4,
+      -25,  -13,  -10,   -5,
+       -2,    0,   10,  -18,
+      -18,   -3,  -18,   11,
+        1,   -1,    3,  -23,
+      -30,    1,    0,  -17,
+        1,   -2,    2,  -21,
+      -20,   10,   16,  -46,
+       -8,  -20,   14,   -5  }
+ };
+#endif
 CONSTEVAL int PVPHASEDIFF[6][64] = {
   { -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999,
       -24,  -12,  -21,  -14,  -23,  -15,   -6,  -32,
@@ -116,8 +267,8 @@ CONSTEVAL int PVPHASEDIFF[6][64] = {
  };
 
 
-int squaredistance[BOARDSIZE][BOARDSIZE];
-int kingdanger[BOARDSIZE][BOARDSIZE][7];
+//int squaredistance[BOARDSIZE][BOARDSIZE];
+//int kingdanger[BOARDSIZE][BOARDSIZE][7];
 int passedpawnbonusperside[2][8];
 int attackingpawnbonusperside[2][8];
 
@@ -127,6 +278,12 @@ void registeralltuners()
 {
     int i, j;
 
+
+#if 0
+	registerTuner(&knightmobilitybonus, "knightmobilitybonus", knightmobilitybonus, 0, 0, 0, 0, NULL, false);
+	for (i = 0; i < 7; i++)
+		registerTuner(&kingattackweight[i], "kingattackweight", kingattackweight[i], i, 7, 0, 0, NULL, i < 2 || i > 5);
+#endif
 #if 0 // averaging psqt (...OLD[][]) to a symmetric 4x8 map
     for (i = 0; i < 6; i++)
     {
@@ -141,7 +298,7 @@ void registeralltuners()
     }
 #endif
 
-#if 1
+#if 0
     // tuning other values
     registerTuner(&tempo, "tempo", tempo, 0, 0, 0, 0, NULL, false);
     for (i = 0; i < 8; i++)
@@ -158,7 +315,7 @@ void registeralltuners()
     for (i = 0; i < 2; i++)
         registerTuner(&slideronfreefilebonus[i], "slideronfreefilebonus", slideronfreefilebonus[i], i, 2, 0, 0, NULL, false);
 #endif
-#if 1
+#if 0
     // tuning material value
     for (i = BLANK; i <= KING; i++)
         registerTuner(&materialvalue[i], "materialvalue", materialvalue[i], i, 7, 0, 0, &CreatePositionvalueTable, i <= PAWN || i >= KING);
@@ -169,7 +326,7 @@ void registeralltuners()
     {
         for (j = 0; j < 64; j++)
         {
-            registerTuner(&PVBASE[i][j], "PVBASE", PVBASE[i][j], j, 64, i, 6, &CreatePositionvalueTable, PVBASE[i][j] <= -9999);
+            registerTuner(&PVBASE[i][j], "PVBASE", PVBASE[i][j], j, 64, i, 6, &CreatePositionvalueTable, PVBASE[i][j] <= -9999 || i < 1 || i > 4);
         }
     }
 #endif
@@ -179,7 +336,7 @@ void registeralltuners()
     {
         for (j = 0; j < 64; j++)
         {
-            registerTuner(&PVPHASEDIFF[i][j], "PVPHASEDIFF", PVPHASEDIFF[i][j], j, 64, i, 6, &CreatePositionvalueTable, PVPHASEDIFF[i][j] <= -9999);
+            registerTuner(&PVPHASEDIFF[i][j], "PVPHASEDIFF", PVPHASEDIFF[i][j], j, 64, i, 6, &CreatePositionvalueTable, PVPHASEDIFF[i][j] <= -9999 || i < 1 || i > 4);
         }
     }
 #endif
@@ -189,6 +346,7 @@ void registeralltuners()
 
 void chessposition::init()
 {
+#if 0
     int rs = 0;
     for (int b = BOARDSIZE; b ^ 0x8; b >>= 1)
         rs++;
@@ -203,6 +361,7 @@ void chessposition::init()
             squaredistance[i][j] = max(abs(fi - fj), abs(ri - rj));
         }
     }
+#endif
 #ifdef EVALTUNE
     registeralltuners();
 #endif
@@ -247,7 +406,7 @@ void CreatePositionvalueTable()
                 int index1 = i | (ph << 7) | (p << 15);
                 int index2 = index1 | (1 << 18);
 #endif
-                pos.positionvaluetable[index1] = (PVBASE[(p - 1)][j1] * (255 - ph) + (PVBASE[(p - 1)][j1] + PVPHASEDIFF[(p - 1)][j1]) * ph) / 255;
+				pos.positionvaluetable[index1] = (PVBASE[(p - 1)][j1] * (255 - ph) + (PVBASE[(p - 1)][j1] + PVPHASEDIFF[(p - 1)][j1]) * ph) / 255;
                 pos.positionvaluetable[index2] = -(PVBASE[(p - 1)][j2] * (255 - ph) + (PVBASE[(p - 1)][j2] + PVPHASEDIFF[(p - 1)][j2])* ph) / 255;
                 pos.positionvaluetable[index1] += materialvalue[p];
                 pos.positionvaluetable[index2] -= materialvalue[p];
@@ -414,6 +573,8 @@ int chessposition::getPositionValue()
     pawnhashentry *phentry;
     int index;
     int result = S2MSIGN(state & S2MMASK) * tempo;
+	int kingattackers[2] = { 0 };
+	int kingattackweightsum[2] = { 0 };
 
 #ifdef DEBUGEVAL
     int positionvalue = 0;
@@ -439,14 +600,15 @@ int chessposition::getPositionValue()
             kingdangervalue[s] += S2MSIGN(s) * kingdanger[index][pos.kingpos[1 - s]][p];
 #endif
             pb ^= BITSET(index);
+			U64 mobility = 0ULL;
             if (shifting[p] & 0x2) // rook and queen
             {
 #ifdef ROTATEDBITBOARD
-                U64 mobility = ~occupied00[s]
+                mobility = ~occupied00[s]
                     & ((rank_attacks[index][((occupied00[0] | occupied00[1]) >> rot00shift[index]) & 0x3f])
                         | (file_attacks[index][((occupied90[0] | occupied90[1]) >> rot90shift[index]) & 0x3f]));
 #else
-                U64 mobility = ~occupied00[s]
+                mobility = ~occupied00[s]
                     & (mRookAttacks[index][MAGICROOKINDEX((occupied00[0] | occupied00[1]), index)]);
 #endif
                 result += (S2MSIGN(s) * POPCOUNT(mobility) * shiftmobilitybonus);
@@ -459,16 +621,30 @@ int chessposition::getPositionValue()
             if (shifting[p] & 0x1) // bishop and queen)
             {
 #ifdef ROTATEDBITBOARD
-                U64 mobility = ~occupied00[s]
+                mobility = ~occupied00[s]
                     & ((diaga1h8_attacks[index][((occupieda1h8[0] | occupieda1h8[1]) >> rota1h8shift[index]) & 0x3f])
                         | (diagh1a8_attacks[index][((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[index]) & 0x3f]));
 #else
-                U64 mobility = ~occupied00[s]
+                mobility = ~occupied00[s]
                     & (mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)]);
 #endif
                 result += (S2MSIGN(s) * POPCOUNT(mobility) * shiftmobilitybonus);
             }
-        }
+
+			if (p == KNIGHT)
+			{
+				mobility = knight_attacks[index];
+				result += (S2MSIGN(s) * POPCOUNT(mobility) * knightmobilitybonus);
+			}
+
+			U64 kingdangerarea = kingdangerMask[kingpos[1 - s]][1 - s];
+			if (mobility & kingdangerarea)
+			{
+				kingattackers[s]++;
+				kingattackweightsum[s] +=/* POPCOUNT(mobility & kingdangerarea) * */kingattackweight[p];
+			}
+
+		}
     }
 
     // bonus for double bishop
@@ -481,12 +657,16 @@ int chessposition::getPositionValue()
     // some kind of king safety
 	result += (256 - ph) * (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])) * kingshieldbonus / 256;
 
+	for (int s = 0; s < 2; s++)
+		if (kingattackers[s] > 1)
+			result += (S2MSIGN(s) * kingattackers[s] * kingattackweightsum[s]);
+
 #ifdef DEBUGEVAL
     debugeval("(getPositionValue)  King safety: %d\n", (256 - ph) * (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])) * 15 / 256);
     debugeval("(getPositionValue)  Position value: %d\n", positionvalue);
     debugeval("(getPositionValue)  Kingdanger value: %d / %d\n", kingdangervalue[0], kingdangervalue[1]);
 #endif
-    return result;
+	return result;
 }
 
 
