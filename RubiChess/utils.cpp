@@ -488,8 +488,8 @@ void TexelTune(string fenfilename)
     double k = 1.121574;
     int direction = 0;
     double Error;
-    bool improved = false;
-    double Emin = 0.0;
+    bool improved;
+    double Emin = -1.0;
     int pmin;
 
 #if 0 // enable to calculate constant k
@@ -531,6 +531,7 @@ void TexelTune(string fenfilename)
 
     do
     {
+		improved = false;
         for (int i = 0; i < tipnum; i++)
         {
             if (tip[i].notune == false)
@@ -550,7 +551,8 @@ void TexelTune(string fenfilename)
                 if (tip[i].init)
                     tip[i].init();
                 pmin = lastp;
-                Emin = TexelEvalError(fenfilename, k);
+				if (Emin < 0)
+	                Emin = TexelEvalError(fenfilename, k);
                 printf("Min: %d/%0.10f\n", pmin, Emin);
                 do
                 {
