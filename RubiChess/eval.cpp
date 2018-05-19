@@ -17,7 +17,7 @@ CONSTEVAL int doublebishopbonus = 27;
 CONSTEVAL int shiftmobilitybonus = 3;
 CONSTEVAL int materialvalue[7] = { 0,  100,  322,  329,  488,  986,32509 };
 CONSTEVAL int PVBASE[6][64] = {
-	{ -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999,
+    { -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999,
        61,   55,   59,   56,   57,   57,   35,   82,
        29,   23,    9,   25,   18,   19,   14,   11,
         6,   -5,  -14,    8,   13,  -10,  -10,   -5,
@@ -145,13 +145,13 @@ void registeralltuners()
 
 #if 1
     // tuning other values
-	registerTuner(&knightmobilitybonus, "knightmobilitybonus", knightmobilitybonus, 0, 0, 0, 0, NULL, false);
-	for (i = 0; i < 7; i++)
-		registerTuner(&kingattackweight[i], "kingattackweight", kingattackweight[i], i, 7, 0, 0, NULL, i < 2 || i > 5);
+    registerTuner(&knightmobilitybonus, "knightmobilitybonus", knightmobilitybonus, 0, 0, 0, 0, NULL, false);
+    for (i = 0; i < 7; i++)
+        registerTuner(&kingattackweight[i], "kingattackweight", kingattackweight[i], i, 7, 0, 0, NULL, i < 2 || i > 5);
 #endif
 #if 0
-	registerTuner(&tempo, "tempo", tempo, 0, 0, 0, 0, NULL, false);
-	for (i = 0; i < 8; i++)
+    registerTuner(&tempo, "tempo", tempo, 0, 0, 0, 0, NULL, false);
+    for (i = 0; i < 8; i++)
         registerTuner(&passedpawnbonus[i], "passedpawnbonus", passedpawnbonus[i], i, 8, 0, 0, &CreatePositionvalueTable, i == 0 || i == 7);
     for (i = 0; i < 8; i++)
         registerTuner(&attackingpawnbonus[i], "attackingpawnbonus", attackingpawnbonus[i], i, 8, 0, 0 , &CreatePositionvalueTable, i == 0 || i == 7);
@@ -256,7 +256,7 @@ void CreatePositionvalueTable()
                 int index1 = i | (ph << 7) | (p << 15);
                 int index2 = index1 | (1 << 18);
 #endif
-				pos.positionvaluetable[index1] = (PVBASE[(p - 1)][j1] * (255 - ph) + (PVBASE[(p - 1)][j1] + PVPHASEDIFF[(p - 1)][j1]) * ph) / 255;
+                pos.positionvaluetable[index1] = (PVBASE[(p - 1)][j1] * (255 - ph) + (PVBASE[(p - 1)][j1] + PVPHASEDIFF[(p - 1)][j1]) * ph) / 255;
                 pos.positionvaluetable[index2] = -(PVBASE[(p - 1)][j2] * (255 - ph) + (PVBASE[(p - 1)][j2] + PVPHASEDIFF[(p - 1)][j2])* ph) / 255;
                 pos.positionvaluetable[index1] += materialvalue[p];
                 pos.positionvaluetable[index2] -= materialvalue[p];
@@ -423,8 +423,8 @@ int chessposition::getPositionValue()
     pawnhashentry *phentry;
     int index;
     int result = S2MSIGN(state & S2MMASK) * tempo;
-	int kingattackers[2] = { 0 };
-	int kingattackweightsum[2] = { 0 };
+    int kingattackers[2] = { 0 };
+    int kingattackweightsum[2] = { 0 };
 
 #ifdef DEBUGEVAL
     int positionvalue = 0;
@@ -450,7 +450,7 @@ int chessposition::getPositionValue()
             kingdangervalue[s] += S2MSIGN(s) * kingdanger[index][pos.kingpos[1 - s]][p];
 #endif
             pb ^= BITSET(index);
-			U64 mobility = 0ULL;
+            U64 mobility = 0ULL;
             if (shifting[p] & 0x2) // rook and queen
             {
 #ifdef ROTATEDBITBOARD
@@ -481,19 +481,19 @@ int chessposition::getPositionValue()
                 result += (S2MSIGN(s) * POPCOUNT(mobility) * shiftmobilitybonus);
             }
 
-			if (p == KNIGHT)
-			{
-				mobility = knight_attacks[index] & ~occupied00[s];
-			}
+            if (p == KNIGHT)
+            {
+                mobility = knight_attacks[index] & ~occupied00[s];
+            }
 
-			U64 kingdangerarea = king_attacks[kingpos[1 - s]];
-			if (mobility & kingdangerarea)
-			{
-				kingattackers[s]++;
-				kingattackweightsum[s] +=/* POPCOUNT(mobility & kingdangerarea) * */kingattackweight[p];
-			}
+            U64 kingdangerarea = king_attacks[kingpos[1 - s]];
+            if (mobility & kingdangerarea)
+            {
+                kingattackers[s]++;
+                kingattackweightsum[s] +=/* POPCOUNT(mobility & kingdangerarea) * */kingattackweight[p];
+            }
 
-		}
+        }
     }
 
     // bonus for double bishop
@@ -504,18 +504,18 @@ int chessposition::getPositionValue()
 
 
     // some kind of king safety
-	result += (256 - ph) * (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])) * kingshieldbonus / 256;
+    result += (256 - ph) * (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])) * kingshieldbonus / 256;
 
-	for (int s = 0; s < 2; s++)
-		if (kingattackers[s] > 1)
-			result += (256 - ph) * (S2MSIGN(s) * kingattackers[s] * kingattackweightsum[s]) / 256;
+    for (int s = 0; s < 2; s++)
+        if (kingattackers[s] > 1)
+            result += (256 - ph) * (S2MSIGN(s) * kingattackers[s] * kingattackweightsum[s]) / 256;
 
 #ifdef DEBUGEVAL
     debugeval("(getPositionValue)  King safety: %d\n", (256 - ph) * (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])) * 15 / 256);
     debugeval("(getPositionValue)  Position value: %d\n", positionvalue);
     debugeval("(getPositionValue)  Kingdanger value: %d / %d\n", kingdangervalue[0], kingdangervalue[1]);
 #endif
-	return result;
+    return result;
 }
 
 

@@ -308,7 +308,7 @@ void registerTuner(int *addr, string name, int def, int index1, int bound1, int 
     tip[tipnum].addr = addr;
     tip[tipnum].name = name;
     tip[tipnum].defval = def;
-	tip[tipnum].initialdelta = initialdelta;
+    tip[tipnum].initialdelta = initialdelta;
     tip[tipnum].index1 = index1;
     tip[tipnum].bound1 = bound1;
     tip[tipnum].index2 = index2;
@@ -424,8 +424,8 @@ static double TexelEvalError(string fenfilename, double k)
 
                     Ri = (stoi(match.str(1)) + 1) / 2.0;
                     pos.getFromFen(match.str(2).c_str());
-					pos.ply = 0;
-					Qi = getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
+                    pos.ply = 0;
+                    Qi = getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
                     if (!pos.w2m())
                         Qi = -Qi;
                     //printf("Ri=%f Qi=%f\n", Ri, Qi);
@@ -442,8 +442,8 @@ static double TexelEvalError(string fenfilename, double k)
                 gamescount++;
                 Ri = (stoi(match.str(1)) + 1) / 2.0;
                 pos.getFromFen(match.str(2).c_str());
-				pos.ply = 0;
-				vector<string> movelist = SplitString(match.str(3).c_str());
+                pos.ply = 0;
+                vector<string> movelist = SplitString(match.str(3).c_str());
                 vector<string>::iterator move = movelist.begin();
                 bool gameend;
                 do
@@ -531,7 +531,7 @@ void TexelTune(string fenfilename)
 
     do
     {
-		improved = false;
+        improved = false;
         for (int i = 0; i < tipnum; i++)
         {
             if (tip[i].notune == false)
@@ -551,8 +551,8 @@ void TexelTune(string fenfilename)
                 if (tip[i].init)
                     tip[i].init();
                 pmin = lastp;
-				if (Emin < 0)
-	                Emin = TexelEvalError(fenfilename, k);
+                if (Emin < 0)
+                    Emin = TexelEvalError(fenfilename, k);
                 printf("Min: %d/%0.10f\n", pmin, Emin);
                 do
                 {
