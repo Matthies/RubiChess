@@ -154,22 +154,22 @@ void chessmovelist::print()
 
 chessmovesequencelist::chessmovesequencelist()
 {
-	length = 0;
+    length = 0;
 }
 
 string chessmovesequencelist::toString()
 {
-	string s = "";
-	for (int i = 0; i < length; i++)
-	{
-		s = s + move[i].toString() + " ";
-	}
-	return s;
+    string s = "";
+    for (int i = 0; i < length; i++)
+    {
+        s = s + move[i].toString() + " ";
+    }
+    return s;
 }
 
 void chessmovesequencelist::print()
 {
-	printf("%s", toString().c_str());
+    printf("%s", toString().c_str());
 }
 
 
@@ -477,7 +477,7 @@ int chessposition::testRepetiton()
 {
     unsigned long long h = hash;
     chessmovesequencelist *ml = &actualpath;
-	int oldlength = ml->length;
+    int oldlength = ml->length;
     int hit = 0;
     int i;
     for (i = oldlength; i > 0;)
@@ -916,7 +916,7 @@ void initBitmaphelper()
         filebarrierMask[from][0] = filebarrierMask[from][1] = 0ULL;
         phalanxMask[from] = 0ULL;
         kingshieldMask[from][0] = kingshieldMask[from][1] = 0ULL;
-		neighbourfilesMask[from] = 0ULL;
+        neighbourfilesMask[from] = 0ULL;
         fileMask[from] = 0ULL;
         rankMask[from] = 0ULL;
 
@@ -2289,7 +2289,7 @@ engine::engine()
     setOption("MultiPV", "1");
     setOption("Ponder", "false");
     setOption("SyzygyPath", "<empty>");
-	//setOption("SyzygyPath", "C:\\_Lokale_Daten_ungesichert\\tb");
+    //setOption("SyzygyPath", "C:\\_Lokale_Daten_ungesichert\\tb");
     //setOption("SyzygyPath", "C:\\tb");
 
     setOption("Syzygy50MoveRule", "true");
