@@ -2,8 +2,8 @@
 #include "RubiChess.h"
 
 // Evaluation stuff
-CONSTEVAL int knightmobilitybonus = 3;
-CONSTEVAL int kingattackweight[7] = { 0,    0,    2,   2,    3,   12,    0 }; 
+
+CONSTEVAL int kingattackweight[7] = { 0,    0,    8,    5,    8,   20,    0 };
 CONSTEVAL int tempo = 4;
 CONSTEVAL int passedpawnbonus[8] = { 0,   14,   14,   38,   72,  114,  131,    0 };
 CONSTEVAL int attackingpawnbonus[8] = { 0,  -15,   -7,  -12,    3,   38,    0,    0 };
@@ -17,7 +17,7 @@ CONSTEVAL int doublebishopbonus = 27;
 CONSTEVAL int shiftmobilitybonus = 3;
 CONSTEVAL int materialvalue[7] = { 0,  100,  322,  329,  488,  986,32509 };
 CONSTEVAL int PVBASE[6][64] = {
-  { -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999,
+	{ -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999,
        61,   55,   59,   56,   57,   57,   35,   82,
        29,   23,    9,   25,   18,   19,   14,   11,
         6,   -5,  -14,    8,   13,  -10,  -10,   -5,
@@ -25,7 +25,6 @@ CONSTEVAL int PVBASE[6][64] = {
         1,   -3,    6,   -9,   -4,  -12,   -2,   10,
        -5,   -5,   -9,  -25,  -24,   -1,    9,  -12,
     -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999  },
-#if 0
   {  -143,  -29,  -25,   16,   14,  -49,  -11,  -63,
       -41,  -12,   -4,   36,   19,   20,  -44,  -37,
       -14,   14,   34,   55,   50,   34,   32,   -8,
@@ -34,16 +33,6 @@ CONSTEVAL int PVBASE[6][64] = {
       -28,   12,    9,   15,    8,   22,   34,  -24,
       -59,  -22,  -10,   13,   12,    7,  -37,    1,
       -69,  -24,  -24,  -33,  -19,  -21,  -16,  -46  },
-#else
-  {  -165,  -18,  -14,   -3,    1,  -11,  -29,  -22,
-      -52,  -35,   14,   14,   12,   20,   -6,   20,
-        8,  -12,   16,   30,   16,   41,   36,  -13,
-      -42,   -1,   10,   13,   17,   30,   21,   34,
-      -29,    8,    0,   13,    7,    4,   -8,  -13,
-      -27,  -11,   -1,    6,   -4,   15,   30,  -25,
-        1,  -87,    7,    1,    8,   26,  -56,  -25,
-      -29,  -28,  -16,  -11,  -23,   -6,  -14, -107  },
-#endif
   {   -12,    0,   13,   -1,  -24,  -37,  -12,   -3,
       -30,   11,    2,   12,    4,    4,   -2,  -42,
        12,   19,   27,   27,   29,   55,   35,   10,
@@ -86,7 +75,6 @@ CONSTEVAL int PVPHASEDIFF[6][64] = {
         3,    6,  -13,   11,    7,   13,    4,   -8,
        12,   -6,    1,   -1,   -3,   -2,  -11,    5,
     -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999  },
-#if 0
   {     0,    7,   -6,  -36,    1,    2,    5,    0,
         2,   14,    7,    0,   -1,    0,    8,    3,
         1,  -14,    0,  -10,    0,  -12,  -33,    0,
@@ -95,16 +83,6 @@ CONSTEVAL int PVPHASEDIFF[6][64] = {
         0,   -3,  -12,    0,   -1,  -26,  -65,    0,
        29,   17,    7,  -24,  -35,  -17,   14,    1,
        31,    0,    1,    4,    1,    2,  -48,    1  },
-#else
-	  {     0,    7,   -6,  -37,  -14,    2,    5,    0,
-       31,   14,  -24,   -1,  -24,  -31,    8,  -60,
-        2,  -14,   -7,  -48,  -33,  -42,  -48,    0,
-        3,  -14,   -3,  -15,    5,  -14,  -14,  -75,
-       -6,  -15,  -11,  -23,   -8,    0,    0,    0,
-        0,  -14,  -33,   -9,  -10,  -27,  -64,    0,
-       14,   18,  -23,  -24,  -26,  -48,   16,  -13,
-       16,    0,  -14,  -27,  -12,  -29,  -18,   63  },
-#endif
   {    15,   15,   -7,   -1,    4,    7,    8,   39,
        23,    0,    7,   -3,    0,   -3,   -1,   35,
        -1,   -4,   -1,    0,   -4,  -17,  -41,   -3,
@@ -165,12 +143,14 @@ void registeralltuners()
     }
 #endif
 
-#if 0
+#if 1
     // tuning other values
 	registerTuner(&knightmobilitybonus, "knightmobilitybonus", knightmobilitybonus, 0, 0, 0, 0, NULL, false);
-	registerTuner(&tempo, "tempo", tempo, 0, 0, 0, 0, NULL, false);
 	for (i = 0; i < 7; i++)
 		registerTuner(&kingattackweight[i], "kingattackweight", kingattackweight[i], i, 7, 0, 0, NULL, i < 2 || i > 5);
+#endif
+#if 0
+	registerTuner(&tempo, "tempo", tempo, 0, 0, 0, 0, NULL, false);
 	for (i = 0; i < 8; i++)
         registerTuner(&passedpawnbonus[i], "passedpawnbonus", passedpawnbonus[i], i, 8, 0, 0, &CreatePositionvalueTable, i == 0 || i == 7);
     for (i = 0; i < 8; i++)
@@ -190,23 +170,23 @@ void registeralltuners()
     for (i = BLANK; i <= KING; i++)
         registerTuner(&materialvalue[i], "materialvalue", materialvalue[i], i, 7, 0, 0, &CreatePositionvalueTable, i <= PAWN || i >= KING);
 #endif
-#if 1
+#if 0
     // tuning the psqt base at game start
     for (i = 0; i < 6; i++)
     {
         for (j = 0; j < 64; j++)
         {
-            registerTuner(&PVBASE[i][j], "PVBASE", PVBASE[i][j], j, 64, i, 6, &CreatePositionvalueTable, PVBASE[i][j] <= -9999 || i != 1);
+            registerTuner(&PVBASE[i][j], "PVBASE", PVBASE[i][j], j, 64, i, 6, &CreatePositionvalueTable, PVBASE[i][j] <= -9999);
         }
     }
 #endif
-#if 1
+#if 0
     //tuning the psqt phase development
     for (i = 0; i < 6; i++)
     {
         for (j = 0; j < 64; j++)
         {
-            registerTuner(&PVPHASEDIFF[i][j], "PVPHASEDIFF", PVPHASEDIFF[i][j], j, 64, i, 6, &CreatePositionvalueTable, PVPHASEDIFF[i][j] <= -9999 || i != 1);
+            registerTuner(&PVPHASEDIFF[i][j], "PVPHASEDIFF", PVPHASEDIFF[i][j], j, 64, i, 6, &CreatePositionvalueTable, PVPHASEDIFF[i][j] <= -9999);
         }
     }
 #endif
@@ -504,10 +484,9 @@ int chessposition::getPositionValue()
 			if (p == KNIGHT)
 			{
 				mobility = knight_attacks[index] & ~occupied00[s];
-				result += (S2MSIGN(s) * POPCOUNT(mobility) * knightmobilitybonus);
 			}
 
-			U64 kingdangerarea = kingdangerMask[kingpos[1 - s]][1 - s];
+			U64 kingdangerarea = king_attacks[kingpos[1 - s]];
 			if (mobility & kingdangerarea)
 			{
 				kingattackers[s]++;
@@ -529,7 +508,7 @@ int chessposition::getPositionValue()
 
 	for (int s = 0; s < 2; s++)
 		if (kingattackers[s] > 1)
-			result += (S2MSIGN(s) * kingattackers[s] * kingattackweightsum[s]);
+			result += (256 - ph) * (S2MSIGN(s) * kingattackers[s] * kingattackweightsum[s]) / 256;
 
 #ifdef DEBUGEVAL
     debugeval("(getPositionValue)  King safety: %d\n", (256 - ph) * (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])) * 15 / 256);
