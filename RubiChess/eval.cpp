@@ -469,14 +469,23 @@ int chessposition::getPositionValue()
 
     result += getPawnValue(&phentry);
 
+#if 0
     for (int pc = WPAWN; pc <= BKING; pc++)
     {
         int p = pc >> 1;
         int s = pc & S2MMASK;
         U64 pb = piece00[pc];
-
+#else
+    for (int s = 0; s < 2; s++)
+    {
+#endif
+        U64 pb = occupied00[s];
         while (LSB(index, pb))
         {
+#if 1
+            int pc = mailbox[index];
+            int p = pc >> 1;
+#endif
             int pvtindex = index | (ph << 6) | (p << 14) | (s << 17);
             result += *(positionvaluetable + pvtindex);
 #ifdef DEBUGEVAL
