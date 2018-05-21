@@ -25,7 +25,7 @@ PGOBENCH2 = ./$(EXE2) -bench
 %-Bitboard.o: %.cpp $(DEPS)
 	$(CXX) -c -o $@ $< $(CXXFLAGS) $(EXTRACXXFLAGS) -DBITBOARD
 
-all: RubiChess-Board88 RubiChess-Bitboard
+all: RubiChess-Bitboard
 
 RubiChess-Board88: $(OBJBOOARD88)
 	$(CXX) -o $@ $^ $(LDFLAGS) $(EXTRALDFLAGS)
@@ -58,7 +58,7 @@ profile-build: clean
 	$(MAKE) $(profile_make)
 	@echo "Running benchmark for pgo-build ..."
 	$(PGOBENCH1) > /dev/null
-	$(PGOBENCH2) > /dev/null
+	# $(PGOBENCH2) > /dev/null
 	@echo "Building optimized executable ..."
 	$(MAKE) objclean
 	$(MAKE) $(profile_use)

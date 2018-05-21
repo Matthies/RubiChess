@@ -113,12 +113,22 @@ kdau2 (mit texeltune-08-20000 getuned ratio 3)
 CONSTEVAL int KingSafetyFactor = 286;
 CONSTEVAL int kingattackweight[7] = { 0,    0,    2,    2,    3,   5,    0 };
 Test auf vier Rechnern:
+
 1. IBM 8-Kern Server:
 Score of RubiChess-Bitboard-kdau2 vs RubiChess-Bitboard-ms: 893 - 775 - 906  [0.523] 2574
 Elo difference: 15.94 +/- 10.80
 SPRT: llr 2.21, lbound -2.2, ubound 2.2 - H1 was accepted
+LTC:
+Score of RubiChess-Bitboard-kdau2 vs RubiChess-Bitboard-ms: 609 - 510 - 918  [0.524] 2037
+Elo difference: 16.90 +/- 11.17
+SPRT: llr 2.22, lbound -2.2, ubound 2.2 - H1 was accepted
+
 2. PC-Ben:
-PC-Ben:
 Score of RubiChess-Bitboard-kdau2 vs RubiChess-Bitboard-ms: 954 - 841 - 1216  [0.519] 3011
 Elo difference: 13.05 +/- 9.57
 SPRT: llr 2.21, lbound -2.2, ubound 2.2 - H1 was accepted
+3. Fujitsu-Notebook:
+Score of RubiChess-Bitboard-kdau2 vs RubiChess-Bitboard-ms: 1923 - 1866 - 2094  [0.505] 5883
+Elo difference: 3.37 +/- 7.12
+SPRT: llr 0.328, lbound -2.2, ubound 2.2
+
