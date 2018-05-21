@@ -345,6 +345,17 @@ extern U64 phalanxMask[64];
 // 000000o0
 extern U64 kingshieldMask[64][2];
 
+// kingdangerMask[14][WHITE]:
+// 00000000
+// 00000000
+// 00000000
+// 00000000
+// 00000xxx
+// 00000xxx
+// 00000xox
+// 00000xxx
+extern U64 kingdangerMask[64][2];
+
 // fileMask[18]:
 // 00100000
 // 00100000

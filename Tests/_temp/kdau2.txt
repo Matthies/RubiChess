@@ -1,0 +1,15 @@
+PC-Ben:
+Score of RubiChess-Bitboard-kdau2 vs RubiChess-Bitboard-ms: 954 - 841 - 1216  [0.519] 3011
+Elo difference: 13.05 +/- 9.57
+SPRT: llr 2.21, lbound -2.2, ubound 2.2 - H1 was accepted
+
+PC-Andreas:
+Score of RubiChess-Bitboard-kdau2 vs RubiChess-Bitboard-ms: 904 - 898 - 1198  [0
+.501] 3000
+Elo difference: 0.69 +/- 9.62
+SPRT: llr -0.373, lbound -1.39, ubound 1.39
+
+Fujitsu-Notebook:
+Score of RubiChess-Bitboard-kdau2 vs RubiChess-Bitboard-ms: 1923 - 1866 - 2094  [0.505] 5883
+Elo difference: 3.37 +/- 7.12
+SPRT: llr 0.328, lbound -2.2, ubound 2.2
