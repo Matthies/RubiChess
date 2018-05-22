@@ -4,9 +4,10 @@
 // Evaluation stuff
 #if 0 // version without KingSafetyTable; retest later
 CONSTEVAL int kingattackweight[7] = { 0,    0,    8,    5,    8,   20,    0 };
-#endif
+#else
 CONSTEVAL int KingSafetyFactor = 286;
 CONSTEVAL int kingattackweight[7] = { 0,    0,    2,    2,    3,   5,    0 };
+#endif
 CONSTEVAL int tempo = 4;
 CONSTEVAL int passedpawnbonus[8] = { 0,   14,   14,   38,   72,  114,  131,    0 };
 CONSTEVAL int attackingpawnbonus[8] = { 0,  -15,   -7,  -12,    3,   38,    0,    0 };
@@ -133,22 +134,6 @@ CONSTEVAL int KingSafetyTable[100] = {
     650, 650, 650, 650, 650, 650, 650, 650, 650, 650,
     650, 650, 650, 650, 650, 650, 650, 650, 650, 650
 };
-
-#if 0
-// ToDo: Tuning this leads to some different values that need to be tested (reverse indexed!)
-CONSTEVAL int KingSafetyTable[100] = {
-    650, 650, 650, 650, 650, 650, 650, 650, 650, 650,
-    650, 650, 650, 650, 650, 650, 650, 650, 650, 650,
-    640, 630, 620, 610, 600, 590, 580, 570, 560, 550,
-    540, 530, 520, 510, 500, 490, 480, 470, 460, 450,
-    440, 430, 420, 410, 400, 390, 380, 370, 360, 350,
-    340, 330, 320, 310, 300, 290, 280, 999, 999, 999,
-    999, 999, 999,  81, 327, 317, 690, 170, 223, 212,
-    155,  25, 183, 173, 100, 104, 111, 132,  63,  84,
-     63,  42,  79,  37,  28,  25,  16,  13,  42,  -2,
-     17,   4,  11,  -3,  -4,  -1, -21,   0,   0,   0
-};
-#endif
 
 //int squaredistance[BOARDSIZE][BOARDSIZE];
 //int kingdanger[BOARDSIZE][BOARDSIZE][7];
