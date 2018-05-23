@@ -1,14 +1,18 @@
 ChangeLog
 =========
 0.9 (release 2018-xx-xx) :
-    - ...
+    - Implemented Syzygy tablebase probing.
+    - Fixed bug with wrong depth stored in TT after a unreduced research
+    - Improved LMR from simple "one depth reduction after move 3" to a reduction depending on depth an move number
+    - Fixed quiescience search: Doesn't evaluate patscore when in check.
 
 0.8.1 (release 2018-03-24) :
     - Implemented ponder mode (works if ponder move can be read from tt)
     - Implemented / fixed "suddendeath without increment" timecontrol
 
 0.8 (release 2018-03-14) :
-    - Fast move after depth 4 for singular root move
+    - Fast move after depth 4 for singul
+	ar root move
     - Extended and reverse futility pruning up to depth 3
     - Added mobility for rook/queen and retuned with fresh games pgn
     - Seperate evaluation for semi- and open file bonus for rooks; excluding the queen now
