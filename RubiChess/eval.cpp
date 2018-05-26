@@ -2,11 +2,9 @@
 #include "RubiChess.h"
 
 // Evaluation stuff
-#if 0 // version without KingSafetyTable; retest later
-CONSTEVAL int kingattackweight[7] = { 0,    0,    8,    5,    8,   20,    0 };
-#endif
-CONSTEVAL int KingSafetyFactor = 286;
-CONSTEVAL int kingattackweight[7] = { 0,    0,    2,    2,    3,   5,    0 };
+CONSTEVAL int kingattackweight[7] = { 0,    0,    2,    2,    3,    4,    0 };
+CONSTEVAL int KingSafetyFactor = 287; 
+CONSTEVAL int shiftmobilitybonus = 3;
 CONSTEVAL int tempo = 4;
 CONSTEVAL int passedpawnbonus[8] = { 0,   14,   14,   38,   72,  114,  131,    0 };
 CONSTEVAL int attackingpawnbonus[8] = { 0,  -15,   -7,  -12,    3,   38,    0,    0 };
@@ -17,7 +15,6 @@ CONSTEVAL int kingshieldbonus = 16;
 CONSTEVAL int backwardpawnpenalty = -22;
 CONSTEVAL int slideronfreefilebonus[2] = { 12,   17 };
 CONSTEVAL int doublebishopbonus = 27;
-CONSTEVAL int shiftmobilitybonus = 3;
 CONSTEVAL int materialvalue[7] = { 0,  100,  322,  329,  488,  986,32509 };
 CONSTEVAL int PVBASE[6][64] = {
     { -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999,
@@ -134,24 +131,6 @@ CONSTEVAL int KingSafetyTable[100] = {
     650, 650, 650, 650, 650, 650, 650, 650, 650, 650
 };
 
-#if 0
-// ToDo: Tuning this leads to some different values that need to be tested (reverse indexed!)
-CONSTEVAL int KingSafetyTable[100] = {
-    650, 650, 650, 650, 650, 650, 650, 650, 650, 650,
-    650, 650, 650, 650, 650, 650, 650, 650, 650, 650,
-    640, 630, 620, 610, 600, 590, 580, 570, 560, 550,
-    540, 530, 520, 510, 500, 490, 480, 470, 460, 450,
-    440, 430, 420, 410, 400, 390, 380, 370, 360, 350,
-    340, 330, 320, 310, 300, 290, 280, 999, 999, 999,
-    999, 999, 999,  81, 327, 317, 690, 170, 223, 212,
-    155,  25, 183, 173, 100, 104, 111, 132,  63,  84,
-     63,  42,  79,  37,  28,  25,  16,  13,  42,  -2,
-     17,   4,  11,  -3,  -4,  -1, -21,   0,   0,   0
-};
-#endif
-
-//int squaredistance[BOARDSIZE][BOARDSIZE];
-//int kingdanger[BOARDSIZE][BOARDSIZE][7];
 int passedpawnbonusperside[2][8];
 int attackingpawnbonusperside[2][8];
 
@@ -174,16 +153,12 @@ void registeralltuners()
         }
     }
 #endif
-    for (i = 0; i < 100; i++)
-        registerTuner(&KingSafetyTable[i], "KingSafetyTable", KingSafetyTable[i], i, 100, 0, 0, NULL, i <= 36);
-    
+
 #if 0
     // tuning other values
-    registerTuner(&KingSafetyFactor, "KingSafetyFactor", KingSafetyFactor, 0, 0, 0, 0, NULL, false);
     for (i = 0; i < 7; i++)
         registerTuner(&kingattackweight[i], "kingattackweight", kingattackweight[i], i, 7, 0, 0, NULL, i < 2 || i > 5);
-#endif
-#if 0
+    registerTuner(&KingSafetyFactor, "KingSafetyFactor", KingSafetyFactor, 0, 0, 0, 0, NULL, false);
     registerTuner(&tempo, "tempo", tempo, 0, 0, 0, 0, NULL, false);
     for (i = 0; i < 8; i++)
         registerTuner(&passedpawnbonus[i], "passedpawnbonus", passedpawnbonus[i], i, 8, 0, 0, &CreatePositionvalueTable, i == 0 || i == 7);
@@ -230,22 +205,6 @@ void registeralltuners()
 
 void chessposition::init()
 {
-#if 0
-    int rs = 0;
-    for (int b = BOARDSIZE; b ^ 0x8; b >>= 1)
-        rs++;
-    for (int i = 0; i < BOARDSIZE; i++)
-    {
-        int fi = i & 7;
-        int ri = i >> rs;
-        for (int j = 0; j < BOARDSIZE; j++)
-        {
-            int fj = j & 7;
-            int rj = j >> rs;
-            squaredistance[i][j] = max(abs(fi - fj), abs(ri - rj));
-        }
-    }
-#endif
 #ifdef EVALTUNE
     registeralltuners();
 #endif
@@ -253,7 +212,6 @@ void chessposition::init()
     positionvaluetable = NULL;
     CreatePositionvalueTable();
 }
-
 
 
 void CreatePositionvalueTable()
@@ -295,12 +253,6 @@ void CreatePositionvalueTable()
                 pos.positionvaluetable[index1] += materialvalue[p];
                 pos.positionvaluetable[index2] -= materialvalue[p];
             }
-#if 0 // kingdanger disabled for now as it doesn't work this way
-            for (int j = 0; j < BOARDSIZE; j++)
-            {
-                kingdanger[i][j][p] = (int)(pow((7 - squaredistance[i][j]), kingdangerexponent) * sqrt(materialvalue[p]) * kingdangerfactor);
-            }
-#endif
         }
     }
 }
@@ -398,7 +350,7 @@ int chessposition::getPawnValue(pawnhashentry **entry)
         // isolated pawns
         val += S2MSIGN(s) * POPCOUNT(entryptr->isolatedpawnbb[s]) * isolatedpawnpenalty;
 #ifdef DEBUGEVAL
-        debugeval("Isolated Pawn Penalty(%d): %d\n", s, S2MSIGN(s) * POPCOUNT(entry->isolatedpawnbb[s]) * isolatedpawnpenalty);
+        debugeval("Isolated Pawn Penalty(%d): %d\n", s, S2MSIGN(s) * POPCOUNT(entryptr->isolatedpawnbb[s]) * isolatedpawnpenalty);
 #endif
 
         // doubled pawns
@@ -410,13 +362,13 @@ int chessposition::getPawnValue(pawnhashentry **entry)
         // backward pawns
         val += S2MSIGN(s) * POPCOUNT(entryptr->backwardpawnbb[s]) * backwardpawnpenalty * ph / 256;
 #ifdef DEBUGEVAL
-        debugeval("Backward Pawn Penalty(%d): %d\n", s, S2MSIGN(s) * POPCOUNT(entry->backwardpawnbb[s]) * backwardpawnpenalty * ph / 256);
+        debugeval("Backward Pawn Penalty(%d): %d\n", s, S2MSIGN(s) * POPCOUNT(entryptr->backwardpawnbb[s]) * backwardpawnpenalty * ph / 256);
 #endif
 
     }
 
 #ifdef DEBUGEVAL
-    debugeval("Total Pawn value: %d\n", val + entry->value);
+    debugeval("Total Pawn value: %d\n", val + entryptr->value);
 #endif
     return val + entryptr->value;
 }
@@ -457,14 +409,10 @@ int chessposition::getPositionValue()
     pawnhashentry *phentry;
     int index;
     int result = S2MSIGN(state & S2MMASK) * tempo;
-#if 0 // version without KingSafetyTable; retest later
-    int kingattackers[2] = { 0 };
-#endif
     int kingattackweightsum[2] = { 0 };
 
 #ifdef DEBUGEVAL
     int positionvalue = 0;
-    int kingdangervalue[2] = { 0, 0 };
 #endif
 
     result += getPawnValue(&phentry);
@@ -480,7 +428,6 @@ int chessposition::getPositionValue()
             result += *(positionvaluetable + pvtindex);
 #ifdef DEBUGEVAL
             positionvalue += *(positionvaluetable + pvtindex);
-            kingdangervalue[s] += S2MSIGN(s) * kingdanger[index][pos.kingpos[1 - s]][p];
 #endif
             pb ^= BITSET(index);
             U64 mobility = 0ULL;
@@ -494,7 +441,6 @@ int chessposition::getPositionValue()
                 mobility = ~occupied00[s]
                     & (mRookAttacks[index][MAGICROOKINDEX((occupied00[0] | occupied00[1]), index)]);
 #endif
-                result += (S2MSIGN(s) * POPCOUNT(mobility) * shiftmobilitybonus);
 
                 // extrabonus for rook on (semi-)open file  
                 if (p == ROOK && (phentry->semiopen[s] & BITSET(FILE(index))))
@@ -508,26 +454,23 @@ int chessposition::getPositionValue()
                     & ((diaga1h8_attacks[index][((occupieda1h8[0] | occupieda1h8[1]) >> rota1h8shift[index]) & 0x3f])
                         | (diagh1a8_attacks[index][((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[index]) & 0x3f]));
 #else
-                mobility = ~occupied00[s]
+                mobility |= ~occupied00[s]
                     & (mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)]);
 #endif
-                result += (S2MSIGN(s) * POPCOUNT(mobility) * shiftmobilitybonus);
             }
 
             if (p == KNIGHT)
             {
                 mobility = knight_attacks[index] & ~occupied00[s];
             }
+            // mobility bonus
+            result += (S2MSIGN(s) * POPCOUNT(mobility) * shiftmobilitybonus);
 
+            // king danger
             U64 kingdangerarea = kingdangerMask[kingpos[1 - s]][1 - s];
             if (mobility & kingdangerarea)
             {
-#if 0  // version without KingSafetyTable; retest later
-                kingattackers[s]++;
-                kingattackweightsum[s] +=/* POPCOUNT(mobility & kingdangerarea) * */kingattackweight[p];
-#else
                 kingattackweightsum[s] += POPCOUNT(mobility & kingdangerarea) * kingattackweight[p];
-#endif
             }
 
         }
@@ -544,16 +487,11 @@ int chessposition::getPositionValue()
     result += (256 - ph) * (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])) * kingshieldbonus / 256;
 
     for (int s = 0; s < 2; s++)
-#if 0 // version without KingSafetyTable; retest later
-        if (kingattackers[s] > 1)
-            result += (256 - ph) * (S2MSIGN(s) * kingattackers[s] * kingattackweightsum[s]) / 256;
-#else
         result += S2MSIGN(s) * KingSafetyFactor * KingSafetyTable[kingattackweightsum[s]] * (256 - ph) / 0x10000;
-#endif
+
 #ifdef DEBUGEVAL
     debugeval("(getPositionValue)  King safety: %d\n", (256 - ph) * (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])) * 15 / 256);
     debugeval("(getPositionValue)  Position value: %d\n", positionvalue);
-    debugeval("(getPositionValue)  Kingdanger value: %d / %d\n", kingdangervalue[0], kingdangervalue[1]);
 #endif
     return result;
 }

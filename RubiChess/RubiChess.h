@@ -455,6 +455,7 @@ public:
 #ifdef BITBOARD
 
 extern U64 pawn_attacks_occupied[64][2];
+extern U64 knight_attacks[64];
 
 #define BOARDSIZE 64
 #define RANKMASK 0x38
@@ -478,8 +479,6 @@ extern SMagic mRookTbl[64];
 
 extern U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
-extern U64 knight_attacks[64];
-extern U64 king_attacks[64];
 
 #else // ROTATEDBITBOARD
 
