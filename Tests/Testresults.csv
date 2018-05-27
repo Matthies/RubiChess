@@ -1,0 +1,17 @@
+Datum;Version;Bench;Gegner;TC;Buch;Spiele;Ergebnis (%);Details (w-d-l);Bemerkung
+21.05.2018;Master;3629408;Bumblebee1.0;60+0.6;8moves_v3 seq.;501;58,1;220-142-139;
+21.05.2018;KDAU2;1738268;Bumblebee1.0;60+0.6;8moves_v3 seq.;501;57,1;218-136-147;2 Siege wg. Crash
+22.05.2018;Master;3629408;Bumblebee1.0;60+0.6;8moves_v3 rnd.;500;56,4;220-124-156;
+22.05.2018;KDPH2;1723931;Bumblebee1.0;60+0.6;8moves_v3 rnd.;450;54,0;189-108-153;
+22.05.2018;0.8;11248014;Bumblebee1.0;60+0.6;8moves_v3 rnd.;500;50,6;192-122-186;1 Sieg wg. Crash
+22.05.2018;KDPH4;1791160;Bumblebee1.0;60+0.6;8moves_v3 rnd.;500;57,0;228-114-158;
+23.05.2018;Master;3629408;Schooner1.8;60+0.6;8moves_v3 rnd.;500;50,4;174-156-170;
+23.05.2018;KDAU2;1738268;Schooner1.8;60+0.6;8moves_v3 rnd.;753;52,1;287-211-255;
+23.05.2018;QS1-Master;24466081;Bumblebee1.0;60+0.6;8moves_v3 rnd.;500;60,6;244-118-138;2 Siege wg. Crash
+23.05.2018;QS1-Master;24466081;Schooner1.8;60+0.6;8moves_v3 rnd.;500;52,6;191-144-165;
+23.05.2018;QS1-Master;24466081;Maverick;60+0.6;8moves_v3 rnd.;851;35,3;210-180-461;
+26.05.2018;KDAUFIX3b;8067271;Schooner1.8;60+0.6;8moves_v3 rnd.;500;57,1;211-149-140;
+26.05.2018;KDAUFIX3b;8067271;Maverick;60+0.6;8moves_v3 rnd.;500;38,0;123-134-243;
+26.05.2018;KDAUFIX3b;8067271;Bumblebee1.0;60+0.6;8moves_v3 rnd.;500;58,6;232-122-146;2 Siege wg. Crash
+27.05.2018;QS1-Master;24466081;Hermann;60+0.6;8moves_v3 rnd.;500;44,0;162-116-222;
+27.05.2018;KDAUFIX3b;8067271;Hermann;60+0.6;8moves_v3 rnd.;500;45,9;166-127-207;
