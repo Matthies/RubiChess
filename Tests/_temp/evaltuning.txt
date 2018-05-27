@@ -132,3 +132,201 @@ Score of RubiChess-Bitboard-kdau2 vs RubiChess-Bitboard-ms: 1923 - 1866 - 2094  
 Elo difference: 3.37 +/- 7.12
 SPRT: llr 0.328, lbound -2.2, ubound 2.2
 
+kdaufix: Für die Dame wurde nuir eine Richtung in die kingsafety-Attacke einberechnet, das ist korrigiert.
+CONSTEVAL int KingSafetyFactor = 286;
+CONSTEVAL int kingattackweight[7] = { 0,    0,    2,    2,    3,   5,    0 };
+CONSTEVAL int KingSafetyFactor =   286;
+CONSTEVAL int shiftmobilitybonus =     3;
+Score of kdaufix vs RubiChess-Bitboard-qs1newmaster: 349 - 339 - 312  [0.505] 1000
+Elo difference: 3.47 +/- 17.85
+SPRT: llr 0.0587, lbound -1.39, ubound 1.39
+
+kdaufix2: Retuned mit 08-20000:
+CONSTEVAL int kingattackweight[7] = {     0,    0,    1,    3,    3,    4,    0  };
+CONSTEVAL int KingSafetyFactor =   285;
+CONSTEVAL int shiftmobilitybonus =     2;
+Score of kdaufix2 vs RubiChess-Bitboard-ms: 211 - 205 - 196  [0.505] 612
+Elo difference: 3.41 +/- 22.69
+SPRT: llr 0.0338, lbound -1.39, ubound 1.39
+
+kdaufix2b: Retuned mit 08-20000 und shiftmobility fest auf 3:
+CONSTEVAL int kingattackweight[7] = {     0,    0,    0,    3,    3,    4,    0  };
+CONSTEVAL int KingSafetyFactor =   287;
+Score of kdaufix2b vs RubiChess-Bitboard-ms: 61 - 76 - 65  [0.463] 202
+Elo difference: -25.85 +/- 39.63
+SPRT: llr -0.35, lbound -1.39, ubound 1.39
+
+kdaufix2c: Retuned mit 08-20000 und kein mobility Bonus für Springer:
+CONSTEVAL int kingattackweight[7] = {     0,    0,    2,    2,    3,    4,    0  };
+CONSTEVAL int KingSafetyFactor =   287;
+Score of kdaufix2c vs RubiChess-Bitboard-ms: 346 - 335 - 328  [0.505] 1009
+Elo difference: 3.79 +/- 17.60
+SPRT: llr 0.0797, lbound -1.39, ubound 1.39
+
+kdaufix3: Retuned mit kd:
+CONSTEVAL int kingattackweight[7] = {     0,    0,    2,    3,    3,    4,    0  };
+CONSTEVAL int KingSafetyFactor =   287;
+CONSTEVAL int shiftmobilitybonus =     2;
+Score of kdaufix3 vs RubiChess-Bitboard-ms: 171 - 187 - 147  [0.484] 505
+Elo difference: -11.01 +/- 25.53
+SPRT: llr -0.399, lbound -1.39, ubound 1.39
+
+kdaufix3b: Retuned mit kd und shiftmobility fest auf 3: Bench 8067271
+CONSTEVAL int kingattackweight[7] = {     0,    0,    2,    2,    3,    4,    0  };
+CONSTEVAL int KingSafetyFactor =   287;
+10+0.1:
+Score of kdaufix3b vs RubiChess-Bitboard-ms: 720 - 642 - 726  [0.519] 2088
+Elo difference: 12.98 +/- 12.03
+SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+60+0.6:
+Score of kdaufix3b vs RubiChess-Bitboard-ms: 486 - 416 - 559  [0.524] 1461
+Elo difference: 16.66 +/- 13.99
+SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+
+kdaufix3c: Retuned mit kd und kein mobility Bonus für Springer
+CONSTEVAL int kingattackweight[7] = {     0,    0,    3,    1,    3,    4,    0  };
+CONSTEVAL int KingSafetyFactor =   287;
+Score of RubiChess-Bitboard-kdaufix3c vs RubiChess-Bitboard-ms: 241 - 233 - 263  [0.505] 737
+Elo difference: 3.77 +/- 20.11
+SPRT: llr 0.0604, lbound -1.39, ubound 1.39
+
+
+Neue Baustelle: Passed-/Connected pawns
+pp1: // getuned mit texeltune-kd.pgn.fenmove -tuningratio 3 mit niedrigen Werten gestartet
+CONSTEVAL int connectedpasser = 7;
+CONSTEVAL int passedpawnbonus[8] = { 0,   24,   11,   42,   78,  133,  141,    1 };
+10+0.1 auf IBM nach 1000 Spielen:
+Score of pp1 vs RubiChess-Bitboard-ms: 321 - 331 - 350  [0.495] 1002
+Elo difference: -3.47 +/- 17.34
+SPRT: llr -0.381, lbound -2.2, ubound 2.2
+Auf (teilweise zusätzlich verwendetem) Notebook vielversprechend:
+Score of RubiChess-Bitboard-pp1 vs RubiChess-Bitboard-ms: 819 - 775 - 918  [0.509] 2512
+Elo difference: 6.09 +/- 10.81
+SPRT: llr 0.588, lbound -1.39, ubound 1.39
+--> sollte nochmal getestet werden...
+
+pp2: // getuned mit texeltune-08-20000.pgn.fenmove -tuningratio 3 mit niedrigen Werten gestartet
+CONSTEVAL int connectedpasser =     4;
+CONSTEVAL int passedpawnbonus[8] = {     0,   23,   14,   38,   70,  132,  157,    1  };
+Score of pp2 vs RubiChess-Bitboard-ms: 199 - 220 - 239  [0.484] 658
+Elo difference: -11.09 +/- 21.18
+SPRT: llr -0.582, lbound -2.2, ubound 2.2
+
+
+Nächste Baustelle: Pinning (Springer - Dame, nur Schach)
+pin1: (mit kd getuned)
+CONSTEVAL int pinnedpenalty = -39;
+CONSTEVAL int shiftmobilitybonus = 2;
+CONSTEVAL int slideronfreefilebonus[2] = { 18,   23 };
+Nach mal wieder vielversprechendem Start geht es den Bach runter:
+Score of pin1 vs RubiChess-Bitboard-ms: 114 - 130 - 156  [0.480] 400
+Elo difference: -13.90 +/- 26.61
+SPRT: llr -0.446, lbound -2.2, ubound 2.2
+
+pin2: (mit 08-20000 getuned)
+CONSTEVAL int pinnedpenalty =   -32;
+CONSTEVAL int shiftmobilitybonus =     3;
+CONSTEVAL int slideronfreefilebonus[2] = {    12,   16  };  // ratio=1 ergibt {13,16}
+Score of pin2 vs RubiChess-Bitboard-ms: 477 - 477 - 546  [0.500] 1500
+Elo difference: 0.00 +/- 14.01
+SPRT: llr -0.244, lbound -2.2, ubound 2.2
+
+pin3: komplexe Lösung getuned mit 08-20000
+CONSTEVAL int pinnedpenalty[7] = { 0,    1,  -26,  -21,   -2, -380,    0 };
+CONSTEVAL int shiftmobilitybonus = 3;
+CONSTEVAL int slideronfreefilebonus[2] = { 12,   16 };
+Score of pin3 vs RubiChess-Bitboard-qs1newmaster: 131 - 229 - 172  [0.408] 532
+Elo difference: -64.74 +/- 24.51
+SPRT: llr -2.21, lbound -2.2, ubound 2.2 - H0 was accepted
+Seltsam schlecht; ist da noch ein Bug oder Denkfehler??
+
+pin4: komplexe Lösung mit kd getuned
+CONSTEVAL int pinnedpenalty[7] = {     0,    1,  -34,  -19,  -23, -304,    0  };
+CONSTEVAL int shiftmobilitybonus =     3;
+CONSTEVAL int slideronfreefilebonus[2] = {    15,   20  };
+Score of pin4 vs RubiChess-Bitboard-qs1newmaster: 47 - 80 - 73  [0.417] 200
+Elo difference: -57.86 +/- 38.71
+SPRT: llr -0.795, lbound -2.2, ubound 2.2
+
+pin5: noch weiter mit kd getuned
+CONSTEVAL int pinnedpenalty[7] = { 0,    1,  -37,  -24,  -29, -323,    0 };
+CONSTEVAL int shiftmobilitybonus = 2;
+CONSTEVAL int slideronfreefilebonus[2] = { 18,   24 };
+
+pin6: komplexe Lösung, die Mobilitybonus nicht ausschließt, mit kd getuned
+CONSTEVAL int pinnedpenalty[7] = {     0,    1,  -37,  -34,  -55, -459,    0  };
+CONSTEVAL int shiftmobilitybonus =     2;
+CONSTEVAL int slideronfreefilebonus[2] = {    18,   24  };
+Score of pin6 vs RubiChess-Bitboard-qs1newmaster: 39 - 64 - 52  [0.419] 155
+Elo difference: -56.53 +/- 45.08
+SPRT: llr -0.574, lbound -2.2, ubound 2.2
+
+pin7: wie pin6 mit 08-20000 getuned
+CONSTEVAL int pinnedpenalty[7] = {     0,    1,  -29,  -36,  -34, -321,    0  };
+CONSTEVAL int shiftmobilitybonus =     2;
+CONSTEVAL int slideronfreefilebonus[2] = {    16,   20  };
+
+
+pin9: Deutlich kleinere Penalty für gepinnte Dame: Bench 23618740
+CONSTEVAL int pinnedpenalty[7] = { 0,    1,  -26,  -37,  -31, -60,    0 };
+Score of pin9 vs RubiChess-Bitboard-qs1newmaster: 255 - 258 - 257  [0.498] 770
+Elo difference: -1.35 +/- 20.02
+SPRT: llr -0.184, lbound -2.2, ubound 2.2
+schon deutlich besser
+
+pin10:
+CONSTEVAL int pinnedpenalty[7] = { 0,    1,  -26,  -37,  -31, -100,    0 };
+und Mobility wieder ausgeschlossen für gepinnte Figuren
+Score of pin10 vs RubiChess-Bitboard-qs1newmaster: 109 - 151 - 142  [0.448] 402
+Elo difference: -36.43 +/- 27.40
+SPRT: llr -1.01, lbound -2.2, ubound 2.2
+wieder deutlich schlechter
+
+pin11:
+Mobility ausgeschlossen, aber ohne (echte) penalty: -1
+Performt mies.
+
+pin12: Mobility bleibt erhalten; Placebo-Penalty für Pinning:
+CONSTEVAL int pinnedpenalty[7] = { 0,    0,  -2,  -2,  -3, -5,    0 };
+sieht ganz gut aus... später doch nicht
+Score of pin12 vs RubiChess-Bitboard-qs1newmaster: 972 - 1046 - 1180  [0.488] 3198
+Elo difference: -8.04 +/- 9.56
+SPRT: llr -2.21, lbound -2.2, ubound 2.2 - H0 was accepted
+
+pin13: Placebo verdoppeln:
+CONSTEVAL int pinnedpenalty[7] = { 0,    0,  -4,  -4,  -6, -10,    0 };
+Score of pin13 vs RubiChess-Bitboard-qs1newmaster: 321 - 371 - 414  [0.477] 1106
+Elo difference: -15.72 +/- 16.19
+SPRT: llr -1.33, lbound -2.2, ubound 2.2
+Wird das schlechter?? Hmm...
+
+pin14: Placebo verdoppeln:
+CONSTEVAL int pinnedpenalty[7] = { 0,    0,  -8,  -8,  -12, -20,    0 };
+
+pin15: Placebo verdoppeln:
+CONSTEVAL int pinnedpenalty[7] = { 0,    0,  -16,  -16,  -24, -40,    0 };
+Score of pin15 vs RubiChess-Bitboard-qs1newmaster: 97 - 121 - 133  [0.466] 351
+Elo difference: -23.79 +/- 28.70
+SPRT: llr -0.617, lbound -2.2, ubound 2.2
+
+pin16: Hand-getuned
+CONSTEVAL int pinnedpenalty[7] = { 0,    0,  -16,  -26,  -16, -40,    0 };
+Score of pin16 vs RubiChess-Bitboard-qs1newmaster: 58 - 60 - 82  [0.495] 200
+Elo difference: -3.47 +/- 37.07
+SPRT: llr -0.0839, lbound -1.39, ubound 1.39
+
+
+Und noch eine Baustelle:
+qs1: Kein patscore bei Schach!
+Notebook 10+0.1
+Score of RubiChess-Bitboard-qs1 vs RubiChess-Bitboard-ms: 109 - 48 - 90  [0.623] 247
+Elo difference: 87.62 +/- 35.07
+SPRT: llr 1.4, lbound -1.39, ubound 1.39 - H1 was accepted
+Finished match
+Notebook 60+0.6
+Score of RubiChess-Bitboard-qs1 vs RubiChess-Bitboard-ms: 115 - 64 - 171  [0.573] 350
+Elo difference: 50.99 +/- 26.05
+SPRT: llr 1.4, lbound -1.39, ubound 1.39 - H1 was accepted
+Das ist was GROßES!
+
+
