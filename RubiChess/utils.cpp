@@ -370,7 +370,7 @@ static void printTunedParameters()
         if (tip[i].index1 < tip[i].bound1 - 1)
         {
             output += ",";
-            if (!((tip[i].index1 + 1) & (tip[i].bound2 ? 0x3 : 0x7)))
+            if (!((tip[i].index1 + 1) & (tip[i].bound2 ? 0x7 : 0x7)))
                 output += "\n    ";
         }
         else if (tip[i].index1 == tip[i].bound1 - 1)
@@ -424,6 +424,7 @@ static double TexelEvalError(string fenfilename, double k)
 
                     Ri = (stoi(match.str(1)) + 1) / 2.0;
                     pos.getFromFen(match.str(2).c_str());
+                    pos.ply = 0;
                     Qi = getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
                     if (!pos.w2m())
                         Qi = -Qi;
@@ -441,6 +442,7 @@ static double TexelEvalError(string fenfilename, double k)
                 gamescount++;
                 Ri = (stoi(match.str(1)) + 1) / 2.0;
                 pos.getFromFen(match.str(2).c_str());
+                pos.ply = 0;
                 vector<string> movelist = SplitString(match.str(3).c_str());
                 vector<string>::iterator move = movelist.begin();
                 bool gameend;
@@ -456,7 +458,7 @@ static double TexelEvalError(string fenfilename, double k)
                         Qi = getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
                         if (!pos.w2m())
                             Qi = -Qi;
-                        //printf("Ri=%f Qi=%f\n", Ri, Qi);
+                        //printf("FEN=%s Ri=%f Qi=%f\n", pos.toFen().c_str(), Ri, Qi);
                         n++;
                         double sigmoid = 1 / (1 + pow(10.0, -k * Qi / 400.0));
                         E += (Ri - sigmoid) * (Ri - sigmoid);
@@ -476,7 +478,7 @@ static double TexelEvalError(string fenfilename, double k)
         }
     }
 }
-    printf("Tuning-Zeit: %10f sec.", (float)(getTime() - starttime) / (float)en.frequency);
+    printf("Positions: %d  Tuning-Zeit: %10f sec.", n, (float)(getTime() - starttime) / (float)en.frequency);
     return E / n;
 }
 
@@ -486,8 +488,8 @@ void TexelTune(string fenfilename)
     double k = 1.121574;
     int direction = 0;
     double Error;
-    bool improved = false;
-    double Emin = 0.0;
+    bool improved;
+    double Emin = -1.0;
     int pmin;
 
 #if 0 // enable to calculate constant k
@@ -529,6 +531,7 @@ void TexelTune(string fenfilename)
 
     do
     {
+        improved = false;
         for (int i = 0; i < tipnum; i++)
         {
             if (tip[i].notune == false)
@@ -548,7 +551,8 @@ void TexelTune(string fenfilename)
                 if (tip[i].init)
                     tip[i].init();
                 pmin = lastp;
-                Emin = TexelEvalError(fenfilename, k);
+                if (Emin < 0)
+                    Emin = TexelEvalError(fenfilename, k);
                 printf("Min: %d/%0.10f\n", pmin, Emin);
                 do
                 {
