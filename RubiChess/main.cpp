@@ -9,79 +9,12 @@ string GetSystemInfo()
     char CPUString[0x20];
     char CPUBrandString[0x40];
     int CPUInfo[4] = { -1 };
-    int nSteppingID = 0;
-    int nModel = 0;
-    int nFamily = 0;
-    int nProcessorType = 0;
-    int nExtendedmodel = 0;
-    int nExtendedfamily = 0;
-    int nBrandIndex = 0;
-    int nCLFLUSHcachelinesize = 0;
-    int nLogicalProcessors = 0;
-    int nAPICPhysicalID = 0;
-    int nFeatureInfo = 0;
-    int nCacheLineSize = 0;
-    int nL2Associativity = 0;
-    int nCacheSizeK = 0;
-    int nPhysicalAddress = 0;
-    int nVirtualAddress = 0;
-    int nRet = 0;
-
-    int nCores = 0;
-    int nCacheType = 0;
-    int nCacheLevel = 0;
-    int nMaxThread = 0;
-    int nSysLineSize = 0;
-    int nPhysicalLinePartitions = 0;
-    int nWaysAssociativity = 0;
-    int nNumberSets = 0;
+    //int nCacheLineSize = 0; // Maybe usefull for TT sizing
 
     unsigned    nIds, nExIds, i;
+    //bool    bPOPCNT = false;
+    //bool    bBMI2 = false;
 
-    bool    bSSE3Instructions = false;
-    bool    bMONITOR_MWAIT = false;
-    bool    bCPLQualifiedDebugStore = false;
-    bool    bVirtualMachineExtensions = false;
-    bool    bEnhancedIntelSpeedStepTechnology = false;
-    bool    bThermalMonitor2 = false;
-    bool    bSupplementalSSE3 = false;
-    bool    bL1ContextID = false;
-    bool    bCMPXCHG16B = false;
-    bool    bxTPRUpdateControl = false;
-    bool    bPerfDebugCapabilityMSR = false;
-    bool    bSSE41Extensions = false;
-    bool    bSSE42Extensions = false;
-    bool    bPOPCNT = false;
-    bool    bBMI2 = false;
-
-    bool    bMultithreading = false;
-
-    bool    bLAHF_SAHFAvailable = false;
-    bool    bCmpLegacy = false;
-    bool    bSVM = false;
-    bool    bExtApicSpace = false;
-    bool    bAltMovCr8 = false;
-    bool    bLZCNT = false;
-    bool    bSSE4A = false;
-    bool    bMisalignedSSE = false;
-    bool    bPREFETCH = false;
-    bool    bSKINITandDEV = false;
-    bool    bSYSCALL_SYSRETAvailable = false;
-    bool    bExecuteDisableBitAvailable = false;
-    bool    bMMXExtensions = false;
-    bool    bFFXSR = false;
-    bool    b1GBSupport = false;
-    bool    bRDTSCP = false;
-    bool    b64Available = false;
-    bool    b3DNowExt = false;
-    bool    b3DNow = false;
-    bool    bNestedPaging = false;
-    bool    bLBRVisualization = false;
-    bool    bFP128 = false;
-    bool    bMOVOptimization = false;
-
-    bool    bSelfInit = false;
-    bool    bFullyAssociative = false;
 
     __cpuid(CPUInfo, 0);
     nIds = CPUInfo[0];
@@ -97,38 +30,13 @@ string GetSystemInfo()
         // Interpret CPU feature information.
         if (i == 1)
         {
-            nSteppingID = CPUInfo[0] & 0xf;
-            nModel = (CPUInfo[0] >> 4) & 0xf;
-            nFamily = (CPUInfo[0] >> 8) & 0xf;
-            nProcessorType = (CPUInfo[0] >> 12) & 0x3;
-            nExtendedmodel = (CPUInfo[0] >> 16) & 0xf;
-            nExtendedfamily = (CPUInfo[0] >> 20) & 0xff;
-            nBrandIndex = CPUInfo[1] & 0xff;
-            nCLFLUSHcachelinesize = ((CPUInfo[1] >> 8) & 0xff) * 8;
-            nLogicalProcessors = ((CPUInfo[1] >> 16) & 0xff);
-            nAPICPhysicalID = (CPUInfo[1] >> 24) & 0xff;
-            bSSE3Instructions = (CPUInfo[2] & 0x1) || false;
-            bMONITOR_MWAIT = (CPUInfo[2] & 0x8) || false;
-            bCPLQualifiedDebugStore = (CPUInfo[2] & 0x10) || false;
-            bVirtualMachineExtensions = (CPUInfo[2] & 0x20) || false;
-            bEnhancedIntelSpeedStepTechnology = (CPUInfo[2] & 0x80) || false;
-            bThermalMonitor2 = (CPUInfo[2] & 0x100) || false;
-            bSupplementalSSE3 = (CPUInfo[2] & 0x200) || false;
-            bL1ContextID = (CPUInfo[2] & 0x300) || false;
-            bCMPXCHG16B = (CPUInfo[2] & 0x2000) || false;
-            bxTPRUpdateControl = (CPUInfo[2] & 0x4000) || false;
-            bPerfDebugCapabilityMSR = (CPUInfo[2] & 0x8000) || false;
-            bSSE41Extensions = (CPUInfo[2] & 0x80000) || false;
-            bSSE42Extensions = (CPUInfo[2] & 0x100000) || false;
-            bPOPCNT = (CPUInfo[2] & 0x800000) || false;
-            nFeatureInfo = CPUInfo[3];
-            bMultithreading = (nFeatureInfo & (1 << 28)) || false;
+            //bPOPCNT = (CPUInfo[2] & 0x800000) || false;
         }
 
         if (i == 7)
         {
             // this is not in the MSVC2012 example but may be useful later
-            bBMI2 = (CPUInfo[1] & 0x100) || false;
+            //bBMI2 = (CPUInfo[1] & 0x100) || false;
         }
     }
 
@@ -143,28 +51,6 @@ string GetSystemInfo()
     for (i = 0x80000000; i <= nExIds; ++i)
     {
         __cpuid(CPUInfo, i);
-        if (i == 0x80000001)
-        {
-            bLAHF_SAHFAvailable = (CPUInfo[2] & 0x1) || false;
-            bCmpLegacy = (CPUInfo[2] & 0x2) || false;
-            bSVM = (CPUInfo[2] & 0x4) || false;
-            bExtApicSpace = (CPUInfo[2] & 0x8) || false;
-            bAltMovCr8 = (CPUInfo[2] & 0x10) || false;
-            bLZCNT = (CPUInfo[2] & 0x20) || false;
-            bSSE4A = (CPUInfo[2] & 0x40) || false;
-            bMisalignedSSE = (CPUInfo[2] & 0x80) || false;
-            bPREFETCH = (CPUInfo[2] & 0x100) || false;
-            bSKINITandDEV = (CPUInfo[2] & 0x1000) || false;
-            bSYSCALL_SYSRETAvailable = (CPUInfo[3] & 0x800) || false;
-            bExecuteDisableBitAvailable = (CPUInfo[3] & 0x10000) || false;
-            bMMXExtensions = (CPUInfo[3] & 0x40000) || false;
-            bFFXSR = (CPUInfo[3] & 0x200000) || false;
-            b1GBSupport = (CPUInfo[3] & 0x400000) || false;
-            bRDTSCP = (CPUInfo[3] & 0x8000000) || false;
-            b64Available = (CPUInfo[3] & 0x20000000) || false;
-            b3DNowExt = (CPUInfo[3] & 0x40000000) || false;
-            b3DNow = (CPUInfo[3] & 0x80000000) || false;
-        }
 
         // Interpret CPU brand string and cache information.
         if (i == 0x80000002)
@@ -173,50 +59,8 @@ string GetSystemInfo()
             memcpy(CPUBrandString + 16, CPUInfo, sizeof(CPUInfo));
         else if (i == 0x80000004)
             memcpy(CPUBrandString + 32, CPUInfo, sizeof(CPUInfo));
-        else if (i == 0x80000006)
-        {
-            nCacheLineSize = CPUInfo[2] & 0xff;
-            nL2Associativity = (CPUInfo[2] >> 12) & 0xf;
-            nCacheSizeK = (CPUInfo[2] >> 16) & 0xffff;
-        }
-        else if (i == 0x80000008)
-        {
-            nPhysicalAddress = CPUInfo[0] & 0xff;
-            nVirtualAddress = (CPUInfo[0] >> 8) & 0xff;
-        }
-        else if (i == 0x8000000A)
-        {
-            bNestedPaging = (CPUInfo[3] & 0x1) || false;
-            bLBRVisualization = (CPUInfo[3] & 0x2) || false;
-        }
-        else if (i == 0x8000001A)
-        {
-            bFP128 = (CPUInfo[0] & 0x1) || false;
-            bMOVOptimization = (CPUInfo[0] & 0x2) || false;
-        }
     }
 
-    for (i = 0;; i++)
-    {
-        __cpuidex(CPUInfo, 0x4, i);
-        if (!(CPUInfo[0] & 0xf0)) break;
-
-        if (i == 0)
-        {
-            //FIXME: This is not the real number of cores but the maximum possible - 1
-            nCores = CPUInfo[0] >> 26;
-        }
-
-        nCacheType = (CPUInfo[0] & 0x1f);
-        nCacheLevel = (CPUInfo[0] & 0xe0) >> 5;
-        bSelfInit = (((CPUInfo[0] & 0x100) >> 8) > 0);
-        bFullyAssociative = (((CPUInfo[0] & 0x200) >> 9) > 0);
-        nMaxThread = (CPUInfo[0] & 0x03ffc000) >> 14;
-        nSysLineSize = (CPUInfo[1] & 0x0fff);
-        nPhysicalLinePartitions = (CPUInfo[1] & 0x03ff000) >> 12;
-        nWaysAssociativity = (CPUInfo[1]) >> 22;
-        nNumberSets = CPUInfo[2];
-    }
     return CPUBrandString;
 }
 
