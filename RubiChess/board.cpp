@@ -443,7 +443,6 @@ void chessposition::tbFilterRootMoves()
 
             // Do not probe tablebases during the search.
             useTb = 0;
-            useRootmoveScore = 1;
         }
         else // If DTZ tables are missing, use WDL tables as a fallback
         {

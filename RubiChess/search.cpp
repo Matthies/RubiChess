@@ -117,7 +117,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     int extendall = 0;
     int reduction;
     int effectiveDepth;
-    int nmrefutetarget = -1;
+    unsigned int nmrefutetarget = BOARDSIZE;
 
     en.nodes++;
 

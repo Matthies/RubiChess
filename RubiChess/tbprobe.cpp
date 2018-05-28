@@ -701,14 +701,6 @@ int root_probe()
     // Obtain 50-move counter for the root position.
     int cnt50 = pos.halfmovescounter;
 
-    // Use 50-move counter to determine whether the root position is
-    // won, lost or drawn.
-    int wdl = 0;
-    if (dtz > 0)
-        wdl = (dtz + cnt50 <= 100) ? 2 : 1;
-    else if (dtz < 0)
-        wdl = (-dtz + cnt50 <= 100) ? -2 : -1;
-
     // Now be a bit smart about filtering out moves.
     size_t j = 0;
     if (dtz > 0) { // winning (or 50-move rule draw)
@@ -721,12 +713,8 @@ int root_probe()
                 best = v;
         }
 
-        int max = best;
         // If the current phase has not seen repetitions, then try all moves
         // that stay safely within the 50-move budget, if there are any.
-        if (!pos.testRepetiton() && best + cnt50 <= 99)
-            max = 99 - cnt50;
-
         for (int i = 0; i < pos.rootmovelist.length; i++)
         {
             int v = pos.rootmovelist.move[i].value;
@@ -750,6 +738,7 @@ int root_probe()
                 pos.rootmovelist.move[i].value = 100 - v;
             }
         }
+        pos.useRootmoveScore = 1;
     }
     else if (dtz < 0) {
         int best = 0;
@@ -781,12 +770,12 @@ int root_probe()
             if (pos.rootmovelist.move[i].value < 0)
                 pos.rootmovelist.move[i].value = TBFILTER;
         }
+        pos.useRootmoveScore = 1;
     }
 
     return 1;
 }
 
-#if 1
 // Use the WDL tables to filter out moves that don't preserve the win or draw.
 // This is a fallback for the case that some or all DTZ tables are missing.
 //
@@ -822,6 +811,8 @@ int root_probe_wdl()
         chessmove *m = &pos.rootmovelist.move[i];
         if (m->value < best)
             m->value = TBFILTER;
+        else
+            m->value = wdl_to_Value[wdl + 2];
     }
 
     if (best > 0)
@@ -829,6 +820,5 @@ int root_probe_wdl()
 
     return 1;
 }
-#endif
 
 #endif
