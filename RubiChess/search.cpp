@@ -771,7 +771,7 @@ static void search_gen1()
                 // research with lower alpha
                 alpha = max(SHRT_MIN + 1, alpha - deltaalpha);
                 deltaalpha <<= 1;
-                if (alpha > 1000)
+                if (alpha < -1000)
                     deltaalpha = SHRT_MAX << 1;
                 inWindow = 0;
 #ifdef DEBUG

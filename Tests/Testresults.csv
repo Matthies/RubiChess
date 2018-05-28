@@ -13,5 +13,7 @@ Datum;Version;Bench;Gegner;TC;Buch;Spiele;Ergebnis (%);Details (w-d-l);Bemerkung
 26.05.2018;KDAUFIX3b;8067271;Schooner1.8;60+0.6;8moves_v3 rnd.;500;57,1;211-149-140;
 26.05.2018;KDAUFIX3b;8067271;Maverick;60+0.6;8moves_v3 rnd.;500;38,0;123-134-243;
 26.05.2018;KDAUFIX3b;8067271;Bumblebee1.0;60+0.6;8moves_v3 rnd.;500;58,6;232-122-146;2 Siege wg. Crash
-27.05.2018;QS1-Master;24466081;Hermann;60+0.6;8moves_v3 rnd.;500;44,0;162-116-222;
-27.05.2018;KDAUFIX3b;8067271;Hermann;60+0.6;8moves_v3 rnd.;500;45,9;166-127-207;
+27.05.2018;QS1-Master;24466081;Hermann2.8;60+0.6;8moves_v3 rnd.;500;44,0;162-116-222;
+27.05.2018;KDAUFIX3b;8067271;Hermann2.8;60+0.6;8moves_v3 rnd.;500;45,9;166-127-207;
+28.05.2018;QS1-Master;24466081;AnMon-5.75;60+0.6;8moves_v3 rnd.;500;;;
+28.05.2018;KDAUFIX3b;8067271;AnMon-5.75;60+0.6;8moves_v3 rnd.;500;;;

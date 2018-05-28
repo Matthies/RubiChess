@@ -247,7 +247,7 @@ void doBenchmark()
         {   
             "Startposition",
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-            8,
+            10,
             0,
             1
         },
@@ -286,6 +286,37 @@ void doBenchmark()
             300,
             1
         },
+         
+        {
+            "Arasan 83",
+            "6k1/p4qp1/1p3r1p/2pPp1p1/1PP1PnP1/2P1KR1P/1B6/7Q b - - 0 1 ",
+            14,
+            150,
+            1
+        },
+        {
+            "Arasan 192",
+            "r2qk2r/1b1nbp1p/p1n1p1p1/1pp1P3/6Q1/2NPB1PN/PPP3BP/R4RK1 w kq - 0 1",
+            13,
+            100,
+            1
+        },
+        {
+            "BT2630 12",
+            "8/pp3k2/2p1qp2/2P5/5P2/1R2p1rp/PP2R3/4K2Q b - - 0 1",
+            15,
+            300,
+            1
+        },
+        {
+            "IQ4 116",
+            "4r1k1/1p2qrpb/p1p4p/2Pp1p2/1Q1Rn3/PNN1P1P1/1P3PP1/3R2K1 b - - 0 1",
+            14,
+            300,
+            1
+        },
+        
+        
         {
             "", "", 0, 0
         }

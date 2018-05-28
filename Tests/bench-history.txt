@@ -11,3 +11,6 @@ Bitboard-0.8:				11248014
 Board88-0.8:				 9307258
 Bitboard-ms-20180515		 3629408
 Bitboard-ms-20180523		24466081
+- added four new bench positions
+Bitboard-0.9				 9824914
+Board88-0.9					12735375
