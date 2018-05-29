@@ -5,9 +5,9 @@ ChangeLog
     - Fixed bug with wrong depth stored in TT after a unreduced research
     - Improved LMR from simple "one depth reduction after move 3" to a reduction depending on depth an move number
     - Fixed quiescience search: Doesn't evaluate patscore when in check
-	- Evaluation: Added some king danger via attack units
-	- Move order: Moves that escape from null move refutation capture get a higher score
-	- Added four more positions for benchmarking as this got too fast
+    - Evaluation: Added some king danger via attack units
+    - Move order: Moves that escape from null move refutation capture get a higher score
+    - Added four more positions for benchmarking as this got too fast
 
 0.8.1 (release 2018-03-24) :
     - Implemented ponder mode (works if ponder move can be read from tt)
