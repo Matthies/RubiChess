@@ -1,5 +1,8 @@
 ChangeLog
 =========
+0.10 (release 2018-xx-xx) :
+    - ...
+
 0.9 (release 2018-05-28) :
     - Implemented Syzygy tablebase probing
     - Fixed bug with wrong depth stored in TT after a unreduced research

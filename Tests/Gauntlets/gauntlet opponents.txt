@@ -1,0 +1,27 @@
+ECE-X3			2660
+Muse-0899b		2370
+Floyd 0.9		2586
+Olithink-532_64		2401
+Absolute Zero 2.4.7.2	2307	
+Baislicka 1.0		2168
+Bumblebee-1.0		2453	
+Delocto-0.6-64		2604
+Devel-20000		2741
+Dorpsgek-Dillinger	2202
+MadChess 2.2		2439
+Nemeton 1.61		2368	
+Orion 0.4		2419
+Schooner 1.8-64		2518
+Zevra 1.8.4 r650	2224
+Yace 0.99.87		2503	
+RomiChess P3n		2423	
+Popochin 3.2		2273	
+TJchess 1.3		2396
+
+
+
+
+
+
+
+
