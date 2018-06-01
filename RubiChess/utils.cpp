@@ -128,21 +128,12 @@ string AlgebraicFromShort(string s)
     // get the correct move
     for (int i = 0; i < ml->length; i++)
     {
-#ifdef BITBOARD
         if (pt == (GETPIECE(ml->move[i].code) >> 1)
             && promotion == (GETPROMOTION(ml->move[i].code) >> 1)
             && ((from & 0x80) || ((from & 0x70) == ((GETFROM(ml->move[i].code) & 0x38) << 1)))
             && ((from & 0x08) || ((from & 0x07) == (GETFROM(ml->move[i].code) & 0x07)))
             && ((to & 0x80) || ((to & 0x70) == ((GETTO(ml->move[i].code) & 0x38) << 1)))
             && ((to & 0x08) || ((to & 0x07) == (GETTO(ml->move[i].code) & 0x07))))
-#else
-        if (pt == (pos.mailbox[GETFROM(ml->move[i].code)] >> 1)
-            && promotion == (GETPROMOTION(ml->move[i].code) >> 1)
-            && ((from & 0x80) || ((from & 0x70) == (GETFROM(ml->move[i].code) & 0x70)))
-            && ((from & 0x08) || ((from & 0x07) == (GETFROM(ml->move[i].code) & 0x07)))
-            && ((to & 0x80) || ((to & 0x70) == (GETTO(ml->move[i].code) & 0x70)))
-            && ((to & 0x08) || ((to & 0x07) == (GETTO(ml->move[i].code) & 0x07))))
-#endif
         {
             // test if the move is legal; otherwise we need to search further
             if (pos.playMove(&ml->move[i]))

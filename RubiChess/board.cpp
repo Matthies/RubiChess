@@ -69,22 +69,12 @@ int mstop;
 
 chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece)
 {
-#ifndef BITBOARD
-    /* convert 0x88 coordinates to 3bit */
-    from = ((from >> 1) & 0x38) | (from & 0x7);
-    to = ((to >> 1) & 0x38) | (to & 0x7);
-#endif
     code = (piece << 28) | (ept << 20) | (capture << 16) | (promote << 12) | (from << 6) | to;
 }
 
 
 chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture, PieceCode piece)
 {
-#ifndef BITBOARD
-    /* convert 0x88 coordinates to 3bit */
-    from = ((from >> 1) & 0x38) | (from & 0x7);
-    to = ((to >> 1) & 0x38) | (to & 0x7);
-#endif
     code = (piece << 28) | (capture << 16) | (promote << 12) | (from << 6) | to;
 }
 
@@ -107,11 +97,7 @@ string chessmove::toString()
     to = GETTO(code);
     promotion = GETPROMOTION(code);
 
-#ifdef BITBOARD
     sprintf_s(s, "%c%d%c%d%c", (from & 0x7) + 'a', ((from >> 3) & 0x7) + 1, (to & 0x7) + 'a', ((to >> 3) & 0x7) + 1, PieceChar(promotion));
-#else
-    sprintf_s(s, "%c%d%c%d%c", (from & 0x7) + 'a', ((from >> 4) & 0x7) + 1, (to & 0x7) + 'a', ((to >> 4) & 0x7) + 1, PieceChar(promotion));
-#endif
     return s;
 }
 
@@ -192,27 +178,13 @@ int chessposition::getFromFen(const char* sFen)
     int numToken = (int)token.size();
 
     for (int i = 0; i < 14; i++)
-    {
-#ifdef BITBOARD
         piece00[i] = 0ULL;
-#ifdef ROTATEDBITBOARD
-        piece90[i] = piecea1h8[i] = pieceh1a8[i] = 0ULL;
-#endif
-#endif
-    }
 
     for (int i = 0; i < BOARDSIZE; i++)
         mailbox[i] = BLANK;
 
     for (int i = 0; i < 2; i++)
-    {
-#ifdef BITBOARD
         occupied00[i] = 0ULL;
-#ifdef ROTATEDBITBOARD
-        occupied90[i] = occupieda1h8[i] = occupiedh1a8[i] = 0ULL;
-#endif
-#endif
-    }
 
     // At least four token are needed (EPD style string)
     if (numToken < 4)
@@ -281,9 +253,7 @@ int chessposition::getFromFen(const char* sFen)
         if (num)
         {
             mailbox[index] = p;
-#ifdef BITBOARD
             BitboardSet(index, p);
-#endif
             file++;
         }
     }
@@ -345,9 +315,6 @@ int chessposition::getFromFen(const char* sFen)
     isCheck = isAttacked(kingpos[state & S2MMASK]);
 
     actualpath.length = 0;
-#ifndef BITBOARD
-    countMaterial();
-#endif
     hash = zb.getHash();
     pawnhash = zb.getPawnHash();
     materialhash = zb.getMaterialHash();
@@ -428,7 +395,7 @@ void chessposition::getRootMoves()
     delete movelist;
 }
 
-#ifdef BITBOARD
+
 void chessposition::tbFilterRootMoves()
 {
     useTb = TBlargest;
@@ -467,8 +434,6 @@ void chessposition::tbFilterRootMoves()
         }
     }
 }
-
-#endif
 
 
 /* test the actualmove for three-fold-repetition as the repetition table may give false positive due to table collisions */
@@ -524,9 +489,7 @@ void chessposition::mirror()
             if (mailbox[index] != BLANK)
             {
                 newmailbox[mirrorindex] = mailbox[index] ^ S2MMASK;
-#ifdef BITBOARD
                 BitboardClear(index, mailbox[index]);
-#endif
                 if ((mailbox[index] >> 1) == PAWN)
                     pawnhash ^= zb.boardtable[(index << 4) | mailbox[index]];
             }
@@ -541,9 +504,7 @@ void chessposition::mirror()
         mailbox[i] = newmailbox[i];
         if (mailbox[i] != BLANK)
         {
-#ifdef BITBOARD
             BitboardSet(i, mailbox[i]);
-#endif
             if ((mailbox[i] >> 1) == PAWN)
                 pawnhash ^= zb.boardtable[(i << 4) | mailbox[i]];
         }
@@ -796,18 +757,11 @@ void chessposition::debugeval(const char* format, ...)
 #endif
 
 
-#ifdef BITBOARD
 U64 knight_attacks[64];
 U64 king_attacks[64];
 U64 pawn_attacks_free[64][2];
 U64 pawn_attacks_free_double[64][2];
 U64 pawn_attacks_occupied[64][2];
-#ifdef ROTATEDBITBOARD
-U64 rank_attacks[64][64];
-U64 file_attacks[64][64];
-U64 diaga1h8_attacks[64][64];
-U64 diagh1a8_attacks[64][64];
-#endif
 U64 epthelper[64];
 U64 passedPawnMask[64][2];
 U64 filebarrierMask[64][2];
@@ -819,7 +773,6 @@ U64 fileMask[64];
 U64 rankMask[64];
 int castleindex[64][64] = { 0 };
 
-#ifndef ROTATEDBITBOARD
 // shameless copy from http://chessprogramming.wikispaces.com/Magic+Bitboards#Plain
 U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 U64 mRookAttacks[64][1 << ROOKINDEXBITS];
@@ -827,7 +780,6 @@ U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 SMagic mBishopTbl[64];
 SMagic mRookTbl[64];
 
-#endif
 
 
 U64 patternToMask(int i, int d, int p)
@@ -904,9 +856,7 @@ void initBitmaphelper()
         mybitset[from] = (1ULL << from);
     }
 
-#ifndef ROTATEDBITBOARD
     printf("Searching for magics, may take a while .");
-#endif
     for (int from = 0; from < 64; from++)
     {
         king_attacks[from] = knight_attacks[from] = 0ULL;
@@ -979,27 +929,6 @@ void initBitmaphelper()
         }
 
         // Slider attacks
-#ifdef ROTATEDBITBOARD
-        U64 occ;
-        for (int j = 0; j < 64; j++)
-        {
-            // rank attacks
-            occ = patternToMask(from, 1, j << 1);
-            rank_attacks[from][j] = (getAttacks(from, occ, -1) | getAttacks(from, occ, 1));
-
-            // file attacks
-            occ = patternToMask(from, 8, j << 1);
-            file_attacks[from][j] = (getAttacks(from, occ, -8) | getAttacks(from, occ, 8));
-
-            // diagonala1h8 attacks
-            occ = patternToMask(from, 9, j << 1);
-            diaga1h8_attacks[from][j] = (getAttacks(from, occ, -9) | getAttacks(from, occ, 9));
-
-            // diagonalh1a8 attacks
-            occ = patternToMask(from, 7, j << 1);
-            diagh1a8_attacks[from][j] = (getAttacks(from, occ, -7) | getAttacks(from, occ, 7));
-        }
-#else   // MAGICBITBOARD
         // Fill the mask
         mBishopTbl[from].mask = 0ULL;
         mRookTbl[from].mask = 0ULL;
@@ -1069,7 +998,6 @@ void initBitmaphelper()
         }
         printf(".");
         fflush(stdout);
-#endif
         epthelper[from] = 0ULL;
         if (RANK(from) == 3 || RANK(from) == 4)
         {
@@ -1079,9 +1007,7 @@ void initBitmaphelper()
                 epthelper[from] |= BITSET(from + 1);
         }
     }
-#ifdef MAGICBITBOARD
     printf(" ready.\n");
-#endif
 }
 
 
@@ -1109,15 +1035,6 @@ void chessposition::BitboardSet(int index, PieceCode p)
     int s2m = p & 0x1;
     piece00[p] |= BITSET(index);
     occupied00[s2m] |= BITSET(index);
-#ifdef ROTATEDBITBOARD
-    piece90[p] |= BITSET(ROT90(index));
-    piecea1h8[p] |= BITSET(ROTA1H8(index));
-    pieceh1a8[p] |= BITSET(ROTH1A8(index));
-
-    occupied90[s2m] |= BITSET(ROT90(index));
-    occupieda1h8[s2m] |= BITSET(ROTA1H8(index));
-    occupiedh1a8[s2m] |= BITSET(ROTH1A8(index));
-#endif
 }
 
 
@@ -1126,15 +1043,6 @@ void chessposition::BitboardClear(int index, PieceCode p)
     int s2m = p & 0x1;
     piece00[p] ^= BITSET(index);
     occupied00[s2m] ^= BITSET(index);
-#ifdef ROTATEDBITBOARD
-    piece90[p] ^= BITSET(ROT90(index));
-    piecea1h8[p] ^= BITSET(ROTA1H8(index));
-    pieceh1a8[p] ^= BITSET(ROTH1A8(index));
-
-    occupied90[s2m] ^= BITSET(ROT90(index));
-    occupieda1h8[s2m] ^= BITSET(ROTA1H8(index));
-    occupiedh1a8[s2m] ^= BITSET(ROTH1A8(index));
-#endif
 }
 
 
@@ -1143,16 +1051,8 @@ void chessposition::BitboardMove(int from, int to, PieceCode p)
     int s2m = p & 0x1;
     piece00[p] ^= (BITSET(from) | BITSET(to));
     occupied00[s2m] ^= (BITSET(from) | BITSET(to));
-#ifdef ROTATEDBITBOARD
-    piece90[p] ^= (BITSET(ROT90(from)) | BITSET(ROT90(to)));
-    piecea1h8[p] ^= (BITSET(ROTA1H8(from)) | BITSET(ROTA1H8(to)));
-    pieceh1a8[p] ^= (BITSET(ROTH1A8(from)) | BITSET(ROTH1A8(to)));
-
-    occupied90[s2m] ^= (BITSET(ROT90(from)) | BITSET(ROT90(to)));
-    occupieda1h8[s2m] ^= (BITSET(ROTA1H8(from)) | BITSET(ROTA1H8(to)));
-    occupiedh1a8[s2m] ^= (BITSET(ROTH1A8(from)) | BITSET(ROTH1A8(to)));
-#endif
 }
+
 
 void chessposition::BitboardPrint(U64 b)
 {
@@ -1474,29 +1374,11 @@ chessmovelist* chessposition::getMoves()
             {
                 if (shifting[p] & 0x1)
                 {
-#ifdef ROTATEDBITBOARD
-                    // a1h8 attacks
-                    int mask = (((occupieda1h8[0] | occupieda1h8[1]) >> rota1h8shift[from]) & 0x3f);
-                    tobits |= (diaga1h8_attacks[from][mask] & opponentorfreebits);
-                    // h1a8 attacks
-                    mask = (((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[from]) & 0x3f);
-                    tobits |= (diagh1a8_attacks[from][mask] & opponentorfreebits);
-#else
                     tobits |= (MAGICBISHOPATTACKS(occupiedbits, from) & opponentorfreebits);
-#endif
                 }
                 if (shifting[p] & 0x2)
                 {
-#ifdef ROTATEDBITBOARD
-                    // rank attacks
-                    int mask = ((occupiedbits >> rot00shift[from]) & 0x3f);
-                    tobits |= (rank_attacks[from][mask] & opponentorfreebits);
-                    // file attacks
-                    mask = (((occupied90[0] | occupied90[1]) >> rot90shift[from]) & 0x3f);
-                    tobits |= (file_attacks[from][mask] & opponentorfreebits);
-#else
                     tobits |= (MAGICROOKATTACKS(occupiedbits, from) & opponentorfreebits);
-#endif
                 }
                 while (LSB(to, tobits))
                 {
@@ -1512,32 +1394,6 @@ chessmovelist* chessposition::getMoves()
 }
 
 
-#ifdef ROTATEDBITBOARD
-U64 chessposition::attacksTo(int index, int side)
-{
-    return (knight_attacks[index] & piece00[(KNIGHT << 1) | side])
-        | (king_attacks[index] & piece00[(KING << 1) | side])
-        | (pawn_attacks_occupied[index][side ^ S2MMASK] & piece00[(PAWN << 1) | side])
-        | (rank_attacks[index][((occupied00[0] | occupied00[1]) >> ((index & 0x38) + 1)) & 0x3f] & (piece00[(ROOK << 1) | side] | piece00[(QUEEN << 1) | side]))
-        | (file_attacks[index][((occupied90[0] | occupied90[1]) >> (((index & 0x07) << 3) + 1)) & 0x3f] & (piece00[(ROOK << 1) | side] | piece00[(QUEEN << 1) | side]))
-        | (diaga1h8_attacks[index][((occupieda1h8[0] | occupieda1h8[1]) >> rota1h8shift[index]) & 0x3f] & (piece00[(BISHOP << 1) | side] | piece00[(QUEEN << 1) | side]))
-        | (diagh1a8_attacks[index][((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[index]) & 0x3f] & (piece00[(BISHOP << 1) | side] | piece00[(QUEEN << 1) | side]));
-}
-
-
-bool chessposition::isAttacked(int index)
-{
-    int opponent = (state & S2MMASK) ^ 1;
-
-    return knight_attacks[index] & piece00[(KNIGHT << 1) | opponent]
-        || king_attacks[index] & piece00[(KING << 1) | opponent]
-        || pawn_attacks_occupied[index][state & S2MMASK] & piece00[(PAWN << 1) | opponent]
-        || rank_attacks[index][((occupied00[0] | occupied00[1]) >> ((index & 0x38) + 1)) & 0x3f] & (piece00[(ROOK << 1) | opponent] | piece00[(QUEEN << 1) | opponent])
-        || file_attacks[index][((occupied90[0] | occupied90[1]) >> (((index & 0x07) << 3) + 1)) & 0x3f] & (piece00[(ROOK << 1) | opponent] | piece00[(QUEEN << 1) | opponent])
-        || diaga1h8_attacks[index][((occupieda1h8[0] | occupieda1h8[1]) >> rota1h8shift[index]) & 0x3f] & (piece00[(BISHOP << 1) | opponent] | piece00[(QUEEN << 1) | opponent])
-        || diagh1a8_attacks[index][((occupiedh1a8[0] | occupiedh1a8[1]) >> roth1a8shift[index]) & 0x3f] & (piece00[(BISHOP << 1) | opponent] | piece00[(QUEEN << 1) | opponent]);
-}
-#else
 #if 0 // not used anymore
 U64 chessposition::attacksTo(int index, int side)
 {
@@ -1559,7 +1415,6 @@ bool chessposition::isAttacked(int index)
         || MAGICROOKATTACKS(occupied00[0] | occupied00[1], index) & (piece00[(ROOK << 1) | opponent] | piece00[(QUEEN << 1) | opponent])
         || MAGICBISHOPATTACKS(occupied00[0] | occupied00[1], index) & (piece00[(BISHOP << 1) | opponent] | piece00[(QUEEN << 1) | opponent]);
 }
-#endif
 
 
 
@@ -1570,55 +1425,6 @@ int chessposition::phase()
 }
 
 
-
-#ifdef ROTATEDBITBOARD  // FIXME use the old one for now; could be optimized as well
-int chessposition::see(int to)
-{
-    int cheapest = SHRT_MAX;
-    int cheapest_from = -1;
-    int from;
-    int v;
-    U64 frombits = attacksTo(to, (mailbox[to] & S2MMASK) ^ S2MMASK);
-    while (LSB(from, frombits))
-    {
-        PieceType op = Piece(from);
-        if (materialvalue[op] < cheapest)
-        {
-            cheapest = materialvalue[op];
-            cheapest_from = from;
-        }
-        frombits ^= BITSET(from);
-    }
-    if (cheapest_from < 0)
-    {
-        v = 0;
-    }
-    else
-    {
-        PieceCode capture = mailbox[to];
-        int material = materialvalue[Piece(to)];
-        simplePlay(cheapest_from, to);
-        v = max(0, material - see(to));
-        simpleUnplay(cheapest_from, to, capture);
-    }
-    return v;
-}
-
-
-int chessposition::see(int from, int to)
-{
-    int v;
-    PieceCode capture = mailbox[to];
-    if (capture == BLANK)
-        return 0;
-    int material = materialvalue[Piece(to)];
-    simplePlay(from, to);
-    v = material - see(to);
-    simpleUnplay(from, to, capture);
-    return v;
-}
-
-#else
 
 int chessposition::getLeastValuablePieceIndex(int to, unsigned int bySide, PieceCode *piece)
 {
@@ -1690,585 +1496,7 @@ int chessposition::see(int from, int to)
     }
     return gain[0];
 }
-#endif
 
-
-#ifdef ROTATEDBITBOARD
-void chessposition::simplePlay(int from, int to)    // mailbox[to] != BLANK
-{
-    BitboardClear(to, mailbox[to]);
-    BitboardMove(from, to, mailbox[from]);
-    mailbox[to] = mailbox[from];
-    mailbox[from] = BLANK;
-    state ^= S2MMASK;
-}
-
-
-void chessposition::simpleUnplay(int from, int to, PieceCode capture)   // capture != BLANK
-{
-    state ^= S2MMASK;
-    BitboardMove(to, from, mailbox[to]);
-    mailbox[from] = mailbox[to];
-    mailbox[to] = capture;
-    BitboardSet(to, capture);
-}
-#endif
-
-
-#else  // ifdef BITBOARD
-
-chessposition::chessposition()
-{
-    for (int i = 0; i < 128; i++)
-        mailbox[i] = BLANK;
-    CreatePositionvalueTable();
-}
-
-
-chessposition::~chessposition()
-{
-    delete positionvaluetable;
-}
-
-bool chessposition::operator==(chessposition p)
-{
-    bool result = (state == p.state && ept == p.ept && halfmovescounter == p.halfmovescounter && hash == p.hash
-        && kingpos[0] == p.kingpos[0] && kingpos[1] == p.kingpos[1]);
-    if (result)
-    {
-        for (int r = 0; r < 8; r++)
-        {
-            for (int f = 0; f < 8; f++)
-            {
-                int i = INDEX(r, f);
-                result = result && (mailbox[i] == p.mailbox[i]);
-            }
-        }
-        for (int i = 0; i < 7; i++)
-            result = result && piecenum[i] == p.piecenum[i];
-    }
-    return result;
-}
-
-
-
-bool chessposition::isEmpty(int bIndex)
-{
-    return (!(bIndex & 0x88) && mailbox[bIndex] == BLANK);
-}
-
-bool chessposition::isOpponent(int bIndex)
-{
-    return (!(bIndex & 0x88) && mailbox[bIndex] != BLANK && ((mailbox[bIndex] ^ state) & S2MMASK));
-}
-
-bool chessposition::isEmptyOrOpponent(int bIndex)
-{
-    return (!(bIndex & 0x88) && (mailbox[bIndex] == BLANK || ((mailbox[bIndex] ^ state) & S2MMASK)));
-}
-
-bool chessposition::isAttacked(int bIndex)
-{
-    int i;
-    int bSource;
-    int nextto;
-
-    // check for knight attacks
-    for (i = 0; i < 8; i++)
-    {
-        bSource = bIndex + knightoffset[i];
-        if (Piece(bSource) == KNIGHT && isOpponent(bSource))
-            return true;
-    }
-
-    // check for diagonal attacks
-    for (i = 0; i < 4; i++)
-    {
-        bSource = bIndex;
-        nextto = 1;
-        do
-        {
-            bSource += diagonaloffset[i];
-            if (isOpponent(bSource))
-            {
-                PieceType op = Piece(bSource);
-                if (op == BISHOP || op == QUEEN || (op == KING && nextto) || (op == PAWN && nextto && ((state & S2MMASK) ? (diagonaloffset[i] < 0) : (diagonaloffset[i] > 0))))
-                    return true;
-            }
-            nextto = 0;
-        } while (isEmpty(bSource));
-    }
-
-    // check for ortogonal attacks
-    for (i = 0; i < 4; i++)
-    {
-        bSource = bIndex;
-        nextto = 1;
-        do
-        {
-            bSource += orthogonaloffset[i];
-            if (isOpponent(bSource))
-            {
-                PieceType op = Piece(bSource);
-                if (op == ROOK || op == QUEEN || (op == KING && nextto))
-                    return true;
-            }
-            nextto = 0;
-        } while (isEmpty(bSource));
-    }
-    return false;
-}
-
-
-chessmovelist* chessposition::getMoves()
-{
-    int targetIndex;
-    int s2m = state & S2MMASK;
-    chessmovelist* result = (chessmovelist*)malloc(sizeof(chessmovelist));
-    result->length = 0;
-
-    for (int r = 0; r < 8; r++)
-    {
-        for (int f = 0; f < 8; f++)
-        {
-            int bIndex = INDEX(r, f);
-
-            PieceCode pc = mailbox[bIndex];
-            PieceCode pctarget;
-            PieceType pt = (PieceType)(pc >> 1);
-            if (!((pc & S2MMASK) ^ s2m) && pt != BLANKTYPE) /* piece of side to move */
-            {
-                switch (pt)
-                {
-                case PAWN:
-                    for (int i = 0; i < 3; i++)
-                    {
-                        targetIndex = bIndex + (s2m ? -pawnmove[i].offset : pawnmove[i].offset);
-                        if (!(targetIndex & 0x88))
-                        {
-                            pctarget = mailbox[targetIndex];
-                            if (pawnmove[i].needsblank ? isEmpty(targetIndex) : (isOpponent(targetIndex) || (ept && ept == targetIndex)))
-                            {
-                                if (r == (s2m ? 1 : 6))
-                                {
-                                    testMove(result, bIndex, targetIndex, (PieceCode)((QUEEN << 1) | s2m), pctarget, pc);
-                                    testMove(result, bIndex, targetIndex, (PieceCode)((ROOK << 1) | s2m), pctarget, pc);
-                                    testMove(result, bIndex, targetIndex, (PieceCode)((BISHOP << 1) | s2m), pctarget, pc);
-                                    testMove(result, bIndex, targetIndex, (PieceCode)((KNIGHT << 1) | s2m), pctarget, pc);
-                                }
-                                else
-                                {
-                                    if (ept && ept == targetIndex)
-                                        pctarget = (PieceCode)(WPAWN | (~state & S2MMASK));
-                                    testMove(result, bIndex, targetIndex, BLANK, pctarget, pc);
-
-                                    if (r == (s2m ? 6 : 1) && pawnmove[i].needsblank)
-                                    {
-                                        int targetIndex2 = bIndex + (s2m ? -0x20 : 0x20);
-                                        if (isEmpty(targetIndex2))
-                                        {
-                                            testMove(result, bIndex, targetIndex2, BLANK, BLANK, pc);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    break;
-                case KNIGHT:
-                    for (int o = 0; o < 8; o++)
-                    {
-                        targetIndex = bIndex + knightoffset[o];
-                        if (isEmptyOrOpponent(targetIndex))
-                        {
-                            testMove(result, bIndex, targetIndex, BLANK, mailbox[targetIndex], pc);
-                        }
-                    }
-                    break;
-                case BISHOP:
-                    for (int i = 0; i < 4; i++)
-                    {
-                        targetIndex = bIndex;
-                        do
-                        {
-                            targetIndex += diagonaloffset[i];
-                            if (isEmptyOrOpponent(targetIndex))
-                            {
-                                testMove(result, bIndex, targetIndex, BLANK, mailbox[targetIndex], pc);
-                            }
-                        } while (isEmpty(targetIndex));
-                    }
-                    break;
-                case ROOK:
-                    for (int i = 0; i < 4; i++)
-                    {
-                        targetIndex = bIndex;
-                        do
-                        {
-                            targetIndex += orthogonaloffset[i];
-                            if (isEmptyOrOpponent(targetIndex))
-                            {
-                                testMove(result, bIndex, targetIndex, BLANK, mailbox[targetIndex], pc);
-                            }
-                        } while (isEmpty(targetIndex));
-                    }
-                    break;
-                case QUEEN:
-                    for (int i = 0; i < 8; i++)
-                    {
-                        targetIndex = bIndex;
-                        do
-                        {
-                            targetIndex += orthogonalanddiagonaloffset[i];
-                            if (isEmptyOrOpponent(targetIndex))
-                            {
-                                testMove(result, bIndex, targetIndex, BLANK, mailbox[targetIndex], pc);
-                            }
-                        } while (isEmpty(targetIndex));
-                    }
-                    break;
-                case KING:
-                    for (int i = 0; i < 8; i++)
-                    {
-                        targetIndex = bIndex + orthogonalanddiagonaloffset[i];
-                        if (isEmptyOrOpponent(targetIndex))
-                        {
-                            testMove(result, bIndex, targetIndex, BLANK, mailbox[targetIndex], pc);
-                        }
-                    }
-                    if (state & (s2m ? BQCMASK : WQCMASK))
-                    {
-                        /* queen castle */
-                        if (isEmpty(bIndex - 1) && isEmpty(bIndex - 2) && isEmpty(bIndex - 3)
-                            && !isAttacked(bIndex) && !isAttacked(bIndex - 1) && !isAttacked(bIndex - 2))
-                        {
-                            testMove(result, bIndex, bIndex - 2, BLANK, BLANK, pc);
-                        }
-                    }
-                    if (state & (s2m ? BKCMASK : WKCMASK))
-                    {
-                        /* kink castle */
-                        if (isEmpty(bIndex + 1) && isEmpty(bIndex + 2)
-                            && !isAttacked(bIndex) && !isAttacked(bIndex + 1) && !isAttacked(bIndex + 2))
-                        {
-                            testMove(result, bIndex, bIndex + 2, BLANK, BLANK, pc);
-                        }
-                    }
-                    break;
-                default:
-                    break;
-                }
-            }
-        }
-    }
-    return result;
-}
-
-
-void chessposition::simplePlay(int from, int to)
-{
-    mailbox[to] = mailbox[from];
-    mailbox[from] = BLANK;
-}
-
-void chessposition::simpleUnplay(int from, int to, PieceCode capture)
-{
-    mailbox[from] = mailbox[to];
-    mailbox[to] = capture;
-}
-
-
-bool chessposition::playMove(chessmove *cm)
-{
-    movestack[mstop].ept = ept;
-    movestack[mstop].hash = hash;
-    movestack[mstop].pawnhash = pawnhash;
-    movestack[mstop].state = state;
-    movestack[mstop].kingpos[0] = kingpos[0];
-    movestack[mstop].kingpos[1] = kingpos[1];
-    movestack[mstop].fullmovescounter = fullmovescounter;
-    movestack[mstop].halfmovescounter = halfmovescounter;
-    movestack[mstop].isCheck = isCheck;
-    movestack[mstop].numFieldchanges = 0;
-    int from = GETFROM(cm->code);
-    int to = GETTO(cm->code);
-    PieceCode promote = GETPROMOTION(cm->code);
-    PieceCode pc = mailbox[from];
-    int eptnew = 0;
-    PieceType pt = (pc >> 1);
-    int oldcastle = (state & CASTLEMASK);
-    bool isLegal;
-    halfmovescounter++;
-
-    if (promote != BLANK)
-    {
-        piecenum[pc]--;
-        piecenum[promote]++;
-    }
-    if (Piece(to) != BLANKTYPE)
-    {
-        piecenum[mailbox[to]]--;
-        halfmovescounter = 0;
-        hash ^= zb.boardtable[(to << 4) | mailbox[to]];
-        if (Piece(to) == PAWN)
-            pawnhash ^= zb.boardtable[(to << 4) | mailbox[to]];
-    }
-    
-    movestack[mstop].index[movestack[mstop].numFieldchanges] = to;
-    movestack[mstop].code[movestack[mstop].numFieldchanges++] = mailbox[to];
-    mailbox[to] = (promote == BLANK ? mailbox[from] : promote);
-
-    // Fix hash regarding to
-    hash ^= zb.boardtable[(to << 4) | mailbox[to]];
-    // Fix hash regarding from
-    hash ^= zb.boardtable[(from << 4) | pc];
-
-    movestack[mstop].index[movestack[mstop].numFieldchanges] = from;
-    movestack[mstop].code[movestack[mstop].numFieldchanges++] = pc;
-    mailbox[from] = BLANK;
-    /* PAWN specials */
-    if (pt == PAWN)
-    {
-        pawnhash ^= zb.boardtable[(from << 4) | pc];
-        if (promote == BLANK)
-            pawnhash ^= zb.boardtable[(to << 4) | pc];
-        halfmovescounter = 0;
-        /* doublemove*/
-        if (!((from & 0x10) ^ (to & 0x10)))
-        {
-            if (mailbox[to + 1] == (mailbox[to] ^ S2MMASK) || mailbox[to - 1] == (mailbox[to] ^ S2MMASK))
-                /* en passant */
-                eptnew = (from + to) >> 1;
-        }
-        else if (ept && to == ept)
-        {
-            int epfield = (from & 0x70) | (to & 0x07);
-            piecenum[mailbox[epfield]]--;
-            // Fix hash regarding ep capture
-            hash ^= zb.boardtable[(epfield << 4) | mailbox[epfield]];
-            pawnhash ^= zb.boardtable[(epfield << 4) | mailbox[epfield]];
-
-            movestack[mstop].index[movestack[mstop].numFieldchanges] = epfield;
-            movestack[mstop].code[movestack[mstop].numFieldchanges++] = mailbox[epfield];
-            mailbox[epfield] = BLANK;
-        }
-    }
-    if (to == 0x00 || from == 0x00)
-        state &= ~WQCMASK;
-    if (to == 0x07 || from == 0x07)
-        state &= ~WKCMASK;
-    if (to == 0x70 || from == 0x70)
-        state &= ~BQCMASK;
-    if (to == 0x77 || from == 0x77)
-        state &= ~BKCMASK;
-
-    if (pt == KING)
-    {
-        kingpos[state & S2MMASK] = to;
-        /* handle castle */
-        state &= ((state & S2MMASK) ? ~(BQCMASK | BKCMASK) : ~(WQCMASK | WKCMASK));
-        if (((from & 0x3) ^ (to & 0x3)) == 0x2)
-        {
-            int rookfrom, rookto;
-            if (to & 0x04)
-            {
-                /* king castle */
-                rookfrom = to | 0x01;
-                rookto = from | 0x01;
-            }
-            else {
-                /* queen castle */
-                rookfrom = from & 0x70;
-                rookto = to | 0x01;
-            }
-
-            movestack[mstop].index[movestack[mstop].numFieldchanges] = rookto;
-            movestack[mstop].code[movestack[mstop].numFieldchanges++] = mailbox[rookto];
-            mailbox[rookto] = mailbox[rookfrom];
-
-            // Fix hash regarding rooks to
-            hash ^= zb.boardtable[(rookto << 4) | mailbox[rookto]];
-            // Fix hash regarding from
-            hash ^= zb.boardtable[(rookfrom << 4) | mailbox[rookfrom]];
-
-            movestack[mstop].index[movestack[mstop].numFieldchanges] = rookfrom;
-            movestack[mstop].code[movestack[mstop].numFieldchanges++] = mailbox[rookfrom];
-            mailbox[rookfrom] = BLANK;
-        }
-    }
-
-    isLegal = !isAttacked(kingpos[state & S2MMASK]);
-    state ^= S2MMASK;
-    isCheck = isAttacked(kingpos[state & S2MMASK]);
-
-    // Fix hash regarding s2m
-    hash ^= zb.s2m;
-
-    if (!(state & S2MMASK))
-        fullmovescounter++;
-
-    // Fix hash regarding old ep field
-    if (ept)
-        hash ^= zb.ep[ept & 0x7];
-
-    ept = eptnew;
-
-    // Fix hash regarding new ep field
-    if (ept)
-        hash ^= zb.ep[ept & 0x7];
-
-    // Fix hash regarding castle rights
-    oldcastle ^= (state & CASTLEMASK);
-    for (int i = 0; i < 4; i++)
-    {
-        oldcastle >>= 1;
-        if (oldcastle & 1)
-            hash ^= zb.castle[i];
-    }
-
-    ply++;
-    rp.addPosition(hash);
-    actualpath.move[actualpath.length++] = *cm;
-    mstop++;
-    if (!isLegal)
-        unplayMove(cm);
-    return isLegal;
-}
-
-
-void chessposition::unplayMove(chessmove *cm)
-{
-    actualpath.length--;
-    rp.removePosition(hash);
-    ply--;
-
-    mstop--;
-    ept = movestack[mstop].ept;
-    hash = movestack[mstop].hash;
-    pawnhash = movestack[mstop].pawnhash;
-    state = movestack[mstop].state;
-    kingpos[0] = movestack[mstop].kingpos[0];
-    kingpos[1] = movestack[mstop].kingpos[1];
-    fullmovescounter = movestack[mstop].fullmovescounter;
-    halfmovescounter = movestack[mstop].halfmovescounter;
-    isCheck = movestack[mstop].isCheck;
-    for (int i = 0; i < movestack[mstop].numFieldchanges; i++)
-    {
-        if (mailbox[movestack[mstop].index[i]] != BLANK)
-            piecenum[mailbox[movestack[mstop].index[i]]]--;
-        if (movestack[mstop].code[i] != BLANK)
-            piecenum[movestack[mstop].code[i]]++;
-        mailbox[movestack[mstop].index[i]] = movestack[mstop].code[i];
-    }
-}
-
-
-
-int chessposition::phase()
-{
-    return (max(0, (24 - piecenum[4] - piecenum[5] - piecenum[6] - piecenum[7] - (piecenum[8] << 1) - (piecenum[9] << 1) - (piecenum[10] << 2) - (piecenum[11] << 2))) * 255 + 12) / 24;
-}
-
-
-int chessposition::see(int to)
-{
-    int i;
-    int cheapest = SHRT_MAX;
-    int cheapest_from = 0x88;
-    int from;
-    bool nextto;
-    int v;
-
-    state ^= S2MMASK;
-    for (i = 0; i < 8; i++)
-    {
-        from = to + knightoffset[i];
-        if (isOpponent(from) && (Piece(from) == KNIGHT))
-        {
-            cheapest_from = from;
-            cheapest = materialvalue[KNIGHT];
-            break;
-        }
-    }
-
-    for (i = 0; i < 4; i++)
-    {
-        from = to;
-        nextto = true;
-        do
-        {
-            from += diagonaloffset[i];
-            if (isOpponent(from))
-            {
-                PieceType op = Piece(from);
-                if (materialvalue[op] < cheapest)
-                {
-                    if (op == BISHOP || op == QUEEN || (op == KING && nextto) || (op == PAWN && nextto && ((state & S2MMASK) ? (diagonaloffset[i] < 0) : (diagonaloffset[i] > 0))))
-                    {
-                        cheapest = materialvalue[op];
-                        cheapest_from = from;
-                        break;
-                    }
-                }
-            }
-            nextto = false;
-        } while (isEmpty(from));
-    }
-
-    for (i = 0; i < 4; i++)
-    {
-        from = to;
-        nextto = true;
-        do
-        {
-            from += orthogonaloffset[i];
-            if (isOpponent(from))
-            {
-                PieceType op = Piece(from);
-                if (materialvalue[op] < cheapest)
-                {
-                    if (op == ROOK || op == QUEEN || (op == KING && nextto))
-                    {
-                        cheapest = materialvalue[op];
-                        cheapest_from = from;
-                        break;
-                    }
-                }
-            }
-            nextto = false;
-        } while (isEmpty(from));
-    }
-
-    if (cheapest_from & 0x88)
-    {
-        v = 0;
-    }
-    else
-    {
-        PieceCode capture = mailbox[to];
-        int material = materialvalue[Piece(to)];
-        simplePlay(cheapest_from, to);
-        v = max(0, material - see(to));
-        simpleUnplay(cheapest_from, to, capture);
-    }
-    state ^= S2MMASK;
-    return v;
-}
-
-
-int chessposition::see(int from, int to)
-{
-    int v;
-    state ^= S2MMASK;
-    PieceCode capture = mailbox[to];
-    int material = materialvalue[Piece(to)];
-    simplePlay(from, to);
-    v = material - see(to);
-    simpleUnplay(from, to, capture);
-    state ^= S2MMASK;
-    return v;
-}
-#endif
 
 
 engine::engine()
@@ -2282,9 +1510,7 @@ engine::engine()
 
     tp.pos = &pos;
     pwnhsh.pos = &pos;
-#ifdef BITBOARD
     initBitmaphelper();
-#endif
 
     setOption("hash", "150");
     setOption("Move Overhead", "50");
@@ -2356,7 +1582,6 @@ void engine::setOption(string sName, string sValue)
             return;
         moveOverhead = newint;
     }
-#ifdef BITBOARD
     if (sName == "syzygypath")
     {
         SyzygyPath = sValue;
@@ -2366,7 +1591,6 @@ void engine::setOption(string sName, string sValue)
     {
         Syzygy50MoveRule = (lValue == "true");
     }
-#endif
 }
 
 
@@ -2413,9 +1637,7 @@ void engine::communicate(string inputstring)
                 }
                 pos.ply = 0;
                 pos.getRootMoves();
-#ifdef BITBOARD
                 pos.tbFilterRootMoves();
-#endif
                 if (debug)
                 {
                     pos.print();

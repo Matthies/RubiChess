@@ -30,15 +30,10 @@ zobrist::zobrist()
     for (i = 0; i < 128 * 16; i++)
     {
         unsigned long long r = getRnd();
-#ifdef BITBOARD
         // make the boardtable and so the hash compatible with older 0x88-board representation
         if (!((i >> 4) & 0x88))
             boardtable[j++] = r;
-#else
-        boardtable[j++] = r;
-#endif
     }
-#ifdef BITBOARD
     // make hashing simpler but stay compatible to board88
     unsigned long long castle[4];
     unsigned long long ep[8];
@@ -62,12 +57,6 @@ zobrist::zobrist()
             ept[i] = ep[FILE(i)];
     }
 
-#else
-    for (i = 0; i < 4; i++)
-        castle[i] = getRnd();
-    for (i = 0; i < 8; i++)
-        ep[i] = getRnd();
-#endif
     s2m = getRnd();
 }
 
@@ -82,7 +71,6 @@ u8 zobrist::modHash(int i)
     return 0;
 }
 
-#ifdef BITBOARD
 
 u8 zobrist::getHash()
 {
@@ -126,54 +114,6 @@ u8 zobrist::getPawnHash()
     return hash;
 }
 
-#else
-u8 zobrist::getHash()
-{
-    u8 hash = 0;
-    int i;
-    int state = pos.state;
-    for (i = 0; i < 120; i++)
-    {
-        if (!(i & 0x88) && pos.mailbox[i] != BLANK)
-        {
-            hash ^= boardtable[(i << 4)  | pos.mailbox[i]];
-        }
-    }
-    if (state & S2MMASK)
-        hash ^= s2m;
-    state >>= 1;
-
-    for (i = 0; i < 4; i++)
-    {
-        if (state & 1)
-            hash ^= castle[i];
-        state >>= 1;
-    }
-
-    if (pos.ept)
-        hash ^= ep[pos.ept & 0x7];
-
-    return hash;
-}
-
-
-u8 zobrist::getPawnHash()
-{
-    u8 hash = 0;
-    int i;
-    for (i = 0; i < 120; i++)
-    {
-        if (!(i & 0x88) && (pos.mailbox[i] >> 1) == PAWN)
-        {
-            hash ^= boardtable[(i << 4) | pos.mailbox[i]];
-        }
-    }
-
-    return hash;
-}
-
-#endif
-
 
 u8 zobrist::getMaterialHash()
 {
@@ -183,9 +123,6 @@ u8 zobrist::getMaterialHash()
         int count = 0;
         for (int j = 0; j < BOARDSIZE; j++)
         {
-#ifndef BITBOARD
-            if (!(j & 0x88))
-#endif
                 if (pos.mailbox[j] == pc)
                     hash ^= zb.boardtable[(count++ << 4) | pc];
         }

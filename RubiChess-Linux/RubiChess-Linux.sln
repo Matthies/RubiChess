@@ -13,12 +13,6 @@ Global
 		Bitboard-Release|ARM = Bitboard-Release|ARM
 		Bitboard-Release|x64 = Bitboard-Release|x64
 		Bitboard-Release|x86 = Bitboard-Release|x86
-		Board88-Debug|ARM = Board88-Debug|ARM
-		Board88-Debug|x64 = Board88-Debug|x64
-		Board88-Debug|x86 = Board88-Debug|x86
-		Board88-Release|ARM = Board88-Release|ARM
-		Board88-Release|x64 = Board88-Release|x64
-		Board88-Release|x86 = Board88-Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{28C682E2-C4C0-4D7F-BA9E-2FB2DD6211F9}.Bitboard-Debug|ARM.ActiveCfg = Bitboard-Debug|ARM
@@ -33,18 +27,6 @@ Global
 		{28C682E2-C4C0-4D7F-BA9E-2FB2DD6211F9}.Bitboard-Release|x64.Build.0 = Bitboard-Release|x64
 		{28C682E2-C4C0-4D7F-BA9E-2FB2DD6211F9}.Bitboard-Release|x86.ActiveCfg = Bitboard-Release|x86
 		{28C682E2-C4C0-4D7F-BA9E-2FB2DD6211F9}.Bitboard-Release|x86.Build.0 = Bitboard-Release|x86
-		{28C682E2-C4C0-4D7F-BA9E-2FB2DD6211F9}.Board88-Debug|ARM.ActiveCfg = Board88-Debug|ARM
-		{28C682E2-C4C0-4D7F-BA9E-2FB2DD6211F9}.Board88-Debug|ARM.Build.0 = Board88-Debug|ARM
-		{28C682E2-C4C0-4D7F-BA9E-2FB2DD6211F9}.Board88-Debug|x64.ActiveCfg = Board88-Debug|x64
-		{28C682E2-C4C0-4D7F-BA9E-2FB2DD6211F9}.Board88-Debug|x64.Build.0 = Board88-Debug|x64
-		{28C682E2-C4C0-4D7F-BA9E-2FB2DD6211F9}.Board88-Debug|x86.ActiveCfg = Board88-Debug|x86
-		{28C682E2-C4C0-4D7F-BA9E-2FB2DD6211F9}.Board88-Debug|x86.Build.0 = Board88-Debug|x86
-		{28C682E2-C4C0-4D7F-BA9E-2FB2DD6211F9}.Board88-Release|ARM.ActiveCfg = Board88-Release|ARM
-		{28C682E2-C4C0-4D7F-BA9E-2FB2DD6211F9}.Board88-Release|ARM.Build.0 = Board88-Release|ARM
-		{28C682E2-C4C0-4D7F-BA9E-2FB2DD6211F9}.Board88-Release|x64.ActiveCfg = Board88-Release|x64
-		{28C682E2-C4C0-4D7F-BA9E-2FB2DD6211F9}.Board88-Release|x64.Build.0 = Board88-Release|x64
-		{28C682E2-C4C0-4D7F-BA9E-2FB2DD6211F9}.Board88-Release|x86.ActiveCfg = Board88-Release|x86
-		{28C682E2-C4C0-4D7F-BA9E-2FB2DD6211F9}.Board88-Release|x86.Build.0 = Board88-Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

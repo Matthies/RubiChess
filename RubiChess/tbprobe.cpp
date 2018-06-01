@@ -24,7 +24,6 @@
 
 int TBlargest = 0;
 
-#ifdef BITBOARD
 #include "tbcore.c"
 
 // Given a position with 6 or fewer pieces, produce a text string
@@ -820,5 +819,3 @@ int root_probe_wdl()
 
     return 1;
 }
-
-#endif

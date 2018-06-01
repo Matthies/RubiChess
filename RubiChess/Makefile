@@ -10,12 +10,9 @@ ifeq ($(OS),Windows_NT)
     LDFLAGS += -static
 endif
 DEPS = RubiChess.h
-OBJBOOARD88 = board-Board88.o eval-Board88.o main-Board88.o search-Board88.o transposition-Board88.o uci-Board88.o utils-Board88.o
 OBJBITBOARD = board-Bitboard.o eval-Bitboard.o main-Bitboard.o search-Bitboard.o transposition-Bitboard.o uci-Bitboard.o utils-Bitboard.o tbprobe-Bitboard.o
 EXE1 = RubiChess-Bitboard
-EXE2 = RubiChess-Board88
 PGOBENCH1 = ./$(EXE1) -bench
-PGOBENCH2 = ./$(EXE2) -bench
 
 .PHONY: clean profile-build gcc-profile-make gcc-profile-use all
 
@@ -23,18 +20,15 @@ PGOBENCH2 = ./$(EXE2) -bench
 	$(CXX) -c -o $@ $< $(CXXFLAGS) $(EXTRACXXFLAGS)
 
 %-Bitboard.o: %.cpp $(DEPS)
-	$(CXX) -c -o $@ $< $(CXXFLAGS) $(EXTRACXXFLAGS) -DBITBOARD
+	$(CXX) -c -o $@ $< $(CXXFLAGS) $(EXTRACXXFLAGS)
 
-all: RubiChess-Board88 RubiChess-Bitboard
-
-RubiChess-Board88: $(OBJBOOARD88)
-	$(CXX) -o $@ $^ $(LDFLAGS) $(EXTRALDFLAGS)
+all: RubiChess-Bitboard
 
 RubiChess-Bitboard: $(OBJBITBOARD)
 	$(CXX) -o $@ $^ $(LDFLAGS) $(EXTRALDFLAGS)
 
 objclean:
-	$(RM) RubiChess-Bitboard RubiChess-Board88 *.o
+	$(RM) RubiChess-Bitboard *.o
 
 profileclean:
 	$(RM) -f *.gcda
@@ -58,12 +52,8 @@ profile-build: clean
 	$(MAKE) $(profile_make)
 	@echo "Running benchmark for pgo-build ..."
 	$(PGOBENCH1) > /dev/null
-	$(PGOBENCH2) > /dev/null
 	@echo "Building optimized executable ..."
 	$(MAKE) objclean
 	$(MAKE) $(profile_use)
 	@echo "Deleting profile data ..."
 	$(MAKE) profileclean
-
-
-
