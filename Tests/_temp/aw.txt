@@ -1,0 +1,8 @@
+aw1: delta = 18; delta +=delta / 4 + 5
+STC:
+Score of RubiChess-Bitboard-aw1 vs RubiChess-Bitboard-ms: 976 - 895 - 1199  [0.513] 3070
+Elo difference: 9.17 +/- 9.58
+SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+LTC:
+
+aw2: delta / 4 + 12
