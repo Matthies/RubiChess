@@ -20,4 +20,6 @@ Score of RubiChess-Bitboard-aw3 vs RubiChess-Bitboard-aw1: 595 - 510 - 645  [0.5
 Elo difference: 16.89 +/- 12.93
 SPRT: llr 1.37, lbound -1.39, ubound 1.39
 LTC against master:
-...
+Score of RubiChess-Bitboard-aw3 vs RubiChess-Bitboard-ms: 161 - 96 - 236  [0.566] 493
+Elo difference: 46.08 +/- 22.16
+SPRT: llr 1.4, lbound -1.39, ubound 1.39 - H1 was accepted
