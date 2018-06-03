@@ -1,0 +1,10 @@
+qs1: Aggresive delta pruning with margin 50 instead of 200.
+
+STC (notebook):
+Score of RubiChess-Bitboard-qs1 vs RubiChess-Bitboard-ms: 900 - 821 - 1105  [0.514] 2826
+Elo difference: 9.71 +/- 9.99
+SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+LTC /Server):
+Score of RubiChess-Bitboard-qs1 vs RubiChess-Bitboard-ms: 689 - 620 - 1186  [0.514] 2495
+Elo difference: 9.61 +/- 9.86
+SPRT: llr 1.4, lbound -1.39, ubound 1.39 - H1 was accepted
