@@ -694,8 +694,8 @@ static void search_gen1()
     int score;
     int matein;
     int alpha, beta;
-    int deltaalpha = 25;
-    int deltabeta = 25;
+    int deltaalpha = 8;
+    int deltabeta = 8;
     int depth, maxdepth, depthincrement;
     string pvstring;
     int inWindow;
@@ -766,9 +766,11 @@ static void search_gen1()
             // new aspiration window
             if (score == alpha)
             {
-                // research with lower alpha
+                // research with lower alpha and reduced beta
+                beta = (alpha + beta) / 2;
                 alpha = max(SHRT_MIN + 1, alpha - deltaalpha);
-                deltaalpha <<= 1;
+                deltaalpha += deltaalpha / 4 + 2;
+                //deltaalpha <<= 1;
                 if (alpha < -1000)
                     deltaalpha = SHRT_MAX << 1;
                 inWindow = 0;
@@ -780,7 +782,8 @@ static void search_gen1()
             {
                 // research with higher beta
                 beta = min(SHRT_MAX, beta + deltabeta);
-                deltabeta <<= 1;
+                deltabeta += deltabeta / 4 + 2;
+                //deltabeta <<= 1;
                 if (beta > 1000)
                     deltabeta = SHRT_MAX << 1;
                 inWindow = 2;
@@ -797,8 +800,9 @@ static void search_gen1()
                 }
                 else {
                     // next depth with new aspiration window
-                    deltaalpha = 25;
-                    deltabeta = 25;
+                    deltaalpha = 8;
+                    deltabeta = 8;
+                    //printf("info string depth=%d delta=%d\n", depth, deltaalpha);
                     if (isMultiPV)
                         alpha = pos.bestmovescore[en.MultiPV - 1] - deltaalpha;
                     else

@@ -1,0 +1,25 @@
+aw1: delta = 18; delta +=delta / 4 + 5
+STC:
+Score of RubiChess-Bitboard-aw1 vs RubiChess-Bitboard-ms: 976 - 895 - 1199  [0.513] 3070
+Elo difference: 9.17 +/- 9.58
+SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+LTC:
+Score of RubiChess-Bitboard-aw1 vs RubiChess-Bitboard-ms: 395 - 366 - 639  [0.510] 1400
+Elo difference: 7.20 +/- 13.41
+SPRT: llr 0.501, lbound -1.39, ubound 1.39
+
+aw2: delta / 4 + 12
+Score of RubiChess-Bitboard-aw2 vs RubiChess-Bitboard-aw1: 290 - 316 - 394  [0.487] 1000
+Elo difference: -9.04 +/- 16.75
+SPRT: llr -0.604, lbound -1.39, ubound 1.39
+
+
+aw3: delta = 8; delta / 4 + 2
+STC against aw1:
+Score of RubiChess-Bitboard-aw3 vs RubiChess-Bitboard-aw1: 595 - 510 - 645  [0.524] 1750
+Elo difference: 16.89 +/- 12.93
+SPRT: llr 1.37, lbound -1.39, ubound 1.39
+LTC against master:
+Score of RubiChess-Bitboard-aw3 vs RubiChess-Bitboard-ms: 161 - 96 - 236  [0.566] 493
+Elo difference: 46.08 +/- 22.16
+SPRT: llr 1.4, lbound -1.39, ubound 1.39 - H1 was accepted
