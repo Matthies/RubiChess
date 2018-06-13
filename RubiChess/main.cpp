@@ -413,38 +413,45 @@ void readfromengine(HANDLE pipe, enginestate *es)
                     {
                         es->enginesbestmove = token[1];
                         string myPv = token[1];
-                        if (strstr(es->bestmoves.c_str(), myPv.c_str()) != NULL
-                            || (es->bestmoves == "" && strstr(es->avoidmoves.c_str(), myPv.c_str()) == NULL))
+                        bool bestmovefound = (strstr(es->bestmoves.c_str(), myPv.c_str()) != NULL
+                            || (es->bestmoves == "" && strstr(es->avoidmoves.c_str(), myPv.c_str()) == NULL));
+
+                        if (score)
+                        {
+                            vector<string> scoretoken = SplitString(score);
+                            if (scoretoken.size() > 1)
+                            {
+                                try
+                                {
+                                    if (bestmovefound)
+                                        es->score = stoi(scoretoken[1]);
+                                    else
+                                        es->allscore = stoi(scoretoken[1]);
+                                }
+                                catch (const invalid_argument&) {}
+                            }
+                        }
+                        if (mate)
+                        {
+                            vector<string> matetoken = SplitString(mate);
+                            if (matetoken.size() > 1)
+                            {
+                                try
+                                {
+                                    if (bestmovefound)
+                                        es->score = SCOREWHITEWINS - stoi(matetoken[1]);
+                                    else
+                                        es->allscore = SCOREWHITEWINS - stoi(matetoken[1]);
+                                }
+                                catch (const invalid_argument&) {}
+                            }
+                        }
+                        if (bestmovefound)
                         {
                             if (es->firstbesttimesec < 0)
                             {
                                 es->firstbesttimesec = (clock() - es->starttime) / CLOCKS_PER_SEC;
                                 //printf("%d %d  %d\n", es->firstbesttimesec, es->starttime, clock());
-                            }
-
-                            if (score)
-                            {
-                                vector<string> scoretoken = SplitString(score);
-                                if (scoretoken.size() > 1)
-                                {
-                                    try
-                                    {
-                                        es->score = stoi(scoretoken[1]);
-                                    }
-                                    catch (const invalid_argument&) {}
-                                }
-                            }
-                            if (mate)
-                            {
-                                vector<string> matetoken = SplitString(mate);
-                                if (matetoken.size() > 1)
-                                {
-                                    try
-                                    {
-                                        es->score = SCOREWHITEWINS - stoi(matetoken[1]);
-                                    }
-                                    catch (const invalid_argument&) {}
-                                }
                             }
                         }
                         else {
@@ -684,8 +691,8 @@ void testengine(string epdfilename, int startnum, string engineprg, string logfi
                 }
                 else
                 {
-                    printf("%d  %s: %s  found: %s ... failed\n", linenum, (es.bestmoves != "" ? "bm" : "am"), (es.bestmoves != "" ? es.bestmoves.c_str() : es.avoidmoves.c_str()), es.enginesbestmove.c_str());
-                    logfile << linenum << " - \"" << (es.bestmoves != "" ? es.bestmoves.c_str() : (es.avoidmoves + "(a)").c_str()) << "\" " << es.enginesbestmove.c_str() << "\n";
+                    printf("%d  %s: %s  found: %s ... failed  score: %d\n", linenum, (es.bestmoves != "" ? "bm" : "am"), (es.bestmoves != "" ? es.bestmoves.c_str() : es.avoidmoves.c_str()), es.enginesbestmove.c_str(), es.allscore);
+                    logfile << linenum << " - \"" << (es.bestmoves != "" ? es.bestmoves.c_str() : (es.avoidmoves + "(a)").c_str()) << "\" " << es.enginesbestmove.c_str() << " " << es.allscore << "\n";
                 }
             }
         }

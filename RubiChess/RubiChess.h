@@ -581,6 +581,7 @@ public:
     clock_t starttime;
     int firstbesttimesec;
     int score;
+    int allscore;
     string enginesbestmove;
     bool doCompare;
     bool comparesuccess;
