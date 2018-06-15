@@ -2,6 +2,7 @@
 #include "RubiChess.h"
 
 // Evaluation stuff
+#if 0
 CONSTEVAL int kingattackweight[7] = { 0,    0,    2,    2,    3,    4,    0 };
 CONSTEVAL int KingSafetyFactor = 287; 
 CONSTEVAL int shiftmobilitybonus = 3;
@@ -16,6 +17,24 @@ CONSTEVAL int backwardpawnpenalty = -22;
 CONSTEVAL int slideronfreefilebonus[2] = { 12,   17 };
 CONSTEVAL int doublebishopbonus = 27;
 CONSTEVAL int materialvalue[7] = { 0,  100,  322,  329,  488,  986,32509 };
+#else
+CONSTEVAL int kingattackweight[7] = { 0,    0,    3,    3,    3,    4,    0 };
+CONSTEVAL int KingSafetyFactor = 278;
+CONSTEVAL int tempo = 4;
+CONSTEVAL int passedpawnbonus[8] = { 0,   19,   15,   41,   74,  128,  143,    0 };
+CONSTEVAL int attackingpawnbonus[8] = { 0,   -7,  -11,   -4,    3,   37,    0,    0 };
+CONSTEVAL int isolatedpawnpenalty = -13;
+CONSTEVAL int doublepawnpenalty = -21;
+CONSTEVAL int connectedbonus = 2;
+CONSTEVAL int kingshieldbonus = 13;
+CONSTEVAL int backwardpawnpenalty = -25;
+CONSTEVAL int doublebishopbonus = 42;
+CONSTEVAL int shiftmobilitybonus = 2;
+CONSTEVAL int slideronfreefilebonus[2] = { 14,   18 };
+CONSTEVAL int materialvalue[7] = { 0,  100,  314,  314,  504, 1026,32509 };
+
+#endif
+
 CONSTEVAL int PVBASE[6][64] = {
     { -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999,
        61,   55,   59,   56,   57,   57,   35,   82,
@@ -179,7 +198,7 @@ void registeralltuners()
     for (i = BLANK; i <= KING; i++)
         registerTuner(&materialvalue[i], "materialvalue", materialvalue[i], i, 7, 0, 0, &CreatePositionvalueTable, i <= PAWN || i >= KING);
 #endif
-#if 0
+#if 1
     // tuning the psqt base at game start
     for (i = 0; i < 6; i++)
     {
@@ -189,7 +208,7 @@ void registeralltuners()
         }
     }
 #endif
-#if 0
+#if 1
     //tuning the psqt phase development
     for (i = 0; i < 6; i++)
     {
