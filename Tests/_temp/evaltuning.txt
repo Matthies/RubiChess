@@ -338,24 +338,51 @@ Branch "tuningtest"
   b. texeltune-09-nda.pgn: Wie a. aber ohne draw adjudication bzw. score 0
 
 tuned1: Alle Nicht-PSQT-Parameter getuned mit a. und ratio 4
-Tuning-Summary:
-CONSTEVAL int kingattackweight[7] = {     0,    0,    3,    3,    3,    4,    0  };
-CONSTEVAL int KingSafetyFactor =   278;
-CONSTEVAL int tempo =     4;
-CONSTEVAL int passedpawnbonus[8] = {     0,   19,   15,   41,   74,  128,  143,    0  };
-CONSTEVAL int attackingpawnbonus[8] = {     0,   -7,  -11,   -4,    3,   37,    0,    0  };
-CONSTEVAL int isolatedpawnpenalty =   -13;
-CONSTEVAL int doublepawnpenalty =   -21;
-CONSTEVAL int connectedbonus =     2;
-CONSTEVAL int kingshieldbonus =    13;
-CONSTEVAL int backwardpawnpenalty =   -25;
-CONSTEVAL int doublebishopbonus =    42;
-CONSTEVAL int shiftmobilitybonus =     2;
-CONSTEVAL int slideronfreefilebonus[2] = {    14,   18  };
-CONSTEVAL int materialvalue[7] = {     0,  100,  314,  314,  504, 1026,32509  };
- - Evaluation error: 0.1205830065 -> 0.1202283710
+ - Evaluation error: 0.1205830065 -> 0.1202283710 / -0.000355
+STC gegen master:
+Score of RubiChess-Bitboard-tuned1 vs RubiChess-Bitboard-ms: 655 - 565 - 638  [0.524] 1858
+Elo difference: 16.84 +/- 12.80
+SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+
+tuned2: Zusätzlich die PSQT-Parameter base und diff 1 loop
+ - Evaluation error: 0.1202283710 -> 0.1193763334 / -0.000852
+STC gegen tuned1:
+Score of RubiChess-Bitboard-tuned2 vs RubiChess-Bitboard-tuned1: 1616 - 1507 - 1433  [0.512] 4556
+Elo difference: 8.31 +/- 8.34
+SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+LTC gegen master:
+Score of RubiChess-Bitboard-tuned2 vs RubiChess-Bitboard-ms: 899 - 807 - 1007  [0.517] 2713
+Elo difference: 11.79 +/- 10.36
+SPRT: llr 1.4, lbound -1.39, ubound 1.39 - H1 was accepted
+
+tuned3: wie tuned2 mit insgesamt vier loops psqt
+ - Evaluation error: 0.1193763334 -> 0.1192345687/ -0.000142
+Score of RubiChess-Bitboard-tuned3 vs RubiChess-Bitboard-tuned2: 1144 - 1144 - 1312  [0.500] 3600
+Elo difference: 0.00 +/- 9.04
+SPRT: llr -0.375, lbound -1.39, ubound 1.39
+-> scheinbar keine weitere Verbesserung
+
+tuned1b: Alle Nicht-PSQT-Parameter getuned mit b. und ratio 4
+ - Evaluation error: 0.1206848750 -> 0.1203020625 / -0.000382
+Score of RubiChess-Bitboard-tuned1b vs RubiChess-Bitboard-ms: 797 - 705 - 855  [0.520] 2357
+Elo difference: 13.57 +/- 11.19
+SPRT: llr 1.42, lbound -1.39, ubound 1.39 - H1 was accepted
+
+tuned2b: Zusätzlich die PSQT-Parameter base und diff 1 loop
+ - Evaluation error: 0.1203020625 -> 0.1194335538 / -0.000869
+STC gegen tuned1:
+Score of RubiChess-Bitboard-tuned2b vs RubiChess-Bitboard-tuned1b: 4246 - 4255 - 4127  [0.500] 12628
+Elo difference: -0.25 +/- 4.97
+SPRT: llr -1.4, lbound -1.39, ubound 1.39 - H0 was accepted
+-> hmm.
+
+Jetzt der Quervergleich tuned3 vs tuned3b:
+Score of RubiChess-Bitboard-tuned3 vs RubiChess-Bitboard-tuned3b: 3413 - 3331 - 3256  [0.504] 10000
+Elo difference: 2.85 +/- 5.58
+
+===> wir nehmen tuned3 und texeltune-09-bal als Tuning-Spielmaterial
 
 
-tuned2: Zusätzlich die PSQT-Parameter base und diff 
 
- - Evaluation error: 0.1202283710 -> 
+
+
