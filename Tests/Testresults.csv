@@ -2,22 +2,26 @@ Datum;Version;Bench;Gegner;TC;Buch;Spiele;Ergebnis (%);Details (w-d-l);Bemerkung
 21.05.2018;Master;3629408;Bumblebee1.0;60+0.6;8moves_v3 seq.;501;58,1;220-142-139;
 21.05.2018;KDAU2;1738268;Bumblebee1.0;60+0.6;8moves_v3 seq.;501;57,1;218-136-147;2 Siege wg. Crash
 22.05.2018;Master;3629408;Bumblebee1.0;60+0.6;8moves_v3 rnd.;500;56,4;220-124-156;
-22.05.2018;KDPH2;1723931;Bumblebee1.0;60+0.6;8moves_v3 rnd.;450;54;189-108-153;
+22.05.2018;KDPH2;1723931;Bumblebee1.0;60+0.6;8moves_v3 rnd.;450;54,0;189-108-153;
 22.05.2018;0.8;11248014;Bumblebee1.0;60+0.6;8moves_v3 rnd.;500;50,6;192-122-186;1 Sieg wg. Crash
-22.05.2018;KDPH4;1791160;Bumblebee1.0;60+0.6;8moves_v3 rnd.;500;57;228-114-158;
+22.05.2018;KDPH4;1791160;Bumblebee1.0;60+0.6;8moves_v3 rnd.;500;57,0;228-114-158;
 23.05.2018;Master;3629408;Schooner1.8;60+0.6;8moves_v3 rnd.;500;50,4;174-156-170;
 23.05.2018;KDAU2;1738268;Schooner1.8;60+0.6;8moves_v3 rnd.;753;52,1;287-211-255;
 23.05.2018;QS1-Master;24466081;Bumblebee1.0;60+0.6;8moves_v3 rnd.;500;60,6;244-118-138;2 Siege wg. Crash
 23.05.2018;QS1-Master;24466081;Schooner1.8;60+0.6;8moves_v3 rnd.;500;52,6;191-144-165;
 23.05.2018;QS1-Master;24466081;Maverick1.5;60+0.6;8moves_v3 rnd.;851;35,3;210-180-461;
-26.05.2018;KDAUFIX3b;8067271;Schooner1.8;60+0.6;8moves_v3 rnd.;500;57,1;211-149-140;
-26.05.2018;KDAUFIX3b;8067271;Maverick1.5;60+0.6;8moves_v3 rnd.;500;38;123-134-243;
+26.05.2018;KDAUFIX3b (=0.9 mit altem bench);8067271;Schooner1.8;60+0.6;8moves_v3 rnd.;500;57,1;211-149-140;
+26.05.2018;KDAUFIX3b;8067271;Maverick1.5;60+0.6;8moves_v3 rnd.;500;38,0;123-134-243;
 26.05.2018;KDAUFIX3b;8067271;Bumblebee1.0;60+0.6;8moves_v3 rnd.;500;58,6;232-122-146;2 Siege wg. Crash
-27.05.2018;QS1-Master;24466081;Hermann2.8;60+0.6;8moves_v3 rnd.;500;44;162-116-222;
+27.05.2018;QS1-Master;24466081;Hermann2.8;60+0.6;8moves_v3 rnd.;500;44,0;162-116-222;
 27.05.2018;KDAUFIX3b;8067271;Hermann2.8;60+0.6;8moves_v3 rnd.;500;45,9;166-127-207;
 28.05.2018;QS1-Master;24466081;AnMon-5.75;60+0.6;8moves_v3 rnd.;500;45,9;160-139-201;
 28.05.2018;KDAUFIX3b;8067271;AnMon-5.75;60+0.6;8moves_v3 rnd.;500;48,3;181-121-198;
-20.06.2018;MS 3.6.18;9668840;Bumblebee1.0;60+0.6;8moves_v3 rnd.;500;Test folgt;;
-20.06.2018;MS 3.6.18;9668840;AnMon-5.75;60+0.6;8moves_v3 rnd.;500;Test folgt;;
-20.06.2018;Tuned3;10578627;Bumblebee1.0;60+0.6;8moves_v3 rnd.;500;Test läuft…;;
-20.06.2018;Tuned3;10578627;AnMon-5.75;60+0.6;8moves_v3 rnd.;500;Test läuft…;;
+20.06.2018;MS 3.6.18;9668840;Bumblebee1.0;60+0.6;8moves_v3 rnd.;500;64,9;266-117-117;3 Siege wg. Crash
+20.06.2018;MS 3.6.18;9668840;AnMon-5.75;60+0.6;8moves_v3 rnd.;500;52,3;185-153-162;
+20.06.2018;Tuned3;10578627;Bumblebee1.0;60+0.6;8moves_v3 seq.;500;68,6;292-102-106;1 Sieg wg. Crash
+20.06.2018;Tuned3;10578627;AnMon-5.75;60+0.6;8moves_v3 seq.;500;54,9;211-127-162;
+21.06.2018;MS 3.6.18;9668840;Maverick1.5;60+0.6;8moves_v3 rnd.;500;37,3;128-117-255;
+21.06.2018;Tuned3;10578627;Maverick1.5;60+0.6;8moves_v3 rnd.;500;42,3;148-127-225;
+21.06.2018;MS 3.6.18;9668840;Hermann2.8;60+0.6;8moves_v3 rnd.;500;51,4;191-132-177;
+21.06.2018;Tuned3;10578627;Hermann2.8;60+0.6;8moves_v3 rnd.;500;52,5;198-129-173;
