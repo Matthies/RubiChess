@@ -1071,7 +1071,6 @@ bool chessposition::playMove(chessmove *cm)
 {
     int oldcastle = (state & CASTLEMASK);
     int s2m = state & S2MMASK;
-    bool isLegal;
     int from = GETFROM(cm->code);
     int to = GETTO(cm->code);
     PieceCode pfrom = GETPIECE(cm->code);
@@ -1143,6 +1142,51 @@ bool chessposition::playMove(chessmove *cm)
         }
     }
 
+    if (ptype == KING)
+        kingpos[s2m] = to;
+
+    // Here we can test the move for being legal
+    if (isAttacked(kingpos[s2m]))
+    {
+        // Move is illegal; just do the necessary subset of unplayMove
+        hash = movestack[mstop].hash;
+        pawnhash = movestack[mstop].pawnhash;
+        materialhash = movestack[mstop].materialhash;
+        kingpos[s2m] = movestack[mstop].kingpos[s2m];
+        halfmovescounter = movestack[mstop].halfmovescounter;
+        mailbox[from] = pfrom;
+        if (promote != BLANK)
+        {
+            BitboardClear(to, mailbox[to]);
+            BitboardSet(from, pfrom);
+        }
+        else {
+            BitboardMove(to, from, pfrom);
+        }
+
+        if (capture != BLANK)
+        {
+            if (ept && to == ept)
+            {
+                // special ep capture
+                int epfield = (from & 0x38) | (to & 0x07);
+                BitboardSet(epfield, capture);
+                mailbox[epfield] = capture;
+                mailbox[to] = BLANK;
+            }
+            else
+            {
+                BitboardSet(to, capture);
+                mailbox[to] = capture;
+            }
+        }
+        else {
+            mailbox[to] = BLANK;
+        }
+        return false;
+    }
+
+    // remove castle rights
     if (to == 0x00 || from == 0x00)
         state &= ~WQCMASK;
     if (to == 0x07 || from == 0x07)
@@ -1154,7 +1198,6 @@ bool chessposition::playMove(chessmove *cm)
 
     if (ptype == KING)
     {
-        kingpos[s2m] = to;
         /* handle castle */
         state &= (s2m ? ~(BQCMASK | BKCMASK) : ~(WQCMASK | WKCMASK));
         int c = castleindex[from][to];
@@ -1173,7 +1216,6 @@ bool chessposition::playMove(chessmove *cm)
         }
     }
 
-    isLegal = !isAttacked(kingpos[state & S2MMASK]);
     state ^= S2MMASK;
     isCheck = isAttacked(kingpos[state & S2MMASK]);
 
@@ -1195,11 +1237,8 @@ bool chessposition::playMove(chessmove *cm)
     rp.addPosition(hash);
     actualpath.move[actualpath.length++] = *cm;
     mstop++;
-    if (!isLegal)
-    {
-        unplayMove(cm);
-    }
-    return isLegal;
+
+    return true;
 }
 
 
