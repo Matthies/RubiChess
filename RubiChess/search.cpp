@@ -13,6 +13,17 @@ void searchinit()
             reductiontable[d][m] = (int)round(log(d) * log(m) / 1.9);
 }
 
+static void sortMoves(chessmovelist* movelist, int limit)
+{
+    for (int i = 0; i < movelist->length - 1; i++)
+    {
+        for (int j = i + 1; j < movelist->length; j++)
+            if (movelist->move[i].value < movelist->move[j].value)
+                swap(movelist->move[i], movelist->move[j]);
+        if (movelist->move[i].value < limit)
+            break;
+    }
+}
 
 int getQuiescence(int alpha, int beta, int depth)
 {
@@ -40,7 +51,7 @@ int getQuiescence(int alpha, int beta, int depth)
     }
 
     chessmovelist* movelist = pos.getMoves();
-    //pos->sortMoves(movelist);
+    sortMoves(movelist, lva[QUEEN]);
 
     for (int i = 0; i < movelist->length; i++)
     {
