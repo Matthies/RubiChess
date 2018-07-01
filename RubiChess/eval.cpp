@@ -251,10 +251,28 @@ void CreatePositionvalueTable()
 }
 
 
+static void printEvalTrace(int level, string s, int v[])
+{
+    printf("%*s %32s %*s : %5d | %5d | %5d\n", level * 2 + 1, "-", s.c_str(), 20 - level * 2, " ", v[0], -v[1], v[0] + v[1]);
+}
+
+static void printEvalTrace(int level, string s, int v)
+{
+    printf("%*s %32s %*s :       |       | %5d\n", level * 2 + 1, "-", s.c_str(), 20 - level * 2, " ", v);
+}
+
+
+template <EvalTrace Et>
 int chessposition::getPawnValue(pawnhashentry **entry)
 {
     int val = 0;
     int index;
+    int attackingpawnval[2] = { 0 };
+    int connectedpawnval[2] = { 0 };
+    int passedpawnval[2] = { 0 };
+    int isolatedpawnval[2] = { 0 };
+    int doubledpawnval[2] = { 0 };
+    int backwardpawnval[2] = { 0 };
 
     bool hashexist = pwnhsh.probeHash(entry);
     pawnhashentry *entryptr = *entry;
@@ -289,17 +307,15 @@ int chessposition::getPawnValue(pawnhashentry **entry)
                     {
                         // pawn attacks opponent pawn
                         entryptr->value += attackingpawnbonusperside[s][RANK(index)];
-#ifdef DEBUGEVAL
-                        debugeval("Attacking Pawn Bonus(%d): %d\n", index, attackingpawnbonusperside[s][RANK(index)]);
-#endif
+                        if (Et == TRACE)
+                            attackingpawnval[s] += attackingpawnbonusperside[s][RANK(index)];
                     }
                     if ((pawn_attacks_occupied[index][s ^ S2MMASK] & piece00[pc]) || (phalanxMask[index] & piece00[pc]))
                     {
                         // pawn is protected by other pawn
                         entryptr->value += S2MSIGN(s) * connectedbonus;
-#ifdef DEBUGEVAL
-                        debugeval("Connected Pawn Bonus(%d): %d\n", index, S2MSIGN(s) * connectedbonus);
-#endif
+                        if (Et == TRACE)
+                            connectedpawnval[s] += S2MSIGN(s) * connectedbonus;
                     }
                     if (!((passedPawnMask[index][1 - s] | phalanxMask[index]) & piece00[pc]))
                     {
@@ -333,39 +349,161 @@ int chessposition::getPawnValue(pawnhashentry **entry)
         {
             val += ph * passedpawnbonusperside[s][RANK(index)] / 256;
             bb ^= BITSET(index);
-#ifdef DEBUGEVAL
-            debugeval("Passed Pawn Bonus(%d): %d\n", index, passedpawnbonusperside[s][RANK(index)]);
-#endif
+            if (Et == TRACE)
+                passedpawnval[s] += ph * passedpawnbonusperside[s][RANK(index)] / 256;
         }
 
         // isolated pawns
         val += S2MSIGN(s) * POPCOUNT(entryptr->isolatedpawnbb[s]) * isolatedpawnpenalty;
-#ifdef DEBUGEVAL
-        debugeval("Isolated Pawn Penalty(%d): %d\n", s, S2MSIGN(s) * POPCOUNT(entryptr->isolatedpawnbb[s]) * isolatedpawnpenalty);
-#endif
+        if (Et == TRACE)
+            isolatedpawnval[s] += S2MSIGN(s) * POPCOUNT(entryptr->isolatedpawnbb[s]) * isolatedpawnpenalty;
 
         // doubled pawns
         val += S2MSIGN(s) * doublepawnpenalty * POPCOUNT(piece00[WPAWN | s] & (s ? piece00[WPAWN | s] >> 8 : piece00[WPAWN | s] << 8));
-#ifdef DEBUGEVAL
-        debugeval("Double Pawn Penalty(%d): %d\n", s, S2MSIGN(s) * doublepawnpenalty * POPCOUNT(piece00[WPAWN | s] & (s ? piece00[WPAWN | s] >> 8 : piece00[WPAWN | s] << 8)));
-#endif
+        if (Et == TRACE)
+            doubledpawnval[s] += S2MSIGN(s) * doublepawnpenalty * POPCOUNT(piece00[WPAWN | s] & (s ? piece00[WPAWN | s] >> 8 : piece00[WPAWN | s] << 8));
 
         // backward pawns
         val += S2MSIGN(s) * POPCOUNT(entryptr->backwardpawnbb[s]) * backwardpawnpenalty * ph / 256;
-#ifdef DEBUGEVAL
-        debugeval("Backward Pawn Penalty(%d): %d\n", s, S2MSIGN(s) * POPCOUNT(entryptr->backwardpawnbb[s]) * backwardpawnpenalty * ph / 256);
-#endif
-
+        if (Et == TRACE)
+            backwardpawnval[s] += S2MSIGN(s) * POPCOUNT(entryptr->backwardpawnbb[s]) * backwardpawnpenalty * ph / 256;
     }
 
-#ifdef DEBUGEVAL
-    debugeval("Total Pawn value: %d\n", val + entryptr->value);
-#endif
+    if (Et == TRACE)
+    {
+        printEvalTrace(2, "connected pawn", connectedpawnval);
+        printEvalTrace(2, "attacking pawn", attackingpawnval);
+        printEvalTrace(2, "passed pawn", passedpawnval);
+        printEvalTrace(2, "isolated pawn", isolatedpawnval);
+        printEvalTrace(2, "doubled pawn", doubledpawnval);
+        printEvalTrace(2, "backward pawn", backwardpawnval);
+        printEvalTrace(1, "total pawn", val + entryptr->value);
+    }
+
     return val + entryptr->value;
 }
 
 
+template <EvalTrace Et>
+int chessposition::getPositionValue()
+{
+    pawnhashentry *phentry;
+    int index;
+    int result = S2MSIGN(state & S2MMASK) * tempo;
+    int kingattackweightsum[2] = { 0 };
+    int psqteval[2] = { 0 };
+    int mobilityeval[2] = { 0 };
+    int freeslidereval[2] = { 0 };
+    int doublebishopeval = 0;
+    int kingshieldeval[2] = { 0 };
+    int kingdangereval[2] = { 0 };
 
+    if (Et == TRACE)
+        printEvalTrace(1, "tempo", result);
+
+    result += getPawnValue<Et>(&phentry);
+
+    for (int pc = WPAWN; pc <= BKING; pc++)
+    {
+        int p = pc >> 1;
+        int s = pc & S2MMASK;
+        U64 pb = piece00[pc];
+        while (LSB(index, pb))
+        {
+            int pvtindex = index | (ph << 6) | (p << 14) | (s << 17);
+
+            result += *(positionvaluetable + pvtindex);
+            if (Et == TRACE)
+                psqteval[s] += *(positionvaluetable + pvtindex);
+
+            pb ^= BITSET(index);
+
+            U64 mobility = 0ULL;
+            if (shifting[p] & 0x2) // rook and queen
+            {
+                mobility = ~occupied00[s]
+                    & (mRookAttacks[index][MAGICROOKINDEX((occupied00[0] | occupied00[1]), index)]);
+
+                // extrabonus for rook on (semi-)open file  
+                if (p == ROOK && (phentry->semiopen[s] & BITSET(FILE(index))))
+                {
+                    result += S2MSIGN(s) * slideronfreefilebonus[bool(phentry->semiopen[1 - s] & BITSET(FILE(index)))];
+                    if (Et == TRACE)
+                        freeslidereval[s] += S2MSIGN(s) * slideronfreefilebonus[bool(phentry->semiopen[1 - s] & BITSET(FILE(index)))];
+                }
+            }
+
+            if (shifting[p] & 0x1) // bishop and queen)
+            {
+                mobility |= ~occupied00[s]
+                    & (mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)]);
+            }
+
+            if (p == KNIGHT)
+            {
+                mobility = knight_attacks[index] & ~occupied00[s];
+            }
+            // mobility bonus
+            result += S2MSIGN(s) * POPCOUNT(mobility) * shiftmobilitybonus;
+            if (Et == TRACE)
+                mobilityeval[s] += S2MSIGN(s) * POPCOUNT(mobility) * shiftmobilitybonus;
+
+            // king danger
+            U64 kingdangerarea = kingdangerMask[kingpos[1 - s]][1 - s];
+            if (mobility & kingdangerarea)
+            {
+                kingattackweightsum[s] += POPCOUNT(mobility & kingdangerarea) * kingattackweight[p];
+            }
+
+        }
+    }
+
+    // bonus for double bishop
+    if (POPCOUNT(piece00[WBISHOP]) >= 2)
+    {
+        result += doublebishopbonus;
+        if (Et == TRACE)
+            doublebishopeval += doublebishopbonus;
+    }
+    if (POPCOUNT(piece00[BBISHOP]) >= 2)
+    {
+        result -= doublebishopbonus;
+        if (Et == TRACE)
+            doublebishopeval -= doublebishopbonus;
+    }
+
+    // some kind of king safety
+    result += (256 - ph) * (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])) * kingshieldbonus / 256;
+    if (Et == TRACE)
+    {
+        kingshieldeval[0] = (256 - ph) * POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) * kingshieldbonus / 256;
+        kingshieldeval[1] = -(256 - ph) * POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1]) * kingshieldbonus / 256;
+    }
+
+    for (int s = 0; s < 2; s++)
+    {
+        result += S2MSIGN(s) * KingSafetyFactor * KingSafetyTable[kingattackweightsum[s]] * (256 - ph) / 0x10000;
+        if (Et == TRACE)
+            kingdangereval[s] = S2MSIGN(s) * KingSafetyFactor * KingSafetyTable[kingattackweightsum[s]] * (256 - ph) / 0x10000;
+    }
+
+    if (Et == TRACE)
+    {
+        printEvalTrace(1, "PSQT", psqteval);
+        printEvalTrace(1, "Mobility", mobilityeval);
+        printEvalTrace(1, "Slider on free file", freeslidereval);
+        printEvalTrace(1, "double bishop", doublebishopeval);
+        printEvalTrace(1, "kingshield", kingshieldeval);
+        printEvalTrace(1, "kingdanger", kingdangereval);
+
+        printEvalTrace(0, "total value", result);
+    }
+
+    return result;
+}
+
+
+template <EvalTrace Et>
 int chessposition::getValue()
 {
     // Check for insufficient material using simnple heuristic from chessprogramming site
@@ -386,93 +524,28 @@ int chessposition::getValue()
                     winpossible = true;
 
                 if (!winpossible)
+                {
+                    if (Et == TRACE)
+                        printEvalTrace(0, "missing material", SCOREDRAW);
                     return SCOREDRAW;
+                }
             }
         }
     }
     ph = phase();
-    return getPositionValue();
+    return getPositionValue<Et>();
 }
 
 
-int chessposition::getPositionValue()
+int getValue(chessposition *p)
 {
-    pawnhashentry *phentry;
-    int index;
-    int result = S2MSIGN(state & S2MMASK) * tempo;
-    int kingattackweightsum[2] = { 0 };
-
-#ifdef DEBUGEVAL
-    int positionvalue = 0;
-#endif
-
-    result += getPawnValue(&phentry);
-
-    for (int pc = WPAWN; pc <= BKING; pc++)
-    {
-        int p = pc >> 1;
-        int s = pc & S2MMASK;
-        U64 pb = piece00[pc];
-        while (LSB(index, pb))
-        {
-            int pvtindex = index | (ph << 6) | (p << 14) | (s << 17);
-            result += *(positionvaluetable + pvtindex);
-#ifdef DEBUGEVAL
-            positionvalue += *(positionvaluetable + pvtindex);
-#endif
-            pb ^= BITSET(index);
-            U64 mobility = 0ULL;
-            if (shifting[p] & 0x2) // rook and queen
-            {
-                mobility = ~occupied00[s]
-                    & (mRookAttacks[index][MAGICROOKINDEX((occupied00[0] | occupied00[1]), index)]);
-
-                // extrabonus for rook on (semi-)open file  
-                if (p == ROOK && (phentry->semiopen[s] & BITSET(FILE(index))))
-                    result += S2MSIGN(s) * slideronfreefilebonus[bool(phentry->semiopen[1 - s] & BITSET(FILE(index)))];
-            }
-
-            if (shifting[p] & 0x1) // bishop and queen)
-            {
-                mobility |= ~occupied00[s]
-                    & (mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)]);
-            }
-
-            if (p == KNIGHT)
-            {
-                mobility = knight_attacks[index] & ~occupied00[s];
-            }
-            // mobility bonus
-            result += (S2MSIGN(s) * POPCOUNT(mobility) * shiftmobilitybonus);
-
-            // king danger
-            U64 kingdangerarea = kingdangerMask[kingpos[1 - s]][1 - s];
-            if (mobility & kingdangerarea)
-            {
-                kingattackweightsum[s] += POPCOUNT(mobility & kingdangerarea) * kingattackweight[p];
-            }
-
-        }
-    }
-
-    // bonus for double bishop
-    if (POPCOUNT(piece00[WBISHOP]) >= 2)
-        result += doublebishopbonus;
-    if (POPCOUNT(piece00[BBISHOP]) >= 2)
-        result -= doublebishopbonus;
-
-
-    // some kind of king safety
-    result += (256 - ph) * (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])) * kingshieldbonus / 256;
-
-    for (int s = 0; s < 2; s++)
-        result += S2MSIGN(s) * KingSafetyFactor * KingSafetyTable[kingattackweightsum[s]] * (256 - ph) / 0x10000;
-
-#ifdef DEBUGEVAL
-    debugeval("(getPositionValue)  King safety: %d\n", (256 - ph) * (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])) * 15 / 256);
-    debugeval("(getPositionValue)  Position value: %d\n", positionvalue);
-#endif
-    return result;
+    return p->getValue<NOTRACE>();
 }
+
+int getValueTrace(chessposition *p)
+{
+    return p->getValue<TRACE>();
+}
+
 
 

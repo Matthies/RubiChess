@@ -623,7 +623,7 @@ void chessposition::print()
     printf("info string Fullmoves: %d\n", fullmovescounter);
     printf("info string Hash: %llu (%llx)  (getHash(): %llu)\n", hash, hash, zb.getHash());
     printf("info string Pawn Hash: %llu (%llx)  (getPawnHash(): %llu)\n", pawnhash, pawnhash, zb.getPawnHash());
-    printf("info string Value: %d\n", getValue());
+    printf("info string Value: %d\n", getValue<NOTRACE>());
     printf("info string Repetitions: %d\n", rp.getPositionCount(hash));
     printf("info string Phase: %d\n", phase());
     printf("info string Pseudo-legal Moves: %s\n", getMoves()->toStringWithValue().c_str());
@@ -1572,11 +1572,6 @@ engine::engine()
 }
 
 
-int engine::getScoreFromEnginePoV()
-{
-    return (isWhite ? pos.getValue() : -pos.getValue());
-}
-
 void engine::setOption(string sName, string sValue)
 {
     bool resetTp = false;
@@ -1885,6 +1880,9 @@ void engine::communicate(string inputstring)
                     delete searchthread;
                     searchthread = nullptr;
                 }
+                break;
+            case EVAL:
+                getValueTrace(&pos);
                 break;
             default:
                 break;
