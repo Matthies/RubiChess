@@ -450,7 +450,7 @@ public:
     chessmove bestmove[MAXMULTIPV];
     int bestmovescore[MAXMULTIPV];
     unsigned long killer[2][MAXDEPTH];
-    unsigned int history[14][64];
+    unsigned int history[7][64];
 #ifdef DEBUG    
     unsigned long long debughash = 0;
 #endif
