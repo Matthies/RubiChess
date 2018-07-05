@@ -265,11 +265,11 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             m->value = PVVAL;
         }
         // killermoves gets score better than non-capture
-        else if (pos.killer[0][0] == m->code)
+        else if (pos.killer[0][pos.ply] == m->code)
         {
             m->value = KILLERVAL1;
         }
-        else if (pos.killer[1][0] == m->code)
+        else if (pos.killer[1][pos.ply] == m->code)
         {
             m->value = KILLERVAL2;
         }
@@ -392,10 +392,14 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                 if (score >= beta)
                 {
                     // Killermove
-                    if (GETCAPTURE(m->code) == BLANK)
+                    if (!ISCAPTURE(m->code))
                     {
-                        pos.killer[1][pos.ply] = pos.killer[0][pos.ply];
-                        pos.killer[0][pos.ply] = m->code;
+                        pos.history[pos.Piece(GETFROM(m->code))][GETTO(m->code)] += depth * depth;
+                        if (pos.killer[0][pos.ply] != m->code)
+                        {
+                            pos.killer[1][pos.ply] = pos.killer[0][pos.ply];
+                            pos.killer[0][pos.ply] = m->code;
+                        }
                     }
 
 #ifdef DEBUG
@@ -414,10 +418,6 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                     PDEBUG(depth, "(alphabeta) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, newmoves->move[i].toString().c_str(), pos.actualpath.toString().c_str());
                     alpha = score;
                     eval_type = HASHEXACT;
-                    if (!ISCAPTURE(m->code))
-                    {
-                        pos.history[pos.Piece(GETFROM(m->code))][GETTO(m->code)] += depth * depth;
-                    }
                 }
             }
         }
@@ -519,11 +519,11 @@ int rootsearch(int alpha, int beta, int depth)
                 m->value = PVVAL;
             }
             // killermoves gets score better than non-capture
-            else if (pos.killer[0][pos.ply] == m->code)
+            else if (pos.killer[0][0] == m->code)
             {
                 m->value = KILLERVAL1;
             }
-            else if (pos.killer[1][pos.ply] == m->code)
+            else if (pos.killer[1][0] == m->code)
             {
                 m->value = KILLERVAL2;
             }
@@ -635,10 +635,14 @@ int rootsearch(int alpha, int beta, int depth)
             if (score >= beta)
             {
                 // Killermove
-                if (GETCAPTURE(m->code) == BLANK)
+                if (!ISCAPTURE(m->code))
                 {
-                    pos.killer[1][0] = pos.killer[0][0];
-                    pos.killer[0][0] = m->code;
+                    pos.history[pos.Piece(GETFROM(m->code))][GETTO(m->code)] += depth * depth;
+                    if (pos.killer[0][0] != m->code)
+                    {
+                        pos.killer[1][0] = pos.killer[0][0];
+                        pos.killer[0][0] = m->code;
+                    }
                 }
 #ifdef DEBUG
                 en.fh++;
@@ -663,10 +667,6 @@ int rootsearch(int alpha, int beta, int depth)
                     alpha = score;
                 }
                 eval_type = HASHEXACT;
-                if (!ISCAPTURE(m->code))
-                {
-                    pos.history[pos.Piece(GETFROM(m->code))][GETTO(m->code)] += depth * depth;
-                }
             }
         }
     }

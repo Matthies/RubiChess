@@ -320,7 +320,7 @@ int chessposition::getFromFen(const char* sFen)
     materialhash = zb.getMaterialHash();
     rp.clean();
     rp.addPosition(hash);
-    for (int i = 0; i < 14; i++)
+    for (int i = 0; i < 7; i++)
     {
         for (int j = 0; j < BOARDSIZE; j++)
         {
