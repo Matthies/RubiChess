@@ -14,3 +14,5 @@ Bitboard-ms-20180523		24466081
 - added four new bench positions
 Bitboard-0.9				 9824914
 Board88-0.9					12735375
+Bitboard-ms-20180705		48569661
+- Position 3 mate in 6 has 80% nodes when the mate isn't found -> should be replaced

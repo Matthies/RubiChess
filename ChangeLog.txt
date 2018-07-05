@@ -5,6 +5,8 @@ ChangeLog
     - Refinement of aspiration window
     - Retuned evaluation parameters based on new test games texeltune-09-bal.pgn
     - More agressive delta pruning in qsearch
+    - Fix: Increase history heuristic value only for cutoff move (not for moves that just raises alpha)
+    - Fix: Killer moves where taken from wrong ply
 
 0.9 (release 2018-05-28) :
     - Implemented Syzygy tablebase probing
