@@ -423,6 +423,7 @@ extern SMagic mRookTbl[64];
 extern U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 
+enum EvalTrace { NOTRACE, TRACE};
 
 class chessposition
 {
@@ -475,14 +476,10 @@ public:
     bool applyMove(string s);
     void print();
     int phase();
-    bool isEmpty(int bIndex);
     PieceType Piece(int index);
-    bool isOpponent(int bIndex);
-    bool isEmptyOrOpponent(int bIndex);
     bool isAttacked(int index);
     U64 attacksTo(int index, int side);
     int getLeastValuablePieceIndex(int to, unsigned int bySide, PieceCode *piece);
-    int see(int to);
     int see(int from, int to);
     void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
     void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
@@ -493,12 +490,10 @@ public:
     void unplayMove(chessmove *cm);
     void playNullMove();
     void unplayNullMove();
-    void simplePlay(int from, int to);
-    void simpleUnplay(int from, int to, PieceCode capture);
     void getpvline(int depth, int pvnum);
-    int getPositionValue();
-    int getPawnValue(pawnhashentry **entry);
-    int getValue();
+    template <EvalTrace> int getPositionValue();
+    template <EvalTrace> int getPawnValue(pawnhashentry **entry);
+    template <EvalTrace> int getValue();
 #ifdef DEBUG
     void debug(int depth, const char* format, ...);
 #endif
@@ -509,6 +504,8 @@ public:
     void mirror();
 };
 
+int getValue(chessposition *p);
+int getValueTrace(chessposition *p);
 
 void CreatePositionvalueTable();
 
@@ -562,7 +559,6 @@ public:
     int terminationscore = SHRT_MAX;
     int stopLevel = ENGINESTOPPED;
     void communicate(string inputstring);
-    int getScoreFromEnginePoV();
     void setOption(string sName, string sValue);
     bool isPondering() { return (pondersearch == PONDERING); }
     void HitPonder() { pondersearch = HITPONDER; }
@@ -716,7 +712,7 @@ void searchinit();
 // uci stuff
 //
 
-enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT };
+enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL };
 
 const map<string, GuiToken> GuiCommandMap = {
     { "uci", UCI },
@@ -729,7 +725,8 @@ const map<string, GuiToken> GuiCommandMap = {
     { "go", GO },
     { "stop", STOP },
     { "ponderhit", PONDERHIT },
-    { "quit", QUIT }
+    { "quit", QUIT },
+    { "eval", EVAL }
 };
 
 class uci
