@@ -255,14 +255,14 @@ void doBenchmark()
             0,
             1
         },
-        {   
-            "Matt in 6",
-            "3k4/3P4/3P4/3P4/3P4/1P1P1P2/3P4/1R1K4 w - - 0 1",
-            0,
-            30000,
+        {
+            "IQ4 63",
+            "2R5/r3b1k1/p2p4/P1pPp2p/6q1/2P2N1r/4Q1P1/5RK1 w - - 0 1 ",
+            14,
+            300,
             1
         },
-        { 
+        {
             "Wacnew 167",
             "7Q/ppp2q2/3p2k1/P2Ppr1N/1PP5/7R/5rP1/6K1 b - - 0 1",
             0,
@@ -285,14 +285,14 @@ void doBenchmark()
         },
          
         {
-            "Arasan 83",
+            "Arasan19 83",
             "6k1/p4qp1/1p3r1p/2pPp1p1/1PP1PnP1/2P1KR1P/1B6/7Q b - - 0 1 ",
             14,
             150,
             1
         },
         {
-            "Arasan 192",
+            "Arasan19 192",
             "r2qk2r/1b1nbp1p/p1n1p1p1/1pp1P3/6Q1/2NPB1PN/PPP3BP/R4RK1 w kq - 0 1",
             13,
             100,
@@ -312,8 +312,6 @@ void doBenchmark()
             300,
             1
         },
-        
-        
         {
             "", "", 0, 0
         }

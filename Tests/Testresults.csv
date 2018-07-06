@@ -25,3 +25,5 @@ Datum;Version;Bench;Gegner;TC;Buch;Spiele;Ergebnis (%);Details (w-d-l);Bemerkung
 21.06.2018;Tuned3;10578627;Maverick1.5;60+0.6;8moves_v3 rnd.;500;42,3;148-127-225;
 21.06.2018;MS 3.6.18;9668840;Hermann2.8;60+0.6;8moves_v3 rnd.;500;51,4;191-132-177;
 21.06.2018;Tuned3;10578627;Hermann2.8;60+0.6;8moves_v3 rnd.;500;52,5;198-129-173;
+05.07.2018;MS 5.7.18;48569661;Maverick1.5;60+0.6;8moves_v3 rnd.;500;48,6;187-112-201;
+05.07.2018;MS 5.7.18;48569661;Hermann2.8;60+0.6;8moves_v3 rnd.;500;54,4;215-114-171;
