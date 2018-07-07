@@ -78,7 +78,8 @@ string AlgebraicFromShort(string s)
     string retval = "";
     int castle0 = 0;
     PieceType promotion = BLANKTYPE;
-    chessmovelist* ml = pos.getMoves();
+    chessmovelist ml;
+    ml.length = pos.getMoves(&ml.move[0]);
     PieceType pt = PAWN;
     int to = 0x88, from = 0x88;
     int i = (int)s.size() - 1;
@@ -126,25 +127,24 @@ string AlgebraicFromShort(string s)
 
     // i < 0 hopefully
     // get the correct move
-    for (int i = 0; i < ml->length; i++)
+    for (int i = 0; i < ml.length; i++)
     {
-        if (pt == (GETPIECE(ml->move[i].code) >> 1)
-            && promotion == (GETPROMOTION(ml->move[i].code) >> 1)
-            && ((from & 0x80) || ((from & 0x70) == ((GETFROM(ml->move[i].code) & 0x38) << 1)))
-            && ((from & 0x08) || ((from & 0x07) == (GETFROM(ml->move[i].code) & 0x07)))
-            && ((to & 0x80) || ((to & 0x70) == ((GETTO(ml->move[i].code) & 0x38) << 1)))
-            && ((to & 0x08) || ((to & 0x07) == (GETTO(ml->move[i].code) & 0x07))))
+        if (pt == (GETPIECE(ml.move[i].code) >> 1)
+            && promotion == (GETPROMOTION(ml.move[i].code) >> 1)
+            && ((from & 0x80) || ((from & 0x70) == ((GETFROM(ml.move[i].code) & 0x38) << 1)))
+            && ((from & 0x08) || ((from & 0x07) == (GETFROM(ml.move[i].code) & 0x07)))
+            && ((to & 0x80) || ((to & 0x70) == ((GETTO(ml.move[i].code) & 0x38) << 1)))
+            && ((to & 0x08) || ((to & 0x07) == (GETTO(ml.move[i].code) & 0x07))))
         {
             // test if the move is legal; otherwise we need to search further
-            if (pos.playMove(&ml->move[i]))
+            if (pos.playMove(&ml.move[i]))
             {
-                pos.unplayMove(&ml->move[i]);
-                retval = ml->move[i].toString();
+                pos.unplayMove(&ml.move[i]);
+                retval = ml.move[i].toString();
                 break;
             }
         }
     }
-    free(ml);
     return retval;
 }
 

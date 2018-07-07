@@ -113,7 +113,8 @@ long long perft(int depth, bool dotests)
             //printf("Position value: %d\n", pos.getPositionValue<NOTRACE>());
         }
     }
-    chessmovelist* movelist = pos.getMoves();
+    chessmovelist movelist;
+    movelist.length = pos.getMoves(&movelist.move[0]);
     //movelist->sort();
     //printf("Path: %s \nMovelist : %s\n", p->actualpath.toString().c_str(), movelist->toString().c_str());
 
@@ -121,30 +122,29 @@ long long perft(int depth, bool dotests)
         retval = 1;
     else if (depth == 1)
     {
-        for (int i = 0; i < movelist->length; i++)
+        for (int i = 0; i < movelist.length; i++)
         {
-            if (pos.playMove(&movelist->move[i]))
+            if (pos.playMove(&movelist.move[i]))
             {
                 //printf("%s ok ", movelist->move[i].toString().c_str());
                 retval++;
-                pos.unplayMove(&movelist->move[i]);
+                pos.unplayMove(&movelist.move[i]);
             }
         }
     }
 
     else
     {
-        for (int i = 0; i < movelist->length; i++)
+        for (int i = 0; i < movelist.length; i++)
         {
-            if (pos.playMove(&movelist->move[i]))
+            if (pos.playMove(&movelist.move[i]))
             {
                 //printf("\nMove: %s  ", movelist->move[i].toString().c_str());
                 retval += perft(depth - 1, dotests);
-                pos.unplayMove(&movelist->move[i]);
+                pos.unplayMove(&movelist.move[i]);
             }
         }
     }
-    free(movelist);
     //printf("\nAnzahl: %d\n", retval);
     return retval;
 }

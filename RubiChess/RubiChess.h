@@ -99,6 +99,7 @@ void Sleep(long x);
 #define INDEX(r,f) (((r) << 3) | (f))
 
 #define PROMOTERANK(x) (RANK(x) == 0 || RANK(x) == 7)
+#define PROMOTERANKBB 0xff000000000000ff
 #define OUTERFILE(x) (FILE(x) == 0 || FILE(x) == 7)
 #define ISNEIGHBOUR(x,y) ((x) >= 0 && (x) < 64 && (y) >= 0 && (y) < 64 && abs(RANK(x) - RANK(y)) <= 1 && abs(FILE(x) - FILE(y)) <= 1)
 
@@ -359,8 +360,11 @@ public:
     int value;
 
     chessmove();
+    chessmove(int from, int to, PieceCode piece);
+    chessmove(int from, int to, PieceCode capture, PieceCode piece);
     chessmove(int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
     chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
+
     bool operator<(const chessmove cm) const { return (value < cm.value); }
     bool operator>(const chessmove cm) const { return (value > cm.value); }
     string toString();
@@ -397,7 +401,6 @@ public:
 };
 
 
-
 extern U64 pawn_attacks_occupied[64][2];
 extern U64 knight_attacks[64];
 
@@ -424,6 +427,10 @@ extern U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 
 enum EvalTrace { NOTRACE, TRACE};
+
+enum MoveType { QUIET, CAPTURE, TACTICAL };
+
+template <MoveType Mt> chessmove* CreateMovelist(chessposition *pos, chessmove* m);
 
 class chessposition
 {
@@ -481,9 +488,12 @@ public:
     U64 attacksTo(int index, int side);
     int getLeastValuablePieceIndex(int to, unsigned int bySide, PieceCode *piece);
     int see(int from, int to);
-    void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
-    void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
-    chessmovelist* getMoves();
+    void testMove_old(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
+    void testMove_old(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
+    chessmovelist* getMoves_old();
+    int getMoves(chessmove *m);
+    int getTacticalMoves(chessmove *m);
+    int getQuietMoves(chessmove *m);
     void getRootMoves();
     void tbFilterRootMoves();
     bool playMove(chessmove *cm);
