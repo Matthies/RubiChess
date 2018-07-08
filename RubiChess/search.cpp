@@ -49,22 +49,22 @@ int getQuiescence(int alpha, int beta, int depth)
             alpha = patscore;
     }
 
-    chessmovelist movelist;
+    chessmovelist *movelist = new chessmovelist;
 
     if (pos.isCheck)
-        movelist.length = pos.getMoves(&movelist.move[0]);
+        movelist->length = pos.getMoves(&movelist->move[0]);
     else
-        movelist.length = pos.getMoves(&movelist.move[0], TACTICAL);
+        movelist->length = pos.getMoves(&movelist->move[0], TACTICAL);
 
-    sortMoves(&movelist, lva[QUEEN]);
+    sortMoves(movelist, lva[QUEEN]);
 
-    for (int i = 0; i < movelist.length; i++)
+    for (int i = 0; i < movelist->length; i++)
     {
         PDEBUG(depth, "(getQuiscence) testing move %s ... LegalMovesPossible=%d Capture=%d Promotion=%d see=%d \n", movelist.move[i].toString().c_str(), (LegalMovesPossible?1:0), GETCAPTURE(movelist.move[i].code), GETPROMOTION(movelist.move[i].code), pos.see(GETFROM(movelist.move[i].code), GETTO(movelist.move[i].code)));
         bool MoveIsUsefull = (pos.isCheck
-            || ISPROMOTION(movelist.move[i].code)
-            || (patscore + materialvalue[GETCAPTURE(movelist.move[i].code) >> 1] + deltapruningmargin > alpha
-                && (pos.see(GETFROM(movelist.move[i].code), GETTO(movelist.move[i].code)) >= 0)
+            || ISPROMOTION(movelist->move[i].code)
+            || (patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin > alpha
+                && (pos.see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)) >= 0)
             ));
 #ifdef DEBUG
         if (ISCAPTURE(movelist->move[i].code) && patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin <= alpha)
@@ -77,7 +77,7 @@ int getQuiescence(int alpha, int beta, int depth)
 
         if (MoveIsUsefull || !LegalMovesPossible)
         {
-            isLegal = pos.playMove(&(movelist.move[i]));
+            isLegal = pos.playMove(&(movelist->move[i]));
             if (isLegal)
             {
                 LegalMovesPossible = true;
@@ -86,13 +86,14 @@ int getQuiescence(int alpha, int beta, int depth)
                     score = -getQuiescence(-beta, -alpha, depth - 1);
                     PDEBUG(depth, "(getQuiscence) played move %s score=%d\n", movelist->move[i].toString().c_str(), score);
                 }
-                pos.unplayMove(&(movelist.move[i]));
+                pos.unplayMove(&(movelist->move[i]));
                 if (MoveIsUsefull && score > bestscore)
                 {
                     bestscore = score;
                     if (score >= beta)
                     {
                         PDEBUG(depth, "(getQuiscence) beta cutoff\n");
+                        delete movelist;
                         return score;
                     }
                     if (score > alpha)
@@ -105,13 +106,19 @@ int getQuiescence(int alpha, int beta, int depth)
         }
     }
     if (LegalMovesPossible)
+    {
+        delete movelist;
         return bestscore;
+    }
 
     // No valid move found; try quiet moves
     if (!pos.isCheck)
     {
-        if (pos.getMoves(&movelist.move[0], QUIETWITHCHECK))
+        if (pos.getMoves(&movelist->move[0], QUIETWITHCHECK))
+        {
+            delete movelist;
             return bestscore;
+        }
 #if 0
         movelist.length = pos.getMoves(&movelist.move[0], QUIETWITHCHECK);
         for (int i = 0; i < movelist.length; i++)
@@ -124,10 +131,12 @@ int getQuiescence(int alpha, int beta, int depth)
         }
 #endif
         // It's a stalemate
+        delete movelist;
         return SCOREDRAW;
     }
     else {
         // It's a mate
+        delete movelist;
         return SCOREBLACKWINS + pos.ply;
     }
 }
@@ -142,7 +151,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     int bestscore = NOSCORE;
     uint32_t bestcode = 0;
     int eval_type = HASHALPHA;
-    chessmovelist newmoves;
+    chessmovelist *newmoves;
     chessmove *m;
     int extendall = 0;
     int reduction;
@@ -267,14 +276,15 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 #endif
     }
 
-    newmoves.length = pos.getMoves(&newmoves.move[0]);
+    newmoves = new chessmovelist;
+    newmoves->length = pos.getMoves(&newmoves->move[0]);
 
 #ifdef DEBUG
     en.nopvnodes++;
 #endif
-    for (int i = 0; i < newmoves.length; i++)
+    for (int i = 0; i < newmoves->length; i++)
     {
-        m = &newmoves.move[i];
+        m = &newmoves->move[i];
         //PV moves gets top score
         if (hashmovecode == m->code)
         {
@@ -299,17 +309,17 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     }
 
     int  LegalMoves = 0;
-    for (int i = 0; i < newmoves.length; i++)
+    for (int i = 0; i < newmoves->length; i++)
     {
-        for (int j = i + 1; j < newmoves.length; j++)
+        for (int j = i + 1; j < newmoves->length; j++)
         {
-            if (newmoves.move[i] < newmoves.move[j])
+            if (newmoves->move[i] < newmoves->move[j])
             {
-                swap(newmoves.move[i], newmoves.move[j]);
+                swap(newmoves->move[i], newmoves->move[j]);
             }
         }
 
-        m = &newmoves.move[i];
+        m = &newmoves->move[i];
         int moveExtension = 0;
         isLegal = pos.playMove(m);
         if (isLegal)
@@ -399,6 +409,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             {
                 // At least one move is found and we can safely exit here
                 // Lets hope this doesn't take too much time...
+                delete newmoves;
                 return alpha;
             }
 
@@ -427,6 +438,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 #endif
                     PDEBUG(depth, "(alphabeta) score=%d >= beta=%d  -> cutoff\n", score, beta);
                     tp.addHash(score, HASHBETA, effectiveDepth, bestcode);
+                    delete newmoves;
                     return score;   // fail soft beta-cutoff
                 }
 
@@ -439,6 +451,8 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             }
         }
     }
+
+    delete newmoves;
 
     if (LegalMoves == 0)
     {

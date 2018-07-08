@@ -400,6 +400,22 @@ public:
 	void print();
 };
 
+class MoveSelector
+{
+    chessmovelist* captures;
+    chessmovelist* quiets;
+
+    enum { INIT, HASHMOVE, KILLERMOVE1, KILLERMOVE2, REFUTEMOVE, CAPTURE, QUIET } state;
+    uint32_t hashmove;
+    uint32_t killermove1;
+    uint32_t killermove2;
+    uint32_t refutemove;
+
+public:
+    void SetPreferredMoves(uint32_t hshm, uint32_t kllm1, uint32_t kllm2, uint32_t rftm);
+    ~MoveSelector();
+    chessmove* next();
+};
 
 extern U64 pawn_attacks_occupied[64][2];
 extern U64 knight_attacks[64];

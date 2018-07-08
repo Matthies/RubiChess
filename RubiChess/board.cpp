@@ -1800,6 +1800,26 @@ int chessposition::see(int from, int to)
 }
 
 
+void MoveSelector::SetPreferredMoves(uint32_t hshm, uint32_t kllm1, uint32_t kllm2, uint32_t rftm)
+{
+    hashmove = hshm;
+    killermove1 = kllm1;
+    killermove2 = kllm2;
+    refutemove = rftm;
+}
+
+
+MoveSelector::~MoveSelector()
+{
+    if (captures)
+        delete captures;
+
+    if (quiets)
+        delete quiets;
+}
+
+
+
 
 engine::engine()
 {
