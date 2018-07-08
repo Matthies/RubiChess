@@ -38,7 +38,6 @@ int getQuiescence(int alpha, int beta, int depth)
     en.qnodes++;
 #endif
 
-
     if (!pos.isCheck)
     {
         patscore = (pos.state & S2MMASK ? -getValue(&pos) : getValue(&pos));
@@ -51,10 +50,11 @@ int getQuiescence(int alpha, int beta, int depth)
     }
 
     chessmovelist movelist;
+
     if (pos.isCheck)
         movelist.length = pos.getMoves(&movelist.move[0]);
     else
-        movelist.length = pos.getTacticalMoves(&movelist.move[0]);
+        movelist.length = pos.getMoves(&movelist.move[0], TACTICAL);
 
     sortMoves(&movelist, lva[QUEEN]);
 
@@ -63,8 +63,7 @@ int getQuiescence(int alpha, int beta, int depth)
         PDEBUG(depth, "(getQuiscence) testing move %s ... LegalMovesPossible=%d Capture=%d Promotion=%d see=%d \n", movelist.move[i].toString().c_str(), (LegalMovesPossible?1:0), GETCAPTURE(movelist.move[i].code), GETPROMOTION(movelist.move[i].code), pos.see(GETFROM(movelist.move[i].code), GETTO(movelist.move[i].code)));
         bool MoveIsUsefull = (pos.isCheck
             || ISPROMOTION(movelist.move[i].code)
-            || (ISCAPTURE(movelist.move[i].code) 
-                && (patscore + materialvalue[GETCAPTURE(movelist.move[i].code) >> 1] + deltapruningmargin > alpha)
+            || (patscore + materialvalue[GETCAPTURE(movelist.move[i].code) >> 1] + deltapruningmargin > alpha
                 && (pos.see(GETFROM(movelist.move[i].code), GETTO(movelist.move[i].code)) >= 0)
             ));
 #ifdef DEBUG
@@ -109,23 +108,28 @@ int getQuiescence(int alpha, int beta, int depth)
         return bestscore;
 
     // No valid move found; try quiet moves
-    movelist.length = pos.getQuietMoves(&movelist.move[0]);
-    for (int i = 0; i < movelist.length; i++)
+    if (!pos.isCheck)
     {
-        if (pos.playMove(&(movelist.move[i])))
-        {
-            pos.unplayMove(&(movelist.move[i]));
+        if (pos.getMoves(&movelist.move[0], QUIETWITHCHECK))
             return bestscore;
+#if 0
+        movelist.length = pos.getMoves(&movelist.move[0], QUIETWITHCHECK);
+        for (int i = 0; i < movelist.length; i++)
+        {
+            if (pos.playMove(&(movelist.move[i])))
+            {
+                pos.unplayMove(&(movelist.move[i]));
+                return bestscore;
+            }
         }
-    }
-
-    // Still no valid move
-    if (pos.isCheck)
-        // It's a mate
-        return SCOREBLACKWINS + pos.ply;
-    else
+#endif
         // It's a stalemate
         return SCOREDRAW;
+    }
+    else {
+        // It's a mate
+        return SCOREBLACKWINS + pos.ply;
+    }
 }
 
 

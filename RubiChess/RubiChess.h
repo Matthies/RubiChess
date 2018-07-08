@@ -428,7 +428,7 @@ extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 
 enum EvalTrace { NOTRACE, TRACE};
 
-enum MoveType { QUIET, CAPTURE, TACTICAL };
+enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7, QUIETWITHCHECK = 9 };
 
 template <MoveType Mt> chessmove* CreateMovelist(chessposition *pos, chessmove* m);
 
@@ -491,9 +491,7 @@ public:
     void testMove_old(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
     void testMove_old(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
     chessmovelist* getMoves_old();
-    int getMoves(chessmove *m);
-    int getTacticalMoves(chessmove *m);
-    int getQuietMoves(chessmove *m);
+    int getMoves(chessmove *m, MoveType t = ALL);
     void getRootMoves();
     void tbFilterRootMoves();
     bool playMove(chessmove *cm);

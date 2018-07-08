@@ -1329,17 +1329,26 @@ void chessposition::unplayMove(chessmove *cm)
 
 template <MoveType Mt> inline void appendMoveToList(chessposition *pos, chessmove **m, int from, int to, PieceCode piece)
 {
-
-    if (Mt == CAPTURE || Mt == TACTICAL)
+    **m = chessmove(from, to, piece);
+    if (!(Mt & CAPTURE))
+    {
+        (*m)->value = pos->history[piece >> 1][to];
+    }
+    else if (!(Mt & QUIET))
     {
         PieceCode capture = pos->mailbox[to];
-        **m = chessmove(from, to, piece);
         (*m)->code |= capture << 16;
         (*m)->value = (mvv[capture >> 1] | lva[piece >> 1]);
-    }
-    else {
-        **m = chessmove(from, to, piece);
-        (*m)->value = pos->history[piece >> 1][to];
+    } else {
+        PieceCode capture = pos->mailbox[to];
+        if (capture)
+        {
+            (*m)->code |= capture << 16;
+            (*m)->value = (mvv[capture >> 1] | lva[piece >> 1]);
+        }
+        else {
+            (*m)->value = pos->history[piece >> 1][to];
+        }
     }
     (*m)++;
 }
@@ -1365,15 +1374,16 @@ template <MoveType Mt> chessmove* CreateMovelist(chessposition *pos, chessmove* 
     int s2m = pos->state & S2MMASK;
     U64 occupiedbits = (pos->occupied00[0] | pos->occupied00[1]);
     U64 emptybits = ~occupiedbits;
-    U64 targetbits; 
+    U64 targetbits = 0ULL;
     U64 frombits, tobits;
     int from, to;
     PieceCode pc;
 
-    if (Mt == QUIET)
-        targetbits = emptybits;
-    if (Mt == CAPTURE || Mt == TACTICAL)
-        targetbits = pos->occupied00[s2m ^ S2MMASK];
+
+    if (Mt & QUIET)
+        targetbits |= emptybits;
+    if (Mt & CAPTURE)
+        targetbits |= pos->occupied00[s2m ^ S2MMASK];
 
     for (int p = PAWN; p <= KING; p++)
     {
@@ -1384,27 +1394,29 @@ template <MoveType Mt> chessmove* CreateMovelist(chessposition *pos, chessmove* 
         case PAWN:
             while (LSB(from, frombits))
             {
-                if (Mt == QUIET)
+                tobits = 0ULL;
+                if (Mt & QUIET)
                 {
-                    tobits = (pawn_attacks_free[from][s2m] & targetbits);
+                    tobits |= (pawn_attacks_free[from][s2m] & emptybits & ~PROMOTERANKBB);
                     if (tobits)
-                        tobits |= (pawn_attacks_free_double[from][s2m] & targetbits);
+                        tobits |= (pawn_attacks_free_double[from][s2m] & emptybits);
                 }
-                if (Mt == CAPTURE || Mt == TACTICAL)
-                {
-                    /* FIXME: ept & EPTSIDEMASK[s2m] is a quite ugly test for correct side respecting null move pruning */
-                    tobits = (pawn_attacks_occupied[from][s2m] & (pos->occupied00[s2m ^ 1] | ((pos->ept & EPTSIDEMASK[s2m]) ? BITSET(pos->ept) : 0ULL)));
-                }
-                if (Mt == TACTICAL)
+                if (Mt & PROMOTE)
                 {
                     // get promoting pawns
                     tobits |= (pawn_attacks_free[from][s2m] & PROMOTERANKBB & emptybits);
                 }
+                if (Mt & CAPTURE)
+                {
+                    /* FIXME: ept & EPTSIDEMASK[s2m] is a quite ugly test for correct side respecting null move pruning */
+                    tobits |= (pawn_attacks_occupied[from][s2m] & (pos->occupied00[s2m ^ 1] | ((pos->ept & EPTSIDEMASK[s2m]) ? BITSET(pos->ept) : 0ULL)));
+                }
                 while (LSB(to, tobits))
                 {
-                    if ((Mt == CAPTURE || Mt == TACTICAL) && pos->ept && pos->ept == to)
+                    if ((Mt & CAPTURE) && pos->ept && pos->ept == to)
                     {
                         //testMove(result, from, to, BLANK, (PieceCode)(WPAWN | (s2m ^ 1)), ISEPCAPTURE, pc);
+                        // treat ep capture as a quiet move and correct code and value manually
                         appendMoveToList<QUIET>(pos, &m, from, to, pc);
                         (m - 1)->code |= (ISEPCAPTURE << 20) | ((WPAWN | (s2m ^ 1)) << 16);
                         (m - 1)->value = (mvv[PAWN] | lva[PAWN]);
@@ -1417,21 +1429,30 @@ template <MoveType Mt> chessmove* CreateMovelist(chessposition *pos, chessmove* 
                         //testMove(result, from, to, (PieceCode)((KNIGHT << 1) | s2m), mailbox[to], pc);
                         appendMoveToList<Mt>(pos, &m, from, to, pc);
                         (m - 1)->code |= ((QUEEN << 1) | s2m) << 12;
+                        (m - 1)->value = mvv[QUEEN];
                         appendMoveToList<Mt>(pos, &m, from, to, pc);
                         (m - 1)->code |= ((ROOK << 1) | s2m) << 12;
+                        (m - 1)->value = mvv[ROOK];
                         appendMoveToList<Mt>(pos, &m, from, to, pc);
                         (m - 1)->code |= ((BISHOP << 1) | s2m) << 12;
+                        (m - 1)->value = mvv[BISHOP];
                         appendMoveToList<Mt>(pos, &m, from, to, pc);
                         (m - 1)->code |= ((KNIGHT << 1) | s2m) << 12;
+                        (m - 1)->value = mvv[KNIGHT];
                     }
-                    else if (Mt == QUIET && !((from ^ to) & 0x8) && epthelper[to] & pos->piece00[pc ^ 1])
+                    else if ((Mt & QUIET) && !((from ^ to) & 0x8) && (epthelper[to] & pos->piece00[pc ^ 1]))
                     {
-                        // EPT possible for opponent
-                        appendMoveToList<Mt>(pos, &m, from, to, pc);
+                        // EPT possible for opponent; set EPT field manually
+                        appendMoveToList<QUIET>(pos, &m, from, to, pc);
                         (m - 1)->code |= (from + to) << 19;
                     }
                     else {
                         appendMoveToList<Mt>(pos, &m, from, to, pc);
+                    }
+                    if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
+                    {
+                        pos->unplayMove(m - 1);
+                        return m;
                     }
                     tobits ^= BITSET(to);
                 }
@@ -1445,6 +1466,11 @@ template <MoveType Mt> chessmove* CreateMovelist(chessposition *pos, chessmove* 
                 while (LSB(to, tobits))
                 {
                     appendMoveToList<Mt>(pos, &m, from, to, pc);
+                    if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
+                    {
+                        pos->unplayMove(m - 1);
+                        return m;
+                    }
                     tobits ^= BITSET(to);
                 }
                 frombits ^= BITSET(from);
@@ -1456,24 +1482,42 @@ template <MoveType Mt> chessmove* CreateMovelist(chessposition *pos, chessmove* 
             while (LSB(to, tobits))
             {
                 appendMoveToList<Mt>(pos, &m, from, to, pc);
+                if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
+                {
+                    pos->unplayMove(m - 1);
+                    return m;
+                }
                 tobits ^= BITSET(to);
             }
-            if (Mt == QUIET && (pos->state & QCMASK[s2m]))
+            if (Mt & QUIET)
             {
-                /* queen castle */
-                if (!(occupiedbits & (s2m ? 0x0e00000000000000 : 0x000000000000000e))
-                    && !pos->isAttacked(from) && !pos->isAttacked(from - 1) && !pos->isAttacked(from - 2))
+                if (pos->state & QCMASK[s2m])
                 {
-                    appendMoveToList<Mt>(pos, &m, from, from - 2, pc);
+                    /* queen castle */
+                    if (!(occupiedbits & (s2m ? 0x0e00000000000000 : 0x000000000000000e))
+                        && !pos->isAttacked(from) && !pos->isAttacked(from - 1) && !pos->isAttacked(from - 2))
+                    {
+                        appendMoveToList<Mt>(pos, &m, from, from - 2, pc);
+                        if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
+                        {
+                            pos->unplayMove(m - 1);
+                            return m;
+                        }
+                    }
                 }
-            }
-            if (Mt == QUIET && (pos->state & KCMASK[s2m]))
-            {
-                /* kink castle */
-                if (!(occupiedbits & (s2m ? 0x6000000000000000 : 0x0000000000000060))
-                    && !pos->isAttacked(from) && !pos->isAttacked(from + 1) && !pos->isAttacked(from + 2))
+                if (pos->state & KCMASK[s2m])
                 {
-                    appendMoveToList<Mt>(pos, &m, from, from + 2, pc);
+                    /* kink castle */
+                    if (!(occupiedbits & (s2m ? 0x6000000000000000 : 0x0000000000000060))
+                        && !pos->isAttacked(from) && !pos->isAttacked(from + 1) && !pos->isAttacked(from + 2))
+                    {
+                        appendMoveToList<Mt>(pos, &m, from, from + 2, pc);
+                        if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
+                        {
+                            pos->unplayMove(m - 1);
+                            return m;
+                        }
+                    }
                 }
             }
             break;
@@ -1492,6 +1536,11 @@ template <MoveType Mt> chessmove* CreateMovelist(chessposition *pos, chessmove* 
                 while (LSB(to, tobits))
                 {
                     appendMoveToList<Mt>(pos, &m, from, to, pc);
+                    if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
+                    {
+                        pos->unplayMove(m - 1);
+                        return m;
+                    }
                     tobits ^= BITSET(to);
                 }
                 frombits ^= BITSET(from);
@@ -1504,32 +1553,31 @@ template <MoveType Mt> chessmove* CreateMovelist(chessposition *pos, chessmove* 
 
 
 // Default movelist generator; ordered captures before quiets
-int chessposition::getMoves(chessmove *m)
+int chessposition::getMoves(chessmove *m, MoveType t)
 {
-    chessmove *mlast;
-    mlast = CreateMovelist<CAPTURE>(this, m);
-    mlast = CreateMovelist<QUIET>(this, mlast);
+    chessmove *mlast = m;
+    switch (t)
+    {
+        case QUIET:
+            mlast = CreateMovelist<QUIET>(this, mlast);
+            break;
+        case CAPTURE:
+            mlast = CreateMovelist<CAPTURE>(this, mlast);
+            break;
+        case TACTICAL:
+            mlast = CreateMovelist<TACTICAL>(this, mlast);
+            break;
+        case QUIETWITHCHECK:
+            mlast = CreateMovelist<QUIETWITHCHECK>(this, mlast);
+            break;
+        default:
+            mlast = CreateMovelist<ALL>(this, mlast);
+    }
 
     return (int)(mlast - m);
 }
 
 
-int chessposition::getTacticalMoves(chessmove *m)
-{
-    chessmove *mlast;
-    mlast = CreateMovelist<TACTICAL>(this, m);
-
-    return (int)(mlast - m);
-}
-
-
-int chessposition::getQuietMoves(chessmove *m)
-{
-    chessmove *mlast;
-    mlast = CreateMovelist<QUIET>(this, m);
-
-    return (int)(mlast - m);
-}
 
 chessmovelist* chessposition::getMoves_old()
 {
