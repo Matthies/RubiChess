@@ -2,6 +2,23 @@
 #include "RubiChess.h"
 
 U64 mybitset[64];
+U64 knight_attacks[64];
+U64 king_attacks[64];
+U64 pawn_attacks_free[64][2];
+U64 pawn_attacks_free_double[64][2];
+U64 pawn_attacks_occupied[64][2];
+U64 epthelper[64];
+U64 passedPawnMask[64][2];
+U64 filebarrierMask[64][2];
+U64 neighbourfilesMask[64];
+U64 phalanxMask[64];
+U64 kingshieldMask[64][2];
+U64 kingdangerMask[64][2];
+U64 fileMask[64];
+U64 rankMask[64];
+U64 betweenMask[64][64];
+int castleindex[64][64] = { 0 };
+
 
 PieceType GetPieceType(char c)
 {
@@ -146,6 +163,21 @@ void chessmovelist::print()
 {
     printf("%s", toString().c_str());
 }
+
+void chessmovelist::sort(int limit, const int refutetarget)
+{
+    for (int i = 0; i < length - 1; i++)
+    {
+        if (refutetarget < BOARDSIZE && GETFROM(move[i].code) == refutetarget)
+            move[i].value |= NMREFUTEVAL;
+        for (int j = length - 1; j > i; j--)
+            if (move[i].value < move[j].value)
+                swap(move[i], move[j]);
+        if (move[i].value < limit)
+            break;
+    }
+}
+
 
 
 chessmovesequencelist::chessmovesequencelist()
@@ -583,6 +615,100 @@ void chessposition::getpvline(int depth, int pvnum)
 }
 
 
+bool chessposition::moveIsPseudoLegal(uint32_t c)
+{
+    if (!c)
+        return false;
+
+#if 0
+    chessmovelist checklist;
+    checklist.length = getMoves(&checklist.move[0]);
+#endif
+    int from = GETFROM(c);
+    int to = GETTO(c);
+    PieceCode pc = GETPIECE(c);
+    PieceCode capture = GETCAPTURE(c);
+    PieceType p = pc >> 1;
+    int s2m = state & S2MMASK;
+
+    // correct s2m; FIXME: is this test needed?
+    if ((pc & S2MMASK) ^ s2m)
+        return false;
+
+    // correct piece?
+    if (mailbox[from] != pc)
+        return false;
+
+    // correct capture?
+    if (mailbox[to] != capture && !GETEPCAPTURE(c))
+        return false;
+
+    // slider? test for free line
+    if (shifting[p] && (betweenMask[from][to] & (occupied00[0] | occupied00[1])))
+        return false;
+
+    if (p == PAWN)
+    {
+        // pawn specials
+        if ((from ^ to) & 16)
+        {
+            // double push
+            if (betweenMask[from][to] & (occupied00[0] | occupied00[1]))
+                // blocked
+                return false;
+
+            int ept = GETEPT(c);
+            {
+                if (!ept == (bool)(epthelper[to] & piece00[pc ^ 1]))
+                    return false;
+            }
+        }
+    }
+
+
+    if (p == KING && ((from ^ to) & 2))
+    {
+        // test for correct castle
+        if (isAttacked(from))
+            return false;
+
+        U64 occupied = occupied00[0] | occupied00[1];
+
+        if (from > to)
+        {
+            //queen castle
+            if (occupied & (s2m ? 0x0e00000000000000 : 0x000000000000000e)
+                || isAttacked(from - 1)
+                || isAttacked(from - 2)
+                || !(state & QCMASK[s2m]))
+            {
+                return false;
+            }
+        }
+        else
+        {
+            // king castle
+            if (occupied & (s2m ? 0x6000000000000000 : 0x0000000000000060)
+                || isAttacked(from + 1)
+                || isAttacked(from + 2)
+                || !(state & KCMASK[s2m]))
+            {
+                return false;
+            }
+        }
+    }
+#if 0
+    for (int i = 0; i < checklist.length; i++)
+    {
+        if (checklist.move[i].code == c)
+            return true;
+    }
+
+    printf("Alarm! FEN=%s\n", toFen().c_str());
+#endif
+    return true;
+}
+
 
 inline void chessposition::testMove_old(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, PieceCode piece)
 {
@@ -769,22 +895,6 @@ void chessposition::debugeval(const char* format, ...)
 #endif
 
 
-U64 knight_attacks[64];
-U64 king_attacks[64];
-U64 pawn_attacks_free[64][2];
-U64 pawn_attacks_free_double[64][2];
-U64 pawn_attacks_occupied[64][2];
-U64 epthelper[64];
-U64 passedPawnMask[64][2];
-U64 filebarrierMask[64][2];
-U64 neighbourfilesMask[64];
-U64 phalanxMask[64];
-U64 kingshieldMask[64][2];
-U64 kingdangerMask[64][2];
-U64 fileMask[64];
-U64 rankMask[64];
-int castleindex[64][64] = { 0 };
-
 // shameless copy from http://chessprogramming.wikispaces.com/Magic+Bitboards#Plain
 U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 U64 mRookAttacks[64][1 << ROOKINDEXBITS];
@@ -885,6 +995,7 @@ void initBitmaphelper()
 
         for (int j = 0; j < 64; j++)
         {
+            betweenMask[from][j] = 0ULL;
             if (abs(FILE(from) - FILE(j)) == 1)
             {
                 neighbourfilesMask[from] |= BITSET(j);
@@ -892,9 +1003,24 @@ void initBitmaphelper()
                     phalanxMask[from] |= BITSET(j);
             }
             if (FILE(from) == FILE(j))
+            {
                 fileMask[from] |= BITSET(j);
+                for (int i = min(RANK(from), RANK(j)) + 1; i < max(RANK(from), RANK(j)); i++)
+                    betweenMask[from][j] |= BITSET(INDEX(i, FILE(from)));
+            }
             if (RANK(from) == RANK(j))
+            {
                 rankMask[from] |= BITSET(j);
+                for (int i = min(FILE(from), FILE(j)) + 1; i < max(FILE(from), FILE(j)); i++)
+                    betweenMask[from][j] |= BITSET(INDEX(RANK(from), i));
+            }
+            if (from != j && abs(RANK(from) - RANK(j)) == abs(FILE(from) - FILE(j)))
+            {
+                int dx = (FILE(from) < FILE(j) ? 1 : -1);
+                int dy = (RANK(from) < RANK(j) ? 1 : -1);
+                for (int i = 1; FILE(from) +  i * dx != FILE(j); i++)
+                    betweenMask[from][j] |= BITSET(INDEX(RANK(from) + i * dy, FILE(from) + i * dx));
+            }
         }
 
         for (int j = 0; j < 8; j++)
@@ -1369,7 +1495,7 @@ inline void chessposition::testMove_old(chessmovelist *movelist, int from, int t
 #endif
 
 
-template <MoveType Mt> chessmove* CreateMovelist(chessposition *pos, chessmove* m)
+template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
 {
     int s2m = pos->state & S2MMASK;
     U64 occupiedbits = (pos->occupied00[0] | pos->occupied00[1]);
@@ -1378,7 +1504,7 @@ template <MoveType Mt> chessmove* CreateMovelist(chessposition *pos, chessmove* 
     U64 frombits, tobits;
     int from, to;
     PieceCode pc;
-
+    chessmove* m = mstart;
 
     if (Mt & QUIET)
         targetbits |= emptybits;
@@ -1452,7 +1578,7 @@ template <MoveType Mt> chessmove* CreateMovelist(chessposition *pos, chessmove* 
                     if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
                     {
                         pos->unplayMove(m - 1);
-                        return m;
+                        return 1;
                     }
                     tobits ^= BITSET(to);
                 }
@@ -1469,7 +1595,7 @@ template <MoveType Mt> chessmove* CreateMovelist(chessposition *pos, chessmove* 
                     if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
                     {
                         pos->unplayMove(m - 1);
-                        return m;
+                        return 1;
                     }
                     tobits ^= BITSET(to);
                 }
@@ -1485,7 +1611,7 @@ template <MoveType Mt> chessmove* CreateMovelist(chessposition *pos, chessmove* 
                 if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
                 {
                     pos->unplayMove(m - 1);
-                    return m;
+                    return 1;
                 }
                 tobits ^= BITSET(to);
             }
@@ -1501,7 +1627,7 @@ template <MoveType Mt> chessmove* CreateMovelist(chessposition *pos, chessmove* 
                         if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
                         {
                             pos->unplayMove(m - 1);
-                            return m;
+                            return 1;
                         }
                     }
                 }
@@ -1515,7 +1641,7 @@ template <MoveType Mt> chessmove* CreateMovelist(chessposition *pos, chessmove* 
                         if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
                         {
                             pos->unplayMove(m - 1);
-                            return m;
+                            return 1;
                         }
                     }
                 }
@@ -1539,7 +1665,7 @@ template <MoveType Mt> chessmove* CreateMovelist(chessposition *pos, chessmove* 
                     if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
                     {
                         pos->unplayMove(m - 1);
-                        return m;
+                        return 1;
                     }
                     tobits ^= BITSET(to);
                 }
@@ -1548,33 +1674,28 @@ template <MoveType Mt> chessmove* CreateMovelist(chessposition *pos, chessmove* 
             break;
         }
     }
-    return m;
+    return (int)(m - mstart);
 }
 
 
-// Default movelist generator; ordered captures before quiets
 int chessposition::getMoves(chessmove *m, MoveType t)
 {
-    chessmove *mlast = m;
     switch (t)
     {
         case QUIET:
-            mlast = CreateMovelist<QUIET>(this, mlast);
-            break;
+            return CreateMovelist<QUIET>(this, m);
         case CAPTURE:
-            mlast = CreateMovelist<CAPTURE>(this, mlast);
+            return CreateMovelist<CAPTURE>(this, m);
             break;
         case TACTICAL:
-            mlast = CreateMovelist<TACTICAL>(this, mlast);
+            return CreateMovelist<TACTICAL>(this, m);
             break;
         case QUIETWITHCHECK:
-            mlast = CreateMovelist<QUIETWITHCHECK>(this, mlast);
+            return CreateMovelist<QUIETWITHCHECK>(this, m);
             break;
         default:
-            mlast = CreateMovelist<ALL>(this, mlast);
+            return CreateMovelist<ALL>(this, m);
     }
-
-    return (int)(mlast - m);
 }
 
 
@@ -1800,24 +1921,94 @@ int chessposition::see(int from, int to)
 }
 
 
-void MoveSelector::SetPreferredMoves(uint32_t hshm, uint32_t kllm1, uint32_t kllm2, uint32_t rftm)
-{
-    hashmove = hshm;
-    killermove1 = kllm1;
-    killermove2 = kllm2;
-    refutemove = rftm;
-}
-
-
 MoveSelector::~MoveSelector()
 {
-    if (captures)
         delete captures;
-
-    if (quiets)
         delete quiets;
 }
 
+void MoveSelector::SetPreferredMoves(chessposition *p, uint32_t hshm, uint32_t kllm1, uint32_t kllm2, int nmrfttarget)
+{
+    pos = p;
+    hashmove.code = hshm;
+    if (kllm1 != hshm)
+        killermove1.code = kllm1;
+    if (kllm2 != hshm)
+        killermove2.code = kllm2;
+    refutetarget = nmrfttarget;
+}
+
+chessmove* MoveSelector::next()
+{
+    switch (state)
+    {
+    case INITSTATE:
+        //printf("init\n");
+        state++;
+    case HASHMOVESTATE:
+        state++;
+        if (pos->moveIsPseudoLegal(hashmove.code))
+        {
+            //printf("Hashmove %x\n", hashmove.code);
+            return &hashmove;
+        }
+    case TACTICALINITSTATE:
+        state++;
+        captures = new chessmovelist;
+        captures->length = CreateMovelist<TACTICAL>(pos, &captures->move[0]);
+        captures->sort(0);
+        capturemovenum = 0;
+    case TACTICALSTATE:
+        while (capturemovenum < captures->length 
+            && captures->move[capturemovenum].code == hashmove.code)
+        {
+            capturemovenum++;
+        }
+        if (capturemovenum < captures->length)
+        {
+            //printf("Captmove %x\n", captures->move[capturemovenum].code);
+            return &captures->move[capturemovenum++];
+        }
+        state++;
+    case KILLERMOVE1STATE:
+        state++;
+        if (pos->moveIsPseudoLegal(killermove1.code))
+        {
+            //printf("kil1move %x\n", killermove1.code);
+            return &killermove1;
+        }
+    case KILLERMOVE2STATE:
+        state++;
+        if (pos->moveIsPseudoLegal(killermove2.code))
+        {
+            //printf("kil2move %x\n", killermove2.code);
+            return &killermove2;
+        }
+    case QUIETINITSTATE:
+        state++;
+        quiets = new chessmovelist;
+        quiets->length = CreateMovelist<QUIET>(pos, &quiets->move[0]);
+        quiets->sort(0, refutetarget);
+        quietmovenum = 0;
+    case QUIETSTATE:
+        while (quietmovenum < quiets->length
+            && (quiets->move[quietmovenum].code == hashmove.code
+                || quiets->move[quietmovenum].code == killermove1.code
+                || quiets->move[quietmovenum].code == killermove2.code))
+        {
+            quietmovenum++;
+        }
+        if (quietmovenum < quiets->length)
+        {
+            //printf("quitmove %x\n", quiets->move[quietmovenum].code);
+            return &quiets->move[quietmovenum++];
+        }
+        state++;
+    default:
+        //printf("null\n");
+        return nullptr;
+    }
+}
 
 
 

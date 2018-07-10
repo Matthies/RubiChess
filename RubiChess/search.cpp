@@ -13,17 +13,6 @@ void searchinit()
             reductiontable[d][m] = (int)round(log(d) * log(m) / 1.9);
 }
 
-static void sortMoves(chessmovelist* movelist, int limit)
-{
-    for (int i = 0; i < movelist->length - 1; i++)
-    {
-        for (int j = i + 1; j < movelist->length; j++)
-            if (movelist->move[i].value < movelist->move[j].value)
-                swap(movelist->move[i], movelist->move[j]);
-        if (movelist->move[i].value < limit)
-            break;
-    }
-}
 
 int getQuiescence(int alpha, int beta, int depth)
 {
@@ -56,7 +45,8 @@ int getQuiescence(int alpha, int beta, int depth)
     else
         movelist->length = pos.getMoves(&movelist->move[0], TACTICAL);
 
-    sortMoves(movelist, lva[QUEEN]);
+    //movelist->sort(lva[QUEEN]);
+    movelist->sort(0);
 
     for (int i = 0; i < movelist->length; i++)
     {
@@ -151,7 +141,6 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     int bestscore = NOSCORE;
     uint32_t bestcode = 0;
     int eval_type = HASHALPHA;
-    chessmovelist *newmoves;
     chessmove *m;
     int extendall = 0;
     int reduction;
@@ -276,12 +265,19 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 #endif
     }
 
+    MoveSelector ms = {};
+    ms.SetPreferredMoves(&pos, hashmovecode, pos.killer[0][pos.ply], pos.killer[1][pos.ply], nmrefutetarget);
+
+#if 0
+    chessmovelist *newmoves;
     newmoves = new chessmovelist;
     newmoves->length = pos.getMoves(&newmoves->move[0]);
-
+#endif
 #ifdef DEBUG
     en.nopvnodes++;
 #endif
+
+#if 0
     for (int i = 0; i < newmoves->length; i++)
     {
         m = &newmoves->move[i];
@@ -307,19 +303,24 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             m->value |= NMREFUTEVAL;
         }
     }
-
+    int tempi = 0;
+#endif
     int  LegalMoves = 0;
-    for (int i = 0; i < newmoves->length; i++)
+    while (m = ms.next())
     {
-        for (int j = i + 1; j < newmoves->length; j++)
+#if 0
+        for (int j = tempi + 1; j < newmoves->length; j++)
         {
-            if (newmoves->move[i] < newmoves->move[j])
+            if (newmoves->move[tempi] < newmoves->move[j])
             {
-                swap(newmoves->move[i], newmoves->move[j]);
+                swap(newmoves->move[tempi], newmoves->move[j]);
             }
         }
-
-        m = &newmoves->move[i];
+        //m = &newmoves->move[i];
+        if (m->code != newmoves->move[tempi].code)
+            printf("Alarm: %s\n", pos.toFen().c_str());
+        tempi++;
+#endif
         int moveExtension = 0;
         isLegal = pos.playMove(m);
         if (isLegal)
@@ -409,7 +410,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             {
                 // At least one move is found and we can safely exit here
                 // Lets hope this doesn't take too much time...
-                delete newmoves;
+                //delete newmoves;
                 return alpha;
             }
 
@@ -438,7 +439,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 #endif
                     PDEBUG(depth, "(alphabeta) score=%d >= beta=%d  -> cutoff\n", score, beta);
                     tp.addHash(score, HASHBETA, effectiveDepth, bestcode);
-                    delete newmoves;
+                    //delete newmoves;
                     return score;   // fail soft beta-cutoff
                 }
 
@@ -452,7 +453,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         }
     }
 
-    delete newmoves;
+    //delete newmoves;
 
     if (LegalMoves == 0)
     {

@@ -158,6 +158,9 @@ extern int tuningratio;
 //
 // board stuff
 //
+#define BOARDSIZE 64
+#define RANKMASK 0x38
+
 #define BUFSIZE 4096
 
 #define PieceType unsigned int
@@ -338,6 +341,8 @@ extern U64 fileMask[64];
 // 00000000
 extern U64 rankMask[64];
 
+extern U64 betweenMask[64][64];
+
 struct chessmovestack
 {
     int state;
@@ -398,30 +403,33 @@ public:
 	string toString();
 	string toStringWithValue();
 	void print();
+    void sort(int limit, const int refutetarget = BOARDSIZE);
 };
+
+
+enum MoveSelector_State { INITSTATE, HASHMOVESTATE, TACTICALINITSTATE, TACTICALSTATE, KILLERMOVE1STATE, KILLERMOVE2STATE, QUIETINITSTATE, QUIETSTATE };
 
 class MoveSelector
 {
+    chessposition *pos;
+    int state;
     chessmovelist* captures;
     chessmovelist* quiets;
-
-    enum { INIT, HASHMOVE, KILLERMOVE1, KILLERMOVE2, REFUTEMOVE, CAPTURE, QUIET } state;
-    uint32_t hashmove;
-    uint32_t killermove1;
-    uint32_t killermove2;
-    uint32_t refutemove;
+    chessmove hashmove;
+    chessmove killermove1;
+    chessmove killermove2;
+    int refutetarget;
+    int capturemovenum;
+    int quietmovenum;
 
 public:
-    void SetPreferredMoves(uint32_t hshm, uint32_t kllm1, uint32_t kllm2, uint32_t rftm);
+    void SetPreferredMoves(chessposition *p, uint32_t hshm, uint32_t kllm1, uint32_t kllm2, int nmrfttarget);
     ~MoveSelector();
     chessmove* next();
 };
 
 extern U64 pawn_attacks_occupied[64][2];
 extern U64 knight_attacks[64];
-
-#define BOARDSIZE 64
-#define RANKMASK 0x38
 
 
 struct SMagic {
@@ -446,7 +454,7 @@ enum EvalTrace { NOTRACE, TRACE};
 
 enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7, QUIETWITHCHECK = 9 };
 
-template <MoveType Mt> chessmove* CreateMovelist(chessposition *pos, chessmove* m);
+template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* m);
 
 class chessposition
 {
@@ -515,6 +523,7 @@ public:
     void playNullMove();
     void unplayNullMove();
     void getpvline(int depth, int pvnum);
+    bool moveIsPseudoLegal(uint32_t c);
     template <EvalTrace> int getPositionValue();
     template <EvalTrace> int getPawnValue(pawnhashentry **entry);
     template <EvalTrace> int getValue();

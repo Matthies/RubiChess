@@ -29,3 +29,7 @@ STC auf Server:
 Score of RubiChess-Bitboard-mg4h vs RubiChess-Bitboard-ms: 812 - 734 - 937  [0.516] 2483
 Elo difference: 10.92 +/- 10.77
 SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+LTC auf Server;
+Score of RubiChess-Bitboard-mg4h vs RubiChess-Bitboard-ms: 738 - 668 - 1278  [0.513] 2684
+Elo difference: 9.06 +/- 9.50
+SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
