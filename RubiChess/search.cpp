@@ -46,11 +46,10 @@ int getQuiescence(int alpha, int beta, int depth)
         movelist->length = pos.getMoves(&movelist->move[0], TACTICAL);
 
     movelist->sort(lva[QUEEN]);
-    //movelist->sort(0);
 
     for (int i = 0; i < movelist->length; i++)
     {
-        PDEBUG(depth, "(getQuiscence) testing move %s ... LegalMovesPossible=%d Capture=%d Promotion=%d see=%d \n", movelist.move[i].toString().c_str(), (LegalMovesPossible?1:0), GETCAPTURE(movelist.move[i].code), GETPROMOTION(movelist.move[i].code), pos.see(GETFROM(movelist.move[i].code), GETTO(movelist.move[i].code)));
+        PDEBUG(depth, "(getQuiscence) testing move %s ... LegalMovesPossible=%d Capture=%d Promotion=%d see=%d \n", movelist->move[i].toString().c_str(), (LegalMovesPossible?1:0), GETCAPTURE(movelist->move[i].code), GETPROMOTION(movelist->move[i].code), pos.see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)));
         bool MoveIsUsefull = (pos.isCheck
             || ISPROMOTION(movelist->move[i].code)
             || (patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin > alpha
@@ -109,17 +108,7 @@ int getQuiescence(int alpha, int beta, int depth)
             delete movelist;
             return bestscore;
         }
-#if 0
-        movelist.length = pos.getMoves(&movelist.move[0], QUIETWITHCHECK);
-        for (int i = 0; i < movelist.length; i++)
-        {
-            if (pos.playMove(&(movelist.move[i])))
-            {
-                pos.unplayMove(&(movelist.move[i]));
-                return bestscore;
-            }
-        }
-#endif
+
         // It's a stalemate
         delete movelist;
         return SCOREDRAW;
@@ -268,59 +257,13 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     MoveSelector ms = {};
     ms.SetPreferredMoves(&pos, hashmovecode, pos.killer[0][pos.ply], pos.killer[1][pos.ply], nmrefutetarget);
 
-#if 0
-    chessmovelist *newmoves;
-    newmoves = new chessmovelist;
-    newmoves->length = pos.getMoves(&newmoves->move[0]);
-#endif
 #ifdef DEBUG
     en.nopvnodes++;
 #endif
 
-#if 0
-    for (int i = 0; i < newmoves->length; i++)
-    {
-        m = &newmoves->move[i];
-        //PV moves gets top score
-        if (hashmovecode == m->code)
-        {
-#ifdef DEBUG
-            en.pvnodes++;
-#endif
-            m->value = PVVAL;
-        }
-        // killermoves gets score better than non-capture
-        else if (pos.killer[0][pos.ply] == m->code)
-        {
-            m->value = KILLERVAL1;
-        }
-        else if (pos.killer[1][pos.ply] == m->code)
-        {
-            m->value = KILLERVAL2;
-        }
-        else if (!ISCAPTURE(m->code) && GETFROM(m->code) == nmrefutetarget)
-        {
-            m->value |= NMREFUTEVAL;
-        }
-    }
-    int tempi = 0;
-#endif
     int  LegalMoves = 0;
     while (m = ms.next())
     {
-#if 0
-        for (int j = tempi + 1; j < newmoves->length; j++)
-        {
-            if (newmoves->move[tempi] < newmoves->move[j])
-            {
-                swap(newmoves->move[tempi], newmoves->move[j]);
-            }
-        }
-        //m = &newmoves->move[i];
-        if (m->code != newmoves->move[tempi].code)
-            printf("Alarm: %s\n", pos.toFen().c_str());
-        tempi++;
-#endif
         int moveExtension = 0;
         isLegal = pos.playMove(m);
         if (isLegal)
@@ -410,7 +353,6 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             {
                 // At least one move is found and we can safely exit here
                 // Lets hope this doesn't take too much time...
-                //delete newmoves;
                 return alpha;
             }
 
@@ -439,21 +381,18 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 #endif
                     PDEBUG(depth, "(alphabeta) score=%d >= beta=%d  -> cutoff\n", score, beta);
                     tp.addHash(score, HASHBETA, effectiveDepth, bestcode);
-                    //delete newmoves;
                     return score;   // fail soft beta-cutoff
                 }
 
                 if (score > alpha)
                 {
-                    PDEBUG(depth, "(alphabeta) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, newmoves->move[i].toString().c_str(), pos.actualpath.toString().c_str());
+                    PDEBUG(depth, "(alphabeta) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, m->toString().c_str(), pos.actualpath.toString().c_str());
                     alpha = score;
                     eval_type = HASHEXACT;
                 }
             }
         }
     }
-
-    //delete newmoves;
 
     if (LegalMoves == 0)
     {

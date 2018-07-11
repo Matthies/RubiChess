@@ -509,12 +509,8 @@ public:
     int phase();
     PieceType Piece(int index);
     bool isAttacked(int index);
-    U64 attacksTo(int index, int side);
     int getLeastValuablePieceIndex(int to, unsigned int bySide, PieceCode *piece);
     int see(int from, int to);
-    void testMove_old(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
-    void testMove_old(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
-    chessmovelist* getMoves_old();
     int getMoves(chessmove *m, MoveType t = ALL);
     void getRootMoves();
     void tbFilterRootMoves();

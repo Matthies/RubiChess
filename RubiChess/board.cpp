@@ -620,22 +620,14 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
     if (!c)
         return false;
 
-#if 0
-    chessmovelist checklist;
-    checklist.length = getMoves(&checklist.move[0]);
-#endif
     int from = GETFROM(c);
     int to = GETTO(c);
     PieceCode pc = GETPIECE(c);
     PieceCode capture = GETCAPTURE(c);
     PieceType p = pc >> 1;
-    int s2m = state & S2MMASK;
 
-    // correct s2m; FIXME: is this test needed?
-#if 0
-    if ((pc & S2MMASK) ^ s2m)
-        return false;
-#endif
+    // correct s2m? ->test removed as it seems not necessary
+
     // correct piece?
     if (mailbox[from] != pc)
         return false;
@@ -658,6 +650,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
                 // blocked
                 return false;
 
+            // test if "making ep capture possible" is both true or false
             int ept = GETEPT(c);
             {
                 if (!ept == (bool)(epthelper[to] & piece00[pc ^ 1]))
@@ -674,6 +667,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
             return false;
 
         U64 occupied = occupied00[0] | occupied00[1];
+        int s2m = state & S2MMASK;
 
         if (from > to)
         {
@@ -698,44 +692,8 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
             }
         }
     }
-#if 0
-    for (int i = 0; i < checklist.length; i++)
-    {
-        if (checklist.move[i].code == c)
-            return true;
-    }
 
-    printf("Alarm! FEN=%s\n", toFen().c_str());
-#endif
     return true;
-}
-
-
-inline void chessposition::testMove_old(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, PieceCode piece)
-{
-    chessmove cm(from, to, promote, capture, piece);
-    if (capture != BLANK)
-    {
-        cm.value = (mvv[capture >> 1] | lva[piece >> 1]);
-    }
-    else {
-        cm.value = history[piece >> 1][to];
-    }
-    movelist->move[movelist->length++] = cm;
-}
-
-
-inline void chessposition::testMove_old(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece)
-{
-    chessmove cm(from, to, promote, capture, ept, piece);
-    if (capture != BLANK)
-    {
-        cm.value = (mvv[capture >> 1] | lva[piece >> 1]);
-    }
-    else {
-        cm.value = history[piece >> 1][to];
-    }
-    movelist->move[movelist->length++] = cm;
 }
 
 
@@ -1480,21 +1438,6 @@ template <MoveType Mt> inline void appendMoveToList(chessposition *pos, chessmov
     (*m)++;
 }
 
-#if 0
-inline void chessposition::testMove_old(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece)
-{
-    chessmove cm(from, to, promote, capture, ept, piece);
-    if (capture != BLANK)
-    {
-        cm.value = (mvv[capture >> 1] | lva[piece >> 1]);
-    }
-    else {
-        cm.value = history[piece >> 1][to];
-    }
-    movelist->move[movelist->length++] = cm;
-}
-#endif
-
 
 template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
 {
@@ -1701,134 +1644,6 @@ int chessposition::getMoves(chessmove *m, MoveType t)
 
 
 
-chessmovelist* chessposition::getMoves_old()
-{
-    int s2m = state & S2MMASK;
-    U64 occupiedbits = (occupied00[0] | occupied00[1]);
-    U64 emptybits = ~occupiedbits;
-    U64 opponentorfreebits = ~occupied00[s2m];
-    U64 frombits, tobits;
-    int from, to;
-    PieceCode pc;
-
-    chessmovelist* result = (chessmovelist*)malloc(sizeof(chessmovelist));
-    result->length = 0;
-    for (int p = PAWN; p <= KING; p++)
-    {
-        pc = (PieceCode)((p << 1) | s2m);
-        frombits = piece00[pc];
-        switch (p)
-        {
-        case PAWN:
-            while (LSB(from, frombits))
-            {
-                tobits = (pawn_attacks_free[from][s2m] & emptybits);
-                if (tobits)
-                    tobits |= (pawn_attacks_free_double[from][s2m] & emptybits);
-                /* FIXME: ept & EPTSIDEMASK[s2m] is a quite ugly test for correct side respecting null move pruning */
-                tobits |= (pawn_attacks_occupied[from][s2m] & (occupied00[s2m ^ 1] | ((ept & EPTSIDEMASK[s2m]) ? BITSET(ept) : 0ULL)));
-                while (LSB(to, tobits))
-                {
-                    if (ept && ept == to)
-                    {
-                        testMove_old(result, from, to, BLANK, (PieceCode)(WPAWN | (s2m ^ 1)), ISEPCAPTURE, pc);
-                    }
-                     else if (PROMOTERANK(to))
-                    {
-                        testMove_old(result, from, to, (PieceCode)((QUEEN << 1) | s2m), mailbox[to], pc);
-                        testMove_old(result, from, to, (PieceCode)((ROOK << 1) | s2m), mailbox[to], pc);
-                        testMove_old(result, from, to, (PieceCode)((BISHOP << 1) | s2m), mailbox[to], pc);
-                        testMove_old(result, from, to, (PieceCode)((KNIGHT << 1) | s2m), mailbox[to], pc);
-                    }
-                    else if (!((from ^ to) & 0x8) && epthelper[to] & piece00[pc ^ 1])
-                    {
-                        // EPT possible for opponent
-                        testMove_old(result, from, to, BLANK, BLANK, (from + to) >> 1, pc);
-                    }
-                    else {
-                        testMove_old(result, from, to, BLANK, mailbox[to], pc);
-                    }
-                    tobits ^= BITSET(to);
-                }
-                frombits ^= BITSET(from);
-            }
-            break;
-        case KNIGHT:
-            while (LSB(from, frombits))
-            {
-                tobits = (knight_attacks[from] & opponentorfreebits);
-                while (LSB(to, tobits))
-                {
-                    testMove_old(result, from, to, BLANK, mailbox[to], pc);
-                    tobits ^= BITSET(to);
-                }
-                frombits ^= BITSET(from);
-            }
-            break;
-        case KING:
-            from = kingpos[s2m];
-            tobits = (king_attacks[from] & opponentorfreebits);
-            while (LSB(to, tobits))
-            {
-                testMove_old(result, from, to, BLANK, mailbox[to], pc);
-                tobits ^= BITSET(to);
-            }
-            if (state & QCMASK[s2m])
-            {
-                /* queen castle */
-                if (!(occupiedbits & (s2m ? 0x0e00000000000000 : 0x000000000000000e))
-                    && !isAttacked(from) && !isAttacked(from - 1) && !isAttacked(from - 2))
-                {
-                    testMove_old(result, from, from - 2, BLANK, BLANK, pc);
-                }
-            }
-            if (state & KCMASK[s2m])
-            {
-                /* kink castle */
-                if (!(occupiedbits & (s2m ? 0x6000000000000000 : 0x0000000000000060))
-                    && !isAttacked(from) && !isAttacked(from + 1) && !isAttacked(from + 2))
-                {
-                    testMove_old(result, from, from + 2, BLANK, BLANK, pc);
-                }
-            }
-            break;
-        default:
-            tobits = 0ULL;
-            while (LSB(from, frombits))
-            {
-                if (shifting[p] & 0x1)
-                {
-                    tobits |= (MAGICBISHOPATTACKS(occupiedbits, from) & opponentorfreebits);
-                }
-                if (shifting[p] & 0x2)
-                {
-                    tobits |= (MAGICROOKATTACKS(occupiedbits, from) & opponentorfreebits);
-                }
-                while (LSB(to, tobits))
-                {
-                    testMove_old(result, from, to, BLANK, mailbox[to], pc);
-                    tobits ^= BITSET(to);
-                }
-                frombits ^= BITSET(from);
-            }
-            break;
-        }
-    }
-    return result;
-}
-
-
-#if 0 // not used anymore
-U64 chessposition::attacksTo(int index, int side)
-{
-    return (knight_attacks[index] & piece00[(KNIGHT << 1) | side])
-        | (king_attacks[index] & piece00[(KING << 1) | side])
-        | (pawn_attacks_occupied[index][side ^ S2MMASK] & piece00[(PAWN << 1) | side])
-        | (MAGICROOKATTACKS(occupied00[0] | occupied00[1], index) & (piece00[(ROOK << 1) | side] | piece00[(QUEEN << 1) | side]))
-        | (MAGICBISHOPATTACKS(occupied00[0] | occupied00[1], index) & (piece00[(BISHOP << 1) | side] | piece00[(QUEEN << 1) | side]));
-}
-#endif
-
 bool chessposition::isAttacked(int index)
 {
     int opponent = (state & S2MMASK) ^ 1;
@@ -1944,25 +1759,16 @@ chessmove* MoveSelector::next()
     switch (state)
     {
     case INITSTATE:
-        //printf("init\n");
         state++;
     case HASHMOVESTATE:
         state++;
         if (pos->moveIsPseudoLegal(hashmove.code))
         {
-            //printf("Hashmove %x\n", hashmove.code);
+#ifdef DEBUG
+            en.pvnodes++;
+#endif
             return &hashmove;
         }
-#if 0
-        else {
-            if (hashmove.code)
-            {
-                printf("wtf??\n");
-                pos->print();
-                pos->moveIsPseudoLegal(hashmove.code);
-            }
-        }
-#endif
     case TACTICALINITSTATE:
         state++;
         captures = new chessmovelist;
@@ -1977,7 +1783,6 @@ chessmove* MoveSelector::next()
         }
         if (capturemovenum < captures->length)
         {
-            //printf("Captmove %x\n", captures->move[capturemovenum].code);
             return &captures->move[capturemovenum++];
         }
         state++;
@@ -1985,14 +1790,12 @@ chessmove* MoveSelector::next()
         state++;
         if (pos->moveIsPseudoLegal(killermove1.code))
         {
-            //printf("kil1move %x\n", killermove1.code);
             return &killermove1;
         }
     case KILLERMOVE2STATE:
         state++;
         if (pos->moveIsPseudoLegal(killermove2.code))
         {
-            //printf("kil2move %x\n", killermove2.code);
             return &killermove2;
         }
     case QUIETINITSTATE:
@@ -2011,12 +1814,10 @@ chessmove* MoveSelector::next()
         }
         if (quietmovenum < quiets->length)
         {
-            //printf("quitmove %x\n", quiets->move[quietmovenum].code);
             return &quiets->move[quietmovenum++];
         }
         state++;
     default:
-        //printf("null\n");
         return nullptr;
     }
 }
