@@ -45,8 +45,8 @@ int getQuiescence(int alpha, int beta, int depth)
     else
         movelist->length = pos.getMoves(&movelist->move[0], TACTICAL);
 
-    //movelist->sort(lva[QUEEN]);
-    movelist->sort(0);
+    movelist->sort(lva[QUEEN]);
+    //movelist->sort(0);
 
     for (int i = 0; i < movelist->length; i++)
     {

@@ -170,7 +170,7 @@ void chessmovelist::sort(int limit, const int refutetarget)
     {
         if (refutetarget < BOARDSIZE && GETFROM(move[i].code) == refutetarget)
             move[i].value |= NMREFUTEVAL;
-        for (int j = length - 1; j > i; j--)
+        for (int j = i + 1; j < length; j++)
             if (move[i].value < move[j].value)
                 swap(move[i], move[j]);
         if (move[i].value < limit)
@@ -632,9 +632,10 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
     int s2m = state & S2MMASK;
 
     // correct s2m; FIXME: is this test needed?
+#if 0
     if ((pc & S2MMASK) ^ s2m)
         return false;
-
+#endif
     // correct piece?
     if (mailbox[from] != pc)
         return false;
@@ -650,7 +651,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
     if (p == PAWN)
     {
         // pawn specials
-        if ((from ^ to) & 16)
+        if (((from ^ to) == 16))
         {
             // double push
             if (betweenMask[from][to] & (occupied00[0] | occupied00[1]))
@@ -666,7 +667,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
     }
 
 
-    if (p == KING && ((from ^ to) & 2))
+    if (p == KING && (((from ^ to) & 3) == 2))
     {
         // test for correct castle
         if (isAttacked(from))
@@ -1952,6 +1953,16 @@ chessmove* MoveSelector::next()
             //printf("Hashmove %x\n", hashmove.code);
             return &hashmove;
         }
+#if 0
+        else {
+            if (hashmove.code)
+            {
+                printf("wtf??\n");
+                pos->print();
+                pos->moveIsPseudoLegal(hashmove.code);
+            }
+        }
+#endif
     case TACTICALINITSTATE:
         state++;
         captures = new chessmovelist;
