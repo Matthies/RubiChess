@@ -41,3 +41,10 @@ Allerdings:
 Started game 1812 of 20000 (RubiChess-Bitboard-mg4h vs RubiChess-Bitboard-mg5c)
 Illegal PV move b6a5 from RubiChess-Bitboard-mg5c
 Ev. ist da noch etwas in isPseudoLegal nicht berücksichtigt? z.B. EP war im Killermove möglich, in der aktuellen Position aber nicht?
+Bug gefixt.
+Abschließender STC-Test gegen Master:
+Score of RubiChess-Bitboard-mg6 vs RubiChess-Bitboard-ms: 381 - 313 - 418  [0.531] 1112
+Elo difference: 21.27 +/- 16.13
+SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+=> Pull request
+
