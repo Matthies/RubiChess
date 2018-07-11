@@ -33,3 +33,11 @@ LTC auf Server;
 Score of RubiChess-Bitboard-mg4h vs RubiChess-Bitboard-ms: 738 - 668 - 1278  [0.513] 2684
 Elo difference: 9.06 +/- 9.50
 SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+
+Score of RubiChess-Bitboard-mg5c vs RubiChess-Bitboard-mg4h: 602 - 529 - 714  [0.520] 1845
+Elo difference: 13.75 +/- 12.40
+SPRT: llr 1.4, lbound -1.39, ubound 1.39 - H1 was accepted
+Allerdings:
+Started game 1812 of 20000 (RubiChess-Bitboard-mg4h vs RubiChess-Bitboard-mg5c)
+Illegal PV move b6a5 from RubiChess-Bitboard-mg5c
+Ev. ist da noch etwas in isPseudoLegal nicht berücksichtigt? z.B. EP war im Killermove möglich, in der aktuellen Position aber nicht?

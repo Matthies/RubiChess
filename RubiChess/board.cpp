@@ -657,6 +657,11 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
                     return false;
             }
         }
+        else
+        {
+            if (GETEPCAPTURE(c) && ept != to)
+                return false;
+        }
     }
 
 
