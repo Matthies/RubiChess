@@ -2,6 +2,23 @@
 #include "RubiChess.h"
 
 U64 mybitset[64];
+U64 knight_attacks[64];
+U64 king_attacks[64];
+U64 pawn_attacks_free[64][2];
+U64 pawn_attacks_free_double[64][2];
+U64 pawn_attacks_occupied[64][2];
+U64 epthelper[64];
+U64 passedPawnMask[64][2];
+U64 filebarrierMask[64][2];
+U64 neighbourfilesMask[64];
+U64 phalanxMask[64];
+U64 kingshieldMask[64][2];
+U64 kingdangerMask[64][2];
+U64 fileMask[64];
+U64 rankMask[64];
+U64 betweenMask[64][64];
+int castleindex[64][64] = { 0 };
+
 
 PieceType GetPieceType(char c)
 {
@@ -72,12 +89,22 @@ chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture, int
     code = (piece << 28) | (ept << 20) | (capture << 16) | (promote << 12) | (from << 6) | to;
 }
 
-
 chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture, PieceCode piece)
 {
     code = (piece << 28) | (capture << 16) | (promote << 12) | (from << 6) | to;
 }
 
+
+chessmove::chessmove(int from, int to, PieceCode piece)
+{
+    code = (piece << 28) | (from << 6) | to;
+}
+
+
+chessmove::chessmove(int from, int to, PieceCode capture, PieceCode piece)
+{
+    code = (piece << 28) | (capture << 16) | (from << 6) | to;
+}
 
 chessmove::chessmove()
 {
@@ -136,6 +163,21 @@ void chessmovelist::print()
 {
     printf("%s", toString().c_str());
 }
+
+void chessmovelist::sort(int limit, const int refutetarget)
+{
+    for (int i = 0; i < length - 1; i++)
+    {
+        if (refutetarget < BOARDSIZE && GETFROM(move[i].code) == refutetarget)
+            move[i].value |= NMREFUTEVAL;
+        for (int j = i + 1; j < length; j++)
+            if (move[i].value < move[j].value)
+                swap(move[i], move[j]);
+        if (move[i].value < limit)
+            break;
+    }
+}
+
 
 
 chessmovesequencelist::chessmovesequencelist()
@@ -343,16 +385,17 @@ bool chessposition::applyMove(string s)
 
     from = AlgebraicToIndex(s, BOARDSIZE);
     to = AlgebraicToIndex(&s[2], BOARDSIZE);
-    chessmovelist* cmlist = getMoves();
+    chessmovelist cmlist;
+    cmlist.length = getMoves(&cmlist.move[0]);
     if (s.size() > 4)
         promotion = (PieceCode)((GetPieceType(s[4]) << 1) | (state & S2MMASK));
     else
         promotion = BLANK;
-    for (int i = 0; i < cmlist->length; i++)
+    for (int i = 0; i < cmlist.length; i++)
     {
-        if (GETFROM(cmlist->move[i].code) == from && GETTO(cmlist->move[i].code) == to && GETPROMOTION(cmlist->move[i].code) == promotion)
+        if (GETFROM(cmlist.move[i].code) == from && GETTO(cmlist.move[i].code) == to && GETPROMOTION(cmlist.move[i].code) == promotion)
         {
-            if (playMove(&(cmlist->move[i])))
+            if (playMove(&(cmlist.move[i])))
             {
                 if (halfmovescounter == 0)
                 {
@@ -368,7 +411,6 @@ bool chessposition::applyMove(string s)
             break;
         }
     }
-    free(cmlist);
     return retval;
 }
 
@@ -376,23 +418,23 @@ bool chessposition::applyMove(string s)
 void chessposition::getRootMoves()
 {
     // Precalculating the list of legal moves didn't work well for some unknown reason but we need the number of legal moves in MultiPV mode
-    chessmovelist *movelist = getMoves();
+    chessmovelist movelist;
+    movelist.length = getMoves(&movelist.move[0]);
     int bestval = SCOREBLACKWINS;
     rootmovelist.length = 0;
-    for (int i = 0; i < movelist->length; i++)
+    for (int i = 0; i < movelist.length; i++)
     {
-        if (playMove(&movelist->move[i]))
+        if (playMove(&movelist.move[i]))
         {
-            rootmovelist.move[rootmovelist.length++] = movelist->move[i];
-            unplayMove(&movelist->move[i]);
-            if (bestval < movelist->move[i].value)
+            rootmovelist.move[rootmovelist.length++] = movelist.move[i];
+            unplayMove(&movelist.move[i]);
+            if (bestval < movelist.move[i].value)
             {
-                defaultmove = movelist->move[i];
-                bestval = movelist->move[i].value;
+                defaultmove = movelist.move[i];
+                bestval = movelist.move[i].value;
             }
         }
     }
-    delete movelist;
 }
 
 
@@ -573,32 +615,90 @@ void chessposition::getpvline(int depth, int pvnum)
 }
 
 
-
-inline void chessposition::testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, PieceCode piece)
+bool chessposition::moveIsPseudoLegal(uint32_t c)
 {
-    chessmove cm(from, to, promote, capture, piece);
-    if (capture != BLANK)
+    if (!c)
+        return false;
+
+    int from = GETFROM(c);
+    int to = GETTO(c);
+    PieceCode pc = GETPIECE(c);
+    PieceCode capture = GETCAPTURE(c);
+    PieceType p = pc >> 1;
+
+    // correct s2m? ->test removed as it seems not necessary
+
+    // correct piece?
+    if (mailbox[from] != pc)
+        return false;
+
+    // correct capture?
+    if (mailbox[to] != capture && !GETEPCAPTURE(c))
+        return false;
+
+    // slider? test for free line
+    if (shifting[p] && (betweenMask[from][to] & (occupied00[0] | occupied00[1])))
+        return false;
+
+    if (p == PAWN)
     {
-        cm.value = (mvv[capture >> 1] | lva[piece >> 1]);
+        // pawn specials
+        if (((from ^ to) == 16))
+        {
+            // double push
+            if (betweenMask[from][to] & (occupied00[0] | occupied00[1]))
+                // blocked
+                return false;
+
+            // test if "making ep capture possible" is both true or false
+            int ept = GETEPT(c);
+            {
+                if (!ept == (bool)(epthelper[to] & piece00[pc ^ 1]))
+                    return false;
+            }
+        }
+        else
+        {
+            if (GETEPCAPTURE(c) && ept != to)
+                return false;
+        }
     }
-    else {
-        cm.value = history[piece >> 1][to];
-    }
-    movelist->move[movelist->length++] = cm;
-}
 
 
-inline void chessposition::testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece)
-{
-    chessmove cm(from, to, promote, capture, ept, piece);
-    if (capture != BLANK)
+    if (p == KING && (((from ^ to) & 3) == 2))
     {
-        cm.value = (mvv[capture >> 1] | lva[piece >> 1]);
+        // test for correct castle
+        if (isAttacked(from))
+            return false;
+
+        U64 occupied = occupied00[0] | occupied00[1];
+        int s2m = state & S2MMASK;
+
+        if (from > to)
+        {
+            //queen castle
+            if (occupied & (s2m ? 0x0e00000000000000 : 0x000000000000000e)
+                || isAttacked(from - 1)
+                || isAttacked(from - 2)
+                || !(state & QCMASK[s2m]))
+            {
+                return false;
+            }
+        }
+        else
+        {
+            // king castle
+            if (occupied & (s2m ? 0x6000000000000000 : 0x0000000000000060)
+                || isAttacked(from + 1)
+                || isAttacked(from + 2)
+                || !(state & KCMASK[s2m]))
+            {
+                return false;
+            }
+        }
     }
-    else {
-        cm.value = history[piece >> 1][to];
-    }
-    movelist->move[movelist->length++] = cm;
+
+    return true;
 }
 
 
@@ -616,6 +716,8 @@ void chessposition::print()
         }
         printf("\n");
     }
+    chessmovelist pseudolegalmoves;
+    pseudolegalmoves.length = getMoves(&pseudolegalmoves.move[0]);
     printf("info string FEN: %s\n", toFen().c_str());
     printf("info string State: %0x\n", state);
     printf("info string EPT: %0x\n", ept);
@@ -626,7 +728,7 @@ void chessposition::print()
     printf("info string Value: %d\n", getValue<NOTRACE>());
     printf("info string Repetitions: %d\n", rp.getPositionCount(hash));
     printf("info string Phase: %d\n", phase());
-    printf("info string Pseudo-legal Moves: %s\n", getMoves()->toStringWithValue().c_str());
+    printf("info string Pseudo-legal Moves: %s\n", pseudolegalmoves.toStringWithValue().c_str());
     if (tp.size > 0 && tp.testHash())
     {
         chessmove cm;
@@ -757,22 +859,6 @@ void chessposition::debugeval(const char* format, ...)
 #endif
 
 
-U64 knight_attacks[64];
-U64 king_attacks[64];
-U64 pawn_attacks_free[64][2];
-U64 pawn_attacks_free_double[64][2];
-U64 pawn_attacks_occupied[64][2];
-U64 epthelper[64];
-U64 passedPawnMask[64][2];
-U64 filebarrierMask[64][2];
-U64 neighbourfilesMask[64];
-U64 phalanxMask[64];
-U64 kingshieldMask[64][2];
-U64 kingdangerMask[64][2];
-U64 fileMask[64];
-U64 rankMask[64];
-int castleindex[64][64] = { 0 };
-
 // shameless copy from http://chessprogramming.wikispaces.com/Magic+Bitboards#Plain
 U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 U64 mRookAttacks[64][1 << ROOKINDEXBITS];
@@ -873,6 +959,7 @@ void initBitmaphelper()
 
         for (int j = 0; j < 64; j++)
         {
+            betweenMask[from][j] = 0ULL;
             if (abs(FILE(from) - FILE(j)) == 1)
             {
                 neighbourfilesMask[from] |= BITSET(j);
@@ -880,9 +967,24 @@ void initBitmaphelper()
                     phalanxMask[from] |= BITSET(j);
             }
             if (FILE(from) == FILE(j))
+            {
                 fileMask[from] |= BITSET(j);
+                for (int i = min(RANK(from), RANK(j)) + 1; i < max(RANK(from), RANK(j)); i++)
+                    betweenMask[from][j] |= BITSET(INDEX(i, FILE(from)));
+            }
             if (RANK(from) == RANK(j))
+            {
                 rankMask[from] |= BITSET(j);
+                for (int i = min(FILE(from), FILE(j)) + 1; i < max(FILE(from), FILE(j)); i++)
+                    betweenMask[from][j] |= BITSET(INDEX(RANK(from), i));
+            }
+            if (from != j && abs(RANK(from) - RANK(j)) == abs(FILE(from) - FILE(j)))
+            {
+                int dx = (FILE(from) < FILE(j) ? 1 : -1);
+                int dy = (RANK(from) < RANK(j) ? 1 : -1);
+                for (int i = 1; FILE(from) +  i * dx != FILE(j); i++)
+                    betweenMask[from][j] |= BITSET(INDEX(RANK(from) + i * dy, FILE(from) + i * dx));
+            }
         }
 
         for (int j = 0; j < 8; j++)
@@ -1315,53 +1417,117 @@ void chessposition::unplayMove(chessmove *cm)
 }
 
 
-
-chessmovelist* chessposition::getMoves()
+template <MoveType Mt> inline void appendMoveToList(chessposition *pos, chessmove **m, int from, int to, PieceCode piece)
 {
-    int s2m = state & S2MMASK;
-    U64 occupiedbits = (occupied00[0] | occupied00[1]);
+    **m = chessmove(from, to, piece);
+    if (!(Mt & CAPTURE))
+    {
+        (*m)->value = pos->history[piece >> 1][to];
+    }
+    else if (!(Mt & QUIET))
+    {
+        PieceCode capture = pos->mailbox[to];
+        (*m)->code |= capture << 16;
+        (*m)->value = (mvv[capture >> 1] | lva[piece >> 1]);
+    } else {
+        PieceCode capture = pos->mailbox[to];
+        if (capture)
+        {
+            (*m)->code |= capture << 16;
+            (*m)->value = (mvv[capture >> 1] | lva[piece >> 1]);
+        }
+        else {
+            (*m)->value = pos->history[piece >> 1][to];
+        }
+    }
+    (*m)++;
+}
+
+
+template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
+{
+    int s2m = pos->state & S2MMASK;
+    U64 occupiedbits = (pos->occupied00[0] | pos->occupied00[1]);
     U64 emptybits = ~occupiedbits;
-    U64 opponentorfreebits = ~occupied00[s2m];
+    U64 targetbits = 0ULL;
     U64 frombits, tobits;
     int from, to;
     PieceCode pc;
+    chessmove* m = mstart;
 
-    chessmovelist* result = (chessmovelist*)malloc(sizeof(chessmovelist));
-    result->length = 0;
+    if (Mt & QUIET)
+        targetbits |= emptybits;
+    if (Mt & CAPTURE)
+        targetbits |= pos->occupied00[s2m ^ S2MMASK];
+
     for (int p = PAWN; p <= KING; p++)
     {
         pc = (PieceCode)((p << 1) | s2m);
-        frombits = piece00[pc];
+        frombits = pos->piece00[pc];
         switch (p)
         {
         case PAWN:
             while (LSB(from, frombits))
             {
-                tobits = (pawn_attacks_free[from][s2m] & emptybits);
-                if (tobits)
-                    tobits |= (pawn_attacks_free_double[from][s2m] & emptybits);
-                /* FIXME: ept & EPTSIDEMASK[s2m] is a quite ugly test for correct side respecting null move pruning */
-                tobits |= (pawn_attacks_occupied[from][s2m] & (occupied00[s2m ^ 1] | ((ept & EPTSIDEMASK[s2m]) ? BITSET(ept) : 0ULL)));
+                tobits = 0ULL;
+                if (Mt & QUIET)
+                {
+                    tobits |= (pawn_attacks_free[from][s2m] & emptybits & ~PROMOTERANKBB);
+                    if (tobits)
+                        tobits |= (pawn_attacks_free_double[from][s2m] & emptybits);
+                }
+                if (Mt & PROMOTE)
+                {
+                    // get promoting pawns
+                    tobits |= (pawn_attacks_free[from][s2m] & PROMOTERANKBB & emptybits);
+                }
+                if (Mt & CAPTURE)
+                {
+                    /* FIXME: ept & EPTSIDEMASK[s2m] is a quite ugly test for correct side respecting null move pruning */
+                    tobits |= (pawn_attacks_occupied[from][s2m] & (pos->occupied00[s2m ^ 1] | ((pos->ept & EPTSIDEMASK[s2m]) ? BITSET(pos->ept) : 0ULL)));
+                }
                 while (LSB(to, tobits))
                 {
-                    if (ept && ept == to)
+                    if ((Mt & CAPTURE) && pos->ept && pos->ept == to)
                     {
-                        testMove(result, from, to, BLANK, (PieceCode)(WPAWN | (s2m ^ 1)), ISEPCAPTURE, pc);
+                        //testMove(result, from, to, BLANK, (PieceCode)(WPAWN | (s2m ^ 1)), ISEPCAPTURE, pc);
+                        // treat ep capture as a quiet move and correct code and value manually
+                        appendMoveToList<QUIET>(pos, &m, from, to, pc);
+                        (m - 1)->code |= (ISEPCAPTURE << 20) | ((WPAWN | (s2m ^ 1)) << 16);
+                        (m - 1)->value = (mvv[PAWN] | lva[PAWN]);
                     }
-                     else if (PROMOTERANK(to))
+                    else if (PROMOTERANK(to))
                     {
-                        testMove(result, from, to, (PieceCode)((QUEEN << 1) | s2m), mailbox[to], pc);
-                        testMove(result, from, to, (PieceCode)((ROOK << 1) | s2m), mailbox[to], pc);
-                        testMove(result, from, to, (PieceCode)((BISHOP << 1) | s2m), mailbox[to], pc);
-                        testMove(result, from, to, (PieceCode)((KNIGHT << 1) | s2m), mailbox[to], pc);
+                        //testMove(result, from, to, (PieceCode)((QUEEN << 1) | s2m), mailbox[to], pc);
+                        //testMove(result, from, to, (PieceCode)((ROOK << 1) | s2m), mailbox[to], pc);
+                        //testMove(result, from, to, (PieceCode)((BISHOP << 1) | s2m), mailbox[to], pc);
+                        //testMove(result, from, to, (PieceCode)((KNIGHT << 1) | s2m), mailbox[to], pc);
+                        appendMoveToList<Mt>(pos, &m, from, to, pc);
+                        (m - 1)->code |= ((QUEEN << 1) | s2m) << 12;
+                        (m - 1)->value = mvv[QUEEN];
+                        appendMoveToList<Mt>(pos, &m, from, to, pc);
+                        (m - 1)->code |= ((ROOK << 1) | s2m) << 12;
+                        (m - 1)->value = mvv[ROOK];
+                        appendMoveToList<Mt>(pos, &m, from, to, pc);
+                        (m - 1)->code |= ((BISHOP << 1) | s2m) << 12;
+                        (m - 1)->value = mvv[BISHOP];
+                        appendMoveToList<Mt>(pos, &m, from, to, pc);
+                        (m - 1)->code |= ((KNIGHT << 1) | s2m) << 12;
+                        (m - 1)->value = mvv[KNIGHT];
                     }
-                    else if (!((from ^ to) & 0x8) && epthelper[to] & piece00[pc ^ 1])
+                    else if ((Mt & QUIET) && !((from ^ to) & 0x8) && (epthelper[to] & pos->piece00[pc ^ 1]))
                     {
-                        // EPT possible for opponent
-                        testMove(result, from, to, BLANK, BLANK, (from + to) >> 1, pc);
+                        // EPT possible for opponent; set EPT field manually
+                        appendMoveToList<QUIET>(pos, &m, from, to, pc);
+                        (m - 1)->code |= (from + to) << 19;
                     }
                     else {
-                        testMove(result, from, to, BLANK, mailbox[to], pc);
+                        appendMoveToList<Mt>(pos, &m, from, to, pc);
+                    }
+                    if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
+                    {
+                        pos->unplayMove(m - 1);
+                        return 1;
                     }
                     tobits ^= BITSET(to);
                 }
@@ -1371,39 +1537,62 @@ chessmovelist* chessposition::getMoves()
         case KNIGHT:
             while (LSB(from, frombits))
             {
-                tobits = (knight_attacks[from] & opponentorfreebits);
+                tobits = (knight_attacks[from] & targetbits);
                 while (LSB(to, tobits))
                 {
-                    testMove(result, from, to, BLANK, mailbox[to], pc);
+                    appendMoveToList<Mt>(pos, &m, from, to, pc);
+                    if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
+                    {
+                        pos->unplayMove(m - 1);
+                        return 1;
+                    }
                     tobits ^= BITSET(to);
                 }
                 frombits ^= BITSET(from);
             }
             break;
         case KING:
-            from = kingpos[s2m];
-            tobits = (king_attacks[from] & opponentorfreebits);
+            from = pos->kingpos[s2m];
+            tobits = (king_attacks[from] & targetbits);
             while (LSB(to, tobits))
             {
-                testMove(result, from, to, BLANK, mailbox[to], pc);
+                appendMoveToList<Mt>(pos, &m, from, to, pc);
+                if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
+                {
+                    pos->unplayMove(m - 1);
+                    return 1;
+                }
                 tobits ^= BITSET(to);
             }
-            if (state & QCMASK[s2m])
+            if (Mt & QUIET)
             {
-                /* queen castle */
-                if (!(occupiedbits & (s2m ? 0x0e00000000000000 : 0x000000000000000e))
-                    && !isAttacked(from) && !isAttacked(from - 1) && !isAttacked(from - 2))
+                if (pos->state & QCMASK[s2m])
                 {
-                    testMove(result, from, from - 2, BLANK, BLANK, pc);
+                    /* queen castle */
+                    if (!(occupiedbits & (s2m ? 0x0e00000000000000 : 0x000000000000000e))
+                        && !pos->isAttacked(from) && !pos->isAttacked(from - 1) && !pos->isAttacked(from - 2))
+                    {
+                        appendMoveToList<Mt>(pos, &m, from, from - 2, pc);
+                        if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
+                        {
+                            pos->unplayMove(m - 1);
+                            return 1;
+                        }
+                    }
                 }
-            }
-            if (state & KCMASK[s2m])
-            {
-                /* kink castle */
-                if (!(occupiedbits & (s2m ? 0x6000000000000000 : 0x0000000000000060))
-                    && !isAttacked(from) && !isAttacked(from + 1) && !isAttacked(from + 2))
+                if (pos->state & KCMASK[s2m])
                 {
-                    testMove(result, from, from + 2, BLANK, BLANK, pc);
+                    /* kink castle */
+                    if (!(occupiedbits & (s2m ? 0x6000000000000000 : 0x0000000000000060))
+                        && !pos->isAttacked(from) && !pos->isAttacked(from + 1) && !pos->isAttacked(from + 2))
+                    {
+                        appendMoveToList<Mt>(pos, &m, from, from + 2, pc);
+                        if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
+                        {
+                            pos->unplayMove(m - 1);
+                            return 1;
+                        }
+                    }
                 }
             }
             break;
@@ -1413,15 +1602,20 @@ chessmovelist* chessposition::getMoves()
             {
                 if (shifting[p] & 0x1)
                 {
-                    tobits |= (MAGICBISHOPATTACKS(occupiedbits, from) & opponentorfreebits);
+                    tobits |= (MAGICBISHOPATTACKS(occupiedbits, from) & targetbits);
                 }
                 if (shifting[p] & 0x2)
                 {
-                    tobits |= (MAGICROOKATTACKS(occupiedbits, from) & opponentorfreebits);
+                    tobits |= (MAGICROOKATTACKS(occupiedbits, from) & targetbits);
                 }
                 while (LSB(to, tobits))
                 {
-                    testMove(result, from, to, BLANK, mailbox[to], pc);
+                    appendMoveToList<Mt>(pos, &m, from, to, pc);
+                    if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
+                    {
+                        pos->unplayMove(m - 1);
+                        return 1;
+                    }
                     tobits ^= BITSET(to);
                 }
                 frombits ^= BITSET(from);
@@ -1429,20 +1623,31 @@ chessmovelist* chessposition::getMoves()
             break;
         }
     }
-    return result;
+    return (int)(m - mstart);
 }
 
 
-#if 0 // not used anymore
-U64 chessposition::attacksTo(int index, int side)
+int chessposition::getMoves(chessmove *m, MoveType t)
 {
-    return (knight_attacks[index] & piece00[(KNIGHT << 1) | side])
-        | (king_attacks[index] & piece00[(KING << 1) | side])
-        | (pawn_attacks_occupied[index][side ^ S2MMASK] & piece00[(PAWN << 1) | side])
-        | (MAGICROOKATTACKS(occupied00[0] | occupied00[1], index) & (piece00[(ROOK << 1) | side] | piece00[(QUEEN << 1) | side]))
-        | (MAGICBISHOPATTACKS(occupied00[0] | occupied00[1], index) & (piece00[(BISHOP << 1) | side] | piece00[(QUEEN << 1) | side]));
+    switch (t)
+    {
+        case QUIET:
+            return CreateMovelist<QUIET>(this, m);
+        case CAPTURE:
+            return CreateMovelist<CAPTURE>(this, m);
+            break;
+        case TACTICAL:
+            return CreateMovelist<TACTICAL>(this, m);
+            break;
+        case QUIETWITHCHECK:
+            return CreateMovelist<QUIETWITHCHECK>(this, m);
+            break;
+        default:
+            return CreateMovelist<ALL>(this, m);
+    }
 }
-#endif
+
+
 
 bool chessposition::isAttacked(int index)
 {
@@ -1534,6 +1739,92 @@ int chessposition::see(int from, int to)
         BitboardSet(fromlist[d], mailbox[fromlist[d]]);
     }
     return gain[0];
+}
+
+
+MoveSelector::~MoveSelector()
+{
+        delete captures;
+        delete quiets;
+}
+
+void MoveSelector::SetPreferredMoves(chessposition *p, uint32_t hshm, uint32_t kllm1, uint32_t kllm2, int nmrfttarget)
+{
+    pos = p;
+    hashmove.code = hshm;
+    if (kllm1 != hshm)
+        killermove1.code = kllm1;
+    if (kllm2 != hshm)
+        killermove2.code = kllm2;
+    refutetarget = nmrfttarget;
+}
+
+chessmove* MoveSelector::next()
+{
+    switch (state)
+    {
+    case INITSTATE:
+        state++;
+    case HASHMOVESTATE:
+        state++;
+        if (pos->moveIsPseudoLegal(hashmove.code))
+        {
+#ifdef DEBUG
+            en.pvnodes++;
+#endif
+            return &hashmove;
+        }
+    case TACTICALINITSTATE:
+        state++;
+        captures = new chessmovelist;
+        captures->length = CreateMovelist<TACTICAL>(pos, &captures->move[0]);
+        captures->sort(0);
+        capturemovenum = 0;
+    case TACTICALSTATE:
+        while (capturemovenum < captures->length 
+            && captures->move[capturemovenum].code == hashmove.code)
+        {
+            capturemovenum++;
+        }
+        if (capturemovenum < captures->length)
+        {
+            return &captures->move[capturemovenum++];
+        }
+        state++;
+    case KILLERMOVE1STATE:
+        state++;
+        if (pos->moveIsPseudoLegal(killermove1.code))
+        {
+            return &killermove1;
+        }
+    case KILLERMOVE2STATE:
+        state++;
+        if (pos->moveIsPseudoLegal(killermove2.code))
+        {
+            return &killermove2;
+        }
+    case QUIETINITSTATE:
+        state++;
+        quiets = new chessmovelist;
+        quiets->length = CreateMovelist<QUIET>(pos, &quiets->move[0]);
+        quiets->sort(0, refutetarget);
+        quietmovenum = 0;
+    case QUIETSTATE:
+        while (quietmovenum < quiets->length
+            && (quiets->move[quietmovenum].code == hashmove.code
+                || quiets->move[quietmovenum].code == killermove1.code
+                || quiets->move[quietmovenum].code == killermove2.code))
+        {
+            quietmovenum++;
+        }
+        if (quietmovenum < quiets->length)
+        {
+            return &quiets->move[quietmovenum++];
+        }
+        state++;
+    default:
+        return nullptr;
+    }
 }
 
 

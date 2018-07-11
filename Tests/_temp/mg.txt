@@ -1,0 +1,50 @@
+mg1 (10218918): Erste Version vom 7.7.18 nur in quisciense verwendet
+Score of RubiChess-Bitboard-mg1 vs RubiChess-Bitboard-ms: 434 - 482 - 596  [0.484] 1512
+Elo difference: -11.03 +/- 13.62
+SPRT: llr -1.4, lbound -1.39, ubound 1.39 - H0 was accepted
+
+mg2 (10375681): Nochmal überarbeitet mit neuen Flag-basierten templates
+Score of RubiChess-Bitboard-mg2 vs RubiChess-Bitboard-ms: 322 - 334 - 463  [0.495] 1119
+Elo difference: -3.73 +/- 15.57
+SPRT: llr -0.492, lbound -1.39, ubound 1.39
+
+mg3 (9243408): Wie mg2 aber mit richtigen Werten für Promotions
+Score of RubiChess-Bitboard-mg3 vs RubiChess-Bitboard-ms: 191 - 236 - 257  [0.467] 684
+Elo difference: -22.89 +/- 20.58
+SPRT: llr -1.15, lbound -1.39, ubound 1.39
+
+mg4 (9241114): QUIETWITHCHECK modus, der beim ersten erfolgreichen Zug das Generieren abbricht
+Seltsam, dass das einen anderen Bench hat
+STC auf Server (nur ein Eindruck... scheint zu langsam, um ELO zu gewinnen)
+Score of RubiChess-Bitboard-mg4 vs RubiChess-Bitboard-ms: 137 - 135 - 130  [0.502] 402
+Elo difference: 1.73 +/- 27.96
+SPRT: llr -0.019, lbound -1.39, ubound 1.39
+STC auf PC von Ben:
+Score of RubiChess-Bitboard-mg4 vs RubiChess-Bitboard-ms: 365 - 300 - 468  [0.529] 1133
+Elo difference: 19.95 +/- 15.49
+SPRT: llr 1.4, lbound -1.39, ubound 1.39 - H1 was accepted
+
+mg4h (9241114): Zurück zu alloziierten chessmovelist, da dieses auf dem Testserver schneller zu sein scheint
+STC auf Server:
+Score of RubiChess-Bitboard-mg4h vs RubiChess-Bitboard-ms: 812 - 734 - 937  [0.516] 2483
+Elo difference: 10.92 +/- 10.77
+SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+LTC auf Server;
+Score of RubiChess-Bitboard-mg4h vs RubiChess-Bitboard-ms: 738 - 668 - 1278  [0.513] 2684
+Elo difference: 9.06 +/- 9.50
+SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+
+Score of RubiChess-Bitboard-mg5c vs RubiChess-Bitboard-mg4h: 602 - 529 - 714  [0.520] 1845
+Elo difference: 13.75 +/- 12.40
+SPRT: llr 1.4, lbound -1.39, ubound 1.39 - H1 was accepted
+Allerdings:
+Started game 1812 of 20000 (RubiChess-Bitboard-mg4h vs RubiChess-Bitboard-mg5c)
+Illegal PV move b6a5 from RubiChess-Bitboard-mg5c
+Ev. ist da noch etwas in isPseudoLegal nicht berücksichtigt? z.B. EP war im Killermove möglich, in der aktuellen Position aber nicht?
+Bug gefixt.
+Abschließender STC-Test gegen Master:
+Score of RubiChess-Bitboard-mg6 vs RubiChess-Bitboard-ms: 381 - 313 - 418  [0.531] 1112
+Elo difference: 21.27 +/- 16.13
+SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+=> Pull request
+

@@ -99,6 +99,7 @@ void Sleep(long x);
 #define INDEX(r,f) (((r) << 3) | (f))
 
 #define PROMOTERANK(x) (RANK(x) == 0 || RANK(x) == 7)
+#define PROMOTERANKBB 0xff000000000000ff
 #define OUTERFILE(x) (FILE(x) == 0 || FILE(x) == 7)
 #define ISNEIGHBOUR(x,y) ((x) >= 0 && (x) < 64 && (y) >= 0 && (y) < 64 && abs(RANK(x) - RANK(y)) <= 1 && abs(FILE(x) - FILE(y)) <= 1)
 
@@ -157,6 +158,9 @@ extern int tuningratio;
 //
 // board stuff
 //
+#define BOARDSIZE 64
+#define RANKMASK 0x38
+
 #define BUFSIZE 4096
 
 #define PieceType unsigned int
@@ -337,6 +341,8 @@ extern U64 fileMask[64];
 // 00000000
 extern U64 rankMask[64];
 
+extern U64 betweenMask[64][64];
+
 struct chessmovestack
 {
     int state;
@@ -359,8 +365,11 @@ public:
     int value;
 
     chessmove();
+    chessmove(int from, int to, PieceCode piece);
+    chessmove(int from, int to, PieceCode capture, PieceCode piece);
     chessmove(int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
     chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
+
     bool operator<(const chessmove cm) const { return (value < cm.value); }
     bool operator>(const chessmove cm) const { return (value > cm.value); }
     string toString();
@@ -394,15 +403,33 @@ public:
 	string toString();
 	string toStringWithValue();
 	void print();
+    void sort(int limit, const int refutetarget = BOARDSIZE);
 };
 
 
+enum MoveSelector_State { INITSTATE, HASHMOVESTATE, TACTICALINITSTATE, TACTICALSTATE, KILLERMOVE1STATE, KILLERMOVE2STATE, QUIETINITSTATE, QUIETSTATE };
+
+class MoveSelector
+{
+    chessposition *pos;
+    int state;
+    chessmovelist* captures;
+    chessmovelist* quiets;
+    chessmove hashmove;
+    chessmove killermove1;
+    chessmove killermove2;
+    int refutetarget;
+    int capturemovenum;
+    int quietmovenum;
+
+public:
+    void SetPreferredMoves(chessposition *p, uint32_t hshm, uint32_t kllm1, uint32_t kllm2, int nmrfttarget);
+    ~MoveSelector();
+    chessmove* next();
+};
 
 extern U64 pawn_attacks_occupied[64][2];
 extern U64 knight_attacks[64];
-
-#define BOARDSIZE 64
-#define RANKMASK 0x38
 
 
 struct SMagic {
@@ -424,6 +451,10 @@ extern U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 
 enum EvalTrace { NOTRACE, TRACE};
+
+enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7, QUIETWITHCHECK = 9 };
+
+template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* m);
 
 class chessposition
 {
@@ -478,12 +509,9 @@ public:
     int phase();
     PieceType Piece(int index);
     bool isAttacked(int index);
-    U64 attacksTo(int index, int side);
     int getLeastValuablePieceIndex(int to, unsigned int bySide, PieceCode *piece);
     int see(int from, int to);
-    void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
-    void testMove(chessmovelist *movelist, int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
-    chessmovelist* getMoves();
+    int getMoves(chessmove *m, MoveType t = ALL);
     void getRootMoves();
     void tbFilterRootMoves();
     bool playMove(chessmove *cm);
@@ -491,6 +519,7 @@ public:
     void playNullMove();
     void unplayNullMove();
     void getpvline(int depth, int pvnum);
+    bool moveIsPseudoLegal(uint32_t c);
     template <EvalTrace> int getPositionValue();
     template <EvalTrace> int getPawnValue(pawnhashentry **entry);
     template <EvalTrace> int getValue();
