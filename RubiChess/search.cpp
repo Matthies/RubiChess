@@ -29,7 +29,7 @@ int getQuiescence(int alpha, int beta, int depth)
 
     if (!pos.isCheck)
     {
-        patscore = (pos.state & S2MMASK ? -getValue(&pos) : getValue(&pos));
+        patscore = (pos.state & S2MMASK ? -getValueNoTrace(&pos) : getValueNoTrace(&pos));
         bestscore = patscore;
         PDEBUG(depth, "(getQuiscence) qnode=%d alpha=%d beta=%d patscore=%d\n", en.qnodes, alpha, beta, patscore);
         if (patscore >= beta)
@@ -244,7 +244,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 #endif
     if (depth <= 3)
     {
-        score = S2MSIGN(pos.state & S2MMASK) * getValue(&pos);
+        score = S2MSIGN(pos.state & S2MMASK) * getValueNoTrace(&pos);
         // reverse futility pruning
         if (score - revFutilityMargin[depth] > beta)
             return score;
@@ -262,7 +262,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 #endif
 
     int  LegalMoves = 0;
-    while (m = ms.next())
+    while ((m = ms.next()))
     {
         int moveExtension = 0;
         isLegal = pos.playMove(m);

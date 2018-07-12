@@ -400,7 +400,7 @@ public:
 	string toString();
 	string toStringWithValue();
 	void print();
-    void sort(int limit, const int refutetarget = BOARDSIZE);
+    void sort(int limit, const unsigned int refutetarget = BOARDSIZE);
 };
 
 
@@ -530,7 +530,7 @@ public:
     void mirror();
 };
 
-int getValue(chessposition *p);
+int getValueNoTrace(chessposition *p);
 int getValueTrace(chessposition *p);
 
 void CreatePositionvalueTable();

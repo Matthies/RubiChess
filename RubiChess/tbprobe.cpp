@@ -682,7 +682,6 @@ int root_probe()
     int cnt50 = pos.halfmovescounter;
 
     // Now be a bit smart about filtering out moves.
-    size_t j = 0;
     if (dtz > 0) { // winning (or 50-move rule draw)
         int best = 0xffff;
         for (int i = 0; i < pos.rootmovelist.length; i++)

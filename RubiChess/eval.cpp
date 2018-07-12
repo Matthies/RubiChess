@@ -537,7 +537,7 @@ int chessposition::getValue()
 }
 
 
-int getValue(chessposition *p)
+int getValueNoTrace(chessposition *p)
 {
     return p->getValue<NOTRACE>();
 }

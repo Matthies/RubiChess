@@ -95,11 +95,11 @@ long long perft(int depth, bool dotests)
             printf("Alarm! Wrong Material Hash! %llu\n", zb.getMaterialHash());
             pos.print();
         }
-        int val1 = getValue(&pos);
+        int val1 = getValueNoTrace(&pos);
         pos.mirror();
-        int val2 = getValue(&pos);
+        int val2 = getValueNoTrace(&pos);
         pos.mirror();
-        int val3 = getValue(&pos);
+        int val3 = getValueNoTrace(&pos);
         if (!(val1 == val3 && val1 == -val2))
         {
             printf("Mirrortest  :error  (%d / %d / %d)\n", val1, val2, val3);

@@ -163,7 +163,7 @@ void chessmovelist::print()
     printf("%s", toString().c_str());
 }
 
-void chessmovelist::sort(int limit, const int refutetarget)
+void chessmovelist::sort(int limit, const unsigned int refutetarget)
 {
     for (int i = 0; i < length - 1; i++)
     {
@@ -724,7 +724,7 @@ void chessposition::print()
     printf("info string Fullmoves: %d\n", fullmovescounter);
     printf("info string Hash: %llu (%llx)  (getHash(): %llu)\n", hash, hash, zb.getHash());
     printf("info string Pawn Hash: %llu (%llx)  (getPawnHash(): %llu)\n", pawnhash, pawnhash, zb.getPawnHash());
-    printf("info string Value: %d\n", getValue<NOTRACE>());
+    printf("info string Value: %d\n", getValueNoTrace(this));
     printf("info string Repetitions: %d\n", rp.getPositionCount(hash));
     printf("info string Phase: %d\n", phase());
     printf("info string Pseudo-legal Moves: %s\n", pseudolegalmoves.toStringWithValue().c_str());
