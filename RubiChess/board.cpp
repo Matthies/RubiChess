@@ -1,7 +1,6 @@
 
 #include "RubiChess.h"
 
-U64 mybitset[64];
 U64 knight_attacks[64];
 U64 king_attacks[64];
 U64 pawn_attacks_free[64][2];
@@ -937,10 +936,6 @@ void initBitmaphelper()
     castleindex[4][6] = WKC;
     castleindex[60][58] = BQC;
     castleindex[60][62] = BKC;
-    for (int from = 0; from < 64; from++)
-    {
-        mybitset[from] = (1ULL << from);
-    }
 
     printf("Searching for magics, may take a while .");
     for (int from = 0; from < 64; from++)

@@ -83,7 +83,7 @@ void Sleep(long x);
 #define ENGINEVER "RubiChess " VERNUM " " BOARDVERSION
 #define BUILD __DATE__ " " __TIME__
 
-#define BITSET(x) (mybitset[(x)])
+#define BITSET(x) (1ULL << (x))
 #ifdef _WIN32
 #define LSB(i,x) _BitScanForward64((DWORD*)&(i), (x))
 #define MSB(i,x) _BitScanReverse64((DWORD*)&(i), (x))
@@ -249,9 +249,6 @@ const int lva[] = { 5 << 25, 4 << 25, 3 << 25, 3 << 25, 2 << 25, 1 << 25, 0 << 2
 #define ISPROMOTION(x) ((x) & 0xf000)
 #define ISCAPTURE(x) ((x) & 0xf0000)
 #define GETPIECE(x) (((x) & 0xf0000000) >> 28)
-
-// index -> bitboard with only index bit set; use BITSET(i) macro
-extern U64 mybitset[64];
 
 // passedPawnMask[18][WHITE]:
 // 01110000
