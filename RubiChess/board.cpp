@@ -1776,9 +1776,12 @@ chessmove* MoveSelector::next()
         captures->sort(0);
         capturemovenum = 0;
     case TACTICALSTATE:
-        while (capturemovenum < captures->length 
-            && captures->move[capturemovenum].code == hashmove.code)
+        while (capturemovenum < captures->length
+            && (captures->move[capturemovenum].code == hashmove.code 
+                || pos->see(GETFROM(captures->move[capturemovenum].code), GETTO(captures->move[capturemovenum].code)) < 0))
         {
+            // mark the move for BADTACTICALSTATE
+            captures->move[capturemovenum].value |= (1 << 31);
             capturemovenum++;
         }
         if (capturemovenum < captures->length)
@@ -1815,6 +1818,19 @@ chessmove* MoveSelector::next()
         if (quietmovenum < quiets->length)
         {
             return &quiets->move[quietmovenum++];
+        }
+        state++;
+        capturemovenum = 0;
+    case BADTACTICALSTATE:
+        while (capturemovenum < captures->length
+            && (captures->move[capturemovenum].code == hashmove.code 
+                || !(captures->move[capturemovenum].value & (1 << 31))))
+        {
+            capturemovenum++;
+        }
+        if (capturemovenum < captures->length)
+        {
+            return &captures->move[capturemovenum++];
         }
         state++;
     default:
