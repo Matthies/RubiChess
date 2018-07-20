@@ -42,3 +42,5 @@ Datum;Version;Bench;Gegner;TC;Buch;Spiele;Ergebnis (%);Details (w-d-l);Bemerkung
 14.07.2018;0.9;9824914;Delocto-0.6;60+0.6;8moves_v3 rnd.;500;33,6;97-142-261;
 14.07.2018;0.9;9824914;Devel-2.0000;60+0.6;8moves_v3 rnd.;500;25,1;65-121-314;6x timeforfeit Devel
 14.07.2018;0.9;9824914;Monolith-0.4;60+0.6;8moves_v3 rnd.;500;37,1;108-155-237;
+17.07.2018;0.9;9824914;Pirarucu-2.1.1;60+0.6;8moves_v3 rnd.;500;50,3;186-144-183;
+17.07.2018;MS 12.7.18;10731388;Pirarucu-2.1.1;60+0.6;8moves_v3 rnd.;500;65,9;268-123-109;

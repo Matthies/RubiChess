@@ -1,12 +1,14 @@
 ChangeLog
 =========
-0.10 (release 2018-xx-xx) :
+1.0 (release 2018-xx-xx) :
     - Cleanup: Removed board88 and rotating botboard code
     - Refinement of aspiration window
     - Retuned evaluation parameters based on new test games texeltune-09-bal.pgn
     - More agressive delta pruning in qsearch
     - Fix: Increase history heuristic value only for cutoff move (not for moves that just raises alpha)
     - Fix: Killer moves where taken from wrong ply
+    - Seperated move creation in tactical and quiet moves to gain some speed
+    - Code consolitation in rootsearch e.g. lmr
 
 0.9 (release 2018-05-28) :
     - Implemented Syzygy tablebase probing
