@@ -18,4 +18,5 @@ Bitboard-ms-20180705		48569661
 - Position 3 mate in 6 has 80% nodes when the mate isn't found -> should be replaced
 Bitboard-ms-20180711		10731388
 Bitboard-ms-20180720		11336459
+Bitboard-1.0:				11806602
 
