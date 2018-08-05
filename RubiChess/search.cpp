@@ -192,6 +192,10 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
     if (depth <= 0)
     {
+        // update selective depth info
+        if (pos.seldepth < pos.ply + 1)
+            pos.seldepth = pos.ply + 1;
+
         return getQuiescence(alpha, beta, depth);
     }
 
@@ -731,6 +735,7 @@ static void search_gen1()
         // Reset bestmove to detect alpha raise in interrupted search
         pos.bestmove[0].code = 0;
         inWindow = 1;
+        pos.seldepth = depth;
 #ifdef DEBUG
         int oldscore = 0;
         unsigned long long nodesbefore = en.nodes;
@@ -843,12 +848,12 @@ static void search_gen1()
                         char s[4096];
                         if (!MATEDETECTED(pos.bestmovescore[i]))
                         {
-                            sprintf_s(s, "info depth %d multipv %d time %d score cp %d %s pv %s\n", depth, i + 1, secondsrun, pos.bestmovescore[i], boundscore[inWindow], pvstring.c_str());
+                            sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score cp %d %s pv %s\n", depth, pos.seldepth, i + 1, secondsrun, pos.bestmovescore[i], boundscore[inWindow], pvstring.c_str());
                         }
                         else
                         {
                             matein = (pos.bestmovescore[i] > 0 ? (SCOREWHITEWINS - pos.bestmovescore[i] + 1) / 2 : (SCOREBLACKWINS - pos.bestmovescore[i]) / 2);
-                            sprintf_s(s, "info depth %d multipv %d time %d score mate %d pv %s\n", depth, i + 1, secondsrun, matein, pvstring.c_str());
+                            sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score mate %d pv %s\n", depth, pos.seldepth, i + 1, secondsrun, matein, pvstring.c_str());
                         }
                         cout << s;
                         i++;
@@ -888,16 +893,16 @@ static void search_gen1()
                 char s[4096];
                 if (!MATEDETECTED(score))
                 {
-                    sprintf_s(s, "info depth %d time %d score cp %d %s nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
-                        depth, secondsrun, score, boundscore[inWindow], en.nodes,
+                    sprintf_s(s, "info depth %d seldepth %d time %d score cp %d %s nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
+                        depth, pos.seldepth, secondsrun, score, boundscore[inWindow], en.nodes,
                         (nowtime > en.starttime ? en.nodes * en.frequency / (nowtime - en.starttime) : 1),
                         en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
                 }
                 else
                 {
                     matein = (score > 0 ? (SCOREWHITEWINS - score + 1) / 2 : (SCOREBLACKWINS - score) / 2);
-                    sprintf_s(s, "info depth %d time %d score mate %d nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
-                        depth, secondsrun, matein, en.nodes,
+                    sprintf_s(s, "info depth %d seldepth %d time %d score mate %d nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
+                        depth, pos.seldepth, secondsrun, matein, en.nodes,
                         (nowtime > en.starttime ? en.nodes * en.frequency / (nowtime - en.starttime) : 1),
                         en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
                 }

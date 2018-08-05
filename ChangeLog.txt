@@ -1,5 +1,8 @@
 ChangeLog
 =========
+1.1 (release 201x-xx-xx) :
+    - ...
+
 1.0 (release 2018-08-04) :
     - Cleanup: Removed board88 and rotating botboard code
     - Refinement of aspiration window
