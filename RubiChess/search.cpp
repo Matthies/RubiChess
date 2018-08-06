@@ -886,22 +886,25 @@ static void search_gen1()
                     pondermovestr = " ponder " + pos.pvline.move[1].toString();
 
                 char s[4096];
-                if (!MATEDETECTED(score))
+                if (inWindow == 1 || secondsrun > 200)
                 {
-                    sprintf_s(s, "info depth %d time %d score cp %d %s nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
-                        depth, secondsrun, score, boundscore[inWindow], en.nodes,
-                        (nowtime > en.starttime ? en.nodes * en.frequency / (nowtime - en.starttime) : 1),
-                        en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
+                    if (!MATEDETECTED(score))
+                    {
+                        sprintf_s(s, "info depth %d time %d score cp %d %s nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
+                            depth, secondsrun, score, boundscore[inWindow], en.nodes,
+                            (nowtime > en.starttime ? en.nodes * en.frequency / (nowtime - en.starttime) : 1),
+                            en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
+                    }
+                    else
+                    {
+                        matein = (score > 0 ? (SCOREWHITEWINS - score + 1) / 2 : (SCOREBLACKWINS - score) / 2);
+                        sprintf_s(s, "info depth %d time %d score mate %d nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
+                            depth, secondsrun, matein, en.nodes,
+                            (nowtime > en.starttime ? en.nodes * en.frequency / (nowtime - en.starttime) : 1),
+                            en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
+                    }
+                    cout << s;
                 }
-                else
-                {
-                    matein = (score > 0 ? (SCOREWHITEWINS - score + 1) / 2 : (SCOREBLACKWINS - score) / 2);
-                    sprintf_s(s, "info depth %d time %d score mate %d nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
-                        depth, secondsrun, matein, en.nodes,
-                        (nowtime > en.starttime ? en.nodes * en.frequency / (nowtime - en.starttime) : 1),
-                        en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
-                }
-                cout << s;
             }
         }
         if (inWindow == 1)
@@ -925,7 +928,7 @@ static void search_gen1()
 }
 
 
-void startSearchTime()
+void startSearchTime(bool complete = true)
 {
     int timetouse = (en.isWhite ? en.wtime : en.btime);
     int timeinc = (en.isWhite ? en.winc : en.binc);
@@ -935,7 +938,8 @@ void startSearchTime()
     {
         // should garantee timetouse > 0
         // stop soon at 0.7 x average movetime
-        en.endtime1 = en.starttime + timetouse * en.frequency * 7 / (en.movestogo + 1) / 10000;
+        if (complete)
+            en.endtime1 = en.starttime + timetouse * en.frequency * 7 / (en.movestogo + 1) / 10000;
         // stop immediately at 1.3 x average movetime
         en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, 13 * timetouse / (en.movestogo + 1) / 10) * en.frequency / 1000;
         //printf("info string difftime1=%lld  difftime2=%lld\n", (endtime1 - en.starttime) * 1000 / en.frequency , (endtime2 - en.starttime) * 1000 / en.frequency);
@@ -946,7 +950,8 @@ void startSearchTime()
         {
             // sudden death with increment; split the remaining time in (256-phase) timeslots
             // stop soon after 6 timeslot
-            en.endtime1 = en.starttime + max(timeinc, 6 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
+            if (complete)
+                en.endtime1 = en.starttime + max(timeinc, 6 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
             // stop immediately after 10 timeslots
             en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, max(timeinc, 10 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
         }
@@ -959,7 +964,8 @@ void startSearchTime()
             //  45;30:  55,5% + 53,4%
             // So I use the first one although 45;30 is ~22ELO better against 40;25 in TC 10 and TC 60
 
-            en.endtime1 = en.starttime + timetouse / 40 * en.frequency / 1000;
+            if (complete)
+                en.endtime1 = en.starttime + timetouse / 40 * en.frequency / 1000;
             en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, timetouse / 25) * en.frequency / 1000;
 
         }
@@ -1015,7 +1021,7 @@ void searchguide()
             }
             else if (en.testPonderHit())
             {
-                startSearchTime();
+                startSearchTime(false);
                 en.resetPonder();
             }
             else if (en.endtime2 && nowtime >= en.endtime2 && en.stopLevel < ENGINESTOPIMMEDIATELY)
