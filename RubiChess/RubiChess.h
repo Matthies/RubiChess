@@ -1,6 +1,6 @@
 #pragma once
 
-#define VERNUM "2.0-dev"
+#define VERNUM "1.1-dev"
 
 #if 0
 #define DEBUG
@@ -469,6 +469,7 @@ public:
     int ply;
     int halfmovescounter = 0;
     int fullmovescounter = 0;
+    int seldepth;
 #ifdef DEBUG
     int maxdebugdepth = -1;
     int mindebugdepth = -1;
