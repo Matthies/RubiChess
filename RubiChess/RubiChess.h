@@ -22,8 +22,6 @@
 #define FINDMEMORYLEAKS
 #endif
 
-#define BOARDVERSION "MB"
-
 #ifdef FINDMEMORYLEAKS
 #ifdef _DEBUG  
 #define DEBUG_CLIENTBLOCK   new( _CLIENT_BLOCK, __FILE__, __LINE__)  
@@ -80,7 +78,7 @@ void Sleep(long x);
 
 #endif
 
-#define ENGINEVER "RubiChess " VERNUM " " BOARDVERSION
+#define ENGINEVER "RubiChess " VERNUM
 #define BUILD __DATE__ " " __TIME__
 
 #define BITSET(x) (1ULL << (x))
@@ -427,7 +425,7 @@ public:
 
 extern U64 pawn_attacks_occupied[64][2];
 extern U64 knight_attacks[64];
-
+extern U64 king_attacks[64];
 
 struct SMagic {
     U64 mask;  // to mask relevant squares of both lines (no outer squares)
@@ -458,6 +456,9 @@ class chessposition
 public:
     U64 piece00[14];
     U64 occupied00[2];
+    U64 attacked[2];
+    U64 attackedBy2[2];
+    U64 attackedBy[2][7] = { 0 };
     PieceCode mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
 
     int state;
@@ -679,7 +680,9 @@ typedef struct pawnhashentry {
     U64 passedpawnbb[2];
     U64 isolatedpawnbb[2];
     U64 backwardpawnbb[2];
-    int semiopen[2]; 
+    int semiopen[2];
+    U64 attacked[2];
+    U64 attackedBy2[2];
     short value;
 } S_PAWNHASHENTRY;
 
