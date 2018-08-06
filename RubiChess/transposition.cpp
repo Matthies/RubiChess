@@ -338,6 +338,10 @@ bool pawnhash::probeHash(pawnhashentry **entry)
         return true;
     }
     (*entry)->hashupper = (uint32_t)(hash >> 32);
+    (*entry)->value = 0;
+    (*entry)->attacked[0] = (*entry)->attacked[1] = 0ULL;
+    (*entry)->attackedBy2[0] = (*entry)->attackedBy2[1] = 0ULL;
+
     return false;
 }
 

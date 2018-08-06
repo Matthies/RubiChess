@@ -286,7 +286,6 @@ int chessposition::getPawnValue(pawnhashentry **entry)
     pawnhashentry *entryptr = *entry;
     if (!hashexist)
     {
-        entryptr->value = 0;
         for (int pc = WPAWN; pc <= BPAWN; pc++)
         {
             int s = pc & S2MMASK;
@@ -297,6 +296,8 @@ int chessposition::getPawnValue(pawnhashentry **entry)
             U64 pb = piece00[pc];
             while (LSB(index, pb))
             {
+                entryptr->attackedBy2[s ^ S2MMASK] |= (entryptr->attacked[s ^ S2MMASK] & pawn_attacks_occupied[index][s]);
+                entryptr->attacked[s ^ S2MMASK] |= pawn_attacks_occupied[index][s];
                 entryptr->semiopen[s] &= ~BITSET(FILE(index)); 
                 if (!(passedPawnMask[index][s] & piece00[pc ^ S2MMASK]))
                 {
@@ -411,7 +412,26 @@ int chessposition::getPositionValue()
 
     result += getPawnValue<Et>(&phentry);
 
-    for (int pc = WPAWN; pc <= BKING; pc++)
+    attackedBy[0][PAWN] = phentry->attacked[0];
+    attackedBy[1][PAWN] = phentry->attacked[1];
+    attackedBy[0][KING] = king_attacks[kingpos[1]];
+    attackedBy2[0] = phentry->attackedBy2[0] | (attackedBy[0][KING] & phentry->attacked[0]);
+    attackedBy[0][0] = attackedBy[0][KING] | phentry->attacked[0];
+    attackedBy[1][KING] = king_attacks[kingpos[0]];
+    attackedBy2[1] = phentry->attackedBy2[1] | (attackedBy[1][KING] & phentry->attacked[1]);
+    attackedBy[1][0] = attackedBy[1][KING] | phentry->attacked[1];
+ 
+    // king specials
+    int psqking0 = *(positionvaluetable + (kingpos[0] | (ph << 6) | (KING << 14) | (0 << 17)));
+    int psqking1 = *(positionvaluetable + (kingpos[1] | (ph << 6) | (KING << 14) | (1 << 17)));
+    result += psqking0 + psqking1;
+    if (Et == TRACE)
+    {
+        psqteval[0] += psqking0;
+        psqteval[0] += psqking1;
+    }
+
+    for (int pc = WPAWN; pc <= BQUEEN; pc++)
     {
         int p = pc >> 1;
         int s = pc & S2MMASK;
@@ -419,18 +439,18 @@ int chessposition::getPositionValue()
         while (LSB(index, pb))
         {
             int pvtindex = index | (ph << 6) | (p << 14) | (s << 17);
-
             result += *(positionvaluetable + pvtindex);
             if (Et == TRACE)
                 psqteval[s] += *(positionvaluetable + pvtindex);
 
             pb ^= BITSET(index);
 
+            U64 attack = 0ULL;;
             U64 mobility = 0ULL;
             if (shifting[p] & 0x2) // rook and queen
             {
-                mobility = ~occupied00[s]
-                    & (mRookAttacks[index][MAGICROOKINDEX((occupied00[0] | occupied00[1]), index)]);
+                attack = mRookAttacks[index][MAGICROOKINDEX((occupied00[0] | occupied00[1]), index)];
+                mobility = attack & ~occupied00[s];
 
                 // extrabonus for rook on (semi-)open file  
                 if (p == ROOK && (phentry->semiopen[s] & BITSET(FILE(index))))
@@ -443,26 +463,36 @@ int chessposition::getPositionValue()
 
             if (shifting[p] & 0x1) // bishop and queen)
             {
+                attack |= mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)];
                 mobility |= ~occupied00[s]
                     & (mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)]);
             }
 
             if (p == KNIGHT)
             {
-                mobility = knight_attacks[index] & ~occupied00[s];
+                attack = knight_attacks[index];
+                mobility = attack & ~occupied00[s];
             }
-            // mobility bonus
-            result += S2MSIGN(s) * POPCOUNT(mobility) * shiftmobilitybonus;
-            if (Et == TRACE)
-                mobilityeval[s] += S2MSIGN(s) * POPCOUNT(mobility) * shiftmobilitybonus;
 
-            // king danger
-            U64 kingdangerarea = kingdangerMask[kingpos[1 - s]][1 - s];
-            if (mobility & kingdangerarea)
+            if (p != PAWN)
             {
-                kingattackweightsum[s] += POPCOUNT(mobility & kingdangerarea) * kingattackweight[p];
-            }
+                // update attack bitboard
+                attackedBy[s ^ S2MMASK][p] |= attack;
+                attackedBy2[s ^ S2MMASK] |= (attackedBy[s ^ S2MMASK][0] & attack);
+                attackedBy[s ^ S2MMASK][0] |= attack;
 
+                // mobility bonus
+                result += S2MSIGN(s) * POPCOUNT(mobility) * shiftmobilitybonus;
+                if (Et == TRACE)
+                    mobilityeval[s] += S2MSIGN(s) * POPCOUNT(mobility) * shiftmobilitybonus;
+
+                // king danger
+                U64 kingdangerarea = kingdangerMask[kingpos[1 - s]][1 - s];
+                if (mobility & kingdangerarea)
+                {
+                    kingattackweightsum[s] += POPCOUNT(mobility & kingdangerarea) * kingattackweight[p];
+                }
+            }
         }
     }
 
