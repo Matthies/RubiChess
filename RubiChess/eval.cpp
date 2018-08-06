@@ -416,10 +416,10 @@ int chessposition::getPositionValue()
     attackedBy[1][PAWN] = phentry->attacked[1];
     attackedBy[0][KING] = king_attacks[kingpos[1]];
     attackedBy2[0] = phentry->attackedBy2[0] | (attackedBy[0][KING] & phentry->attacked[0]);
-    attacked[0] = attackedBy[0][KING] | phentry->attacked[0];
+    attackedBy[0][0] = attackedBy[0][KING] | phentry->attacked[0];
     attackedBy[1][KING] = king_attacks[kingpos[0]];
     attackedBy2[1] = phentry->attackedBy2[1] | (attackedBy[1][KING] & phentry->attacked[1]);
-    attacked[1] = attackedBy[1][KING] | phentry->attacked[1];
+    attackedBy[1][0] = attackedBy[1][KING] | phentry->attacked[1];
  
     // king specials
     int psqking0 = *(positionvaluetable + (kingpos[0] | (ph << 6) | (KING << 14) | (0 << 17)));
@@ -478,8 +478,8 @@ int chessposition::getPositionValue()
             {
                 // update attack bitboard
                 attackedBy[s ^ S2MMASK][p] |= attack;
-                attackedBy2[s ^ S2MMASK] |= (attacked[s ^ S2MMASK] & attack);
-                attacked[s ^ S2MMASK] |= attack;
+                attackedBy2[s ^ S2MMASK] |= (attackedBy[s ^ S2MMASK][0] & attack);
+                attackedBy[s ^ S2MMASK][0] |= attack;
 
                 // mobility bonus
                 result += S2MSIGN(s) * POPCOUNT(mobility) * shiftmobilitybonus;

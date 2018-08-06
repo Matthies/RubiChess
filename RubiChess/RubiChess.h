@@ -456,7 +456,6 @@ class chessposition
 public:
     U64 piece00[14];
     U64 occupied00[2];
-    U64 attacked[2];
     U64 attackedBy2[2];
     U64 attackedBy[2][7] = { 0 };
     PieceCode mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
