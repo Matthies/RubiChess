@@ -288,59 +288,60 @@ int chessposition::getPawnValue(pawnhashentry **entry)
     {
         for (int pc = WPAWN; pc <= BPAWN; pc++)
         {
-            int s = pc & S2MMASK;
-            entryptr->semiopen[s] = 0xff; 
-            entryptr->passedpawnbb[s] = 0ULL;
-            entryptr->isolatedpawnbb[s] = 0ULL;
-            entryptr->backwardpawnbb[s] = 0ULL;
+            int me = pc & S2MMASK;
+            int you = me ^ S2MMASK;
+            entryptr->semiopen[me] = 0xff; 
+            entryptr->passedpawnbb[me] = 0ULL;
+            entryptr->isolatedpawnbb[me] = 0ULL;
+            entryptr->backwardpawnbb[me] = 0ULL;
             U64 pb = piece00[pc];
             while (LSB(index, pb))
             {
-                entryptr->attackedBy2[s ^ S2MMASK] |= (entryptr->attacked[s ^ S2MMASK] & pawn_attacks_occupied[index][s]);
-                entryptr->attacked[s ^ S2MMASK] |= pawn_attacks_occupied[index][s];
-                entryptr->semiopen[s] &= ~BITSET(FILE(index)); 
-                if (!(passedPawnMask[index][s] & piece00[pc ^ S2MMASK]))
+                entryptr->attackedBy2[you] |= (entryptr->attacked[you] & pawn_attacks_occupied[index][me]);
+                entryptr->attacked[you] |= pawn_attacks_occupied[index][me];
+                entryptr->semiopen[me] &= ~BITSET(FILE(index)); 
+                if (!(passedPawnMask[index][me] & piece00[pc ^ S2MMASK]))
                 {
                     // passed pawn
-                    entryptr->passedpawnbb[s] |= BITSET(index);
+                    entryptr->passedpawnbb[me] |= BITSET(index);
                 }
 
                 if (!(piece00[pc] & neighbourfilesMask[index]))
                 {
                     // isolated pawn
-                    entryptr->isolatedpawnbb[s] |= BITSET(index);
+                    entryptr->isolatedpawnbb[me] |= BITSET(index);
                 }
                 else
                 {
-                    if (pawn_attacks_occupied[index][s] & piece00[pc ^ S2MMASK])
+                    if (pawn_attacks_occupied[index][me] & piece00[pc ^ S2MMASK])
                     {
                         // pawn attacks opponent pawn
-                        entryptr->value += attackingpawnbonusperside[s][RANK(index)];
+                        entryptr->value += attackingpawnbonusperside[me][RANK(index)];
                         if (Et == TRACE)
-                            attackingpawnval[s] += attackingpawnbonusperside[s][RANK(index)];
+                            attackingpawnval[me] += attackingpawnbonusperside[me][RANK(index)];
                     }
-                    if ((pawn_attacks_occupied[index][s ^ S2MMASK] & piece00[pc]) || (phalanxMask[index] & piece00[pc]))
+                    if ((pawn_attacks_occupied[index][you] & piece00[pc]) || (phalanxMask[index] & piece00[pc]))
                     {
                         // pawn is protected by other pawn
-                        entryptr->value += S2MSIGN(s) * connectedbonus;
+                        entryptr->value += S2MSIGN(me) * connectedbonus;
                         if (Et == TRACE)
-                            connectedpawnval[s] += S2MSIGN(s) * connectedbonus;
+                            connectedpawnval[me] += S2MSIGN(me) * connectedbonus;
                     }
-                    if (!((passedPawnMask[index][1 - s] | phalanxMask[index]) & piece00[pc]))
+                    if (!((passedPawnMask[index][you] | phalanxMask[index]) & piece00[pc]))
                     {
                         // test for backward pawn
-                        U64 opponentpawns = piece00[pc ^ S2MMASK] & passedPawnMask[index][s];
+                        U64 opponentpawns = piece00[pc ^ S2MMASK] & passedPawnMask[index][me];
                         U64 mypawns = piece00[pc] & neighbourfilesMask[index];
                         U64 pawnstoreach = opponentpawns | mypawns;
                         int nextpawn;
-                        if (s ? MSB(nextpawn, pawnstoreach) : LSB(nextpawn, pawnstoreach))
+                        if (me ? MSB(nextpawn, pawnstoreach) : LSB(nextpawn, pawnstoreach))
                         {
                             U64 nextpawnrank = rankMask[nextpawn];
-                            U64 shiftneigbours = (s ? nextpawnrank >> 8 : nextpawnrank << 8);
+                            U64 shiftneigbours = (me ? nextpawnrank >> 8 : nextpawnrank << 8);
                             if ((nextpawnrank | (shiftneigbours & neighbourfilesMask[index])) & opponentpawns)
                             {
                                 // backward pawn detected
-                                entryptr->backwardpawnbb[s] |= BITSET(index);
+                                entryptr->backwardpawnbb[me] |= BITSET(index);
                             }
                         }
                     }
@@ -407,6 +408,8 @@ int chessposition::getPositionValue()
     int kingshieldeval[2] = { 0 };
     int kingdangereval[2] = { 0 };
 
+    memset(attackedBy, 0, sizeof(attackedBy));
+
     if (Et == TRACE)
         printEvalTrace(1, "tempo", result);
 
@@ -435,7 +438,6 @@ int chessposition::getPositionValue()
         int me = pc & S2MMASK;
         int you = me ^ S2MMASK;
         U64 pb = piece00[pc];
-        attackedBy[you][p] = 0ULL;
         while (LSB(index, pb))
         {
             int pvtindex = index | (ph << 6) | (p << 14) | (me << 17);
