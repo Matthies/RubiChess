@@ -907,6 +907,10 @@ static void search_gen1()
         }
         if (inWindow == 1)
             depth += depthincrement;
+        // when pondering prevent from stopping search before STOP
+        if (en.isPondering() && depth > min(maxdepth, abs(matein) * 2))
+            depth--;
+
         if (pos.rootmovelist.length == 1 && depth > 4 && en.endtime1 && !en.isPondering())
             // early exit in playing mode as there is exactly one possible move
             en.stopLevel = ENGINEWANTSTOP;
