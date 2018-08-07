@@ -914,7 +914,7 @@ static void search_gen1()
         }
         if (inWindow == 1)
             depth += depthincrement;
-        if (pos.rootmovelist.length == 1 && depth > 4 && en.endtime1)
+        if (pos.rootmovelist.length == 1 && depth > 4 && en.endtime1 && !en.isPondering())
             // early exit in playing mode as there is exactly one possible move
             en.stopLevel = ENGINEWANTSTOP;
         if (pos.tbPosition && abs(score) >= SCORETBWIN - 100)
