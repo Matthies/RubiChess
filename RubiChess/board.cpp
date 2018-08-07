@@ -729,6 +729,7 @@ void chessposition::print()
     printf("info string Phase: %d\n", phase());
     printf("info string Pseudo-legal Moves: %s\n", pseudolegalmoves.toStringWithValue().c_str());
     printf("Attacked and AttackedBy2 bitboards:\n");
+#if 0
     BitboardDraw(attackedBy2[0]);
     BitboardDraw(attackedBy2[1]);
     for (int i = 0; i <= KING; i++)
@@ -736,6 +737,7 @@ void chessposition::print()
         BitboardDraw(attackedBy[0][i]);
         BitboardDraw(attackedBy[1][i]);
     }
+#endif
     if (tp.size > 0 && tp.testHash())
     {
         chessmove cm;

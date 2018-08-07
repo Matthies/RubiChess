@@ -686,6 +686,7 @@ static void search_gen1()
     int depth, maxdepth, depthincrement;
     string pvstring;
     int inWindow;
+    int lastsecondsrun = 0;
     const char* boundscore[] = { "upperbound", "", "lowerbound" };
 
 
@@ -708,15 +709,6 @@ static void search_gen1()
     alpha = SHRT_MIN + 1;
     beta = SHRT_MAX;
     
-    if (pos.rootmovelist.length == 0)
-    {
-        pos.bestmove[0].code = 0;
-        score =  (pos.isCheck ? SCOREBLACKWINS : SCOREDRAW);
-        
-    }
-
-
-
     // iterative deepening
     do
     {
@@ -868,7 +860,7 @@ static void search_gen1()
                 if (!pos.bestmove[0].code)
                     tp.probeHash(&score, &pos.bestmove[0].code, MAXDEPTH, alpha, beta);
                 // still no bestmove...
-                if (!pos.bestmove[0].code)
+                if (!pos.bestmove[0].code && pos.rootmovelist.length > 0)
                     pos.bestmove[0].code = pos.rootmovelist.move[0].code;
 
                 pos.getpvline(depth, 0);
@@ -891,8 +883,9 @@ static void search_gen1()
                     pondermovestr = " ponder " + pos.pvline.move[1].toString();
 
                 char s[4096];
-                if (inWindow == 1 || secondsrun > 200)
+                if (inWindow == 1 || (secondsrun - lastsecondsrun) > 200)
                 {
+                    lastsecondsrun = secondsrun;
                     if (!MATEDETECTED(score))
                     {
                         sprintf_s(s, "info depth %d seldepth %d time %d score cp %d %s nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",

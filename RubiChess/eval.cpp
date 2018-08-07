@@ -412,8 +412,6 @@ int chessposition::getPositionValue()
 
     result += getPawnValue<Et>(&phentry);
 
-    attackedBy[0][PAWN] = phentry->attacked[0];
-    attackedBy[1][PAWN] = phentry->attacked[1];
     attackedBy[0][KING] = king_attacks[kingpos[1]];
     attackedBy2[0] = phentry->attackedBy2[0] | (attackedBy[0][KING] & phentry->attacked[0]);
     attackedBy[0][0] = attackedBy[0][KING] | phentry->attacked[0];
@@ -434,14 +432,16 @@ int chessposition::getPositionValue()
     for (int pc = WPAWN; pc <= BQUEEN; pc++)
     {
         int p = pc >> 1;
-        int s = pc & S2MMASK;
+        int me = pc & S2MMASK;
+        int you = me ^ S2MMASK;
         U64 pb = piece00[pc];
+        attackedBy[you][p] = 0ULL;
         while (LSB(index, pb))
         {
-            int pvtindex = index | (ph << 6) | (p << 14) | (s << 17);
+            int pvtindex = index | (ph << 6) | (p << 14) | (me << 17);
             result += *(positionvaluetable + pvtindex);
             if (Et == TRACE)
-                psqteval[s] += *(positionvaluetable + pvtindex);
+                psqteval[me] += *(positionvaluetable + pvtindex);
 
             pb ^= BITSET(index);
 
@@ -450,51 +450,53 @@ int chessposition::getPositionValue()
             if (shifting[p] & 0x2) // rook and queen
             {
                 attack = mRookAttacks[index][MAGICROOKINDEX((occupied00[0] | occupied00[1]), index)];
-                mobility = attack & ~occupied00[s];
+                mobility = attack & ~occupied00[me];
 
                 // extrabonus for rook on (semi-)open file  
-                if (p == ROOK && (phentry->semiopen[s] & BITSET(FILE(index))))
+                if (p == ROOK && (phentry->semiopen[me] & BITSET(FILE(index))))
                 {
-                    result += S2MSIGN(s) * slideronfreefilebonus[bool(phentry->semiopen[1 - s] & BITSET(FILE(index)))];
+                    result += S2MSIGN(me) * slideronfreefilebonus[bool(phentry->semiopen[you] & BITSET(FILE(index)))];
                     if (Et == TRACE)
-                        freeslidereval[s] += S2MSIGN(s) * slideronfreefilebonus[bool(phentry->semiopen[1 - s] & BITSET(FILE(index)))];
+                        freeslidereval[me] += S2MSIGN(me) * slideronfreefilebonus[bool(phentry->semiopen[you] & BITSET(FILE(index)))];
                 }
             }
 
             if (shifting[p] & 0x1) // bishop and queen)
             {
                 attack |= mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)];
-                mobility |= ~occupied00[s]
+                mobility |= ~occupied00[me]
                     & (mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)]);
             }
 
             if (p == KNIGHT)
             {
                 attack = knight_attacks[index];
-                mobility = attack & ~occupied00[s];
+                mobility = attack & ~occupied00[me];
             }
 
             if (p != PAWN)
             {
                 // update attack bitboard
-                attackedBy[s ^ S2MMASK][p] |= attack;
-                attackedBy2[s ^ S2MMASK] |= (attackedBy[s ^ S2MMASK][0] & attack);
-                attackedBy[s ^ S2MMASK][0] |= attack;
+                attackedBy[you][p] |= attack;
+                attackedBy2[you] |= (attackedBy[you][0] & attack);
+                attackedBy[you][0] |= attack;
 
                 // mobility bonus
-                result += S2MSIGN(s) * POPCOUNT(mobility) * shiftmobilitybonus;
+                result += S2MSIGN(me) * POPCOUNT(mobility) * shiftmobilitybonus;
                 if (Et == TRACE)
-                    mobilityeval[s] += S2MSIGN(s) * POPCOUNT(mobility) * shiftmobilitybonus;
+                    mobilityeval[me] += S2MSIGN(me) * POPCOUNT(mobility) * shiftmobilitybonus;
 
                 // king danger
-                U64 kingdangerarea = kingdangerMask[kingpos[1 - s]][1 - s];
+                U64 kingdangerarea = kingdangerMask[kingpos[you]][you];
                 if (mobility & kingdangerarea)
                 {
-                    kingattackweightsum[s] += POPCOUNT(mobility & kingdangerarea) * kingattackweight[p];
+                    kingattackweightsum[me] += POPCOUNT(mobility & kingdangerarea) * kingattackweight[p];
                 }
             }
         }
     }
+    attackedBy[0][PAWN] = phentry->attacked[0];
+    attackedBy[1][PAWN] = phentry->attacked[1];
 
     // bonus for double bishop
     if (POPCOUNT(piece00[WBISHOP]) >= 2)
