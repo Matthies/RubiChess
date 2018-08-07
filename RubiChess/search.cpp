@@ -907,9 +907,6 @@ static void search_gen1()
         }
         if (inWindow == 1)
             depth += depthincrement;
-        // when pondering prevent from stopping search before STOP
-        if (en.isPondering() && depth > min(maxdepth, abs(matein) * 2))
-            depth--;
 
         if (pos.rootmovelist.length == 1 && depth > 4 && en.endtime1 && !en.isPondering())
             // early exit in playing mode as there is exactly one possible move
@@ -919,14 +916,19 @@ static void search_gen1()
             en.stopLevel = ENGINEWANTSTOP;
     } while (en.stopLevel == ENGINERUN && depth <= min(maxdepth, abs(matein) * 2));
     
-    en.stopLevel = ENGINESTOPPED;
     if (bestmovestr == "")
         // not a single move found (serious time trouble); fall back to default move
         bestmovestr = pos.defaultmove.toString();
 
     char s[64];
     sprintf_s(s, "bestmove %s%s\n", bestmovestr.c_str(), pondermovestr.c_str());
+
+    // when pondering prevent from stopping search before STOP
+    while (en.isPondering() && en.stopLevel != ENGINESTOPIMMEDIATELY)
+        Sleep(10);
+ 
     cout << s;
+    en.stopLevel = ENGINESTOPPED;
 }
 
 
