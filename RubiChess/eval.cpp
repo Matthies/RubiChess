@@ -14,6 +14,7 @@ CONSTEVAL int kingshieldbonus = 14;
 CONSTEVAL int backwardpawnpenalty = -21;
 CONSTEVAL int doublebishopbonus = 39;
 CONSTEVAL int shiftmobilitybonus = 2;
+CONSTEVAL int safepawnattackbonus = 50;
 CONSTEVAL int slideronfreefilebonus[2] = { 15,   17 };
 CONSTEVAL int materialvalue[7] = { 0,  100,  314,  314,  492,  930,32509 };
 
@@ -155,11 +156,13 @@ void registeralltuners()
     }
 #endif
 
-#if 1
+    registerTuner(&safepawnattackbonus, "safepawnattackbonus", safepawnattackbonus, 0, 0, 0, 0, NULL, false);
+#if 0
     // tuning other values
     for (i = 0; i < 7; i++)
         registerTuner(&kingattackweight[i], "kingattackweight", kingattackweight[i], i, 7, 0, 0, NULL, i < 2 || i > 5);
     registerTuner(&KingSafetyFactor, "KingSafetyFactor", KingSafetyFactor, 0, 0, 0, 0, NULL, false);
+    registerTuner(&safepawnattackbonus, "safepawnattackbonus", safepawnattackbonus, 0, 0, 0, 0, NULL, false);
     registerTuner(&tempo, "tempo", tempo, 0, 0, 0, 0, NULL, false);
     for (i = 0; i < 8; i++)
         registerTuner(&passedpawnbonus[i], "passedpawnbonus", passedpawnbonus[i], i, 8, 0, 0, &CreatePositionvalueTable, i == 0 || i == 7);
@@ -175,12 +178,12 @@ void registeralltuners()
     for (i = 0; i < 2; i++)
         registerTuner(&slideronfreefilebonus[i], "slideronfreefilebonus", slideronfreefilebonus[i], i, 2, 0, 0, NULL, false);
 #endif
-#if 1
+#if 0
     // tuning material value
     for (i = BLANK; i <= KING; i++)
         registerTuner(&materialvalue[i], "materialvalue", materialvalue[i], i, 7, 0, 0, &CreatePositionvalueTable, i <= PAWN || i >= KING);
 #endif
-#if 1
+#if 0
     // tuning the psqt base at game start
     for (i = 0; i < 6; i++)
     {
@@ -190,7 +193,7 @@ void registeralltuners()
         }
     }
 #endif
-#if 1
+#if 0
     //tuning the psqt phase development
     for (i = 0; i < 6; i++)
     {
@@ -524,10 +527,26 @@ int chessposition::getPositionValue()
 
     for (int s = 0; s < 2; s++)
     {
+        // King safety
         result += S2MSIGN(s) * KingSafetyFactor * KingSafetyTable[kingattackweightsum[s]] * (256 - ph) / 0x10000;
         if (Et == TRACE)
             kingdangereval[s] = S2MSIGN(s) * KingSafetyFactor * KingSafetyTable[kingattackweightsum[s]] * (256 - ph) / 0x10000;
+
+        // Threats
+        int t = s ^ S2MMASK;
+        U64 nonPawns = occupied00[t] ^ piece00[WPAWN | t];
+        U64 attackedNonPawns = (nonPawns & attackedBy[s][PAWN]);
+        if (attackedNonPawns)
+        {
+            // Our safe or protected pawns
+            U64 b = piece00[WPAWN | s] & (~attackedBy[t][0] | attackedBy[s][0]);
+
+            U64 safeThreats = pawnAttack(s, b) & attackedNonPawns;
+            result += S2MSIGN(s) * safepawnattackbonus * POPCOUNT(safeThreats);
+        }
+
     }
+
 
     if (Et == TRACE)
     {

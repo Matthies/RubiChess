@@ -98,6 +98,8 @@ void Sleep(long x);
 
 #define PROMOTERANK(x) (RANK(x) == 0 || RANK(x) == 7)
 #define PROMOTERANKBB 0xff000000000000ff
+#define FILEABB 0x0101010101010101
+#define FILEHBB 0x8080808080808080
 #define OUTERFILE(x) (FILE(x) == 0 || FILE(x) == 7)
 #define ISNEIGHBOUR(x,y) ((x) >= 0 && (x) < 64 && (y) >= 0 && (y) < 64 && abs(RANK(x) - RANK(y)) <= 1 && abs(FILE(x) - FILE(y)) <= 1)
 
@@ -248,6 +250,8 @@ const int lva[] = { 5 << 25, 4 << 25, 3 << 25, 3 << 25, 2 << 25, 1 << 25, 0 << 2
 #define ISCAPTURE(x) ((x) & 0xf0000)
 #define GETPIECE(x) (((x) & 0xf0000000) >> 28)
 
+extern U64 pawnAttack(int s, U64 p);
+
 // passedPawnMask[18][WHITE]:
 // 01110000
 // 01110000
@@ -336,6 +340,15 @@ extern U64 fileMask[64];
 // 00000000
 extern U64 rankMask[64];
 
+// betweenMask[18][45]:
+// 00000000
+// 00000000
+// 00000x00
+// 00001000
+// 00010000
+// 00x00000
+// 00000000
+// 00000000
 extern U64 betweenMask[64][64];
 
 struct chessmovestack
@@ -457,7 +470,7 @@ public:
     U64 piece00[14];
     U64 occupied00[2];
     U64 attackedBy2[2];
-    U64 attackedBy[2][7] = { 0 };
+    U64 attackedBy[2][7];
     PieceCode mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
 
     int state;
