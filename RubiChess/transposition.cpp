@@ -331,11 +331,10 @@ bool pawnhash::probeHash(pawnhashentry **entry)
 #ifdef DEBUG
         hit++;
 #endif
-#ifdef EVALTUNE
+#ifndef EVALTUNE
         // don't use pawn hash when tuning evaluation
-        return false;
-#endif
         return true;
+#endif
     }
     (*entry)->hashupper = (uint32_t)(hash >> 32);
     (*entry)->value = 0;
