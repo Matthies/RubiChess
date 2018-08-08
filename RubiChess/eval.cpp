@@ -288,59 +288,60 @@ int chessposition::getPawnValue(pawnhashentry **entry)
     {
         for (int pc = WPAWN; pc <= BPAWN; pc++)
         {
-            int s = pc & S2MMASK;
-            entryptr->semiopen[s] = 0xff; 
-            entryptr->passedpawnbb[s] = 0ULL;
-            entryptr->isolatedpawnbb[s] = 0ULL;
-            entryptr->backwardpawnbb[s] = 0ULL;
+            int me = pc & S2MMASK;
+            int you = me ^ S2MMASK;
+            entryptr->semiopen[me] = 0xff; 
+            entryptr->passedpawnbb[me] = 0ULL;
+            entryptr->isolatedpawnbb[me] = 0ULL;
+            entryptr->backwardpawnbb[me] = 0ULL;
             U64 pb = piece00[pc];
             while (LSB(index, pb))
             {
-                entryptr->attackedBy2[s ^ S2MMASK] |= (entryptr->attacked[s ^ S2MMASK] & pawn_attacks_occupied[index][s]);
-                entryptr->attacked[s ^ S2MMASK] |= pawn_attacks_occupied[index][s];
-                entryptr->semiopen[s] &= ~BITSET(FILE(index)); 
-                if (!(passedPawnMask[index][s] & piece00[pc ^ S2MMASK]))
+                entryptr->attackedBy2[you] |= (entryptr->attacked[you] & pawn_attacks_occupied[index][me]);
+                entryptr->attacked[you] |= pawn_attacks_occupied[index][me];
+                entryptr->semiopen[me] &= ~BITSET(FILE(index)); 
+                if (!(passedPawnMask[index][me] & piece00[pc ^ S2MMASK]))
                 {
                     // passed pawn
-                    entryptr->passedpawnbb[s] |= BITSET(index);
+                    entryptr->passedpawnbb[me] |= BITSET(index);
                 }
 
                 if (!(piece00[pc] & neighbourfilesMask[index]))
                 {
                     // isolated pawn
-                    entryptr->isolatedpawnbb[s] |= BITSET(index);
+                    entryptr->isolatedpawnbb[me] |= BITSET(index);
                 }
                 else
                 {
-                    if (pawn_attacks_occupied[index][s] & piece00[pc ^ S2MMASK])
+                    if (pawn_attacks_occupied[index][me] & piece00[pc ^ S2MMASK])
                     {
                         // pawn attacks opponent pawn
-                        entryptr->value += attackingpawnbonusperside[s][RANK(index)];
+                        entryptr->value += attackingpawnbonusperside[me][RANK(index)];
                         if (Et == TRACE)
-                            attackingpawnval[s] += attackingpawnbonusperside[s][RANK(index)];
+                            attackingpawnval[me] += attackingpawnbonusperside[me][RANK(index)];
                     }
-                    if ((pawn_attacks_occupied[index][s ^ S2MMASK] & piece00[pc]) || (phalanxMask[index] & piece00[pc]))
+                    if ((pawn_attacks_occupied[index][you] & piece00[pc]) || (phalanxMask[index] & piece00[pc]))
                     {
                         // pawn is protected by other pawn
-                        entryptr->value += S2MSIGN(s) * connectedbonus;
+                        entryptr->value += S2MSIGN(me) * connectedbonus;
                         if (Et == TRACE)
-                            connectedpawnval[s] += S2MSIGN(s) * connectedbonus;
+                            connectedpawnval[me] += S2MSIGN(me) * connectedbonus;
                     }
-                    if (!((passedPawnMask[index][1 - s] | phalanxMask[index]) & piece00[pc]))
+                    if (!((passedPawnMask[index][you] | phalanxMask[index]) & piece00[pc]))
                     {
                         // test for backward pawn
-                        U64 opponentpawns = piece00[pc ^ S2MMASK] & passedPawnMask[index][s];
+                        U64 opponentpawns = piece00[pc ^ S2MMASK] & passedPawnMask[index][me];
                         U64 mypawns = piece00[pc] & neighbourfilesMask[index];
                         U64 pawnstoreach = opponentpawns | mypawns;
                         int nextpawn;
-                        if (s ? MSB(nextpawn, pawnstoreach) : LSB(nextpawn, pawnstoreach))
+                        if (me ? MSB(nextpawn, pawnstoreach) : LSB(nextpawn, pawnstoreach))
                         {
                             U64 nextpawnrank = rankMask[nextpawn];
-                            U64 shiftneigbours = (s ? nextpawnrank >> 8 : nextpawnrank << 8);
+                            U64 shiftneigbours = (me ? nextpawnrank >> 8 : nextpawnrank << 8);
                             if ((nextpawnrank | (shiftneigbours & neighbourfilesMask[index])) & opponentpawns)
                             {
                                 // backward pawn detected
-                                entryptr->backwardpawnbb[s] |= BITSET(index);
+                                entryptr->backwardpawnbb[me] |= BITSET(index);
                             }
                         }
                     }
@@ -407,13 +408,13 @@ int chessposition::getPositionValue()
     int kingshieldeval[2] = { 0 };
     int kingdangereval[2] = { 0 };
 
+    memset(attackedBy, 0, sizeof(attackedBy));
+
     if (Et == TRACE)
         printEvalTrace(1, "tempo", result);
 
     result += getPawnValue<Et>(&phentry);
 
-    attackedBy[0][PAWN] = phentry->attacked[0];
-    attackedBy[1][PAWN] = phentry->attacked[1];
     attackedBy[0][KING] = king_attacks[kingpos[1]];
     attackedBy2[0] = phentry->attackedBy2[0] | (attackedBy[0][KING] & phentry->attacked[0]);
     attackedBy[0][0] = attackedBy[0][KING] | phentry->attacked[0];
@@ -434,14 +435,15 @@ int chessposition::getPositionValue()
     for (int pc = WPAWN; pc <= BQUEEN; pc++)
     {
         int p = pc >> 1;
-        int s = pc & S2MMASK;
+        int me = pc & S2MMASK;
+        int you = me ^ S2MMASK;
         U64 pb = piece00[pc];
         while (LSB(index, pb))
         {
-            int pvtindex = index | (ph << 6) | (p << 14) | (s << 17);
+            int pvtindex = index | (ph << 6) | (p << 14) | (me << 17);
             result += *(positionvaluetable + pvtindex);
             if (Et == TRACE)
-                psqteval[s] += *(positionvaluetable + pvtindex);
+                psqteval[me] += *(positionvaluetable + pvtindex);
 
             pb ^= BITSET(index);
 
@@ -450,51 +452,53 @@ int chessposition::getPositionValue()
             if (shifting[p] & 0x2) // rook and queen
             {
                 attack = mRookAttacks[index][MAGICROOKINDEX((occupied00[0] | occupied00[1]), index)];
-                mobility = attack & ~occupied00[s];
+                mobility = attack & ~occupied00[me];
 
                 // extrabonus for rook on (semi-)open file  
-                if (p == ROOK && (phentry->semiopen[s] & BITSET(FILE(index))))
+                if (p == ROOK && (phentry->semiopen[me] & BITSET(FILE(index))))
                 {
-                    result += S2MSIGN(s) * slideronfreefilebonus[bool(phentry->semiopen[1 - s] & BITSET(FILE(index)))];
+                    result += S2MSIGN(me) * slideronfreefilebonus[bool(phentry->semiopen[you] & BITSET(FILE(index)))];
                     if (Et == TRACE)
-                        freeslidereval[s] += S2MSIGN(s) * slideronfreefilebonus[bool(phentry->semiopen[1 - s] & BITSET(FILE(index)))];
+                        freeslidereval[me] += S2MSIGN(me) * slideronfreefilebonus[bool(phentry->semiopen[you] & BITSET(FILE(index)))];
                 }
             }
 
             if (shifting[p] & 0x1) // bishop and queen)
             {
                 attack |= mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)];
-                mobility |= ~occupied00[s]
+                mobility |= ~occupied00[me]
                     & (mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)]);
             }
 
             if (p == KNIGHT)
             {
                 attack = knight_attacks[index];
-                mobility = attack & ~occupied00[s];
+                mobility = attack & ~occupied00[me];
             }
 
             if (p != PAWN)
             {
                 // update attack bitboard
-                attackedBy[s ^ S2MMASK][p] |= attack;
-                attackedBy2[s ^ S2MMASK] |= (attackedBy[s ^ S2MMASK][0] & attack);
-                attackedBy[s ^ S2MMASK][0] |= attack;
+                attackedBy[you][p] |= attack;
+                attackedBy2[you] |= (attackedBy[you][0] & attack);
+                attackedBy[you][0] |= attack;
 
                 // mobility bonus
-                result += S2MSIGN(s) * POPCOUNT(mobility) * shiftmobilitybonus;
+                result += S2MSIGN(me) * POPCOUNT(mobility) * shiftmobilitybonus;
                 if (Et == TRACE)
-                    mobilityeval[s] += S2MSIGN(s) * POPCOUNT(mobility) * shiftmobilitybonus;
+                    mobilityeval[me] += S2MSIGN(me) * POPCOUNT(mobility) * shiftmobilitybonus;
 
                 // king danger
-                U64 kingdangerarea = kingdangerMask[kingpos[1 - s]][1 - s];
+                U64 kingdangerarea = kingdangerMask[kingpos[you]][you];
                 if (mobility & kingdangerarea)
                 {
-                    kingattackweightsum[s] += POPCOUNT(mobility & kingdangerarea) * kingattackweight[p];
+                    kingattackweightsum[me] += POPCOUNT(mobility & kingdangerarea) * kingattackweight[p];
                 }
             }
         }
     }
+    attackedBy[0][PAWN] = phentry->attacked[0];
+    attackedBy[1][PAWN] = phentry->attacked[1];
 
     // bonus for double bishop
     if (POPCOUNT(piece00[WBISHOP]) >= 2)
