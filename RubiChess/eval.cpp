@@ -541,7 +541,7 @@ int chessposition::getPositionValue()
             // Our safe or protected pawns
             U64 b = piece00[WPAWN | s] & (~attackedBy[t][0] | attackedBy[s][0]);
 
-            U64 safeThreats = pawnAttack(s, b) & attackedNonPawns;
+            U64 safeThreats = PAWNATTACK(s, b) & attackedNonPawns;
             result += S2MSIGN(s) * safepawnattackbonus * POPCOUNT(safeThreats);
         }
 

@@ -250,7 +250,7 @@ const int lva[] = { 5 << 25, 4 << 25, 3 << 25, 3 << 25, 2 << 25, 1 << 25, 0 << 2
 #define ISCAPTURE(x) ((x) & 0xf0000)
 #define GETPIECE(x) (((x) & 0xf0000000) >> 28)
 
-extern U64 pawnAttack(int s, U64 p);
+#define PAWNATTACK(s, p) ((s) ? ((p & ~FILEHBB) >> 7) | ((p & ~FILEABB) >> 9) : ((p & ~FILEABB) << 7) | ((p & ~FILEHBB) << 9))
 
 // passedPawnMask[18][WHITE]:
 // 01110000

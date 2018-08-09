@@ -938,13 +938,6 @@ U64 getMagicCandidate(U64 mask)
     return magic;
 }
 
-U64 pawnAttack(int s, U64 p)
-{
-    if (s)
-        return ((p & ~FILEHBB) >> 7) | ((p & ~FILEABB) >> 9);
-    else
-        return ((p & ~FILEABB) << 7) | ((p & ~FILEHBB) << 9);
-}
 
 void initBitmaphelper()
 {
