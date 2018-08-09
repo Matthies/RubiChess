@@ -14,7 +14,7 @@ CONSTEVAL int kingshieldbonus = 14;
 CONSTEVAL int backwardpawnpenalty = -21;
 CONSTEVAL int doublebishopbonus = 39;
 CONSTEVAL int shiftmobilitybonus = 2;
-CONSTEVAL int safepawnattackbonus = 50;
+CONSTEVAL int safepawnattackbonus = 37;
 CONSTEVAL int slideronfreefilebonus[2] = { 15,   17 };
 CONSTEVAL int materialvalue[7] = { 0,  100,  314,  314,  492,  930,32509 };
 
