@@ -4,10 +4,10 @@
 // Evaluation stuff
 CONSTEVAL int kingattackweight[7] = { 0,    0,    3,    4,    3,    4,    0 };
 CONSTEVAL int KingSafetyFactor = 278;
-CONSTEVAL int safepawnattackbonus = 36;
+CONSTEVAL int safepawnattackbonus = 35;
 CONSTEVAL int tempo = 5;
 CONSTEVAL int passedpawnbonus[8] = { 0,   11,   21,   39,   72,  117,  140,    0 };
-CONSTEVAL int attackingpawnbonus[8] = { 0,  -15,  -16,   -9,   -4,   34,    0,    0 };
+CONSTEVAL int attackingpawnbonus[8] = { 0,  -15,  -16,   -6,   -4,   34,    0,    0 };
 CONSTEVAL int isolatedpawnpenalty = -14;
 CONSTEVAL int doublepawnpenalty = -19;
 CONSTEVAL int connectedbonus = 3;
@@ -19,8 +19,8 @@ CONSTEVAL int slideronfreefilebonus[2] = { 15,   17 };
 CONSTEVAL int materialvalue[7] = { 0,  100,  314,  314,  483,  913,32509 };
 CONSTEVAL int PVBASE[6][64] = {
   { -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999,
-       62,   76,  100,   72,   52,   76,   48,   69,
-       29,   31,   24,   35,   25,   35,   29,   30,
+       62,   76,  100,   70,   48,   75,   48,   68,
+       28,   30,   22,   35,   25,   35,   29,   30,
         7,    7,   -6,   19,   18,   -7,   -4,  -17,
         0,  -15,    4,   21,   17,   -2,  -17,  -18,
         2,   -9,    3,  -11,   -4,  -16,    4,   -6,
@@ -176,12 +176,12 @@ void registeralltuners()
     for (i = 0; i < 2; i++)
         registerTuner(&slideronfreefilebonus[i], "slideronfreefilebonus", slideronfreefilebonus[i], i, 2, 0, 0, NULL, false);
 #endif
-#if 1
+#if 0
     // tuning material value
     for (i = BLANK; i <= KING; i++)
         registerTuner(&materialvalue[i], "materialvalue", materialvalue[i], i, 7, 0, 0, &CreatePositionvalueTable, i <= PAWN || i >= KING);
 #endif
-#if 0
+#if 1
     // tuning the psqt base at game start
     for (i = 0; i < 6; i++)
     {
@@ -191,7 +191,7 @@ void registeralltuners()
         }
     }
 #endif
-#if 0
+#if 1
     //tuning the psqt phase development
     for (i = 0; i < 6; i++)
     {
@@ -298,8 +298,8 @@ int chessposition::getPawnValue(pawnhashentry **entry)
             U64 pb = piece00[pc];
             while (LSB(index, pb))
             {
-                entryptr->attackedBy2[you] |= (entryptr->attacked[you] & pawn_attacks_occupied[index][me]);
-                entryptr->attacked[you] |= pawn_attacks_occupied[index][me];
+                entryptr->attackedBy2[me] |= (entryptr->attacked[me] & pawn_attacks_occupied[index][me]);
+                entryptr->attacked[me] |= pawn_attacks_occupied[index][me];
                 entryptr->semiopen[me] &= ~BITSET(FILE(index)); 
                 if (!(passedPawnMask[index][me] & piece00[pc ^ S2MMASK]))
                 {
@@ -416,10 +416,10 @@ int chessposition::getPositionValue()
 
     result += getPawnValue<Et>(&phentry);
 
-    attackedBy[0][KING] = king_attacks[kingpos[1]];
+    attackedBy[0][KING] = king_attacks[kingpos[0]];
     attackedBy2[0] = phentry->attackedBy2[0] | (attackedBy[0][KING] & phentry->attacked[0]);
     attackedBy[0][0] = attackedBy[0][KING] | phentry->attacked[0];
-    attackedBy[1][KING] = king_attacks[kingpos[0]];
+    attackedBy[1][KING] = king_attacks[kingpos[1]];
     attackedBy2[1] = phentry->attackedBy2[1] | (attackedBy[1][KING] & phentry->attacked[1]);
     attackedBy[1][0] = attackedBy[1][KING] | phentry->attacked[1];
  
@@ -480,9 +480,9 @@ int chessposition::getPositionValue()
             if (p != PAWN)
             {
                 // update attack bitboard
-                attackedBy[you][p] |= attack;
-                attackedBy2[you] |= (attackedBy[you][0] & attack);
-                attackedBy[you][0] |= attack;
+                attackedBy[me][p] |= attack;
+                attackedBy2[me] |= (attackedBy[me][0] & attack);
+                attackedBy[me][0] |= attack;
 
                 // mobility bonus
                 result += S2MSIGN(me) * POPCOUNT(mobility) * shiftmobilitybonus;
@@ -532,14 +532,14 @@ int chessposition::getPositionValue()
 
         // Threats
         int t = s ^ S2MMASK;
-        U64 nonPawns = occupied00[t] ^ piece00[WPAWN | t];
-        U64 attackedNonPawns = (nonPawns & attackedBy[s][PAWN]);
-        if (attackedNonPawns)
+        U64 hisNonPawns = occupied00[t] ^ piece00[WPAWN | t];
+        U64 hisAttackedNonPawns = (hisNonPawns & attackedBy[s][PAWN]);
+        if (hisAttackedNonPawns)
         {
             // Our safe or protected pawns
             U64 b = piece00[WPAWN | s] & (~attackedBy[t][0] | attackedBy[s][0]);
 
-            U64 safeThreats = PAWNATTACK(s, b) & attackedNonPawns;
+            U64 safeThreats = PAWNATTACK(s, b) & hisAttackedNonPawns;
             result += S2MSIGN(s) * safepawnattackbonus * POPCOUNT(safeThreats);
         }
 
