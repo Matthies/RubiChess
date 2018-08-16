@@ -187,7 +187,7 @@ void registeralltuners()
     {
         for (j = 0; j < 64; j++)
         {
-            registerTuner(&PVBASE[i][j], "PVBASE", PVBASE[i][j], j, 64, i, 6, &CreatePositionvalueTable, PVBASE[i][j] <= -9999 || i < 2 || (i == 2 && j < 36));
+            registerTuner(&PVBASE[i][j], "PVBASE", PVBASE[i][j], j, 64, i, 6, &CreatePositionvalueTable, PVBASE[i][j] <= -9999 );
         }
     }
 #endif
@@ -537,9 +537,8 @@ int chessposition::getPositionValue()
         if (hisAttackedNonPawns)
         {
             // Our safe or protected pawns
-            U64 b = piece00[WPAWN | s] & (~attackedBy[t][0] | attackedBy[s][0]);
-
-            U64 safeThreats = PAWNATTACK(s, b) & hisAttackedNonPawns;
+            U64 ourSafePawns = piece00[WPAWN | s] & (~attackedBy[t][0] | attackedBy[s][0]);
+            U64 safeThreats = PAWNATTACK(s, ourSafePawns) & hisAttackedNonPawns;
             result += S2MSIGN(s) * safepawnattackbonus * POPCOUNT(safeThreats);
         }
 
