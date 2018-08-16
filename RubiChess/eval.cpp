@@ -2,29 +2,30 @@
 #include "RubiChess.h"
 
 // Evaluation stuff
-CONSTEVAL int kingattackweight[7] = { 0,    0,    3,    4,    3,    4,    0 };
-CONSTEVAL int KingSafetyFactor = 278;
-CONSTEVAL int safepawnattackbonus = 35;
+CONSTEVAL int pawnpushthreatbonus = 13;
+CONSTEVAL int kingattackweight[7] = { 0,    0,    4,    4,    3,    4,    0 };
+CONSTEVAL int KingSafetyFactor = 280;
+CONSTEVAL int safepawnattackbonus = 36;
 CONSTEVAL int tempo = 5;
-CONSTEVAL int passedpawnbonus[8] = { 0,   11,   21,   39,   72,  117,  140,    0 };
-CONSTEVAL int attackingpawnbonus[8] = { 0,  -15,  -16,   -6,   -4,   34,    0,    0 };
-CONSTEVAL int isolatedpawnpenalty = -14;
-CONSTEVAL int doublepawnpenalty = -19;
+CONSTEVAL int passedpawnbonus[8] = { 0,   10,   19,   39,   72,  117,  140,    0 };
+CONSTEVAL int attackingpawnbonus[8] = { 0,  -17,  -15,   -5,   -4,   33,    0,    0 };
+CONSTEVAL int isolatedpawnpenalty = -13;
+CONSTEVAL int doublepawnpenalty = -20;
 CONSTEVAL int connectedbonus = 3;
 CONSTEVAL int kingshieldbonus = 14;
-CONSTEVAL int backwardpawnpenalty = -21;
+CONSTEVAL int backwardpawnpenalty = -19;
 CONSTEVAL int doublebishopbonus = 36;
 CONSTEVAL int shiftmobilitybonus = 2;
-CONSTEVAL int slideronfreefilebonus[2] = { 15,   17 };
+CONSTEVAL int slideronfreefilebonus[2] = { 16,   17 };
 CONSTEVAL int materialvalue[7] = { 0,  100,  314,  314,  483,  913,32509 };
 CONSTEVAL int PVBASE[6][64] = {
   { -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999,
-       62,   76,  100,   70,   48,   75,   48,   68,
-       28,   30,   22,   35,   25,   35,   29,   29,
-        7,    6,   -6,   18,   17,   -7,   -5,  -17,
-        0,  -16,    2,   21,   17,   -3,  -19,  -18,
-        2,  -10,    2,  -13,   -4,  -16,    4,   -6,
-      -11,  -14,  -20,  -25,  -22,    3,    8,  -21,
+       60,   72,   98,   72,   47,   73,   41,   68,
+       26,   28,   21,   34,   25,   35,   29,   29,
+        7,    6,   -7,   17,   17,   -7,   -5,  -16,
+        0,  -17,    2,   20,   16,   -4,  -19,  -19,
+        2,  -10,    2,  -13,   -5,  -16,    4,   -7,
+      -11,  -14,  -19,  -24,  -23,    2,    7,  -21,
     -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999  },
   {  -151,  -35,  -22,   -5,   -8,  -41,    1,  -66,
       -41,    1,   -4,   23,    2,   11,    2,  -12,
@@ -69,12 +70,12 @@ CONSTEVAL int PVBASE[6][64] = {
  };
 CONSTEVAL int PVPHASEDIFF[6][64] = {
   { -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999,
-      -24,  -12,  -36,  -48,  -24,  -24,   -5,  -36,
-        9,    0,   -9,  -36,  -36,  -48,   -5,  -24,
+      -24,  -12,  -36,  -48,  -24,  -24,   -4,  -36,
+       11,    0,   -9,  -36,  -36,  -48,   -5,  -24,
        15,   11,    5,  -32,  -28,    7,   15,   13,
        11,   24,    1,  -43,  -24,    0,   25,   17,
-        4,    6,  -13,   16,    1,   18,  -12,   -7,
-       20,   11,   20,    0,   12,    1,  -11,    9,
+        4,    6,  -13,   14,    1,   18,  -12,   -6,
+       23,   11,   19,    0,   12,    1,  -11,    9,
     -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999  },
   {   120,    3,   -8,  -25,  -14,    3,   -1,   -5,
         9,  -21,   -8,  -24,  -19,  -36,  -27,  -35,
@@ -157,6 +158,7 @@ void registeralltuners()
 
 #if 0
     // tuning other values
+    registerTuner(&pawnpushthreatbonus, "pawnpushthreatbonus", pawnpushthreatbonus, 0, 0, 0, 0, NULL, false);
     for (i = 0; i < 7; i++)
         registerTuner(&kingattackweight[i], "kingattackweight", kingattackweight[i], i, 7, 0, 0, NULL, i < 2 || i > 5);
     registerTuner(&KingSafetyFactor, "KingSafetyFactor", KingSafetyFactor, 0, 0, 0, 0, NULL, false);
@@ -408,6 +410,7 @@ int chessposition::getPositionValue()
     int doublebishopeval = 0;
     int kingshieldeval[2] = { 0 };
     int kingdangereval[2] = { 0 };
+    U64 occupied = occupied00[0] | occupied00[1];
 
     memset(attackedBy, 0, sizeof(attackedBy));
 
@@ -452,7 +455,7 @@ int chessposition::getPositionValue()
             U64 mobility = 0ULL;
             if (shifting[p] & 0x2) // rook and queen
             {
-                attack = mRookAttacks[index][MAGICROOKINDEX((occupied00[0] | occupied00[1]), index)];
+                attack = mRookAttacks[index][MAGICROOKINDEX(occupied, index)];
                 mobility = attack & ~occupied00[me];
 
                 // extrabonus for rook on (semi-)open file  
@@ -466,9 +469,9 @@ int chessposition::getPositionValue()
 
             if (shifting[p] & 0x1) // bishop and queen)
             {
-                attack |= mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)];
+                attack |= mBishopAttacks[index][MAGICBISHOPINDEX(occupied, index)];
                 mobility |= ~occupied00[me]
-                    & (mBishopAttacks[index][MAGICBISHOPINDEX((occupied00[0] | occupied00[1]), index)]);
+                    & (mBishopAttacks[index][MAGICBISHOPINDEX(occupied, index)]);
             }
 
             if (p == KNIGHT)
@@ -542,6 +545,17 @@ int chessposition::getPositionValue()
             result += S2MSIGN(s) * safepawnattackbonus * POPCOUNT(safeThreats);
         }
 
+        // Threat by pawn push
+        // Get empty squares for pawn pushes
+        U64 pawnPush = PAWNPUSH(s, piece00[WPAWN | s]) & ~occupied;
+        pawnPush |= PAWNPUSH(s, pawnPush & RANK3(s)) & ~occupied;
+
+        // Filter squares that are attacked by opponent pawn or by any piece and undefeated
+        pawnPush &= ~attackedBy[t][PAWN] & (attackedBy[s][0] | ~attackedBy[t][0]);
+
+        // Get opponents pieces that are attacked from these pawn pushes and not already attacked now
+        U64 attackedPieces = PAWNATTACK(s, pawnPush) & occupied00[t] & ~attackedBy[s][PAWN];
+        result += S2MSIGN(s) * pawnpushthreatbonus * POPCOUNT(attackedPieces);
     }
 
 
@@ -604,6 +618,3 @@ int getValueTrace(chessposition *p)
 {
     return p->getValue<TRACE>();
 }
-
-
-
