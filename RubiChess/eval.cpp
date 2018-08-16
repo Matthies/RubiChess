@@ -4,10 +4,10 @@
 // Evaluation stuff
 CONSTEVAL int kingattackweight[7] = { 0,    0,    3,    4,    3,    4,    0 };
 CONSTEVAL int KingSafetyFactor = 278;
-CONSTEVAL int safepawnattackbonus = 36;
+CONSTEVAL int safepawnattackbonus = 35;
 CONSTEVAL int tempo = 5;
 CONSTEVAL int passedpawnbonus[8] = { 0,   11,   21,   39,   72,  117,  140,    0 };
-CONSTEVAL int attackingpawnbonus[8] = { 0,  -15,  -16,   -9,   -4,   34,    0,    0 };
+CONSTEVAL int attackingpawnbonus[8] = { 0,  -15,  -16,   -6,   -4,   34,    0,    0 };
 CONSTEVAL int isolatedpawnpenalty = -14;
 CONSTEVAL int doublepawnpenalty = -19;
 CONSTEVAL int connectedbonus = 3;
@@ -19,53 +19,53 @@ CONSTEVAL int slideronfreefilebonus[2] = { 15,   17 };
 CONSTEVAL int materialvalue[7] = { 0,  100,  314,  314,  483,  913,32509 };
 CONSTEVAL int PVBASE[6][64] = {
   { -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999,
-       62,   76,  100,   72,   52,   76,   48,   69,
-       29,   31,   24,   35,   25,   35,   29,   30,
-        7,    7,   -6,   19,   18,   -7,   -4,  -17,
-        0,  -15,    4,   21,   17,   -2,  -17,  -18,
-        2,   -9,    3,  -11,   -4,  -16,    4,   -6,
-      -11,  -13,  -20,  -25,  -23,    3,    8,  -21,
+       62,   76,  100,   70,   48,   75,   48,   68,
+       28,   30,   22,   35,   25,   35,   29,   29,
+        7,    6,   -6,   18,   17,   -7,   -5,  -17,
+        0,  -16,    2,   21,   17,   -3,  -19,  -18,
+        2,  -10,    2,  -13,   -4,  -16,    4,   -6,
+      -11,  -14,  -20,  -25,  -22,    3,    8,  -21,
     -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999  },
-  {  -152,  -34,  -22,   -3,   -7,  -41,    1,  -66,
-      -40,    2,   -2,   23,    3,   13,    4,  -10,
-      -27,   12,   14,   40,   51,   42,   33,  -23,
-      -20,    3,   37,   33,   15,   28,   12,   24,
-      -19,   -6,   10,    6,   14,    5,    4,  -13,
-      -32,   -8,   -5,    8,   17,   11,   18,  -23,
-      -59,  -29,  -32,   -2,    8,    4,   -6,  -13,
-      -66,  -31,  -48,  -30,  -25,  -23,  -16,  -82  },
-  {    -8,   -4,  -11,    8,   14,    8,   -6,  -32,
-      -27,    4,   -1,   11,    8,   16,   -4,  -16,
-       -2,   13,   14,   27,   19,   61,   26,   19,
-       -3,    9,   12,   41,   19,   22,    1,    2,
-      -19,    4,   15,   26,   25,   -6,    5,  -17,
-       -6,   23,    5,   11,    2,   15,   15,   -3,
-       15,    5,   11,   -5,   11,    3,   30,   -1,
-      -16,  -15,  -18,  -24,   -2,  -16,  -29,  -34  },
-  {     5,   19,    7,    9,   18,   36,   33,   22,
-       26,   21,   33,   40,   35,   30,   30,   41,
-       13,    6,   18,   29,   33,   20,   24,   17,
+  {  -151,  -35,  -22,   -5,   -8,  -41,    1,  -66,
+      -41,    1,   -4,   23,    2,   11,    2,  -12,
+      -29,   12,   14,   40,   51,   43,   32,  -23,
+      -20,    4,   37,   32,   13,   27,   12,   23,
+      -19,   -7,   10,    5,   11,    5,    5,  -14,
+      -34,   -9,   -6,    8,   15,   10,   17,  -24,
+      -60,  -30,  -34,   -3,    5,    2,   -7,  -16,
+      -67,  -33,  -50,  -31,  -27,  -25,  -18,  -82  },
+  {    -7,   -4,  -13,    8,    6,    6,   -6,  -32,
+      -28,    3,   -7,    9,    5,   15,   -4,  -16,
+       -2,   13,   13,   25,   17,   61,   26,   20,
+       -7,   10,   10,   41,   19,   20,    1,    1,
+      -20,    3,   15,   26,   25,   -7,    4,  -17,
+       -6,   22,    4,   11,    1,   15,   14,   -3,
+       14,    4,    8,   -6,   10,    2,   29,   -3,
+      -18,  -16,  -20,  -24,   -3,  -17,  -30,  -33  },
+  {     5,   18,    7,   10,   18,   36,   32,   22,
+       25,   21,   32,   39,   36,   29,   29,   41,
+       12,    6,   18,   28,   33,   21,   22,   17,
         3,   10,   13,    8,    2,    2,    2,   -4,
-      -27,  -19,   -8,  -10,  -11,  -17,   -7,  -15,
-      -42,  -26,  -18,  -15,  -14,  -21,  -14,  -42,
-      -27,  -22,  -12,  -10,  -20,   -6,  -18,  -73,
-      -12,   -6,    4,    0,    2,    2,  -47,  -21  },
-  {   -21,   -6,    0,    2,   15,   17,   26,    2,
-      -16,  -43,    7,   14,   21,   27,  -18,   33,
-      -21,  -14,  -17,   13,   12,   31,   26,   12,
-      -31,  -30,   -3,  -18,   -8,  -27,  -27,  -19,
-      -14,  -21,  -15,  -31,  -10,  -13,   -3,  -10,
-      -12,    1,   -8,  -11,   -4,   -9,    5,   -9,
-      -10,  -10,    0,   -2,    6,   18,  -19,  -47,
-      -24,  -21,    0,   13,   -8,  -47,  -84,  -37  },
-  {   -91,  -45, -104,  -43, -110,   10,   43, -115,
-      -18,    0,    0,  -34,  -10,  -61,  -45,  -93,
-      -12,    8,  -15,  -10,  -17,   -3,  -11,  -19,
-      -16,   -3,  -15,  -28,  -22,   -8,   -8,   -6,
-      -22,  -15,   -4,  -18,  -21,   -7,  -14,  -17,
-      -26,    2,   -8,  -16,   -8,  -17,   -7,  -24,
+      -26,  -19,   -8,  -10,  -11,  -17,   -6,  -15,
+      -42,  -26,  -18,  -15,  -15,  -20,  -13,  -42,
+      -27,  -22,  -12,  -11,  -20,   -5,  -18,  -73,
+      -12,   -6,    3,    0,    2,    2,  -47,  -22  },
+  {   -21,   -6,    0,    0,   16,   17,   26,    0,
+      -16,  -44,    6,   15,   21,   26,  -19,   33,
+      -21,  -14,  -16,   13,   12,   38,   26,   13,
+      -31,  -30,   -3,  -18,   -7,  -22,  -24,  -18,
+      -13,  -21,  -15,  -31,  -11,  -12,   -3,   -6,
+      -12,    1,   -9,  -11,   -4,   -8,    6,   -9,
+      -10,  -10,    0,   -2,    5,   20,  -19,  -48,
+      -24,  -21,    0,   13,   -8,  -46,  -84,  -37  },
+  {   -92,  -45, -104,  -42, -110,   10,   43, -114,
+      -18,    0,    0,  -34,  -10,  -61,  -45,  -92,
+      -12,    9,  -15,   -9,  -17,   -3,  -11,  -19,
+      -16,   -3,  -15,  -28,  -22,   -8,   -7,   -6,
+      -22,  -15,   -5,  -18,  -21,   -7,  -15,  -17,
+      -26,    2,   -8,  -16,   -8,  -17,   -8,  -24,
       -11,   -2,  -18,  -38,  -25,   -9,   -2,   -6,
-      -15,    7,   12,  -53,   -7,  -37,   19,    8  }
+      -15,    7,   12,  -51,   -7,  -37,   19,    8  }
  };
 CONSTEVAL int PVPHASEDIFF[6][64] = {
   { -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999,
@@ -155,7 +155,7 @@ void registeralltuners()
     }
 #endif
 
-#if 1
+#if 0
     // tuning other values
     for (i = 0; i < 7; i++)
         registerTuner(&kingattackweight[i], "kingattackweight", kingattackweight[i], i, 7, 0, 0, NULL, i < 2 || i > 5);
@@ -176,22 +176,22 @@ void registeralltuners()
     for (i = 0; i < 2; i++)
         registerTuner(&slideronfreefilebonus[i], "slideronfreefilebonus", slideronfreefilebonus[i], i, 2, 0, 0, NULL, false);
 #endif
-#if 1
+#if 0
     // tuning material value
     for (i = BLANK; i <= KING; i++)
         registerTuner(&materialvalue[i], "materialvalue", materialvalue[i], i, 7, 0, 0, &CreatePositionvalueTable, i <= PAWN || i >= KING);
 #endif
-#if 0
+#if 1
     // tuning the psqt base at game start
     for (i = 0; i < 6; i++)
     {
         for (j = 0; j < 64; j++)
         {
-            registerTuner(&PVBASE[i][j], "PVBASE", PVBASE[i][j], j, 64, i, 6, &CreatePositionvalueTable, PVBASE[i][j] <= -9999);
+            registerTuner(&PVBASE[i][j], "PVBASE", PVBASE[i][j], j, 64, i, 6, &CreatePositionvalueTable, PVBASE[i][j] <= -9999 );
         }
     }
 #endif
-#if 0
+#if 1
     //tuning the psqt phase development
     for (i = 0; i < 6; i++)
     {
@@ -298,8 +298,8 @@ int chessposition::getPawnValue(pawnhashentry **entry)
             U64 pb = piece00[pc];
             while (LSB(index, pb))
             {
-                entryptr->attackedBy2[you] |= (entryptr->attacked[you] & pawn_attacks_occupied[index][me]);
-                entryptr->attacked[you] |= pawn_attacks_occupied[index][me];
+                entryptr->attackedBy2[me] |= (entryptr->attacked[me] & pawn_attacks_occupied[index][me]);
+                entryptr->attacked[me] |= pawn_attacks_occupied[index][me];
                 entryptr->semiopen[me] &= ~BITSET(FILE(index)); 
                 if (!(passedPawnMask[index][me] & piece00[pc ^ S2MMASK]))
                 {
@@ -416,10 +416,10 @@ int chessposition::getPositionValue()
 
     result += getPawnValue<Et>(&phentry);
 
-    attackedBy[0][KING] = king_attacks[kingpos[1]];
+    attackedBy[0][KING] = king_attacks[kingpos[0]];
     attackedBy2[0] = phentry->attackedBy2[0] | (attackedBy[0][KING] & phentry->attacked[0]);
     attackedBy[0][0] = attackedBy[0][KING] | phentry->attacked[0];
-    attackedBy[1][KING] = king_attacks[kingpos[0]];
+    attackedBy[1][KING] = king_attacks[kingpos[1]];
     attackedBy2[1] = phentry->attackedBy2[1] | (attackedBy[1][KING] & phentry->attacked[1]);
     attackedBy[1][0] = attackedBy[1][KING] | phentry->attacked[1];
  
@@ -480,9 +480,9 @@ int chessposition::getPositionValue()
             if (p != PAWN)
             {
                 // update attack bitboard
-                attackedBy[you][p] |= attack;
-                attackedBy2[you] |= (attackedBy[you][0] & attack);
-                attackedBy[you][0] |= attack;
+                attackedBy[me][p] |= attack;
+                attackedBy2[me] |= (attackedBy[me][0] & attack);
+                attackedBy[me][0] |= attack;
 
                 // mobility bonus
                 result += S2MSIGN(me) * POPCOUNT(mobility) * shiftmobilitybonus;
@@ -532,14 +532,13 @@ int chessposition::getPositionValue()
 
         // Threats
         int t = s ^ S2MMASK;
-        U64 nonPawns = occupied00[t] ^ piece00[WPAWN | t];
-        U64 attackedNonPawns = (nonPawns & attackedBy[s][PAWN]);
-        if (attackedNonPawns)
+        U64 hisNonPawns = occupied00[t] ^ piece00[WPAWN | t];
+        U64 hisAttackedNonPawns = (hisNonPawns & attackedBy[s][PAWN]);
+        if (hisAttackedNonPawns)
         {
             // Our safe or protected pawns
-            U64 b = piece00[WPAWN | s] & (~attackedBy[t][0] | attackedBy[s][0]);
-
-            U64 safeThreats = PAWNATTACK(s, b) & attackedNonPawns;
+            U64 ourSafePawns = piece00[WPAWN | s] & (~attackedBy[t][0] | attackedBy[s][0]);
+            U64 safeThreats = PAWNATTACK(s, ourSafePawns) & hisAttackedNonPawns;
             result += S2MSIGN(s) * safepawnattackbonus * POPCOUNT(safeThreats);
         }
 
