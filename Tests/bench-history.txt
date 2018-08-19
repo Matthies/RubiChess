@@ -1,22 +1,22 @@
-Bitboard-0.6:				14542128
-Board88-0.6:				12014657
-Board-Killer-Reset_Fix:		12036704
-Board-Castle-Value_Fix:		12026556
-Bitboard+Texeltuning:		14068870
-Bitboard+FP+DP+retune:		11521156
-Bitboard-07-Graham:			 1913318
-Bitboard-0.7:				 2533454
-Board88-0.7:				 1440095
-Bitboard-0.8:				11248014
-Board88-0.8:				 9307258
-Bitboard-ms-20180515		 3629408
-Bitboard-ms-20180523		24466081
+Bitboard-0.6:               14542128
+Board88-0.6:                12014657
+Board-Killer-Reset_Fix:     12036704
+Board-Castle-Value_Fix:     12026556
+Bitboard+Texeltuning:       14068870
+Bitboard+FP+DP+retune:      11521156
+Bitboard-07-Graham:          1913318
+Bitboard-0.7:                2533454
+Board88-0.7:                 1440095
+Bitboard-0.8:               11248014
+Board88-0.8:                 9307258
+Bitboard-ms-20180515         3629408
+Bitboard-ms-20180523        24466081
 - added four new bench positions
-Bitboard-0.9				 9824914
-Board88-0.9					12735375
-Bitboard-ms-20180705		48569661
+Bitboard-0.9                 9824914
+Board88-0.9                 12735375
+Bitboard-ms-20180705        48569661
 - Position 3 mate in 6 has 80% nodes when the mate isn't found -> should be replaced
-Bitboard-ms-20180711		10731388
-Bitboard-ms-20180720		11336459
-Bitboard-1.0:				11806602
-
+Bitboard-ms-20180711        10731388
+Bitboard-ms-20180720        11336459
+Bitboard-1.0:               11806602
+Master-20180819	            14367150			
