@@ -98,6 +98,7 @@ void Sleep(long x);
 
 #define PROMOTERANK(x) (RANK(x) == 0 || RANK(x) == 7)
 #define PROMOTERANKBB 0xff000000000000ff
+#define RANK3(s) ((s) ? 0x0000ff0000000000 : 0x0000000000ff0000)
 #define FILEABB 0x0101010101010101
 #define FILEHBB 0x8080808080808080
 #define OUTERFILE(x) (FILE(x) == 0 || FILE(x) == 7)
@@ -250,7 +251,8 @@ const int lva[] = { 5 << 25, 4 << 25, 3 << 25, 3 << 25, 2 << 25, 1 << 25, 0 << 2
 #define ISCAPTURE(x) ((x) & 0xf0000)
 #define GETPIECE(x) (((x) & 0xf0000000) >> 28)
 
-#define PAWNATTACK(s, p) ((s) ? ((p & ~FILEHBB) >> 7) | ((p & ~FILEABB) >> 9) : ((p & ~FILEABB) << 7) | ((p & ~FILEHBB) << 9))
+#define PAWNATTACK(s, p) ((s) ? (((p) & ~FILEHBB) >> 7) | (((p) & ~FILEABB) >> 9) : (((p) & ~FILEABB) << 7) | (((p) & ~FILEHBB) << 9))
+#define PAWNPUSH(s, p) ((s) ? ((p) >> 8) : ((p) << 8))
 
 // passedPawnMask[18][WHITE]:
 // 01110000
