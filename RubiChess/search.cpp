@@ -36,6 +36,11 @@ int getQuiescence(int alpha, int beta, int depth)
             return patscore;
         if (patscore > alpha)
             alpha = patscore;
+
+        // Delta pruning
+        int bestCapture = pos.getBestPossibleCapture();
+        if (patscore + deltapruningmargin + bestCapture < alpha)
+            return patscore;
     }
 
     chessmovelist *movelist = new chessmovelist;

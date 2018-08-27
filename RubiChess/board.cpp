@@ -1746,6 +1746,29 @@ int chessposition::see(int from, int to)
     return gain[0];
 }
 
+int chessposition::getBestPossibleCapture()
+{
+    int me = state & S2MMASK;
+    int you = me ^ S2MMASK;
+    int captureval = 0;
+
+    if (pos.piece00[WQUEEN | you])
+        captureval += materialvalue[QUEEN];
+    else if (pos.piece00[WROOK | you])
+        captureval += materialvalue[ROOK];
+    else if (pos.piece00[WKNIGHT | you] || pos.piece00[WBISHOP | you])
+        captureval += materialvalue[KNIGHT];
+    else if (pos.piece00[WPAWN | you])
+        captureval += materialvalue[PAWN];
+
+    // promotion
+    if (pos.piece00[WPAWN | me] & RANK7(me))
+        captureval += materialvalue[QUEEN] - materialvalue[PAWN];
+
+    return captureval;
+}
+
+
 
 MoveSelector::~MoveSelector()
 {
