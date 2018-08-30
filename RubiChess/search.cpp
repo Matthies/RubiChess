@@ -2,7 +2,7 @@
 #include "RubiChess.h"
 
 
-const int deltapruningmargin = 75;
+const int deltapruningmargin = 100;
 
 int reductiontable[MAXDEPTH][64];
 
