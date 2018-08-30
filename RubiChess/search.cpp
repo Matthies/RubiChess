@@ -457,7 +457,7 @@ int rootsearch(int alpha, int beta, int depth)
 #endif
 
     PDEBUG(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
-    if (!isMultiPV && tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
+    if (!isMultiPV && !pos.useRootmoveScore && tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
     {
         if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
             return score;
@@ -756,7 +756,7 @@ static void search_gen1()
                 alpha = max(SHRT_MIN + 1, alpha - deltaalpha);
                 deltaalpha += deltaalpha / 4 + 2;
                 //deltaalpha <<= 1;
-                if (alpha < -1000)
+                if (abs(alpha) > 1000)
                     deltaalpha = SHRT_MAX << 1;
                 inWindow = 0;
 #ifdef DEBUG
@@ -769,7 +769,7 @@ static void search_gen1()
                 beta = min(SHRT_MAX, beta + deltabeta);
                 deltabeta += deltabeta / 4 + 2;
                 //deltabeta <<= 1;
-                if (beta > 1000)
+                if (abs(beta) > 1000)
                     deltabeta = SHRT_MAX << 1;
                 inWindow = 2;
 #ifdef DEBUG
