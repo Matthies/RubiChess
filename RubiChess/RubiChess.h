@@ -99,6 +99,7 @@ void Sleep(long x);
 #define PROMOTERANK(x) (RANK(x) == 0 || RANK(x) == 7)
 #define PROMOTERANKBB 0xff000000000000ff
 #define RANK3(s) ((s) ? 0x0000ff0000000000 : 0x0000000000ff0000)
+#define RANK7(s) ((s) ? 0x000000000000ff00 : 0x00ff000000000000)
 #define FILEABB 0x0101010101010101
 #define FILEHBB 0x8080808080808080
 #define OUTERFILE(x) (FILE(x) == 0 || FILE(x) == 7)
@@ -524,6 +525,7 @@ public:
     bool isAttacked(int index);
     int getLeastValuablePieceIndex(int to, unsigned int bySide, PieceCode *piece);
     int see(int from, int to);
+    int getBestPossibleCapture();
     int getMoves(chessmove *m, MoveType t = ALL);
     void getRootMoves();
     void tbFilterRootMoves();

@@ -1,0 +1,35 @@
+qs1: deltapruning vor allen Zügen
+Version ist laut Arena schneller als Master, scheint aber im Test zu verlieren
+Folglich muss deltamargin schlecht sein
+
+qs2: deltamargin=100
+STC:
+Score of RubiChess-Bitboard-qs2 vs RubiChess-Bitboard-ms: 1286 - 1198 - 1714  [0.510] 4198
+Elo difference: 7.28 +/- 8.07
+SPRT: llr 1.41, lbound -1.39, ubound 1.39 - H1 was accepted
+LTC:
+Score of RubiChess-Bitboard-qs2 vs RubiChess-Bitboard-ms: 386 - 327 - 702  [0.521] 1415
+Elo difference: 14.50 +/- 12.84
+SPRT: llr 1.4, lbound -1.39, ubound 1.39 - H1 was accepted
+
+qs3: deltamargin=150
+STC gegen bisherige beste Version:
+Score of RubiChess-Bitboard-qs3 vs RubiChess-Bitboard-qs2: 1473 - 1513 - 2014  [0.496] 5000
+Elo difference: -2.78 +/- 7.43
+SPRT: llr -1.33, lbound -1.39, ubound 1.39
+
+qs4: deltamargin=75
+STC gegen bisherige beste Version:
+Score of RubiChess-Bitboard-qs4 vs RubiChess-Bitboard-qs2: 1500 - 1469 - 2031  [0.503] 5000
+Elo difference: 2.15 +/- 7.41
+SPRT: llr 0.043, lbound -1.39, ubound 1.39
+LTC gegen Master (Abbruch nach 850 Spielen wegen enttäuschendem Ergebnis):
+Score of RubiChess-Bitboard-qs4 vs RubiChess-Bitboard-ms: 214 - 213 - 423  [0.501] 850
+Elo difference: 0.41 +/- 16.54
+SPRT: llr -0.147, lbound -1.39, ubound 1.39
+
+qs5: deltamargin=125
+STC gegen bisherige beste Version:
+Score of RubiChess-Bitboard-qs5 vs RubiChess-Bitboard-qs2: 1145 - 1192 - 1681  [0.494] 4018
+Elo difference: -4.06 +/- 8.18
+SPRT: llr -1.39, lbound -1.39, ubound 1.39 - H0 was accepted

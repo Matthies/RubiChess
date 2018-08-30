@@ -2,7 +2,7 @@
 #include "RubiChess.h"
 
 
-const int deltapruningmargin = 50;
+const int deltapruningmargin = 100;
 
 int reductiontable[MAXDEPTH][64];
 
@@ -36,6 +36,11 @@ int getQuiescence(int alpha, int beta, int depth)
             return patscore;
         if (patscore > alpha)
             alpha = patscore;
+
+        // Delta pruning
+        int bestCapture = pos.getBestPossibleCapture();
+        if (patscore + deltapruningmargin + bestCapture < alpha)
+            return patscore;
     }
 
     chessmovelist *movelist = new chessmovelist;
