@@ -139,6 +139,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     int extendall = 0;
     int effectiveDepth;
     unsigned int nmrefutetarget = BOARDSIZE;
+    bool PVNode = (alpha != beta - 1);
 
     en.nodes++;
 
@@ -261,6 +262,15 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 #ifdef FPDEBUG
         futilityscore = score;
 #endif
+    }
+
+    // Internal iterative deepening 
+    const int iidmin = 3;
+    const int iiddelta = 2;
+    if (PVNode && !hashmovecode && depth >= iidmin)
+    {
+        score = alphabeta(alpha, beta, depth - iiddelta, true);
+        tp.probeHash(&score, &hashmovecode, depth, alpha, beta);
     }
 
     MoveSelector ms = {};
@@ -872,7 +882,7 @@ static void search_gen1()
                 // so get bestmovecode from there or it was a TB hit so just get the first rootmove
                 if (!pos.bestmove[0].code)
                 {
-                    uint16_t mc;
+                    uint16_t mc = 0;
                     tp.probeHash(&score, &mc, MAXDEPTH, alpha, beta);
                     pos.bestmove[0].code = pos.shortMove2FullMove(mc);
                 }
