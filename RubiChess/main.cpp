@@ -272,8 +272,8 @@ void doBenchmark()
         { 
             "Wacnew 212",
             "rn1qr2Q/pbppk1p1/1p2pb2/4N3/3P4/2N5/PPP3PP/R4RK1 w - - 0 1",
-            0,
-            30000,
+            13,
+            500,
             1
         },
         { 

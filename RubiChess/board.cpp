@@ -728,6 +728,16 @@ void chessposition::print()
     printf("info string Repetitions: %d\n", rp.getPositionCount(hash));
     printf("info string Phase: %d\n", phase());
     printf("info string Pseudo-legal Moves: %s\n", pseudolegalmoves.toStringWithValue().c_str());
+    printf("Attacked and AttackedBy2 bitboards:\n");
+#if 0
+    BitboardDraw(attackedBy2[0]);
+    BitboardDraw(attackedBy2[1]);
+    for (int i = 0; i <= KING; i++)
+    {
+        BitboardDraw(attackedBy[0][i]);
+        BitboardDraw(attackedBy[1][i]);
+    }
+#endif
     if (tp.size > 0 && tp.testHash())
     {
         chessmove cm;
@@ -1735,6 +1745,29 @@ int chessposition::see(int from, int to)
     }
     return gain[0];
 }
+
+int chessposition::getBestPossibleCapture()
+{
+    int me = state & S2MMASK;
+    int you = me ^ S2MMASK;
+    int captureval = 0;
+
+    if (pos.piece00[WQUEEN | you])
+        captureval += materialvalue[QUEEN];
+    else if (pos.piece00[WROOK | you])
+        captureval += materialvalue[ROOK];
+    else if (pos.piece00[WKNIGHT | you] || pos.piece00[WBISHOP | you])
+        captureval += materialvalue[KNIGHT];
+    else if (pos.piece00[WPAWN | you])
+        captureval += materialvalue[PAWN];
+
+    // promotion
+    if (pos.piece00[WPAWN | me] & RANK7(me))
+        captureval += materialvalue[QUEEN] - materialvalue[PAWN];
+
+    return captureval;
+}
+
 
 
 MoveSelector::~MoveSelector()

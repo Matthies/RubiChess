@@ -1,6 +1,6 @@
 #pragma once
 
-#define VERNUM "0.10-dev"
+#define VERNUM "1.1-dev"
 
 #if 0
 #define DEBUG
@@ -21,8 +21,6 @@
 #if 0
 #define FINDMEMORYLEAKS
 #endif
-
-#define BOARDVERSION "MB"
 
 #ifdef FINDMEMORYLEAKS
 #ifdef _DEBUG  
@@ -80,7 +78,7 @@ void Sleep(long x);
 
 #endif
 
-#define ENGINEVER "RubiChess " VERNUM " " BOARDVERSION
+#define ENGINEVER "RubiChess " VERNUM
 #define BUILD __DATE__ " " __TIME__
 
 #define BITSET(x) (1ULL << (x))
@@ -100,6 +98,10 @@ void Sleep(long x);
 
 #define PROMOTERANK(x) (RANK(x) == 0 || RANK(x) == 7)
 #define PROMOTERANKBB 0xff000000000000ff
+#define RANK3(s) ((s) ? 0x0000ff0000000000 : 0x0000000000ff0000)
+#define RANK7(s) ((s) ? 0x000000000000ff00 : 0x00ff000000000000)
+#define FILEABB 0x0101010101010101
+#define FILEHBB 0x8080808080808080
 #define OUTERFILE(x) (FILE(x) == 0 || FILE(x) == 7)
 #define ISNEIGHBOUR(x,y) ((x) >= 0 && (x) < 64 && (y) >= 0 && (y) < 64 && abs(RANK(x) - RANK(y)) <= 1 && abs(FILE(x) - FILE(y)) <= 1)
 
@@ -250,6 +252,9 @@ const int lva[] = { 5 << 25, 4 << 25, 3 << 25, 3 << 25, 2 << 25, 1 << 25, 0 << 2
 #define ISCAPTURE(x) ((x) & 0xf0000)
 #define GETPIECE(x) (((x) & 0xf0000000) >> 28)
 
+#define PAWNATTACK(s, p) ((s) ? (((p) & ~FILEHBB) >> 7) | (((p) & ~FILEABB) >> 9) : (((p) & ~FILEABB) << 7) | (((p) & ~FILEHBB) << 9))
+#define PAWNPUSH(s, p) ((s) ? ((p) >> 8) : ((p) << 8))
+
 // passedPawnMask[18][WHITE]:
 // 01110000
 // 01110000
@@ -338,6 +343,15 @@ extern U64 fileMask[64];
 // 00000000
 extern U64 rankMask[64];
 
+// betweenMask[18][45]:
+// 00000000
+// 00000000
+// 00000x00
+// 00001000
+// 00010000
+// 00x00000
+// 00000000
+// 00000000
 extern U64 betweenMask[64][64];
 
 struct chessmovestack
@@ -427,7 +441,7 @@ public:
 
 extern U64 pawn_attacks_occupied[64][2];
 extern U64 knight_attacks[64];
-
+extern U64 king_attacks[64];
 
 struct SMagic {
     U64 mask;  // to mask relevant squares of both lines (no outer squares)
@@ -458,6 +472,8 @@ class chessposition
 public:
     U64 piece00[14];
     U64 occupied00[2];
+    U64 attackedBy2[2];
+    U64 attackedBy[2][7];
     PieceCode mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
 
     int state;
@@ -469,6 +485,7 @@ public:
     int ply;
     int halfmovescounter = 0;
     int fullmovescounter = 0;
+    int seldepth;
 #ifdef DEBUG
     int maxdebugdepth = -1;
     int mindebugdepth = -1;
@@ -508,6 +525,7 @@ public:
     bool isAttacked(int index);
     int getLeastValuablePieceIndex(int to, unsigned int bySide, PieceCode *piece);
     int see(int from, int to);
+    int getBestPossibleCapture();
     int getMoves(chessmove *m, MoveType t = ALL);
     void getRootMoves();
     void tbFilterRootMoves();
@@ -679,7 +697,9 @@ typedef struct pawnhashentry {
     U64 passedpawnbb[2];
     U64 isolatedpawnbb[2];
     U64 backwardpawnbb[2];
-    int semiopen[2]; 
+    int semiopen[2];
+    U64 attacked[2];
+    U64 attackedBy2[2];
     short value;
 } S_PAWNHASHENTRY;
 

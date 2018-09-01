@@ -1,12 +1,19 @@
 ChangeLog
 =========
-0.10 (release 2018-xx-xx) :
+1.1 (release 201x-xx-xx) :
+    - Evaluation: Introduced attackedBy information and used them for pawn attacks and pawn push threats
+    - Improved and fixed ponder mode
+    - Added selective depth information in uci output
+
+1.0 (release 2018-08-04) :
     - Cleanup: Removed board88 and rotating botboard code
     - Refinement of aspiration window
-    - Retuned evaluation parameters based on new test games texeltune-09-bal.pgn
+    - Retuned evaluation parameters based on new test games texeltune-09-bal.pgn and finally texeltune-10.pgn
     - More agressive delta pruning in qsearch
     - Fix: Increase history heuristic value only for cutoff move (not for moves that just raises alpha)
     - Fix: Killer moves where taken from wrong ply
+    - Seperated move creation in tactical and quiet moves to gain some speed
+    - Code consolitation in rootsearch e.g. lmr
 
 0.9 (release 2018-05-28) :
     - Implemented Syzygy tablebase probing

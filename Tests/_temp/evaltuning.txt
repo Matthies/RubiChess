@@ -383,6 +383,18 @@ Elo difference: 2.85 +/- 5.58
 ===> wir nehmen tuned3 und texeltune-09-bal als Tuning-Spielmaterial
 
 
+Letzter tune vor Version 1.0: Tuning mit texeltune-10.pgn und ratio 6
+STC:
+Score of RubiChess-Bitboard-tune10-1 vs RubiChess-Bitboard-ms: 788 - 694 - 735  [0.521] 2217
+Elo difference: 14.74 +/- 11.82
+SPRT: llr 1.4, lbound -1.39, ubound 1.39 - H1 was accepted
+LTC: nicht sehr überzeugend
+Score of RubiChess-Bitboard-tune10-1 vs RubiChess-Bitboard-ms: 924 - 871 - 1276  [0.509] 3071
+Elo difference: 6.00 +/- 9.38
+SPRT: llr 0.696, lbound -1.39, ubound 1.39
+Auf dem PC von Ben ist nach 1000 Spielen STC gar kein ELO-Gewinn zu messen
+-> Test gegen andere Gegner... ECE X3, Devel2.000, Delocto-1.6 sieht gut aus, 2x besser, einmal knapp schlechter als Master
+
 
 
 

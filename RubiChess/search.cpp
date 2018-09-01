@@ -2,7 +2,7 @@
 #include "RubiChess.h"
 
 
-const int deltapruningmargin = 50;
+const int deltapruningmargin = 100;
 
 int reductiontable[MAXDEPTH][64];
 
@@ -36,6 +36,11 @@ int getQuiescence(int alpha, int beta, int depth)
             return patscore;
         if (patscore > alpha)
             alpha = patscore;
+
+        // Delta pruning
+        int bestCapture = pos.getBestPossibleCapture();
+        if (patscore + deltapruningmargin + bestCapture < alpha)
+            return patscore;
     }
 
     chessmovelist *movelist = new chessmovelist;
@@ -132,7 +137,6 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     int eval_type = HASHALPHA;
     chessmove *m;
     int extendall = 0;
-    int reduction;
     int effectiveDepth;
     unsigned int nmrefutetarget = BOARDSIZE;
 
@@ -193,6 +197,10 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
     if (depth <= 0)
     {
+        // update selective depth info
+        if (pos.seldepth < pos.ply + 1)
+            pos.seldepth = pos.ply + 1;
+
         return getQuiescence(alpha, beta, depth);
     }
 
@@ -264,7 +272,6 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     int  LegalMoves = 0;
     while ((m = ms.next()))
     {
-        int moveExtension = 0;
         isLegal = pos.playMove(m);
         if (isLegal)
         {
@@ -283,10 +290,9 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             if (avoidFutilityPrune)
 #endif
             {
-                //extendall = 0; //FIXME: Indroduce extend variable for move specific extension
-                reduction = 0;
+                int reduction = 0;
                 // Late move reduction
-                if (!extendall && depth > 2 && !ISTACTICAL(m->code) && !pos.isCheck)
+                if (!extendall && depth > 2 && !ISTACTICAL(m->code))
                 {
                     reduction = reductiontable[depth][min(63, LegalMoves)];
                 }
@@ -302,7 +308,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                     if (ISCAPTURE(m->code) && materialvalue[GETPIECE(m->code) >> 1] - materialvalue[GETCAPTURE(m->code) >> 1] < 30)
                         moveExtension = 1;
 #endif
-                    effectiveDepth = depth + moveExtension + extendall - reduction;
+                    effectiveDepth = depth + extendall - reduction;
                     score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
                     if (reduction && score > alpha)
                     {
@@ -421,7 +427,6 @@ int rootsearch(int alpha, int beta, int depth)
     int eval_type = HASHALPHA;
     chessmove *m;
     int extendall = 0;
-    int reduction;
     int lastmoveindex;
     int maxmoveindex;
 
@@ -452,7 +457,7 @@ int rootsearch(int alpha, int beta, int depth)
 #endif
 
     PDEBUG(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
-    if (!isMultiPV && tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
+    if (!isMultiPV && !pos.useRootmoveScore && tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
     {
         if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
             return score;
@@ -467,7 +472,7 @@ int rootsearch(int alpha, int beta, int depth)
         return SCOREDRAW;
 
     if (pos.isCheck)
-        depth++;
+        extendall = 1;
 
 #ifdef DEBUG
     en.nopvnodes++;
@@ -521,124 +526,130 @@ int rootsearch(int alpha, int beta, int depth)
 
         pos.playMove(m);
 
-        if (true)//(isLegal)
+        if (en.moveoutput)
         {
-            //LegalMoves++;
-            if (en.moveoutput)
+            char s[256];
+            sprintf_s(s, "info depth %d currmove %s currmovenumber %d nodes %llu tbhits %llu\n", depth, m->toString().c_str(), i + 1, en.nodes, en.tbhits);
+            cout << s;
+        }
+        PDEBUG(depth, "(rootsearch) played move %s (%d)   nodes:%d\n", m->toString().c_str(), m->value, en.nodes);
+
+        int reduction = 0;
+        // Late move reduction
+        if (!extendall && depth > 2 && !ISTACTICAL(m->code))
+        {
+            reduction = reductiontable[depth][min(63, i + 1)];
+        }
+
+        int effectiveDepth;
+        if (!eval_type == HASHEXACT)
+        {
+            effectiveDepth = depth + extendall - reduction;
+            score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
+            if (reduction && score > alpha)
             {
-                char s[256];
-                sprintf_s(s, "info depth %d currmove %s currmovenumber %d nodes %llu tbhits %llu\n", depth, m->toString().c_str(), i + 1, en.nodes, en.tbhits);
-                cout << s;
-            }
-            PDEBUG(depth, "(rootsearch) played move %s (%d)   nodes:%d\n", m->toString().c_str(), m->value, en.nodes);
-
-            reduction = 0;
-            if (!extendall && depth > 2 && i > 2 && !ISTACTICAL(m->code) && !pos.isCheck)
-                reduction = 1;
-
-            if (!eval_type == HASHEXACT)
-            {
-                score = -alphabeta(-beta, -alpha, depth + extendall - reduction - 1, true);
-                if (reduction && score > alpha)
-                    // research without reduction
-                    score = -alphabeta(-beta, -alpha, depth + extendall - 1, true);
-            }
-            else {
-                // try a PV-Search
-#ifdef DEBUG
-                unsigned long long nodesbefore = en.nodes;
-#endif
-                score = -alphabeta(-alpha - 1, -alpha, depth + extendall - 1, true);
-                if (score > alpha && score < beta)
-                {
-                    // reasearch with full window
-#ifdef DEBUG
-                    en.wastedpvsnodes += (en.nodes - nodesbefore);
-#endif
-                    score = -alphabeta(-beta, -alpha, depth + extendall - reduction - 1, true);
-                }
-            }
-
-#ifdef DEBUG
-            if (en.debug && pos.debughash == pos.hash)
-            {
-                pos.actualpath.length = pos.ply;
-                printf("Leaving position to debug... stoping debug. Score:%d\n", score);
-                pos.maxdebugdepth = oldmaxdebugdepth;
-                pos.mindebugdepth = oldmindebugdepth;
-            }
-#endif
-            pos.unplayMove(m);
-            if (pos.useRootmoveScore)
-                score = m->value;
-
-            if (en.stopLevel == ENGINESTOPIMMEDIATELY)
-            {
-                // FIXME: Removed condition LegalMoves > 1; is this okay??
-                //free(newmoves);
-                return bestscore;
-            }
-
-            if ((isMultiPV && score <= pos.bestmovescore[lastmoveindex])
-                || (!isMultiPV && score <= bestscore))
-                continue;
-
-            bestscore = score;
-            if (isMultiPV && score > pos.bestmovescore[lastmoveindex])
-            {
-                int newindex = lastmoveindex;
-                while (newindex > 0 && score > pos.bestmovescore[newindex - 1])
-                {
-                    pos.bestmovescore[newindex] = pos.bestmovescore[newindex - 1];
-                    pos.bestmove[newindex] = pos.bestmove[newindex - 1];
-                    newindex--;
-                }
-                pos.bestmovescore[newindex] = score;
-                pos.bestmove[newindex] = *m;
-                if (lastmoveindex < maxmoveindex - 1)
-                    lastmoveindex++;
-            }
-            else {
-                pos.bestmove[0] = *m;
-            }
-
-            if (score >= beta)
-            {
-                // Killermove
-                if (!ISCAPTURE(m->code))
-                {
-                    pos.history[pos.Piece(GETFROM(m->code))][GETTO(m->code)] += depth * depth;
-                    if (pos.killer[0][0] != m->code)
-                    {
-                        pos.killer[1][0] = pos.killer[0][0];
-                        pos.killer[0][0] = m->code;
-                    }
-                }
-#ifdef DEBUG
-                en.fh++;
-                if (i == 0)
-                    en.fhf++;
-#endif
-                PDEBUG(depth, "(rootsearch) score=%d >= beta=%d  -> cutoff\n", score, beta);
-                tp.addHash(beta, HASHBETA, depth, m->code);
-                //free(newmoves);
-                return beta;   // fail hard beta-cutoff
-            }
-
-            if (score > alpha)
-            {
-                PDEBUG(depth, "(rootsearch) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, m->toString().c_str(), pos.actualpath.toString().c_str());
-                if (isMultiPV)
-                {
-                    if (pos.bestmovescore[maxmoveindex - 1] > alpha)
-                        alpha = pos.bestmovescore[maxmoveindex - 1];
-                }
-                else {
-                    alpha = score;
-                }
-                eval_type = HASHEXACT;
+                // research without reduction
+                effectiveDepth += reduction;
+                score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
             }
         }
+        else {
+            // try a PV-Search
+#ifdef DEBUG
+            unsigned long long nodesbefore = en.nodes;
+#endif
+            effectiveDepth = depth + extendall;
+            score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1, true);
+            if (score > alpha && score < beta)
+            {
+                // reasearch with full window
+#ifdef DEBUG
+                en.wastedpvsnodes += (en.nodes - nodesbefore);
+#endif
+                score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
+            }
+        }
+
+#ifdef DEBUG
+        if (en.debug && pos.debughash == pos.hash)
+        {
+            pos.actualpath.length = pos.ply;
+            printf("Leaving position to debug... stoping debug. Score:%d\n", score);
+            pos.maxdebugdepth = oldmaxdebugdepth;
+            pos.mindebugdepth = oldmindebugdepth;
+        }
+#endif
+        pos.unplayMove(m);
+        if (pos.useRootmoveScore)
+            score = m->value;
+
+        if (en.stopLevel == ENGINESTOPIMMEDIATELY)
+        {
+            // FIXME: Removed condition LegalMoves > 1; is this okay??
+            //free(newmoves);
+            return bestscore;
+        }
+
+        if ((isMultiPV && score <= pos.bestmovescore[lastmoveindex])
+            || (!isMultiPV && score <= bestscore))
+            continue;
+
+        bestscore = score;
+        if (isMultiPV && score > pos.bestmovescore[lastmoveindex])
+        {
+            int newindex = lastmoveindex;
+            while (newindex > 0 && score > pos.bestmovescore[newindex - 1])
+            {
+                pos.bestmovescore[newindex] = pos.bestmovescore[newindex - 1];
+                pos.bestmove[newindex] = pos.bestmove[newindex - 1];
+                newindex--;
+            }
+            pos.bestmovescore[newindex] = score;
+            pos.bestmove[newindex] = *m;
+            if (lastmoveindex < maxmoveindex - 1)
+                lastmoveindex++;
+        }
+        else {
+            pos.bestmove[0] = *m;
+        }
+
+        if (score >= beta)
+        {
+            // Killermove
+            if (!ISCAPTURE(m->code))
+            {
+                pos.history[pos.Piece(GETFROM(m->code))][GETTO(m->code)] += depth * depth;
+                if (pos.killer[0][0] != m->code)
+                {
+                    pos.killer[1][0] = pos.killer[0][0];
+                    pos.killer[0][0] = m->code;
+                }
+            }
+#ifdef DEBUG
+            en.fh++;
+            if (i == 0)
+                en.fhf++;
+#endif
+            PDEBUG(depth, "(rootsearch) score=%d >= beta=%d  -> cutoff\n", score, beta);
+            tp.addHash(beta, HASHBETA, effectiveDepth, m->code);
+            //free(newmoves);
+            return beta;   // fail hard beta-cutoff
+        }
+
+        if (score > alpha)
+        {
+            PDEBUG(depth, "(rootsearch) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, m->toString().c_str(), pos.actualpath.toString().c_str());
+            if (isMultiPV)
+            {
+                if (pos.bestmovescore[maxmoveindex - 1] > alpha)
+                    alpha = pos.bestmovescore[maxmoveindex - 1];
+            }
+            else {
+                alpha = score;
+            }
+            eval_type = HASHEXACT;
+        }
+
     }
 
     if (isMultiPV)
@@ -680,6 +691,7 @@ static void search_gen1()
     int depth, maxdepth, depthincrement;
     string pvstring;
     int inWindow;
+    int lastsecondsrun = 0;
     const char* boundscore[] = { "upperbound", "", "lowerbound" };
 
 
@@ -702,15 +714,6 @@ static void search_gen1()
     alpha = SHRT_MIN + 1;
     beta = SHRT_MAX;
     
-    if (pos.rootmovelist.length == 0)
-    {
-        pos.bestmove[0].code = 0;
-        score =  (pos.isCheck ? SCOREBLACKWINS : SCOREDRAW);
-        
-    }
-
-
-
     // iterative deepening
     do
     {
@@ -729,6 +732,7 @@ static void search_gen1()
         // Reset bestmove to detect alpha raise in interrupted search
         pos.bestmove[0].code = 0;
         inWindow = 1;
+        pos.seldepth = depth;
 #ifdef DEBUG
         int oldscore = 0;
         unsigned long long nodesbefore = en.nodes;
@@ -752,7 +756,7 @@ static void search_gen1()
                 alpha = max(SHRT_MIN + 1, alpha - deltaalpha);
                 deltaalpha += deltaalpha / 4 + 2;
                 //deltaalpha <<= 1;
-                if (alpha < -1000)
+                if (abs(alpha) > 1000)
                     deltaalpha = SHRT_MAX << 1;
                 inWindow = 0;
 #ifdef DEBUG
@@ -765,7 +769,7 @@ static void search_gen1()
                 beta = min(SHRT_MAX, beta + deltabeta);
                 deltabeta += deltabeta / 4 + 2;
                 //deltabeta <<= 1;
-                if (beta > 1000)
+                if (abs(beta) > 1000)
                     deltabeta = SHRT_MAX << 1;
                 inWindow = 2;
 #ifdef DEBUG
@@ -841,12 +845,12 @@ static void search_gen1()
                         char s[4096];
                         if (!MATEDETECTED(pos.bestmovescore[i]))
                         {
-                            sprintf_s(s, "info depth %d multipv %d time %d score cp %d %s pv %s\n", depth, i + 1, secondsrun, pos.bestmovescore[i], boundscore[inWindow], pvstring.c_str());
+                            sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score cp %d %s pv %s\n", depth, pos.seldepth, i + 1, secondsrun, pos.bestmovescore[i], boundscore[inWindow], pvstring.c_str());
                         }
                         else
                         {
                             matein = (pos.bestmovescore[i] > 0 ? (SCOREWHITEWINS - pos.bestmovescore[i] + 1) / 2 : (SCOREBLACKWINS - pos.bestmovescore[i]) / 2);
-                            sprintf_s(s, "info depth %d multipv %d time %d score mate %d pv %s\n", depth, i + 1, secondsrun, matein, pvstring.c_str());
+                            sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score mate %d pv %s\n", depth, pos.seldepth, i + 1, secondsrun, matein, pvstring.c_str());
                         }
                         cout << s;
                         i++;
@@ -861,7 +865,7 @@ static void search_gen1()
                 if (!pos.bestmove[0].code)
                     tp.probeHash(&score, &pos.bestmove[0].code, MAXDEPTH, alpha, beta);
                 // still no bestmove...
-                if (!pos.bestmove[0].code)
+                if (!pos.bestmove[0].code && pos.rootmovelist.length > 0)
                     pos.bestmove[0].code = pos.rootmovelist.move[0].code;
 
                 pos.getpvline(depth, 0);
@@ -884,27 +888,32 @@ static void search_gen1()
                     pondermovestr = " ponder " + pos.pvline.move[1].toString();
 
                 char s[4096];
-                if (!MATEDETECTED(score))
+                if (inWindow == 1 || (secondsrun - lastsecondsrun) > 200)
                 {
-                    sprintf_s(s, "info depth %d time %d score cp %d %s nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
-                        depth, secondsrun, score, boundscore[inWindow], en.nodes,
-                        (nowtime > en.starttime ? en.nodes * en.frequency / (nowtime - en.starttime) : 1),
-                        en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
+                    lastsecondsrun = secondsrun;
+                    if (!MATEDETECTED(score))
+                    {
+                        sprintf_s(s, "info depth %d seldepth %d time %d score cp %d %s nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
+                            depth, pos.seldepth, secondsrun, score, boundscore[inWindow], en.nodes,
+                            (nowtime > en.starttime ? en.nodes * en.frequency / (nowtime - en.starttime) : 1),
+                            en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
+                    }
+                    else
+                    {
+                        matein = (score > 0 ? (SCOREWHITEWINS - score + 1) / 2 : (SCOREBLACKWINS - score) / 2);
+                        sprintf_s(s, "info depth %d seldepth %d time %d score mate %d nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
+                            depth, pos.seldepth, secondsrun, matein, en.nodes,
+                            (nowtime > en.starttime ? en.nodes * en.frequency / (nowtime - en.starttime) : 1),
+                            en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
+                    }
+                    cout << s;
                 }
-                else
-                {
-                    matein = (score > 0 ? (SCOREWHITEWINS - score + 1) / 2 : (SCOREBLACKWINS - score) / 2);
-                    sprintf_s(s, "info depth %d time %d score mate %d nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
-                        depth, secondsrun, matein, en.nodes,
-                        (nowtime > en.starttime ? en.nodes * en.frequency / (nowtime - en.starttime) : 1),
-                        en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
-                }
-                cout << s;
             }
         }
         if (inWindow == 1)
             depth += depthincrement;
-        if (pos.rootmovelist.length == 1 && depth > 4 && en.endtime1)
+
+        if (pos.rootmovelist.length == 1 && depth > 4 && en.endtime1 && !en.isPondering())
             // early exit in playing mode as there is exactly one possible move
             en.stopLevel = ENGINEWANTSTOP;
         if (pos.tbPosition && abs(score) >= SCORETBWIN - 100)
@@ -912,18 +921,23 @@ static void search_gen1()
             en.stopLevel = ENGINEWANTSTOP;
     } while (en.stopLevel == ENGINERUN && depth <= min(maxdepth, abs(matein) * 2));
     
-    en.stopLevel = ENGINESTOPPED;
     if (bestmovestr == "")
         // not a single move found (serious time trouble); fall back to default move
         bestmovestr = pos.defaultmove.toString();
 
     char s[64];
     sprintf_s(s, "bestmove %s%s\n", bestmovestr.c_str(), pondermovestr.c_str());
+
+    // when pondering prevent from stopping search before STOP
+    while (en.isPondering() && en.stopLevel != ENGINESTOPIMMEDIATELY)
+        Sleep(10);
+ 
     cout << s;
+    en.stopLevel = ENGINESTOPPED;
 }
 
 
-void startSearchTime()
+void startSearchTime(bool complete = true)
 {
     int timetouse = (en.isWhite ? en.wtime : en.btime);
     int timeinc = (en.isWhite ? en.winc : en.binc);
@@ -933,7 +947,8 @@ void startSearchTime()
     {
         // should garantee timetouse > 0
         // stop soon at 0.7 x average movetime
-        en.endtime1 = en.starttime + timetouse * en.frequency * 7 / (en.movestogo + 1) / 10000;
+        if (complete)
+            en.endtime1 = en.starttime + timetouse * en.frequency * 7 / (en.movestogo + 1) / 10000;
         // stop immediately at 1.3 x average movetime
         en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, 13 * timetouse / (en.movestogo + 1) / 10) * en.frequency / 1000;
         //printf("info string difftime1=%lld  difftime2=%lld\n", (endtime1 - en.starttime) * 1000 / en.frequency , (endtime2 - en.starttime) * 1000 / en.frequency);
@@ -944,7 +959,8 @@ void startSearchTime()
         {
             // sudden death with increment; split the remaining time in (256-phase) timeslots
             // stop soon after 6 timeslot
-            en.endtime1 = en.starttime + max(timeinc, 6 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
+            if (complete)
+                en.endtime1 = en.starttime + max(timeinc, 6 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
             // stop immediately after 10 timeslots
             en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, max(timeinc, 10 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
         }
@@ -957,7 +973,8 @@ void startSearchTime()
             //  45;30:  55,5% + 53,4%
             // So I use the first one although 45;30 is ~22ELO better against 40;25 in TC 10 and TC 60
 
-            en.endtime1 = en.starttime + timetouse / 40 * en.frequency / 1000;
+            if (complete)
+                en.endtime1 = en.starttime + timetouse / 40 * en.frequency / 1000;
             en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, timetouse / 25) * en.frequency / 1000;
 
         }
@@ -1013,7 +1030,7 @@ void searchguide()
             }
             else if (en.testPonderHit())
             {
-                startSearchTime();
+                startSearchTime(false);
                 en.resetPonder();
             }
             else if (en.endtime2 && nowtime >= en.endtime2 && en.stopLevel < ENGINESTOPIMMEDIATELY)
