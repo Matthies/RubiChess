@@ -1666,6 +1666,16 @@ bool chessposition::isAttacked(int index)
 }
 
 
+U64 chessposition::attackedBy(int index, U64 occ)
+{
+    return (knight_attacks[index] & (piece00[WKNIGHT] | piece00[BKNIGHT]))
+        | (king_attacks[index] & (piece00[WKING] | piece00[BKING]))
+        | (pawn_attacks_occupied[index][1] & piece00[WPAWN])
+        | (pawn_attacks_occupied[index][0] & piece00[BPAWN])
+        | (MAGICROOKATTACKS(occ, index) & (piece00[WROOK] | piece00[BROOK] | piece00[WQUEEN] | piece00[BQUEEN]))
+        | (MAGICBISHOPATTACKS(occ, index) & (piece00[WBISHOP] | piece00[BBISHOP] | piece00[WQUEEN] | piece00[BQUEEN]));
+}
+
 
 int chessposition::phase()
 {
@@ -1712,6 +1722,39 @@ int chessposition::getLeastValuablePieceIndex(int to, unsigned int bySide, Piece
 }
 
 
+// more advanced see respecting a variable threshold, quiet and promotion moves and better xray attack handling
+bool chessposition::see(uint32_t move, int threshold)
+{
+    int from = GETFROM(move);
+    int to = GETTO(move);
+
+    int value = GETTACTICALVALUE(move) - threshold;
+
+    if (value < 0)
+        // the move itself is not good enough to reach the threshold
+        return false;
+
+    int nextPiece = (ISPROMOTION(move) ? GETPROMOTION(move) : GETPIECE(move)) >> 1;
+
+    value -= materialvalue[nextPiece];
+
+    if (value >= 0)
+        // the move is good enough even if the piece is recaptured
+        return true;
+
+    // Now things get a little more complicated...
+    U64 seeOccupied = ((occupied00[0] | occupied00[1]) ^ BITSET(from)) | BITSET(to);
+
+    // Get attackers excluding the already moved piece
+    U64 attacker = attackedBy(to, seeOccupied) & seeOccupied;
+
+    int s2m = (state & S2MMASK) ^ S2MMASK;
+
+
+
+}
+
+// simple see based on pseudo code of chessprogramming
 int chessposition::see(int from, int to)
 {
     PieceType bPiece = mailbox[to];
@@ -1738,6 +1781,7 @@ int chessposition::see(int from, int to)
         if (from < 0)
             BitboardSet(fromlist[d], bPiece);
     } while (from >= 0);
+    // collect the gain and redo the pseudo moves
     while (--d)
     {
         gain[d - 1] = -max(-gain[d - 1], gain[d]);
