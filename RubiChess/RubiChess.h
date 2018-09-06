@@ -424,6 +424,7 @@ enum MoveSelector_State { INITSTATE, HASHMOVESTATE, TACTICALINITSTATE, TACTICALS
 class MoveSelector
 {
     chessposition *pos;
+public:
     int state;
     chessmovelist* captures;
     chessmovelist* quiets;
@@ -434,7 +435,6 @@ class MoveSelector
     int capturemovenum;
     int quietmovenum;
 
-public:
     void SetPreferredMoves(chessposition *p, uint32_t hshm, uint32_t kllm1, uint32_t kllm2, int nmrfttarget);
     ~MoveSelector();
     chessmove* next();
@@ -524,9 +524,9 @@ public:
     int phase();
     PieceType Piece(int index);
     bool isAttacked(int index);
-    U64 attackedBy(int index, U64 occ);
+    U64 attackedByBB(int index, U64 occ);
     int getLeastValuablePieceIndex(int to, unsigned int bySide, PieceCode *piece);
-    int see(int from, int to);
+    int seeSimple(int from, int to);
     bool see(uint32_t move, int threshold);
     int getBestPossibleCapture();
     int getMoves(chessmove *m, MoveType t = ALL);

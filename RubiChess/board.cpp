@@ -1666,7 +1666,7 @@ bool chessposition::isAttacked(int index)
 }
 
 
-U64 chessposition::attackedBy(int index, U64 occ)
+U64 chessposition::attackedByBB(int index, U64 occ)
 {
     return (knight_attacks[index] & (piece00[WKNIGHT] | piece00[BKNIGHT]))
         | (king_attacks[index] & (piece00[WKING] | piece00[BKING]))
@@ -1728,34 +1728,106 @@ bool chessposition::see(uint32_t move, int threshold)
     int from = GETFROM(move);
     int to = GETTO(move);
 
+#if 0
+    int oldSee = seeSimple(from, to);
+
+    if (ISPROMOTION(move) && oldSee == 0)
+        printf("");
+#endif
+#if 0
+    if (move == 2953054118 && hash == 8944263975512875931)
+        print();
+#endif
+
     int value = GETTACTICALVALUE(move) - threshold;
 
     if (value < 0)
+    {
+#if 0
         // the move itself is not good enough to reach the threshold
+        if (oldSee >= 0)
+            printf("Alarm");
+#endif
         return false;
+    }
 
     int nextPiece = (ISPROMOTION(move) ? GETPROMOTION(move) : GETPIECE(move)) >> 1;
 
     value -= materialvalue[nextPiece];
 
     if (value >= 0)
+    {
         // the move is good enough even if the piece is recaptured
+#if 0
+        if (oldSee < 0)
+            printf("Alarm");
+#endif
         return true;
+    }
 
     // Now things get a little more complicated...
     U64 seeOccupied = ((occupied00[0] | occupied00[1]) ^ BITSET(from)) | BITSET(to);
+    U64 potentialRookAttackers = (piece00[WROOK] | piece00[BROOK] | piece00[WQUEEN] | piece00[BQUEEN]);
+    U64 potentialBishopAttackers = (piece00[WBISHOP] | piece00[BBISHOP] | piece00[WQUEEN] | piece00[BQUEEN]);
 
     // Get attackers excluding the already moved piece
-    U64 attacker = attackedBy(to, seeOccupied) & seeOccupied;
+    U64 attacker = attackedByBB(to, seeOccupied) & seeOccupied;
 
     int s2m = (state & S2MMASK) ^ S2MMASK;
 
+    while (true)
+    {
+        U64 nextAttacker = attacker & occupied00[s2m];
+        // No attacker left => break
+        if (!nextAttacker)
+            break;
 
+        // Find attacker with least value
+        nextPiece = PAWN;
+        while (!(nextAttacker & piece00[(nextPiece << 1) | s2m]))
+            nextPiece++;
+
+        // Simulate the move
+        int attackerIndex;
+        LSB(attackerIndex, nextAttacker & piece00[(nextPiece << 1) | s2m]);
+        seeOccupied ^= BITSET(attackerIndex);
+
+        // Add new shifting attackers but exclude already moved attackers using current seeOccupied
+        if (nextPiece == PAWN || shifting[nextPiece] & 0x1 || nextPiece == KING)
+            attacker |= (MAGICBISHOPATTACKS(seeOccupied, to) & potentialBishopAttackers);
+        if (shifting[nextPiece] & 0x2 || nextPiece == KING)
+            attacker |= (MAGICROOKATTACKS(seeOccupied, to) & potentialRookAttackers);
+
+        // Remove attacker
+        attacker &= seeOccupied;
+
+        s2m ^= S2MMASK;
+
+        value = -value - 1 - materialvalue[nextPiece];
+
+        if (value >= 0)
+        {
+            break;
+        }
+    }
+
+#if 0
+    bool retval = (s2m ^ (state & S2MMASK));
+    if (retval != (bool)(oldSee >= 0) && oldSee != 0)
+    {
+        chessmove m;
+        m.code = move;
+        printf("Alarm! Move: %s\n", m.toString().c_str());
+        print();
+    }
+#endif
+    return (s2m ^ (state & S2MMASK));
 
 }
 
+
 // simple see based on pseudo code of chessprogramming
-int chessposition::see(int from, int to)
+int chessposition::seeSimple(int from, int to)
 {
     PieceType bPiece = mailbox[to];
     if (bPiece == BLANK)
@@ -1855,7 +1927,8 @@ chessmove* MoveSelector::next()
     case TACTICALSTATE:
         while (capturemovenum < captures->length
             && (captures->move[capturemovenum].code == hashmove.code 
-                || pos->see(GETFROM(captures->move[capturemovenum].code), GETTO(captures->move[capturemovenum].code)) < 0))
+                //|| pos->see(GETFROM(captures->move[capturemovenum].code), GETTO(captures->move[capturemovenum].code)) < 0))
+                || !pos->see(captures->move[capturemovenum].code, 0)))
         {
             // mark the move for BADTACTICALSTATE
             captures->move[capturemovenum].value |= (1 << 31);
