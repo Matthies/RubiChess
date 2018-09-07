@@ -239,6 +239,8 @@ void doBenchmark()
         int resethash;
         long long time;
         long long nodes;
+        int score;
+        int depthAtExit;
     } benchmark[] =
     {
         {   
@@ -265,8 +267,8 @@ void doBenchmark()
         {
             "Wacnew 167",
             "7Q/ppp2q2/3p2k1/P2Ppr1N/1PP5/7R/5rP1/6K1 b - - 0 1",
-            0,
-            30000,
+            14,
+            1000,
             1
         },
         { 
@@ -342,6 +344,8 @@ void doBenchmark()
         endtime = getTime();
         bm->time = endtime - starttime;
         bm->nodes = en.nodes;
+        bm->score = en.benchscore;
+        bm->depthAtExit = en.benchdepth;
         i++;
     }
 
@@ -351,17 +355,17 @@ void doBenchmark()
     long long totalnodes = 0;
     fprintf(stderr, "\n\nBenchmark results for %s (Build %s):\n", en.name, BUILD);
     fprintf(stderr, "System: %s\n", GetSystemInfo().c_str());
-    fprintf(stderr, "==========================================================================================\n");
+    fprintf(stderr, "===============================================================================================================\n");
     while (benchmark[i].fen != "")
     {
         struct benchmarkstruct *bm = &benchmark[i];
         totaltime += bm->time;
         totalnodes += bm->nodes;
-        fprintf(stderr, "Bench # %2d (%20s / %2d):  %10f sec.  %10lld nodes %10lld nps\n", i + 1, bm->name.c_str(), bm->depth, (float)bm->time / (float)en.frequency, bm->nodes, bm->nodes * en.frequency / bm->time);
+        fprintf(stderr, "Bench # %2d (%20s / %2d): %7d cp  %4d ply  %10f sec.  %10lld nodes %10lld nps\n", i + 1, bm->name.c_str(), bm->depth, bm->score, bm->depthAtExit, (float)bm->time / (float)en.frequency, bm->nodes, bm->nodes * en.frequency / bm->time);
         i++;
     }
-    fprintf(stderr, "==========================================================================================\n");
-    fprintf(stderr, "Overall:                                 %10f sec.  %10lld nodes %*lld nps\n", ((float)totaltime / (float)en.frequency), totalnodes, 10, totalnodes * en.frequency / totaltime);
+    fprintf(stderr, "===============================================================================================================\n");
+    fprintf(stderr, "Overall:                                                      %10f sec.  %10lld nodes %*lld nps\n", ((float)totaltime / (float)en.frequency), totalnodes, 10, totalnodes * en.frequency / totaltime);
 }
 
 

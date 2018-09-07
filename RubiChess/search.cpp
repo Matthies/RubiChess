@@ -961,6 +961,9 @@ static void search_gen1()
  
     cout << s;
     en.stopLevel = ENGINESTOPPED;
+    // Remember some exit values for benchmark output
+    en.benchscore = score;
+    en.benchdepth = depth - 1;
 }
 
 

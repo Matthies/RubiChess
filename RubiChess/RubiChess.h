@@ -527,7 +527,6 @@ public:
     PieceType Piece(int index);
     bool isAttacked(int index);
     U64 attackedByBB(int index, U64 occ);
-    int getLeastValuablePieceIndex(int to, unsigned int bySide, PieceCode *piece);
     bool see(uint32_t move, int threshold);
     int getBestPossibleCapture();
     int getMoves(chessmove *m, MoveType t = ALL);
@@ -594,7 +593,7 @@ public:
     long long endtime2; // time to send STOPPIMMEDIATELY signal
     long long frequency;
     float fh, fhf;
-    int wtime, btime, winc, binc, movestogo, depth, maxnodes, mate, movetime, maxdepth;
+    int wtime, btime, winc, binc, movestogo, maxnodes, mate, movetime, maxdepth;
     bool infinite;
     bool debug = false;
     bool moveoutput;
@@ -606,6 +605,8 @@ public:
     bool Syzygy50MoveRule;
     enum { NO, PONDERING, HITPONDER } pondersearch;
     int terminationscore = SHRT_MAX;
+    int benchscore;
+    int benchdepth;
     int stopLevel = ENGINESTOPPED;
     void communicate(string inputstring);
     void setOption(string sName, string sValue);

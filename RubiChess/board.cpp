@@ -1935,14 +1935,11 @@ engine::engine()
     pwnhsh.pos = &pos;
     initBitmaphelper();
 
-    setOption("hash", "150");
+    setOption("hash", "256");
     setOption("Move Overhead", "50");
     setOption("MultiPV", "1");
     setOption("Ponder", "false");
     setOption("SyzygyPath", "<empty>");
-    //setOption("SyzygyPath", "C:\\_Lokale_Daten_ungesichert\\tb");
-    //setOption("SyzygyPath", "C:\\tb");
-
     setOption("Syzygy50MoveRule", "true");
 
 
