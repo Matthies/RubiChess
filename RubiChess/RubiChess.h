@@ -206,9 +206,10 @@ const int castlerookto[] = {0, 3, 5, 59, 61 };
 
 const int EPTSIDEMASK[2] = { 0x8, 0x10 };
 
-#define HASHEXACT 0x00
+#define BOUNDMASK 0x03 
 #define HASHALPHA 0x01
 #define HASHBETA 0x02
+#define HASHEXACT 0x03
 
 #define MAXDEPTH 256
 #define NOSCORE SHRT_MIN
@@ -435,7 +436,8 @@ public:
     int capturemovenum;
     int quietmovenum;
 
-    void SetPreferredMoves(chessposition *p, uint32_t hshm, uint32_t kllm1, uint32_t kllm2, int nmrfttarget);
+public:
+    void SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, int nmrfttarget);
     ~MoveSelector();
     chessmove* next();
 };
@@ -536,7 +538,8 @@ public:
     void playNullMove();
     void unplayNullMove();
     void getpvline(int depth, int pvnum);
-    bool moveIsPseudoLegal(uint32_t c);
+    bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
+    uint32_t chessposition::shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal
     template <EvalTrace> int getPositionValue();
     template <EvalTrace> int getPawnValue(pawnhashentry **entry);
     template <EvalTrace> int getValue();
@@ -664,34 +667,46 @@ public:
     u8 modHash(int i);
 };
 
-typedef struct transpositionentry {
+#define TTBUCKETNUM 3
+
+
+struct transpositionentry {
     uint32_t hashupper;
-    uint32_t movecode;
-    short value;
-    unsigned char depth;
-    char flag;
-} S_TRANSPOSITIONENTRY;
+    uint16_t movecode;
+    int16_t value;
+    uint8_t depth;
+    uint8_t boundAndAge;
+};
+
+struct transpositioncluster {
+    transpositionentry entry[TTBUCKETNUM];
+    char padding[2];
+};
 
 class transposition
 {
-    S_TRANSPOSITIONENTRY *table;
+    transpositioncluster *table;
     U64 used;
 public:
     U64 size;
     U64 sizemask;
     chessposition *pos;
+    int numOfSearchShiftTwo;
     ~transposition();
     int setSize(int sizeMb);    // returns the number of Mb not used by allignment
     void clean();
     bool testHash();
-    void addHash(int val, int valtype, int depth, uint32_t move);
+    void addHash(int val, int bound, int depth, uint16_t movecode);
     void printHashentry();
-    bool probeHash(int *val, uint32_t *movecode, int depth, int alpha, int beta);
+    bool probeHash(int *val, uint16_t *movecode, int depth, int alpha, int beta);
+#if 0
     short getValue();
     int getValtype();
     int getDepth();
-    uint32_t getMoveCode();
+#endif
+    uint16_t getMoveCode();
     unsigned int getUsedinPermill();
+    void nextSearch() { numOfSearchShiftTwo = (numOfSearchShiftTwo + 4) & 0xfc; }
 };
 
 typedef struct pawnhashentry {

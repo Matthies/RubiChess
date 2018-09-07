@@ -130,7 +130,7 @@ int getQuiescence(int alpha, int beta, int depth)
 int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 {
     int score;
-    uint32_t hashmovecode = 0;
+    uint16_t hashmovecode = 0;
     bool isLegal;
     int bestscore = NOSCORE;
     uint32_t bestcode = 0;
@@ -139,6 +139,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     int extendall = 0;
     int effectiveDepth;
     unsigned int nmrefutetarget = BOARDSIZE;
+    bool PVNode = (alpha != beta - 1);
 
     en.nodes++;
 
@@ -232,9 +233,10 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             }
 #endif
             int dummyscore;
-            uint32_t nmrefutemove = 0;
-            tp.probeHash(&dummyscore, &nmrefutemove, MAXDEPTH, 0, 0);
-            if (ISCAPTURE(nmrefutemove))
+            uint16_t nmrefutemove = 0;
+            
+            if (tp.probeHash(&dummyscore, &nmrefutemove, MAXDEPTH, 0, 0) 
+                && pos.mailbox[GETTO(nmrefutemove)] != BLANK)
             {
                 nmrefutetarget = GETTO(nmrefutemove);
             }
@@ -260,6 +262,15 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 #ifdef FPDEBUG
         futilityscore = score;
 #endif
+    }
+
+    // Internal iterative deepening 
+    const int iidmin = 3;
+    const int iiddelta = 2;
+    if (PVNode && !hashmovecode && depth >= iidmin)
+    {
+        score = alphabeta(alpha, beta, depth - iiddelta, true);
+        tp.probeHash(&score, &hashmovecode, depth, alpha, beta);
     }
 
     MoveSelector ms = {};
@@ -305,7 +316,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                 else if (ISTACTICAL(m->code) && GETPIECE(m->code) <= GETCAPTURE(m->code))
                     extendall = 1;
 #endif
-                if (!eval_type == HASHEXACT)
+                if (eval_type != HASHEXACT)
                 {
 #if 0
                     // disabled; even 'good capture' extension doesn't seem to work
@@ -426,7 +437,7 @@ template <RootsearchType RT>
 int rootsearch(int alpha, int beta, int depth)
 {
     int score;
-    uint32_t hashmovecode = 0;
+    uint16_t hashmovecode = 0;
     int bestscore = NOSCORE;
     int eval_type = HASHALPHA;
     chessmove *m;
@@ -490,7 +501,7 @@ int rootsearch(int alpha, int beta, int depth)
             m = &pos.rootmovelist.move[i];
 
             //PV moves gets top score
-            if (hashmovecode == m->code)
+            if (hashmovecode == (m->code & 0xffff))
             {
 #ifdef DEBUG
                 en.pvnodes++;
@@ -546,7 +557,7 @@ int rootsearch(int alpha, int beta, int depth)
         }
 
         int effectiveDepth;
-        if (!eval_type == HASHEXACT)
+        if (eval_type != HASHEXACT)
         {
             effectiveDepth = depth + extendall - reduction;
             score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
@@ -717,6 +728,9 @@ static void search_gen1()
 
     alpha = SHRT_MIN + 1;
     beta = SHRT_MAX;
+
+    // increment generation counter for tt aging
+    tp.nextSearch();
     
     // iterative deepening
     do
@@ -834,7 +848,11 @@ static void search_gen1()
                         // The only case that bestmove is not set can happen if rootsearch hit the TP table
                         // so get bestmovecode from there
                         if (!pos.bestmove[i].code)
-                            tp.probeHash(&pos.bestmovescore[i], &pos.bestmove[i].code, MAXDEPTH, alpha, beta);
+                        {
+                            uint16_t mc;
+                            tp.probeHash(&pos.bestmovescore[i], &mc, MAXDEPTH, alpha, beta);
+                            pos.bestmove[i].code = pos.shortMove2FullMove(mc);
+                        }
 
                         pos.getpvline(depth, i);
                         pvstring = pos.pvline.toString();
@@ -867,7 +885,12 @@ static void search_gen1()
                 // The only two cases that bestmove is not set can happen if alphabeta hit the TP table or we are in TB
                 // so get bestmovecode from there or it was a TB hit so just get the first rootmove
                 if (!pos.bestmove[0].code)
-                    tp.probeHash(&score, &pos.bestmove[0].code, MAXDEPTH, alpha, beta);
+                {
+                    uint16_t mc = 0;
+                    tp.probeHash(&score, &mc, MAXDEPTH, alpha, beta);
+                    pos.bestmove[0].code = pos.shortMove2FullMove(mc);
+                }
+                    
                 // still no bestmove...
                 if (!pos.bestmove[0].code && pos.rootmovelist.length > 0)
                     pos.bestmove[0].code = pos.rootmovelist.move[0].code;

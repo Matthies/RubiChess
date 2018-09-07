@@ -326,6 +326,7 @@ void doBenchmark()
         if (bm->resethash)
             en.setOption("clear hash", "true");
 
+        en.communicate("ucinewgame" + bm->fen);
         en.communicate("position fen " + bm->fen);
         starttime = getTime();
         int dp = bm->depth;
