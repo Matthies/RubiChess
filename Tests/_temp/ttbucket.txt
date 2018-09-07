@@ -1,0 +1,24 @@
+tt1 (erster commit von ttbucket):
+STC:
+Score of RubiChess-Bitboard-tt1 vs RubiChess-Bitboard-ms: 327 - 372 - 461  [0.481] 1160
+Elo difference: -13.48 +/- 15.51
+SPRT: llr -1.28, lbound -1.39, ubound 1.39
+
+tt2 (mit iid zusätzlich)
+STC:
+Score of RubiChess-Bitboard-tt2 vs RubiChess-Bitboard-ms: 754 - 791 - 1114  [0.493] 2659
+Elo difference: -4.83 +/- 10.05
+SPRT: llr -1.39, lbound -1.39, ubound 1.39 - H0 was accepted
+
+Ev. ist der default Hash zu groß (oder die TC zu kurz), um Verbesserungen zu merken, deshalb mit längerer TC bzw. kleinerem Hash testen:
+TC 10.0+0.1, Hash=4
+Score of RubiChess-Bitboard-tt2 vs RubiChess-Bitboard-ms: 860 - 783 - 1201  [0.514] 2844
+Elo difference: 9.41 +/- 9.69
+SPRT: llr 1.41, lbound -1.39, ubound 1.39 - H1 was accepted
+
+TC: 40/150, Hash=25
+Score of RubiChess-Bitboard-tt2 vs RubiChess-Bitboard-ms: 286 - 234 - 624  [0.523] 1144
+Elo difference: 15.80 +/- 13.56
+SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+
+Scheint okay => pull request

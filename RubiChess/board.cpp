@@ -588,6 +588,7 @@ void chessposition::getpvline(int depth, int pvnum)
 {
     int dummyval;
     chessmove cm;
+    uint16_t movecode;
     pvline.length = 0;
     while (depth > 0)
     {
@@ -595,7 +596,11 @@ void chessposition::getpvline(int depth, int pvnum)
         {
             cm = bestmove[pvnum];
         }
-        else if (!tp.probeHash(&dummyval, &(cm.code), depth, 0, 0) || cm.code == 0)
+        else if (tp.probeHash(&dummyval, &movecode, depth, 0, 0) && movecode)
+        {
+            cm.code = shortMove2FullMove(movecode);
+        }
+        else
         {
             break;
         }
@@ -612,6 +617,37 @@ void chessposition::getpvline(int depth, int pvnum)
     for (int i = pvline.length; i;)
         unplayMove(&(pvline.move[--i]));
 }
+
+
+uint32_t chessposition::shortMove2FullMove(uint16_t c)
+{
+    if (!c)
+        return 0;
+
+    int from = GETFROM(c);
+    int to = GETTO(c);
+    PieceCode pc = mailbox[from];
+    PieceCode capture = mailbox[to];
+    PieceType p = pc >> 1;
+    int ept = 0;
+    if (p == PAWN)
+    {
+        if (FILE(from) != FILE(to) && capture == BLANK)
+        {
+            // ep capture
+            capture = pc ^ S2MMASK;
+            ept = ISEPCAPTURE;
+        }
+        else if ((from ^ to) == 16)
+        {
+            // double push enables epc
+            ept = (from + to) / 2;
+        }
+    }
+
+    return (pc << 28) | (ept << 20) | (capture << 16) | c;
+}
+
 
 
 bool chessposition::moveIsPseudoLegal(uint32_t c)
@@ -738,12 +774,14 @@ void chessposition::print()
         BitboardDraw(attackedBy[1][i]);
     }
 #endif
+#if 0
     if (tp.size > 0 && tp.testHash())
     {
         chessmove cm;
         cm.code = tp.getMoveCode();
         printf("info string Hash-Info: depth=%d Val=%d (%d) Move:%s\n", tp.getDepth(), tp.getValue(), tp.getValtype(), cm.toString().c_str());
     }
+#endif
     if (actualpath.length)
         printf("info string Moves in current search: %s\n", actualpath.toString().c_str());
 }
@@ -1776,10 +1814,10 @@ MoveSelector::~MoveSelector()
         delete quiets;
 }
 
-void MoveSelector::SetPreferredMoves(chessposition *p, uint32_t hshm, uint32_t kllm1, uint32_t kllm2, int nmrfttarget)
+void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, int nmrfttarget)
 {
     pos = p;
-    hashmove.code = hshm;
+    hashmove.code = p->shortMove2FullMove(hshm);
     if (kllm1 != hshm)
         killermove1.code = kllm1;
     if (kllm2 != hshm)
@@ -2034,6 +2072,10 @@ void engine::communicate(string inputstring)
                 myUci->send("option name SyzygyPath type string default <empty>\n");
                 myUci->send("option name Syzygy50MoveRule type check default true\n");
                 myUci->send("uciok\n", author);
+                break;
+            case UCINEWGAME:
+                // invalidate hash
+                tp.clean();
                 break;
             case SETOPTION:
                 if (en.stopLevel < ENGINESTOPPED)
