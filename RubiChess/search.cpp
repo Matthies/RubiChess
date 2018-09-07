@@ -58,7 +58,6 @@ int getQuiescence(int alpha, int beta, int depth)
         bool MoveIsUsefull = (pos.isCheck
             || ISPROMOTION(movelist->move[i].code)
             || (patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin > alpha
-//                && (pos.see(GETFROM(movelist->move[i].code), GETTO(movelist->move[i].code)) >= 0)
                 && pos.see(movelist->move[i].code, 0)
             ));
 #ifdef DEBUG
@@ -273,7 +272,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     int  LegalMoves = 0;
     while ((m = ms.next()))
     {
-        // Prune tactical moves with bas SEE
+        // Prune tactical moves with bad SEE
         if (!pos.isCheck && depth < 8 && bestscore > NOSCORE && ms.state >= BADTACTICALSTATE && !pos.see(m->code, -20 * depth * depth))
             continue;
 

@@ -1685,85 +1685,26 @@ int chessposition::phase()
 
 
 
-int chessposition::getLeastValuablePieceIndex(int to, unsigned int bySide, PieceCode *piece)
-{
-    int i;
-    if (LSB(i, pawn_attacks_occupied[to][bySide ^ S2MMASK] & piece00[(PAWN << 1) | bySide]))
-    {
-        *piece = WPAWN + bySide;
-        return i;
-    }
-    if (LSB(i, knight_attacks[to] & piece00[(KNIGHT << 1) | bySide]))
-    {
-        *piece = WKNIGHT + bySide;
-        return i;
-    }
-    if (LSB(i, MAGICBISHOPATTACKS(occupied00[0] | occupied00[1], to) & (piece00[(BISHOP << 1) | bySide])))
-    {
-        *piece = WBISHOP + bySide;
-        return i;
-    }
-    if (LSB(i, MAGICROOKATTACKS(occupied00[0] | occupied00[1], to) & (piece00[(ROOK << 1) | bySide])))
-    {
-        *piece = WROOK + bySide;
-        return i;
-    }
-    if (LSB(i, (MAGICBISHOPATTACKS(occupied00[0] | occupied00[1], to) & (piece00[(QUEEN << 1) | bySide])) | (MAGICROOKATTACKS(occupied00[0] | occupied00[1], to) & (piece00[(QUEEN << 1) | bySide]))))
-    {
-        *piece = WQUEEN + bySide;
-        return i;
-    }
-    if (LSB(i, king_attacks[to] & piece00[(KING << 1) | bySide]))
-    {
-        *piece = WKING + bySide;
-        return i;
-    }
-    return -1;
-}
 
-
-// more advanced see respecting a variable threshold, quiet and promotion moves and better xray attack handling
+// more advanced see respecting a variable threshold, quiet and promotion moves and faster xray attack handling
 bool chessposition::see(uint32_t move, int threshold)
 {
     int from = GETFROM(move);
     int to = GETTO(move);
 
-#if 0
-    int oldSee = seeSimple(from, to);
-
-    if (ISPROMOTION(move) && oldSee == 0)
-        printf("");
-#endif
-#if 0
-    if (move == 2953054118 && hash == 8944263975512875931)
-        print();
-#endif
-
     int value = GETTACTICALVALUE(move) - threshold;
 
     if (value < 0)
-    {
-#if 0
         // the move itself is not good enough to reach the threshold
-        if (oldSee >= 0)
-            printf("Alarm");
-#endif
         return false;
-    }
 
     int nextPiece = (ISPROMOTION(move) ? GETPROMOTION(move) : GETPIECE(move)) >> 1;
 
     value -= materialvalue[nextPiece];
 
     if (value >= 0)
-    {
         // the move is good enough even if the piece is recaptured
-#if 0
-        if (oldSee < 0)
-            printf("Alarm");
-#endif
         return true;
-    }
 
     // Now things get a little more complicated...
     U64 seeOccupied = ((occupied00[0] | occupied00[1]) ^ BITSET(from)) | BITSET(to);
@@ -1811,56 +1752,10 @@ bool chessposition::see(uint32_t move, int threshold)
         }
     }
 
-#if 0
-    bool retval = (s2m ^ (state & S2MMASK));
-    if (retval != (bool)(oldSee >= 0) && oldSee != 0)
-    {
-        chessmove m;
-        m.code = move;
-        printf("Alarm! Move: %s\n", m.toString().c_str());
-        print();
-    }
-#endif
     return (s2m ^ (state & S2MMASK));
-
 }
 
 
-// simple see based on pseudo code of chessprogramming
-int chessposition::seeSimple(int from, int to)
-{
-    PieceType bPiece = mailbox[to];
-    if (bPiece == BLANK)
-        // ep capture is always okay
-        return 0;
-    PieceCode aPiece = mailbox[from];
-    int gain[32], d = 0;
-    int side = (aPiece & S2MMASK);
-    int fromlist[32];
-
-    gain[0] = materialvalue[bPiece >> 1];
-    do {
-        d++;
-        gain[d] = materialvalue[aPiece >> 1] - gain[d - 1];
-        if (max(-gain[d - 1], gain[d]) < 0)
-            break;
-
-        fromlist[d] = from;
-        BitboardClear(from, aPiece);
-        side ^= S2MMASK;
-        bPiece = aPiece;
-        from = getLeastValuablePieceIndex(to, side, &aPiece);
-        if (from < 0)
-            BitboardSet(fromlist[d], bPiece);
-    } while (from >= 0);
-    // collect the gain and redo the pseudo moves
-    while (--d)
-    {
-        gain[d - 1] = -max(-gain[d - 1], gain[d]);
-        BitboardSet(fromlist[d], mailbox[fromlist[d]]);
-    }
-    return gain[0];
-}
 
 int chessposition::getBestPossibleCapture()
 {
@@ -1891,6 +1786,7 @@ MoveSelector::~MoveSelector()
         delete captures;
         delete quiets;
 }
+
 
 void MoveSelector::SetPreferredMoves(chessposition *p, uint32_t hshm, uint32_t kllm1, uint32_t kllm2, int nmrfttarget)
 {
@@ -1927,7 +1823,6 @@ chessmove* MoveSelector::next()
     case TACTICALSTATE:
         while (capturemovenum < captures->length
             && (captures->move[capturemovenum].code == hashmove.code 
-                //|| pos->see(GETFROM(captures->move[capturemovenum].code), GETTO(captures->move[capturemovenum].code)) < 0))
                 || !pos->see(captures->move[capturemovenum].code, 0)))
         {
             // mark the move for BADTACTICALSTATE

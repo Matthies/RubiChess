@@ -526,7 +526,6 @@ public:
     bool isAttacked(int index);
     U64 attackedByBB(int index, U64 occ);
     int getLeastValuablePieceIndex(int to, unsigned int bySide, PieceCode *piece);
-    int seeSimple(int from, int to);
     bool see(uint32_t move, int threshold);
     int getBestPossibleCapture();
     int getMoves(chessmove *m, MoveType t = ALL);
