@@ -117,6 +117,18 @@ class uci;
 class chessposition;
 struct pawnhashentry;
 
+
+//
+// eval stuff
+//
+typedef int32_t eval;
+#define VALUE(m, e) ((int32_t)((uint32_t)(m) << 16) + (e))
+#define GETMGVAL(v) ((int16_t)(((uint32_t)(v) + 0x8000) >> 16))
+#define GETEGVAL(v) ((int16_t)((v) & 0xffff))
+#define TAPEREDEVAL(v, ph) (((256 - (ph)) * GETMGVAL(v) + (ph) * GETEGVAL(v)) / 256)
+
+typedef int grad;
+
 //
 // utils stuff
 //

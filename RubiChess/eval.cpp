@@ -2,17 +2,18 @@
 #include "RubiChess.h"
 
 // Evaluation stuff
-CONSTEVAL int pawnpushthreatbonus = 14;
-CONSTEVAL int kingattackweight[7] = { 0,    0,    4,    4,    3,    4,    0 };
+eval ePawnpushthreatbonus = VALUE(14, 14);
+eval eSafepawnattackbonus = VALUE(36, 36);
+eval eKingshieldbonus = VALUE(14, 0);
 CONSTEVAL int KingSafetyFactor = 278;
-CONSTEVAL int safepawnattackbonus = 36;
+CONSTEVAL int kingattackweight[7] = { 0,    0,    4,    4,    3,    4,    0 };
 CONSTEVAL int tempo = 5;
 CONSTEVAL int passedpawnbonus[8] = { 0,   11,   19,   39,   72,  117,  140,    0 };
 CONSTEVAL int attackingpawnbonus[8] = { 0,  -17,  -15,   -5,   -4,   34,    0,    0 };
 CONSTEVAL int isolatedpawnpenalty = -14;
 CONSTEVAL int doublepawnpenalty = -19;
 CONSTEVAL int connectedbonus = 3;
-CONSTEVAL int kingshieldbonus = 14;
+//CONSTEVAL int kingshieldbonus = 14;
 CONSTEVAL int backwardpawnpenalty = -21;
 CONSTEVAL int doublebishopbonus = 36;
 CONSTEVAL int shiftmobilitybonus = 2;
@@ -409,7 +410,7 @@ int chessposition::getPositionValue()
     int freeslidereval[2] = { 0 };
     int doublebishopeval = 0;
     int kingshieldeval[2] = { 0 };
-    int kingdangereval[2] = { 0 };
+    //int kingdangereval[2] = { 0 };
     U64 occupied = occupied00[0] | occupied00[1];
 
     memset(attackedBy, 0, sizeof(attackedBy));
@@ -519,19 +520,25 @@ int chessposition::getPositionValue()
     }
 
     // some kind of king safety
-    result += (256 - ph) * (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])) * kingshieldbonus / 256;
+    //result += (256 - ph) * (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])) * kingshieldbonus / 256;
+    //result += kingshieldbonus.val(POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1]), ph);
+    grad gKingshieldbonus = POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1]);
+    result += TAPEREDEVAL(eKingshieldbonus * gKingshieldbonus, ph);
+
     if (Et == TRACE)
     {
-        kingshieldeval[0] = (256 - ph) * POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) * kingshieldbonus / 256;
-        kingshieldeval[1] = -(256 - ph) * POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1]) * kingshieldbonus / 256;
+        //kingshieldeval[0] = (256 - ph) * POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) * kingshieldbonus / 256;
+        //kingshieldeval[1] = -(256 - ph) * POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1]) * kingshieldbonus / 256;
     }
 
+    grad gPawnpushthreatbonus = 0;
+    grad gSafepawnattackbonus = 0;
     for (int s = 0; s < 2; s++)
     {
         // King safety
         result += S2MSIGN(s) * KingSafetyFactor * KingSafetyTable[kingattackweightsum[s]] * (256 - ph) / 0x10000;
         if (Et == TRACE)
-            kingdangereval[s] = S2MSIGN(s) * KingSafetyFactor * KingSafetyTable[kingattackweightsum[s]] * (256 - ph) / 0x10000;
+            ;//kingdangereval[s] = S2MSIGN(s) * KingSafetyFactor * KingSafetyTable[kingattackweightsum[s]] * (256 - ph) / 0x10000;
 
         // Threats
         int t = s ^ S2MMASK;
@@ -542,7 +549,8 @@ int chessposition::getPositionValue()
             // Our safe or protected pawns
             U64 ourSafePawns = piece00[WPAWN | s] & (~attackedBy[t][0] | attackedBy[s][0]);
             U64 safeThreats = PAWNATTACK(s, ourSafePawns) & hisAttackedNonPawns;
-            result += S2MSIGN(s) * safepawnattackbonus * POPCOUNT(safeThreats);
+            gSafepawnattackbonus += S2MSIGN(s) * POPCOUNT(safeThreats);
+            //result += S2MSIGN(s) * safepawnattackbonus * POPCOUNT(safeThreats);
         }
 
         // Threat by pawn push
@@ -555,9 +563,12 @@ int chessposition::getPositionValue()
 
         // Get opponents pieces that are attacked from these pawn pushes and not already attacked now
         U64 attackedPieces = PAWNATTACK(s, pawnPush) & occupied00[t] & ~attackedBy[s][PAWN];
-        result += S2MSIGN(s) * pawnpushthreatbonus * POPCOUNT(attackedPieces);
+        gPawnpushthreatbonus += S2MSIGN(s) * POPCOUNT(attackedPieces);
+        //result += S2MSIGN(s) * pawnpushthreatbonus * POPCOUNT(attackedPieces);
     }
 
+    result += TAPEREDEVAL(ePawnpushthreatbonus * gPawnpushthreatbonus, ph);
+    result += TAPEREDEVAL(eSafepawnattackbonus * gSafepawnattackbonus, ph);
 
     if (Et == TRACE)
     {
@@ -566,7 +577,7 @@ int chessposition::getPositionValue()
         printEvalTrace(1, "Slider on free file", freeslidereval);
         printEvalTrace(1, "double bishop", doublebishopeval);
         printEvalTrace(1, "kingshield", kingshieldeval);
-        printEvalTrace(1, "kingdanger", kingdangereval);
+        //printEvalTrace(1, "kingdanger", kingdangereval);
 
         printEvalTrace(0, "total value", result);
     }
