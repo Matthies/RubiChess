@@ -13,14 +13,13 @@ eval ePassedpawnbonus[8] = { VALUE(0, 0), VALUE(0, 11), VALUE(0, 19), VALUE(0, 3
 // neuer Bench wegen summieren und rechnen statt rechnen/runden - summieren: 12127303
 eval eAttackingpawnbonus[8] = { VALUE(0, 0), VALUE(-17, -17), VALUE(-15, -15), VALUE(-5, -5), VALUE(-4, -4), VALUE(34, 34), VALUE(0, 0), VALUE(0, 0) };
 eval eIsolatedpawnpenalty = VALUE(-14, -14);
-CONSTEVAL int doublepawnpenalty = -19;
-CONSTEVAL int connectedbonus = 3;
-//CONSTEVAL int kingshieldbonus = 14;
-CONSTEVAL int backwardpawnpenalty = -21;
-CONSTEVAL int doublebishopbonus = 36;
-CONSTEVAL int shiftmobilitybonus = 2;
-CONSTEVAL int slideronfreefilebonus[2] = { 15,   17 };
-CONSTEVAL int materialvalue[7] = { 0,  100,  314,  314,  483,  913,32509 };
+eval eDoublepawnpenalty = VALUE(-19, -19);
+eval eConnectedbonus = VALUE(3, 3);
+eval eBackwardpawnpenalty = VALUE(0, -21);  // FIXME: beide Seiten separat gezählt, um identisch zum master zu bleiben
+eval eDoublebishopbonus = VALUE(36, 36);
+eval eShiftmobilitybonus = VALUE(2, 2);
+eval eSlideronfreefilebonus[2] = { VALUE(15, 15),   VALUE(17, 17) };
+CONSTEVAL int materialvalue[7] = { 0,  100,  314,  314,  483,  913, 32509 };
 CONSTEVAL int PVBASE[6][64] = {
   { -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999,
        60,   71,   97,   70,   46,   73,   41,   67,
@@ -293,6 +292,7 @@ int chessposition::getPawnValue(pawnhashentry **entry)
     if (!hashexist)
     {
         grad gAttackingpawnbonus[8] = { 0 };
+        grad gConnectedbonus = 0;
         for (int pc = WPAWN; pc <= BPAWN; pc++)
         {
             int me = pc & S2MMASK;
@@ -331,9 +331,10 @@ int chessposition::getPawnValue(pawnhashentry **entry)
                     if ((pawn_attacks_occupied[index][you] & piece00[pc]) || (phalanxMask[index] & piece00[pc]))
                     {
                         // pawn is protected by other pawn
-                        entryptr->value += S2MSIGN(me) * connectedbonus;
+                        gConnectedbonus += S2MSIGN(me);
+                        //entryptr->value += S2MSIGN(me) * connectedbonus;
                         if (Et == TRACE)
-                            connectedpawnval[me] += S2MSIGN(me) * connectedbonus;
+                            ;// connectedpawnval[me] += S2MSIGN(me) * connectedbonus;
                     }
                     if (!((passedPawnMask[index][you] | phalanxMask[index]) & piece00[pc]))
                     {
@@ -357,6 +358,8 @@ int chessposition::getPawnValue(pawnhashentry **entry)
                 pb ^= BITSET(index);
             }
         }
+
+        entryptr->value += TAPEREDEVAL(eConnectedbonus * gConnectedbonus, ph);
         for (int r = 0; r < 8; r++)
         {
             entryptr->value += TAPEREDEVAL(eAttackingpawnbonus[r] * gAttackingpawnbonus[r], ph);
@@ -366,6 +369,9 @@ int chessposition::getPawnValue(pawnhashentry **entry)
 
     grad gPassedpawnbonus[8] = { 0 };
     grad gIsolatedpawnpenalty = 0;
+    grad gDoublepawnpenalty = 0;
+    grad gBackwardpawnpenalty[2] = { 0 };
+    int temp1 = 0;
     for (int s = 0; s < 2; s++)
     {
         U64 bb;
@@ -386,17 +392,25 @@ int chessposition::getPawnValue(pawnhashentry **entry)
             ;// isolatedpawnval[s] += S2MSIGN(s) * POPCOUNT(entryptr->isolatedpawnbb[s]) * isolatedpawnpenalty;
 
         // doubled pawns
-        val += S2MSIGN(s) * doublepawnpenalty * POPCOUNT(piece00[WPAWN | s] & (s ? piece00[WPAWN | s] >> 8 : piece00[WPAWN | s] << 8));
+        gDoublepawnpenalty += S2MSIGN(s) * POPCOUNT(piece00[WPAWN | s] & (s ? piece00[WPAWN | s] >> 8 : piece00[WPAWN | s] << 8));
+        //val += S2MSIGN(s) * doublepawnpenalty * POPCOUNT(piece00[WPAWN | s] & (s ? piece00[WPAWN | s] >> 8 : piece00[WPAWN | s] << 8));
         if (Et == TRACE)
-            doubledpawnval[s] += S2MSIGN(s) * doublepawnpenalty * POPCOUNT(piece00[WPAWN | s] & (s ? piece00[WPAWN | s] >> 8 : piece00[WPAWN | s] << 8));
+            ;// doubledpawnval[s] += S2MSIGN(s) * doublepawnpenalty * POPCOUNT(piece00[WPAWN | s] & (s ? piece00[WPAWN | s] >> 8 : piece00[WPAWN | s] << 8));
 
         // backward pawns
-        val += S2MSIGN(s) * POPCOUNT(entryptr->backwardpawnbb[s]) * backwardpawnpenalty * ph / 256;
+        gBackwardpawnpenalty[s] += S2MSIGN(s) * POPCOUNT(entryptr->backwardpawnbb[s]);
+        temp1 += S2MSIGN(s) * POPCOUNT(entryptr->backwardpawnbb[s]) * GETEGVAL(eBackwardpawnpenalty) * ph / 256;
         if (Et == TRACE)
-            backwardpawnval[s] += S2MSIGN(s) * POPCOUNT(entryptr->backwardpawnbb[s]) * backwardpawnpenalty * ph / 256;
+            ;// backwardpawnval[s] += S2MSIGN(s) * POPCOUNT(entryptr->backwardpawnbb[s]) * backwardpawnpenalty * ph / 256;
     }
 
     val += TAPEREDEVAL(eIsolatedpawnpenalty * gIsolatedpawnpenalty, ph);
+    val += TAPEREDEVAL(eDoublepawnpenalty * gDoublepawnpenalty, ph);
+    val += TAPEREDEVAL(eBackwardpawnpenalty * gBackwardpawnpenalty[0], ph) + TAPEREDEVAL(eBackwardpawnpenalty * gBackwardpawnpenalty[1], ph);
+#if 0
+    if (temp1 != TAPEREDEVAL(eBackwardpawnpenalty * gBackwardpawnpenalty, ph))
+        pos.print();
+#endif
     for (int r = 0; r < 8; r++)
     {
         val += TAPEREDEVAL(ePassedpawnbonus[r] * gPassedpawnbonus[r], ph);
@@ -456,6 +470,9 @@ int chessposition::getPositionValue()
         psqteval[0] += psqking1;
     }
 
+    grad gShiftmobilitybonus = 0;
+    grad gSlideronfreefilebonus[2] = { 0 };
+
     for (int pc = WPAWN; pc <= BQUEEN; pc++)
     {
         int p = pc >> 1;
@@ -481,9 +498,10 @@ int chessposition::getPositionValue()
                 // extrabonus for rook on (semi-)open file  
                 if (p == ROOK && (phentry->semiopen[me] & BITSET(FILE(index))))
                 {
-                    result += S2MSIGN(me) * slideronfreefilebonus[bool(phentry->semiopen[you] & BITSET(FILE(index)))];
+                    gSlideronfreefilebonus[bool(phentry->semiopen[you] & BITSET(FILE(index)))] += S2MSIGN(me);
+                    //result += S2MSIGN(me) * slideronfreefilebonus[bool(phentry->semiopen[you] & BITSET(FILE(index)))];
                     if (Et == TRACE)
-                        freeslidereval[me] += S2MSIGN(me) * slideronfreefilebonus[bool(phentry->semiopen[you] & BITSET(FILE(index)))];
+                        ;// freeslidereval[me] += S2MSIGN(me) * slideronfreefilebonus[bool(phentry->semiopen[you] & BITSET(FILE(index)))];
                 }
             }
 
@@ -508,9 +526,10 @@ int chessposition::getPositionValue()
                 attackedBy[me][0] |= attack;
 
                 // mobility bonus
-                result += S2MSIGN(me) * POPCOUNT(mobility) * shiftmobilitybonus;
+                //result += S2MSIGN(me) * POPCOUNT(mobility) * shiftmobilitybonus;
+                gShiftmobilitybonus += S2MSIGN(me) * POPCOUNT(mobility);
                 if (Et == TRACE)
-                    mobilityeval[me] += S2MSIGN(me) * POPCOUNT(mobility) * shiftmobilitybonus;
+                    ;// mobilityeval[me] += S2MSIGN(me) * POPCOUNT(mobility) * shiftmobilitybonus;
 
                 // king danger
                 U64 kingdangerarea = kingdangerMask[kingpos[you]][you];
@@ -524,7 +543,17 @@ int chessposition::getPositionValue()
     attackedBy[0][PAWN] = phentry->attacked[0];
     attackedBy[1][PAWN] = phentry->attacked[1];
 
+    // mobility bonus
+    result += TAPEREDEVAL(eShiftmobilitybonus * gShiftmobilitybonus, ph);
+
+    // slider on free file bonus
+    for (int i = 0; i < 2; i++)
+        result += TAPEREDEVAL(eSlideronfreefilebonus[i] * gSlideronfreefilebonus[i], ph);
+
     // bonus for double bishop
+    grad gDoublebishopbonus = (POPCOUNT(piece00[WBISHOP]) >= 2) - (POPCOUNT(piece00[BBISHOP]) >= 2);
+    result += TAPEREDEVAL(eDoublebishopbonus * gDoublebishopbonus, ph);
+#if 0
     if (POPCOUNT(piece00[WBISHOP]) >= 2)
     {
         result += doublebishopbonus;
@@ -537,7 +566,7 @@ int chessposition::getPositionValue()
         if (Et == TRACE)
             doublebishopeval -= doublebishopbonus;
     }
-
+#endif
     // some kind of king safety
     //result += (256 - ph) * (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])) * kingshieldbonus / 256;
     //result += kingshieldbonus.val(POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1]), ph);
