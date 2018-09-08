@@ -93,6 +93,7 @@ void Sleep(long x);
 #endif
 
 #define RANK(x) ((x) >> 3)
+#define RRANK(x,s) ((s) ? ((x) >> 3) ^ 7 : ((x) >> 3))
 #define FILE(x) ((x) & 0x7)
 #define INDEX(r,f) (((r) << 3) | (f))
 

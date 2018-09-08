@@ -2,15 +2,17 @@
 #include "RubiChess.h"
 
 // Evaluation stuff
+// bench von master: 11712498
 eval ePawnpushthreatbonus = VALUE(14, 14);
 eval eSafepawnattackbonus = VALUE(36, 36);
 eval eKingshieldbonus = VALUE(14, 0);
 CONSTEVAL int KingSafetyFactor = 278;
 CONSTEVAL int kingattackweight[7] = { 0,    0,    4,    4,    3,    4,    0 };
-CONSTEVAL int tempo = 5;
-CONSTEVAL int passedpawnbonus[8] = { 0,   11,   19,   39,   72,  117,  140,    0 };
-CONSTEVAL int attackingpawnbonus[8] = { 0,  -17,  -15,   -5,   -4,   34,    0,    0 };
-CONSTEVAL int isolatedpawnpenalty = -14;
+eval eTempo = VALUE(5, 5);
+eval ePassedpawnbonus[8] = { VALUE(0, 0), VALUE(0, 11), VALUE(0, 19), VALUE(0, 39), VALUE(0, 72), VALUE(0, 117), VALUE(0, 140), VALUE(0, 0) };
+// neuer Bench wegen summieren und rechnen statt rechnen/runden - summieren: 12127303
+eval eAttackingpawnbonus[8] = { VALUE(0, 0), VALUE(-17, -17), VALUE(-15, -15), VALUE(-5, -5), VALUE(-4, -4), VALUE(34, 34), VALUE(0, 0), VALUE(0, 0) };
+eval eIsolatedpawnpenalty = VALUE(-14, -14);
 CONSTEVAL int doublepawnpenalty = -19;
 CONSTEVAL int connectedbonus = 3;
 //CONSTEVAL int kingshieldbonus = 14;
@@ -134,8 +136,8 @@ CONSTEVAL int KingSafetyTable[100] = {
     650, 650, 650, 650, 650, 650, 650, 650, 650, 650
 };
 
-int passedpawnbonusperside[2][8];
-int attackingpawnbonusperside[2][8];
+//int passedpawnbonusperside[2][8];
+//int attackingpawnbonusperside[2][8];
 
 
 #ifdef EVALTUNE
@@ -223,10 +225,10 @@ void CreatePositionvalueTable()
 {
     for (int r = 0; r < 8; r++)
     {
-        passedpawnbonusperside[0][r] = passedpawnbonus[r];
-        passedpawnbonusperside[1][7 - r] = -passedpawnbonus[r];
-        attackingpawnbonusperside[0][r] = attackingpawnbonus[r];
-        attackingpawnbonusperside[1][7 - r] = -attackingpawnbonus[r];
+        //passedpawnbonusperside[0][r] = ePassedpawnbonus[r];
+        //passedpawnbonusperside[1][7 - r] = -ePassedpawnbonus[r];
+        //attackingpawnbonusperside[0][r] = attackingpawnbonus[r];
+        //attackingpawnbonusperside[1][7 - r] = -attackingpawnbonus[r];
 
     }
 
@@ -290,6 +292,7 @@ int chessposition::getPawnValue(pawnhashentry **entry)
     pawnhashentry *entryptr = *entry;
     if (!hashexist)
     {
+        grad gAttackingpawnbonus[8] = { 0 };
         for (int pc = WPAWN; pc <= BPAWN; pc++)
         {
             int me = pc & S2MMASK;
@@ -320,9 +323,10 @@ int chessposition::getPawnValue(pawnhashentry **entry)
                     if (pawn_attacks_occupied[index][me] & piece00[pc ^ S2MMASK])
                     {
                         // pawn attacks opponent pawn
-                        entryptr->value += attackingpawnbonusperside[me][RANK(index)];
+                        gAttackingpawnbonus[RRANK(index, me)] += S2MSIGN(me);
+                        //entryptr->value += attackingpawnbonusperside[me][RANK(index)];
                         if (Et == TRACE)
-                            attackingpawnval[me] += attackingpawnbonusperside[me][RANK(index)];
+                            ;// attackingpawnval[me] += attackingpawnbonusperside[me][RANK(index)];
                     }
                     if ((pawn_attacks_occupied[index][you] & piece00[pc]) || (phalanxMask[index] & piece00[pc]))
                     {
@@ -353,24 +357,33 @@ int chessposition::getPawnValue(pawnhashentry **entry)
                 pb ^= BITSET(index);
             }
         }
+        for (int r = 0; r < 8; r++)
+        {
+            entryptr->value += TAPEREDEVAL(eAttackingpawnbonus[r] * gAttackingpawnbonus[r], ph);
+        }
+
     }
 
+    grad gPassedpawnbonus[8] = { 0 };
+    grad gIsolatedpawnpenalty = 0;
     for (int s = 0; s < 2; s++)
     {
         U64 bb;
         bb = entryptr->passedpawnbb[s];
         while (LSB(index, bb))
         {
-            val += ph * passedpawnbonusperside[s][RANK(index)] / 256;
+            gPassedpawnbonus[RRANK(index, s)] += S2MSIGN(s);
+            //val += ph * passedpawnbonusperside[s][RANK(index)] / 256;
             bb ^= BITSET(index);
             if (Et == TRACE)
-                passedpawnval[s] += ph * passedpawnbonusperside[s][RANK(index)] / 256;
+                ;// passedpawnval[s] += ph * passedpawnbonusperside[s][RANK(index)] / 256;
         }
 
         // isolated pawns
-        val += S2MSIGN(s) * POPCOUNT(entryptr->isolatedpawnbb[s]) * isolatedpawnpenalty;
+        gIsolatedpawnpenalty += S2MSIGN(s) * POPCOUNT(entryptr->isolatedpawnbb[s]);
+        //val += S2MSIGN(s) * POPCOUNT(entryptr->isolatedpawnbb[s]) * isolatedpawnpenalty;
         if (Et == TRACE)
-            isolatedpawnval[s] += S2MSIGN(s) * POPCOUNT(entryptr->isolatedpawnbb[s]) * isolatedpawnpenalty;
+            ;// isolatedpawnval[s] += S2MSIGN(s) * POPCOUNT(entryptr->isolatedpawnbb[s]) * isolatedpawnpenalty;
 
         // doubled pawns
         val += S2MSIGN(s) * doublepawnpenalty * POPCOUNT(piece00[WPAWN | s] & (s ? piece00[WPAWN | s] >> 8 : piece00[WPAWN | s] << 8));
@@ -381,6 +394,12 @@ int chessposition::getPawnValue(pawnhashentry **entry)
         val += S2MSIGN(s) * POPCOUNT(entryptr->backwardpawnbb[s]) * backwardpawnpenalty * ph / 256;
         if (Et == TRACE)
             backwardpawnval[s] += S2MSIGN(s) * POPCOUNT(entryptr->backwardpawnbb[s]) * backwardpawnpenalty * ph / 256;
+    }
+
+    val += TAPEREDEVAL(eIsolatedpawnpenalty * gIsolatedpawnpenalty, ph);
+    for (int r = 0; r < 8; r++)
+    {
+        val += TAPEREDEVAL(ePassedpawnbonus[r] * gPassedpawnbonus[r], ph);
     }
 
     if (Et == TRACE)
@@ -403,7 +422,7 @@ int chessposition::getPositionValue()
 {
     pawnhashentry *phentry;
     int index;
-    int result = S2MSIGN(state & S2MMASK) * tempo;
+    int result = TAPEREDEVAL(eTempo * S2MSIGN(state & S2MMASK), ph);
     int kingattackweightsum[2] = { 0 };
     int psqteval[2] = { 0 };
     int mobilityeval[2] = { 0 };
