@@ -1164,7 +1164,7 @@ chessposition::chessposition()
 
 chessposition::~chessposition()
 {
-    delete positionvaluetable;
+    //delete positionvaluetable;
 }
 
 
@@ -1738,7 +1738,7 @@ bool chessposition::see(uint32_t move, int threshold)
 
     int nextPiece = (ISPROMOTION(move) ? GETPROMOTION(move) : GETPIECE(move)) >> 1;
 
-    value -= materialvalue[nextPiece];
+    value -= prunematerialvalue[nextPiece];
 
     if (value >= 0)
         // the move is good enough even if the piece is recaptured
@@ -1782,7 +1782,7 @@ bool chessposition::see(uint32_t move, int threshold)
 
         s2m ^= S2MMASK;
 
-        value = -value - 1 - materialvalue[nextPiece];
+        value = -value - 1 - prunematerialvalue[nextPiece];
 
         if (value >= 0)
         {
@@ -1802,17 +1802,17 @@ int chessposition::getBestPossibleCapture()
     int captureval = 0;
 
     if (pos.piece00[WQUEEN | you])
-        captureval += materialvalue[QUEEN];
+        captureval += prunematerialvalue[QUEEN];
     else if (pos.piece00[WROOK | you])
-        captureval += materialvalue[ROOK];
+        captureval += prunematerialvalue[ROOK];
     else if (pos.piece00[WKNIGHT | you] || pos.piece00[WBISHOP | you])
-        captureval += materialvalue[KNIGHT];
+        captureval += prunematerialvalue[KNIGHT];
     else if (pos.piece00[WPAWN | you])
-        captureval += materialvalue[PAWN];
+        captureval += prunematerialvalue[PAWN];
 
     // promotion
     if (pos.piece00[WPAWN | me] & RANK7(me))
-        captureval += materialvalue[QUEEN] - materialvalue[PAWN];
+        captureval += prunematerialvalue[QUEEN] - prunematerialvalue[PAWN];
 
     return captureval;
 }
