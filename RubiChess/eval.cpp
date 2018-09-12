@@ -6,6 +6,10 @@
 // static values for the search/pruning stuff
 const int prunematerialvalue[7] = { 0,  100,  314,  314,  483,  913, 32509 };
 
+evalparamset eps;
+
+#if 0
+
 // bench von master: 11712498
 eval ePawnpushthreatbonus = VALUE(14, 14);
 eval eSafepawnattackbonus = VALUE(36, 36);
@@ -22,86 +26,80 @@ eval eDoublebishopbonus = VALUE(36, 36);
 eval eShiftmobilitybonus = VALUE(2, 2);
 eval eSlideronfreefilebonus[2] = { VALUE(15, 15),   VALUE(17, 17) };
 eval eMaterialvalue[7] = { VALUE(0, 0),  VALUE(100, 100),  VALUE(314, 314),  VALUE(314, 314),  VALUE(483, 483),  VALUE(913, 913), VALUE(32509, 32509) };
+// neuer Bench nach Einbau des kingdanger rewrite und Übernahme der psqt-Werte aus psqt-1: 11086704
+eval eWeakkingringpenalty = VALUE(-20, 0);
+eval eKingattackweight[7] = { VALUE(0, 0), VALUE(0, 0), VALUE(4, 0), VALUE(2, 0), VALUE(1, 0), VALUE(4, 0), VALUE(0, 0) };
+// neuer Bench nach endgültigem Umbau kingdanger und letzte psqtdiff-Werte: 12055951 (evalrw1)
+// neuer Bench nach Korrektur von Vorzeichenfehler bei Kingdanger: 11621517 (evalrw2)
+
+
 
 eval ePsqt[7][64] = {
-    {0},
+    {},
     {
         VALUE(-999,-999), VALUE(-999,-999), VALUE(-999,-999), VALUE(-999,-999), VALUE(-999,-999), VALUE(-999,-999), VALUE(-999,-999), VALUE(-999,-999), 
-        VALUE(  60,  36), VALUE(  71,  59), VALUE(  97,  61), VALUE(  70,  22), VALUE(  46,  22), VALUE(  73,  49), VALUE(  41,  37), VALUE(  67,  31), 
-        VALUE(  27,  38), VALUE(  27,  27), VALUE(  20,  11), VALUE(  34,  -2), VALUE(  24, -19), VALUE(  35, -13), VALUE(  30,  25), VALUE(  29,   5), 
-        VALUE(   7,  22), VALUE(   6,  17), VALUE(  -7,  -2), VALUE(  16, -15), VALUE(  17, -11), VALUE(  -8,  -1), VALUE(  -5,  10), VALUE( -16,  -3), 
-        VALUE(   0,  11), VALUE( -16,   8), VALUE(   2,   3), VALUE(  21, -22), VALUE(  16,  -8), VALUE(  -4,  -4), VALUE( -19,   6), VALUE( -19,  -2), 
-        VALUE(   2,   6), VALUE( -10,  -4), VALUE(   2, -11), VALUE( -13,   3), VALUE(  -5,  -4), VALUE( -16,   2), VALUE(   4,  -9), VALUE(  -8, -11), 
-        VALUE( -11,  11), VALUE( -14,  -3), VALUE( -19,   0), VALUE( -24, -24), VALUE( -22, -10), VALUE(   2,   3), VALUE(   7,  -4), VALUE( -22, -11), 
+        VALUE(  60,  37), VALUE(  71,  60), VALUE(  97,  61), VALUE(  70,   9), VALUE(  46,  22), VALUE(  73,  50), VALUE(  41,  37), VALUE(  67,  32), 
+        VALUE(  27,  38), VALUE(  27,  27), VALUE(  20,  11), VALUE(  34,  -9), VALUE(  24, -21), VALUE(  35, -22), VALUE(  30,  25), VALUE(  29,   6), 
+        VALUE(   7,  24), VALUE(   6,  17), VALUE(  -7,  -2), VALUE(  16, -15), VALUE(  17, -13), VALUE(  -8,  -2), VALUE(  -5,  10), VALUE( -16,  -3), 
+        VALUE(   0,  11), VALUE( -16,   8), VALUE(   2,   3), VALUE(  21, -21), VALUE(  16,  -6), VALUE(  -4,  -4), VALUE( -19,   5), VALUE( -19,   0), 
+        VALUE(   2,   6), VALUE( -10,  -2), VALUE(   2,  -6), VALUE( -13,   1), VALUE(  -5,  -4), VALUE( -16,   2), VALUE(   4,  -9), VALUE(  -8, -10), 
+        VALUE( -11,  13), VALUE( -14,  -3), VALUE( -19,   0), VALUE( -24, -24), VALUE( -22, -10), VALUE(   2,   3), VALUE(   7,  -4), VALUE( -22,  -8), 
         VALUE(-999,-999), VALUE(-999,-999), VALUE(-999,-999), VALUE(-999,-999), VALUE(-999,-999), VALUE(-999,-999), VALUE(-999,-999), VALUE(-999,-999), 
     },
     {
-        VALUE(-164, -44), VALUE( -38, -35), VALUE( -23, -31), VALUE(  -8, -33), VALUE(  -9, -23), VALUE( -44, -40), VALUE(   1,   0), VALUE( -70, -75), 
-        VALUE( -43, -34), VALUE(  -2, -23), VALUE(  -7, -17), VALUE(   9, -15), VALUE(   0, -19), VALUE(   5, -31), VALUE(   3, -30), VALUE( -12, -54), 
-        VALUE( -32, -30), VALUE(   3,  -9), VALUE(  11,   4), VALUE(  35,  12), VALUE(  58,  -5), VALUE(  37,  28), VALUE(  31, -23), VALUE( -28, -30), 
-        VALUE( -24, -31), VALUE(   4,  -8), VALUE(  34,   1), VALUE(  28,   4), VALUE(  10,   7), VALUE(  27,  -6), VALUE(  13, -10), VALUE(  21, -45), 
-        VALUE( -19, -10), VALUE(  -9, -10), VALUE(  12,   3), VALUE(   5,   5), VALUE(  12,   3), VALUE(   9,   9), VALUE(  12,   4), VALUE( -10, -10), 
-        VALUE( -36, -36), VALUE( -11, -29), VALUE(  -7, -19), VALUE(   6, -11), VALUE(  12,  -6), VALUE(  10, -26), VALUE(  16, -44), VALUE( -27, -27), 
-        VALUE( -64, -46), VALUE( -32, -14), VALUE( -35, -49), VALUE(  -5, -29), VALUE(   2, -36), VALUE(   1, -32), VALUE(  -8, -11), VALUE( -17, -65), 
-        VALUE( -68,-115), VALUE( -35, -35), VALUE( -50, -45), VALUE( -34, -28), VALUE( -29, -56), VALUE( -27, -48), VALUE( -20, -70), VALUE( -85, -88), 
+        VALUE(-164, -29), VALUE( -38, -35), VALUE( -23, -34), VALUE(  -8, -27), VALUE(  -9, -23), VALUE( -44, -40), VALUE(   1,   0), VALUE( -70, -85), 
+        VALUE( -43, -35), VALUE(  -2, -25), VALUE(  -7, -17), VALUE(   9, -23), VALUE(   0, -18), VALUE(   5, -36), VALUE(   3, -30), VALUE( -12, -54), 
+        VALUE( -32, -30), VALUE(   3, -16), VALUE(  11,  -5), VALUE(  35,  12), VALUE(  58, -21), VALUE(  37,  26), VALUE(  31, -25), VALUE( -28, -30), 
+        VALUE( -24, -31), VALUE(   4, -14), VALUE(  34,   0), VALUE(  28,   5), VALUE(  10,   6), VALUE(  27, -37), VALUE(  13, -15), VALUE(  21, -45), 
+        VALUE( -19, -10), VALUE(  -9, -10), VALUE(  12,  -7), VALUE(   5,   1), VALUE(  12,   3), VALUE(   9,   9), VALUE(  12,   2), VALUE( -10, -10), 
+        VALUE( -36, -36), VALUE( -11, -35), VALUE(  -7, -19), VALUE(   6, -15), VALUE(  12, -12), VALUE(  10, -32), VALUE(  16, -44), VALUE( -27, -27), 
+        VALUE( -64, -46), VALUE( -32, -13), VALUE( -35, -49), VALUE(  -5, -38), VALUE(   2, -35), VALUE(   1, -31), VALUE(  -8, -18), VALUE( -17, -65), 
+        VALUE( -68,-115), VALUE( -35, -35), VALUE( -50, -45), VALUE( -34, -28), VALUE( -29, -60), VALUE( -27, -51), VALUE( -20, -70), VALUE( -85, -87), 
     },
     {
-        VALUE(  -6,   8), VALUE(  -5,   3), VALUE( -13,  -1), VALUE(   7,   6), VALUE(   9,   7), VALUE(   6,   9), VALUE(  -6,   4), VALUE( -36,   3), 
-        VALUE( -31,  -7), VALUE(   0,   2), VALUE( -11,  -5), VALUE(   8,   7), VALUE(   5,   2), VALUE(  14, -10), VALUE(  -6,   1), VALUE( -19,  -8), 
-        VALUE(  -7,   5), VALUE(  10,   6), VALUE(  13,   3), VALUE(  23,   6), VALUE(  16,  12), VALUE(  56,  20), VALUE(  22,  -5), VALUE(  18,  11), 
-        VALUE(  -8,  -4), VALUE(  13,  13), VALUE(  10,   4), VALUE(  40,  12), VALUE(  17,  14), VALUE(  24,  12), VALUE(   3,   3), VALUE(   3, -16), 
-        VALUE( -19,  -1), VALUE(   3,   0), VALUE(  16,  16), VALUE(  25,  13), VALUE(  29,   7), VALUE(  -4,   8), VALUE(   6,  10), VALUE( -17,   9), 
-        VALUE(  -9,  -6), VALUE(  20,   5), VALUE(   2,   3), VALUE(   8,   8), VALUE(  -1,  -1), VALUE(  13,  14), VALUE(  12,  -6), VALUE(  -7,   7), 
-        VALUE(  11, -52), VALUE(   1, -11), VALUE(   7,   1), VALUE(  -9,  -7), VALUE(   8,  -2), VALUE(   0,   1), VALUE(  27, -11), VALUE(  -6, -65), 
-        VALUE( -19, -21), VALUE( -17, -24), VALUE( -22, -22), VALUE( -26, -15), VALUE(  -6, -13), VALUE( -20, -10), VALUE( -32, -32), VALUE( -34, -33), 
+        VALUE(  -6,   6), VALUE(  -5,   3), VALUE( -13,   2), VALUE(   7,   3), VALUE(   9,   7), VALUE(   6,   5), VALUE(  -6,   4), VALUE( -36,   3), 
+        VALUE( -31,  -3), VALUE(   0,   2), VALUE( -11,  -4), VALUE(   8,   6), VALUE(   5,  -1), VALUE(  14, -12), VALUE(  -6,   1), VALUE( -19,  -8), 
+        VALUE(  -7,  13), VALUE(  10,   6), VALUE(  13,   4), VALUE(  23,   6), VALUE(  16,  13), VALUE(  56,  15), VALUE(  22,  -5), VALUE(  18,   3), 
+        VALUE(  -8,  -7), VALUE(  13,  13), VALUE(  10,   4), VALUE(  40,  12), VALUE(  17,  13), VALUE(  24,  10), VALUE(   3,   3), VALUE(   3, -16), 
+        VALUE( -19,  -1), VALUE(   3,   0), VALUE(  16,  16), VALUE(  25,   7), VALUE(  29,   7), VALUE(  -4,   8), VALUE(   6,  10), VALUE( -17,  10), 
+        VALUE(  -9,  -9), VALUE(  20,   3), VALUE(   2,   4), VALUE(   8,   8), VALUE(  -1,  14), VALUE(  13,  14), VALUE(  12,  -9), VALUE(  -7,   5), 
+        VALUE(  11, -52), VALUE(   1, -13), VALUE(   7,   2), VALUE(  -9,  -6), VALUE(   8,  -7), VALUE(   0,   1), VALUE(  27, -11), VALUE(  -6, -65), 
+        VALUE( -19, -24), VALUE( -17, -24), VALUE( -22, -22), VALUE( -26, -17), VALUE(  -6, -13), VALUE( -20,  -9), VALUE( -32, -29), VALUE( -34, -57), 
     },
     {
-        VALUE(   5,   0), VALUE(  18,  12), VALUE(   6,  14), VALUE(   9,   2), VALUE(  17,  20), VALUE(  34,  27), VALUE(  32,  25), VALUE(  21,  12), 
-        VALUE(  24,  19), VALUE(  21,  17), VALUE(  31,  19), VALUE(  39,  16), VALUE(  35,  20), VALUE(  28,  16), VALUE(  29,  17), VALUE(  40,  11), 
-        VALUE(  12,  11), VALUE(   5,  12), VALUE(  17,  11), VALUE(  27,   4), VALUE(  34,   1), VALUE(  19,   7), VALUE(  21,  15), VALUE(  17,   5), 
-        VALUE(   0,   3), VALUE(  11,  14), VALUE(  13,   3), VALUE(   8,   2), VALUE(   5,  -3), VALUE(   2,   5), VALUE(   4,  -5), VALUE(  -3,  -4), 
-        VALUE( -26,   5), VALUE( -17,  -2), VALUE(  -6,   9), VALUE(  -9,   0), VALUE(  -9,  -1), VALUE( -13,  -2), VALUE(   0,   1), VALUE( -14,   2), 
-        VALUE( -43, -10), VALUE( -26,  -2), VALUE( -19,  -8), VALUE( -15, -11), VALUE( -14,  -9), VALUE( -19, -16), VALUE( -13, -12), VALUE( -40,  -4), 
-        VALUE( -28, -22), VALUE( -23, -21), VALUE( -12, -12), VALUE( -11, -17), VALUE( -21, -21), VALUE(  -7, -28), VALUE( -20, -21), VALUE( -73, -20), 
-        VALUE( -14, -11), VALUE(  -8, -17), VALUE(   3,  -5), VALUE(   0,  -5), VALUE(   1, -14), VALUE(   2, -12), VALUE( -47,   1), VALUE( -22, -12), 
+        VALUE(   5,   0), VALUE(  18,  13), VALUE(   6,  14), VALUE(   9,   2), VALUE(  17,  20), VALUE(  34,  27), VALUE(  32,  25), VALUE(  21,  12), 
+        VALUE(  24,  19), VALUE(  21,  17), VALUE(  31,  20), VALUE(  39,  10), VALUE(  35,  20), VALUE(  28,  17), VALUE(  29,  18), VALUE(  40,  11), 
+        VALUE(  12,  11), VALUE(   5,  12), VALUE(  17,  12), VALUE(  27,   4), VALUE(  34,  -4), VALUE(  19,   5), VALUE(  21,  16), VALUE(  17,   5), 
+        VALUE(   0,   3), VALUE(  11,  14), VALUE(  13,   3), VALUE(   8,   3), VALUE(   5,  -3), VALUE(   2,   5), VALUE(   4,  -5), VALUE(  -3,  -4), 
+        VALUE( -26,   5), VALUE( -17,  -1), VALUE(  -6,   9), VALUE(  -9,   0), VALUE(  -9,   1), VALUE( -13,  -2), VALUE(   0,   1), VALUE( -14,   2), 
+        VALUE( -43, -10), VALUE( -26,  -2), VALUE( -19,  -3), VALUE( -15, -11), VALUE( -14,  -9), VALUE( -19, -16), VALUE( -13, -12), VALUE( -40,  -4), 
+        VALUE( -28, -24), VALUE( -23, -21), VALUE( -12, -11), VALUE( -11, -21), VALUE( -21, -21), VALUE(  -7, -27), VALUE( -20, -21), VALUE( -73, -20), 
+        VALUE( -14, -11), VALUE(  -8, -15), VALUE(   3,  -5), VALUE(   0,  -5), VALUE(   1, -13), VALUE(   2, -12), VALUE( -47,   7), VALUE( -22, -19), 
     },
     {
-        VALUE( -22, -16), VALUE(  -6, -19), VALUE(   0,  -1), VALUE(   0,  31), VALUE(  13,  -2), VALUE(  17,  11), VALUE(  25,  -4), VALUE(   0,  20), 
-        VALUE( -18, -11), VALUE( -47,  38), VALUE(   5,  20), VALUE(  12,  29), VALUE(  21,  20), VALUE(  26,  23), VALUE( -20,  41), VALUE(  30,  24), 
-        VALUE( -21,  10), VALUE( -14,  -9), VALUE( -24,  -5), VALUE(  14,  20), VALUE(  12,  11), VALUE(  38,  23), VALUE(  25,  23), VALUE(  11,  18), 
-        VALUE( -30,  10), VALUE( -28,  30), VALUE(  -2,  15), VALUE( -19,  26), VALUE(  -4,  36), VALUE( -20,  11), VALUE( -24,  70), VALUE( -12,  35), 
-        VALUE(  -9, -23), VALUE( -19,   0), VALUE( -15,  19), VALUE( -26,  48), VALUE(  -8,  26), VALUE( -11,  21), VALUE(   3,  12), VALUE(  -3, -20), 
-        VALUE( -12, -12), VALUE(   1,  -9), VALUE(  -9,  12), VALUE( -12,  -7), VALUE(  -5,  -1), VALUE(  -7,  30), VALUE(   7,   8), VALUE(  -9, -16), 
+        VALUE( -22,  -9), VALUE(  -6, -11), VALUE(   0,  -1), VALUE(   0,  31), VALUE(  13,  -2), VALUE(  17,  11), VALUE(  25,  -7), VALUE(   0,  20), 
+        VALUE( -18, -11), VALUE( -47,  38), VALUE(   5,  20), VALUE(  12,  29), VALUE(  21,  23), VALUE(  26,  23), VALUE( -20,  34), VALUE(  30,  24), 
+        VALUE( -21,  10), VALUE( -14,  -9), VALUE( -24,  11), VALUE(  14,  18), VALUE(  12,  11), VALUE(  38,  23), VALUE(  25,  23), VALUE(  11,  18), 
+        VALUE( -30,   7), VALUE( -28,  30), VALUE(  -2,  15), VALUE( -19,  41), VALUE(  -4,  36), VALUE( -20,  11), VALUE( -24,  54), VALUE( -12,  36), 
+        VALUE(  -9, -23), VALUE( -19,   1), VALUE( -15,  19), VALUE( -26,  49), VALUE(  -8,  24), VALUE( -11,  21), VALUE(   3,  11), VALUE(  -3, -21), 
+        VALUE( -12, -12), VALUE(   1,  -8), VALUE(  -9,  19), VALUE( -12,  -7), VALUE(  -5,   0), VALUE(  -7,  29), VALUE(   7,   8), VALUE(  -9, -16), 
         VALUE( -10, -17), VALUE( -10, -10), VALUE(   0,  -8), VALUE(  -4,  -4), VALUE(   6, -18), VALUE(  19, -66), VALUE( -19, -54), VALUE( -50, -49), 
-        VALUE( -25, -36), VALUE( -21,  10), VALUE(   1,   2), VALUE(  12, -51), VALUE(  -7,  -7), VALUE( -46, -42), VALUE( -83, -98), VALUE( -38, -57), 
+        VALUE( -25, -36), VALUE( -21,  10), VALUE(   1,   2), VALUE(  12, -52), VALUE(  -7,  -7), VALUE( -46, -42), VALUE( -83, -98), VALUE( -38, -57), 
     },
     {
-        VALUE( -92, -79), VALUE( -44, -43), VALUE(-104, -63), VALUE( -41, -24), VALUE(-112, -24), VALUE(  10,  23), VALUE(  46, -29), VALUE(-113,-100), 
-        VALUE( -18, -38), VALUE(   0,   4), VALUE(   0,  22), VALUE( -33,  -1), VALUE( -10,  -3), VALUE( -62, -46), VALUE( -46, -22), VALUE( -92, -79), 
-        VALUE( -12,   2), VALUE(   8,  27), VALUE( -15,  20), VALUE(  -9,  22), VALUE( -17,   8), VALUE(  -3,  17), VALUE( -12,   9), VALUE( -19,   0), 
-        VALUE( -16,  10), VALUE(  -3,  16), VALUE( -15,  28), VALUE( -28,  27), VALUE( -21,  22), VALUE(  -8,  19), VALUE(  -8,  11), VALUE(  -6,   1), 
-        VALUE( -22,  -7), VALUE( -15,   4), VALUE(  -4,  22), VALUE( -18,  27), VALUE( -20,  31), VALUE(  -6,  20), VALUE( -15,   9), VALUE( -16,  -4), 
-        VALUE( -26, -13), VALUE(   6,   9), VALUE(  -8,  19), VALUE( -16,  20), VALUE(  -8,  25), VALUE( -16,  22), VALUE(  -7,   6), VALUE( -24,  -6), 
-        VALUE( -11, -20), VALUE(  -2,  10), VALUE( -18,   6), VALUE( -38,   9), VALUE( -25,   8), VALUE(  -8,  10), VALUE(  -2,   8), VALUE(  -6,  -9), 
-        VALUE( -16, -52), VALUE(   3, -29), VALUE(  11, -26), VALUE( -51, -36), VALUE(  -7, -44), VALUE( -37, -25), VALUE(  19, -32), VALUE(   8, -55), 
+        VALUE( -92, -79), VALUE( -44, -44), VALUE(-104, -64), VALUE( -41, -24), VALUE(-112, -23), VALUE(  10,  23), VALUE(  46, -31), VALUE(-113,-100), 
+        VALUE( -18, -38), VALUE(   0,   4), VALUE(   0,  21), VALUE( -33,  -1), VALUE( -10,  -3), VALUE( -62, -45), VALUE( -46, -20), VALUE( -92, -79), 
+        VALUE( -12,   2), VALUE(   8,  27), VALUE( -15,  23), VALUE(  -9,  22), VALUE( -17,   8), VALUE(  -3,  16), VALUE( -12,   8), VALUE( -19,  -1), 
+        VALUE( -16,  11), VALUE(  -3,  15), VALUE( -15,  28), VALUE( -28,  29), VALUE( -21,  22), VALUE(  -8,  19), VALUE(  -8,  11), VALUE(  -6,   1), 
+        VALUE( -22,  -7), VALUE( -15,   4), VALUE(  -4,  22), VALUE( -18,  27), VALUE( -20,  31), VALUE(  -6,  20), VALUE( -15,  11), VALUE( -16,   0), 
+        VALUE( -26, -14), VALUE(   6,   8), VALUE(  -8,  19), VALUE( -16,  22), VALUE(  -8,  25), VALUE( -16,  22), VALUE(  -7,   6), VALUE( -24,  -7), 
+        VALUE( -11, -20), VALUE(  -2,  10), VALUE( -18,   7), VALUE( -38,   9), VALUE( -25,   8), VALUE(  -8,   9), VALUE(  -2,   6), VALUE(  -6,  -9), 
+        VALUE( -16, -38), VALUE(   3, -25), VALUE(  11, -16), VALUE( -51, -21), VALUE(  -7, -44), VALUE( -37, -20), VALUE(  19, -36), VALUE(   8, -55), 
     }
 };
+#endif
 
-CONSTEVAL int KingSafetyFactor = 278;
-CONSTEVAL int kingattackweight[7] = { 0,    0,    4,    4,    3,    4,    0 };
-// Shameless copy of chessprogramming wiki
-CONSTEVAL int KingSafetyTable[100] = {
-    0,   0,   0,   1,   1,   2,   3,   4,   5,   6,
-    8,  10,  13,  16,  20,  25,  30,  36,  42,  48,
-    55,  62,  70,  80,  90, 100, 110, 120, 130, 140,
-    150, 160, 170, 180, 190, 200, 210, 220, 230, 240,
-    250, 260, 270, 280, 290, 300, 310, 320, 330, 340,
-    350, 360, 370, 380, 390, 400, 410, 420, 430, 440,
-    450, 460, 470, 480, 490, 500, 510, 520, 530, 540,
-    550, 560, 570, 580, 590, 600, 610, 620, 630, 640,
-    650, 650, 650, 650, 650, 650, 650, 650, 650, 650,
-    650, 650, 650, 650, 650, 650, 650, 650, 650, 650
-};
+
 
 CONSTEVAL int PVBASEold[6][64] = {
   { -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999,
@@ -153,55 +151,56 @@ CONSTEVAL int PVBASEold[6][64] = {
       -11,   -2,  -18,  -38,  -25,   -8,   -2,   -6,
       -16,    3,   11,  -51,   -7,  -37,   19,    8  }
  };
+
 CONSTEVAL int PVPHASEDIFFold[6][64] = {
   { -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999,
-      -24,  -12,  -36,  -48,  -24,  -24,   -4,  -36,
-       11,    0,   -9,  -36,  -43,  -48,   -5,  -24,
-       15,   11,    5,  -31,  -28,    7,   15,   13,
-       11,   24,    1,  -43,  -24,    0,   25,   17,
-        4,    6,  -13,   16,    1,   18,  -13,   -3,
-       22,   11,   19,    0,   12,    1,  -11,   11,
+      -23,  -11,  -36,  -61,  -24,  -23,   -4,  -35,
+       11,    0,   -9,  -43,  -45,  -57,   -5,  -23,
+       17,   11,    5,  -31,  -30,    6,   15,   13,
+       11,   24,    1,  -42,  -22,    0,   24,   19,
+        4,    8,   -8,   14,    1,   18,  -13,   -2,
+       24,   11,   19,    0,   12,    1,  -11,   14,
     -9999,-9999,-9999,-9999,-9999,-9999,-9999,-9999  },
-  {   120,    3,   -8,  -25,  -14,    4,   -1,   -5,
-        9,  -21,  -10,  -24,  -19,  -36,  -33,  -42,
-        2,  -12,   -7,  -23,  -63,   -9,  -54,   -2,
-       -7,  -12,  -33,  -24,   -3,  -33,  -23,  -66,
-        9,   -1,   -9,    0,   -9,    0,   -8,    0,
-        0,  -18,  -12,  -17,  -18,  -36,  -60,    0,
-       18,   18,  -14,  -24,  -38,  -33,   -3,  -48,
-      -47,    0,    5,    6,  -27,  -21,  -50,   -3  },
-  {    14,    8,   12,   -1,   -2,    3,   10,   39,
-       24,    2,    6,   -1,   -3,  -24,    7,   11,
-       12,   -4,  -10,  -17,   -4,  -36,  -27,   -7,
-        4,    0,   -6,  -28,   -3,  -12,    0,  -19,
-       18,   -3,    0,  -12,  -22,   12,    4,   26,
-        3,  -15,    1,    0,    0,    1,  -18,   14,
-      -63,  -12,   -6,    2,  -10,    1,  -38,  -59,
-       -2,   -7,    0,   11,   -7,   10,    0,    1  },
-  {    -5,   -6,    8,   -7,    3,   -7,   -7,   -9,
-       -5,   -4,  -12,  -23,  -15,  -12,  -12,  -29,
-       -1,    7,   -6,  -23,  -33,  -12,   -6,  -12,
-        3,    3,  -10,   -6,   -8,    3,   -9,   -1,
-       31,   15,   15,    9,    8,   11,    1,   16,
-       33,   24,   11,    4,    5,    3,    1,   36,
-        6,    2,    0,   -6,    0,  -21,   -1,   53,
-        3,   -9,   -8,   -5,  -15,  -14,   48,   10  },
-  {     6,  -13,   -1,   31,  -15,   -6,  -29,   20,
-        7,   85,   15,   17,   -1,   -3,   61,   -6,
-       31,    5,   19,    6,   -1,  -15,   -2,    7,
-       40,   58,   17,   45,   40,   31,   94,   47,
-      -14,   19,   34,   74,   34,   32,    9,  -17,
-        0,  -10,   21,    5,    4,   37,    1,   -7,
+  {   135,    3,  -11,  -19,  -14,    4,   -1,  -15,
+        8,  -23,  -10,  -32,  -18,  -41,  -33,  -42,
+        2,  -19,  -16,  -23,  -79,  -11,  -56,   -2,
+       -7,  -18,  -34,  -23,   -4,  -64,  -28,  -66,
+        9,   -1,  -19,   -4,   -9,    0,  -10,    0,
+        0,  -24,  -12,  -21,  -24,  -42,  -60,    0,
+       18,   19,  -14,  -33,  -37,  -32,  -10,  -48,
+      -47,    0,    5,    6,  -31,  -24,  -50,   -2  },
+  {    12,    8,   15,   -4,   -2,   -1,   10,   39,
+       28,    2,    7,   -2,   -6,  -26,    7,   11,
+       20,   -4,   -9,  -17,   -3,  -41,  -27,  -15,
+        1,    0,   -6,  -28,   -4,  -14,    0,  -19,
+       18,   -3,    0,  -18,  -22,   12,    4,   27,
+        0,  -17,    2,    0,   15,    1,  -21,   12,
+      -63,  -14,   -5,    3,  -15,    1,  -38,  -59,
+       -5,   -7,    0,    9,   -7,   11,    3,  -23  },
+  {    -5,   -5,    8,   -7,    3,   -7,   -7,   -9,
+       -5,   -4,  -11,  -29,  -15,  -11,  -11,  -29,
+       -1,    7,   -5,  -23,  -38,  -14,   -5,  -12,
+        3,    3,  -10,   -5,   -8,    3,   -9,   -1,
+       31,   16,   15,    9,   10,   11,    1,   16,
+       33,   24,   16,    4,    5,    3,    1,   36,
+        4,    2,    1,  -10,    0,  -20,   -1,   53,
+        3,   -7,   -8,   -5,  -14,  -14,   54,    3  },
+  {    13,   -5,   -1,   31,  -15,   -6,  -32,   20,
+        7,   85,   15,   17,    2,   -3,   54,   -6,
+       31,    5,   35,    4,   -1,  -15,   -2,    7,
+       37,   58,   17,   60,   40,   31,   78,   48,
+      -14,   20,   34,   75,   32,   32,    8,  -18,
+        0,   -9,   28,    5,    5,   36,    1,   -7,
        -7,    0,   -8,    0,  -24,  -85,  -35,    1,
-      -11,   31,    1,  -63,    0,    4,  -15,  -19  },
-  {    13,    1,   41,   17,   88,   13,  -75,   13,
-      -20,    4,   22,   32,    7,   16,   24,   13,
-       14,   19,   35,   31,   25,   20,   21,   19,
-       26,   19,   43,   55,   43,   27,   19,    7,
-       15,   19,   26,   45,   51,   26,   24,   12,
-       13,    3,   27,   36,   33,   38,   13,   18,
-       -9,   12,   24,   47,   33,   18,   10,   -3,
-      -36,  -32,  -37,   15,  -37,   12,  -51,  -63  }
+      -11,   31,    1,  -64,    0,    4,  -15,  -19  },
+  {    13,    0,   40,   17,   89,   13,  -77,   13,
+      -20,    4,   21,   32,    7,   17,   26,   13,
+       14,   19,   38,   31,   25,   19,   20,   18,
+       27,   18,   43,   57,   43,   27,   19,    7,
+       15,   19,   26,   45,   51,   26,   26,   16,
+       12,    2,   27,   38,   33,   38,   13,   17,
+       -9,   12,   25,   47,   33,   17,    8,   -3,
+      -22,  -28,  -27,   30,  -37,   17,  -55,  -63  }
  };
 
 
@@ -228,7 +227,7 @@ void registeralltuners()
     }
 #endif
 
-#if 1
+#if 0
     // tuning other values
     registerTuner(&pawnpushthreatbonus, "pawnpushthreatbonus", pawnpushthreatbonus, 0, 0, 0, 0, NULL, false);
     for (i = 0; i < 7; i++)
@@ -255,7 +254,7 @@ void registeralltuners()
     for (i = BLANK; i <= KING; i++)
         registerTuner(&materialvalue[i], "materialvalue", materialvalue[i], i, 7, 0, 0, &CreatePositionvalueTable, i <= PAWN || i >= KING);
 #endif
-#if 1
+#if 0
     // tuning the psqt base at game start
     for (i = 0; i < 6; i++)
     {
@@ -265,7 +264,7 @@ void registeralltuners()
         }
     }
 #endif
-#if 1
+#if 0
     //tuning the psqt phase development
     for (i = 0; i < 6; i++)
     {
@@ -292,7 +291,7 @@ void chessposition::init()
 
 void CreatePositionvalueTable()
 {
-
+#if 0
     for (int p = 0; p < 6; p++)
     {
         int egsum = 0, mgsum = 0;
@@ -316,8 +315,8 @@ void CreatePositionvalueTable()
         }
         printf("average mgval: %2.2f  average egval: %2.2f\n", mgsum / (float)num, egsum / (float)num);
         printf("\n");
-        
     }
+#endif
     for (int r = 0; r < 8; r++)
     {
         //passedpawnbonusperside[0][r] = ePassedpawnbonus[r];
@@ -388,8 +387,8 @@ int chessposition::getPawnValue(pawnhashentry **entry)
     pawnhashentry *entryptr = *entry;
     if (!hashexist)
     {
-        grad gAttackingpawnbonus[8] = { 0 };
-        grad gConnectedbonus = 0;
+        //grad gAttackingpawnbonus[8] = { 0 };
+        //grad gConnectedbonus = 0;
         for (int pc = WPAWN; pc <= BPAWN; pc++)
         {
             int me = pc & S2MMASK;
@@ -420,16 +419,20 @@ int chessposition::getPawnValue(pawnhashentry **entry)
                     if (pawn_attacks_occupied[index][me] & piece00[pc ^ S2MMASK])
                     {
                         // pawn attacks opponent pawn
-                        gAttackingpawnbonus[RRANK(index, me)] += S2MSIGN(me);
+                        //gAttackingpawnbonus[RRANK(index, me)] += S2MSIGN(me);
                         //entryptr->value += attackingpawnbonusperside[me][RANK(index)];
+                        entryptr->value += EVAL(eps.eAttackingpawnbonus[RRANK(index, me)], S2MSIGN(me));
+
                         if (Et == TRACE)
                             ;// attackingpawnval[me] += attackingpawnbonusperside[me][RANK(index)];
                     }
                     if ((pawn_attacks_occupied[index][you] & piece00[pc]) || (phalanxMask[index] & piece00[pc]))
                     {
                         // pawn is protected by other pawn
-                        gConnectedbonus += S2MSIGN(me);
+                        // gConnectedbonus += S2MSIGN(me);
                         //entryptr->value += S2MSIGN(me) * connectedbonus;
+                        entryptr->value += EVAL(eps.eConnectedbonus, S2MSIGN(me));
+
                         if (Et == TRACE)
                             ;// connectedpawnval[me] += S2MSIGN(me) * connectedbonus;
                     }
@@ -455,63 +458,52 @@ int chessposition::getPawnValue(pawnhashentry **entry)
                 pb ^= BITSET(index);
             }
         }
-
-        entryptr->value += TAPEREDEVAL(eConnectedbonus * gConnectedbonus, ph);
-        for (int r = 0; r < 8; r++)
-        {
-            entryptr->value += TAPEREDEVAL(eAttackingpawnbonus[r] * gAttackingpawnbonus[r], ph);
-        }
-
     }
 
-    grad gPassedpawnbonus[8] = { 0 };
-    grad gIsolatedpawnpenalty = 0;
-    grad gDoublepawnpenalty = 0;
-    grad gBackwardpawnpenalty[2] = { 0 };
-    int temp1 = 0;
+    //grad gPassedpawnbonus[8] = { 0 };
+    //grad gIsolatedpawnpenalty = 0;
+    //grad gDoublepawnpenalty = 0;
+    //grad gBackwardpawnpenalty[2] = { 0 };
     for (int s = 0; s < 2; s++)
     {
         U64 bb;
         bb = entryptr->passedpawnbb[s];
         while (LSB(index, bb))
         {
-            gPassedpawnbonus[RRANK(index, s)] += S2MSIGN(s);
+            //gPassedpawnbonus[RRANK(index, s)] += S2MSIGN(s);
             //val += ph * passedpawnbonusperside[s][RANK(index)] / 256;
+            val += EVAL(eps.ePassedpawnbonus[RRANK(index, s)], S2MSIGN(s));
+
             bb ^= BITSET(index);
             if (Et == TRACE)
                 ;// passedpawnval[s] += ph * passedpawnbonusperside[s][RANK(index)] / 256;
         }
 
         // isolated pawns
-        gIsolatedpawnpenalty += S2MSIGN(s) * POPCOUNT(entryptr->isolatedpawnbb[s]);
+        //gIsolatedpawnpenalty += S2MSIGN(s) * POPCOUNT(entryptr->isolatedpawnbb[s]);
         //val += S2MSIGN(s) * POPCOUNT(entryptr->isolatedpawnbb[s]) * isolatedpawnpenalty;
+        val += EVAL(eps.eIsolatedpawnpenalty, S2MSIGN(s) * POPCOUNT(entryptr->isolatedpawnbb[s]));
         if (Et == TRACE)
             ;// isolatedpawnval[s] += S2MSIGN(s) * POPCOUNT(entryptr->isolatedpawnbb[s]) * isolatedpawnpenalty;
 
         // doubled pawns
-        gDoublepawnpenalty += S2MSIGN(s) * POPCOUNT(piece00[WPAWN | s] & (s ? piece00[WPAWN | s] >> 8 : piece00[WPAWN | s] << 8));
+        //gDoublepawnpenalty += S2MSIGN(s) * POPCOUNT(piece00[WPAWN | s] & (s ? piece00[WPAWN | s] >> 8 : piece00[WPAWN | s] << 8));
         //val += S2MSIGN(s) * doublepawnpenalty * POPCOUNT(piece00[WPAWN | s] & (s ? piece00[WPAWN | s] >> 8 : piece00[WPAWN | s] << 8));
+        val += EVAL(eps.eDoublepawnpenalty, S2MSIGN(s) * POPCOUNT(piece00[WPAWN | s] & (s ? piece00[WPAWN | s] >> 8 : piece00[WPAWN | s] << 8)));
         if (Et == TRACE)
             ;// doubledpawnval[s] += S2MSIGN(s) * doublepawnpenalty * POPCOUNT(piece00[WPAWN | s] & (s ? piece00[WPAWN | s] >> 8 : piece00[WPAWN | s] << 8));
 
         // backward pawns
-        gBackwardpawnpenalty[s] += S2MSIGN(s) * POPCOUNT(entryptr->backwardpawnbb[s]);
-        temp1 += S2MSIGN(s) * POPCOUNT(entryptr->backwardpawnbb[s]) * GETEGVAL(eBackwardpawnpenalty) * ph / 256;
+        //gBackwardpawnpenalty[s] += S2MSIGN(s) * POPCOUNT(entryptr->backwardpawnbb[s]);
+        val += EVAL(eps.eBackwardpawnpenalty, S2MSIGN(s) * POPCOUNT(entryptr->backwardpawnbb[s]));
         if (Et == TRACE)
             ;// backwardpawnval[s] += S2MSIGN(s) * POPCOUNT(entryptr->backwardpawnbb[s]) * backwardpawnpenalty * ph / 256;
     }
 
-    val += TAPEREDEVAL(eIsolatedpawnpenalty * gIsolatedpawnpenalty, ph);
-    val += TAPEREDEVAL(eDoublepawnpenalty * gDoublepawnpenalty, ph);
-    val += TAPEREDEVAL(eBackwardpawnpenalty * gBackwardpawnpenalty[0], ph) + TAPEREDEVAL(eBackwardpawnpenalty * gBackwardpawnpenalty[1], ph);
 #if 0
     if (temp1 != TAPEREDEVAL(eBackwardpawnpenalty * gBackwardpawnpenalty, ph))
         pos.print();
 #endif
-    for (int r = 0; r < 8; r++)
-    {
-        val += TAPEREDEVAL(ePassedpawnbonus[r] * gPassedpawnbonus[r], ph);
-    }
 
     if (Et == TRACE)
     {
@@ -533,9 +525,10 @@ int chessposition::getPositionValue()
 {
     pawnhashentry *phentry;
     int index;
-    grad gTempo = S2MSIGN(state & S2MMASK);
-    int result = TAPEREDEVAL(eTempo * gTempo, ph);
-    int kingattackweightsum[2] = { 0 };
+//    grad gTempo = S2MSIGN(state & S2MMASK);
+    int result = EVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
+    int kingattackpiececount[2][7] = { 0 };
+    int kingattackers[2];
     int psqteval[2] = { 0 };
     int mobilityeval[2] = { 0 };
     int freeslidereval[2] = { 0 };
@@ -543,8 +536,8 @@ int chessposition::getPositionValue()
     int kingshieldeval[2] = { 0 };
     //int kingdangereval[2] = { 0 };
     U64 occupied = occupied00[0] | occupied00[1];
-    grad gPsqt[7][64] = { 0 };
-    grad gMaterialvalue[7] = { 0 };
+//    grad gPsqt[7][64] = { 0 };
+//    grad gMaterialvalue[7] = { 0 };
     memset(attackedBy, 0, sizeof(attackedBy));
 
     if (Et == TRACE)
@@ -559,111 +552,116 @@ int chessposition::getPositionValue()
     attackedBy2[1] = phentry->attackedBy2[1] | (attackedBy[1][KING] & phentry->attacked[1]);
     attackedBy[1][0] = attackedBy[1][KING] | phentry->attacked[1];
  
+    kingattackers[0] = POPCOUNT(attackedBy[0][PAWN] & kingdangerMask[kingpos[1]][1]);
+    kingattackers[1] = POPCOUNT(attackedBy[1][PAWN] & kingdangerMask[kingpos[0]][0]);
+
     // king specials
     //int psqking0 = *(positionvaluetable + (kingpos[0] | (ph << 6) | (KING << 14) | (0 << 17)));
     //int psqking1 = *(positionvaluetable + (kingpos[1] | (ph << 6) | (KING << 14) | (1 << 17)));
     //result += psqking0 + psqking1;
-    gPsqt[KING][PSQTINDEX(kingpos[0], 0)]++;
-    gPsqt[KING][PSQTINDEX(kingpos[1], 1)]--;
-    result += TAPEREDEVAL(ePsqt[KING][PSQTINDEX(kingpos[0], 0)], ph);
-    result -= TAPEREDEVAL(ePsqt[KING][PSQTINDEX(kingpos[1], 1)], ph);
+    //gPsqt[KING][PSQTINDEX(kingpos[0], 0)]++;
+    //gPsqt[KING][PSQTINDEX(kingpos[1], 1)]--;
+    result += EVAL(eps.ePsqt[KING][PSQTINDEX(kingpos[0], 0)], 1);
+    result += EVAL(eps.ePsqt[KING][PSQTINDEX(kingpos[1], 1)], -1);
     if (Et == TRACE)
     {
         ;// psqteval[0] += psqking0;
         ;// psqteval[0] += psqking1;
     }
 
-    grad gShiftmobilitybonus = 0;
-    grad gSlideronfreefilebonus[2] = { 0 };
+    //grad gShiftmobilitybonus = 0;
+    //grad gSlideronfreefilebonus[2] = { 0 };
 
-    for (int p = PAWN; p <= QUEEN; p++)
+    for (int pc = WPAWN; pc <= BQUEEN; pc++)
     {
-        for (int me = 0; me < 2; me++)
+        int p = (pc >> 1);
+        //int pc = p + me >> 1;
+        int me = pc & S2MMASK;
+        int you = me ^ S2MMASK;
+        U64 pb = piece00[pc];
+        U64 kingdangerarea = kingdangerMask[kingpos[you]][you];
+
+        while (LSB(index, pb))
         {
-            //int pc = p + me >> 1;
-            //int me = pc & S2MMASK;
-            int you = me ^ S2MMASK;
-            U64 pb = piece00[(p << 1) | me];
-            while (LSB(index, pb))
+            //int pvtindex = index | (ph << 6) | (p << 14) | (me << 17);
+            //result += *(positionvaluetable + pvtindex);
+            int psqtindex = PSQTINDEX(index, me);
+            //gPsqt[p][psqtindex] += S2MSIGN(me);
+            //gMaterialvalue[p] += S2MSIGN(me);
+            result += EVAL(eps.ePsqt[p][psqtindex], S2MSIGN(me));
+            result += EVAL(eps.eMaterialvalue[p], S2MSIGN(me));
+            if (Et == TRACE)
+                ;// psqteval[me] += *(positionvaluetable + pvtindex);
+
+            pb ^= BITSET(index);
+
+            U64 attack = 0ULL;;
+            U64 mobility = 0ULL;
+            if (shifting[p] & 0x2) // rook and queen
             {
-                //int pvtindex = index | (ph << 6) | (p << 14) | (me << 17);
-                //result += *(positionvaluetable + pvtindex);
-                int psqtindex = PSQTINDEX(index, me);
-                gPsqt[p][psqtindex] += S2MSIGN(me);
-                gMaterialvalue[p] += S2MSIGN(me);
-                result += TAPEREDEVAL(ePsqt[p][psqtindex] * S2MSIGN(me), ph);
-                if (Et == TRACE)
-                    ;// psqteval[me] += *(positionvaluetable + pvtindex);
+                attack = mRookAttacks[index][MAGICROOKINDEX(occupied, index)];
+                mobility = attack & ~occupied00[me];
 
-                pb ^= BITSET(index);
-
-                U64 attack = 0ULL;;
-                U64 mobility = 0ULL;
-                if (shifting[p] & 0x2) // rook and queen
+                // extrabonus for rook on (semi-)open file  
+                if (p == ROOK && (phentry->semiopen[me] & BITSET(FILE(index))))
                 {
-                    attack = mRookAttacks[index][MAGICROOKINDEX(occupied, index)];
-                    mobility = attack & ~occupied00[me];
+                    //gSlideronfreefilebonus[bool(phentry->semiopen[you] & BITSET(FILE(index)))] += S2MSIGN(me);
+                    result += EVAL(eps.eSlideronfreefilebonus[bool(phentry->semiopen[you] & BITSET(FILE(index)))], S2MSIGN(me));
 
-                    // extrabonus for rook on (semi-)open file  
-                    if (p == ROOK && (phentry->semiopen[me] & BITSET(FILE(index))))
-                    {
-                        gSlideronfreefilebonus[bool(phentry->semiopen[you] & BITSET(FILE(index)))] += S2MSIGN(me);
-                        //result += S2MSIGN(me) * slideronfreefilebonus[bool(phentry->semiopen[you] & BITSET(FILE(index)))];
-                        if (Et == TRACE)
-                            ;// freeslidereval[me] += S2MSIGN(me) * slideronfreefilebonus[bool(phentry->semiopen[you] & BITSET(FILE(index)))];
-                    }
-                }
-
-                if (shifting[p] & 0x1) // bishop and queen)
-                {
-                    attack |= mBishopAttacks[index][MAGICBISHOPINDEX(occupied, index)];
-                    mobility |= ~occupied00[me]
-                        & (mBishopAttacks[index][MAGICBISHOPINDEX(occupied, index)]);
-                }
-
-                if (p == KNIGHT)
-                {
-                    attack = knight_attacks[index];
-                    mobility = attack & ~occupied00[me];
-                }
-
-                if (p != PAWN)
-                {
-                    // update attack bitboard
-                    attackedBy[me][p] |= attack;
-                    attackedBy2[me] |= (attackedBy[me][0] & attack);
-                    attackedBy[me][0] |= attack;
-
-                    // mobility bonus
-                    //result += S2MSIGN(me) * POPCOUNT(mobility) * shiftmobilitybonus;
-                    gShiftmobilitybonus += S2MSIGN(me) * POPCOUNT(mobility);
+                    //result += S2MSIGN(me) * slideronfreefilebonus[bool(phentry->semiopen[you] & BITSET(FILE(index)))];
                     if (Et == TRACE)
-                        ;// mobilityeval[me] += S2MSIGN(me) * POPCOUNT(mobility) * shiftmobilitybonus;
+                        ;// freeslidereval[me] += S2MSIGN(me) * slideronfreefilebonus[bool(phentry->semiopen[you] & BITSET(FILE(index)))];
+                }
+            }
 
-                    // king danger
-                    U64 kingdangerarea = kingdangerMask[kingpos[you]][you];
-                    if (mobility & kingdangerarea)
-                    {
-                        kingattackweightsum[me] += POPCOUNT(mobility & kingdangerarea) * kingattackweight[p];
-                    }
+            if (shifting[p] & 0x1) // bishop and queen)
+            {
+                attack |= mBishopAttacks[index][MAGICBISHOPINDEX(occupied, index)];
+                mobility |= ~occupied00[me]
+                    & (mBishopAttacks[index][MAGICBISHOPINDEX(occupied, index)]);
+            }
+
+            if (p == KNIGHT)
+            {
+                attack = knight_attacks[index];
+                mobility = attack & ~occupied00[me];
+            }
+
+            if (p != PAWN)
+            {
+                // update attack bitboard
+                attackedBy[me][p] |= attack;
+                attackedBy2[me] |= (attackedBy[me][0] & attack);
+                attackedBy[me][0] |= attack;
+
+                // mobility bonus
+                //result += S2MSIGN(me) * POPCOUNT(mobility) * shiftmobilitybonus;
+                //gShiftmobilitybonus += S2MSIGN(me) * POPCOUNT(mobility);
+                result += EVAL(eps.eShiftmobilitybonus, S2MSIGN(me) * POPCOUNT(mobility));
+
+                if (Et == TRACE)
+                    ;// mobilityeval[me] += S2MSIGN(me) * POPCOUNT(mobility) * shiftmobilitybonus;
+
+                     // king danger
+                if (mobility & kingdangerarea)
+                {
+                    //kingattackweightsum[me] += POPCOUNT(mobility & kingdangerarea) * eKingattackweight[p];
+                    kingattackpiececount[me][p] += POPCOUNT(mobility & kingdangerarea);
+                    kingattackers[me]++;
                 }
             }
         }
-        result += TAPEREDEVAL(eMaterialvalue[p] * gMaterialvalue[p], ph);
     }
     attackedBy[0][PAWN] = phentry->attacked[0];
     attackedBy[1][PAWN] = phentry->attacked[1];
 
     // mobility bonus
-    result += TAPEREDEVAL(eShiftmobilitybonus * gShiftmobilitybonus, ph);
 
     // slider on free file bonus
-    for (int i = 0; i < 2; i++)
-        result += TAPEREDEVAL(eSlideronfreefilebonus[i] * gSlideronfreefilebonus[i], ph);
 
     // bonus for double bishop
-    grad gDoublebishopbonus = (POPCOUNT(piece00[WBISHOP]) >= 2) - (POPCOUNT(piece00[BBISHOP]) >= 2);
-    result += TAPEREDEVAL(eDoublebishopbonus * gDoublebishopbonus, ph);
+    //grad gDoublebishopbonus = (POPCOUNT(piece00[WBISHOP]) >= 2) - (POPCOUNT(piece00[BBISHOP]) >= 2);
+    result += EVAL(eps.eDoublebishopbonus, ((POPCOUNT(piece00[WBISHOP]) >= 2) - (POPCOUNT(piece00[BBISHOP]) >= 2)));
 #if 0
     if (POPCOUNT(piece00[WBISHOP]) >= 2)
     {
@@ -681,8 +679,8 @@ int chessposition::getPositionValue()
     // some kind of king safety
     //result += (256 - ph) * (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])) * kingshieldbonus / 256;
     //result += kingshieldbonus.val(POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1]), ph);
-    grad gKingshieldbonus = POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1]);
-    result += TAPEREDEVAL(eKingshieldbonus * gKingshieldbonus, ph);
+    //grad gKingshieldbonus = POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1]);
+    result += EVAL(eps.eKingshieldbonus, (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])));
 
     if (Et == TRACE)
     {
@@ -690,17 +688,34 @@ int chessposition::getPositionValue()
         //kingshieldeval[1] = -(256 - ph) * POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1]) * kingshieldbonus / 256;
     }
 
-    grad gPawnpushthreatbonus = 0;
-    grad gSafepawnattackbonus = 0;
+    //grad gPawnpushthreatbonus = 0;
+    //grad gSafepawnattackbonus = 0;
     for (int s = 0; s < 2; s++)
     {
+        int t = s ^ S2MMASK;
+
         // King safety
-        result += S2MSIGN(s) * KingSafetyFactor * KingSafetyTable[kingattackweightsum[s]] * (256 - ph) / 0x10000;
-        if (Et == TRACE)
-            ;//kingdangereval[s] = S2MSIGN(s) * KingSafetyFactor * KingSafetyTable[kingattackweightsum[s]] * (256 - ph) / 0x10000;
+        if (kingattackers[s] > 1 - (bool)(piece00[WQUEEN | s]))
+        {
+            // Attacks to our king ring
+            //result += S2MSIGN(s) * kingattackweightsum[s] * kingattackers[s] * (256 - ph) / 256;
+            for (int p = KNIGHT; p <= QUEEN; p++)
+                result += EVAL(eps.eKingattackweight[p], S2MSIGN(s) * kingattackpiececount[s][p] * kingattackers[s]);
+            if (Et == TRACE)
+                ;//kingdangereval[s] = S2MSIGN(s) * kingattackweightsum[s] * kingattackers[s] * (256 - ph) / 256;
+
+            // Attacked and poorly defended squares in our king ring
+            U64 krattacked = kingdangerMask[kingpos[s]][s]
+                & attackedBy[t][0]
+                & ~attackedBy2[s]
+                & (~attackedBy[s][0] | attackedBy[s][KING] | attackedBy[s][QUEEN]);
+            
+            result += EVAL(eps.eWeakkingringpenalty, S2MSIGN(s) * POPCOUNT(krattacked));
+
+            //result += S2MSIGN(s) * weakkingringpenalty * POPCOUNT(krattacked)* (256 - ph) / 256;
+        }
 
         // Threats
-        int t = s ^ S2MMASK;
         U64 hisNonPawns = occupied00[t] ^ piece00[WPAWN | t];
         U64 hisAttackedNonPawns = (hisNonPawns & attackedBy[s][PAWN]);
         if (hisAttackedNonPawns)
@@ -708,8 +723,9 @@ int chessposition::getPositionValue()
             // Our safe or protected pawns
             U64 ourSafePawns = piece00[WPAWN | s] & (~attackedBy[t][0] | attackedBy[s][0]);
             U64 safeThreats = PAWNATTACK(s, ourSafePawns) & hisAttackedNonPawns;
-            gSafepawnattackbonus += S2MSIGN(s) * POPCOUNT(safeThreats);
+            //gSafepawnattackbonus += S2MSIGN(s) * POPCOUNT(safeThreats);
             //result += S2MSIGN(s) * safepawnattackbonus * POPCOUNT(safeThreats);
+            result += EVAL(eps.eSafepawnattackbonus, S2MSIGN(s) * POPCOUNT(safeThreats));
         }
 
         // Threat by pawn push
@@ -722,12 +738,11 @@ int chessposition::getPositionValue()
 
         // Get opponents pieces that are attacked from these pawn pushes and not already attacked now
         U64 attackedPieces = PAWNATTACK(s, pawnPush) & occupied00[t] & ~attackedBy[s][PAWN];
-        gPawnpushthreatbonus += S2MSIGN(s) * POPCOUNT(attackedPieces);
+        //gPawnpushthreatbonus += S2MSIGN(s) * POPCOUNT(attackedPieces);
         //result += S2MSIGN(s) * pawnpushthreatbonus * POPCOUNT(attackedPieces);
+        result += EVAL(eps.ePawnpushthreatbonus, S2MSIGN(s) * POPCOUNT(attackedPieces));
     }
 
-    result += TAPEREDEVAL(ePawnpushthreatbonus * gPawnpushthreatbonus, ph);
-    result += TAPEREDEVAL(eSafepawnattackbonus * gSafepawnattackbonus, ph);
 
     if (Et == TRACE)
     {
@@ -741,7 +756,7 @@ int chessposition::getPositionValue()
         printEvalTrace(0, "total value", result);
     }
 
-    return result;
+    return NEWTAPEREDEVAL(result, ph);
 }
 
 

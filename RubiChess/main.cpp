@@ -715,6 +715,11 @@ void testengine(string epdfilename, int startnum, string engineprg, string logfi
 int main(int argc, char* argv[])
 {
 #if 0
+    printf("Evalset        : %lld  * 1398815 Positions = %lld Bytes\n", sizeof(evalparamset), sizeof(evalparamset) * 1398815);
+    printf("Positiontuneset: %lld  * 1398815 Positions = %lld Bytes\n", sizeof(positiontuneset), sizeof(positiontuneset) * 1398815);
+    positiontuneset
+    return 0;
+
     CONSTEVAL int KingSafetyTable[100] = {
         0,   0,   0,   1,   1,   2,   3,   4,   5,   6,
         8,  10,  13,  16,  20,  25,  30,  36,  42,  48,
