@@ -750,6 +750,7 @@ int main(int argc, char* argv[])
     bool benchmark = false;
     bool dotests = false;
     bool enginetest = false;
+    bool verbose = false;
     string epdfile = "";
     string engineprg = "";
     string logfile = "";
@@ -777,6 +778,7 @@ int main(int argc, char* argv[])
         { "-startnum", "number of the test in epd to start with (use with -enginetest)", &startnum, 1, "1" },
         { "-compare", "for fast comparision against logfile from other engine (use with -enginetest)", &comparefile, 2, "" },
         { "-flags", "1=skip easy (0 sec.) compares; 2=break 5 seconds after first find; 4=break after compare time is over (use with -enginetest)", &flags, 1, "0" },
+        { "-verbose","more output (in tuning mode and maybe more in the future)", &verbose, 0, NULL },
 #ifdef EVALTUNE
         { "-pgnfile", "converts games in a PGN file to fen for tuning them later", &pgnconvertfile, 2, "" },
         { "-fentuning", "reads FENs from file and tunes eval parameters against it", &fentuningfile, 2, "" },
@@ -832,6 +834,7 @@ int main(int argc, char* argv[])
     }
 
     printf("Here we go...\n\n");
+    en.verbose = verbose;
 
     if (perfmaxdepth)
     {

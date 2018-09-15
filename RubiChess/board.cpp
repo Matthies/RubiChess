@@ -763,7 +763,7 @@ void chessposition::print()
     printf("info string Value: %d\n", getValueNoTrace(this));
 #ifdef EVALTUNE
     getPositionTuneSet(&pts);
-    printf("info string Value from gradients: %s %d\n", getGradientString().c_str(), NEWTAPEREDEVAL(getGradientValue(), ph));
+    printf("info string Value from gradients: %s %d\n", getGradientString().c_str(), NEWTAPEREDEVAL(getGradientValue(&this->pts), ph));
 #endif
     printf("info string Repetitions: %d\n", rp.getPositionCount(hash));
     printf("info string Phase: %d\n", phase());

@@ -241,23 +241,26 @@ string chessposition::getGradientString()
     return s;
 }
 
-int chessposition::getGradientValue()
+int chessposition::getGradientValue(positiontuneset *p)
 {
     int v = 0;
     for (int i = 0; i < tps.count; i++)
-        v += *tps.ev[i] * pts.g[i];
+        v += *tps.ev[i] * p->g[i];
 
     return v;
 }
 
 
-static void registertuner(eval *e, string name, bool tune)
+static void registertuner(eval *e, string name, int index1, int bound1, int index2, int bound2, bool tune)
 {
     int i = pos.tps.count;
     pos.tps.ev[i] = e;
     pos.tps.name[i] = name;
+    pos.tps.index1[i] = index1;
+    pos.tps.bound1[i] = bound1;
+    pos.tps.index2[i] = index2;
+    pos.tps.bound2[i] = bound2;
     pos.tps.tune[i] = tune;
-
     pos.tps.count++;
 }
 
@@ -265,30 +268,30 @@ void registeralltuners()
 {
     int i, j;
 
-    registertuner(&eps.ePawnpushthreatbonus, "ePawnpushthreatbonus", true);
-    registertuner(&eps.eSafepawnattackbonus, "eSafepawnattackbonus", true);
-    registertuner(&eps.eKingshieldbonus, "eKingshieldbonus", true);
-    registertuner(&eps.eTempo, "eTempo", true);
+    registertuner(&eps.ePawnpushthreatbonus, "ePawnpushthreatbonus", 0, 0, 0, 0, true);
+    registertuner(&eps.eSafepawnattackbonus, "eSafepawnattackbonus", 0, 0, 0, 0, true);
+    registertuner(&eps.eKingshieldbonus, "eKingshieldbonus", 0, 0, 0, 0, true);
+    registertuner(&eps.eTempo, "eTempo", 0, 0, 0, 0, true);
     for (i = 0; i < 8; i++)
-        registertuner(&eps.ePassedpawnbonus[i], "ePassedpawnbonus[" + to_string(i) + "]", i > 0 && i < 7);
+        registertuner(&eps.ePassedpawnbonus[i], "ePassedpawnbonus", i, 8, 0, 0, i > 0 && i < 7);
     for (i = 0; i < 8; i++)
-        registertuner(&eps.eAttackingpawnbonus[i], "eAttackingpawnbonus[" + to_string(i) + "]", i > 0 && i < 7);
-    registertuner(&eps.eIsolatedpawnpenalty, "eIsolatedpawnpenalty", true);
-    registertuner(&eps.eDoublepawnpenalty, "eDoublepawnpenalty", true);
-    registertuner(&eps.eConnectedbonus, "eConnectedbonus", true);
-    registertuner(&eps.eBackwardpawnpenalty, "eBackwardpawnpenalty", true);
-    registertuner(&eps.eDoublebishopbonus, "eDoublebishopbonus", true);
-    registertuner(&eps.eShiftmobilitybonus, "eShiftmobilitybonus", true);
+        registertuner(&eps.eAttackingpawnbonus[i], "eAttackingpawnbonus", i, 8, 0, 0, i > 0 && i < 7);
+    registertuner(&eps.eIsolatedpawnpenalty, "eIsolatedpawnpenalty", 0, 0, 0, 0, true);
+    registertuner(&eps.eDoublepawnpenalty, "eDoublepawnpenalty", 0, 0, 0, 0, true);
+    registertuner(&eps.eConnectedbonus, "eConnectedbonus", 0, 0, 0, 0, true);
+    registertuner(&eps.eBackwardpawnpenalty, "eBackwardpawnpenalty", 0, 0, 0, 0, true);
+    registertuner(&eps.eDoublebishopbonus, "eDoublebishopbonus", 0, 0, 0, 0, true);
+    registertuner(&eps.eShiftmobilitybonus, "eShiftmobilitybonus", 0, 0, 0, 0, true);
     for (i = 0; i < 2; i++)
-        registertuner(&eps.eSlideronfreefilebonus[i], "eSlideronfreefilebonus[" + to_string(i) + "]", true);
+        registertuner(&eps.eSlideronfreefilebonus[i], "eSlideronfreefilebonus", i, 2, 0, 0, true);
     for (i = 0; i < 7; i++)
-        registertuner(&eps.eMaterialvalue[i], "eMaterialvalue[" + to_string(i) + "]", false);
-    registertuner(&eps.eWeakkingringpenalty, "eWeakkingringpenalty", true);
+        registertuner(&eps.eMaterialvalue[i], "eMaterialvalue", i, 7, 0, 0, false);
+    registertuner(&eps.eWeakkingringpenalty, "eWeakkingringpenalty", 0, 0, 0, 0, true);
     for (i = 0; i < 7; i++)
-        registertuner(&eps.eKingattackweight[i], "eKingattackweight[" + to_string(i) + "]", i >= KNIGHT && i <= QUEEN);
+        registertuner(&eps.eKingattackweight[i], "eKingattackweight", i, 7, 0, 0, i >= KNIGHT && i <= QUEEN);
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
-        registertuner(&eps.ePsqt[i][j], "ePsqt[" + to_string(i) + "][" + to_string(j) + "]", i >= KNIGHT || (j >= 8 && j < 56));
+        registertuner(&eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, i >= KNIGHT || (j >= 8 && j < 56));
 
 #if 0 // averaging psqt (...OLD[][]) to a symmetric 4x8 map
     for (i = 0; i < 6; i++)
