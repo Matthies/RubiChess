@@ -209,9 +209,86 @@ CONSTEVAL int PVPHASEDIFFold[6][64] = {
 
 
 #ifdef EVALTUNE
+void chessposition::resetTuner()
+{
+    for (int i = 0; i < tps.count; i++)
+        tps.ev[i]->resetGrad();
+}
+
+void chessposition::getPositionTuneSet(positiontuneset *p)
+{
+    p->ph = ph;
+    for (int i = 0; i < tps.count; i++)
+        p->g[i] = tps.ev[i]->getGrad();
+}
+
+void chessposition::copyPositionTuneSet(positiontuneset *from, positiontuneset *to)
+{
+    to->ph = from->ph;
+    for (int i = 0; i < tps.count; i++)
+        to->g[i] = from->g[i];
+}
+
+string chessposition::getGradientString()
+{
+    string s = "";
+    for (int i = 0; i < tps.count; i++)
+    {
+        if (pts.g[i])
+            s = s + tps.name[i] + "(" + to_string(pts.g[i]) + ") ";
+    }
+
+    return s;
+}
+
+int chessposition::getGradientValue()
+{
+    int v = 0;
+    for (int i = 0; i < tps.count; i++)
+        v += *tps.ev[i] * pts.g[i];
+
+    return v;
+}
+
+
+static void registertuner(eval *e, string name, bool tune)
+{
+    int i = pos.tps.count;
+    pos.tps.ev[i] = e;
+    pos.tps.name[i] = name;
+    pos.tps.tune[i] = tune;
+
+    pos.tps.count++;
+}
+
 void registeralltuners()
 {
     int i, j;
+
+    registertuner(&eps.ePawnpushthreatbonus, "ePawnpushthreatbonus", true);
+    registertuner(&eps.eSafepawnattackbonus, "eSafepawnattackbonus", true);
+    registertuner(&eps.eKingshieldbonus, "eKingshieldbonus", true);
+    registertuner(&eps.eTempo, "eTempo", true);
+    for (i = 0; i < 8; i++)
+        registertuner(&eps.ePassedpawnbonus[i], "ePassedpawnbonus[" + to_string(i) + "]", i > 0 && i < 7);
+    for (i = 0; i < 8; i++)
+        registertuner(&eps.eAttackingpawnbonus[i], "eAttackingpawnbonus[" + to_string(i) + "]", i > 0 && i < 7);
+    registertuner(&eps.eIsolatedpawnpenalty, "eIsolatedpawnpenalty", true);
+    registertuner(&eps.eDoublepawnpenalty, "eDoublepawnpenalty", true);
+    registertuner(&eps.eConnectedbonus, "eConnectedbonus", true);
+    registertuner(&eps.eBackwardpawnpenalty, "eBackwardpawnpenalty", true);
+    registertuner(&eps.eDoublebishopbonus, "eDoublebishopbonus", true);
+    registertuner(&eps.eShiftmobilitybonus, "eShiftmobilitybonus", true);
+    for (i = 0; i < 2; i++)
+        registertuner(&eps.eSlideronfreefilebonus[i], "eSlideronfreefilebonus[" + to_string(i) + "]", true);
+    for (i = 0; i < 7; i++)
+        registertuner(&eps.eMaterialvalue[i], "eMaterialvalue[" + to_string(i) + "]", false);
+    registertuner(&eps.eWeakkingringpenalty, "eWeakkingringpenalty", true);
+    for (i = 0; i < 7; i++)
+        registertuner(&eps.eKingattackweight[i], "eKingattackweight[" + to_string(i) + "]", i >= KNIGHT && i <= QUEEN);
+    for (i = 0; i < 7; i++)
+        for (j = 0; j < 64; j++)
+        registertuner(&eps.ePsqt[i][j], "ePsqt[" + to_string(i) + "][" + to_string(j) + "]", i >= KNIGHT || (j >= 8 && j < 56));
 
 #if 0 // averaging psqt (...OLD[][]) to a symmetric 4x8 map
     for (i = 0; i < 6; i++)
@@ -226,6 +303,8 @@ void registeralltuners()
         }
     }
 #endif
+
+
 
 #if 0
     // tuning other values
@@ -763,6 +842,9 @@ int chessposition::getPositionValue()
 template <EvalTrace Et>
 int chessposition::getValue()
 {
+#ifdef EVALTUNE
+    resetTuner();
+#endif
     // Check for insufficient material using simnple heuristic from chessprogramming site
     if (!(piece00[WPAWN] | piece00[BPAWN]))
     {
@@ -803,3 +885,4 @@ int getValueTrace(chessposition *p)
 {
     return p->getValue<TRACE>();
 }
+

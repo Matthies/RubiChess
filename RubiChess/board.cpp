@@ -761,11 +761,15 @@ void chessposition::print()
     printf("info string Hash: %llu (%llx)  (getHash(): %llu)\n", hash, hash, zb.getHash());
     printf("info string Pawn Hash: %llu (%llx)  (getPawnHash(): %llu)\n", pawnhash, pawnhash, zb.getPawnHash());
     printf("info string Value: %d\n", getValueNoTrace(this));
+#ifdef EVALTUNE
+    getPositionTuneSet(&pts);
+    printf("info string Value from gradients: %s %d\n", getGradientString().c_str(), NEWTAPEREDEVAL(getGradientValue(), ph));
+#endif
     printf("info string Repetitions: %d\n", rp.getPositionCount(hash));
     printf("info string Phase: %d\n", phase());
     printf("info string Pseudo-legal Moves: %s\n", pseudolegalmoves.toStringWithValue().c_str());
-    printf("Attacked and AttackedBy2 bitboards:\n");
 #if 0
+    printf("Attacked and AttackedBy2 bitboards:\n");
     BitboardDraw(attackedBy2[0]);
     BitboardDraw(attackedBy2[1]);
     for (int i = 0; i <= KING; i++)

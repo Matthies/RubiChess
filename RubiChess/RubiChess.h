@@ -133,6 +133,8 @@ public:
     }
     operator int() const { return v; }
     void addGrad(int i) { this->g += i; }
+    int getGrad() { return this->g; }
+    void resetGrad() { g = 0; }
 };
 #define VALUE(m, e) eval(m, e)
 #define EVAL(e, f) ((e).addGrad(f), (e) * (f))
@@ -234,10 +236,23 @@ struct evalparamset {
     };
 };
 
+#ifdef EVALTUNE
 struct positiontuneset {
     int ph;
     short g[NUMOFEVALPARAMS];
 };
+
+struct tuneparamselection {
+    eval *ev[NUMOFEVALPARAMS];
+    string name[NUMOFEVALPARAMS];
+    bool tune[NUMOFEVALPARAMS];
+
+    int count;
+};
+
+//extern tuneparamselection tps;
+
+#endif
 
 //
 // utils stuff
@@ -252,11 +267,12 @@ U64 getTime();
 typedef void(*initevalfunc)(void);
 bool PGNtoFEN(string pgnfilename);
 void TexelTune(string fenfilename);
-void registerTuner(int *addr, string name, int def, int index1, int bound1, int index2, int bound2, initevalfunc init, bool notune, int initialdelta = 1);
+//void registerTuner(int *addr, string name, int def, int index1, int bound1, int index2, int bound2, initevalfunc init, bool notune, int initialdelta = 1);
 
+#if 0
 struct tuningintparameter
 {
-    int *addr;
+    eval *ev;
     string name;
     int defval;
     int initialdelta;
@@ -268,6 +284,7 @@ struct tuningintparameter
     void(*init)();
     bool notune;
 };
+#endif
 
 extern int tuningratio;
 
@@ -631,7 +648,16 @@ public:
     int useTb;
     int useRootmoveScore;
     int tbPosition;
-    chessmove defaultmove; // fallback if search in time trouble didn't finish a single iteration 
+    chessmove defaultmove; // fallback if search in time trouble didn't finish a single iteration
+#ifdef EVALTUNE
+    tuneparamselection tps;
+    positiontuneset pts;
+    void resetTuner();
+    void getPositionTuneSet(positiontuneset *p);
+    void copyPositionTuneSet(positiontuneset *from, positiontuneset *to);
+    string getGradientString();
+    int getGradientValue();
+#endif
     chessposition();
     ~chessposition();
     void init();
@@ -840,7 +866,7 @@ typedef struct pawnhashentry {
     int semiopen[2];
     U64 attacked[2];
     U64 attackedBy2[2];
-    short value;
+    int32_t value;
 } S_PAWNHASHENTRY;
 
 class pawnhash
