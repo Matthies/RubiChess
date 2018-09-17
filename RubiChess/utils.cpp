@@ -290,25 +290,6 @@ bool PGNtoFEN(string pgnfilename)
     return true;
 }
 
-#if 0
-tuningintparameter tip[10000];
-int tipnum = 0;
-
-void registerTuner(int *addr, string name, int def, int index1, int bound1, int index2, int bound2, initevalfunc init, bool notune, int initialdelta)
-{
-    tip[tipnum].addr = addr;
-    tip[tipnum].name = name;
-    tip[tipnum].defval = def;
-    tip[tipnum].initialdelta = initialdelta;
-    tip[tipnum].index1 = index1;
-    tip[tipnum].bound1 = bound1;
-    tip[tipnum].index2 = index2;
-    tip[tipnum].bound2 = bound2;
-    tip[tipnum].init = init;
-    tip[tipnum].notune = notune;
-    tipnum++;
-}
-#endif
 
 
 static string getValueStringValue(eval *e)
@@ -412,7 +393,6 @@ static double TexelEvalError(double k)
 
 void getGradsFromFen(string fenfilename)
 {
-    //long long starttime = getTime();
     int gamescount = 0;
     bool fenmovemode = (fenfilename.find(".fenmove") != string::npos);
     string line;
@@ -436,7 +416,6 @@ void getGradsFromFen(string fenfilename)
         }
         while (getline(fenfile, line))
         {
-            //cout << line + "\n";
             if (!fenmovemode)
             {
                 if (regex_search(line, match, regex("(.*)#(.*)#(.*)")))
@@ -467,7 +446,6 @@ void getGradsFromFen(string fenfilename)
                             if (Qi != NEWTAPEREDEVAL(Qa, texelpts[n].ph))
                                 printf("Alarm. Gradient evaluation differs from qsearch value.\n");
                         }
-                        //printf("Ri=%f Qi=%f\n", Ri, Qi);
                         n++;
                     }
                 }
@@ -505,7 +483,6 @@ void getGradsFromFen(string fenfilename)
                                     texelpts[n].g[i] = pos.pts.g[i];
                                     Qa += texelpts[n].g[i] * *pos.tps.ev[i];
                                 }
-                                //printf("FEN=%s Ri=%d Qi=%d Qaf=%d\n", pos.toFen().c_str(), R, Qi, NEWTAPEREDEVAL(Qa, texelpts[n].ph));
                                 if (Qi != NEWTAPEREDEVAL(Qa, texelpts[n].ph))
                                     printf("Alarm. Gradient evaluation differs from qsearch value.\n");
                             }
@@ -546,7 +523,8 @@ void TexelTune(string fenfilename)
     double Emin = -1.0;
     int pmin;
 
-#if 0 // enable to calculate constant k
+#if 0 // enable to calculate constant k 
+    // FIXME: Needs to be rewritten after eval rewrite
     double E[2];
     double bound[2] = { 0.0, 2.0 };
     double x, lastx;
@@ -606,7 +584,7 @@ void TexelTune(string fenfilename)
                     if (en.verbose)
                         fprintf(stderr, "Tuning %s...\n", g ? "eg" : "mg");
                     int pbound[2] = { SHRT_MAX, SHRT_MIN };
-                    int delta = 1;// tip[i].initialdelta;
+                    int delta = 1;
                     direction = 0; // direction=0: go right; delta > 0; direction=1: go right; delta
                     int v = *pos.tps.ev[i];
                     int mg = GETMGVAL(v);
@@ -621,7 +599,6 @@ void TexelTune(string fenfilename)
                         fprintf(stderr, "Min: %d/%0.10f\n", pmin, Emin);
                     do
                     {
-                        //tps.ev[i].addr = p;
                         *pos.tps.ev[i] = (g ? VALUE(mg, p) : VALUE(p, eg));
                         Error = TexelEvalError(k);
                         if (en.verbose)
@@ -630,7 +607,7 @@ void TexelTune(string fenfilename)
                         {
                             direction = (p > pmin ? 1 : 0);
                             pbound[direction] = p;
-                            delta = (direction ? -1 : 1);// *tip[i].initialdelta;
+                            delta = (direction ? -1 : 1);
                             p = pmin + delta;
                         }
                         else
@@ -644,7 +621,6 @@ void TexelTune(string fenfilename)
                             p = p + delta;
                         }
                     } while (abs(pbound[1] - pbound[0]) > 2);
-                    //*tip[i].addr = pmin;
                     *pos.tps.ev[i] = (g ? VALUE(mg, pmin) : VALUE(pmin, eg));
 
                     g = 1 - g;

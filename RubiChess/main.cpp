@@ -714,37 +714,6 @@ void testengine(string epdfilename, int startnum, string engineprg, string logfi
 
 int main(int argc, char* argv[])
 {
-#if 0
-    printf("Evalset        : %lld  * 1398815 Positions = %lld Bytes\n", sizeof(evalparamset), sizeof(evalparamset) * 1398815);
-    printf("Positiontuneset: %lld  * 1398815 Positions = %lld Bytes\n", sizeof(positiontuneset), sizeof(positiontuneset) * 1398815);
-    positiontuneset
-    return 0;
-
-    CONSTEVAL int KingSafetyTable[100] = {
-        0,   0,   0,   1,   1,   2,   3,   4,   5,   6,
-        8,  10,  13,  16,  20,  25,  30,  36,  42,  48,
-        55,  62,  70,  80,  90, 100, 110, 120, 130, 140,
-        150, 160, 170, 180, 190, 200, 210, 220, 230, 240,
-        250, 260, 270, 280, 290, 300, 310, 320, 330, 340,
-        350, 360, 370, 380, 390, 400, 410, 420, 430, 440,
-        450, 460, 470, 480, 490, 500, 510, 520, 530, 540,
-        550, 560, 570, 580, 590, 600, 610, 620, 630, 640,
-        650, 650, 650, 650, 650, 650, 650, 650, 650, 650,
-        650, 650, 650, 650, 650, 650, 650, 650, 650, 650
-    };
-    for (int i = 0; i < 100; i++)
-    {
-        for (int j = 0; j < 24; j++)
-        {
-            int ph = (j * 255 + 12) / 24;
-            int o = KingSafetyTable[i] * 278 * (256 - ph) / 0x10000;
-            int n = KingSafetyTable[i] * (256 - ph) / 256;
-            if (n != o)
-                printf("%d %d %d %d!=%d\n", i, ph, KingSafetyTable[i], o, n);
-        }
-    }
-    return 0;
-#endif
     int startnum = 1;
     int perfmaxdepth = 0;
     bool benchmark = false;

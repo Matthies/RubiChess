@@ -6,7 +6,7 @@
 #define DEBUG
 #endif
 
-#if 1
+#if 0
 #define EVALTUNE
 #endif
 
@@ -263,32 +263,8 @@ U64 getTime();
 typedef void(*initevalfunc)(void);
 bool PGNtoFEN(string pgnfilename);
 void TexelTune(string fenfilename);
-//void registerTuner(int *addr, string name, int def, int index1, int bound1, int index2, int bound2, initevalfunc init, bool notune, int initialdelta = 1);
-
-#if 0
-struct tuningintparameter
-{
-    eval *ev;
-    string name;
-    int defval;
-    int initialdelta;
-    int tuned;
-    int index1;
-    int bound1;
-    int index2;
-    int bound2;
-    void(*init)();
-    bool notune;
-};
-#endif
 
 extern int tuningratio;
-
-#define CONSTEVAL
-
-#else //EVALTUNE
-
-#define CONSTEVAL const
 
 #endif
 
@@ -599,7 +575,7 @@ extern SMagic mRookTbl[64];
 extern U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 
-enum EvalTrace { NOTRACE, TRACE, TUNE };
+enum EvalTrace { NOTRACE, TRACE };
 
 enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7, QUIETWITHCHECK = 9 };
 
@@ -699,7 +675,6 @@ public:
 int getValueNoTrace(chessposition *p);
 int getValueTrace(chessposition *p);
 
-void CreatePositionvalueTable();
 
 #define ENGINERUN 0
 #define ENGINEWANTSTOP 1

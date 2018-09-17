@@ -31,23 +31,18 @@ int getQuiescence(int alpha, int beta, int depth)
     en.qnodes++;
 #endif
 
-    //printf("d=%d ischeck=%d alpha=%d beta=%d\n", depth, pos.isCheck, alpha, beta);
     if (!pos.isCheck)
     {
         patscore = (pos.state & S2MMASK ? -getValueNoTrace(&pos) : getValueNoTrace(&pos));
         bestscore = patscore;
         PDEBUG(depth, "(getQuiscence) qnode=%d alpha=%d beta=%d patscore=%d\n", en.qnodes, alpha, beta, patscore);
         if (patscore >= beta)
-        {
-            //printf("d=%d betacutoff via patscore\n", depth);
             return patscore;
-        }
         if (patscore > alpha)
         {
 #ifdef EVALTUNE
             pos.getPositionTuneSet(&pts);
             foundpts = true;
-            //printf("d=%d got pts of patscore=%d and stored to local pts\n", depth, patscore);
 #endif
             alpha = patscore;
         }
@@ -55,10 +50,7 @@ int getQuiescence(int alpha, int beta, int depth)
         // Delta pruning
         int bestCapture = pos.getBestPossibleCapture();
         if (patscore + deltapruningmargin + bestCapture < alpha)
-        {
-            //printf("d=%d deltaprune...\n", depth);
             return patscore;
-        }
     }
 
     chessmovelist *movelist = new chessmovelist;
@@ -95,7 +87,6 @@ int getQuiescence(int alpha, int beta, int depth)
                 LegalMovesPossible = true;
                 if (MoveIsUsefull)
                 {
-                    //printf("d=%d played useful move %s and going deeper...\n", depth, movelist->move[i].toString().c_str());
                     score = -getQuiescence(-beta, -alpha, depth - 1);
                     PDEBUG(depth, "(getQuiscence) played move %s score=%d\n", movelist->move[i].toString().c_str(), score);
                 }
@@ -103,11 +94,9 @@ int getQuiescence(int alpha, int beta, int depth)
                 if (MoveIsUsefull && score > bestscore)
                 {
                     bestscore = score;
-                    //printf("d=%d new bestscore: %d\n", depth, bestscore);
                     if (score >= beta)
                     {
                         PDEBUG(depth, "(getQuiscence) beta cutoff\n");
-                        //printf("d=%d betacutoff\n", depth);
                         delete movelist;
                         return score;
                     }
@@ -115,9 +104,7 @@ int getQuiescence(int alpha, int beta, int depth)
                     {
                         alpha = score;
 #ifdef EVALTUNE
-                        //pos.getPositionTuneSet(&pts);
                         foundpts = true;
-                        //printf("d=%d copy the positions pts to the local pts.\n", depth);
                         pos.copyPositionTuneSet(&pos.pts, &pts);
 #endif
                         PDEBUG(depth, "(getQuiscence) new alpha\n");
@@ -128,15 +115,11 @@ int getQuiescence(int alpha, int beta, int depth)
     }
 #ifdef EVALTUNE
     if (foundpts)
-    {
-        //printf("d=%d return and copy pts to position\n", depth);
         pos.copyPositionTuneSet(&pts, &pos.pts);
-    }
 #endif
 
     if (LegalMovesPossible)
     {
-        //printf("d=%d return with bestscore %d\n", depth, bestscore);
         delete movelist;
         return bestscore;
     }
@@ -146,18 +129,15 @@ int getQuiescence(int alpha, int beta, int depth)
     {
         if (pos.getMoves(&movelist->move[0], QUIETWITHCHECK))
         {
-            //printf("d=%d return with bestscore %d\n", depth, bestscore);
             delete movelist;
             return bestscore;
         }
 
-        //printf("d=%d no valid move -> stalemate\n", depth);
         // It's a stalemate
         delete movelist;
         return SCOREDRAW;
     }
     else {
-        //printf("d=%d no valid move -> mate\n", depth);
         // It's a mate
         delete movelist;
         return SCOREBLACKWINS + pos.ply;
