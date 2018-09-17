@@ -291,35 +291,29 @@ bool PGNtoFEN(string pgnfilename)
 }
 
 
-tuningintparameter tip[10000];
-int tipnum = 0;
 
-void registerTuner(int *addr, string name, int def, int index1, int bound1, int index2, int bound2, initevalfunc init, bool notune, int initialdelta)
+static string getValueStringValue(eval *e)
 {
-    tip[tipnum].addr = addr;
-    tip[tipnum].name = name;
-    tip[tipnum].defval = def;
-    tip[tipnum].initialdelta = initialdelta;
-    tip[tipnum].index1 = index1;
-    tip[tipnum].bound1 = bound1;
-    tip[tipnum].index2 = index2;
-    tip[tipnum].bound2 = bound2;
-    tip[tipnum].init = init;
-    tip[tipnum].notune = notune;
-    tipnum++;
+    string sm = to_string(GETMGVAL(*e));
+    if (sm.length() < 4)
+        sm.insert(sm.begin(), 4 - sm.length(), ' ');
+    string se = to_string(GETEGVAL(*e));
+    if (se.length() < 4)
+        se.insert(se.begin(), 4 - se.length(), ' ');
+    return "VALUE(" + sm + "," + se + ")";
 }
 
 
 static string nameTunedParameter(int i)
 {
-    string name = tip[i].name;
-    if (tip[i].bound2 > 0)
+    string name = pos.tps.name[i];
+    if (pos.tps.bound2[i] > 0)
     {
-        name += "[" + to_string(tip[i].index2) + "][" + to_string(tip[i].index1) + "]";
+        name += "[" + to_string(pos.tps.index2[i]) + "][" + to_string(pos.tps.index1[i]) + "]";
     }
-    else if (tip[i].bound1 > 0)
+    else if (pos.tps.bound1[i] > 0)
     {
-        name += "[" + to_string(tip[i].index1) + "] = { ";
+        name += "[" + to_string(pos.tps.index1[i]) + "] = { ";
     }
     return name;
 }
@@ -329,9 +323,9 @@ static void printTunedParameters()
 {
     string lastname = "";
     string output = "";
-    for (int i = 0; i < tipnum; i++)
+    for (int i = 0; i < pos.tps.count; i++)
     {
-        if (lastname != tip[i].name)
+        if (lastname != pos.tps.name[i])
         {
             if (output != "")
             {
@@ -339,38 +333,36 @@ static void printTunedParameters()
                 printf("%s", output.c_str());
                 output = "";
             }
-            lastname = tip[i].name;
-            output = "CONSTEVAL int " + tip[i].name;
-            if (tip[i].bound2 > 0)
+            lastname = pos.tps.name[i];
+            output = "    eval " + lastname;
+            if (pos.tps.bound2[i] > 0)
             {
-                output += "[" + to_string(tip[i].bound2) + "][" + to_string(tip[i].bound1) + "] = {\n  { ";
+                output += "[" + to_string(pos.tps.bound2[i]) + "][" + to_string(pos.tps.bound1[i]) + "] = {\n        { ";
             }
-            else if (tip[i].bound1 > 0)
+            else if (pos.tps.bound1[i] > 0)
             {
-                output += "[" + to_string(tip[i].bound1) + "] = { ";
+                output += "[" + to_string(pos.tps.bound1[i]) + "] = { ";
             }
             else {
                 output += " = ";
             }
         }
 
-        string numstr = to_string(*tip[i].addr);
-        numstr.insert(numstr.begin(), 5 - numstr.length(), ' ');
-        output = output + numstr;
+        output = output + " " + getValueStringValue(pos.tps.ev[i]);
 
-        if (tip[i].index1 < tip[i].bound1 - 1)
+        if (pos.tps.index1[i] < pos.tps.bound1[i] - 1)
         {
             output += ",";
-            if (!((tip[i].index1 + 1) & (tip[i].bound2 ? 0x7 : 0x7)))
-                output += "\n    ";
+            if (!((pos.tps.index1[i] + 1) & (pos.tps.bound2[i] ? 0x7 : 0x7)))
+                output += "\n          ";
         }
-        else if (tip[i].index1 == tip[i].bound1 - 1)
+        else if (pos.tps.index1[i] == pos.tps.bound1[i] - 1)
         {
             output += "  }";
-            if (tip[i].index2 < tip[i].bound2 - 1)
-                output += ",\n  { ";
-            else if (tip[i].index2 == tip[i].bound2 - 1)
-                output += "\n }";
+            if (pos.tps.index2[i] < pos.tps.bound2[i] - 1)
+                output += ",\n        { ";
+            else if (pos.tps.index2[i] == pos.tps.bound2[i] - 1)
+                output += "\n    }";
         }
     }
     output += ";\n";
@@ -380,64 +372,53 @@ static void printTunedParameters()
 
 int tuningratio = 1;
 
-static double TexelEvalError(string fenfilename, double k)
+positiontuneset *texelpts = NULL;
+int texelptsnum;
+
+static double TexelEvalError(double k)
 {
-    long long starttime = getTime();
+    double Ri, Qi;
+    double E = 0.0;
+
+    for (int i = 0; i < texelptsnum; i++)
+    {
+        Qi = NEWTAPEREDEVAL(pos.getGradientValue(&texelpts[i]), texelpts[i].ph);
+        Ri = texelpts[i].R / 2.0;
+        double sigmoid = 1 / (1 + pow(10.0, -k * Qi / 400.0));
+        E += (Ri - sigmoid) * (Ri - sigmoid);
+    }
+
+    return E / texelptsnum;
+}
+
+void getGradsFromFen(string fenfilename)
+{
     int gamescount = 0;
     bool fenmovemode = (fenfilename.find(".fenmove") != string::npos);
     string line;
     smatch match;
-    double Ri, Qi;
-    double E = 0.0;
-    int n = 0;
-    int c = tuningratio;
-    int bw = 0;
-    ifstream fenfile(fenfilename);
-    if (!fenfile.is_open())
+    int n;
+    int c;
+    int bw;
+    char R;
+    int Qi, Qa;
+    int tuningphase = 0;
+    while (tuningphase < 2)
     {
-        printf("Cannot open %s for reading.\n", fenfilename.c_str());
-        return 0.0;
-    }
-    while (getline(fenfile, line))
-    {
-        //cout << line + "\n";
-        if (!fenmovemode)
+        n = 0;
+        bw = 0;
+        c = tuningratio;
+        ifstream fenfile(fenfilename);
+        if (!fenfile.is_open())
         {
-            if (regex_search(line, match, regex("(.*)#(.*)#(.*)")))
-            {
-                bw = 1 - bw;
-                if (bw)
-                    c++;
-                if (c > tuningratio)
-                    c = 1;
-                if (c == tuningratio)
-                {
-
-                    Ri = (stoi(match.str(1)) + 1) / 2.0;
-                    pos.getFromFen(match.str(2).c_str());
-                    pos.ply = 0;
-                    Qi = getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
-                    if (!pos.w2m())
-                        Qi = -Qi;
-                    //printf("Ri=%f Qi=%f\n", Ri, Qi);
-                    n++;
-                    double sigmoid = 1 / (1 + pow(10.0, -k * Qi / 400.0));
-                    E += (Ri - sigmoid) * (Ri - sigmoid);
-                }
-            }
+            printf("Cannot open %s for reading.\n", fenfilename.c_str());
+            return;
         }
-        else
+        while (getline(fenfile, line))
         {
-            if (regex_search(line, match, regex("(.*)#(.*)moves(.*)")))
+            if (!fenmovemode)
             {
-                gamescount++;
-                Ri = (stoi(match.str(1)) + 1) / 2.0;
-                pos.getFromFen(match.str(2).c_str());
-                pos.ply = 0;
-                vector<string> movelist = SplitString(match.str(3).c_str());
-                vector<string>::iterator move = movelist.begin();
-                bool gameend;
-                do
+                if (regex_search(line, match, regex("(.*)#(.*)#(.*)")))
                 {
                     bw = 1 - bw;
                     if (bw)
@@ -446,31 +427,90 @@ static double TexelEvalError(string fenfilename, double k)
                         c = 1;
                     if (c == tuningratio)
                     {
-                        Qi = getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
-                        if (!pos.w2m())
-                            Qi = -Qi;
-                        //printf("FEN=%s Ri=%f Qi=%f\n", pos.toFen().c_str(), Ri, Qi);
-                        n++;
-                        double sigmoid = 1 / (1 + pow(10.0, -k * Qi / 400.0));
-                        E += (Ri - sigmoid) * (Ri - sigmoid);
-                }
-                    gameend = (move == movelist.end());
-                    if (!gameend)
-                    {
-                        if (!pos.applyMove(*move))
+                        R = (stoi(match.str(1)) + 1);
+                        pos.getFromFen(match.str(2).c_str());
+                        pos.ply = 0;
+                        if (tuningphase == 1)
                         {
-                            printf("Alarm (game %d)! Zug %s konnte nicht ausgef?hrt werden.\nLine: %s\n", gamescount, move->c_str(), line.c_str());
-                            pos.print();
+                            Qi = getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
+                            if (!pos.w2m())
+                                Qi = -Qi;
+                            texelpts[n].ph = pos.pts.ph;
+                            texelpts[n].R = R;
+                            Qa = 0;
+                            for (int i = 0; i < pos.tps.count; i++)
+                            {
+                                texelpts[n].g[i] = pos.tps.ev[i]->getGrad();
+                                Qa += texelpts[n].g[i] * *pos.tps.ev[i];
+                            }
+                            if (Qi != NEWTAPEREDEVAL(Qa, texelpts[n].ph))
+                                printf("Alarm. Gradient evaluation differs from qsearch value.\n");
                         }
-                        move++;
+                        n++;
                     }
+                }
+            }
+            else
+            {
+                if (regex_search(line, match, regex("(.*)#(.*)moves(.*)")))
+                {
+                    gamescount++;
+                    R = (stoi(match.str(1)) + 1);
+                    pos.getFromFen(match.str(2).c_str());
+                    pos.ply = 0;
+                    vector<string> movelist = SplitString(match.str(3).c_str());
+                    vector<string>::iterator move = movelist.begin();
+                    bool gameend;
+                    do
+                    {
+                        bw = 1 - bw;
+                        if (bw)
+                            c++;
+                        if (c > tuningratio)
+                            c = 1;
+                        if (c == tuningratio)
+                        {
+                            if (tuningphase == 1)
+                            {
+                                Qi = getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
+                                if (!pos.w2m())
+                                    Qi = -Qi;
+                                texelpts[n].ph = pos.pts.ph;
+                                texelpts[n].R = R;
+                                Qa = 0;
+                                for (int i = 0; i < pos.tps.count; i++)
+                                {
+                                    texelpts[n].g[i] = pos.pts.g[i];
+                                    Qa += texelpts[n].g[i] * *pos.tps.ev[i];
+                                }
+                                if (Qi != NEWTAPEREDEVAL(Qa, texelpts[n].ph))
+                                    printf("Alarm. Gradient evaluation differs from qsearch value.\n");
+                            }
+                            n++;
+                        }
+                        gameend = (move == movelist.end());
+                        if (!gameend)
+                        {
+                            if (!pos.applyMove(*move))
+                            {
+                                printf("Alarm (game %d)! Move %s seems illegal.\nLine: %s\n", gamescount, move->c_str(), line.c_str());
+                                pos.print();
+                            }
+                            move++;
+                        }
 
-            } while (!gameend);
+                    } while (!gameend);
+                }
+            }
+        }
+        tuningphase++;
+        if (tuningphase == 1)
+        {
+            texelpts = (positiontuneset*)calloc(n, sizeof(positiontuneset));
+            texelptsnum = n;
         }
     }
-}
-    printf("Positions: %d  Tuning-Zeit: %10f sec.", n, (float)(getTime() - starttime) / (float)en.frequency);
-    return E / n;
+    printf("Positions: %d\n", n);
 }
 
 
@@ -483,7 +523,8 @@ void TexelTune(string fenfilename)
     double Emin = -1.0;
     int pmin;
 
-#if 0 // enable to calculate constant k
+#if 0 // enable to calculate constant k 
+    // FIXME: Needs to be rewritten after eval rewrite
     double E[2];
     double bound[2] = { 0.0, 2.0 };
     double x, lastx;
@@ -520,59 +561,73 @@ void TexelTune(string fenfilename)
     k = (bound[0] + bound[1]) / 2;
 #endif
 
+    en.setOption("hash", "4"); // we don't need tt; save all the memory for game data
+    getGradsFromFen(fenfilename);
     do
     {
         improved = false;
-        for (int i = 0; i < tipnum; i++)
+        for (int i = 0; i < pos.tps.count; i++)
         {
-            if (tip[i].notune == false)
+            if (pos.tps.tune[i])
             {
                 printTunedParameters();
-                printf("Tuning %s (default:%d)\n", nameTunedParameter(i).c_str(), tip[i].defval);
+                if (en.verbose)
+                    fprintf(stderr, "Tuning %s  %s\n", nameTunedParameter(i).c_str(), getValueStringValue(pos.tps.ev[i]).c_str());
 
-                int pbound[2] = { SHRT_MAX, SHRT_MIN };
-                int delta = tip[i].initialdelta;
-                direction = 0;
-                // direction=0: go right; delta > 0; direction=1: go right; delta
-
-                int lastp = *tip[i].addr;
-                int p = lastp + delta;
-
-                //*tip[i].addr = lastp;
-                if (tip[i].init)
-                    tip[i].init();
-                pmin = lastp;
-                if (Emin < 0)
-                    Emin = TexelEvalError(fenfilename, k);
-                printf("Min: %d/%0.10f\n", pmin, Emin);
-                do
+                int notImproved = 0;
+                int g = 0;
+                while (true)     // loop over mg/eg parameter while notImproved <=2
                 {
-                    *tip[i].addr = p;
-                    if (tip[i].init)
-                        tip[i].init();
-                    Error = TexelEvalError(fenfilename, k);
-                    printf("Min: %d/%0.10f  This: %d / %0.10f  bounds : %d / %d  delta = %d  direction : %d\n", pmin, Emin, p, Error, pbound[0], pbound[1], delta, direction);
-                    if (Error >= Emin)
+                    notImproved++;
+                    if (notImproved > 2)
+                        break;
+                    if (en.verbose)
+                        fprintf(stderr, "Tuning %s...\n", g ? "eg" : "mg");
+                    int pbound[2] = { SHRT_MAX, SHRT_MIN };
+                    int delta = 1;
+                    direction = 0; // direction=0: go right; delta > 0; direction=1: go right; delta
+                    int v = *pos.tps.ev[i];
+                    int mg = GETMGVAL(v);
+                    int eg = GETEGVAL(v);
+                    int lastp = (g ? eg : mg);
+                    int p = lastp + delta;
+                    *pos.tps.ev[i] = (g ? VALUE(mg, lastp) : VALUE(lastp, eg));
+                    pmin = lastp;
+                    if (Emin < 0)
+                        Emin = TexelEvalError(k);
+                    if (en.verbose)
+                        fprintf(stderr, "Min: %d/%0.10f\n", pmin, Emin);
+                    do
                     {
-                        direction = (p > pmin ? 1 : 0);
-                        pbound[direction] = p;
-                        delta = (direction ? -1 : 1) * tip[i].initialdelta;
-                        p = pmin + delta;
-                    }
-                    else
-                    {
-                        pbound[direction] = pmin;
-                        Emin = Error;
-                        improved = true;
-                        pmin = p;
-                        delta *= 2;
-                        p = p + delta;
-                    }
-                } while (abs(pbound[1] - pbound[0]) > 2);
-                *tip[i].addr = pmin;
-                if (tip[i].init)
-                    tip[i].init();
-                printf("%s new tuned value: %d (Default:%d)\n", nameTunedParameter(i).c_str(), *tip[i].addr, tip[i].defval);
+                        *pos.tps.ev[i] = (g ? VALUE(mg, p) : VALUE(p, eg));
+                        Error = TexelEvalError(k);
+                        if (en.verbose)
+                            fprintf(stderr, "Min: %d/%0.10f  This: %d / %0.10f  bounds : %d / %d  delta = %d  direction : %d\n", pmin, Emin, p, Error, pbound[0], pbound[1], delta, direction);
+                        if (Error >= Emin)
+                        {
+                            direction = (p > pmin ? 1 : 0);
+                            pbound[direction] = p;
+                            delta = (direction ? -1 : 1);
+                            p = pmin + delta;
+                        }
+                        else
+                        {
+                            pbound[direction] = pmin;
+                            Emin = Error;
+                            improved = true;
+                            notImproved = 0;
+                            pmin = p;
+                            delta *= 2;
+                            p = p + delta;
+                        }
+                    } while (abs(pbound[1] - pbound[0]) > 2);
+                    *pos.tps.ev[i] = (g ? VALUE(mg, pmin) : VALUE(pmin, eg));
+
+                    g = 1 - g;
+                };
+                
+                printf("E=%0.10f  %s new tuned value: %s\n", Emin,
+                    nameTunedParameter(i).c_str(), getValueStringValue(pos.tps.ev[i]).c_str());
             }
         }
         printf("\nTuning-Summary:\n");

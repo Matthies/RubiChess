@@ -20,6 +20,10 @@ int getQuiescence(int alpha, int beta, int depth)
     int bestscore = SHRT_MIN;
     bool isLegal;
     bool LegalMovesPossible = false;
+#ifdef EVALTUNE
+    positiontuneset pts;
+    bool foundpts = false;
+#endif
 
     // FIXME: Should quiescience nodes count for the statistics?
     //en.nodes++;
@@ -35,7 +39,13 @@ int getQuiescence(int alpha, int beta, int depth)
         if (patscore >= beta)
             return patscore;
         if (patscore > alpha)
+        {
+#ifdef EVALTUNE
+            pos.getPositionTuneSet(&pts);
+            foundpts = true;
+#endif
             alpha = patscore;
+        }
 
         // Delta pruning
         int bestCapture = pos.getBestPossibleCapture();
@@ -57,7 +67,7 @@ int getQuiescence(int alpha, int beta, int depth)
         PDEBUG(depth, "(getQuiscence) testing move %s ... LegalMovesPossible=%d Capture=%d Promotion=%d see=%s \n", movelist->move[i].toString().c_str(), (LegalMovesPossible?1:0), GETCAPTURE(movelist->move[i].code), GETPROMOTION(movelist->move[i].code), pos.see(movelist->move[i].code, 0) ? "true" : "false");
         bool MoveIsUsefull = (pos.isCheck
             || ISPROMOTION(movelist->move[i].code)
-            || (patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin > alpha
+            || (patscore + prunematerialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin > alpha
                 && pos.see(movelist->move[i].code, 0)
             ));
 #ifdef DEBUG
@@ -93,12 +103,21 @@ int getQuiescence(int alpha, int beta, int depth)
                     if (score > alpha)
                     {
                         alpha = score;
+#ifdef EVALTUNE
+                        foundpts = true;
+                        pos.copyPositionTuneSet(&pos.pts, &pts);
+#endif
                         PDEBUG(depth, "(getQuiscence) new alpha\n");
                     }
                 }
             }
         }
     }
+#ifdef EVALTUNE
+    if (foundpts)
+        pos.copyPositionTuneSet(&pts, &pos.pts);
+#endif
+
     if (LegalMovesPossible)
     {
         delete movelist;
