@@ -480,7 +480,10 @@ void chessposition::tbFilterRootMoves()
 /* test the actualmove for three-fold-repetition as the repetition table may give false positive due to table collisions */
 int chessposition::testRepetiton()
 {
-    unsigned long long h = hash;
+
+    U64 h = hash;
+   
+#if 0
     chessmovesequencelist *ml = &actualpath;
     int oldlength = ml->length;
     int hit = 0;
@@ -492,7 +495,9 @@ int chessposition::testRepetiton()
         else
             unplayMove(&ml->move[i]);
         if (hash == h)
+        {
             hit++;
+        }
         if (halfmovescounter == 0)
             break;
     }
@@ -512,7 +517,18 @@ int chessposition::testRepetiton()
         }
         i++;
     }
+#else
+    int hit = 0;
+    for (int i = mstop - 1; i >= 0; i--)
+    {
+        if (hash == movestack[i].hash)
+            hit++;
 
+        if (mstop - i >= halfmovescounter)
+            break;
+    }
+
+#endif
     return hit;
 }
 

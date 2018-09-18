@@ -71,7 +71,7 @@ int getQuiescence(int alpha, int beta, int depth)
                 && pos.see(movelist->move[i].code, 0)
             ));
 #ifdef DEBUG
-        if (ISCAPTURE(movelist->move[i].code) && patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin <= alpha)
+        if (!pos.isCheck && ISCAPTURE(movelist->move[i].code) && patscore + prunematerialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin <= alpha)
         {
             en.dpnodes++;
             //printf("delta prune: patscore:%d move:%s  alpha=%d\n", patscore, movelist->move[i].toString().c_str(), alpha);
