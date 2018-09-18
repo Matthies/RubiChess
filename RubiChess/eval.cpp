@@ -390,22 +390,19 @@ int chessposition::getPositionValue()
                 mobility = attack & ~occupied00[me];
             }
 
-            if (p != PAWN)
+            // update attack bitboard
+            attackedBy[me][p] |= attack;
+            attackedBy2[me] |= (attackedBy[me][0] & attack);
+            attackedBy[me][0] |= attack;
+
+            // mobility bonus
+            result += EVAL(eps.eShiftmobilitybonus, S2MSIGN(me) * POPCOUNT(mobility));
+
+            // king danger
+            if (mobility & kingdangerarea)
             {
-                // update attack bitboard
-                attackedBy[me][p] |= attack;
-                attackedBy2[me] |= (attackedBy[me][0] & attack);
-                attackedBy[me][0] |= attack;
-
-                // mobility bonus
-                result += EVAL(eps.eShiftmobilitybonus, S2MSIGN(me) * POPCOUNT(mobility));
-
-                // king danger
-                if (mobility & kingdangerarea)
-                {
-                    kingattackpiececount[me][p] += POPCOUNT(mobility & kingdangerarea);
-                    kingattackers[me]++;
-                }
+                kingattackpiececount[me][p] += POPCOUNT(mobility & kingdangerarea);
+                kingattackers[me]++;
             }
         }
     }
