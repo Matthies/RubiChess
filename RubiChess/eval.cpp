@@ -226,6 +226,8 @@ int chessposition::getPawnValue(pawnhashentry **entry)
     pawnhashentry *entryptr = *entry;
     if (!hashexist)
     {
+        entryptr->value += EVAL(eps.eMaterialvalue[PAWN], POPCOUNT(piece00[WPAWN]) - POPCOUNT(piece00[BPAWN]));
+
         for (int pc = WPAWN; pc <= BPAWN; pc++)
         {
             int me = pc & S2MMASK;
@@ -237,6 +239,9 @@ int chessposition::getPawnValue(pawnhashentry **entry)
             U64 pb = piece00[pc];
             while (LSB(index, pb))
             {
+                int psqtindex = PSQTINDEX(index, me);
+                entryptr->value += EVAL(eps.ePsqt[PAWN][psqtindex], S2MSIGN(me));
+
                 entryptr->attackedBy2[me] |= (entryptr->attacked[me] & pawn_attacks_occupied[index][me]);
                 entryptr->attacked[me] |= pawn_attacks_occupied[index][me];
                 entryptr->semiopen[me] &= ~BITSET(FILE(index)); 
@@ -342,7 +347,7 @@ int chessposition::getPositionValue()
     result += EVAL(eps.ePsqt[KING][PSQTINDEX(kingpos[0], 0)], 1);
     result += EVAL(eps.ePsqt[KING][PSQTINDEX(kingpos[1], 1)], -1);
 
-    for (int pc = WPAWN; pc <= BQUEEN; pc++)
+    for (int pc = WKNIGHT; pc <= BQUEEN; pc++)
     {
         int p = (pc >> 1);
         int me = pc & S2MMASK;
@@ -385,22 +390,19 @@ int chessposition::getPositionValue()
                 mobility = attack & ~occupied00[me];
             }
 
-            if (p != PAWN)
+            // update attack bitboard
+            attackedBy[me][p] |= attack;
+            attackedBy2[me] |= (attackedBy[me][0] & attack);
+            attackedBy[me][0] |= attack;
+
+            // mobility bonus
+            result += EVAL(eps.eShiftmobilitybonus, S2MSIGN(me) * POPCOUNT(mobility));
+
+            // king danger
+            if (mobility & kingdangerarea)
             {
-                // update attack bitboard
-                attackedBy[me][p] |= attack;
-                attackedBy2[me] |= (attackedBy[me][0] & attack);
-                attackedBy[me][0] |= attack;
-
-                // mobility bonus
-                result += EVAL(eps.eShiftmobilitybonus, S2MSIGN(me) * POPCOUNT(mobility));
-
-                // king danger
-                if (mobility & kingdangerarea)
-                {
-                    kingattackpiececount[me][p] += POPCOUNT(mobility & kingdangerarea);
-                    kingattackers[me]++;
-                }
+                kingattackpiececount[me][p] += POPCOUNT(mobility & kingdangerarea);
+                kingattackers[me]++;
             }
         }
     }
