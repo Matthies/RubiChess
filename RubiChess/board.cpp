@@ -410,6 +410,7 @@ bool chessposition::applyMove(string s)
             break;
         }
     }
+    rootheight = actualpath.length;
     return retval;
 }
 
@@ -522,13 +523,19 @@ int chessposition::testRepetiton()
     for (int i = mstop - 1; i >= 0; i--)
     {
         if (hash == movestack[i].hash)
+        {
             hit++;
-
-        if (mstop - i >= halfmovescounter)
+            if (i > rootheight)
+            {
+                hit++;
+                break;
+            }
+        }
+        if (movestack[i].halfmovescounter == 0)
             break;
     }
-
 #endif
+
     return hit;
 }
 
@@ -584,6 +591,8 @@ void chessposition::mirror()
 
 void chessposition::playNullMove()
 {
+    movestack[mstop].halfmovescounter = halfmovescounter;
+    movestack[mstop++].hash = hash;
     state ^= S2MMASK;
     hash ^= zb.s2m;
     actualpath.move[actualpath.length++].code = 0;
@@ -597,6 +606,7 @@ void chessposition::unplayNullMove()
     hash ^= zb.s2m;
     actualpath.length--;
     ply--;
+    mstop--;
 }
 
 

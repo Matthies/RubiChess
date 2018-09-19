@@ -178,6 +178,15 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
     PDEBUG(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
 
+    // test for remis via repetition
+    if (pos.testRepetiton() >= 2)
+        return SCOREDRAW;
+
+    // test for remis via 50 moves rule
+    if (pos.halfmovescounter >= 100)
+        return SCOREDRAW;
+
+
     if (tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
     {
         PDEBUG(depth, "(alphabeta) got value %d from TP\n", score);
@@ -206,7 +215,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             return score;
         }
     }
-
+#if 0
     // test for remis via repetition
     if (rp.getPositionCount(pos.hash) >= 3 && pos.testRepetiton() >= 2)
         return SCOREDRAW;
@@ -214,7 +223,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     // test for remis via 50 moves rule
     if (pos.halfmovescounter >= 100)
         return SCOREDRAW;
-
+#endif
     if (depth <= 0)
     {
         // update selective depth info
