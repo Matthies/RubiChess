@@ -71,7 +71,7 @@ int getQuiescence(int alpha, int beta, int depth)
                 && pos.see(movelist->move[i].code, 0)
             ));
 #ifdef DEBUG
-        if (ISCAPTURE(movelist->move[i].code) && patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin <= alpha)
+        if (!pos.isCheck && ISCAPTURE(movelist->move[i].code) && patscore + prunematerialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin <= alpha)
         {
             en.dpnodes++;
             //printf("delta prune: patscore:%d move:%s  alpha=%d\n", patscore, movelist->move[i].toString().c_str(), alpha);
@@ -178,10 +178,19 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
     PDEBUG(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
 
+    // test for remis via repetition
+    if (pos.testRepetiton() >= 2)
+        return SCOREDRAW;
+
+    // test for remis via 50 moves rule
+    if (pos.halfmovescounter >= 100)
+        return SCOREDRAW;
+
+
     if (tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
     {
         PDEBUG(depth, "(alphabeta) got value %d from TP\n", score);
-        if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
+        if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This test on the repetition table works like a "is not PV"; should be fixed in the future
             return score;
     }
 
@@ -206,7 +215,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             return score;
         }
     }
-
+#if 0
     // test for remis via repetition
     if (rp.getPositionCount(pos.hash) >= 3 && pos.testRepetiton() >= 2)
         return SCOREDRAW;
@@ -214,7 +223,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     // test for remis via 50 moves rule
     if (pos.halfmovescounter >= 100)
         return SCOREDRAW;
-
+#endif
     if (depth <= 0)
     {
         // update selective depth info
@@ -493,7 +502,7 @@ int rootsearch(int alpha, int beta, int depth)
     PDEBUG(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
     if (!isMultiPV && !pos.useRootmoveScore && tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
     {
-        if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
+        if (rp.getPositionCount(pos.hash) <= 1) //FIXME: Is this really needed in rootsearch?
             return score;
     }
 

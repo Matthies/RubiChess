@@ -607,6 +607,7 @@ public:
     chessmovelist rootmovelist;
     chessmovesequencelist pvline;
     chessmovesequencelist actualpath;
+    int rootheight;
     chessmove bestmove[MAXMULTIPV];
     int bestmovescore[MAXMULTIPV];
     unsigned long killer[2][MAXDEPTH];

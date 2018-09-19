@@ -410,6 +410,7 @@ bool chessposition::applyMove(string s)
             break;
         }
     }
+    rootheight = actualpath.length;
     return retval;
 }
 
@@ -480,7 +481,10 @@ void chessposition::tbFilterRootMoves()
 /* test the actualmove for three-fold-repetition as the repetition table may give false positive due to table collisions */
 int chessposition::testRepetiton()
 {
-    unsigned long long h = hash;
+
+    U64 h = hash;
+   
+#if 0
     chessmovesequencelist *ml = &actualpath;
     int oldlength = ml->length;
     int hit = 0;
@@ -492,7 +496,9 @@ int chessposition::testRepetiton()
         else
             unplayMove(&ml->move[i]);
         if (hash == h)
+        {
             hit++;
+        }
         if (halfmovescounter == 0)
             break;
     }
@@ -512,6 +518,23 @@ int chessposition::testRepetiton()
         }
         i++;
     }
+#else
+    int hit = 0;
+    for (int i = mstop - 1; i >= 0; i--)
+    {
+        if (hash == movestack[i].hash)
+        {
+            hit++;
+            if (i > rootheight)
+            {
+                hit++;
+                break;
+            }
+        }
+        if (movestack[i].halfmovescounter == 0)
+            break;
+    }
+#endif
 
     return hit;
 }
@@ -568,6 +591,8 @@ void chessposition::mirror()
 
 void chessposition::playNullMove()
 {
+    movestack[mstop].halfmovescounter = halfmovescounter;
+    movestack[mstop++].hash = hash;
     state ^= S2MMASK;
     hash ^= zb.s2m;
     actualpath.move[actualpath.length++].code = 0;
@@ -581,6 +606,7 @@ void chessposition::unplayNullMove()
     hash ^= zb.s2m;
     actualpath.length--;
     ply--;
+    mstop--;
 }
 
 
