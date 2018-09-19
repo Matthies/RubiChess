@@ -190,7 +190,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     if (tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
     {
         PDEBUG(depth, "(alphabeta) got value %d from TP\n", score);
-        if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
+        if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This test on the repetition table works like a "is not PV"; should be fixed in the future
             return score;
     }
 
@@ -502,7 +502,7 @@ int rootsearch(int alpha, int beta, int depth)
     PDEBUG(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
     if (!isMultiPV && !pos.useRootmoveScore && tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
     {
-        if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This is a rough guess to avoid draw by repetition hidden by the TP table
+        if (rp.getPositionCount(pos.hash) <= 1) //FIXME: Is this really needed in rootsearch?
             return score;
     }
 
