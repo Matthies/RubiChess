@@ -15,10 +15,6 @@
 #endif
 
 #if 0
-#define FPDEBUG
-#endif
-
-#if 0
 #define FINDMEMORYLEAKS
 #endif
 

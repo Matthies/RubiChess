@@ -326,71 +326,56 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             LegalMoves++;
             PDEBUG(depth, "(alphabeta) played move %s (%d)   nodes:%d\n", m->toString().c_str(), m->value, en.nodes);
 
-            // Check for valid futility pruning
-#ifdef FPDEBUG
-            if (!avoidFutilityPrune)
+            // Check again for futility pruning now that we found a valid move
+            if (futilityPrune)
             {
-                en.fpnodes++;
-            }
-            if (true) // disable futility pruning to debug the result in wrongfp
-#else
-            if (!futilityPrune)
-#endif
-            {
-                int reduction = 0;
-                // Late move reduction
-                if (!extendall && depth > 2 && !ISTACTICAL(m->code))
-                {
-                    reduction = reductiontable[depth][min(63, LegalMoves)];
-                }
-#if 0
-                // disabled; capture extension doesn't seem to work
-                else if (ISTACTICAL(m->code) && GETPIECE(m->code) <= GETCAPTURE(m->code))
-                    extendall = 1;
-#endif
-                if (eval_type != HASHEXACT)
-                {
-#if 0
-                    // disabled; even 'good capture' extension doesn't seem to work
-                    if (ISCAPTURE(m->code) && materialvalue[GETPIECE(m->code) >> 1] - materialvalue[GETCAPTURE(m->code) >> 1] < 30)
-                        moveExtension = 1;
-#endif
-                    effectiveDepth = depth + extendall - reduction;
-                    score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
-                    if (reduction && score > alpha)
-                    {
-                        // research without reduction
-                        effectiveDepth += reduction;
-                        score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
-                    }
-                }
-                else {
-                    // try a PV-Search
-#ifdef DEBUG
-                    unsigned long long nodesbefore = en.nodes;
-#endif
-                    effectiveDepth = depth + extendall;
-                    score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1, true);
-                    if (score > alpha && score < beta)
-                    {
-                        // reasearch with full window
-#ifdef DEBUG
-                        en.wastedpvsnodes += (en.nodes - nodesbefore);
-#endif
-                        score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
-                    }
-                }
-#ifdef FPDEBUG
-                if (score > alpha && !avoidFutilityPrune)
-                {
-                    en.wrongfp++;
-                    printf("Wrong pruning: Depth:%d  Futility-Score:%d  Move:%s  Score:%d\nPosition:\n", depth, futilityscore, m->toString().c_str(), score);
-                    pos.print();
-                    printf("\n\n");
-                }
-#endif
+                pos.unplayMove(m);
+                continue;
             }
 
+            int reduction = 0;
+            // Late move reduction
+            if (!extendall && depth > 2 && !ISTACTICAL(m->code))
+            {
+                reduction = reductiontable[depth][min(63, LegalMoves)];
+            }
+#if 0
+            // disabled; capture extension doesn't seem to work
+            else if (ISTACTICAL(m->code) && GETPIECE(m->code) <= GETCAPTURE(m->code))
+                extendall = 1;
+#endif
+            if (eval_type != HASHEXACT)
+            {
+#if 0
+                // disabled; even 'good capture' extension doesn't seem to work
+                if (ISCAPTURE(m->code) && materialvalue[GETPIECE(m->code) >> 1] - materialvalue[GETCAPTURE(m->code) >> 1] < 30)
+                    moveExtension = 1;
+#endif
+                effectiveDepth = depth + extendall - reduction;
+                score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
+                if (reduction && score > alpha)
+                {
+                    // research without reduction
+                    effectiveDepth += reduction;
+                    score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
+                }
+            }
+            else {
+                // try a PV-Search
+#ifdef DEBUG
+                unsigned long long nodesbefore = en.nodes;
+#endif
+                effectiveDepth = depth + extendall;
+                score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1, true);
+                if (score > alpha && score < beta)
+                {
+                    // reasearch with full window
+#ifdef DEBUG
+                    en.wastedpvsnodes += (en.nodes - nodesbefore);
+#endif
+                    score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
+                }
+            }
             pos.unplayMove(m);
 
 #ifdef DEBUG
