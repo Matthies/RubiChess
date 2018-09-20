@@ -315,6 +315,11 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         if (!pos.isCheck && depth < 8 && bestscore > NOSCORE && ms.state >= BADTACTICALSTATE && !pos.see(m->code, -20 * depth * depth))
             continue;
 
+        // Check for futility pruning condition for this move and skip move if at least one legal move is already found
+        bool futilityPrune = futility && !ISTACTICAL(m->code) && !pos.isCheck && alpha <= 900;
+        if (futilityPrune && LegalMoves)
+            continue;
+
         isLegal = pos.playMove(m);
         if (isLegal)
         {
@@ -322,7 +327,6 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             PDEBUG(depth, "(alphabeta) played move %s (%d)   nodes:%d\n", m->toString().c_str(), m->value, en.nodes);
 
             // Check for valid futility pruning
-            bool avoidFutilityPrune = !futility || ISTACTICAL(m->code) || pos.isCheck || alpha > 900;
 #ifdef FPDEBUG
             if (!avoidFutilityPrune)
             {
@@ -330,7 +334,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             }
             if (true) // disable futility pruning to debug the result in wrongfp
 #else
-            if (avoidFutilityPrune)
+            if (!futilityPrune)
 #endif
             {
                 int reduction = 0;
