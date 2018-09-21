@@ -17,5 +17,19 @@ LTC:
 Score of RubiChess-Bitboard-efp2 vs RubiChess-Bitboard-ms: 157 - 199 - 378  [0.471] 734
 Elo difference: -19.90 +/- 17.49
 SPRT: llr -1.41, lbound -1.39, ubound 1.39 - H0 was accepted
-
 Autsch!
+
+efp3 (11192093): Setze bestscore und bestcode für den ersten ausgelassenen legalen Zug -> scheinbar wie efp1 mit etwas weniger Overhead (Test gegen alpha und beta)
+
+efp4 (12648161): Setze nur bestscore aber nicht bestcode (denn es wurde ja nicht wirklich ein bester move ermittelt)
+STC:
+Score of RubiChess-Bitboard-efp4 vs RubiChess-Bitboard-ms: 325 - 262 - 425  [0.531] 1012
+Elo difference: 21.66 +/- 16.30
+SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+LTC: Abbruch nach 1000 Spielen
+Score of RubiChess-Bitboard-efp4 vs RubiChess-Bitboard-ms: 242 - 239 - 519  [0.501] 1000
+Elo difference: 1.04 +/- 14.92
+SPRT: llr -0.126, lbound -1.39, ubound 1.39
+
+efp5 (11897803): Kein bestcode setzen und zum Ende nur in den TT schreiben, wenn bestcode existiert.
+

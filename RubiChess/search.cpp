@@ -287,6 +287,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         if (score - revFutilityMargin[depth] > beta)
             return score;
         futility = (score < alpha - futilityMargin[depth]);
+
 #ifdef FPDEBUG
         futilityscore = score;
 #endif
@@ -330,6 +331,11 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             if (futilityPrune)
             {
                 pos.unplayMove(m);
+                // As efp repair failed lets try this; setting bestmove "by accident" is the only thing that can help master vs. efp
+                if (score > bestscore)
+                {
+                    bestscore = score;
+                }
                 continue;
             }
 
@@ -442,7 +448,8 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             return SCOREDRAW;
     }
 
-    tp.addHash(bestscore, eval_type, depth, bestcode);
+    if (bestcode)
+        tp.addHash(bestscore, eval_type, depth, bestcode);
     return bestscore;
 }
 
