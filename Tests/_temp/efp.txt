@@ -32,4 +32,10 @@ Elo difference: 1.04 +/- 14.92
 SPRT: llr -0.126, lbound -1.39, ubound 1.39
 
 efp5 (11897803): Kein bestcode setzen und zum Ende nur in den TT schreiben, wenn bestcode existiert.
+STC: Auf Bens PC, nicht bis zum Schluss gelaufen aber positiv: 53,1% nach 688 Spielen
+LTC:
+Score of RubiChess-Bitboard-efp5 vs RubiChess-Bitboard-ms: 394 - 336 - 773  [0.519] 1503
+Elo difference: 13.41 +/- 12.23
+SPRT: llr 1.4, lbound -1.39, ubound 1.39 - H1 was accepted
+
 
