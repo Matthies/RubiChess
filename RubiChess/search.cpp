@@ -287,6 +287,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         if (score - revFutilityMargin[depth] > beta)
             return score;
         futility = (score < alpha - futilityMargin[depth]);
+
 #ifdef FPDEBUG
         futilityscore = score;
 #endif
@@ -315,78 +316,72 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         if (!pos.isCheck && depth < 8 && bestscore > NOSCORE && ms.state >= BADTACTICALSTATE && !pos.see(m->code, -20 * depth * depth))
             continue;
 
+        // Check for futility pruning condition for this move and skip move if at least one legal move is already found
+        bool futilityPrune = futility && !ISTACTICAL(m->code) && !pos.isCheck && alpha <= 900;
+        if (futilityPrune && LegalMoves)
+            continue;
+
         isLegal = pos.playMove(m);
         if (isLegal)
         {
             LegalMoves++;
             PDEBUG(depth, "(alphabeta) played move %s (%d)   nodes:%d\n", m->toString().c_str(), m->value, en.nodes);
 
-            // Check for valid futility pruning
-            bool avoidFutilityPrune = !futility || ISTACTICAL(m->code) || pos.isCheck || alpha > 900;
-#ifdef FPDEBUG
-            if (!avoidFutilityPrune)
+            // Check again for futility pruning now that we found a valid move
+            if (futilityPrune)
             {
-                en.fpnodes++;
-            }
-            if (true) // disable futility pruning to debug the result in wrongfp
-#else
-            if (avoidFutilityPrune)
-#endif
-            {
-                int reduction = 0;
-                // Late move reduction
-                if (!extendall && depth > 2 && !ISTACTICAL(m->code))
+                pos.unplayMove(m);
+                // As efp repair failed lets try this; setting bestmove "by accident" is the only thing that can help master vs. efp
+                if (score > bestscore)
                 {
-                    reduction = reductiontable[depth][min(63, LegalMoves)];
+                    bestscore = score;
                 }
-#if 0
-                // disabled; capture extension doesn't seem to work
-                else if (ISTACTICAL(m->code) && GETPIECE(m->code) <= GETCAPTURE(m->code))
-                    extendall = 1;
-#endif
-                if (eval_type != HASHEXACT)
-                {
-#if 0
-                    // disabled; even 'good capture' extension doesn't seem to work
-                    if (ISCAPTURE(m->code) && materialvalue[GETPIECE(m->code) >> 1] - materialvalue[GETCAPTURE(m->code) >> 1] < 30)
-                        moveExtension = 1;
-#endif
-                    effectiveDepth = depth + extendall - reduction;
-                    score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
-                    if (reduction && score > alpha)
-                    {
-                        // research without reduction
-                        effectiveDepth += reduction;
-                        score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
-                    }
-                }
-                else {
-                    // try a PV-Search
-#ifdef DEBUG
-                    unsigned long long nodesbefore = en.nodes;
-#endif
-                    effectiveDepth = depth + extendall;
-                    score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1, true);
-                    if (score > alpha && score < beta)
-                    {
-                        // reasearch with full window
-#ifdef DEBUG
-                        en.wastedpvsnodes += (en.nodes - nodesbefore);
-#endif
-                        score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
-                    }
-                }
-#ifdef FPDEBUG
-                if (score > alpha && !avoidFutilityPrune)
-                {
-                    en.wrongfp++;
-                    printf("Wrong pruning: Depth:%d  Futility-Score:%d  Move:%s  Score:%d\nPosition:\n", depth, futilityscore, m->toString().c_str(), score);
-                    pos.print();
-                    printf("\n\n");
-                }
-#endif
+                continue;
             }
 
+            int reduction = 0;
+            // Late move reduction
+            if (!extendall && depth > 2 && !ISTACTICAL(m->code))
+            {
+                reduction = reductiontable[depth][min(63, LegalMoves)];
+            }
+#if 0
+            // disabled; capture extension doesn't seem to work
+            else if (ISTACTICAL(m->code) && GETPIECE(m->code) <= GETCAPTURE(m->code))
+                extendall = 1;
+#endif
+            if (eval_type != HASHEXACT)
+            {
+#if 0
+                // disabled; even 'good capture' extension doesn't seem to work
+                if (ISCAPTURE(m->code) && materialvalue[GETPIECE(m->code) >> 1] - materialvalue[GETCAPTURE(m->code) >> 1] < 30)
+                    moveExtension = 1;
+#endif
+                effectiveDepth = depth + extendall - reduction;
+                score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
+                if (reduction && score > alpha)
+                {
+                    // research without reduction
+                    effectiveDepth += reduction;
+                    score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
+                }
+            }
+            else {
+                // try a PV-Search
+#ifdef DEBUG
+                unsigned long long nodesbefore = en.nodes;
+#endif
+                effectiveDepth = depth + extendall;
+                score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1, true);
+                if (score > alpha && score < beta)
+                {
+                    // reasearch with full window
+#ifdef DEBUG
+                    en.wastedpvsnodes += (en.nodes - nodesbefore);
+#endif
+                    score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
+                }
+            }
             pos.unplayMove(m);
 
 #ifdef DEBUG
@@ -453,7 +448,8 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             return SCOREDRAW;
     }
 
-    tp.addHash(bestscore, eval_type, depth, bestcode);
+    if (bestcode)
+        tp.addHash(bestscore, eval_type, depth, bestcode);
     return bestscore;
 }
 
