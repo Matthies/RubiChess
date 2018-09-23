@@ -1090,11 +1090,11 @@ void initBitmaphelper()
         {
             if (from == j)
                 continue;
-            if (RANK(from) == RANK(j) && !OUTERFILE(j))
+            if (RANK(from) == RANK(j) && !ISOUTERFILE(j))
                 mRookTbl[from].mask |= BITSET(j);
             if (FILE(from) == FILE(j) && !PROMOTERANK(j))
                 mRookTbl[from].mask |= BITSET(j);
-            if (abs(RANK(from) - RANK(j)) == abs(FILE(from) - FILE(j)) && !OUTERFILE(j) && !PROMOTERANK(j))
+            if (abs(RANK(from) - RANK(j)) == abs(FILE(from) - FILE(j)) && !ISOUTERFILE(j) && !PROMOTERANK(j))
                 mBishopTbl[from].mask |= BITSET(j);
         }
 

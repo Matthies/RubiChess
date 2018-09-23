@@ -92,14 +92,14 @@ void Sleep(long x);
 #define RRANK(x,s) ((s) ? ((x) >> 3) ^ 7 : ((x) >> 3))
 #define FILE(x) ((x) & 0x7)
 #define INDEX(r,f) (((r) << 3) | (f))
-
+#define BORDERDIST(f) ((f) > 3 ? 7 - (f) : (f))
 #define PROMOTERANK(x) (RANK(x) == 0 || RANK(x) == 7)
 #define PROMOTERANKBB 0xff000000000000ff
 #define RANK3(s) ((s) ? 0x0000ff0000000000 : 0x0000000000ff0000)
 #define RANK7(s) ((s) ? 0x000000000000ff00 : 0x00ff000000000000)
 #define FILEABB 0x0101010101010101
 #define FILEHBB 0x8080808080808080
-#define OUTERFILE(x) (FILE(x) == 0 || FILE(x) == 7)
+#define ISOUTERFILE(x) (FILE(x) == 0 || FILE(x) == 7)
 #define ISNEIGHBOUR(x,y) ((x) >= 0 && (x) < 64 && (y) >= 0 && (y) < 64 && abs(RANK(x) - RANK(y)) <= 1 && abs(FILE(x) - FILE(y)) <= 1)
 
 #define S2MSIGN(s) (s ? -1 : 1)
@@ -145,7 +145,7 @@ typedef const int32_t eval;
 #define NEWTAPEREDEVAL(v, ph) (((256 - (ph)) * GETMGVAL(v) + (ph) * GETEGVAL(v)) / 256)
 #define PSQTINDEX(i,s) ((s) ? (i) : (i) ^ 0x38)
 
-#define NUMOFEVALPARAMS (4 + 8 + 8 + 6 + 2 + 7 + 1 + 7 + 7*64)
+#define NUMOFEVALPARAMS (4 + 8 + 8 + 6 + 2 + 7 + 1 + 7 + 7*64 + 2*5*4)
 struct evalparamset {
     eval ePawnpushthreatbonus =  VALUE(  19,   8);
     eval eSafepawnattackbonus =  VALUE(  44,  24);
@@ -163,6 +163,18 @@ struct evalparamset {
     eval eMaterialvalue[7] = {  VALUE(   0,   0), VALUE( 100, 100), VALUE( 314, 314), VALUE( 314, 314), VALUE( 483, 483), VALUE( 913, 913), VALUE(32509,32509)  };
     eval eWeakkingringpenalty =  VALUE( -14,   0);
     eval eKingattackweight[7] = {  VALUE(   0,   0), VALUE(   0,   0), VALUE(   5,  -2), VALUE(   3,   0), VALUE(   4,   0), VALUE(   3,   8), VALUE(   0,   0)  };
+    eval ePawnstormblocked[4][5] = {
+        {  VALUE(   0,   0), VALUE(   0,   0), VALUE( -22,   9), VALUE(   7,   0), VALUE(  18, -19)  },
+        {  VALUE(   0,   0), VALUE(   0,   0), VALUE(   2,  -7), VALUE(  21,  -6), VALUE(  -2,   3)  },
+        {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  -6,  -6), VALUE(  -1,   1), VALUE( -13,  -3)  },
+        {  VALUE(   0,   0), VALUE(   0,   0), VALUE( -16,   2), VALUE(  -9,   8), VALUE(  10, -14)  }
+    };
+    eval ePawnstormfree[4][5] = {
+        {  VALUE( -20,  66), VALUE(  97,  38), VALUE( -29,  38), VALUE( -21,   8), VALUE(   0,   0)  },
+        {  VALUE(  52,  40), VALUE(  62,  10), VALUE( -30,  20), VALUE(   1,   6), VALUE(   0,   5)  },
+        {  VALUE(  30,  54), VALUE(  83,  19), VALUE( -21,  21), VALUE(  -8,   4), VALUE(  -2,   7)  },
+        {  VALUE(  33,  38), VALUE(  78,  25), VALUE( -13,  13), VALUE(  -4,   6), VALUE(  -2,   6)  }
+    };
     eval ePsqt[7][64] = {
         {  VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
