@@ -53,6 +53,8 @@ int getQuiescence(int alpha, int beta, int depth)
             return patscore;
     }
 
+    pos.prepareStack();
+
     chessmovelist *movelist = new chessmovelist;
 
     if (pos.isCheck)
@@ -224,6 +226,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     if (pos.halfmovescounter >= 100)
         return SCOREDRAW;
 #endif
+
     if (depth <= 0)
     {
         // update selective depth info
@@ -236,7 +239,8 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     if (pos.isCheck)
         extendall = 1;
 
-    // chessmove lastmove = pos.actualpath.move[pos.actualpath.length - 1];
+    pos.prepareStack();
+
     // Here some reduction/extension depending on the lastmove...
 
     // Nullmove
@@ -387,7 +391,6 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 #ifdef DEBUG
             if (en.debug && pos.debughash == pos.hash)
             {
-                pos.actualpath.length = pos.ply;
                 printf("Leaving position to debug... stoping debug. Score:%d\n", score);
                 pos.maxdebugdepth = oldmaxdebugdepth;
                 pos.mindebugdepth = oldmindebugdepth;
@@ -430,7 +433,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
                 if (score > alpha)
                 {
-                    PDEBUG(depth, "(alphabeta) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, m->toString().c_str(), pos.actualpath.toString().c_str());
+                    PDEBUG(depth, "(alphabeta) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, m->toString().c_str(), pos.movesOnStack().c_str());
                     alpha = score;
                     eval_type = HASHEXACT;
                 }
@@ -612,7 +615,6 @@ int rootsearch(int alpha, int beta, int depth)
 #ifdef DEBUG
         if (en.debug && pos.debughash == pos.hash)
         {
-            pos.actualpath.length = pos.ply;
             printf("Leaving position to debug... stoping debug. Score:%d\n", score);
             pos.maxdebugdepth = oldmaxdebugdepth;
             pos.mindebugdepth = oldmindebugdepth;
@@ -677,7 +679,7 @@ int rootsearch(int alpha, int beta, int depth)
 
         if (score > alpha)
         {
-            PDEBUG(depth, "(rootsearch) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, m->toString().c_str(), pos.actualpath.toString().c_str());
+            PDEBUG(depth, "(rootsearch) score=%d > alpha=%d  -> new best move(%d) %s   Path:%s\n", score, alpha, depth, m->toString().c_str(), pos.movesOnStack().c_str());
             if (isMultiPV)
             {
                 if (pos.bestmovescore[maxmoveindex - 1] > alpha)
@@ -1057,10 +1059,6 @@ void searchguide()
     en.dpnodes = 0;
     en.npd[0] = 1;
 #endif
-#ifdef FPDEBUG
-    en.fpnodes = 0;
-    en.wrongfp = 0;
-#endif
     en.fh = en.fhf = 0;
 
     if (en.MultiPV > 1)
@@ -1102,15 +1100,6 @@ void searchguide()
         }
     }
     enginethread.join();
-#ifdef FPDEBUG
-    if (en.fpnodes)
-    {
-        char s[256];
-        sprintf_s(s, "futilityprune;%llu;%llu;%llu\n", en.fpnodes, en.wrongfp, (int)en.wrongfp * 100 / en.fpnodes);
-        //en.fdebug << s;
-        cout << s;
-    }
-#endif
 #ifdef DEBUG
     char s[256];
     if (en.nodes)

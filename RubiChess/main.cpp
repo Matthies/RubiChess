@@ -115,6 +115,7 @@ long long perft(int depth, bool dotests)
     }
     chessmovelist movelist;
     movelist.length = pos.getMoves(&movelist.move[0]);
+    pos.prepareStack();
     //movelist->sort();
     //printf("Path: %s \nMovelist : %s\n", p->actualpath.toString().c_str(), movelist->toString().c_str());
 
