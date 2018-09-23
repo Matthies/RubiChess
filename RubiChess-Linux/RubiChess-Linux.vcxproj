@@ -62,21 +62,27 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Debug|ARM'">
     <IncludePath>$(IncludePath)</IncludePath>
+    <AdditionalSourcesToCopyMapping>$(ProjectDir)..\RubiChess\tbcore.c:=$(RemoteProjectDir)/tbcore.c</AdditionalSourcesToCopyMapping>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Release|ARM'">
     <IncludePath>$(IncludePath)</IncludePath>
+    <AdditionalSourcesToCopyMapping>$(ProjectDir)..\RubiChess\tbcore.c:=$(RemoteProjectDir)/tbcore.c</AdditionalSourcesToCopyMapping>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Debug|x64'">
     <IncludePath>$(IncludePath)</IncludePath>
+    <AdditionalSourcesToCopyMapping>$(ProjectDir)..\RubiChess\tbcore.c:=$(RemoteProjectDir)/tbcore.c</AdditionalSourcesToCopyMapping>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Release|x64'">
     <IncludePath>$(IncludePath)</IncludePath>
+    <AdditionalSourcesToCopyMapping>$(ProjectDir)..\RubiChess\tbcore.c:=$(RemoteProjectDir)/tbcore.c</AdditionalSourcesToCopyMapping>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Debug|x86'">
     <IncludePath>$(IncludePath)</IncludePath>
+    <AdditionalSourcesToCopyMapping>$(ProjectDir)..\RubiChess\tbcore.c:=$(RemoteProjectDir)/tbcore.c</AdditionalSourcesToCopyMapping>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Release|x86'">
     <IncludePath>$(IncludePath)</IncludePath>
+    <AdditionalSourcesToCopyMapping>$(ProjectDir)..\RubiChess\tbcore.c:=$(RemoteProjectDir)/tbcore.c</AdditionalSourcesToCopyMapping>
   </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="..\RubiChess\board.cpp" />

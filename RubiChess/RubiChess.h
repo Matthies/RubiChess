@@ -606,8 +606,8 @@ public:
     int rootheight;
     chessmove bestmove[MAXMULTIPV];
     int bestmovescore[MAXMULTIPV];
-    unsigned long killer[2][MAXDEPTH];
-    unsigned int history[7][64];
+    uint32_t killer[2][MAXDEPTH];
+    uint32_t history[7][64];
 #ifdef DEBUG    
     unsigned long long debughash = 0;
 #endif
@@ -657,7 +657,7 @@ public:
     void unplayNullMove();
     void getpvline(int depth, int pvnum);
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
-    uint32_t chessposition::shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal
+    uint32_t shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal
     template <EvalTrace> int getPositionValue();
     template <EvalTrace> int getPawnValue(pawnhashentry **entry);
     template <EvalTrace> int getValue();

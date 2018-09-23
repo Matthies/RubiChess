@@ -427,7 +427,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                         en.fhf++;
 #endif
                     PDEBUG(depth, "(alphabeta) score=%d >= beta=%d  -> cutoff\n", score, beta);
-                    tp.addHash(score, HASHBETA, effectiveDepth, bestcode);
+                    tp.addHash(score, HASHBETA, effectiveDepth, (uint16_t)bestcode);
                     return score;   // fail soft beta-cutoff
                 }
 
@@ -452,7 +452,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     }
 
     if (bestcode)
-        tp.addHash(bestscore, eval_type, depth, bestcode);
+        tp.addHash(bestscore, eval_type, depth, (uint16_t)bestcode);
     return bestscore;
 }
 
@@ -672,7 +672,7 @@ int rootsearch(int alpha, int beta, int depth)
                 en.fhf++;
 #endif
             PDEBUG(depth, "(rootsearch) score=%d >= beta=%d  -> cutoff\n", score, beta);
-            tp.addHash(beta, HASHBETA, effectiveDepth, m->code);
+            tp.addHash(beta, HASHBETA, effectiveDepth, (uint16_t)m->code);
             //free(newmoves);
             return beta;   // fail hard beta-cutoff
         }
@@ -697,16 +697,16 @@ int rootsearch(int alpha, int beta, int depth)
     {
         if (eval_type == HASHEXACT)
         {
-            tp.addHash(pos.bestmovescore[0], eval_type, depth, pos.bestmove[0].code);
+            tp.addHash(pos.bestmovescore[0], eval_type, depth, (uint16_t)pos.bestmove[0].code);
             return pos.bestmovescore[maxmoveindex - 1];
         }
         else {
-            tp.addHash(alpha, eval_type, depth, pos.bestmove[0].code);
+            tp.addHash(alpha, eval_type, depth, (uint16_t)pos.bestmove[0].code);
             return alpha;
         }
     }
     else {
-        tp.addHash(alpha, eval_type, depth, pos.bestmove[0].code);
+        tp.addHash(alpha, eval_type, depth, (uint16_t)pos.bestmove[0].code);
         return alpha;
     }
 

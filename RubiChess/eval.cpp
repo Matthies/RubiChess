@@ -199,28 +199,11 @@ void chessposition::init()
 
 
 
-static void printEvalTrace(int level, string s, int v[])
-{
-    printf("%*s %32s %*s : %5d | %5d | %5d\n", level * 2 + 1, "-", s.c_str(), 20 - level * 2, " ", v[0], -v[1], v[0] + v[1]);
-}
-
-static void printEvalTrace(int level, string s, int v)
-{
-    printf("%*s %32s %*s :       |       | %5d\n", level * 2 + 1, "-", s.c_str(), 20 - level * 2, " ", v);
-}
-
-
 template <EvalTrace Et> //FIXME: TRACE mode was completely remove at eval rewrite; should probably to be implemented again
 int chessposition::getPawnValue(pawnhashentry **entry)
 {
     int val = 0;
     int index;
-    int attackingpawnval[2] = { 0 };
-    int connectedpawnval[2] = { 0 };
-    int passedpawnval[2] = { 0 };
-    int isolatedpawnval[2] = { 0 };
-    int doubledpawnval[2] = { 0 };
-    int backwardpawnval[2] = { 0 };
 
     bool hashexist = pwnhsh.probeHash(entry);
     pawnhashentry *entryptr = *entry;
@@ -244,7 +227,7 @@ int chessposition::getPawnValue(pawnhashentry **entry)
 
                 entryptr->attackedBy2[me] |= (entryptr->attacked[me] & pawn_attacks_occupied[index][me]);
                 entryptr->attacked[me] |= pawn_attacks_occupied[index][me];
-                entryptr->semiopen[me] &= ~BITSET(FILE(index)); 
+                entryptr->semiopen[me] &= (int)(~BITSET(FILE(index))); 
                 if (!(passedPawnMask[index][me] & piece00[pc ^ S2MMASK]))
                 {
                     // passed pawn
@@ -321,11 +304,6 @@ int chessposition::getPositionValue()
     int index;
     int kingattackpiececount[2][7] = { 0 };
     int kingattackers[2];
-    int psqteval[2] = { 0 };
-    int mobilityeval[2] = { 0 };
-    int freeslidereval[2] = { 0 };
-    int doublebishopeval = 0;
-    int kingshieldeval[2] = { 0 };
     U64 occupied = occupied00[0] | occupied00[1];
     memset(attackedBy, 0, sizeof(attackedBy));
 
@@ -488,8 +466,6 @@ int chessposition::getValue()
 
                 if (!winpossible)
                 {
-                    if (Et == TRACE)
-                        printEvalTrace(0, "missing material", SCOREDRAW);
                     return SCOREDRAW;
                 }
             }

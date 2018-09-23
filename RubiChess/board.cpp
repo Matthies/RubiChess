@@ -480,9 +480,6 @@ void chessposition::tbFilterRootMoves()
 /* test the actualmove for three-fold-repetition as the repetition table may give false positive due to table collisions */
 int chessposition::testRepetiton()
 {
-
-    U64 h = hash;
-   
     int hit = 0;
     for (int i = mstop - 1; i >= 0; i--)
     {
@@ -835,7 +832,7 @@ string chessposition::toFen()
             {
                 if (!(mailbox[index] & S2MMASK))
                 {
-                    c += 'A' - 'a';
+                    c = (char)(c + ('A' - 'a'));
                 }
                 if (blanknum)
                 {
