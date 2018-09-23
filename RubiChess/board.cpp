@@ -483,41 +483,6 @@ int chessposition::testRepetiton()
 
     U64 h = hash;
    
-#if 0
-    chessmovesequencelist *ml = &actualpath;
-    int oldlength = ml->length;
-    int hit = 0;
-    int i;
-    for (i = oldlength; i > 0;)
-    {
-        if (ml->move[--i].code == 0)
-            unplayNullMove();
-        else
-            unplayMove(&ml->move[i]);
-        if (hash == h)
-        {
-            hit++;
-        }
-        if (halfmovescounter == 0)
-            break;
-    }
-    for (; i < oldlength;)
-    {
-        if (ml->move[i].code == 0)
-        {
-            playNullMove();
-        }
-        else
-        {
-            if (!playMove(&ml->move[i]))
-            {
-                printf("Alarm. Wie kommt ein illegaler Zug %s (%d) in die actuallist\n", ml->move[i].toString().c_str(), i);
-                ml->print();
-            }
-        }
-        i++;
-    }
-#else
     int hit = 0;
     for (int i = mstop - 1; i >= 0; i--)
     {
@@ -533,7 +498,6 @@ int chessposition::testRepetiton()
         if (movestack[i].halfmovescounter == 0)
             break;
     }
-#endif
 
     return hit;
 }
@@ -605,15 +569,9 @@ void chessposition::prepareStack()
 
 void chessposition::playNullMove()
 {
-#if 0
-    movestack[mstop].halfmovescounter = halfmovescounter;
-    movestack[mstop++].hash = hash;
-#endif
     movestack[mstop++].movecode = 0;
-    //mstop++;
     state ^= S2MMASK;
     hash ^= zb.s2m;
-    //actualpath.move[actualpath.length++].code = 0;
     ply++;
 }
 
@@ -622,7 +580,6 @@ void chessposition::unplayNullMove()
 {
     state ^= S2MMASK;
     hash ^= zb.s2m;
-    //actualpath.length--;
     ply--;
     mstop--;
 }
@@ -822,18 +779,6 @@ void chessposition::print()
         BitboardDraw(attackedBy[0][i]);
         BitboardDraw(attackedBy[1][i]);
     }
-#endif
-#if 0
-    if (tp.size > 0 && tp.testHash())
-    {
-        chessmove cm;
-        cm.code = tp.getMoveCode();
-        printf("info string Hash-Info: depth=%d Val=%d (%d) Move:%s\n", tp.getDepth(), tp.getValue(), tp.getValtype(), cm.toString().c_str());
-    }
-#endif
-#if 0
-    if (actualpath.length)
-        printf("info string Moves in current search: %s\n", actualpath.toString().c_str());
 #endif
     printf("info string Moves in current search: %s\n", movesOnStack().c_str());
 }
@@ -1289,18 +1234,6 @@ bool chessposition::playMove(chessmove *cm)
     PieceCode promote = GETPROMOTION(cm->code);
     PieceCode capture = GETCAPTURE(cm->code);
 
-#if 0
-    movestack[mstop].ept = ept;
-    movestack[mstop].hash = hash;
-    movestack[mstop].pawnhash = pawnhash;
-    movestack[mstop].materialhash = materialhash;
-    movestack[mstop].state = state;
-    movestack[mstop].kingpos[0] = kingpos[0];
-    movestack[mstop].kingpos[1] = kingpos[1];
-    movestack[mstop].fullmovescounter = fullmovescounter;
-    movestack[mstop].halfmovescounter = halfmovescounter;
-    movestack[mstop].isCheck = isCheck;
-#endif
     halfmovescounter++;
 
     // Fix hash regarding capture
@@ -1445,9 +1378,7 @@ bool chessposition::playMove(chessmove *cm)
 
     ply++;
     rp.addPosition(hash);
-    //actualpath.move[actualpath.length++] = *cm;
     movestack[mstop++].movecode = cm->code;
-    //mstop++;
 
     return true;
 }
@@ -1462,7 +1393,6 @@ void chessposition::unplayMove(chessmove *cm)
     PieceCode capture = GETCAPTURE(cm->code);
     int s2m;
 
-    //actualpath.length--;
     rp.removePosition(hash);
     ply--;
 

@@ -692,10 +692,6 @@ public:
     bool isWhite;
     unsigned long long nodes;
     unsigned long long tbhits;
-#ifdef FPDEBUG
-    unsigned long long fpnodes;
-    unsigned long long wrongfp;
-#endif
 #ifdef DEBUG
     unsigned long long qnodes;
 	unsigned long long wastedpvsnodes;
