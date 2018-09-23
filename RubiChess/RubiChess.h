@@ -474,6 +474,7 @@ struct chessmovestack
     int halfmovescounter;
     int fullmovescounter;
     int isCheck;
+    uint32_t movecode;
 };
 
 
@@ -602,7 +603,6 @@ public:
 #endif
     chessmovelist rootmovelist;
     chessmovesequencelist pvline;
-    chessmovesequencelist actualpath;
     int rootheight;
     chessmove bestmove[MAXMULTIPV];
     int bestmovescore[MAXMULTIPV];
@@ -649,6 +649,8 @@ public:
     int getMoves(chessmove *m, MoveType t = ALL);
     void getRootMoves();
     void tbFilterRootMoves();
+    void prepareStack();
+    string movesOnStack();
     bool playMove(chessmove *cm);
     void unplayMove(chessmove *cm);
     void playNullMove();

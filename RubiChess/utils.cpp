@@ -79,6 +79,7 @@ string AlgebraicFromShort(string s)
     int castle0 = 0;
     PieceType promotion = BLANKTYPE;
     chessmovelist ml;
+    pos.prepareStack();
     ml.length = pos.getMoves(&ml.move[0]);
     PieceType pt = PAWN;
     int to = 0x88, from = 0x88;

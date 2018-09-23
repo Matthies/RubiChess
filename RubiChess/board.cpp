@@ -355,7 +355,6 @@ int chessposition::getFromFen(const char* sFen)
 
     isCheck = isAttacked(kingpos[state & S2MMASK]);
 
-    actualpath.length = 0;
     hash = zb.getHash();
     pawnhash = zb.getPawnHash();
     materialhash = zb.getMaterialHash();
@@ -399,7 +398,6 @@ bool chessposition::applyMove(string s)
                 if (halfmovescounter == 0)
                 {
                     // Keep the list short, we have to keep below MAXMOVELISTLENGTH
-                    actualpath.length = 0;
                     mstop = 0;
                 }
                 retval = true;
@@ -410,7 +408,7 @@ bool chessposition::applyMove(string s)
             break;
         }
     }
-    rootheight = actualpath.length;
+    rootheight = mstop;
     return retval;
 }
 
@@ -419,6 +417,7 @@ void chessposition::getRootMoves()
 {
     // Precalculating the list of legal moves didn't work well for some unknown reason but we need the number of legal moves in MultiPV mode
     chessmovelist movelist;
+    prepareStack();
     movelist.length = getMoves(&movelist.move[0]);
     int bestval = SCOREBLACKWINS;
     rootmovelist.length = 0;
@@ -589,13 +588,32 @@ void chessposition::mirror()
 }
 
 
+void chessposition::prepareStack()
+{
+    movestack[mstop].ept = ept;
+    movestack[mstop].hash = hash;
+    movestack[mstop].pawnhash = pawnhash;
+    movestack[mstop].materialhash = materialhash;
+    movestack[mstop].state = state;
+    movestack[mstop].kingpos[0] = kingpos[0];
+    movestack[mstop].kingpos[1] = kingpos[1];
+    movestack[mstop].fullmovescounter = fullmovescounter;
+    movestack[mstop].halfmovescounter = halfmovescounter;
+    movestack[mstop].isCheck = isCheck;
+}
+
+
 void chessposition::playNullMove()
 {
+#if 0
     movestack[mstop].halfmovescounter = halfmovescounter;
     movestack[mstop++].hash = hash;
+#endif
+    movestack[mstop++].movecode = 0;
+    //mstop++;
     state ^= S2MMASK;
     hash ^= zb.s2m;
-    actualpath.move[actualpath.length++].code = 0;
+    //actualpath.move[actualpath.length++].code = 0;
     ply++;
 }
 
@@ -604,7 +622,7 @@ void chessposition::unplayNullMove()
 {
     state ^= S2MMASK;
     hash ^= zb.s2m;
-    actualpath.length--;
+    //actualpath.length--;
     ply--;
     mstop--;
 }
@@ -631,6 +649,7 @@ void chessposition::getpvline(int depth, int pvnum)
             break;
         }
 
+        prepareStack();
         if (!playMove(&cm))
         {
             printf("info string Alarm - Illegaler Zug %s in pvline\n", cm.toString().c_str());
@@ -812,8 +831,23 @@ void chessposition::print()
         printf("info string Hash-Info: depth=%d Val=%d (%d) Move:%s\n", tp.getDepth(), tp.getValue(), tp.getValtype(), cm.toString().c_str());
     }
 #endif
+#if 0
     if (actualpath.length)
         printf("info string Moves in current search: %s\n", actualpath.toString().c_str());
+#endif
+    printf("info string Moves in current search: %s\n", movesOnStack().c_str());
+}
+
+string chessposition::movesOnStack()
+{
+    string s = "";
+    for (int i = 0; i < mstop; i++)
+    {
+        chessmove cm;
+        cm.code = movestack[i].movecode;
+        s = s + cm.toString() + " ";
+    }
+    return s;
 }
 
 
@@ -1255,6 +1289,7 @@ bool chessposition::playMove(chessmove *cm)
     PieceCode promote = GETPROMOTION(cm->code);
     PieceCode capture = GETCAPTURE(cm->code);
 
+#if 0
     movestack[mstop].ept = ept;
     movestack[mstop].hash = hash;
     movestack[mstop].pawnhash = pawnhash;
@@ -1265,7 +1300,7 @@ bool chessposition::playMove(chessmove *cm)
     movestack[mstop].fullmovescounter = fullmovescounter;
     movestack[mstop].halfmovescounter = halfmovescounter;
     movestack[mstop].isCheck = isCheck;
-
+#endif
     halfmovescounter++;
 
     // Fix hash regarding capture
@@ -1410,8 +1445,9 @@ bool chessposition::playMove(chessmove *cm)
 
     ply++;
     rp.addPosition(hash);
-    actualpath.move[actualpath.length++] = *cm;
-    mstop++;
+    //actualpath.move[actualpath.length++] = *cm;
+    movestack[mstop++].movecode = cm->code;
+    //mstop++;
 
     return true;
 }
@@ -1426,7 +1462,7 @@ void chessposition::unplayMove(chessmove *cm)
     PieceCode capture = GETCAPTURE(cm->code);
     int s2m;
 
-    actualpath.length--;
+    //actualpath.length--;
     rp.removePosition(hash);
     ply--;
 

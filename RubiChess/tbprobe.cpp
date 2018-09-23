@@ -344,6 +344,7 @@ static int probe_ab(int alpha, int beta, int *success)
     // Generate (at least) all legal captures including (under)promotions.
     // It is OK to generate more, as long as they are filtered out below.
     chessmovelist movelist;
+    pos.prepareStack();
     movelist.length = pos.getMoves(&movelist.move[0]);
     for (int i = 0; i < movelist.length; i++)
     {
@@ -396,6 +397,7 @@ int probe_wdl(int *success)
 
   // Generate (at least) all legal captures including (under)promotions.
   chessmovelist movelist;
+  pos.prepareStack();
   movelist.length = pos.getMoves(&movelist.move[0]);
 
   // We do capture resolution, letting best_cap keep track of the best
@@ -534,6 +536,7 @@ int probe_dtz(int *success)
     if (wdl > 0) {
         // Generate at least all legal non-capturing pawn moves
         // including non-capturing promotions.
+        pos.prepareStack();
         movelist.length = pos.getMoves(&movelist.move[0]);
 
         for (int i = 0; i < movelist.length; i++)
@@ -577,6 +580,7 @@ int probe_dtz(int *success)
         // as the "best" move, leading to dtz of -1 or -101.
         // In case of mate, this will cause -1 to be returned.
         best = wdl_to_dtz[wdl + 2];
+        pos.prepareStack();
         movelist.length = pos.getMoves(&movelist.move[0]);
     }
     for (int i = 0; i < movelist.length; i++)
@@ -643,6 +647,7 @@ int root_probe()
         int v = 0;
         if (pos.isCheck && dtz > 0) {
             chessmovelist nextmovelist;
+            pos.prepareStack();
             nextmovelist.length = pos.getMoves(&nextmovelist.move[0]);
             bool foundevasion = false;
             for (int j = 0; j < nextmovelist.length; j++)

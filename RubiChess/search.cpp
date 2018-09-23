@@ -53,6 +53,8 @@ int getQuiescence(int alpha, int beta, int depth)
             return patscore;
     }
 
+    pos.prepareStack();
+
     chessmovelist *movelist = new chessmovelist;
 
     if (pos.isCheck)
@@ -224,6 +226,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     if (pos.halfmovescounter >= 100)
         return SCOREDRAW;
 #endif
+
     if (depth <= 0)
     {
         // update selective depth info
@@ -235,6 +238,8 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
     if (pos.isCheck)
         extendall = 1;
+
+    pos.prepareStack();
 
     // chessmove lastmove = pos.actualpath.move[pos.actualpath.length - 1];
     // Here some reduction/extension depending on the lastmove...
