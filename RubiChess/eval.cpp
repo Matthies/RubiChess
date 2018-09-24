@@ -78,7 +78,7 @@ void registeralltuners()
         for (j = 0; j < 5; j++)
             registertuner(&eps.ePawnstormfree[i][j], "ePawnstormfree", j, 5, i, 4, tuneIt);
 
-    tuneIt = false;
+    //tuneIt = false;
 
     registertuner(&eps.ePawnpushthreatbonus, "ePawnpushthreatbonus", 0, 0, 0, 0, tuneIt);
     registertuner(&eps.eSafepawnattackbonus, "eSafepawnattackbonus", 0, 0, 0, 0, tuneIt);
@@ -103,7 +103,7 @@ void registeralltuners()
         registertuner(&eps.eKingattackweight[i], "eKingattackweight", i, 7, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
-        registertuner(&eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && (i >= KNIGHT || (j >= 8 && j < 56)));
+        registertuner(&eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
 }
 #endif
 
