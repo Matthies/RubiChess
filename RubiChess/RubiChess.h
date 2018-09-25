@@ -671,7 +671,7 @@ public:
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
     uint32_t chessposition::shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal
     template <EvalTrace> int getPositionValue();
-    template <EvalTrace> int getPawnValue(pawnhashentry **entry);
+    template <EvalTrace> int getPawnAndKingValue(pawnhashentry **entry);
     template <EvalTrace> int getValue();
 #ifdef DEBUG
     void debug(int depth, const char* format, ...);

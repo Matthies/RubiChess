@@ -546,9 +546,11 @@ void chessposition::mirror()
     if (ept)
         ept ^= RANKMASK;
 
+    pawnhash ^= zb.boardtable[(kingpos[0] << 4) | WKING] ^ zb.boardtable[((kingpos[1] ^ RANKMASK) << 4) | WKING];
+    pawnhash ^= zb.boardtable[(kingpos[1] << 4) | BKING] ^ zb.boardtable[((kingpos[0] ^ RANKMASK) << 4) | BKING];
     int kingpostemp = kingpos[0];
-    kingpos[0] = kingpos[1] ^= RANKMASK;
-    kingpos[1] = kingpostemp ^= RANKMASK;
+    kingpos[0] = kingpos[1] ^ RANKMASK;
+    kingpos[1] = kingpostemp ^ RANKMASK;
 }
 
 
@@ -1341,6 +1343,9 @@ bool chessposition::playMove(chessmove *cm)
 
     if (ptype == KING)
     {
+        // Store king position in pawn hash
+        pawnhash ^= zb.boardtable[(from << 4) | pfrom] ^ zb.boardtable[(to << 4) | pfrom];
+
         /* handle castle */
         state &= (s2m ? ~(BQCMASK | BKCMASK) : ~(WQCMASK | WKCMASK));
         int c = castleindex[from][to];

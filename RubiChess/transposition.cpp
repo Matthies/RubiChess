@@ -110,7 +110,8 @@ u8 zobrist::getPawnHash()
             pmask ^= (1ULL << index);
         }
     }
-
+    // Store also kings position in pawn hash
+    hash ^= boardtable[(pos.kingpos[0] << 4) | WKING] ^ boardtable[(pos.kingpos[1] << 4) | BKING];
     return hash;
 }
 

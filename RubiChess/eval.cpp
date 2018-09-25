@@ -129,7 +129,7 @@ static void printEvalTrace(int level, string s, int v)
 
 
 template <EvalTrace Et> //FIXME: TRACE mode was completely remove at eval rewrite; should probably to be implemented again
-int chessposition::getPawnValue(pawnhashentry **entry)
+int chessposition::getPawnAndKingValue(pawnhashentry **entry)
 {
     int val = 0;
     int index;
@@ -144,6 +144,8 @@ int chessposition::getPawnValue(pawnhashentry **entry)
     pawnhashentry *entryptr = *entry;
     if (!hashexist)
     {
+        entryptr->value += EVAL(eps.ePsqt[KING][PSQTINDEX(kingpos[0], 0)], 1);
+        entryptr->value += EVAL(eps.ePsqt[KING][PSQTINDEX(kingpos[1], 1)], -1);
         entryptr->value += EVAL(eps.eMaterialvalue[PAWN], POPCOUNT(piece00[WPAWN]) - POPCOUNT(piece00[BPAWN]));
 
         for (int pc = WPAWN; pc <= BPAWN; pc++)
@@ -205,6 +207,47 @@ int chessposition::getPawnValue(pawnhashentry **entry)
                 }
                 pb ^= BITSET(index);
             }
+
+            // Pawn storm evaluation
+            int ki = kingpos[me];
+            int kf = FILE(ki);
+            int kr = RANK(ki);
+            for (int f = max(0, kf - 1), j = ki + f - kf; f <= min(kf + 1, 7); f++, j++)
+            {
+                U64 mask = (filebarrierMask[j][me] | BITSET(j)); // FIXME: Better mask would be useful
+                U64 yourStormingPawn = piece00[WPAWN | you] & mask;
+                int yourDist = 7;
+                if (yourStormingPawn)
+                {
+                    int nextPawn;
+                    if (me)
+                        MSB(nextPawn, yourStormingPawn);
+                    else
+                        LSB(nextPawn, yourStormingPawn);
+                    yourDist = abs(RANK(nextPawn) - kr);
+                }
+
+                if (yourDist > 4)   // long way for the pawn so we don't care... maybe extend later
+                    continue;
+
+                U64 myProtectingPawn = piece00[WPAWN | me] & mask;
+                int myDist = 7;
+                if (myProtectingPawn)
+                {
+                    int nextPawn;
+                    if (me)
+                        MSB(nextPawn, myProtectingPawn);
+                    else
+                        LSB(nextPawn, myProtectingPawn);
+                    myDist = abs(RANK(nextPawn) - kr);
+                }
+
+                bool isBlocked = (myDist != 7 && (myDist == yourDist - 1));
+                if (isBlocked)
+                    entryptr->value += EVAL(eps.ePawnstormblocked[BORDERDIST(f)][yourDist], S2MSIGN(me));
+                else
+                    entryptr->value += EVAL(eps.ePawnstormfree[BORDERDIST(f)][yourDist], S2MSIGN(me));
+            }
         }
     }
 
@@ -249,7 +292,7 @@ int chessposition::getPositionValue()
 
     int result = EVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
 
-    result += getPawnValue<Et>(&phentry);
+    result += getPawnAndKingValue<Et>(&phentry);
 
     attackedBy[0][KING] = king_attacks[kingpos[0]];
     attackedBy2[0] = phentry->attackedBy2[0] | (attackedBy[0][KING] & phentry->attacked[0]);
@@ -257,13 +300,9 @@ int chessposition::getPositionValue()
     attackedBy[1][KING] = king_attacks[kingpos[1]];
     attackedBy2[1] = phentry->attackedBy2[1] | (attackedBy[1][KING] & phentry->attacked[1]);
     attackedBy[1][0] = attackedBy[1][KING] | phentry->attacked[1];
- 
+
     kingattackers[0] = POPCOUNT(attackedBy[0][PAWN] & kingdangerMask[kingpos[1]][1]);
     kingattackers[1] = POPCOUNT(attackedBy[1][PAWN] & kingdangerMask[kingpos[0]][0]);
-
-    // king specials
-    result += EVAL(eps.ePsqt[KING][PSQTINDEX(kingpos[0], 0)], 1);
-    result += EVAL(eps.ePsqt[KING][PSQTINDEX(kingpos[1], 1)], -1);
 
     for (int pc = WKNIGHT; pc <= BQUEEN; pc++)
     {
@@ -376,46 +415,6 @@ int chessposition::getPositionValue()
         U64 attackedPieces = PAWNATTACK(me, pawnPush) & occupied00[you] & ~attackedBy[me][PAWN];
         result += EVAL(eps.ePawnpushthreatbonus, S2MSIGN(me) * POPCOUNT(attackedPieces));
 
-        // Pawn storm evaluation
-        int ki = kingpos[me];
-        int kf = FILE(ki);
-        int kr = RANK(ki);
-        for (int f = max(0, kf - 1), j = ki + f - kf; f <= min(kf + 1, 7); f++, j++)
-        {
-            U64 mask = (filebarrierMask[j][me] | BITSET(j)); // FIXME: Better mask would be useful
-            U64 yourStormingPawn = piece00[WPAWN | you] & mask;
-            int yourDist = 7;
-            if (yourStormingPawn)
-            {
-                int nextPawn;
-                if (me)
-                    MSB(nextPawn, yourStormingPawn);
-                else
-                    LSB(nextPawn, yourStormingPawn);
-                yourDist = abs(RANK(nextPawn) - kr);
-            }
-
-            if (yourDist > 4)   // long way for the pawn so we don't care... maybe extend later
-                continue;
-
-            U64 myProtectingPawn = piece00[WPAWN | me] & mask;
-            int myDist = 7;
-            if (myProtectingPawn)
-            {
-                int nextPawn;
-                if (me)
-                    MSB(nextPawn, myProtectingPawn);
-                else
-                    LSB(nextPawn, myProtectingPawn);
-                myDist = abs(RANK(nextPawn) - kr);
-            }
-
-            bool isBlocked = (myDist != 7 && (myDist == yourDist - 1));
-            if (isBlocked)
-                result += EVAL(eps.ePawnstormblocked[BORDERDIST(f)][yourDist], S2MSIGN(me));
-            else
-                result += EVAL(eps.ePawnstormfree[BORDERDIST(f)][yourDist], S2MSIGN(me));
-        }
     }
 
     return NEWTAPEREDEVAL(result, ph);
