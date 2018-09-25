@@ -1,0 +1,16 @@
+pe1 (10756187): Erste Umsetzung Pawn storm, nur dessen Werte getunet (commit f8dd601163adbde4fc33747ab6bf2de965e8b7a3)
+STC:
+Score of RubiChess-Bitboard-pe1 vs RubiChess-Bitboard-ms: 721 - 647 - 930  [0.516] 2298
+Elo difference: 11.19 +/- 10.95
+SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+LTC: Vorzeitiger Abbruch, um pe2 zu testen. Sieht aber gut aus.
+Score of RubiChess-Bitboard-pe1 vs RubiChess-Bitboard-ms: 337 - 289 - 590  [0.520] 1216
+Elo difference: 13.72 +/- 14.00
+SPRT: llr 1.1, lbound -1.39, ubound 1.39
+
+pe2 (12737043): Alle Parameter komplett mehrfach getunet (commit c1c41acd059cf95c1720cebaaa99e4a3d2a493d2)
+STC:
+Score of RubiChess-Bitboard-pe2 vs RubiChess-Bitboard-pe1: 667 - 677 - 959  [0.498] 2303
+Elo difference: -1.51 +/- 10.83
+SPRT: llr -0.459, lbound -1.39, ubound 1.39
+Abbruch. Zurück zu pe1 scheint eine gute Idee.
