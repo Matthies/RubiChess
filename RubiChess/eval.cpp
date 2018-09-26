@@ -147,6 +147,9 @@ int chessposition::getPawnAndKingValue(pawnhashentry **entry)
         entryptr->value += EVAL(eps.ePsqt[KING][PSQTINDEX(kingpos[0], 0)], 1);
         entryptr->value += EVAL(eps.ePsqt[KING][PSQTINDEX(kingpos[1], 1)], -1);
         entryptr->value += EVAL(eps.eMaterialvalue[PAWN], POPCOUNT(piece00[WPAWN]) - POPCOUNT(piece00[BPAWN]));
+        // kingshield safety
+        entryptr->value += EVAL(eps.eKingshieldbonus, (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])));
+
 
         for (int pc = WPAWN; pc <= BPAWN; pc++)
         {
@@ -369,9 +372,6 @@ int chessposition::getPositionValue()
     // bonus for double bishop
     result += EVAL(eps.eDoublebishopbonus, ((POPCOUNT(piece00[WBISHOP]) >= 2) - (POPCOUNT(piece00[BBISHOP]) >= 2)));
 
-    // some kind of king safety
-    result += EVAL(eps.eKingshieldbonus, (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])));
-
     for (int me = 0; me < 2; me++)
     {
         int you = me ^ S2MMASK;
@@ -414,7 +414,6 @@ int chessposition::getPositionValue()
         // Get opponents pieces that are attacked from these pawn pushes and not already attacked now
         U64 attackedPieces = PAWNATTACK(me, pawnPush) & occupied00[you] & ~attackedBy[me][PAWN];
         result += EVAL(eps.ePawnpushthreatbonus, S2MSIGN(me) * POPCOUNT(attackedPieces));
-
     }
 
     return NEWTAPEREDEVAL(result, ph);
