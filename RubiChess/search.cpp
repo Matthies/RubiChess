@@ -279,16 +279,16 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
     // futility pruning
     const int futilityMargin[] = { 0, 130, 280, 430 };
-    const int revFutilityMargin[] = { 0, 300, 500, 900 };
+    const int revFutilityMargin[] = { 0, 90, 180, 270 };
     bool futility = false;
 #ifdef FPDEBUG
     int futilityscore;
 #endif
-    if (depth <= 3 && !pos.isCheck)
+    if (depth <= 3)
     {
         score = S2MSIGN(pos.state & S2MMASK) * getValueNoTrace(&pos);
         // reverse futility pruning
-        if (score - revFutilityMargin[depth] > beta)
+        if (!pos.isCheck && score - revFutilityMargin[depth] > beta)
             return score;
         futility = (score < alpha - futilityMargin[depth]);
 
