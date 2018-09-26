@@ -284,7 +284,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 #ifdef FPDEBUG
     int futilityscore;
 #endif
-    if (depth <= 3)
+    if (depth <= 3 && !pos.isCheck)
     {
         score = S2MSIGN(pos.state & S2MMASK) * getValueNoTrace(&pos);
         // reverse futility pruning
