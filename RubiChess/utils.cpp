@@ -626,7 +626,9 @@ void TexelTune(string fenfilename)
 
                     g = 1 - g;
                 };
-                
+                if (en.verbose)
+                    fprintf(stderr, "E=%0.10f  %s new tuned value: %s\n", Emin,
+                        nameTunedParameter(i).c_str(), getValueStringValue(pos.tps.ev[i]).c_str());
                 printf("E=%0.10f  %s new tuned value: %s\n", Emin,
                     nameTunedParameter(i).c_str(), getValueStringValue(pos.tps.ev[i]).c_str());
             }
