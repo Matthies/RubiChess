@@ -278,7 +278,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     }
 
     // futility pruning
-    const int futilityMargin[] = { 0, 130, 280, 430, 550, 700 };
+    const int futilityMargin[] = { 0, 110, 220, 330, 440, 550 };
     const int revFutilityMargin[] = { 0, 90, 180, 270, 360, 450 };
     bool futility = false;
 #ifdef FPDEBUG
