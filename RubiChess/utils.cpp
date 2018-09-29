@@ -426,7 +426,7 @@ void getGradsFromFen(string fenfilename)
                     fen = match.str(2);
                     R = (stoi(match.str(1)) + 1);
                 }
-                else if (regex_search(line, match, regex("(.*)\\s+((1\\-0)|(0\\-1)|(1/2\\-1/2))")))
+                else if (regex_search(line, match, regex("(.*)\\s+((1\\-0)|(0\\-1)|(1/2))")))
                 {
                     fen = match.str(1);
                     R = (match.str(2) == "1-0" ? 2 : (match.str(2) == "0-1" ? 0 : 1));
