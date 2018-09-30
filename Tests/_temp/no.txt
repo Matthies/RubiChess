@@ -1,0 +1,47 @@
+Bugfixes und Veränderungen am Futility Pruning
+
+no2 (11052290): Kein Reverse FP wenn Schach, dafür deutlich engerer Spielraum
+STC:
+Score of RubiChess-Bitboard-no2 vs RubiChess-Bitboard-ms: 147 - 93 - 208  [0.560] 448
+Elo difference: 42.08 +/- 23.57
+SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+LTC:
+Score of RubiChess-Bitboard-no2 vs RubiChess-Bitboard-ms: 249 - 196 - 487  [0.528] 932
+Elo difference: 19.78 +/- 15.40
+SPRT: llr 1.4, lbound -1.39, ubound 1.39 - H1 was accepted
+
+no3 (10848600): FP erweitert bis depth 5
+STC: tut sich schwer
+Score of RubiChess-Bitboard-no3 vs RubiChess-Bitboard-no2: 3645 - 3547 - 5565  [0.504] 12757
+Elo difference: 2.67 +/- 4.52
+SPRT: llr 0.502, lbound -1.39, ubound 1.39
+Finished match
+
+no4 (10034569): Engerer Spielraum für FP (110 * depth)
+STC:
+Score of RubiChess-Bitboard-no4 vs RubiChess-Bitboard-no2: 413 - 338 - 594  [0.528] 1345
+Elo difference: 19.39 +/- 13.87
+SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+LTC: very disappointing after a great start
+Score of RubiChess-Bitboard-no4 vs RubiChess-Bitboard-no2: 130 - 131 - 297  [0.499] 558
+Elo difference: -0.62 +/- 19.71
+SPRT: llr -0.104, lbound -1.39, ubound 1.39
+
+no5 (9855596): Erweitert bis depth 8
+Score of RubiChess-Bitboard-no5 vs RubiChess-Bitboard-no2: 119 - 123 - 253  [0.496] 495
+Elo difference: -2.81 +/- 21.40
+SPRT: llr -0.161, lbound -1.39, ubound 1.39
+
+no6 (): Futility margin = 100*depth statt 110*depth
+LTC:
+Score of RubiChess-Bitboard-no6 vs RubiChess-Bitboard-no2: 21 - 30 - 49  [0.455] 100
+Elo difference: -31.35 +/- 48.90
+SPRT: llr -0.218, lbound -1.39, ubound 1.39
+
+no7 (): Futility margin = 120*depth
+Score of RubiChess-Bitboard-no7 vs RubiChess-Bitboard-no2: 22 - 25 - 53  [0.485] 100
+Elo difference: -10.43 +/- 46.90
+SPRT: llr -0.0877, lbound -1.39, ubound 1.39
+
+no8 (): Futility margin = 125*depth
+Erst gut, dann immer schlechter...
