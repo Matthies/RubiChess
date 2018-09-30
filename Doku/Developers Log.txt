@@ -264,10 +264,10 @@ c6c5 darf nicht gespielt werden; die frühe 0.3 erkennt das sehr spät
     position fen rnb1kbnr / pp1pppp / 1q6 / 1Bp5 / 8 / 4P3 / PPPP1PPP / RNBQK1NR w KQkq - 0 1 moves b1c3 g8f6 g1f3 b8c6 d2d4 c5d4 e3d4 a7a6 d4d5 a6b5 d5c6 b6c6 e1g1 b5b4 c3e2 d7d6 e2d4 c6d5 d1e2 c8g4 f1d1 e7e5 c1g5 f6e4 d4b5 d5c6 b5c7 c6c7 e2e4 g4f3 g2f3 c7c6 e4b4 f7f6 g5e3 c6c2 b4b7 a8a2 b7b5 e8e7 b5b7 e7e8 b7b5 e8e7 b5b7 e7e8 b7b5
     ... nicht reproduzierbar
 
-    08.12.17 : Interesting position from TCEC rapid : 1r3r2 / 1b1n1pk1 / p5Bb / q2p2N1 / 2p2P1Q / 2P5 / 6PP / 3R1R1K w - -0 28
+    08.12.17 : Interesting position from TCEC rapid : 1r3r2/1b1n1pk1/p5Bb/q2p2N1/2p2P1Q/2P5/6PP/3R1R1K w - - 0 28
     White is about to win, Hannibal misses Rd1e1 and evals ~+ 1 but wins later; Rubisoft completely wrong with ~- 1.5
 
-    26.12.17: r1b3k1 / pp1q1ppp / 2p2n2 / 8 / 2PPr3 / P1P5 / 2Q1B1PP / R1B2RK1 b - -1 14
+    26.12.17: r1b3k1/pp1q1ppp/2p2n2/8/2PPr3/P1P5/2Q1B1PP/R1B2RK1 b - - 1 14
     Quite late recognizing that Re4xd4 is a mistake
 
 

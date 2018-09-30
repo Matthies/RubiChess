@@ -291,7 +291,7 @@ void doBenchmark()
             "Arasan19 83",
             "6k1/p4qp1/1p3r1p/2pPp1p1/1PP1PnP1/2P1KR1P/1B6/7Q b - - 0 1 ",
             14,
-            150,
+            200,
             1
         },
         {

@@ -1,9 +1,20 @@
 ChangeLog
 =========
-1.1 (release 201x-xx-xx) :
-    - Evaluation: Introduced attackedBy information and used them for pawn attacks and pawn push threats
+1.1 (release 2018-10-01) :
+    - Every evaluation parameter is tapered now
+    - Introduced attackedBy information and used them for pawn attacks and pawn push threats
+    - Added pawn storm evaluation
+    - Turned pawn hash into a "pawn and king" hash
+    - Completely rewritten the evaluation and the tuning mode not calling the qsearch all the time but only the evaluation term
+    - Tuned all the parameters with game material from Laser (provided by AGE, thanks for that)
     - Improved and fixed ponder mode
-    - Added selective depth information in uci output
+    - Added selective depth information in UCI output
+    - Introduced bucket system for the transposition table
+    - Internal iterative deepening in PV node if hash move is missing
+    - New more general SEE code used for pruning moves with bad SEE
+    - Switched to a staged move generation seperating tactical from silent moves
+    - Fixed bug in repetition detection: Drawing in winning position by perpetual check shouldn't happen to often
+    - Some minor fixes and cleanups regarding futility pruning and move stack
 
 1.0 (release 2018-08-04) :
     - Cleanup: Removed board88 and rotating botboard code
