@@ -402,6 +402,7 @@ void getGradsFromFen(string fenfilename)
     int c;
     int bw;
     char R;
+    string fen;
     int Qi, Qa;
     int tuningphase = 0;
     while (tuningphase < 2)
@@ -419,7 +420,18 @@ void getGradsFromFen(string fenfilename)
         {
             if (!fenmovemode)
             {
+                fen = "";
                 if (regex_search(line, match, regex("(.*)#(.*)#(.*)")))
+                {
+                    fen = match.str(2);
+                    R = (stoi(match.str(1)) + 1);
+                }
+                else if (regex_search(line, match, regex("(.*)\\s+((1\\-0)|(0\\-1)|(1/2))")))
+                {
+                    fen = match.str(1);
+                    R = (match.str(2) == "1-0" ? 2 : (match.str(2) == "0-1" ? 0 : 1));
+                }
+                if (fen != "")
                 {
                     bw = 1 - bw;
                     if (bw)
@@ -428,8 +440,7 @@ void getGradsFromFen(string fenfilename)
                         c = 1;
                     if (c == tuningratio)
                     {
-                        R = (stoi(match.str(1)) + 1);
-                        pos.getFromFen(match.str(2).c_str());
+                        pos.getFromFen(fen.c_str());
                         pos.ply = 0;
                         if (tuningphase == 1)
                         {
@@ -441,10 +452,12 @@ void getGradsFromFen(string fenfilename)
                             Qa = 0;
                             for (int i = 0; i < pos.tps.count; i++)
                             {
-                                texelpts[n].g[i] = pos.tps.ev[i]->getGrad();
+                                texelpts[n].g[i] = pos.pts.g[i];
                                 Qa += texelpts[n].g[i] * *pos.tps.ev[i];
                             }
-                            if (Qi != NEWTAPEREDEVAL(Qa, texelpts[n].ph))
+                            if (MATEDETECTED(Qi))
+                                n--;
+                            else if (Qi != NEWTAPEREDEVAL(Qa, texelpts[n].ph))
                                 printf("Alarm. Gradient evaluation differs from qsearch value.\n");
                         }
                         n++;
@@ -508,10 +521,10 @@ void getGradsFromFen(string fenfilename)
         if (tuningphase == 1)
         {
             texelpts = (positiontuneset*)calloc(n, sizeof(positiontuneset));
-            texelptsnum = n;
         }
+        texelptsnum = n;
+        printf("Round %d Positions: %d\n", tuningphase, n);
     }
-    printf("Positions: %d\n", n);
 }
 
 
