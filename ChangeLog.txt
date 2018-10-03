@@ -1,5 +1,7 @@
 ChangeLog
 =========
+1.2 (release 201x-xx-xx) :
+
 1.1 (release 2018-10-01) :
     - Every evaluation parameter is tapered now
     - Introduced attackedBy information and used them for pawn attacks and pawn push threats
