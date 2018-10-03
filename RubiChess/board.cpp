@@ -18,6 +18,9 @@ U64 rankMask[64];
 U64 betweenMask[64][64];
 int castleindex[64][64] = { 0 };
 
+chessmovestack movestack[MAXMOVESEQUENCELENGTH];
+int mstop;
+
 
 PieceType GetPieceType(char c)
 {
@@ -79,9 +82,6 @@ char PieceChar(PieceCode c)
     return o;
 }
  
-chessmovestack movestack[MAXMOVESEQUENCELENGTH];
-int mstop;
-
 
 chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece)
 {
@@ -563,6 +563,7 @@ void chessposition::prepareStack()
     movestack[mstop].fullmovescounter = fullmovescounter;
     movestack[mstop].halfmovescounter = halfmovescounter;
     movestack[mstop].isCheck = isCheck;
+    movestack[mstop].excludemove = 0;
 }
 
 
@@ -596,7 +597,7 @@ void chessposition::getpvline(int depth, int pvnum)
         {
             cm = bestmove[pvnum];
         }
-        else if (tp.probeHash(&dummyval, &movecode, depth, 0, 0) && movecode)
+        else if (tp.probeHash(hash, &dummyval, &movecode, depth, 0, 0) && movecode)
         {
             cm.code = shortMove2FullMove(movecode);
         }
