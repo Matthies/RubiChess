@@ -335,7 +335,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             && hashscore > alpha)
         {
             movestack[mstop].excludemove = hashmovecode;
-            int sBeta = max(score - 5 * depth, SCOREBLACKWINS);
+            int sBeta = max(hashscore - 5 * depth, SCOREBLACKWINS);
             int redScore = alphabeta(sBeta - 1, sBeta, depth / 2, true);
             movestack[mstop].excludemove = 0;
 
