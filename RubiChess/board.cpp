@@ -563,7 +563,6 @@ void chessposition::prepareStack()
     movestack[mstop].fullmovescounter = fullmovescounter;
     movestack[mstop].halfmovescounter = halfmovescounter;
     movestack[mstop].isCheck = isCheck;
-    movestack[mstop].excludemove = 0;
 }
 
 

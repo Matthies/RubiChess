@@ -191,14 +191,15 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
     // Get move for singularity check and change hash to seperate partial searches from full searches
     uint16_t excludeMove = movestack[mstop - 1].excludemove;
+    movestack[mstop].excludemove = 0;
 
-    U64 hash = pos.hash ^= (excludeMove << 16);
+    U64 hash = pos.hash ^ (excludeMove << 16);
 
-    if (tp.probeHash(hash, &hashscore, &hashmovecode, depth, alpha, beta))
+    if (tp.probeHash(hash, &score, &hashmovecode, depth, alpha, beta))
     {
-        PDEBUG(depth, "(alphabeta) got value %d from TP\n", hashscore);
+        PDEBUG(depth, "(alphabeta) got value %d from TP\n", score);
         if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This test on the repetition table works like a "is not PV"; should be fixed in the future
-            return hashscore;
+            return score;
     }
 
     // TB
@@ -218,7 +219,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                 score = SCORETBWIN - pos.ply;
             else 
                 score = SCOREDRAW + v;
-            tp.addHash(hash, score, HASHEXACT, depth, 0);
+            tp.addHash(pos.hash, score, HASHEXACT, depth, 0);
             return score;
         }
     }
@@ -300,8 +301,8 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     const int iiddelta = 2;
     if (PVNode && !hashmovecode && depth >= iidmin)
     {
-        hashscore = alphabeta(alpha, beta, depth - iiddelta, true);
-        tp.probeHash(hash, &hashscore, &hashmovecode, depth, alpha, beta);
+        score = alphabeta(alpha, beta, depth - iiddelta, true);
+        tp.probeHash(hash, &score, &hashmovecode, depth, alpha, beta);
     }
 
     MoveSelector ms = {};
@@ -315,7 +316,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     while ((m = ms.next()))
     {
         // Leave out the move to test for singularity
-        if (m->code == excludeMove)
+        if ((m->code & 0xffff) == excludeMove)
             continue;
 
         // Prune tactical moves with bad SEE
@@ -332,12 +333,13 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         if ((m->code & 0xffff) == hashmovecode
             && depth > 7
             && !excludeMove
+            && tp.probeHash(hash, &hashscore, &hashmovecode, depth - 3, alpha, beta)  // FIXME: Probing the hash again with smaller depth to get the value is not very good
             && hashscore > alpha)
         {
-            movestack[mstop].excludemove = hashmovecode;
-            int sBeta = max(hashscore - 5 * depth, SCOREBLACKWINS);
+            movestack[mstop - 1].excludemove = hashmovecode;
+            int sBeta = max(hashscore - 2 * depth, SCOREBLACKWINS);
             int redScore = alphabeta(sBeta - 1, sBeta, depth / 2, true);
-            movestack[mstop].excludemove = 0;
+            movestack[mstop - 1].excludemove = 0;
 
             if (redScore < sBeta)
                 extendMove = 1;
