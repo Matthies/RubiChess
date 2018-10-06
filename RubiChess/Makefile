@@ -1,5 +1,6 @@
 CXX=g++
 CXXFLAGS=-g -std=c++11 -Wall -O3 $(EXTRACXXFLAGS)
+POPCNTFLAGS=-msse3 -mpopcnt
 LDFLAGS=-pthread  $(EXTRALDFLAGS)
 
 profile_make = gcc-profile-make
@@ -10,25 +11,23 @@ ifeq ($(OS),Windows_NT)
     LDFLAGS += -static
 endif
 DEPS = RubiChess.h
-OBJBITBOARD = board-Bitboard.o eval-Bitboard.o main-Bitboard.o search-Bitboard.o transposition-Bitboard.o uci-Bitboard.o utils-Bitboard.o tbprobe-Bitboard.o
 EXE1 = RubiChess-Bitboard
+EXE2 = RubiChess-Bitboard-oldcpu
 PGOBENCH1 = ./$(EXE1) -bench
+PGOBENCH2 = ./$(EXE2) -bench
 
 .PHONY: clean profile-build gcc-profile-make gcc-profile-use all
 
-%-Board88.o: %.cpp $(DEPS)
-	$(CXX) -c -o $@ $< $(CXXFLAGS) $(EXTRACXXFLAGS)
+all: RubiChess-Bitboard RubiChess-Bitboard-oldcpu
 
-%-Bitboard.o: %.cpp $(DEPS)
-	$(CXX) -c -o $@ $< $(CXXFLAGS) $(EXTRACXXFLAGS)
+RubiChess-Bitboard:
+	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(POPCNTFLAGS) *.cpp $(LDFLAGS) $(EXTRALDFLAGS) -o RubiChess-Bitboard
 
-all: RubiChess-Bitboard
-
-RubiChess-Bitboard: $(OBJBITBOARD)
-	$(CXX) -o $@ $^ $(LDFLAGS) $(EXTRALDFLAGS)
+RubiChess-Bitboard-oldcpu:
+	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) *.cpp $(LDFLAGS) $(EXTRALDFLAGS) -o RubiChess-Bitboard-oldcpu
 
 objclean:
-	$(RM) RubiChess-Bitboard *.o
+	$(RM) RubiChess-Bitboard RubiChess-Bitboard-oldcpu *.o
 
 profileclean:
 	$(RM) -f *.gcda
@@ -52,6 +51,7 @@ profile-build: clean
 	$(MAKE) $(profile_make)
 	@echo "Running benchmark for pgo-build ..."
 	$(PGOBENCH1) > /dev/null
+	$(PGOBENCH2) > /dev/null
 	@echo "Building optimized executable ..."
 	$(MAKE) objclean
 	$(MAKE) $(profile_use)

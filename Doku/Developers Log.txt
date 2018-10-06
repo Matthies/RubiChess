@@ -313,6 +313,42 @@ In dieser Position findet Rubi den Sieg mit h5-h6 nicht:
 5k2/7Q/3rr3/1P1p2KP/3P4/8/8/8 w - - 2 2 
 
 
+In der folgenden Partie mit seltsamer Startaufstellung macht SF in 32. .. Be6 einen Fehler, die Party ist danach aber auch aus Rubis Sicht interessant,
+da Rubi überhaupt nicht versteht, was abgeht.
+
+[Event "CCCC 1: Rapid Rumble (15|5) Bonus Games"]
+[Site "Chess.com"]
+[Date "2018.10.06"]
+[Round "?"]
+[White "Komodo 2118.00"]
+[Black "Stockfish 220818"]
+[Result "1/2-1/2"]
+[WhiteElo "3404"]
+[BlackElo "3300"]
+[WhiteType "program"]
+[BlackType "program"]
+[TimeControl "900+5"]
+[Time "01:23:23"]
+[SetUp "1"]
+[FEN "rnbqkbnr/pppppppp/8/8/8/PPPPPPPP/RNBQKBNR/8 w kq - 0 1"]
+[Termination "normal"]
+[PlyCount "96"]
+
+1. e4 g6 2. d4 Bg7 3. Rh1 d6 4. g4 b6 5. b4 Nd7 6. a4 a5 7. b5 Bb7 8. Bb3 e6 9.
+Nd3 Qe7 10. Re1 O-O-O 11. Kf1 Kb8 12. Qe3 e5 13. Bg3 Re8 14. Rf2 Bh6 15. Qe2 Bg7
+16. Qe3 Ngf6 17. h4 Rhf8 18. Kg1 Ng8 19. Rfe2 f6 20. Bh2 Qd8 21. Bg3 Ka7 22.
+dxe5 fxe5 23. Rd2 Qc8 24. g5 h6 25. Rf2 Nc5 26. Nxc5 dxc5 27. Rd1 Qh3 28. Bh2
+hxg5 29. hxg5 Ne7 30. Qd3 Rh8 31. Ne3 Bc8 32. Nc4 Be6 33. Nxa5 Rd8 34. Qxd8 Rxd8
+35. Rxd8 bxa5 36. Bxe6 Qxe6 37. Rfd2 Qh3 38. R2d7 Qxf3 39. Rxc7+ Kb6 40. Rxe7
+Qe3+ 41. Kf1 Qf3+ 42. Ke1 Qxe4+ 43. Kd2 Qg2+ 44. Kd1 Qg4+ 45. Ke1 Qe4+ 46. Kd2
+Qg2+ 47. Kd1 Qg4+ 48. Ke1 Qe4+ 1/2-1/2
+
+
+In der vom tatsächlichen Spiel abweichenden Stellung
+4r2r/Q2Rn1b1/kp4p1/p1p1p1P1/b3P3/2P2P1q/5R1B/6K1 b - - 1 38 
+ist dieses besonders sichtbar.
+
+
 
 Links:
 
