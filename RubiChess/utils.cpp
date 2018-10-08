@@ -588,12 +588,12 @@ void TexelTune(string fenfilename)
                 if (en.verbose)
                     fprintf(stderr, "Tuning %s  %s\n", nameTunedParameter(i).c_str(), getValueStringValue(pos.tps.ev[i]).c_str());
 
-                int notImproved = 0;
+                int tuned = 0;
                 int g = 0;
                 while (true)     // loop over mg/eg parameter while notImproved <=2
                 {
-                    notImproved++;
-                    if (notImproved > 2)
+                    tuned++;
+                    if (tuned > 2)
                         break;
                     if (en.verbose)
                         fprintf(stderr, "Tuning %s...\n", g ? "eg" : "mg");
@@ -629,7 +629,7 @@ void TexelTune(string fenfilename)
                             pbound[direction] = pmin;
                             Emin = Error;
                             improved = true;
-                            notImproved = 0;
+                            tuned = 1;
                             pmin = p;
                             delta *= 2;
                             p = p + delta;

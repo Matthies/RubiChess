@@ -6,7 +6,7 @@
 #define DEBUG
 #endif
 
-#if 0
+#if 1
 #define EVALTUNE
 #endif
 
@@ -145,7 +145,7 @@ typedef const int32_t eval;
 #define NEWTAPEREDEVAL(v, ph) (((256 - (ph)) * GETMGVAL(v) + (ph) * GETEGVAL(v)) / 256)
 #define PSQTINDEX(i,s) ((s) ? (i) : (i) ^ 0x38)
 
-#define NUMOFEVALPARAMS (4 + 8 + 8 + 6 + 2 + 7 + 1 + 7 + 7*64 + 2*5*4)
+#define NUMOFEVALPARAMS (2*5*4 + 4 + 8 + 8 + 5 + 4*28 + 2 + 7 + 1 + 7 + 7*64)
 struct evalparamset {
     // Powered by Laser :-)
     eval ePawnstormblocked[4][5] = {
@@ -171,7 +171,34 @@ struct evalparamset {
     eval eConnectedbonus =  VALUE(   5,  -3);
     eval eBackwardpawnpenalty =  VALUE(  -9, -11);
     eval eDoublebishopbonus =  VALUE(  58,  35);
-    eval eShiftmobilitybonus =  VALUE(   3,   5);
+    //eval eShiftmobilitybonus =  VALUE(   3,   5);
+#if 1
+    eval eMobilitybonus[7][28] = {
+    {  VALUE(37, -56), VALUE(42,  -6), VALUE(49,  -5), VALUE(52,  -8), VALUE(57,  -2), VALUE(58,   5), VALUE(59,   9), VALUE(60,  18),
+       VALUE(63,   8), VALUE(0,   0), VALUE(0,   0), VALUE(0,   0), VALUE(0,   0), VALUE(0,   0), VALUE(0,   0), VALUE(0,   0),
+       VALUE(0,   0), VALUE(0,   0), VALUE(0,   0), VALUE(0,   0), VALUE(0,   0), VALUE(0,   0), VALUE(0,   0), VALUE(0,   0),
+       VALUE(0,   0), VALUE(0,   0), VALUE(0,   0), VALUE(0,   0)  },
+    {  VALUE(30, -44), VALUE(36, -23), VALUE(47, -23), VALUE(50, -16), VALUE(54,  -8), VALUE(57,  11), VALUE(61,  14), VALUE(61,  17),
+       VALUE(60,  26), VALUE(63,  19), VALUE(64,  21), VALUE(67,  16), VALUE(68,  25), VALUE(94,   6), VALUE(0,   0), VALUE(0,   0),
+       VALUE(0,   0), VALUE(0,   0), VALUE(0,   0), VALUE(0,   0), VALUE(0,   0), VALUE(0,   0), VALUE(0,   0), VALUE(0,   0),
+       VALUE(0,   0), VALUE(0,   0), VALUE(0,   0), VALUE(0,   0)  },
+    {  VALUE(7,  -7), VALUE(15,  15), VALUE(17,  28), VALUE(23,  31), VALUE(26,  30), VALUE(29,  37), VALUE(31,  40), VALUE(35,  41),
+       VALUE(33,  51), VALUE(32,  55), VALUE(39,  56), VALUE(38,  59), VALUE(35,  66), VALUE(46,  57), VALUE(36,  58), VALUE(0,   0),
+       VALUE(0,   0), VALUE(0,   0), VALUE(0,   0), VALUE(0,   0), VALUE(0,   0), VALUE(0,   0), VALUE(0,   0), VALUE(0,   0),
+       VALUE(0,   0), VALUE(0,   0), VALUE(0,   0), VALUE(0,   0)  },
+    {  VALUE(-11,   2), VALUE(-10, -33), VALUE(-12,  49), VALUE(-7, -21), VALUE(-3,  13), VALUE(3,  18), VALUE(2,  42), VALUE(5,  36),
+       VALUE(7,  47), VALUE(10,  47), VALUE(8,  62), VALUE(12,  66), VALUE(10,  85), VALUE(13,  83), VALUE(12,  95), VALUE(13, 114),
+       VALUE(17, 108), VALUE(20, 109), VALUE(25, 110), VALUE(24, 111), VALUE(33, 113), VALUE(34, 125), VALUE(27, 115), VALUE(60,  98),
+       VALUE(80, 102), VALUE(125,  76), VALUE(221,   6), VALUE(48, 105)  }
+    };
+#else
+    eval eMobilitybonus[4][28] = {
+        { VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0) },
+        { VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0) },
+        { VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0) },
+        { VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0) },
+    };
+#endif
     eval eSlideronfreefilebonus[2] = {  VALUE(  19,  12), VALUE(  38,   0)  };
     eval eMaterialvalue[7] = {  VALUE(   0,   0), VALUE( 100, 100), VALUE( 314, 314), VALUE( 314, 314), VALUE( 483, 483), VALUE( 913, 913), VALUE(32509,32509)  };
     eval eWeakkingringpenalty =  VALUE( -16,   6);
