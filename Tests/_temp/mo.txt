@@ -1,0 +1,8 @@
+mo1 (11159076):
+STC:
+Score of RubiChess-Bitboard-mo1 vs RubiChess-Bitboard-ms: 1477 - 1435 - 2088  [0.504] 5000
+Elo difference: 2.92 +/- 7.34
+SPRT: llr 0.149, lbound -1.39, ubound 1.39
+
+mo2 (12091571): Zusätzlich alle psqt der Mobility-Figuren (mehrfach) durchgetunet
+STC:

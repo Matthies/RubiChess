@@ -69,7 +69,7 @@ static void registertuner(eval *e, string name, int index1, int bound1, int inde
 void registeralltuners()
 {
     int i, j;
-    bool tuneIt = false;
+    bool tuneIt = true;
 
     //ePawnstormblocked
     for (i = 0; i < 4; i++)
@@ -98,9 +98,9 @@ void registeralltuners()
 
     for (i = 0; i < 4; i++)
         for (j = 0; j < 28; j++)
-            registertuner(&eps.eMobilitybonus[i][j], "eMobilitybonus", j, 28, i, 7, tuneIt && (j < maxmobility[i]));
+            registertuner(&eps.eMobilitybonus[i][j], "eMobilitybonus", j, 28, i, 4, tuneIt && (j < maxmobility[i]));
 
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 2; i++)
         registertuner(&eps.eSlideronfreefilebonus[i], "eSlideronfreefilebonus", i, 2, 0, 0, tuneIt);
     for (i = 0; i < 7; i++)
@@ -108,6 +108,9 @@ void registeralltuners()
     registertuner(&eps.eWeakkingringpenalty, "eWeakkingringpenalty", 0, 0, 0, 0, tuneIt);
     for (i = 0; i < 7; i++)
         registertuner(&eps.eKingattackweight[i], "eKingattackweight", i, 7, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
+
+    tuneIt = true;
+
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
         registertuner(&eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
