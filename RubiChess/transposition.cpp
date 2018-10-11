@@ -242,17 +242,17 @@ void transposition::printHashentry()
 {
     unsigned long long hash = pos->hash;
     unsigned long long index = hash & sizemask;
-    transpositioncluster data = table[index];
+    transpositioncluster *data = &table[index];
     printf("Hashentry for %llx\n", hash);
     for (int i = 0; i < TTBUCKETNUM; i++)
     {
-        if ((data.entry[i].hashupper) == (hash >> 32))
+        if ((data->entry[i].hashupper) == (hash >> 32))
         {
-            printf("Match in upper part: %x / %x\n", (unsigned int)data.entry[i].hashupper, (unsigned int)(hash >> 32));
-            printf("Move code: %x\n", (unsigned int)data.entry[i].movecode);
-            printf("Depth:     %d\n", data.entry[i].depth);
-            printf("Value:     %d\n", data.entry[i].value);
-            printf("BoundAge:  %d\n", data.entry[i].boundAndAge);
+            printf("Match in upper part: %x / %x\n", (unsigned int)data->entry[i].hashupper, (unsigned int)(hash >> 32));
+            printf("Move code: %x\n", (unsigned int)data->entry[i].movecode);
+            printf("Depth:     %d\n", data->entry[i].depth);
+            printf("Value:     %d\n", data->entry[i].value);
+            printf("BoundAge:  %d\n", data->entry[i].boundAndAge);
             return;
         }
     }
@@ -268,10 +268,10 @@ bool transposition::probeHash(int *val, uint16_t *movecode, int depth, int alpha
 #endif
     unsigned long long hash = pos->hash;
     unsigned long long index = hash & sizemask;
-    transpositioncluster data = table[index];
+    transpositioncluster* data = &table[index];
     for (int i = 0; i < TTBUCKETNUM; i++)
     {
-        transpositionentry *e = &(data.entry[i]);
+        transpositionentry *e = &(data->entry[i]);
         if (e->hashupper == (hash >> 32))
         {
             *movecode = e->movecode;
@@ -333,11 +333,11 @@ uint16_t transposition::getMoveCode()
 {
     unsigned long long hash = pos->hash;
     unsigned long long index = hash & sizemask;
-    transpositioncluster data = table[index];
+    transpositioncluster *data = &table[index];
     for (int i = 0; i < TTBUCKETNUM; i++)
     {
-        if ((data.entry[i].hashupper) == (hash >> 32))
-            return data.entry[i].movecode;
+        if ((data->entry[i].hashupper) == (hash >> 32))
+            return data->entry[i].movecode;
     }
     return 0;
 }
