@@ -312,7 +312,7 @@ Qg2 + 56. Kh4 Qh2 + 57. Kg4 Qg2 + 1 / 2 - 1 / 2
 In dieser Position findet Rubi den Sieg mit h5-h6 nicht:
 5k2/7Q/3rr3/1P1p2KP/3P4/8/8/8 w - - 2 2 
 
-
+6.10.2018
 In der folgenden Partie mit seltsamer Startaufstellung macht SF in 32. .. Be6 einen Fehler, die Party ist danach aber auch aus Rubis Sicht interessant,
 da Rubi überhaupt nicht versteht, was abgeht.
 
@@ -343,12 +343,14 @@ hxg5 29. hxg5 Ne7 30. Qd3 Rh8 31. Ne3 Bc8 32. Nc4 Be6 33. Nxa5 Rd8 34. Qxd8 Rxd8
 Qe3+ 41. Kf1 Qf3+ 42. Ke1 Qxe4+ 43. Kd2 Qg2+ 44. Kd1 Qg4+ 45. Ke1 Qe4+ 46. Kd2
 Qg2+ 47. Kd1 Qg4+ 48. Ke1 Qe4+ 1/2-1/2
 
-
 In der vom tatsächlichen Spiel abweichenden Stellung
 4r2r/Q2Rn1b1/kp4p1/p1p1p1P1/b3P3/2P2P1q/5R1B/6K1 b - - 1 38 
 ist dieses besonders sichtbar.
 
 
+11.10.2018.
+2B1n3/5pkp/4p1p1/P2P4/1Q1p1q2/P7/5PR1/4K3 b - - 0 1 
+In dieser Position findet Rubi Qe4 nicht und spielt statt dessen Qc1
 
 Links:
 
