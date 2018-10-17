@@ -1,0 +1,21 @@
+mo1 (11159076):
+STC:
+Score of RubiChess-Bitboard-mo1 vs RubiChess-Bitboard-ms: 1477 - 1435 - 2088  [0.504] 5000
+Elo difference: 2.92 +/- 7.34
+SPRT: llr 0.149, lbound -1.39, ubound 1.39
+
+mo2 (12091571): Zusätzlich alle psqt der Mobility-Figuren (mehrfach) durchgetunet
+STC:
+Score of RubiChess-Bitboard-mo2 vs RubiChess-Bitboard-ms: 1037 - 1033 - 1530  [0.501] 3600
+Elo difference: 0.39 +/- 8.60
+SPRT: llr -0.548, lbound -1.39, ubound 1.39
+
+mo3 (13598377): Weiteres tuning aller Parameter bis < 0.1020
+STC:
+Score of RubiChess-Bitboard-mo3 vs RubiChess-Bitboard-ms: 582 - 511 - 747  [0.519] 1840
+Elo difference: 13.41 +/- 12.23
+SPRT: llr 1.4, lbound -1.39, ubound 1.39 - H1 was accepted
+LTC:
+Score of RubiChess-Bitboard-mo3 vs RubiChess-Bitboard-ms: 331 - 273 - 566  [0.525] 1170
+Elo difference: 17.24 +/- 14.29
+SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted

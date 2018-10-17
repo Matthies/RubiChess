@@ -5,6 +5,7 @@
 
 // static values for the search/pruning stuff
 const int prunematerialvalue[7] = { 0,  100,  314,  314,  483,  913, 32509 };
+const int maxmobility[4] = { 9, 14, 15, 28 }; // indexed by piece - 2
 
 evalparamset eps;
 
@@ -78,8 +79,6 @@ void registeralltuners()
         for (j = 0; j < 5; j++)
             registertuner(&eps.ePawnstormfree[i][j], "ePawnstormfree", j, 5, i, 4, tuneIt);
 
-    //tuneIt = false;
-
     registertuner(&eps.ePawnpushthreatbonus, "ePawnpushthreatbonus", 0, 0, 0, 0, tuneIt);
     registertuner(&eps.eSafepawnattackbonus, "eSafepawnattackbonus", 0, 0, 0, 0, tuneIt);
     registertuner(&eps.eKingshieldbonus, "eKingshieldbonus", 0, 0, 0, 0, tuneIt);
@@ -93,7 +92,15 @@ void registeralltuners()
     registertuner(&eps.eConnectedbonus, "eConnectedbonus", 0, 0, 0, 0, tuneIt);
     registertuner(&eps.eBackwardpawnpenalty, "eBackwardpawnpenalty", 0, 0, 0, 0, tuneIt);
     registertuner(&eps.eDoublebishopbonus, "eDoublebishopbonus", 0, 0, 0, 0, tuneIt);
-    registertuner(&eps.eShiftmobilitybonus, "eShiftmobilitybonus", 0, 0, 0, 0, tuneIt);
+    //registertuner(&eps.eShiftmobilitybonus, "eShiftmobilitybonus", 0, 0, 0, 0, tuneIt);
+
+    tuneIt = true;
+
+    for (i = 0; i < 4; i++)
+        for (j = 0; j < 28; j++)
+            registertuner(&eps.eMobilitybonus[i][j], "eMobilitybonus", j, 28, i, 4, tuneIt && (j < maxmobility[i]));
+
+    tuneIt = true;
     for (i = 0; i < 2; i++)
         registertuner(&eps.eSlideronfreefilebonus[i], "eSlideronfreefilebonus", i, 2, 0, 0, tuneIt);
     for (i = 0; i < 7; i++)
@@ -101,6 +108,9 @@ void registeralltuners()
     registertuner(&eps.eWeakkingringpenalty, "eWeakkingringpenalty", 0, 0, 0, 0, tuneIt);
     for (i = 0; i < 7; i++)
         registertuner(&eps.eKingattackweight[i], "eKingattackweight", i, 7, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
+
+    tuneIt = true;
+
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
         registertuner(&eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
@@ -334,7 +344,8 @@ int chessposition::getPositionValue()
             attackedBy[me][0] |= attack;
 
             // mobility bonus
-            result += EVAL(eps.eShiftmobilitybonus, S2MSIGN(me) * POPCOUNT(mobility));
+            //result += EVAL(eps.eShiftmobilitybonus, S2MSIGN(me) * POPCOUNT(mobility));
+            result += EVAL(eps.eMobilitybonus[p - 2][POPCOUNT(mobility)], S2MSIGN(me));
 
             // king danger
             if (mobility & kingdangerarea)
