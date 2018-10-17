@@ -304,6 +304,42 @@ bool transposition::probeHash(U64 hash, int *val, uint16_t *movecode, int depth,
     return false;
 }
 
+transpositionentry* transposition::getEntry(U64 hash)
+{
+    unsigned long long index = hash & sizemask;
+    transpositioncluster *data = &table[index];
+    for (int i = 0; i < TTBUCKETNUM; i++)
+    {
+        transpositionentry *e = &(data->entry[i]);
+        if (e->hashupper == (hash >> 32))
+        {
+            return e;
+        }
+    }
+    return nullptr;
+}
+
+
+int transposition::getFixedValue(transpositionentry *e, int alpha, int beta)
+{
+    int val = e->value;
+    if (MATEFORME(val))
+        val -= pos->ply;
+    else if (MATEFOROPPONENT(val))
+        val += pos->ply;
+    int bound = (e->boundAndAge & BOUNDMASK);
+
+    switch (bound)
+    {
+    case HASHALPHA:
+        return max(val, alpha);
+    case HASHBETA:
+        return min(beta, val);
+    default:
+        return val;
+    }
+}
+
 #if 0
 short transposition::getValue()
 {

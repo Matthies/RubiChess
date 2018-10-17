@@ -6,11 +6,18 @@ Elo difference: 4.12 +/- 9.58
 SPRT: llr 0.354, lbound -1.39, ubound 1.39
 
 se6: margin 1*depth statt 2*depth
+MTC:
 Score of RubiChess-Bitboard-se6 vs RubiChess-Bitboard-se4: 427 - 437 - 800  [0.497] 1664
 Elo difference: -2.09 +/- 12.02
 SPRT: llr -0.434, lbound -1.39, ubound 1.39
 
-se6: margin 3*depth statt 2*depth
+se7: margin 3*depth statt 2*depth
+MTC:
 Score of RubiChess-Bitboard-se7 vs RubiChess-Bitboard-se4: 831 - 802 - 1467  [0.505] 3100
 Elo difference: 3.25 +/- 8.87
 SPRT: llr 0.244, lbound -1.39, ubound 1.39
+
+se8: margin 4*depth statt 2*depth
+49,5% nach 2900 Spielen
+
+

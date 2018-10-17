@@ -195,12 +195,40 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
     U64 hash = pos.hash ^ (excludeMove << 16);
 
+    //transpositionentry *tpentry = tp.getEntry(hash);
+
+#if 0
+    int tscore;
+    uint16_t tcode;
+    bool tb = tp.probeHash(hash, &tscore, &tcode, depth, alpha, beta);
+    if (tpentry)
+    {
+        hashmovecode = tpentry->movecode;
+        if (hashmovecode != tcode)
+        {
+            printf("Code-Alarm\n");
+            tpentry = tp.getEntry(hash);
+        }
+        if (tpentry->depth >= depth)
+        {
+            if (!tb)
+                printf("TB-Alarm\n");
+            score = tp.getFixedValue(tpentry, alpha, beta);
+            if (score != tscore)
+                printf("Score-Alarm\n");
+            if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This test on the repetition table works like a "is not PV"; should be fixed in the future
+                return score;
+        }
+    }
+
+#else
     if (tp.probeHash(hash, &score, &hashmovecode, depth, alpha, beta))
     {
         PDEBUG(depth, "(alphabeta) got value %d from TP\n", score);
         if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This test on the repetition table works like a "is not PV"; should be fixed in the future
             return score;
     }
+#endif
 
     // TB
     // The test for rule50_count() == 0 is required to prevent probing in case
@@ -337,7 +365,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             && hashscore > alpha)
         {
             movestack[mstop - 1].excludemove = hashmovecode;
-            int sBeta = max(hashscore - 3 * depth, SCOREBLACKWINS);
+            int sBeta = max(hashscore - 2 * depth, SCOREBLACKWINS);
             int redScore = alphabeta(sBeta - 1, sBeta, depth / 2, true);
             movestack[mstop - 1].excludemove = 0;
 

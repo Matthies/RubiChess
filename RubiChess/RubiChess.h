@@ -832,6 +832,9 @@ public:
     void addHash(U64 hash, int val, int bound, int depth, uint16_t movecode);
     void printHashentry();
     bool probeHash(U64 hash, int *val, uint16_t *movecode, int depth, int alpha, int beta);
+    transpositionentry *getEntry(U64 hash);
+    int getFixedValue(transpositionentry *e, int alpha, int beta);
+
 #if 0
     short getValue();
     int getValtype();
