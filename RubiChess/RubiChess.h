@@ -851,13 +851,7 @@ public:
     bool probeHash(U64 hash, int *val, uint16_t *movecode, int depth, int alpha, int beta);
     transpositionentry *getEntry(U64 hash);
     bool getFixedValue(transpositionentry *e, int *val, int alpha, int beta);
-
-#if 0
-    short getValue();
-    int getValtype();
-    int getDepth();
-#endif
-    uint16_t getMoveCode();
+    uint16_t getMoveCode(U64 hash);
     unsigned int getUsedinPermill();
     void nextSearch() { numOfSearchShiftTwo = (numOfSearchShiftTwo + 4) & 0xfc; }
 };

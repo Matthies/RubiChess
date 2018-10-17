@@ -306,6 +306,10 @@ bool transposition::probeHash(U64 hash, int *val, uint16_t *movecode, int depth,
 
 transpositionentry* transposition::getEntry(U64 hash)
 {
+#ifdef EVALTUNE
+    // don't use transposition table when tuning evaluation
+    return nullptr;
+#endif
     unsigned long long index = hash & sizemask;
     transpositioncluster *data = &table[index];
     for (int i = 0; i < TTBUCKETNUM; i++)
@@ -318,7 +322,6 @@ transpositionentry* transposition::getEntry(U64 hash)
     }
     return nullptr;
 }
-
 
 bool transposition::getFixedValue(transpositionentry *e, int *val, int alpha, int beta)
 {
@@ -352,32 +355,8 @@ bool transposition::getFixedValue(transpositionentry *e, int *val, int alpha, in
     }
 }
 
-#if 0
-short transposition::getValue()
+uint16_t transposition::getMoveCode(U64 hash)
 {
-    unsigned long long hash = pos->hash;
-    unsigned long long index = hash & sizemask;
-    return table[index].value;
-}
-
-int transposition::getValtype()
-{
-    unsigned long long hash = pos->hash;
-    unsigned long long index = hash & sizemask;
-    return table[index].flag;
-}
-
-int transposition::getDepth()
-{
-    unsigned long long hash = pos->hash;
-    unsigned long long index = hash & sizemask;
-    return table[index].depth;
-}
-#endif
-// FIXME: Is this really needed?
-uint16_t transposition::getMoveCode()
-{
-    unsigned long long hash = pos->hash;
     unsigned long long index = hash & sizemask;
     transpositioncluster *data = &table[index];
     for (int i = 0; i < TTBUCKETNUM; i++)

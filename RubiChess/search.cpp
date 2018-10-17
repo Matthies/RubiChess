@@ -271,14 +271,10 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                 extendall++;
             }
 #endif
-            int dummyscore;
             uint16_t nmrefutemove = 0;
             
-            if (tp.probeHash(hash, &dummyscore, &nmrefutemove, MAXDEPTH, 0, 0) 
-                && pos.mailbox[GETTO(nmrefutemove)] != BLANK)
-            {
+            if ((nmrefutemove = tp.getMoveCode(hash)) && pos.mailbox[GETTO(nmrefutemove)] != BLANK)
                 nmrefutetarget = GETTO(nmrefutemove);
-            }
 
             pos.unplayNullMove();
         }
@@ -530,10 +526,12 @@ int rootsearch(int alpha, int beta, int depth)
 #endif
 
     PDEBUG(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
-    if (!isMultiPV && !pos.useRootmoveScore && tp.probeHash(pos.hash, &score, &hashmovecode, depth, alpha, beta))
+    if (!isMultiPV
+        && !pos.useRootmoveScore
+        && tp.probeHash(pos.hash, &score, &hashmovecode, depth, alpha, beta)
+        && rp.getPositionCount(pos.hash) <= 1)  //FIXME: Is this really needed in rootsearch?
     {
-        if (rp.getPositionCount(pos.hash) <= 1) //FIXME: Is this really needed in rootsearch?
-            return score;
+        return score;
     }
 
     // test for remis via repetition
@@ -906,9 +904,13 @@ static void search_gen1()
                         // so get bestmovecode from there
                         if (!pos.bestmove[i].code)
                         {
-                            uint16_t mc;
-                            tp.probeHash(pos.hash, &pos.bestmovescore[i], &mc, MAXDEPTH, alpha, beta);
-                            pos.bestmove[i].code = pos.shortMove2FullMove(mc);
+                            transpositionentry *tpentry = tp.getEntry(pos.hash);
+                            if (tpentry)
+                            {
+                                uint16_t mc = tp.getMoveCode(pos.hash);
+                                pos.bestmove[i].code = pos.shortMove2FullMove(mc);
+                                tp.getFixedValue(tpentry, &pos.bestmovescore[i], alpha, beta);
+                            }
                         }
 
                         pos.getpvline(depth, i);
@@ -934,7 +936,7 @@ static void search_gen1()
                         cout << s;
                         i++;
                     } while (i < maxmoveindex
-                        && (pos.bestmove[i].code || (pos.bestmove[i].code = tp.getMoveCode()))
+                        && (pos.bestmove[i].code || (pos.bestmove[i].code = tp.getMoveCode(pos.hash)))
                         && pos.bestmovescore[i] > SHRT_MIN + 1);
                 }
             }
