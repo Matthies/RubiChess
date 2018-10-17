@@ -151,6 +151,7 @@ int getQuiescence(int alpha, int beta, int depth)
 int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 {
     int score;
+    int hashscore;
     uint16_t hashmovecode = 0;
     bool isLegal;
     int bestscore = NOSCORE;
@@ -188,13 +189,46 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     if (pos.halfmovescounter >= 100)
         return SCOREDRAW;
 
+    // Get move for singularity check and change hash to seperate partial searches from full searches
+    uint16_t excludeMove = movestack[mstop - 1].excludemove;
+    movestack[mstop].excludemove = 0;
 
-    if (tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
+    U64 hash = pos.hash ^ (excludeMove << 16);
+
+    //transpositionentry *tpentry = tp.getEntry(hash);
+
+#if 0
+    int tscore;
+    uint16_t tcode;
+    bool tb = tp.probeHash(hash, &tscore, &tcode, depth, alpha, beta);
+    if (tpentry)
+    {
+        hashmovecode = tpentry->movecode;
+        if (hashmovecode != tcode)
+        {
+            printf("Code-Alarm\n");
+            tpentry = tp.getEntry(hash);
+        }
+        if (tpentry->depth >= depth)
+        {
+            if (!tb)
+                printf("TB-Alarm\n");
+            score = tp.getFixedValue(tpentry, alpha, beta);
+            if (score != tscore)
+                printf("Score-Alarm\n");
+            if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This test on the repetition table works like a "is not PV"; should be fixed in the future
+                return score;
+        }
+    }
+
+#else
+    if (tp.probeHash(hash, &score, &hashmovecode, depth, alpha, beta))
     {
         PDEBUG(depth, "(alphabeta) got value %d from TP\n", score);
         if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This test on the repetition table works like a "is not PV"; should be fixed in the future
             return score;
     }
+#endif
 
     // TB
     // The test for rule50_count() == 0 is required to prevent probing in case
@@ -213,7 +247,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                 score = SCORETBWIN - pos.ply;
             else 
                 score = SCOREDRAW + v;
-            tp.addHash(score, HASHEXACT, depth, 0);
+            tp.addHash(pos.hash, score, HASHEXACT, depth, 0);
             return score;
         }
     }
@@ -267,7 +301,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             int dummyscore;
             uint16_t nmrefutemove = 0;
             
-            if (tp.probeHash(&dummyscore, &nmrefutemove, MAXDEPTH, 0, 0) 
+            if (tp.probeHash(hash, &dummyscore, &nmrefutemove, MAXDEPTH, 0, 0) 
                 && pos.mailbox[GETTO(nmrefutemove)] != BLANK)
             {
                 nmrefutetarget = GETTO(nmrefutemove);
@@ -296,7 +330,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     if (PVNode && !hashmovecode && depth >= iidmin)
     {
         score = alphabeta(alpha, beta, depth - iiddelta, true);
-        tp.probeHash(&score, &hashmovecode, depth, alpha, beta);
+        tp.probeHash(hash, &score, &hashmovecode, depth, alpha, beta);
     }
 
     MoveSelector ms = {};
@@ -309,6 +343,10 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     int  LegalMoves = 0;
     while ((m = ms.next()))
     {
+        // Leave out the move to test for singularity
+        if ((m->code & 0xffff) == excludeMove)
+            continue;
+
         // Prune tactical moves with bad SEE
         if (!pos.isCheck && depth < 8 && bestscore > NOSCORE && ms.state >= BADTACTICALSTATE && !pos.see(m->code, -20 * depth * depth))
             continue;
@@ -317,6 +355,23 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         bool futilityPrune = futility && !ISTACTICAL(m->code) && !pos.isCheck && alpha <= 900;
         if (futilityPrune && LegalMoves)
             continue;
+
+        int extendMove = 0;
+
+        if ((m->code & 0xffff) == hashmovecode
+            && depth > 7
+            && !excludeMove
+            && tp.probeHash(hash, &hashscore, &hashmovecode, depth - 3, alpha, beta)  // FIXME: Probing the hash again with smaller depth to get the value is not very good
+            && hashscore > alpha)
+        {
+            movestack[mstop - 1].excludemove = hashmovecode;
+            int sBeta = max(hashscore - 2 * depth, SCOREBLACKWINS);
+            int redScore = alphabeta(sBeta - 1, sBeta, depth / 2, true);
+            movestack[mstop - 1].excludemove = 0;
+
+            if (redScore < sBeta)
+                extendMove = 1;
+        }
 
         isLegal = pos.playMove(m);
         if (isLegal)
@@ -354,7 +409,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                 if (ISCAPTURE(m->code) && materialvalue[GETPIECE(m->code) >> 1] - materialvalue[GETCAPTURE(m->code) >> 1] < 30)
                     moveExtension = 1;
 #endif
-                effectiveDepth = depth + extendall - reduction;
+                effectiveDepth = depth + extendall - reduction + extendMove;
                 score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
                 if (reduction && score > alpha)
                 {
@@ -420,7 +475,8 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                         en.fhf++;
 #endif
                     PDEBUG(depth, "(alphabeta) score=%d >= beta=%d  -> cutoff\n", score, beta);
-                    tp.addHash(score, HASHBETA, effectiveDepth, (uint16_t)bestcode);
+                    if (!excludeMove)
+                        tp.addHash(hash, score, HASHBETA, effectiveDepth, (uint16_t)bestcode);
                     return score;   // fail soft beta-cutoff
                 }
 
@@ -436,6 +492,9 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
     if (LegalMoves == 0)
     {
+        if (excludeMove)
+            return alpha;
+
         if (pos.isCheck)
             // It's a mate
             return SCOREBLACKWINS + pos.ply;
@@ -444,8 +503,8 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             return SCOREDRAW;
     }
 
-    if (bestcode)
-        tp.addHash(bestscore, eval_type, depth, (uint16_t)bestcode);
+    if (bestcode && !excludeMove)
+        tp.addHash(hash, bestscore, eval_type, depth, (uint16_t)bestcode);
     return bestscore;
 }
 
@@ -492,7 +551,7 @@ int rootsearch(int alpha, int beta, int depth)
 #endif
 
     PDEBUG(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
-    if (!isMultiPV && !pos.useRootmoveScore && tp.probeHash(&score, &hashmovecode, depth, alpha, beta))
+    if (!isMultiPV && !pos.useRootmoveScore && tp.probeHash(pos.hash, &score, &hashmovecode, depth, alpha, beta))
     {
         if (rp.getPositionCount(pos.hash) <= 1) //FIXME: Is this really needed in rootsearch?
             return score;
@@ -665,7 +724,7 @@ int rootsearch(int alpha, int beta, int depth)
                 en.fhf++;
 #endif
             PDEBUG(depth, "(rootsearch) score=%d >= beta=%d  -> cutoff\n", score, beta);
-            tp.addHash(beta, HASHBETA, effectiveDepth, (uint16_t)m->code);
+            tp.addHash(pos.hash, beta, HASHBETA, effectiveDepth, (uint16_t)m->code);
             //free(newmoves);
             return beta;   // fail hard beta-cutoff
         }
@@ -690,16 +749,16 @@ int rootsearch(int alpha, int beta, int depth)
     {
         if (eval_type == HASHEXACT)
         {
-            tp.addHash(pos.bestmovescore[0], eval_type, depth, (uint16_t)pos.bestmove[0].code);
+            tp.addHash(pos.hash, pos.bestmovescore[0], eval_type, depth, (uint16_t)pos.bestmove[0].code);
             return pos.bestmovescore[maxmoveindex - 1];
         }
         else {
-            tp.addHash(alpha, eval_type, depth, (uint16_t)pos.bestmove[0].code);
+            tp.addHash(pos.hash, alpha, eval_type, depth, (uint16_t)pos.bestmove[0].code);
             return alpha;
         }
     }
     else {
-        tp.addHash(alpha, eval_type, depth, (uint16_t)pos.bestmove[0].code);
+        tp.addHash(pos.hash, alpha, eval_type, depth, (uint16_t)pos.bestmove[0].code);
         return alpha;
     }
 
@@ -869,7 +928,7 @@ static void search_gen1()
                         if (!pos.bestmove[i].code)
                         {
                             uint16_t mc;
-                            tp.probeHash(&pos.bestmovescore[i], &mc, MAXDEPTH, alpha, beta);
+                            tp.probeHash(pos.hash, &pos.bestmovescore[i], &mc, MAXDEPTH, alpha, beta);
                             pos.bestmove[i].code = pos.shortMove2FullMove(mc);
                         }
 
@@ -906,7 +965,7 @@ static void search_gen1()
                 if (!pos.bestmove[0].code)
                 {
                     uint16_t mc = 0;
-                    tp.probeHash(&score, &mc, MAXDEPTH, alpha, beta);
+                    tp.probeHash(pos.hash, &score, &mc, MAXDEPTH, alpha, beta);
                     pos.bestmove[0].code = pos.shortMove2FullMove(mc);
                 }
                     

@@ -182,9 +182,8 @@ unsigned int transposition::getUsedinPermill()
 }
 
 
-void transposition::addHash(int val, int bound, int depth, uint16_t movecode)
+void transposition::addHash(U64 hash, int val, int bound, int depth, uint16_t movecode)
 {
-    unsigned long long hash = pos->hash;
     unsigned long long index = hash & sizemask;
     transpositioncluster *cluster = &table[index];
     transpositionentry *e;
@@ -260,13 +259,12 @@ void transposition::printHashentry()
 }
 
 
-bool transposition::probeHash(int *val, uint16_t *movecode, int depth, int alpha, int beta)
+bool transposition::probeHash(U64 hash, int *val, uint16_t *movecode, int depth, int alpha, int beta)
 {
 #ifdef EVALTUNE
     // don't use transposition table when tuning evaluation
     return false;
 #endif
-    unsigned long long hash = pos->hash;
     unsigned long long index = hash & sizemask;
     transpositioncluster* data = &table[index];
     for (int i = 0; i < TTBUCKETNUM; i++)
@@ -304,6 +302,42 @@ bool transposition::probeHash(int *val, uint16_t *movecode, int depth, int alpha
     }
     // not found
     return false;
+}
+
+transpositionentry* transposition::getEntry(U64 hash)
+{
+    unsigned long long index = hash & sizemask;
+    transpositioncluster *data = &table[index];
+    for (int i = 0; i < TTBUCKETNUM; i++)
+    {
+        transpositionentry *e = &(data->entry[i]);
+        if (e->hashupper == (hash >> 32))
+        {
+            return e;
+        }
+    }
+    return nullptr;
+}
+
+
+int transposition::getFixedValue(transpositionentry *e, int alpha, int beta)
+{
+    int val = e->value;
+    if (MATEFORME(val))
+        val -= pos->ply;
+    else if (MATEFOROPPONENT(val))
+        val += pos->ply;
+    int bound = (e->boundAndAge & BOUNDMASK);
+
+    switch (bound)
+    {
+    case HASHALPHA:
+        return max(val, alpha);
+    case HASHBETA:
+        return min(beta, val);
+    default:
+        return val;
+    }
 }
 
 #if 0

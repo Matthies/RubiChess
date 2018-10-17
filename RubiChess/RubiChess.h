@@ -488,7 +488,14 @@ struct chessmovestack
     int fullmovescounter;
     int isCheck;
     uint32_t movecode;
+    uint16_t excludemove;
 };
+
+#define MAXMOVELISTLENGTH 256	// for lists of possible pseudo-legal moves
+#define MAXMOVESEQUENCELENGTH 512	// for move sequences in a game
+
+extern chessmovestack movestack[MAXMOVESEQUENCELENGTH];
+extern int mstop;
 
 
 class chessmove
@@ -511,9 +518,6 @@ public:
 };
 
 #define MAXMULTIPV 64
-
-#define MAXMOVELISTLENGTH 256	// for lists of possible pseudo-legal moves
-#define MAXMOVESEQUENCELENGTH 512	// for move sequences in a game
 
 
 // FIXME: This is ugly! Almost the same classes with doubled code.
@@ -825,9 +829,12 @@ public:
     int setSize(int sizeMb);    // returns the number of Mb not used by allignment
     void clean();
     bool testHash();
-    void addHash(int val, int bound, int depth, uint16_t movecode);
+    void addHash(U64 hash, int val, int bound, int depth, uint16_t movecode);
     void printHashentry();
-    bool probeHash(int *val, uint16_t *movecode, int depth, int alpha, int beta);
+    bool probeHash(U64 hash, int *val, uint16_t *movecode, int depth, int alpha, int beta);
+    transpositionentry *getEntry(U64 hash);
+    int getFixedValue(transpositionentry *e, int alpha, int beta);
+
 #if 0
     short getValue();
     int getValtype();
