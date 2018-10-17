@@ -346,7 +346,7 @@ const int EPTSIDEMASK[2] = { 0x8, 0x10 };
 #define BOUNDMASK 0x03 
 #define HASHALPHA 0x01
 #define HASHBETA 0x02
-#define HASHEXACT 0x03
+#define HASHEXACT 0x00
 
 #define MAXDEPTH 256
 #define NOSCORE SHRT_MIN
@@ -355,8 +355,8 @@ const int EPTSIDEMASK[2] = { 0x8, 0x10 };
 #define SCOREDRAW 0
 #define SCORETBWIN 30000
 
-#define MATEFORME(s) (s > SCOREWHITEWINS - MAXDEPTH)
-#define MATEFOROPPONENT(s) (s < SCOREBLACKWINS + MAXDEPTH)
+#define MATEFORME(s) ((s) > SCOREWHITEWINS - MAXDEPTH)
+#define MATEFOROPPONENT(s) ((s) < SCOREBLACKWINS + MAXDEPTH)
 #define MATEDETECTED(s) (MATEFORME(s) || MATEFOROPPONENT(s))
 
 /* Offsets for 64Bit  board*/
@@ -850,7 +850,7 @@ public:
     void printHashentry();
     bool probeHash(U64 hash, int *val, uint16_t *movecode, int depth, int alpha, int beta);
     transpositionentry *getEntry(U64 hash);
-    int getFixedValue(transpositionentry *e, int alpha, int beta);
+    bool getFixedValue(transpositionentry *e, int *val, int alpha, int beta);
 
 #if 0
     short getValue();

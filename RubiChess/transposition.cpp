@@ -296,7 +296,7 @@ bool transposition::probeHash(U64 hash, int *val, uint16_t *movecode, int depth,
                     return true;
                 }
             }
-            // found but depth too low
+            // found but depth too low or value outside boundary
             return false;
         }
     }
@@ -320,23 +320,35 @@ transpositionentry* transposition::getEntry(U64 hash)
 }
 
 
-int transposition::getFixedValue(transpositionentry *e, int alpha, int beta)
+bool transposition::getFixedValue(transpositionentry *e, int *val, int alpha, int beta)
 {
-    int val = e->value;
-    if (MATEFORME(val))
-        val -= pos->ply;
-    else if (MATEFOROPPONENT(val))
-        val += pos->ply;
-    int bound = (e->boundAndAge & BOUNDMASK);
+    *val = e->value;
+    if (MATEFORME(*val))
+        *val -= pos->ply;
+    else if (MATEFOROPPONENT(*val))
+        *val += pos->ply;
 
+    int bound = (e->boundAndAge & BOUNDMASK);
     switch (bound)
     {
+    case HASHEXACT:
+        return true;
     case HASHALPHA:
-        return max(val, alpha);
+        if (*val <= alpha)
+        {
+            *val = alpha;
+            return true;
+        }
+        return false;
     case HASHBETA:
-        return min(beta, val);
+        if (*val >= beta)
+        {
+            *val = beta;
+            return true;
+        }
+        return false;
     default:
-        return val;
+        return true;
     }
 }
 
