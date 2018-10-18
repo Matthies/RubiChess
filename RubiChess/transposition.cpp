@@ -296,7 +296,7 @@ bool transposition::probeHash(U64 hash, int *val, uint16_t *movecode, int depth,
                     return true;
                 }
             }
-            // found but depth too low
+            // found but depth too low or value outside boundary
             return false;
         }
     }
@@ -304,68 +304,9 @@ bool transposition::probeHash(U64 hash, int *val, uint16_t *movecode, int depth,
     return false;
 }
 
-transpositionentry* transposition::getEntry(U64 hash)
-{
-    unsigned long long index = hash & sizemask;
-    transpositioncluster *data = &table[index];
-    for (int i = 0; i < TTBUCKETNUM; i++)
-    {
-        transpositionentry *e = &(data->entry[i]);
-        if (e->hashupper == (hash >> 32))
-        {
-            return e;
-        }
-    }
-    return nullptr;
-}
 
-
-int transposition::getFixedValue(transpositionentry *e, int alpha, int beta)
+uint16_t transposition::getMoveCode(U64 hash)
 {
-    int val = e->value;
-    if (MATEFORME(val))
-        val -= pos->ply;
-    else if (MATEFOROPPONENT(val))
-        val += pos->ply;
-    int bound = (e->boundAndAge & BOUNDMASK);
-
-    switch (bound)
-    {
-    case HASHALPHA:
-        return max(val, alpha);
-    case HASHBETA:
-        return min(beta, val);
-    default:
-        return val;
-    }
-}
-
-#if 0
-short transposition::getValue()
-{
-    unsigned long long hash = pos->hash;
-    unsigned long long index = hash & sizemask;
-    return table[index].value;
-}
-
-int transposition::getValtype()
-{
-    unsigned long long hash = pos->hash;
-    unsigned long long index = hash & sizemask;
-    return table[index].flag;
-}
-
-int transposition::getDepth()
-{
-    unsigned long long hash = pos->hash;
-    unsigned long long index = hash & sizemask;
-    return table[index].depth;
-}
-#endif
-// FIXME: Is this really needed?
-uint16_t transposition::getMoveCode()
-{
-    unsigned long long hash = pos->hash;
     unsigned long long index = hash & sizemask;
     transpositioncluster *data = &table[index];
     for (int i = 0; i < TTBUCKETNUM; i++)

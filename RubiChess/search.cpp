@@ -153,6 +153,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     int score;
     int hashscore;
     uint16_t hashmovecode = 0;
+    bool hashValueInBoundary;
     bool isLegal;
     int bestscore = NOSCORE;
     uint32_t bestcode = 0;
@@ -195,40 +196,12 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
     U64 hash = pos.hash ^ (excludeMove << 16);
 
-    //transpositionentry *tpentry = tp.getEntry(hash);
-
-#if 0
-    int tscore;
-    uint16_t tcode;
-    bool tb = tp.probeHash(hash, &tscore, &tcode, depth, alpha, beta);
-    if (tpentry)
+    if (tp.probeHash(hash, &hashscore, &hashmovecode, depth, alpha, beta)
+        && rp.getPositionCount(pos.hash) <= 1)  //FIXME: This test on the repetition table works like a "is not PV"; should be fixed in the future)
     {
-        hashmovecode = tpentry->movecode;
-        if (hashmovecode != tcode)
-        {
-            printf("Code-Alarm\n");
-            tpentry = tp.getEntry(hash);
-        }
-        if (tpentry->depth >= depth)
-        {
-            if (!tb)
-                printf("TB-Alarm\n");
-            score = tp.getFixedValue(tpentry, alpha, beta);
-            if (score != tscore)
-                printf("Score-Alarm\n");
-            if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This test on the repetition table works like a "is not PV"; should be fixed in the future
-                return score;
-        }
+        return hashscore;
     }
 
-#else
-    if (tp.probeHash(hash, &score, &hashmovecode, depth, alpha, beta))
-    {
-        PDEBUG(depth, "(alphabeta) got value %d from TP\n", score);
-        if (rp.getPositionCount(pos.hash) <= 1)  //FIXME: This test on the repetition table works like a "is not PV"; should be fixed in the future
-            return score;
-    }
-#endif
 
     // TB
     // The test for rule50_count() == 0 is required to prevent probing in case
@@ -251,15 +224,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             return score;
         }
     }
-#if 0
-    // test for remis via repetition
-    if (rp.getPositionCount(pos.hash) >= 3 && pos.testRepetiton() >= 2)
-        return SCOREDRAW;
 
-    // test for remis via 50 moves rule
-    if (pos.halfmovescounter >= 100)
-        return SCOREDRAW;
-#endif
 
     if (depth <= 0)
     {
@@ -270,6 +235,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         return getQuiescence(alpha, beta, depth);
     }
 
+    // Check extension
     if (pos.isCheck)
         extendall = 1;
 
@@ -298,14 +264,10 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                 extendall++;
             }
 #endif
-            int dummyscore;
             uint16_t nmrefutemove = 0;
             
-            if (tp.probeHash(hash, &dummyscore, &nmrefutemove, MAXDEPTH, 0, 0) 
-                && pos.mailbox[GETTO(nmrefutemove)] != BLANK)
-            {
+            if ((nmrefutemove = tp.getMoveCode(hash)) && pos.mailbox[GETTO(nmrefutemove)] != BLANK)
                 nmrefutetarget = GETTO(nmrefutemove);
-            }
 
             pos.unplayNullMove();
         }
@@ -330,7 +292,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     if (PVNode && !hashmovecode && depth >= iidmin)
     {
         score = alphabeta(alpha, beta, depth - iiddelta, true);
-        tp.probeHash(hash, &score, &hashmovecode, depth, alpha, beta);
+        tp.probeHash(hash, &hashscore, &hashmovecode, depth, alpha, beta);
     }
 
     MoveSelector ms = {};
@@ -361,7 +323,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         if ((m->code & 0xffff) == hashmovecode
             && depth > 7
             && !excludeMove
-            && tp.probeHash(hash, &hashscore, &hashmovecode, depth - 3, alpha, beta)  // FIXME: Probing the hash again with smaller depth to get the value is not very good
+            && tp.probeHash(hash, &hashscore, &hashmovecode, depth - 3, alpha, beta)
             && hashscore > alpha)
         {
             movestack[mstop - 1].excludemove = hashmovecode;
@@ -551,10 +513,12 @@ int rootsearch(int alpha, int beta, int depth)
 #endif
 
     PDEBUG(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
-    if (!isMultiPV && !pos.useRootmoveScore && tp.probeHash(pos.hash, &score, &hashmovecode, depth, alpha, beta))
+    if (!isMultiPV
+        && !pos.useRootmoveScore
+        && tp.probeHash(pos.hash, &score, &hashmovecode, depth, alpha, beta)
+        && rp.getPositionCount(pos.hash) <= 1)  //FIXME: Is this really needed in rootsearch?
     {
-        if (rp.getPositionCount(pos.hash) <= 1) //FIXME: Is this really needed in rootsearch?
-            return score;
+        return score;
     }
 
     // test for remis via repetition
@@ -928,7 +892,7 @@ static void search_gen1()
                         if (!pos.bestmove[i].code)
                         {
                             uint16_t mc;
-                            tp.probeHash(pos.hash, &pos.bestmovescore[i], &mc, MAXDEPTH, alpha, beta);
+                            tp.probeHash(pos.hash, &pos.bestmovescore[i], &mc, depth, alpha, beta);
                             pos.bestmove[i].code = pos.shortMove2FullMove(mc);
                         }
 
@@ -955,7 +919,7 @@ static void search_gen1()
                         cout << s;
                         i++;
                     } while (i < maxmoveindex
-                        && (pos.bestmove[i].code || (pos.bestmove[i].code = tp.getMoveCode()))
+                        && (pos.bestmove[i].code || (pos.bestmove[i].code = tp.getMoveCode(pos.hash)))
                         && pos.bestmovescore[i] > SHRT_MIN + 1);
                 }
             }
