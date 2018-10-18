@@ -849,8 +849,6 @@ public:
     void addHash(U64 hash, int val, int bound, int depth, uint16_t movecode);
     void printHashentry();
     bool probeHash(U64 hash, int *val, uint16_t *movecode, int depth, int alpha, int beta);
-    transpositionentry *getEntry(U64 hash);
-    bool getFixedValue(transpositionentry *e, int *val, int alpha, int beta);
     uint16_t getMoveCode(U64 hash);
     unsigned int getUsedinPermill();
     void nextSearch() { numOfSearchShiftTwo = (numOfSearchShiftTwo + 4) & 0xfc; }

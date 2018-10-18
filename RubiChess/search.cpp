@@ -195,18 +195,11 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     movestack[mstop].excludemove = 0;
 
     U64 hash = pos.hash ^ (excludeMove << 16);
-    transpositionentry *tpentry = tp.getEntry(hash);
 
-    if (tpentry)
+    if (tp.probeHash(hash, &hashscore, &hashmovecode, depth, alpha, beta)
+        && rp.getPositionCount(pos.hash) <= 1)  //FIXME: This test on the repetition table works like a "is not PV"; should be fixed in the future)
     {
-        hashmovecode = tpentry->movecode;
-        hashValueInBoundary = tp.getFixedValue(tpentry, &hashscore, alpha, beta);
-        if (tpentry->depth >= depth
-            && hashValueInBoundary
-            && rp.getPositionCount(pos.hash) <= 1)  //FIXME: This test on the repetition table works like a "is not PV"; should be fixed in the future)
-        {
-            return hashscore;
-        }
+        return hashscore;
     }
 
 
@@ -299,12 +292,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     if (PVNode && !hashmovecode && depth >= iidmin)
     {
         score = alphabeta(alpha, beta, depth - iiddelta, true);
-        tpentry = tp.getEntry(hash);
-        if (tpentry)
-        {
-            hashmovecode = tpentry->movecode;
-            hashValueInBoundary = tp.getFixedValue(tpentry, &hashscore, alpha, beta);
-        }
+        tp.probeHash(hash, &hashscore, &hashmovecode, depth, alpha, beta);
     }
 
     MoveSelector ms = {};
@@ -335,8 +323,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         if ((m->code & 0xffff) == hashmovecode
             && depth > 7
             && !excludeMove
-            && tpentry && tpentry->depth >= depth - 3
-            && hashValueInBoundary
+            && tp.probeHash(hash, &hashscore, &hashmovecode, depth - 3, alpha, beta)
             && hashscore > alpha)
         {
             movestack[mstop - 1].excludemove = hashmovecode;
@@ -904,13 +891,9 @@ static void search_gen1()
                         // so get bestmovecode from there
                         if (!pos.bestmove[i].code)
                         {
-                            transpositionentry *tpentry = tp.getEntry(pos.hash);
-                            if (tpentry)
-                            {
-                                uint16_t mc = tp.getMoveCode(pos.hash);
-                                pos.bestmove[i].code = pos.shortMove2FullMove(mc);
-                                tp.getFixedValue(tpentry, &pos.bestmovescore[i], alpha, beta);
-                            }
+                            uint16_t mc;
+                            tp.probeHash(pos.hash, &pos.bestmovescore[i], &mc, depth, alpha, beta);
+                            pos.bestmove[i].code = pos.shortMove2FullMove(mc);
                         }
 
                         pos.getpvline(depth, i);

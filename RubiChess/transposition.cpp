@@ -304,56 +304,6 @@ bool transposition::probeHash(U64 hash, int *val, uint16_t *movecode, int depth,
     return false;
 }
 
-transpositionentry* transposition::getEntry(U64 hash)
-{
-#ifdef EVALTUNE
-    // don't use transposition table when tuning evaluation
-    return nullptr;
-#endif
-    unsigned long long index = hash & sizemask;
-    transpositioncluster *data = &table[index];
-    for (int i = 0; i < TTBUCKETNUM; i++)
-    {
-        transpositionentry *e = &(data->entry[i]);
-        if (e->hashupper == (hash >> 32))
-        {
-            return e;
-        }
-    }
-    return nullptr;
-}
-
-bool transposition::getFixedValue(transpositionentry *e, int *val, int alpha, int beta)
-{
-    *val = e->value;
-    if (MATEFORME(*val))
-        *val -= pos->ply;
-    else if (MATEFOROPPONENT(*val))
-        *val += pos->ply;
-
-    int bound = (e->boundAndAge & BOUNDMASK);
-    switch (bound)
-    {
-    case HASHEXACT:
-        return true;
-    case HASHALPHA:
-        if (*val <= alpha)
-        {
-            *val = alpha;
-            return true;
-        }
-        return false;
-    case HASHBETA:
-        if (*val >= beta)
-        {
-            *val = beta;
-            return true;
-        }
-        return false;
-    default:
-        return true;
-    }
-}
 
 uint16_t transposition::getMoveCode(U64 hash)
 {
