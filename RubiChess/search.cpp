@@ -153,7 +153,6 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     int score;
     int hashscore;
     uint16_t hashmovecode = 0;
-    bool hashValueInBoundary;
     bool isLegal;
     int bestscore = NOSCORE;
     uint32_t bestcode = 0;
@@ -264,9 +263,8 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                 extendall++;
             }
 #endif
-            uint16_t nmrefutemove = 0;
-            
-            if ((nmrefutemove = tp.getMoveCode(hash)) && pos.mailbox[GETTO(nmrefutemove)] != BLANK)
+            uint16_t nmrefutemove = tp.getMoveCode(hash);
+            if (nmrefutemove && pos.mailbox[GETTO(nmrefutemove)] != BLANK)
                 nmrefutetarget = GETTO(nmrefutemove);
 
             pos.unplayNullMove();
@@ -310,7 +308,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             continue;
 
         // Prune tactical moves with bad SEE
-        if (!pos.isCheck && depth < 8 && bestscore > NOSCORE && ms.state >= BADTACTICALSTATE && !pos.see(m->code, -20 * depth * depth))
+        if (!pos.isCheck && depth < 8 && bestcode && ms.state >= BADTACTICALSTATE && !pos.see(m->code, -20 * depth * depth))
             continue;
 
         // Check for futility pruning condition for this move and skip move if at least one legal move is already found
@@ -345,11 +343,13 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             if (futilityPrune)
             {
                 pos.unplayMove(m);
+#if 0
                 // As efp repair failed lets try this; setting bestmove "by accident" is the only thing that can help master vs. efp
                 if (score > bestscore)
                 {
                     bestscore = score;
                 }
+#endif
                 continue;
             }
 
