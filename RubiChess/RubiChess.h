@@ -6,6 +6,10 @@
 #define DEBUG
 #endif
 
+#if 1
+#define SDEBUG
+#endif
+
 #if 0
 #define EVALTUNE
 #endif
@@ -645,6 +649,12 @@ public:
 #ifdef DEBUG    
     unsigned long long debughash = 0;
 #endif
+#ifdef SDEBUG    
+    uint16_t pvdebug[MAXMOVESEQUENCELENGTH];
+    bool debugRecursive;
+    bool debugOnlySubtree;
+    uint32_t pvtable[MAXDEPTH][MAXDEPTH];
+#endif
     //int *positionvaluetable; // value tables for both sides, 7 PieceTypes and 256 phase variations 
     int ph; // to store the phase during different evaluation functions
     int isCheck;
@@ -697,6 +707,10 @@ public:
     template <EvalTrace> int getValue();
 #ifdef DEBUG
     void debug(int depth, const char* format, ...);
+#endif
+#ifdef SDEBUG
+    bool triggerDebug(chessmove* nextmove);
+    void sdebug(int indent, const char* format, ...);
 #endif
 #ifdef DEBUGEVAL
     void debugeval(const char* format, ...);
@@ -792,6 +806,13 @@ extern engine en;
 #else
 #define PDEBUG(d, f, ...)
 #endif
+
+#ifdef SDEBUG
+#define SDEBUGPRINT(b, d, f, ...) if (b) pos.sdebug(d, f, ##__VA_ARGS__)
+#else
+#define SDEBUGPRINT(b, d, f, ...)
+#endif
+
 
 //
 // transposition stuff
