@@ -275,13 +275,14 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     const int futilityMargin[] = { 0, 130, 280, 430 };
     const int revFutilityMargin[] = { 0, 90, 180, 270 };
     bool futility = false;
+    int staticscore;
     if (depth <= 3)
     {
-        score = S2MSIGN(pos.state & S2MMASK) * getValueNoTrace(&pos);
+        staticscore = S2MSIGN(pos.state & S2MMASK) * getValueNoTrace(&pos);
         // reverse futility pruning
-        if (!pos.isCheck && score - revFutilityMargin[depth] > beta)
-            return score;
-        futility = (score < alpha - futilityMargin[depth]);
+        if (!pos.isCheck && staticscore - revFutilityMargin[depth] > beta)
+            return staticscore;
+        futility = (staticscore < alpha - futilityMargin[depth]);
     }
 
     // Internal iterative deepening 
@@ -289,7 +290,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     const int iiddelta = 2;
     if (PVNode && !hashmovecode && depth >= iidmin)
     {
-        score = alphabeta(alpha, beta, depth - iiddelta, true);
+        alphabeta(alpha, beta, depth - iiddelta, true);
         tp.probeHash(hash, &hashscore, &hashmovecode, depth, alpha, beta);
     }
 
@@ -307,14 +308,20 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         if ((m->code & 0xffff) == excludeMove)
             continue;
 
-        // Prune tactical moves with bad SEE
-        if (!pos.isCheck && depth < 8 && bestcode && ms.state >= BADTACTICALSTATE && !pos.see(m->code, -20 * depth * depth))
-            continue;
-
         // Check for futility pruning condition for this move and skip move if at least one legal move is already found
         bool futilityPrune = futility && !ISTACTICAL(m->code) && !pos.isCheck && alpha <= 900;
-        if (futilityPrune && LegalMoves)
+        if (futilityPrune)
+        {
+            if (staticscore > bestscore)
+                bestscore = staticscore;
+            if (LegalMoves)
+                continue;
+        }
+
+        // Prune tactical moves with bad SEE
+        if (!pos.isCheck && depth < 8 && bestscore > NOSCORE && ms.state >= BADTACTICALSTATE && !pos.see(m->code, -20 * depth * depth))
             continue;
+
 
         int extendMove = 0;
 
@@ -343,13 +350,6 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             if (futilityPrune)
             {
                 pos.unplayMove(m);
-#if 0
-                // As efp repair failed lets try this; setting bestmove "by accident" is the only thing that can help master vs. efp
-                if (score > bestscore)
-                {
-                    bestscore = score;
-                }
-#endif
                 continue;
             }
 
