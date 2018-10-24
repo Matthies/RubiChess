@@ -1,0 +1,11 @@
+bc11:
+STC:
+Score of RubiChess-Bitboard-bc11 vs RubiChess-Bitboard-ms: 2775 - 2736 - 4342  [0.502] 9853
+Elo difference: 1.38 +/- 5.12
+SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+
+bc12:
+STC:
+Score of RubiChess-Bitboard-bc12 vs RubiChess-Bitboard-ms: 2643 - 2602 - 4167  [0.502] 9412
+Elo difference: 1.51 +/- 5.23
+SPRT: llr 1.41, lbound -1.39, ubound 1.39 - H1 was accepted

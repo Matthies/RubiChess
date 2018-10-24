@@ -312,10 +312,10 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         bool futilityPrune = futility && !ISTACTICAL(m->code) && !pos.isCheck && alpha <= 900;
         if (futilityPrune)
         {
-            if (staticscore > bestscore)
-                bestscore = staticscore;
             if (LegalMoves)
                 continue;
+            else if (staticscore > bestscore)
+                bestscore = staticscore;
         }
 
         // Prune tactical moves with bad SEE
