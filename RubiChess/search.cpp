@@ -153,7 +153,6 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     int score;
     int hashscore;
     uint16_t hashmovecode = 0;
-    bool hashValueInBoundary;
     bool isLegal;
     int bestscore = NOSCORE;
     uint32_t bestcode = 0;
@@ -304,9 +303,8 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                 extendall++;
             }
 #endif
-            uint16_t nmrefutemove = 0;
-            
-            if ((nmrefutemove = tp.getMoveCode(hash)) && pos.mailbox[GETTO(nmrefutemove)] != BLANK)
+            uint16_t nmrefutemove = tp.getMoveCode(hash);
+            if (nmrefutemove && pos.mailbox[GETTO(nmrefutemove)] != BLANK)
                 nmrefutetarget = GETTO(nmrefutemove);
 
             pos.unplayNullMove();
@@ -317,16 +315,14 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     const int futilityMargin[] = { 0, 130, 280, 430 };
     const int revFutilityMargin[] = { 0, 90, 180, 270 };
     bool futility = false;
+    int staticscore;
     if (depth <= 3)
     {
-        score = S2MSIGN(pos.state & S2MMASK) * getValueNoTrace(&pos);
+        staticscore = S2MSIGN(pos.state & S2MMASK) * getValueNoTrace(&pos);
         // reverse futility pruning
-        if (!pos.isCheck && score - revFutilityMargin[depth] > beta)
-        {
-            SDEBUGPRINT(isDebugPv, debugInsert, " Cutoff by reverse futility pruning: %d", score);
-            return score;
-        }
-        futility = (score < alpha - futilityMargin[depth]);
+        if (!pos.isCheck && staticscore - revFutilityMargin[depth] > beta)
+            return staticscore;
+        futility = (staticscore < alpha - futilityMargin[depth]);
     }
 
     // Internal iterative deepening 
@@ -334,8 +330,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     const int iiddelta = 2;
     if (PVNode && !hashmovecode && depth >= iidmin)
     {
-        SDEBUGPRINT(isDebugPv, debugInsert, " Entering iid...");
-        score = alphabeta(alpha, beta, depth - iiddelta, true);
+        alphabeta(alpha, beta, depth - iiddelta, true);
         tp.probeHash(hash, &hashscore, &hashmovecode, depth, alpha, beta);
     }
 
@@ -356,18 +351,21 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         if ((m->code & 0xffff) == excludeMove)
             continue;
 
+        // Check for futility pruning condition for this move and skip move if at least one legal move is already found
+        bool futilityPrune = futility && !ISTACTICAL(m->code) && !pos.isCheck && alpha <= 900;
+        if (futilityPrune)
+        {
+            if (LegalMoves)
+                continue;
+            else if (staticscore > bestscore)
+                // Use the static score from futility test as a bestscore start value
+                bestscore = staticscore;
+        }
+
         // Prune tactical moves with bad SEE
         if (!pos.isCheck && depth < 8 && bestscore > NOSCORE && ms.state >= BADTACTICALSTATE && !pos.see(m->code, -20 * depth * depth))
         {
             SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by bad SEE", debugMove.toString().c_str());
-            continue;
-        }
-
-        // Check for futility pruning condition for this move and skip move if at least one legal move is already found
-        bool futilityPrune = futility && !ISTACTICAL(m->code) && !pos.isCheck && alpha <= 900;
-        if (futilityPrune && LegalMoves)
-        {
-            SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s futility-pruned", debugMove.toString().c_str());
             continue;
         }
 
@@ -402,12 +400,6 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             if (futilityPrune)
             {
                 pos.unplayMove(m);
-                // As efp repair failed lets try this; setting bestmove "by accident" is the only thing that can help master vs. efp
-                if (score > bestscore)
-                {
-                    bestscore = score;
-                }
-                SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s futility-pruned", debugMove.toString().c_str());
                 continue;
             }
 
