@@ -315,13 +315,13 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             if (LegalMoves)
                 continue;
             else if (staticscore > bestscore)
+                // Use the static score from futility test as a bestscore start value
                 bestscore = staticscore;
         }
 
         // Prune tactical moves with bad SEE
         if (!pos.isCheck && depth < 8 && bestscore > NOSCORE && ms.state >= BADTACTICALSTATE && !pos.see(m->code, -20 * depth * depth))
             continue;
-
 
         int extendMove = 0;
 
