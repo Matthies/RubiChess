@@ -321,7 +321,10 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         staticscore = S2MSIGN(pos.state & S2MMASK) * getValueNoTrace(&pos);
         // reverse futility pruning
         if (!pos.isCheck && staticscore - revFutilityMargin[depth] > beta)
+        {
+            SDEBUGPRINT(isDebugPv, debugInsert, " Cutoff by reverse futility pruning: staticscore(%d) - revMargin[depth](%d) > beta(%d)", staticscore, revFutilityMargin[depth], beta);
             return staticscore;
+        }
         futility = (staticscore < alpha - futilityMargin[depth]);
     }
 
@@ -330,6 +333,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     const int iiddelta = 2;
     if (PVNode && !hashmovecode && depth >= iidmin)
     {
+        SDEBUGPRINT(isDebugPv, debugInsert, " Entering iid...");
         alphabeta(alpha, beta, depth - iiddelta, true);
         tp.probeHash(hash, &hashscore, &hashmovecode, depth, alpha, beta);
     }
@@ -356,10 +360,15 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         if (futilityPrune)
         {
             if (LegalMoves)
+            {
+                SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by futility: staticscore(%d) < alpha(%d) - futilityMargin[depth](%d)", debugMove.toString().c_str(), staticscore, alpha, futilityMargin[depth]);
                 continue;
+            }
             else if (staticscore > bestscore)
+            {
                 // Use the static score from futility test as a bestscore start value
                 bestscore = staticscore;
+            }
         }
 
         // Prune tactical moves with bad SEE
@@ -408,6 +417,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             if (!extendall && depth > 2 && !ISTACTICAL(m->code))
             {
                 reduction = reductiontable[depth][min(63, LegalMoves)];
+                SDEBUGPRINT(isDebugPv && isDebugMove && reduction, debugInsert, " PV move %s with depth reduced by %d", debugMove.toString().c_str(), reduction);
             }
 #if 0
             // disabled; capture extension doesn't seem to work
@@ -491,7 +501,10 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                     PDEBUG(depth, "(alphabeta) score=%d >= beta=%d  -> cutoff\n", score, beta);
                     SDEBUGPRINT(isDebugPv, debugInsert, " Beta-cutoff by move %s: %d  %s%s", m->toString().c_str(), score, excludestr.c_str(), excludeMove ? " : not singular" : "");
                     if (!excludeMove)
+                    {
+                        SDEBUGPRINT(isDebugPv, debugInsert, " ->Hash(%d) = %d(beta)", effectiveDepth, score);
                         tp.addHash(hash, score, HASHBETA, effectiveDepth, (uint16_t)bestcode);
+                    }
                     return score;   // fail soft beta-cutoff
                 }
 
@@ -502,14 +515,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                     alpha = score;
                     eval_type = HASHEXACT;
 #ifdef SDEBUG
-                    pos.pvtable[pos.ply][0] = bestcode;
-                    int i = 0;
-                    while (pos.pvtable[pos.ply + 1][i])
-                    {
-                        pos.pvtable[pos.ply][i + 1] = pos.pvtable[pos.ply + 1][i];
-                        i++;
-                    }
-                    pos.pvtable[pos.ply][i + 1] = 0;
+                    pos.updatePvTable(bestcode);
 #endif
                 }
             }
@@ -529,10 +535,13 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             return SCOREDRAW;
     }
 
-    if (bestcode && !excludeMove)
-        tp.addHash(hash, bestscore, eval_type, depth, (uint16_t)bestcode);
+    SDEBUGPRINT(isDebugPv, debugInsert, " Return score: %d  %s%s", bestscore, excludestr.c_str(), excludeMove ? " singular" : "");
 
-    SDEBUGPRINT(isDebugPv, debugInsert, " Return score: %d  %s%s", score, excludestr.c_str(), excludeMove ? " singular" : "");
+    if (bestcode && !excludeMove)
+    {
+        SDEBUGPRINT(isDebugPv, debugInsert, " ->Hash(%d) = %d(%s)", depth, bestscore, eval_type == HASHEXACT ? "exact" : "alpha");
+        tp.addHash(hash, bestscore, eval_type, depth, (uint16_t)bestcode);
+    }
 
     return bestscore;
 }
@@ -580,7 +589,12 @@ int rootsearch(int alpha, int beta, int depth)
 #endif
 
 #ifdef SDEBUG
-        fprintf(stderr, "Rootsearch depth=%2d  [%3d,%3d]\n", depth, alpha, beta);
+    chessmove debugMove;
+    bool debugMoveDone = false;
+    int debugInsert = pos.ply - pos.rootheight;
+    bool isDebugPv = pos.triggerDebug(&debugMove);
+    pos.pvtable[0][0] = 0;
+    SDEBUGPRINT(true, debugInsert, "(depth=%2d) Rootsearch Next pv debug move: %s  [%3d,%3d]", depth, debugMove.code ? debugMove.toString().c_str() : "", alpha, beta);
 #endif
 
     PDEBUG(depth, "depth=%d alpha=%d beta=%d\n", depth, alpha, beta);
@@ -652,6 +666,9 @@ int rootsearch(int alpha, int beta, int depth)
         }
 
         m = &pos.rootmovelist.move[i];
+#ifdef SDEBUG
+        bool isDebugMove = (debugMove.code == (m->code & 0xeff));
+#endif
 
         pos.playMove(m);
 
@@ -698,6 +715,8 @@ int rootsearch(int alpha, int beta, int depth)
                 score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
             }
         }
+
+        SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s scored %d", debugMove.toString().c_str(), score);
 
 #ifdef DEBUG
         if (en.debug && pos.debughash == pos.hash)
@@ -758,6 +777,7 @@ int rootsearch(int alpha, int beta, int depth)
             if (i == 0)
                 en.fhf++;
 #endif
+            SDEBUGPRINT(isDebugPv, debugInsert, " Beta-cutoff by move %s: %d", m->toString().c_str(), score);
             PDEBUG(depth, "(rootsearch) score=%d >= beta=%d  -> cutoff\n", score, beta);
             tp.addHash(pos.hash, beta, HASHBETA, effectiveDepth, (uint16_t)m->code);
             //free(newmoves);
@@ -777,28 +797,12 @@ int rootsearch(int alpha, int beta, int depth)
             }
             eval_type = HASHEXACT;
 #ifdef SDEBUG
-            pos.pvtable[0][0] = m->code;
-            int i = 0;
-            while (pos.pvtable[1][i])
-            {
-                pos.pvtable[0][i + 1] = pos.pvtable[1][i];
-                i++;
-            }
-            pos.pvtable[0][i + 1] = 0;
+            pos.updatePvTable(m->code);
 #endif
         }
+    }
 
-    }
-#ifdef SDEBUG
-    string s = "PV: ";
-    for (int i = 0; pos.pvtable[0][i]; i++)
-    {
-        chessmove cm;
-        cm.code = pos.pvtable[0][i];
-        s += " " + cm.toString();
-    }
-    SDEBUGPRINT(true, 0, s.c_str());
-#endif
+    SDEBUGPRINT(true, 0, pos.getPv().c_str());
 
     if (isMultiPV)
     {

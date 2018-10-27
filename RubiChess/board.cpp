@@ -914,6 +914,31 @@ void chessposition::debugeval(const char* format, ...)
 #endif
 
 #ifdef SDEBUG
+void chessposition::updatePvTable(uint32_t movecode)
+{
+    pvtable[pos.ply][0] = movecode;
+    int i = 0;
+    while (pos.pvtable[pos.ply + 1][i])
+    {
+        pos.pvtable[pos.ply][i + 1] = pos.pvtable[pos.ply + 1][i];
+        i++;
+    }
+    pos.pvtable[pos.ply][i + 1] = 0;
+
+}
+
+string chessposition::getPv()
+{
+    string s = "PV:";
+    for (int i = 0; pos.pvtable[0][i]; i++)
+    {
+        chessmove cm;
+        cm.code = pos.pvtable[0][i];
+        s += " " + cm.toString();
+    }
+    return s;
+}
+
 bool chessposition::triggerDebug(chessmove* nextmove)
 {
     if (pos.pvdebug[0] == 0)

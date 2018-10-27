@@ -709,6 +709,8 @@ public:
     void debug(int depth, const char* format, ...);
 #endif
 #ifdef SDEBUG
+    void updatePvTable(uint32_t movecode);
+    string getPv();
     bool triggerDebug(chessmove* nextmove);
     void sdebug(int indent, const char* format, ...);
 #endif
