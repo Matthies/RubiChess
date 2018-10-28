@@ -28,12 +28,22 @@ int getQuiescence(int alpha, int beta, int depth)
     // FIXME: Should quiescience nodes count for the statistics?
     //en.nodes++;
 
+#ifdef SDEBUG
+    chessmove debugMove;
+    int debugInsert = pos.ply - pos.rootheight;
+    bool isDebugPv = pos.triggerDebug(&debugMove);
+    pos.pvtable[pos.ply][0] = 0;
+#endif
+
     if (!pos.isCheck)
     {
         patscore = (pos.state & S2MMASK ? -getValueNoTrace(&pos) : getValueNoTrace(&pos));
         bestscore = patscore;
         if (patscore >= beta)
+        {
+            SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (fail high by patscore).", patscore);
             return patscore;
+        }
         if (patscore > alpha)
         {
 #ifdef EVALTUNE
@@ -46,7 +56,10 @@ int getQuiescence(int alpha, int beta, int depth)
         // Delta pruning
         int bestCapture = pos.getBestPossibleCapture();
         if (patscore + deltapruningmargin + bestCapture < alpha)
+        {
+            SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (delta pruning by patscore).", patscore);
             return patscore;
+        }
     }
 
     pos.prepareStack();
@@ -84,6 +97,7 @@ int getQuiescence(int alpha, int beta, int depth)
                     if (score >= beta)
                     {
                         delete movelist;
+                        SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (fail high).", score);
                         return score;
                     }
                     if (score > alpha)
@@ -106,6 +120,7 @@ int getQuiescence(int alpha, int beta, int depth)
     if (LegalMovesPossible)
     {
         delete movelist;
+        SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch.", bestscore);
         return bestscore;
     }
 
@@ -115,16 +130,19 @@ int getQuiescence(int alpha, int beta, int depth)
         if (pos.getMoves(&movelist->move[0], QUIETWITHCHECK))
         {
             delete movelist;
+            SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch.", bestscore);
             return bestscore;
         }
 
         // It's a stalemate
         delete movelist;
+        SDEBUGPRINT(isDebugPv, debugInsert, " Got score 0 from qsearch (stalemate).");
         return SCOREDRAW;
     }
     else {
         // It's a mate
         delete movelist;
+        SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (mate).", SCOREBLACKWINS + pos.ply);
         return SCOREBLACKWINS + pos.ply;
     }
 }
@@ -233,9 +251,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         if (pos.seldepth < pos.ply + 1)
             pos.seldepth = pos.ply + 1;
 
-        score = getQuiescence(alpha, beta, depth);
-        SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch.", score);
-        return score;
+        return getQuiescence(alpha, beta, depth);
     }
 
     // Check extension
