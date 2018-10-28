@@ -882,27 +882,6 @@ string chessposition::toFen()
 }
 
 
-
-#ifdef DEBUG
-void chessposition::debug(int depth, const char* format, ...)
-{
-    if (depth > maxdebugdepth || depth < mindebugdepth)
-        return;
-    printf("!");
-    for (int i = 0; i < maxdebugdepth - depth; i++)
-    {
-        if (depth & 1)
-            printf("-");
-        else
-            printf("+");
-    }
-    va_list argptr;
-    va_start(argptr, format);
-    vfprintf(stdout, format, argptr);
-    va_end(argptr);
-}
-#endif
-
 #ifdef DEBUGEVAL
 void chessposition::debugeval(const char* format, ...)
 {
@@ -1905,9 +1884,6 @@ chessmove* MoveSelector::next()
         state++;
         if (pos->moveIsPseudoLegal(hashmove.code))
         {
-#ifdef DEBUG
-            en.pvnodes++;
-#endif
             return &hashmove;
         }
     case TACTICALINITSTATE:
@@ -1983,13 +1959,6 @@ chessmove* MoveSelector::next()
 
 engine::engine()
 {
-#ifdef DEBUG
-    int p = GetCurrentProcessId();
-    char s[256];
-    sprintf_s(s, "RubiChess-debug-%d.txt", p);
-    fdebug.open(s, fstream::out | fstream::app);
-#endif
-
     tp.pos = &pos;
     pwnhsh.pos = &pos;
     initBitmaphelper();
@@ -2068,10 +2037,6 @@ void engine::setOption(string sName, string sValue)
 }
 
 
-#ifdef DEBUG
-extern int aspirationdelta[MAXDEPTH][2000];
-#endif
-
 void engine::communicate(string inputstring)
 {
     string fen;
@@ -2138,11 +2103,9 @@ void engine::communicate(string inputstring)
                         debug = true;
                     else if (commandargs[ci] == "off")
                         debug = false;
-#ifdef DEBUG
+#ifdef SDEBUG
                     else if (commandargs[ci] == "this")
                         pos.debughash = pos.hash;
-#endif
-#ifdef SDEBUG
                     else if (commandargs[ci] == "pv")
                     {
                         pos.debugOnlySubtree = false;
@@ -2362,33 +2325,6 @@ void engine::communicate(string inputstring)
             }
         }
     } while (command != QUIT && (inputstring == "" || pendingposition));
-
-#ifdef DEBUG
-    char s[16384];
-    cout << "Score delta table:\n";
-    int depth = 2;
-    int mind, maxd;
-    do
-    {
-        mind = 2000;
-        maxd = -1;
-        for (int i = 0; i < 2000; i++)
-        {
-            if (aspirationdelta[depth][i] > 0)
-            {
-                if (mind > i)
-                    mind = i;
-                maxd = i;
-            }
-        }
-        for (int i = mind; i <= maxd; i++)
-        {
-            sprintf_s(s, "%d;%d;%d\n", depth, i - 1000, aspirationdelta[depth][i]);
-            en.fdebug << s;
-        }
-        depth++;
-    } while (maxd >= 0 && depth < 20);
-#endif
 }
 
 zobrist zb;
