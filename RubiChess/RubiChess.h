@@ -3,7 +3,7 @@
 #define VERNUM "1.2-dev"
 
 #if 0
-#define DEBUG
+#define SDEBUG
 #endif
 
 #if 0
@@ -631,10 +631,6 @@ public:
     int halfmovescounter = 0;
     int fullmovescounter = 0;
     int seldepth;
-#ifdef DEBUG
-    int maxdebugdepth = -1;
-    int mindebugdepth = -1;
-#endif
     chessmovelist rootmovelist;
     chessmovesequencelist pvline;
     int rootheight;
@@ -642,8 +638,12 @@ public:
     int bestmovescore[MAXMULTIPV];
     uint32_t killer[2][MAXDEPTH];
     uint32_t history[7][64];
-#ifdef DEBUG    
+#ifdef SDEBUG
     unsigned long long debughash = 0;
+    uint16_t pvdebug[MAXMOVESEQUENCELENGTH];
+    bool debugRecursive;
+    bool debugOnlySubtree;
+    uint32_t pvtable[MAXDEPTH][MAXDEPTH];
 #endif
     //int *positionvaluetable; // value tables for both sides, 7 PieceTypes and 256 phase variations 
     int ph; // to store the phase during different evaluation functions
@@ -695,8 +695,11 @@ public:
     template <EvalTrace> int getPositionValue();
     template <EvalTrace> int getPawnAndKingValue(pawnhashentry **entry);
     template <EvalTrace> int getValue();
-#ifdef DEBUG
-    void debug(int depth, const char* format, ...);
+#ifdef SDEBUG
+    void updatePvTable(uint32_t movecode);
+    string getPv();
+    bool triggerDebug(chessmove* nextmove);
+    void sdebug(int indent, const char* format, ...);
 #endif
 #ifdef DEBUGEVAL
     void debugeval(const char* format, ...);
@@ -726,16 +729,6 @@ public:
     bool isWhite;
     unsigned long long nodes;
     unsigned long long tbhits;
-#ifdef DEBUG
-    unsigned long long qnodes;
-	unsigned long long wastedpvsnodes;
-    unsigned long long wastedaspnodes;
-    unsigned long long pvnodes;
-    unsigned long long nopvnodes;
-    unsigned long long dpnodes;
-    unsigned long long npd[MAXDEPTH];
-    fstream fdebug;
-#endif
     long long starttime;
     long long endtime1; // time to send STOPSOON signal
     long long endtime2; // time to send STOPPIMMEDIATELY signal
@@ -787,11 +780,12 @@ public:
 extern chessposition pos;
 extern engine en;
 
-#ifdef DEBUG
-#define PDEBUG(d, f, ...)  pos.debug(d, f, ##__VA_ARGS__)
+#ifdef SDEBUG
+#define SDEBUGPRINT(b, d, f, ...) if (b) pos.sdebug(d, f, ##__VA_ARGS__)
 #else
-#define PDEBUG(d, f, ...)
+#define SDEBUGPRINT(b, d, f, ...)
 #endif
+
 
 //
 // transposition stuff
@@ -869,11 +863,6 @@ class pawnhash
 {
     S_PAWNHASHENTRY *table;
 public:
-#ifdef DEBUG
-    U64 used;
-    int hit;
-    int query;
-#endif
     U64 size;
     U64 sizemask;
     chessposition *pos;
@@ -881,7 +870,6 @@ public:
     void setSize(int sizeMb);
     void clean();
     bool probeHash(pawnhashentry **entry);
-    unsigned int getUsedinPermill();
 };
 
 class repetition

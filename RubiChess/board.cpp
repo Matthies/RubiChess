@@ -882,27 +882,6 @@ string chessposition::toFen()
 }
 
 
-
-#ifdef DEBUG
-void chessposition::debug(int depth, const char* format, ...)
-{
-    if (depth > maxdebugdepth || depth < mindebugdepth)
-        return;
-    printf("!");
-    for (int i = 0; i < maxdebugdepth - depth; i++)
-    {
-        if (depth & 1)
-            printf("-");
-        else
-            printf("+");
-    }
-    va_list argptr;
-    va_start(argptr, format);
-    vfprintf(stdout, format, argptr);
-    va_end(argptr);
-}
-#endif
-
 #ifdef DEBUGEVAL
 void chessposition::debugeval(const char* format, ...)
 {
@@ -913,6 +892,67 @@ void chessposition::debugeval(const char* format, ...)
 }
 #endif
 
+#ifdef SDEBUG
+void chessposition::updatePvTable(uint32_t movecode)
+{
+    pvtable[pos.ply][0] = movecode;
+    int i = 0;
+    while (pos.pvtable[pos.ply + 1][i])
+    {
+        pos.pvtable[pos.ply][i + 1] = pos.pvtable[pos.ply + 1][i];
+        i++;
+    }
+    pos.pvtable[pos.ply][i + 1] = 0;
+
+}
+
+string chessposition::getPv()
+{
+    string s = "PV:";
+    for (int i = 0; pos.pvtable[0][i]; i++)
+    {
+        chessmove cm;
+        cm.code = pos.pvtable[0][i];
+        s += " " + cm.toString();
+    }
+    return s;
+}
+
+bool chessposition::triggerDebug(chessmove* nextmove)
+{
+    if (pos.pvdebug[0] == 0)
+        return false;
+
+    int j = 0;
+
+    while (j + pos.rootheight < mstop && pos.pvdebug[j])
+    {
+        if ((movestack[j + pos.rootheight].movecode & 0xefff) != pos.pvdebug[j])
+            return false;
+        j++;
+    }
+    nextmove->code = pos.pvdebug[j];
+ 
+    if (pos.debugOnlySubtree)
+        return (pos.pvdebug[j] == 0);
+
+    if (pos.debugRecursive)
+        return true;
+
+    return (j + pos.rootheight == mstop);
+}
+
+void chessposition::sdebug(int indent, const char* format, ...)
+{
+    fprintf(stderr, "%*s", indent, "");
+    va_list argptr;
+    va_start(argptr, format);
+    vfprintf(stderr, format, argptr);
+    va_end(argptr);
+    fprintf(stderr, "\n");
+}
+
+#endif
 
 // shameless copy from http://chessprogramming.wikispaces.com/Magic+Bitboards#Plain
 U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
@@ -1844,9 +1884,6 @@ chessmove* MoveSelector::next()
         state++;
         if (pos->moveIsPseudoLegal(hashmove.code))
         {
-#ifdef DEBUG
-            en.pvnodes++;
-#endif
             return &hashmove;
         }
     case TACTICALINITSTATE:
@@ -1922,13 +1959,6 @@ chessmove* MoveSelector::next()
 
 engine::engine()
 {
-#ifdef DEBUG
-    int p = GetCurrentProcessId();
-    char s[256];
-    sprintf_s(s, "RubiChess-debug-%d.txt", p);
-    fdebug.open(s, fstream::out | fstream::app);
-#endif
-
     tp.pos = &pos;
     pwnhsh.pos = &pos;
     initBitmaphelper();
@@ -2007,10 +2037,6 @@ void engine::setOption(string sName, string sValue)
 }
 
 
-#ifdef DEBUG
-extern int aspirationdelta[MAXDEPTH][2000];
-#endif
-
 void engine::communicate(string inputstring)
 {
     string fen;
@@ -2077,9 +2103,36 @@ void engine::communicate(string inputstring)
                         debug = true;
                     else if (commandargs[ci] == "off")
                         debug = false;
-#ifdef DEBUG
+#ifdef SDEBUG
                     else if (commandargs[ci] == "this")
                         pos.debughash = pos.hash;
+                    else if (commandargs[ci] == "pv")
+                    {
+                        pos.debugOnlySubtree = false;
+                        pos.debugRecursive = false;
+                        int i = 0;
+                        while (++ci < cs)
+                        {
+                            string s = commandargs[ci];
+                            if (s == "recursive")
+                            {
+                                pos.debugRecursive = true;
+                                continue;
+                            }
+                            if (s == "sub")
+                            {
+                                pos.debugOnlySubtree = true;
+                                continue;
+                            }
+                            if (s.size() < 4)
+                                continue;
+                            int from = AlgebraicToIndex(s, BOARDSIZE);
+                            int to = AlgebraicToIndex(&s[2], BOARDSIZE);
+                            int promotion = (s.size() <= 4) ? BLANK : (GetPieceType(s[4]) << 1); // Remember: S2m is missing here
+                            pos.pvdebug[i++] = to | (from << 6) | (promotion << 12);
+                        }
+                        pos.pvdebug[i] = 0;
+                    }
 #endif
                 }
                 break;
@@ -2272,33 +2325,6 @@ void engine::communicate(string inputstring)
             }
         }
     } while (command != QUIT && (inputstring == "" || pendingposition));
-
-#ifdef DEBUG
-    char s[16384];
-    cout << "Score delta table:\n";
-    int depth = 2;
-    int mind, maxd;
-    do
-    {
-        mind = 2000;
-        maxd = -1;
-        for (int i = 0; i < 2000; i++)
-        {
-            if (aspirationdelta[depth][i] > 0)
-            {
-                if (mind > i)
-                    mind = i;
-                maxd = i;
-            }
-        }
-        for (int i = mind; i <= maxd; i++)
-        {
-            sprintf_s(s, "%d;%d;%d\n", depth, i - 1000, aspirationdelta[depth][i]);
-            en.fdebug << s;
-        }
-        depth++;
-    } while (maxd >= 0 && depth < 20);
-#endif
 }
 
 zobrist zb;
