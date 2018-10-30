@@ -356,6 +356,10 @@ In dieser Position findet Rubi Qe4 nicht und spielt statt dessen Qc1
 r1b2rk1/pp6/1n6/2q1p1pp/3NQ2P/6B1/PP3PP1/2KR3R w - - 1 3
 Rubi findet Kc1-b1 nicht (bzw. erst ab Tiefe 23) und spielt De4-c2
 
+30.10.2018
+rnb2rk1/ppq1nppp/4p3/2ppP3/P2P4/2PB1N2/2P2PPP/R1BQK2R b KQ - 2 9 
+Rubi als schwarz soielt b7b6 und hat direkt verloren (Gauntlet Spiel 248 gegen Protector
+)
 Links:
 
 http://pwnedthegameofchess.com/engine/
