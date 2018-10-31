@@ -4,13 +4,18 @@
 
 const int deltapruningmargin = 100;
 
-int reductiontable[MAXDEPTH][64];
+int reductiontable[2][MAXDEPTH][64];
 
 void searchinit()
 {
     for (int d = 0; d < MAXDEPTH; d++)
         for (int m = 0; m < 64; m++)
-            reductiontable[d][m] = (int)round(log(d) * log(m) / 1.9);
+        {
+            // reduction for not improving positions
+            reductiontable[0][d][m] = (int)round(log(d) * log(m) / 1.8);
+            // reduction for improving positions
+            reductiontable[1][d][m] = (int)round(log(d) * log(m) / 3.0);
+        }
 }
 
 
@@ -154,6 +159,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     int score;
     int hashscore;
     uint16_t hashmovecode = 0;
+    int staticeval = NOSCORE;
     bool isLegal;
     int bestscore = NOSCORE;
     uint32_t bestcode = 0;
@@ -213,7 +219,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
     U64 hash = pos.hash ^ (excludeMove << 16);
 
-    if (tp.probeHash(hash, &hashscore, &hashmovecode, depth, alpha, beta)
+    if (tp.probeHash(hash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta)
         && rp.getPositionCount(pos.hash) <= 1)  //FIXME: This test on the repetition table works like a "is not PV"; should be fixed in the future)
     {
         SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from TT.", hashscore);
@@ -238,7 +244,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                 score = SCORETBWIN - pos.ply;
             else 
                 score = SCOREDRAW + v;
-            tp.addHash(pos.hash, score, HASHEXACT, depth, 0);
+            tp.addHash(pos.hash, score, staticeval, HASHEXACT, depth, 0);
             SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from TB.", score);
             return score;
         }
@@ -291,21 +297,24 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         }
     }
 
+    // get static evaluation of the position
+    if (staticeval == NOSCORE)
+        staticeval = S2MSIGN(pos.state & S2MMASK) * getValueNoTrace(&pos);
+    movestack[mstop].staticeval = staticeval;
+
     // futility pruning
     const int futilityMargin[] = { 0, 130, 280, 430 };
     const int revFutilityMargin[] = { 0, 90, 180, 270 };
     bool futility = false;
-    int staticscore;
     if (depth <= 3)
     {
-        staticscore = S2MSIGN(pos.state & S2MMASK) * getValueNoTrace(&pos);
         // reverse futility pruning
-        if (!pos.isCheck && staticscore - revFutilityMargin[depth] > beta)
+        if (!pos.isCheck && staticeval - revFutilityMargin[depth] > beta)
         {
-            SDEBUGPRINT(isDebugPv, debugInsert, " Cutoff by reverse futility pruning: staticscore(%d) - revMargin[depth](%d) > beta(%d)", staticscore, revFutilityMargin[depth], beta);
-            return staticscore;
+            SDEBUGPRINT(isDebugPv, debugInsert, " Cutoff by reverse futility pruning: staticscore(%d) - revMargin[depth](%d) > beta(%d)", staticeval, revFutilityMargin[depth], beta);
+            return staticeval;
         }
-        futility = (staticscore < alpha - futilityMargin[depth]);
+        futility = (staticeval < alpha - futilityMargin[depth]);
     }
 
     // Internal iterative deepening 
@@ -315,8 +324,11 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     {
         SDEBUGPRINT(isDebugPv, debugInsert, " Entering iid...");
         alphabeta(alpha, beta, depth - iiddelta, true);
-        tp.probeHash(hash, &hashscore, &hashmovecode, depth, alpha, beta);
+        tp.probeHash(hash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta);
     }
+
+    bool positionImproved = (mstop >= pos.rootheight + 2
+        && movestack[mstop].staticeval > movestack[mstop - 2].staticeval);
 
     MoveSelector ms = {};
     ms.SetPreferredMoves(&pos, hashmovecode, pos.killer[0][pos.ply], pos.killer[1][pos.ply], nmrefutetarget);
@@ -340,10 +352,10 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                 SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by futility: staticscore(%d) < alpha(%d) - futilityMargin[depth](%d)", debugMove.toString().c_str(), staticscore, alpha, futilityMargin[depth]);
                 continue;
             }
-            else if (staticscore > bestscore)
+            else if (staticeval > bestscore)
             {
                 // Use the static score from futility test as a bestscore start value
-                bestscore = staticscore;
+                bestscore = staticeval;
             }
         }
 
@@ -359,7 +371,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         if ((m->code & 0xffff) == hashmovecode
             && depth > 7
             && !excludeMove
-            && tp.probeHash(hash, &hashscore, &hashmovecode, depth - 3, alpha, beta)
+            && tp.probeHash(hash, &hashscore, &staticeval, &hashmovecode, depth - 3, alpha, beta)
             && hashscore > alpha)
         {
             SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s tested for singularity", debugMove.toString().c_str());
@@ -391,7 +403,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             // Late move reduction
             if (!extendall && depth > 2 && !ISTACTICAL(m->code))
             {
-                reduction = reductiontable[depth][min(63, LegalMoves)];
+                reduction = reductiontable[positionImproved][depth][min(63, LegalMoves)];
                 SDEBUGPRINT(isDebugPv && isDebugMove && reduction, debugInsert, " PV move %s with depth reduced by %d", debugMove.toString().c_str(), reduction);
             }
 #if 0
@@ -458,7 +470,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                     if (!excludeMove)
                     {
                         SDEBUGPRINT(isDebugPv, debugInsert, " ->Hash(%d) = %d(beta)", effectiveDepth, score);
-                        tp.addHash(hash, score, HASHBETA, effectiveDepth, (uint16_t)bestcode);
+                        tp.addHash(hash, score, staticeval, HASHBETA, effectiveDepth, (uint16_t)bestcode);
                     }
                     return score;   // fail soft beta-cutoff
                 }
@@ -494,7 +506,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     if (bestcode && !excludeMove)
     {
         SDEBUGPRINT(isDebugPv, debugInsert, " ->Hash(%d) = %d(%s)", depth, bestscore, eval_type == HASHEXACT ? "exact" : "alpha");
-        tp.addHash(hash, bestscore, eval_type, depth, (uint16_t)bestcode);
+        tp.addHash(hash, bestscore, staticeval, eval_type, depth, (uint16_t)bestcode);
     }
 
     return bestscore;
@@ -510,6 +522,7 @@ int rootsearch(int alpha, int beta, int depth)
     int score;
     uint16_t hashmovecode = 0;
     int bestscore = NOSCORE;
+    int staticeval = NOSCORE;
     int eval_type = HASHALPHA;
     chessmove *m;
     int extendall = 0;
@@ -538,7 +551,7 @@ int rootsearch(int alpha, int beta, int depth)
 
     if (!isMultiPV
         && !pos.useRootmoveScore
-        && tp.probeHash(pos.hash, &score, &hashmovecode, depth, alpha, beta)
+        && tp.probeHash(pos.hash, &score, &staticeval, &hashmovecode, depth, alpha, beta)
         && rp.getPositionCount(pos.hash) <= 1)  //FIXME: Is this really needed in rootsearch?
     {
         return score;
@@ -586,6 +599,11 @@ int rootsearch(int alpha, int beta, int depth)
         }
     }
 
+    // get static evaluation of the position
+    if (staticeval == NOSCORE)
+        staticeval = S2MSIGN(pos.state & S2MMASK) * getValueNoTrace(&pos);
+    movestack[mstop].staticeval = staticeval;
+
     for (int i = 0; i < pos.rootmovelist.length; i++)
     {
         for (int j = i + 1; j < pos.rootmovelist.length; j++)
@@ -614,7 +632,7 @@ int rootsearch(int alpha, int beta, int depth)
         // Late move reduction
         if (!extendall && depth > 2 && !ISTACTICAL(m->code))
         {
-            reduction = reductiontable[depth][min(63, i + 1)];
+            reduction = reductiontable[1][depth][min(63, i + 1)];
         }
 
         int effectiveDepth;
@@ -689,7 +707,7 @@ int rootsearch(int alpha, int beta, int depth)
                 }
             }
             SDEBUGPRINT(isDebugPv, debugInsert, " Beta-cutoff by move %s: %d", m->toString().c_str(), score);
-            tp.addHash(pos.hash, beta, HASHBETA, effectiveDepth, (uint16_t)m->code);
+            tp.addHash(pos.hash, beta, staticeval, HASHBETA, effectiveDepth, (uint16_t)m->code);
             //free(newmoves);
             return beta;   // fail hard beta-cutoff
         }
@@ -717,16 +735,16 @@ int rootsearch(int alpha, int beta, int depth)
     {
         if (eval_type == HASHEXACT)
         {
-            tp.addHash(pos.hash, pos.bestmovescore[0], eval_type, depth, (uint16_t)pos.bestmove[0].code);
+            tp.addHash(pos.hash, pos.bestmovescore[0], staticeval, eval_type, depth, (uint16_t)pos.bestmove[0].code);
             return pos.bestmovescore[maxmoveindex - 1];
         }
         else {
-            tp.addHash(pos.hash, alpha, eval_type, depth, (uint16_t)pos.bestmove[0].code);
+            tp.addHash(pos.hash, alpha, staticeval, eval_type, depth, (uint16_t)pos.bestmove[0].code);
             return alpha;
         }
     }
     else {
-        tp.addHash(pos.hash, alpha, eval_type, depth, (uint16_t)pos.bestmove[0].code);
+        tp.addHash(pos.hash, alpha, staticeval, eval_type, depth, (uint16_t)pos.bestmove[0].code);
         return alpha;
     }
 }
@@ -856,7 +874,8 @@ static void search_gen1()
                         if (!pos.bestmove[i].code)
                         {
                             uint16_t mc;
-                            tp.probeHash(pos.hash, &pos.bestmovescore[i], &mc, depth, alpha, beta);
+                            int dummystaticeval;
+                            tp.probeHash(pos.hash, &pos.bestmovescore[i], &dummystaticeval, &mc, depth, alpha, beta);
                             pos.bestmove[i].code = pos.shortMove2FullMove(mc);
                         }
 
@@ -893,7 +912,8 @@ static void search_gen1()
                 if (!pos.bestmove[0].code)
                 {
                     uint16_t mc = 0;
-                    tp.probeHash(pos.hash, &score, &mc, MAXDEPTH, alpha, beta);
+                    int dummystaticeval;
+                    tp.probeHash(pos.hash, &score, &dummystaticeval, &mc, MAXDEPTH, alpha, beta);
                     pos.bestmove[0].code = pos.shortMove2FullMove(mc);
                 }
                     

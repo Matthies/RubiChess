@@ -661,6 +661,7 @@ void testengine(string epdfilename, int startnum, string engineprg, string logfi
                 bSuccess = writetoengine(g_hChildStd_IN_Wr, "uci\n");
                 while (es.phase == 0)
                     Sleep(1000);
+                bSuccess = writetoengine(g_hChildStd_IN_Wr, "ucinewgame\n");
                 bSuccess = writetoengine(g_hChildStd_IN_Wr, "isready\n");
                 while (es.phase == 1)
                     Sleep(1000);

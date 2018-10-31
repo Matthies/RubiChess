@@ -182,7 +182,7 @@ unsigned int transposition::getUsedinPermill()
 }
 
 
-void transposition::addHash(U64 hash, int val, int bound, int depth, uint16_t movecode)
+void transposition::addHash(U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode)
 {
     unsigned long long index = hash & sizemask;
     transpositioncluster *cluster = &table[index];
@@ -234,6 +234,7 @@ void transposition::addHash(U64 hash, int val, int bound, int depth, uint16_t mo
     leastValuableEntry->value = (short)val;
     leastValuableEntry->boundAndAge = (uint8_t)(bound | numOfSearchShiftTwo);
     leastValuableEntry->movecode = movecode;
+    leastValuableEntry->staticeval = staticeval;
 }
 
 
@@ -251,6 +252,7 @@ void transposition::printHashentry()
             printf("Move code: %x\n", (unsigned int)data->entry[i].movecode);
             printf("Depth:     %d\n", data->entry[i].depth);
             printf("Value:     %d\n", data->entry[i].value);
+            printf("Eval:      %d\n", data->entry[i].staticeval);
             printf("BoundAge:  %d\n", data->entry[i].boundAndAge);
             return;
         }
@@ -259,7 +261,7 @@ void transposition::printHashentry()
 }
 
 
-bool transposition::probeHash(U64 hash, int *val, uint16_t *movecode, int depth, int alpha, int beta)
+bool transposition::probeHash(U64 hash, int *val, int *staticeval, uint16_t *movecode, int depth, int alpha, int beta)
 {
 #ifdef EVALTUNE
     // don't use transposition table when tuning evaluation
@@ -273,6 +275,7 @@ bool transposition::probeHash(U64 hash, int *val, uint16_t *movecode, int depth,
         if (e->hashupper == (hash >> 32))
         {
             *movecode = e->movecode;
+            *staticeval = e->staticeval;
             if (e->depth >= depth)
             {
                 *val = e->value;
