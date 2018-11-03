@@ -675,7 +675,6 @@ public:
     bool applyMove(string s);
     void print();
     int phase();
-    PieceType Piece(int index);
     bool isAttacked(int index);
     U64 attackedByBB(int index, U64 occ);
     bool see(uint32_t move, int threshold);
