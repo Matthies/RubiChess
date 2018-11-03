@@ -325,7 +325,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     while ((m = ms.next()))
     {
 #ifdef SDEBUG
-        bool isDebugMove = (debugMove.code == (m->code & 0xeff));
+        bool isDebugMove = ((debugMove.code & 0xeff) == (m->code & 0xeff));
 #endif
         // Leave out the move to test for singularity
         if ((m->code & 0xffff) == excludeMove)
@@ -383,6 +383,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             // Check again for futility pruning now that we found a valid move
             if (futilityPrune)
             {
+                SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by futility: staticscore(%d) < alpha(%d) - futilityMargin[depth](%d)", debugMove.toString().c_str(), staticscore, alpha, futilityMargin[depth]);
                 pos.unplayMove(m);
                 continue;
             }
@@ -392,7 +393,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             if (!extendall && depth > 2 && !ISTACTICAL(m->code))
             {
                 reduction = reductiontable[depth][min(63, LegalMoves)];
-                SDEBUGPRINT(isDebugPv && isDebugMove && reduction, debugInsert, " PV move %s with depth reduced by %d", debugMove.toString().c_str(), reduction);
+                SDEBUGPRINT(isDebugPv && isDebugMove && reduction, debugInsert, " PV move %s (value=%d) with depth reduced by %d", debugMove.toString().c_str(), m->value, reduction);
             }
 #if 0
             // disabled; capture extension doesn't seem to work
@@ -481,12 +482,16 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         if (excludeMove)
             return alpha;
 
-        if (pos.isCheck)
+        if (pos.isCheck) {
             // It's a mate
+            SDEBUGPRINT(isDebugPv, debugInsert, " Return score: %d  (mate)", SCOREBLACKWINS + pos.ply);
             return SCOREBLACKWINS + pos.ply;
-        else
+        }
+        else {
             // It's a stalemate
+            SDEBUGPRINT(isDebugPv, debugInsert, " Return score: 0  (stalemate)");
             return SCOREDRAW;
+        }
     }
 
     SDEBUGPRINT(isDebugPv, debugInsert, " Return score: %d  %s%s", bestscore, excludestr.c_str(), excludeMove ? " singular" : "");
