@@ -322,6 +322,8 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     ms.SetPreferredMoves(&pos, hashmovecode, pos.killer[0][pos.ply], pos.killer[1][pos.ply], nmrefutetarget);
 
     int  LegalMoves = 0;
+    int quietsPlayed = 0;
+    uint32_t quietMoves[MAXMOVELISTLENGTH];
     while ((m = ms.next()))
     {
 #ifdef SDEBUG
@@ -448,6 +450,12 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                     if (!ISCAPTURE(m->code))
                     {
                         pos.history[pos.Piece(GETFROM(m->code))][GETTO(m->code)] += depth * depth;
+                        for (int i = 0; i < quietsPlayed; i++)
+                        {
+                            uint32_t qm = quietMoves[i];
+                            pos.history[pos.Piece(GETFROM(qm))][GETTO(qm)] -= depth * depth;
+                        }
+
                         if (pos.killer[0][pos.ply] != m->code)
                         {
                             pos.killer[1][pos.ply] = pos.killer[0][pos.ply];
@@ -474,6 +482,9 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 #endif
                 }
             }
+
+            if (!ISTACTICAL(m->code))
+                quietMoves[quietsPlayed++] = m->code;
         }
     }
 
@@ -591,6 +602,9 @@ int rootsearch(int alpha, int beta, int depth)
         }
     }
 
+    int quietsPlayed = 0;
+    uint32_t quietMoves[MAXMOVELISTLENGTH];
+
     for (int i = 0; i < pos.rootmovelist.length; i++)
     {
         for (int j = i + 1; j < pos.rootmovelist.length; j++)
@@ -658,6 +672,9 @@ int rootsearch(int alpha, int beta, int depth)
             return bestscore;
         }
 
+        if (!ISTACTICAL(m->code))
+            quietMoves[quietsPlayed++] = m->code;
+
         if ((isMultiPV && score <= pos.bestmovescore[lastmoveindex])
             || (!isMultiPV && score <= bestscore))
             continue;
@@ -687,6 +704,12 @@ int rootsearch(int alpha, int beta, int depth)
             if (!ISCAPTURE(m->code))
             {
                 pos.history[pos.Piece(GETFROM(m->code))][GETTO(m->code)] += depth * depth;
+                for (int i = 0; i < quietsPlayed - 1; i++)
+                {
+                    uint32_t qm = quietMoves[i];
+                    pos.history[pos.Piece(GETFROM(qm))][GETTO(qm)] -= depth * depth;
+                }
+
                 if (pos.killer[0][0] != m->code)
                 {
                     pos.killer[1][0] = pos.killer[0][0];
