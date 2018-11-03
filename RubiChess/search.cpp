@@ -12,9 +12,9 @@ void searchinit()
         for (int m = 0; m < 64; m++)
         {
             // reduction for not improving positions
-            reductiontable[0][d][m] = (int)round(log(d) * log(m) / 1.8);
+            reductiontable[0][d][m] = (int)round(log(d) * log(m) / 1.5);
             // reduction for improving positions
-            reductiontable[1][d][m] = (int)round(log(d) * log(m) / 3.0);
+            reductiontable[1][d][m] = (int)round(log(d) * log(m) / 3.5);
         }
 }
 
@@ -324,7 +324,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     {
         SDEBUGPRINT(isDebugPv, debugInsert, " Entering iid...");
         alphabeta(alpha, beta, depth - iiddelta, true);
-        tp.probeHash(hash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta);
+        hashmovecode = tp.getMoveCode(hash);
     }
 
     bool positionImproved = (mstop >= pos.rootheight + 2
@@ -349,7 +349,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         {
             if (LegalMoves)
             {
-                SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by futility: staticscore(%d) < alpha(%d) - futilityMargin[depth](%d)", debugMove.toString().c_str(), staticscore, alpha, futilityMargin[depth]);
+                SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by futility: staticeval(%d) < alpha(%d) - futilityMargin[depth](%d)", debugMove.toString().c_str(), staticeval, alpha, futilityMargin[depth]);
                 continue;
             }
             else if (staticeval > bestscore)
@@ -632,7 +632,7 @@ int rootsearch(int alpha, int beta, int depth)
         // Late move reduction
         if (!extendall && depth > 2 && !ISTACTICAL(m->code))
         {
-            reduction = reductiontable[1][depth][min(63, i + 1)];
+            reduction = reductiontable[0][depth][min(63, i + 1)];
         }
 
         int effectiveDepth;
