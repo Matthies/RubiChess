@@ -397,7 +397,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             // Check again for futility pruning now that we found a valid move
             if (futilityPrune)
             {
-                SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by futility: staticscore(%d) < alpha(%d) - futilityMargin[depth](%d)", debugMove.toString().c_str(), staticscore, alpha, futilityMargin[depth]);
+                SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by futility: staticeval(%d) < alpha(%d) - futilityMargin[depth](%d)", debugMove.toString().c_str(), staticeval, alpha, futilityMargin[depth]);
                 pos.unplayMove(m);
                 continue;
             }
@@ -407,7 +407,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             if (!extendall && depth > 2 && !ISTACTICAL(m->code))
             {
                 reduction = reductiontable[positionImproved][depth][min(63, LegalMoves)];
-                SDEBUGPRINT(isDebugPv && isDebugMove && reduction, debugInsert, " PV move %s with depth reduced by %d", debugMove.toString().c_str(), reduction);
+                SDEBUGPRINT(isDebugPv && isDebugMove && reduction, debugInsert, " PV move %s (value=%d) with depth reduced by %d", debugMove.toString().c_str(), m->value, reduction);
             }
 #if 0
             // disabled; capture extension doesn't seem to work
@@ -736,7 +736,6 @@ int rootsearch(int alpha, int beta, int depth)
             }
             SDEBUGPRINT(isDebugPv, debugInsert, " Beta-cutoff by move %s: %d", m->toString().c_str(), score);
             tp.addHash(pos.hash, beta, staticeval, HASHBETA, effectiveDepth, (uint16_t)m->code);
-            //free(newmoves);
             return beta;   // fail hard beta-cutoff
         }
 
