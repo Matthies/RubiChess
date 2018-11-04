@@ -334,10 +334,12 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     ms.SetPreferredMoves(&pos, hashmovecode, pos.killer[0][pos.ply], pos.killer[1][pos.ply], nmrefutetarget);
 
     int  LegalMoves = 0;
+    int quietsPlayed = 0;
+    uint32_t quietMoves[MAXMOVELISTLENGTH];
     while ((m = ms.next()))
     {
 #ifdef SDEBUG
-        bool isDebugMove = (debugMove.code == (m->code & 0xeff));
+        bool isDebugMove = ((debugMove.code & 0xeff) == (m->code & 0xeff));
 #endif
         // Leave out the move to test for singularity
         if ((m->code & 0xffff) == excludeMove)
@@ -395,6 +397,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             // Check again for futility pruning now that we found a valid move
             if (futilityPrune)
             {
+                SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by futility: staticscore(%d) < alpha(%d) - futilityMargin[depth](%d)", debugMove.toString().c_str(), staticscore, alpha, futilityMargin[depth]);
                 pos.unplayMove(m);
                 continue;
             }
@@ -458,7 +461,13 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                     // Killermove
                     if (!ISCAPTURE(m->code))
                     {
-                        pos.history[pos.Piece(GETFROM(m->code))][GETTO(m->code)] += depth * depth;
+                        pos.history[GETPIECE(m->code) >> 1][GETTO(m->code)] += depth * depth;
+                        for (int i = 0; i < quietsPlayed; i++)
+                        {
+                            uint32_t qm = quietMoves[i];
+                            pos.history[GETPIECE(qm) >> 1][GETTO(qm)] -= depth * depth;
+                        }
+
                         if (pos.killer[0][pos.ply] != m->code)
                         {
                             pos.killer[1][pos.ply] = pos.killer[0][pos.ply];
@@ -485,6 +494,9 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 #endif
                 }
             }
+
+            if (!ISTACTICAL(m->code))
+                quietMoves[quietsPlayed++] = m->code;
         }
     }
 
@@ -493,12 +505,16 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         if (excludeMove)
             return alpha;
 
-        if (pos.isCheck)
+        if (pos.isCheck) {
             // It's a mate
+            SDEBUGPRINT(isDebugPv, debugInsert, " Return score: %d  (mate)", SCOREBLACKWINS + pos.ply);
             return SCOREBLACKWINS + pos.ply;
-        else
+        }
+        else {
             // It's a stalemate
+            SDEBUGPRINT(isDebugPv, debugInsert, " Return score: 0  (stalemate)");
             return SCOREDRAW;
+        }
     }
 
     SDEBUGPRINT(isDebugPv, debugInsert, " Return score: %d  %s%s", bestscore, excludestr.c_str(), excludeMove ? " singular" : "");
@@ -604,6 +620,9 @@ int rootsearch(int alpha, int beta, int depth)
         staticeval = S2MSIGN(pos.state & S2MMASK) * getValueNoTrace(&pos);
     movestack[mstop].staticeval = staticeval;
 
+    int quietsPlayed = 0;
+    uint32_t quietMoves[MAXMOVELISTLENGTH];
+
     for (int i = 0; i < pos.rootmovelist.length; i++)
     {
         for (int j = i + 1; j < pos.rootmovelist.length; j++)
@@ -671,6 +690,9 @@ int rootsearch(int alpha, int beta, int depth)
             return bestscore;
         }
 
+        if (!ISTACTICAL(m->code))
+            quietMoves[quietsPlayed++] = m->code;
+
         if ((isMultiPV && score <= pos.bestmovescore[lastmoveindex])
             || (!isMultiPV && score <= bestscore))
             continue;
@@ -699,7 +721,13 @@ int rootsearch(int alpha, int beta, int depth)
             // Killermove
             if (!ISCAPTURE(m->code))
             {
-                pos.history[pos.Piece(GETFROM(m->code))][GETTO(m->code)] += depth * depth;
+                pos.history[GETPIECE(m->code) >> 1][GETTO(m->code)] += depth * depth;
+                for (int i = 0; i < quietsPlayed - 1; i++)
+                {
+                    uint32_t qm = quietMoves[i];
+                    pos.history[GETPIECE(qm) >> 1][GETTO(qm)] -= depth * depth;
+                }
+
                 if (pos.killer[0][0] != m->code)
                 {
                     pos.killer[1][0] = pos.killer[0][0];

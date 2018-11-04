@@ -638,7 +638,7 @@ public:
     chessmove bestmove[MAXMULTIPV];
     int bestmovescore[MAXMULTIPV];
     uint32_t killer[2][MAXDEPTH];
-    uint32_t history[7][64];
+    int32_t history[7][64];
 #ifdef SDEBUG
     unsigned long long debughash = 0;
     uint16_t pvdebug[MAXMOVESEQUENCELENGTH];
@@ -676,7 +676,6 @@ public:
     bool applyMove(string s);
     void print();
     int phase();
-    PieceType Piece(int index);
     bool isAttacked(int index);
     U64 attackedByBB(int index, U64 occ);
     bool see(uint32_t move, int threshold);

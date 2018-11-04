@@ -206,12 +206,6 @@ bool chessposition::w2m()
 }
 
 
-PieceType chessposition::Piece(int index)
-{
-    return (PieceType)(mailbox[index] >> 1);
-}
-
-
 int chessposition::getFromFen(const char* sFen)
 {
     string s;
@@ -805,7 +799,7 @@ string chessposition::toFen()
         {
             char c = 0;
             index = INDEX(r, f);
-            switch (Piece(index))
+            switch (mailbox[index] >> 1)
             {
             case PAWN:
                 c = 'p';
