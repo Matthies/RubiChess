@@ -322,6 +322,8 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     ms.SetPreferredMoves(&pos, hashmovecode, pos.killer[0][pos.ply], pos.killer[1][pos.ply], nmrefutetarget);
 
     int  LegalMoves = 0;
+    int quietsPlayed = 0;
+    uint32_t quietMoves[MAXMOVELISTLENGTH];
     while ((m = ms.next()))
     {
 #ifdef SDEBUG
@@ -447,7 +449,13 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                     // Killermove
                     if (!ISCAPTURE(m->code))
                     {
-                        pos.history[pos.Piece(GETFROM(m->code))][GETTO(m->code)] += depth * depth;
+                        pos.history[GETPIECE(m->code) >> 1][GETTO(m->code)] += depth * depth;
+                        for (int i = 0; i < quietsPlayed; i++)
+                        {
+                            uint32_t qm = quietMoves[i];
+                            pos.history[GETPIECE(qm) >> 1][GETTO(qm)] -= depth * depth;
+                        }
+
                         if (pos.killer[0][pos.ply] != m->code)
                         {
                             pos.killer[1][pos.ply] = pos.killer[0][pos.ply];
@@ -474,6 +482,9 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 #endif
                 }
             }
+
+            if (!ISTACTICAL(m->code))
+                quietMoves[quietsPlayed++] = m->code;
         }
     }
 
@@ -591,6 +602,9 @@ int rootsearch(int alpha, int beta, int depth)
         }
     }
 
+    int quietsPlayed = 0;
+    uint32_t quietMoves[MAXMOVELISTLENGTH];
+
     for (int i = 0; i < pos.rootmovelist.length; i++)
     {
         for (int j = i + 1; j < pos.rootmovelist.length; j++)
@@ -658,6 +672,9 @@ int rootsearch(int alpha, int beta, int depth)
             return bestscore;
         }
 
+        if (!ISTACTICAL(m->code))
+            quietMoves[quietsPlayed++] = m->code;
+
         if ((isMultiPV && score <= pos.bestmovescore[lastmoveindex])
             || (!isMultiPV && score <= bestscore))
             continue;
@@ -686,7 +703,13 @@ int rootsearch(int alpha, int beta, int depth)
             // Killermove
             if (!ISCAPTURE(m->code))
             {
-                pos.history[pos.Piece(GETFROM(m->code))][GETTO(m->code)] += depth * depth;
+                pos.history[GETPIECE(m->code) >> 1][GETTO(m->code)] += depth * depth;
+                for (int i = 0; i < quietsPlayed - 1; i++)
+                {
+                    uint32_t qm = quietMoves[i];
+                    pos.history[GETPIECE(qm) >> 1][GETTO(qm)] -= depth * depth;
+                }
+
                 if (pos.killer[0][0] != m->code)
                 {
                     pos.killer[1][0] = pos.killer[0][0];
@@ -695,7 +718,6 @@ int rootsearch(int alpha, int beta, int depth)
             }
             SDEBUGPRINT(isDebugPv, debugInsert, " Beta-cutoff by move %s: %d", m->toString().c_str(), score);
             tp.addHash(pos.hash, beta, HASHBETA, effectiveDepth, (uint16_t)m->code);
-            //free(newmoves);
             return beta;   // fail hard beta-cutoff
         }
 
