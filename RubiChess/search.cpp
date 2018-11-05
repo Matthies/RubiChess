@@ -4,7 +4,11 @@
 
 const int deltapruningmargin = 100;
 
+
+#define MAXLMPDEPTH 9
 int reductiontable[MAXDEPTH][64];
+
+const int lmptable[MAXLMPDEPTH] = { 0, 4, 8, 12, 16, 22, 30, 40, 52 };
 
 void searchinit()
 {
@@ -331,6 +335,10 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 #endif
         // Leave out the move to test for singularity
         if ((m->code & 0xffff) == excludeMove)
+            continue;
+
+        // Late move pruning
+        if (depth < MAXLMPDEPTH && !ISTACTICAL(m->code) && quietsPlayed > lmptable[depth])
             continue;
 
         // Check for futility pruning condition for this move and skip move if at least one legal move is already found
