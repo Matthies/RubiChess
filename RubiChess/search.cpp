@@ -14,7 +14,7 @@ void searchinit()
             // reduction for not improving positions
             reductiontable[0][d][m] = (int)round(log(d) * log(m) / 1.5);
             // reduction for improving positions
-            reductiontable[1][d][m] = (int)round(log(d) * log(m) / 3.5);
+            reductiontable[1][d][m] = (int)round(log(d) * log(m) / 2.5);
         }
 }
 

@@ -55,4 +55,21 @@ Elo difference: 8.51 +/- 11.82
 SPRT: llr 0.716, lbound -1.39, ubound 1.39
 
 im6n (15538197) nach merge mit history-master
-...
+MTC:
+Score of RubiChess-Bitboard-im6n vs RubiChess-Bitboard-ms: 857 - 783 - 1427  [0.512] 3067
+Elo difference: 8.38 +/- 8.98
+SPRT: llr 1.4, lbound -1.39, ubound 1.39 - H1 was accepted
+LTC:
+Score of RubiChess-Bitboard-im6n vs RubiChess-Bitboard-ms: 382 - 381 - 738  [0.500] 1501
+Elo difference: 0.23 +/- 12.52
+SPRT: llr -0.277, lbound -1.39, ubound 1.39
+MTC auf anderem Rechner klar negativ
+
+
+im7 (17363805) /1.5 /2.5
+
+
+
+Statistisch ist eine Position in ca. 33% "improved", also in ca. 66% nicht.
+Ggf. muss in diesem Verhältnis vom alten optimalen Quotienten 1.9 abgewichen werden.
+Test im7 läuft derzeit noch und relativ erfolgreich... also später.
