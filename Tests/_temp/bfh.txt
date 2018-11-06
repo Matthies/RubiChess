@@ -1,0 +1,10 @@
+Butterfly history (replacing simpler piece-destination history)
+STC:
+Score of RubiChess-Bitboard-bf1 vs RubiChess-Bitboard-ms: 725 - 653 - 1080  [0.515] 2458
+Elo difference: 10.18 +/- 10.27
+SPRT: llr 1.4, lbound -1.39, ubound 1.39 - H1 was accepted
+
+LTC: 
+After 1051 games:
+Finished game 1050 (RubiChess-Bitboard-ms vs RubiChess-Bitboard-bf1): 1-0 {White wins by adjudication}
+Score of RubiChess-Bitboard-bf1 vs RubiChess-Bitboard-ms: 281 - 255 - 515  [0.512] 1051
