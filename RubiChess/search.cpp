@@ -7,8 +7,6 @@ const int deltapruningmargin = 100;
 int reductiontable[2][MAXDEPTH][64];
 
 #define MAXLMPDEPTH 9
-int reductiontable[MAXDEPTH][64];
-
 const int lmptable[MAXLMPDEPTH] = { 0, 4, 8, 12, 16, 22, 30, 40, 52 };
 
 void searchinit()
