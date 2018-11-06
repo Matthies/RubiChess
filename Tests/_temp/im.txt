@@ -1,0 +1,75 @@
+Einführung des "improve"-Merkmals inkl. Speicherung des statischen eval in der TT
+und Nutzung von improve zur Steuerung der reduction.
+
+
+im1 (15186304) : (!)improve: /1.8 /3.0
+STC schafft nur knapp negativ, ev. ist die Berechnung der static eval bei kurzer TC zu teuer
+
+LTC:
+Score of RubiChess-Bitboard-im1 vs RubiChess-Bitboard-ms: 631 - 583 - 1292  [0.510] 2506
+Elo difference: 6.66 +/- 9.46
+SPRT: llr 0.891, lbound -1.39, ubound 1.39
+
+Dauert zu lange. Ich versuche erst, die Parameter mit STC zu tunen und dann erneut gegen Master zu testen...
+
+Teste zunächst, ob im1 grundsätzlich besser (abzüglich Kosten) als Master ist
+im0 (21077586) : (!)improve: /1.9 /1.9
+Also wie Master, nur mit den zusätzlichen Kosten für die staticeval Berechnung
+Score of RubiChess-Bitboard-im1 vs RubiChess-Bitboard-im0: 436 - 498 - 664  [0.481] 1598
+Elo difference: -13.49 +/- 13.01
+SPRT: llr -1.4, lbound -1.39, ubound 1.39 - H0 was accepted
+Hmmm. Hier ist was faul.
+
+im2 (16452484) : (!)improve: /1.8 /2.5
+STC [0,4] scheitert nach knapp 3000 Spielen
+
+
+im3 (15796618) : (!)improve: /1.8 /3.5
+STC nach 3500 Spielen mit "unentschieden gegen im1" abgebrochen
+Score of RubiChess-Bitboard-im3 vs RubiChess-Bitboard-im1: 1048 - 1047 - 1405  [0.500] 3500
+Elo difference: 0.10 +/- 8.89
+SPRT: llr -0.368, lbound -1.39, ubound 1.39
+
+
+im4 (16605068) : (!)improve: /1.5 /3.0
+Score of RubiChess-Bitboard-im4 vs RubiChess-Bitboard-im1: 1097 - 1099 - 1605  [0.500] 3801
+Elo difference: -0.18 +/- 8.39
+SPRT: llr -0.476, lbound -1.39, ubound 1.39
+
+
+im5 (13975573) : (!)improve: /1.0 /3.0
+Score of RubiChess-Bitboard-im5 vs RubiChess-Bitboard-im1: 264 - 334 - 360  [0.463] 958
+Elo difference: -25.43 +/- 17.39
+SPRT: llr -1.4, lbound -1.39, ubound 1.39 - H0 was accepted
+Definitiv zuviel reduction für den !improved Fall
+
+im1b (14114560) : (!)improve: /1.8 /3.0 aber rootmoves mit mehr reduction (!improve-Reduction)
+Score of RubiChess-Bitboard-im1b vs RubiChess-Bitboard-im0: 2177 - 2167 - 3090  [0.501] 7434
+Elo difference: 0.47 +/- 6.03
+SPRT: llr -0.646, lbound -1.39, ubound 1.39
+
+
+im6 (19177025) : (!)improve: /1.5 /3.5 rootmoves mit mehr reduction (!improve-Reduction)
+Score of RubiChess-Bitboard-im6 vs RubiChess-Bitboard-im0: 628 - 579 - 793  [0.512] 2000
+Elo difference: 8.51 +/- 11.82
+SPRT: llr 0.716, lbound -1.39, ubound 1.39
+
+im6n (15538197) nach merge mit history-master
+MTC:
+Score of RubiChess-Bitboard-im6n vs RubiChess-Bitboard-ms: 857 - 783 - 1427  [0.512] 3067
+Elo difference: 8.38 +/- 8.98
+SPRT: llr 1.4, lbound -1.39, ubound 1.39 - H1 was accepted
+LTC:
+Score of RubiChess-Bitboard-im6n vs RubiChess-Bitboard-ms: 382 - 381 - 738  [0.500] 1501
+Elo difference: 0.23 +/- 12.52
+SPRT: llr -0.277, lbound -1.39, ubound 1.39
+MTC auf anderem Rechner klar negativ
+
+
+im7 (17363805) /1.5 /2.5
+
+
+
+Statistisch ist eine Position in ca. 33% "improved", also in ca. 66% nicht.
+Ggf. muss in diesem Verhältnis vom alten optimalen Quotienten 1.9 abgewichen werden.
+Test im7 läuft derzeit noch und relativ erfolgreich... also später.

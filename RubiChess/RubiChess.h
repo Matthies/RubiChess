@@ -506,6 +506,7 @@ struct chessmovestack
     int isCheck;
     uint32_t movecode;
     uint16_t excludemove;
+    int16_t staticeval;
 };
 
 #define MAXMOVELISTLENGTH 256	// for lists of possible pseudo-legal moves
@@ -637,7 +638,7 @@ public:
     chessmove bestmove[MAXMULTIPV];
     int bestmovescore[MAXMULTIPV];
     uint32_t killer[2][MAXDEPTH];
-    int32_t history[7][64];
+    int32_t history[2][64][64];
 #ifdef SDEBUG
     unsigned long long debughash = 0;
     uint16_t pvdebug[MAXMOVESEQUENCELENGTH];
@@ -817,13 +818,14 @@ struct transpositionentry {
     uint32_t hashupper;
     uint16_t movecode;
     int16_t value;
+    int16_t staticeval;
     uint8_t depth;
     uint8_t boundAndAge;
 };
 
 struct transpositioncluster {
     transpositionentry entry[TTBUCKETNUM];
-    char padding[2];
+    //char padding[2];
 };
 
 class transposition
@@ -839,9 +841,9 @@ public:
     int setSize(int sizeMb);    // returns the number of Mb not used by allignment
     void clean();
     bool testHash();
-    void addHash(U64 hash, int val, int bound, int depth, uint16_t movecode);
+    void addHash(U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode);
     void printHashentry();
-    bool probeHash(U64 hash, int *val, uint16_t *movecode, int depth, int alpha, int beta);
+    bool probeHash(U64 hash, int *val, int *staticeval, uint16_t *movecode, int depth, int alpha, int beta);
     uint16_t getMoveCode(U64 hash);
     unsigned int getUsedinPermill();
     void nextSearch() { numOfSearchShiftTwo = (numOfSearchShiftTwo + 4) & 0xfc; }
