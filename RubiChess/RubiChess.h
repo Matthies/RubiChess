@@ -638,7 +638,7 @@ public:
     chessmove bestmove[MAXMULTIPV];
     int bestmovescore[MAXMULTIPV];
     uint32_t killer[2][MAXDEPTH];
-    int32_t history[7][64];
+    int32_t history[2][64][64];
 #ifdef SDEBUG
     unsigned long long debughash = 0;
     uint16_t pvdebug[MAXMOVESEQUENCELENGTH];

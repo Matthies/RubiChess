@@ -461,11 +461,13 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                     // Killermove
                     if (!ISCAPTURE(m->code))
                     {
-                        pos.history[GETPIECE(m->code) >> 1][GETTO(m->code)] += depth * depth;
+                        //pos.history[GETPIECE(m->code) >> 1][GETTO(m->code)] += depth * depth;
+                        pos.history[pos.state & S2MMASK][GETFROM(m->code)][GETTO(m->code)] += depth * depth;
                         for (int i = 0; i < quietsPlayed; i++)
                         {
                             uint32_t qm = quietMoves[i];
-                            pos.history[GETPIECE(qm) >> 1][GETTO(qm)] -= depth * depth;
+                            //pos.history[GETPIECE(qm) >> 1][GETTO(qm)] -= depth * depth;
+                            pos.history[pos.state & S2MMASK][GETFROM(qm)][GETTO(qm)] -= depth * depth;
                         }
 
                         if (pos.killer[0][pos.ply] != m->code)
@@ -610,7 +612,8 @@ int rootsearch(int alpha, int beta, int depth)
                 m->value = (mvv[GETCAPTURE(m->code) >> 1] | lva[GETPIECE(m->code) >> 1]);
             }
             else {
-                m->value = pos.history[GETPIECE(m->code) >> 1][GETTO(m->code)];
+                //m->value = pos.history[GETPIECE(m->code) >> 1][GETTO(m->code)];
+                m->value = pos.history[pos.state & S2MMASK][GETFROM(m->code)][GETTO(m->code)];
             }
         }
     }
@@ -721,11 +724,12 @@ int rootsearch(int alpha, int beta, int depth)
             // Killermove
             if (!ISCAPTURE(m->code))
             {
-                pos.history[GETPIECE(m->code) >> 1][GETTO(m->code)] += depth * depth;
+                //pos.history[GETPIECE(m->code) >> 1][GETTO(m->code)] += depth * depth;
+                pos.history[pos.state & S2MMASK][GETFROM(m->code)][GETTO(m->code)] += depth * depth;
                 for (int i = 0; i < quietsPlayed - 1; i++)
                 {
                     uint32_t qm = quietMoves[i];
-                    pos.history[GETPIECE(qm) >> 1][GETTO(qm)] -= depth * depth;
+                    pos.history[pos.state & S2MMASK][GETFROM(qm)][GETTO(qm)] -= depth * depth;
                 }
 
                 if (pos.killer[0][0] != m->code)

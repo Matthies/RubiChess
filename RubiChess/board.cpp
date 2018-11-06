@@ -354,6 +354,7 @@ int chessposition::getFromFen(const char* sFen)
     materialhash = zb.getMaterialHash();
     rp.clean();
     rp.addPosition(hash);
+#if 0
     for (int i = 0; i < 7; i++)
     {
         for (int j = 0; j < BOARDSIZE; j++)
@@ -361,6 +362,9 @@ int chessposition::getFromFen(const char* sFen)
             history[i][j] = 0;
         }
     }
+#else
+    memset(history, 0, sizeof(history));
+#endif
     for (int i = 0; i < MAXDEPTH; i++)
         killer[0][i] = killer[1][i] = 0;
     mstop = 0;
@@ -1496,7 +1500,8 @@ template <MoveType Mt> inline void appendMoveToList(chessposition *pos, chessmov
     **m = chessmove(from, to, piece);
     if (!(Mt & CAPTURE))
     {
-        (*m)->value = pos->history[piece >> 1][to];
+        //(*m)->value = pos->history[piece >> 1][to];
+        (*m)->value = pos->history[piece & S2MMASK][from][to];
     }
     else if (!(Mt & QUIET))
     {
@@ -1511,7 +1516,8 @@ template <MoveType Mt> inline void appendMoveToList(chessposition *pos, chessmov
             (*m)->value = (mvv[capture >> 1] | lva[piece >> 1]);
         }
         else {
-            (*m)->value = pos->history[piece >> 1][to];
+            //(*m)->value = pos->history[piece >> 1][to];
+            (*m)->value = pos->history[piece & S2MMASK][from][to];
         }
     }
     (*m)++;
