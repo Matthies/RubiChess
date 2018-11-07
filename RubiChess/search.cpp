@@ -7,7 +7,10 @@ const int deltapruningmargin = 100;
 int reductiontable[2][MAXDEPTH][64];
 
 #define MAXLMPDEPTH 9
-const int lmptable[MAXLMPDEPTH] = { 0, 4, 8, 12, 16, 22, 30, 40, 52 };
+const int lmptable[2][MAXLMPDEPTH] = {
+    { 0, 3, 6, 9, 12, 16, 22, 30, 40 },
+    { 0, 5, 9, 13, 18, 24, 34, 48, 60 }
+};
 
 void searchinit()
 {
@@ -19,6 +22,10 @@ void searchinit()
             // reduction for improving positions
             reductiontable[1][d][m] = (int)round(log(d) * log(m) / 2.5);
         }
+#if 0 // try to replace the fixed values with some formular ... later
+    for (int d = 0; d < MAXLMPDEPTH; d++)
+        printf("%2d/%2d  %2d/%2d\n", lmptable[0][d], (int)round(pow(d, 1.7)), lmptable[1][d], (int)round(pow(d, 2.5)));
+#endif
 }
 
 
@@ -349,7 +356,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             continue;
 
         // Late move pruning
-        if (depth < MAXLMPDEPTH && !ISTACTICAL(m->code) && quietsPlayed > lmptable[depth])
+        if (depth < MAXLMPDEPTH && !ISTACTICAL(m->code) && bestscore > NOSCORE && quietsPlayed > lmptable[positionImproved][depth])
             continue;
 
         // Check for futility pruning condition for this move and skip move if at least one legal move is already found
