@@ -7,10 +7,13 @@ const int deltapruningmargin = 100;
 int reductiontable[2][MAXDEPTH][64];
 
 #define MAXLMPDEPTH 9
-const int lmptable[2][MAXLMPDEPTH] = {
+int lmptable[2][MAXLMPDEPTH];
+#if 0  // Values og lmp1, replaced now by a formular
+= {
     { 0, 3, 6, 9, 12, 16, 22, 30, 40 },
     { 0, 5, 9, 13, 18, 24, 34, 48, 60 }
 };
+#endif
 
 void searchinit()
 {
@@ -22,10 +25,13 @@ void searchinit()
             // reduction for improving positions
             reductiontable[1][d][m] = (int)round(log(d) * log(m) / 2.5);
         }
-#if 0 // try to replace the fixed values with some formular ... later
     for (int d = 0; d < MAXLMPDEPTH; d++)
-        printf("%2d/%2d  %2d/%2d\n", lmptable[0][d], (int)round(pow(d, 1.7)), lmptable[1][d], (int)round(pow(d, 2.5)));
-#endif
+    {
+        // lmp for not improving positions
+        lmptable[0][d] = (int)(2.5 + 0.8 * round(pow(d, 1.8)));
+        // lmp for improving positions
+        lmptable[1][d] = (int)(3.5 + 1.1 * round(pow(d, 1.9)));
+    }
 }
 
 
