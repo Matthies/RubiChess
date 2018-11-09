@@ -8,12 +8,6 @@ int reductiontable[2][MAXDEPTH][64];
 
 #define MAXLMPDEPTH 9
 int lmptable[2][MAXLMPDEPTH];
-#if 0  // Values og lmp1, replaced now by a formular
-= {
-    { 0, 3, 6, 9, 12, 16, 22, 30, 40 },
-    { 0, 5, 9, 13, 18, 24, 34, 48, 60 }
-};
-#endif
 
 void searchinit()
 {
@@ -25,12 +19,17 @@ void searchinit()
             // reduction for improving positions
             reductiontable[1][d][m] = (int)round(log(d) * log(m) / 2.5);
         }
+#if 0
+    printf("LMP1 values:\n{ 0, 3, 6, 9, 12, 16, 22, 30, 40 }\n");
+    printf("{ 0, 5, 9, 13, 18, 24, 34, 48, 60 }\n");
+#endif
     for (int d = 0; d < MAXLMPDEPTH; d++)
     {
         // lmp for not improving positions
-        lmptable[0][d] = (int)(2.5 + 0.8 * round(pow(d, 1.8)));
+        lmptable[0][d] = (int)(2.5 + 0.8 * round(pow(d, 1.7)));
         // lmp for improving positions
         lmptable[1][d] = (int)(3.5 + 1.1 * round(pow(d, 1.9)));
+        printf("%d / %d\n", lmptable[0][d], lmptable[1][d]);
     }
 }
 
