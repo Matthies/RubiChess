@@ -19,17 +19,13 @@ void searchinit()
             // reduction for improving positions
             reductiontable[1][d][m] = (int)round(log(d) * log(m) / 2.5);
         }
-#if 0
-    printf("LMP1 values:\n{ 0, 3, 6, 9, 12, 16, 22, 30, 40 }\n");
-    printf("{ 0, 5, 9, 13, 18, 24, 34, 48, 60 }\n");
-#endif
     for (int d = 0; d < MAXLMPDEPTH; d++)
     {
         // lmp for not improving positions
-        lmptable[0][d] = (int)(2.5 + 0.8 * round(pow(d, 1.9)));
+        lmptable[0][d] = (int)(2.5 + 0.7 * round(pow(d, 1.85)));
         // lmp for improving positions
-        lmptable[1][d] = (int)(4.0 + 1.0 * round(pow(d, 1.9)));
-        printf("%d / %d\n", lmptable[0][d], lmptable[1][d]);
+        lmptable[1][d] = (int)(4.0 + 1.3 * round(pow(d, 1.85)));
+        //printf("%d / %d\n", lmptable[0][d], lmptable[1][d]);
     }
 }
 
