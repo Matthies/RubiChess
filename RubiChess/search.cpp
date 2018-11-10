@@ -28,8 +28,8 @@ void searchinit()
         // lmp for not improving positions
         lmptable[0][d] = (int)(2.5 + 0.8 * round(pow(d, 1.9)));
         // lmp for improving positions
-        lmptable[1][d] = (int)(3.5 + 1.1 * round(pow(d, 1.9)));
-        //printf("%d / %d\n", lmptable[0][d], lmptable[1][d]);
+        lmptable[1][d] = (int)(4.0 + 1.0 * round(pow(d, 1.9)));
+        printf("%d / %d\n", lmptable[0][d], lmptable[1][d]);
     }
 }
 
