@@ -247,7 +247,7 @@ void doBenchmark()
         {   
             "Startposition",
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-            10,
+            14,
             0,
             1
         },
@@ -275,7 +275,7 @@ void doBenchmark()
         { 
             "Wacnew 212",
             "rn1qr2Q/pbppk1p1/1p2pb2/4N3/3P4/2N5/PPP3PP/R4RK1 w - - 0 1",
-            13,
+            14,
             500,
             1
         },
@@ -298,7 +298,7 @@ void doBenchmark()
             "Arasan19 192",
             "r2qk2r/1b1nbp1p/p1n1p1p1/1pp1P3/6Q1/2NPB1PN/PPP3BP/R4RK1 w kq - 0 1",
             13,
-            100,
+            150,
             1
         },
         {
