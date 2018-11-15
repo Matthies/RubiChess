@@ -145,7 +145,7 @@ typedef const int32_t eval;
 #define NEWTAPEREDEVAL(v, ph) (((256 - (ph)) * GETMGVAL(v) + (ph) * GETEGVAL(v)) / 256)
 #define PSQTINDEX(i,s) ((s) ? (i) : (i) ^ 0x38)
 
-#define NUMOFEVALPARAMS (2*5*4 + 4 + 8 + 8 + 5 + 4*28 + 2 + 7 + 1 + 7 + 7*64)
+#define NUMOFEVALPARAMS (2*5*4 + 4 + 4*8 + 8 + 5 + 4*28 + 2 + 7 + 1 + 7 + 7*64)
 struct evalparamset {
     // Powered by Laser :-)
     eval ePawnstormblocked[4][5] = {
@@ -164,7 +164,12 @@ struct evalparamset {
     eval eSafepawnattackbonus =  VALUE(  72,  33);
     eval eKingshieldbonus =  VALUE(  15,  -3);
     eval eTempo =  VALUE(  12,  11);
-    eval ePassedpawnbonus[8] = {  VALUE(   0,   0), VALUE(   0,   7), VALUE(  -9,  16), VALUE(  -4,  39), VALUE(  17,  65), VALUE(  30, 132), VALUE(  10, 159), VALUE(   0,   0)  };
+    eval ePassedpawnbonus[4][8] = {
+        {  VALUE(   0,   0), VALUE(   3,   7), VALUE(  -9,  16), VALUE(  -4,  39), VALUE(  28,  48), VALUE(  54,  86), VALUE(  46, 105), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE( -16,   7), VALUE( -10,  12), VALUE( -16,  32), VALUE(  10,  40), VALUE(  28,  66), VALUE(  12,  53), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE(   0,   7), VALUE(  -4,  15), VALUE(  -4,  41), VALUE(  12,  84), VALUE(  32, 185), VALUE(  51, 261), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE(   7,  10), VALUE(  -2,  22), VALUE(   3,  39), VALUE(   8,  65), VALUE(  43,  88), VALUE(  31,  93), VALUE(   0,   0)  }
+    };
     eval eAttackingpawnbonus[8] = {  VALUE(   0,   0), VALUE( -50, -66), VALUE( -32, -21), VALUE( -16,  14), VALUE(  -5,  17), VALUE(   2,  55), VALUE(   0,   0), VALUE(   0,   0)  };
     eval eIsolatedpawnpenalty =  VALUE( -15, -11);
     eval eDoublepawnpenalty =  VALUE( -13, -23);

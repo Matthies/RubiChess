@@ -69,7 +69,7 @@ static void registertuner(eval *e, string name, int index1, int bound1, int inde
 void registeralltuners()
 {
     int i, j;
-    bool tuneIt = true;
+    bool tuneIt = false;
 
     //ePawnstormblocked
     for (i = 0; i < 4; i++)
@@ -83,8 +83,11 @@ void registeralltuners()
     registertuner(&eps.eSafepawnattackbonus, "eSafepawnattackbonus", 0, 0, 0, 0, tuneIt);
     registertuner(&eps.eKingshieldbonus, "eKingshieldbonus", 0, 0, 0, 0, tuneIt);
     registertuner(&eps.eTempo, "eTempo", 0, 0, 0, 0, tuneIt);
-    for (i = 0; i < 8; i++)
-        registertuner(&eps.ePassedpawnbonus[i], "ePassedpawnbonus", i, 8, 0, 0, tuneIt && (i > 0 && i < 7));
+    tuneIt = true;
+    for (i = 0; i < 4; i++)
+        for (j = 0; j < 8; j++)
+            registertuner(&eps.ePassedpawnbonus[i][j], "ePassedpawnbonus", j, 8, i, 4, tuneIt && (j > 0 && j < 7));
+    tuneIt = false;
     for (i = 0; i < 8; i++)
         registertuner(&eps.eAttackingpawnbonus[i], "eAttackingpawnbonus", i, 8, 0, 0, tuneIt && (i > 0 && i < 7));
     registertuner(&eps.eIsolatedpawnpenalty, "eIsolatedpawnpenalty", 0, 0, 0, 0, tuneIt);
@@ -94,13 +97,13 @@ void registeralltuners()
     registertuner(&eps.eDoublebishopbonus, "eDoublebishopbonus", 0, 0, 0, 0, tuneIt);
     //registertuner(&eps.eShiftmobilitybonus, "eShiftmobilitybonus", 0, 0, 0, 0, tuneIt);
 
-    tuneIt = true;
+    tuneIt = false;
 
     for (i = 0; i < 4; i++)
         for (j = 0; j < 28; j++)
             registertuner(&eps.eMobilitybonus[i][j], "eMobilitybonus", j, 28, i, 4, tuneIt && (j < maxmobility[i]));
 
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 2; i++)
         registertuner(&eps.eSlideronfreefilebonus[i], "eSlideronfreefilebonus", i, 2, 0, 0, tuneIt);
     for (i = 0; i < 7; i++)
@@ -109,7 +112,7 @@ void registeralltuners()
     for (i = 0; i < 7; i++)
         registertuner(&eps.eKingattackweight[i], "eKingattackweight", i, 7, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
 
-    tuneIt = true;
+    tuneIt = false;
 
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
@@ -249,14 +252,6 @@ int chessposition::getPawnAndKingValue(pawnhashentry **entry)
 
     for (int s = 0; s < 2; s++)
     {
-        U64 bb;
-        bb = entryptr->passedpawnbb[s];
-        while (LSB(index, bb))
-        {
-            val += EVAL(eps.ePassedpawnbonus[RRANK(index, s)], S2MSIGN(s));
-            bb ^= BITSET(index);
-        }
-
         // isolated pawns
         val += EVAL(eps.eIsolatedpawnpenalty, S2MSIGN(s) * POPCOUNT(entryptr->isolatedpawnbb[s]));
 
@@ -364,6 +359,19 @@ int chessposition::getPositionValue()
     for (int me = 0; me < 2; me++)
     {
         int you = me ^ S2MMASK;
+
+        // Passed pawns
+        U64 ppb;
+        ppb = phentry->passedpawnbb[me];
+        while (LSB(index, ppb))
+        {
+            int target = index + (me ? -8 : 8);
+            bool targetoccupied = (occupied & BITSET(target));
+            bool targetsafe = (~attackedBy[you][0] & BITSET(target));
+            result += EVAL(eps.ePassedpawnbonus[(targetsafe << 1) + targetoccupied][RRANK(index, me)], S2MSIGN(me));
+            ppb ^= BITSET(index);
+        }
+
 
         // King safety
         if (kingattackers[me] > 1 - (bool)(piece00[WQUEEN | me]))
