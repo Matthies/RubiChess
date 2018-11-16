@@ -71,7 +71,6 @@ void registeralltuners()
     int i, j;
     bool tuneIt = false;
 
-    //ePawnstormblocked
     for (i = 0; i < 4; i++)
         for (j = 0; j < 5; j++)
             registertuner(&eps.ePawnstormblocked[i][j], "ePawnstormblocked", j, 5, i, 4, tuneIt);
@@ -95,7 +94,6 @@ void registeralltuners()
     registertuner(&eps.eConnectedbonus, "eConnectedbonus", 0, 0, 0, 0, tuneIt);
     registertuner(&eps.eBackwardpawnpenalty, "eBackwardpawnpenalty", 0, 0, 0, 0, tuneIt);
     registertuner(&eps.eDoublebishopbonus, "eDoublebishopbonus", 0, 0, 0, 0, tuneIt);
-    //registertuner(&eps.eShiftmobilitybonus, "eShiftmobilitybonus", 0, 0, 0, 0, tuneIt);
 
     tuneIt = false;
 
@@ -145,7 +143,6 @@ int chessposition::getPawnAndKingValue(pawnhashentry **entry)
         entryptr->value += EVAL(eps.eMaterialvalue[PAWN], POPCOUNT(piece00[WPAWN]) - POPCOUNT(piece00[BPAWN]));
         // kingshield safety
         entryptr->value += EVAL(eps.eKingshieldbonus, (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])));
-
 
         for (int pc = WPAWN; pc <= BPAWN; pc++)
         {
@@ -339,7 +336,6 @@ int chessposition::getPositionValue()
             attackedBy[me][0] |= attack;
 
             // mobility bonus
-            //result += EVAL(eps.eShiftmobilitybonus, S2MSIGN(me) * POPCOUNT(mobility));
             result += EVAL(eps.eMobilitybonus[p - 2][POPCOUNT(mobility)], S2MSIGN(me));
 
             // king danger

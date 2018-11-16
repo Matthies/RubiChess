@@ -651,7 +651,6 @@ public:
     bool debugOnlySubtree;
     uint32_t pvtable[MAXDEPTH][MAXDEPTH];
 #endif
-    //int *positionvaluetable; // value tables for both sides, 7 PieceTypes and 256 phase variations 
     int ph; // to store the phase during different evaluation functions
     int isCheck;
     int useTb;
@@ -667,10 +666,7 @@ public:
     string getGradientString();
     int getGradientValue(positiontuneset *p);
 #endif
-    chessposition();
-    ~chessposition();
     void init();
-    bool operator==(chessposition p);
     bool w2m();
     void BitboardSet(int index, PieceCode p);
     void BitboardClear(int index, PieceCode p);
@@ -845,7 +841,6 @@ public:
     ~transposition();
     int setSize(int sizeMb);    // returns the number of Mb not used by allignment
     void clean();
-    bool testHash();
     void addHash(U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode);
     void printHashentry();
     bool probeHash(U64 hash, int *val, int *staticeval, uint16_t *movecode, int depth, int alpha, int beta);

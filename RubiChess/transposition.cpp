@@ -164,14 +164,6 @@ void transposition::clean()
     numOfSearchShiftTwo = 0xfc; // 0x3f << 2; will be incremented / reset to 0 before first search 
 }
 
-#if 0
-bool transposition::testHash()
-{
-    unsigned long long hash = pos->hash;
-    unsigned long long index = hash & sizemask;
-    return ((table[index].hashupper)   ==  (hash >> 32));
-}
-#endif
 
 unsigned int transposition::getUsedinPermill()
 {
@@ -214,14 +206,12 @@ void transposition::addHash(U64 hash, int val, int16_t staticeval, int bound, in
         }
     }
 
-#if 1
     // Don't overwrite an entry from the same position, unless we have
     // an exact bound or depth that is nearly as good as the old one
     if (bound != HASHEXACT
         &&  leastValuableEntry->hashupper == (uint32_t)(hash >> 32)
         &&  depth < leastValuableEntry->depth - 3)
         return;
-#endif
 
     if (leastValuableEntry->hashupper == 0)
         used++;

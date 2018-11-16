@@ -354,19 +354,8 @@ int chessposition::getFromFen(const char* sFen)
     materialhash = zb.getMaterialHash();
     rp.clean();
     rp.addPosition(hash);
-#if 0
-    for (int i = 0; i < 7; i++)
-    {
-        for (int j = 0; j < BOARDSIZE; j++)
-        {
-            history[i][j] = 0;
-        }
-    }
-#else
     memset(history, 0, sizeof(history));
-#endif
-    for (int i = 0; i < MAXDEPTH; i++)
-        killer[0][i] = killer[1][i] = 0;
+    memset(killer, 0, sizeof(killer));
     mstop = 0;
     return 0;
 }
@@ -593,7 +582,7 @@ void chessposition::getpvline(int depth, int pvnum)
         {
             cm = bestmove[pvnum];
         }
-        else if (movecode = tp.getMoveCode(hash))
+        else if ((movecode = tp.getMoveCode(hash)))
         {
             cm.code = shortMove2FullMove(movecode);
         }
@@ -766,16 +755,6 @@ void chessposition::print()
     printf("info string Repetitions: %d\n", rp.getPositionCount(hash));
     printf("info string Phase: %d\n", phase());
     printf("info string Pseudo-legal Moves: %s\n", pseudolegalmoves.toStringWithValue().c_str());
-#if 0
-    printf("Attacked and AttackedBy2 bitboards:\n");
-    BitboardDraw(attackedBy2[0]);
-    BitboardDraw(attackedBy2[1]);
-    for (int i = 0; i <= KING; i++)
-    {
-        BitboardDraw(attackedBy[0][i]);
-        BitboardDraw(attackedBy[1][i]);
-    }
-#endif
     printf("info string Moves in current search: %s\n", movesOnStack().c_str());
 }
 
@@ -1011,7 +990,7 @@ U64 getOccupiedFromMBIndex(int j, U64 mask)
     return occ;
 }
 
-#if 0
+#if 0  // Code to generate magics below, don't remove
 U64 getMagicCandidate(U64 mask)
 {
     U64 magic;
@@ -1165,7 +1144,7 @@ void initBitmaphelper()
                 mBishopAttacks[from][j] = 0ULL;
             
             // Get a random number with few bits set as a possible magic number
-            //mBishopTbl[from].magic = getMagicCandidate(mBishopTbl[from].mask);
+            // mBishopTbl[from].magic = getMagicCandidate(mBishopTbl[from].mask);
             mBishopTbl[from].magic = magics[magicnum++];
 
             for (int j = 0; magicOk && j < (1 << BISHOPINDEXBITS); j++) {
@@ -1193,7 +1172,7 @@ void initBitmaphelper()
                 mRookAttacks[from][j] = 0ULL;
 
             // Get a random number with few bits set as a possible magic number
-            //mRookTbl[from].magic = getMagicCandidate(mRookTbl[from].mask);
+            // mRookTbl[from].magic = getMagicCandidate(mRookTbl[from].mask);
             mRookTbl[from].magic = magics[magicnum++];
 
             for (int j = 0; magicOk && j < (1 << ROOKINDEXBITS); j++) {
@@ -1222,25 +1201,6 @@ void initBitmaphelper()
         }
     }
 }
-
-
-chessposition::chessposition()
-{
-    //init();
-}
-
-
-chessposition::~chessposition()
-{
-    //delete positionvaluetable;
-}
-
-
-bool chessposition::operator==(chessposition p)
-{
-    return true;
-}
-
 
 
 void chessposition::BitboardSet(int index, PieceCode p)
@@ -1523,7 +1483,6 @@ template <MoveType Mt> inline void appendMoveToList(chessposition *pos, chessmov
     **m = chessmove(from, to, piece);
     if (!(Mt & CAPTURE))
     {
-        //(*m)->value = pos->history[piece >> 1][to];
         (*m)->value = pos->history[piece & S2MMASK][from][to];
     }
     else if (!(Mt & QUIET))
@@ -1539,7 +1498,6 @@ template <MoveType Mt> inline void appendMoveToList(chessposition *pos, chessmov
             (*m)->value = (mvv[capture >> 1] | lva[piece >> 1]);
         }
         else {
-            //(*m)->value = pos->history[piece >> 1][to];
             (*m)->value = pos->history[piece & S2MMASK][from][to];
         }
     }
@@ -1593,7 +1551,6 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                 {
                     if ((Mt & CAPTURE) && pos->ept && pos->ept == to)
                     {
-                        //testMove(result, from, to, BLANK, (PieceCode)(WPAWN | (s2m ^ 1)), ISEPCAPTURE, pc);
                         // treat ep capture as a quiet move and correct code and value manually
                         appendMoveToList<QUIET>(pos, &m, from, to, pc);
                         (m - 1)->code |= (ISEPCAPTURE << 20) | ((WPAWN | (s2m ^ 1)) << 16);
@@ -1601,10 +1558,6 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                     }
                     else if (PROMOTERANK(to))
                     {
-                        //testMove(result, from, to, (PieceCode)((QUEEN << 1) | s2m), mailbox[to], pc);
-                        //testMove(result, from, to, (PieceCode)((ROOK << 1) | s2m), mailbox[to], pc);
-                        //testMove(result, from, to, (PieceCode)((BISHOP << 1) | s2m), mailbox[to], pc);
-                        //testMove(result, from, to, (PieceCode)((KNIGHT << 1) | s2m), mailbox[to], pc);
                         appendMoveToList<Mt>(pos, &m, from, to, pc);
                         (m - 1)->code |= ((QUEEN << 1) | s2m) << 12;
                         (m - 1)->value = mvv[QUEEN];
@@ -1845,9 +1798,7 @@ bool chessposition::see(uint32_t move, int threshold)
         value = -value - 1 - prunematerialvalue[nextPiece];
 
         if (value >= 0)
-        {
             break;
-        }
     }
 
     return (s2m ^ (state & S2MMASK));

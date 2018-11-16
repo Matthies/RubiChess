@@ -190,7 +190,6 @@ bool PGNtoFEN(string pgnfilename)
     {
         line2 = line1;
         line1 = line;
-        //printf(">%s<\n", line.c_str());
 
         smatch match;
         string fen;
@@ -245,7 +244,6 @@ bool PGNtoFEN(string pgnfilename)
                 if (regex_search(line, match, regex("^\\s*(([O\\-]{3,5})\\+?|([KQRBN]?[a-h]*[1-8]*x?[a-h]+[1-8]+(=[QRBN])?)\\+?)")))
                 {
                     // Found move
-                    //printf("%s\n", match.str().c_str());
                     if (!valueChecked)
                     {
                         // Score tag of last move missing; just output without score
@@ -263,7 +261,6 @@ bool PGNtoFEN(string pgnfilename)
                         printf("last Lines:\n%s\n%s\n\n", line2.c_str(), line1.c_str());
                     }
                     fen = pos.toFen();
-                    //printf("FEN: %s\n", fen.c_str());
                     line = match.suffix();
                 }
                 if (!valueChecked)

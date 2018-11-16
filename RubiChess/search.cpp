@@ -25,7 +25,6 @@ void searchinit()
         lmptable[0][d] = (int)(2.5 + 0.7 * round(pow(d, 1.85)));
         // lmp for improving positions
         lmptable[1][d] = (int)(4.0 + 1.3 * round(pow(d, 1.85)));
-        //printf("%d / %d\n", lmptable[0][d], lmptable[1][d]);
     }
 }
 
@@ -277,34 +276,23 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
     pos.prepareStack();
 
-    // Here some reduction/extension depending on the lastmove...
-
-    // Nullmove
+    // Nullmove pruning
     if (nullmoveallowed && !pos.isCheck && depth >= 3 && pos.phase() < 250)
     {
         pos.playNullMove();
         int R = depth > 6 ? 4 : 3;
         score = -alphabeta(-beta, -beta + 1, depth - R, false);
-        
+        pos.unplayNullMove();
+
         if (score >= beta)
         {
-            pos.unplayNullMove();
             SDEBUGPRINT(isDebugPv, debugInsert, " Cutoff by null move: %d", score);
             return score;
         }
         else {
-#if 0 // disabled for now; first working on better quiescense
-            if (score < alpha - 300)
-            {
-                PDEBUG(depth, "Nullmove a=%d b=%d score=%d thread detected => extension\n", alpha, beta, score);
-                extendall++;
-            }
-#endif
             uint16_t nmrefutemove = tp.getMoveCode(hash);
             if (nmrefutemove && pos.mailbox[GETTO(nmrefutemove)] != BLANK)
                 nmrefutetarget = GETTO(nmrefutemove);
-
-            pos.unplayNullMove();
         }
     }
 
@@ -424,18 +412,10 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                 reduction = reductiontable[positionImproved][depth][min(63, LegalMoves)];
                 SDEBUGPRINT(isDebugPv && isDebugMove && reduction, debugInsert, " PV move %s (value=%d) with depth reduced by %d", debugMove.toString().c_str(), m->value, reduction);
             }
-#if 0
-            // disabled; capture extension doesn't seem to work
-            else if (ISTACTICAL(m->code) && GETPIECE(m->code) <= GETCAPTURE(m->code))
-                extendall = 1;
-#endif
+
             if (eval_type != HASHEXACT)
             {
-#if 0
-                // disabled; even 'good capture' extension doesn't seem to work
-                if (ISCAPTURE(m->code) && materialvalue[GETPIECE(m->code) >> 1] - materialvalue[GETCAPTURE(m->code) >> 1] < 30)
-                    moveExtension = 1;
-#endif
+                // First move ("PV-move"); do a normal search
                 effectiveDepth = depth + extendall - reduction + extendMove;
                 score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
                 if (reduction && score > alpha)
@@ -457,10 +437,9 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             }
             pos.unplayMove(m);
 
-            if (en.stopLevel == ENGINESTOPIMMEDIATELY /* && LegalMoves > 1 */)
+            if (en.stopLevel == ENGINESTOPIMMEDIATELY)
             {
-                // At least one move is found and we can safely exit here
-                // Lets hope this doesn't take too much time...
+                // time is over; immediate stop requested
                 return alpha;
             }
 
@@ -476,12 +455,10 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                     // Killermove
                     if (!ISCAPTURE(m->code))
                     {
-                        //pos.history[GETPIECE(m->code) >> 1][GETTO(m->code)] += depth * depth;
                         pos.history[pos.state & S2MMASK][GETFROM(m->code)][GETTO(m->code)] += depth * depth;
                         for (int i = 0; i < quietsPlayed; i++)
                         {
                             uint32_t qm = quietMoves[i];
-                            //pos.history[GETPIECE(qm) >> 1][GETTO(qm)] -= depth * depth;
                             pos.history[pos.state & S2MMASK][GETFROM(qm)][GETTO(qm)] -= depth * depth;
                         }
 
@@ -627,7 +604,6 @@ int rootsearch(int alpha, int beta, int depth)
                 m->value = (mvv[GETCAPTURE(m->code) >> 1] | lva[GETPIECE(m->code) >> 1]);
             }
             else {
-                //m->value = pos.history[GETPIECE(m->code) >> 1][GETTO(m->code)];
                 m->value = pos.history[pos.state & S2MMASK][GETFROM(m->code)][GETTO(m->code)];
             }
         }
@@ -666,6 +642,7 @@ int rootsearch(int alpha, int beta, int depth)
         }
 
         int reduction = 0;
+
         // Late move reduction
         if (!extendall && depth > 2 && !ISTACTICAL(m->code))
         {
@@ -675,6 +652,7 @@ int rootsearch(int alpha, int beta, int depth)
         int effectiveDepth;
         if (eval_type != HASHEXACT)
         {
+            // First move ("PV-move"); do a normal search
             effectiveDepth = depth + extendall - reduction;
             score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
             if (reduction && score > alpha)
@@ -703,8 +681,7 @@ int rootsearch(int alpha, int beta, int depth)
 
         if (en.stopLevel == ENGINESTOPIMMEDIATELY)
         {
-            // FIXME: Removed condition LegalMoves > 1; is this okay??
-            //free(newmoves);
+            // time over; immediate stop requested
             return bestscore;
         }
 
@@ -739,7 +716,6 @@ int rootsearch(int alpha, int beta, int depth)
             // Killermove
             if (!ISCAPTURE(m->code))
             {
-                //pos.history[GETPIECE(m->code) >> 1][GETTO(m->code)] += depth * depth;
                 pos.history[pos.state & S2MMASK][GETFROM(m->code)][GETTO(m->code)] += depth * depth;
                 for (int i = 0; i < quietsPlayed - 1; i++)
                 {
@@ -813,7 +789,6 @@ static void search_gen1()
     int inWindow;
     int lastsecondsrun = 0;
     const char* boundscore[] = { "upperbound", "", "lowerbound" };
-
 
     const bool isMultiPV = (RT == MultiPVSearch);
 
