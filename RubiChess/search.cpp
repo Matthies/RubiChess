@@ -304,18 +304,18 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         && movestack[mstop].staticeval > movestack[mstop - 2].staticeval);
 
     // futility pruning
-    const int futilityMargin[] = { 0, 130, 280, 430 };
+    //const int futilityMargin[] = { 0, 130, 280, 430 };
     //const int revFutilityMargin[] = { 0, 90, 180, 270 };
     bool futility = false;
-    if (depth <= 3)
+    if (depth <= 6)
     {
         // reverse futility pruning
-        if (!pos.isCheck && staticeval - depth * (90 - 20 * positionImproved) > beta)
+        if (!pos.isCheck && staticeval - depth * (72 - 20 * positionImproved) > beta)
         {
             SDEBUGPRINT(isDebugPv, debugInsert, " Cutoff by reverse futility pruning: staticscore(%d) - revMargin[depth](%d) > beta(%d)", staticeval, revFutilityMargin[depth], beta);
             return staticeval;
         }
-        futility = (staticeval < alpha - futilityMargin[depth]);
+        futility = (staticeval < alpha - (100 + 80 * depth));// futilityMargin[depth]);
     }
 
     // Internal iterative deepening 
