@@ -300,15 +300,17 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     if (staticeval == NOSCORE)
         staticeval = S2MSIGN(pos.state & S2MMASK) * getValueNoTrace(&pos);
     movestack[mstop].staticeval = staticeval;
+    bool positionImproved = (mstop >= pos.rootheight + 2
+        && movestack[mstop].staticeval > movestack[mstop - 2].staticeval);
 
     // futility pruning
     const int futilityMargin[] = { 0, 130, 280, 430 };
-    const int revFutilityMargin[] = { 0, 90, 180, 270 };
+    //const int revFutilityMargin[] = { 0, 90, 180, 270 };
     bool futility = false;
     if (depth <= 3)
     {
         // reverse futility pruning
-        if (!pos.isCheck && staticeval - revFutilityMargin[depth] > beta)
+        if (!pos.isCheck && staticeval - depth * (90 - 20 * positionImproved) > beta)
         {
             SDEBUGPRINT(isDebugPv, debugInsert, " Cutoff by reverse futility pruning: staticscore(%d) - revMargin[depth](%d) > beta(%d)", staticeval, revFutilityMargin[depth], beta);
             return staticeval;
@@ -325,9 +327,6 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         alphabeta(alpha, beta, depth - iiddelta, true);
         hashmovecode = tp.getMoveCode(hash);
     }
-
-    bool positionImproved = (mstop >= pos.rootheight + 2
-        && movestack[mstop].staticeval > movestack[mstop - 2].staticeval);
 
     MoveSelector ms = {};
     ms.SetPreferredMoves(&pos, hashmovecode, pos.killer[0][pos.ply], pos.killer[1][pos.ply], nmrefutetarget);
