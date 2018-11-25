@@ -897,9 +897,7 @@ static void search_gen1()
                             uint16_t mc;
                             int dummystaticeval;
                             tp.probeHash(pos.hash, &pos.bestmovescore[i], &dummystaticeval, &mc, depth, alpha, beta);
-                            uint32_t fmc = pos.shortMove2FullMove(mc);
-                            if (pos.moveIsPseudoLegal(fmc))
-                                pos.bestmove[i].code = fmc;
+                            pos.bestmove[i].code = pos.shortMove2FullMove(mc);
                         }
 
                         pos.getpvline(depth, i);
@@ -937,9 +935,7 @@ static void search_gen1()
                     uint16_t mc = 0;
                     int dummystaticeval;
                     tp.probeHash(pos.hash, &score, &dummystaticeval, &mc, MAXDEPTH, alpha, beta);
-                    uint32_t fmc = pos.shortMove2FullMove(mc);
-                    if (pos.moveIsPseudoLegal(fmc))
-                        pos.bestmove[0].code = fmc;
+                    pos.bestmove[0].code = pos.shortMove2FullMove(mc);
                 }
                     
                 // still no bestmove...
