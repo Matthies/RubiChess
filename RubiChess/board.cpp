@@ -585,6 +585,8 @@ void chessposition::getpvline(int depth, int pvnum)
         else if ((movecode = tp.getMoveCode(hash)))
         {
             cm.code = shortMove2FullMove(movecode);
+            if (!moveIsPseudoLegal(cm.code))
+                break;
         }
         else
         {
@@ -614,6 +616,8 @@ uint32_t chessposition::shortMove2FullMove(uint16_t c)
     int from = GETFROM(c);
     int to = GETTO(c);
     PieceCode pc = mailbox[from];
+    if (!pc) // short move is wrong
+        return 0;
     PieceCode capture = mailbox[to];
     PieceType p = pc >> 1;
     int ept = 0;
