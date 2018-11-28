@@ -304,18 +304,16 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         && movestack[mstop].staticeval > movestack[mstop - 2].staticeval);
 
     // futility pruning
-    //const int futilityMargin[] = { 0, 130, 280, 430 };
-    //const int revFutilityMargin[] = { 0, 90, 180, 270 };
     bool futility = false;
     if (depth <= 6)
     {
         // reverse futility pruning
         if (!pos.isCheck && staticeval - depth * (72 - 20 * positionImproved) > beta)
         {
-            SDEBUGPRINT(isDebugPv, debugInsert, " Cutoff by reverse futility pruning: staticscore(%d) - revMargin[depth](%d) > beta(%d)", staticeval, revFutilityMargin[depth], beta);
+            SDEBUGPRINT(isDebugPv, debugInsert, " Cutoff by reverse futility pruning: staticscore(%d) - revMargin(%d) > beta(%d)", staticeval, depth * (72 - 20 * positionImproved), beta);
             return staticeval;
         }
-        futility = (staticeval < alpha - (100 + 80 * depth));// futilityMargin[depth]);
+        futility = (staticeval < alpha - (100 + 80 * depth));
     }
 
     // Internal iterative deepening 
@@ -353,7 +351,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         {
             if (LegalMoves)
             {
-                SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by futility: staticeval(%d) < alpha(%d) - futilityMargin[depth](%d)", debugMove.toString().c_str(), staticeval, alpha, futilityMargin[depth]);
+                SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by futility: staticeval(%d) < alpha(%d) - futilityMargin(%d)", debugMove.toString().c_str(), staticeval, alpha, 100 + 80 * depth);
                 continue;
             }
             else if (staticeval > bestscore)
@@ -399,7 +397,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             // Check again for futility pruning now that we found a valid move
             if (futilityPrune)
             {
-                SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by futility: staticeval(%d) < alpha(%d) - futilityMargin[depth](%d)", debugMove.toString().c_str(), staticeval, alpha, futilityMargin[depth]);
+                SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by futility: staticeval(%d) < alpha(%d) - futilityMargin(%d)", debugMove.toString().c_str(), staticeval, alpha, 100 + 80 * depth);
                 pos.unplayMove(m);
                 continue;
             }
