@@ -227,7 +227,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     }
 #endif
 
-    U64 hash = pos.hash ^ (excludeMove << 16);
+    U64 hash = pos.hash ^ excludeMove;
 
     if (tp.probeHash(hash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta)
         && rp.getPositionCount(pos.hash) <= 1)  //FIXME: This test on the repetition table works like a "is not PV"; should be fixed in the future)
