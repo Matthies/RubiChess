@@ -1,0 +1,9 @@
+ha2:
+STC:
+Score of RubiChess-Bitboard-ha2 vs RubiChess-Bitboard-ms: 324 - 258 - 378  [0.534] 960
+Elo difference: 23.92 +/- 17.12
+SPRT: llr 1.41, lbound -1.39, ubound 1.39 - H1 was accepted
+LTC:
+Score of RubiChess-Bitboard-ha2 vs RubiChess-Bitboard-ms: 445 - 384 - 850  [0.518] 1679
+Elo difference: 12.63 +/- 11.66
+SPRT: llr 1.43, lbound -1.39, ubound 1.39 - H1 was accepted

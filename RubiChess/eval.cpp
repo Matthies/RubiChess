@@ -80,9 +80,12 @@ void registeralltuners()
 
     registertuner(&eps.ePawnpushthreatbonus, "ePawnpushthreatbonus", 0, 0, 0, 0, tuneIt);
     registertuner(&eps.eSafepawnattackbonus, "eSafepawnattackbonus", 0, 0, 0, 0, tuneIt);
+    tuneIt = true;
+    registertuner(&eps.eHangingpiecepenalty, "eHangingpiecepenalty", 0, 0, 0, 0, tuneIt);
+    tuneIt = false;
     registertuner(&eps.eKingshieldbonus, "eKingshieldbonus", 0, 0, 0, 0, tuneIt);
     registertuner(&eps.eTempo, "eTempo", 0, 0, 0, 0, tuneIt);
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 8; j++)
             registertuner(&eps.ePassedpawnbonus[i][j], "ePassedpawnbonus", j, 8, i, 4, tuneIt && (j > 0 && j < 7));
@@ -407,6 +410,10 @@ int chessposition::getPositionValue()
         // Get opponents pieces that are attacked from these pawn pushes and not already attacked now
         U64 attackedPieces = PAWNATTACK(me, pawnPush) & occupied00[you] & ~attackedBy[me][PAWN];
         result += EVAL(eps.ePawnpushthreatbonus, S2MSIGN(me) * POPCOUNT(attackedPieces));
+
+        // Hanging pieces
+        U64 hanging = occupied00[me] & ~attackedBy[me][0] & attackedBy[you][0];
+        result += EVAL(eps.eHangingpiecepenalty, S2MSIGN(me) * POPCOUNT(hanging));
     }
 
     return NEWTAPEREDEVAL(result, ph);

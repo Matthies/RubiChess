@@ -145,7 +145,7 @@ typedef const int32_t eval;
 #define NEWTAPEREDEVAL(v, ph) (((256 - (ph)) * GETMGVAL(v) + (ph) * GETEGVAL(v)) / 256)
 #define PSQTINDEX(i,s) ((s) ? (i) : (i) ^ 0x38)
 
-#define NUMOFEVALPARAMS (2*5*4 + 4 + 4*8 + 8 + 5 + 4*28 + 2 + 7 + 1 + 7 + 7*64)
+#define NUMOFEVALPARAMS (2*5*4 + 5 + 4*8 + 8 + 5 + 4*28 + 2 + 7 + 1 + 7 + 7*64)
 struct evalparamset {
     // Powered by Laser :-)
     eval ePawnstormblocked[4][5] = {
@@ -162,6 +162,7 @@ struct evalparamset {
     };
     eval ePawnpushthreatbonus =  VALUE(  23,  16);
     eval eSafepawnattackbonus =  VALUE(  72,  33);
+    eval eHangingpiecepenalty = VALUE( -22, -25);
     eval eKingshieldbonus =  VALUE(  15,  -3);
     eval eTempo =  VALUE(  12,  11);
     eval ePassedpawnbonus[4][8] = {
