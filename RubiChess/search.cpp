@@ -1030,8 +1030,8 @@ void resetEndTime(int constantRootMoves, bool complete = true)
     {
         // should garantee timetouse > 0
         // stop soon at 0.7...1.0 x average movetime
-        int f1 = min(7, 10 - constantRootMoves);
-        int f2 = min(13, 18 - constantRootMoves);
+        int f1 = max(7, 10 - constantRootMoves);
+        int f2 = max(13, 18 - constantRootMoves);
         if (complete)
             en.endtime1 = en.starttime + timetouse * en.frequency * f1 / (en.movestogo + 1) / 10000;
         // stop immediately at 1.3...1.8 x average movetime
@@ -1042,8 +1042,8 @@ void resetEndTime(int constantRootMoves, bool complete = true)
         int ph = pos.phase();
         if (timeinc)
         {
-            int f1 = min(6, 10 - constantRootMoves);
-            int f2 = min(10, 18 - constantRootMoves);
+            int f1 = max(6, 10 - constantRootMoves);
+            int f2 = max(10, 18 - constantRootMoves);
             // sudden death with increment; split the remaining time in (256-phase) timeslots
             // stop soon after 6..10 timeslot
             if (complete)
@@ -1059,8 +1059,8 @@ void resetEndTime(int constantRootMoves, bool complete = true)
             //  40;25:  56,1% + 57,1%
             //  45;30:  55,5% + 53,4%
             // So I use the first one although 45;30 is ~22ELO better against 40;25 in TC 10 and TC 60
-            int f1 = max(45, 40 + constantRootMoves);
-            int f2 = max(30, 25 + constantRootMoves);
+            int f1 = min(45, 40 + constantRootMoves);
+            int f2 = min(30, 25 + constantRootMoves);
             if (complete)
                 en.endtime1 = en.starttime + timetouse / f1 * en.frequency / 1000;
             en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, timetouse / f2) * en.frequency / 1000;
