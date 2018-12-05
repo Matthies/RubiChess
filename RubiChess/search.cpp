@@ -1030,8 +1030,8 @@ void resetEndTime(int constantRootMoves, bool complete = true)
     {
         // should garantee timetouse > 0
         // stop soon at 0.7...1.0 x average movetime
-        int f1 = max(7, 10 - constantRootMoves);
-        int f2 = max(13, 18 - constantRootMoves);
+        int f1 = max(5, 15 - constantRootMoves * 2);
+        int f2 = max(13, 23 - constantRootMoves * 2);
         if (complete)
             en.endtime1 = en.starttime + timetouse * en.frequency * f1 / (en.movestogo + 1) / 10000;
         // stop immediately at 1.3...1.8 x average movetime
