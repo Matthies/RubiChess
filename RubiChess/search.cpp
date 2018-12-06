@@ -276,8 +276,13 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
     pos.prepareStack();
 
+    // get static evaluation of the position
+    if (staticeval == NOSCORE)
+        staticeval = S2MSIGN(pos.state & S2MMASK) * getValueNoTrace(&pos);
+    movestack[mstop].staticeval = staticeval;
+
     // Nullmove pruning
-    if (nullmoveallowed && !pos.isCheck && depth >= 3 && pos.phase() < 250)
+    if (nullmoveallowed && !pos.isCheck && depth >= 3 && staticeval >= beta)
     {
         pos.playNullMove();
         int R = depth > 6 ? 4 : 3;
@@ -296,10 +301,6 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         }
     }
 
-    // get static evaluation of the position
-    if (staticeval == NOSCORE)
-        staticeval = S2MSIGN(pos.state & S2MMASK) * getValueNoTrace(&pos);
-    movestack[mstop].staticeval = staticeval;
     bool positionImproved = (mstop >= pos.rootheight + 2
         && movestack[mstop].staticeval > movestack[mstop - 2].staticeval);
 
