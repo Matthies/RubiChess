@@ -250,6 +250,7 @@ void transposition::printHashentry()
     printf("No match found\n");
 }
 
+#define FIXMATESCORE(v,p) (MATEFORME(v) ? (v) - p : (MATEFOROPPONENT(v) ? (v) + p : v))
 
 bool transposition::probeHash(U64 hash, int *val, int *staticeval, uint16_t *movecode, int depth, int alpha, int beta)
 {
@@ -268,24 +269,28 @@ bool transposition::probeHash(U64 hash, int *val, int *staticeval, uint16_t *mov
             *staticeval = e->staticeval;
             if (true)//e->depth >= depth)
             {
+#if 0
                 *val = e->value;
                 if (MATEFORME(*val))
                     *val -= pos->ply;
                 else if (MATEFOROPPONENT(*val))
                     *val += pos->ply;
+#endif
                 int bound = (e->boundAndAge & BOUNDMASK);
+                int v = FIXMATESCORE(e->value, pos->ply);
                 if (bound == HASHEXACT)
                 {
+                    *val = v;
                     //return true;
                     return (e->depth >= depth);
                 }
-                if (bound == HASHALPHA && *val <= alpha)
+                if (bound == HASHALPHA && v <= alpha)
                 {
                     *val = alpha;
                     //return true;
                     return (e->depth >= depth);
                 }
-                if (bound == HASHBETA && *val >= beta)
+                if (bound == HASHBETA && v >= beta)
                 {
                     *val = beta;
                     //return true;
