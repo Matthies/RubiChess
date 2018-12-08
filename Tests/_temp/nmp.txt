@@ -1,0 +1,12 @@
+STC:
+Score of RubiChess-Bitboard-nmp4 vs RubiChess-Bitboard-ms: 417 - 352 - 617  [0.523] 1386
+Elo difference: 16.31 +/- 13.62
+SPRT: llr 1.43, lbound -1.39, ubound 1.39 - H1 was accepted
+Finished match
+
+LTC:
+Score of RubiChess-Bitboard-nmp4 vs RubiChess-Bitboard-ms: 151 - 101 - 266  [0.548] 518
+Elo difference: 33.64 +/- 20.86
+SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+
+Wow!!

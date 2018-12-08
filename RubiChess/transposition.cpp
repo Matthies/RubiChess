@@ -267,37 +267,24 @@ bool transposition::probeHash(U64 hash, int *val, int *staticeval, uint16_t *mov
         {
             *movecode = e->movecode;
             *staticeval = e->staticeval;
-            if (true)//e->depth >= depth)
+            int bound = (e->boundAndAge & BOUNDMASK);
+            int v = FIXMATESCORE(e->value, pos->ply);
+            if (bound == HASHEXACT)
             {
-#if 0
-                *val = e->value;
-                if (MATEFORME(*val))
-                    *val -= pos->ply;
-                else if (MATEFOROPPONENT(*val))
-                    *val += pos->ply;
-#endif
-                int bound = (e->boundAndAge & BOUNDMASK);
-                int v = FIXMATESCORE(e->value, pos->ply);
-                if (bound == HASHEXACT)
-                {
-                    *val = v;
-                    //return true;
-                    return (e->depth >= depth);
-                }
-                if (bound == HASHALPHA && v <= alpha)
-                {
-                    *val = alpha;
-                    //return true;
-                    return (e->depth >= depth);
-                }
-                if (bound == HASHBETA && v >= beta)
-                {
-                    *val = beta;
-                    //return true;
-                    return (e->depth >= depth);
-                }
+                *val = v;
+                return (e->depth >= depth);
             }
-            // found but depth too low or value outside boundary
+            if (bound == HASHALPHA && v <= alpha)
+            {
+                *val = alpha;
+                return (e->depth >= depth);
+            }
+            if (bound == HASHBETA && v >= beta)
+            {
+                *val = beta;
+                return (e->depth >= depth);
+            }
+            // value outside boundary
             return false;
         }
     }
