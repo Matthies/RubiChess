@@ -167,7 +167,7 @@ int getQuiescence(int alpha, int beta, int depth)
 int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 {
     int score;
-    int hashscore;
+    int hashscore = NOSCORE;
     uint16_t hashmovecode = 0;
     int staticeval = NOSCORE;
     bool isLegal;
@@ -276,11 +276,17 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 
     pos.prepareStack();
 
+    // get static evaluation of the position
+    if (staticeval == NOSCORE)
+        staticeval = S2MSIGN(pos.state & S2MMASK) * getValueNoTrace(&pos);
+    movestack[mstop].staticeval = staticeval;
+
     // Nullmove pruning
-    if (nullmoveallowed && !pos.isCheck && depth >= 3 && pos.phase() < 250)
+    int bestknownscore = (hashscore != NOSCORE ? hashscore : staticeval);
+    if (nullmoveallowed && !pos.isCheck && depth >= 3 && bestknownscore >= beta && pos.ph < 250)
     {
         pos.playNullMove();
-        int R = depth > 6 ? 4 : 3;
+        int R = 3 + (depth / 6) + (bestknownscore - beta) / 150;
         score = -alphabeta(-beta, -beta + 1, depth - R, false);
         pos.unplayNullMove();
 
@@ -296,10 +302,6 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         }
     }
 
-    // get static evaluation of the position
-    if (staticeval == NOSCORE)
-        staticeval = S2MSIGN(pos.state & S2MMASK) * getValueNoTrace(&pos);
-    movestack[mstop].staticeval = staticeval;
     bool positionImproved = (mstop >= pos.rootheight + 2
         && movestack[mstop].staticeval > movestack[mstop - 2].staticeval);
 
