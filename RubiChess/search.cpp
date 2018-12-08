@@ -1059,8 +1059,8 @@ void resetEndTime(int constantRootMoves, bool complete = true)
             //  40;25:  56,1% + 57,1%
             //  45;30:  55,5% + 53,4%
             // So I use the first one although 45;30 is ~22ELO better against 40;25 in TC 10 and TC 60
-            int f1 = min(45, 40 + constantRootMoves);
-            int f2 = min(30, 25 + constantRootMoves);
+            int f1 = min(45, 35 + constantRootMoves * 2);
+            int f2 = min(30, 20 + constantRootMoves * 2);
             if (complete)
                 en.endtime1 = en.starttime + timetouse / f1 * en.frequency / 1000;
             en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, timetouse / f2) * en.frequency / 1000;
