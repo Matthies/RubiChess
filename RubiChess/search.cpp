@@ -282,10 +282,11 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     movestack[mstop].staticeval = staticeval;
 
     // Nullmove pruning
-    if (nullmoveallowed && !pos.isCheck && depth >= 3 && (hashscore != NOSCORE ? hashscore : staticeval) >= beta && pos.ph < 250)
+    int bestknownscore = (hashscore != NOSCORE ? hashscore : staticeval);
+    if (nullmoveallowed && !pos.isCheck && depth >= 3 && bestknownscore >= beta && pos.ph < 250)
     {
         pos.playNullMove();
-        int R = depth > 6 ? 4 : 3;
+        int R = 3 + (depth / 6) + (bestknownscore - beta) / 150;
         score = -alphabeta(-beta, -beta + 1, depth - R, false);
         pos.unplayNullMove();
 
