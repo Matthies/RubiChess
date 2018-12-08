@@ -167,7 +167,7 @@ int getQuiescence(int alpha, int beta, int depth)
 int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 {
     int score;
-    int hashscore;
+    int hashscore = NOSCORE;
     uint16_t hashmovecode = 0;
     int staticeval = NOSCORE;
     bool isLegal;
@@ -282,7 +282,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     movestack[mstop].staticeval = staticeval;
 
     // Nullmove pruning
-    if (nullmoveallowed && !pos.isCheck && depth >= 3 && staticeval >= beta)
+    if (nullmoveallowed && !pos.isCheck && depth >= 3 && (hashscore != NOSCORE ? hashscore : staticeval) >= beta && pos.ph < 250)
     {
         pos.playNullMove();
         int R = depth > 6 ? 4 : 3;
