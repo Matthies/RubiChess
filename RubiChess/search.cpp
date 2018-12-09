@@ -1023,7 +1023,7 @@ static void search_gen1()
     en.benchdepth = depth - 1;
 }
 
-void resetEndTime(int constantRootMoves, bool complete = true)
+void resetEndTime(int constantRootMoves, bool complete)
 {
     int timetouse = (en.isWhite ? en.wtime : en.btime);
     int timeinc = (en.isWhite ? en.winc : en.binc);

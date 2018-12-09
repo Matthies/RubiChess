@@ -17,6 +17,7 @@ U64 fileMask[64];
 U64 rankMask[64];
 U64 betweenMask[64][64];
 int castleindex[64][64] = { 0 };
+int castlerights[64];
 
 chessmovestack movestack[MAXMOVESEQUENCELENGTH];
 int mstop;
@@ -1047,6 +1048,15 @@ void initBitmaphelper()
         neighbourfilesMask[from] = 0ULL;
         fileMask[from] = 0ULL;
         rankMask[from] = 0ULL;
+        castlerights[from] = ~0;
+        if (from == 0x00)
+            castlerights[from] &= ~WQCMASK;
+        if (from == 0x07)
+            castlerights[from] &= ~WKCMASK;
+        if (from == 0x38)
+            castlerights[from] &= ~BQCMASK;
+        if (from == 0x3f)
+            castlerights[from] &= ~BKCMASK;
 
         for (int j = 0; j < 64; j++)
         {
@@ -1246,7 +1256,6 @@ void chessposition::BitboardPrint(U64 b)
 
 bool chessposition::playMove(chessmove *cm)
 {
-    int oldcastle = (state & CASTLEMASK);
     int s2m = state & S2MMASK;
     int from = GETFROM(cm->code);
     int to = GETTO(cm->code);
@@ -1353,15 +1362,8 @@ bool chessposition::playMove(chessmove *cm)
     }
 
     // remove castle rights
-    if (to == 0x00 || from == 0x00)
-        state &= ~WQCMASK;
-    if (to == 0x07 || from == 0x07)
-        state &= ~WKCMASK;
-    if (to == 0x38 || from == 0x38)
-        state &= ~BQCMASK;
-    if (to == 0x3f || from == 0x3f)
-        state &= ~BKCMASK;
-
+    int oldcastle = (state & CASTLEMASK);
+    state &= (castlerights[from] & castlerights[to]);
     if (ptype == KING)
     {
         // Store king position in pawn hash

@@ -316,6 +316,27 @@ void doBenchmark()
             1
         },
         {
+            "Arasan12 114",
+            "br4k1/1qrnbppp/pp1ppn2/8/NPPBP3/PN3P2/5QPP/2RR1B1K w - - 0 1",
+            15,
+            150,
+            1
+        },
+        {
+            "Arasan12 140",
+            "r1b1rk2/p1pq2p1/1p1b1p1p/n2P4/2P1NP2/P2B1R2/1BQ3PP/R6K w - - 0 1",
+            15,
+            300,
+            1
+        },
+        {
+            "Arasan12 137",
+            "r4k2/1b3ppp/p2n1P2/q1p3PQ/Np1rp3/1P1B4/P1P4P/2K1R2R w - - 0 1",
+            14,
+            200,
+            1
+        },
+        {
             "", "", 0, 0
         }
     };
