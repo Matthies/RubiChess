@@ -360,8 +360,16 @@ Rubi findet Kc1-b1 nicht (bzw. erst ab Tiefe 23) und spielt De4-c2
 rnb2rk1/ppq1nppp/4p3/2ppP3/P2P4/2PB1N2/2P2PPP/R1BQK2R b KQ - 2 9 
 Rubi als schwarz soielt b7b6 und hat direkt verloren (Gauntlet Spiel 248 gegen Protector
 )
-Links:
 
+
+09.12.2018
+Positions that need to be analyzed why failing:
+br4k1/1qrnbppp/pp1ppn2/8/NPPBP3/PN3P2/5QPP/2RR1B1K w - - 0 1 (Arasan12/114)
+8/2p1k3/3p3p/2PP1pp1/1P1K1P2/6P1/8/8 w - - 0 1 (Arasan12/135)
+r4k2/1b3ppp/p2n1P2/q1p3PQ/Np1rp3/1P1B4/P1P4P/2K1R2R w - - 0 1 (Arasan12/137)
+r1b1rk2/p1pq2p1/1p1b1p1p/n2P4/2P1NP2/P2B1R2/1BQ3PP/R6K w - - 0 1 (Arasan12/140)
+
+Links:
 http://pwnedthegameofchess.com/engine/
 http://www.herderschach.de/index.html
 

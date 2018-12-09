@@ -1,6 +1,17 @@
 ChangeLog
 =========
-1.2 (release 201x-xx-xx) :
+1.2 (release 2018-xx-xx) :
+    - Evaluate hanging pieces
+    - Evaluate mobility of pieces more fine grained
+    - Evaluate passed pawns more fine grained
+    - Added extension for singular moves
+    - History heuristic: Added penalty for quiet moves that don't fail high and finally switched from piece-destination to butterfly history table
+    - Improved debugging code in search
+    - Added "position improved" detection and made reduction and futility pruning depend on it
+    - Imroved null move search respecting static evaluation and increasing depth reduction
+    - Introduced late move pruning, also depending on "position improved" flag
+    - Tweaked futility pruning margins
+    - Tweaked time management to spend more time if best root move changed
 
 1.1 (release 2018-10-01) :
     - Every evaluation parameter is tapered now
