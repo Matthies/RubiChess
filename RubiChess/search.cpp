@@ -811,6 +811,8 @@ static void search_gen1()
     // increment generation counter for tt aging
     tp.nextSearch();
     
+    uint32_t lastBestMove = 0;
+    int constantRootMoves = 0;
     // iterative deepening
     do
     {
@@ -984,7 +986,16 @@ static void search_gen1()
             }
         }
         if (inWindow == 1)
+        {
             depth += depthincrement;
+            constantRootMoves++;
+            if (lastBestMove != pos.bestmove[0].code)
+            {
+                lastBestMove = pos.bestmove[0].code;
+                constantRootMoves = 0;
+            }
+            resetEndTime(constantRootMoves);
+        }
 
         if (pos.rootmovelist.length == 1 && depth > 4 && en.endtime1 && !en.isPondering())
             // early exit in playing mode as there is exactly one possible move
@@ -1012,21 +1023,21 @@ static void search_gen1()
     en.benchdepth = depth - 1;
 }
 
-
-void startSearchTime(bool complete = true)
+void resetEndTime(int constantRootMoves, bool complete = true)
 {
     int timetouse = (en.isWhite ? en.wtime : en.btime);
     int timeinc = (en.isWhite ? en.winc : en.binc);
-    en.starttime = getTime();
 
     if (en.movestogo)
     {
         // should garantee timetouse > 0
-        // stop soon at 0.7 x average movetime
+        // stop soon at 0.5...1.5 x average movetime
+        // stop immediately at 1.3...2.3 x average movetime
+        int f1 = max(5, 15 - constantRootMoves * 2);
+        int f2 = max(13, 23 - constantRootMoves * 2);
         if (complete)
-            en.endtime1 = en.starttime + timetouse * en.frequency * 7 / (en.movestogo + 1) / 10000;
-        // stop immediately at 1.3 x average movetime
-        en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, 13 * timetouse / (en.movestogo + 1) / 10) * en.frequency / 1000;
+            en.endtime1 = en.starttime + timetouse * en.frequency * f1 / (en.movestogo + 1) / 10000;
+        en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, f2 * timetouse / (en.movestogo + 1) / 10) * en.frequency / 1000;
         //printf("info string difftime1=%lld  difftime2=%lld\n", (endtime1 - en.starttime) * 1000 / en.frequency , (endtime2 - en.starttime) * 1000 / en.frequency);
     }
     else if (timetouse) {
@@ -1034,30 +1045,35 @@ void startSearchTime(bool complete = true)
         if (timeinc)
         {
             // sudden death with increment; split the remaining time in (256-phase) timeslots
-            // stop soon after 6 timeslot
+            // stop soon after 6..10 timeslot
+            // stop immediately after 10..18 timeslots
+            int f1 = max(6, 10 - constantRootMoves);
+            int f2 = max(10, 18 - constantRootMoves);
             if (complete)
-                en.endtime1 = en.starttime + max(timeinc, 6 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
-            // stop immediately after 10 timeslots
-            en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, max(timeinc, 10 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
+                en.endtime1 = en.starttime + max(timeinc, f1 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
+            en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, max(timeinc, f2 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
         }
         else {
             // sudden death without increment; play for another x;y moves
-            // Tried several combination "stop soon at time/x ; stop immediately at time/y"
-            // Bad results: 60;40 30;20 35;25 and several with phase driven x;y
-            // Best results at TC 300 against ELO2300 engines:
-            //  40;25:  56,1% + 57,1%
-            //  45;30:  55,5% + 53,4%
-            // So I use the first one although 45;30 is ~22ELO better against 40;25 in TC 10 and TC 60
-
+            // stop soon at 1/35...1/45 time slot
+            // stop immediately at 1/20...1/30 time slot
+            int f1 = min(45, 35 + constantRootMoves * 2);
+            int f2 = min(30, 20 + constantRootMoves * 2);
             if (complete)
-                en.endtime1 = en.starttime + timetouse / 40 * en.frequency / 1000;
-            en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, timetouse / 25) * en.frequency / 1000;
-
+                en.endtime1 = en.starttime + timetouse / f1 * en.frequency / 1000;
+            en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, timetouse / f2) * en.frequency / 1000;
         }
     }
     else {
         en.endtime1 = en.endtime2 = 0;
     }
+}
+
+
+void startSearchTime(bool complete = true)
+{
+    en.starttime = getTime();
+    resetEndTime(complete, 0);
 }
 
 void searchguide()

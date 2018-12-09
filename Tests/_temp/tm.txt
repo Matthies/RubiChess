@@ -1,0 +1,40 @@
+tm3:
+
+movestogo:
+// stop soon at 0.7...1.0 x average movetime
+int f1 = max(5, 15 - constantRootMoves * 2);
+int f2 = max(13, 23 - constantRootMoves * 2);
+
+40/50.0:
+Score of RubiChess-Bitboard-tm3 vs RubiChess-Bitboard-ms: 715 - 648 - 1455  [0.512] 2818
+Elo difference: 8.26 +/- 8.91
+SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+
+40/120.0:
+132 - 118 - 312  [0.512] 562
+
+
+10.0+0.1:
+Score of RubiChess-Bitboard-tm3 vs RubiChess-Bitboard-ms: 735 - 660 - 1022  [0.516] 2417
+Elo difference: 10.78 +/- 10.51
+SPRT: llr 1.44, lbound -1.39, ubound 1.39 - H1 was accepted
+60.0+0.6
+Score of RubiChess-Bitboard-tm3 vs RubiChess-Bitboard-ms: 692 - 625 - 1343  [0.513] 2660
+Elo difference: 8.75 +/- 9.28
+SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+
+
+suddendeath tests:
+tm4:
+            int f1 = min(60, 40 + constantRootMoves * 4);
+            int f2 = min(35, 25 + constantRootMoves * 4);
+
+
+tm5:
+            int f1 = min(45, 35 + constantRootMoves * 2);
+            int f2 = min(30, 20 + constantRootMoves * 2);
+
+tc=120.0
+Score of RubiChess-Bitboard-tm5 vs RubiChess-Bitboard-ms: 176 - 143 - 381  [0.524] 700
+Elo difference: 16.39 +/- 17.36
+SPRT: llr 0.887, lbound -1.39, ubound 1.39
