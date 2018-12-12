@@ -707,7 +707,9 @@ int rootsearch(int alpha, int beta, int depth)
                 lastmoveindex++;
         }
         else {
-            pos.bestmove[0] = *m;
+            // overwriting best move even at fail low seems good but don't throw away a win
+            if (alpha < 400 || !pos.bestmove[0].code)
+                pos.bestmove[0] = *m;
         }
 
         if (score >= beta)
