@@ -987,7 +987,7 @@ static void search_gen1()
                     pondermovestr = " ponder " + pos.pvline.move[1].toString();
 
                 char s[4096];
-                if (true || inWindow == 1 || (secondsrun - lastsecondsrun) > 200)
+                if (inWindow == 1 || (secondsrun - lastsecondsrun) > 200)
                 {
                     lastsecondsrun = secondsrun;
                     if (!MATEDETECTED(score))
