@@ -369,6 +369,85 @@ br4k1/1qrnbppp/pp1ppn2/8/NPPBP3/PN3P2/5QPP/2RR1B1K w - - 0 1 (Arasan12/114)
 r4k2/1b3ppp/p2n1P2/q1p3PQ/Np1rp3/1P1B4/P1P4P/2K1R2R w - - 0 1 (Arasan12/137)
 r1b1rk2/p1pq2p1/1p1b1p1p/n2P4/2P1NP2/P2B1R2/1BQ3PP/R6K w - - 0 1 (Arasan12/140)
 
+10.12.2018 Schlimmer blunder direkt nach 1.2 release:
+Engine 2 findet Matt in 11, in der nächsten Iteration passiert mit dem bisher besten Zug aber ein Fail low (mit Score ~3000) und der zweitbeste Zug (ebenfalls fail low, aber mit alpha="Matt in mehr als 11) wird gespielt :-(
+
+position startpos moves g1f3 d7d5 c2c4 c7c6 g2g3 d5c4 f1g2 e7e6 e1g1 b7b5 d2d3 c4d3 f3e5 c8b7 a2a4 b5b4 e5d3 d8c8 c1f4 c6c5 e2e4 b8c6 f4e3 c6a5 b1d2 b7a6 d2f3 c8b7 d1c2 c5c4 d3f4 c4c3 f1e1 a5c4 e3d4 c4b2 a4a5 a8d8 f4h5 a6d3 c2b3 d3c4 b3c2 c4d3 c2b3 d3c4 b3c2 d8d4 f3d4 e6e5 d4e2 c4e2 c2e2 g7g6 a5a6 b7b6 e2g4 b6c7 g4e2 c7c5 g2h3 g6h5 e2h5 g8f6 h5f5 f8g7 g3g4 e8g8 h3f1 f8d8 a1c1 b4b3 g4g5 f6e8 f5f3 b2a4 h2h3 d8d2 f1d3 c3c2 d3c2 b3c2 e1e3 c5c4 h3h4 g7f8 e3b3 f8b4 g1g2 e8d6 b3e3 a4c5 f3f6 c5e4 f6d8 g8g7 h4h5 d2f2 g2g1 f2f1 g1g2
+go wtime 80324 btime 83770 winc 0 binc 0 movestogo 30
+1.569.578<--2:info depth 1 seldepth 2 time 0 score cp 1388  nodes 46 nps 186167 tbhits 0 hashfull 986 pv f1c1 
+1.569.594<--2:info depth 2 seldepth 4 time 0 score cp 1446  nodes 118 nps 355979 tbhits 0 hashfull 986 pv f1c1 h5h6 
+1.569.594<--2:info depth 3 seldepth 6 time 0 score cp 1401  nodes 341 nps 643504 tbhits 0 hashfull 986 pv f1c1 h5h6 g7g6 
+1.569.609<--2:info depth 4 seldepth 7 time 0 score cp 1496  nodes 533 nps 729134 tbhits 0 hashfull 986 pv f1c1 h5h6 g7g6 d8g8 
+1.569.625<--2:info depth 5 seldepth 8 time 0 score cp 1496  nodes 808 nps 851241 tbhits 0 hashfull 986 pv f1c1 h5h6 g7g6 d8g8 g6h5 
+1.569.625<--2:info depth 6 seldepth 11 time 1 score cp 2077  nodes 1170 nps 1022197 tbhits 0 hashfull 986 pv f1c1 h5h6 g7g6 d8g8 g6h5 g2h3 
+1.569.641<--2:info depth 7 seldepth 12 time 6 score cp 1620  nodes 4514 nps 671302 tbhits 0 hashfull 986 pv f1c1 h5h6 g7g6 d8g8 g6h5 g5g6 c1g1 
+1.569.641<--2:info depth 8 seldepth 15 time 11 score cp 2046  nodes 8168 nps 694315 tbhits 0 hashfull 986 pv f1c1 h5h6 g7g6 d8g8 g6h5 g5g6 c1g1 g2g1 
+1.569.656<--2:info depth 9 seldepth 20 time 45 score cp 2252  nodes 27694 nps 611806 tbhits 0 hashfull 986 pv f1c1 h5h6 g7g6 d8g8 g6f5 g8h7 f5e6 h7g7 c4f1 
+1.569.766<--2:info depth 10 seldepth 20 time 192 score cp 2411  nodes 154999 nps 807235 tbhits 0 hashfull 986 pv f1c1 h5h6 g7g6 d8g8 g6f5 e3d3 c1g1 g2h2 c2c1q g8h7 
+1.570.078<--2:info depth 11 seldepth 26 time 494 score cp 2412  nodes 471153 nps 953678 tbhits 0 hashfull 986 pv f1c1 h5h6 g7g6 d8g8 g6f5 e3f3 f5g4 f3f2 c1g1 g2g1 c2c1q 
+1.570.125<--2:info depth 12 seldepth 22 time 543 score cp 2492  nodes 529098 nps 974117 tbhits 0 hashfull 986 pv f1c1 h5h6 g7g6 d8g8 g6f5 e3f3 f5g4 f3f2 c1g1 g2g1 c2c1q g1h2 
+1.571.031<--2:info depth 13 seldepth 29 time 1459 score cp 17621 lowerbound nodes 1506817 nps 1032345 tbhits 15 hashfull 987 pv f1c1 h5h6 g7g6 d8g8 g6f5 e3f3 f5g4 f3f2 c1g1 g2g1 c2c1q g1h2 e4f2 
+1.571.391<--2:info depth 13 seldepth 28 time 1819 score mate 11 nodes 1889721 nps 1038603 tbhits 15 hashfull 987 pv f1c1 h5h6 g7g6 d8g8 g6f5 e3f3 f5g4 f3f2 c1g1 g2h2 g1h1 h2h1 c2c1q 
+1.573.094<--2:bestmove e4g5
+1.573.109*2*Zug gefunden:Se4xg5
+1.573.297*1*Child Process Prio Adj:  PID 8740 conhost.exe
+1.573.312*1*Start calc, move no: 102
+1.573.328-->1:position startpos moves g1f3 d7d5 c2c4 c7c6 g2g3 d5c4 f1g2 e7e6 e1g1 b7b5 d2d3 c4d3 f3e5 c8b7 a2a4 b5b4 e5d3 d8c8 c1f4 c6c5 e2e4 b8c6 f4e3 c6a5 b1d2 b7a6 d2f3 c8b7 d1c2 c5c4 d3f4 c4c3 f1e1 a5c4 e3d4 c4b2 a4a5 a8d8 f4h5 a6d3 c2b3 d3c4 b3c2 c4d3 c2b3 d3c4 b3c2 d8d4 f3d4 e6e5 d4e2 c4e2 c2e2 g7g6 a5a6 b7b6 e2g4 b6c7 g4e2 c7c5 g2h3 g6h5 e2h5 g8f6 h5f5 f8g7 g3g4 e8g8 h3f1 f8d8 a1c1 b4b3 g4g5 f6e8 f5f3 b2a4 h2h3 d8d2 f1d3 c3c2 d3c2 b3c2 e1e3 c5c4 h3h4 g7f8 e3b3 f8b4 g1g2 e8d6 b3e3 a4c5 f3f6 c5e4 f6d8 g8g7 h4h5 d2f2 g2g1 f2f1 g1g2 e4g5
+1.573.328-->1:go wtime 80324 btime 80244 winc 0 binc 0 movestogo 29
+1.573.344<--1:info depth 1 time 0 score cp -359  nodes 36 nps 118083 hashfull 871 pv c1f1 
+1.573.344<--1:info depth 2 time 0 score cp -334 lowerbound nodes 46 nps 123857 hashfull 871 pv d8g5 
+1.573.359<--1:info depth 2 time 0 score cp -309 lowerbound nodes 51 nps 128878 hashfull 871 pv d8g5 
+1.573.359<--1:info depth 2 time 0 score cp -259 lowerbound nodes 55 nps 135726 hashfull 871 pv d8g5 
+1.573.375<--1:info depth 2 time 0 score cp -206  nodes 154 nps 244488 hashfull 871 pv d8g5 g7h8 
+1.573.375<--1:info depth 3 time 1 score cp -208  nodes 571 nps 365294 hashfull 871 pv d8g5 g7h8 g5d8 
+1.573.391<--1:info depth 4 time 4 score cp -183 lowerbound nodes 1233 nps 277085 hashfull 871 pv d8g5 
+1.573.406<--1:info depth 4 time 4 score cp -158 lowerbound nodes 1254 nps 276954 hashfull 871 pv d8g5 
+1.573.406<--1:info depth 4 time 4 score cp -108 lowerbound nodes 1280 nps 277045 hashfull 871 pv d8g5 
+1.573.422<--1:info depth 4 time 4 score cp -8 lowerbound nodes 1301 nps 277301 hashfull 871 pv d8g5 
+1.573.422<--1:info depth 4 time 10 score cp 123  nodes 4147 nps 403895 hashfull 871 pv d8g5 g7f8 g5h6 f8e8 
+1.573.437<--1:info depth 5 time 18 score cp 98 upperbound nodes 9598 nps 521809 hashfull 871 pv d8g5 
+1.573.453<--1:info depth 5 time 19 score cp 73 upperbound nodes 11191 nps 574942 hashfull 871 pv d8g5 
+1.573.453<--1:info depth 5 time 23 score cp 24  nodes 13859 nps 579000 hashfull 871 pv d8g5 g7h8 g5d8 d6e8 d8e8 
+1.573.469<--1:info depth 6 time 42 score cp 18  nodes 24104 nps 573180 hashfull 871 pv d8g5 g7h8 g5d8 d6e8 d8e8 h8g7 
+1.573.469<--1:info depth 7 time 134 score cp 43 lowerbound nodes 54745 nps 405912 hashfull 871 pv d8g5 g7h8 g5d8 d6e8 d8e8 h8g7 e8e5 
+...
+Weiteres Beispiel des Problems: f6f7 wirft den Sieg weg
+position fen n7/P7/5P2/8/8/2K2k2/1p6/8 w - - 0 72
+go depth 20
+...
+go depth 25
+...
+info depth 25 seldepth 36 time 3469 score cp 2045 upperbound nodes 4104042 nps 1182928 tbhits 0 hashfull 56 pv c3b2 a8b6
+ f6f7 f3e4 f7f8Q e4d5 b2c3 d5c6 c3d4 c6b7 f8b8 b7c6 b8h8 c6b7 h8g7 b7c6 g7h7 c6b5 h7b7 b5a5 a7a8Q b6a8 b7a8 a5b4 a8b8
+info depth 25 currmove c3b2 currmovenumber 1 nodes 4104043 tbhits 0
+info depth 25 currmove f6f7 currmovenumber 2 nodes 4104065 tbhits 0
+info depth 25 currmove c3b4 currmovenumber 3 nodes 4104081 tbhits 0
+info depth 25 currmove c3d4 currmovenumber 4 nodes 4104083 tbhits 0
+info depth 25 currmove c3c4 currmovenumber 5 nodes 4104085 tbhits 0
+info depth 25 currmove c3d3 currmovenumber 6 nodes 4104087 tbhits 0
+info depth 25 currmove c3c2 currmovenumber 7 nodes 4104089 tbhits 0
+info depth 25 currmove c3d2 currmovenumber 8 nodes 4104091 tbhits 0
+info depth 25 currmove c3b3 currmovenumber 9 nodes 4104093 tbhits 0
+info depth 25 currmove f6f7 currmovenumber 1 nodes 4104096 tbhits 0
+quit
+bestmove f6f7
+
+Nach dem ersten Fix dann das nächste Problem: TB-Sieg wurde vergeben:
+setoption name SyzygyPath value c:\tb
+
+position startpos moves e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 g8f6 b1c3 d7d6 g2g4 h7h6 h2h4 b8c6 h1g1 f6d7 d4c6 b7c6 g4g5 h6g5 c1g5 d8b6 a1b1 a8b8 g1g3 d7f6 d1f3 f6h5 g5e3 b6c7 g3g5 g7g6 f1c4 f8e7 g5g4 h5f6 g4f4 f6d7 c4b3 d7e5 f3g2 c6c5 e1d2 c8d7 d2c1 c7d8 g2f1 e7h4 f1d1 h4g5 a2a3 d7c6 b1a1 g5f4 e3f4 c5c4 f4e5 d6e5 b3c4 c6e4 d1d8 b8d8 b2b4 h8h1 c1b2 h1a1 b2a1 e4c2 c3b5 c2d3 c4d3 d8d3 a1b2 d3d2 b2c3 d2a2 b5d6 e8e7 d6c4 a2f2 c4e5 g6g5 a3a4 e7d6 e5c4 d6d5 c3d3 f2f3 c4e3 f3e3 d3e3 d5c4 b4b5 g5g4 e3f4 g4g3 f4g3 c4b4 g3f2 b4a5 f2e3
+
+go wtime 76816 btime 80252 winc 0 binc 0 movestogo 29
+
+debug pv a5a4 sub recursive
+
+position startpos moves e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 g8f6 b1c3 d7d6 g2g4 h7h6 h2h4 b8c6 h1g1 f6d7 d4c6 b7c6 g4g5 h6g5 c1g5 d8b6 a1b1 a8b8 g1g3 d7f6 d1f3 f6h5 g5e3 b6c7 g3g5 g7g6 f1c4 f8e7 g5g4 h5f6 g4f4 f6d7 c4b3 d7e5 f3g2 c6c5 e1d2 c8d7 d2c1 c7d8 g2f1 e7h4 f1d1 h4g5 a2a3 d7c6 b1a1 g5f4 e3f4 c5c4 f4e5 d6e5 b3c4 c6e4 d1d8 b8d8 b2b4 h8h1 c1b2 h1a1 b2a1 e4c2 c3b5 c2d3 c4d3 d8d3 a1b2 d3d2 b2c3 d2a2 b5d6 e8e7 d6c4 a2f2 c4e5 g6g5 a3a4 e7d6 e5c4 d6d5 c3d3 f2f3 c4e3 f3e3 d3e3 d5c4 b4b5 g5g4 e3f4 g4g3 f4g3 c4b4 g3f2 b4a5 f2e3 a7a6 b5a6
+
+go wtime 76816 btime 80252 winc 0 binc 0 movestogo 29
+
+spielt Ka5-a4???
+
+
 Links:
 http://pwnedthegameofchess.com/engine/
 http://www.herderschach.de/index.html

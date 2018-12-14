@@ -248,14 +248,24 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         int v = probe_wdl(&success);
         if (success) {
             en.tbhits++;
-            if (v < -1)
+            int bound;
+            if (v < -1) {
+                bound = HASHALPHA;
                 score = -SCORETBWIN + pos.ply;
-            else if (v > 1)
+            }
+            else if (v > 1) {
+                bound = HASHBETA;
                 score = SCORETBWIN - pos.ply;
-            else 
+            }
+            else {
+                bound = HASHEXACT;
                 score = SCOREDRAW + v;
-            tp.addHash(pos.hash, score, staticeval, HASHEXACT, depth, 0);
-            SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from TB.", score);
+            }
+            if (bound == HASHEXACT || (bound == HASHALPHA ? (score <= alpha) : (score >= beta)))
+            {
+                tp.addHash(pos.hash, score, staticeval, bound, MAXDEPTH, 0);
+                SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from TB.", score);
+            }
             return score;
         }
     }
@@ -692,61 +702,75 @@ int rootsearch(int alpha, int beta, int depth)
             continue;
 
         bestscore = score;
-        if (isMultiPV && score > pos.bestmovescore[lastmoveindex])
+
+        if (isMultiPV)
         {
-            int newindex = lastmoveindex;
-            while (newindex > 0 && score > pos.bestmovescore[newindex - 1])
+            if (score > pos.bestmovescore[lastmoveindex])
             {
-                pos.bestmovescore[newindex] = pos.bestmovescore[newindex - 1];
-                pos.bestmove[newindex] = pos.bestmove[newindex - 1];
-                newindex--;
-            }
-            pos.bestmovescore[newindex] = score;
-            pos.bestmove[newindex] = *m;
-            if (lastmoveindex < maxmoveindex - 1)
-                lastmoveindex++;
-        }
-        else {
-            pos.bestmove[0] = *m;
-        }
-
-        if (score >= beta)
-        {
-            // Killermove
-            if (!ISCAPTURE(m->code))
-            {
-                pos.history[pos.state & S2MMASK][GETFROM(m->code)][GETTO(m->code)] += depth * depth;
-                for (int i = 0; i < quietsPlayed - 1; i++)
+                int newindex = lastmoveindex;
+                while (newindex > 0 && score > pos.bestmovescore[newindex - 1])
                 {
-                    uint32_t qm = quietMoves[i];
-                    pos.history[pos.state & S2MMASK][GETFROM(qm)][GETTO(qm)] -= depth * depth;
+                    pos.bestmovescore[newindex] = pos.bestmovescore[newindex - 1];
+                    pos.bestmove[newindex] = pos.bestmove[newindex - 1];
+                    newindex--;
                 }
-
-                if (pos.killer[0][0] != m->code)
+                pos.bestmovescore[newindex] = score;
+                pos.bestmove[newindex] = *m;
+                if (lastmoveindex < maxmoveindex - 1)
+                    lastmoveindex++;
+                if (pos.bestmovescore[maxmoveindex - 1] > alpha)
                 {
-                    pos.killer[1][0] = pos.killer[0][0];
-                    pos.killer[0][0] = m->code;
+                    alpha = pos.bestmovescore[maxmoveindex - 1];
                 }
+                eval_type = HASHEXACT;
             }
-            SDEBUGPRINT(isDebugPv, debugInsert, " Beta-cutoff by move %s: %d", m->toString().c_str(), score);
-            tp.addHash(pos.hash, beta, staticeval, HASHBETA, effectiveDepth, (uint16_t)m->code);
-            return beta;   // fail hard beta-cutoff
         }
 
+        // We have a new best move.
+        // Now it gets a little tricky what to do with it
+        // The move becomes the new bestmove[0] (take for UCI output) if
+        // - it is the first one
+        // - it raises alpha
+        // - it fails low and alpha is not a safe win (< 400)
         if (score > alpha)
         {
-            if (isMultiPV)
+            if (!isMultiPV)
             {
-                if (pos.bestmovescore[maxmoveindex - 1] > alpha)
-                    alpha = pos.bestmovescore[maxmoveindex - 1];
-            }
-            else {
                 alpha = score;
-            }
-            eval_type = HASHEXACT;
+                pos.bestmove[0] = *m;
+                eval_type = HASHEXACT;
 #ifdef SDEBUG
-            pos.updatePvTable(m->code);
+                pos.updatePvTable(m->code);
 #endif
+            }
+            if (score >= beta)
+            {
+                // Killermove
+                if (!ISCAPTURE(m->code))
+                {
+                    pos.history[pos.state & S2MMASK][GETFROM(m->code)][GETTO(m->code)] += depth * depth;
+                    for (int i = 0; i < quietsPlayed - 1; i++)
+                    {
+                        uint32_t qm = quietMoves[i];
+                        pos.history[pos.state & S2MMASK][GETFROM(qm)][GETTO(qm)] -= depth * depth;
+                    }
+
+                    if (pos.killer[0][0] != m->code)
+                    {
+                        pos.killer[1][0] = pos.killer[0][0];
+                        pos.killer[0][0] = m->code;
+                    }
+                }
+                SDEBUGPRINT(isDebugPv, debugInsert, " Beta-cutoff by move %s: %d", m->toString().c_str(), score);
+                tp.addHash(pos.hash, beta, staticeval, HASHBETA, effectiveDepth, (uint16_t)m->code);
+                return beta;   // fail hard beta-cutoff
+            }
+        }
+        else if (!isMultiPV)
+        {
+            // overwriting best move even at fail low seems good but don't throw away a win
+            if (alpha < 400 || !pos.bestmove[0].code)
+                pos.bestmove[0] = *m;
         }
     }
 
@@ -1003,7 +1027,7 @@ static void search_gen1()
         if (pos.tbPosition && abs(score) >= SCORETBWIN - 100)
             // early exit in TB win/lose position
             en.stopLevel = ENGINEWANTSTOP;
-    } while (en.stopLevel == ENGINERUN && depth <= min(maxdepth, abs(matein) * 2));
+    } while (en.stopLevel == ENGINERUN && depth <= maxdepth);
     
     if (bestmovestr == "")
         // not a single move found (serious time trouble); fall back to default move
