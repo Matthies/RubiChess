@@ -1027,7 +1027,7 @@ static void search_gen1()
         if (pos.tbPosition && abs(score) >= SCORETBWIN - 100)
             // early exit in TB win/lose position
             en.stopLevel = ENGINEWANTSTOP;
-    } while (en.stopLevel == ENGINERUN);
+    } while (en.stopLevel == ENGINERUN && depth <= maxdepth);
     
     if (bestmovestr == "")
         // not a single move found (serious time trouble); fall back to default move
