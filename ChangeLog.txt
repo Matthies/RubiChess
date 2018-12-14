@@ -1,6 +1,9 @@
 ChangeLog
 =========
-1.2 (release 2018-12-10) :
+1.2.1 (release 2018-12-14) :
+    - Some fixes preventing rootsearch playing a move that fails low and wasn't in pv
+
+1.2 (not released 2018-12-10) :
     - Evaluate hanging pieces
     - Evaluate mobility of pieces more fine grained
     - Evaluate passed pawns more fine grained
