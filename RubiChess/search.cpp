@@ -248,14 +248,24 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         int v = probe_wdl(&success);
         if (success) {
             en.tbhits++;
-            if (v < -1)
+            int bound;
+            if (v < -1) {
+                bound = HASHALPHA;
                 score = -SCORETBWIN + pos.ply;
-            else if (v > 1)
+            }
+            else if (v > 1) {
+                bound = HASHBETA;
                 score = SCORETBWIN - pos.ply;
-            else 
+            }
+            else {
+                bound = HASHEXACT;
                 score = SCOREDRAW + v;
-            tp.addHash(pos.hash, score, staticeval, HASHEXACT, depth, 0);
-            SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from TB.", score);
+            }
+            if (bound == HASHEXACT || (bound == HASHALPHA ? (score <= alpha) : (score >= beta)))
+            {
+                tp.addHash(pos.hash, score, staticeval, bound, MAXDEPTH, 0);
+                SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from TB.", score);
+            }
             return score;
         }
     }
@@ -718,7 +728,7 @@ int rootsearch(int alpha, int beta, int depth)
 
         // We have a new best move.
         // Now it gets a little tricky what to do with it
-        // The move becomes the new bestmove if
+        // The move becomes the new bestmove[0] (take for UCI output) if
         // - it is the first one
         // - it raises alpha
         // - it fails low and alpha is not a safe win (< 400)
@@ -977,7 +987,7 @@ static void search_gen1()
                     pondermovestr = " ponder " + pos.pvline.move[1].toString();
 
                 char s[4096];
-                if (inWindow == 1 || (secondsrun - lastsecondsrun) > 200)
+                if (true || inWindow == 1 || (secondsrun - lastsecondsrun) > 200)
                 {
                     lastsecondsrun = secondsrun;
                     if (!MATEDETECTED(score))
