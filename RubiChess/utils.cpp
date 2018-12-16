@@ -73,14 +73,14 @@ void BitboardDraw(U64 b)
 }
 
 
-string AlgebraicFromShort(string s)
+string AlgebraicFromShort(string s, chessposition *pos)
 {
     string retval = "";
     int castle0 = 0;
     PieceType promotion = BLANKTYPE;
     chessmovelist ml;
-    pos.prepareStack();
-    ml.length = pos.getMoves(&ml.move[0]);
+    pos->prepareStack();
+    ml.length = pos->getMoves(&ml.move[0]);
     PieceType pt = PAWN;
     int to = 0x88, from = 0x88;
     int i = (int)s.size() - 1;
@@ -138,9 +138,9 @@ string AlgebraicFromShort(string s)
             && ((to & 0x08) || ((to & 0x07) == (GETTO(ml.move[i].code) & 0x07))))
         {
             // test if the move is legal; otherwise we need to search further
-            if (pos.playMove(&ml.move[i]))
+            if (pos->playMove(&ml.move[i]))
             {
-                pos.unplayMove(&ml.move[i]);
+                pos->unplayMove(&ml.move[i]);
                 retval = ml.move[i].toString();
                 break;
             }

@@ -74,48 +74,48 @@ string GetSystemInfo()
 #endif
 
 
-long long perft(int depth, bool dotests)
+long long engine::perft(int depth, bool dotests)
 {
     long long retval = 0;
 
     if (dotests)
     {
-        if (pos.hash != zb.getHash())
+        if (rootpos.hash != zb.getHash(&rootpos))
         {
-            printf("Alarm! Wrong Hash! %llu\n", zb.getHash());
-            pos.print();
+            printf("Alarm! Wrong Hash! %llu\n", zb.getHash(&rootpos));
+            rootpos.print();
         }
-        if (pos.pawnhash && pos.pawnhash != zb.getPawnHash())
+        if (rootpos.pawnhash && rootpos.pawnhash != zb.getPawnHash(&rootpos))
         {
-            printf("Alarm! Wrong Pawn Hash! %llu\n", zb.getPawnHash());
-            pos.print();
+            printf("Alarm! Wrong Pawn Hash! %llu\n", zb.getPawnHash(&rootpos));
+            rootpos.print();
         }
-        if (pos.materialhash != zb.getMaterialHash())
+        if (rootpos.materialhash != zb.getMaterialHash(&rootpos))
         {
-            printf("Alarm! Wrong Material Hash! %llu\n", zb.getMaterialHash());
-            pos.print();
+            printf("Alarm! Wrong Material Hash! %llu\n", zb.getMaterialHash(&rootpos));
+            rootpos.print();
         }
-        int val1 = getValueNoTrace(&pos);
-        pos.mirror();
-        int val2 = getValueNoTrace(&pos);
-        pos.mirror();
-        int val3 = getValueNoTrace(&pos);
+        int val1 = getValueNoTrace(&rootpos);
+        rootpos.mirror();
+        int val2 = getValueNoTrace(&rootpos);
+        rootpos.mirror();
+        int val3 = getValueNoTrace(&rootpos);
         if (!(val1 == val3 && val1 == -val2))
         {
             printf("Mirrortest  :error  (%d / %d / %d)\n", val1, val2, val3);
-            pos.print();
+            rootpos.print();
             //printf("Position value: %d\n", pos.getPositionValue<NOTRACE>());
-            pos.mirror();
-            pos.print();
+            rootpos.mirror();
+            rootpos.print();
             //printf("Position value: %d\n", pos.getPositionValue<NOTRACE>());
-            pos.mirror();
-            pos.print();
+            rootpos.mirror();
+            rootpos.print();
             //printf("Position value: %d\n", pos.getPositionValue<NOTRACE>());
         }
     }
     chessmovelist movelist;
-    movelist.length = pos.getMoves(&movelist.move[0]);
-    pos.prepareStack();
+    movelist.length = rootpos.getMoves(&movelist.move[0]);
+    rootpos.prepareStack();
     //movelist->sort();
     //printf("Path: %s \nMovelist : %s\n", p->actualpath.toString().c_str(), movelist->toString().c_str());
 
@@ -125,11 +125,11 @@ long long perft(int depth, bool dotests)
     {
         for (int i = 0; i < movelist.length; i++)
         {
-            if (pos.playMove(&movelist.move[i]))
+            if (rootpos.playMove(&movelist.move[i]))
             {
                 //printf("%s ok ", movelist->move[i].toString().c_str());
                 retval++;
-                pos.unplayMove(&movelist.move[i]);
+                rootpos.unplayMove(&movelist.move[i]);
             }
         }
     }
@@ -138,11 +138,11 @@ long long perft(int depth, bool dotests)
     {
         for (int i = 0; i < movelist.length; i++)
         {
-            if (pos.playMove(&movelist.move[i]))
+            if (rootpos.playMove(&movelist.move[i]))
             {
                 //printf("\nMove: %s  ", movelist->move[i].toString().c_str());
                 retval += perft(depth - 1, dotests);
-                pos.unplayMove(&movelist.move[i]);
+                rootpos.unplayMove(&movelist.move[i]);
             }
         }
     }
@@ -202,13 +202,13 @@ void perftest(bool dotests, int maxdepth)
 
     while (perftestresults[i].fen != "")
     {
-        pos.getFromFen(perftestresults[i].fen.c_str());
+        en.rootpos.getFromFen(perftestresults[i].fen.c_str());
         int j = 0;
         while (perftestresults[i].nodes[j] > 0 && j <= maxdepth)
         {
             long long starttime = getTime();
 
-            U64 result = perft(j, dotests);
+            U64 result = en.perft(j, dotests);
             totalresult += result;
 
             perftlasttime = getTime();
@@ -589,7 +589,7 @@ void testengine(string epdfilename, int startnum, string engineprg, string logfi
             // split fen from operation part
             for (int i = 0; i < 4; i++)
                 fenstr = fenstr + fv[i] + " ";
-            if (pos.getFromFen(fenstr.c_str()) == 0 && ++linenum >= startnum)
+            if (en.rootpos.getFromFen(fenstr.c_str()) == 0 && ++linenum >= startnum)
             {
                 // Get data from compare file
                 es.doCompare = false;
@@ -649,7 +649,7 @@ void testengine(string epdfilename, int startnum, string engineprg, string logfi
                             fv[i] = fv[i].substr(0, smk);
                         if (moveliststr != "")
                             moveliststr += " ";
-                        moveliststr += AlgebraicFromShort(fv[i]);
+                        moveliststr += AlgebraicFromShort(fv[i], &en.rootpos);
                         if (smk != string::npos)
                         {
                             if (searchbestmove)
@@ -790,7 +790,8 @@ int main(int argc, char* argv[])
     _CrtSetDbgFlag(tmpFlag);
 #endif
 
-    pos.init();
+    //pos.init();
+    // FIXME: registeralltuners needs to be called somewhere in tuning mode
     searchinit();
 
     cout.setf(ios_base::unitbuf);

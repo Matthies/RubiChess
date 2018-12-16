@@ -350,9 +350,9 @@ int chessposition::getFromFen(const char* sFen)
 
     isCheck = isAttacked(kingpos[state & S2MMASK]);
 
-    hash = zb.getHash();
-    pawnhash = zb.getPawnHash();
-    materialhash = zb.getMaterialHash();
+    hash = zb.getHash(this);
+    pawnhash = zb.getPawnHash(this);
+    materialhash = zb.getMaterialHash(this);
     rp.clean();
     rp.addPosition(hash);
     memset(history, 0, sizeof(history));
@@ -430,9 +430,9 @@ void chessposition::tbFilterRootMoves()
     useTb = TBlargest;
     tbPosition = 0;
     useRootmoveScore = 0;
-    if (POPCOUNT(pos.occupied00[0] | pos.occupied00[1]) <= TBlargest)
+    if (POPCOUNT(occupied00[0] | occupied00[1]) <= TBlargest)
     {
-        if ((tbPosition = root_probe())) {
+        if ((tbPosition = root_probe(this))) {
             en.tbhits++;
             // The current root position is in the tablebases.
             // RootMoves now contains only moves that preserve the draw or win.
@@ -443,20 +443,20 @@ void chessposition::tbFilterRootMoves()
         else // If DTZ tables are missing, use WDL tables as a fallback
         {
             // Filter out moves that do not preserve a draw or win
-            tbPosition = root_probe_wdl();
+            tbPosition = root_probe_wdl(this);
             // useRootmoveScore is set within root_probe_wdl
         }
 
         if (tbPosition)
         {
             // Sort the moves
-            for (int i = 0; i < pos.rootmovelist.length; i++)
+            for (int i = 0; i < rootmovelist.length; i++)
             {
-                for (int j = i + 1; j < pos.rootmovelist.length; j++)
+                for (int j = i + 1; j < rootmovelist.length; j++)
                 {
-                    if (pos.rootmovelist.move[i] < pos.rootmovelist.move[j])
+                    if (rootmovelist.move[i] < rootmovelist.move[j])
                     {
-                        swap(pos.rootmovelist.move[i], pos.rootmovelist.move[j]);
+                        swap(rootmovelist.move[i], rootmovelist.move[j]);
                     }
                 }
             }
@@ -599,7 +599,7 @@ void chessposition::getpvline(int depth, int pvnum)
         {
             printf("info string Alarm - Illegaler Zug %s in pvline\n", cm.toString().c_str());
             print();
-            tp.printHashentry();
+            tp.printHashentry(hash);
         }
         pvline.move[pvline.length++] = cm;
         depth--;
@@ -750,8 +750,8 @@ void chessposition::print()
     printf("info string EPT: %0x\n", ept);
     printf("info string Halfmoves: %d\n", halfmovescounter);
     printf("info string Fullmoves: %d\n", fullmovescounter);
-    printf("info string Hash: %llu (%llx)  (getHash(): %llu)\n", hash, hash, zb.getHash());
-    printf("info string Pawn Hash: %llu (%llx)  (getPawnHash(): %llu)\n", pawnhash, pawnhash, zb.getPawnHash());
+    printf("info string Hash: %llu (%llx)  (getHash(): %llu)\n", hash, hash, zb.getHash(this));
+    printf("info string Pawn Hash: %llu (%llx)  (getPawnHash(): %llu)\n", pawnhash, pawnhash, zb.getPawnHash(this));
     printf("info string Value: %d\n", getValueNoTrace(this));
 #ifdef EVALTUNE
     getPositionTuneSet(&pts);
@@ -1818,17 +1818,17 @@ int chessposition::getBestPossibleCapture()
     int you = me ^ S2MMASK;
     int captureval = 0;
 
-    if (pos.piece00[WQUEEN | you])
+    if (piece00[WQUEEN | you])
         captureval += prunematerialvalue[QUEEN];
-    else if (pos.piece00[WROOK | you])
+    else if (piece00[WROOK | you])
         captureval += prunematerialvalue[ROOK];
-    else if (pos.piece00[WKNIGHT | you] || pos.piece00[WBISHOP | you])
+    else if (piece00[WKNIGHT | you] || piece00[WBISHOP | you])
         captureval += prunematerialvalue[KNIGHT];
-    else if (pos.piece00[WPAWN | you])
+    else if (piece00[WPAWN | you])
         captureval += prunematerialvalue[PAWN];
 
     // promotion
-    if (pos.piece00[WPAWN | me] & RANK7(me))
+    if (piece00[WPAWN | me] & RANK7(me))
         captureval += prunematerialvalue[QUEEN] - prunematerialvalue[PAWN];
 
     return captureval;
@@ -1938,8 +1938,8 @@ chessmove* MoveSelector::next()
 
 engine::engine()
 {
-    tp.pos = &pos;
-    pwnhsh.pos = &pos;
+    //tp.pos = &pos;
+    //pwnhsh.pos = &pos;
     initBitmaphelper();
 
     setOption("hash", "256");
@@ -2047,18 +2047,18 @@ void engine::communicate(string inputstring)
                     searchthread = nullptr;
                 }
 
-                pos.getFromFen(fen.c_str());
+                rootpos.getFromFen(fen.c_str());
                 for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
                 {
-                    if (!pos.applyMove(*it))
+                    if (!rootpos.applyMove(*it))
                         printf("info string Alarm! Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
                 }
-                pos.ply = 0;
-                pos.getRootMoves();
-                pos.tbFilterRootMoves();
+                rootpos.ply = 0;
+                rootpos.getRootMoves();
+                rootpos.tbFilterRootMoves();
                 if (debug)
                 {
-                    pos.print();
+                    rootpos.print();
                 }
                 pendingposition = false;
             }
@@ -2273,7 +2273,7 @@ void engine::communicate(string inputstring)
                     else
                         ci++;
                 }
-                isWhite = (pos.w2m());
+                isWhite = (rootpos.w2m());
                 searchthread = new thread(&searchguide);
                 if (inputstring != "")
                 {
@@ -2297,7 +2297,7 @@ void engine::communicate(string inputstring)
                 }
                 break;
             case EVAL:
-                getValueTrace(&pos);
+                getValueTrace(&rootpos);
                 break;
             default:
                 break;
@@ -2307,5 +2307,5 @@ void engine::communicate(string inputstring)
 }
 
 zobrist zb;
-chessposition pos;
+//chessposition pos;
 engine en;

@@ -54,7 +54,7 @@ using namespace std;
 #include <math.h>
 #include <regex>
 
-#include "tbprobe.h"
+//#include "tbprobe.h"
 
 #ifdef _WIN32
 
@@ -288,7 +288,7 @@ struct tuneparamselection {
 vector<string> SplitString(const char* s);
 unsigned char AlgebraicToIndex(string s, int base);
 string IndexToAlgebraic(int i);
-string AlgebraicFromShort(string s);
+string AlgebraicFromShort(string s, chessposition *pos);
 void BitboardDraw(U64 b);
 U64 getTime();
 #ifdef EVALTUNE
@@ -614,8 +614,8 @@ extern U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 
 enum EvalTrace { NOTRACE, TRACE };
-
 enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7, QUIETWITHCHECK = 9 };
+enum RootsearchType { SinglePVSearch, MultiPVSearch };
 
 template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* m);
 
@@ -697,6 +697,11 @@ public:
     template <EvalTrace> int getPositionValue();
     template <EvalTrace> int getPawnAndKingValue(pawnhashentry **entry);
     template <EvalTrace> int getValue();
+
+    template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth);
+    int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed);
+    int getQuiescence(int alpha, int beta, int depth);
+
 #ifdef SDEBUG
     void updatePvTable(uint32_t movecode);
     string getPv();
@@ -725,6 +730,7 @@ class engine
 {
 public:
     engine();
+    chessposition rootpos;
     uci *myUci;
     const char* name = ENGINEVER;
     const char* author = "Andreas Matthies";
@@ -758,6 +764,7 @@ public:
     void HitPonder() { pondersearch = HITPONDER; }
     bool testPonderHit() { return (pondersearch == HITPONDER); }
     void resetPonder() { pondersearch = NO; }
+    long long perft(int depth, bool dotests);
 };
 
 PieceType GetPieceType(char c);
@@ -779,7 +786,7 @@ public:
     int comparescore;
 };
 
-extern chessposition pos;
+//extern chessposition pos;
 extern engine en;
 
 #ifdef SDEBUG
@@ -807,9 +814,9 @@ public:
     unsigned long long s2m;
     zobrist();
     unsigned long long getRnd();
-    u8 getHash();
-    u8 getPawnHash();
-    u8 getMaterialHash();
+    u8 getHash(chessposition *pos);
+    u8 getPawnHash(chessposition *pos);
+    u8 getMaterialHash(chessposition *pos);
     u8 modHash(int i);
 };
 
@@ -830,6 +837,10 @@ struct transpositioncluster {
     //char padding[2];
 };
 
+
+#define FIXMATESCOREPROBE(v,p) (MATEFORME(v) ? (v) - p : (MATEFOROPPONENT(v) ? (v) + p : v))
+#define FIXMATESCOREADD(v,p) (MATEFORME(v) ? (v) + p : (MATEFOROPPONENT(v) ? (v) - p : v))
+
 class transposition
 {
     transpositioncluster *table;
@@ -837,14 +848,14 @@ class transposition
 public:
     U64 size;
     U64 sizemask;
-    chessposition *pos;
+    //chessposition *pos;
     int numOfSearchShiftTwo;
     ~transposition();
     int setSize(int sizeMb);    // returns the number of Mb not used by allignment
     void clean();
     void addHash(U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode);
-    void printHashentry();
-    bool probeHash(U64 hash, int *val, int *staticeval, uint16_t *movecode, int depth, int alpha, int beta);
+    void printHashentry(U64 hash);
+    bool probeHash(U64 hash, int *val, int *staticeval, uint16_t *movecode, int depth, int alpha, int beta, int ply);
     uint16_t getMoveCode(U64 hash);
     unsigned int getUsedinPermill();
     void nextSearch() { numOfSearchShiftTwo = (numOfSearchShiftTwo + 4) & 0xfc; }
@@ -867,11 +878,11 @@ class pawnhash
 public:
     U64 size;
     U64 sizemask;
-    chessposition *pos;
+    //chessposition *pos;
     ~pawnhash();
     void setSize(int sizeMb);
     void clean();
-    bool probeHash(pawnhashentry **entry);
+    bool probeHash(U64 hash, pawnhashentry **entry);
 };
 
 class repetition
@@ -889,19 +900,17 @@ extern repetition rp;
 extern transposition tp;
 extern pawnhash pwnhsh;
 
-
-/*
-http://stackoverflow.com/questions/29990116/alpha-beta-prunning-with-transposition-table-iterative-deepening
-https://www.gamedev.net/topic/503234-transposition-table-question/
-*/
-
-
 //
 // search stuff
 //
-int rootsearch(int alpha, int beta, int depth);
-int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed);
-int getQuiescence(int alpha, int beta, int depth);
+class searchthread
+{
+public:
+    chessposition pos;
+    thread thr;
+    bool isMain;
+};
+
 void searchguide();
 void searchinit();
 void resetEndTime(int constantRootMoves, bool complete = true);
@@ -935,4 +944,15 @@ public:
     void send(const char* format, ...);
 };
 
+
+//
+// TB stuff
+//
+extern int TBlargest; // 5 if 5-piece tables, 6 if 6-piece tables were found.
+
+void init_tablebases(char *path);
+int probe_wdl(int *success, chessposition *pos);
+int probe_dtz(int *success, chessposition *pos);
+int root_probe(chessposition *pos);
+int root_probe_wdl(chessposition *pos);
 
