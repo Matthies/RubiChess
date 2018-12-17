@@ -19,9 +19,6 @@ U64 betweenMask[64][64];
 int castleindex[64][64] = { 0 };
 int castlerights[64];
 
-chessmovestack movestack[MAXMOVESEQUENCELENGTH];
-int mstop;
-
 
 PieceType GetPieceType(char c)
 {

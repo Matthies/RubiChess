@@ -518,9 +518,6 @@ struct chessmovestack
 #define MAXMOVELISTLENGTH 256	// for lists of possible pseudo-legal moves
 #define MAXMOVESEQUENCELENGTH 512	// for move sequences in a game
 
-extern chessmovestack movestack[MAXMOVESEQUENCELENGTH];
-extern int mstop;
-
 
 class chessmove
 {
@@ -634,13 +631,15 @@ public:
     unsigned long long hash;
     unsigned long long pawnhash;
     unsigned long long materialhash;
-    int ply;
+    chessmovestack movestack[MAXMOVESEQUENCELENGTH];
+    int mstop;      // 0 at last non-reversible move before root, rootheight at root position
+    int ply;        // 0 at root position
+    int rootheight; // fixed stack offset in root position 
     int halfmovescounter = 0;
     int fullmovescounter = 0;
     int seldepth;
     chessmovelist rootmovelist;
     chessmovesequencelist pvline;
-    int rootheight;
     chessmove bestmove[MAXMULTIPV];
     int bestmovescore[MAXMULTIPV];
     uint32_t killer[2][MAXDEPTH];
