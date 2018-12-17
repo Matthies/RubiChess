@@ -137,7 +137,7 @@ int chessposition::getPawnAndKingValue(pawnhashentry **entry)
     int val = 0;
     int index;
 
-    bool hashexist = pwnhsh.probeHash(hash, entry);
+    bool hashexist = pwnhsh.probeHash(pawnhash, entry);
     pawnhashentry *entryptr = *entry;
     if (!hashexist)
     {
