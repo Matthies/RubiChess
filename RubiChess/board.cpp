@@ -1945,7 +1945,7 @@ engine::engine()
     setOption("Ponder", "false");
     setOption("SyzygyPath", "<empty>");
     setOption("Syzygy50MoveRule", "true");
-
+    setOption("Threads", "1");
 
 #ifdef _WIN32
     LARGE_INTEGER f;
@@ -1970,12 +1970,17 @@ void engine::setOption(string sName, string sValue)
     {
         ponder = (lValue == "true");
     }
-
     if (sName == "multipv")
     {
         newint = stoi(sValue);
         if (newint >= 1 && newint <= MAXMULTIPV)
             MultiPV = newint;
+    }
+    if (sName == "threads")
+    {
+        newint = stoi(sValue);
+        if (newint >= 1 && newint <= MAXTHREADS)
+            Threads = newint;
     }
     if (sName == "hash")
     {
@@ -2122,6 +2127,7 @@ void engine::communicate(string inputstring)
                 myUci->send("option name Ponder type check default false\n");
                 myUci->send("option name SyzygyPath type string default <empty>\n");
                 myUci->send("option name Syzygy50MoveRule type check default true\n");
+                myUci->send("option name Threads type spin default 1 min 1 max 64\n");
                 myUci->send("uciok\n", author);
                 break;
             case UCINEWGAME:

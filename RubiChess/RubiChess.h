@@ -539,6 +539,7 @@ public:
 };
 
 #define MAXMULTIPV 64
+#define MAXTHREADS 64
 
 
 // FIXME: This is ugly! Almost the same classes with doubled code.
@@ -752,6 +753,7 @@ public:
     bool ponder;
     string SyzygyPath;
     bool Syzygy50MoveRule;
+    int Threads;
     enum { NO, PONDERING, HITPONDER } pondersearch;
     int terminationscore = SHRT_MAX;
     int benchscore;
