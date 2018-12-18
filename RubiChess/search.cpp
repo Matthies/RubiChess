@@ -793,7 +793,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
 
 
 template <RootsearchType RT>
-static void search_gen1(searchthread *st)
+static void search_gen1(searchthread *thr)
 {
     string bestmovestr = "";
     string newbestmovestr;
@@ -811,7 +811,7 @@ static void search_gen1(searchthread *st)
     const char* boundscore[] = { "upperbound", "", "lowerbound" };
 
     const bool isMultiPV = (RT == MultiPVSearch);
-    chessposition *pos = &st->pos;
+    chessposition *pos = &thr->pos;
 
     depthincrement = 1;
     if (en.mate > 0)
@@ -896,7 +896,7 @@ static void search_gen1(searchthread *st)
                 }
             }
         }
-        if (score > NOSCORE)
+        if (score > NOSCORE && thr->isMain)
         {
             long long nowtime = getTime();
             int secondsrun = (int)((nowtime - en.starttime) * 1000 / en.frequency);
@@ -1027,18 +1027,21 @@ static void search_gen1(searchthread *st)
             en.stopLevel = ENGINEWANTSTOP;
     } while (en.stopLevel == ENGINERUN && depth <= maxdepth);
     
-    if (bestmovestr == "")
-        // not a single move found (serious time trouble); fall back to default move
-        bestmovestr = pos->defaultmove.toString();
+    if (thr->isMain)
+    {
+        if (bestmovestr == "")
+            // not a single move found (serious time trouble); fall back to default move
+            bestmovestr = pos->defaultmove.toString();
 
-    char s[64];
-    sprintf_s(s, "bestmove %s%s\n", bestmovestr.c_str(), pondermovestr.c_str());
+        char s[64];
+        sprintf_s(s, "bestmove %s%s\n", bestmovestr.c_str(), pondermovestr.c_str());
+        // when pondering prevent from stopping search before STOP
+        while (en.isPondering() && en.stopLevel != ENGINESTOPIMMEDIATELY)
+            Sleep(10);
 
-    // when pondering prevent from stopping search before STOP
-    while (en.isPondering() && en.stopLevel != ENGINESTOPIMMEDIATELY)
-        Sleep(10);
- 
-    cout << s;
+        cout << s;
+    }
+
     en.stopLevel = ENGINESTOPPED;
     // Remember some exit values for benchmark output
     en.benchscore = score;
@@ -1100,21 +1103,25 @@ void startSearchTime(bool complete = true)
 
 void searchguide()
 {
-    en.moveoutput = false;
-    en.stopLevel = ENGINERUN;
-    searchthread st;
-
     startSearchTime();
 
+    en.moveoutput = false;
+    en.stopLevel = ENGINERUN;
     en.nodes = 0;
     en.tbhits = 0;
     en.fh = en.fhf = 0;
 
-    st.pos = en.rootpos;
-    if (en.MultiPV > 1)
-        st.thr = thread(&search_gen1<MultiPVSearch>, &st);
-    else
-        st.thr = thread(&search_gen1<SinglePVSearch>, &st);
+    searchthread *st = (searchthread*)malloc(en.Threads * sizeof(searchthread));
+
+    for (int tnum = 0; tnum < en.Threads; tnum++)
+    {
+        st[tnum].pos = en.rootpos;
+        st[tnum].isMain = (tnum == 0);
+        if (en.MultiPV > 1)
+            st[tnum].thr = thread(&search_gen1<MultiPVSearch>, &st[tnum]);
+        else
+            st[tnum].thr = thread(&search_gen1<SinglePVSearch>, &st[tnum]);
+    }
 
     long long nowtime;
     while (en.stopLevel != ENGINESTOPPED)
@@ -1149,6 +1156,7 @@ void searchguide()
             }
         }
     }
-    st.thr.join();
+    for (int tnum = 0; tnum < en.Threads; tnum++)
+        st[tnum].thr.join();
     en.stopLevel = ENGINETERMINATEDSEARCH;
 }
