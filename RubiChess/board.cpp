@@ -1848,6 +1848,7 @@ void chessposition::copy(chessposition *src)
     materialhash = src->materialhash;
     memset(history, 0, sizeof(history));
     memset(killer, 0, sizeof(killer));
+    memcpy(movestack, src->movestack, sizeof(movestack));
     mstop = src->mstop;
     rootheight = src->rootheight;
     ply = src->ply;
