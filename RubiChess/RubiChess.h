@@ -112,6 +112,7 @@ class transposition;
 class repetition;
 class uci;
 class chessposition;
+class searchthread;
 struct pawnhashentry;
 
 
@@ -299,6 +300,114 @@ void TexelTune(string fenfilename);
 extern int tuningratio;
 
 #endif
+
+
+//
+// transposition stuff
+//
+typedef unsigned long long u8;
+typedef struct ranctx { u8 a; u8 b; u8 c; u8 d; } ranctx;
+
+#define rot(x,k) (((x)<<(k))|((x)>>(64-(k))))
+
+class zobrist
+{
+public:
+    ranctx rnd;
+    unsigned long long boardtable[64 * 16];
+    unsigned long long cstl[32];
+    unsigned long long ept[64];
+    unsigned long long s2m;
+    zobrist();
+    unsigned long long getRnd();
+    u8 getHash(chessposition *pos);
+    u8 getPawnHash(chessposition *pos);
+    u8 getMaterialHash(chessposition *pos);
+    u8 modHash(int i);
+};
+
+#define TTBUCKETNUM 3
+
+
+struct transpositionentry {
+    uint32_t hashupper;
+    uint16_t movecode;
+    int16_t value;
+    int16_t staticeval;
+    uint8_t depth;
+    uint8_t boundAndAge;
+};
+
+struct transpositioncluster {
+    transpositionentry entry[TTBUCKETNUM];
+    //char padding[2];
+};
+
+
+#define FIXMATESCOREPROBE(v,p) (MATEFORME(v) ? (v) - p : (MATEFOROPPONENT(v) ? (v) + p : v))
+#define FIXMATESCOREADD(v,p) (MATEFORME(v) ? (v) + p : (MATEFOROPPONENT(v) ? (v) - p : v))
+
+class transposition
+{
+    transpositioncluster *table;
+    U64 used;
+public:
+    U64 size;
+    U64 sizemask;
+    //chessposition *pos;
+    int numOfSearchShiftTwo;
+    ~transposition();
+    int setSize(int sizeMb);    // returns the number of Mb not used by allignment
+    void clean();
+    void addHash(U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode);
+    void printHashentry(U64 hash);
+    bool probeHash(U64 hash, int *val, int *staticeval, uint16_t *movecode, int depth, int alpha, int beta, int ply);
+    uint16_t getMoveCode(U64 hash);
+    unsigned int getUsedinPermill();
+    void nextSearch() { numOfSearchShiftTwo = (numOfSearchShiftTwo + 4) & 0xfc; }
+};
+
+typedef struct pawnhashentry {
+    uint32_t hashupper;
+    U64 passedpawnbb[2];
+    U64 isolatedpawnbb[2];
+    U64 backwardpawnbb[2];
+    int semiopen[2];
+    U64 attacked[2];
+    U64 attackedBy2[2];
+    int32_t value;
+} S_PAWNHASHENTRY;
+
+#define PAWNHASHSIZE 0x10000;
+#define PAWNHASHMASK 0xffff;
+
+class Pawnhash
+{
+    S_PAWNHASHENTRY table[0x10000];
+public:
+    //const U64 size = 0x10000;
+    //const U64 sizemask = 0xffff;
+    //Pawnhash();
+    //~Pawnhash();
+    //void setSize(int sizeMb);
+    void clean();
+    bool probeHash(U64 hash, pawnhashentry **entry);
+};
+
+class repetition
+{
+    unsigned char table[0x10000];
+public:
+    void clean();
+    void addPosition(unsigned long long hash);
+    void removePosition(unsigned long long hash);
+    int getPositionCount(unsigned long long hash);
+};
+
+extern zobrist zb;
+extern repetition rp;
+extern transposition tp;
+
 
 //
 // board stuff
@@ -645,6 +754,7 @@ public:
     int bestmovescore[MAXMULTIPV];
     uint32_t killer[2][MAXDEPTH];
     int32_t history[2][64][64];
+    Pawnhash pwnhsh;
 #ifdef SDEBUG
     unsigned long long debughash = 0;
     uint16_t pvdebug[MAXMOVESEQUENCELENGTH];
@@ -667,6 +777,7 @@ public:
     string getGradientString();
     int getGradientValue(positiontuneset *p);
 #endif
+    void copy(chessposition *src);  // copy only the data coming from fen/move
     void init();
     bool w2m();
     void BitboardSet(int index, PieceCode p);
@@ -748,12 +859,14 @@ public:
     bool verbose;
     bool moveoutput;
     int sizeOfTp = 0;
+    //int sizeOfPh;
     int moveOverhead;
     int MultiPV;
     bool ponder;
     string SyzygyPath;
     bool Syzygy50MoveRule;
     int Threads;
+    searchthread *sthread;
     enum { NO, PONDERING, HITPONDER } pondersearch;
     int terminationscore = SHRT_MAX;
     int benchscore;
@@ -761,11 +874,13 @@ public:
     int stopLevel = ENGINESTOPPED;
     void communicate(string inputstring);
     void setOption(string sName, string sValue);
+    void allocThreads(int num);
     bool isPondering() { return (pondersearch == PONDERING); }
     void HitPonder() { pondersearch = HITPONDER; }
     bool testPonderHit() { return (pondersearch == HITPONDER); }
     void resetPonder() { pondersearch = NO; }
     long long perft(int depth, bool dotests);
+    void prepareThreads();
 };
 
 PieceType GetPieceType(char c);
@@ -796,110 +911,6 @@ extern engine en;
 #define SDEBUGPRINT(b, d, f, ...)
 #endif
 
-
-//
-// transposition stuff
-//
-typedef unsigned long long u8;
-typedef struct ranctx { u8 a; u8 b; u8 c; u8 d; } ranctx;
-
-#define rot(x,k) (((x)<<(k))|((x)>>(64-(k))))
-
-class zobrist
-{
-public:
-    ranctx rnd;
-    unsigned long long boardtable[64 * 16];
-	unsigned long long cstl[32];
-	unsigned long long ept[64];
-    unsigned long long s2m;
-    zobrist();
-    unsigned long long getRnd();
-    u8 getHash(chessposition *pos);
-    u8 getPawnHash(chessposition *pos);
-    u8 getMaterialHash(chessposition *pos);
-    u8 modHash(int i);
-};
-
-#define TTBUCKETNUM 3
-
-
-struct transpositionentry {
-    uint32_t hashupper;
-    uint16_t movecode;
-    int16_t value;
-    int16_t staticeval;
-    uint8_t depth;
-    uint8_t boundAndAge;
-};
-
-struct transpositioncluster {
-    transpositionentry entry[TTBUCKETNUM];
-    //char padding[2];
-};
-
-
-#define FIXMATESCOREPROBE(v,p) (MATEFORME(v) ? (v) - p : (MATEFOROPPONENT(v) ? (v) + p : v))
-#define FIXMATESCOREADD(v,p) (MATEFORME(v) ? (v) + p : (MATEFOROPPONENT(v) ? (v) - p : v))
-
-class transposition
-{
-    transpositioncluster *table;
-    U64 used;
-public:
-    U64 size;
-    U64 sizemask;
-    //chessposition *pos;
-    int numOfSearchShiftTwo;
-    ~transposition();
-    int setSize(int sizeMb);    // returns the number of Mb not used by allignment
-    void clean();
-    void addHash(U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode);
-    void printHashentry(U64 hash);
-    bool probeHash(U64 hash, int *val, int *staticeval, uint16_t *movecode, int depth, int alpha, int beta, int ply);
-    uint16_t getMoveCode(U64 hash);
-    unsigned int getUsedinPermill();
-    void nextSearch() { numOfSearchShiftTwo = (numOfSearchShiftTwo + 4) & 0xfc; }
-};
-
-typedef struct pawnhashentry {
-   uint32_t hashupper;
-    U64 passedpawnbb[2];
-    U64 isolatedpawnbb[2];
-    U64 backwardpawnbb[2];
-    int semiopen[2];
-    U64 attacked[2];
-    U64 attackedBy2[2];
-    int32_t value;
-} S_PAWNHASHENTRY;
-
-class pawnhash
-{
-    S_PAWNHASHENTRY *table;
-public:
-    U64 size;
-    U64 sizemask;
-    //chessposition *pos;
-    ~pawnhash();
-    void setSize(int sizeMb);
-    void clean();
-    bool probeHash(U64 hash, pawnhashentry **entry);
-};
-
-class repetition
-{
-    unsigned char table[0x10000];
-public:
-    void clean();
-    void addPosition(unsigned long long hash);
-    void removePosition(unsigned long long hash);
-    int getPositionCount(unsigned long long hash);
-};
-
-extern zobrist zb;
-extern repetition rp;
-extern transposition tp;
-extern pawnhash pwnhsh;
 
 //
 // search stuff

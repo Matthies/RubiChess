@@ -1111,16 +1111,14 @@ void searchguide()
     en.tbhits = 0;
     en.fh = en.fhf = 0;
 
-    searchthread *st = (searchthread*)malloc(en.Threads * sizeof(searchthread));
-
     for (int tnum = 0; tnum < en.Threads; tnum++)
     {
-        st[tnum].pos = en.rootpos;
-        st[tnum].isMain = (tnum == 0);
+
+        //en.sthread[tnum].pos = en.rootpos;
         if (en.MultiPV > 1)
-            st[tnum].thr = thread(&search_gen1<MultiPVSearch>, &st[tnum]);
+            en.sthread[tnum].thr = thread(&search_gen1<MultiPVSearch>, &en.sthread[tnum]);
         else
-            st[tnum].thr = thread(&search_gen1<SinglePVSearch>, &st[tnum]);
+            en.sthread[tnum].thr = thread(&search_gen1<SinglePVSearch>, &en.sthread[tnum]);
     }
 
     long long nowtime;
@@ -1157,6 +1155,6 @@ void searchguide()
         }
     }
     for (int tnum = 0; tnum < en.Threads; tnum++)
-        st[tnum].thr.join();
+        en.sthread[tnum].thr.join();
     en.stopLevel = ENGINETERMINATEDSEARCH;
 }

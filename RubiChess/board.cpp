@@ -1832,6 +1832,32 @@ int chessposition::getBestPossibleCapture()
 }
 
 
+void chessposition::copy(chessposition *src)
+{
+    memcpy(piece00, src->piece00, sizeof(piece00));
+    memcpy(occupied00, src->occupied00, sizeof(occupied00));
+    memcpy(mailbox, src->mailbox, sizeof(mailbox));
+    memcpy(kingpos, src->kingpos, sizeof(kingpos));
+    state = src->state;
+    ept = src->ept;
+    halfmovescounter = src->halfmovescounter;
+    fullmovescounter = src->fullmovescounter;
+    isCheck = src->isCheck;
+    hash = src->hash;
+    pawnhash = src->pawnhash;
+    materialhash = src->materialhash;
+    memset(history, 0, sizeof(history));
+    memset(killer, 0, sizeof(killer));
+    mstop = src->mstop;
+    rootheight = src->rootheight;
+    ply = src->ply;
+    rootmovelist = src->rootmovelist;
+    tbPosition = src->tbPosition;
+    useTb = src->useTb;
+    useRootmoveScore = src->useRootmoveScore;
+    defaultmove = src->defaultmove;
+}
+
 
 MoveSelector::~MoveSelector()
 {
@@ -1956,6 +1982,24 @@ engine::engine()
 #endif
 }
 
+void engine::allocThreads(int num)
+{
+
+    Threads = num;
+    sthread = (searchthread*)malloc(num * sizeof(searchthread));
+    for (int i = 0; i < Threads; i++)
+    {
+        sthread[i].pos.pwnhsh.clean();
+        sthread[i].isMain = (i == 0);
+    }
+}
+
+
+void engine::prepareThreads()
+{
+    for (int i = 0; i < Threads; i++)
+        sthread[i].pos.copy(&rootpos);
+}
 
 void engine::setOption(string sName, string sValue)
 {
@@ -1979,8 +2023,8 @@ void engine::setOption(string sName, string sValue)
     if (sName == "threads")
     {
         newint = stoi(sValue);
-        if (newint >= 1 && newint <= MAXTHREADS)
-            Threads = newint;
+        if (newint >= 1 && newint <= MAXTHREADS && newint != Threads)
+            allocThreads(newint);
     }
     if (sName == "hash")
     {
@@ -1996,8 +2040,7 @@ void engine::setOption(string sName, string sValue)
     }
     if (resetTp)
     {
-        int restMb = max (16, tp.setSize(sizeOfTp));
-        pwnhsh.setSize(restMb);
+        tp.setSize(sizeOfTp);
     }
     if (sName == "move overhead")
     {
@@ -2058,6 +2101,7 @@ void engine::communicate(string inputstring)
                 rootpos.ply = 0;
                 rootpos.getRootMoves();
                 rootpos.tbFilterRootMoves();
+                prepareThreads();
                 if (debug)
                 {
                     rootpos.print();

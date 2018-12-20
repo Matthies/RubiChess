@@ -124,6 +124,7 @@ void registeralltuners()
 
 void chessposition::init()
 {
+    //pwnhsh.setSize(en.sizeOfPh);
 #ifdef EVALTUNE
     registeralltuners();
 #endif

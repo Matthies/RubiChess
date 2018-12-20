@@ -306,17 +306,24 @@ uint16_t transposition::getMoveCode(U64 hash)
 }
 
 
-pawnhash::~pawnhash()
+#if 0
+Pawnhash::Pawnhash()
 {
-    if (size > 0)
+    size = 0x10000;
+    sizemask = size - 1;
+    table = (S_PAWNHASHENTRY*)malloc((size_t)(size * sizeof(S_PAWNHASHENTRY)));
+    clean();
+}
+
+Pawnhash::~Pawnhash()
+{
+    if (true)//size > 0)
         delete table;
 }
 
-void pawnhash::setSize(int sizeMb)
+void Pawnhash::setSize(int sizeMb)
 {
     int msb = 0;
-    if (size > 0)
-        delete table;
     size = ((U64)sizeMb << 20) / sizeof(S_PAWNHASHENTRY);
     if (MSB(msb, size))
         size = (1ULL << msb);
@@ -325,15 +332,16 @@ void pawnhash::setSize(int sizeMb)
     table = (S_PAWNHASHENTRY*)malloc((size_t)(size * sizeof(S_PAWNHASHENTRY)));
     clean();
 }
+#endif
 
-void pawnhash::clean()
+void Pawnhash::clean()
 {
-    memset(table, 0, (size_t)(size * sizeof(S_PAWNHASHENTRY)));
+    memset(table, 0, (size_t)(sizeof(table)));
 }
 
-bool pawnhash::probeHash(U64 hash, pawnhashentry **entry)
+bool Pawnhash::probeHash(U64 hash, pawnhashentry **entry)
 {
-    unsigned long long index = hash & sizemask;
+    unsigned long long index = hash & PAWNHASHMASK;
     *entry = &table[index];
     if (((*entry)->hashupper) == (hash >> 32))
     {
@@ -373,4 +381,3 @@ int repetition::getPositionCount(unsigned long long hash)
 
 repetition rp;
 transposition tp;
-pawnhash pwnhsh;
