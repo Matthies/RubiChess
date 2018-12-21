@@ -2000,7 +2000,7 @@ void engine::allocPawnhash()
 
 void engine::allocThreads(int num)
 {
-    delete sthread;
+    delete[] sthread;
     Threads = num;
     //sthread = (searchthread*)malloc(num * sizeof(searchthread));
     sthread = new searchthread[num];
