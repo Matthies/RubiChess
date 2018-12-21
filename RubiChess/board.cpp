@@ -1834,6 +1834,7 @@ int chessposition::getBestPossibleCapture()
 
 void chessposition::copy(chessposition *src)
 {
+#if 0
     memcpy(piece00, src->piece00, sizeof(piece00));
     memcpy(occupied00, src->occupied00, sizeof(occupied00));
     memcpy(mailbox, src->mailbox, sizeof(mailbox));
@@ -1857,6 +1858,7 @@ void chessposition::copy(chessposition *src)
     useTb = src->useTb;
     useRootmoveScore = src->useRootmoveScore;
     defaultmove = src->defaultmove;
+#endif
 }
 
 
@@ -1966,13 +1968,13 @@ engine::engine()
     //pwnhsh.pos = &pos;
     initBitmaphelper();
 
+    setOption("Threads", "1");  // order is important as the pawnhash depends on Threads > 0
     setOption("hash", "256");
     setOption("Move Overhead", "50");
     setOption("MultiPV", "1");
     setOption("Ponder", "false");
     setOption("SyzygyPath", "<empty>");
     setOption("Syzygy50MoveRule", "true");
-    setOption("Threads", "1");
 
 #ifdef _WIN32
     LARGE_INTEGER f;
@@ -1983,23 +1985,40 @@ engine::engine()
 #endif
 }
 
-void engine::allocThreads(int num)
-{
 
-    Threads = num;
-    sthread = (searchthread*)malloc(num * sizeof(searchthread));
+void engine::allocPawnhash()
+{
+#if 1
     for (int i = 0; i < Threads; i++)
     {
-        sthread[i].pos.pwnhsh.clean();
-        sthread[i].isMain = (i == 0);
+        //delete sthread[i].pwnhsh;
+        sthread[i].pwnhsh = new Pawnhash(sizeOfPh);
     }
+#endif
+}
+
+
+void engine::allocThreads(int num)
+{
+    delete sthread;
+    Threads = num;
+    //sthread = (searchthread*)malloc(num * sizeof(searchthread));
+    sthread = new searchthread[num];
+    for (int i = 0; i < Threads; i++)
+    {
+        sthread[i].index = i;
+    }
+    allocPawnhash();
 }
 
 
 void engine::prepareThreads()
 {
     for (int i = 0; i < Threads; i++)
-        sthread[i].pos.copy(&rootpos);
+    {
+        sthread[i].pos = rootpos;
+        sthread[i].pos.pwnhsh = sthread[i].pwnhsh;
+    }
 }
 
 void engine::setOption(string sName, string sValue)
@@ -2041,7 +2060,8 @@ void engine::setOption(string sName, string sValue)
     }
     if (resetTp)
     {
-        tp.setSize(sizeOfTp);
+        sizeOfPh = max(16, tp.setSize(sizeOfTp) / Threads);
+        allocPawnhash();
     }
     if (sName == "move overhead")
     {

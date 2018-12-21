@@ -896,7 +896,7 @@ static void search_gen1(searchthread *thr)
                 }
             }
         }
-        if (score > NOSCORE && thr->isMain)
+        if (score > NOSCORE && thr->index == 0)
         {
             long long nowtime = getTime();
             int secondsrun = (int)((nowtime - en.starttime) * 1000 / en.frequency);
@@ -1027,7 +1027,7 @@ static void search_gen1(searchthread *thr)
             en.stopLevel = ENGINEWANTSTOP;
     } while (en.stopLevel == ENGINERUN && depth <= maxdepth);
     
-    if (thr->isMain)
+    if (thr->index == 0)
     {
         if (bestmovestr == "")
             // not a single move found (serious time trouble); fall back to default move

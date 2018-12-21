@@ -9,7 +9,6 @@ const int maxmobility[4] = { 9, 14, 15, 28 }; // indexed by piece - 2
 
 evalparamset eps;
 
-
 #ifdef EVALTUNE
 void chessposition::resetTuner()
 {
@@ -138,7 +137,7 @@ int chessposition::getPawnAndKingValue(pawnhashentry **entry)
     int val = 0;
     int index;
 
-    bool hashexist = pwnhsh.probeHash(pawnhash, entry);
+    bool hashexist = pwnhsh->probeHash(pawnhash, entry);
     pawnhashentry *entryptr = *entry;
     if (!hashexist)
     {

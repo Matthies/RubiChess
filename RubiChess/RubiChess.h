@@ -378,17 +378,15 @@ typedef struct pawnhashentry {
     int32_t value;
 } S_PAWNHASHENTRY;
 
-#define PAWNHASHSIZE 0x10000;
-#define PAWNHASHMASK 0xffff;
 
 class Pawnhash
 {
-    S_PAWNHASHENTRY table[0x10000];
+    S_PAWNHASHENTRY *table;
 public:
-    //const U64 size = 0x10000;
-    //const U64 sizemask = 0xffff;
-    //Pawnhash();
-    //~Pawnhash();
+    U64 size;
+    U64 sizemask;
+    Pawnhash(int sizeMb);
+    ~Pawnhash();
     //void setSize(int sizeMb);
     void clean();
     bool probeHash(U64 hash, pawnhashentry **entry);
@@ -754,7 +752,7 @@ public:
     int bestmovescore[MAXMULTIPV];
     uint32_t killer[2][MAXDEPTH];
     int32_t history[2][64][64];
-    Pawnhash pwnhsh;
+    Pawnhash *pwnhsh;
 #ifdef SDEBUG
     unsigned long long debughash = 0;
     uint16_t pvdebug[MAXMOVESEQUENCELENGTH];
@@ -859,7 +857,7 @@ public:
     bool verbose;
     bool moveoutput;
     int sizeOfTp = 0;
-    //int sizeOfPh;
+    int sizeOfPh;
     int moveOverhead;
     int MultiPV;
     bool ponder;
@@ -875,6 +873,7 @@ public:
     void communicate(string inputstring);
     void setOption(string sName, string sValue);
     void allocThreads(int num);
+    void allocPawnhash();
     bool isPondering() { return (pondersearch == PONDERING); }
     void HitPonder() { pondersearch = HITPONDER; }
     bool testPonderHit() { return (pondersearch == HITPONDER); }
@@ -919,8 +918,9 @@ class searchthread
 {
 public:
     chessposition pos;
+    Pawnhash *pwnhsh;
     thread thr;
-    bool isMain;
+    int index;
 };
 
 void searchguide();

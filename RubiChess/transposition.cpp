@@ -306,13 +306,19 @@ uint16_t transposition::getMoveCode(U64 hash)
 }
 
 
-#if 0
-Pawnhash::Pawnhash()
+#if 1
+Pawnhash::Pawnhash(int sizeMb)
 {
-    size = 0x10000;
+    int msb = 0;
+    sizeMb = max(sizeMb, 16);
+    size = ((U64)sizeMb << 20) / sizeof(S_PAWNHASHENTRY);
+    if (MSB(msb, size))
+        size = (1ULL << msb);
+
     sizemask = size - 1;
-    table = (S_PAWNHASHENTRY*)malloc((size_t)(size * sizeof(S_PAWNHASHENTRY)));
-    clean();
+    //table = (S_PAWNHASHENTRY*)malloc((size_t)(size * sizeof(S_PAWNHASHENTRY)));
+    table = new S_PAWNHASHENTRY[size];
+    memset(table, 0, (size_t)(sizeof(table)));
 }
 
 Pawnhash::~Pawnhash()
@@ -320,7 +326,9 @@ Pawnhash::~Pawnhash()
     if (true)//size > 0)
         delete table;
 }
+#endif
 
+#if 0
 void Pawnhash::setSize(int sizeMb)
 {
     int msb = 0;
@@ -336,12 +344,11 @@ void Pawnhash::setSize(int sizeMb)
 
 void Pawnhash::clean()
 {
-    memset(table, 0, (size_t)(sizeof(table)));
 }
 
 bool Pawnhash::probeHash(U64 hash, pawnhashentry **entry)
 {
-    unsigned long long index = hash & PAWNHASHMASK;
+    unsigned long long index = hash & sizemask;
     *entry = &table[index];
     if (((*entry)->hashupper) == (hash >> 32))
     {
