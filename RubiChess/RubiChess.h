@@ -840,6 +840,7 @@ class engine
 {
 public:
     engine();
+    ~engine();
     //chessposition rootpos;
     uci *myUci;
     const char* name = ENGINEVER;
@@ -922,6 +923,8 @@ public:
     Pawnhash *pwnhsh;
     thread thr;
     int index;
+    searchthread();
+    ~searchthread();
 };
 
 void searchguide();

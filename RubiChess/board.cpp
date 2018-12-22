@@ -1961,6 +1961,16 @@ chessmove* MoveSelector::next()
 }
 
 
+searchthread::searchthread()
+{
+    pwnhsh = NULL;
+}
+
+searchthread::~searchthread()
+{
+    delete pwnhsh;
+}
+
 
 engine::engine()
 {
@@ -1985,16 +1995,18 @@ engine::engine()
 #endif
 }
 
+engine::~engine()
+{
+    delete[] sthread;
+}
 
 void engine::allocPawnhash()
 {
-#if 1
     for (int i = 0; i < Threads; i++)
     {
-        //delete sthread[i].pwnhsh;
+        delete sthread[i].pwnhsh;
         sthread[i].pos.pwnhsh = sthread[i].pwnhsh = new Pawnhash(sizeOfPh);
     }
-#endif
 }
 
 
@@ -2002,7 +2014,6 @@ void engine::allocThreads(int num)
 {
     delete[] sthread;
     Threads = num;
-    //sthread = (searchthread*)malloc(num * sizeof(searchthread));
     sthread = new searchthread[num];
     for (int i = 0; i < Threads; i++)
     {
@@ -2098,20 +2109,20 @@ void engine::communicate(string inputstring)
     bool pendingposition = false;
     do
     {
+        if (searchthread && stopLevel >= ENGINESTOPIMMEDIATELY)
+        {
+            if (searchthread->joinable())
+                searchthread->join();
+            delete searchthread;
+            searchthread = nullptr;
+        }
         if (pendingisready || pendingposition)
         {
             if (pendingposition)
             {
                 // new position first stops current search
-                if (stopLevel == ENGINERUN)
+                if (stopLevel < ENGINESTOPIMMEDIATELY)
                     stopLevel = ENGINESTOPIMMEDIATELY;
-                if (searchthread)
-                {
-                    if (searchthread->joinable())
-                        searchthread->join();
-                    delete searchthread;
-                    searchthread = nullptr;
-                }
 
                 chessposition *rootpos = &sthread[0].pos;
                 rootpos->getFromFen(fen.c_str());
