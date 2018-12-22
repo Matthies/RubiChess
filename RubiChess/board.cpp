@@ -1992,7 +1992,7 @@ void engine::allocPawnhash()
     for (int i = 0; i < Threads; i++)
     {
         //delete sthread[i].pwnhsh;
-        sthread[i].pwnhsh = new Pawnhash(sizeOfPh);
+        sthread[i].pos.pwnhsh = sthread[i].pwnhsh = new Pawnhash(sizeOfPh);
     }
 #endif
 }
@@ -2014,9 +2014,9 @@ void engine::allocThreads(int num)
 
 void engine::prepareThreads()
 {
-    for (int i = 0; i < Threads; i++)
+    for (int i = 1; i < Threads; i++)
     {
-        sthread[i].pos = rootpos;
+        sthread[i].pos = sthread[0].pos;
         sthread[i].pos.pwnhsh = sthread[i].pwnhsh;
     }
 }
@@ -2113,19 +2113,20 @@ void engine::communicate(string inputstring)
                     searchthread = nullptr;
                 }
 
-                rootpos.getFromFen(fen.c_str());
+                chessposition *rootpos = &sthread[0].pos;
+                rootpos->getFromFen(fen.c_str());
                 for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
                 {
-                    if (!rootpos.applyMove(*it))
+                    if (!rootpos->applyMove(*it))
                         printf("info string Alarm! Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
                 }
-                rootpos.ply = 0;
-                rootpos.getRootMoves();
-                rootpos.tbFilterRootMoves();
+                rootpos->ply = 0;
+                rootpos->getRootMoves();
+                rootpos->tbFilterRootMoves();
                 prepareThreads();
                 if (debug)
                 {
-                    rootpos.print();
+                    rootpos->print();
                 }
                 pendingposition = false;
             }
@@ -2341,7 +2342,7 @@ void engine::communicate(string inputstring)
                     else
                         ci++;
                 }
-                isWhite = (rootpos.w2m());
+                isWhite = (sthread[0].pos.w2m());
                 searchthread = new thread(&searchguide);
                 if (inputstring != "")
                 {
@@ -2365,7 +2366,7 @@ void engine::communicate(string inputstring)
                 }
                 break;
             case EVAL:
-                getValueTrace(&rootpos);
+                getValueTrace(&sthread[0].pos);
                 break;
             default:
                 break;

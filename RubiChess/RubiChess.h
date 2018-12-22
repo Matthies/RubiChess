@@ -840,7 +840,7 @@ class engine
 {
 public:
     engine();
-    chessposition rootpos;
+    //chessposition rootpos;
     uci *myUci;
     const char* name = ENGINEVER;
     const char* author = "Andreas Matthies";

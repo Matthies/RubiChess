@@ -77,45 +77,46 @@ string GetSystemInfo()
 long long engine::perft(int depth, bool dotests)
 {
     long long retval = 0;
+    chessposition *rootpos = &en.sthread[0].pos;
 
     if (dotests)
     {
-        if (rootpos.hash != zb.getHash(&rootpos))
+        if (rootpos->hash != zb.getHash(rootpos))
         {
-            printf("Alarm! Wrong Hash! %llu\n", zb.getHash(&rootpos));
-            rootpos.print();
+            printf("Alarm! Wrong Hash! %llu\n", zb.getHash(rootpos));
+            rootpos->print();
         }
-        if (rootpos.pawnhash && rootpos.pawnhash != zb.getPawnHash(&rootpos))
+        if (rootpos->pawnhash && rootpos->pawnhash != zb.getPawnHash(rootpos))
         {
-            printf("Alarm! Wrong Pawn Hash! %llu\n", zb.getPawnHash(&rootpos));
-            rootpos.print();
+            printf("Alarm! Wrong Pawn Hash! %llu\n", zb.getPawnHash(rootpos));
+            rootpos->print();
         }
-        if (rootpos.materialhash != zb.getMaterialHash(&rootpos))
+        if (rootpos->materialhash != zb.getMaterialHash(rootpos))
         {
-            printf("Alarm! Wrong Material Hash! %llu\n", zb.getMaterialHash(&rootpos));
-            rootpos.print();
+            printf("Alarm! Wrong Material Hash! %llu\n", zb.getMaterialHash(rootpos));
+            rootpos->print();
         }
-        int val1 = getValueNoTrace(&rootpos);
-        rootpos.mirror();
-        int val2 = getValueNoTrace(&rootpos);
-        rootpos.mirror();
-        int val3 = getValueNoTrace(&rootpos);
+        int val1 = getValueNoTrace(rootpos);
+        rootpos->mirror();
+        int val2 = getValueNoTrace(rootpos);
+        rootpos->mirror();
+        int val3 = getValueNoTrace(rootpos);
         if (!(val1 == val3 && val1 == -val2))
         {
             printf("Mirrortest  :error  (%d / %d / %d)\n", val1, val2, val3);
-            rootpos.print();
+            rootpos->print();
             //printf("Position value: %d\n", pos.getPositionValue<NOTRACE>());
-            rootpos.mirror();
-            rootpos.print();
+            rootpos->mirror();
+            rootpos->print();
             //printf("Position value: %d\n", pos.getPositionValue<NOTRACE>());
-            rootpos.mirror();
-            rootpos.print();
+            rootpos->mirror();
+            rootpos->print();
             //printf("Position value: %d\n", pos.getPositionValue<NOTRACE>());
         }
     }
     chessmovelist movelist;
-    movelist.length = rootpos.getMoves(&movelist.move[0]);
-    rootpos.prepareStack();
+    movelist.length = rootpos->getMoves(&movelist.move[0]);
+    rootpos->prepareStack();
     //movelist->sort();
     //printf("Path: %s \nMovelist : %s\n", p->actualpath.toString().c_str(), movelist->toString().c_str());
 
@@ -125,11 +126,11 @@ long long engine::perft(int depth, bool dotests)
     {
         for (int i = 0; i < movelist.length; i++)
         {
-            if (rootpos.playMove(&movelist.move[i]))
+            if (rootpos->playMove(&movelist.move[i]))
             {
                 //printf("%s ok ", movelist->move[i].toString().c_str());
                 retval++;
-                rootpos.unplayMove(&movelist.move[i]);
+                rootpos->unplayMove(&movelist.move[i]);
             }
         }
     }
@@ -138,11 +139,11 @@ long long engine::perft(int depth, bool dotests)
     {
         for (int i = 0; i < movelist.length; i++)
         {
-            if (rootpos.playMove(&movelist.move[i]))
+            if (rootpos->playMove(&movelist.move[i]))
             {
                 //printf("\nMove: %s  ", movelist->move[i].toString().c_str());
                 retval += perft(depth - 1, dotests);
-                rootpos.unplayMove(&movelist.move[i]);
+                rootpos->unplayMove(&movelist.move[i]);
             }
         }
     }
@@ -202,7 +203,7 @@ void perftest(bool dotests, int maxdepth)
 
     while (perftestresults[i].fen != "")
     {
-        en.rootpos.getFromFen(perftestresults[i].fen.c_str());
+        en.sthread[0].pos.getFromFen(perftestresults[i].fen.c_str());
         int j = 0;
         while (perftestresults[i].nodes[j] > 0 && j <= maxdepth)
         {
@@ -589,7 +590,7 @@ void testengine(string epdfilename, int startnum, string engineprg, string logfi
             // split fen from operation part
             for (int i = 0; i < 4; i++)
                 fenstr = fenstr + fv[i] + " ";
-            if (en.rootpos.getFromFen(fenstr.c_str()) == 0 && ++linenum >= startnum)
+            if (en.sthread[0].pos.getFromFen(fenstr.c_str()) == 0 && ++linenum >= startnum)
             {
                 // Get data from compare file
                 es.doCompare = false;
@@ -649,7 +650,7 @@ void testengine(string epdfilename, int startnum, string engineprg, string logfi
                             fv[i] = fv[i].substr(0, smk);
                         if (moveliststr != "")
                             moveliststr += " ";
-                        moveliststr += AlgebraicFromShort(fv[i], &en.rootpos);
+                        moveliststr += AlgebraicFromShort(fv[i], &en.sthread[0].pos);
                         if (smk != string::npos)
                         {
                             if (searchbestmove)

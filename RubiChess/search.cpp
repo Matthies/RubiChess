@@ -1077,7 +1077,7 @@ void resetEndTime(int constantRootMoves, bool complete)
         //printf("info string difftime1=%lld  difftime2=%lld\n", (endtime1 - en.starttime) * 1000 / en.frequency , (endtime2 - en.starttime) * 1000 / en.frequency);
     }
     else if (timetouse) {
-        int ph = en.rootpos.phase();
+        int ph = en.sthread[0].pos.phase();
         if (timeinc)
         {
             // sudden death with increment; split the remaining time in (256-phase) timeslots
