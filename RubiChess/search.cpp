@@ -9,6 +9,10 @@ int reductiontable[2][MAXDEPTH][64];
 #define MAXLMPDEPTH 9
 int lmptable[2][MAXLMPDEPTH];
 
+// Shameless copy of Ethereal/Laser for now
+static const int SkipSize[16] = { 1, 1, 1, 2, 2, 2, 1, 3, 2, 2, 1, 3, 3, 2, 2, 1 };
+static const int SkipDepths[16] = { 1, 2, 2, 4, 4, 3, 2, 5, 4, 3, 2, 6, 5, 4, 3, 2 };
+
 void searchinit()
 {
     for (int d = 0; d < MAXDEPTH; d++)
@@ -804,7 +808,7 @@ static void search_gen1(searchthread *thr)
     int alpha, beta;
     int deltaalpha = 8;
     int deltabeta = 8;
-    int depth, maxdepth, depthincrement;
+    int depth, maxdepth;
     string pvstring;
     int inWindow;
     int lastsecondsrun = 0;
@@ -813,7 +817,6 @@ static void search_gen1(searchthread *thr)
     const bool isMultiPV = (RT == MultiPVSearch);
     chessposition *pos = &thr->pos;
 
-    depthincrement = 1;
     if (en.mate > 0)
     {
         depth = maxdepth = en.mate * 2;
@@ -1009,7 +1012,13 @@ static void search_gen1(searchthread *thr)
         }
         if (inWindow == 1)
         {
-            depth += depthincrement;
+            // Occasionally skip depths using Laser's method
+            
+            int cycle = thr->index % 16;
+            if (thr->index && (depth + cycle) % SkipDepths[cycle] == 0)
+                depth += SkipSize[cycle];
+
+            depth++;
             constantRootMoves++;
             if (lastBestMove != pos->bestmove[0].code)
             {
@@ -1029,6 +1038,8 @@ static void search_gen1(searchthread *thr)
     
     if (thr->index == 0)
     {
+        // Make the other threads stop now!
+        en.stopLevel = ENGINESTOPIMMEDIATELY;
         if (bestmovestr == "")
             // not a single move found (serious time trouble); fall back to default move
             bestmovestr = pos->defaultmove.toString();
@@ -1042,7 +1053,7 @@ static void search_gen1(searchthread *thr)
         cout << s;
     }
 
-    en.stopLevel = ENGINESTOPPED;
+    //en.stopLevel = ENGINESTOPPED;
     // Remember some exit values for benchmark output
     en.benchscore = score;
     en.benchdepth = depth - 1;
@@ -1122,14 +1133,14 @@ void searchguide()
     }
 
     long long nowtime;
-    while (en.stopLevel != ENGINESTOPPED)
+    while (en.stopLevel < ENGINESTOPIMMEDIATELY)  // FIXME: Was != ENGINESTOPPED; ponder needs to be handled different?
     {
         nowtime = getTime();
 
         if (nowtime - en.starttime > 3 * en.frequency)
             en.moveoutput = true;
 
-        if (en.stopLevel != ENGINESTOPPED)
+        if (en.stopLevel < ENGINESTOPPED)
         {
             if (en.isPondering())
             {

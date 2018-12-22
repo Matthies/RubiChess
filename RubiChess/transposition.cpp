@@ -386,5 +386,5 @@ int repetition::getPositionCount(unsigned long long hash)
     return table[hash & 0xffff];
 }
 
-repetition rp;
+//repetition rp;
 transposition tp;
