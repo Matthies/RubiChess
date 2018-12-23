@@ -96,11 +96,11 @@ long long engine::perft(int depth, bool dotests)
             printf("Alarm! Wrong Material Hash! %llu\n", zb.getMaterialHash(rootpos));
             rootpos->print();
         }
-        int val1 = getValueNoTrace(rootpos);
+        int val1 = rootpos->getValue();
         rootpos->mirror();
-        int val2 = getValueNoTrace(rootpos);
+        int val2 = rootpos->getValue();
         rootpos->mirror();
-        int val3 = getValueNoTrace(rootpos);
+        int val3 = rootpos->getValue();
         if (!(val1 == val3 && val1 == -val2))
         {
             printf("Mirrortest  :error  (%d / %d / %d)\n", val1, val2, val3);

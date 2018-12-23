@@ -74,6 +74,13 @@ void Sleep(long x);
 
 #endif
 
+#ifdef _MSC_VER
+#define PREFETCH(a) _mm_prefetch((char*)(a), _MM_HINT_T0)
+#else
+#define PREFETCH(a) __builtin_prefetch(a)
+#endif
+
+
 #define ENGINEVER "RubiChess " VERNUM
 #define BUILD __DATE__ " " __TIME__
 
@@ -349,9 +356,9 @@ struct transpositioncluster {
 
 class transposition
 {
+public:
     transpositioncluster *table;
     U64 used;
-public:
     U64 size;
     U64 sizemask;
     //chessposition *pos;
@@ -381,8 +388,8 @@ typedef struct pawnhashentry {
 
 class Pawnhash
 {
-    S_PAWNHASHENTRY *table;
 public:
+    S_PAWNHASHENTRY *table;
     U64 size;
     U64 sizemask;
     Pawnhash(int sizeMb);
@@ -718,7 +725,6 @@ extern SMagic mRookTbl[64];
 extern U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 
-enum EvalTrace { NOTRACE, TRACE };
 enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7, QUIETWITHCHECK = 9 };
 enum RootsearchType { SinglePVSearch, MultiPVSearch };
 
@@ -804,9 +810,9 @@ public:
     void getpvline(int depth, int pvnum);
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
     uint32_t shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal
-    template <EvalTrace> int getPositionValue();
-    template <EvalTrace> int getPawnAndKingValue(pawnhashentry **entry);
-    template <EvalTrace> int getValue();
+    int getPositionValue();
+    int getPawnAndKingValue(pawnhashentry **entry);
+    int getValue();
 
     template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth);
     int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed);

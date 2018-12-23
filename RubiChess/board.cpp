@@ -751,7 +751,7 @@ void chessposition::print()
     printf("info string Fullmoves: %d\n", fullmovescounter);
     printf("info string Hash: %llu (%llx)  (getHash(): %llu)\n", hash, hash, zb.getHash(this));
     printf("info string Pawn Hash: %llu (%llx)  (getPawnHash(): %llu)\n", pawnhash, pawnhash, zb.getPawnHash(this));
-    printf("info string Value: %d\n", getValueNoTrace(this));
+    printf("info string Value: %d\n", getValue());
 #ifdef EVALTUNE
     getPositionTuneSet(&pts);
     printf("info string Value from gradients: %s %d\n", getGradientString().c_str(), NEWTAPEREDEVAL(getGradientValue(&this->pts), ph));
@@ -1386,6 +1386,8 @@ bool chessposition::playMove(chessmove *cm)
         }
     }
 
+    PREFETCH(&pwnhsh->table[pawnhash & pwnhsh->sizemask]);
+
     state ^= S2MMASK;
     isCheck = isAttacked(kingpos[state & S2MMASK]);
 
@@ -1402,6 +1404,8 @@ bool chessposition::playMove(chessmove *cm)
     // Fix hash regarding castle rights
     oldcastle ^= (state & CASTLEMASK);
     hash ^= zb.cstl[oldcastle];
+
+    PREFETCH(&tp.table[hash & tp.sizemask]);
 
     ply++;
     rp.addPosition(hash);
@@ -2371,15 +2375,9 @@ void engine::communicate(string inputstring)
             case STOP:
             case QUIT:
                 stopLevel = ENGINESTOPIMMEDIATELY;
-                if (searchthread && searchthread->joinable())
-                {
-                    searchthread->join();
-                    delete searchthread;
-                    searchthread = nullptr;
-                }
                 break;
             case EVAL:
-                getValueTrace(&sthread[0].pos);
+                // removed for now getValueTrace(&sthread[0].pos);
                 break;
             default:
                 break;

@@ -131,7 +131,7 @@ void chessposition::init()
 
 
 
-template <EvalTrace Et> //FIXME: TRACE mode was completely remove at eval rewrite; should probably to be implemented again
+//FIXME: TRACE mode was completely remove at eval rewrite; should probably to be implemented again
 int chessposition::getPawnAndKingValue(pawnhashentry **entry)
 {
     int val = 0;
@@ -266,7 +266,6 @@ int chessposition::getPawnAndKingValue(pawnhashentry **entry)
 }
 
 
-template <EvalTrace Et>
 int chessposition::getPositionValue()
 {
     pawnhashentry *phentry;
@@ -278,7 +277,7 @@ int chessposition::getPositionValue()
 
     int result = EVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
 
-    result += getPawnAndKingValue<Et>(&phentry);
+    result += getPawnAndKingValue(&phentry);
 
     attackedBy[0][KING] = king_attacks[kingpos[0]];
     attackedBy2[0] = phentry->attackedBy2[0] | (attackedBy[0][KING] & phentry->attacked[0]);
@@ -420,7 +419,6 @@ int chessposition::getPositionValue()
 }
 
 
-template <EvalTrace Et>
 int chessposition::getValue()
 {
 #ifdef EVALTUNE
@@ -451,17 +449,5 @@ int chessposition::getValue()
         }
     }
     ph = phase();
-    return getPositionValue<Et>();
+    return getPositionValue();
 }
-
-
-int getValueNoTrace(chessposition *p)
-{
-    return p->getValue<NOTRACE>();
-}
-
-int getValueTrace(chessposition *p)
-{
-    return p->getValue<TRACE>();
-}
-
