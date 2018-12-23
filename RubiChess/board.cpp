@@ -2098,6 +2098,16 @@ void engine::setOption(string sName, string sValue)
     }
 }
 
+static void waitForSearchGuide(thread **th)
+{
+    if (*th)
+    {
+        if ((*th)->joinable())
+            (*th)->join();
+        delete *th;
+    }
+    *th = nullptr;
+}
 
 void engine::communicate(string inputstring)
 {
@@ -2110,17 +2120,14 @@ void engine::communicate(string inputstring)
     bool bGetName, bGetValue;
     string sName, sValue;
     bool bMoves;
-    thread *searchthread = nullptr;
+    thread *searchguidethread = nullptr;
     bool pendingisready = false;
     bool pendingposition = false;
     do
     {
-        if (searchthread && stopLevel >= ENGINESTOPIMMEDIATELY)
+        if (stopLevel >= ENGINESTOPIMMEDIATELY)
         {
-            if (searchthread->joinable())
-                searchthread->join();
-            delete searchthread;
-            searchthread = nullptr;
+            waitForSearchGuide(&searchguidethread);
         }
         if (pendingisready || pendingposition)
         {
@@ -2128,8 +2135,10 @@ void engine::communicate(string inputstring)
             {
                 // new position first stops current search
                 if (stopLevel < ENGINESTOPIMMEDIATELY)
+                {
                     stopLevel = ENGINESTOPIMMEDIATELY;
-
+                    waitForSearchGuide(&searchguidethread);
+                }
                 chessposition *rootpos = &sthread[0].pos;
                 rootpos->getFromFen(fen.c_str());
                 for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
@@ -2155,7 +2164,7 @@ void engine::communicate(string inputstring)
         }
         else {
             commandargs.clear();
-            command = myUci->parse(&commandargs, inputstring);
+            command = myUci->parse(&commandargs, inputstring);  // blocking!!
             ci = 0;
             cs = commandargs.size();
             switch (command)
@@ -2360,13 +2369,12 @@ void engine::communicate(string inputstring)
                         ci++;
                 }
                 isWhite = (sthread[0].pos.w2m());
-                searchthread = new thread(&searchguide);
+                stopLevel = ENGINERUN;
+                searchguidethread = new thread(&searchguide);
                 if (inputstring != "")
                 {
                     // bench mode; wait for end of search
-                    searchthread->join();
-                    delete searchthread;
-                    searchthread = nullptr;
+                    waitForSearchGuide(&searchguidethread);
                 }
                 break;
             case PONDERHIT:
@@ -2384,6 +2392,7 @@ void engine::communicate(string inputstring)
             }
         }
     } while (command != QUIT && (inputstring == "" || pendingposition));
+    waitForSearchGuide(&searchguidethread);
 }
 
 zobrist zb;

@@ -1038,8 +1038,6 @@ static void search_gen1(searchthread *thr)
     
     if (thr->index == 0)
     {
-        // Make the other threads stop now!
-        en.stopLevel = ENGINESTOPIMMEDIATELY;
         if (bestmovestr == "")
             // not a single move found (serious time trouble); fall back to default move
             bestmovestr = pos->defaultmove.toString();
@@ -1051,6 +1049,9 @@ static void search_gen1(searchthread *thr)
             Sleep(10);
 
         cout << s;
+
+        // Make the other threads stop now in case of a STOPSOON
+        en.stopLevel = ENGINESTOPIMMEDIATELY;
     }
 
     //en.stopLevel = ENGINESTOPPED;
@@ -1117,7 +1118,6 @@ void searchguide()
     startSearchTime();
 
     en.moveoutput = false;
-    en.stopLevel = ENGINERUN;
     en.nodes = 0;
     en.tbhits = 0;
     en.fh = en.fhf = 0;
