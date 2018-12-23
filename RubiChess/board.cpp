@@ -650,13 +650,6 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
     PieceCode capture = GETCAPTURE(c);
     PieceType p = pc >> 1;
 
-    // correct s2m? ->test removed as it seems not necessary
-    if ((pc & S2MMASK) != (state & S2MMASK))
-    {
-        printf("Alarm. s2m test doch wichtig.\n");
-        return false;
-    }
-
     // correct piece?
     if (mailbox[from] != pc)
         return false;
@@ -667,6 +660,10 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
 
     // slider? test for free line
     if (shifting[p] && (betweenMask[from][to] & (occupied00[0] | occupied00[1])))
+        return false;
+
+    // correct s2m?
+    if ((pc & S2MMASK) != (state & S2MMASK))
         return false;
 
     if (p == PAWN)
