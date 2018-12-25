@@ -2019,7 +2019,6 @@ void engine::allocPawnhash()
 void engine::allocThreads(int num)
 {
     delete[] sthread;
-    Threads = num;
     sthread = new searchthread[num];
     for (int i = 0; i < Threads; i++)
     {
@@ -2035,6 +2034,7 @@ void engine::prepareThreads()
     {
         sthread[i].pos = sthread[0].pos;
         sthread[i].pos.pwnhsh = sthread[i].pwnhsh;
+        sthread[i].pos.threadindex = i;
     }
 }
 
@@ -2061,7 +2061,10 @@ void engine::setOption(string sName, string sValue)
     {
         newint = stoi(sValue);
         if (newint >= 1 && newint <= MAXTHREADS && newint != Threads)
-            allocThreads(newint);
+        {
+            Threads = newint;
+            resetTp = true;
+        }
     }
     if (sName == "hash")
     {
@@ -2078,7 +2081,7 @@ void engine::setOption(string sName, string sValue)
     if (resetTp)
     {
         sizeOfPh = max(16, tp.setSize(sizeOfTp) / Threads);
-        allocPawnhash();
+        allocThreads(newint);
     }
     if (sName == "move overhead")
     {

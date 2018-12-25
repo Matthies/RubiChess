@@ -760,6 +760,7 @@ public:
     int32_t history[2][64][64];
     Pawnhash *pwnhsh;
     repetition rp;
+    int threadindex;
 #ifdef SDEBUG
     unsigned long long debughash = 0;
     uint16_t pvdebug[MAXMOVESEQUENCELENGTH];
