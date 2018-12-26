@@ -1035,7 +1035,16 @@ static void search_gen1(searchthread *thr)
         // early exit in TB win/lose position
         bExitIteration = bExitIteration || (pos->tbPosition && abs(score) >= SCORETBWIN - 100);
 
-    } while (!bExitIteration && en.stopLevel == ENGINERUN && depth <= maxdepth);
+        // exit if STOPSOON is requested and we're in aspiration window
+        bExitIteration = bExitIteration || (en.stopLevel == ENGINESTOPSOON && inWindow == 1);
+
+        // exit if STOPIMMEDIATELY
+        bExitIteration = bExitIteration || (en.stopLevel == ENGINESTOPIMMEDIATELY);
+
+        // exit if max depth is reached
+        bExitIteration = bExitIteration || (depth > maxdepth);
+
+    } while (!bExitIteration);
     
     if (thr->index == 0)
     {
