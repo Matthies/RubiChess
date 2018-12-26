@@ -770,7 +770,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         else if (!isMultiPV)
         {
             // overwriting best move even at fail low seems good but don't throw away a win
-            if (alpha < 400 || !bestmove[0].code)
+            if (!bestmove[0].code)
                 bestmove[0] = *m;
         }
     }

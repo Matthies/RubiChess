@@ -783,7 +783,6 @@ public:
     string getGradientString();
     int getGradientValue(positiontuneset *p);
 #endif
-    void copy(chessposition *src);  // copy only the data coming from fen/move
     void init();
     bool w2m();
     void BitboardSet(int index, PieceCode p);

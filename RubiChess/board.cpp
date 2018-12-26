@@ -1838,9 +1838,9 @@ int chessposition::getBestPossibleCapture()
 }
 
 
+#if 0
 void chessposition::copy(chessposition *src)
 {
-#if 0
     memcpy(piece00, src->piece00, sizeof(piece00));
     memcpy(occupied00, src->occupied00, sizeof(occupied00));
     memcpy(mailbox, src->mailbox, sizeof(mailbox));
@@ -1864,8 +1864,8 @@ void chessposition::copy(chessposition *src)
     useTb = src->useTb;
     useRootmoveScore = src->useRootmoveScore;
     defaultmove = src->defaultmove;
-#endif
 }
+#endif
 
 
 MoveSelector::~MoveSelector()
