@@ -832,9 +832,6 @@ public:
     void mirror();
 };
 
-int getValueNoTrace(chessposition *p);
-int getValueTrace(chessposition *p);
-
 
 #define ENGINERUN 0
 #define ENGINEWANTSTOP 1

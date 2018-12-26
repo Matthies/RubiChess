@@ -838,6 +838,7 @@ static void search_gen1(searchthread *thr)
     
     uint32_t lastBestMove = 0;
     int constantRootMoves = 0;
+    bool bExitIteration;
     // iterative deepening
     do
     {
@@ -1028,13 +1029,13 @@ static void search_gen1(searchthread *thr)
             resetEndTime(constantRootMoves);
         }
 
-        if (pos->rootmovelist.length == 1 && depth > 4 && en.endtime1 && !en.isPondering())
-            // early exit in playing mode as there is exactly one possible move
-            en.stopLevel = ENGINEWANTSTOP;
-        if (pos->tbPosition && abs(score) >= SCORETBWIN - 100)
-            // early exit in TB win/lose position
-            en.stopLevel = ENGINEWANTSTOP;
-    } while (en.stopLevel == ENGINERUN && depth <= maxdepth);
+        // early exit in playing mode as there is exactly one possible move
+        bExitIteration = (pos->rootmovelist.length == 1 && depth > 4 && en.endtime1 && !en.isPondering());
+
+        // early exit in TB win/lose position
+        bExitIteration = bExitIteration || (pos->tbPosition && abs(score) >= SCORETBWIN - 100);
+
+    } while (!bExitIteration && en.stopLevel == ENGINERUN && depth <= maxdepth);
     
     if (thr->index == 0)
     {
@@ -1049,9 +1050,7 @@ static void search_gen1(searchthread *thr)
             Sleep(10);
 
         cout << s;
-
-        // Make the other threads stop now in case of a STOPSOON
-        en.stopLevel = ENGINESTOPIMMEDIATELY;
+        en.stopLevel = ENGINESTOPPED;
     }
 
     //en.stopLevel = ENGINESTOPPED;
@@ -1133,7 +1132,7 @@ void searchguide()
     }
 
     long long nowtime;
-    while (en.stopLevel < ENGINESTOPIMMEDIATELY)  // FIXME: Was != ENGINESTOPPED; ponder needs to be handled different?
+    while (en.stopLevel != ENGINESTOPPED)
     {
         nowtime = getTime();
 
@@ -1165,6 +1164,9 @@ void searchguide()
             }
         }
     }
+
+    // Make the other threads stop now
+    en.stopLevel = ENGINESTOPIMMEDIATELY;
     for (int tnum = 0; tnum < en.Threads; tnum++)
         en.sthread[tnum].thr.join();
     en.stopLevel = ENGINETERMINATEDSEARCH;
