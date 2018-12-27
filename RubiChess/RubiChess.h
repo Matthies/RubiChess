@@ -758,6 +758,7 @@ public:
     int bestmovescore[MAXMULTIPV];
     uint32_t killer[2][MAXDEPTH];
     int32_t history[2][64][64];
+    uint32_t bestFailingLow;
     Pawnhash *pwnhsh;
     repetition rp;
     int threadindex;

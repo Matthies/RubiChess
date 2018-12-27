@@ -600,6 +600,10 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
             {
                 m->value = PVVAL;
             }
+            else if (bestFailingLow == m->code)
+            {
+                m->value = KILLERVAL2 - 1;
+            }
             // killermoves gets score better than non-capture
             else if (killer[0][0] == m->code)
             {
@@ -703,6 +707,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
             continue;
 
         bestscore = score;
+        bestFailingLow = m->code;
 
         if (isMultiPV)
         {
@@ -732,7 +737,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         // The move becomes the new bestmove[0] (take for UCI output) if
         // - it is the first one
         // - it raises alpha
-        // - it fails low and alpha is not a safe win (< 400)
+        // If it fails low we don't change bestmove anymore but remember it in bestFailingLow for move ordering
         if (score > alpha)
         {
             if (!isMultiPV)
