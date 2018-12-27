@@ -627,7 +627,7 @@ uint32_t chessposition::shortMove2FullMove(uint16_t c)
             capture = pc ^ S2MMASK;
             ept = ISEPCAPTURE;
         }
-        else if ((from ^ to) == 16)
+        else if ((from ^ to) == 16 && (epthelper[to] & piece00[pc ^ 1]))
         {
             // double push enables epc
             ept = (from + to) / 2;
