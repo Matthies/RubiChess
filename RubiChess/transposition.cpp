@@ -217,12 +217,6 @@ void transposition::addHash(U64 hash, int val, int16_t staticeval, int bound, in
         used++;
     leastValuableEntry->hashupper = (uint32_t)(hash >> 32);
     leastValuableEntry->depth = (uint8_t)depth;
-#if 0
-    if (MATEFORME(val))
-        val += pos->ply;
-    else if (MATEFOROPPONENT(val))
-        val -= pos->ply;
-#endif
     leastValuableEntry->value = (short)val;
     leastValuableEntry->boundAndAge = (uint8_t)(bound | numOfSearchShiftTwo);
     leastValuableEntry->movecode = movecode;
@@ -306,7 +300,6 @@ uint16_t transposition::getMoveCode(U64 hash)
 }
 
 
-#if 1
 Pawnhash::Pawnhash(int sizeMb)
 {
     int msb = 0;
@@ -323,28 +316,9 @@ Pawnhash::Pawnhash(int sizeMb)
 
 Pawnhash::~Pawnhash()
 {
-    if (true)//size > 0)
-        delete table;
+    delete table;
 }
-#endif
 
-#if 0
-void Pawnhash::setSize(int sizeMb)
-{
-    int msb = 0;
-    size = ((U64)sizeMb << 20) / sizeof(S_PAWNHASHENTRY);
-    if (MSB(msb, size))
-        size = (1ULL << msb);
-
-    sizemask = size - 1;
-    table = (S_PAWNHASHENTRY*)malloc((size_t)(size * sizeof(S_PAWNHASHENTRY)));
-    clean();
-}
-#endif
-
-void Pawnhash::clean()
-{
-}
 
 bool Pawnhash::probeHash(U64 hash, pawnhashentry **entry)
 {

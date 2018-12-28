@@ -17,7 +17,6 @@
 
 
 #include "RubiChess.h"
-//#include "tbprobe.h"
 #include "tbcore.h"
 
 #define SYZYGY2RUBI_PT(x) ((((x) & 0x7) << 1) | (((x) & 0x8) >> 3))

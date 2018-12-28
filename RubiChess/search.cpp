@@ -9,7 +9,7 @@ int reductiontable[2][MAXDEPTH][64];
 #define MAXLMPDEPTH 9
 int lmptable[2][MAXLMPDEPTH];
 
-// Shameless copy of Ethereal/Laser for now
+// Shameless copy of Ethereal/Laser for now; may be improved/changed in the future
 static const int SkipSize[16] = { 1, 1, 1, 2, 2, 2, 1, 3, 2, 2, 1, 3, 3, 2, 2, 1 };
 static const int SkipDepths[16] = { 1, 2, 2, 4, 4, 3, 2, 5, 4, 3, 2, 6, 5, 4, 3, 2 };
 
@@ -40,7 +40,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     bool isLegal;
     bool LegalMovesPossible = false;
 #ifdef EVALTUNE
-    positiontuneset pts;
+    positiontuneset targetpts;
     bool foundpts = false;
 #endif
 
@@ -65,7 +65,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         if (patscore > alpha)
         {
 #ifdef EVALTUNE
-            pos.getPositionTuneSet(&pts);
+            getPositionTuneSet(&targetpts);
             foundpts = true;
 #endif
             alpha = patscore;
@@ -123,7 +123,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
                         alpha = score;
 #ifdef EVALTUNE
                         foundpts = true;
-                        pos.copyPositionTuneSet(&pos.pts, &pts);
+                        copyPositionTuneSet(&pts, &targetpts);
 #endif
                     }
                 }
@@ -132,7 +132,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     }
 #ifdef EVALTUNE
     if (foundpts)
-        pos.copyPositionTuneSet(&pts, &pos.pts);
+        copyPositionTuneSet(&targetpts, &pts);
 #endif
 
     if (LegalMovesPossible)
@@ -1018,8 +1018,7 @@ static void search_gen1(searchthread *thr)
         }
         if (inWindow == 1)
         {
-            // Occasionally skip depths using Laser's method
-            
+            // Skip some depths depending on current depth and thread number using Laser's method
             int cycle = thr->index % 16;
             if (thr->index && (depth + cycle) % SkipDepths[cycle] == 0)
                 depth += SkipSize[cycle];
@@ -1137,8 +1136,6 @@ void searchguide()
 
     for (int tnum = 0; tnum < en.Threads; tnum++)
     {
-
-        //en.sthread[tnum].pos = en.rootpos;
         if (en.MultiPV > 1)
             en.sthread[tnum].thr = thread(&search_gen1<MultiPVSearch>, &en.sthread[tnum]);
         else

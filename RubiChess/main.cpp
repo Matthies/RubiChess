@@ -791,8 +791,6 @@ int main(int argc, char* argv[])
     _CrtSetDbgFlag(tmpFlag);
 #endif
 
-    //pos.init();
-    // FIXME: registeralltuners needs to be called somewhere in tuning mode
     searchinit();
 
     cout.setf(ios_base::unitbuf);

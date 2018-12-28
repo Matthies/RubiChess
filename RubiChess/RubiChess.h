@@ -54,8 +54,6 @@ using namespace std;
 #include <math.h>
 #include <regex>
 
-//#include "tbprobe.h"
-
 #ifdef _WIN32
 
 #include <AclAPI.h>
@@ -286,7 +284,7 @@ struct tuneparamselection {
     int count;
 };
 
-//extern tuneparamselection tps;
+void registeralltuners(chessposition *pos);
 
 #endif
 
@@ -394,8 +392,6 @@ public:
     U64 sizemask;
     Pawnhash(int sizeMb);
     ~Pawnhash();
-    //void setSize(int sizeMb);
-    void clean();
     bool probeHash(U64 hash, pawnhashentry **entry);
 };
 
@@ -410,7 +406,6 @@ public:
 };
 
 extern zobrist zb;
-//extern repetition rp;
 extern transposition tp;
 
 
@@ -784,7 +779,6 @@ public:
     string getGradientString();
     int getGradientValue(positiontuneset *p);
 #endif
-    void init();
     bool w2m();
     void BitboardSet(int index, PieceCode p);
     void BitboardClear(int index, PieceCode p);
@@ -845,7 +839,6 @@ class engine
 public:
     engine();
     ~engine();
-    //chessposition rootpos;
     uci *myUci;
     const char* name = ENGINEVER;
     const char* author = "Andreas Matthies";
@@ -907,7 +900,6 @@ public:
     int comparescore;
 };
 
-//extern chessposition pos;
 extern engine en;
 
 #ifdef SDEBUG

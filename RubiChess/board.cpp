@@ -1838,35 +1838,6 @@ int chessposition::getBestPossibleCapture()
 }
 
 
-#if 0
-void chessposition::copy(chessposition *src)
-{
-    memcpy(piece00, src->piece00, sizeof(piece00));
-    memcpy(occupied00, src->occupied00, sizeof(occupied00));
-    memcpy(mailbox, src->mailbox, sizeof(mailbox));
-    memcpy(kingpos, src->kingpos, sizeof(kingpos));
-    state = src->state;
-    ept = src->ept;
-    halfmovescounter = src->halfmovescounter;
-    fullmovescounter = src->fullmovescounter;
-    isCheck = src->isCheck;
-    hash = src->hash;
-    pawnhash = src->pawnhash;
-    materialhash = src->materialhash;
-    memset(history, 0, sizeof(history));
-    memset(killer, 0, sizeof(killer));
-    memcpy(movestack, src->movestack, sizeof(movestack));
-    mstop = src->mstop;
-    rootheight = src->rootheight;
-    ply = src->ply;
-    rootmovelist = src->rootmovelist;
-    tbPosition = src->tbPosition;
-    useTb = src->useTb;
-    useRootmoveScore = src->useRootmoveScore;
-    defaultmove = src->defaultmove;
-}
-#endif
-
 
 MoveSelector::~MoveSelector()
 {
@@ -1980,8 +1951,6 @@ searchthread::~searchthread()
 
 engine::engine()
 {
-    //tp.pos = &pos;
-    //pwnhsh.pos = &pos;
     initBitmaphelper();
 
     setOption("Threads", "1");  // order is important as the pawnhash depends on Threads > 0
@@ -2175,7 +2144,9 @@ void engine::communicate(string inputstring)
             case UCIDEBUG:
                 if (ci < cs)
                 {
+#ifdef SDEBUG
                     chessposition *rootpos = &sthread[0].pos;
+#endif
                     if (commandargs[ci] == "on")
                         debug = true;
                     else if (commandargs[ci] == "off")
@@ -2400,5 +2371,4 @@ void engine::communicate(string inputstring)
 }
 
 zobrist zb;
-//chessposition pos;
 engine en;

@@ -52,82 +52,75 @@ int chessposition::getGradientValue(positiontuneset *p)
 }
 
 
-static void registertuner(eval *e, string name, int index1, int bound1, int index2, int bound2, bool tune)
+static void registertuner(chessposition *pos, eval *e, string name, int index1, int bound1, int index2, int bound2, bool tune)
 {
-    int i = pos.tps.count;
-    pos.tps.ev[i] = e;
-    pos.tps.name[i] = name;
-    pos.tps.index1[i] = index1;
-    pos.tps.bound1[i] = bound1;
-    pos.tps.index2[i] = index2;
-    pos.tps.bound2[i] = bound2;
-    pos.tps.tune[i] = tune;
-    pos.tps.count++;
+    int i = pos->tps.count;
+    pos->tps.ev[i] = e;
+    pos->tps.name[i] = name;
+    pos->tps.index1[i] = index1;
+    pos->tps.bound1[i] = bound1;
+    pos->tps.index2[i] = index2;
+    pos->tps.bound2[i] = bound2;
+    pos->tps.tune[i] = tune;
+    pos->tps.count++;
 }
 
-void registeralltuners()
+void registeralltuners(chessposition *pos)
 {
     int i, j;
     bool tuneIt = false;
 
-    for (i = 0; i < 4; i++)
-        for (j = 0; j < 5; j++)
-            registertuner(&eps.ePawnstormblocked[i][j], "ePawnstormblocked", j, 5, i, 4, tuneIt);
-    for (i = 0; i < 4; i++)
-        for (j = 0; j < 5; j++)
-            registertuner(&eps.ePawnstormfree[i][j], "ePawnstormfree", j, 5, i, 4, tuneIt);
+    pos->tps.count = 0;
 
-    registertuner(&eps.ePawnpushthreatbonus, "ePawnpushthreatbonus", 0, 0, 0, 0, tuneIt);
-    registertuner(&eps.eSafepawnattackbonus, "eSafepawnattackbonus", 0, 0, 0, 0, tuneIt);
+    for (i = 0; i < 4; i++)
+        for (j = 0; j < 5; j++)
+            registertuner(pos, &eps.ePawnstormblocked[i][j], "ePawnstormblocked", j, 5, i, 4, tuneIt);
+    for (i = 0; i < 4; i++)
+        for (j = 0; j < 5; j++)
+            registertuner(pos, &eps.ePawnstormfree[i][j], "ePawnstormfree", j, 5, i, 4, tuneIt);
+
+    registertuner(pos, &eps.ePawnpushthreatbonus, "ePawnpushthreatbonus", 0, 0, 0, 0, tuneIt);
+    registertuner(pos, &eps.eSafepawnattackbonus, "eSafepawnattackbonus", 0, 0, 0, 0, tuneIt);
     tuneIt = true;
-    registertuner(&eps.eHangingpiecepenalty, "eHangingpiecepenalty", 0, 0, 0, 0, tuneIt);
+    registertuner(pos, &eps.eHangingpiecepenalty, "eHangingpiecepenalty", 0, 0, 0, 0, tuneIt);
     tuneIt = false;
-    registertuner(&eps.eKingshieldbonus, "eKingshieldbonus", 0, 0, 0, 0, tuneIt);
-    registertuner(&eps.eTempo, "eTempo", 0, 0, 0, 0, tuneIt);
+    registertuner(pos, &eps.eKingshieldbonus, "eKingshieldbonus", 0, 0, 0, 0, tuneIt);
+    registertuner(pos, &eps.eTempo, "eTempo", 0, 0, 0, 0, tuneIt);
     tuneIt = false;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 8; j++)
-            registertuner(&eps.ePassedpawnbonus[i][j], "ePassedpawnbonus", j, 8, i, 4, tuneIt && (j > 0 && j < 7));
+            registertuner(pos, &eps.ePassedpawnbonus[i][j], "ePassedpawnbonus", j, 8, i, 4, tuneIt && (j > 0 && j < 7));
     tuneIt = false;
     for (i = 0; i < 8; i++)
-        registertuner(&eps.eAttackingpawnbonus[i], "eAttackingpawnbonus", i, 8, 0, 0, tuneIt && (i > 0 && i < 7));
-    registertuner(&eps.eIsolatedpawnpenalty, "eIsolatedpawnpenalty", 0, 0, 0, 0, tuneIt);
-    registertuner(&eps.eDoublepawnpenalty, "eDoublepawnpenalty", 0, 0, 0, 0, tuneIt);
-    registertuner(&eps.eConnectedbonus, "eConnectedbonus", 0, 0, 0, 0, tuneIt);
-    registertuner(&eps.eBackwardpawnpenalty, "eBackwardpawnpenalty", 0, 0, 0, 0, tuneIt);
-    registertuner(&eps.eDoublebishopbonus, "eDoublebishopbonus", 0, 0, 0, 0, tuneIt);
+        registertuner(pos, &eps.eAttackingpawnbonus[i], "eAttackingpawnbonus", i, 8, 0, 0, tuneIt && (i > 0 && i < 7));
+    registertuner(pos, &eps.eIsolatedpawnpenalty, "eIsolatedpawnpenalty", 0, 0, 0, 0, tuneIt);
+    registertuner(pos, &eps.eDoublepawnpenalty, "eDoublepawnpenalty", 0, 0, 0, 0, tuneIt);
+    registertuner(pos, &eps.eConnectedbonus, "eConnectedbonus", 0, 0, 0, 0, tuneIt);
+    registertuner(pos, &eps.eBackwardpawnpenalty, "eBackwardpawnpenalty", 0, 0, 0, 0, tuneIt);
+    registertuner(pos, &eps.eDoublebishopbonus, "eDoublebishopbonus", 0, 0, 0, 0, tuneIt);
 
     tuneIt = false;
 
     for (i = 0; i < 4; i++)
         for (j = 0; j < 28; j++)
-            registertuner(&eps.eMobilitybonus[i][j], "eMobilitybonus", j, 28, i, 4, tuneIt && (j < maxmobility[i]));
+            registertuner(pos, &eps.eMobilitybonus[i][j], "eMobilitybonus", j, 28, i, 4, tuneIt && (j < maxmobility[i]));
 
     tuneIt = false;
     for (i = 0; i < 2; i++)
-        registertuner(&eps.eSlideronfreefilebonus[i], "eSlideronfreefilebonus", i, 2, 0, 0, tuneIt);
+        registertuner(pos, &eps.eSlideronfreefilebonus[i], "eSlideronfreefilebonus", i, 2, 0, 0, tuneIt);
     for (i = 0; i < 7; i++)
-        registertuner(&eps.eMaterialvalue[i], "eMaterialvalue", i, 7, 0, 0, false);
-    registertuner(&eps.eWeakkingringpenalty, "eWeakkingringpenalty", 0, 0, 0, 0, tuneIt);
+        registertuner(pos, &eps.eMaterialvalue[i], "eMaterialvalue", i, 7, 0, 0, false);
+    registertuner(pos, &eps.eWeakkingringpenalty, "eWeakkingringpenalty", 0, 0, 0, 0, tuneIt);
     for (i = 0; i < 7; i++)
-        registertuner(&eps.eKingattackweight[i], "eKingattackweight", i, 7, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
+        registertuner(pos, &eps.eKingattackweight[i], "eKingattackweight", i, 7, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
 
     tuneIt = false;
 
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
-        registertuner(&eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
+        registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
 }
 #endif
-
-
-void chessposition::init()
-{
-    //pwnhsh.setSize(en.sizeOfPh);
-#ifdef EVALTUNE
-    registeralltuners();
-#endif
-}
 
 
 
