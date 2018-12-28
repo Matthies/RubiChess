@@ -875,24 +875,24 @@ void chessposition::debugeval(const char* format, ...)
 #ifdef SDEBUG
 void chessposition::updatePvTable(uint32_t movecode)
 {
-    pvtable[pos.ply][0] = movecode;
+    pvtable[ply][0] = movecode;
     int i = 0;
-    while (pos.pvtable[pos.ply + 1][i])
+    while (pvtable[ply + 1][i])
     {
-        pos.pvtable[pos.ply][i + 1] = pos.pvtable[pos.ply + 1][i];
+        pvtable[ply][i + 1] = pvtable[ply + 1][i];
         i++;
     }
-    pos.pvtable[pos.ply][i + 1] = 0;
+    pvtable[ply][i + 1] = 0;
 
 }
 
 string chessposition::getPv()
 {
     string s = "PV:";
-    for (int i = 0; pos.pvtable[0][i]; i++)
+    for (int i = 0; pvtable[0][i]; i++)
     {
         chessmove cm;
-        cm.code = pos.pvtable[0][i];
+        cm.code = pvtable[0][i];
         s += " " + cm.toString();
     }
     return s;
@@ -900,26 +900,26 @@ string chessposition::getPv()
 
 bool chessposition::triggerDebug(chessmove* nextmove)
 {
-    if (pos.pvdebug[0] == 0)
+    if (pvdebug[0] == 0)
         return false;
 
     int j = 0;
 
-    while (j + pos.rootheight < mstop && pos.pvdebug[j])
+    while (j + rootheight < mstop && pvdebug[j])
     {
-        if ((movestack[j + pos.rootheight].movecode & 0xefff) != pos.pvdebug[j])
+        if ((movestack[j + rootheight].movecode & 0xefff) != pvdebug[j])
             return false;
         j++;
     }
-    nextmove->code = pos.pvdebug[j];
+    nextmove->code = pvdebug[j];
  
-    if (pos.debugOnlySubtree)
-        return (pos.pvdebug[j] == 0);
+    if (debugOnlySubtree)
+        return (pvdebug[j] == 0);
 
-    if (pos.debugRecursive)
+    if (debugRecursive)
         return true;
 
-    return (j + pos.rootheight == mstop);
+    return (j + rootheight == mstop);
 }
 
 void chessposition::sdebug(int indent, const char* format, ...)
@@ -2175,29 +2175,30 @@ void engine::communicate(string inputstring)
             case UCIDEBUG:
                 if (ci < cs)
                 {
+                    chessposition *rootpos = &sthread[0].pos;
                     if (commandargs[ci] == "on")
                         debug = true;
                     else if (commandargs[ci] == "off")
                         debug = false;
 #ifdef SDEBUG
                     else if (commandargs[ci] == "this")
-                        pos.debughash = pos.hash;
+                        rootpos->debughash = rootpos->hash;
                     else if (commandargs[ci] == "pv")
                     {
-                        pos.debugOnlySubtree = false;
-                        pos.debugRecursive = false;
+                        rootpos->debugOnlySubtree = false;
+                        rootpos->debugRecursive = false;
                         int i = 0;
                         while (++ci < cs)
                         {
                             string s = commandargs[ci];
                             if (s == "recursive")
                             {
-                                pos.debugRecursive = true;
+                                rootpos->debugRecursive = true;
                                 continue;
                             }
                             if (s == "sub")
                             {
-                                pos.debugOnlySubtree = true;
+                                rootpos->debugOnlySubtree = true;
                                 continue;
                             }
                             if (s.size() < 4)
@@ -2205,9 +2206,9 @@ void engine::communicate(string inputstring)
                             int from = AlgebraicToIndex(s, BOARDSIZE);
                             int to = AlgebraicToIndex(&s[2], BOARDSIZE);
                             int promotion = (s.size() <= 4) ? BLANK : (GetPieceType(s[4]) << 1); // Remember: S2m is missing here
-                            pos.pvdebug[i++] = to | (from << 6) | (promotion << 12);
+                            rootpos->pvdebug[i++] = to | (from << 6) | (promotion << 12);
                         }
-                        pos.pvdebug[i] = 0;
+                        rootpos->pvdebug[i] = 0;
                     }
 #endif
                 }

@@ -49,9 +49,9 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 
 #ifdef SDEBUG
     chessmove debugMove;
-    int debugInsert = pos.ply - pos.rootheight;
-    bool isDebugPv = pos.triggerDebug(&debugMove);
-    pos.pvtable[pos.ply][0] = 0;
+    int debugInsert = ply - rootheight;
+    bool isDebugPv = triggerDebug(&debugMove);
+    pvtable[ply][0] = 0;
 #endif
 
     if (!isCheck)
@@ -160,7 +160,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     else {
         // It's a mate
         delete movelist;
-        SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (mate).", SCOREBLACKWINS + pos.ply);
+        SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (mate).", SCOREBLACKWINS + ply);
         return SCOREBLACKWINS + ply;
     }
 }
@@ -188,9 +188,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
 #ifdef SDEBUG
     chessmove debugMove;
     string excludestr = "";
-    int debugInsert = pos.ply - pos.rootheight;
-    bool isDebugPv = pos.triggerDebug(&debugMove);
-    pos.pvtable[pos.ply][0] = 0;
+    int debugInsert = ply - rootheight;
+    bool isDebugPv = triggerDebug(&debugMove);
+    pvtable[ply][0] = 0;
 #endif
 
     // test for remis via repetition
@@ -216,7 +216,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
     {
         chessmove cm, em;
         string s;
-        for (int i = pos.rootheight; i < mstop; i++)
+        for (int i = rootheight; i < mstop; i++)
         {
             cm.code = movestack[i].movecode;
             s = s + cm.toString() + " ";
@@ -496,7 +496,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
                     alpha = score;
                     eval_type = HASHEXACT;
 #ifdef SDEBUG
-                    pos.updatePvTable(bestcode);
+                    updatePvTable(bestcode);
 #endif
                 }
             }
@@ -513,7 +513,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
 
         if (isCheck) {
             // It's a mate
-            SDEBUGPRINT(isDebugPv, debugInsert, " Return score: %d  (mate)", SCOREBLACKWINS + pos.ply);
+            SDEBUGPRINT(isDebugPv, debugInsert, " Return score: %d  (mate)", SCOREBLACKWINS + ply);
             return SCOREBLACKWINS + ply;
         }
         else {
@@ -563,9 +563,9 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
 
 #ifdef SDEBUG
     chessmove debugMove;
-    int debugInsert = pos.ply - pos.rootheight;
-    bool isDebugPv = pos.triggerDebug(&debugMove);
-    pos.pvtable[0][0] = 0;
+    int debugInsert = ply - rootheight;
+    bool isDebugPv = triggerDebug(&debugMove);
+    pvtable[0][0] = 0;
     SDEBUGPRINT(true, debugInsert, "(depth=%2d) Rootsearch Next pv debug move: %s  [%3d,%3d]", depth, debugMove.code ? debugMove.toString().c_str() : "", alpha, beta);
 #endif
 
@@ -746,7 +746,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                 bestmove[0] = *m;
                 eval_type = HASHEXACT;
 #ifdef SDEBUG
-                pos.updatePvTable(m->code);
+                updatePvTable(m->code);
 #endif
             }
             if (score >= beta)

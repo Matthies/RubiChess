@@ -911,7 +911,7 @@ public:
 extern engine en;
 
 #ifdef SDEBUG
-#define SDEBUGPRINT(b, d, f, ...) if (b) pos.sdebug(d, f, ##__VA_ARGS__)
+#define SDEBUGPRINT(b, d, f, ...) if (b) sdebug(d, f, ##__VA_ARGS__)
 #else
 #define SDEBUGPRINT(b, d, f, ...)
 #endif
