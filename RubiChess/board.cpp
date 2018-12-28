@@ -19,9 +19,6 @@ U64 betweenMask[64][64];
 int castleindex[64][64] = { 0 };
 int castlerights[64];
 
-chessmovestack movestack[MAXMOVESEQUENCELENGTH];
-int mstop;
-
 
 PieceType GetPieceType(char c)
 {
@@ -350,9 +347,9 @@ int chessposition::getFromFen(const char* sFen)
 
     isCheck = isAttacked(kingpos[state & S2MMASK]);
 
-    hash = zb.getHash();
-    pawnhash = zb.getPawnHash();
-    materialhash = zb.getMaterialHash();
+    hash = zb.getHash(this);
+    pawnhash = zb.getPawnHash(this);
+    materialhash = zb.getMaterialHash(this);
     rp.clean();
     rp.addPosition(hash);
     memset(history, 0, sizeof(history));
@@ -430,9 +427,9 @@ void chessposition::tbFilterRootMoves()
     useTb = TBlargest;
     tbPosition = 0;
     useRootmoveScore = 0;
-    if (POPCOUNT(pos.occupied00[0] | pos.occupied00[1]) <= TBlargest)
+    if (POPCOUNT(occupied00[0] | occupied00[1]) <= TBlargest)
     {
-        if ((tbPosition = root_probe())) {
+        if ((tbPosition = root_probe(this))) {
             en.tbhits++;
             // The current root position is in the tablebases.
             // RootMoves now contains only moves that preserve the draw or win.
@@ -443,20 +440,20 @@ void chessposition::tbFilterRootMoves()
         else // If DTZ tables are missing, use WDL tables as a fallback
         {
             // Filter out moves that do not preserve a draw or win
-            tbPosition = root_probe_wdl();
+            tbPosition = root_probe_wdl(this);
             // useRootmoveScore is set within root_probe_wdl
         }
 
         if (tbPosition)
         {
             // Sort the moves
-            for (int i = 0; i < pos.rootmovelist.length; i++)
+            for (int i = 0; i < rootmovelist.length; i++)
             {
-                for (int j = i + 1; j < pos.rootmovelist.length; j++)
+                for (int j = i + 1; j < rootmovelist.length; j++)
                 {
-                    if (pos.rootmovelist.move[i] < pos.rootmovelist.move[j])
+                    if (rootmovelist.move[i] < rootmovelist.move[j])
                     {
-                        swap(pos.rootmovelist.move[i], pos.rootmovelist.move[j]);
+                        swap(rootmovelist.move[i], rootmovelist.move[j]);
                     }
                 }
             }
@@ -599,7 +596,7 @@ void chessposition::getpvline(int depth, int pvnum)
         {
             printf("info string Alarm - Illegaler Zug %s in pvline\n", cm.toString().c_str());
             print();
-            tp.printHashentry();
+            tp.printHashentry(hash);
         }
         pvline.move[pvline.length++] = cm;
         depth--;
@@ -630,7 +627,7 @@ uint32_t chessposition::shortMove2FullMove(uint16_t c)
             capture = pc ^ S2MMASK;
             ept = ISEPCAPTURE;
         }
-        else if ((from ^ to) == 16)
+        else if ((from ^ to) == 16 && (epthelper[to] & piece00[pc ^ 1]))
         {
             // double push enables epc
             ept = (from + to) / 2;
@@ -653,8 +650,6 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
     PieceCode capture = GETCAPTURE(c);
     PieceType p = pc >> 1;
 
-    // correct s2m? ->test removed as it seems not necessary
-
     // correct piece?
     if (mailbox[from] != pc)
         return false;
@@ -665,6 +660,10 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
 
     // slider? test for free line
     if (shifting[p] && (betweenMask[from][to] & (occupied00[0] | occupied00[1])))
+        return false;
+
+    // correct s2m?
+    if ((pc & S2MMASK) != (state & S2MMASK))
         return false;
 
     if (p == PAWN)
@@ -750,9 +749,9 @@ void chessposition::print()
     printf("info string EPT: %0x\n", ept);
     printf("info string Halfmoves: %d\n", halfmovescounter);
     printf("info string Fullmoves: %d\n", fullmovescounter);
-    printf("info string Hash: %llu (%llx)  (getHash(): %llu)\n", hash, hash, zb.getHash());
-    printf("info string Pawn Hash: %llu (%llx)  (getPawnHash(): %llu)\n", pawnhash, pawnhash, zb.getPawnHash());
-    printf("info string Value: %d\n", getValueNoTrace(this));
+    printf("info string Hash: %llu (%llx)  (getHash(): %llu)\n", hash, hash, zb.getHash(this));
+    printf("info string Pawn Hash: %llu (%llx)  (getPawnHash(): %llu)\n", pawnhash, pawnhash, zb.getPawnHash(this));
+    printf("info string Value: %d\n", getValue());
 #ifdef EVALTUNE
     getPositionTuneSet(&pts);
     printf("info string Value from gradients: %s %d\n", getGradientString().c_str(), NEWTAPEREDEVAL(getGradientValue(&this->pts), ph));
@@ -876,24 +875,24 @@ void chessposition::debugeval(const char* format, ...)
 #ifdef SDEBUG
 void chessposition::updatePvTable(uint32_t movecode)
 {
-    pvtable[pos.ply][0] = movecode;
+    pvtable[ply][0] = movecode;
     int i = 0;
-    while (pos.pvtable[pos.ply + 1][i])
+    while (pvtable[ply + 1][i])
     {
-        pos.pvtable[pos.ply][i + 1] = pos.pvtable[pos.ply + 1][i];
+        pvtable[ply][i + 1] = pvtable[ply + 1][i];
         i++;
     }
-    pos.pvtable[pos.ply][i + 1] = 0;
+    pvtable[ply][i + 1] = 0;
 
 }
 
 string chessposition::getPv()
 {
     string s = "PV:";
-    for (int i = 0; pos.pvtable[0][i]; i++)
+    for (int i = 0; pvtable[0][i]; i++)
     {
         chessmove cm;
-        cm.code = pos.pvtable[0][i];
+        cm.code = pvtable[0][i];
         s += " " + cm.toString();
     }
     return s;
@@ -901,26 +900,26 @@ string chessposition::getPv()
 
 bool chessposition::triggerDebug(chessmove* nextmove)
 {
-    if (pos.pvdebug[0] == 0)
+    if (pvdebug[0] == 0)
         return false;
 
     int j = 0;
 
-    while (j + pos.rootheight < mstop && pos.pvdebug[j])
+    while (j + rootheight < mstop && pvdebug[j])
     {
-        if ((movestack[j + pos.rootheight].movecode & 0xefff) != pos.pvdebug[j])
+        if ((movestack[j + rootheight].movecode & 0xefff) != pvdebug[j])
             return false;
         j++;
     }
-    nextmove->code = pos.pvdebug[j];
+    nextmove->code = pvdebug[j];
  
-    if (pos.debugOnlySubtree)
-        return (pos.pvdebug[j] == 0);
+    if (debugOnlySubtree)
+        return (pvdebug[j] == 0);
 
-    if (pos.debugRecursive)
+    if (debugRecursive)
         return true;
 
-    return (j + pos.rootheight == mstop);
+    return (j + rootheight == mstop);
 }
 
 void chessposition::sdebug(int indent, const char* format, ...)
@@ -1387,6 +1386,8 @@ bool chessposition::playMove(chessmove *cm)
         }
     }
 
+    PREFETCH(&pwnhsh->table[pawnhash & pwnhsh->sizemask]);
+
     state ^= S2MMASK;
     isCheck = isAttacked(kingpos[state & S2MMASK]);
 
@@ -1403,6 +1404,8 @@ bool chessposition::playMove(chessmove *cm)
     // Fix hash regarding castle rights
     oldcastle ^= (state & CASTLEMASK);
     hash ^= zb.cstl[oldcastle];
+
+    PREFETCH(&tp.table[hash & tp.sizemask]);
 
     ply++;
     rp.addPosition(hash);
@@ -1818,17 +1821,17 @@ int chessposition::getBestPossibleCapture()
     int you = me ^ S2MMASK;
     int captureval = 0;
 
-    if (pos.piece00[WQUEEN | you])
+    if (piece00[WQUEEN | you])
         captureval += prunematerialvalue[QUEEN];
-    else if (pos.piece00[WROOK | you])
+    else if (piece00[WROOK | you])
         captureval += prunematerialvalue[ROOK];
-    else if (pos.piece00[WKNIGHT | you] || pos.piece00[WBISHOP | you])
+    else if (piece00[WKNIGHT | you] || piece00[WBISHOP | you])
         captureval += prunematerialvalue[KNIGHT];
-    else if (pos.piece00[WPAWN | you])
+    else if (piece00[WPAWN | you])
         captureval += prunematerialvalue[PAWN];
 
     // promotion
-    if (pos.piece00[WPAWN | me] & RANK7(me))
+    if (piece00[WPAWN | me] & RANK7(me))
         captureval += prunematerialvalue[QUEEN] - prunematerialvalue[PAWN];
 
     return captureval;
@@ -1935,20 +1938,28 @@ chessmove* MoveSelector::next()
 }
 
 
+searchthread::searchthread()
+{
+    pwnhsh = NULL;
+}
+
+searchthread::~searchthread()
+{
+    delete pwnhsh;
+}
+
 
 engine::engine()
 {
-    tp.pos = &pos;
-    pwnhsh.pos = &pos;
     initBitmaphelper();
 
+    setOption("Threads", "1");  // order is important as the pawnhash depends on Threads > 0
     setOption("hash", "256");
     setOption("Move Overhead", "50");
     setOption("MultiPV", "1");
     setOption("Ponder", "false");
     setOption("SyzygyPath", "<empty>");
     setOption("Syzygy50MoveRule", "true");
-
 
 #ifdef _WIN32
     LARGE_INTEGER f;
@@ -1959,6 +1970,42 @@ engine::engine()
 #endif
 }
 
+engine::~engine()
+{
+    delete[] sthread;
+}
+
+void engine::allocPawnhash()
+{
+    for (int i = 0; i < Threads; i++)
+    {
+        delete sthread[i].pwnhsh;
+        sthread[i].pos.pwnhsh = sthread[i].pwnhsh = new Pawnhash(sizeOfPh);
+    }
+}
+
+
+void engine::allocThreads(int num)
+{
+    delete[] sthread;
+    sthread = new searchthread[num];
+    for (int i = 0; i < Threads; i++)
+    {
+        sthread[i].index = i;
+    }
+    allocPawnhash();
+}
+
+
+void engine::prepareThreads()
+{
+    for (int i = 1; i < Threads; i++)
+    {
+        sthread[i].pos = sthread[0].pos;
+        sthread[i].pos.pwnhsh = sthread[i].pwnhsh;
+        sthread[i].pos.threadindex = i;
+    }
+}
 
 void engine::setOption(string sName, string sValue)
 {
@@ -1973,12 +2020,20 @@ void engine::setOption(string sName, string sValue)
     {
         ponder = (lValue == "true");
     }
-
     if (sName == "multipv")
     {
         newint = stoi(sValue);
         if (newint >= 1 && newint <= MAXMULTIPV)
             MultiPV = newint;
+    }
+    if (sName == "threads")
+    {
+        newint = stoi(sValue);
+        if (newint >= 1 && newint <= MAXTHREADS && newint != Threads)
+        {
+            Threads = newint;
+            resetTp = true;
+        }
     }
     if (sName == "hash")
     {
@@ -1994,8 +2049,8 @@ void engine::setOption(string sName, string sValue)
     }
     if (resetTp)
     {
-        int restMb = max (16, tp.setSize(sizeOfTp));
-        pwnhsh.setSize(restMb);
+        sizeOfPh = max(16, tp.setSize(sizeOfTp) / Threads);
+        allocThreads(newint);
     }
     if (sName == "move overhead")
     {
@@ -2015,6 +2070,16 @@ void engine::setOption(string sName, string sValue)
     }
 }
 
+static void waitForSearchGuide(thread **th)
+{
+    if (*th)
+    {
+        if ((*th)->joinable())
+            (*th)->join();
+        delete *th;
+    }
+    *th = nullptr;
+}
 
 void engine::communicate(string inputstring)
 {
@@ -2027,38 +2092,39 @@ void engine::communicate(string inputstring)
     bool bGetName, bGetValue;
     string sName, sValue;
     bool bMoves;
-    thread *searchthread = nullptr;
+    thread *searchguidethread = nullptr;
     bool pendingisready = false;
     bool pendingposition = false;
     do
     {
+        if (stopLevel >= ENGINESTOPIMMEDIATELY)
+        {
+            waitForSearchGuide(&searchguidethread);
+        }
         if (pendingisready || pendingposition)
         {
             if (pendingposition)
             {
                 // new position first stops current search
-                if (stopLevel == ENGINERUN)
-                    stopLevel = ENGINESTOPIMMEDIATELY;
-                if (searchthread)
+                if (stopLevel < ENGINESTOPIMMEDIATELY)
                 {
-                    if (searchthread->joinable())
-                        searchthread->join();
-                    delete searchthread;
-                    searchthread = nullptr;
+                    stopLevel = ENGINESTOPIMMEDIATELY;
+                    waitForSearchGuide(&searchguidethread);
                 }
-
-                pos.getFromFen(fen.c_str());
+                chessposition *rootpos = &sthread[0].pos;
+                rootpos->getFromFen(fen.c_str());
                 for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
                 {
-                    if (!pos.applyMove(*it))
+                    if (!rootpos->applyMove(*it))
                         printf("info string Alarm! Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
                 }
-                pos.ply = 0;
-                pos.getRootMoves();
-                pos.tbFilterRootMoves();
+                rootpos->ply = 0;
+                rootpos->getRootMoves();
+                rootpos->tbFilterRootMoves();
+                prepareThreads();
                 if (debug)
                 {
-                    pos.print();
+                    rootpos->print();
                 }
                 pendingposition = false;
             }
@@ -2070,7 +2136,7 @@ void engine::communicate(string inputstring)
         }
         else {
             commandargs.clear();
-            command = myUci->parse(&commandargs, inputstring);
+            command = myUci->parse(&commandargs, inputstring);  // blocking!!
             ci = 0;
             cs = commandargs.size();
             switch (command)
@@ -2078,29 +2144,32 @@ void engine::communicate(string inputstring)
             case UCIDEBUG:
                 if (ci < cs)
                 {
+#ifdef SDEBUG
+                    chessposition *rootpos = &sthread[0].pos;
+#endif
                     if (commandargs[ci] == "on")
                         debug = true;
                     else if (commandargs[ci] == "off")
                         debug = false;
 #ifdef SDEBUG
                     else if (commandargs[ci] == "this")
-                        pos.debughash = pos.hash;
+                        rootpos->debughash = rootpos->hash;
                     else if (commandargs[ci] == "pv")
                     {
-                        pos.debugOnlySubtree = false;
-                        pos.debugRecursive = false;
+                        rootpos->debugOnlySubtree = false;
+                        rootpos->debugRecursive = false;
                         int i = 0;
                         while (++ci < cs)
                         {
                             string s = commandargs[ci];
                             if (s == "recursive")
                             {
-                                pos.debugRecursive = true;
+                                rootpos->debugRecursive = true;
                                 continue;
                             }
                             if (s == "sub")
                             {
-                                pos.debugOnlySubtree = true;
+                                rootpos->debugOnlySubtree = true;
                                 continue;
                             }
                             if (s.size() < 4)
@@ -2108,9 +2177,9 @@ void engine::communicate(string inputstring)
                             int from = AlgebraicToIndex(s, BOARDSIZE);
                             int to = AlgebraicToIndex(&s[2], BOARDSIZE);
                             int promotion = (s.size() <= 4) ? BLANK : (GetPieceType(s[4]) << 1); // Remember: S2m is missing here
-                            pos.pvdebug[i++] = to | (from << 6) | (promotion << 12);
+                            rootpos->pvdebug[i++] = to | (from << 6) | (promotion << 12);
                         }
-                        pos.pvdebug[i] = 0;
+                        rootpos->pvdebug[i] = 0;
                     }
 #endif
                 }
@@ -2125,6 +2194,7 @@ void engine::communicate(string inputstring)
                 myUci->send("option name Ponder type check default false\n");
                 myUci->send("option name SyzygyPath type string default <empty>\n");
                 myUci->send("option name Syzygy50MoveRule type check default true\n");
+                myUci->send("option name Threads type spin default 1 min 1 max 64\n");
                 myUci->send("uciok\n", author);
                 break;
             case UCINEWGAME:
@@ -2273,14 +2343,13 @@ void engine::communicate(string inputstring)
                     else
                         ci++;
                 }
-                isWhite = (pos.w2m());
-                searchthread = new thread(&searchguide);
+                isWhite = (sthread[0].pos.w2m());
+                stopLevel = ENGINERUN;
+                searchguidethread = new thread(&searchguide);
                 if (inputstring != "")
                 {
                     // bench mode; wait for end of search
-                    searchthread->join();
-                    delete searchthread;
-                    searchthread = nullptr;
+                    waitForSearchGuide(&searchguidethread);
                 }
                 break;
             case PONDERHIT:
@@ -2289,23 +2358,17 @@ void engine::communicate(string inputstring)
             case STOP:
             case QUIT:
                 stopLevel = ENGINESTOPIMMEDIATELY;
-                if (searchthread && searchthread->joinable())
-                {
-                    searchthread->join();
-                    delete searchthread;
-                    searchthread = nullptr;
-                }
                 break;
             case EVAL:
-                getValueTrace(&pos);
+                // removed for now getValueTrace(&sthread[0].pos);
                 break;
             default:
                 break;
             }
         }
     } while (command != QUIT && (inputstring == "" || pendingposition));
+    waitForSearchGuide(&searchguidethread);
 }
 
 zobrist zb;
-chessposition pos;
 engine en;

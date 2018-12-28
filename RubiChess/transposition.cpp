@@ -72,14 +72,14 @@ u8 zobrist::modHash(int i)
 }
 
 
-u8 zobrist::getHash()
+u8 zobrist::getHash(chessposition *pos)
 {
     u8 hash = 0;
     int i;
-    int state = pos.state;
+    int state = pos->state;
     for (i = WPAWN; i <= BKING; i++)
     {
-        U64 pmask = pos.piece00[i];
+        U64 pmask = pos->piece00[i];
         unsigned int index;
         while (LSB(index, pmask))
         {
@@ -92,17 +92,17 @@ u8 zobrist::getHash()
         hash ^= s2m;
 
     hash ^= cstl[state & CASTLEMASK];
-    hash ^= ept[pos.ept];
+    hash ^= ept[pos->ept];
 
     return hash;
 }
 
-u8 zobrist::getPawnHash()
+u8 zobrist::getPawnHash(chessposition *pos)
 {
     u8 hash = 0;
     for (int i = WPAWN; i <= BPAWN; i++)
     {
-        U64 pmask = pos.piece00[i];
+        U64 pmask = pos->piece00[i];
         unsigned int index;
         while (LSB(index, pmask))
         {
@@ -111,12 +111,12 @@ u8 zobrist::getPawnHash()
         }
     }
     // Store also kings position in pawn hash
-    hash ^= boardtable[(pos.kingpos[0] << 4) | WKING] ^ boardtable[(pos.kingpos[1] << 4) | BKING];
+    hash ^= boardtable[(pos->kingpos[0] << 4) | WKING] ^ boardtable[(pos->kingpos[1] << 4) | BKING];
     return hash;
 }
 
 
-u8 zobrist::getMaterialHash()
+u8 zobrist::getMaterialHash(chessposition *pos)
 {
     u8 hash = 0;
     for (PieceCode pc = WPAWN; pc <= BKING; pc++)
@@ -124,7 +124,7 @@ u8 zobrist::getMaterialHash()
         int count = 0;
         for (int j = 0; j < BOARDSIZE; j++)
         {
-                if (pos.mailbox[j] == pc)
+                if (pos->mailbox[j] == pc)
                     hash ^= zb.boardtable[(count++ << 4) | pc];
         }
     }
@@ -217,10 +217,6 @@ void transposition::addHash(U64 hash, int val, int16_t staticeval, int bound, in
         used++;
     leastValuableEntry->hashupper = (uint32_t)(hash >> 32);
     leastValuableEntry->depth = (uint8_t)depth;
-    if (MATEFORME(val))
-        val += pos->ply;
-    else if (MATEFOROPPONENT(val))
-        val -= pos->ply;
     leastValuableEntry->value = (short)val;
     leastValuableEntry->boundAndAge = (uint8_t)(bound | numOfSearchShiftTwo);
     leastValuableEntry->movecode = movecode;
@@ -228,9 +224,8 @@ void transposition::addHash(U64 hash, int val, int16_t staticeval, int bound, in
 }
 
 
-void transposition::printHashentry()
+void transposition::printHashentry(U64 hash)
 {
-    unsigned long long hash = pos->hash;
     unsigned long long index = hash & sizemask;
     transpositioncluster *data = &table[index];
     printf("Hashentry for %llx\n", hash);
@@ -250,9 +245,8 @@ void transposition::printHashentry()
     printf("No match found\n");
 }
 
-#define FIXMATESCORE(v,p) (MATEFORME(v) ? (v) - p : (MATEFOROPPONENT(v) ? (v) + p : v))
 
-bool transposition::probeHash(U64 hash, int *val, int *staticeval, uint16_t *movecode, int depth, int alpha, int beta)
+bool transposition::probeHash(U64 hash, int *val, int *staticeval, uint16_t *movecode, int depth, int alpha, int beta, int ply)
 {
 #ifdef EVALTUNE
     // don't use transposition table when tuning evaluation
@@ -268,7 +262,7 @@ bool transposition::probeHash(U64 hash, int *val, int *staticeval, uint16_t *mov
             *movecode = e->movecode;
             *staticeval = e->staticeval;
             int bound = (e->boundAndAge & BOUNDMASK);
-            int v = FIXMATESCORE(e->value, pos->ply);
+            int v = FIXMATESCOREPROBE(e->value, ply);
             if (bound == HASHEXACT)
             {
                 *val = v;
@@ -306,34 +300,28 @@ uint16_t transposition::getMoveCode(U64 hash)
 }
 
 
-pawnhash::~pawnhash()
-{
-    if (size > 0)
-        delete table;
-}
-
-void pawnhash::setSize(int sizeMb)
+Pawnhash::Pawnhash(int sizeMb)
 {
     int msb = 0;
-    if (size > 0)
-        delete table;
+    sizeMb = max(sizeMb, 16);
     size = ((U64)sizeMb << 20) / sizeof(S_PAWNHASHENTRY);
     if (MSB(msb, size))
         size = (1ULL << msb);
 
     sizemask = size - 1;
-    table = (S_PAWNHASHENTRY*)malloc((size_t)(size * sizeof(S_PAWNHASHENTRY)));
-    clean();
+    //table = (S_PAWNHASHENTRY*)malloc((size_t)(size * sizeof(S_PAWNHASHENTRY)));
+    table = new S_PAWNHASHENTRY[size];
+    memset(table, 0, (size_t)(sizeof(table)));
 }
 
-void pawnhash::clean()
+Pawnhash::~Pawnhash()
 {
-    memset(table, 0, (size_t)(size * sizeof(S_PAWNHASHENTRY)));
+    delete table;
 }
 
-bool pawnhash::probeHash(pawnhashentry **entry)
+
+bool Pawnhash::probeHash(U64 hash, pawnhashentry **entry)
 {
-    unsigned long long hash = pos->pawnhash;
     unsigned long long index = hash & sizemask;
     *entry = &table[index];
     if (((*entry)->hashupper) == (hash >> 32))
@@ -372,6 +360,5 @@ int repetition::getPositionCount(unsigned long long hash)
     return table[hash & 0xffff];
 }
 
-repetition rp;
+//repetition rp;
 transposition tp;
-pawnhash pwnhsh;

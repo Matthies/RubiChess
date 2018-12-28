@@ -54,8 +54,6 @@ using namespace std;
 #include <math.h>
 #include <regex>
 
-#include "tbprobe.h"
-
 #ifdef _WIN32
 
 #include <AclAPI.h>
@@ -73,6 +71,13 @@ using namespace std;
 void Sleep(long x);
 
 #endif
+
+#ifdef _MSC_VER
+#define PREFETCH(a) _mm_prefetch((char*)(a), _MM_HINT_T0)
+#else
+#define PREFETCH(a) __builtin_prefetch(a)
+#endif
+
 
 #define ENGINEVER "RubiChess " VERNUM
 #define BUILD __DATE__ " " __TIME__
@@ -112,6 +117,7 @@ class transposition;
 class repetition;
 class uci;
 class chessposition;
+class searchthread;
 struct pawnhashentry;
 
 
@@ -278,7 +284,7 @@ struct tuneparamselection {
     int count;
 };
 
-//extern tuneparamselection tps;
+void registeralltuners(chessposition *pos);
 
 #endif
 
@@ -288,7 +294,7 @@ struct tuneparamselection {
 vector<string> SplitString(const char* s);
 unsigned char AlgebraicToIndex(string s, int base);
 string IndexToAlgebraic(int i);
-string AlgebraicFromShort(string s);
+string AlgebraicFromShort(string s, chessposition *pos);
 void BitboardDraw(U64 b);
 U64 getTime();
 #ifdef EVALTUNE
@@ -299,6 +305,109 @@ void TexelTune(string fenfilename);
 extern int tuningratio;
 
 #endif
+
+
+//
+// transposition stuff
+//
+typedef unsigned long long u8;
+typedef struct ranctx { u8 a; u8 b; u8 c; u8 d; } ranctx;
+
+#define rot(x,k) (((x)<<(k))|((x)>>(64-(k))))
+
+class zobrist
+{
+public:
+    ranctx rnd;
+    unsigned long long boardtable[64 * 16];
+    unsigned long long cstl[32];
+    unsigned long long ept[64];
+    unsigned long long s2m;
+    zobrist();
+    unsigned long long getRnd();
+    u8 getHash(chessposition *pos);
+    u8 getPawnHash(chessposition *pos);
+    u8 getMaterialHash(chessposition *pos);
+    u8 modHash(int i);
+};
+
+#define TTBUCKETNUM 3
+
+
+struct transpositionentry {
+    uint32_t hashupper;
+    uint16_t movecode;
+    int16_t value;
+    int16_t staticeval;
+    uint8_t depth;
+    uint8_t boundAndAge;
+};
+
+struct transpositioncluster {
+    transpositionentry entry[TTBUCKETNUM];
+    //char padding[2];
+};
+
+
+#define FIXMATESCOREPROBE(v,p) (MATEFORME(v) ? (v) - p : (MATEFOROPPONENT(v) ? (v) + p : v))
+#define FIXMATESCOREADD(v,p) (MATEFORME(v) ? (v) + p : (MATEFOROPPONENT(v) ? (v) - p : v))
+
+class transposition
+{
+public:
+    transpositioncluster *table;
+    U64 used;
+    U64 size;
+    U64 sizemask;
+    //chessposition *pos;
+    int numOfSearchShiftTwo;
+    ~transposition();
+    int setSize(int sizeMb);    // returns the number of Mb not used by allignment
+    void clean();
+    void addHash(U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode);
+    void printHashentry(U64 hash);
+    bool probeHash(U64 hash, int *val, int *staticeval, uint16_t *movecode, int depth, int alpha, int beta, int ply);
+    uint16_t getMoveCode(U64 hash);
+    unsigned int getUsedinPermill();
+    void nextSearch() { numOfSearchShiftTwo = (numOfSearchShiftTwo + 4) & 0xfc; }
+};
+
+typedef struct pawnhashentry {
+    uint32_t hashupper;
+    U64 passedpawnbb[2];
+    U64 isolatedpawnbb[2];
+    U64 backwardpawnbb[2];
+    int semiopen[2];
+    U64 attacked[2];
+    U64 attackedBy2[2];
+    int32_t value;
+} S_PAWNHASHENTRY;
+
+
+class Pawnhash
+{
+public:
+    S_PAWNHASHENTRY *table;
+    U64 size;
+    U64 sizemask;
+    Pawnhash(int sizeMb);
+    ~Pawnhash();
+    bool probeHash(U64 hash, pawnhashentry **entry);
+};
+
+class repetition
+{
+    unsigned char table[0x10000];
+public:
+    void clean();
+    void addPosition(unsigned long long hash);
+    void removePosition(unsigned long long hash);
+    int getPositionCount(unsigned long long hash);
+};
+
+extern zobrist zb;
+extern transposition tp;
+
 
 //
 // board stuff
@@ -518,9 +627,6 @@ struct chessmovestack
 #define MAXMOVELISTLENGTH 256	// for lists of possible pseudo-legal moves
 #define MAXMOVESEQUENCELENGTH 512	// for move sequences in a game
 
-extern chessmovestack movestack[MAXMOVESEQUENCELENGTH];
-extern int mstop;
-
 
 class chessmove
 {
@@ -542,6 +648,7 @@ public:
 };
 
 #define MAXMULTIPV 64
+#define MAXTHREADS 64
 
 
 // FIXME: This is ugly! Almost the same classes with doubled code.
@@ -613,9 +720,8 @@ extern SMagic mRookTbl[64];
 extern U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 
-enum EvalTrace { NOTRACE, TRACE };
-
 enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7, QUIETWITHCHECK = 9 };
+enum RootsearchType { SinglePVSearch, MultiPVSearch };
 
 template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* m);
 
@@ -634,17 +740,23 @@ public:
     unsigned long long hash;
     unsigned long long pawnhash;
     unsigned long long materialhash;
-    int ply;
+    chessmovestack movestack[MAXMOVESEQUENCELENGTH];
+    int mstop;      // 0 at last non-reversible move before root, rootheight at root position
+    int ply;        // 0 at root position
+    int rootheight; // fixed stack offset in root position 
     int halfmovescounter = 0;
     int fullmovescounter = 0;
     int seldepth;
     chessmovelist rootmovelist;
     chessmovesequencelist pvline;
-    int rootheight;
     chessmove bestmove[MAXMULTIPV];
     int bestmovescore[MAXMULTIPV];
     uint32_t killer[2][MAXDEPTH];
     int32_t history[2][64][64];
+    uint32_t bestFailingLow;
+    Pawnhash *pwnhsh;
+    repetition rp;
+    int threadindex;
 #ifdef SDEBUG
     unsigned long long debughash = 0;
     uint16_t pvdebug[MAXMOVESEQUENCELENGTH];
@@ -667,7 +779,6 @@ public:
     string getGradientString();
     int getGradientValue(positiontuneset *p);
 #endif
-    void init();
     bool w2m();
     void BitboardSet(int index, PieceCode p);
     void BitboardClear(int index, PieceCode p);
@@ -694,9 +805,14 @@ public:
     void getpvline(int depth, int pvnum);
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
     uint32_t shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal
-    template <EvalTrace> int getPositionValue();
-    template <EvalTrace> int getPawnAndKingValue(pawnhashentry **entry);
-    template <EvalTrace> int getValue();
+    int getPositionValue();
+    int getPawnAndKingValue(pawnhashentry **entry);
+    int getValue();
+
+    template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth);
+    int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed);
+    int getQuiescence(int alpha, int beta, int depth);
+
 #ifdef SDEBUG
     void updatePvTable(uint32_t movecode);
     string getPv();
@@ -710,9 +826,6 @@ public:
     void mirror();
 };
 
-int getValueNoTrace(chessposition *p);
-int getValueTrace(chessposition *p);
-
 
 #define ENGINERUN 0
 #define ENGINEWANTSTOP 1
@@ -725,6 +838,7 @@ class engine
 {
 public:
     engine();
+    ~engine();
     uci *myUci;
     const char* name = ENGINEVER;
     const char* author = "Andreas Matthies";
@@ -742,11 +856,14 @@ public:
     bool verbose;
     bool moveoutput;
     int sizeOfTp = 0;
+    int sizeOfPh;
     int moveOverhead;
     int MultiPV;
     bool ponder;
     string SyzygyPath;
     bool Syzygy50MoveRule;
+    int Threads;
+    searchthread *sthread;
     enum { NO, PONDERING, HITPONDER } pondersearch;
     int terminationscore = SHRT_MAX;
     int benchscore;
@@ -754,10 +871,14 @@ public:
     int stopLevel = ENGINESTOPPED;
     void communicate(string inputstring);
     void setOption(string sName, string sValue);
+    void allocThreads(int num);
+    void allocPawnhash();
     bool isPondering() { return (pondersearch == PONDERING); }
     void HitPonder() { pondersearch = HITPONDER; }
     bool testPonderHit() { return (pondersearch == HITPONDER); }
     void resetPonder() { pondersearch = NO; }
+    long long perft(int depth, bool dotests);
+    void prepareThreads();
 };
 
 PieceType GetPieceType(char c);
@@ -779,129 +900,29 @@ public:
     int comparescore;
 };
 
-extern chessposition pos;
 extern engine en;
 
 #ifdef SDEBUG
-#define SDEBUGPRINT(b, d, f, ...) if (b) pos.sdebug(d, f, ##__VA_ARGS__)
+#define SDEBUGPRINT(b, d, f, ...) if (b) sdebug(d, f, ##__VA_ARGS__)
 #else
 #define SDEBUGPRINT(b, d, f, ...)
 #endif
 
 
 //
-// transposition stuff
-//
-typedef unsigned long long u8;
-typedef struct ranctx { u8 a; u8 b; u8 c; u8 d; } ranctx;
-
-#define rot(x,k) (((x)<<(k))|((x)>>(64-(k))))
-
-class zobrist
-{
-public:
-    ranctx rnd;
-    unsigned long long boardtable[64 * 16];
-	unsigned long long cstl[32];
-	unsigned long long ept[64];
-    unsigned long long s2m;
-    zobrist();
-    unsigned long long getRnd();
-    u8 getHash();
-    u8 getPawnHash();
-    u8 getMaterialHash();
-    u8 modHash(int i);
-};
-
-#define TTBUCKETNUM 3
-
-
-struct transpositionentry {
-    uint32_t hashupper;
-    uint16_t movecode;
-    int16_t value;
-    int16_t staticeval;
-    uint8_t depth;
-    uint8_t boundAndAge;
-};
-
-struct transpositioncluster {
-    transpositionentry entry[TTBUCKETNUM];
-    //char padding[2];
-};
-
-class transposition
-{
-    transpositioncluster *table;
-    U64 used;
-public:
-    U64 size;
-    U64 sizemask;
-    chessposition *pos;
-    int numOfSearchShiftTwo;
-    ~transposition();
-    int setSize(int sizeMb);    // returns the number of Mb not used by allignment
-    void clean();
-    void addHash(U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode);
-    void printHashentry();
-    bool probeHash(U64 hash, int *val, int *staticeval, uint16_t *movecode, int depth, int alpha, int beta);
-    uint16_t getMoveCode(U64 hash);
-    unsigned int getUsedinPermill();
-    void nextSearch() { numOfSearchShiftTwo = (numOfSearchShiftTwo + 4) & 0xfc; }
-};
-
-typedef struct pawnhashentry {
-   uint32_t hashupper;
-    U64 passedpawnbb[2];
-    U64 isolatedpawnbb[2];
-    U64 backwardpawnbb[2];
-    int semiopen[2];
-    U64 attacked[2];
-    U64 attackedBy2[2];
-    int32_t value;
-} S_PAWNHASHENTRY;
-
-class pawnhash
-{
-    S_PAWNHASHENTRY *table;
-public:
-    U64 size;
-    U64 sizemask;
-    chessposition *pos;
-    ~pawnhash();
-    void setSize(int sizeMb);
-    void clean();
-    bool probeHash(pawnhashentry **entry);
-};
-
-class repetition
-{
-    unsigned char table[0x10000];
-public:
-    void clean();
-    void addPosition(unsigned long long hash);
-    void removePosition(unsigned long long hash);
-    int getPositionCount(unsigned long long hash);
-};
-
-extern zobrist zb;
-extern repetition rp;
-extern transposition tp;
-extern pawnhash pwnhsh;
-
-
-/*
-http://stackoverflow.com/questions/29990116/alpha-beta-prunning-with-transposition-table-iterative-deepening
-https://www.gamedev.net/topic/503234-transposition-table-question/
-*/
-
-
-//
 // search stuff
 //
-int rootsearch(int alpha, int beta, int depth);
-int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed);
-int getQuiescence(int alpha, int beta, int depth);
+class searchthread
+{
+public:
+    chessposition pos;
+    Pawnhash *pwnhsh;
+    thread thr;
+    int index;
+    searchthread();
+    ~searchthread();
+};
+
 void searchguide();
 void searchinit();
 void resetEndTime(int constantRootMoves, bool complete = true);
@@ -935,4 +956,15 @@ public:
     void send(const char* format, ...);
 };
 
+
+//
+// TB stuff
+//
+extern int TBlargest; // 5 if 5-piece tables, 6 if 6-piece tables were found.
+
+void init_tablebases(char *path);
+int probe_wdl(int *success, chessposition *pos);
+int probe_dtz(int *success, chessposition *pos);
+int root_probe(chessposition *pos);
+int root_probe_wdl(chessposition *pos);
 

@@ -9,6 +9,10 @@ int reductiontable[2][MAXDEPTH][64];
 #define MAXLMPDEPTH 9
 int lmptable[2][MAXLMPDEPTH];
 
+// Shameless copy of Ethereal/Laser for now; may be improved/changed in the future
+static const int SkipSize[16] = { 1, 1, 1, 2, 2, 2, 1, 3, 2, 2, 1, 3, 3, 2, 2, 1 };
+static const int SkipDepths[16] = { 1, 2, 2, 4, 4, 3, 2, 5, 4, 3, 2, 6, 5, 4, 3, 2 };
+
 void searchinit()
 {
     for (int d = 0; d < MAXDEPTH; d++)
@@ -29,14 +33,14 @@ void searchinit()
 }
 
 
-int getQuiescence(int alpha, int beta, int depth)
+int chessposition::getQuiescence(int alpha, int beta, int depth)
 {
     int patscore, score;
     int bestscore = SHRT_MIN;
     bool isLegal;
     bool LegalMovesPossible = false;
 #ifdef EVALTUNE
-    positiontuneset pts;
+    positiontuneset targetpts;
     bool foundpts = false;
 #endif
 
@@ -45,15 +49,14 @@ int getQuiescence(int alpha, int beta, int depth)
 
 #ifdef SDEBUG
     chessmove debugMove;
-    int debugInsert = pos.ply - pos.rootheight;
-    bool isDebugPv = pos.triggerDebug(&debugMove);
-    pos.pvtable[pos.ply][0] = 0;
+    int debugInsert = ply - rootheight;
+    bool isDebugPv = triggerDebug(&debugMove);
+    pvtable[ply][0] = 0;
 #endif
 
-    if (!pos.isCheck)
+    if (!isCheck)
     {
-        patscore = (pos.state & S2MMASK ? -getValueNoTrace(&pos) : getValueNoTrace(&pos));
-        bestscore = patscore;
+        bestscore = patscore = S2MSIGN(state & S2MMASK) * getValue();
         if (patscore >= beta)
         {
             SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (fail high by patscore).", patscore);
@@ -62,14 +65,14 @@ int getQuiescence(int alpha, int beta, int depth)
         if (patscore > alpha)
         {
 #ifdef EVALTUNE
-            pos.getPositionTuneSet(&pts);
+            getPositionTuneSet(&targetpts);
             foundpts = true;
 #endif
             alpha = patscore;
         }
 
         // Delta pruning
-        int bestCapture = pos.getBestPossibleCapture();
+        int bestCapture = getBestPossibleCapture();
         if (patscore + deltapruningmargin + bestCapture < alpha)
         {
             SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (delta pruning by patscore).", patscore);
@@ -77,27 +80,27 @@ int getQuiescence(int alpha, int beta, int depth)
         }
     }
 
-    pos.prepareStack();
+    prepareStack();
 
     chessmovelist *movelist = new chessmovelist;
 
-    if (pos.isCheck)
-        movelist->length = pos.getMoves(&movelist->move[0]);
+    if (isCheck)
+        movelist->length = getMoves(&movelist->move[0]);
     else
-        movelist->length = pos.getMoves(&movelist->move[0], TACTICAL);
+        movelist->length = getMoves(&movelist->move[0], TACTICAL);
 
     movelist->sort(lva[QUEEN]);
 
     for (int i = 0; i < movelist->length; i++)
     {
-        bool MoveIsUsefull = (pos.isCheck
+        bool MoveIsUsefull = (isCheck
             || ISPROMOTION(movelist->move[i].code)
             || (patscore + prunematerialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin > alpha
-                && pos.see(movelist->move[i].code, 0)));
+                && see(movelist->move[i].code, 0)));
 
         if (MoveIsUsefull || !LegalMovesPossible)
         {
-            isLegal = pos.playMove(&(movelist->move[i]));
+            isLegal = playMove(&(movelist->move[i]));
             if (isLegal)
             {
                 LegalMovesPossible = true;
@@ -105,7 +108,7 @@ int getQuiescence(int alpha, int beta, int depth)
                 {
                     score = -getQuiescence(-beta, -alpha, depth - 1);
                 }
-                pos.unplayMove(&(movelist->move[i]));
+                unplayMove(&(movelist->move[i]));
                 if (MoveIsUsefull && score > bestscore)
                 {
                     bestscore = score;
@@ -120,7 +123,7 @@ int getQuiescence(int alpha, int beta, int depth)
                         alpha = score;
 #ifdef EVALTUNE
                         foundpts = true;
-                        pos.copyPositionTuneSet(&pos.pts, &pts);
+                        copyPositionTuneSet(&pts, &targetpts);
 #endif
                     }
                 }
@@ -129,7 +132,7 @@ int getQuiescence(int alpha, int beta, int depth)
     }
 #ifdef EVALTUNE
     if (foundpts)
-        pos.copyPositionTuneSet(&pts, &pos.pts);
+        copyPositionTuneSet(&targetpts, &pts);
 #endif
 
     if (LegalMovesPossible)
@@ -140,9 +143,9 @@ int getQuiescence(int alpha, int beta, int depth)
     }
 
     // No valid move found; try quiet moves
-    if (!pos.isCheck)
+    if (!isCheck)
     {
-        if (pos.getMoves(&movelist->move[0], QUIETWITHCHECK))
+        if (getMoves(&movelist->move[0], QUIETWITHCHECK))
         {
             delete movelist;
             SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch.", bestscore);
@@ -157,14 +160,14 @@ int getQuiescence(int alpha, int beta, int depth)
     else {
         // It's a mate
         delete movelist;
-        SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (mate).", SCOREBLACKWINS + pos.ply);
-        return SCOREBLACKWINS + pos.ply;
+        SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (mate).", SCOREBLACKWINS + ply);
+        return SCOREBLACKWINS + ply;
     }
 }
 
 
 
-int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
+int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 {
     int score;
     int hashscore = NOSCORE;
@@ -185,20 +188,20 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
 #ifdef SDEBUG
     chessmove debugMove;
     string excludestr = "";
-    int debugInsert = pos.ply - pos.rootheight;
-    bool isDebugPv = pos.triggerDebug(&debugMove);
-    pos.pvtable[pos.ply][0] = 0;
+    int debugInsert = ply - rootheight;
+    bool isDebugPv = triggerDebug(&debugMove);
+    pvtable[ply][0] = 0;
 #endif
 
     // test for remis via repetition
-    if (pos.testRepetiton() >= 2)
+    if (testRepetiton() >= 2)
     {
         SDEBUGPRINT(isDebugPv, debugInsert, "Draw (repetition)");
         return SCOREDRAW;
     }
 
     // test for remis via 50 moves rule
-    if (pos.halfmovescounter >= 100)
+    if (halfmovescounter >= 100)
     {
         SDEBUGPRINT(isDebugPv, debugInsert, "Draw (50 moves)");
         return SCOREDRAW;
@@ -213,7 +216,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     {
         chessmove cm, em;
         string s;
-        for (int i = pos.rootheight; i < mstop; i++)
+        for (int i = rootheight; i < mstop; i++)
         {
             cm.code = movestack[i].movecode;
             s = s + cm.toString() + " ";
@@ -227,10 +230,10 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     }
 #endif
 
-    U64 hash = pos.hash ^ excludeMove;
+    U64 newhash = hash ^ excludeMove;
 
-    if (tp.probeHash(hash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta)
-        && rp.getPositionCount(pos.hash) <= 1)  //FIXME: This test on the repetition table works like a "is not PV"; should be fixed in the future)
+    bool tpHit = tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
+    if (tpHit && rp.getPositionCount(hash) <= 1)  //FIXME: This test on the repetition table works like a "is not PV"; should be fixed in the future)
     {
         SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from TT.", hashscore);
         return hashscore;
@@ -242,20 +245,20 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     // the root position is a TB position but only WDL tables are available.
     // In that case the search should not probe before a pawn move or capture
     // is made.
-    if (POPCOUNT(pos.occupied00[0] | pos.occupied00[1]) <= pos.useTb && pos.halfmovescounter == 0)
+    if (POPCOUNT(occupied00[0] | occupied00[1]) <= useTb && halfmovescounter == 0)
     {
         int success;
-        int v = probe_wdl(&success);
+        int v = probe_wdl(&success, this);
         if (success) {
             en.tbhits++;
             int bound;
             if (v < -1) {
                 bound = HASHALPHA;
-                score = -SCORETBWIN + pos.ply;
+                score = -SCORETBWIN + ply;
             }
             else if (v > 1) {
                 bound = HASHBETA;
-                score = SCORETBWIN - pos.ply;
+                score = SCORETBWIN - ply;
             }
             else {
                 bound = HASHEXACT;
@@ -263,7 +266,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             }
             if (bound == HASHEXACT || (bound == HASHALPHA ? (score <= alpha) : (score >= beta)))
             {
-                tp.addHash(pos.hash, score, staticeval, bound, MAXDEPTH, 0);
+                tp.addHash(hash, score, staticeval, bound, MAXDEPTH, 0);
                 SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from TB.", score);
             }
             return score;
@@ -274,31 +277,31 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     if (depth <= 0)
     {
         // update selective depth info
-        if (pos.seldepth < pos.ply + 1)
-            pos.seldepth = pos.ply + 1;
+        if (seldepth < ply + 1)
+           seldepth = ply + 1;
 
         return getQuiescence(alpha, beta, depth);
     }
 
     // Check extension
-    if (pos.isCheck)
+    if (isCheck)
         extendall = 1;
 
-    pos.prepareStack();
+    prepareStack();
 
     // get static evaluation of the position
     if (staticeval == NOSCORE)
-        staticeval = S2MSIGN(pos.state & S2MMASK) * getValueNoTrace(&pos);
+        staticeval = S2MSIGN(state & S2MMASK) * getValue();
     movestack[mstop].staticeval = staticeval;
 
     // Nullmove pruning
     int bestknownscore = (hashscore != NOSCORE ? hashscore : staticeval);
-    if (nullmoveallowed && !pos.isCheck && depth >= 3 && bestknownscore >= beta && pos.ph < 250)
+    if (nullmoveallowed && !isCheck && depth >= 3 && bestknownscore >= beta && ph < 250)
     {
-        pos.playNullMove();
+        playNullMove();
         int R = 3 + (depth / 6) + (bestknownscore - beta) / 150;
         score = -alphabeta(-beta, -beta + 1, depth - R, false);
-        pos.unplayNullMove();
+        unplayNullMove();
 
         if (score >= beta)
         {
@@ -306,13 +309,13 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             return score;
         }
         else {
-            uint16_t nmrefutemove = tp.getMoveCode(hash);
-            if (nmrefutemove && pos.mailbox[GETTO(nmrefutemove)] != BLANK)
+            uint16_t nmrefutemove = tp.getMoveCode(newhash);
+            if (nmrefutemove && mailbox[GETTO(nmrefutemove)] != BLANK)
                 nmrefutetarget = GETTO(nmrefutemove);
         }
     }
 
-    bool positionImproved = (mstop >= pos.rootheight + 2
+    bool positionImproved = (mstop >= rootheight + 2
         && movestack[mstop].staticeval > movestack[mstop - 2].staticeval);
 
     // futility pruning
@@ -320,7 +323,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     if (depth <= 6)
     {
         // reverse futility pruning
-        if (!pos.isCheck && staticeval - depth * (72 - 20 * positionImproved) > beta)
+        if (!isCheck && staticeval - depth * (72 - 20 * positionImproved) > beta)
         {
             SDEBUGPRINT(isDebugPv, debugInsert, " Cutoff by reverse futility pruning: staticscore(%d) - revMargin(%d) > beta(%d)", staticeval, depth * (72 - 20 * positionImproved), beta);
             return staticeval;
@@ -335,11 +338,11 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     {
         SDEBUGPRINT(isDebugPv, debugInsert, " Entering iid...");
         alphabeta(alpha, beta, depth - iiddelta, true);
-        hashmovecode = tp.getMoveCode(hash);
+        hashmovecode = tp.getMoveCode(newhash);
     }
 
     MoveSelector ms = {};
-    ms.SetPreferredMoves(&pos, hashmovecode, pos.killer[0][pos.ply], pos.killer[1][pos.ply], nmrefutetarget);
+    ms.SetPreferredMoves(this, hashmovecode, killer[0][ply], killer[1][ply], nmrefutetarget);
 
     int  LegalMoves = 0;
     int quietsPlayed = 0;
@@ -358,7 +361,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             continue;
 
         // Check for futility pruning condition for this move and skip move if at least one legal move is already found
-        bool futilityPrune = futility && !ISTACTICAL(m->code) && !pos.isCheck && alpha <= 900;
+        bool futilityPrune = futility && !ISTACTICAL(m->code) && !isCheck && alpha <= 900;
         if (futilityPrune)
         {
             if (LegalMoves)
@@ -374,7 +377,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         }
 
         // Prune tactical moves with bad SEE
-        if (!pos.isCheck && depth < 8 && bestscore > NOSCORE && ms.state >= BADTACTICALSTATE && !pos.see(m->code, -20 * depth * depth))
+        if (!isCheck && depth < 8 && bestscore > NOSCORE && ms.state >= BADTACTICALSTATE && !see(m->code, -20 * depth * depth))
         {
             SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by bad SEE", debugMove.toString().c_str());
             continue;
@@ -385,7 +388,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         if ((m->code & 0xffff) == hashmovecode
             && depth > 7
             && !excludeMove
-            && tp.probeHash(hash, &hashscore, &staticeval, &hashmovecode, depth - 3, alpha, beta)
+            && tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth - 3, alpha, beta, ply)  // FIXME: maybe needs hashscore = FIXMATESCOREPROBE(hashscore, ply);
             && hashscore > alpha)
         {
             SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s tested for singularity", debugMove.toString().c_str());
@@ -401,7 +404,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             }
         }
 
-        isLegal = pos.playMove(m);
+        isLegal = playMove(m);
         if (isLegal)
         {
             LegalMoves++;
@@ -410,7 +413,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
             if (futilityPrune)
             {
                 SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by futility: staticeval(%d) < alpha(%d) - futilityMargin(%d)", debugMove.toString().c_str(), staticeval, alpha, 100 + 80 * depth);
-                pos.unplayMove(m);
+                unplayMove(m);
                 continue;
             }
 
@@ -444,7 +447,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                     score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
                 }
             }
-            pos.unplayMove(m);
+            unplayMove(m);
 
             if (en.stopLevel == ENGINESTOPIMMEDIATELY)
             {
@@ -464,17 +467,17 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                     // Killermove
                     if (!ISCAPTURE(m->code))
                     {
-                        pos.history[pos.state & S2MMASK][GETFROM(m->code)][GETTO(m->code)] += depth * depth;
+                        history[state & S2MMASK][GETFROM(m->code)][GETTO(m->code)] += depth * depth;
                         for (int i = 0; i < quietsPlayed; i++)
                         {
                             uint32_t qm = quietMoves[i];
-                            pos.history[pos.state & S2MMASK][GETFROM(qm)][GETTO(qm)] -= depth * depth;
+                            history[state & S2MMASK][GETFROM(qm)][GETTO(qm)] -= depth * depth;
                         }
 
-                        if (pos.killer[0][pos.ply] != m->code)
+                        if (killer[0][ply] != m->code)
                         {
-                            pos.killer[1][pos.ply] = pos.killer[0][pos.ply];
-                            pos.killer[0][pos.ply] = m->code;
+                            killer[1][ply] = killer[0][ply];
+                            killer[0][ply] = m->code;
                         }
                     }
 
@@ -482,7 +485,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                     if (!excludeMove)
                     {
                         SDEBUGPRINT(isDebugPv, debugInsert, " ->Hash(%d) = %d(beta)", effectiveDepth, score);
-                        tp.addHash(hash, score, staticeval, HASHBETA, effectiveDepth, (uint16_t)bestcode);
+                        tp.addHash(newhash, FIXMATESCOREADD(score, ply), staticeval, HASHBETA, effectiveDepth, (uint16_t)bestcode);
                     }
                     return score;   // fail soft beta-cutoff
                 }
@@ -493,7 +496,7 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
                     alpha = score;
                     eval_type = HASHEXACT;
 #ifdef SDEBUG
-                    pos.updatePvTable(bestcode);
+                    updatePvTable(bestcode);
 #endif
                 }
             }
@@ -508,10 +511,10 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
         if (excludeMove)
             return alpha;
 
-        if (pos.isCheck) {
+        if (isCheck) {
             // It's a mate
-            SDEBUGPRINT(isDebugPv, debugInsert, " Return score: %d  (mate)", SCOREBLACKWINS + pos.ply);
-            return SCOREBLACKWINS + pos.ply;
+            SDEBUGPRINT(isDebugPv, debugInsert, " Return score: %d  (mate)", SCOREBLACKWINS + ply);
+            return SCOREBLACKWINS + ply;
         }
         else {
             // It's a stalemate
@@ -525,18 +528,16 @@ int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
     if (bestcode && !excludeMove)
     {
         SDEBUGPRINT(isDebugPv, debugInsert, " ->Hash(%d) = %d(%s)", depth, bestscore, eval_type == HASHEXACT ? "exact" : "alpha");
-        tp.addHash(hash, bestscore, staticeval, eval_type, depth, (uint16_t)bestcode);
+        tp.addHash(newhash, FIXMATESCOREADD(bestscore, ply), staticeval, eval_type, depth, (uint16_t)bestcode);
     }
 
     return bestscore;
 }
 
 
-enum RootsearchType { SinglePVSearch, MultiPVSearch };
-
 
 template <RootsearchType RT>
-int rootsearch(int alpha, int beta, int depth)
+int chessposition::rootsearch(int alpha, int beta, int depth)
 {
     int score;
     uint16_t hashmovecode = 0;
@@ -555,56 +556,60 @@ int rootsearch(int alpha, int beta, int depth)
     if (isMultiPV)
     {
         lastmoveindex = 0;
-        maxmoveindex = min(en.MultiPV, pos.rootmovelist.length);
+        maxmoveindex = min(en.MultiPV, rootmovelist.length);
         for (int i = 0; i < maxmoveindex; i++)
-            pos.bestmovescore[i] = SHRT_MIN + 1;
+            bestmovescore[i] = SHRT_MIN + 1;
     }
 
 #ifdef SDEBUG
     chessmove debugMove;
-    int debugInsert = pos.ply - pos.rootheight;
-    bool isDebugPv = pos.triggerDebug(&debugMove);
-    pos.pvtable[0][0] = 0;
+    int debugInsert = ply - rootheight;
+    bool isDebugPv = triggerDebug(&debugMove);
+    pvtable[0][0] = 0;
     SDEBUGPRINT(true, debugInsert, "(depth=%2d) Rootsearch Next pv debug move: %s  [%3d,%3d]", depth, debugMove.code ? debugMove.toString().c_str() : "", alpha, beta);
 #endif
 
     if (!isMultiPV
-        && !pos.useRootmoveScore
-        && tp.probeHash(pos.hash, &score, &staticeval, &hashmovecode, depth, alpha, beta)
-        && rp.getPositionCount(pos.hash) <= 1)  //FIXME: Is this really needed in rootsearch?
+        && !useRootmoveScore
+        && tp.probeHash(hash, &score, &staticeval, &hashmovecode, depth, alpha, beta, 0)
+        && rp.getPositionCount(hash) <= 1)  //FIXME: Is this really needed in rootsearch?
     {
         return score;
     }
 
     // test for remis via repetition
-    if (rp.getPositionCount(pos.hash) >= 3 && pos.testRepetiton() >= 2)
+    if (rp.getPositionCount(hash) >= 3 && testRepetiton() >= 2)
         return SCOREDRAW;
 
     // test for remis via 50 moves rule
-    if (pos.halfmovescounter >= 100)
+    if (halfmovescounter >= 100)
         return SCOREDRAW;
 
-    if (pos.isCheck)
+    if (isCheck)
         extendall = 1;
 
-    if (!pos.tbPosition)
+    if (!tbPosition)
     {
         // Reset move values
-        for (int i = 0; i < pos.rootmovelist.length; i++)
+        for (int i = 0; i < rootmovelist.length; i++)
         {
-            m = &pos.rootmovelist.move[i];
+            m = &rootmovelist.move[i];
 
             //PV moves gets top score
             if (hashmovecode == (m->code & 0xffff))
             {
                 m->value = PVVAL;
             }
+            else if (bestFailingLow == m->code)
+            {
+                m->value = KILLERVAL2 - 1;
+            }
             // killermoves gets score better than non-capture
-            else if (pos.killer[0][0] == m->code)
+            else if (killer[0][0] == m->code)
             {
                 m->value = KILLERVAL1;
             }
-            else if (pos.killer[1][0] == m->code)
+            else if (killer[1][0] == m->code)
             {
                 m->value = KILLERVAL2;
             }
@@ -613,37 +618,37 @@ int rootsearch(int alpha, int beta, int depth)
                 m->value = (mvv[GETCAPTURE(m->code) >> 1] | lva[GETPIECE(m->code) >> 1]);
             }
             else {
-                m->value = pos.history[pos.state & S2MMASK][GETFROM(m->code)][GETTO(m->code)];
+                m->value = history[state & S2MMASK][GETFROM(m->code)][GETTO(m->code)];
             }
         }
     }
 
     // get static evaluation of the position
     if (staticeval == NOSCORE)
-        staticeval = S2MSIGN(pos.state & S2MMASK) * getValueNoTrace(&pos);
+        staticeval = S2MSIGN(state & S2MMASK) * getValue();
     movestack[mstop].staticeval = staticeval;
 
     int quietsPlayed = 0;
     uint32_t quietMoves[MAXMOVELISTLENGTH];
 
-    for (int i = 0; i < pos.rootmovelist.length; i++)
+    for (int i = 0; i < rootmovelist.length; i++)
     {
-        for (int j = i + 1; j < pos.rootmovelist.length; j++)
+        for (int j = i + 1; j < rootmovelist.length; j++)
         {
-            if (pos.rootmovelist.move[i] < pos.rootmovelist.move[j])
+            if (rootmovelist.move[i] < rootmovelist.move[j])
             {
-                swap(pos.rootmovelist.move[i], pos.rootmovelist.move[j]);
+                swap(rootmovelist.move[i], rootmovelist.move[j]);
             }
         }
 
-        m = &pos.rootmovelist.move[i];
+        m = &rootmovelist.move[i];
 #ifdef SDEBUG
         bool isDebugMove = (debugMove.code == (m->code & 0xeff));
 #endif
 
-        pos.playMove(m);
+        playMove(m);
 
-        if (en.moveoutput)
+        if (en.moveoutput && !threadindex)
         {
             char s[256];
             sprintf_s(s, "info depth %d currmove %s currmovenumber %d nodes %llu tbhits %llu\n", depth, m->toString().c_str(), i + 1, en.nodes, en.tbhits);
@@ -684,8 +689,8 @@ int rootsearch(int alpha, int beta, int depth)
 
         SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s scored %d", debugMove.toString().c_str(), score);
 
-        pos.unplayMove(m);
-        if (pos.useRootmoveScore)
+        unplayMove(m);
+        if (useRootmoveScore)
             score = m->value;
 
         if (en.stopLevel == ENGINESTOPIMMEDIATELY)
@@ -697,30 +702,31 @@ int rootsearch(int alpha, int beta, int depth)
         if (!ISTACTICAL(m->code))
             quietMoves[quietsPlayed++] = m->code;
 
-        if ((isMultiPV && score <= pos.bestmovescore[lastmoveindex])
+        if ((isMultiPV && score <= bestmovescore[lastmoveindex])
             || (!isMultiPV && score <= bestscore))
             continue;
 
         bestscore = score;
+        bestFailingLow = m->code;
 
         if (isMultiPV)
         {
-            if (score > pos.bestmovescore[lastmoveindex])
+            if (score > bestmovescore[lastmoveindex])
             {
                 int newindex = lastmoveindex;
-                while (newindex > 0 && score > pos.bestmovescore[newindex - 1])
+                while (newindex > 0 && score > bestmovescore[newindex - 1])
                 {
-                    pos.bestmovescore[newindex] = pos.bestmovescore[newindex - 1];
-                    pos.bestmove[newindex] = pos.bestmove[newindex - 1];
+                    bestmovescore[newindex] = bestmovescore[newindex - 1];
+                    bestmove[newindex] = bestmove[newindex - 1];
                     newindex--;
                 }
-                pos.bestmovescore[newindex] = score;
-                pos.bestmove[newindex] = *m;
+                bestmovescore[newindex] = score;
+                bestmove[newindex] = *m;
                 if (lastmoveindex < maxmoveindex - 1)
                     lastmoveindex++;
-                if (pos.bestmovescore[maxmoveindex - 1] > alpha)
+                if (bestmovescore[maxmoveindex - 1] > alpha)
                 {
-                    alpha = pos.bestmovescore[maxmoveindex - 1];
+                    alpha = bestmovescore[maxmoveindex - 1];
                 }
                 eval_type = HASHEXACT;
             }
@@ -731,16 +737,16 @@ int rootsearch(int alpha, int beta, int depth)
         // The move becomes the new bestmove[0] (take for UCI output) if
         // - it is the first one
         // - it raises alpha
-        // - it fails low and alpha is not a safe win (< 400)
+        // If it fails low we don't change bestmove anymore but remember it in bestFailingLow for move ordering
         if (score > alpha)
         {
             if (!isMultiPV)
             {
                 alpha = score;
-                pos.bestmove[0] = *m;
+                bestmove[0] = *m;
                 eval_type = HASHEXACT;
 #ifdef SDEBUG
-                pos.updatePvTable(m->code);
+                updatePvTable(m->code);
 #endif
             }
             if (score >= beta)
@@ -748,55 +754,55 @@ int rootsearch(int alpha, int beta, int depth)
                 // Killermove
                 if (!ISCAPTURE(m->code))
                 {
-                    pos.history[pos.state & S2MMASK][GETFROM(m->code)][GETTO(m->code)] += depth * depth;
+                    history[state & S2MMASK][GETFROM(m->code)][GETTO(m->code)] += depth * depth;
                     for (int i = 0; i < quietsPlayed - 1; i++)
                     {
                         uint32_t qm = quietMoves[i];
-                        pos.history[pos.state & S2MMASK][GETFROM(qm)][GETTO(qm)] -= depth * depth;
+                        history[state & S2MMASK][GETFROM(qm)][GETTO(qm)] -= depth * depth;
                     }
 
-                    if (pos.killer[0][0] != m->code)
+                    if (killer[0][0] != m->code)
                     {
-                        pos.killer[1][0] = pos.killer[0][0];
-                        pos.killer[0][0] = m->code;
+                        killer[1][0] = killer[0][0];
+                        killer[0][0] = m->code;
                     }
                 }
                 SDEBUGPRINT(isDebugPv, debugInsert, " Beta-cutoff by move %s: %d", m->toString().c_str(), score);
-                tp.addHash(pos.hash, beta, staticeval, HASHBETA, effectiveDepth, (uint16_t)m->code);
+                tp.addHash(hash, beta, staticeval, HASHBETA, effectiveDepth, (uint16_t)m->code);
                 return beta;   // fail hard beta-cutoff
             }
         }
         else if (!isMultiPV)
         {
             // overwriting best move even at fail low seems good but don't throw away a win
-            if (alpha < 400 || !pos.bestmove[0].code)
-                pos.bestmove[0] = *m;
+            if (!bestmove[0].code)
+                bestmove[0] = *m;
         }
     }
 
-    SDEBUGPRINT(true, 0, pos.getPv().c_str());
+    SDEBUGPRINT(true, 0, getPv().c_str());
 
     if (isMultiPV)
     {
         if (eval_type == HASHEXACT)
         {
-            tp.addHash(pos.hash, pos.bestmovescore[0], staticeval, eval_type, depth, (uint16_t)pos.bestmove[0].code);
-            return pos.bestmovescore[maxmoveindex - 1];
+            tp.addHash(hash, bestmovescore[0], staticeval, eval_type, depth, (uint16_t)bestmove[0].code);
+            return bestmovescore[maxmoveindex - 1];
         }
         else {
-            tp.addHash(pos.hash, alpha, staticeval, eval_type, depth, (uint16_t)pos.bestmove[0].code);
+            tp.addHash(hash, alpha, staticeval, eval_type, depth, (uint16_t)bestmove[0].code);
             return alpha;
         }
     }
     else {
-        tp.addHash(pos.hash, alpha, staticeval, eval_type, depth, (uint16_t)pos.bestmove[0].code);
+        tp.addHash(hash, alpha, staticeval, eval_type, depth, (uint16_t)bestmove[0].code);
         return alpha;
     }
 }
 
 
 template <RootsearchType RT>
-static void search_gen1()
+static void search_gen1(searchthread *thr)
 {
     string bestmovestr = "";
     string newbestmovestr;
@@ -807,15 +813,15 @@ static void search_gen1()
     int alpha, beta;
     int deltaalpha = 8;
     int deltabeta = 8;
-    int depth, maxdepth, depthincrement;
+    int depth, maxdepth;
     string pvstring;
     int inWindow;
     int lastsecondsrun = 0;
     const char* boundscore[] = { "upperbound", "", "lowerbound" };
 
     const bool isMultiPV = (RT == MultiPVSearch);
+    chessposition *pos = &thr->pos;
 
-    depthincrement = 1;
     if (en.mate > 0)
     {
         depth = maxdepth = en.mate * 2;
@@ -837,23 +843,24 @@ static void search_gen1()
     
     uint32_t lastBestMove = 0;
     int constantRootMoves = 0;
+    bool bExitIteration;
     // iterative deepening
     do
     {
         matein = MAXDEPTH;
         // Reset bestmove to detect alpha raise in interrupted search
-        pos.bestmove[0].code = 0;
+        pos->bestmove[0].code = 0;
         inWindow = 1;
-        pos.seldepth = depth;
+        pos->seldepth = depth;
 
-        if (pos.rootmovelist.length == 0)
+        if (pos->rootmovelist.length == 0)
         {
-            pos.bestmove[0].code = 0;
-            score =  (pos.isCheck ? SCOREBLACKWINS : SCOREDRAW);
+            pos->bestmove[0].code = 0;
+            score =  (pos->isCheck ? SCOREBLACKWINS : SCOREDRAW);
             en.stopLevel = ENGINESTOPPED;
         } else
         {
-            score = rootsearch<RT>(alpha, beta, depth);
+            score = pos->rootsearch<RT>(alpha, beta, depth);
             //printf("info string Rootsearch: alpha=%d beta=%d depth=%d score=%d bestscore[0]=%d bestscore[%d]=%d\n", alpha, beta, depth, score, pos.bestmovescore[0], en.MultiPV - 1,  pos.bestmovescore[en.MultiPV - 1]);
 
             // new aspiration window
@@ -891,14 +898,14 @@ static void search_gen1()
                     deltabeta = 8;
                     //printf("info string depth=%d delta=%d\n", depth, deltaalpha);
                     if (isMultiPV)
-                        alpha = pos.bestmovescore[en.MultiPV - 1] - deltaalpha;
+                        alpha = pos->bestmovescore[en.MultiPV - 1] - deltaalpha;
                     else
                         alpha = score - deltaalpha;
                     beta = score + deltabeta;
                 }
             }
         }
-        if (score > NOSCORE)
+        if (score > NOSCORE && thr->index == 0)
         {
             long long nowtime = getTime();
             int secondsrun = (int)((nowtime - en.starttime) * 1000 / en.frequency);
@@ -912,71 +919,71 @@ static void search_gen1()
                     // FIXME: This is a bit ugly... code more consistent with SinglePV would be better
                     // but I had to fight against performance regression so I devided it this way
                     int i = 0;
-                    int maxmoveindex = min(en.MultiPV, pos.rootmovelist.length);
+                    int maxmoveindex = min(en.MultiPV, pos->rootmovelist.length);
                     do
                     {
                         // The only case that bestmove is not set can happen if rootsearch hit the TP table
                         // so get bestmovecode from there
-                        if (!pos.bestmove[i].code)
+                        if (!pos->bestmove[i].code)
                         {
                             uint16_t mc;
                             int dummystaticeval;
-                            tp.probeHash(pos.hash, &pos.bestmovescore[i], &dummystaticeval, &mc, depth, alpha, beta);
-                            pos.bestmove[i].code = pos.shortMove2FullMove(mc);
+                            tp.probeHash(pos->hash, &pos->bestmovescore[i], &dummystaticeval, &mc, depth, alpha, beta, 0);
+                            pos->bestmove[i].code = pos->shortMove2FullMove(mc);
                         }
 
-                        pos.getpvline(depth, i);
-                        pvstring = pos.pvline.toString();
+                        pos->getpvline(depth, i);
+                        pvstring = pos->pvline.toString();
                         if (i == 0)
                         {
                             // get bestmove
-                            if (pos.pvline.length > 0 && pos.pvline.move[0].code)
-                                bestmovestr = pos.pvline.move[0].toString();
+                            if (pos->pvline.length > 0 && pos->pvline.move[0].code)
+                                bestmovestr = pos->pvline.move[0].toString();
                             else
-                                bestmovestr = pos.bestmove[0].toString();
+                                bestmovestr = pos->bestmove[0].toString();
                         }
                         char s[4096];
-                        if (!MATEDETECTED(pos.bestmovescore[i]))
+                        if (!MATEDETECTED(pos->bestmovescore[i]))
                         {
-                            sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score cp %d %s pv %s\n", depth, pos.seldepth, i + 1, secondsrun, pos.bestmovescore[i], boundscore[inWindow], pvstring.c_str());
+                            sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score cp %d %s pv %s\n", depth, pos->seldepth, i + 1, secondsrun, pos->bestmovescore[i], boundscore[inWindow], pvstring.c_str());
                         }
                         else
                         {
-                            matein = (pos.bestmovescore[i] > 0 ? (SCOREWHITEWINS - pos.bestmovescore[i] + 1) / 2 : (SCOREBLACKWINS - pos.bestmovescore[i]) / 2);
-                            sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score mate %d pv %s\n", depth, pos.seldepth, i + 1, secondsrun, matein, pvstring.c_str());
+                            matein = (pos->bestmovescore[i] > 0 ? (SCOREWHITEWINS - pos->bestmovescore[i] + 1) / 2 : (SCOREBLACKWINS - pos->bestmovescore[i]) / 2);
+                            sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score mate %d pv %s\n", depth, pos->seldepth, i + 1, secondsrun, matein, pvstring.c_str());
                         }
                         cout << s;
                         i++;
                     } while (i < maxmoveindex
-                        && (pos.bestmove[i].code || (pos.bestmove[i].code = tp.getMoveCode(pos.hash)))
-                        && pos.bestmovescore[i] > SHRT_MIN + 1);
+                        && (pos->bestmove[i].code || (pos->bestmove[i].code = tp.getMoveCode(pos->hash)))
+                        && pos->bestmovescore[i] > SHRT_MIN + 1);
                 }
             }
             else {
                 // The only two cases that bestmove is not set can happen if alphabeta hit the TP table or we are in TB
                 // so get bestmovecode from there or it was a TB hit so just get the first rootmove
-                if (!pos.bestmove[0].code)
+                if (!pos->bestmove[0].code)
                 {
                     uint16_t mc = 0;
                     int dummystaticeval;
-                    tp.probeHash(pos.hash, &score, &dummystaticeval, &mc, MAXDEPTH, alpha, beta);
-                    pos.bestmove[0].code = pos.shortMove2FullMove(mc);
+                    tp.probeHash(pos->hash, &score, &dummystaticeval, &mc, MAXDEPTH, alpha, beta, 0);
+                    pos->bestmove[0].code = pos->shortMove2FullMove(mc);
                 }
                     
                 // still no bestmove...
-                if (!pos.bestmove[0].code && pos.rootmovelist.length > 0)
-                    pos.bestmove[0].code = pos.rootmovelist.move[0].code;
+                if (!pos->bestmove[0].code && pos->rootmovelist.length > 0)
+                    pos->bestmove[0].code = pos->rootmovelist.move[0].code;
 
-                pos.getpvline(depth, 0);
-                pvstring = pos.pvline.toString();
+                pos->getpvline(depth, 0);
+                pvstring = pos->pvline.toString();
                 bool getponderfrompvline = false;
-                if (pos.pvline.length > 0 && pos.pvline.move[0].code)
+                if (pos->pvline.length > 0 && pos->pvline.move[0].code)
                 {
-                    newbestmovestr= pos.pvline.move[0].toString();
-                    getponderfrompvline = (en.ponder && pos.pvline.length > 1 && pos.pvline.move[1].code);
+                    newbestmovestr= pos->pvline.move[0].toString();
+                    getponderfrompvline = (en.ponder && pos->pvline.length > 1 && pos->pvline.move[1].code);
                 }
                 else {
-                    newbestmovestr = pos.bestmove[0].toString();
+                    newbestmovestr = pos->bestmove[0].toString();
                 }
                 if (newbestmovestr != bestmovestr)
                 {
@@ -984,7 +991,7 @@ static void search_gen1()
                     pondermovestr = "";
                 }
                 if (getponderfrompvline)
-                    pondermovestr = " ponder " + pos.pvline.move[1].toString();
+                    pondermovestr = " ponder " + pos->pvline.move[1].toString();
 
                 char s[4096];
                 if (inWindow == 1 || (secondsrun - lastsecondsrun) > 200)
@@ -993,7 +1000,7 @@ static void search_gen1()
                     if (!MATEDETECTED(score))
                     {
                         sprintf_s(s, "info depth %d seldepth %d time %d score cp %d %s nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
-                            depth, pos.seldepth, secondsrun, score, boundscore[inWindow], en.nodes,
+                            depth, pos->seldepth, secondsrun, score, boundscore[inWindow], en.nodes,
                             (nowtime > en.starttime ? en.nodes * en.frequency / (nowtime - en.starttime) : 1),
                             en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
                     }
@@ -1001,7 +1008,7 @@ static void search_gen1()
                     {
                         matein = (score > 0 ? (SCOREWHITEWINS - score + 1) / 2 : (SCOREBLACKWINS - score) / 2);
                         sprintf_s(s, "info depth %d seldepth %d time %d score mate %d nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
-                            depth, pos.seldepth, secondsrun, matein, en.nodes,
+                            depth, pos->seldepth, secondsrun, matein, en.nodes,
                             (nowtime > en.starttime ? en.nodes * en.frequency / (nowtime - en.starttime) : 1),
                             en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
                     }
@@ -1011,37 +1018,55 @@ static void search_gen1()
         }
         if (inWindow == 1)
         {
-            depth += depthincrement;
+            // Skip some depths depending on current depth and thread number using Laser's method
+            int cycle = thr->index % 16;
+            if (thr->index && (depth + cycle) % SkipDepths[cycle] == 0)
+                depth += SkipSize[cycle];
+
+            depth++;
             constantRootMoves++;
-            if (lastBestMove != pos.bestmove[0].code)
+            if (lastBestMove != pos->bestmove[0].code)
             {
-                lastBestMove = pos.bestmove[0].code;
+                lastBestMove = pos->bestmove[0].code;
                 constantRootMoves = 0;
             }
             resetEndTime(constantRootMoves);
         }
 
-        if (pos.rootmovelist.length == 1 && depth > 4 && en.endtime1 && !en.isPondering())
-            // early exit in playing mode as there is exactly one possible move
-            en.stopLevel = ENGINEWANTSTOP;
-        if (pos.tbPosition && abs(score) >= SCORETBWIN - 100)
-            // early exit in TB win/lose position
-            en.stopLevel = ENGINEWANTSTOP;
-    } while (en.stopLevel == ENGINERUN && depth <= maxdepth);
+        // early exit in playing mode as there is exactly one possible move
+        bExitIteration = (pos->rootmovelist.length == 1 && depth > 4 && en.endtime1 && !en.isPondering());
+
+        // early exit in TB win/lose position
+        bExitIteration = bExitIteration || (pos->tbPosition && abs(score) >= SCORETBWIN - 100);
+
+        // exit if STOPSOON is requested and we're in aspiration window
+        bExitIteration = bExitIteration || (en.stopLevel == ENGINESTOPSOON && inWindow == 1);
+
+        // exit if STOPIMMEDIATELY
+        bExitIteration = bExitIteration || (en.stopLevel == ENGINESTOPIMMEDIATELY);
+
+        // exit if max depth is reached
+        bExitIteration = bExitIteration || (depth > maxdepth);
+
+    } while (!bExitIteration);
     
-    if (bestmovestr == "")
-        // not a single move found (serious time trouble); fall back to default move
-        bestmovestr = pos.defaultmove.toString();
+    if (thr->index == 0)
+    {
+        if (bestmovestr == "")
+            // not a single move found (serious time trouble); fall back to default move
+            bestmovestr = pos->defaultmove.toString();
 
-    char s[64];
-    sprintf_s(s, "bestmove %s%s\n", bestmovestr.c_str(), pondermovestr.c_str());
+        char s[64];
+        sprintf_s(s, "bestmove %s%s\n", bestmovestr.c_str(), pondermovestr.c_str());
+        // when pondering prevent from stopping search before STOP
+        while (en.isPondering() && en.stopLevel != ENGINESTOPIMMEDIATELY)
+            Sleep(10);
 
-    // when pondering prevent from stopping search before STOP
-    while (en.isPondering() && en.stopLevel != ENGINESTOPIMMEDIATELY)
-        Sleep(10);
- 
-    cout << s;
-    en.stopLevel = ENGINESTOPPED;
+        cout << s;
+        en.stopLevel = ENGINESTOPPED;
+    }
+
+    //en.stopLevel = ENGINESTOPPED;
     // Remember some exit values for benchmark output
     en.benchscore = score;
     en.benchdepth = depth - 1;
@@ -1065,7 +1090,7 @@ void resetEndTime(int constantRootMoves, bool complete)
         //printf("info string difftime1=%lld  difftime2=%lld\n", (endtime1 - en.starttime) * 1000 / en.frequency , (endtime2 - en.starttime) * 1000 / en.frequency);
     }
     else if (timetouse) {
-        int ph = pos.phase();
+        int ph = en.sthread[0].pos.phase();
         if (timeinc)
         {
             // sudden death with increment; split the remaining time in (256-phase) timeslots
@@ -1102,20 +1127,20 @@ void startSearchTime(bool complete = true)
 
 void searchguide()
 {
-    en.moveoutput = false;
-    en.stopLevel = ENGINERUN;
-    thread enginethread;
-
     startSearchTime();
 
+    en.moveoutput = false;
     en.nodes = 0;
     en.tbhits = 0;
     en.fh = en.fhf = 0;
 
-    if (en.MultiPV > 1)
-        enginethread = thread(&search_gen1<MultiPVSearch>);
-    else
-        enginethread = thread(&search_gen1<SinglePVSearch>);
+    for (int tnum = 0; tnum < en.Threads; tnum++)
+    {
+        if (en.MultiPV > 1)
+            en.sthread[tnum].thr = thread(&search_gen1<MultiPVSearch>, &en.sthread[tnum]);
+        else
+            en.sthread[tnum].thr = thread(&search_gen1<SinglePVSearch>, &en.sthread[tnum]);
+    }
 
     long long nowtime;
     while (en.stopLevel != ENGINESTOPPED)
@@ -1125,7 +1150,7 @@ void searchguide()
         if (nowtime - en.starttime > 3 * en.frequency)
             en.moveoutput = true;
 
-        if (en.stopLevel != ENGINESTOPPED)
+        if (en.stopLevel < ENGINESTOPPED)
         {
             if (en.isPondering())
             {
@@ -1150,6 +1175,10 @@ void searchguide()
             }
         }
     }
-    enginethread.join();
+
+    // Make the other threads stop now
+    en.stopLevel = ENGINESTOPIMMEDIATELY;
+    for (int tnum = 0; tnum < en.Threads; tnum++)
+        en.sthread[tnum].thr.join();
     en.stopLevel = ENGINETERMINATEDSEARCH;
 }
