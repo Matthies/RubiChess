@@ -75,7 +75,7 @@ void Sleep(long x);
 #ifdef _MSC_VER
 // Hack to avoid warning in tbprobe.cpp
 #define strcpy(a,b) strcpy_s(a,256,b)
-#define strcat(a,b) strcpy_s(a,256,b)
+#define strcat(a,b) strcat_s(a,256,b)
 
 #define PREFETCH(a) _mm_prefetch((char*)(a), _MM_HINT_T0)
 #else
