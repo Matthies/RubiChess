@@ -208,8 +208,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
     }
 
     // Get move for singularity check and change hash to seperate partial searches from full searches
-    uint16_t excludeMove = movestack[mstop - 1].excludemove;
-    movestack[mstop].excludemove = 0;
+    uint16_t excludeMove = excludemovestack[mstop - 1];
+    excludemovestack[mstop] = 0;
 
 #ifdef SDEBUG
     if (isDebugPv)
@@ -218,7 +218,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
         string s;
         for (int i = rootheight; i < mstop; i++)
         {
-            cm.code = movestack[i].movecode;
+            cm.code = movecodestack[i];
             s = s + cm.toString() + " ";
         }
         if (excludeMove)
@@ -292,7 +292,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
     // get static evaluation of the position
     if (staticeval == NOSCORE)
         staticeval = S2MSIGN(state & S2MMASK) * getValue();
-    movestack[mstop].staticeval = staticeval;
+    staticevalstack[mstop] = staticeval;
 
     // Nullmove pruning
     int bestknownscore = (hashscore != NOSCORE ? hashscore : staticeval);
@@ -316,7 +316,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
     }
 
     bool positionImproved = (mstop >= rootheight + 2
-        && movestack[mstop].staticeval > movestack[mstop - 2].staticeval);
+        && staticevalstack[mstop] > staticevalstack[mstop - 2]);
 
     // futility pruning
     bool futility = false;
@@ -392,10 +392,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
             && hashscore > alpha)
         {
             SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s tested for singularity", debugMove.toString().c_str());
-            movestack[mstop - 1].excludemove = hashmovecode;
+            excludemovestack[mstop - 1] = hashmovecode;
             int sBeta = max(hashscore - 2 * depth, SCOREBLACKWINS);
             int redScore = alphabeta(sBeta - 1, sBeta, depth / 2, true);
-            movestack[mstop - 1].excludemove = 0;
+            excludemovestack[mstop - 1] = 0;
 
             if (redScore < sBeta)
             {
@@ -626,7 +626,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
     // get static evaluation of the position
     if (staticeval == NOSCORE)
         staticeval = S2MSIGN(state & S2MMASK) * getValue();
-    movestack[mstop].staticeval = staticeval;
+    staticevalstack[mstop] = staticeval;
 
     int quietsPlayed = 0;
     uint32_t quietMoves[MAXMOVELISTLENGTH];

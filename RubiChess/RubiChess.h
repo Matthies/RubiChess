@@ -73,6 +73,10 @@ void Sleep(long x);
 #endif
 
 #ifdef _MSC_VER
+// Hack to avoid warning in tbprobe.cpp
+#define strcpy(a,b) strcpy_s(a,256,b)
+#define strcat(a,b) strcat_s(a,256,b)
+
 #define PREFETCH(a) _mm_prefetch((char*)(a), _MM_HINT_T0)
 #else
 #define PREFETCH(a) __builtin_prefetch(a)
@@ -619,9 +623,6 @@ struct chessmovestack
     int halfmovescounter;
     int fullmovescounter;
     int isCheck;
-    uint32_t movecode;
-    uint16_t excludemove;
-    int16_t staticeval;
 };
 
 #define MAXMOVELISTLENGTH 256	// for lists of possible pseudo-legal moves
@@ -734,18 +735,26 @@ public:
     U64 attackedBy[2][7];
     PieceCode mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
 
+    // The following block is mapped/copied to the movestack, so its important to keep the order
     int state;
     int ept;
     int kingpos[2];
     unsigned long long hash;
     unsigned long long pawnhash;
     unsigned long long materialhash;
+    int halfmovescounter;
+    int fullmovescounter;
+    int isCheck;
+
     chessmovestack movestack[MAXMOVESEQUENCELENGTH];
+    uint16_t excludemovestack[MAXMOVESEQUENCELENGTH];
+    int16_t staticevalstack[MAXMOVESEQUENCELENGTH];
+#ifdef SDEBUG
+    uint32_t movecodestack[MAXMOVESEQUENCELENGTH];
+#endif
     int mstop;      // 0 at last non-reversible move before root, rootheight at root position
     int ply;        // 0 at root position
     int rootheight; // fixed stack offset in root position 
-    int halfmovescounter = 0;
-    int fullmovescounter = 0;
     int seldepth;
     chessmovelist rootmovelist;
     chessmovesequencelist pvline;
@@ -765,7 +774,6 @@ public:
     uint32_t pvtable[MAXDEPTH][MAXDEPTH];
 #endif
     int ph; // to store the phase during different evaluation functions
-    int isCheck;
     int useTb;
     int useRootmoveScore;
     int tbPosition;
