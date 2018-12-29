@@ -538,22 +538,17 @@ void chessposition::mirror()
 
 void chessposition::prepareStack()
 {
-    movestack[mstop].ept = ept;
-    movestack[mstop].hash = hash;
-    movestack[mstop].pawnhash = pawnhash;
-    movestack[mstop].materialhash = materialhash;
-    movestack[mstop].state = state;
-    movestack[mstop].kingpos[0] = kingpos[0];
-    movestack[mstop].kingpos[1] = kingpos[1];
-    movestack[mstop].fullmovescounter = fullmovescounter;
-    movestack[mstop].halfmovescounter = halfmovescounter;
-    movestack[mstop].isCheck = isCheck;
+    // copy stack related data directly to stack
+    memcpy(&movestack[mstop], &state, sizeof(chessmovestack));
 }
 
 
 void chessposition::playNullMove()
 {
-    movestack[mstop++].movecode = 0;
+#ifdef SDEBUG
+    movecodestack[mstop] = 0;
+#endif
+    mstop++;
     state ^= S2MMASK;
     hash ^= zb.s2m;
     ply++;
@@ -759,20 +754,24 @@ void chessposition::print()
     printf("info string Repetitions: %d\n", rp.getPositionCount(hash));
     printf("info string Phase: %d\n", phase());
     printf("info string Pseudo-legal Moves: %s\n", pseudolegalmoves.toStringWithValue().c_str());
+#ifdef SDEBUG
     printf("info string Moves in current search: %s\n", movesOnStack().c_str());
+#endif
 }
 
+#ifdef SDEBUG
 string chessposition::movesOnStack()
 {
     string s = "";
     for (int i = 0; i < mstop; i++)
     {
         chessmove cm;
-        cm.code = movestack[i].movecode;
+        cm.code = movecodestack[i];
         s = s + cm.toString() + " ";
     }
     return s;
 }
+#endif
 
 
 string chessposition::toFen()
@@ -907,7 +906,7 @@ bool chessposition::triggerDebug(chessmove* nextmove)
 
     while (j + rootheight < mstop && pvdebug[j])
     {
-        if ((movestack[j + rootheight].movecode & 0xefff) != pvdebug[j])
+        if ((movecodestack[j + rootheight] & 0xefff) != pvdebug[j])
             return false;
         j++;
     }
@@ -1409,7 +1408,10 @@ bool chessposition::playMove(chessmove *cm)
 
     ply++;
     rp.addPosition(hash);
-    movestack[mstop++].movecode = cm->code;
+#ifdef SDEBUG
+    movecodestack[mstop] = cm->code;
+#endif
+    mstop++;
 
     return true;
 }
@@ -1428,16 +1430,8 @@ void chessposition::unplayMove(chessmove *cm)
     ply--;
 
     mstop--;
-    ept = movestack[mstop].ept;
-    hash = movestack[mstop].hash;
-    pawnhash = movestack[mstop].pawnhash;
-    materialhash = movestack[mstop].materialhash;
-    state = movestack[mstop].state;
-    kingpos[0] = movestack[mstop].kingpos[0];
-    kingpos[1] = movestack[mstop].kingpos[1];
-    fullmovescounter = movestack[mstop].fullmovescounter;
-    halfmovescounter = movestack[mstop].halfmovescounter;
-    isCheck = movestack[mstop].isCheck;
+    // copy data from stack back to position
+    memcpy(&state, &movestack[mstop], sizeof(chessmovestack));
 
     s2m = state & S2MMASK;
     if (promote != BLANK)
