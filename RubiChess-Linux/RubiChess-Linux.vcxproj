@@ -1,28 +1,28 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Bitboard-Debug|ARM">
-      <Configuration>Bitboard-Debug</Configuration>
+    <ProjectConfiguration Include="Debug|ARM">
+      <Configuration>Debug</Configuration>
       <Platform>ARM</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Bitboard-Debug|x64">
-      <Configuration>Bitboard-Debug</Configuration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Bitboard-Debug|x86">
-      <Configuration>Bitboard-Debug</Configuration>
+    <ProjectConfiguration Include="Debug|x86">
+      <Configuration>Debug</Configuration>
       <Platform>x86</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Bitboard-Release|ARM">
-      <Configuration>Bitboard-Release</Configuration>
+    <ProjectConfiguration Include="Release|ARM">
+      <Configuration>Release</Configuration>
       <Platform>ARM</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Bitboard-Release|x64">
-      <Configuration>Bitboard-Release</Configuration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Bitboard-Release|x86">
-      <Configuration>Bitboard-Release</Configuration>
+    <ProjectConfiguration Include="Release|x86">
+      <Configuration>Release</Configuration>
       <Platform>x86</Platform>
     </ProjectConfiguration>
   </ItemGroup>
@@ -37,22 +37,22 @@
     <LinuxProjectType>{D51BCBC9-82E9-4017-911E-C93873C4EA2B}</LinuxProjectType>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Debug|ARM'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'" Label="Configuration">
     <UseDebugLibraries>true</UseDebugLibraries>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Release|ARM'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Debug|x86'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'" Label="Configuration">
     <UseDebugLibraries>true</UseDebugLibraries>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Release|x86'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Debug|x64'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <UseDebugLibraries>true</UseDebugLibraries>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Release|x64'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -60,29 +60,41 @@
   <ImportGroup Label="Shared" />
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Debug|ARM'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <IncludePath>$(IncludePath)</IncludePath>
     <AdditionalSourcesToCopyMapping>$(ProjectDir)..\RubiChess\tbcore.c:=$(RemoteProjectDir)/tbcore.c</AdditionalSourcesToCopyMapping>
+    <TargetName>RubiChess</TargetName>
+    <TargetExt />
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Release|ARM'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
     <IncludePath>$(IncludePath)</IncludePath>
     <AdditionalSourcesToCopyMapping>$(ProjectDir)..\RubiChess\tbcore.c:=$(RemoteProjectDir)/tbcore.c</AdditionalSourcesToCopyMapping>
+    <TargetName>RubiChess</TargetName>
+    <TargetExt />
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Debug|x64'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>$(IncludePath)</IncludePath>
     <AdditionalSourcesToCopyMapping>$(ProjectDir)..\RubiChess\tbcore.c:=$(RemoteProjectDir)/tbcore.c</AdditionalSourcesToCopyMapping>
+    <TargetName>RubiChess</TargetName>
+    <TargetExt />
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Release|x64'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>$(IncludePath)</IncludePath>
     <AdditionalSourcesToCopyMapping>$(ProjectDir)..\RubiChess\tbcore.c:=$(RemoteProjectDir)/tbcore.c</AdditionalSourcesToCopyMapping>
+    <TargetName>RubiChess</TargetName>
+    <TargetExt />
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Debug|x86'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
     <IncludePath>$(IncludePath)</IncludePath>
     <AdditionalSourcesToCopyMapping>$(ProjectDir)..\RubiChess\tbcore.c:=$(RemoteProjectDir)/tbcore.c</AdditionalSourcesToCopyMapping>
+    <TargetName>RubiChess</TargetName>
+    <TargetExt />
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Release|x86'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
     <IncludePath>$(IncludePath)</IncludePath>
     <AdditionalSourcesToCopyMapping>$(ProjectDir)..\RubiChess\tbcore.c:=$(RemoteProjectDir)/tbcore.c</AdditionalSourcesToCopyMapping>
+    <TargetName>RubiChess</TargetName>
+    <TargetExt />
   </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="..\RubiChess\board.cpp" />
@@ -97,9 +109,8 @@
   <ItemGroup>
     <ClInclude Include="..\RubiChess\RubiChess.h" />
     <ClInclude Include="..\RubiChess\tbcore.h" />
-    <ClInclude Include="..\RubiChess\tbprobe.h" />
   </ItemGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Debug|ARM'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <Link>
       <LibraryDependencies>pthread;%(LibraryDependencies)</LibraryDependencies>
     </Link>
@@ -110,7 +121,7 @@
       </AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Release|ARM'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
     <Link>
       <LibraryDependencies>pthread;%(LibraryDependencies)</LibraryDependencies>
     </Link>
@@ -120,7 +131,7 @@
       </AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Debug|x64'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Link>
       <LibraryDependencies>pthread;%(LibraryDependencies)</LibraryDependencies>
     </Link>
@@ -129,7 +140,7 @@
       </AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Release|x64'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Link>
       <LibraryDependencies>pthread;%(LibraryDependencies)</LibraryDependencies>
     </Link>
@@ -139,7 +150,7 @@
       </AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Debug|x86'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
     <Link>
       <LibraryDependencies>pthread;%(LibraryDependencies)</LibraryDependencies>
     </Link>
@@ -148,7 +159,7 @@
       </AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Bitboard-Release|x86'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
     <Link>
       <LibraryDependencies>pthread;%(LibraryDependencies)</LibraryDependencies>
     </Link>
