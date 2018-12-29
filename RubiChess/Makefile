@@ -1,6 +1,11 @@
 CXX=g++
 CXXFLAGS=-g -std=c++11 -Wall -O3 $(EXTRACXXFLAGS)
-POPCNTFLAGS=-msse3 -mpopcnt
+ifeq ($(shell uname -m),x86_64)
+    ARCHFLAGS=-msse3 -mpopcnt
+endif
+ifeq ($(shell uname -m),armv7l)
+    ARCHFLAGS=-march=armv7-a
+endif
 LDFLAGS=-pthread  $(EXTRALDFLAGS)
 
 profile_make = gcc-profile-make
@@ -11,23 +16,23 @@ ifeq ($(OS),Windows_NT)
     LDFLAGS += -static
 endif
 DEPS = RubiChess.h
-EXE1 = RubiChess-Bitboard
-EXE2 = RubiChess-Bitboard-oldcpu
+EXE1 = RubiChess
+EXE2 = RubiChess-oldcpu
 PGOBENCH1 = ./$(EXE1) -bench
 PGOBENCH2 = ./$(EXE2) -bench
 
 .PHONY: clean profile-build gcc-profile-make gcc-profile-use all
 
-all: RubiChess-Bitboard RubiChess-Bitboard-oldcpu
+all: RubiChess RubiChess-oldcpu
 
-RubiChess-Bitboard:
-	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(POPCNTFLAGS) *.cpp $(LDFLAGS) $(EXTRALDFLAGS) -o RubiChess-Bitboard
+RubiChess:
+	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(LDFLAGS) $(EXTRALDFLAGS) -o RubiChess
 
-RubiChess-Bitboard-oldcpu:
-	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) *.cpp $(LDFLAGS) $(EXTRALDFLAGS) -o RubiChess-Bitboard-oldcpu
+RubiChess-oldcpu:
+	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) *.cpp $(LDFLAGS) $(EXTRALDFLAGS) -o RubiChess-oldcpu
 
 objclean:
-	$(RM) RubiChess-Bitboard RubiChess-Bitboard-oldcpu *.o
+	$(RM) RubiChess RubiChess-oldcpu *.o
 
 profileclean:
 	$(RM) -f *.gcda
