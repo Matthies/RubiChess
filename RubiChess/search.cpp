@@ -744,6 +744,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
             {
                 alpha = score;
                 bestmove[0] = *m;
+                bestmovescore[0] = score;
                 eval_type = HASHEXACT;
 #ifdef SDEBUG
                 updatePvTable(m->code);
@@ -804,16 +805,17 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
 template <RootsearchType RT>
 static void search_gen1(searchthread *thr)
 {
+#if 0
     string bestmovestr = "";
     string newbestmovestr;
     string pondermovestr = "";
-
+#endif
     int score;
     int matein;
     int alpha, beta;
     int deltaalpha = 8;
     int deltabeta = 8;
-    int depth, maxdepth;
+    int maxdepth;
     string pvstring;
     int inWindow;
     int lastsecondsrun = 0;
@@ -822,13 +824,14 @@ static void search_gen1(searchthread *thr)
     const bool isMultiPV = (RT == MultiPVSearch);
     chessposition *pos = &thr->pos;
 
-    if (en.mate > 0)
+    if (en.mate > 0)  // FIXME: Not tested for a long time.
     {
-        depth = maxdepth = en.mate * 2;
+        thr->depth = maxdepth = en.mate * 2;
     }
     else
     {
-        depth = 1;
+        thr->lastCompleteDepth = 0;
+        thr->depth = 1;
         if (en.maxdepth > 0)
             maxdepth = en.maxdepth;
         else
@@ -844,14 +847,15 @@ static void search_gen1(searchthread *thr)
     uint32_t lastBestMove = 0;
     int constantRootMoves = 0;
     bool bExitIteration;
-    // iterative deepening
+    pos->bestmove[0].code = 0;
+// iterative deepening
     do
     {
         matein = MAXDEPTH;
-        // Reset bestmove to detect alpha raise in interrupted search
-        pos->bestmove[0].code = 0;
+        // Reset bestmove to detect alpha raise in interrupted search /// hmmm ... disable; reset only before iterative deepening
+        //pos->bestmove[0].code = 0;
         inWindow = 1;
-        pos->seldepth = depth;
+        pos->seldepth = thr->depth;
 
         if (pos->rootmovelist.length == 0)
         {
@@ -860,7 +864,7 @@ static void search_gen1(searchthread *thr)
             en.stopLevel = ENGINESTOPPED;
         } else
         {
-            score = pos->rootsearch<RT>(alpha, beta, depth);
+            score = pos->rootsearch<RT>(alpha, beta, thr->depth);
             //printf("info string Rootsearch: alpha=%d beta=%d depth=%d score=%d bestscore[0]=%d bestscore[%d]=%d\n", alpha, beta, depth, score, pos.bestmovescore[0], en.MultiPV - 1,  pos.bestmovescore[en.MultiPV - 1]);
 
             // new aspiration window
@@ -887,6 +891,7 @@ static void search_gen1(searchthread *thr)
             }
             else
             {
+                thr->lastCompleteDepth = thr->depth;
                 if (score >= en.terminationscore)
                 {
                     // bench mode reached needed score
@@ -928,29 +933,31 @@ static void search_gen1(searchthread *thr)
                         {
                             uint16_t mc;
                             int dummystaticeval;
-                            tp.probeHash(pos->hash, &pos->bestmovescore[i], &dummystaticeval, &mc, depth, alpha, beta, 0);
+                            tp.probeHash(pos->hash, &pos->bestmovescore[i], &dummystaticeval, &mc, thr->depth, alpha, beta, 0);
                             pos->bestmove[i].code = pos->shortMove2FullMove(mc);
                         }
 
-                        pos->getpvline(depth, i);
+                        pos->getpvline(thr->depth, i);
                         pvstring = pos->pvline.toString();
                         if (i == 0)
                         {
+#if 0
                             // get bestmove
                             if (pos->pvline.length > 0 && pos->pvline.move[0].code)
                                 bestmovestr = pos->pvline.move[0].toString();
                             else
                                 bestmovestr = pos->bestmove[0].toString();
+#endif
                         }
                         char s[4096];
                         if (!MATEDETECTED(pos->bestmovescore[i]))
                         {
-                            sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score cp %d %s pv %s\n", depth, pos->seldepth, i + 1, secondsrun, pos->bestmovescore[i], boundscore[inWindow], pvstring.c_str());
+                            sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score cp %d %s pv %s\n", thr->depth, pos->seldepth, i + 1, secondsrun, pos->bestmovescore[i], boundscore[inWindow], pvstring.c_str());
                         }
                         else
                         {
                             matein = (pos->bestmovescore[i] > 0 ? (SCOREWHITEWINS - pos->bestmovescore[i] + 1) / 2 : (SCOREBLACKWINS - pos->bestmovescore[i]) / 2);
-                            sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score mate %d pv %s\n", depth, pos->seldepth, i + 1, secondsrun, matein, pvstring.c_str());
+                            sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score mate %d pv %s\n", thr->depth, pos->seldepth, i + 1, secondsrun, matein, pvstring.c_str());
                         }
                         cout << s;
                         i++;
@@ -974,8 +981,9 @@ static void search_gen1(searchthread *thr)
                 if (!pos->bestmove[0].code && pos->rootmovelist.length > 0)
                     pos->bestmove[0].code = pos->rootmovelist.move[0].code;
 
-                pos->getpvline(depth, 0);
+                pos->getpvline(thr->depth, 0);
                 pvstring = pos->pvline.toString();
+#if 0
                 bool getponderfrompvline = false;
                 if (pos->pvline.length > 0 && pos->pvline.move[0].code)
                 {
@@ -992,7 +1000,7 @@ static void search_gen1(searchthread *thr)
                 }
                 if (getponderfrompvline)
                     pondermovestr = " ponder " + pos->pvline.move[1].toString();
-
+#endif
                 char s[4096];
                 if (inWindow == 1 || (secondsrun - lastsecondsrun) > 200)
                 {
@@ -1000,7 +1008,7 @@ static void search_gen1(searchthread *thr)
                     if (!MATEDETECTED(score))
                     {
                         sprintf_s(s, "info depth %d seldepth %d time %d score cp %d %s nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
-                            depth, pos->seldepth, secondsrun, score, boundscore[inWindow], en.nodes,
+                            thr->depth, pos->seldepth, secondsrun, score, boundscore[inWindow], en.nodes,
                             (nowtime > en.starttime ? en.nodes * en.frequency / (nowtime - en.starttime) : 1),
                             en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
                     }
@@ -1008,7 +1016,7 @@ static void search_gen1(searchthread *thr)
                     {
                         matein = (score > 0 ? (SCOREWHITEWINS - score + 1) / 2 : (SCOREBLACKWINS - score) / 2);
                         sprintf_s(s, "info depth %d seldepth %d time %d score mate %d nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
-                            depth, pos->seldepth, secondsrun, matein, en.nodes,
+                            thr->depth, pos->seldepth, secondsrun, matein, en.nodes,
                             (nowtime > en.starttime ? en.nodes * en.frequency / (nowtime - en.starttime) : 1),
                             en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
                     }
@@ -1020,10 +1028,10 @@ static void search_gen1(searchthread *thr)
         {
             // Skip some depths depending on current depth and thread number using Laser's method
             int cycle = thr->index % 16;
-            if (thr->index && (depth + cycle) % SkipDepths[cycle] == 0)
-                depth += SkipSize[cycle];
+            if (thr->index && (thr->depth + cycle) % SkipDepths[cycle] == 0)
+                thr->depth += SkipSize[cycle];
 
-            depth++;
+            thr->depth++;
             constantRootMoves++;
             if (lastBestMove != pos->bestmove[0].code)
             {
@@ -1034,7 +1042,7 @@ static void search_gen1(searchthread *thr)
         }
 
         // early exit in playing mode as there is exactly one possible move
-        bExitIteration = (pos->rootmovelist.length == 1 && depth > 4 && en.endtime1 && !en.isPondering());
+        bExitIteration = (pos->rootmovelist.length == 1 && thr->depth > 4 && en.endtime1 && !en.isPondering());
 
         // early exit in TB win/lose position
         bExitIteration = bExitIteration || (pos->tbPosition && abs(score) >= SCORETBWIN - 100);
@@ -1046,12 +1054,58 @@ static void search_gen1(searchthread *thr)
         bExitIteration = bExitIteration || (en.stopLevel == ENGINESTOPIMMEDIATELY);
 
         // exit if max depth is reached
-        bExitIteration = bExitIteration || (depth > maxdepth);
+        bExitIteration = bExitIteration || (thr->depth > maxdepth);
 
     } while (!bExitIteration);
     
-    if (thr->index == 0)
+#if 0
+    if (!isMultiPV && thr->index == 0)
     {
+        searchthread *bestthr = thr;
+        score = pos->bestmovescore[0];
+        for (int i = 1; i < thr->numofthreads; i++)
+        {
+            // search for a better score in the other threads
+            searchthread *hthr = &thr->searchthreads[i];
+            if (hthr->lastCompleteDepth >= bestthr->lastCompleteDepth && hthr->pos.bestmovescore[0] > score)
+            {
+                score = hthr->pos.bestmovescore[0];
+                bestthr = hthr;
+            }
+        }
+        if (bestthr != thr)
+        {
+            bestthr->pos.getpvline(bestthr->depth, 0);
+            pvstring = bestthr->pos.pvline.toString();
+            char s[4096];
+
+            if (!MATEDETECTED(score))
+            {
+                sprintf_s(s, "info depth %d seldepth %d score cp %d %s nodes %llu tbhits %llu hashfull %d pv %s\n",
+                    bestthr->depth, bestthr->pos.seldepth, score, boundscore[inWindow], en.nodes,
+                    en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
+            }
+            else
+            {
+                matein = (score > 0 ? (SCOREWHITEWINS - score + 1) / 2 : (SCOREBLACKWINS - score) / 2);
+                sprintf_s(s, "info depth %d seldepth %d score mate %d nodes %llu tbhits %llu hashfull %d pv %s\n",
+                    bestthr->depth, bestthr->pos.seldepth, matein, en.nodes,
+                    en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
+            }
+            printf("info string thread überschrieben!\n");
+            cout << s;
+
+            if (bestthr->pos.pvline.length > 0 && bestthr->pos.pvline.move[0].code)
+            {
+                bestmovestr = bestthr->pos.pvline.move[0].toString();
+                //getponderfrompvline = (en.ponder && bestthr->pos.pvline.length > 1 && bestthr->pos.pvline.move[1].code);
+            }
+
+        }
+        pos->getpvline(thr->depth, 0);
+        pvstring = pos->pvline.toString();
+#endif
+#if 0
         if (bestmovestr == "")
             // not a single move found (serious time trouble); fall back to default move
             bestmovestr = pos->defaultmove.toString();
@@ -1062,14 +1116,22 @@ static void search_gen1(searchthread *thr)
         while (en.isPondering() && en.stopLevel != ENGINESTOPIMMEDIATELY)
             Sleep(10);
 
+        // when pondering prevent from stopping search before STOP
+        while (en.isPondering() && en.stopLevel != ENGINESTOPIMMEDIATELY)
+            Sleep(10);
+
         cout << s;
-        en.stopLevel = ENGINESTOPPED;
+
+
     }
+#endif
+    if (thr->index == 0)
+        en.stopLevel = ENGINESTOPPED;
 
     //en.stopLevel = ENGINESTOPPED;
     // Remember some exit values for benchmark output
     en.benchscore = score;
-    en.benchdepth = depth - 1;
+    en.benchdepth = thr->depth - 1;
 }
 
 void resetEndTime(int constantRootMoves, bool complete)
@@ -1181,4 +1243,46 @@ void searchguide()
     for (int tnum = 0; tnum < en.Threads; tnum++)
         en.sthread[tnum].thr.join();
     en.stopLevel = ENGINETERMINATEDSEARCH;
+
+    // Output of best move
+    searchthread *bestthr = &en.sthread[0];
+    int bestscore = bestthr->pos.bestmovescore[0];
+    for (int i = 1; i < en.Threads; i++)
+    {
+        // search for a better score in the other threads
+        searchthread *hthr = &en.sthread[i];
+        if (hthr->lastCompleteDepth >= bestthr->lastCompleteDepth 
+            && hthr->pos.bestmovescore[0] > bestscore)
+        {
+#if 0
+            printf("info string new best score %d (was %d); Move changed(?) from %s to %s\n", hthr->pos.bestmovescore[0], bestscore, 
+                bestthr->pos.bestmove[0].toString().c_str(), hthr->pos.bestmove[0].toString().c_str());
+#endif
+            bestscore = hthr->pos.bestmovescore[0];
+            bestthr = hthr;
+        }
+    }
+#if 0
+    if (bestthr->pos.bestmove[0].code != en.sthread[0].pos.bestmove[0].code)
+        printf("info string Zug %s überschrieben durch Zug %s\n", en.sthread[0].pos.bestmove[0].toString().c_str(), bestthr->pos.bestmove[0].toString().c_str());
+#endif
+    chessposition *pos = &bestthr->pos;
+    pos->getpvline(bestthr->lastCompleteDepth, 0);
+    string pvstring = pos->pvline.toString();
+    bool getponderfrompvline = false;
+    string strBestmove;
+    string strPonder = "";
+    if (pos->pvline.length > 0 && pos->pvline.move[0].code)
+    {
+        strBestmove = pos->pvline.move[0].toString();
+        if (en.ponder && pos->pvline.length > 1 && pos->pvline.move[1].code)
+            strPonder = " ponder " + pos->pvline.move[1].toString();
+    }
+    else {
+        strBestmove = pos->bestmove[0].toString();
+    }
+    char s[64];
+    sprintf_s(s, "bestmove %s%s\n", strBestmove.c_str(), strPonder.c_str());
+    cout << s;
+
 }

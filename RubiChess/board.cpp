@@ -574,12 +574,14 @@ void chessposition::getpvline(int depth, int pvnum)
         if (pvline.length == 0 && bestmove[pvnum].code != 0)
         {
             cm = bestmove[pvnum];
+            //printf("info string got bestmove from bestmove[0]\n");
         }
         else if ((movecode = tp.getMoveCode(hash)))
         {
             cm.code = shortMove2FullMove(movecode);
             if (!moveIsPseudoLegal(cm.code))
                 break;
+            //printf("info string got bestmove from hash\n");
         }
         else
         {
@@ -1986,6 +1988,8 @@ void engine::allocThreads(int num)
     for (int i = 0; i < Threads; i++)
     {
         sthread[i].index = i;
+        sthread[i].searchthreads = sthread;
+        sthread[i].numofthreads = num;
     }
     allocPawnhash();
 }

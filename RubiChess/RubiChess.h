@@ -927,6 +927,10 @@ public:
     Pawnhash *pwnhsh;
     thread thr;
     int index;
+    int depth;
+    int numofthreads;
+    int lastCompleteDepth;
+    searchthread *searchthreads;
     searchthread();
     ~searchthread();
 };
