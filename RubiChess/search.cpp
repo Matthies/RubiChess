@@ -1126,7 +1126,51 @@ static void search_gen1(searchthread *thr)
     }
 #endif
     if (thr->index == 0)
+    {
+        // Output of best move
+        searchthread *bestthr = thr;
+        int bestscore = bestthr->pos.bestmovescore[0];
+        for (int i = 1; i < en.Threads; i++)
+        {
+            // search for a better score in the other threads
+            searchthread *hthr = &en.sthread[i];
+            if (hthr->lastCompleteDepth >= bestthr->lastCompleteDepth
+                && hthr->pos.bestmovescore[0] > bestscore)
+            {
+#if 0
+                printf("info string new best score %d (was %d); Move changed(?) from %s to %s\n", hthr->pos.bestmovescore[0], bestscore,
+                    bestthr->pos.bestmove[0].toString().c_str(), hthr->pos.bestmove[0].toString().c_str());
+#endif
+                bestscore = hthr->pos.bestmovescore[0];
+                bestthr = hthr;
+            }
+        }
+#if 0
+        if (bestthr->pos.bestmove[0].code != en.sthread[0].pos.bestmove[0].code)
+            printf("info string Zug %s überschrieben durch Zug %s\n", en.sthread[0].pos.bestmove[0].toString().c_str(), bestthr->pos.bestmove[0].toString().c_str());
+#endif
+        chessposition *pos = &bestthr->pos;
+        pos->getpvline(bestthr->lastCompleteDepth, 0);
+        string pvstring = pos->pvline.toString();
+        bool getponderfrompvline = false;
+        string strBestmove;
+        string strPonder = "";
+        if (pos->pvline.length > 0 && pos->pvline.move[0].code)
+        {
+            strBestmove = pos->pvline.move[0].toString();
+            if (en.ponder && pos->pvline.length > 1 && pos->pvline.move[1].code)
+                strPonder = " ponder " + pos->pvline.move[1].toString();
+        }
+        else {
+            strBestmove = pos->bestmove[0].toString();
+        }
+        char s[64];
+        sprintf_s(s, "bestmove %s%s\n", strBestmove.c_str(), strPonder.c_str());
+        cout << s;
+
         en.stopLevel = ENGINESTOPPED;
+
+    }
 
     //en.stopLevel = ENGINESTOPPED;
     // Remember some exit values for benchmark output
@@ -1243,46 +1287,5 @@ void searchguide()
     for (int tnum = 0; tnum < en.Threads; tnum++)
         en.sthread[tnum].thr.join();
     en.stopLevel = ENGINETERMINATEDSEARCH;
-
-    // Output of best move
-    searchthread *bestthr = &en.sthread[0];
-    int bestscore = bestthr->pos.bestmovescore[0];
-    for (int i = 1; i < en.Threads; i++)
-    {
-        // search for a better score in the other threads
-        searchthread *hthr = &en.sthread[i];
-        if (hthr->lastCompleteDepth >= bestthr->lastCompleteDepth 
-            && hthr->pos.bestmovescore[0] > bestscore)
-        {
-#if 0
-            printf("info string new best score %d (was %d); Move changed(?) from %s to %s\n", hthr->pos.bestmovescore[0], bestscore, 
-                bestthr->pos.bestmove[0].toString().c_str(), hthr->pos.bestmove[0].toString().c_str());
-#endif
-            bestscore = hthr->pos.bestmovescore[0];
-            bestthr = hthr;
-        }
-    }
-#if 0
-    if (bestthr->pos.bestmove[0].code != en.sthread[0].pos.bestmove[0].code)
-        printf("info string Zug %s überschrieben durch Zug %s\n", en.sthread[0].pos.bestmove[0].toString().c_str(), bestthr->pos.bestmove[0].toString().c_str());
-#endif
-    chessposition *pos = &bestthr->pos;
-    pos->getpvline(bestthr->lastCompleteDepth, 0);
-    string pvstring = pos->pvline.toString();
-    bool getponderfrompvline = false;
-    string strBestmove;
-    string strPonder = "";
-    if (pos->pvline.length > 0 && pos->pvline.move[0].code)
-    {
-        strBestmove = pos->pvline.move[0].toString();
-        if (en.ponder && pos->pvline.length > 1 && pos->pvline.move[1].code)
-            strPonder = " ponder " + pos->pvline.move[1].toString();
-    }
-    else {
-        strBestmove = pos->bestmove[0].toString();
-    }
-    char s[64];
-    sprintf_s(s, "bestmove %s%s\n", strBestmove.c_str(), strPonder.c_str());
-    cout << s;
 
 }
