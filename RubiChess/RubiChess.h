@@ -851,12 +851,12 @@ public:
     const char* name = ENGINEVER;
     const char* author = "Andreas Matthies";
     bool isWhite;
-    unsigned long long nodes;
-    unsigned long long tbhits;
-    long long starttime;
-    long long endtime1; // time to send STOPSOON signal
-    long long endtime2; // time to send STOPPIMMEDIATELY signal
-    long long frequency;
+    U64 nodes;
+    U64 tbhits;
+    U64 starttime;
+    U64 endtime1; // time to send STOPSOON signal
+    U64 endtime2; // time to send STOPPIMMEDIATELY signal
+    U64 frequency;
     float fh, fhf;
     int wtime, btime, winc, binc, movestogo, maxnodes, mate, movetime, maxdepth;
     bool infinite;
@@ -874,12 +874,13 @@ public:
     searchthread *sthread;
     enum { NO, PONDERING, HITPONDER } pondersearch;
     int terminationscore = SHRT_MAX;
+    int lastReport;
     int benchscore;
     int benchdepth;
     int stopLevel = ENGINESTOPPED;
     void communicate(string inputstring);
     void setOption(string sName, string sValue);
-    void allocThreads(int num);
+    void allocThreads();
     void allocPawnhash();
     bool isPondering() { return (pondersearch == PONDERING); }
     void HitPonder() { pondersearch = HITPONDER; }

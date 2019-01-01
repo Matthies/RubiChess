@@ -574,6 +574,8 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         && tp.probeHash(hash, &score, &staticeval, &hashmovecode, depth, alpha, beta, 0)
         && rp.getPositionCount(hash) <= 1)  //FIXME: Is this really needed in rootsearch?
     {
+        bestmovescore[0] = score;
+        bestmove[0].code = shortMove2FullMove(hashmovecode);
         return score;
     }
 
@@ -802,6 +804,37 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
 }
 
 
+static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int mpvIndex)
+{
+    int msRun = (int)((nowtime - en.starttime) * 1000 / en.frequency);
+    if (inWindow != 1 && (msRun - en.lastReport) < 200)
+        return;
+
+    const char* boundscore[] = { "upperbound", "", "lowerbound" };
+    char s[4096];
+    chessposition *pos = &thr->pos;
+    en.lastReport = msRun;
+    string pvstring = pos->pvline.toString();
+    int score = pos->bestmovescore[mpvIndex];
+    if (!MATEDETECTED(score))
+    {
+        sprintf_s(s, "info depth %d seldepth %d time %d score cp %d %s nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
+            thr->depth, pos->seldepth, msRun, score, boundscore[inWindow], en.nodes,
+            (nowtime > en.starttime ? en.nodes * en.frequency / (nowtime - en.starttime) : 1),
+            en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
+    }
+    else
+    {
+        int matein = (score > 0 ? (SCOREWHITEWINS - score + 1) / 2 : (SCOREBLACKWINS - score) / 2);
+        sprintf_s(s, "info depth %d seldepth %d time %d score mate %d nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
+            thr->depth, pos->seldepth, msRun, matein, en.nodes,
+            (nowtime > en.starttime ? en.nodes * en.frequency / (nowtime - en.starttime) : 1),
+            en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
+    }
+    cout << s;
+}
+
+
 template <RootsearchType RT>
 static void search_gen1(searchthread *thr)
 {
@@ -811,15 +844,15 @@ static void search_gen1(searchthread *thr)
     string pondermovestr = "";
 #endif
     int score;
-    int matein;
+    //int matein;
     int alpha, beta;
     int deltaalpha = 8;
     int deltabeta = 8;
     int maxdepth;
-    string pvstring;
+    //string pvstring;
     int inWindow;
-    int lastsecondsrun = 0;
-    const char* boundscore[] = { "upperbound", "", "lowerbound" };
+    bool reportedThisDepth;
+    //const char* boundscore[] = { "upperbound", "", "lowerbound" };
 
     const bool isMultiPV = (RT == MultiPVSearch);
     chessposition *pos = &thr->pos;
@@ -847,11 +880,12 @@ static void search_gen1(searchthread *thr)
     uint32_t lastBestMove = 0;
     int constantRootMoves = 0;
     bool bExitIteration;
-
+    en.lastReport = 0;
     // iterative deepening
+    U64 nowtime;
     do
     {
-        matein = MAXDEPTH;
+        //matein = MAXDEPTH;
         // Reset bestmove to detect alpha raise in interrupted search /// hmmm ... disable; reset only before iterative deepening
         //pos->bestmove[0].code = 0;
         inWindow = 1;
@@ -878,6 +912,7 @@ static void search_gen1(searchthread *thr)
                 if (abs(alpha) > 1000)
                     deltaalpha = SHRT_MAX << 1;
                 inWindow = 0;
+                reportedThisDepth = false;
             }
             else if (score == beta)
             {
@@ -888,6 +923,7 @@ static void search_gen1(searchthread *thr)
                 if (abs(beta) > 1000)
                     deltabeta = SHRT_MAX << 1;
                 inWindow = 2;
+                reportedThisDepth = false;
             }
             else
             {
@@ -912,8 +948,8 @@ static void search_gen1(searchthread *thr)
         }
         if (score > NOSCORE && thr->index == 0)
         {
-            long long nowtime = getTime();
-            int secondsrun = (int)((nowtime - en.starttime) * 1000 / en.frequency);
+            nowtime = getTime();
+            //int msRun = (int)((nowtime - en.starttime) * 1000 / en.frequency);
 
             // search was successfull
             if (isMultiPV)
@@ -938,16 +974,15 @@ static void search_gen1(searchthread *thr)
                         }
 
                         pos->getpvline(thr->depth, i);
+#if 0
                         pvstring = pos->pvline.toString();
                         if (i == 0)
                         {
-#if 0
                             // get bestmove
                             if (pos->pvline.length > 0 && pos->pvline.move[0].code)
                                 bestmovestr = pos->pvline.move[0].toString();
                             else
                                 bestmovestr = pos->bestmove[0].toString();
-#endif
                         }
                         char s[4096];
                         if (!MATEDETECTED(pos->bestmovescore[i]))
@@ -960,6 +995,9 @@ static void search_gen1(searchthread *thr)
                             sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score mate %d pv %s\n", thr->depth, pos->seldepth, i + 1, secondsrun, matein, pvstring.c_str());
                         }
                         cout << s;
+#else
+                        uciScore(thr, inWindow, nowtime, i);
+#endif
                         i++;
                     } while (i < maxmoveindex
                         && (pos->bestmove[i].code || (pos->bestmove[i].code = tp.getMoveCode(pos->hash)))
@@ -982,8 +1020,8 @@ static void search_gen1(searchthread *thr)
                     pos->bestmove[0].code = pos->rootmovelist.move[0].code;
 
                 pos->getpvline(thr->depth, 0);
-                pvstring = pos->pvline.toString();
 #if 0
+                pvstring = pos->pvline.toString();
                 bool getponderfrompvline = false;
                 if (pos->pvline.length > 0 && pos->pvline.move[0].code)
                 {
@@ -1001,10 +1039,11 @@ static void search_gen1(searchthread *thr)
                 if (getponderfrompvline)
                     pondermovestr = " ponder " + pos->pvline.move[1].toString();
 #endif
+#if 0
                 char s[4096];
-                if (inWindow == 1 || (secondsrun - lastsecondsrun) > 200)
+                if (inWindow == 1 || (msRun - lastmsRun) > 200)
                 {
-                    lastsecondsrun = secondsrun;
+                    lastmsRun = msRun;
                     if (!MATEDETECTED(score))
                     {
                         sprintf_s(s, "info depth %d seldepth %d time %d score cp %d %s nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
@@ -1022,6 +1061,9 @@ static void search_gen1(searchthread *thr)
                     }
                     cout << s;
                 }
+#else
+                uciScore(thr, inWindow, nowtime, 0);
+#endif
             }
         }
         if (inWindow == 1)
@@ -1032,6 +1074,7 @@ static void search_gen1(searchthread *thr)
                 thr->depth += SkipSize[cycle];
 
             thr->depth++;
+            reportedThisDepth = true;
             constantRootMoves++;
             if (lastBestMove != pos->bestmove[0].code)
             {
@@ -1137,27 +1180,22 @@ static void search_gen1(searchthread *thr)
             if (hthr->lastCompleteDepth >= bestthr->lastCompleteDepth
                 && hthr->pos.bestmovescore[0] > bestscore)
             {
-#if 0
-                printf("info string new best score %d (was %d); Move changed(?) from %s to %s\n", hthr->pos.bestmovescore[0], bestscore,
-                    bestthr->pos.bestmove[0].toString().c_str(), hthr->pos.bestmove[0].toString().c_str());
-#endif
                 bestscore = hthr->pos.bestmovescore[0];
                 bestthr = hthr;
             }
         }
-#if 0
-        if (bestthr->pos.bestmove[0].code != en.sthread[0].pos.bestmove[0].code)
-            printf("info string Zug %s überschrieben durch Zug %s\n", en.sthread[0].pos.bestmove[0].toString().c_str(), bestthr->pos.bestmove[0].toString().c_str());
-#endif
-        if (bestthr->index != 0)
+        if (bestthr->index)
         {
             // as the other threads may still run we cannot risk to do a getpvline on these
             // so just copy the bestmove to this thread and do it here
             pos->bestmove[0] = bestthr->pos.bestmove[0];
+            pos->bestmovescore[0] = bestthr->pos.bestmovescore[0];
+            inWindow = 1;
             pos->getpvline(bestthr->lastCompleteDepth, 0);
-            pvstring = pos->pvline.toString();
-
         }
+        if (!reportedThisDepth || bestthr->index)
+            uciScore(thr, inWindow, getTime(), 0);
+
         bool getponderfrompvline = false;
         string strBestmove;
         string strPonder = "";
@@ -1254,7 +1292,7 @@ void searchguide()
             en.sthread[tnum].thr = thread(&search_gen1<SinglePVSearch>, &en.sthread[tnum]);
     }
 
-    long long nowtime;
+    U64 nowtime;
     while (en.stopLevel != ENGINESTOPPED)
     {
         nowtime = getTime();

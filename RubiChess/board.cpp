@@ -1981,15 +1981,15 @@ void engine::allocPawnhash()
 }
 
 
-void engine::allocThreads(int num)
+void engine::allocThreads()
 {
     delete[] sthread;
-    sthread = new searchthread[num];
+    sthread = new searchthread[Threads];
     for (int i = 0; i < Threads; i++)
     {
         sthread[i].index = i;
         sthread[i].searchthreads = sthread;
-        sthread[i].numofthreads = num;
+        sthread[i].numofthreads = Threads;
     }
     allocPawnhash();
 }
@@ -2053,7 +2053,7 @@ void engine::setOption(string sName, string sValue)
     if (resetTp)
     {
         sizeOfPh = max(16, tp.setSize(sizeOfTp) / Threads);
-        allocThreads(newint);
+        allocThreads();
     }
     if (sName == "move overhead")
     {
