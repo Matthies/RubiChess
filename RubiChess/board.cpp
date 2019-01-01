@@ -1997,11 +1997,16 @@ void engine::allocThreads(int num)
 
 void engine::prepareThreads()
 {
+    sthread[0].pos.bestmovescore[0] = NOSCORE;
+    sthread[0].pos.bestmove[0].code = 0;
     for (int i = 1; i < Threads; i++)
     {
         sthread[i].pos = sthread[0].pos;
         sthread[i].pos.pwnhsh = sthread[i].pwnhsh;
         sthread[i].pos.threadindex = i;
+        // early reset of variables that are important for bestmove selection
+        sthread[i].pos.bestmovescore[0] = NOSCORE;
+        sthread[i].pos.bestmove[0].code = 0;
     }
 }
 

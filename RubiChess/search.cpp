@@ -847,8 +847,8 @@ static void search_gen1(searchthread *thr)
     uint32_t lastBestMove = 0;
     int constantRootMoves = 0;
     bool bExitIteration;
-    pos->bestmove[0].code = 0;
-// iterative deepening
+
+    // iterative deepening
     do
     {
         matein = MAXDEPTH;
@@ -1149,9 +1149,15 @@ static void search_gen1(searchthread *thr)
         if (bestthr->pos.bestmove[0].code != en.sthread[0].pos.bestmove[0].code)
             printf("info string Zug %s überschrieben durch Zug %s\n", en.sthread[0].pos.bestmove[0].toString().c_str(), bestthr->pos.bestmove[0].toString().c_str());
 #endif
-        chessposition *pos = &bestthr->pos;
-        pos->getpvline(bestthr->lastCompleteDepth, 0);
-        string pvstring = pos->pvline.toString();
+        if (bestthr->index != 0)
+        {
+            // as the other threads may still run we cannot risk to do a getpvline on these
+            // so just copy the bestmove to this thread and do it here
+            pos->bestmove[0] = bestthr->pos.bestmove[0];
+            pos->getpvline(bestthr->lastCompleteDepth, 0);
+            pvstring = pos->pvline.toString();
+
+        }
         bool getponderfrompvline = false;
         string strBestmove;
         string strPonder = "";
