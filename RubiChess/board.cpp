@@ -646,6 +646,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
     PieceCode pc = GETPIECE(c);
     PieceCode capture = GETCAPTURE(c);
     PieceType p = pc >> 1;
+    int s2m = (pc & S2MMASK);
 
     // correct piece?
     if (mailbox[from] != pc)
@@ -655,12 +656,20 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
     if (mailbox[to] != capture && !GETEPCAPTURE(c))
         return false;
 
+    // correct color of capture?
+    if (capture && s2m == (capture & S2MMASK))
+        return false;
+
+    // correct target for type of piece?
+    if (!(movesTo(pc, from) & BITSET(to)))
+        return false;
+
     // slider? test for free line
     if (shifting[p] && (betweenMask[from][to] & (occupied00[0] | occupied00[1])))
         return false;
 
     // correct s2m?
-    if ((pc & S2MMASK) != (state & S2MMASK))
+    if (s2m != (state & S2MMASK))
         return false;
 
     if (p == PAWN)
@@ -721,6 +730,20 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
         }
     }
 
+#if 0
+    chessmovelist cml;
+    cml.length = getMoves(&cml.move[0]);
+    bool inList = false;
+    int i = 0;
+    while (!inList && i < cml.length)
+        inList = (cml.move[i++].code == c);
+
+    if (!inList)
+    {
+        printf("Alarm. Falsches moveIsPseudoLegal. c = %x\n", c);
+        print();
+    }
+#endif
     return true;
 }
 
@@ -1708,6 +1731,29 @@ int chessposition::getMoves(chessmove *m, MoveType t)
     }
 }
 
+
+U64 chessposition::movesTo(PieceCode pc, int from)
+{
+    PieceType p = (pc >> 1) ;
+    int s2m = pc & S2MMASK;
+    switch (p)
+    {
+    case PAWN:
+        return pawn_attacks_free[from][s2m] | pawn_attacks_free_double[from][s2m] | pawn_attacks_occupied[from][s2m];
+    case KNIGHT:
+        return knight_attacks[from];
+    case BISHOP:
+        return MAGICBISHOPATTACKS(0, from);
+    case ROOK:
+        return MAGICROOKATTACKS(0, from);
+    case QUEEN:
+        return MAGICBISHOPATTACKS(0, from) | MAGICROOKATTACKS(0, from);
+    case KING:
+        return king_attacks[from];
+    default:
+        return 0ULL;
+    }
+}
 
 
 bool chessposition::isAttacked(int index)
