@@ -17,6 +17,7 @@ U64 fileMask[64];
 U64 rankMask[64];
 U64 betweenMask[64][64];
 int castleindex[64][64] = { 0 };
+U64 castlekingto[64][2] = { 0ULL };
 int castlerights[64];
 
 
@@ -1057,6 +1058,8 @@ void initBitmaphelper()
     castleindex[4][6] = WKC;
     castleindex[60][58] = BQC;
     castleindex[60][62] = BKC;
+    castlekingto[4][0] = BITSET(2) | BITSET(6);
+    castlekingto[60][1] = BITSET(58) | BITSET(62);
 
     for (int from = 0; from < 64; from++)
     {
@@ -1749,7 +1752,7 @@ U64 chessposition::movesTo(PieceCode pc, int from)
     case QUEEN:
         return MAGICBISHOPATTACKS(0, from) | MAGICROOKATTACKS(0, from);
     case KING:
-        return king_attacks[from];
+        return king_attacks[from] | castlekingto[from][s2m];
     default:
         return 0ULL;
     }
