@@ -574,9 +574,13 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         && tp.probeHash(hash, &score, &staticeval, &hashmovecode, depth, alpha, beta, 0)
         && rp.getPositionCount(hash) <= 1)  //FIXME: Is this really needed in rootsearch?
     {
-        bestmovescore[0] = score;
-        bestmove[0].code = shortMove2FullMove(hashmovecode);
-        return score;
+        uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
+        if (fullhashmove)
+        {
+            bestmove[0].code = fullhashmove;
+            bestmovescore[0] = score;
+            return score;
+        }
     }
 
     // test for remis via repetition
