@@ -575,14 +575,12 @@ void chessposition::getpvline(int depth, int pvnum)
         if (pvline.length == 0 && bestmove[pvnum].code != 0)
         {
             cm = bestmove[pvnum];
-            //printf("info string got bestmove from bestmove[0]\n");
         }
         else if ((movecode = tp.getMoveCode(hash)))
         {
             cm.code = shortMove2FullMove(movecode);
             if (!moveIsPseudoLegal(cm.code))
                 break;
-            //printf("info string got bestmove from hash\n");
         }
         else
         {
@@ -665,9 +663,11 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
     if (!(movesTo(pc, from) & BITSET(to)))
         return false;
 
+#if 1 // should be handled by movesTo now
     // slider? test for free line
     if (shifting[p] && (betweenMask[from][to] & (occupied00[0] | occupied00[1])))
-        return false;
+        printf("Alarm. BetweenMask test is needed!\n");//return false;
+#endif
 
     // correct s2m?
     if (s2m != (state & S2MMASK))
@@ -1739,6 +1739,7 @@ U64 chessposition::movesTo(PieceCode pc, int from)
 {
     PieceType p = (pc >> 1) ;
     int s2m = pc & S2MMASK;
+    U64 occ = occupied00[0] | occupied00[1];
     switch (p)
     {
     case PAWN:
@@ -1746,11 +1747,11 @@ U64 chessposition::movesTo(PieceCode pc, int from)
     case KNIGHT:
         return knight_attacks[from];
     case BISHOP:
-        return MAGICBISHOPATTACKS(0, from);
+        return MAGICBISHOPATTACKS(occ, from);
     case ROOK:
-        return MAGICROOKATTACKS(0, from);
+        return MAGICROOKATTACKS(occ, from);
     case QUEEN:
-        return MAGICBISHOPATTACKS(0, from) | MAGICROOKATTACKS(0, from);
+        return MAGICBISHOPATTACKS(occ, from) | MAGICROOKATTACKS(occ, from);
     case KING:
         return king_attacks[from] | castlekingto[from][s2m];
     default:
