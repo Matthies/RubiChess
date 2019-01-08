@@ -2,7 +2,7 @@
 
 #define VERNUM "1.3-dev"
 
-#if 1
+#if 0
 #define SDEBUG
 #endif
 

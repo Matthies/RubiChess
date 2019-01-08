@@ -668,12 +668,6 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
     if (!(movesTo(pc, from) & BITSET(to)))
         return false;
 
-#if 1 // should be handled by movesTo now
-    // slider? test for free line
-    if (shifting[p] && (betweenMask[from][to] & (occupied00[0] | occupied00[1])))
-        printf("info string Alarm. BetweenMask test is needed!\n");//return false;
-#endif
-
     // correct s2m?
     if (s2m != (state & S2MMASK))
         return false;
@@ -736,20 +730,6 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
         }
     }
 
-#if 1
-    chessmovelist cml;
-    cml.length = getMoves(&cml.move[0]);
-    bool inList = false;
-    int i = 0;
-    while (!inList && i < cml.length)
-        inList = (cml.move[i++].code == c);
-
-    if (!inList)
-    {
-        printf("info string Alarm. Falsches moveIsPseudoLegal. c = %x\n", c);
-        print();
-    }
-#endif
     return true;
 }
 
@@ -1516,12 +1496,6 @@ void chessposition::unplayMove(chessmove *cm)
 
 template <MoveType Mt> inline void appendMoveToList(chessposition *pos, chessmove **m, int from, int to, PieceCode piece)
 {
-    PieceCode capture = pos->mailbox[to];
-    if (from > 63 || from < 0 || to > 63 || to < 0 || piece > 13 || piece < 0 || capture > 13 || capture < 0)
-    {
-        printf("info string Alarm appendMoveToList! from=%d to=%d piece=%d capture=%d\n", from, to, piece, capture);
-        pos->print();
-    }
     **m = chessmove(from, to, piece);
     if (!(Mt & CAPTURE))
     {
