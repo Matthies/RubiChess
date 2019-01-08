@@ -781,7 +781,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         }
         else if (!isMultiPV)
         {
-            // overwriting best move even at fail low seems good but don't throw away a win
+            // at fail low don't overwrite an existing move
             if (!bestmove[0].code)
                 bestmove[0] = *m;
         }
@@ -822,16 +822,16 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int mpvIndex)
     int score = pos->bestmovescore[mpvIndex];
     if (!MATEDETECTED(score))
     {
-        sprintf_s(s, "info depth %d seldepth %d time %d score cp %d %s nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
-            thr->depth, pos->seldepth, msRun, score, boundscore[inWindow], en.nodes,
+        sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score cp %d %s nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
+            thr->depth, pos->seldepth, mpvIndex + 1, msRun, score, boundscore[inWindow], en.nodes,
             (nowtime > en.starttime ? en.nodes * en.frequency / (nowtime - en.starttime) : 1),
             en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
     }
     else
     {
         int matein = (score > 0 ? (SCOREWHITEWINS - score + 1) / 2 : (SCOREBLACKWINS - score) / 2);
-        sprintf_s(s, "info depth %d seldepth %d time %d score mate %d nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
-            thr->depth, pos->seldepth, msRun, matein, en.nodes,
+        sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score mate %d nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
+            thr->depth, pos->seldepth, mpvIndex + 1, msRun, matein, en.nodes,
             (nowtime > en.starttime ? en.nodes * en.frequency / (nowtime - en.starttime) : 1),
             en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
     }
