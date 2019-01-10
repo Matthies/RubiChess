@@ -680,3 +680,101 @@ void Sleep(long x)
 }
 
 #endif
+
+
+#ifndef NDEBUG
+// Thanks to http://blog.aaronballman.com/2011/04/generating-a-stack-crawl/ for the following stacktracer
+void GetStackWalk(chessposition *pos, const char* message, const char* _File, int Line, int num, ...)
+{
+    va_list args;
+    va_start(args, num);
+    string values = "Values: ";
+    for (int i = 0; i < num; i++)
+    {
+        values = values + " " + to_string(va_arg(args, int));
+    }
+    va_end(args);
+
+    ofstream ofile;
+    bool bFileAssert = (en.assertfile != "");
+    if (bFileAssert)
+    {
+        ofile.open(en.assertfile, fstream::out | fstream::app);
+    }
+
+    cout << "Assertion failed: " + string(message) + ", file " + string(_File) + ", line " + to_string(Line) + "\n";
+    cout << values + "\n";
+    pos->print();
+    if (bFileAssert)
+    {
+        ofile << "Assertion failed: " + string(message) + ", file " + string(_File) + ", line " + to_string(Line) + "\n";
+        ofile << values + "\n";
+        pos->print(&ofile);
+    }
+
+    std::string outWalk;
+    // Set up the symbol options so that we can gather information from the current
+    // executable's PDB files, as well as the Microsoft symbol servers.  We also want
+    // to undecorate the symbol names we're returned.  If you want, you can add other
+    // symbol servers or paths via a semi-colon separated list in SymInitialized.
+
+    SymSetOptions(SYMOPT_DEFERRED_LOADS | SYMOPT_INCLUDE_32BIT_MODULES | SYMOPT_UNDNAME | SYMOPT_LOAD_LINES);
+    HANDLE hProcess = GetCurrentProcess();
+    if (!SymInitialize(hProcess, NULL, TRUE))
+    {
+        cout << "info string Cannot initialize symbols.\n";
+        return;
+    }
+
+    // Capture up to 25 stack frames from the current call stack.  We're going to
+    // skip the first stack frame returned because that's the GetStackWalk function
+    // itself, which we don't care about.
+    PVOID addrs[25] = { 0 };
+    USHORT frames = CaptureStackBackTrace(1, 25, addrs, NULL);
+    for (USHORT i = 0; i < frames; i++) {
+        // Allocate a buffer large enough to hold the symbol information on the stack and get 
+        // a pointer to the buffer.  We also have to set the size of the symbol structure itself
+        // and the number of bytes reserved for the name.
+        ULONG64 buffer[(sizeof(SYMBOL_INFO) + 1024 + sizeof(ULONG64) - 1) / sizeof(ULONG64)] = { 0 };
+        SYMBOL_INFO *info = (SYMBOL_INFO *)buffer;
+        info->SizeOfStruct = sizeof(SYMBOL_INFO);
+        info->MaxNameLen = 1024;
+
+        // Attempt to get information about the symbol and add it to our output parameter.
+        DWORD64 displacement64 = 0;
+        if (SymFromAddr(hProcess, (DWORD64)addrs[i], &displacement64, info)) {
+            outWalk.append(info->Name, info->NameLen);
+
+            DWORD dwDisplacement;
+            IMAGEHLP_LINE64 line;
+
+            if (SymGetLineFromAddr64(hProcess, (DWORD64)addrs[i], &dwDisplacement, &line))
+            {
+                outWalk.append(":" + to_string(line.LineNumber));
+            }
+            else
+            {
+                cout << "SymGetLineFromAddr64 failed.\n";
+            }
+
+            outWalk.append("\n");
+        }
+        else
+        {
+            cout << "SymFromAddr failed with " + to_string(GetLastError()) + "\n";
+        }
+    }
+
+    SymCleanup(::GetCurrentProcess());
+
+    cout << outWalk;
+    if (bFileAssert)
+    {
+        ofile << outWalk;
+        ofile.close();
+    }
+
+    throw(12345);
+
+}
+#endif

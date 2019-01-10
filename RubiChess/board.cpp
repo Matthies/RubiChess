@@ -540,6 +540,7 @@ void chessposition::mirror()
 
 void chessposition::prepareStack()
 {
+    myassert(mstop >= 0 && mstop < MAXMOVESEQUENCELENGTH, this, 1, mstop);
     // copy stack related data directly to stack
     memcpy(&movestack[mstop], &state, sizeof(chessmovestack));
 }
@@ -547,13 +548,14 @@ void chessposition::prepareStack()
 
 void chessposition::playNullMove()
 {
-#ifdef SDEBUG
+#ifndef NDEBUG
     movecodestack[mstop] = 0;
 #endif
     mstop++;
     state ^= S2MMASK;
     hash ^= zb.s2m;
     ply++;
+    myassert(mstop < MAXMOVESEQUENCELENGTH, this, 1, mstop);
 }
 
 
@@ -563,6 +565,7 @@ void chessposition::unplayNullMove()
     hash ^= zb.s2m;
     ply--;
     mstop--;
+    myassert(mstop >= 0, this, 1, mstop);
 }
 
 
@@ -615,6 +618,10 @@ uint32_t chessposition::shortMove2FullMove(uint16_t c)
         return 0;
     PieceCode capture = mailbox[to];
     PieceType p = pc >> 1;
+
+    myassert(capture >= BLANK && capture <= BKING, this, 1, capture);
+    myassert(pc >= WPAWN && pc <= BKING, this, 1, pc);
+
     int ept = 0;
     if (p == PAWN)
     {
@@ -639,7 +646,7 @@ uint32_t chessposition::shortMove2FullMove(uint16_t c)
 }
 
 
-
+// FIXME: moveIsPseudoLegal gets more and more complicated with making it "thread safe"; maybe using 32bit for move in tp would be better?
 bool chessposition::moveIsPseudoLegal(uint32_t c)
 {
     if (!c)
@@ -652,6 +659,8 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
     PieceType p = pc >> 1;
     int s2m = (pc & S2MMASK);
 
+    myassert(pc >= WPAWN && pc <= BKING, this, 1, pc);
+
     // correct piece?
     if (mailbox[from] != pc)
         return false;
@@ -660,9 +669,11 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
     if (mailbox[to] != capture && !GETEPCAPTURE(c))
         return false;
 
-    // correct color of capture?
-    if (capture && s2m == (capture & S2MMASK))
+    // correct color of capture? capturing the king is illegal
+    if (capture && (s2m == (capture & S2MMASK) || capture >= WKING))
         return false;
+
+    myassert(capture >= BLANK && capture <= BQUEEN, this, 1, capture);
 
     // correct target for type of piece?
     if (!(movesTo(pc, from) & BITSET(to)))
@@ -670,6 +681,10 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
 
     // correct s2m?
     if (s2m != (state & S2MMASK))
+        return false;
+
+    // only pawn can promote
+    if (GETPROMOTION(c) && p != PAWN)
         return false;
 
     if (p == PAWN)
@@ -691,7 +706,12 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
         }
         else
         {
+            // wrong ep capture
             if (GETEPCAPTURE(c) && ept != to)
+                return false;
+
+            // missing promotion
+            if (RRANK(to, s2m) == 7 && !GETPROMOTION(c))
                 return false;
         }
     }
@@ -734,43 +754,57 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
 }
 
 
-void chessposition::print()
+void chessposition::print(ostream* os)
 {
+
+    *os << "Board:\n";
     for (int r = 7; r >= 0; r--)
     {
-        printf("info string ");
         for (int f = 0; f < 8; f++)
         {
-            char pc = PieceChar(mailbox[INDEX(r, f)]);
+            int mb = mailbox[INDEX(r, f)];
+            char pc = PieceChar(mb);
             if (pc == 0)
                 pc = '.';
-            printf("%c", pc);
+            if (mb < BLANK || mb > BKING)
+            {
+                *os << "Illegal Mailbox entry " + to_string(mb);
+                    pc = 'X';
+            }
+            *os << char(pc);
         }
-        printf("\n");
+        *os << "\n";
     }
     chessmovelist pseudolegalmoves;
     pseudolegalmoves.length = getMoves(&pseudolegalmoves.move[0]);
-    printf("info string FEN: %s\n", toFen().c_str());
-    printf("info string State: %0x\n", state);
-    printf("info string EPT: %0x\n", ept);
-    printf("info string Halfmoves: %d\n", halfmovescounter);
-    printf("info string Fullmoves: %d\n", fullmovescounter);
-    printf("info string Hash: %llu (%llx)  (getHash(): %llu)\n", hash, hash, zb.getHash(this));
-    printf("info string Pawn Hash: %llu (%llx)  (getPawnHash(): %llu)\n", pawnhash, pawnhash, zb.getPawnHash(this));
-    printf("info string Value: %d\n", getValue());
+    *os << "\nFEN: " + toFen() + "\n";
+    *os << "State: " + to_string(state) + "\n";
+    *os << "EPT: " + to_string(ept) + "\n";
+    *os << "Halfmoves: " + to_string(halfmovescounter) + "\n";
+    *os << "Fullmoves: " + to_string(fullmovescounter) + "\n";
+    *os << "Hash: " + to_string(hash) + " (should be " + to_string(zb.getHash(this)) +  ")\n";
+    *os << "Pawn Hash: " + to_string(pawnhash) + " (should be " + to_string(zb.getPawnHash(this)) + ")\n";
+    *os << "Value: " + to_string(getValue()) + "\n";
 #ifdef EVALTUNE
     getPositionTuneSet(&pts);
-    printf("info string Value from gradients: %s %d\n", getGradientString().c_str(), NEWTAPEREDEVAL(getGradientValue(&this->pts), ph));
+    *os << "info string Value from gradients: " + getGradientString() + " " + to_string(NEWTAPEREDEVAL(getGradientValue(&this->pts), ph)) + "\n";
 #endif
-    printf("info string Repetitions: %d\n", rp.getPositionCount(hash));
-    printf("info string Phase: %d\n", phase());
-    printf("info string Pseudo-legal Moves: %s\n", pseudolegalmoves.toStringWithValue().c_str());
-#ifdef SDEBUG
-    printf("info string Moves in current search: %s\n", movesOnStack().c_str());
+    *os << "Repetitions: " + to_string(rp.getPositionCount(hash)) + "\n";
+    *os << "Phase: " + to_string(phase()) + "\n";
+    *os << "Pseudo-legal Moves: " + pseudolegalmoves.toStringWithValue() + "\n";
+#ifndef NDEBUG
+    *os << "Moves in current search: " + movesOnStack() + "\n";
 #endif
+    *os << "mstop: " + to_string(mstop) + "\n";
+    *os << "Ply: " + to_string(ply) + "\n";
+    *os << "rootheight: " + to_string(rootheight) + "\n";
+    stringstream ss;
+    ss << hex << bestmove[0].code;
+    *os << "bestmove[0].code: 0x" + ss.str() + "\n";
 }
 
-#ifdef SDEBUG
+
+#ifndef NDEBUG
 string chessposition::movesOnStack()
 {
     string s = "";
@@ -1230,6 +1264,8 @@ void initBitmaphelper()
 
 void chessposition::BitboardSet(int index, PieceCode p)
 {
+    myassert(index >= 0 && index < 64, this, 0);
+    myassert(p >= BLANK && p <= BKING, this, 0);
     int s2m = p & 0x1;
     piece00[p] |= BITSET(index);
     occupied00[s2m] |= BITSET(index);
@@ -1238,6 +1274,8 @@ void chessposition::BitboardSet(int index, PieceCode p)
 
 void chessposition::BitboardClear(int index, PieceCode p)
 {
+    myassert(index >= 0 && index < 64, this, 0);
+    myassert(p >= BLANK && p <= BKING, this, 0);
     int s2m = p & 0x1;
     piece00[p] ^= BITSET(index);
     occupied00[s2m] ^= BITSET(index);
@@ -1246,6 +1284,9 @@ void chessposition::BitboardClear(int index, PieceCode p)
 
 void chessposition::BitboardMove(int from, int to, PieceCode p)
 {
+    myassert(from >= 0 && from < 64, this, 0);
+    myassert(to >= 0 && to < 64, this, 0);
+    myassert(p >= BLANK && p <= BKING, this, 0);
     int s2m = p & 0x1;
     piece00[p] ^= (BITSET(from) | BITSET(to));
     occupied00[s2m] ^= (BITSET(from) | BITSET(to));
@@ -1276,6 +1317,10 @@ bool chessposition::playMove(chessmove *cm)
 
     PieceCode promote = GETPROMOTION(cm->code);
     PieceCode capture = GETCAPTURE(cm->code);
+
+    myassert(!promote || (ptype == PAWN && RRANK(to,s2m)==7), this, 4, promote, ptype, to, s2m);
+    myassert(pfrom == mailbox[from], this, 3, pfrom, from, mailbox[from]);
+    myassert(GETEPCAPTURE(cm->code) || capture == mailbox[to], this, 2, capture, mailbox[to]);
 
     halfmovescounter++;
 
@@ -1421,10 +1466,11 @@ bool chessposition::playMove(chessmove *cm)
 
     ply++;
     rp.addPosition(hash);
-#ifdef SDEBUG
+#ifndef NDEBUG
     movecodestack[mstop] = cm->code;
 #endif
     mstop++;
+    myassert(mstop < MAXMOVESEQUENCELENGTH, this, 1, mstop);
 
     return true;
 }
@@ -1443,6 +1489,7 @@ void chessposition::unplayMove(chessmove *cm)
     ply--;
 
     mstop--;
+    myassert(mstop >= 0, this, 1, mstop);
     // copy data from stack back to position
     memcpy(&state, &movestack[mstop], sizeof(chessmovestack));
 
@@ -1496,6 +1543,10 @@ void chessposition::unplayMove(chessmove *cm)
 
 template <MoveType Mt> inline void appendMoveToList(chessposition *pos, chessmove **m, int from, int to, PieceCode piece)
 {
+    myassert(from >= 0 && from < 64, pos, 1, from);
+    myassert(to >= 0 && to < 64, pos, 1, to);
+    myassert(piece >= WPAWN && piece <= BKING, pos, 1, piece);
+
     **m = chessmove(from, to, piece);
     if (!(Mt & CAPTURE))
     {
