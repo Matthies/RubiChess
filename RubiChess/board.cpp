@@ -548,7 +548,7 @@ void chessposition::prepareStack()
 
 void chessposition::playNullMove()
 {
-#ifndef NDEBUG
+#ifdef STACKDEBUG
     movecodestack[mstop] = 0;
 #endif
     mstop++;
@@ -792,7 +792,7 @@ void chessposition::print(ostream* os)
     *os << "Repetitions: " + to_string(rp.getPositionCount(hash)) + "\n";
     *os << "Phase: " + to_string(phase()) + "\n";
     *os << "Pseudo-legal Moves: " + pseudolegalmoves.toStringWithValue() + "\n";
-#ifndef NDEBUG
+#ifdef STACKDEBUG
     *os << "Moves in current search: " + movesOnStack() + "\n";
 #endif
     *os << "mstop: " + to_string(mstop) + "\n";
@@ -804,7 +804,7 @@ void chessposition::print(ostream* os)
 }
 
 
-#ifndef NDEBUG
+#ifdef STACKDEBUG
 string chessposition::movesOnStack()
 {
     string s = "";
@@ -1466,7 +1466,7 @@ bool chessposition::playMove(chessmove *cm)
 
     ply++;
     rp.addPosition(hash);
-#ifndef NDEBUG
+#ifdef STACKDEBUG
     movecodestack[mstop] = cm->code;
 #endif
     mstop++;

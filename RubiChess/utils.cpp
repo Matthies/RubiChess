@@ -682,7 +682,7 @@ void Sleep(long x)
 #endif
 
 
-#ifndef NDEBUG
+#ifdef STACKDEBUG
 // Thanks to http://blog.aaronballman.com/2011/04/generating-a-stack-crawl/ for the following stacktracer
 void GetStackWalk(chessposition *pos, const char* message, const char* _File, int Line, int num, ...)
 {
@@ -704,7 +704,8 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
 
     cout << "Assertion failed: " + string(message) + ", file " + string(_File) + ", line " + to_string(Line) + "\n";
     cout << values + "\n";
-    pos->print();
+    if (pos)
+        pos->print();
     if (bFileAssert)
     {
         ofile << "Assertion failed: " + string(message) + ", file " + string(_File) + ", line " + to_string(Line) + "\n";
@@ -773,8 +774,6 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
         ofile << outWalk;
         ofile.close();
     }
-
-    throw(12345);
 
 }
 #endif

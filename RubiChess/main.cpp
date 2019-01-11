@@ -772,7 +772,7 @@ int main(int argc, char* argv[])
         { "-compare", "for fast comparision against logfile from other engine (use with -enginetest)", &comparefile, 2, "" },
         { "-flags", "1=skip easy (0 sec.) compares; 2=break 5 seconds after first find; 4=break after compare time is over (use with -enginetest)", &flags, 1, "0" },
         { "-verbose","more output (in tuning mode and maybe more in the future)", &verbose, 0, NULL },
-#ifndef NDEBUG
+#ifdef STACKDEBUG
         { "-assertfile", "output assert info to file", &en.assertfile, 2, "" },
 #endif
 #ifdef EVALTUNE
@@ -792,6 +792,10 @@ int main(int argc, char* argv[])
 
     // Set flag to the new value.  
     _CrtSetDbgFlag(tmpFlag);
+#endif
+
+#ifdef STACKDEBUG
+    myassert(1 == 0, nullptr, 0); // test stacktrace
 #endif
 
     searchinit();

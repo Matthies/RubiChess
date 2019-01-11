@@ -2,11 +2,6 @@
 
 #define VERNUM "1.3-dev"
 
-// disable NDEBUG enables asserts
-#if 0
-#define NDEBUG
-#endif
-
 #if 0
 #define SDEBUG
 #endif
@@ -64,12 +59,12 @@ using namespace std;
 #include <AclAPI.h>
 #include <intrin.h>
 #include <Windows.h>
-#include <DbgHelp.h>
 
-#ifdef NDEBUG
-#define myassert(expression, pos, num, ...) (void)(0);
-#else
+#ifdef STACKDEBUG
+#include <DbgHelp.h>
 #define myassert(expression, pos, num, ...) (void)((!!(expression)) ||   (GetStackWalk(pos, (const char*)(#expression), (const char*)(__FILE__), (int)(__LINE__), (num), ##__VA_ARGS__), 0))
+#else
+#define myassert(expression, pos, num, ...) (void)(0)
 #endif
 
 #ifdef FINDMEMORYLEAKS
@@ -313,7 +308,7 @@ string IndexToAlgebraic(int i);
 string AlgebraicFromShort(string s, chessposition *pos);
 void BitboardDraw(U64 b);
 U64 getTime();
-#ifndef NDEBUG
+#ifdef STACKDEBUG
 void GetStackWalk(chessposition *pos, const char* message, const char* _File, int Line, int num, ...);
 #endif
 #ifdef EVALTUNE
@@ -764,7 +759,7 @@ public:
     chessmovestack movestack[MAXMOVESEQUENCELENGTH];
     uint16_t excludemovestack[MAXMOVESEQUENCELENGTH];
     int16_t staticevalstack[MAXMOVESEQUENCELENGTH];
-#ifndef NDEBUG
+#ifdef STACKDEBUG
     uint32_t movecodestack[MAXMOVESEQUENCELENGTH];
 #endif
     int mstop;      // 0 at last non-reversible move before root, rootheight at root position
@@ -894,7 +889,7 @@ public:
     int benchscore;
     int benchdepth;
     int stopLevel = ENGINESTOPPED;
-#ifndef NDEBUG
+#ifdef STACKDEBUG
     string assertfile = "";
 #endif
     void communicate(string inputstring);
