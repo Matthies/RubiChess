@@ -60,6 +60,13 @@ using namespace std;
 #include <intrin.h>
 #include <Windows.h>
 
+#ifdef STACKDEBUG
+#include <DbgHelp.h>
+#define myassert(expression, pos, num, ...) (void)((!!(expression)) ||   (GetStackWalk(pos, (const char*)(#expression), (const char*)(__FILE__), (int)(__LINE__), (num), ##__VA_ARGS__), 0))
+#else
+#define myassert(expression, pos, num, ...) (void)(0)
+#endif
+
 #ifdef FINDMEMORYLEAKS
 #include <crtdbg.h>
 #endif
@@ -301,6 +308,9 @@ string IndexToAlgebraic(int i);
 string AlgebraicFromShort(string s, chessposition *pos);
 void BitboardDraw(U64 b);
 U64 getTime();
+#ifdef STACKDEBUG
+void GetStackWalk(chessposition *pos, const char* message, const char* _File, int Line, int num, ...);
+#endif
 #ifdef EVALTUNE
 typedef void(*initevalfunc)(void);
 bool PGNtoFEN(string pgnfilename);
@@ -749,7 +759,7 @@ public:
     chessmovestack movestack[MAXMOVESEQUENCELENGTH];
     uint16_t excludemovestack[MAXMOVESEQUENCELENGTH];
     int16_t staticevalstack[MAXMOVESEQUENCELENGTH];
-#ifdef SDEBUG
+#ifdef STACKDEBUG
     uint32_t movecodestack[MAXMOVESEQUENCELENGTH];
 #endif
     int mstop;      // 0 at last non-reversible move before root, rootheight at root position
@@ -795,8 +805,9 @@ public:
     int getFromFen(const char* sFen);
     string toFen();
     bool applyMove(string s);
-    void print();
+    void print(ostream* os = &cout);
     int phase();
+    U64 movesTo(PieceCode pc, int from);
     bool isAttacked(int index);
     U64 attackedByBB(int index, U64 occ);
     bool see(uint32_t move, int threshold);
@@ -851,12 +862,12 @@ public:
     const char* name = ENGINEVER;
     const char* author = "Andreas Matthies";
     bool isWhite;
-    unsigned long long nodes;
-    unsigned long long tbhits;
-    long long starttime;
-    long long endtime1; // time to send STOPSOON signal
-    long long endtime2; // time to send STOPPIMMEDIATELY signal
-    long long frequency;
+    U64 nodes;
+    U64 tbhits;
+    U64 starttime;
+    U64 endtime1; // time to send STOPSOON signal
+    U64 endtime2; // time to send STOPPIMMEDIATELY signal
+    U64 frequency;
     float fh, fhf;
     int wtime, btime, winc, binc, movestogo, maxnodes, mate, movetime, maxdepth;
     bool infinite;
@@ -874,12 +885,16 @@ public:
     searchthread *sthread;
     enum { NO, PONDERING, HITPONDER } pondersearch;
     int terminationscore = SHRT_MAX;
+    int lastReport;
     int benchscore;
     int benchdepth;
     int stopLevel = ENGINESTOPPED;
+#ifdef STACKDEBUG
+    string assertfile = "";
+#endif
     void communicate(string inputstring);
     void setOption(string sName, string sValue);
-    void allocThreads(int num);
+    void allocThreads();
     void allocPawnhash();
     bool isPondering() { return (pondersearch == PONDERING); }
     void HitPonder() { pondersearch = HITPONDER; }
@@ -927,6 +942,10 @@ public:
     Pawnhash *pwnhsh;
     thread thr;
     int index;
+    int depth;
+    int numofthreads;
+    int lastCompleteDepth;
+    searchthread *searchthreads;
     searchthread();
     ~searchthread();
 };
