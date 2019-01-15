@@ -6,7 +6,7 @@
 #define SDEBUG
 #endif
 
-#if 0
+#if 1
 #define EVALTUNE
 #endif
 
@@ -294,6 +294,23 @@ struct tuneparamselection {
 
     int count;
 };
+
+struct tuner {
+    thread thr;
+    int index;
+    int paramindex;
+    eval ev[NUMOFEVALPARAMS];
+    int paramcount;
+    bool busy = false;
+};
+
+struct tunerpool {
+    int lowRunning;
+    int highRunning;
+    int lastImproved;
+    tuner *tn;
+};
+
 
 void registeralltuners(chessposition *pos);
 

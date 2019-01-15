@@ -374,16 +374,28 @@ int tuningratio = 1;
 positiontuneset *texelpts = NULL;
 int texelptsnum;
 
-static double TexelEvalError(chessposition *pos, double k)
+
+static int getGradientValue(struct tuner *tn, positiontuneset *p)
+{
+    int v = 0;
+    for (int i = 0; i < tn->paramcount; i++)
+        v += tn->ev[i] * p->g[i];
+
+    return v;
+}
+
+const double texel_k = 1.121574;
+
+static double TexelEvalError(struct tuner *tn)
 {
     double Ri, Qi;
     double E = 0.0;
 
     for (int i = 0; i < texelptsnum; i++)
     {
-        Qi = NEWTAPEREDEVAL(pos->getGradientValue(&texelpts[i]), texelpts[i].ph);
+        Qi = NEWTAPEREDEVAL(getGradientValue(tn, &texelpts[i]), texelpts[i].ph);
         Ri = texelpts[i].R / 2.0;
-        double sigmoid = 1 / (1 + pow(10.0, -k * Qi / 400.0));
+        double sigmoid = 1 / (1 + pow(10.0, - texel_k * Qi / 400.0));
         E += (Ri - sigmoid) * (Ri - sigmoid);
     }
 
@@ -526,15 +538,130 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
 }
 
 
+
+static void copyParams(chessposition *pos, struct tuner *tn)
+{
+    for (int i = 0; i < pos->tps.count; i++)
+        tn->ev[i] = *pos->tps.ev[i];
+    tn->paramcount = pos->tps.count;
+}
+
+
+static void tuneParameter(struct tuner *tn)
+{
+    tn->busy = true;
+
+    double Error;
+    double Emin = -1.0;
+    int pmin;
+
+    int tuned = 0;
+    int g = 0;
+
+    while (true)     // loop over mg/eg parameter while notImproved <=2
+    {
+        tuned++;
+        if (tuned > 2)
+            break;
+
+        int pbound[2] = { SHRT_MAX, SHRT_MIN };
+        int delta = 1;
+        int direction = 0; // direction=0: go right; delta > 0; direction=1: go right; delta
+        int v = tn->ev[tn->paramindex];
+        int mg = GETMGVAL(v);
+        int eg = GETEGVAL(v);
+        int lastp = (g ? eg : mg);
+        int p = lastp + delta;
+        tn->ev[tn->paramindex] = (g ? VALUE(mg, lastp) : VALUE(lastp, eg));
+        pmin = lastp;
+        if (Emin < 0)
+            Emin = TexelEvalError(tn);
+#if 0
+        if (en.verbose)
+            fprintf(stderr, "Min: %d/%0.10f\n", pmin, Emin);
+#endif
+        do
+        {
+            tn->ev[tn->paramindex] = (g ? VALUE(mg, p) : VALUE(p, eg));
+            Error = TexelEvalError(tn);
+#if 0
+            if (en.verbose)
+                fprintf(stderr, "Min: %d/%0.10f  This: %d / %0.10f  bounds : %d / %d  delta = %d  direction : %d\n", pmin, Emin, p, Error, pbound[0], pbound[1], delta, direction);
+#endif
+            if (Error >= Emin)
+            {
+                direction = (p > pmin ? 1 : 0);
+                pbound[direction] = p;
+                delta = (direction ? -1 : 1);
+                p = pmin + delta;
+            }
+            else
+            {
+                pbound[direction] = pmin;
+                Emin = Error;
+                tuned = 1;
+                pmin = p;
+                delta *= 2;
+                p = p + delta;
+            }
+        } while (abs(pbound[1] - pbound[0]) > 2);
+        tn->ev[tn->paramindex] = (g ? VALUE(mg, pmin) : VALUE(pmin, eg));
+
+        g = 1 - g;
+    };
+
+    tn->busy = false;
+
+}
+
+
+// Collects params of finished tuners, updates 'low' and 'improved' mark and returns free tuner
+static void collectTuners(chessposition *pos, tunerpool *pool, tuner **freeTuner)
+{
+    bool improved = false;
+    *freeTuner = nullptr;
+    int num = pos->tps.count;
+    int delta = (pool->highRunning - pool->lowRunning) % num;
+    int newLowRunning = pool->highRunning;
+    for (int i = 0; i < en.Threads; i++)
+    {
+        tuner *tn = &pool->tn[i];
+        int pi = tn->paramindex;
+        if (tn->busy)
+        {
+            // remember for possible lowest runner
+            if ((pool->highRunning - pi) % num > (pool->highRunning - newLowRunning) % num)
+                newLowRunning = pi;
+        }
+        else
+        {
+            if (tn->thr.joinable())
+                tn->thr.join();
+
+            *freeTuner = tn;
+
+            if (pi >= 0)
+            {
+                if (tn->ev[pi] != *pos->tps.ev[pi])
+                {
+                    printf("%2d %4d  %40s  %s  -> %s\n", i, pi, nameTunedParameter(pos, pi).c_str(), 
+                        getValueStringValue(pos->tps.ev[pi]).c_str(),
+                        getValueStringValue(&(tn->ev[pi])).c_str());
+                    pool->lastImproved = pi;
+                    *pos->tps.ev[pi] = tn->ev[pi];
+                }
+
+            }
+            tn->paramindex = -1;
+        }
+    }
+    pool->lowRunning = newLowRunning;
+}
+
+
 void TexelTune(string fenfilename)
 {
     chessposition pos;
-    double k = 1.121574;
-    int direction = 0;
-    double Error;
-    bool improved;
-    double Emin = -1.0;
-    int pmin;
 
 #if 0 // enable to calculate constant k 
     // FIXME: Needs to be rewritten after eval rewrite
@@ -577,78 +704,81 @@ void TexelTune(string fenfilename)
     registeralltuners(&pos);
     en.setOption("hash", "4"); // we don't need tt; save all the memory for game data
     getGradsFromFen(&pos, fenfilename);
-    do
+
+
+    tunerpool tp;
+    tp.tn = new struct tuner[en.Threads];
+    tp.lowRunning = -1;
+    tp.highRunning = -1;
+    tp.lastImproved = -1;
+
+    for (int i = 0; i < en.Threads; i++)
     {
-        improved = false;
+        tp.tn[i].busy = false;
+        tp.tn[i].index = i;
+        tp.tn[i].paramindex = -1;
+    }
+
+    //copyParams(&pos, &tn[0]);
+
+
+    bool  improved = true;
+
+    while (improved)
+    {
         for (int i = 0; i < pos.tps.count; i++)
         {
-            if (pos.tps.tune[i])
+            if (!pos.tps.tune[i])
+                continue;
+#if 0
+            printTunedParameters(&pos);
+            if (en.verbose)
+                fprintf(stderr, "Tuning %s  %s\n", nameTunedParameter(&pos, i).c_str(), getValueStringValue(pos.tps.ev[i]).c_str());
+#endif
+            tuner *tn;
+
+            tp.highRunning = i;
+
+            do
             {
-                printTunedParameters(&pos);
-                if (en.verbose)
-                    fprintf(stderr, "Tuning %s  %s\n", nameTunedParameter(&pos, i).c_str(), getValueStringValue(pos.tps.ev[i]).c_str());
-
-                int tuned = 0;
-                int g = 0;
-                while (true)     // loop over mg/eg parameter while notImproved <=2
+                collectTuners(&pos, &tp, &tn);
+                if (!tn)
                 {
-                    tuned++;
-                    if (tuned > 2)
-                        break;
-                    if (en.verbose)
-                        fprintf(stderr, "Tuning %s...\n", g ? "eg" : "mg");
-                    int pbound[2] = { SHRT_MAX, SHRT_MIN };
-                    int delta = 1;
-                    direction = 0; // direction=0: go right; delta > 0; direction=1: go right; delta
-                    int v = *pos.tps.ev[i];
-                    int mg = GETMGVAL(v);
-                    int eg = GETEGVAL(v);
-                    int lastp = (g ? eg : mg);
-                    int p = lastp + delta;
-                    *pos.tps.ev[i] = (g ? VALUE(mg, lastp) : VALUE(lastp, eg));
-                    pmin = lastp;
-                    if (Emin < 0)
-                        Emin = TexelEvalError(&pos, k);
-                    if (en.verbose)
-                        fprintf(stderr, "Min: %d/%0.10f\n", pmin, Emin);
-                    do
-                    {
-                        *pos.tps.ev[i] = (g ? VALUE(mg, p) : VALUE(p, eg));
-                        Error = TexelEvalError(&pos, k);
-                        if (en.verbose)
-                            fprintf(stderr, "Min: %d/%0.10f  This: %d / %0.10f  bounds : %d / %d  delta = %d  direction : %d\n", pmin, Emin, p, Error, pbound[0], pbound[1], delta, direction);
-                        if (Error >= Emin)
-                        {
-                            direction = (p > pmin ? 1 : 0);
-                            pbound[direction] = p;
-                            delta = (direction ? -1 : 1);
-                            p = pmin + delta;
-                        }
-                        else
-                        {
-                            pbound[direction] = pmin;
-                            Emin = Error;
-                            improved = true;
-                            tuned = 1;
-                            pmin = p;
-                            delta *= 2;
-                            p = p + delta;
-                        }
-                    } while (abs(pbound[1] - pbound[0]) > 2);
-                    *pos.tps.ev[i] = (g ? VALUE(mg, pmin) : VALUE(pmin, eg));
+                    Sleep(100);
+                }
+            } while (!tn);
 
-                    g = 1 - g;
-                };
-                if (en.verbose)
-                    fprintf(stderr, "E=%0.10f  %s new tuned value: %s\n", Emin,
-                        nameTunedParameter(&pos, i).c_str(), getValueStringValue(pos.tps.ev[i]).c_str());
-                printf("E=%0.10f  %s new tuned value: %s\n", Emin,
-                    nameTunedParameter(&pos, i).c_str(), getValueStringValue(pos.tps.ev[i]).c_str());
+
+            tn->busy = true;
+            tn->paramindex = i;
+            copyParams(&pos, tn);
+
+            improved = !((tp.lowRunning - tp.lastImproved) % pos.tps.count == 0);
+
+            tn->thr = thread(&tuneParameter, tn);
+            while (tp.highRunning == tp.lastImproved && tp.lowRunning != tp.lastImproved)
+            {
+                // Complete loop without improvement... wait for last tuning finish
+                Sleep(100);
             }
+
+            if (tp.highRunning == tp.lastImproved)
+                // still no improvement after last finished thread => exit
+                improved = false;
+
+
+#if 0
+            if (en.verbose)
+                fprintf(stderr, "E=%0.10f  %s new tuned value: %s\n", Emin,
+                    nameTunedParameter(&pos, i).c_str(), getValueStringValue(pos.tps.ev[i]).c_str());
+            printf("E=%0.10f  %s new tuned value: %s\n", Emin,
+                nameTunedParameter(&pos, i).c_str(), getValueStringValue(pos.tps.ev[i]).c_str());
+#endif
+
         }
-        printf("\nTuning-Summary:\n");
-        printTunedParameters(&pos);
-    } while (improved);
+        //printf("\nTuning-Summary:\n");
+        //printTunedParameters(&pos);
+    }
 }
 
 #endif //EVALTUNE
