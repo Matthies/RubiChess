@@ -6,7 +6,7 @@
 #define SDEBUG
 #endif
 
-#if 1
+#if 0
 #define EVALTUNE
 #endif
 
@@ -56,6 +56,7 @@ using namespace std;
 
 #ifdef _WIN32
 
+#include <conio.h>
 #include <AclAPI.h>
 #include <intrin.h>
 #include <Windows.h>
@@ -301,6 +302,7 @@ struct tuner {
     int paramindex;
     eval ev[NUMOFEVALPARAMS];
     int paramcount;
+    double error;
     bool busy = false;
 };
 
@@ -889,7 +891,6 @@ public:
     int wtime, btime, winc, binc, movestogo, maxnodes, mate, movetime, maxdepth;
     bool infinite;
     bool debug = false;
-    bool verbose;
     bool moveoutput;
     int sizeOfTp = 0;
     int sizeOfPh;
