@@ -319,7 +319,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
         && staticevalstack[mstop] > staticevalstack[mstop - 2]);
 
     // ProbCut
-    if (!PVNode && depth >= 6 && abs(beta) < SCOREWHITEWINS)
+    if (!PVNode && depth >= 5 && abs(beta) < SCOREWHITEWINS)
     {
         int rbeta = min(SCOREWHITEWINS, beta + 100);
         chessmovelist *movelist = new chessmovelist;
