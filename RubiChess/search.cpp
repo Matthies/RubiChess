@@ -294,6 +294,22 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
         staticeval = S2MSIGN(state & S2MMASK) * getValue();
     staticevalstack[mstop] = staticeval;
 
+    bool positionImproved = (mstop >= rootheight + 2
+        && staticevalstack[mstop] > staticevalstack[mstop - 2]);
+
+    // futility pruning
+    bool futility = false;
+    if (depth <= 6)
+    {
+        // reverse futility pruning
+        if (!isCheck && staticeval - depth * (72 - 20 * positionImproved) > beta)
+        {
+            SDEBUGPRINT(isDebugPv, debugInsert, " Cutoff by reverse futility pruning: staticscore(%d) - revMargin(%d) > beta(%d)", staticeval, depth * (72 - 20 * positionImproved), beta);
+            return staticeval;
+        }
+        futility = (staticeval < alpha - (100 + 80 * depth));
+    }
+
     // Nullmove pruning
     int bestknownscore = (hashscore != NOSCORE ? hashscore : staticeval);
     if (nullmoveallowed && !isCheck && depth >= 3 && bestknownscore >= beta && ph < 250)
@@ -313,22 +329,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
             if (nmrefutemove && mailbox[GETTO(nmrefutemove)] != BLANK)
                 nmrefutetarget = GETTO(nmrefutemove);
         }
-    }
-
-    bool positionImproved = (mstop >= rootheight + 2
-        && staticevalstack[mstop] > staticevalstack[mstop - 2]);
-
-    // futility pruning
-    bool futility = false;
-    if (depth <= 6)
-    {
-        // reverse futility pruning
-        if (!isCheck && staticeval - depth * (72 - 20 * positionImproved) > beta)
-        {
-            SDEBUGPRINT(isDebugPv, debugInsert, " Cutoff by reverse futility pruning: staticscore(%d) - revMargin(%d) > beta(%d)", staticeval, depth * (72 - 20 * positionImproved), beta);
-            return staticeval;
-        }
-        futility = (staticeval < alpha - (100 + 80 * depth));
     }
 
     // Internal iterative deepening 
