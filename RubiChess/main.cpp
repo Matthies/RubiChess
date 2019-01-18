@@ -743,7 +743,6 @@ int main(int argc, char* argv[])
     bool benchmark = false;
     bool dotests = false;
     bool enginetest = false;
-    bool verbose = false;
     string epdfile = "";
     string engineprg = "";
     string logfile = "";
@@ -771,7 +770,6 @@ int main(int argc, char* argv[])
         { "-startnum", "number of the test in epd to start with (use with -enginetest)", &startnum, 1, "1" },
         { "-compare", "for fast comparision against logfile from other engine (use with -enginetest)", &comparefile, 2, "" },
         { "-flags", "1=skip easy (0 sec.) compares; 2=break 5 seconds after first find; 4=break after compare time is over (use with -enginetest)", &flags, 1, "0" },
-        { "-verbose","more output (in tuning mode and maybe more in the future)", &verbose, 0, NULL },
 #ifdef STACKDEBUG
         { "-assertfile", "output assert info to file", &en.assertfile, 2, "" },
 #endif
@@ -779,6 +777,7 @@ int main(int argc, char* argv[])
         { "-pgnfile", "converts games in a PGN file to fen for tuning them later", &pgnconvertfile, 2, "" },
         { "-fentuning", "reads FENs from file and tunes eval parameters against it", &fentuningfile, 2, "" },
         { "-tuningratio", "use only every <n>th double move from the FEN to speed up the analysis", &tuningratio, 1, "1" },
+        { "-option", "Do benchmark test for some positions.", NULL, 3, NULL },
 #endif
         { NULL, NULL, NULL, 0, NULL }
     };
@@ -804,36 +803,51 @@ int main(int argc, char* argv[])
 
     printf("%s (Build %s)\n UCI compatible chess engine by %s\nParameterlist:\n", en.name, BUILD, en.author);
 
+    int paramindex = 0;
     for (int j = 0; allowedargs[j].cmd; j++)
     {
         int val = 0;
-        for (int i = 1; i < argc; i++)
+        while (paramindex < argc)
         {
-            if (strcmp(argv[i], allowedargs[j].cmd) == 0)
+            if (strcmp(argv[paramindex], allowedargs[j].cmd) == 0)
             {
-                val = i;
+                val = paramindex;
                 break;
             }
+            paramindex++;
         }
         switch (allowedargs[j].type)
         {
         case 0:
             *(bool*)(allowedargs[j].variable) = (val > 0);
             printf(" %s: %s  (%s)\n", allowedargs[j].cmd, *(bool*)(allowedargs[j].variable) ? "yes" : "no", allowedargs[j].info);
+            paramindex = 0;
             break;
         case 1:
             try { *(int*)(allowedargs[j].variable) = stoi((val > 0 && val < argc - 1 ? argv[val + 1] : allowedargs[j].defaultval)); }
             catch (const invalid_argument&) {}
             printf(" %s: %d  (%s)\n", allowedargs[j].cmd, *(int*)(allowedargs[j].variable), allowedargs[j].info);
+            paramindex = 0;
             break;
         case 2:
             *(string*)(allowedargs[j].variable) = (val > 0 && val < argc - 1 ? argv[val + 1] : allowedargs[j].defaultval);
             printf(" %s: %s  (%s)\n", allowedargs[j].cmd, (*(string*)(allowedargs[j].variable)).c_str(), allowedargs[j].info);
+            paramindex = 0;
+            break;
+        case 3:
+            if (val > 0 && val < argc - 1)
+            {
+                string optionName(argv[val + 1]);
+                string optionValue(val < argc - 2 ? argv[val + 2] : "");
+                en.setOption(optionName, optionValue);
+                // search for more -option parameters starting after current (ugly hack)
+                paramindex++;
+                j--;
+            }
         }
     }
 
     printf("Here we go...\n\n");
-    en.verbose = verbose;
 
     if (perfmaxdepth)
     {

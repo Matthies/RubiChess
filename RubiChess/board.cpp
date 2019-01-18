@@ -2055,6 +2055,7 @@ engine::engine()
 
 engine::~engine()
 {
+    setOption("SyzygyPath", "<empty>");
     delete[] sthread;
 }
 
