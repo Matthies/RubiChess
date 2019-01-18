@@ -318,6 +318,36 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
     bool positionImproved = (mstop >= rootheight + 2
         && staticevalstack[mstop] > staticevalstack[mstop - 2]);
 
+    // ProbCut
+    if (!PVNode && depth >= 5 && abs(beta) < SCOREWHITEWINS)
+    {
+        int rbeta = min(SCOREWHITEWINS, beta + 100);
+        chessmovelist *movelist = new chessmovelist;
+        movelist->length = getMoves(&movelist->move[0], TACTICAL);
+
+        for (int i = 0; i < movelist->length; i++)
+        {
+            if (!see(movelist->move[i].code, rbeta - staticeval))
+                continue;
+
+            if (playMove(&movelist->move[i]))
+            {
+                int probcutscore = -alphabeta(-rbeta, -rbeta + 1, depth - 4, false);
+
+                unplayMove(&movelist->move[i]);
+
+                if (probcutscore >= rbeta)
+                {
+                    // ProbCut off
+                    delete movelist;
+                    return probcutscore;
+                }
+            }
+        }
+        delete movelist;
+    }
+
+
     // futility pruning
     bool futility = false;
     if (depth <= 6)
