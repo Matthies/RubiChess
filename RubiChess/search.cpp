@@ -201,7 +201,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
     }
 
     // test for remis via 50 moves rule
-    if (halfmovescounter >= 100)
+    if (halfmovescounter > 100)
     {
         SDEBUGPRINT(isDebugPv, debugInsert, "Draw (50 moves)");
         return SCOREDRAW;
@@ -613,14 +613,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         }
     }
 
-    // test for remis via repetition
-    if (rp.getPositionCount(hash) >= 3 && testRepetiton() >= 2)
-        return SCOREDRAW;
-
-    // test for remis via 50 moves rule
-    if (halfmovescounter >= 100)
-        return SCOREDRAW;
-
     if (isCheck)
         extendall = 1;
 
@@ -915,10 +907,19 @@ static void search_gen1(searchthread *thr)
 
         if (pos->rootmovelist.length == 0)
         {
+            // mate / stalemate
             pos->bestmove[0].code = 0;
-            score =  (pos->isCheck ? SCOREBLACKWINS : SCOREDRAW);
+            pos->bestmovescore[0] =  (pos->isCheck ? SCOREBLACKWINS : SCOREDRAW);
             en.stopLevel = ENGINESTOPPED;
-        } else
+        }
+        else if (pos->testRepetiton() >= 2 || pos->halfmovescounter >= 100)
+        {
+            // remis via repetition or 50 moves rule
+            pos->bestmove[0].code = 0;
+            pos->bestmovescore[0] = SCOREDRAW;
+            en.stopLevel = ENGINESTOPPED;
+        }
+        else
         {
             score = pos->rootsearch<RT>(alpha, beta, thr->depth);
             //printf("info string Rootsearch: alpha=%d beta=%d depth=%d score=%d bestscore[0]=%d bestscore[%d]=%d\n", alpha, beta, depth, score, pos.bestmovescore[0], en.MultiPV - 1,  pos.bestmovescore[en.MultiPV - 1]);
