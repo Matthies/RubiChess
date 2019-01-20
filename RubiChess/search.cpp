@@ -909,14 +909,14 @@ static void search_gen1(searchthread *thr)
         {
             // mate / stalemate
             pos->bestmove[0].code = 0;
-            pos->bestmovescore[0] =  (pos->isCheck ? SCOREBLACKWINS : SCOREDRAW);
+            score = pos->bestmovescore[0] =  (pos->isCheck ? SCOREBLACKWINS : SCOREDRAW);
             en.stopLevel = ENGINESTOPPED;
         }
         else if (pos->testRepetiton() >= 2 || pos->halfmovescounter >= 100)
         {
             // remis via repetition or 50 moves rule
             pos->bestmove[0].code = 0;
-            pos->bestmovescore[0] = SCOREDRAW;
+            score = pos->bestmovescore[0] = SCOREDRAW;
             en.stopLevel = ENGINESTOPPED;
         }
         else
@@ -1085,7 +1085,6 @@ static void search_gen1(searchthread *thr)
         if (!reportedThisDepth || bestthr->index)
             uciScore(thr, inWindow, getTime(), 0);
 
-        bool getponderfrompvline = false;
         string strBestmove;
         string strPonder = "";
         if (pos->pvline.length > 0 && pos->pvline.move[0].code)

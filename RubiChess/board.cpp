@@ -657,7 +657,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
     PieceCode pc = GETPIECE(c);
     PieceCode capture = GETCAPTURE(c);
     PieceType p = pc >> 1;
-    int s2m = (pc & S2MMASK);
+    unsigned int s2m = (pc & S2MMASK);
 
     myassert(pc >= WPAWN && pc <= BKING, this, 1, pc);
 
