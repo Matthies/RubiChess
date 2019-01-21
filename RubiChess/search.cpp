@@ -1125,7 +1125,7 @@ void resetEndTime(int constantRootMoves, bool complete)
         int f2 = max(13, 23 - constantRootMoves * 2);
         if (complete)
             en.endtime1 = en.starttime + timetouse * en.frequency * f1 / (en.movestogo + 1) / 10000;
-        en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, f2 * timetouse / (en.movestogo + 1) / 10) * en.frequency / 1000;
+        en.endtime2 = en.starttime + min(max(0, timetouse - en.moveOverhead), f2 * timetouse / (en.movestogo + 1) / 10) * en.frequency / 1000;
         //printf("info string difftime1=%lld  difftime2=%lld\n", (endtime1 - en.starttime) * 1000 / en.frequency , (endtime2 - en.starttime) * 1000 / en.frequency);
     }
     else if (timetouse) {
@@ -1139,7 +1139,7 @@ void resetEndTime(int constantRootMoves, bool complete)
             int f2 = max(10, 18 - constantRootMoves);
             if (complete)
                 en.endtime1 = en.starttime + max(timeinc, f1 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
-            en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, max(timeinc, f2 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
+            en.endtime2 = en.starttime + min(max(0, timetouse - en.moveOverhead), max(timeinc, f2 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
         }
         else {
             // sudden death without increment; play for another x;y moves
@@ -1149,7 +1149,7 @@ void resetEndTime(int constantRootMoves, bool complete)
             int f2 = min(30, 20 + constantRootMoves * 2);
             if (complete)
                 en.endtime1 = en.starttime + timetouse / f1 * en.frequency / 1000;
-            en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, timetouse / f2) * en.frequency / 1000;
+            en.endtime2 = en.starttime + min(max(0, timetouse - en.moveOverhead), timetouse / f2) * en.frequency / 1000;
         }
     }
     else {
