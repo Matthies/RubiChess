@@ -481,6 +481,7 @@ spielt Ka5-a4???
 18.01.2019:
 Im Gauntlet mit schwarz gegen Tornado (Runde 12) spielt Rubi in r2qr3/pb1pnpk1/1p2p3/b5B1/2P5/PQN1PN2/1P3PPP/4KB1R w K
 f7f6 und erkennt nicht, dass Bg5xf6 direkt gewinnt. Zu scharfes futility pruning?
+Hmmm. Irgendwas stimmt mit dem fen nicht, da fehlt wohl ein Zug.
 
 
 Links:

@@ -201,7 +201,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
     }
 
     // test for remis via 50 moves rule
-    if (halfmovescounter >= 100)
+    if (halfmovescounter > 100)
     {
         SDEBUGPRINT(isDebugPv, debugInsert, "Draw (50 moves)");
         return SCOREDRAW;
@@ -613,14 +613,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         }
     }
 
-    // test for remis via repetition
-    if (rp.getPositionCount(hash) >= 3 && testRepetiton() >= 2)
-        return SCOREDRAW;
-
-    // test for remis via 50 moves rule
-    if (halfmovescounter >= 100)
-        return SCOREDRAW;
-
     if (isCheck)
         extendall = 1;
 
@@ -915,10 +907,19 @@ static void search_gen1(searchthread *thr)
 
         if (pos->rootmovelist.length == 0)
         {
+            // mate / stalemate
             pos->bestmove[0].code = 0;
-            score =  (pos->isCheck ? SCOREBLACKWINS : SCOREDRAW);
+            score = pos->bestmovescore[0] =  (pos->isCheck ? SCOREBLACKWINS : SCOREDRAW);
             en.stopLevel = ENGINESTOPPED;
-        } else
+        }
+        else if (pos->testRepetiton() >= 2 || pos->halfmovescounter >= 100)
+        {
+            // remis via repetition or 50 moves rule
+            pos->bestmove[0].code = 0;
+            score = pos->bestmovescore[0] = SCOREDRAW;
+            en.stopLevel = ENGINESTOPPED;
+        }
+        else
         {
             score = pos->rootsearch<RT>(alpha, beta, thr->depth);
             //printf("info string Rootsearch: alpha=%d beta=%d depth=%d score=%d bestscore[0]=%d bestscore[%d]=%d\n", alpha, beta, depth, score, pos.bestmovescore[0], en.MultiPV - 1,  pos.bestmovescore[en.MultiPV - 1]);
@@ -1084,7 +1085,6 @@ static void search_gen1(searchthread *thr)
         if (!reportedThisDepth || bestthr->index)
             uciScore(thr, inWindow, getTime(), 0);
 
-        bool getponderfrompvline = false;
         string strBestmove;
         string strPonder = "";
         if (pos->pvline.length > 0 && pos->pvline.move[0].code)
@@ -1125,7 +1125,7 @@ void resetEndTime(int constantRootMoves, bool complete)
         int f2 = max(13, 23 - constantRootMoves * 2);
         if (complete)
             en.endtime1 = en.starttime + timetouse * en.frequency * f1 / (en.movestogo + 1) / 10000;
-        en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, f2 * timetouse / (en.movestogo + 1) / 10) * en.frequency / 1000;
+        en.endtime2 = en.starttime + min(max(0, timetouse - en.moveOverhead), f2 * timetouse / (en.movestogo + 1) / 10) * en.frequency / 1000;
         //printf("info string difftime1=%lld  difftime2=%lld\n", (endtime1 - en.starttime) * 1000 / en.frequency , (endtime2 - en.starttime) * 1000 / en.frequency);
     }
     else if (timetouse) {
@@ -1139,7 +1139,7 @@ void resetEndTime(int constantRootMoves, bool complete)
             int f2 = max(10, 18 - constantRootMoves);
             if (complete)
                 en.endtime1 = en.starttime + max(timeinc, f1 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
-            en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, max(timeinc, f2 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
+            en.endtime2 = en.starttime + min(max(0, timetouse - en.moveOverhead), max(timeinc, f2 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
         }
         else {
             // sudden death without increment; play for another x;y moves
@@ -1149,7 +1149,7 @@ void resetEndTime(int constantRootMoves, bool complete)
             int f2 = min(30, 20 + constantRootMoves * 2);
             if (complete)
                 en.endtime1 = en.starttime + timetouse / f1 * en.frequency / 1000;
-            en.endtime2 = en.starttime + min(timetouse - en.moveOverhead, timetouse / f2) * en.frequency / 1000;
+            en.endtime2 = en.starttime + min(max(0, timetouse - en.moveOverhead), timetouse / f2) * en.frequency / 1000;
         }
     }
     else {
