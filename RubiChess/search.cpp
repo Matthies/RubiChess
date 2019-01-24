@@ -391,7 +391,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
             continue;
 
         // Check for futility pruning condition for this move and skip move if at least one legal move is already found
-        bool futilityPrune = futility && !ISTACTICAL(m->code) && !isCheck && alpha <= 900;
+        bool futilityPrune = futility && !ISTACTICAL(m->code) && !isCheck && alpha <= 900 && !moveGivesCheck(m->code);
         if (futilityPrune)
         {
             if (LegalMoves)

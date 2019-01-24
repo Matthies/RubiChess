@@ -754,6 +754,27 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
 }
 
 
+bool chessposition::moveGivesCheck(uint32_t c)
+{
+    int pc = GETPIECE(c);
+    int me = pc & S2MMASK;
+    int you = me ^ S2MMASK;
+    int yourKing = kingpos[you];
+
+    // test if moving piece gives check
+    if (movesTo(pc, GETTO(c)) & BITSET(yourKing))
+        return true;
+
+#if 0
+    // test for discovered check; seems a good idea but doesn't work, maybe too expensive for too few positives
+    if (isAttackedByMySlider(yourKing, (occupied00[0] | occupied00[1]) ^ BITSET(GETTO(c)) ^ BITSET(GETFROM(c)), me))
+        return true;
+#endif
+
+    return false;
+}
+
+
 void chessposition::print(ostream* os)
 {
 
@@ -1806,6 +1827,13 @@ bool chessposition::isAttacked(int index)
         || pawn_attacks_occupied[index][state & S2MMASK] & piece00[(PAWN << 1) | opponent]
         || MAGICROOKATTACKS(occupied00[0] | occupied00[1], index) & (piece00[(ROOK << 1) | opponent] | piece00[(QUEEN << 1) | opponent])
         || MAGICBISHOPATTACKS(occupied00[0] | occupied00[1], index) & (piece00[(BISHOP << 1) | opponent] | piece00[(QUEEN << 1) | opponent]);
+}
+
+// not needed as the discovered check test is disable but maybe we can use it later
+bool chessposition::isAttackedByMySlider(int index, U64 occ, int me)
+{
+    return MAGICROOKATTACKS(occ, index) & (piece00[(ROOK << 1) | me] | piece00[(QUEEN << 1) | me])
+        || MAGICBISHOPATTACKS(occ, index) & (piece00[(BISHOP << 1) | me] | piece00[(QUEEN << 1) | me]);
 }
 
 
