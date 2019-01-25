@@ -539,6 +539,9 @@ const int lva[] = { 5 << 25, 4 << 25, 3 << 25, 3 << 25, 2 << 25, 1 << 25, 0 << 2
 #define GETPIECE(x) (((x) & 0xf0000000) >> 28)
 #define GETTACTICALVALUE(x) (prunematerialvalue[GETCAPTURE(x) >> 1] + (ISPROMOTION(x) ? prunematerialvalue[GETPROMOTION(x) >> 1] - prunematerialvalue[PAWN] : 0))
 
+#define GIVECHECKFLAG 0x08000000
+#define GIVESCHECK(x) ((x) & GIVECHECKFLAG)
+
 #define PAWNATTACK(s, p) ((s) ? (((p) & ~FILEHBB) >> 7) | (((p) & ~FILEABB) >> 9) : (((p) & ~FILEABB) << 7) | (((p) & ~FILEHBB) << 9))
 #define PAWNPUSH(s, p) ((s) ? ((p) >> 8) : ((p) << 8))
 
@@ -661,7 +664,16 @@ struct chessmovestack
 class chessmove
 {
 public:
-    // pcpcepepepepccccppppfffffftttttt
+    // ppppyxeeeeeeccccrrrrfffffftttttt
+    // t(6): index of 'to'-square
+    // f(6): index of 'from'-square
+    // r(4): piececode of promote
+    // c(4): piececode of capture
+    // e(4): index of ep capture target
+    // x(1): flags an ep capture move
+    // y(1): flags a move givin check (not every move that gives check is flagged!); not implemented yet
+    // p(4): piececode of the moving piece
+
     uint32_t code;
     int value;
 
@@ -828,6 +840,7 @@ public:
     int phase();
     U64 movesTo(PieceCode pc, int from);
     bool isAttacked(int index);
+    bool isAttackedByMySlider(int index, U64 occ, int me);  // special simple version to detect giving check by removing blocker
     U64 attackedByBB(int index, U64 occ);
     bool see(uint32_t move, int threshold);
     int getBestPossibleCapture();
@@ -841,6 +854,7 @@ public:
     void playNullMove();
     void unplayNullMove();
     void getpvline(int depth, int pvnum);
+    bool moveGivesCheck(uint32_t c);  // simple and imperfect as it doesn't handle special moves and cases (mainly to avoid pruning of important moves)
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
     uint32_t shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal
     int getPositionValue();
