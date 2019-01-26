@@ -424,7 +424,7 @@ int chessposition::getValue()
     int sideToScale = positionscore > SCOREDRAW ? WHITE : BLACK;
     sc = getScaling(sideToScale);
 
-    if (sc = SCALE_DRAW)
+    if (sc == SCALE_DRAW)
         return SCOREDRAW;
 
     int score = TAPEREDANDSCALEDEVAL(positionscore, ph, sc);
