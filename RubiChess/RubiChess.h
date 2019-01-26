@@ -6,7 +6,7 @@
 #define SDEBUG
 #endif
 
-#if 0
+#if 1
 #define EVALTUNE
 #endif
 
@@ -105,6 +105,9 @@ void Sleep(long x);
 #define POPCOUNT(x) __builtin_popcountll(x)
 #endif
 
+enum { WHITE, BLACK };
+#define WHITEBB 0x55aa55aa55aa55aa
+#define BLACKBB 0xaa55aa55aa55aa55
 #define RANK(x) ((x) >> 3)
 #define RRANK(x,s) ((s) ? ((x) >> 3) ^ 7 : ((x) >> 3))
 #define FILE(x) ((x) & 0x7)
@@ -160,8 +163,9 @@ typedef const int32_t eval;
 #endif
 #define GETMGVAL(v) ((int16_t)(((uint32_t)(v) + 0x8000) >> 16))
 #define GETEGVAL(v) ((int16_t)((v) & 0xffff))
-#define NEWTAPEREDEVAL(v, ph) (((256 - (ph)) * GETMGVAL(v) + (ph) * GETEGVAL(v)) / 256)
 #define PSQTINDEX(i,s) ((s) ? (i) : (i) ^ 0x38)
+
+#define TAPEREDANDSCALEDEVAL(s, p, c) ((GETMGVAL(s) * (256 - (p)) + GETEGVAL(s) * (p) * (c) / SCALE_NORMAL) / 256)
 
 #define NUMOFEVALPARAMS (2*5*4 + 5 + 4*8 + 8 + 5 + 4*28 + 2 + 7 + 1 + 7 + 7*64)
 struct evalparamset {
@@ -280,8 +284,9 @@ struct evalparamset {
 #ifdef EVALTUNE
 struct positiontuneset {
     uint8_t ph;
+    uint8_t sc;
     int16_t g[NUMOFEVALPARAMS];   // maybe even char could be enough if parameters don't exceed this 
-    int8_t R;                    
+    int8_t R;
 };
 
 struct tuneparamselection {
@@ -317,6 +322,11 @@ struct tunerpool {
 void registeralltuners(chessposition *pos);
 
 #endif
+
+#define SCALE_NORMAL 128
+#define SCALE_DRAW 0
+#define SCALE_ONEPAWN 48
+#define SCALE_HARDTOWIN 10
 
 //
 // utils stuff
@@ -438,8 +448,28 @@ public:
     int getPositionCount(unsigned long long hash);
 };
 
+
+#define MATERIALHASHSIZE 0x10000
+#define MATERIALHASHMASK (MATERIALHASHSIZE - 1)
+
+
+struct Materialhashentry {
+    U64 hash;
+    int scale[2];
+};
+
+
+class Materialhash
+{
+public:
+    Materialhashentry table[MATERIALHASHSIZE];
+    bool probeHash(U64 hash, Materialhashentry **entry);
+};
+
+
 extern zobrist zb;
 extern transposition tp;
+extern Materialhash mh;
 
 
 //
@@ -515,7 +545,7 @@ const int orthogonalanddiagonaloffset[] = { -8, -1, 1, 8, -7, -9, 7, 9 };
 const int shifting[] = { 0, 0, 0, 1, 2, 3, 0 };
 
 const struct { int offset; bool needsblank; } pawnmove[] = { { 0x10, true }, { 0x0f, false }, { 0x11, false } };
-extern const int prunematerialvalue[];
+extern const int materialvalue[];
 // values for move ordering
 const int mvv[] = { 0U << 28, 1U << 28, 2U << 28, 2U << 28, 3U << 28, 4U << 28, 5U << 28 };
 const int lva[] = { 5 << 25, 4 << 25, 3 << 25, 3 << 25, 2 << 25, 1 << 25, 0 << 25 };
@@ -537,7 +567,7 @@ const int lva[] = { 5 << 25, 4 << 25, 3 << 25, 3 << 25, 2 << 25, 1 << 25, 0 << 2
 #define ISPROMOTION(x) ((x) & 0xf000)
 #define ISCAPTURE(x) ((x) & 0xf0000)
 #define GETPIECE(x) (((x) & 0xf0000000) >> 28)
-#define GETTACTICALVALUE(x) (prunematerialvalue[GETCAPTURE(x) >> 1] + (ISPROMOTION(x) ? prunematerialvalue[GETPROMOTION(x) >> 1] - prunematerialvalue[PAWN] : 0))
+#define GETTACTICALVALUE(x) (materialvalue[GETCAPTURE(x) >> 1] + (ISPROMOTION(x) ? materialvalue[GETPROMOTION(x) >> 1] - materialvalue[PAWN] : 0))
 
 #define GIVECHECKFLAG 0x08000000
 #define GIVESCHECK(x) ((x) & GIVECHECKFLAG)
@@ -815,6 +845,7 @@ public:
     uint32_t pvtable[MAXDEPTH][MAXDEPTH];
 #endif
     int ph; // to store the phase during different evaluation functions
+    int sc; // to stor scaling factor used for evaluation
     int useTb;
     int useRootmoveScore;
     int tbPosition;
@@ -860,6 +891,7 @@ public:
     int getPositionValue();
     int getPawnAndKingValue(pawnhashentry **entry);
     int getValue();
+    int getScaling(int col);
 
     template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth);
     int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed);

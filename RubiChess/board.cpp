@@ -808,7 +808,7 @@ void chessposition::print(ostream* os)
     *os << "Value: " + to_string(getValue()) + "\n";
 #ifdef EVALTUNE
     getPositionTuneSet(&pts);
-    *os << "info string Value from gradients: " + getGradientString() + " " + to_string(NEWTAPEREDEVAL(getGradientValue(&this->pts), ph)) + "\n";
+    *os << "info string Value from gradients: " + getGradientString() + " " + to_string(TAPEREDANDSCALEDEVAL(getGradientValue(&this->pts), ph, this->getScaling(0))) + "\n";
 #endif
     *os << "Repetitions: " + to_string(rp.getPositionCount(hash)) + "\n";
     *os << "Phase: " + to_string(phase()) + "\n";
@@ -1437,6 +1437,8 @@ bool chessposition::playMove(chessmove *cm)
         }
         return false;
     }
+    
+    PREFETCH(&mh.table[materialhash & MATERIALHASHMASK]);
 
     // remove castle rights
     int oldcastle = (state & CASTLEMASK);
@@ -1871,7 +1873,7 @@ bool chessposition::see(uint32_t move, int threshold)
 
     int nextPiece = (ISPROMOTION(move) ? GETPROMOTION(move) : GETPIECE(move)) >> 1;
 
-    value -= prunematerialvalue[nextPiece];
+    value -= materialvalue[nextPiece];
 
     if (value >= 0)
         // the move is good enough even if the piece is recaptured
@@ -1915,7 +1917,7 @@ bool chessposition::see(uint32_t move, int threshold)
 
         s2m ^= S2MMASK;
 
-        value = -value - 1 - prunematerialvalue[nextPiece];
+        value = -value - 1 - materialvalue[nextPiece];
 
         if (value >= 0)
             break;
@@ -1933,17 +1935,17 @@ int chessposition::getBestPossibleCapture()
     int captureval = 0;
 
     if (piece00[WQUEEN | you])
-        captureval += prunematerialvalue[QUEEN];
+        captureval += materialvalue[QUEEN];
     else if (piece00[WROOK | you])
-        captureval += prunematerialvalue[ROOK];
+        captureval += materialvalue[ROOK];
     else if (piece00[WKNIGHT | you] || piece00[WBISHOP | you])
-        captureval += prunematerialvalue[KNIGHT];
+        captureval += materialvalue[KNIGHT];
     else if (piece00[WPAWN | you])
-        captureval += prunematerialvalue[PAWN];
+        captureval += materialvalue[PAWN];
 
     // promotion
     if (piece00[WPAWN | me] & RANK7(me))
-        captureval += prunematerialvalue[QUEEN] - prunematerialvalue[PAWN];
+        captureval += materialvalue[QUEEN] - materialvalue[PAWN];
 
     return captureval;
 }
