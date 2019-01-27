@@ -441,16 +441,10 @@ int chessposition::getScaling(int col)
 
     // Calculate scaling for endgames with special material
     const int pawns[2] = { POPCOUNT(piece00[WPAWN]), POPCOUNT(piece00[BPAWN]) };
-    //const int totalPawns = pawns[WHITE] + pawns[BLACK];
     const int knights[2] = { POPCOUNT(piece00[WKNIGHT]), POPCOUNT(piece00[BKNIGHT]) };
-    //const int totalKnights = knights[WHITE] + knights[BLACK];
     const int bishops[2] = { POPCOUNT(piece00[WBISHOP]), POPCOUNT(piece00[BBISHOP]) };
-    //const int totalBishops = bishops[WHITE] + bishops[BLACK];
-    //const int minors[2] = { knights[WHITE] + bishops[WHITE], knights[BLACK] + bishops[BLACK] };
     const int rooks[2] = { POPCOUNT(piece00[WROOK]), POPCOUNT(piece00[BROOK]) };
-    //const int totalRooks = rooks[WHITE] + rooks[BLACK];
     const int queens[2] = { POPCOUNT(piece00[WQUEEN]), POPCOUNT(piece00[BQUEEN]) };
-    //const int totalQueens = queens[WHITE] + queens[BLACK];
     const int nonpawnvalue[2] = {
         knights[WHITE] * materialvalue[KNIGHT]
         + bishops[WHITE] * materialvalue[BISHOP]
