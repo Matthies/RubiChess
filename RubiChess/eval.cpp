@@ -3,8 +3,8 @@
 
 // Evaluation stuff
 
-// static values for the search/pruning stuff
-const int prunematerialvalue[7] = { 0,  100,  314,  314,  483,  913, 32509 };
+// static values for the search/pruning/material stuff
+const int materialvalue[7] = { 0,  100,  314,  314,  483,  913, 32509 };  // some evaluation depends on bishop value >= knight value!!!
 const int maxmobility[4] = { 9, 14, 15, 28 }; // indexed by piece - 2
 
 evalparamset eps;
@@ -19,6 +19,7 @@ void chessposition::resetTuner()
 void chessposition::getPositionTuneSet(positiontuneset *p)
 {
     p->ph = ph;
+    p->sc = sc;
     for (int i = 0; i < tps.count; i++)
         p->g[i] = tps.ev[i]->getGrad();
 }
@@ -26,6 +27,7 @@ void chessposition::getPositionTuneSet(positiontuneset *p)
 void chessposition::copyPositionTuneSet(positiontuneset *from, positiontuneset *to)
 {
     to->ph = from->ph;
+    to->sc = from->sc;
     for (int i = 0; i < tps.count; i++)
         to->g[i] = from->g[i];
 }
@@ -68,7 +70,7 @@ static void registertuner(chessposition *pos, eval *e, string name, int index1, 
 void registeralltuners(chessposition *pos)
 {
     int i, j;
-    bool tuneIt = false;
+    bool tuneIt = true;
 
     pos->tps.count = 0;
 
@@ -83,10 +85,10 @@ void registeralltuners(chessposition *pos)
     registertuner(pos, &eps.eSafepawnattackbonus, "eSafepawnattackbonus", 0, 0, 0, 0, tuneIt);
     tuneIt = true;
     registertuner(pos, &eps.eHangingpiecepenalty, "eHangingpiecepenalty", 0, 0, 0, 0, tuneIt);
-    tuneIt = false;
+    tuneIt = true;
     registertuner(pos, &eps.eKingshieldbonus, "eKingshieldbonus", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eTempo, "eTempo", 0, 0, 0, 0, tuneIt);
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 8; j++)
             registertuner(pos, &eps.ePassedpawnbonus[i][j], "ePassedpawnbonus", j, 8, i, 4, tuneIt && (j > 0 && j < 7));
@@ -99,13 +101,13 @@ void registeralltuners(chessposition *pos)
     registertuner(pos, &eps.eBackwardpawnpenalty, "eBackwardpawnpenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eDoublebishopbonus, "eDoublebishopbonus", 0, 0, 0, 0, tuneIt);
 
-    tuneIt = false;
+    tuneIt = true;
 
     for (i = 0; i < 4; i++)
         for (j = 0; j < 28; j++)
             registertuner(pos, &eps.eMobilitybonus[i][j], "eMobilitybonus", j, 28, i, 4, tuneIt && (j < maxmobility[i]));
 
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 2; i++)
         registertuner(pos, &eps.eSlideronfreefilebonus[i], "eSlideronfreefilebonus", i, 2, 0, 0, tuneIt);
     for (i = 0; i < 7; i++)
@@ -114,7 +116,7 @@ void registeralltuners(chessposition *pos)
     for (i = 0; i < 7; i++)
         registertuner(pos, &eps.eKingattackweight[i], "eKingattackweight", i, 7, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
 
-    tuneIt = false;
+    tuneIt = true;
 
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
@@ -408,7 +410,7 @@ int chessposition::getPositionValue()
         result += EVAL(eps.eHangingpiecepenalty, S2MSIGN(me) * POPCOUNT(hanging));
     }
 
-    return NEWTAPEREDEVAL(result, ph);
+    return result;
 }
 
 
@@ -417,30 +419,54 @@ int chessposition::getValue()
 #ifdef EVALTUNE
     resetTuner();
 #endif
-    // Check for insufficient material using simnple heuristic from chessprogramming site
-    if (!(piece00[WPAWN] | piece00[BPAWN]))
-    {
-        if (!(piece00[WQUEEN] | piece00[BQUEEN] | piece00[WROOK] | piece00[BROOK]))
-        {
-            if (POPCOUNT(piece00[WBISHOP] | piece00[WKNIGHT]) <= 2
-                && POPCOUNT(piece00[BBISHOP] | piece00[BKNIGHT]) <= 2)
-            {
-                bool winpossible = false;
-                // two bishop win if opponent has none
-                if (abs(POPCOUNT(piece00[WBISHOP]) - POPCOUNT(piece00[BBISHOP])) == 2)
-                    winpossible = true;
-                // bishop and knight win against bare king
-                if ((piece00[WBISHOP] && piece00[WKNIGHT] && !(piece00[BBISHOP] | piece00[BKNIGHT]))
-                    || (piece00[BBISHOP] && piece00[BKNIGHT] && !(piece00[WBISHOP] | piece00[WKNIGHT])))
-                    winpossible = true;
-
-                if (!winpossible)
-                {
-                    return SCOREDRAW;
-                }
-            }
-        }
-    }
     ph = phase();
-    return getPositionValue();
+    int positionscore = getPositionValue();
+    int sideToScale = positionscore > SCOREDRAW ? WHITE : BLACK;
+    sc = getScaling(sideToScale);
+
+    if (sc == SCALE_DRAW)
+        return SCOREDRAW;
+
+    int score = TAPEREDANDSCALEDEVAL(positionscore, ph, sc);
+
+    return score;
+}
+
+
+int chessposition::getScaling(int col)
+{
+    Materialhashentry* e;
+    if (mh.probeHash(materialhash, &e))
+        return e->scale[col];
+
+    // Calculate scaling for endgames with special material
+    const int pawns[2] = { POPCOUNT(piece00[WPAWN]), POPCOUNT(piece00[BPAWN]) };
+    const int knights[2] = { POPCOUNT(piece00[WKNIGHT]), POPCOUNT(piece00[BKNIGHT]) };
+    const int bishops[2] = { POPCOUNT(piece00[WBISHOP]), POPCOUNT(piece00[BBISHOP]) };
+    const int rooks[2] = { POPCOUNT(piece00[WROOK]), POPCOUNT(piece00[BROOK]) };
+    const int queens[2] = { POPCOUNT(piece00[WQUEEN]), POPCOUNT(piece00[BQUEEN]) };
+    const int nonpawnvalue[2] = {
+        knights[WHITE] * materialvalue[KNIGHT]
+        + bishops[WHITE] * materialvalue[BISHOP]
+        + rooks[WHITE] * materialvalue[ROOK]
+        + queens[WHITE] * materialvalue[QUEEN],
+        knights[BLACK] * materialvalue[KNIGHT]
+        + bishops[BLACK] * materialvalue[BISHOP]
+        + rooks[BLACK] * materialvalue[ROOK]
+        + queens[BLACK] * materialvalue[QUEEN]
+    };
+
+    // Check for insufficient material using simnple heuristic from chessprogramming site
+    for (int me = WHITE; me <= BLACK; me++)
+    {
+        int you = me ^ S2MMASK;
+        
+        if (pawns[me] == 0 && nonpawnvalue[me] - nonpawnvalue[you] <= materialvalue[BISHOP])
+            e->scale[me] = nonpawnvalue[me] < materialvalue[ROOK] ? SCALE_DRAW : SCALE_HARDTOWIN;
+
+        if (pawns[me] == 1 && nonpawnvalue[me] - nonpawnvalue[you] <= materialvalue[BISHOP])
+            e->scale[me] = SCALE_ONEPAWN;
+    }
+
+    return e->scale[col];
 }

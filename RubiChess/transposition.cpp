@@ -360,5 +360,19 @@ int repetition::getPositionCount(unsigned long long hash)
     return table[hash & 0xffff];
 }
 
-//repetition rp;
+
+bool  Materialhash::probeHash(U64 hash, Materialhashentry **entry)
+{
+    *entry = &table[hash & MATERIALHASHMASK];
+    if ((*entry)->hash == hash)
+        return true;
+
+    (*entry)->hash = hash;
+    (*entry)->scale[WHITE] = (*entry)->scale[BLACK] = SCALE_NORMAL;
+
+    return false;
+}
+
+
 transposition tp;
+Materialhash mh;

@@ -393,7 +393,10 @@ static double TexelEvalError(struct tuner *tn)
 
     for (int i = 0; i < texelptsnum; i++)
     {
-        Qi = NEWTAPEREDEVAL(getGradientValue(tn, &texelpts[i]), texelpts[i].ph);
+        if (texelpts[i].sc == SCALE_DRAW)
+            Qi = SCOREBLACKWINS;
+        else
+            Qi = TAPEREDANDSCALEDEVAL(getGradientValue(tn, &texelpts[i]), texelpts[i].ph, texelpts[i].sc);
         Ri = texelpts[i].R / 2.0;
         double sigmoid = 1 / (1 + pow(10.0, - texel_k * Qi / 400.0));
         E += (Ri - sigmoid) * (Ri - sigmoid);
@@ -459,6 +462,7 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                             if (!pos->w2m())
                                 Qi = -Qi;
                             texelpts[n].ph = pos->pts.ph;
+                            texelpts[n].sc = pos->pts.sc;
                             texelpts[n].R = R;
                             Qa = 0;
                             for (int i = 0; i < pos->tps.count; i++)
@@ -468,7 +472,7 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                             }
                             if (MATEDETECTED(Qi))
                                 n--;
-                            else if (Qi != NEWTAPEREDEVAL(Qa, texelpts[n].ph))
+                            else if (Qi != (texelpts[n].sc == SCALE_DRAW ? SCOREDRAW : TAPEREDANDSCALEDEVAL(Qa, texelpts[n].ph, texelpts[n].sc)))
                                 printf("Alarm. Gradient evaluation differs from qsearch value.\n");
                         }
                         n++;
@@ -501,6 +505,7 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                                 if (!pos->w2m())
                                     Qi = -Qi;
                                 texelpts[n].ph = pos->pts.ph;
+                                texelpts[n].sc = pos->pts.sc;
                                 texelpts[n].R = R;
                                 Qa = 0;
                                 for (int i = 0; i < pos->tps.count; i++)
@@ -508,7 +513,7 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                                     texelpts[n].g[i] = pos->pts.g[i];
                                     Qa += texelpts[n].g[i] * *pos->tps.ev[i];
                                 }
-                                if (Qi != NEWTAPEREDEVAL(Qa, texelpts[n].ph))
+                                if (Qi != (texelpts[n].sc == SCALE_DRAW ? SCOREDRAW : TAPEREDANDSCALEDEVAL(Qa, texelpts[n].ph, texelpts[n].sc)))
                                     printf("Alarm. Gradient evaluation differs from qsearch value.\n");
                             }
                             n++;

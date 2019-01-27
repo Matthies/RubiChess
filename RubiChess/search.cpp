@@ -95,7 +95,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     {
         bool MoveIsUsefull = (isCheck
             || ISPROMOTION(movelist->move[i].code)
-            || (patscore + prunematerialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin > alpha
+            || (patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin > alpha
                 && see(movelist->move[i].code, 0)));
 
         if (MoveIsUsefull || !LegalMovesPossible)
