@@ -19,9 +19,9 @@ void searchinit()
         for (int m = 0; m < 64; m++)
         {
             // reduction for not improving positions
-            reductiontable[0][d][m] = (int)round(log(d) * log(m) / 1.5);
+            reductiontable[0][d][m] = (int)round(log(d) * log(m) / 1.6);
             // reduction for improving positions
-            reductiontable[1][d][m] = (int)round(log(d) * log(m) / 2.5);
+            reductiontable[1][d][m] = (int)round(log(d) * log(m) / 2.7);
         }
     for (int d = 0; d < MAXLMPDEPTH; d++)
     {
@@ -30,6 +30,15 @@ void searchinit()
         // lmp for improving positions
         lmptable[1][d] = (int)(4.0 + 1.3 * round(pow(d, 1.85)));
     }
+}
+
+
+inline void chessposition::updateHistory(int side, int from, int to, int value)
+{
+    //value = max(-400, min(400, value));
+    //int delta = value - history[side][from][to] * abs(value) / 10692;
+    //history[side][from][to] += delta;
+    history[side][from][to] += value;
 }
 
 
@@ -453,6 +462,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
             {
                 reduction = reductiontable[positionImproved][depth][min(63, LegalMoves)];
                 SDEBUGPRINT(isDebugPv && isDebugMove && reduction, debugInsert, " PV move %s (value=%d) with depth reduced by %d", debugMove.toString().c_str(), m->value, reduction);
+
+                if (m->value < 0)
+                    // more reduction for moves with bad history
+                    reduction++;
             }
 
             if (eval_type != HASHEXACT)
@@ -497,11 +510,11 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
                     // Killermove
                     if (!ISCAPTURE(m->code))
                     {
-                        history[state & S2MMASK][GETFROM(m->code)][GETTO(m->code)] += depth * depth;
+                        updateHistory(state & S2MMASK, GETFROM(m->code), GETTO(m->code), depth * depth);
                         for (int i = 0; i < quietsPlayed; i++)
                         {
                             uint32_t qm = quietMoves[i];
-                            history[state & S2MMASK][GETFROM(qm)][GETTO(qm)] -= depth * depth;
+                            updateHistory(state & S2MMASK, GETFROM(qm), GETTO(qm), -(depth * depth));
                         }
 
                         if (killer[0][ply] != m->code)
@@ -783,11 +796,11 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                 // Killermove
                 if (!ISCAPTURE(m->code))
                 {
-                    history[state & S2MMASK][GETFROM(m->code)][GETTO(m->code)] += depth * depth;
+                    updateHistory(state & S2MMASK, GETFROM(m->code), GETTO(m->code), depth * depth);
                     for (int i = 0; i < quietsPlayed - 1; i++)
                     {
                         uint32_t qm = quietMoves[i];
-                        history[state & S2MMASK][GETFROM(qm)][GETTO(qm)] -= depth * depth;
+                        updateHistory(state & S2MMASK, GETFROM(qm), GETTO(qm), -(depth * depth));
                     }
 
                     if (killer[0][0] != m->code)

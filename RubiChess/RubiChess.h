@@ -897,6 +897,7 @@ public:
     template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth);
     int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed);
     int getQuiescence(int alpha, int beta, int depth);
+    void updateHistory(int side, int from, int to, int value);
 
 #ifdef SDEBUG
     void updatePvTable(uint32_t movecode);
