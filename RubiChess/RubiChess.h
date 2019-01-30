@@ -685,7 +685,7 @@ struct chessmovestack
     unsigned long long materialhash;
     int halfmovescounter;
     int fullmovescounter;
-    int isCheck;
+    U64 isCheckbb;
 };
 
 #define MAXMOVELISTLENGTH 256	// for lists of possible pseudo-legal moves
@@ -819,7 +819,7 @@ public:
     unsigned long long materialhash;
     int halfmovescounter;
     int fullmovescounter;
-    int isCheck;
+    U64 isCheckbb;
 
     chessmovestack movestack[MAXMOVESEQUENCELENGTH];
     uint16_t excludemovestack[MAXMOVESEQUENCELENGTH];
@@ -876,7 +876,8 @@ public:
     U64 movesTo(PieceCode pc, int from);
     bool isAttacked(int index);
     bool isAttackedByMySlider(int index, U64 occ, int me);  // special simple version to detect giving check by removing blocker
-    U64 attackedByBB(int index, U64 occ);
+    U64 attackedByBB(int index, U64 occ);  // returns bitboard of all pieces of both colors attacking index square 
+    U64 isAttackedBy(int index, int col);    // returns the bitboard of cols pieces attacking the index square
     bool see(uint32_t move, int threshold);
     int getBestPossibleCapture();
     int getMoves(chessmove *m, MoveType t = ALL);

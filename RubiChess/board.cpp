@@ -3,8 +3,10 @@
 
 U64 knight_attacks[64];
 U64 king_attacks[64];
-U64 pawn_attacks_free[64][2];
-U64 pawn_attacks_free_double[64][2];
+U64 pawn_attacks_free[64][2];   // bitboard of target square a pawn on index squares moves to
+U64 pawn_attacks_free_double[64][2];  // bitboard of target square a pawn on index squares moves to with a double push
+U64 pawn_moves_from[64][2]; // bitboard of source squares a pawn pushes to index square
+U64 pawn_moves_from_double[64][2]; // bitboard of source squares a pawn double-pushes to index square
 U64 pawn_attacks_occupied[64][2];
 U64 epthelper[64];
 U64 passedPawnMask[64][2];
@@ -346,7 +348,8 @@ int chessposition::getFromFen(const char* sFen)
     if (numToken > 5)
         fullmovescounter = stoi(token[5]);
 
-    isCheck = isAttacked(kingpos[state & S2MMASK]);
+    //isCheck = isAttacked(kingpos[state & S2MMASK]);
+    isCheckbb = isAttackedBy(kingpos[state & S2MMASK], (state & S2MMASK) ^ S2MMASK);
 
     hash = zb.getHash(this);
     pawnhash = zb.getPawnHash(this);
@@ -1106,6 +1109,8 @@ void initBitmaphelper()
         king_attacks[from] = knight_attacks[from] = 0ULL;
         pawn_attacks_free[from][0] = pawn_attacks_occupied[from][0] = pawn_attacks_free_double[from][0] = 0ULL;
         pawn_attacks_free[from][1] = pawn_attacks_occupied[from][1] = pawn_attacks_free_double[from][1] = 0ULL;
+        pawn_moves_from[from][0] = pawn_moves_from_double[from][0] = 0ULL;
+        pawn_moves_from[from][1] = pawn_moves_from_double[from][1] = 0ULL;
         passedPawnMask[from][0] = passedPawnMask[from][1] = 0ULL;
         filebarrierMask[from][0] = filebarrierMask[from][1] = 0ULL;
         phalanxMask[from] = 0ULL;
@@ -1170,11 +1175,20 @@ void initBitmaphelper()
         // Pawn attacks; even for rank 0 and 7 needed for the isAttacked detection
         for (int s = 0; s < 2; s++)
         {
-            pawn_attacks_free[from][s] |= BITSET(from + S2MSIGN(s) * 8);
-            if (RANK(from) == 1 + 5 * s)
+            if (RRANK(from, s) < 7)
+                pawn_attacks_free[from][s] |= BITSET(from + S2MSIGN(s) * 8);
+            if (RRANK(from, s) > 0)
+                pawn_moves_from[from][s] |= BITSET(from - S2MSIGN(s) * 8);
+
+            if (RRANK(from, s) == 1)
             {
                 // Double move
                 pawn_attacks_free_double[from][s] |= BITSET(from + S2MSIGN(s) * 16);
+            }
+            if (RRANK(from, s) == 3)
+            {
+                // Double move
+                pawn_moves_from_double[from][s] |= BITSET(from - S2MSIGN(s) * 16);
             }
             // Captures
             for (int d = -1; d <= 1; d++)
@@ -1469,7 +1483,8 @@ bool chessposition::playMove(chessmove *cm)
     PREFETCH(&pwnhsh->table[pawnhash & pwnhsh->sizemask]);
 
     state ^= S2MMASK;
-    isCheck = isAttacked(kingpos[state & S2MMASK]);
+    //isCheck = isAttacked(kingpos[state & S2MMASK]);
+    isCheckbb = isAttackedBy(kingpos[s2m ^ S2MMASK], s2m);
 
     hash ^= zb.s2m;
 
@@ -1594,6 +1609,38 @@ template <MoveType Mt> inline void appendMoveToList(chessposition *pos, chessmov
     (*m)++;
 }
 
+int CreateEvasionsMovelist(chessposition *pos, chessmove* mstart)
+{
+    int s2m = pos->state & S2MMASK;
+    U64 occupiedbits = (pos->occupied00[0] | pos->occupied00[1]);
+    U64 emptybits = ~occupiedbits;
+    U64 targetbits = 0ULL;
+    U64 frombits, tobits;
+    int from, to;
+    PieceCode pc;
+    chessmove* m = mstart;
+
+    if (POPCOUNT(pos->isCheckbb) == 1)
+    {
+        // only one attacker => capture or block the attacker is a possible evasion
+        int attacker;
+        LSB(attacker, pos->isCheckbb);
+        targetbits = betweenMask[pos->kingpos[s2m]][attacker] | pos->isCheckbb;
+        while (LSB(to, targetbits))
+        {
+            frombits = pos->isAttackedBy(to, s2m);
+            while (LSB(from, frombits))
+            {
+                pc = pos->mailbox[from];
+            }
+
+        }
+
+    }
+
+    return (int)(m - mstart);
+
+}
 
 template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
 {
@@ -1820,6 +1867,18 @@ U64 chessposition::movesTo(PieceCode pc, int from)
 }
 
 
+U64 chessposition::isAttackedBy(int index, int col)
+{
+    U64 occ = occupied00[0] | occupied00[1];
+    bool squareIsFree = (occ & BITSET(index));
+    return knight_attacks[index] & piece00[(KNIGHT << 1) | col]
+        | MAGICROOKATTACKS(occ, index) & (piece00[(ROOK << 1) | col] | piece00[(QUEEN << 1) | col])
+        | MAGICBISHOPATTACKS(occ, index) & (piece00[(BISHOP << 1) | col] | piece00[(QUEEN << 1) | col])
+        | (squareIsFree ? pawn_attacks_free[index][col ^ S2MMASK] : pawn_attacks_occupied[index][col ^ S2MMASK] & piece00[(PAWN << 1) | col]);
+
+}
+
+
 bool chessposition::isAttacked(int index)
 {
     int opponent = (state & S2MMASK) ^ 1;
@@ -1965,7 +2024,7 @@ void MoveSelector::SetPreferredMoves(chessposition *p)
     hashmove.code = 0;
     killermove1.code = killermove2.code = 0;
     refutetarget = BOARDSIZE;
-    if (!p->isCheck)
+    if (!p->isCheckbb)
     {
         onlyGoodCaptures = true;
         state = TACTICALINITSTATE;
