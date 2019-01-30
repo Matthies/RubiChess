@@ -466,7 +466,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
                 if (m->value < 0)
                     // more reduction for moves with bad history
                     reduction++;
-
             }
 
             if (eval_type != HASHEXACT)
@@ -1122,7 +1121,6 @@ static void search_gen1(searchthread *thr)
     // Remember some exit values for benchmark output
     en.benchscore = score;
     en.benchdepth = thr->depth - 1;
-    //cout << "info string hneg:" + to_string(en.hneg) + "  hpos:" + to_string(en.hpos) + "    %: " + to_string(en.hneg * 100.0 / (en.hneg + en.hpos)) + "\n";
 }
 
 
