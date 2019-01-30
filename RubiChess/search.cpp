@@ -99,27 +99,14 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     for (int i = 0; i < movelist->length; i++)
 #endif
     {
-        if (!myIsCheck && ms.legalmovenum)
-        {
-            if (ms.state > TACTICALSTATE)
-                // We are ready
-                break;
-
-            if (patscore + materialvalue[GETCAPTURE(m->code) >> 1] + deltapruningmargin <= alpha)
-                // Leave out capture that is delta-pruned
-                continue;
-        }
+        if (!myIsCheck && patscore + materialvalue[GETCAPTURE(m->code) >> 1] + deltapruningmargin <= alpha)
+            // Leave out capture that is delta-pruned
+            continue;
 
         bool isLegal = playMove(m);
         if (isLegal)
         {
             ms.legalmovenum++;
-            if (!myIsCheck && ms.state > TACTICALSTATE)
-            {
-                // we just had to find a legal move and can savely leave the loop here
-                unplayMove(m);
-                break;
-            }
             score = -getQuiescence(-beta, -alpha, depth - 1);
             unplayMove(m);
             if (score > bestscore)
@@ -146,11 +133,16 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         copyPositionTuneSet(&targetpts, &pts);
 #endif
 
-    if (ms.legalmovenum)
+    if (myIsCheck && !ms.legalmovenum)
     {
-        SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch.", bestscore);
-        return bestscore;
+        // It's a mate
+        SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (mate).", SCOREBLACKWINS + ply);
+        return SCOREBLACKWINS + ply;
     }
+
+
+    SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch.", bestscore);
+    return bestscore;
 
 #if 0
     // No valid move found; try quiet moves
@@ -172,19 +164,6 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (mate).", SCOREBLACKWINS + ply);
         return SCOREBLACKWINS + ply;
     }
-#else
-    if (!myIsCheck)
-    {
-        // It's a stalemate
-        SDEBUGPRINT(isDebugPv, debugInsert, " Got score 0 from qsearch (stalemate).");
-        return SCOREDRAW;
-    }
-    else {
-        // It's a mate
-        SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (mate).", SCOREBLACKWINS + ply);
-        return SCOREBLACKWINS + ply;
-    }
-
 #endif
 }
 

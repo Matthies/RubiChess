@@ -2017,7 +2017,7 @@ chessmove* MoveSelector::next()
             return &captures.move[capturemovenum++];
         }
         state++;
-        if (onlyGoodCaptures && legalmovenum)
+        if (onlyGoodCaptures)
             return nullptr;
     case KILLERMOVE1STATE:
         state++;
