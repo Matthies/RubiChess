@@ -37,8 +37,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 {
     int patscore, score;
     int bestscore = SHRT_MIN;
-    bool isLegal;
-    bool LegalMovesPossible = false;
+    bool myIsCheck = isCheck;
 #ifdef EVALTUNE
     positiontuneset targetpts;
     bool foundpts = false;
@@ -54,7 +53,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     pvtable[ply][0] = 0;
 #endif
 
-    if (!isCheck)
+    if (!myIsCheck)
     {
         bestscore = patscore = S2MSIGN(state & S2MMASK) * getValue();
         if (patscore >= beta)
@@ -82,8 +81,14 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 
     prepareStack();
 
-    chessmovelist *movelist = new chessmovelist;
+    MoveSelector ms = {};
+    ms.SetPreferredMoves(this);
 
+    chessmove *m;
+
+    while ((m = ms.next()))
+
+#if 0
     if (isCheck)
         movelist->length = getMoves(&movelist->move[0]);
     else
@@ -92,40 +97,46 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     movelist->sort(lva[QUEEN]);
 
     for (int i = 0; i < movelist->length; i++)
-    {
-        bool MoveIsUsefull = (isCheck
-            || ISPROMOTION(movelist->move[i].code)
-            || (patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin > alpha
-                && see(movelist->move[i].code, 0)));
-
-        if (MoveIsUsefull || !LegalMovesPossible)
-        {
-            isLegal = playMove(&(movelist->move[i]));
-            if (isLegal)
-            {
-                LegalMovesPossible = true;
-                if (MoveIsUsefull)
-                {
-                    score = -getQuiescence(-beta, -alpha, depth - 1);
-                }
-                unplayMove(&(movelist->move[i]));
-                if (MoveIsUsefull && score > bestscore)
-                {
-                    bestscore = score;
-                    if (score >= beta)
-                    {
-                        delete movelist;
-                        SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (fail high).", score);
-                        return score;
-                    }
-                    if (score > alpha)
-                    {
-                        alpha = score;
-#ifdef EVALTUNE
-                        foundpts = true;
-                        copyPositionTuneSet(&pts, &targetpts);
 #endif
-                    }
+    {
+        if (!myIsCheck && ms.legalmovenum)
+        {
+            if (ms.state > TACTICALSTATE)
+                // We are ready
+                break;
+
+            if (patscore + materialvalue[GETCAPTURE(m->code) >> 1] + deltapruningmargin <= alpha)
+                // Leave out capture that is delta-pruned
+                continue;
+        }
+
+        bool isLegal = playMove(m);
+        if (isLegal)
+        {
+            ms.legalmovenum++;
+            if (!myIsCheck && ms.state > TACTICALSTATE)
+            {
+                // we just had to find a legal move and can savely leave the loop here
+                unplayMove(m);
+                break;
+            }
+            score = -getQuiescence(-beta, -alpha, depth - 1);
+            unplayMove(m);
+            if (score > bestscore)
+            {
+                bestscore = score;
+                if (score >= beta)
+                {
+                    SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (fail high).", score);
+                    return score;
+                }
+                if (score > alpha)
+                {
+                    alpha = score;
+#ifdef EVALTUNE
+                    foundpts = true;
+                    copyPositionTuneSet(&pts, &targetpts);
+#endif
                 }
             }
         }
@@ -135,34 +146,46 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         copyPositionTuneSet(&targetpts, &pts);
 #endif
 
-    if (LegalMovesPossible)
+    if (ms.legalmovenum)
     {
-        delete movelist;
         SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch.", bestscore);
         return bestscore;
     }
 
+#if 0
     // No valid move found; try quiet moves
     if (!isCheck)
     {
-        if (getMoves(&movelist->move[0], QUIETWITHCHECK))
+        chessmovelist templist;
+        if (getMoves(&templist.move[0], QUIETWITHCHECK))
         {
-            delete movelist;
             SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch.", bestscore);
             return bestscore;
         }
 
         // It's a stalemate
-        delete movelist;
         SDEBUGPRINT(isDebugPv, debugInsert, " Got score 0 from qsearch (stalemate).");
         return SCOREDRAW;
     }
     else {
         // It's a mate
-        delete movelist;
         SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (mate).", SCOREBLACKWINS + ply);
         return SCOREBLACKWINS + ply;
     }
+#else
+    if (!myIsCheck)
+    {
+        // It's a stalemate
+        SDEBUGPRINT(isDebugPv, debugInsert, " Got score 0 from qsearch (stalemate).");
+        return SCOREDRAW;
+    }
+    else {
+        // It's a mate
+        SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (mate).", SCOREBLACKWINS + ply);
+        return SCOREBLACKWINS + ply;
+    }
+
+#endif
 }
 
 

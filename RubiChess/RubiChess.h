@@ -756,16 +756,19 @@ class MoveSelector
     chessposition *pos;
 public:
     int state;
-    chessmovelist* captures;
-    chessmovelist* quiets;
+    chessmovelist captures;
+    chessmovelist quiets;
     chessmove hashmove;
     chessmove killermove1;
     chessmove killermove2;
     int refutetarget;
     int capturemovenum;
     int quietmovenum;
+    int legalmovenum;
+    bool onlyGoodCaptures;
 
 public:
+    void SetPreferredMoves(chessposition *p);
     void SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, int nmrfttarget);
     ~MoveSelector();
     chessmove* next();

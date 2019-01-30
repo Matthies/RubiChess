@@ -1954,10 +1954,25 @@ int chessposition::getBestPossibleCapture()
 
 MoveSelector::~MoveSelector()
 {
-        delete captures;
-        delete quiets;
+        //delete captures;
+        //delete quiets;
 }
 
+// MoveSelector for quiescence search
+void MoveSelector::SetPreferredMoves(chessposition *p)
+{
+    pos = p;
+    hashmove.code = 0;
+    killermove1.code = killermove2.code = 0;
+    refutetarget = BOARDSIZE;
+    if (!p->isCheck)
+    {
+        onlyGoodCaptures = true;
+        state = TACTICALINITSTATE;
+    }
+}
+
+// MoveSelector for alphabeta search
 void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, int nmrfttarget)
 {
     pos = p;
@@ -1968,6 +1983,7 @@ void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t k
         killermove2.code = kllm2;
     refutetarget = nmrfttarget;
 }
+
 
 chessmove* MoveSelector::next()
 {
@@ -1983,24 +1999,26 @@ chessmove* MoveSelector::next()
         }
     case TACTICALINITSTATE:
         state++;
-        captures = new chessmovelist;
-        captures->length = CreateMovelist<TACTICAL>(pos, &captures->move[0]);
-        captures->sort(0);
+        //captures = new chessmovelist;
+        captures.length = CreateMovelist<TACTICAL>(pos, &captures.move[0]);
+        captures.sort(0);
         capturemovenum = 0;
     case TACTICALSTATE:
-        while (capturemovenum < captures->length
-            && (captures->move[capturemovenum].code == hashmove.code 
-                || !pos->see(captures->move[capturemovenum].code, 0)))
+        while (capturemovenum < captures.length
+            && (captures.move[capturemovenum].code == hashmove.code 
+                || !pos->see(captures.move[capturemovenum].code, 0)))
         {
             // mark the move for BADTACTICALSTATE
-            captures->move[capturemovenum].value |= (1 << 31);
+            captures.move[capturemovenum].value |= (1 << 31);
             capturemovenum++;
         }
-        if (capturemovenum < captures->length)
+        if (capturemovenum < captures.length)
         {
-            return &captures->move[capturemovenum++];
+            return &captures.move[capturemovenum++];
         }
         state++;
+        if (onlyGoodCaptures && legalmovenum)
+            return nullptr;
     case KILLERMOVE1STATE:
         state++;
         if (pos->moveIsPseudoLegal(killermove1.code))
@@ -2015,34 +2033,34 @@ chessmove* MoveSelector::next()
         }
     case QUIETINITSTATE:
         state++;
-        quiets = new chessmovelist;
-        quiets->length = CreateMovelist<QUIET>(pos, &quiets->move[0]);
-        quiets->sort(0, refutetarget);
+        //quiets = new chessmovelist;
+        quiets.length = CreateMovelist<QUIET>(pos, &quiets.move[0]);
+        quiets.sort(0, refutetarget);
         quietmovenum = 0;
     case QUIETSTATE:
-        while (quietmovenum < quiets->length
-            && (quiets->move[quietmovenum].code == hashmove.code
-                || quiets->move[quietmovenum].code == killermove1.code
-                || quiets->move[quietmovenum].code == killermove2.code))
+        while (quietmovenum < quiets.length
+            && (quiets.move[quietmovenum].code == hashmove.code
+                || quiets.move[quietmovenum].code == killermove1.code
+                || quiets.move[quietmovenum].code == killermove2.code))
         {
             quietmovenum++;
         }
-        if (quietmovenum < quiets->length)
+        if (quietmovenum < quiets.length)
         {
-            return &quiets->move[quietmovenum++];
+            return &quiets.move[quietmovenum++];
         }
         state++;
         capturemovenum = 0;
     case BADTACTICALSTATE:
-        while (capturemovenum < captures->length
-            && (captures->move[capturemovenum].code == hashmove.code 
-                || !(captures->move[capturemovenum].value & (1 << 31))))
+        while (capturemovenum < captures.length
+            && (captures.move[capturemovenum].code == hashmove.code 
+                || !(captures.move[capturemovenum].value & (1 << 31))))
         {
             capturemovenum++;
         }
-        if (capturemovenum < captures->length)
+        if (capturemovenum < captures.length)
         {
-            return &captures->move[capturemovenum++];
+            return &captures.move[capturemovenum++];
         }
         state++;
     default:
