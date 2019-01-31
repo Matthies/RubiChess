@@ -44,7 +44,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 #endif
 
     // FIXME: Should quiescience nodes count for the statistics?
-    //en.nodes++;
+    //en.qnodes++;
 
 #ifdef SDEBUG
     chessmove debugMove;
@@ -1173,6 +1173,7 @@ void searchguide()
 
     en.moveoutput = false;
     en.nodes = 0;
+    //en.qnodes = 0;
     en.tbhits = 0;
     en.fh = en.fhf = 0;
 

@@ -746,18 +746,20 @@ public:
 	string toStringWithValue();
 	void print();
     void sort(int limit, const unsigned int refutetarget = BOARDSIZE);
+    void sort(int limit, uint32_t hashmove, uint32_t killer1, uint32_t killer2);
 };
 
 
-enum MoveSelector_State { INITSTATE, HASHMOVESTATE, TACTICALINITSTATE, TACTICALSTATE, KILLERMOVE1STATE, KILLERMOVE2STATE, QUIETINITSTATE, QUIETSTATE, BADTACTICALSTATE };
+enum MoveSelector_State { INITSTATE, HASHMOVESTATE, TACTICALINITSTATE, TACTICALSTATE, KILLERMOVE1STATE, KILLERMOVE2STATE,
+    QUIETINITSTATE, QUIETSTATE, BADTACTICALSTATE, BADTACTICALEND, EVASIONINITSTATE, EVASIONSTATE };
 
 class MoveSelector
 {
     chessposition *pos;
 public:
     int state;
-    chessmovelist captures;
-    chessmovelist quiets;
+    chessmovelist *captures;
+    chessmovelist *quiets;
     chessmove hashmove;
     chessmove killermove1;
     chessmove killermove2;
@@ -774,7 +776,7 @@ public:
     chessmove* next();
 };
 
-extern U64 pawn_attacks_occupied[64][2];
+extern U64 pawn_attacks_to[64][2];
 extern U64 knight_attacks[64];
 extern U64 king_attacks[64];
 
@@ -796,10 +798,11 @@ extern SMagic mRookTbl[64];
 extern U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 
-enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7, QUIETWITHCHECK = 9 };
+enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7, EVASION = 8, QUIETWITHCHECK = 9 };
 enum RootsearchType { SinglePVSearch, MultiPVSearch };
 
 template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* m);
+enum AttackType { FREE, OCCUPIED };
 
 class chessposition
 {
@@ -824,7 +827,7 @@ public:
     chessmovestack movestack[MAXMOVESEQUENCELENGTH];
     uint16_t excludemovestack[MAXMOVESEQUENCELENGTH];
     int16_t staticevalstack[MAXMOVESEQUENCELENGTH];
-#ifdef STACKDEBUG
+#if defined(STACKDEBUG) || defined(SDEBUG)
     uint32_t movecodestack[MAXMOVESEQUENCELENGTH];
 #endif
     int mstop;      // 0 at last non-reversible move before root, rootheight at root position
@@ -877,7 +880,7 @@ public:
     bool isAttacked(int index);
     bool isAttackedByMySlider(int index, U64 occ, int me);  // special simple version to detect giving check by removing blocker
     U64 attackedByBB(int index, U64 occ);  // returns bitboard of all pieces of both colors attacking index square 
-    U64 isAttackedBy(int index, int col);    // returns the bitboard of cols pieces attacking the index square
+    template <AttackType At> U64 isAttackedBy(int index, int col);    // returns the bitboard of cols pieces attacking the index square
     bool see(uint32_t move, int threshold);
     int getBestPossibleCapture();
     int getMoves(chessmove *m, MoveType t = ALL);
@@ -933,6 +936,7 @@ public:
     const char* author = "Andreas Matthies";
     bool isWhite;
     U64 nodes;
+    //U64 qnodes;
     U64 tbhits;
     U64 starttime;
     U64 endtime1; // time to send STOPSOON signal
