@@ -348,7 +348,7 @@ static int probe_ab(int alpha, int beta, int *success, chessposition *pos)
     for (int i = 0; i < movelist.length; i++)
     {
         chessmove *m = &movelist.move[i];
-        if (ISCAPTURE(m->code) || ISPROMOTION(m->code) || pos->isCheck)
+        if (ISCAPTURE(m->code) || ISPROMOTION(m->code) || pos->isCheckbb)
         {
             if (pos->playMove(m))
             {
@@ -644,7 +644,7 @@ int root_probe(chessposition *pos)
         pos->playMove(m);
         //printf("root_probe (ply=%d) Testing move %s...\n", pos.ply, m->toString().c_str());
         int v = 0;
-        if (pos->isCheck && dtz > 0) {
+        if (pos->isCheckbb && dtz > 0) {
             chessmovelist nextmovelist;
             pos->prepareStack();
             nextmovelist.length = pos->getMoves(&nextmovelist.move[0]);

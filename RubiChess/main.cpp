@@ -115,9 +115,13 @@ long long engine::perft(int depth, bool dotests)
         }
     }
     chessmovelist movelist;
-    movelist.length = rootpos->getMoves(&movelist.move[0]);
+    if (rootpos->isCheckbb)
+        movelist.length = rootpos->getMoves(&movelist.move[0], EVASION);
+    else
+        movelist.length = rootpos->getMoves(&movelist.move[0]);
+
     rootpos->prepareStack();
-    //movelist->sort();
+
     //printf("Path: %s \nMovelist : %s\n", p->actualpath.toString().c_str(), movelist->toString().c_str());
 
     if (depth == 0)
@@ -280,7 +284,7 @@ void doBenchmark()
             500,
             1
         },
-        { 
+        {
             "Carlos 6",
             "rn1q1r2/1bp1bpk1/p3p2p/1p2N1pn/3P4/1BN1P1B1/PPQ2PPP/2R2RK1 w - - 0 1",
             13,

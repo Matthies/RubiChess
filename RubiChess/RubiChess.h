@@ -685,7 +685,7 @@ struct chessmovestack
     unsigned long long materialhash;
     int halfmovescounter;
     int fullmovescounter;
-    int isCheck;
+    U64 isCheckbb;
 };
 
 #define MAXMOVELISTLENGTH 256	// for lists of possible pseudo-legal moves
@@ -746,10 +746,12 @@ public:
 	string toStringWithValue();
 	void print();
     void sort(int limit, const unsigned int refutetarget = BOARDSIZE);
+    void sort(int limit, uint32_t hashmove, uint32_t killer1, uint32_t killer2);
 };
 
 
-enum MoveSelector_State { INITSTATE, HASHMOVESTATE, TACTICALINITSTATE, TACTICALSTATE, KILLERMOVE1STATE, KILLERMOVE2STATE, QUIETINITSTATE, QUIETSTATE, BADTACTICALSTATE };
+enum MoveSelector_State { INITSTATE, HASHMOVESTATE, TACTICALINITSTATE, TACTICALSTATE, KILLERMOVE1STATE, KILLERMOVE2STATE,
+    QUIETINITSTATE, QUIETSTATE, BADTACTICALSTATE, BADTACTICALEND, EVASIONINITSTATE, EVASIONSTATE };
 
 class MoveSelector
 {
@@ -764,14 +766,17 @@ public:
     int refutetarget;
     int capturemovenum;
     int quietmovenum;
+    int legalmovenum;
+    bool onlyGoodCaptures;
 
 public:
+    void SetPreferredMoves(chessposition *p);  // for quiescence move selector
     void SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, int nmrfttarget);
     ~MoveSelector();
     chessmove* next();
 };
 
-extern U64 pawn_attacks_occupied[64][2];
+extern U64 pawn_attacks_to[64][2];
 extern U64 knight_attacks[64];
 extern U64 king_attacks[64];
 
@@ -793,10 +798,11 @@ extern SMagic mRookTbl[64];
 extern U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 
-enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7, QUIETWITHCHECK = 9 };
+enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7, EVASION = 8, QUIETWITHCHECK = 9 };
 enum RootsearchType { SinglePVSearch, MultiPVSearch };
 
 template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* m);
+enum AttackType { FREE, OCCUPIED };
 
 class chessposition
 {
@@ -816,12 +822,12 @@ public:
     unsigned long long materialhash;
     int halfmovescounter;
     int fullmovescounter;
-    int isCheck;
+    U64 isCheckbb;
 
     chessmovestack movestack[MAXMOVESEQUENCELENGTH];
     uint16_t excludemovestack[MAXMOVESEQUENCELENGTH];
     int16_t staticevalstack[MAXMOVESEQUENCELENGTH];
-#ifdef STACKDEBUG
+#if defined(STACKDEBUG) || defined(SDEBUG)
     uint32_t movecodestack[MAXMOVESEQUENCELENGTH];
 #endif
     int mstop;      // 0 at last non-reversible move before root, rootheight at root position
@@ -873,7 +879,8 @@ public:
     U64 movesTo(PieceCode pc, int from);
     bool isAttacked(int index);
     bool isAttackedByMySlider(int index, U64 occ, int me);  // special simple version to detect giving check by removing blocker
-    U64 attackedByBB(int index, U64 occ);
+    U64 attackedByBB(int index, U64 occ);  // returns bitboard of all pieces of both colors attacking index square 
+    template <AttackType At> U64 isAttackedBy(int index, int col);    // returns the bitboard of cols pieces attacking the index square; At controls if pawns are moved to block or capture
     bool see(uint32_t move, int threshold);
     int getBestPossibleCapture();
     int getMoves(chessmove *m, MoveType t = ALL);

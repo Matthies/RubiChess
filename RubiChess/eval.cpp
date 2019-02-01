@@ -156,8 +156,8 @@ int chessposition::getPawnAndKingValue(pawnhashentry **entry)
                 int psqtindex = PSQTINDEX(index, me);
                 entryptr->value += EVAL(eps.ePsqt[PAWN][psqtindex], S2MSIGN(me));
 
-                entryptr->attackedBy2[me] |= (entryptr->attacked[me] & pawn_attacks_occupied[index][me]);
-                entryptr->attacked[me] |= pawn_attacks_occupied[index][me];
+                entryptr->attackedBy2[me] |= (entryptr->attacked[me] & pawn_attacks_to[index][me]);
+                entryptr->attacked[me] |= pawn_attacks_to[index][me];
                 entryptr->semiopen[me] &= (int)(~BITSET(FILE(index))); 
                 if (!(passedPawnMask[index][me] & piece00[pc ^ S2MMASK]))
                 {
@@ -172,11 +172,11 @@ int chessposition::getPawnAndKingValue(pawnhashentry **entry)
                 }
                 else
                 {
-                    if (pawn_attacks_occupied[index][me] & piece00[pc ^ S2MMASK])
+                    if (pawn_attacks_to[index][me] & piece00[pc ^ S2MMASK])
                     {
                         entryptr->value += EVAL(eps.eAttackingpawnbonus[RRANK(index, me)], S2MSIGN(me));
                     }
-                    if ((pawn_attacks_occupied[index][you] & piece00[pc]) || (phalanxMask[index] & piece00[pc]))
+                    if ((pawn_attacks_to[index][you] & piece00[pc]) || (phalanxMask[index] & piece00[pc]))
                     {
                         entryptr->value += EVAL(eps.eConnectedbonus, S2MSIGN(me));
                     }

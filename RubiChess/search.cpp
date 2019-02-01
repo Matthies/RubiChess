@@ -46,8 +46,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 {
     int patscore, score;
     int bestscore = SHRT_MIN;
-    bool isLegal;
-    bool LegalMovesPossible = false;
+    bool myIsCheck = (bool)isCheckbb;
 #ifdef EVALTUNE
     positiontuneset targetpts;
     bool foundpts = false;
@@ -63,7 +62,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     pvtable[ply][0] = 0;
 #endif
 
-    if (!isCheck)
+    if (!myIsCheck)
     {
         bestscore = patscore = S2MSIGN(state & S2MMASK) * getValue();
         if (patscore >= beta)
@@ -91,50 +90,38 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 
     prepareStack();
 
-    chessmovelist *movelist = new chessmovelist;
+    MoveSelector ms = {};
+    ms.SetPreferredMoves(this);
 
-    if (isCheck)
-        movelist->length = getMoves(&movelist->move[0]);
-    else
-        movelist->length = getMoves(&movelist->move[0], TACTICAL);
+    chessmove *m;
 
-    movelist->sort(lva[QUEEN]);
-
-    for (int i = 0; i < movelist->length; i++)
+    while ((m = ms.next()))
     {
-        bool MoveIsUsefull = (isCheck
-            || ISPROMOTION(movelist->move[i].code)
-            || (patscore + materialvalue[GETCAPTURE(movelist->move[i].code) >> 1] + deltapruningmargin > alpha
-                && see(movelist->move[i].code, 0)));
+        if (!myIsCheck && patscore + materialvalue[GETCAPTURE(m->code) >> 1] + deltapruningmargin <= alpha)
+            // Leave out capture that is delta-pruned
+            continue;
 
-        if (MoveIsUsefull || !LegalMovesPossible)
+        bool isLegal = playMove(m);
+        if (isLegal)
         {
-            isLegal = playMove(&(movelist->move[i]));
-            if (isLegal)
+            ms.legalmovenum++;
+            score = -getQuiescence(-beta, -alpha, depth - 1);
+            unplayMove(m);
+            if (score > bestscore)
             {
-                LegalMovesPossible = true;
-                if (MoveIsUsefull)
+                bestscore = score;
+                if (score >= beta)
                 {
-                    score = -getQuiescence(-beta, -alpha, depth - 1);
+                    SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (fail high).", score);
+                    return score;
                 }
-                unplayMove(&(movelist->move[i]));
-                if (MoveIsUsefull && score > bestscore)
+                if (score > alpha)
                 {
-                    bestscore = score;
-                    if (score >= beta)
-                    {
-                        delete movelist;
-                        SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (fail high).", score);
-                        return score;
-                    }
-                    if (score > alpha)
-                    {
-                        alpha = score;
+                    alpha = score;
 #ifdef EVALTUNE
-                        foundpts = true;
-                        copyPositionTuneSet(&pts, &targetpts);
+                    foundpts = true;
+                    copyPositionTuneSet(&pts, &targetpts);
 #endif
-                    }
                 }
             }
         }
@@ -144,34 +131,15 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         copyPositionTuneSet(&targetpts, &pts);
 #endif
 
-    if (LegalMovesPossible)
+    if (myIsCheck && !ms.legalmovenum)
     {
-        delete movelist;
-        SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch.", bestscore);
-        return bestscore;
-    }
-
-    // No valid move found; try quiet moves
-    if (!isCheck)
-    {
-        if (getMoves(&movelist->move[0], QUIETWITHCHECK))
-        {
-            delete movelist;
-            SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch.", bestscore);
-            return bestscore;
-        }
-
-        // It's a stalemate
-        delete movelist;
-        SDEBUGPRINT(isDebugPv, debugInsert, " Got score 0 from qsearch (stalemate).");
-        return SCOREDRAW;
-    }
-    else {
         // It's a mate
-        delete movelist;
         SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (mate).", SCOREBLACKWINS + ply);
         return SCOREBLACKWINS + ply;
     }
+
+    SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch.", bestscore);
+    return bestscore;
 }
 
 
@@ -293,7 +261,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
     }
 
     // Check extension
-    if (isCheck)
+    if (isCheckbb)
         extendall = 1;
 
     prepareStack();
@@ -311,7 +279,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
     if (depth <= 6)
     {
         // reverse futility pruning
-        if (!isCheck && staticeval - depth * (72 - 20 * positionImproved) > beta)
+        if (!isCheckbb && staticeval - depth * (72 - 20 * positionImproved) > beta)
         {
             SDEBUGPRINT(isDebugPv, debugInsert, " Cutoff by reverse futility pruning: staticscore(%d) - revMargin(%d) > beta(%d)", staticeval, depth * (72 - 20 * positionImproved), beta);
             return staticeval;
@@ -321,7 +289,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
 
     // Nullmove pruning
     int bestknownscore = (hashscore != NOSCORE ? hashscore : staticeval);
-    if (nullmoveallowed && !isCheck && depth >= 3 && bestknownscore >= beta && ph < 250)
+    if (nullmoveallowed && !isCheckbb && depth >= 3 && bestknownscore >= beta && ph < 250)
     {
         playNullMove();
         int R = 3 + (depth / 6) + (bestknownscore - beta) / 150;
@@ -400,7 +368,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
             continue;
 
         // Check for futility pruning condition for this move and skip move if at least one legal move is already found
-        bool futilityPrune = futility && !ISTACTICAL(m->code) && !isCheck && alpha <= 900 && !moveGivesCheck(m->code);
+        bool futilityPrune = futility && !ISTACTICAL(m->code) && !isCheckbb && alpha <= 900 && !moveGivesCheck(m->code);
         if (futilityPrune)
         {
             if (LegalMoves)
@@ -416,7 +384,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
         }
 
         // Prune tactical moves with bad SEE
-        if (!isCheck && depth < 8 && bestscore > NOSCORE && ms.state >= BADTACTICALSTATE && !see(m->code, -20 * depth * depth))
+        if (!isCheckbb && depth < 8 && bestscore > NOSCORE && ms.state >= BADTACTICALSTATE && !see(m->code, -20 * depth * depth))
         {
             SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by bad SEE", debugMove.toString().c_str());
             continue;
@@ -554,7 +522,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
         if (excludeMove)
             return alpha;
 
-        if (isCheck) {
+        if (isCheckbb) {
             // It's a mate
             SDEBUGPRINT(isDebugPv, debugInsert, " Return score: %d  (mate)", SCOREBLACKWINS + ply);
             return SCOREBLACKWINS + ply;
@@ -626,7 +594,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         }
     }
 
-    if (isCheck)
+    if (isCheckbb)
         extendall = 1;
 
     if (!tbPosition)
@@ -922,7 +890,7 @@ static void search_gen1(searchthread *thr)
         {
             // mate / stalemate
             pos->bestmove[0].code = 0;
-            score = pos->bestmovescore[0] =  (pos->isCheck ? SCOREBLACKWINS : SCOREDRAW);
+            score = pos->bestmovescore[0] =  (pos->isCheckbb ? SCOREBLACKWINS : SCOREDRAW);
             en.stopLevel = ENGINESTOPPED;
         }
         else if (pos->testRepetiton() >= 2 || pos->halfmovescounter >= 100)
