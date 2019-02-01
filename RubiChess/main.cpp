@@ -115,17 +115,13 @@ long long engine::perft(int depth, bool dotests)
         }
     }
     chessmovelist movelist;
-    chessmovelist movelist2;
-    long long retval2 = 0;
     if (rootpos->isCheckbb)
-    {
         movelist.length = rootpos->getMoves(&movelist.move[0], EVASION);
-        movelist2.length = rootpos->getMoves(&movelist2.move[0]);
-    }
     else
         movelist.length = rootpos->getMoves(&movelist.move[0]);
+
     rootpos->prepareStack();
-    //movelist->sort();
+
     //printf("Path: %s \nMovelist : %s\n", p->actualpath.toString().c_str(), movelist->toString().c_str());
 
     if (depth == 0)
@@ -141,24 +137,6 @@ long long engine::perft(int depth, bool dotests)
                 rootpos->unplayMove(&movelist.move[i]);
             }
         }
-        if (rootpos->isCheckbb)
-        {
-            for (int i = 0; i < movelist2.length; i++)
-            {
-                if (rootpos->playMove(&movelist2.move[i]))
-                {
-                    //printf("%s ok ", movelist->move[i].toString().c_str());
-                    retval2++;
-                    rootpos->unplayMove(&movelist2.move[i]);
-                }
-            }
-            if (retval != retval2)
-            {
-                printf("retval:%lld  retval2:%lld\n", retval, retval2);
-                rootpos->print();
-            }
-        }
-
     }
 
     else
@@ -185,10 +163,6 @@ void perftest(bool dotests, int maxdepth)
         unsigned long long nodes[10];
     } perftestresults[] =
     {
-        {
-            "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
-            { 1, 6, 264, 9467, 422333, 15833292, 706045033 }
-        },
         {
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             { 1, 20, 400, 8902, 197281, 4865609, 119060324 }
@@ -264,7 +238,6 @@ void doBenchmark()
 {
     struct benchmarkstruct
     {
-        U64 qnodesmaster;
         string name;
         string fen;
         int depth;
@@ -277,7 +250,6 @@ void doBenchmark()
     } benchmark[] =
     {
         {   
-            382534,
             "Startposition",
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             14,
@@ -285,7 +257,6 @@ void doBenchmark()
             1
         },
         {
-            89833,
             "Lasker Test",
             "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1",
             28,
@@ -293,7 +264,6 @@ void doBenchmark()
             1
         },
         {
-            158675,
             "IQ4 63",
             "2R5/r3b1k1/p2p4/P1pPp2p/6q1/2P2N1r/4Q1P1/5RK1 w - - 0 1 ",
             14,
@@ -301,7 +271,6 @@ void doBenchmark()
             1
         },
         {
-            7377,
             "Wacnew 167",
             "7Q/ppp2q2/3p2k1/P2Ppr1N/1PP5/7R/5rP1/6K1 b - - 0 1",
             14,
@@ -309,7 +278,6 @@ void doBenchmark()
             1
         },
         { 
-            10946,
             "Wacnew 212",
             "rn1qr2Q/pbppk1p1/1p2pb2/4N3/3P4/2N5/PPP3PP/R4RK1 w - - 0 1",
             14,
@@ -317,7 +285,6 @@ void doBenchmark()
             1
         },
         {
-            399706,
             "Carlos 6",
             "rn1q1r2/1bp1bpk1/p3p2p/1p2N1pn/3P4/1BN1P1B1/PPQ2PPP/2R2RK1 w - - 0 1",
             13,
@@ -326,7 +293,6 @@ void doBenchmark()
         },
          
         {
-            1050763,
             "Arasan19 83",
             "6k1/p4qp1/1p3r1p/2pPp1p1/1PP1PnP1/2P1KR1P/1B6/7Q b - - 0 1 ",
             14,
@@ -334,7 +300,6 @@ void doBenchmark()
             1
         },
         {
-            528041,
             "Arasan19 192",
             "r2qk2r/1b1nbp1p/p1n1p1p1/1pp1P3/6Q1/2NPB1PN/PPP3BP/R4RK1 w kq - 0 1",
             13,
@@ -342,7 +307,6 @@ void doBenchmark()
             1
         },
         {
-            1224612,
             "BT2630 12",
             "8/pp3k2/2p1qp2/2P5/5P2/1R2p1rp/PP2R3/4K2Q b - - 0 1",
             15,
@@ -350,7 +314,6 @@ void doBenchmark()
             1
         },
         {
-            276860,
             "IQ4 116",
             "4r1k1/1p2qrpb/p1p4p/2Pp1p2/1Q1Rn3/PNN1P1P1/1P3PP1/3R2K1 b - - 0 1",
             14,
@@ -358,7 +321,6 @@ void doBenchmark()
             1
         },
         {
-            1152543,
             "Arasan12 114",
             "br4k1/1qrnbppp/pp1ppn2/8/NPPBP3/PN3P2/5QPP/2RR1B1K w - - 0 1",
             15,
@@ -366,7 +328,6 @@ void doBenchmark()
             1
         },
         {
-            2309163,
             "Arasan12 140",
             "r1b1rk2/p1pq2p1/1p1b1p1p/n2P4/2P1NP2/P2B1R2/1BQ3PP/R6K w - - 0 1",
             15,
@@ -374,7 +335,6 @@ void doBenchmark()
             1
         },
         {
-            680419,
             "Arasan12 137",
             "r4k2/1b3ppp/p2n1P2/q1p3PQ/Np1rp3/1P1B4/P1P4P/2K1R2R w - - 0 1",
             14,
@@ -382,7 +342,6 @@ void doBenchmark()
             1
         },
         {
-            0,
             "", "", 0, 0
         }
     };
@@ -414,8 +373,6 @@ void doBenchmark()
         bm->nodes = en.nodes;
         bm->score = en.benchscore;
         bm->depthAtExit = en.benchdepth;
-        //fprintf(stderr, "QNodes: %8lld  %10.5f\n", en.qnodes, (double)en.qnodes / bm->qnodesmaster);
-
         i++;
     }
 

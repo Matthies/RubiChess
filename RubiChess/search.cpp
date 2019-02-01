@@ -44,7 +44,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 #endif
 
     // FIXME: Should quiescience nodes count for the statistics?
-    //en.qnodes++;
+    //en.nodes++;
 
 #ifdef SDEBUG
     chessmove debugMove;
@@ -87,17 +87,6 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     chessmove *m;
 
     while ((m = ms.next()))
-
-#if 0
-    if (isCheck)
-        movelist->length = getMoves(&movelist->move[0]);
-    else
-        movelist->length = getMoves(&movelist->move[0], TACTICAL);
-
-    movelist->sort(lva[QUEEN]);
-
-    for (int i = 0; i < movelist->length; i++)
-#endif
     {
         if (!myIsCheck && patscore + materialvalue[GETCAPTURE(m->code) >> 1] + deltapruningmargin <= alpha)
             // Leave out capture that is delta-pruned
@@ -140,31 +129,8 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         return SCOREBLACKWINS + ply;
     }
 
-
     SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch.", bestscore);
     return bestscore;
-
-#if 0
-    // No valid move found; try quiet moves
-    if (!isCheck)
-    {
-        chessmovelist templist;
-        if (getMoves(&templist.move[0], QUIETWITHCHECK))
-        {
-            SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch.", bestscore);
-            return bestscore;
-        }
-
-        // It's a stalemate
-        SDEBUGPRINT(isDebugPv, debugInsert, " Got score 0 from qsearch (stalemate).");
-        return SCOREDRAW;
-    }
-    else {
-        // It's a mate
-        SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (mate).", SCOREBLACKWINS + ply);
-        return SCOREBLACKWINS + ply;
-    }
-#endif
 }
 
 
@@ -1173,7 +1139,6 @@ void searchguide()
 
     en.moveoutput = false;
     en.nodes = 0;
-    //en.qnodes = 0;
     en.tbhits = 0;
     en.fh = en.fhf = 0;
 

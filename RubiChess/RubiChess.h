@@ -758,8 +758,8 @@ class MoveSelector
     chessposition *pos;
 public:
     int state;
-    chessmovelist *captures;
-    chessmovelist *quiets;
+    chessmovelist* captures;
+    chessmovelist* quiets;
     chessmove hashmove;
     chessmove killermove1;
     chessmove killermove2;
@@ -770,7 +770,7 @@ public:
     bool onlyGoodCaptures;
 
 public:
-    void SetPreferredMoves(chessposition *p);
+    void SetPreferredMoves(chessposition *p);  // for quiescence move selector
     void SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, int nmrfttarget);
     ~MoveSelector();
     chessmove* next();
@@ -880,7 +880,7 @@ public:
     bool isAttacked(int index);
     bool isAttackedByMySlider(int index, U64 occ, int me);  // special simple version to detect giving check by removing blocker
     U64 attackedByBB(int index, U64 occ);  // returns bitboard of all pieces of both colors attacking index square 
-    template <AttackType At> U64 isAttackedBy(int index, int col);    // returns the bitboard of cols pieces attacking the index square
+    template <AttackType At> U64 isAttackedBy(int index, int col);    // returns the bitboard of cols pieces attacking the index square; At controls if pawns are moved to block or capture
     bool see(uint32_t move, int threshold);
     int getBestPossibleCapture();
     int getMoves(chessmove *m, MoveType t = ALL);
@@ -936,7 +936,6 @@ public:
     const char* author = "Andreas Matthies";
     bool isWhite;
     U64 nodes;
-    //U64 qnodes;
     U64 tbhits;
     U64 starttime;
     U64 endtime1; // time to send STOPSOON signal
