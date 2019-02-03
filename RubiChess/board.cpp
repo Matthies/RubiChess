@@ -1950,12 +1950,12 @@ U64 chessposition::movesTo(PieceCode pc, int from)
 template <AttackType At> U64 chessposition::isAttackedBy(int index, int col)
 {
     U64 occ = occupied00[0] | occupied00[1];
-    return knight_attacks[index] & piece00[WKNIGHT | col]
-        | MAGICROOKATTACKS(occ, index) & (piece00[WROOK | col] | piece00[WQUEEN | col])
-        | MAGICBISHOPATTACKS(occ, index) & (piece00[WBISHOP | col] | piece00[WQUEEN | col])
-        | piece00[WPAWN | col] & (At == OCCUPIED ?
+    return (knight_attacks[index] & piece00[WKNIGHT | col])
+        | (MAGICROOKATTACKS(occ, index) & (piece00[WROOK | col] | piece00[WQUEEN | col]))
+        | (MAGICBISHOPATTACKS(occ, index) & (piece00[WBISHOP | col] | piece00[WQUEEN | col]))
+        | (piece00[WPAWN | col] & (At == OCCUPIED ?
             pawn_attacks_from[index][col] :
-            pawn_moves_from[index][col] | (pawn_moves_from_double[index][col] & PAWNPUSH(col ^ S2MMASK, ~occ)));
+            pawn_moves_from[index][col] | (pawn_moves_from_double[index][col] & PAWNPUSH(col ^ S2MMASK, ~occ))));
 }
 
 
