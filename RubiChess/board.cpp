@@ -1971,10 +1971,10 @@ bool chessposition::isAttacked(int index)
 }
 
 // used for checkevasion test, could be usefull for discovered check test
-bool chessposition::isAttackedByMySlider(int index, U64 occ, int me)
+U64 chessposition::isAttackedByMySlider(int index, U64 occ, int me)
 {
-    return MAGICROOKATTACKS(occ, index) & (piece00[WROOK | me] | piece00[WQUEEN | me])
-        || MAGICBISHOPATTACKS(occ, index) & (piece00[WBISHOP | me] | piece00[WQUEEN | me]);
+    return (MAGICROOKATTACKS(occ, index) & (piece00[WROOK | me] | piece00[WQUEEN | me]))
+        | (MAGICBISHOPATTACKS(occ, index) & (piece00[WBISHOP | me] | piece00[WQUEEN | me]));
 }
 
 

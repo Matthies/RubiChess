@@ -70,7 +70,7 @@ static void registertuner(chessposition *pos, eval *e, string name, int index1, 
 void registeralltuners(chessposition *pos)
 {
     int i, j;
-    bool tuneIt = true;
+    bool tuneIt = false;
 
     pos->tps.count = 0;
 
@@ -83,16 +83,15 @@ void registeralltuners(chessposition *pos)
 
     registertuner(pos, &eps.ePawnpushthreatbonus, "ePawnpushthreatbonus", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eSafepawnattackbonus, "eSafepawnattackbonus", 0, 0, 0, 0, tuneIt);
-    tuneIt = true;
+    tuneIt = false;
     registertuner(pos, &eps.eHangingpiecepenalty, "eHangingpiecepenalty", 0, 0, 0, 0, tuneIt);
-    tuneIt = true;
+    tuneIt = false;
     registertuner(pos, &eps.eKingshieldbonus, "eKingshieldbonus", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eTempo, "eTempo", 0, 0, 0, 0, tuneIt);
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 8; j++)
             registertuner(pos, &eps.ePassedpawnbonus[i][j], "ePassedpawnbonus", j, 8, i, 4, tuneIt && (j > 0 && j < 7));
-    tuneIt = true;
     for (i = 0; i < 8; i++)
         registertuner(pos, &eps.eAttackingpawnbonus[i], "eAttackingpawnbonus", i, 8, 0, 0, tuneIt && (i > 0 && i < 7));
     registertuner(pos, &eps.eIsolatedpawnpenalty, "eIsolatedpawnpenalty", 0, 0, 0, 0, tuneIt);
@@ -100,14 +99,17 @@ void registeralltuners(chessposition *pos)
     registertuner(pos, &eps.eConnectedbonus, "eConnectedbonus", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eBackwardpawnpenalty, "eBackwardpawnpenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eDoublebishopbonus, "eDoublebishopbonus", 0, 0, 0, 0, tuneIt);
+    tuneIt = false;
+    //registertuner(pos, &eps.ePinnedQueenPenalty, "ePinnedQueenPenalty", 0, 0, 0, 0, tuneIt);
+    
 
-    tuneIt = true;
+    tuneIt = false;
 
     for (i = 0; i < 4; i++)
         for (j = 0; j < 28; j++)
             registertuner(pos, &eps.eMobilitybonus[i][j], "eMobilitybonus", j, 28, i, 4, tuneIt && (j < maxmobility[i]));
 
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 2; i++)
         registertuner(pos, &eps.eSlideronfreefilebonus[i], "eSlideronfreefilebonus", i, 2, 0, 0, tuneIt);
     for (i = 0; i < 7; i++)
@@ -117,6 +119,10 @@ void registeralltuners(chessposition *pos)
         registertuner(pos, &eps.eKingattackweight[i], "eKingattackweight", i, 7, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
 
     tuneIt = true;
+    for (i = 0; i < 6; i++)
+        registertuner(pos, &eps.eSafecheckbonus[i], "eSafecheckbonus", i, 6, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
+
+    tuneIt = false;
 
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
@@ -281,6 +287,9 @@ int chessposition::getPositionValue()
     attackedBy2[1] = phentry->attackedBy2[1] | (attackedBy[1][KING] & phentry->attacked[1]);
     attackedBy[1][0] = attackedBy[1][KING] | phentry->attacked[1];
 
+    attackedBy[0][PAWN] = phentry->attacked[0];
+    attackedBy[1][PAWN] = phentry->attacked[1];
+
     kingattackers[0] = POPCOUNT(attackedBy[0][PAWN] & kingdangerMask[kingpos[1]][1]);
     kingattackers[1] = POPCOUNT(attackedBy[1][PAWN] & kingdangerMask[kingpos[0]][0]);
 
@@ -326,7 +335,24 @@ int chessposition::getPositionValue()
                 attack = knight_attacks[index];
                 mobility = attack & ~occupied00[me];
             }
-
+#if 0
+            if (p == QUEEN)
+            {
+                U64 sliders = piece00[WBISHOP] | piece00[BBISHOP] | piece00[WROOK] | piece00[BROOK];
+                // serch for pinned or discovered attacks to our queen
+                U64 yourAttackingSliders = isAttackedByMySlider(index, 0, you);
+                int from;
+                while (LSB(from, yourAttackingSliders))
+                {
+                    yourAttackingSliders ^= BITSET(from);
+                    U64 piecesBetween = betweenMask[from][index] & occupied;
+                    if (POPCOUNT(piecesBetween) == 1 && (piecesBetween & sliders))
+                    {
+                        result += EVAL(eps.ePinnedQueenPenalty, S2MSIGN(me));
+                    }
+                }
+            }
+#endif
             // update attack bitboard
             attackedBy[me][p] |= attack;
             attackedBy2[me] |= (attackedBy[me][0] & attack);
@@ -343,8 +369,6 @@ int chessposition::getPositionValue()
             }
         }
     }
-    attackedBy[0][PAWN] = phentry->attacked[0];
-    attackedBy[1][PAWN] = phentry->attacked[1];
 
     // bonus for double bishop
     result += EVAL(eps.eDoublebishopbonus, ((POPCOUNT(piece00[WBISHOP]) >= 2) - (POPCOUNT(piece00[BBISHOP]) >= 2)));
@@ -369,17 +393,27 @@ int chessposition::getPositionValue()
         // King safety
         if (kingattackers[me] > 1 - (bool)(piece00[WQUEEN | me]))
         {
-            // Attacks to our king ring
-            for (int p = KNIGHT; p <= QUEEN; p++)
-                result += EVAL(eps.eKingattackweight[p], S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me]);
-
-            // Attacked and poorly defended squares in our king ring
-            U64 krattacked = kingdangerMask[kingpos[me]][me]
-                & attackedBy[you][0]
+            // My attacked and poorly defended squares
+            U64 myweaksquares = attackedBy[you][0]
                 & ~attackedBy2[me]
                 & (~attackedBy[me][0] | attackedBy[me][KING] | attackedBy[me][QUEEN]);
+
+            // Your safe target squares
+            U64 yoursafetargets = (~attackedBy[me][0] | (myweaksquares & attackedBy2[you])) & ~occupied00[you];
             
-            result += EVAL(eps.eWeakkingringpenalty, S2MSIGN(me) * POPCOUNT(krattacked));
+            // penalty for weak squares in our king ring
+            result += EVAL(eps.eWeakkingringpenalty, S2MSIGN(me) * POPCOUNT(myweaksquares & kingdangerMask[kingpos[me]][me]));
+
+            for (int p = KNIGHT; p <= QUEEN; p++) {
+                // Attacks to our king ring
+                result += EVAL(eps.eKingattackweight[p], S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me]);
+
+                if (movesTo(p << 1, kingpos[me]) & attackedBy[you][p] & yoursafetargets)
+                    // Bonus for safe checks
+                    result += EVAL(eps.eSafecheckbonus[p], S2MSIGN(you));
+            }
+
+
         }
 
         // Threats
