@@ -335,24 +335,7 @@ int chessposition::getPositionValue()
                 attack = knight_attacks[index];
                 mobility = attack & ~occupied00[me];
             }
-#if 0
-            if (p == QUEEN)
-            {
-                U64 sliders = piece00[WBISHOP] | piece00[BBISHOP] | piece00[WROOK] | piece00[BROOK];
-                // serch for pinned or discovered attacks to our queen
-                U64 yourAttackingSliders = isAttackedByMySlider(index, 0, you);
-                int from;
-                while (LSB(from, yourAttackingSliders))
-                {
-                    yourAttackingSliders ^= BITSET(from);
-                    U64 piecesBetween = betweenMask[from][index] & occupied;
-                    if (POPCOUNT(piecesBetween) == 1 && (piecesBetween & sliders))
-                    {
-                        result += EVAL(eps.ePinnedQueenPenalty, S2MSIGN(me));
-                    }
-                }
-            }
-#endif
+
             // update attack bitboard
             attackedBy[me][p] |= attack;
             attackedBy2[me] |= (attackedBy[me][0] & attack);
