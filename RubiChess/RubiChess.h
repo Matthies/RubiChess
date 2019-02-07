@@ -167,7 +167,7 @@ typedef const int32_t eval;
 
 #define TAPEREDANDSCALEDEVAL(s, p, c) ((GETMGVAL(s) * (256 - (p)) + GETEGVAL(s) * (p) * (c) / SCALE_NORMAL) / 256)
 
-#define NUMOFEVALPARAMS (2*5*4 + 5 + 4*8 + 8 + 5 + 4*28 + 2 + 7 + 1 + 7 + 6+ 7*64)
+#define NUMOFEVALPARAMS (2*5*4 + 5 + 4*8 + 8 + 5 + 4*28 + 2 + 7 + 1 + 7 + 6 + 7*64)
 struct evalparamset {
     // Powered by Laser :-)
     eval ePawnstormblocked[4][5] = {

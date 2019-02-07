@@ -70,7 +70,7 @@ static void registertuner(chessposition *pos, eval *e, string name, int index1, 
 void registeralltuners(chessposition *pos)
 {
     int i, j;
-    bool tuneIt = false;
+    bool tuneIt = true;
 
     pos->tps.count = 0;
 
@@ -83,12 +83,12 @@ void registeralltuners(chessposition *pos)
 
     registertuner(pos, &eps.ePawnpushthreatbonus, "ePawnpushthreatbonus", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eSafepawnattackbonus, "eSafepawnattackbonus", 0, 0, 0, 0, tuneIt);
-    tuneIt = false;
+    tuneIt = true;
     registertuner(pos, &eps.eHangingpiecepenalty, "eHangingpiecepenalty", 0, 0, 0, 0, tuneIt);
-    tuneIt = false;
+    tuneIt = true;
     registertuner(pos, &eps.eKingshieldbonus, "eKingshieldbonus", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eTempo, "eTempo", 0, 0, 0, 0, tuneIt);
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 8; j++)
             registertuner(pos, &eps.ePassedpawnbonus[i][j], "ePassedpawnbonus", j, 8, i, 4, tuneIt && (j > 0 && j < 7));
@@ -99,17 +99,13 @@ void registeralltuners(chessposition *pos)
     registertuner(pos, &eps.eConnectedbonus, "eConnectedbonus", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eBackwardpawnpenalty, "eBackwardpawnpenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eDoublebishopbonus, "eDoublebishopbonus", 0, 0, 0, 0, tuneIt);
-    tuneIt = false;
-    //registertuner(pos, &eps.ePinnedQueenPenalty, "ePinnedQueenPenalty", 0, 0, 0, 0, tuneIt);
-    
 
-    tuneIt = false;
-
+    tuneIt = true;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 28; j++)
             registertuner(pos, &eps.eMobilitybonus[i][j], "eMobilitybonus", j, 28, i, 4, tuneIt && (j < maxmobility[i]));
 
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 2; i++)
         registertuner(pos, &eps.eSlideronfreefilebonus[i], "eSlideronfreefilebonus", i, 2, 0, 0, tuneIt);
     for (i = 0; i < 7; i++)
@@ -122,8 +118,7 @@ void registeralltuners(chessposition *pos)
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eSafecheckbonus[i], "eSafecheckbonus", i, 6, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
 
-    tuneIt = false;
-
+    tuneIt = true;
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
         registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
