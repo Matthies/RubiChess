@@ -774,6 +774,7 @@ int main(int argc, char* argv[])
         { "-startnum", "number of the test in epd to start with (use with -enginetest)", &startnum, 1, "1" },
         { "-compare", "for fast comparision against logfile from other engine (use with -enginetest)", &comparefile, 2, "" },
         { "-flags", "1=skip easy (0 sec.) compares; 2=break 5 seconds after first find; 4=break after compare time is over (use with -enginetest)", &flags, 1, "0" },
+        { "-option", "Set UCI option by commandline", NULL, 3, NULL },
 #ifdef STACKDEBUG
         { "-assertfile", "output assert info to file", &en.assertfile, 2, "" },
 #endif
@@ -781,7 +782,6 @@ int main(int argc, char* argv[])
         { "-pgnfile", "converts games in a PGN file to fen for tuning them later", &pgnconvertfile, 2, "" },
         { "-fentuning", "reads FENs from file and tunes eval parameters against it", &fentuningfile, 2, "" },
         { "-tuningratio", "use only every <n>th double move from the FEN to speed up the analysis", &tuningratio, 1, "1" },
-        { "-option", "Do benchmark test for some positions.", NULL, 3, NULL },
 #endif
         { NULL, NULL, NULL, 0, NULL }
     };
@@ -844,6 +844,7 @@ int main(int argc, char* argv[])
                 string optionName(argv[val + 1]);
                 string optionValue(val < argc - 2 ? argv[val + 2] : "");
                 en.setOption(optionName, optionValue);
+                printf(" %s (%s) %s: %s\n", allowedargs[j].cmd, allowedargs[j].info, optionName.c_str(), optionValue.c_str());
                 // search for more -option parameters starting after current (ugly hack)
                 paramindex++;
                 j--;

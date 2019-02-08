@@ -2340,7 +2340,7 @@ void engine::setOption(string sName, string sValue)
             resetTp = true;
         }
     }
-    if (resetTp)
+    if (resetTp && sizeOfTp)
     {
         sizeOfPh = max(16, tp.setSize(sizeOfTp) / Threads);
         allocThreads();
