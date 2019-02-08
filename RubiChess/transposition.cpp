@@ -81,10 +81,10 @@ u8 zobrist::getHash(chessposition *pos)
     {
         U64 pmask = pos->piece00[i];
         unsigned int index;
-        while (LSB(index, pmask))
+        while (pmask)
         {
+            index = pullLsb(&pmask);
             hash ^= boardtable[(index << 4) | i];
-            pmask ^= (1ULL << index);
         }
     }
 
@@ -104,10 +104,10 @@ u8 zobrist::getPawnHash(chessposition *pos)
     {
         U64 pmask = pos->piece00[i];
         unsigned int index;
-        while (LSB(index, pmask))
+        while (pmask)
         {
+            index = pullLsb(&pmask);
             hash ^= boardtable[(index << 4) | i];
-            pmask ^= (1ULL << index);
         }
     }
     // Store also kings position in pawn hash
@@ -145,12 +145,11 @@ int transposition::setSize(int sizeMb)
     if (size > 0)
         delete table;
     U64 maxsize = ((U64)sizeMb << 20) / sizeof(transpositioncluster);
-    if (MSB(msb, maxsize))
-    {
-        size = (1ULL << msb);
-        restMb = (int)(((maxsize ^ size) >> 20) * sizeof(transpositioncluster));  // return rest for pawnhash
-    }
-
+    if (!maxsize) return 0;
+    GETMSB(msb, maxsize);
+    size = (1ULL << msb);
+    restMb = (int)(((maxsize ^ size) >> 20) * sizeof(transpositioncluster));  // return rest for pawnhash
+ 
     sizemask = size - 1;
     table = (transpositioncluster*)malloc((size_t)(size * sizeof(transpositioncluster)));
     clean();
@@ -305,8 +304,9 @@ Pawnhash::Pawnhash(int sizeMb)
     int msb = 0;
     sizeMb = max(sizeMb, 16);
     size = ((U64)sizeMb << 20) / sizeof(S_PAWNHASHENTRY);
-    if (MSB(msb, size))
-        size = (1ULL << msb);
+    if (!size) return;
+    GETMSB(msb, size);
+    size = (1ULL << msb);
 
     sizemask = size - 1;
     //table = (S_PAWNHASHENTRY*)malloc((size_t)(size * sizeof(S_PAWNHASHENTRY)));

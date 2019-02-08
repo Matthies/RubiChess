@@ -1074,11 +1074,11 @@ U64 getOccupiedFromMBIndex(int j, U64 mask)
     U64 occ = 0ULL;
     int k;
     int i = 0;
-    while (LSB(k, mask))
+    while (mask)
     {
+        k = pullLsb(&mask);
         if (j & BITSET(i))
             occ |= (1ULL << k);
-        mask ^= BITSET(k);
         i++;
     }
     return occ;
@@ -1663,8 +1663,9 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
         int king = pos->kingpos[me];
         // moving the king is alway a possibe evasion
         targetbits = king_attacks[king] & ~pos->occupied00[me];
-        while (LSB(to, targetbits))
+        while (targetbits)
         {
+            to = pullLsb(&targetbits);
             if (!pos->isAttackedBy<OCCUPIED>(to, you) && !pos->isAttackedByMySlider(to, occupiedbits ^ BITSET(king), you))
             {
                 if (pos->mailbox[to])
@@ -1672,21 +1673,20 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                 else
                     appendMoveToList<QUIET>(pos, &m, king, to, WKING | me);
             }
-            targetbits ^= BITSET(to);
         }
 
         if (POPCOUNT(pos->isCheckbb) == 1)
         {
             // only one attacker => capture or block the attacker is a possible evasion
             int attacker;
-            LSB(attacker, pos->isCheckbb);
+            GETLSB(attacker, pos->isCheckbb);
             // special case: attacker is pawn and can be captured enpassant
             if (pos->ept && pos->ept == attacker + S2MSIGN(me) * 8)
             {
                 frombits = pawn_attacks_from[pos->ept][me] & pos->piece00[WPAWN | me];
-                while (LSB(from, frombits))
+                while (frombits)
                 {
-                    frombits ^= BITSET(from);
+                    from = pullLsb(&frombits);
                     // treat ep capture as a quiet move and correct code and value manually
                     appendMoveToList<QUIET>(pos, &m, from, attacker + S2MSIGN(me) * 8, WPAWN | me);
                     (m - 1)->code |= (ISEPCAPTURE << 20) | ((WPAWN | you) << 16);
@@ -1700,9 +1700,9 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
             targetbits = betweenMask[king][attacker];
             while (true)
             {
-                while (LSB(from, frombits))
+                while (frombits)
                 {
-                    frombits ^= BITSET(from);
+                    from = pullLsb(&frombits);
                     pc = pos->mailbox[from];
                     if ((pc >> 1) == PAWN)
                     {
@@ -1727,7 +1727,7 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                     else
                         appendMoveToList<QUIET>(pos, &m, from, to, pc);
                 }
-                if (!LSB(to, targetbits))
+                if (!GETLSB(to, targetbits))
                     break;
                 targetbits ^= BITSET(to);
                 frombits = pos->isAttackedBy<FREE>(to, me);  // <FREE> is needed here as the target fields are empty and pawns move normal
@@ -1749,8 +1749,9 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
         switch (p)
         {
         case PAWN:
-            while (LSB(from, frombits))
+            while (frombits)
             {
+                from = pullLsb(&frombits);
                 tobits = 0ULL;
                 if (Mt & QUIET)
                 {
@@ -1768,8 +1769,9 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                     /* FIXME: ept & EPTSIDEMASK[me] is a quite ugly test for correct side respecting null move pruning */
                     tobits |= (pawn_attacks_to[from][me] & (pos->occupied00[you] | ((pos->ept & EPTSIDEMASK[me]) ? BITSET(pos->ept) : 0ULL)));
                 }
-                while (LSB(to, tobits))
+                while (tobits)
                 {
+                    to = pullLsb(&tobits);
                     if ((Mt & CAPTURE) && pos->ept && pos->ept == to)
                     {
                         // treat ep capture as a quiet move and correct code and value manually
@@ -1798,40 +1800,38 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                         pos->unplayMove(m - 1);
                         return 1;
                     }
-                    tobits ^= BITSET(to);
                 }
-                frombits ^= BITSET(from);
             }
             break;
         case KNIGHT:
-            while (LSB(from, frombits))
+            while (frombits)
             {
+                from = pullLsb(&frombits);
                 tobits = (knight_attacks[from] & targetbits);
-                while (LSB(to, tobits))
+                while (tobits)
                 {
+                    to = pullLsb(&tobits);
                     appendMoveToList<Mt>(pos, &m, from, to, pc);
                     if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
                     {
                         pos->unplayMove(m - 1);
                         return 1;
                     }
-                    tobits ^= BITSET(to);
                 }
-                frombits ^= BITSET(from);
             }
             break;
         case KING:
             from = pos->kingpos[me];
             tobits = (king_attacks[from] & targetbits);
-            while (LSB(to, tobits))
+            while (tobits)
             {
+                to = pullLsb(&tobits);
                 appendMoveToList<Mt>(pos, &m, from, to, pc);
                 if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
                 {
                     pos->unplayMove(m - 1);
                     return 1;
                 }
-                tobits ^= BITSET(to);
             }
             if (Mt & QUIET)
             {
@@ -1867,8 +1867,9 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
             break;
         default:
             tobits = 0ULL;
-            while (LSB(from, frombits))
+            while (frombits)
             {
+                from = pullLsb(&frombits);
                 if (shifting[p] & 0x1)
                 {
                     tobits |= (MAGICBISHOPATTACKS(occupiedbits, from) & targetbits);
@@ -1877,17 +1878,16 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                 {
                     tobits |= (MAGICROOKATTACKS(occupiedbits, from) & targetbits);
                 }
-                while (LSB(to, tobits))
+                while (tobits)
                 {
+                    to = pullLsb(&tobits);
                     appendMoveToList<Mt>(pos, &m, from, to, pc);
                     if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
                     {
                         pos->unplayMove(m - 1);
                         return 1;
                     }
-                    tobits ^= BITSET(to);
                 }
-                frombits ^= BITSET(from);
             }
             break;
         }
@@ -2040,7 +2040,7 @@ bool chessposition::see(uint32_t move, int threshold)
 
         // Simulate the move
         int attackerIndex;
-        LSB(attackerIndex, nextAttacker & piece00[(nextPiece << 1) | s2m]);
+        GETLSB(attackerIndex, nextAttacker & piece00[(nextPiece << 1) | s2m]);
         seeOccupied ^= BITSET(attackerIndex);
 
         // Add new shifting attackers but exclude already moved attackers using current seeOccupied
