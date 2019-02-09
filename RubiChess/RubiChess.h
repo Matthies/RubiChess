@@ -96,12 +96,34 @@ void Sleep(long x);
 
 #define BITSET(x) (1ULL << (x))
 #ifdef _WIN32
-#define LSB(i,x) _BitScanForward64((DWORD*)&(i), (x))
-#define MSB(i,x) _BitScanReverse64((DWORD*)&(i), (x))
+#define GETLSB(i,x) _BitScanForward64((DWORD*)&(i), (x))
+inline int pullLsb(unsigned long long *x) {
+    DWORD i;
+    _BitScanForward64(&i, *x);
+    *x &= *x - 1;  // this is faster than *x ^= (1ULL << i);
+    return i;
+}
+#define GETMSB(i,x) _BitScanReverse64((DWORD*)&(i), (x))
+inline int pullMsb(unsigned long long *x) {
+    DWORD i;
+    _BitScanReverse64(&i, *x);
+    *x ^= (1ULL << i);
+    return i;
+}
 #define POPCOUNT(x) (int)(__popcnt64(x))
 #else
-#define LSB(i,x) (!(x) ? false : (i = __builtin_ctzll(x), true ))
-#define MSB(i,x) (!(x) ? false : (i = (63 - __builtin_clzll(x)), true))
+#define GETLSB(i,x) (i = __builtin_ctzll(x))
+inline int pullLsb(unsigned long long *x) {
+    int i = __builtin_ctzll(*x);
+    *x &= *x - 1;  // this is faster than *x ^= (1ULL << i);
+    return i;
+}
+#define GETMSB(i,x) (i = (63 - __builtin_clzll(x)))
+inline int pullMsb(unsigned long long *x) {
+    int i = 63 - __builtin_clzll(*x);
+    *x ^= (1ULL << i);
+    return i;
+}
 #define POPCOUNT(x) __builtin_popcountll(x)
 #endif
 

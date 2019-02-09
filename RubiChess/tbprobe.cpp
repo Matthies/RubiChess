@@ -172,10 +172,10 @@ static int probe_wdl_table(int *success, chessposition *pos)
         for (i = 0; i < entry->num;) {
             U64 bb = pos->piece00[SYZYGY2RUBI_PT(pc[i] ^ cmirror)];
             int index;
-            while (LSB(index, bb))
+            while (bb)
             {
+                index = pullLsb(&bb);
                 p[i++] = index;
-                bb ^= BITSET(index);
             };
         }
         idx = encode_piece(entry, entry->norm[bside], p, entry->factor[bside]);
@@ -187,20 +187,20 @@ static int probe_wdl_table(int *success, chessposition *pos)
         U64 bb = pos->piece00[SYZYGY2RUBI_PT(k)];
         i = 0;
         int index;
-        while (LSB(index, bb))
+        while (bb)
         {
+            index = pullLsb(&bb);
             p[i++] = index ^ mirror;
-            bb ^= BITSET(index);
         };
         int f = pawn_file(entry, p);
         ubyte *pc = entry->file[f].pieces[bside];
         for (; i < entry->num;) {
             bb = pos->piece00[SYZYGY2RUBI_PT(pc[i] ^ cmirror)];
             int index;
-            while (LSB(index, bb))
+            while (bb)
             {
+                index = pullLsb(&bb);
                 p[i++] = index ^ mirror;
-                bb ^= BITSET(index);
             };
         }
         idx = encode_pawn(entry, entry->file[f].norm[bside], p, entry->file[f].factor[bside]);
@@ -282,10 +282,10 @@ static int probe_dtz_table(int wdl, int *success, chessposition *pos)
     for (i = 0; i < entry->num;) {
       U64 bb = pos->piece00[SYZYGY2RUBI_PT(pc[i] ^ cmirror)];
       int index;
-      while (LSB(index, bb))
+      while (bb)
       {
+          index = pullLsb(&bb);
           p[i++] = index;
-          bb ^= BITSET(index);
       }
     }
     idx = encode_piece((struct TBEntry_piece *)entry, entry->norm, p, entry->factor);
@@ -302,10 +302,10 @@ static int probe_dtz_table(int wdl, int *success, chessposition *pos)
     U64 bb = pos->piece00[SYZYGY2RUBI_PT(k)];
     i = 0;
     int index;
-    while (LSB(index, bb))
+    while (bb)
     {
+        index = pullLsb(&bb);
         p[i++] = index ^ mirror;
-        bb ^= BITSET(index);
     }
     int f = pawn_file((struct TBEntry_pawn *)entry, p);
     if ((entry->flags[f] & 1) != bside) {
@@ -316,10 +316,10 @@ static int probe_dtz_table(int wdl, int *success, chessposition *pos)
     for (; i < entry->num;) {
         bb = pos->piece00[SYZYGY2RUBI_PT(pc[i] ^ cmirror)];
         int index;
-        while (LSB(index, bb))
+        while (bb)
         {
+            index = pullLsb(&bb);
             p[i++] = index ^ mirror;
-            bb ^= BITSET(index);
         }
     }
     idx = encode_pawn((struct TBEntry_pawn *)entry, entry->file[f].norm, p, entry->file[f].factor);

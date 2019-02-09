@@ -152,8 +152,9 @@ int chessposition::getPawnAndKingValue(pawnhashentry **entry)
             entryptr->isolatedpawnbb[me] = 0ULL;
             entryptr->backwardpawnbb[me] = 0ULL;
             U64 pb = piece00[pc];
-            while (LSB(index, pb))
+            while (pb)
             {
+                index = pullLsb(&pb);
                 int psqtindex = PSQTINDEX(index, me);
                 entryptr->value += EVAL(eps.ePsqt[PAWN][psqtindex], S2MSIGN(me));
 
@@ -188,7 +189,7 @@ int chessposition::getPawnAndKingValue(pawnhashentry **entry)
                         U64 mypawns = piece00[pc] & neighbourfilesMask[index];
                         U64 pawnstoreach = opponentpawns | mypawns;
                         int nextpawn;
-                        if (me ? MSB(nextpawn, pawnstoreach) : LSB(nextpawn, pawnstoreach))
+                        if (me ? GETMSB(nextpawn, pawnstoreach) : GETLSB(nextpawn, pawnstoreach))
                         {
                             U64 nextpawnrank = rankMask[nextpawn];
                             U64 shiftneigbours = (me ? nextpawnrank >> 8 : nextpawnrank << 8);
@@ -200,7 +201,6 @@ int chessposition::getPawnAndKingValue(pawnhashentry **entry)
                         }
                     }
                 }
-                pb ^= BITSET(index);
             }
 
             // Pawn storm evaluation
@@ -216,9 +216,9 @@ int chessposition::getPawnAndKingValue(pawnhashentry **entry)
                 {
                     int nextPawn;
                     if (me)
-                        MSB(nextPawn, yourStormingPawn);
+                        GETMSB(nextPawn, yourStormingPawn);
                     else
-                        LSB(nextPawn, yourStormingPawn);
+                        GETLSB(nextPawn, yourStormingPawn);
                     yourDist = abs(RANK(nextPawn) - kr);
                 }
 
@@ -231,9 +231,9 @@ int chessposition::getPawnAndKingValue(pawnhashentry **entry)
                 {
                     int nextPawn;
                     if (me)
-                        MSB(nextPawn, myProtectingPawn);
+                        GETMSB(nextPawn, myProtectingPawn);
                     else
-                        LSB(nextPawn, myProtectingPawn);
+                        GETLSB(nextPawn, myProtectingPawn);
                     myDist = abs(RANK(nextPawn) - kr);
                 }
 
@@ -296,13 +296,12 @@ int chessposition::getPositionValue()
         U64 pb = piece00[pc];
         U64 kingdangerarea = kingdangerMask[kingpos[you]][you];
 
-        while (LSB(index, pb))
+        while (pb)
         {
+            index = pullLsb(&pb);
             int psqtindex = PSQTINDEX(index, me);
             result += EVAL(eps.ePsqt[p][psqtindex], S2MSIGN(me));
             result += EVAL(eps.eMaterialvalue[p], S2MSIGN(me));
-
-            pb ^= BITSET(index);
 
             U64 attack = 0ULL;;
             U64 mobility = 0ULL;
@@ -358,13 +357,13 @@ int chessposition::getPositionValue()
         // Passed pawns
         U64 ppb;
         ppb = phentry->passedpawnbb[me];
-        while (LSB(index, ppb))
+        while (ppb)
         {
+            index = pullLsb(&ppb);
             int target = index + (me ? -8 : 8);
             bool targetoccupied = (occupied & BITSET(target));
             bool targetsafe = (~attackedBy[you][0] & BITSET(target));
             result += EVAL(eps.ePassedpawnbonus[(targetsafe << 1) + targetoccupied][RRANK(index, me)], S2MSIGN(me));
-            ppb ^= BITSET(index);
         }
 
 
