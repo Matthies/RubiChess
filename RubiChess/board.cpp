@@ -1727,9 +1727,9 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                     else
                         appendMoveToList<QUIET>(pos, &m, from, to, pc);
                 }
-                if (!GETLSB(to, targetbits))
+                if (!targetbits)
                     break;
-                targetbits ^= BITSET(to);
+                to = pullLsb(&targetbits);
                 frombits = pos->isAttackedBy<FREE>(to, me);  // <FREE> is needed here as the target fields are empty and pawns move normal
             }
         }
