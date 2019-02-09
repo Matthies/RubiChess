@@ -422,10 +422,8 @@ class transposition
 {
 public:
     transpositioncluster *table;
-    U64 used;
     U64 size;
     U64 sizemask;
-    //chessposition *pos;
     int numOfSearchShiftTwo;
     ~transposition();
     int setSize(int sizeMb);    // returns the number of Mb not used by allignment
@@ -829,6 +827,7 @@ enum AttackType { FREE, OCCUPIED };
 class chessposition
 {
 public:
+    U64 nodes;
     U64 piece00[14];
     U64 occupied00[2];
     U64 attackedBy2[2];
@@ -958,7 +957,6 @@ public:
     const char* name = ENGINEVER;
     const char* author = "Andreas Matthies";
     bool isWhite;
-    U64 nodes;
     U64 tbhits;
     U64 starttime;
     U64 endtime1; // time to send STOPSOON signal
@@ -991,6 +989,7 @@ public:
     void setOption(string sName, string sValue);
     void allocThreads();
     void allocPawnhash();
+    U64 getTotalNodes();
     bool isPondering() { return (pondersearch == PONDERING); }
     void HitPonder() { pondersearch = HITPONDER; }
     bool testPonderHit() { return (pondersearch == HITPONDER); }

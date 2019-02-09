@@ -370,7 +370,7 @@ void doBenchmark()
 
         endtime = getTime();
         bm->time = endtime - starttime;
-        bm->nodes = en.nodes;
+        bm->nodes = en.getTotalNodes();
         bm->score = en.benchscore;
         bm->depthAtExit = en.benchdepth;
         i++;

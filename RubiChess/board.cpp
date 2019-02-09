@@ -2289,6 +2289,7 @@ void engine::prepareThreads()
 {
     sthread[0].pos.bestmovescore[0] = NOSCORE;
     sthread[0].pos.bestmove[0].code = 0;
+    sthread[0].pos.nodes = 0;
     for (int i = 1; i < Threads; i++)
     {
         sthread[i].pos = sthread[0].pos;
@@ -2297,8 +2298,20 @@ void engine::prepareThreads()
         // early reset of variables that are important for bestmove selection
         sthread[i].pos.bestmovescore[0] = NOSCORE;
         sthread[i].pos.bestmove[0].code = 0;
+        sthread[i].pos.nodes = 0;
     }
 }
+
+
+U64 engine::getTotalNodes()
+{
+    U64 nodes = 0;
+    for (int i = 0; i < Threads; i++)
+        nodes += sthread[i].pos.nodes;
+
+    return nodes;
+}
+
 
 void engine::setOption(string sName, string sValue)
 {

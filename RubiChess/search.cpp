@@ -160,7 +160,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
     unsigned int nmrefutetarget = BOARDSIZE;
     bool PVNode = (alpha != beta - 1);
 
-    en.nodes++;
+    nodes++;
 
 #ifdef SDEBUG
     chessmove debugMove;
@@ -562,7 +562,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
 
     const bool isMultiPV = (RT == MultiPVSearch);
 
-    en.nodes++;
+    nodes++;
 
     if (isMultiPV)
     {
@@ -660,7 +660,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         if (en.moveoutput && !threadindex)
         {
             char s[256];
-            sprintf_s(s, "info depth %d currmove %s currmovenumber %d nodes %llu tbhits %llu\n", depth, m->toString().c_str(), i + 1, en.nodes, en.tbhits);
+            sprintf_s(s, "info depth %d currmove %s currmovenumber %d nodes %llu tbhits %llu\n", depth, m->toString().c_str(), i + 1, en.getTotalNodes(), en.tbhits);
             cout << s;
         }
 
@@ -823,19 +823,21 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int mpvIndex)
     en.lastReport = msRun;
     string pvstring = pos->pvline.toString();
     int score = pos->bestmovescore[mpvIndex];
+    U64 nodes = en.getTotalNodes();
+
     if (!MATEDETECTED(score))
     {
         sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score cp %d %s nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
-            thr->depth, pos->seldepth, mpvIndex + 1, msRun, score, boundscore[inWindow], en.nodes,
-            (nowtime > en.starttime ? en.nodes * en.frequency / (nowtime - en.starttime) : 1),
+            thr->depth, pos->seldepth, mpvIndex + 1, msRun, score, boundscore[inWindow], nodes,
+            (nowtime > en.starttime ? nodes * en.frequency / (nowtime - en.starttime) : 1),
             en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
     }
     else
     {
         int matein = (score > 0 ? (SCOREWHITEWINS - score + 1) / 2 : (SCOREBLACKWINS - score) / 2);
         sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score mate %d nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
-            thr->depth, pos->seldepth, mpvIndex + 1, msRun, matein, en.nodes,
-            (nowtime > en.starttime ? en.nodes * en.frequency / (nowtime - en.starttime) : 1),
+            thr->depth, pos->seldepth, mpvIndex + 1, msRun, matein, nodes,
+            (nowtime > en.starttime ? nodes * en.frequency / (nowtime - en.starttime) : 1),
             en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
     }
     cout << s;
@@ -1151,7 +1153,6 @@ void searchguide()
     startSearchTime();
 
     en.moveoutput = false;
-    en.nodes = 0;
     en.tbhits = 0;
     en.fh = en.fhf = 0;
 
