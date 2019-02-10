@@ -660,7 +660,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         if (en.moveoutput && !threadindex)
         {
             char s[256];
-            sprintf_s(s, "info depth %d currmove %s currmovenumber %d nodes %llu tbhits %llu\n", depth, m->toString().c_str(), i + 1, en.getTotalNodes(), en.tbhits);
+            sprintf_s(s, "info depth %d currmove %s currmovenumber %d\n", depth, m->toString().c_str(), i + 1);
             cout << s;
         }
 
