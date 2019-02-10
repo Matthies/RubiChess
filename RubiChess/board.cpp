@@ -2164,7 +2164,7 @@ chessmove* MoveSelector::next()
     case TACTICALSTATE:
         while (capturemovenum < captures->length
             && (captures->move[capturemovenum].code == hashmove.code
-                || !pos->see(captures->move[capturemovenum].code, 0)))
+                || !pos->see(captures->move[capturemovenum].code, onlyGoodCaptures)))
         {
             // mark the move for BADTACTICALSTATE
             captures->move[capturemovenum].value |= (1 << 31);
