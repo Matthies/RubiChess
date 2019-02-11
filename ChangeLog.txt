@@ -3,14 +3,14 @@ ChangeLog
 
 1.3 (release 2019-02-10) :
     - Finally Lazy SMP is implemented based on the ideas of many common AB engines
-	- Changed order of nullmove and (reverse) futility pruning
-	- Exclude moves that give check from futility pruning
-	- Introduced simple probcut
-	- Increase reduction for moves with bad history
-	- Introduced a scaled evaluation for drawish endgame material
-	- Evaluate pieces that can give check
-	- Fixed a "by one" bug in the 50-moves rule handling
-	- Implemented movelist for check evasion
+    - Changed order of nullmove and (reverse) futility pruning
+    - Exclude moves that give check from futility pruning
+    - Introduced simple probcut
+    - Increase reduction for moves with bad history
+    - Introduced a scaled evaluation for drawish endgame material
+    - Evaluate pieces that can give check
+    - Fixed a "by one" bug in the 50-moves rule handling
+    - Implemented movelist for check evasion
 
 1.2.1 (release 2018-12-14) :
     - Some fixes preventing rootsearch playing a move that fails low and wasn't in pv
@@ -82,7 +82,7 @@ ChangeLog
     - use additional move buffer in calculation of remeaining time in move/time mode
  
 0.7 (release 2018-01-06, Pre-Release for Graham division 9 tournament) :
-    - Texel-Tuning!!! Implemented a tuner and tuned all the evaluation parameters which gains about 150 ELO. Thanks to Peter Österlund.
+    - Texel-Tuning!!! Implemented a tuner and tuned all the evaluation parameters which gains about 150 ELO. Thanks to Peter Ã–sterlund.
     - Improved search:
         + futility pruning implemented with margin 130
         + delta pruning implemented
