@@ -2373,16 +2373,16 @@ void engine::setOption(string sName, string sValue)
     }
     if (resetTp && sizeOfTp)
     {
-        int newRestSiteTp = tp.setSize(sizeOfTp);
-        if (restSizeOfTp != newRestSiteTp)
+        int newRestSizeTp = tp.setSize(sizeOfTp);
+        if (restSizeOfTp != newRestSizeTp)
         {
-            restSizeOfTp = newRestSiteTp;
+            restSizeOfTp = newRestSizeTp;
             resetTh = true;
         }
     }
     if (resetTh)
     {
-        sizeOfPh = max(16, restSizeOfTp / Threads);
+        sizeOfPh = min(128, max(16, restSizeOfTp / Threads));
         allocThreads();
     }
     if (sName == "move overhead")
@@ -2544,14 +2544,17 @@ void engine::communicate(string inputstring)
                 sName = sValue = "";
                 while (ci < cs)
                 {
-                    if (commandargs[ci] == "name")
+                    string sLower = commandargs[ci];
+                    transform(sLower.begin(), sLower.end(), sLower.begin(), ::tolower);
+
+                    if (sLower == "name")
                     {
                         setOption(sName, sValue);
                         bGetName = true;
                         bGetValue = false;
                         sName = "";
                     }
-                    else if (commandargs[ci] == "value")
+                    else if (sLower == "value")
                     {
                         bGetValue = true;
                         bGetName = false;
