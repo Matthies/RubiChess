@@ -2333,6 +2333,7 @@ U64 engine::getTotalNodes()
 void engine::setOption(string sName, string sValue)
 {
     bool resetTp = false;
+    bool resetTh = false;
     int newint;
     string lValue = sValue;
     transform(sName.begin(), sName.end(), sName.begin(), ::tolower);
@@ -2355,7 +2356,7 @@ void engine::setOption(string sName, string sValue)
         if (newint >= 1 && newint <= MAXTHREADS && newint != Threads)
         {
             Threads = newint;
-            resetTp = true;
+            resetTh = true;
         }
     }
     if (sName == "hash")
@@ -2372,7 +2373,16 @@ void engine::setOption(string sName, string sValue)
     }
     if (resetTp && sizeOfTp)
     {
-        sizeOfPh = max(16, tp.setSize(sizeOfTp) / Threads);
+        int newRestSiteTp = tp.setSize(sizeOfTp);
+        if (restSizeOfTp != newRestSiteTp)
+        {
+            restSizeOfTp = newRestSiteTp;
+            resetTh = true;
+        }
+    }
+    if (resetTh)
+    {
+        sizeOfPh = max(16, restSizeOfTp / Threads);
         allocThreads();
     }
     if (sName == "move overhead")
@@ -2511,7 +2521,7 @@ void engine::communicate(string inputstring)
                 myUci->send("id name %s\n", name);
                 myUci->send("id author %s\n", author);
                 myUci->send("option name Clear Hash type button\n");
-                myUci->send("option name Hash type spin default 150 min 1 max 1048576\n");
+                myUci->send("option name Hash type spin default 256 min 1 max 1048576\n");
                 myUci->send("option name Move Overhead type spin default 50 min 0 max 5000\n");
                 myUci->send("option name MultiPV type spin default 1 min 1 max %d\n", MAXMULTIPV);
                 myUci->send("option name Ponder type check default false\n");

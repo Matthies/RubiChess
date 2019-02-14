@@ -985,6 +985,7 @@ public:
     bool debug = false;
     bool moveoutput;
     int sizeOfTp = 0;
+    int restSizeOfTp = 0;
     int sizeOfPh;
     int moveOverhead;
     int MultiPV;
