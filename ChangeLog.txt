@@ -1,7 +1,9 @@
 ChangeLog
 =========
-1.4 (release 2019-xx-yy) :
-    - ...
+1.3.1 (release 2019-02-27 for TCEC) :
+    - Make moveoverhead relative to number of threads
+    - Don't reallocate hash when number of threads is changed
+    - Leave out exchanges with neutral see in qsearch
 
 1.3 (release 2019-02-10) :
     - Finally Lazy SMP is implemented based on the ideas of many common AB engines
