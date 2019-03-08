@@ -17,7 +17,7 @@
 
 #pragma once
 
-#define VERNUM "1.3.1 (TCEC)"
+#define VERNUM "1.4-dev"
 
 #if 0
 #define SDEBUG
@@ -102,9 +102,17 @@ void Sleep(long x);
 #define strcpy(a,b) strcpy_s(a,256,b)
 #define strcat(a,b) strcat_s(a,256,b)
 
+#ifdef EVALTUNE
+#define PREFETCH(a) (void)(0)
+#else
 #define PREFETCH(a) _mm_prefetch((char*)(a), _MM_HINT_T0)
+#endif
+#else
+#ifdef EVALTUNE
+#define PREFETCH(a) (void)(0)
 #else
 #define PREFETCH(a) __builtin_prefetch(a)
+#endif
 #endif
 
 

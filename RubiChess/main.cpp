@@ -866,6 +866,9 @@ int main(int argc, char* argv[])
                 paramindex++;
                 j--;
             }
+            else {
+                paramindex = 0;
+            }
         }
     }
 
