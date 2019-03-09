@@ -1,3 +1,8 @@
+Links:
+http://pwnedthegameofchess.com/engine/
+http://www.herderschach.de/index.html
+
+
 // ToDo:
 TP / Sortierungsproblem:
 position startpos moves d2d4 d7d5 c1f4 g8f6 d1d3 e7e6 b1c3 f8e7 e2e4 d5e4 c3e4 f6d5 g1h3 e8g8 f1e2 f7f5 e4c3 e7b4 e1c1 b4c3 b2c3 d8e7 c1d2 d5f4 h3f4 f8d8 h2h4 e7d6 d2e3 b8c6 e2f3 c6e5 d3b5 e5f3 g2f3 d6a3 b5c4 c7c6 d1g1 a3d6 f4h5 g7g6 c4b4 d6c7 h5f6 g8h8 b4c5 c7g7 f6h5 g7c7 h5f4 a7a5 h4h5 b7b6 c5c4 c6c5 f4g6 h7g6 h5g6 h8g8 h1h4 c5d4 h4d4 c7e5 e3d3 c8a6 c4a6 a5a4 a6b6 d8b8 b6c6 a4a3 c6d7 e5b5 d7b5 b8b5 g1e1 a8a6 c3c4 b5b2 e1g1 b2a2 d4d8 g8g7 d8d7 g7f6 g6g7 a6a8 g7g8q a8g8 g1g8 a2a1 d7a7 f6e5 d3e3 a1e1 e3d2 e1f1 d2e3 f1e1 e3d2
@@ -483,8 +488,18 @@ Im Gauntlet mit schwarz gegen Tornado (Runde 12) spielt Rubi in r2qr3/pb1pnpk1/1
 f7f6 und erkennt nicht, dass Bg5xf6 direkt gewinnt. Zu scharfes futility pruning?
 Hmmm. Irgendwas stimmt mit dem fen nicht, da fehlt wohl ein Zug.
 
+09.03.2019:
+Im TCEC-Spiel gegen Nemorino gibt es einen auf den Sack. Die Analyse führt zu dieser Position
+3k3r/2pbn3/q3pN1p/2ppP3/6pP/bP4B1/P2QNPP1/K6R b - - 0 25 
+die Rubi als weiß völlig falsch bewertet.
+SF findet Bd7-b5 ab einer Tiefe 14 mit Bewertung > 2
+Rubi findet nur Kd8-c8 mit ca. 0.5
 
-Links:
-http://pwnedthegameofchess.com/engine/
-http://www.herderschach.de/index.html
+Noch drastischer einige Züge weiter:
+2k4r/2p1n3/q3pN1p/1bp1P3/1b1p1NpP/1P4B1/PQ3PP1/1K1R4 b - - 3 29 
+SF (D=28, v>4.5): pv b4a3 b2c2 h8d8 f6e4 d4d3 c2c3 e7d5 f4d5 e6d5 e4c5 d5d4 c3d2 a3c5 a2a4 b5e8 d1c1 a6b6 b1a2 e8c6 d2d3 b6b4 g3f4 c6g2 f4h6 g2d5 a2b1 d5b3 d3a6 c8d7 a6b5 b4b5 a4b5
+Ru (D=27, v=0.6): pv b4c3 b2c1 e7c6 f6e4 c6b4 a2a3 b4d3 c1c2 d3f4 g3f4 b5e2 e4c5 e2d1 c5a6 d1c2 b1c2 c3e1 a6c5 e1f2 c2d3 f2h4 c5e6 c8d7 e6d4 h4f2 e5e6 d7e7 
+
+Oder noch weiter:
+1k1r4/2p1n3/q3pN1p/1bp1P3/3pQNpP/bP4B1/P4PP1/1K1R4 w - - 8 32
 
