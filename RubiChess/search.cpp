@@ -606,7 +606,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         if (fullhashmove)
         {
             bestmove[0].code = fullhashmove;
-            bestmovescore[0] = score;
+            if (score > alpha) bestmovescore[0] = score;
             return score;
         }
     }
