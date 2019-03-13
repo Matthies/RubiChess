@@ -292,7 +292,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
         && staticevalstack[mstop] > staticevalstack[mstop - 2]);
 
     // Razoring
-    if (!isCheckbb && depth <= 2 && staticeval + 300 +  depth * 50 < alpha)
+    if (!PVNode && !isCheckbb && depth <= 1 && staticeval + 350 < alpha)
         return getQuiescence(alpha, beta, depth);
 
     // futility pruning
