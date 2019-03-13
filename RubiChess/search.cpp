@@ -1094,7 +1094,10 @@ static void search_gen1(searchthread *thr)
                 strPonder = " ponder " + pos->pvline.move[1].toString();
         }
         else {
-            strBestmove = pos->bestmove[0].toString();
+            if (pos->bestmove[0].code)
+                strBestmove = pos->bestmove[0].toString();
+            else
+                strBestmove = pos->defaultmove.toString();
         }
         char s[64];
         sprintf_s(s, "bestmove %s%s\n", strBestmove.c_str(), strPonder.c_str());
@@ -1126,7 +1129,7 @@ void resetEndTime(int constantRootMoves, bool complete)
         int f2 = max(13, 23 - constantRootMoves * 2);
         if (complete)
             en.endtime1 = en.starttime + timetouse * en.frequency * f1 / (en.movestogo + 1) / 10000;
-        en.endtime2 = en.starttime + min(max(0, timetouse - overhead), f2 * timetouse / (en.movestogo + 1) / 10) * en.frequency / 1000;
+        en.endtime2 = en.starttime + min(max(0, timetouse - overhead * en.movestogo), f2 * timetouse / (en.movestogo + 1) / 10) * en.frequency / 1000;
         //printf("info string difftime1=%lld  difftime2=%lld\n", (endtime1 - en.starttime) * 1000 / en.frequency , (endtime2 - en.starttime) * 1000 / en.frequency);
     }
     else if (timetouse) {

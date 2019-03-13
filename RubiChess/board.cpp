@@ -2306,6 +2306,7 @@ void engine::prepareThreads()
 {
     sthread[0].pos.bestmovescore[0] = NOSCORE;
     sthread[0].pos.bestmove[0].code = 0;
+    sthread[0].pos.pvline.length = 0;
     sthread[0].pos.nodes = 0;
     for (int i = 1; i < Threads; i++)
     {
@@ -2315,6 +2316,7 @@ void engine::prepareThreads()
         // early reset of variables that are important for bestmove selection
         sthread[i].pos.bestmovescore[0] = NOSCORE;
         sthread[i].pos.bestmove[0].code = 0;
+        sthread[i].pos.pvline.length = 0;
         sthread[i].pos.nodes = 0;
     }
 }
