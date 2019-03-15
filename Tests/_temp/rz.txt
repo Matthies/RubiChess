@@ -1,0 +1,29 @@
+rz1:
+STC[0,5]:
+Score of RubiChess-rz1 vs RubiChess-ms: 440 - 374 - 617  [0.523] 1431
+Elo difference: 16.04 +/- 13.57
+SPRT: llr 1.41, lbound -1.39, ubound 1.39 - H1 was accepted
+
+
+rz2:
+STC[0,5]:
+Score of RubiChess-rz2 vs RubiChess-ms: 776 - 703 - 1166  [0.514] 2645
+Elo difference: 9.59 +/- 9.89
+SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+
+LTC:
+Score of RubiChess-rz2 vs RubiChess-ms: 11 - 36 - 72  [0.395] 119
+Elo difference: -74.09 +/- 38.81
+SPRT: llr -1.07, lbound -1.39, ubound 1.39
+
+
+rz3:
+STC:
+Score of RubiChess-rz3 vs RubiChess-ms: 769 - 695 - 1078  [0.515] 2542
+Elo difference: 10.12 +/- 10.24
+SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+
+LTC:
+Score of RubiChess-rz3 vs RubiChess-ms: 364 - 309 - 807  [0.519] 1480
+Elo difference: 12.92 +/- 11.92
+SPRT: llr 1.41, lbound -1.39, ubound 1.39 - H1 was accepted
