@@ -39,6 +39,7 @@ U64 betweenMask[64][64];
 int castleindex[64][64] = { 0 };
 U64 castlekingto[64][2] = { 0ULL };
 int castlerights[64];
+int squareDistance[64][64];
 
 
 PieceType GetPieceType(char c)
@@ -1170,6 +1171,7 @@ void initBitmaphelper()
 
         for (int j = 0; j < 64; j++)
         {
+            squareDistance[from][j] = max(abs(RANK(from) - RANK(j)), abs(FILE(from) - FILE(j)));
             betweenMask[from][j] = 0ULL;
             if (abs(FILE(from) - FILE(j)) == 1)
             {

@@ -23,7 +23,7 @@
 #define SDEBUG
 #endif
 
-#if 0
+#if 1
 #define EVALTUNE
 #endif
 
@@ -214,7 +214,7 @@ typedef const int32_t eval;
 
 #define TAPEREDANDSCALEDEVAL(s, p, c) ((GETMGVAL(s) * (256 - (p)) + GETEGVAL(s) * (p) * (c) / SCALE_NORMAL) / 256)
 
-#define NUMOFEVALPARAMS (2*5*4 + 5 + 4*8 + 8 + 5 + 4*28 + 2 + 7 + 1 + 7 + 6 + 7*64)
+#define NUMOFEVALPARAMS (2*5*4 + 5 + 4*8 + 8 + 5 + 4*28 + 4 + 2 + 7 + 1 + 7 + 6 + 7*64)
 struct evalparamset {
     // Powered by Laser :-)
     eval ePawnstormblocked[4][5] = {
@@ -264,6 +264,7 @@ struct evalparamset {
            VALUE(  13, 155), VALUE(  20, 153), VALUE(  26, 156), VALUE(  24, 160), VALUE(  35, 156), VALUE(  59, 158), VALUE(  32, 165), VALUE(  69, 142),
            VALUE(  86, 156), VALUE( 111, 116), VALUE( 139, 115), VALUE(  37, 182)  }
     };
+    eval eKingdistancepenalty[4] = { VALUE(0,0),VALUE(0,0),VALUE(0,0),VALUE(0,0) };
     eval eSlideronfreefilebonus[2] = {  VALUE(  20,   4), VALUE(  43,   4)  };
     eval eMaterialvalue[7] = {  VALUE(   0,   0), VALUE( 100, 100), VALUE( 314, 314), VALUE( 314, 314), VALUE( 483, 483), VALUE( 913, 913), VALUE(32509,32509)};
     eval eWeakkingringpenalty =  VALUE( -17,   4);
@@ -719,6 +720,8 @@ extern U64 rankMask[64];
 // 00000000
 // 00000000
 extern U64 betweenMask[64][64];
+
+extern int squareDistance[64][64];
 
 struct chessmovestack
 {
