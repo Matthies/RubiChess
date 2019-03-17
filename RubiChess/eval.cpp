@@ -87,9 +87,13 @@ static void registertuner(chessposition *pos, eval *e, string name, int index1, 
 void registeralltuners(chessposition *pos)
 {
     int i, j;
-    bool tuneIt = false;
+    bool tuneIt = true;
 
     pos->tps.count = 0;
+
+    tuneIt = true;
+    for (i = 0; i < 4; i++)
+        registertuner(pos, &eps.eKingdistancepenalty[i], "eKingdistancepenalty", i, 4, 0, 0, tuneIt);
 
     for (i = 0; i < 4; i++)
         for (j = 0; j < 5; j++)
@@ -100,12 +104,12 @@ void registeralltuners(chessposition *pos)
 
     registertuner(pos, &eps.ePawnpushthreatbonus, "ePawnpushthreatbonus", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eSafepawnattackbonus, "eSafepawnattackbonus", 0, 0, 0, 0, tuneIt);
-    tuneIt = false;
+    tuneIt = true;
     registertuner(pos, &eps.eHangingpiecepenalty, "eHangingpiecepenalty", 0, 0, 0, 0, tuneIt);
-    tuneIt = false;
+    tuneIt = true;
     registertuner(pos, &eps.eKingshieldbonus, "eKingshieldbonus", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eTempo, "eTempo", 0, 0, 0, 0, tuneIt);
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 8; j++)
             registertuner(pos, &eps.ePassedpawnbonus[i][j], "ePassedpawnbonus", j, 8, i, 4, tuneIt && (j > 0 && j < 7));
@@ -117,16 +121,12 @@ void registeralltuners(chessposition *pos)
     registertuner(pos, &eps.eBackwardpawnpenalty, "eBackwardpawnpenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eDoublebishopbonus, "eDoublebishopbonus", 0, 0, 0, 0, tuneIt);
 
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 28; j++)
             registertuner(pos, &eps.eMobilitybonus[i][j], "eMobilitybonus", j, 28, i, 4, tuneIt && (j < maxmobility[i]));
 
     tuneIt = true;
-    for (i = 0; i < 4; i++)
-        registertuner(pos, &eps.eKingdistancepenalty[i], "eKingdistancepenalty", i, 4, 0, 0, tuneIt);
-
-    tuneIt = false;
     for (i = 0; i < 2; i++)
         registertuner(pos, &eps.eSlideronfreefilebonus[i], "eSlideronfreefilebonus", i, 2, 0, 0, tuneIt);
     for (i = 0; i < 7; i++)
@@ -135,14 +135,14 @@ void registeralltuners(chessposition *pos)
     for (i = 0; i < 7; i++)
         registertuner(pos, &eps.eKingattackweight[i], "eKingattackweight", i, 7, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
 
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eSafecheckbonus[i], "eSafecheckbonus", i, 6, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
 
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
-        registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
+            registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
 }
 #endif
 
@@ -309,6 +309,10 @@ int chessposition::getPositionValue()
     kingattackers[0] = POPCOUNT(attackedBy[0][PAWN] & kingdangerMask[kingpos[1]][1]);
     kingattackers[1] = POPCOUNT(attackedBy[1][PAWN] & kingdangerMask[kingpos[0]][0]);
 
+    U64 goodMobility[2];
+    goodMobility[0] = ~((piece00[WPAWN] & (RANK2(0) | RANK3(0))) | attackedBy[1][PAWN] | piece00[WKING]);
+    goodMobility[1] = ~((piece00[BPAWN] & (RANK2(1) | RANK3(1))) | attackedBy[0][PAWN] | piece00[BKING]);
+
     for (int pc = WKNIGHT; pc <= BQUEEN; pc++)
     {
         int p = (pc >> 1);
@@ -329,7 +333,7 @@ int chessposition::getPositionValue()
             if (shifting[p] & 0x2) // rook and queen
             {
                 attack = mRookAttacks[index][MAGICROOKINDEX(occupied, index)];
-                mobility = attack & ~occupied00[me];
+                mobility = attack;
 
                 // extrabonus for rook on (semi-)open file  
                 if (p == ROOK && (phentry->semiopen[me] & BITSET(FILE(index))))
@@ -341,14 +345,13 @@ int chessposition::getPositionValue()
             if (shifting[p] & 0x1) // bishop and queen)
             {
                 attack |= mBishopAttacks[index][MAGICBISHOPINDEX(occupied, index)];
-                mobility |= ~occupied00[me]
-                    & (mBishopAttacks[index][MAGICBISHOPINDEX(occupied, index)]);
+                mobility |= mBishopAttacks[index][MAGICBISHOPINDEX(occupied, index)];
             }
 
             if (p == KNIGHT)
             {
                 attack = knight_attacks[index];
-                mobility = attack & ~occupied00[me];
+                mobility = attack;
             }
 
             // update attack bitboard
@@ -357,10 +360,13 @@ int chessposition::getPositionValue()
             attackedBy[me][0] |= attack;
 
             // mobility bonus
+            mobility &= goodMobility[me];
             result += EVAL(eps.eMobilitybonus[p - 2][POPCOUNT(mobility)], S2MSIGN(me));
+            if (POPCOUNT(mobility) >= maxmobility[p - 2])
+                printf("Alarm");
 
             // king distance penalty
-            result -= EVAL(eps.eKingdistancepenalty[p - 2], squareDistance[index][kingpos[me]]);
+            //result += EVAL(eps.eKingdistancepenalty[p - 2], S2MSIGN(me) * squareDistance[index][kingpos[me]]);
 
             // king danger
             if (mobility & kingdangerarea)
