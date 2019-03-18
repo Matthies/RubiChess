@@ -485,12 +485,16 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                             for (int i = 0; i < pos->tps.count; i++)
                             {
                                 texelpts[n].g[i] = pos->pts.g[i];
-                                Qa += texelpts[n].g[i] * *pos->tps.ev[i];
+                                if (texelpts[n].g[i])
+                                {
+                                    //printf("%20s: %08x  %3d\n", pos->tps.name[i].c_str(), *pos->tps.ev[i], texelpts[n].g[i]);
+                                    Qa += texelpts[n].g[i] * *pos->tps.ev[i];
+                                }
                             }
                             if (MATEDETECTED(Qi))
                                 n--;
                             else if (Qi != (texelpts[n].sc == SCALE_DRAW ? SCOREDRAW : TAPEREDANDSCALEDEVAL(Qa, texelpts[n].ph, texelpts[n].sc)))
-                                printf("Alarm. Gradient evaluation differs from qsearch value.\n");
+                                printf("Alarm. Gradient evaluation differs from qsearch value: %d != %d.\n", TAPEREDANDSCALEDEVAL(Qa, texelpts[n].ph, texelpts[n].sc), Qi);
                         }
                         n++;
                     }
