@@ -91,10 +91,6 @@ void registeralltuners(chessposition *pos)
 
     pos->tps.count = 0;
 
-    tuneIt = true;
-    for (i = 0; i < 4; i++)
-        registertuner(pos, &eps.eKingdistancepenalty[i], "eKingdistancepenalty", i, 4, 0, 0, tuneIt);
-
     for (i = 0; i < 4; i++)
         for (j = 0; j < 5; j++)
             registertuner(pos, &eps.ePawnstormblocked[i][j], "ePawnstormblocked", j, 5, i, 4, tuneIt);
@@ -362,11 +358,6 @@ int chessposition::getPositionValue()
             // mobility bonus
             mobility &= goodMobility[me];
             result += EVAL(eps.eMobilitybonus[p - 2][POPCOUNT(mobility)], S2MSIGN(me));
-            if (POPCOUNT(mobility) >= maxmobility[p - 2])
-                printf("Alarm");
-
-            // king distance penalty
-            //result += EVAL(eps.eKingdistancepenalty[p - 2], S2MSIGN(me) * squareDistance[index][kingpos[me]]);
 
             // king danger
             if (mobility & kingdangerarea)
