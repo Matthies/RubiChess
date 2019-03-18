@@ -324,31 +324,21 @@ int chessposition::getPositionValue()
             result += EVAL(eps.ePsqt[p][psqtindex], S2MSIGN(me));
             result += EVAL(eps.eMaterialvalue[p], S2MSIGN(me));
 
-            U64 attack = 0ULL;;
-            U64 mobility = 0ULL;
+            U64 attack = 0ULL;
             if (shifting[p] & 0x2) // rook and queen
             {
                 attack = mRookAttacks[index][MAGICROOKINDEX(occupied, index)];
-                mobility = attack;
 
                 // extrabonus for rook on (semi-)open file  
                 if (p == ROOK && (phentry->semiopen[me] & BITSET(FILE(index))))
-                {
                     result += EVAL(eps.eSlideronfreefilebonus[bool(phentry->semiopen[you] & BITSET(FILE(index)))], S2MSIGN(me));
-                }
             }
 
             if (shifting[p] & 0x1) // bishop and queen)
-            {
                 attack |= mBishopAttacks[index][MAGICBISHOPINDEX(occupied, index)];
-                mobility |= mBishopAttacks[index][MAGICBISHOPINDEX(occupied, index)];
-            }
 
             if (p == KNIGHT)
-            {
                 attack = knight_attacks[index];
-                mobility = attack;
-            }
 
             // update attack bitboard
             attackedBy[me][p] |= attack;
@@ -356,7 +346,7 @@ int chessposition::getPositionValue()
             attackedBy[me][0] |= attack;
 
             // mobility bonus
-            mobility &= goodMobility[me];
+            U64 mobility = attack & goodMobility[me];
             result += EVAL(eps.eMobilitybonus[p - 2][POPCOUNT(mobility)], S2MSIGN(me));
 
             // king danger
@@ -387,7 +377,6 @@ int chessposition::getPositionValue()
             result += EVAL(eps.ePassedpawnbonus[(targetsafe << 1) + targetoccupied][RRANK(index, me)], S2MSIGN(me));
         }
 
-
         // King safety
         if (kingattackers[me] > 1 - (bool)(piece00[WQUEEN | me]))
         {
@@ -410,8 +399,6 @@ int chessposition::getPositionValue()
                     // Bonus for safe checks
                     result += EVAL(eps.eSafecheckbonus[p], S2MSIGN(you));
             }
-
-
         }
 
         // Threats
