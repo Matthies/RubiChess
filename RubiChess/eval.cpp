@@ -33,39 +33,52 @@ void chessposition::resetTuner()
         tps.ev[i]->resetGrad();
 }
 
-void chessposition::getPositionTuneSet(positiontuneset *p)
+void chessposition::getPositionTuneSet(positiontuneset *p, evalparam *e)
 {
     p->ph = ph;
     p->sc = sc;
+    p->num = 0;
     for (int i = 0; i < tps.count; i++)
-        p->g[i] = tps.ev[i]->getGrad();
+        if (tps.ev[i]->getGrad())
+        {
+            e->index = i;
+            e->g = tps.ev[i]->getGrad();
+            p->num++;
+            e++;
+        }
 }
 
-void chessposition::copyPositionTuneSet(positiontuneset *from, positiontuneset *to)
+void chessposition::copyPositionTuneSet(positiontuneset *from, evalparam *efrom, positiontuneset *to, evalparam *eto)
 {
     to->ph = from->ph;
     to->sc = from->sc;
-    for (int i = 0; i < tps.count; i++)
-        to->g[i] = from->g[i];
+    to->num = from->num;
+    for (int i = 0; i < from->num; i++)
+    {
+        *eto = *efrom;
+        eto++;
+        efrom++;
+    }
 }
 
 string chessposition::getGradientString()
 {
     string s = "";
-    for (int i = 0; i < tps.count; i++)
+    for (int i = 0; i < pts.num; i++)
     {
-        if (pts.g[i])
-            s = s + tps.name[i] + "(" + to_string(pts.g[i]) + ") ";
+        s = s + tps.name[ev[i].index] + "(" + to_string(ev[i].g) + ") ";
     }
 
     return s;
 }
 
-int chessposition::getGradientValue(positiontuneset *p)
+int chessposition::getGradientValue(positiontuneset *p, evalparam *e)
 {
     int v = 0;
-    for (int i = 0; i < tps.count; i++)
-        v += *tps.ev[i] * p->g[i];
+    for (int i = 0; i < p->num; i++)
+    {
+        v += *tps.ev[e->index] * e->g;
+    }
 
     return v;
 }

@@ -388,15 +388,18 @@ static void printTunedParameters(chessposition *pos)
 
 int tuningratio = 1;
 
-positiontuneset *texelpts = NULL;
+char *texelpts = NULL;
 int texelptsnum;
 
 
-static int getGradientValue(struct tuner *tn, positiontuneset *p)
+static int getGradientValue(struct tuner *tn, positiontuneset *p, evalparam *e)
 {
     int v = 0;
-    for (int i = 0; i < tn->paramcount; i++)
-        v += tn->ev[i] * p->g[i];
+    for (int i = 0; i < p->num; i++)
+    {
+        v += tn->ev[e->index] * e->g;
+        e++;
+    }
 
     return v;
 }
@@ -408,15 +411,19 @@ static double TexelEvalError(struct tuner *tn)
     double Ri, Qi;
     double E = 0.0;
 
+    positiontuneset *p = (positiontuneset*)texelpts;
     for (int i = 0; i < texelptsnum; i++)
     {
-        if (texelpts[i].sc == SCALE_DRAW)
+        evalparam *e = (evalparam *)((char*)p + sizeof(positiontuneset));
+
+        Ri = p->R / 2.0;
+        if (p->sc == SCALE_DRAW)
             Qi = SCOREBLACKWINS;
         else
-            Qi = TAPEREDANDSCALEDEVAL(getGradientValue(tn, &texelpts[i]), texelpts[i].ph, texelpts[i].sc);
-        Ri = texelpts[i].R / 2.0;
+            Qi = TAPEREDANDSCALEDEVAL(getGradientValue(tn, p, e), p->ph, p->sc);
         double sigmoid = 1 / (1 + pow(10.0, - texel_k * Qi / 400.0));
         E += (Ri - sigmoid) * (Ri - sigmoid);
+        p = (positiontuneset*)((char*)p + sizeof(positiontuneset) + p->num * sizeof(evalparam));
     }
 
     return E / texelptsnum;
@@ -434,35 +441,101 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
     char R;
     string fen;
     int Qi, Qa;
-    int tuningphase = 0;
-    while (tuningphase < 2)
+    U64 buffersize;
+    char *pnext;
+    long long minfreebuffer = sizeof(positiontuneset) + NUMOFEVALPARAMS * sizeof(evalparam) * 1024;
+    int msb;
+    GETMSB(msb, minfreebuffer);
+    minfreebuffer = (1ULL << (msb + 1));
+    const U64 maxbufferincrement = minfreebuffer << 10;
+        
+    n = 0;
+    bw = 0;
+    c = tuningratio;
+    ifstream fenfile(fenfilename);
+    if (!fenfile.is_open())
     {
-        n = 0;
-        bw = 0;
-        c = tuningratio;
-        ifstream fenfile(fenfilename);
-        if (!fenfile.is_open())
+        printf("Cannot open %s for reading.\n", fenfilename.c_str());
+        return;
+    }
+    buffersize = minfreebuffer;
+    texelpts = (char*)malloc(buffersize);
+    pnext = (char*)texelpts;
+    printf("Reading positions");
+    while (getline(fenfile, line))
+    {
+        if (texelpts + buffersize - pnext < minfreebuffer)
         {
-            printf("Cannot open %s for reading.\n", fenfilename.c_str());
-            return;
+            buffersize = min(buffersize + maxbufferincrement, buffersize * 2);
+            char *oldtexelpts = texelpts;
+            texelpts = (char*)realloc(texelpts, buffersize);
+            pnext += (texelpts - oldtexelpts);
         }
-        printf("Pass %d: %s ...", tuningphase + 1, tuningphase ? "Allocating memory and getting gradients from qsearch" : "Counting positions");
-        while (getline(fenfile, line))
+        if (!fenmovemode)
         {
-            if (!fenmovemode)
+            fen = "";
+            if (regex_search(line, match, regex("(.*)#(.*)#(.*)")))
             {
-                fen = "";
-                if (regex_search(line, match, regex("(.*)#(.*)#(.*)")))
+                fen = match.str(2);
+                R = (stoi(match.str(1)) + 1);
+            }
+            else if (regex_search(line, match, regex("(.*)\\s+((1\\-0)|(0\\-1)|(1/2))")))
+            {
+                fen = match.str(1);
+                R = (match.str(2) == "1-0" ? 2 : (match.str(2) == "0-1" ? 0 : 1));
+            }
+            if (fen != "")
+            {
+                bw = 1 - bw;
+                if (bw)
+                    c++;
+                if (c > tuningratio)
+                    c = 1;
+                if (c == tuningratio)
                 {
-                    fen = match.str(2);
-                    R = (stoi(match.str(1)) + 1);
+                    pos->getFromFen(fen.c_str());
+                    pos->ply = 0;
+                    Qi = pos->getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
+                    if (!pos->w2m())
+                        Qi = -Qi;
+                    positiontuneset *nextpts = (positiontuneset*)pnext;
+                    *nextpts = pos->pts;
+                    nextpts->R = R;
+                    Qa = 0;
+                    evalparam *e = (evalparam *)(pnext + sizeof(positiontuneset));
+                    for (int i = 0; i < pos->pts.num; i++)
+                    {
+                        *e = pos->ev[i];
+                        //printf("%20s: %08x  %3d\n", pos->tps.name[e->index].c_str(), *pos->tps.ev[i], e->g);
+                        Qa += e->g * *pos->tps.ev[e->index];
+                        e++;
+                    }
+                    if (MATEDETECTED(Qi))
+                        n--;
+                    else if (Qi != (nextpts->sc == SCALE_DRAW ? SCOREDRAW : TAPEREDANDSCALEDEVAL(Qa, nextpts->ph, nextpts->sc)))
+                        printf("Alarm. Gradient evaluation differs from qsearch value: %d != %d.\n", TAPEREDANDSCALEDEVAL(Qa, nextpts->ph, nextpts->sc), Qi);
+                    else
+                    {
+                        //printf("gesamt: %d\n", Qa);
+                        pnext = (char*)e;
+                        n++;
+                        if (n % 0x2000 == 0) printf(".");
+                    }
                 }
-                else if (regex_search(line, match, regex("(.*)\\s+((1\\-0)|(0\\-1)|(1/2))")))
-                {
-                    fen = match.str(1);
-                    R = (match.str(2) == "1-0" ? 2 : (match.str(2) == "0-1" ? 0 : 1));
-                }
-                if (fen != "")
+            }
+        }
+        else
+        {
+            if (regex_search(line, match, regex("(.*)#(.*)moves(.*)")))
+            {
+                gamescount++;
+                R = (stoi(match.str(1)) + 1);
+                pos->getFromFen(match.str(2).c_str());
+                pos->ply = 0;
+                vector<string> movelist = SplitString(match.str(3).c_str());
+                vector<string>::iterator move = movelist.begin();
+                bool gameend;
+                do
                 {
                     bw = 1 - bw;
                     if (bw)
@@ -471,97 +544,49 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                         c = 1;
                     if (c == tuningratio)
                     {
-                        pos->getFromFen(fen.c_str());
-                        pos->ply = 0;
-                        if (tuningphase == 1)
+                        Qi = pos->getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
+                        if (!pos->w2m())
+                            Qi = -Qi;
+                        positiontuneset *nextpts = (positiontuneset*)pnext;
+                        *nextpts = pos->pts;
+                        nextpts->R = R;
+                        Qa = 0;
+                        evalparam *e = (evalparam *)(pnext + sizeof(positiontuneset));
+                        for (int i = 0; i < pos->pts.num; i++)
                         {
-                            Qi = pos->getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
-                            if (!pos->w2m())
-                                Qi = -Qi;
-                            texelpts[n].ph = pos->pts.ph;
-                            texelpts[n].sc = pos->pts.sc;
-                            texelpts[n].R = R;
-                            Qa = 0;
-                            for (int i = 0; i < pos->tps.count; i++)
-                            {
-                                texelpts[n].g[i] = pos->pts.g[i];
-                                if (texelpts[n].g[i])
-                                {
-                                    //printf("%20s: %08x  %3d\n", pos->tps.name[i].c_str(), *pos->tps.ev[i], texelpts[n].g[i]);
-                                    Qa += texelpts[n].g[i] * *pos->tps.ev[i];
-                                }
-                            }
-                            if (MATEDETECTED(Qi))
-                                n--;
-                            else if (Qi != (texelpts[n].sc == SCALE_DRAW ? SCOREDRAW : TAPEREDANDSCALEDEVAL(Qa, texelpts[n].ph, texelpts[n].sc)))
-                                printf("Alarm. Gradient evaluation differs from qsearch value: %d != %d.\n", TAPEREDANDSCALEDEVAL(Qa, texelpts[n].ph, texelpts[n].sc), Qi);
+                            *e = pos->ev[i];
+                            //printf("%20s: %08x  %3d\n", pos->tps.name[e->index].c_str(), *pos->tps.ev[i], e->g);
+                            Qa += e->g * *pos->tps.ev[e->index];
+                            e++;
                         }
-                        n++;
-                    }
-                }
-            }
-            else
-            {
-                if (regex_search(line, match, regex("(.*)#(.*)moves(.*)")))
-                {
-                    gamescount++;
-                    R = (stoi(match.str(1)) + 1);
-                    pos->getFromFen(match.str(2).c_str());
-                    pos->ply = 0;
-                    vector<string> movelist = SplitString(match.str(3).c_str());
-                    vector<string>::iterator move = movelist.begin();
-                    bool gameend;
-                    do
-                    {
-                        bw = 1 - bw;
-                        if (bw)
-                            c++;
-                        if (c > tuningratio)
-                            c = 1;
-                        if (c == tuningratio)
+                        if (Qi != (nextpts->sc == SCALE_DRAW ? SCOREDRAW : TAPEREDANDSCALEDEVAL(Qa, nextpts->ph, nextpts->sc)))
+                            printf("Alarm. Gradient evaluation differs from qsearch value.\n");
+                        else
                         {
-                            if (tuningphase == 1)
-                            {
-                                Qi = pos->getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
-                                if (!pos->w2m())
-                                    Qi = -Qi;
-                                texelpts[n].ph = pos->pts.ph;
-                                texelpts[n].sc = pos->pts.sc;
-                                texelpts[n].R = R;
-                                Qa = 0;
-                                for (int i = 0; i < pos->tps.count; i++)
-                                {
-                                    texelpts[n].g[i] = pos->pts.g[i];
-                                    Qa += texelpts[n].g[i] * *pos->tps.ev[i];
-                                }
-                                if (Qi != (texelpts[n].sc == SCALE_DRAW ? SCOREDRAW : TAPEREDANDSCALEDEVAL(Qa, texelpts[n].ph, texelpts[n].sc)))
-                                    printf("Alarm. Gradient evaluation differs from qsearch value.\n");
-                            }
+                            //printf("gesamt: %d\n", Qa);
+                            pnext = (char*)e;
                             n++;
+                            if (n % 0x2000 == 0) printf(".");
                         }
-                        gameend = (move == movelist.end());
-                        if (!gameend)
+                    }
+                    gameend = (move == movelist.end());
+                    if (!gameend)
+                    {
+                        if (!pos->applyMove(*move))
                         {
-                            if (!pos->applyMove(*move))
-                            {
-                                printf("Alarm (game %d)! Move %s seems illegal.\nLine: %s\n", gamescount, move->c_str(), line.c_str());
-                                pos->print();
-                            }
-                            move++;
+                            printf("Alarm (game %d)! Move %s seems illegal.\nLine: %s\n", gamescount, move->c_str(), line.c_str());
+                            pos->print();
                         }
+                        move++;
+                    }
 
-                    } while (!gameend);
-                }
+                } while (!gameend);
             }
         }
-        tuningphase++;
-        if (tuningphase == 1)
-        {
-            texelpts = (positiontuneset*)calloc(n, sizeof(positiontuneset));
-        }
-        texelptsnum = n;
-        printf("  ... got %d positions\n", n);
     }
+
+    texelptsnum = n;
+    printf("  got %d positions\n", n);
 }
 
 
@@ -657,18 +682,21 @@ static void updateTunerPointer(chessposition *pos, tunerpool *pool)
 // Collects params of finished tuners, updates 'low' and 'improved' mark and returns free tuner
 static void collectTuners(chessposition *pos, tunerpool *pool, tuner **freeTuner)
 {
-    bool improved = false;
-    *freeTuner = nullptr;
+    if (freeTuner) *freeTuner = nullptr;
     for (int i = 0; i < en.Threads; i++)
     {
         tuner *tn = &pool->tn[i];
         int pi = tn->paramindex;
+
+        while (!freeTuner && tn->busy)
+            Sleep(10);
+
         if (!tn->busy)
         {
             if (tn->thr.joinable())
                 tn->thr.join();
 
-            *freeTuner = tn;
+            if (freeTuner) *freeTuner = tn;
 
             if (pi >= 0)
             {
@@ -737,7 +765,7 @@ void TexelTune(string fenfilename)
     en.setOption("hash", "4"); // we don't need tt; save all the memory for game data
     getGradsFromFen(&pos, fenfilename);
 
-    printf("Tuning starts now. Press 'P' to output current parameters.\n\n");
+    printf("Tuning starts now.\nPress 'P' to output current parameters.\nPress 'B' to break after current tuning loop.\nPress 'S' for immediate break.\n\n");
 
     tunerpool tp;
     tp.tn = new struct tuner[en.Threads];
@@ -755,12 +783,16 @@ void TexelTune(string fenfilename)
     //copyParams(&pos, &tn[0]);
 
 
-    bool  improved = true;
+    bool improved = true;
+    bool leaveSoon = false;
+    bool leaveNow = false;
 
-    while (improved)
+    while (improved && !leaveSoon && !leaveNow)
     {
         for (int i = 0; i < pos.tps.count; i++)
         {
+            if (leaveNow)
+                break;
             if (!pos.tps.tune[i])
                 continue;
 
@@ -774,12 +806,24 @@ void TexelTune(string fenfilename)
                 if (!tn)
                 {
                     Sleep(100);
-                    if (_kbhit() && _getch() == 'p')
-                        printTunedParameters(&pos);
+                    if (_kbhit())
+                    {
+                        char c = _getch();
+                        if (c == 'p')
+                            printTunedParameters(&pos);
+                        if (c == 'b')
+                        {
+                            printf("Stopping after this tuning loop...\n");
+                            leaveSoon = true;
+                        }
+                        if (c == 's')
+                        {
+                            printf("Stopping now!\n");
+                            leaveNow = true;
+                        }
+                    }
                 }
             } while (!tn);
-
-
             tn->busy = true;
             tn->paramindex = i;
             copyParams(&pos, tn);
@@ -803,6 +847,10 @@ void TexelTune(string fenfilename)
             }
         }
     }
+    collectTuners(&pos, &tp, nullptr);
+    delete[] tp.tn;
+    free(texelpts);
+    delete pos.pwnhsh;
     printTunedParameters(&pos);
 }
 
