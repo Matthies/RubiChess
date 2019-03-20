@@ -388,7 +388,7 @@ static void printTunedParameters(chessposition *pos)
 
 int tuningratio = 1;
 
-positiontuneset *texelpts = NULL;
+char *texelpts = NULL;
 int texelptsnum;
 
 
@@ -411,7 +411,7 @@ static double TexelEvalError(struct tuner *tn)
     double Ri, Qi;
     double E = 0.0;
 
-    positiontuneset *p = texelpts;
+    positiontuneset *p = (positiontuneset*)texelpts;
     for (int i = 0; i < texelptsnum; i++)
     {
         evalparam *e = (evalparam *)((char*)p + sizeof(positiontuneset));
@@ -442,11 +442,13 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
     string fen;
     int Qi, Qa;
     U64 buffersize;
-    positiontuneset *pnext;
-    U64 minfreebuffer = sizeof(positiontuneset) + NUMOFEVALPARAMS * sizeof(evalparam);
+    char *pnext;
+    long long minfreebuffer = sizeof(positiontuneset) + NUMOFEVALPARAMS * sizeof(evalparam) * 1024;
     int msb;
     GETMSB(msb, minfreebuffer);
     minfreebuffer = (1ULL << (msb + 1));
+    const U64 maxbufferincrement = minfreebuffer << 10;
+        
     n = 0;
     bw = 0;
     c = tuningratio;
@@ -456,12 +458,19 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
         printf("Cannot open %s for reading.\n", fenfilename.c_str());
         return;
     }
-    buffersize = minfreebuffer * 8192;
-    texelpts = pnext = (positiontuneset*)malloc(buffersize);
-    //printf("Pass %d: %s ...", tuningphase + 1, tuningphase ? "Allocating memory and getting gradients from qsearch" : "Counting positions");
-    printf("Reading positions...");
+    buffersize = minfreebuffer;
+    texelpts = (char*)malloc(buffersize);
+    pnext = (char*)texelpts;
+    printf("Reading positions");
     while (getline(fenfile, line))
     {
+        if (texelpts + buffersize - pnext < minfreebuffer)
+        {
+            buffersize = min(buffersize + maxbufferincrement, buffersize * 2);
+            char *oldtexelpts = texelpts;
+            texelpts = (char*)realloc(texelpts, buffersize);
+            pnext += (texelpts - oldtexelpts);
+        }
         if (!fenmovemode)
         {
             fen = "";
@@ -489,26 +498,28 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                     Qi = pos->getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
                     if (!pos->w2m())
                         Qi = -Qi;
-                    *pnext = pos->pts;
-                    pnext->R = R;
+                    positiontuneset *nextpts = (positiontuneset*)pnext;
+                    *nextpts = pos->pts;
+                    nextpts->R = R;
                     Qa = 0;
-                    evalparam *e = (evalparam *)((char*)pnext + sizeof(positiontuneset));
+                    evalparam *e = (evalparam *)(pnext + sizeof(positiontuneset));
                     for (int i = 0; i < pos->pts.num; i++)
                     {
                         *e = pos->ev[i];
-                        printf("%20s: %08x  %3d\n", pos->tps.name[e->index].c_str(), *pos->tps.ev[i], e->g);
+                        //printf("%20s: %08x  %3d\n", pos->tps.name[e->index].c_str(), *pos->tps.ev[i], e->g);
                         Qa += e->g * *pos->tps.ev[e->index];
                         e++;
                     }
                     if (MATEDETECTED(Qi))
                         n--;
-                    else if (Qi != (pnext->sc == SCALE_DRAW ? SCOREDRAW : TAPEREDANDSCALEDEVAL(Qa, pnext->ph, pnext->sc)))
-                        printf("Alarm. Gradient evaluation differs from qsearch value: %d != %d.\n", TAPEREDANDSCALEDEVAL(Qa, pnext->ph, pnext->sc), Qi);
+                    else if (Qi != (nextpts->sc == SCALE_DRAW ? SCOREDRAW : TAPEREDANDSCALEDEVAL(Qa, nextpts->ph, nextpts->sc)))
+                        printf("Alarm. Gradient evaluation differs from qsearch value: %d != %d.\n", TAPEREDANDSCALEDEVAL(Qa, nextpts->ph, nextpts->sc), Qi);
                     else
                     {
-                        printf("gesamt: %d\n", Qa);
-                        pnext = (positiontuneset*)e;
+                        //printf("gesamt: %d\n", Qa);
+                        pnext = (char*)e;
                         n++;
+                        if (n % 0x2000 == 0) printf(".");
                     }
                 }
             }
@@ -536,24 +547,26 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                         Qi = pos->getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
                         if (!pos->w2m())
                             Qi = -Qi;
-                        *pnext = pos->pts;
-                        pnext->R = R;
+                        positiontuneset *nextpts = (positiontuneset*)pnext;
+                        *nextpts = pos->pts;
+                        nextpts->R = R;
                         Qa = 0;
-                        evalparam *e = (evalparam *)((char*)pnext + sizeof(positiontuneset));
+                        evalparam *e = (evalparam *)(pnext + sizeof(positiontuneset));
                         for (int i = 0; i < pos->pts.num; i++)
                         {
-                            *e = *((evalparam *)(&pos->pts + sizeof(positiontuneset)) + i);
-                            printf("%20s: %08x  %3d\n", pos->tps.name[e->index].c_str(), *pos->tps.ev[i], e->g);
+                            *e = pos->ev[i];
+                            //printf("%20s: %08x  %3d\n", pos->tps.name[e->index].c_str(), *pos->tps.ev[i], e->g);
                             Qa += e->g * *pos->tps.ev[e->index];
                             e++;
                         }
-                        if (Qi != (texelpts[n].sc == SCALE_DRAW ? SCOREDRAW : TAPEREDANDSCALEDEVAL(Qa, texelpts[n].ph, texelpts[n].sc)))
+                        if (Qi != (nextpts->sc == SCALE_DRAW ? SCOREDRAW : TAPEREDANDSCALEDEVAL(Qa, nextpts->ph, nextpts->sc)))
                             printf("Alarm. Gradient evaluation differs from qsearch value.\n");
                         else
                         {
-                            printf("gesamt: %d\n", Qa);
-                            pnext = (positiontuneset*)e;
+                            //printf("gesamt: %d\n", Qa);
+                            pnext = (char*)e;
                             n++;
+                            if (n % 0x2000 == 0) printf(".");
                         }
                     }
                     gameend = (move == movelist.end());
@@ -573,7 +586,7 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
     }
 
     texelptsnum = n;
-    printf("  ... got %d positions\n", n);
+    printf("  got %d positions\n", n);
 }
 
 
@@ -669,18 +682,21 @@ static void updateTunerPointer(chessposition *pos, tunerpool *pool)
 // Collects params of finished tuners, updates 'low' and 'improved' mark and returns free tuner
 static void collectTuners(chessposition *pos, tunerpool *pool, tuner **freeTuner)
 {
-    bool improved = false;
-    *freeTuner = nullptr;
+    if (freeTuner) *freeTuner = nullptr;
     for (int i = 0; i < en.Threads; i++)
     {
         tuner *tn = &pool->tn[i];
         int pi = tn->paramindex;
+
+        while (!freeTuner && tn->busy)
+            Sleep(10);
+
         if (!tn->busy)
         {
             if (tn->thr.joinable())
                 tn->thr.join();
 
-            *freeTuner = tn;
+            if (freeTuner) *freeTuner = tn;
 
             if (pi >= 0)
             {
@@ -749,7 +765,7 @@ void TexelTune(string fenfilename)
     en.setOption("hash", "4"); // we don't need tt; save all the memory for game data
     getGradsFromFen(&pos, fenfilename);
 
-    printf("Tuning starts now. Press 'P' to output current parameters.\n\n");
+    printf("Tuning starts now.\nPress 'P' to output current parameters.\nPress 'B' to break after current tuning loop.\nPress 'S' for immediate break.\n\n");
 
     tunerpool tp;
     tp.tn = new struct tuner[en.Threads];
@@ -767,12 +783,16 @@ void TexelTune(string fenfilename)
     //copyParams(&pos, &tn[0]);
 
 
-    bool  improved = true;
+    bool improved = true;
+    bool leaveSoon = false;
+    bool leaveNow = false;
 
-    while (improved)
+    while (improved && !leaveSoon && !leaveNow)
     {
         for (int i = 0; i < pos.tps.count; i++)
         {
+            if (leaveNow)
+                break;
             if (!pos.tps.tune[i])
                 continue;
 
@@ -786,12 +806,24 @@ void TexelTune(string fenfilename)
                 if (!tn)
                 {
                     Sleep(100);
-                    if (_kbhit() && _getch() == 'p')
-                        printTunedParameters(&pos);
+                    if (_kbhit())
+                    {
+                        char c = _getch();
+                        if (c == 'p')
+                            printTunedParameters(&pos);
+                        if (c == 'b')
+                        {
+                            printf("Stopping after this tuning loop...\n");
+                            leaveSoon = true;
+                        }
+                        if (c == 's')
+                        {
+                            printf("Stopping now!\n");
+                            leaveNow = true;
+                        }
+                    }
                 }
             } while (!tn);
-
-
             tn->busy = true;
             tn->paramindex = i;
             copyParams(&pos, tn);
@@ -815,6 +847,10 @@ void TexelTune(string fenfilename)
             }
         }
     }
+    collectTuners(&pos, &tp, nullptr);
+    delete[] tp.tn;
+    free(texelpts);
+    delete pos.pwnhsh;
     printTunedParameters(&pos);
 }
 
