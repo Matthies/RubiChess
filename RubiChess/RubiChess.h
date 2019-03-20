@@ -23,7 +23,7 @@
 #define SDEBUG
 #endif
 
-#if 0
+#if 1
 #define EVALTUNE
 #endif
 
@@ -331,11 +331,18 @@ struct evalparamset {
 };
 
 #ifdef EVALTUNE
+
+struct evalparam {
+    uint16_t index;
+    int16_t g;
+};
+
 struct positiontuneset {
     uint8_t ph;
     uint8_t sc;
-    int16_t g[NUMOFEVALPARAMS];   // maybe even char could be enough if parameters don't exceed this 
+    uint16_t num;
     int8_t R;
+    //int8_t padding[3];
 };
 
 struct tuneparamselection {
@@ -909,11 +916,12 @@ public:
 #ifdef EVALTUNE
     tuneparamselection tps;
     positiontuneset pts;
+    evalparam ev[NUMOFEVALPARAMS];
     void resetTuner();
-    void getPositionTuneSet(positiontuneset *p);
-    void copyPositionTuneSet(positiontuneset *from, positiontuneset *to);
+    void getPositionTuneSet(positiontuneset *p, evalparam *e);
+    void copyPositionTuneSet(positiontuneset *from, evalparam *efrom, positiontuneset *to, evalparam *eto);
     string getGradientString();
-    int getGradientValue(positiontuneset *p);
+    int getGradientValue(positiontuneset *p, evalparam *e);
 #endif
     bool w2m();
     void BitboardSet(int index, PieceCode p);
