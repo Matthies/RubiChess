@@ -776,7 +776,7 @@ public:
 };
 
 #define MAXMULTIPV 64
-#define MAXTHREADS 64
+#define MAXTHREADS 128
 
 
 // FIXME: This is ugly! Almost the same classes with doubled code.
