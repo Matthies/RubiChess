@@ -503,3 +503,25 @@ Ru (D=27, v=0.6): pv b4c3 b2c1 e7c6 f6e4 c6b4 a2a3 b4d3 c1c2 d3f4 g3f4 b5e2 e4c5
 Oder noch weiter:
 1k1r4/2p1n3/q3pN1p/1bp1P3/3pQNpP/bP4B1/P4PP1/1K1R4 w - - 8 32
 
+22.03.2019:
+Eine weitere Zugfolge, die das Problem mit der mangelnden Kingdanger offenlegt:
+[Event "Computer Schach Partie"]
+[Site "MEDION-NB"]
+[Date "2019.03.22"]
+[Round "?"]
+[White "Stockfish_10_x64_bmi2"]
+[Black "RubiChess Master"]
+[Result "*"]
+[BlackElo "2200"]
+[Time "06:28:08"]
+[WhiteElo "2000"]
+[TimeControl "40/0:300"]
+[SetUp "1"]
+[FEN "rnbq1rk1/p3bp2/2p1p1p1/1p1nP1P1/2pP1P2/2N5/PP4P1/RBBQK2R w KQ - 1 14"]
+[Termination "unterminated"]
+[PlyCount "20"]
+[WhiteType "program"]
+[BlackType "program"]
+
+14. Bd2 Nxc3 15. bxc3 Qe8 16. Kf2 Kg7 17. Rh7+ Kxh7 18. Qh5+ Kg8 19. Qh6 f5
+20. gxf6 Bxf6 21. Bxg6 Qe7 22. Rh1 Qg7 23. Qh5 Bxe5 *
