@@ -768,8 +768,12 @@ int main(int argc, char* argv[])
     string engineprg = "";
     string logfile = "";
     string comparefile = "";
+#ifdef EVALTUNE
     string pgnconvertfile = "";
     string fentuningfile = "";
+    bool quietonly = 0;
+    int ppg = 0;
+#endif
     int maxtime = 0;
     int flags = 0;
 
@@ -797,6 +801,8 @@ int main(int argc, char* argv[])
 #endif
 #ifdef EVALTUNE
         { "-pgnfile", "converts games in a PGN file to fen for tuning them later", &pgnconvertfile, 2, "" },
+        { "-quietonly", "convert only quiet positions (use with -pgnfile)", &quietonly, 0, NULL },
+        { "-ppg", "use only <n> positions per game (0 = every position, use with -pgnfile)", &ppg, 1, "0" },
         { "-fentuning", "reads FENs from file and tunes eval parameters against it", &fentuningfile, 2, "" },
         { "-tuningratio", "use only every <n>th double move from the FEN to speed up the analysis", &tuningratio, 1, "1" },
 #endif
@@ -890,7 +896,7 @@ int main(int argc, char* argv[])
 #ifdef EVALTUNE
     else if (pgnconvertfile != "")
     {
-        PGNtoFEN(pgnconvertfile);
+        PGNtoFEN(pgnconvertfile, quietonly, ppg);
     }
     else if (fentuningfile != "")
     {

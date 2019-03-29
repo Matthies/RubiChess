@@ -65,6 +65,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     int bestscore = SHRT_MIN;
     bool myIsCheck = (bool)isCheckbb;
 #ifdef EVALTUNE
+    if (depth < 0) isQuiet = false;
     positiontuneset targetpts;
     evalparam ev[NUMOFEVALPARAMS];
 

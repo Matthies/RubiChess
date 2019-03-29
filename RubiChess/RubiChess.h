@@ -398,7 +398,7 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
 #endif
 #ifdef EVALTUNE
 typedef void(*initevalfunc)(void);
-bool PGNtoFEN(string pgnfilename);
+bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg);
 void TexelTune(string fenfilename);
 
 extern int tuningratio;
@@ -914,6 +914,7 @@ public:
     int tbPosition;
     chessmove defaultmove; // fallback if search in time trouble didn't finish a single iteration
 #ifdef EVALTUNE
+    bool isQuiet;
     tuneparamselection tps;
     positiontuneset pts;
     evalparam ev[NUMOFEVALPARAMS];
