@@ -184,7 +184,7 @@ void chessmovelist::print()
 }
 
 // Sorting for normal MoveSelector
-void chessmovelist::sort(int limit, const unsigned int refutetarget)
+void chessmovelist::sort(const unsigned int refutetarget)
 {
     for (int i = 0; i < length - 1; i++)
     {
@@ -193,13 +193,11 @@ void chessmovelist::sort(int limit, const unsigned int refutetarget)
         for (int j = i + 1; j < length; j++)
             if (move[i].value < move[j].value)
                 swap(move[i], move[j]);
-        if (move[i].value < limit)
-            break;
     }
 }
 
 // Sorting for evasion MoveSelector; FIXME: preparing high values for hash and killermoves is ugly
-void chessmovelist::sort(int limit, uint32_t hashmove, uint32_t killer1, uint32_t killer2)
+void chessmovelist::sort(uint32_t hashmove, uint32_t killer1, uint32_t killer2)
 {
     for (int i = 0; i < length - 1; i++)
     {
@@ -215,8 +213,6 @@ void chessmovelist::sort(int limit, uint32_t hashmove, uint32_t killer1, uint32_
         for (int j = i + 1; j < length; j++)
             if (move[i].value < move[j].value)
                 swap(move[i], move[j]);
-        if (move[i].value < limit)
-            break;
     }
 }
 
@@ -397,6 +393,7 @@ int chessposition::getFromFen(const char* sFen)
     rp.clean();
     rp.addPosition(hash);
     memset(history, 0, sizeof(history));
+    memset(counterhistory, 0, sizeof(counterhistory));
     memset(killer, 0, sizeof(killer));
     mstop = 0;
     rootheight = 0;
@@ -443,12 +440,36 @@ bool chessposition::applyMove(string s)
 }
 
 
+template <MoveType Mt>
+void evaluateMoves(chessmovelist *ml, chessposition *pos, int32_t **cmptr)
+{
+    for (int i = 0; i < ml->length; i++)
+    {
+        uint32_t mc = ml->move[i].code;
+        PieceCode piece = GETPIECE(mc);
+        if (Mt == CAPTURE || (Mt == ALL && GETCAPTURE(mc)))
+        {
+            PieceCode capture = GETCAPTURE(mc);
+            ml->move[i].value = (mvv[capture >> 1] | lva[piece >> 1]);
+        }
+        if (Mt == QUIET || (Mt == ALL && !GETCAPTURE(mc)))
+        {
+            ml->move[i].value = pos->history[piece & S2MMASK][GETFROM(mc)][GETTO(mc)];
+        }
+        if (GETPROMOTION(mc))
+            ml->move[i].value += mvv[GETPROMOTION(mc) >> 1] - mvv[PAWN];
+    }
+}
+
+
 void chessposition::getRootMoves()
 {
     // Precalculating the list of legal moves didn't work well for some unknown reason but we need the number of legal moves in MultiPV mode
     chessmovelist movelist;
     prepareStack();
     movelist.length = getMoves(&movelist.move[0]);
+    evaluateMoves<ALL>(&movelist, this, NULL);
+
     int bestval = SCOREBLACKWINS;
     rootmovelist.length = 0;
     for (int i = 0; i < movelist.length; i++)
@@ -594,7 +615,7 @@ void chessposition::playNullMove()
 #if defined(STACKDEBUG) || defined(SDEBUG)
     movecodestack[mstop] = 0;
 #endif
-    mstop++;
+    movestack[mstop++].movecode = 0;
     state ^= S2MMASK;
     hash ^= zb.s2m;
     ply++;
@@ -1551,7 +1572,7 @@ bool chessposition::playMove(chessmove *cm)
 #if defined(STACKDEBUG) || defined(SDEBUG)
     movecodestack[mstop] = cm->code;
 #endif
-    mstop++;
+    movestack[mstop++].movecode = cm->code;
     myassert(mstop < MAXMOVESEQUENCELENGTH, this, 1, mstop);
 
     return true;
@@ -1623,45 +1644,45 @@ void chessposition::unplayMove(chessmove *cm)
 }
 
 
-template <MoveType Mt> inline void appendMoveToList(chessposition *pos, chessmove **m, int from, int to, PieceCode piece)
+inline void appendMoveToList(chessmove **m, int from, int to, PieceCode piece, PieceCode capture)
 {
-    myassert(from >= 0 && from < 64, pos, 1, from);
-    myassert(to >= 0 && to < 64, pos, 1, to);
-    myassert(piece >= WPAWN && piece <= BKING, pos, 1, piece);
-
-    **m = chessmove(from, to, piece);
+    **m = chessmove(from, to, capture, piece);
+#if 0
     if (!(Mt & CAPTURE))
     {
-        (*m)->value = pos->history[piece & S2MMASK][from][to];
+        //(*m)->value = pos->history[piece & S2MMASK][from][to];
     }
     else if (!(Mt & QUIET))
     {
-        PieceCode capture = pos->mailbox[to];
         (*m)->code |= capture << 16;
-        (*m)->value = (mvv[capture >> 1] | lva[piece >> 1]);
+        //(*m)->value = (mvv[capture >> 1] | lva[piece >> 1]);
     } else {
-        PieceCode capture = pos->mailbox[to];
         if (capture)
         {
             (*m)->code |= capture << 16;
-            (*m)->value = (mvv[capture >> 1] | lva[piece >> 1]);
+            //(*m)->value = (mvv[capture >> 1] | lva[piece >> 1]);
         }
         else {
-            (*m)->value = pos->history[piece & S2MMASK][from][to];
+            //(*m)->value = pos->history[piece & S2MMASK][from][to];
         }
     }
+#endif
     (*m)++;
 }
 
 
 inline void appendPromotionMove(chessposition *pos, chessmove **m, int from, int to, int col, PieceType promote)
 {
+#if 0
     if (pos->mailbox[to])
         appendMoveToList<CAPTURE>(pos, m, from, to, WPAWN | col);
     else
         appendMoveToList<QUIET>(pos, m, from, to, WPAWN | col);
+#else
+    appendMoveToList(m, from, to, WPAWN | col, pos->mailbox[to]);
+#endif
+
     (*m - 1)->code |= ((promote << 1) | col) << 12;
-    (*m - 1)->value += mvv[promote] - mvv[PAWN];
 }
 
 
@@ -1687,10 +1708,15 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
             to = pullLsb(&targetbits);
             if (!pos->isAttackedBy<OCCUPIED>(to, you) && !pos->isAttackedByMySlider(to, occupiedbits ^ BITSET(king), you))
             {
+#if 0
                 if (pos->mailbox[to])
                     appendMoveToList<CAPTURE>(pos, &m, king, to, WKING | me);
                 else
                     appendMoveToList<QUIET>(pos, &m, king, to, WKING | me);
+#else
+                appendMoveToList(&m, king, to, WKING | me, pos->mailbox[to]);
+
+#endif
             }
         }
 
@@ -1707,9 +1733,9 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                 {
                     from = pullLsb(&frombits);
                     // treat ep capture as a quiet move and correct code and value manually
-                    appendMoveToList<QUIET>(pos, &m, from, attacker + S2MSIGN(me) * 8, WPAWN | me);
-                    (m - 1)->code |= (ISEPCAPTURE << 20) | ((WPAWN | you) << 16);
-                    (m - 1)->value = (mvv[PAWN] | lva[PAWN]);
+                    appendMoveToList(&m, from, attacker + S2MSIGN(me) * 8, WPAWN | me, WPAWN | you);
+                    (m - 1)->code |= (ISEPCAPTURE << 20);
+                    //(m - 1)->value = (mvv[PAWN] | lva[PAWN]);
                 }
             }
             // now normal captures of the attacker
@@ -1736,15 +1762,19 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                         else if (!((from ^ to) & 0x8) && (epthelper[to] & pos->piece00[pc ^ S2MMASK]))
                         {
                             // EPT possible for opponent; set EPT field manually
-                            appendMoveToList<QUIET>(pos, &m, from, to, pc);
+                            appendMoveToList(&m, from, to, pc, BLANK);
                             (m - 1)->code |= (from + to) << 19;
                             continue;
                         }
                     }
+#if 0
                     if (to == attacker)
-                        appendMoveToList<CAPTURE>(pos, &m, from, to, pc);
+                        appendMoveToList<CAPTURE>(&m, from, to, pc);
                     else
-                        appendMoveToList<QUIET>(pos, &m, from, to, pc);
+                        appendMoveToList<QUIET>(&m, from, to, pc);
+#else
+                    appendMoveToList(&m, from, to, pc, pos->mailbox[to]);
+#endif
                 }
                 if (!targetbits)
                     break;
@@ -1794,9 +1824,9 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                     if ((Mt & CAPTURE) && pos->ept && pos->ept == to)
                     {
                         // treat ep capture as a quiet move and correct code and value manually
-                        appendMoveToList<QUIET>(pos, &m, from, to, pc);
-                        (m - 1)->code |= (ISEPCAPTURE << 20) | ((WPAWN | you) << 16);
-                        (m - 1)->value = (mvv[PAWN] | lva[PAWN]);
+                        appendMoveToList(&m, from, to, pc, WPAWN | you);
+                        (m - 1)->code |= (ISEPCAPTURE << 20);
+                        //(m - 1)->value = (mvv[PAWN] | lva[PAWN]);
                     }
                     else if (PROMOTERANK(to))
                     {
@@ -1808,11 +1838,11 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                     else if ((Mt & QUIET) && !((from ^ to) & 0x8) && (epthelper[to] & pos->piece00[pc ^ 1]))
                     {
                         // EPT possible for opponent; set EPT field manually
-                        appendMoveToList<QUIET>(pos, &m, from, to, pc);
+                        appendMoveToList(&m, from, to, pc, BLANK);
                         (m - 1)->code |= (from + to) << 19;
                     }
                     else {
-                        appendMoveToList<Mt>(pos, &m, from, to, pc);
+                        appendMoveToList(&m, from, to, pc, pos->mailbox[to]);
                     }
                     if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
                     {
@@ -1830,7 +1860,7 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                 while (tobits)
                 {
                     to = pullLsb(&tobits);
-                    appendMoveToList<Mt>(pos, &m, from, to, pc);
+                    appendMoveToList(&m, from, to, pc, pos->mailbox[to]);
                     if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
                     {
                         pos->unplayMove(m - 1);
@@ -1845,7 +1875,7 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
             while (tobits)
             {
                 to = pullLsb(&tobits);
-                appendMoveToList<Mt>(pos, &m, from, to, pc);
+                appendMoveToList(&m, from, to, pc, pos->mailbox[to]);
                 if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
                 {
                     pos->unplayMove(m - 1);
@@ -1860,7 +1890,7 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                     if (!(occupiedbits & (me ? 0x0e00000000000000 : 0x000000000000000e))
                         && !pos->isAttacked(from) && !pos->isAttacked(from - 1) && !pos->isAttacked(from - 2))
                     {
-                        appendMoveToList<Mt>(pos, &m, from, from - 2, pc);
+                        appendMoveToList(&m, from, from - 2, pc, BLANK);
                         if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
                         {
                             pos->unplayMove(m - 1);
@@ -1874,7 +1904,7 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                     if (!(occupiedbits & (me ? 0x6000000000000000 : 0x0000000000000060))
                         && !pos->isAttacked(from) && !pos->isAttacked(from + 1) && !pos->isAttacked(from + 2))
                     {
-                        appendMoveToList<Mt>(pos, &m, from, from + 2, pc);
+                        appendMoveToList(&m, from, from + 2, pc, BLANK);
                         if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
                         {
                             pos->unplayMove(m - 1);
@@ -1900,7 +1930,7 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                 while (tobits)
                 {
                     to = pullLsb(&tobits);
-                    appendMoveToList<Mt>(pos, &m, from, to, pc);
+                    appendMoveToList(&m, from, to, pc, pos->mailbox[to]);
                     if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
                     {
                         pos->unplayMove(m - 1);
@@ -2129,6 +2159,7 @@ void MoveSelector::SetPreferredMoves(chessposition *p)
     else
     {
         state = EVASIONINITSTATE;
+        pos->getCmptr(&cmptr[0]);
     }
 }
 
@@ -2142,6 +2173,7 @@ void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t k
     if (kllm2 != hshm)
         killermove2.code = kllm2;
     refutetarget = nmrfttarget;
+    pos->getCmptr(&cmptr[0]);
 }
 
 
@@ -2161,7 +2193,8 @@ chessmove* MoveSelector::next()
         state++;
         captures = new chessmovelist;
         captures->length = CreateMovelist<TACTICAL>(pos, &captures->move[0]);
-        captures->sort(lva[QUEEN]);
+        evaluateMoves<CAPTURE>(captures, pos, &cmptr[0]);
+        captures->sort();
         capturemovenum = 0;
     case TACTICALSTATE:
         while (capturemovenum < captures->length
@@ -2195,7 +2228,8 @@ chessmove* MoveSelector::next()
         state++;
         quiets = new chessmovelist;
         quiets->length = CreateMovelist<QUIET>(pos, &quiets->move[0]);
-        quiets->sort(INT32_MIN, refutetarget);
+        evaluateMoves<QUIET>(quiets, pos, &cmptr[0]);
+        quiets->sort(refutetarget);
         quietmovenum = 0;
     case QUIETSTATE:
         while (quietmovenum < quiets->length
@@ -2229,7 +2263,8 @@ chessmove* MoveSelector::next()
         state++;
         captures = new chessmovelist; // Reuse the capture list for evasion moves
         captures->length = CreateMovelist<EVASION>(pos, &captures->move[0]);
-        captures->sort(INT32_MIN, hashmove.code, killermove1.code, killermove2.code);
+        evaluateMoves<ALL>(captures, pos, &cmptr[0]);
+        captures->sort(hashmove.code, killermove1.code, killermove2.code);
         capturemovenum = 0;
     case EVASIONSTATE:
         if (capturemovenum < captures->length)

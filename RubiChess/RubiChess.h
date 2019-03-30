@@ -741,6 +741,8 @@ struct chessmovestack
     int halfmovescounter;
     int fullmovescounter;
     U64 isCheckbb;
+    //uint8_t mailbox[BOARDSIZE];
+    uint32_t movecode;
 };
 
 #define MAXMOVELISTLENGTH 256	// for lists of possible pseudo-legal moves
@@ -777,6 +779,7 @@ public:
 
 #define MAXMULTIPV 64
 #define MAXTHREADS 128
+#define CMPLIES 2
 
 
 // FIXME: This is ugly! Almost the same classes with doubled code.
@@ -800,8 +803,8 @@ public:
 	string toString();
 	string toStringWithValue();
 	void print();
-    void sort(int limit, const unsigned int refutetarget = BOARDSIZE);
-    void sort(int limit, uint32_t hashmove, uint32_t killer1, uint32_t killer2);
+    void sort(const unsigned int refutetarget = BOARDSIZE);
+    void sort(uint32_t hashmove, uint32_t killer1, uint32_t killer2);
 };
 
 
@@ -823,6 +826,7 @@ public:
     int quietmovenum;
     int legalmovenum;
     bool onlyGoodCaptures;
+    int32_t *cmptr[CMPLIES];
 
 public:
     void SetPreferredMoves(chessposition *p);  // for quiescence move selector
@@ -857,6 +861,8 @@ enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7, EVAS
 enum RootsearchType { SinglePVSearch, MultiPVSearch };
 
 template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* m);
+template <MoveType Mt> void evaluateMoves(chessmovelist *ml, chessposition *pos, int32_t **cmptr);
+
 enum AttackType { FREE, OCCUPIED };
 
 class chessposition
@@ -867,7 +873,6 @@ public:
     U64 occupied00[2];
     U64 attackedBy2[2];
     U64 attackedBy[2][7];
-    PieceCode mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
 
     // The following block is mapped/copied to the movestack, so its important to keep the order
     int state;
@@ -879,7 +884,9 @@ public:
     int halfmovescounter;
     int fullmovescounter;
     U64 isCheckbb;
+    uint32_t movecode;
 
+    uint8_t mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
     chessmovestack movestack[MAXMOVESEQUENCELENGTH];
     uint16_t excludemovestack[MAXMOVESEQUENCELENGTH];
     int16_t staticevalstack[MAXMOVESEQUENCELENGTH];
@@ -896,6 +903,7 @@ public:
     int bestmovescore[MAXMULTIPV];
     uint32_t killer[2][MAXDEPTH];
     int32_t history[2][64][64];
+    int32_t counterhistory[14][64][14*64];
     uint32_t bestFailingLow;
     Pawnhash *pwnhsh;
     repetition rp;
@@ -963,6 +971,8 @@ public:
     int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed);
     int getQuiescence(int alpha, int beta, int depth);
     void updateHistory(int side, int from, int to, int value);
+    void updateCounterHistory(int32_t **cmptr, int pc, int to, int value);
+    void getCmptr(int32_t **cmptr);
 
 #ifdef SDEBUG
     void updatePvTable(uint32_t movecode);
