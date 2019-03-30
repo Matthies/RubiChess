@@ -455,6 +455,14 @@ void evaluateMoves(chessmovelist *ml, chessposition *pos, int32_t **cmptr)
         if (Mt == QUIET || (Mt == ALL && !GETCAPTURE(mc)))
         {
             ml->move[i].value = pos->history[piece & S2MMASK][GETFROM(mc)][GETTO(mc)];
+            if (cmptr)
+            {
+                for (int j = 0; j < CMPLIES && cmptr[j]; j++)
+                {
+                    ml->move[i].value += cmptr[j][piece * 64 + GETTO(mc)];
+                }
+            }
+
         }
         if (GETPROMOTION(mc))
             ml->move[i].value += mvv[GETPROMOTION(mc) >> 1] - mvv[PAWN];
