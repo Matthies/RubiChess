@@ -49,6 +49,18 @@ void searchinit()
     }
 }
 
+void chessposition::getCmptr(int32_t **cmptr)
+{
+    for (int i = 0, j = mstop - 1; i < CMPLIES; i++, j--)
+    {
+        uint32_t c;
+        if (j >= 0 && (c = movestack[j].movecode))
+            cmptr[i] = (int32_t*)counterhistory[GETPIECE(c)][GETTO(c)];
+        else
+            cmptr[i] = NULL;
+    }
+}
+
 
 inline void chessposition::updateHistory(int side, int from, int to, int value)
 {
@@ -56,6 +68,16 @@ inline void chessposition::updateHistory(int side, int from, int to, int value)
     //int delta = value - history[side][from][to] * abs(value) / 10692;
     //history[side][from][to] += delta;
     history[side][from][to] += value;
+}
+
+inline void chessposition::updateCounterHistory(int32_t **cmptr, int pc, int to, int value)
+{
+    //value = max(-400, min(400, value));
+    //int delta = value - history[side][from][to] * abs(value) / 10692;
+    //history[side][from][to] += delta;
+    for (int i = 0; i < CMPLIES; i++)
+        if (cmptr[i])
+            cmptr[i][pc * 64 + to] += value;
 }
 
 
@@ -509,16 +531,18 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
 
                 if (score >= beta)
                 {
-                    // Killermove
                     if (!ISCAPTURE(m->code))
                     {
                         updateHistory(state & S2MMASK, GETFROM(m->code), GETTO(m->code), depth * depth);
+                        updateCounterHistory(ms.cmptr, GETPIECE(m->code), GETTO(m->code), depth * depth);
                         for (int i = 0; i < quietsPlayed; i++)
                         {
                             uint32_t qm = quietMoves[i];
                             updateHistory(state & S2MMASK, GETFROM(qm), GETTO(qm), -(depth * depth));
+                            updateCounterHistory(ms.cmptr, GETPIECE(qm), GETTO(qm), -(depth * depth));
                         }
 
+                        // Killermove
                         if (killer[0][ply] != m->code)
                         {
                             killer[1][ply] = killer[0][ply];
