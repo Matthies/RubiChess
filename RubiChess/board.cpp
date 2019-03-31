@@ -620,9 +620,6 @@ void chessposition::prepareStack()
 
 void chessposition::playNullMove()
 {
-#if defined(STACKDEBUG) || defined(SDEBUG)
-    movecodestack[mstop] = 0;
-#endif
     movestack[mstop++].movecode = 0;
     state ^= S2MMASK;
     hash ^= zb.s2m;
@@ -904,7 +901,7 @@ string chessposition::movesOnStack()
     for (int i = 0; i < mstop; i++)
     {
         chessmove cm;
-        cm.code = movecodestack[i];
+        cm.code = movestack[i].movecode;
         s = s + cm.toString() + " ";
     }
     return s;
@@ -1577,9 +1574,6 @@ bool chessposition::playMove(chessmove *cm)
 
     ply++;
     rp.addPosition(hash);
-#if defined(STACKDEBUG) || defined(SDEBUG)
-    movecodestack[mstop] = cm->code;
-#endif
     movestack[mstop++].movecode = cm->code;
     myassert(mstop < MAXMOVESEQUENCELENGTH, this, 1, mstop);
 
@@ -1655,41 +1649,13 @@ void chessposition::unplayMove(chessmove *cm)
 inline void appendMoveToList(chessmove **m, int from, int to, PieceCode piece, PieceCode capture)
 {
     **m = chessmove(from, to, capture, piece);
-#if 0
-    if (!(Mt & CAPTURE))
-    {
-        //(*m)->value = pos->history[piece & S2MMASK][from][to];
-    }
-    else if (!(Mt & QUIET))
-    {
-        (*m)->code |= capture << 16;
-        //(*m)->value = (mvv[capture >> 1] | lva[piece >> 1]);
-    } else {
-        if (capture)
-        {
-            (*m)->code |= capture << 16;
-            //(*m)->value = (mvv[capture >> 1] | lva[piece >> 1]);
-        }
-        else {
-            //(*m)->value = pos->history[piece & S2MMASK][from][to];
-        }
-    }
-#endif
     (*m)++;
 }
 
 
 inline void appendPromotionMove(chessposition *pos, chessmove **m, int from, int to, int col, PieceType promote)
 {
-#if 0
-    if (pos->mailbox[to])
-        appendMoveToList<CAPTURE>(pos, m, from, to, WPAWN | col);
-    else
-        appendMoveToList<QUIET>(pos, m, from, to, WPAWN | col);
-#else
     appendMoveToList(m, from, to, WPAWN | col, pos->mailbox[to]);
-#endif
-
     (*m - 1)->code |= ((promote << 1) | col) << 12;
 }
 
@@ -1716,15 +1682,7 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
             to = pullLsb(&targetbits);
             if (!pos->isAttackedBy<OCCUPIED>(to, you) && !pos->isAttackedByMySlider(to, occupiedbits ^ BITSET(king), you))
             {
-#if 0
-                if (pos->mailbox[to])
-                    appendMoveToList<CAPTURE>(pos, &m, king, to, WKING | me);
-                else
-                    appendMoveToList<QUIET>(pos, &m, king, to, WKING | me);
-#else
                 appendMoveToList(&m, king, to, WKING | me, pos->mailbox[to]);
-
-#endif
             }
         }
 
@@ -1740,10 +1698,9 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                 while (frombits)
                 {
                     from = pullLsb(&frombits);
-                    // treat ep capture as a quiet move and correct code and value manually
+                    // treat ep capture as normal move and correct code manually
                     appendMoveToList(&m, from, attacker + S2MSIGN(me) * 8, WPAWN | me, WPAWN | you);
                     (m - 1)->code |= (ISEPCAPTURE << 20);
-                    //(m - 1)->value = (mvv[PAWN] | lva[PAWN]);
                 }
             }
             // now normal captures of the attacker
@@ -1775,14 +1732,7 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                             continue;
                         }
                     }
-#if 0
-                    if (to == attacker)
-                        appendMoveToList<CAPTURE>(&m, from, to, pc);
-                    else
-                        appendMoveToList<QUIET>(&m, from, to, pc);
-#else
                     appendMoveToList(&m, from, to, pc, pos->mailbox[to]);
-#endif
                 }
                 if (!targetbits)
                     break;
@@ -1831,10 +1781,9 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                     to = pullLsb(&tobits);
                     if ((Mt & CAPTURE) && pos->ept && pos->ept == to)
                     {
-                        // treat ep capture as a quiet move and correct code and value manually
+                        // treat ep capture as a normal move and correct code manually
                         appendMoveToList(&m, from, to, pc, WPAWN | you);
                         (m - 1)->code |= (ISEPCAPTURE << 20);
-                        //(m - 1)->value = (mvv[PAWN] | lva[PAWN]);
                     }
                     else if (PROMOTERANK(to))
                     {

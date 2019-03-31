@@ -741,7 +741,6 @@ struct chessmovestack
     int halfmovescounter;
     int fullmovescounter;
     U64 isCheckbb;
-    //uint8_t mailbox[BOARDSIZE];
     uint32_t movecode;
 };
 
@@ -890,9 +889,6 @@ public:
     chessmovestack movestack[MAXMOVESEQUENCELENGTH];
     uint16_t excludemovestack[MAXMOVESEQUENCELENGTH];
     int16_t staticevalstack[MAXMOVESEQUENCELENGTH];
-#if defined(STACKDEBUG) || defined(SDEBUG)
-    uint32_t movecodestack[MAXMOVESEQUENCELENGTH];
-#endif
     int mstop;      // 0 at last non-reversible move before root, rootheight at root position
     int ply;        // 0 at root position
     int rootheight; // fixed stack offset in root position 
