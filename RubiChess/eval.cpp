@@ -406,7 +406,7 @@ int chessposition::getPositionValue()
 
             for (int p = KNIGHT; p <= QUEEN; p++) {
                 // Attacks to our king ring
-                result += SQEVAL(eps.eKingattackweight[p], S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me]);
+                result += SQEVAL(eps.eKingattackweight[p], S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me] / 2);
 
                 if (movesTo(p << 1, kingpos[me]) & attackedBy[you][p] & yoursafetargets)
                     // Bonus for safe checks
