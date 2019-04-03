@@ -207,6 +207,7 @@ public:
 #else
 #define VALUE(m, e) ((int32_t)((uint32_t)(m) << 16) + (e))
 #define EVAL(e, f) ((e) * (f))
+#define SQEVAL(e, f) ((int32_t)((uint32_t)(GETMGVAL(e) * (f) * abs(f)) << 16) + (GETEGVAL(e) * (f)))
 typedef const int32_t eval;
 #endif
 #define GETMGVAL(v) ((int16_t)(((uint32_t)(v) + 0x8000) >> 16))
