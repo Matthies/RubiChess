@@ -169,6 +169,8 @@ string AlgebraicFromShort(string s, chessposition *pos)
 
 #ifdef EVALTUNE
 
+chessposition pos;
+
 static void writeFenToFile(ofstream *fenfile, string fenlines[], int gamepositions, int ppg)
 {
     double fp = (!ppg ? 1.0 : (double) gamepositions / ppg);
@@ -186,7 +188,6 @@ static void writeFenToFile(ofstream *fenfile, string fenlines[], int gamepositio
 
 bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
 {
-    chessposition pos;
     pos.pwnhsh = new Pawnhash(0);
     pos.tps.count = 0;
     int gamescount = 0;
@@ -757,8 +758,6 @@ static void collectTuners(chessposition *pos, tunerpool *pool, tuner **freeTuner
 
 void TexelTune(string fenfilename)
 {
-    chessposition pos;
-
 #if 0 // enable to calculate constant k 
     // FIXME: Needs to be rewritten after eval rewrite
     double E[2];
