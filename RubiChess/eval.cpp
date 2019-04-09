@@ -178,8 +178,7 @@ int chessposition::getPawnAndKingValue(pawnhashentry **entry)
         entryptr->value += EVAL(eps.ePsqt[KING][PSQTINDEX(kingpos[1], 1)], -1);
         entryptr->value += EVAL(eps.eMaterialvalue[PAWN], POPCOUNT(piece00[WPAWN]) - POPCOUNT(piece00[BPAWN]));
         // kingshield safety
-        entryptr->value += SQEVAL(eps.eKingshieldbonus, POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]), 0);
-        entryptr->value += SQEVAL(eps.eKingshieldbonus, -POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1]), 1);
+        entryptr->value += EVAL(eps.eKingshieldbonus, POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1]));
 
         for (int pc = WPAWN; pc <= BPAWN; pc++)
         {
@@ -398,9 +397,10 @@ int chessposition::getPositionValue()
             result += EVAL(eps.ePassedpawnbonus[(targetsafe << 1) + targetoccupied][RRANK(index, me)], S2MSIGN(me));
         }
 
-        // King safety
+        // King safety; calculate the danger for your king
         if (kingattackers[me] > 1 - (bool)(piece00[WQUEEN | me]))
         {
+            int kingdanger = 0;
             // My attacked and poorly defended squares
             U64 myweaksquares = attackedBy[you][0]
                 & ~attackedBy2[me]
@@ -410,7 +410,8 @@ int chessposition::getPositionValue()
             U64 yoursafetargets = (~attackedBy[me][0] | (myweaksquares & attackedBy2[you])) & ~occupied00[you];
             
             // penalty for weak squares in our king ring
-            result += SQEVAL(eps.eWeakkingringpenalty, S2MSIGN(me) * POPCOUNT(myweaksquares & kingdangerMask[kingpos[me]][me]), me);
+            kingdanger += SQEVAL(eps.eWeakkingringpenalty, S2MSIGN(me) * POPCOUNT(myweaksquares & kingdangerMask[kingpos[me]][me]));
+            //result += SQEVAL(eps.eWeakkingringpenalty, S2MSIGN(me) * POPCOUNT(myweaksquares & kingdangerMask[kingpos[me]][me]), me);
 
             for (int p = KNIGHT; p <= QUEEN; p++) {
                 // Attacks to our king ring
@@ -451,22 +452,23 @@ int chessposition::getPositionValue()
 #endif
                     //int s = SQEVAL(eps.eKingattackweight[p], S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me], me);
                     //printf("Alarm %d %d  %08x    %08x -> ", S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me], p, s, result);
-                    result += SQEVAL(eps.eKingattackweight[p], S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me], me);
+                    //result += SQEVAL(eps.eKingattackweight[p], S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me], me);
                     //printf("%08x\n", result);
                     //result += EVAL(eps.eKingattackweight[p], S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me]);
+                    kingdanger += SQEVAL(eps.eKingattackweight[p], S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me], me);
                 }
 
                 if (movesTo(p << 1, kingpos[me]) & attackedBy[you][p] & yoursafetargets)
                 {
                     // Bonus for safe checks
-                    result += SQEVAL(eps.eSafecheckbonus[p], S2MSIGN(you), you);
+                    kingdanger += SQEVAL(eps.eSafecheckbonus[p], S2MSIGN(you), you);
 #if 0
                     if (SQEVAL(eps.eSafecheckbonus[p], S2MSIGN(you), you) != EVAL(eps.oSafecheckbonus[p], S2MSIGN(you)))
                         printf("Alarm  %08x %08x\n", SQEVAL(eps.eSafecheckbonus[p], S2MSIGN(you), you) , EVAL(eps.oSafecheckbonus[p], S2MSIGN(you)));
 #endif
                 }
 
-
+                result += VALUE(kingdanger * abs(kingdanger) / 16, kingdanger);
             }
         }
 

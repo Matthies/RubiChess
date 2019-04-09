@@ -214,7 +214,7 @@ public:
     void addGrad(int i, int s = 0) { this->g[s] += i; }
     int getGrad(int s = 0) { return this->g[s]; }
     void resetGrad() { g[0] = g[1] = 0; }
-    int sqval(int x) { return ((int32_t)((uint32_t)(v16[3] * x * abs(x) + v16[1] * x) << 16) +(uint32_t) (v16[2] * x * abs(x) + v16[0] * x)); }
+    int sqval(int x) { return ((int32_t)((uint32_t)(v16[3] * x * abs(x) / 32 + v16[1] * x) << 16) +(uint32_t) (v16[2] * x * abs(x) / 32 + v16[0] * x)); }
     void replace(int i, int16_t b) { if (!i) v = v = ((int32_t)((uint32_t)GETMGVAL(v) << 16) + b); else v = ((int32_t)((uint32_t)b << 16) + GETEGVAL(v)); }
     void replacesq(int i, int16_t b) { v16[i] = b; }
 };
@@ -226,18 +226,16 @@ typedef eval sqeval;
 #define SQVALUE(mq,m,eq,e) eval(mq,m,eq,e)
 #define SQEVAL(e, f, s) ((e).addGrad(f, s), (e).sqval(f))
 #else
-class sqeval {
-public:
-    int16_t m, mq, e, eq;
-    sqeval(int mq, int m, int eq, int e) { this->mq = mq; this->m = m; this->eq = eq; this->e = e; }
-};
+#define SQVALUE(i, v) (v)
 #define VALUE(m, e) ((int32_t)((uint32_t)(m) << 16) + (e))
 #define EVAL(e, f) ((e) * (f))
+#define SQEVAL(e, f) ((e) * (f))
+
 //#define SQVALUE(mq,m,eq,e)   ((int64_t)((((uint64_t)(mq)) << 48) + (((uint64_t)(eq)) << 32) + (((uint64_t)(m)) << 16) + (e)))
-#define SQVALUE(mq,m,eq,e) (sqeval(mq,m,eq,e))
 //#define SQEVAL(e, f, s) VALUE(GETMQVAL(e) * (f) * abs(f) + GETMGVAL(e) * (f), GETEQVAL(e) * (f) * abs(f) + GETEGVAL(e) * (f))
-#define SQEVAL(p, f, s) VALUE((p).mq * (f) * abs(f) + (p).m * (f), (p).eq * (f) * abs(f) + (p).e * (f))
+//#define SQEVAL(p, f, s) VALUE((p).mq * (f) * abs(f) / 16 + (p).m * (f), (p).eq * (f) * abs(f) / 16 + (p).e * (f))
 typedef const int32_t eval;
+typedef const int32_t sqeval;
 #endif
 
 #define PSQTINDEX(i,s) ((s) ? (i) : (i) ^ 0x38)
@@ -410,11 +408,11 @@ struct evalparamset {
            VALUE(  88, 157), VALUE( 125, 124), VALUE( 139, 127), VALUE(  66, 166)  }
     };
     eval eSlideronfreefilebonus[2] = {  VALUE(  22,   8), VALUE(  43,   2)  };
-    eval eMaterialvalue[7] = {  VALUE(   0,   0), VALUE( 100, 100), VALUE( 314, 314), VALUE( 314, 314), VALUE( 483, 483), VALUE( 913, 913), VALUE(32509,32509)};
-    sqeval eKingshieldbonus =  SQVALUE(   0,  13,   0,  -2);
-    sqeval eWeakkingringpenalty =  SQVALUE(   3, -16,   0,   3);
-    sqeval eKingattackweight[7] = {  SQVALUE(   0,   0,   0,   0), SQVALUE(   0,   0,   0,   0), SQVALUE(   1,   1,   0,  -2), SQVALUE(   1,   1,   0,  -3), SQVALUE(   1,  -4,   0,  -3), SQVALUE(   1,  -1,   0,   0), SQVALUE(   0,   0,   0,   0)  };
-    sqeval eSafecheckbonus[6] = {  SQVALUE(   0,   0,   0,   0), SQVALUE(   0,   0,   0,   0), SQVALUE(   0,  76,   0,  20), SQVALUE(   0,  20,   0,  43), SQVALUE(   0,  91,   0,   1), SQVALUE(   0,  26,   0, 100)  };
+    eval eMaterialvalue[7] = {  VALUE(   0,   0), VALUE( 100, 100), VALUE( 314, 314), VALUE( 314, 314), VALUE( 483, 483), VALUE( 913, 913), VALUE(32509,32509)  };
+    eval eKingshieldbonus =  VALUE(13, -2);
+    sqeval eWeakkingringpenalty =  SQVALUE(1, -15 );
+    sqeval eKingattackweight[7] = {  SQVALUE(1,    0), SQVALUE(1,    0), SQVALUE(1,   6 ), SQVALUE(1,    4 ), SQVALUE(1,    5  ), SQVALUE(1,   6 ), SQVALUE(1,      0)  };
+    sqeval eSafecheckbonus[6] = {  SQVALUE(1,     0), SQVALUE(1,    0), SQVALUE(1,    76), SQVALUE(1,     20), SQVALUE(1,   91), SQVALUE(1,    26 )  };
     eval ePsqt[7][64] = {
         {  VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
