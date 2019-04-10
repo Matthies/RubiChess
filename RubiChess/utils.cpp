@@ -359,19 +359,15 @@ static string getValueStringValue(eval *e)
         return "VALUE(" + sm + "," + se + ")";
     }
     else {
-        string smq = to_string(e->v16[3]);
-        if (smq.length() < 4)
-            smq.insert(smq.begin(), 4 - smq.length(), ' ');
-        string sm = to_string(e->v16[1]);
-        if (sm.length() < 4)
-            sm.insert(sm.begin(), 4 - sm.length(), ' ');
-        string seq = to_string(e->v16[2]);
-        if (seq.length() < 4)
-            seq.insert(seq.begin(), 4 - seq.length(), ' ');
-        string se = to_string(e->v16[0]);
-        if (se.length() < 4)
-            se.insert(se.begin(), 4 - se.length(), ' ');
-        return "SQVALUE(" + smq + "," + sm + "," + seq + "," + se + ")";
+#if 1
+        string si = to_string(e->groupindex);
+        if (si.length() < 4)
+            si.insert(si.begin(), 4 - si.length(), ' ');
+        string sv = to_string(e->v);
+        if (sv.length() < 4)
+            sv.insert(sv.begin(), 4 - sv.length(), ' ');
+        return "SQVALUE(" + si + "," + sv + ")";
+#endif
     }
 }
 
@@ -406,10 +402,7 @@ static void printTunedParameters(chessposition *pos)
                 output = "";
             }
             lastname = pos->tps.name[i];
-            if  (pos->tps.ev[i]->type == 0)
-                output = "    eval " + lastname;
-            else
-                output = "    sqeval " + lastname;
+            output = "    eval " + lastname;
             if (pos->tps.bound2[i] > 0)
             {
                 output += "[" + to_string(pos->tps.bound2[i]) + "][" + to_string(pos->tps.bound1[i]) + "] = {\n        { ";
@@ -454,13 +447,26 @@ int texelptsnum;
 static int getGradientValue(struct tuner *tn, positiontuneset *p, evalparam *e)
 {
     int v = 0;
+    int sqsum[4][2] = { 0 };
     for (int i = 0; i < p->num; i++)
     {
         if (tn->ev[e->index].type == 0)
+        {
             v += tn->ev[e->index] * e->g[0];
+        }
         else
-            v += tn->ev[e->index].sqval(e->g[0]) + tn->ev[e->index].sqval(e->g[1]);
+        {
+            int sqindex = tn->ev[e->index].groupindex;
+            sqsum[sqindex][0] += tn->ev[e->index] * e->g[0];
+            sqsum[sqindex][1] += tn->ev[e->index] * e->g[1];
+        }
+            ;// v += tn->ev[e->index].sqval(e->g[0]) + tn->ev[e->index].sqval(e->g[1]);
         e++;
+    }
+    for (int i = 0; i < 4; i++)
+    {
+        if (sqsum[i][0] == 0 && sqsum[i][1] == 0) continue;
+        v += SQRESULT(sqsum[i][0], 0) + SQRESULT(sqsum[i][1], 1);
     }
 
     return v;
@@ -565,6 +571,7 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                     nextpts->R = R;
                     Qa = 0;
                     evalparam *e = (evalparam *)(pnext + sizeof(positiontuneset));
+                    int sqsum[4][2] = { 0 };
                     for (int i = 0; i < pos->pts.num; i++)
                     {
                         *e = pos->ev[i];
@@ -576,10 +583,18 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                         }
                         else
                         {
-                            Qa += pos->tps.ev[e->index]->sqval(e->g[0]) + pos->tps.ev[e->index]->sqval(e->g[1]);
+                            int sqindex = pos->tps.ev[e->index]->groupindex;
+                            sqsum[sqindex][0] += e->g[0] * *pos->tps.ev[e->index];
+                            sqsum[sqindex][1] += e->g[1] * *pos->tps.ev[e->index];
+                            //Qa += pos->tps.ev[e->index]->sqval(e->g[0]) + pos->tps.ev[e->index]->sqval(e->g[1]);
                             //printf("q %3d: %3d/%3d * %d/%d/%d/%d  = %08x\n", e->index, e->g[0], e->g[1], pos->tps.ev[e->index]->v16[0], pos->tps.ev[e->index]->v16[1], pos->tps.ev[e->index]->v16[2], pos->tps.ev[e->index]->v16[3], Qa);
                         }
                         e++;
+                    }
+                    for (int i = 0; i < 4; i++)
+                    {
+                        if (sqsum[i][0] == 0 && sqsum[i][1] == 0) continue;
+                        Qa += SQRESULT(sqsum[i][0], 0) + SQRESULT(sqsum[i][1], 1);
                     }
                     if (MATEDETECTED(Qi))
                         n--;
@@ -634,7 +649,7 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                             }
                             else
                             {
-                                Qa += pos->tps.ev[e->index]->sqval(e->g[0]) + pos->tps.ev[e->index]->sqval(e->g[1]);
+                                //Qa += pos->tps.ev[e->index]->sqval(e->g[0]) + pos->tps.ev[e->index]->sqval(e->g[1]);
                                 //printf("q %3d: %3d * %d/%d/%d/%d  = %08x\n", e->index, e->g, pos->tps.ev[e->index]->v16[0], pos->tps.ev[e->index]->v16[1], pos->tps.ev[e->index]->v16[2], pos->tps.ev[e->index]->v16[3], Qa);
                             }
                             e++;
@@ -689,7 +704,7 @@ static void tuneParameter(struct tuner *tn)
 
     int tuned = 0;
     int g = 0;
-    int subParam = (tn->ev[tn->paramindex].type ? 4 : 2);
+    int subParam = (tn->ev[tn->paramindex].type ? 1 : 2);
 
     while (true)     // loop over mg/eg parameter while notImproved <=2
     {
@@ -715,15 +730,15 @@ static void tuneParameter(struct tuner *tn)
         }
         else
         {
+#if 1
             // square parameter
             eval *e = &tn->ev[tn->paramindex];
-            for (int i = 0; i < 4; i++)
-                pa[i] = e->v16[i];
+            pa[0] = e->v;
             lastp = pa[g];
             p = lastp + delta;
-            tn->ev[tn->paramindex].replacesq(g, lastp);
+            tn->ev[tn->paramindex].replace(lastp);
             pmin = lastp;
-
+#endif
         }
         if (Emin < 0)
             Emin = TexelEvalError(tn);
@@ -732,7 +747,7 @@ static void tuneParameter(struct tuner *tn)
             if (subParam == 2)
                 tn->ev[tn->paramindex].replace(g, p);
             else
-                tn->ev[tn->paramindex].replacesq(g, p);
+                tn->ev[tn->paramindex].replace(p);
             Error = TexelEvalError(tn);
             if (Error >= Emin)
             {
@@ -754,7 +769,7 @@ static void tuneParameter(struct tuner *tn)
         if (subParam == 2)
             tn->ev[tn->paramindex].replace(g, pmin);
         else
-            tn->ev[tn->paramindex].replacesq(g, pmin);
+            tn->ev[tn->paramindex].replace(pmin);
 
         g = (g + 1) % subParam;
     }
@@ -883,9 +898,6 @@ void TexelTune(string fenfilename)
         tp.tn[i].index = i;
         tp.tn[i].paramindex = -1;
     }
-
-    //copyParams(&pos, &tn[0]);
-
 
     bool improved = true;
     bool leaveSoon = false;

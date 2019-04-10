@@ -27,6 +27,9 @@ const int maxmobility[4] = { 9, 14, 15, 28 }; // indexed by piece - 2
 evalparamset eps;
 
 #ifdef EVALTUNE
+
+sqevallist sqglobal;
+
 void chessposition::resetTuner()
 {
     for (int i = 0; i < tps.count; i++)
@@ -76,6 +79,7 @@ string chessposition::getGradientString()
     return s;
 }
 
+#if 0
 int chessposition::getGradientValue(positiontuneset *p, evalparam *e)
 {
     int v = 0;
@@ -84,12 +88,12 @@ int chessposition::getGradientValue(positiontuneset *p, evalparam *e)
         if (tps.ev[e->index]->type == 0)
             v += *tps.ev[e->index] * e->g[0];
         else
-            v += tps.ev[e->index]->sqval(e->g[0]) + tps.ev[e->index]->sqval(e->g[1]);
+            ;// v += tps.ev[e->index]->sqval(e->g[0]) + tps.ev[e->index]->sqval(e->g[1]);
     }
 
     return v;
 }
-
+#endif
 
 static void registertuner(chessposition *pos, eval *e, string name, int index1, int bound1, int index2, int bound2, bool tune)
 {
@@ -107,7 +111,7 @@ static void registertuner(chessposition *pos, eval *e, string name, int index1, 
 void registeralltuners(chessposition *pos)
 {
     int i, j;
-    bool tuneIt = false;
+    bool tuneIt = true;
 
     pos->tps.count = 0;
 
@@ -120,10 +124,10 @@ void registeralltuners(chessposition *pos)
 
     registertuner(pos, &eps.ePawnpushthreatbonus, "ePawnpushthreatbonus", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eSafepawnattackbonus, "eSafepawnattackbonus", 0, 0, 0, 0, tuneIt);
-    tuneIt = false;
+    tuneIt = true;
     registertuner(pos, &eps.eHangingpiecepenalty, "eHangingpiecepenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eTempo, "eTempo", 0, 0, 0, 0, tuneIt);
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 8; j++)
             registertuner(pos, &eps.ePassedpawnbonus[i][j], "ePassedpawnbonus", j, 8, i, 4, tuneIt && (j > 0 && j < 7));
@@ -135,12 +139,12 @@ void registeralltuners(chessposition *pos)
     registertuner(pos, &eps.eBackwardpawnpenalty, "eBackwardpawnpenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eDoublebishopbonus, "eDoublebishopbonus", 0, 0, 0, 0, tuneIt);
 
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 28; j++)
             registertuner(pos, &eps.eMobilitybonus[i][j], "eMobilitybonus", j, 28, i, 4, tuneIt && (j < maxmobility[i]));
 
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 2; i++)
         registertuner(pos, &eps.eSlideronfreefilebonus[i], "eSlideronfreefilebonus", i, 2, 0, 0, tuneIt);
     for (i = 0; i < 7; i++)
@@ -151,11 +155,12 @@ void registeralltuners(chessposition *pos)
     for (i = 0; i < 7; i++)
         registertuner(pos, &eps.eKingattackweight[i], "eKingattackweight", i, 7, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
 
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eSafecheckbonus[i], "eSafecheckbonus", i, 6, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
-
-    tuneIt = false;
+    registertuner(pos, &eps.eKingdangerbyqueen, "eKingdangerbyqueen", 0, 0, 0, 0, tuneIt);
+    
+    tuneIt = true;
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
             registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
@@ -398,79 +403,44 @@ int chessposition::getPositionValue()
         }
 
         // King safety; calculate the danger for your king
-        if (kingattackers[me] > 1 - (bool)(piece00[WQUEEN | me]))
-        {
-            int kingdanger = 0;
-            // My attacked and poorly defended squares
-            U64 myweaksquares = attackedBy[you][0]
-                & ~attackedBy2[me]
-                & (~attackedBy[me][0] | attackedBy[me][KING] | attackedBy[me][QUEEN]);
+        int kingdanger = 0;
+        // My attacked and poorly defended squares
+        U64 myweaksquares = attackedBy[you][0]
+            & ~attackedBy2[me]
+            & (~attackedBy[me][0] | attackedBy[me][KING] | attackedBy[me][QUEEN]);
 
-            // Your safe target squares
-            U64 yoursafetargets = (~attackedBy[me][0] | (myweaksquares & attackedBy2[you])) & ~occupied00[you];
-            
-            // penalty for weak squares in our king ring
-            kingdanger += SQEVAL(eps.eWeakkingringpenalty, S2MSIGN(me) * POPCOUNT(myweaksquares & kingdangerMask[kingpos[me]][me]));
-            //result += SQEVAL(eps.eWeakkingringpenalty, S2MSIGN(me) * POPCOUNT(myweaksquares & kingdangerMask[kingpos[me]][me]), me);
+        // Your safe target squares
+        U64 yoursafetargets = (~attackedBy[me][0] | (myweaksquares & attackedBy2[you])) & ~occupied00[you];
 
-            for (int p = KNIGHT; p <= QUEEN; p++) {
-                // Attacks to our king ring
-                if (kingattackpiececount[me][p])
-                {
-#if 0
-                    for (int eg = -1; eg < 2; eg++)
-                        for (int mg = -1; mg < 2; mg++)
-                        {
-                            int32_t val = VALUE(mg, eg);
-                            if (0 || GETMGVAL(val) != mg)
-                                printf("%08x  %d %d\n", val, GETMGVAL(val), mg);
-                            if (0 || GETEGVAL(val) != eg)
-                                printf("%08x  %d %d\n", val, GETEGVAL(val), eg);
+        // penalty for weak squares in our king ring
+        kingdanger += SQEVAL(eps.eWeakkingringpenalty, POPCOUNT(myweaksquares & kingdangerMask[kingpos[me]][me]), you);
+        //result += SQEVAL(eps.eWeakkingringpenalty, S2MSIGN(me) * POPCOUNT(myweaksquares & kingdangerMask[kingpos[me]][me]), me);
 
-                            for (int eq = -1; eq < 2; eq++)
-                                for (int mq = -1; mq < 2; mq++)
-                                {
-                                    int64_t xxx = SQVALUE(mq, mg, eq, eg);
-
-                                    if (1 || GETMQVAL(xxx) != mq)
-                                        printf("%016llx  %d %d\n", xxx, GETMQVAL(xxx), mq);
-                                    if (1 || GETMGVAL(xxx) != mg)
-                                        printf("%016llx  %d %d\n", xxx, GETMGVAL(xxx), mg);
-                                    if (1 || GETEQVAL(xxx) != eq)
-                                        printf("%016llx  %d %d\n", xxx, GETEQVAL(xxx), eq);
-                                    if (1 || GETEGVAL(xxx) != eg)
-                                        printf("%016llx  %d %d\n", xxx, GETEGVAL(xxx), eg);
-
-                                }
-
-
-                        }
-                    eval xxx = VALUE(0, -1);
-                    printf("%d %d %d %d\n", GETMQVAL(eps.eKingattackweight[p]), GETMGVAL(eps.eKingattackweight[p]), GETEQVAL(eps.eKingattackweight[p]), GETEGVAL(eps.eKingattackweight[p]));
-                    int dummy = SQEVAL(eps.eKingattackweight[p], S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me]);
-                    int dummy2 = EVAL(xxx, 1);
-#endif
-                    //int s = SQEVAL(eps.eKingattackweight[p], S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me], me);
-                    //printf("Alarm %d %d  %08x    %08x -> ", S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me], p, s, result);
-                    //result += SQEVAL(eps.eKingattackweight[p], S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me], me);
-                    //printf("%08x\n", result);
-                    //result += EVAL(eps.eKingattackweight[p], S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me]);
-                    kingdanger += SQEVAL(eps.eKingattackweight[p], S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me], me);
-                }
-
-                if (movesTo(p << 1, kingpos[me]) & attackedBy[you][p] & yoursafetargets)
-                {
-                    // Bonus for safe checks
-                    kingdanger += SQEVAL(eps.eSafecheckbonus[p], S2MSIGN(you), you);
-#if 0
-                    if (SQEVAL(eps.eSafecheckbonus[p], S2MSIGN(you), you) != EVAL(eps.oSafecheckbonus[p], S2MSIGN(you)))
-                        printf("Alarm  %08x %08x\n", SQEVAL(eps.eSafecheckbonus[p], S2MSIGN(you), you) , EVAL(eps.oSafecheckbonus[p], S2MSIGN(you)));
-#endif
-                }
-
-                result += VALUE(kingdanger * abs(kingdanger) / 16, kingdanger);
+        for (int p = KNIGHT; p <= QUEEN; p++) {
+            // Attacks to our king ring
+            if (kingattackpiececount[you][p])
+            {
+                //int s = SQEVAL(eps.eKingattackweight[p], S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me], me);
+                //printf("Alarm %d %d  %08x    %08x -> ", S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me], p, s, result);
+                //result += SQEVAL(eps.eKingattackweight[p], S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me], me);
+                //printf("%08x\n", result);
+                //result += EVAL(eps.eKingattackweight[p], S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me]);
+                kingdanger += SQEVAL(eps.eKingattackweight[p], kingattackpiececount[you][p] * kingattackers[you], you);
             }
+
+            if (movesTo(p << 1, kingpos[me]) & attackedBy[you][p] & yoursafetargets)
+            {
+                // Bonus for safe checks
+                kingdanger += SQEVAL(eps.eSafecheckbonus[p], 1, you);
+#if 0
+                if (SQEVAL(eps.eSafecheckbonus[p], S2MSIGN(you), you) != EVAL(eps.oSafecheckbonus[p], S2MSIGN(you)))
+                    printf("Alarm  %08x %08x\n", SQEVAL(eps.eSafecheckbonus[p], S2MSIGN(you), you), EVAL(eps.oSafecheckbonus[p], S2MSIGN(you)));
+#endif
+            }
+
         }
+        kingdanger += SQEVAL(eps.eKingdangerbyqueen, !piece00[WQUEEN | you], you);
+        result += SQRESULT(kingdanger, you);
 
         // Threats
         U64 hisNonPawns = occupied00[you] ^ piece00[WPAWN | you];

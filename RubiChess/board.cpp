@@ -877,7 +877,7 @@ void chessposition::print(ostream* os)
     *os << "Value: " + to_string(getValue()) + "\n";
 #ifdef EVALTUNE
     getPositionTuneSet(&pts, &ev[0]);
-    *os << "info string Value from gradients: " + getGradientString() + " " + to_string(TAPEREDANDSCALEDEVAL(getGradientValue(&this->pts, &this->ev[0]), ph, this->getScaling(0))) + "\n";
+    //*os << "info string Value from gradients: " + getGradientString() + " " + to_string(TAPEREDANDSCALEDEVAL(getGradientValue(&this->pts, &this->ev[0]), ph, this->getScaling(0))) + "\n";
 #endif
     *os << "Repetitions: " + to_string(rp.getPositionCount(hash)) + "\n";
     *os << "Phase: " + to_string(phase()) + "\n";
@@ -1279,7 +1279,7 @@ void initBitmaphelper()
                     }
                 }
             }
-            kingdangerMask[from][s] = king_attacks[from] | kingshieldMask[from][s];
+            kingdangerMask[from][s] = king_attacks[from] | kingshieldMask[from][s] | BITSET(s);
         }
 
         // Slider attacks
