@@ -159,6 +159,11 @@ void registeralltuners(chessposition *pos)
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eSafecheckbonus[i], "eSafecheckbonus", i, 6, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
     registertuner(pos, &eps.eKingdangerbyqueen, "eKingdangerbyqueen", 0, 0, 0, 0, tuneIt);
+    for (i = 0; i < 6; i++)
+        registertuner(pos, &eps.eKingringattack[i], "eKingringattack", i, 6, 0, 0, tuneIt);
+
+    registertuner(pos, &eps.eKingdangeradjust, "eKingdangeradjust", 0, 0, 0, 0, tuneIt);
+    
     
     tuneIt = true;
     for (i = 0; i < 7; i++)
@@ -310,6 +315,7 @@ int chessposition::getPositionValue()
     int index;
     int kingattackpiececount[2][7] = { 0 };
     int kingattackers[2];
+    int kingringattacks[2] = { 0 };
     U64 occupied = occupied00[0] | occupied00[1];
     memset(attackedBy, 0, sizeof(attackedBy));
 
@@ -334,13 +340,14 @@ int chessposition::getPositionValue()
     goodMobility[0] = ~((piece00[WPAWN] & (RANK2(0) | RANK3(0))) | attackedBy[1][PAWN] | piece00[WKING]);
     goodMobility[1] = ~((piece00[BPAWN] & (RANK2(1) | RANK3(1))) | attackedBy[0][PAWN] | piece00[BKING]);
 
+    U64 kingdangerarea[2] = { kingdangerMask[kingpos[0]][0], kingdangerMask[kingpos[1]][1] };
+
     for (int pc = WKNIGHT; pc <= BQUEEN; pc++)
     {
         int p = (pc >> 1);
         int me = pc & S2MMASK;
         int you = me ^ S2MMASK;
         U64 pb = piece00[pc];
-        U64 kingdangerarea = kingdangerMask[kingpos[you]][you];
 
         while (pb)
         {
@@ -375,9 +382,10 @@ int chessposition::getPositionValue()
             result += EVAL(eps.eMobilitybonus[p - 2][POPCOUNT(mobility)], S2MSIGN(me));
 
             // king danger
-            if (mobility & kingdangerarea)
+            if (mobility & kingdangerarea[you])
             {
-                kingattackpiececount[me][p] += POPCOUNT(mobility & kingdangerarea);
+                kingringattacks[me] += POPCOUNT(mobility & kingdangerarea[you]);
+                kingattackpiececount[me][p] += POPCOUNT(mobility & kingdangerarea[you]);
                 kingattackers[me]++;
             }
         }
@@ -402,8 +410,10 @@ int chessposition::getPositionValue()
             result += EVAL(eps.ePassedpawnbonus[(targetsafe << 1) + targetoccupied][RRANK(index, me)], S2MSIGN(me));
         }
 
-        // King safety; calculate the danger for your king
-        int kingdanger = 0;
+        // King safety; calculate the danger for my king
+        int kingdanger = SQEVAL(eps.eKingdangeradjust, 1, you);
+        kingdanger += SQEVAL(eps.eKingringattack[POPCOUNT(kingdangerarea[me]) - 4], kingringattacks[you], you);
+
         // My attacked and poorly defended squares
         U64 myweaksquares = attackedBy[you][0]
             & ~attackedBy2[me]

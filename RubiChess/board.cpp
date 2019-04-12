@@ -1274,12 +1274,13 @@ void initBitmaphelper()
                         passedPawnMask[from][s] |= BITSET(r);
                         if (!d)
                             filebarrierMask[from][s] |= BITSET(r);
-                        if (abs(RANK(from) - RANK(r)) <= 2)
+                        if (abs(RANK(from) - RANK(r)) <= 1
+                            || RRANK(from,s) == 0 && RRANK(r,s) == 2)
                             kingshieldMask[from][s] |= BITSET(r);
                     }
                 }
             }
-            kingdangerMask[from][s] = king_attacks[from] | kingshieldMask[from][s] | BITSET(s);
+            kingdangerMask[from][s] = king_attacks[from] | BITSET(from);
         }
 
         // Slider attacks
