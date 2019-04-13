@@ -342,6 +342,9 @@ int chessposition::getPositionValue()
 
     U64 kingdangerarea[2] = { kingdangerMask[kingpos[0]][0], kingdangerMask[kingpos[1]][1] };
 
+    U64 xrayrookoccupied[2] = { occupied ^ (piece00[WROOK] | piece00[WQUEEN]), occupied ^ (piece00[BROOK] | piece00[BQUEEN]) };
+    U64 xraybishopoccupied[2] = { occupied ^ (piece00[WBISHOP] | piece00[WQUEEN]), occupied ^ (piece00[BBISHOP] | piece00[BQUEEN]) };
+
     for (int pc = WKNIGHT; pc <= BQUEEN; pc++)
     {
         int p = (pc >> 1);
@@ -359,7 +362,7 @@ int chessposition::getPositionValue()
             U64 attack = 0ULL;
             if (shifting[p] & 0x2) // rook and queen
             {
-                attack = mRookAttacks[index][MAGICROOKINDEX(occupied, index)];
+                attack = mRookAttacks[index][MAGICROOKINDEX(xrayrookoccupied[me], index)];
 
                 // extrabonus for rook on (semi-)open file  
                 if (p == ROOK && (phentry->semiopen[me] & BITSET(FILE(index))))
@@ -367,7 +370,7 @@ int chessposition::getPositionValue()
             }
 
             if (shifting[p] & 0x1) // bishop and queen)
-                attack |= mBishopAttacks[index][MAGICBISHOPINDEX(occupied, index)];
+                attack |= mBishopAttacks[index][MAGICBISHOPINDEX(xraybishopoccupied[me], index)];
 
             if (p == KNIGHT)
                 attack = knight_attacks[index];
