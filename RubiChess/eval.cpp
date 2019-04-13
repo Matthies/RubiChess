@@ -165,7 +165,7 @@ void registeralltuners(chessposition *pos)
     registertuner(pos, &eps.eKingdangeradjust, "eKingdangeradjust", 0, 0, 0, 0, tuneIt);
     
     
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
             registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
@@ -385,7 +385,7 @@ int chessposition::getPositionValue()
             result += EVAL(eps.eMobilitybonus[p - 2][POPCOUNT(mobility)], S2MSIGN(me));
 
             // king danger
-            if (mobility & kingdangerarea[you])
+            if (attack & kingdangerarea[you])
             {
                 kingringattacks[me] += POPCOUNT(mobility & kingdangerarea[you]);
                 kingattackpiececount[me][p] += POPCOUNT(mobility & kingdangerarea[you]);
