@@ -79,21 +79,6 @@ string chessposition::getGradientString()
     return s;
 }
 
-#if 0
-int chessposition::getGradientValue(positiontuneset *p, evalparam *e)
-{
-    int v = 0;
-    for (int i = 0; i < p->num; i++)
-    {
-        if (tps.ev[e->index]->type == 0)
-            v += *tps.ev[e->index] * e->g[0];
-        else
-            ;// v += tps.ev[e->index]->sqval(e->g[0]) + tps.ev[e->index]->sqval(e->g[1]);
-    }
-
-    return v;
-}
-#endif
 
 static void registertuner(chessposition *pos, eval *e, string name, int index1, int bound1, int index2, int bound2, bool tune)
 {
@@ -433,11 +418,6 @@ int chessposition::getPositionValue()
             // Attacks to our king ring
             if (kingattackpiececount[you][p])
             {
-                //int s = SQEVAL(eps.eKingattackweight[p], S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me], me);
-                //printf("Alarm %d %d  %08x    %08x -> ", S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me], p, s, result);
-                //result += SQEVAL(eps.eKingattackweight[p], S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me], me);
-                //printf("%08x\n", result);
-                //result += EVAL(eps.eKingattackweight[p], S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me]);
                 kingdanger += SQEVAL(eps.eKingattackweight[p], kingattackpiececount[you][p] * kingattackers[you], you);
             }
 
@@ -445,10 +425,6 @@ int chessposition::getPositionValue()
             {
                 // Bonus for safe checks
                 kingdanger += SQEVAL(eps.eSafecheckbonus[p], 1, you);
-#if 0
-                if (SQEVAL(eps.eSafecheckbonus[p], S2MSIGN(you), you) != EVAL(eps.oSafecheckbonus[p], S2MSIGN(you)))
-                    printf("Alarm  %08x %08x\n", SQEVAL(eps.eSafecheckbonus[p], S2MSIGN(you), you), EVAL(eps.oSafecheckbonus[p], S2MSIGN(you)));
-#endif
             }
 
         }

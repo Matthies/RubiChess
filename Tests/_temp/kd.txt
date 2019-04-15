@@ -1,0 +1,20 @@
+kd0418 (11092052):
+
+STC[0,5]:
+Score of RubiChess-kd0418 vs RubiChess-ms: 687 - 614 - 915  [0.516] 2216
+Elo difference: 11.45 +/- 11.07
+SPRT: llr 1.4, lbound -1.39, ubound 1.39 - H1 was accepted
+
+LTC[0,5]:
+Score of RubiChess-kd0418 vs RubiChess-ms: 190 - 139 - 364  [0.537] 693
+Elo difference: 25.62 +/- 17.81
+SPRT: llr 1.41, lbound -1.39, ubound 1.39 - H1 was accepted
+
+MTC[0,5]:
+Score of RubiChess-kd0418 vs RubiChess-ms: 1044 - 965 - 1624  [0.511] 3633
+Elo difference: 7.56 +/- 8.39
+SPRT: llr 1.38, lbound -1.39, ubound 1.39
+
+kd0419 (10016694):
+...
+negativ
