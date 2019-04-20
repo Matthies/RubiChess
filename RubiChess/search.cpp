@@ -405,7 +405,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
     }
 
     MoveSelector ms = {};
-    ms.SetPreferredMoves(this, hashmovecode, killer[0][ply], killer[1][ply], nmrefutetarget);
+    ms.SetPreferredMoves(this, hashmovecode, killer[0][ply], killer[1][ply], nmrefutetarget, excludeMove);
 
     int  LegalMoves = 0;
     int quietsPlayed = 0;

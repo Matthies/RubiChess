@@ -865,8 +865,7 @@ public:
 
 public:
     void SetPreferredMoves(chessposition *p);  // for quiescence move selector
-    void SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, int nmrfttarget);
-    ~MoveSelector();
+    void SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, int nmrfttarget, int excludemove);
     chessmove* next();
 };
 
@@ -953,6 +952,10 @@ public:
     int useRootmoveScore;
     int tbPosition;
     chessmove defaultmove; // fallback if search in time trouble didn't finish a single iteration
+    chessmovelist captureslist[MAXDEPTH];
+    chessmovelist quietslist[MAXDEPTH];
+    chessmovelist singularcaptureslist[MAXDEPTH];   // extra move lists for singular testing
+    chessmovelist singularquietslist[MAXDEPTH];
 #ifdef EVALTUNE
     bool isQuiet;
     tuneparamselection tps;
