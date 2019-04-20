@@ -480,6 +480,7 @@ void chessposition::getRootMoves()
 
     int bestval = SCOREBLACKWINS;
     rootmovelist.length = 0;
+    excludemovestack[0] = 0; // FIXME: Not very nice; is it worth to do do singular testing in root search?
     for (int i = 0; i < movelist.length; i++)
     {
         if (playMove(&movelist.move[i]))
@@ -2095,12 +2096,6 @@ int chessposition::getBestPossibleCapture()
 
 
 
-MoveSelector::~MoveSelector()
-{
-        delete captures;
-        delete quiets;
-}
-
 // MoveSelector for quiescence search
 void MoveSelector::SetPreferredMoves(chessposition *p)
 {
@@ -2118,10 +2113,12 @@ void MoveSelector::SetPreferredMoves(chessposition *p)
         state = EVASIONINITSTATE;
         pos->getCmptr(&cmptr[0]);
     }
+    captures = &pos->captureslist[pos->ply];
+    quiets = &pos->quietslist[pos->ply];
 }
 
 // MoveSelector for alphabeta search
-void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, int nmrfttarget)
+void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, int nmrfttarget, int excludemove)
 {
     pos = p;
     hashmove.code = p->shortMove2FullMove(hshm);
@@ -2131,6 +2128,16 @@ void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t k
         killermove2.code = kllm2;
     refutetarget = nmrfttarget;
     pos->getCmptr(&cmptr[0]);
+    if (!excludemove)
+    {
+        captures = &pos->captureslist[pos->ply];
+        quiets = &pos->quietslist[pos->ply];
+    }
+    else
+    {
+        captures = &pos->singularcaptureslist[pos->ply];
+        quiets = &pos->singularquietslist[pos->ply];
+    }
 }
 
 
@@ -2148,7 +2155,6 @@ chessmove* MoveSelector::next()
         }
     case TACTICALINITSTATE:
         state++;
-        captures = new chessmovelist;
         captures->length = CreateMovelist<TACTICAL>(pos, &captures->move[0]);
         evaluateMoves<CAPTURE>(captures, pos, &cmptr[0]);
         captures->sort();
@@ -2183,7 +2189,6 @@ chessmove* MoveSelector::next()
         }
     case QUIETINITSTATE:
         state++;
-        quiets = new chessmovelist;
         quiets->length = CreateMovelist<QUIET>(pos, &quiets->move[0]);
         evaluateMoves<QUIET>(quiets, pos, &cmptr[0]);
         quiets->sort(refutetarget);
@@ -2218,7 +2223,6 @@ chessmove* MoveSelector::next()
         return nullptr;
     case EVASIONINITSTATE:
         state++;
-        captures = new chessmovelist; // Reuse the capture list for evasion moves
         captures->length = CreateMovelist<EVASION>(pos, &captures->move[0]);
         evaluateMoves<ALL>(captures, pos, &cmptr[0]);
         captures->sort(hashmove.code, killermove1.code, killermove2.code);
