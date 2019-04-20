@@ -27,6 +27,9 @@ const int maxmobility[4] = { 9, 14, 15, 28 }; // indexed by piece - 2
 evalparamset eps;
 
 #ifdef EVALTUNE
+
+sqevallist sqglobal;
+
 void chessposition::resetTuner()
 {
     for (int i = 0; i < tps.count; i++)
@@ -39,10 +42,11 @@ void chessposition::getPositionTuneSet(positiontuneset *p, evalparam *e)
     p->sc = sc;
     p->num = 0;
     for (int i = 0; i < tps.count; i++)
-        if (tps.ev[i]->getGrad())
+        if (tps.ev[i]->getGrad() || (tps.ev[i]->type == 1 && tps.ev[i]->getGrad(1)))
         {
             e->index = i;
-            e->g = tps.ev[i]->getGrad();
+            e->g[0] = tps.ev[i]->getGrad(0);
+            e->g[1] = tps.ev[i]->getGrad(1);
             p->num++;
             e++;
         }
@@ -66,21 +70,13 @@ string chessposition::getGradientString()
     string s = "";
     for (int i = 0; i < pts.num; i++)
     {
-        s = s + tps.name[ev[i].index] + "(" + to_string(ev[i].g) + ") ";
+        if (tps.ev[i]->type == 0)
+            s = s + tps.name[ev[i].index] + "(" + to_string(ev[i].g[0]) + ") ";
+        else
+            s = s + tps.name[ev[i].index] + "(" + to_string(ev[i].g[0]) + "/" + to_string(ev[i].g[1]) + ") ";
     }
 
     return s;
-}
-
-int chessposition::getGradientValue(positiontuneset *p, evalparam *e)
-{
-    int v = 0;
-    for (int i = 0; i < p->num; i++)
-    {
-        v += *tps.ev[e->index] * e->g;
-    }
-
-    return v;
 }
 
 
@@ -115,8 +111,6 @@ void registeralltuners(chessposition *pos)
     registertuner(pos, &eps.eSafepawnattackbonus, "eSafepawnattackbonus", 0, 0, 0, 0, tuneIt);
     tuneIt = true;
     registertuner(pos, &eps.eHangingpiecepenalty, "eHangingpiecepenalty", 0, 0, 0, 0, tuneIt);
-    tuneIt = true;
-    registertuner(pos, &eps.eKingshieldbonus, "eKingshieldbonus", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eTempo, "eTempo", 0, 0, 0, 0, tuneIt);
     tuneIt = true;
     for (i = 0; i < 4; i++)
@@ -140,6 +134,8 @@ void registeralltuners(chessposition *pos)
         registertuner(pos, &eps.eSlideronfreefilebonus[i], "eSlideronfreefilebonus", i, 2, 0, 0, tuneIt);
     for (i = 0; i < 7; i++)
         registertuner(pos, &eps.eMaterialvalue[i], "eMaterialvalue", i, 7, 0, 0, false);
+    registertuner(pos, &eps.eKingshieldbonus, "eKingshieldbonus", 0, 0, 0, 0, tuneIt);
+    tuneIt = true;
     registertuner(pos, &eps.eWeakkingringpenalty, "eWeakkingringpenalty", 0, 0, 0, 0, tuneIt);
     for (i = 0; i < 7; i++)
         registertuner(pos, &eps.eKingattackweight[i], "eKingattackweight", i, 7, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
@@ -147,7 +143,13 @@ void registeralltuners(chessposition *pos)
     tuneIt = true;
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eSafecheckbonus[i], "eSafecheckbonus", i, 6, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
+    registertuner(pos, &eps.eKingdangerbyqueen, "eKingdangerbyqueen", 0, 0, 0, 0, tuneIt);
+    for (i = 0; i < 6; i++)
+        registertuner(pos, &eps.eKingringattack[i], "eKingringattack", i, 6, 0, 0, tuneIt);
 
+    registertuner(pos, &eps.eKingdangeradjust, "eKingdangeradjust", 0, 0, 0, 0, tuneIt);
+    
+    
     tuneIt = true;
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
@@ -171,7 +173,7 @@ int chessposition::getPawnAndKingValue(pawnhashentry **entry)
         entryptr->value += EVAL(eps.ePsqt[KING][PSQTINDEX(kingpos[1], 1)], -1);
         entryptr->value += EVAL(eps.eMaterialvalue[PAWN], POPCOUNT(piece00[WPAWN]) - POPCOUNT(piece00[BPAWN]));
         // kingshield safety
-        entryptr->value += EVAL(eps.eKingshieldbonus, (POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1])));
+        entryptr->value += EVAL(eps.eKingshieldbonus, POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1]));
 
         for (int pc = WPAWN; pc <= BPAWN; pc++)
         {
@@ -298,6 +300,7 @@ int chessposition::getPositionValue()
     int index;
     int kingattackpiececount[2][7] = { 0 };
     int kingattackers[2];
+    int kingringattacks[2] = { 0 };
     U64 occupied = occupied00[0] | occupied00[1];
     memset(attackedBy, 0, sizeof(attackedBy));
 
@@ -322,13 +325,17 @@ int chessposition::getPositionValue()
     goodMobility[0] = ~((piece00[WPAWN] & (RANK2(0) | RANK3(0))) | attackedBy[1][PAWN] | piece00[WKING]);
     goodMobility[1] = ~((piece00[BPAWN] & (RANK2(1) | RANK3(1))) | attackedBy[0][PAWN] | piece00[BKING]);
 
+    U64 kingdangerarea[2] = { kingdangerMask[kingpos[0]][0], kingdangerMask[kingpos[1]][1] };
+
+    U64 xrayrookoccupied[2] = { occupied ^ (piece00[WROOK] | piece00[WQUEEN]), occupied ^ (piece00[BROOK] | piece00[BQUEEN]) };
+    U64 xraybishopoccupied[2] = { occupied ^ (piece00[WBISHOP] | piece00[WQUEEN]), occupied ^ (piece00[BBISHOP] | piece00[BQUEEN]) };
+
     for (int pc = WKNIGHT; pc <= BQUEEN; pc++)
     {
         int p = (pc >> 1);
         int me = pc & S2MMASK;
         int you = me ^ S2MMASK;
         U64 pb = piece00[pc];
-        U64 kingdangerarea = kingdangerMask[kingpos[you]][you];
 
         while (pb)
         {
@@ -340,7 +347,7 @@ int chessposition::getPositionValue()
             U64 attack = 0ULL;
             if (shifting[p] & 0x2) // rook and queen
             {
-                attack = mRookAttacks[index][MAGICROOKINDEX(occupied, index)];
+                attack = mRookAttacks[index][MAGICROOKINDEX(xrayrookoccupied[me], index)];
 
                 // extrabonus for rook on (semi-)open file  
                 if (p == ROOK && (phentry->semiopen[me] & BITSET(FILE(index))))
@@ -348,7 +355,7 @@ int chessposition::getPositionValue()
             }
 
             if (shifting[p] & 0x1) // bishop and queen)
-                attack |= mBishopAttacks[index][MAGICBISHOPINDEX(occupied, index)];
+                attack |= mBishopAttacks[index][MAGICBISHOPINDEX(xraybishopoccupied[me], index)];
 
             if (p == KNIGHT)
                 attack = knight_attacks[index];
@@ -363,9 +370,10 @@ int chessposition::getPositionValue()
             result += EVAL(eps.eMobilitybonus[p - 2][POPCOUNT(mobility)], S2MSIGN(me));
 
             // king danger
-            if (mobility & kingdangerarea)
+            if (mobility & kingdangerarea[you])
             {
-                kingattackpiececount[me][p] += POPCOUNT(mobility & kingdangerarea);
+                kingringattacks[me] += POPCOUNT(mobility & kingdangerarea[you]);
+                kingattackpiececount[me][p] += POPCOUNT(mobility & kingdangerarea[you]);
                 kingattackers[me]++;
             }
         }
@@ -390,29 +398,38 @@ int chessposition::getPositionValue()
             result += EVAL(eps.ePassedpawnbonus[(targetsafe << 1) + targetoccupied][RRANK(index, me)], S2MSIGN(me));
         }
 
-        // King safety
-        if (kingattackers[me] > 1 - (bool)(piece00[WQUEEN | me]))
-        {
-            // My attacked and poorly defended squares
-            U64 myweaksquares = attackedBy[you][0]
-                & ~attackedBy2[me]
-                & (~attackedBy[me][0] | attackedBy[me][KING] | attackedBy[me][QUEEN]);
+        // King safety; calculate the danger for my king
+        int kingdanger = SQEVAL(eps.eKingdangeradjust, 1, you);
+        kingdanger += SQEVAL(eps.eKingringattack[POPCOUNT(kingdangerarea[me]) - 4], kingringattacks[you], you);
 
-            // Your safe target squares
-            U64 yoursafetargets = (~attackedBy[me][0] | (myweaksquares & attackedBy2[you])) & ~occupied00[you];
-            
-            // penalty for weak squares in our king ring
-            result += EVAL(eps.eWeakkingringpenalty, S2MSIGN(me) * POPCOUNT(myweaksquares & kingdangerMask[kingpos[me]][me]));
+        // My attacked and poorly defended squares
+        U64 myweaksquares = attackedBy[you][0]
+            & ~attackedBy2[me]
+            & (~attackedBy[me][0] | attackedBy[me][KING] | attackedBy[me][QUEEN]);
 
-            for (int p = KNIGHT; p <= QUEEN; p++) {
-                // Attacks to our king ring
-                result += EVAL(eps.eKingattackweight[p], S2MSIGN(me) * kingattackpiececount[me][p] * kingattackers[me]);
+        // Your safe target squares
+        U64 yoursafetargets = (~attackedBy[me][0] | (myweaksquares & attackedBy2[you])) & ~occupied00[you];
 
-                if (movesTo(p << 1, kingpos[me]) & attackedBy[you][p] & yoursafetargets)
-                    // Bonus for safe checks
-                    result += EVAL(eps.eSafecheckbonus[p], S2MSIGN(you));
+        // penalty for weak squares in our king ring
+        kingdanger += SQEVAL(eps.eWeakkingringpenalty, POPCOUNT(myweaksquares & kingdangerMask[kingpos[me]][me]), you);
+        //result += SQEVAL(eps.eWeakkingringpenalty, S2MSIGN(me) * POPCOUNT(myweaksquares & kingdangerMask[kingpos[me]][me]), me);
+
+        for (int p = KNIGHT; p <= QUEEN; p++) {
+            // Attacks to our king ring
+            if (kingattackpiececount[you][p])
+            {
+                kingdanger += SQEVAL(eps.eKingattackweight[p], kingattackpiececount[you][p] * kingattackers[you], you);
             }
+
+            if (movesTo(p << 1, kingpos[me]) & attackedBy[you][p] & yoursafetargets)
+            {
+                // Bonus for safe checks
+                kingdanger += SQEVAL(eps.eSafecheckbonus[p], 1, you);
+            }
+
         }
+        kingdanger += SQEVAL(eps.eKingdangerbyqueen, !piece00[WQUEEN | you], you);
+        result += SQRESULT(kingdanger, you);
 
         // Threats
         U64 hisNonPawns = occupied00[you] ^ piece00[WPAWN | you];

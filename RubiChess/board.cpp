@@ -875,10 +875,6 @@ void chessposition::print(ostream* os)
     *os << "Hash: " + to_string(hash) + " (should be " + to_string(zb.getHash(this)) +  ")\n";
     *os << "Pawn Hash: " + to_string(pawnhash) + " (should be " + to_string(zb.getPawnHash(this)) + ")\n";
     *os << "Value: " + to_string(getValue()) + "\n";
-#ifdef EVALTUNE
-    getPositionTuneSet(&pts, &ev[0]);
-    *os << "info string Value from gradients: " + getGradientString() + " " + to_string(TAPEREDANDSCALEDEVAL(getGradientValue(&this->pts, &this->ev[0]), ph, this->getScaling(0))) + "\n";
-#endif
     *os << "Repetitions: " + to_string(rp.getPositionCount(hash)) + "\n";
     *os << "Phase: " + to_string(phase()) + "\n";
     *os << "Pseudo-legal Moves: " + pseudolegalmoves.toStringWithValue() + "\n";
@@ -1274,12 +1270,13 @@ void initBitmaphelper()
                         passedPawnMask[from][s] |= BITSET(r);
                         if (!d)
                             filebarrierMask[from][s] |= BITSET(r);
-                        if (abs(RANK(from) - RANK(r)) <= 2)
+                        if (abs(RANK(from) - RANK(r)) <= 1
+                            || RRANK(from,s) == 0 && RRANK(r,s) == 2)
                             kingshieldMask[from][s] |= BITSET(r);
                     }
                 }
             }
-            kingdangerMask[from][s] = king_attacks[from] | kingshieldMask[from][s];
+            kingdangerMask[from][s] = king_attacks[from] | BITSET(from);
         }
 
         // Slider attacks
