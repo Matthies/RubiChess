@@ -532,6 +532,7 @@ void chessposition::tbFilterRootMoves()
                     }
                 }
             }
+            defaultmove = rootmovelist.move[0];
         }
     }
 }
