@@ -2163,7 +2163,7 @@ chessmove* MoveSelector::next()
                 || !pos->see(captures->move[capturemovenum].code, onlyGoodCaptures)))
         {
             // mark the move for BADTACTICALSTATE
-            captures->move[capturemovenum].value |= (1 << 31);
+            captures->move[capturemovenum].value |= BADTACTICALFLAG;
             capturemovenum++;
         }
         if (capturemovenum < captures->length)
@@ -2208,7 +2208,7 @@ chessmove* MoveSelector::next()
     case BADTACTICALSTATE:
         while (capturemovenum < captures->length
             && (captures->move[capturemovenum].code == hashmove.code
-                || !(captures->move[capturemovenum].value & (1 << 31))))
+                || !(captures->move[capturemovenum].value & BADTACTICALFLAG)))
         {
             capturemovenum++;
         }
