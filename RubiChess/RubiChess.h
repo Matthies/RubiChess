@@ -637,12 +637,13 @@ const int shifting[] = { 0, 0, 0, 1, 2, 3, 0 };
 const struct { int offset; bool needsblank; } pawnmove[] = { { 0x10, true }, { 0x0f, false }, { 0x11, false } };
 extern const int materialvalue[];
 // values for move ordering
-const int mvv[] = { 0U << 28, 1U << 28, 2U << 28, 2U << 28, 3U << 28, 4U << 28, 5U << 28 };
-const int lva[] = { 5 << 25, 4 << 25, 3 << 25, 3 << 25, 2 << 25, 1 << 25, 0 << 25 };
-#define PVVAL (7 << 28)
-#define KILLERVAL1 (1 << 27)
+const int mvv[] = { 0U << 27, 1U << 27, 2U << 27, 2U << 27, 3U << 27, 4U << 27, 5U << 27 };
+const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 24 };
+#define PVVAL (7 << 27)
+#define KILLERVAL1 (1 << 26)
 #define KILLERVAL2 (KILLERVAL1 - 1)
-#define NMREFUTEVAL (1 << 26)
+#define NMREFUTEVAL (1 << 25)
+#define BADTACTICALFLAG (1 << 30)
 #define TBFILTER INT32_MIN
 
 #define ISEPCAPTURE 0x40
