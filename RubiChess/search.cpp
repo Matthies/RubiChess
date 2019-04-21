@@ -421,7 +421,12 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
 
         // Late move pruning
         if (depth < MAXLMPDEPTH && !ISTACTICAL(m->code) && bestscore > NOSCORE && quietsPlayed > lmptable[positionImproved][depth])
+        {
+            // Proceed to next moveselector state manually to save some time
+            ms.state++;
+            ms.capturemovenum = 0;
             continue;
+        }
 
         // Check for futility pruning condition for this move and skip move if at least one legal move is already found
         bool futilityPrune = futility && !ISTACTICAL(m->code) && !isCheckbb && alpha <= 900 && !moveGivesCheck(m->code);
