@@ -248,7 +248,7 @@ typedef const int32_t eval;
 
 #define TAPEREDANDSCALEDEVAL(s, p, c) ((GETMGVAL(s) * (256 - (p)) + GETEGVAL(s) * (p) * (c) / SCALE_NORMAL) / 256)
 
-#define NUMOFEVALPARAMS (2*5*4 + 5 + 4*8 + 8 + 5 + 4*28 + 2 + 7 + 1 + 7 + 6 + 6 + 2 + 7*64)
+#define NUMOFEVALPARAMS (2*5*4 + 5 + 4*8 + 2*8 + 8 + 5 + 4*28 + 2 + 7 + 1 + 7 + 6 + 6 + 2 + 7*64)
 struct evalparamset {
     // Powered by Laser games :-)
     eval ePawnstormblocked[4][5] = {
@@ -272,6 +272,10 @@ struct evalparamset {
         {  VALUE(   0,   0), VALUE( -19,  -1), VALUE( -15,  12), VALUE(  -5,  15), VALUE(  17,  29), VALUE(  38,  38), VALUE( -14,  10), VALUE(   0,   0)  },
         {  VALUE(   0,   0), VALUE(   3,   7), VALUE(   6,  12), VALUE(  10,  41), VALUE(  26,  95), VALUE(  67, 200), VALUE( 120, 301), VALUE(   0,   0)  },
         {  VALUE(   0,   0), VALUE(  10,   8), VALUE(  -3,  21), VALUE(   2,  39), VALUE(  15,  53), VALUE(  55,  73), VALUE(  36,  56), VALUE(   0,   0)  }
+    };
+    eval ePotentialpassedpawnbonus[2][8] = {
+        {  VALUE(   0,   0), VALUE(  58,  50), VALUE(   1,   9), VALUE(  13,   5), VALUE(  16,  26), VALUE(  72,  73), VALUE(  44, 108), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE(  -1,  -3), VALUE(   1,   1), VALUE(   5,   5), VALUE(  11,  20), VALUE(  50,  41), VALUE( -14,  10), VALUE(   0,   0)  }
     };
     eval eAttackingpawnbonus[8] = {  VALUE(   0,   0), VALUE( -67, -65), VALUE( -30, -33), VALUE( -17,  -5), VALUE( -10,   4), VALUE(   2,  45), VALUE(   0,   0), VALUE(   0,   0)  };
     eval eIsolatedpawnpenalty =  VALUE( -13, -12);
@@ -665,6 +669,7 @@ const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 2
 
 #define PAWNATTACK(s, p) ((s) ? (((p) & ~FILEHBB) >> 7) | (((p) & ~FILEABB) >> 9) : (((p) & ~FILEABB) << 7) | (((p) & ~FILEHBB) << 9))
 #define PAWNPUSH(s, p) ((s) ? ((p) >> 8) : ((p) << 8))
+#define PAWNPUSHINDEX(s, i) ((s) ? (i) - 8 : (i) + 8)
 
 // passedPawnMask[18][WHITE]:
 // 01110000
