@@ -96,7 +96,7 @@ static void registertuner(chessposition *pos, eval *e, string name, int index1, 
 void registeralltuners(chessposition *pos)
 {
     int i, j;
-    bool tuneIt = false;
+    bool tuneIt = true;
 
     pos->tps.count = 0;
 
@@ -112,7 +112,7 @@ void registeralltuners(chessposition *pos)
     tuneIt = false;
     registertuner(pos, &eps.eHangingpiecepenalty, "eHangingpiecepenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eTempo, "eTempo", 0, 0, 0, 0, tuneIt);
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 8; j++)
             registertuner(pos, &eps.ePassedpawnbonus[i][j], "ePassedpawnbonus", j, 8, i, 4, tuneIt && (j > 0 && j < 7));
@@ -120,13 +120,14 @@ void registeralltuners(chessposition *pos)
     for (i = 0; i < 2; i++)
         for (j = 0; j < 8; j++)
             registertuner(pos, &eps.ePotentialpassedpawnbonus[i][j], "ePotentialpassedpawnbonus", j, 8, i, 2, tuneIt && (j > 0 && j < 7));
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 8; i++)
         registertuner(pos, &eps.eAttackingpawnbonus[i], "eAttackingpawnbonus", i, 8, 0, 0, tuneIt && (i > 0 && i < 7));
     registertuner(pos, &eps.eIsolatedpawnpenalty, "eIsolatedpawnpenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eDoublepawnpenalty, "eDoublepawnpenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eConnectedbonus, "eConnectedbonus", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eBackwardpawnpenalty, "eBackwardpawnpenalty", 0, 0, 0, 0, tuneIt);
+    tuneIt = false;
     registertuner(pos, &eps.eDoublebishopbonus, "eDoublebishopbonus", 0, 0, 0, 0, tuneIt);
 
     tuneIt = false;
