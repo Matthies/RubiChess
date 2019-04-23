@@ -1,0 +1,11 @@
+potential passers
+pp1 ( 9640669): Nur die neuen Werte ePotentialpassedpawnbonus getuned.
+STC[0,5]: Passiert nach 2845 Spielen mit 51,3%
+LTC[0,5]: Tut sich schwer... 50,1% nach 780 Spielen
+
+pp2 (12718592): Zus‰tzlich alle Pawn-relevanten Werte auﬂer PSQT getuned
+STC[0,5]: Passiert nach 3241 Spielen mit 51,2%
+
+pp3 (10647881): Auf Basis von pp2 die ePotentialpassedpawnbonus durch die von Ethereal ersetzt
+
+pp4 (10604757): Auf Basis von pp2 zus‰tzlich die PAWN-PSQT getuned.
