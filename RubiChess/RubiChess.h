@@ -248,32 +248,36 @@ typedef const int32_t eval;
 
 #define TAPEREDANDSCALEDEVAL(s, p, c) ((GETMGVAL(s) * (256 - (p)) + GETEGVAL(s) * (p) * (c) / SCALE_NORMAL) / 256)
 
-#define NUMOFEVALPARAMS (2*5*4 + 5 + 4*8 + 8 + 5 + 4*28 + 2 + 7 + 1 + 7 + 6 + 6 + 2 + 7*64)
+#define NUMOFEVALPARAMS (2*5*4 + 5 + 4*8 + 2*8 + 8 + 5 + 4*28 + 2 + 7 + 1 + 7 + 6 + 6 + 2 + 7*64)
 struct evalparamset {
     // Powered by Laser games :-)
     eval ePawnstormblocked[4][5] = {
-        {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  -6,  -4), VALUE(  24, -11), VALUE(  29,  -9)  },
-        {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  -3, -13), VALUE(  22, -19), VALUE(   8, -10)  },
-        {  VALUE(   0,   0), VALUE(   0,   0), VALUE(   8, -13), VALUE( -11,   1), VALUE(  -5,   5)  },
-        {  VALUE(   0,   0), VALUE(   0,   0), VALUE( -25,  -2), VALUE(  -8,   4), VALUE(  11,  -3)  }
+        {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  -6,  -4), VALUE(  26, -11), VALUE(  30, -11)  },
+        {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  -3, -13), VALUE(  24, -19), VALUE(   8,  -8)  },
+        {  VALUE(   0,   0), VALUE(   0,   0), VALUE(   6, -13), VALUE(  -9,   2), VALUE(  -5,   4)  },
+        {  VALUE(   0,   0), VALUE(   0,   0), VALUE( -25,  -3), VALUE(  -9,   7), VALUE(   9,  -1)  }
     };
     eval ePawnstormfree[4][5] = {
-        {  VALUE(   9,  43), VALUE(  36,  64), VALUE( -35,  35), VALUE( -11,   8), VALUE(  -3,   4)  },
-        {  VALUE( -20,  60), VALUE( -33,  61), VALUE( -65,  28), VALUE( -10,   5), VALUE(   3,   3)  },
-        {  VALUE( -28,  45), VALUE( -13,  45), VALUE( -34,  12), VALUE( -12,  -1), VALUE(  -4,   8)  },
-        {  VALUE(  29,  28), VALUE(  -9,  57), VALUE( -21,  -2), VALUE( -17,   4), VALUE( -13,  12)  }
+        {  VALUE(   9,  46), VALUE(  37,  67), VALUE( -33,  37), VALUE( -11,   8), VALUE(  -3,   4)  },
+        {  VALUE( -13,  64), VALUE( -32,  62), VALUE( -61,  31), VALUE( -10,   5), VALUE(   3,   3)  },
+        {  VALUE( -28,  45), VALUE( -12,  46), VALUE( -27,  14), VALUE( -12,   3), VALUE(  -4,   8)  },
+        {  VALUE(  31,  29), VALUE( -10,  57), VALUE( -19,   2), VALUE( -16,   5), VALUE( -13,  12)  }
     };
     eval ePawnpushthreatbonus =  VALUE(  20,  13);
     eval eSafepawnattackbonus =  VALUE(  66,  25);
     eval eHangingpiecepenalty =  VALUE( -23, -36);
     eval eTempo =  VALUE(  30,  27);
     eval ePassedpawnbonus[4][8] = {
-        {  VALUE(   0,   0), VALUE(  10,   4), VALUE(   0,   8), VALUE(  10,  25), VALUE(  37,  39), VALUE(  75,  70), VALUE(  44, 108), VALUE(   0,   0)  },
-        {  VALUE(   0,   0), VALUE( -19,  -1), VALUE( -15,  12), VALUE(  -5,  15), VALUE(  17,  29), VALUE(  38,  38), VALUE( -14,  10), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE(  10,   4), VALUE(   0,   8), VALUE(  10,  25), VALUE(  37,  39), VALUE(  76,  71), VALUE(  44, 108), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE( -19,  -5), VALUE( -15,  12), VALUE(  -5,  17), VALUE(  17,  31), VALUE(  38,  38), VALUE( -12,  11), VALUE(   0,   0)  },
         {  VALUE(   0,   0), VALUE(   3,   7), VALUE(   6,  12), VALUE(  10,  41), VALUE(  26,  95), VALUE(  67, 200), VALUE( 120, 301), VALUE(   0,   0)  },
-        {  VALUE(   0,   0), VALUE(  10,   8), VALUE(  -3,  21), VALUE(   2,  39), VALUE(  15,  53), VALUE(  55,  73), VALUE(  36,  56), VALUE(   0,   0)  }
+        {  VALUE(   0,   0), VALUE(   9,   7), VALUE(  -3,  21), VALUE(   1,  39), VALUE(  16,  54), VALUE(  58,  73), VALUE(  34,  55), VALUE(   0,   0)  }
     };
-    eval eAttackingpawnbonus[8] = {  VALUE(   0,   0), VALUE( -67, -65), VALUE( -30, -33), VALUE( -17,  -5), VALUE( -10,   4), VALUE(   2,  45), VALUE(   0,   0), VALUE(   0,   0)  };
+    eval ePotentialpassedpawnbonus[2][8] = {
+        {  VALUE(   0,   0), VALUE(  28, -15), VALUE(  -6,   4), VALUE(  13,   5), VALUE(  32,  51), VALUE(  72,  81), VALUE(  44, 108), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE(  -1,  -3), VALUE(   0,  -3), VALUE(   5,   5), VALUE(  21,  33), VALUE(  58,  62), VALUE( -14,  10), VALUE(   0,   0)  }
+    };
+    eval eAttackingpawnbonus[8] = {  VALUE(   0,   0), VALUE( -48,  12), VALUE( -14,   4), VALUE( -14,  -6), VALUE( -14,  -6), VALUE( -15,   1), VALUE(   0,   0), VALUE(   0,   0)  };
     eval eIsolatedpawnpenalty =  VALUE( -13, -12);
     eval eDoublepawnpenalty =  VALUE(  -9, -21);
     eval eConnectedbonus =  VALUE(   7,  -2);
@@ -665,6 +669,7 @@ const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 2
 
 #define PAWNATTACK(s, p) ((s) ? (((p) & ~FILEHBB) >> 7) | (((p) & ~FILEABB) >> 9) : (((p) & ~FILEABB) << 7) | (((p) & ~FILEHBB) << 9))
 #define PAWNPUSH(s, p) ((s) ? ((p) >> 8) : ((p) << 8))
+#define PAWNPUSHINDEX(s, i) ((s) ? (i) - 8 : (i) + 8)
 
 // passedPawnMask[18][WHITE]:
 // 01110000

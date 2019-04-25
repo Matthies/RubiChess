@@ -109,38 +109,44 @@ void registeralltuners(chessposition *pos)
 
     registertuner(pos, &eps.ePawnpushthreatbonus, "ePawnpushthreatbonus", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eSafepawnattackbonus, "eSafepawnattackbonus", 0, 0, 0, 0, tuneIt);
-    tuneIt = true;
+    tuneIt = false;
     registertuner(pos, &eps.eHangingpiecepenalty, "eHangingpiecepenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eTempo, "eTempo", 0, 0, 0, 0, tuneIt);
     tuneIt = true;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 8; j++)
             registertuner(pos, &eps.ePassedpawnbonus[i][j], "ePassedpawnbonus", j, 8, i, 4, tuneIt && (j > 0 && j < 7));
+    tuneIt = true;
+    for (i = 0; i < 2; i++)
+        for (j = 0; j < 8; j++)
+            registertuner(pos, &eps.ePotentialpassedpawnbonus[i][j], "ePotentialpassedpawnbonus", j, 8, i, 2, tuneIt && (j > 0 && j < 7));
+    tuneIt = true;
     for (i = 0; i < 8; i++)
         registertuner(pos, &eps.eAttackingpawnbonus[i], "eAttackingpawnbonus", i, 8, 0, 0, tuneIt && (i > 0 && i < 7));
     registertuner(pos, &eps.eIsolatedpawnpenalty, "eIsolatedpawnpenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eDoublepawnpenalty, "eDoublepawnpenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eConnectedbonus, "eConnectedbonus", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eBackwardpawnpenalty, "eBackwardpawnpenalty", 0, 0, 0, 0, tuneIt);
+    tuneIt = false;
     registertuner(pos, &eps.eDoublebishopbonus, "eDoublebishopbonus", 0, 0, 0, 0, tuneIt);
 
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 28; j++)
             registertuner(pos, &eps.eMobilitybonus[i][j], "eMobilitybonus", j, 28, i, 4, tuneIt && (j < maxmobility[i]));
 
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 2; i++)
         registertuner(pos, &eps.eSlideronfreefilebonus[i], "eSlideronfreefilebonus", i, 2, 0, 0, tuneIt);
     for (i = 0; i < 7; i++)
         registertuner(pos, &eps.eMaterialvalue[i], "eMaterialvalue", i, 7, 0, 0, false);
     registertuner(pos, &eps.eKingshieldbonus, "eKingshieldbonus", 0, 0, 0, 0, tuneIt);
-    tuneIt = true;
+    tuneIt = false;
     registertuner(pos, &eps.eWeakkingringpenalty, "eWeakkingringpenalty", 0, 0, 0, 0, tuneIt);
     for (i = 0; i < 7; i++)
         registertuner(pos, &eps.eKingattackweight[i], "eKingattackweight", i, 7, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
 
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eSafecheckbonus[i], "eSafecheckbonus", i, 6, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
     registertuner(pos, &eps.eKingdangerbyqueen, "eKingdangerbyqueen", 0, 0, 0, 0, tuneIt);
@@ -148,7 +154,6 @@ void registeralltuners(chessposition *pos)
         registertuner(pos, &eps.eKingringattack[i], "eKingringattack", i, 6, 0, 0, tuneIt);
 
     registertuner(pos, &eps.eKingdangeradjust, "eKingdangeradjust", 0, 0, 0, 0, tuneIt);
-    
     
     tuneIt = true;
     for (i = 0; i < 7; i++)
@@ -183,7 +188,9 @@ int chessposition::getPawnAndKingValue(pawnhashentry **entry)
             entryptr->passedpawnbb[me] = 0ULL;
             entryptr->isolatedpawnbb[me] = 0ULL;
             entryptr->backwardpawnbb[me] = 0ULL;
-            U64 pb = piece00[pc];
+            U64 yourPawns = piece00[pc ^ S2MMASK];
+            U64 myPawns = piece00[pc];
+            U64 pb = myPawns;
             while (pb)
             {
                 index = pullLsb(&pb);
@@ -192,40 +199,58 @@ int chessposition::getPawnAndKingValue(pawnhashentry **entry)
 
                 entryptr->attackedBy2[me] |= (entryptr->attacked[me] & pawn_attacks_to[index][me]);
                 entryptr->attacked[me] |= pawn_attacks_to[index][me];
-                entryptr->semiopen[me] &= (int)(~BITSET(FILE(index))); 
-                if (!(passedPawnMask[index][me] & piece00[pc ^ S2MMASK]))
+                entryptr->semiopen[me] &= (int)(~BITSET(FILE(index)));
+
+                U64 yourStoppers = passedPawnMask[index][me] & yourPawns;
+                if (!yourStoppers)
                 {
                     // passed pawn
                     entryptr->passedpawnbb[me] |= BITSET(index);
                 }
+                else {
+                    // test for potential passer
+                    U64 mySupporters = myPawns & pawn_attacks_to[index][you];
+                    U64 myPushsupporters = myPawns & pawn_attacks_to[PAWNPUSHINDEX(me, index)][you];
+                    U64 yourAttackers = yourPawns & pawn_attacks_to[index][me];
+                    U64 yourPushattackers = yourPawns & pawn_attacks_to[PAWNPUSHINDEX(me, index)][me];
+                    if ((!yourStoppers ^ yourAttackers ^ yourPushattackers))
+                    {
+                        // Lets see if we can get rid of the remaining stoppers
+                        if (POPCOUNT(myPushsupporters) >= POPCOUNT(yourPushattackers))
+                        {
+                            // exchange is possible
+                            entryptr->value += EVAL(eps.ePotentialpassedpawnbonus[POPCOUNT(mySupporters) >= POPCOUNT(yourAttackers)][RRANK(index, me)], S2MSIGN(me));
+                        }
+                    }
 
-                if (!(piece00[pc] & neighbourfilesMask[index]))
+                }
+
+                if (!(myPawns & neighbourfilesMask[index]))
                 {
                     // isolated pawn
                     entryptr->isolatedpawnbb[me] |= BITSET(index);
                 }
                 else
                 {
-                    if (pawn_attacks_to[index][me] & piece00[pc ^ S2MMASK])
+                    if (pawn_attacks_to[index][me] & yourPawns)
                     {
                         entryptr->value += EVAL(eps.eAttackingpawnbonus[RRANK(index, me)], S2MSIGN(me));
                     }
-                    if ((pawn_attacks_to[index][you] & piece00[pc]) || (phalanxMask[index] & piece00[pc]))
+                    if ((pawn_attacks_to[index][you] & piece00[pc]) || (phalanxMask[index] & myPawns))
                     {
                         entryptr->value += EVAL(eps.eConnectedbonus, S2MSIGN(me));
                     }
-                    if (!((passedPawnMask[index][you] | phalanxMask[index]) & piece00[pc]))
+                    if (!((passedPawnMask[index][you] | phalanxMask[index]) & myPawns))
                     {
                         // test for backward pawn
-                        U64 opponentpawns = piece00[pc ^ S2MMASK] & passedPawnMask[index][me];
-                        U64 mypawns = piece00[pc] & neighbourfilesMask[index];
-                        U64 pawnstoreach = opponentpawns | mypawns;
+                        U64 mynextpawns = myPawns & neighbourfilesMask[index];
+                        U64 pawnstoreach = yourStoppers | mynextpawns;
                         int nextpawn;
                         if (me ? GETMSB(nextpawn, pawnstoreach) : GETLSB(nextpawn, pawnstoreach))
                         {
                             U64 nextpawnrank = rankMask[nextpawn];
                             U64 shiftneigbours = (me ? nextpawnrank >> 8 : nextpawnrank << 8);
-                            if ((nextpawnrank | (shiftneigbours & neighbourfilesMask[index])) & opponentpawns)
+                            if ((nextpawnrank | (shiftneigbours & neighbourfilesMask[index])) & yourStoppers)
                             {
                                 // backward pawn detected
                                 entryptr->backwardpawnbb[me] |= BITSET(index);
