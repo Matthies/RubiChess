@@ -348,6 +348,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
     if (nullmoveallowed && !isCheckbb && depth >= 3 && bestknownscore >= beta && ph < 250)
     {
         playNullMove();
+        U64 nmhash = hash;
         int R = 3 + (depth / 6) + (bestknownscore - beta) / 150;
         score = -alphabeta(-beta, -beta + 1, depth - R, false);
         unplayNullMove();
@@ -358,7 +359,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
             return score;
         }
         else {
-            uint16_t nmrefutemove = tp.getMoveCode(newhash);
+            uint16_t nmrefutemove = tp.getMoveCode(nmhash);
             if (nmrefutemove && mailbox[GETTO(nmrefutemove)] != BLANK)
                 nmrefutetarget = GETTO(nmrefutemove);
         }
