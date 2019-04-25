@@ -158,7 +158,7 @@ void registeralltuners(chessposition *pos)
     tuneIt = true;
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
-            registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && i == PAWN && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
+            registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
 }
 #endif
 
@@ -243,7 +243,6 @@ int chessposition::getPawnAndKingValue(pawnhashentry **entry)
                     if (!((passedPawnMask[index][you] | phalanxMask[index]) & myPawns))
                     {
                         // test for backward pawn
-                        //U64 opponentpawns = piece00[pc ^ S2MMASK] & passedPawnMask[index][me];
                         U64 mynextpawns = myPawns & neighbourfilesMask[index];
                         U64 pawnstoreach = yourStoppers | mynextpawns;
                         int nextpawn;
