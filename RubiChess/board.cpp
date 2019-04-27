@@ -190,7 +190,7 @@ void chessmovelist::sort(const unsigned int refutetarget)
     {
         if (refutetarget < BOARDSIZE && GETFROM(move[i].code) == refutetarget)
         {
-            //printf("refute\n");
+            // moves escaping from last null move refute target better than moves with negative history 
             move[i].value = max(0, move[i].value);
         }
         for (int j = i + 1; j < length; j++)
