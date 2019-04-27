@@ -8,6 +8,7 @@ ChangeLog
     - Fixed a (rare but heavy) bug in TB rootmove selection under time preasure
     - Introduced counter move history
     - Introduced razoring
+    - Fixed ordering of moves escaping from null move refutation target (didn't work at all before). 
     - Thread limit now at 128
     - New parameters -ppg (positions per gane) and -quietonly for extraction of fen positions from pgn
     - Improved memory usage of texel tuner
