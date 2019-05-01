@@ -525,3 +525,33 @@ Eine weitere Zugfolge, die das Problem mit der mangelnden Kingdanger offenlegt:
 
 14. Bd2 Nxc3 15. bxc3 Qe8 16. Kf2 Kg7 17. Rh7+ Kxh7 18. Qh5+ Kg8 19. Qh6 f5
 20. gxf6 Bxf6 21. Bxg6 Qe7 22. Rh1 Qg7 23. Qh5 Bxe5 *
+
+
+01.05.2019: TCEC Cup
+In der ersten Party geht ein Remis verloren:
+Der falsche Zug scheint in 50. ... a6 zu passieren, allerdings benötigt auch SF hier sehr lange, um das zu erkennen.
+Ein deutliches Problem ist aber einige Züge später in dieser Position zu sehen:
+4bk2/2p5/5K2/p1p1NP1p/6p1/6P1/1P5P/8 w - - 0 53 
+Gute Engines erkennen hier sehr schnell den gewinnenden Zug 53. Nc4 mit einer Bewertung > +2.
+Rubi bleibt aber bei 53. Kg5 mit Bewertung 0
+PV Ru: f6g5 a5a4 f5f6 f8g8 g5f4 e8f7 f4e4 f7e6 e4d3 g8f8 d3e4 f8g8 e4d3 g8f8 d3e4 f8g8 e4d3 g8f8 d3e4 f8g8 e4d3 g8f8 d3e4 f8g8 e4d3 g8f8 d3e4 f8g8 e4d3 
+PV ER: e5c4 a5a4 c4e5 e8b5 e5g6 f8g8 f6e7 b5d3 g6h4   d3c4 f5f6 g8h7 h4g2 c4g8 f6f7 g8f7 e7f7 c5c4 g2e3 c4c3 b2c3 a4a3 e3c2 a3a2 f7f6 h7h6 f6f5 c7c6 c2a1 h5h4 f5g4 h4g3 h2g3 h6g6 a1b3 g6f6 g4f4 f6g6 c3c4 g6f6 g3g4 f6g6 
+PV SF: e5c4 a5a4 c4e5 e8b5 e5g6 f8g8 f6e7 b5d3 g6h4   g8h7 f5f6 d3c4 h4g2 c4g8 g2f4 c5c4 f4e2 h7g6 e2c3 h5h4 g3h4 g6h5 f6f7 g8f7 e7f7 h5h4 f7f6 h4h3 f6f5 h3h4 c3a4 h4h3 a4c5 c7c6 c5a4 h3h4 a4b6 c4c3 b2c3 h4h3 f5f4 h3h2
+=> PV-debug
+
+In der zweiten Partie in der folgenden Stellung
+r1r3k1/5pp1/7p/pq1pQ2P/4b3/P1P1B3/1P3PP1/2KR3R w - - 1 27
+spielt Rubi 27. Bd4 und aus einer ausgeglichenen Bewertung springt H auf +1,5 für schwarz.
+
+
+In der vierten Partie hat Rubi einen Bewertungsschluckauf in der Position
+r2q1rk1/1p2b1pp/2n5/p1Ppp3/QP3Pb1/2P5/P2BN1PP/2KR1B1R w - a6 0 16
+Hier springt Rubi von vorher -0,06 mit 16. b5 auf +1,06 und nach 16. ... bxc5 17. h3 auf -0.69
+Ursache scheint zu sein, dass eigentlich der schwarze Zug nicht erwartet wurde, weil danach 17. ... bxc6 hoch bewertet wird.
+Einen Zug später wird immer noch:
+r2q1rk1/1p4pp/2n1b3/pPbpp3/Q4P2/2P4P/P2BN1P1/2KR1B1R w - - 1 18 
+
+
+Und gleich noch eine schlechte Evaluierung aus dem Spiel Rubi-Rodent in Grahams 4CPU-Turnier "":
+r7/1b1pq3/p5k1/PpR1Bp2/1P2p1p1/2Q1P1P1/5PK1/8 w - - 10 40 
+Rubi unterschätzt den offensichtlich besten Zug Qd4 nicht bzw. zu spät.
