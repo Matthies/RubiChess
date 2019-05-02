@@ -237,7 +237,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
         string s;
         for (int i = rootheight; i < mstop; i++)
         {
-            cm.code = movecodestack[i];
+            cm.code = movestack[i].movecode;
             s = s + cm.toString() + " ";
         }
         if (excludeMove)

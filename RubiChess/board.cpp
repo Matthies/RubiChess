@@ -429,6 +429,8 @@ bool chessposition::applyMove(string s)
                 {
                     // Keep the list short, we have to keep below MAXMOVELISTLENGTH
                     mstop = 0;
+                    rp.clean();
+                    rp.addPosition(hash);
                 }
                 retval = true;
             }
@@ -1042,7 +1044,7 @@ bool chessposition::triggerDebug(chessmove* nextmove)
 
     while (j + rootheight < mstop && pvdebug[j])
     {
-        if ((movecodestack[j + rootheight] & 0xefff) != pvdebug[j])
+        if ((movestack[j + rootheight].movecode & 0xefff) != pvdebug[j])
             return false;
         j++;
     }
