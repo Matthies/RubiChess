@@ -539,6 +539,11 @@ PV ER: e5c4 a5a4 c4e5 e8b5 e5g6 f8g8 f6e7 b5d3 g6h4   d3c4 f5f6 g8h7 h4g2 c4g8 f
 PV SF: e5c4 a5a4 c4e5 e8b5 e5g6 f8g8 f6e7 b5d3 g6h4   g8h7 f5f6 d3c4 h4g2 c4g8 g2f4 c5c4 f4e2 h7g6 e2c3 h5h4 g3h4 g6h5 f6f7 g8f7 e7f7 h5h4 f7f6 h4h3 f6f5 h3h4 c3a4 h4h3 a4c5 c7c6 c5a4 h3h4 a4b6 c4c3 b2c3 h4h3 f5f4 h3h2
 => PV-debug
 
+Problem ist z.B. 4bk2/2p5/5K2/2p2P1p/p1N3p1/6P1/1P5P/8 w - - 0 54 
+Hier findet Rubi bei frischem Hashtable nach wie vor nur Ne3 mit Bewertung 0.00
+Nach Ne5 wird die Bewertung sofort negativ aber beim Rückspulen wieder Ne3 mit 0.00
+
+
 In der zweiten Partie in der folgenden Stellung
 r1r3k1/5pp1/7p/pq1pQ2P/4b3/P1P1B3/1P3PP1/2KR3R w - - 1 27
 spielt Rubi 27. Bd4 und aus einer ausgeglichenen Bewertung springt H auf +1,5 für schwarz.
