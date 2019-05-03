@@ -879,7 +879,7 @@ void chessposition::print(ostream* os)
     *os << "Fullmoves: " + to_string(fullmovescounter) + "\n";
     *os << "Hash: " + to_string(hash) + " (should be " + to_string(zb.getHash(this)) +  ")\n";
     *os << "Pawn Hash: " + to_string(pawnhash) + " (should be " + to_string(zb.getPawnHash(this)) + ")\n";
-    *os << "Value: " + to_string(getValue()) + "\n";
+    *os << "Value: " + to_string(getValue<NOTRACE>()) + "\n";
     *os << "Repetitions: " + to_string(rp.getPositionCount(hash)) + "\n";
     *os << "Phase: " + to_string(phase()) + "\n";
     *os << "Pseudo-legal Moves: " + pseudolegalmoves.toStringWithValue() + "\n";
@@ -2697,7 +2697,7 @@ void engine::communicate(string inputstring)
                 stopLevel = ENGINESTOPIMMEDIATELY;
                 break;
             case EVAL:
-                // removed for now getValueTrace(&sthread[0].pos);
+                sthread[0].pos.getValue<TRACE>();
                 break;
             default:
                 break;
@@ -2706,6 +2706,7 @@ void engine::communicate(string inputstring)
     } while (command != QUIT && (inputstring == "" || pendingposition));
     waitForSearchGuide(&searchguidethread);
 }
+
 
 zobrist zb;
 engine en;

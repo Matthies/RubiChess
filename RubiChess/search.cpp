@@ -106,7 +106,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 
     if (!myIsCheck)
     {
-        bestscore = patscore = S2MSIGN(state & S2MMASK) * getValue();
+        bestscore = patscore = S2MSIGN(state & S2MMASK) * getValue<NOTRACE>();
         if (patscore >= beta)
         {
             SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (fail high by patscore).", patscore);
@@ -310,7 +310,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
 
     // get static evaluation of the position
     if (staticeval == NOSCORE)
-        staticeval = S2MSIGN(state & S2MMASK) * getValue();
+        staticeval = S2MSIGN(state & S2MMASK) * getValue<NOTRACE>();
     staticevalstack[mstop] = staticeval;
 
     bool positionImproved = (mstop >= rootheight + 2
@@ -698,7 +698,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
 
     // get static evaluation of the position
     if (staticeval == NOSCORE)
-        staticeval = S2MSIGN(state & S2MMASK) * getValue();
+        staticeval = S2MSIGN(state & S2MMASK) * getValue<NOTRACE>();
     staticevalstack[mstop] = staticeval;
 
     int quietsPlayed = 0;
