@@ -51,6 +51,8 @@
 
 using namespace std;
 
+#include <iostream>
+#include <iomanip>
 #include <stdarg.h>
 #include <time.h>
 #include <string>
@@ -423,6 +425,8 @@ void registeralltuners(chessposition *pos);
 #define SCALE_DRAW 0
 #define SCALE_ONEPAWN 48
 #define SCALE_HARDTOWIN 10
+
+enum EvalType { NOTRACE, TRACE};
 
 //
 // utils stuff
@@ -1002,9 +1006,9 @@ public:
     bool moveGivesCheck(uint32_t c);  // simple and imperfect as it doesn't handle special moves and cases (mainly to avoid pruning of important moves)
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
     uint32_t shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal
-    int getPositionValue();
-    int getPawnAndKingValue(pawnhashentry **entry);
-    int getValue();
+    template <EvalType Et> int getPositionValue();
+    template <EvalType Et> int getPawnAndKingValue(pawnhashentry **entry);
+    template <EvalType Et> int getValue();
     int getScaling(int col);
 
     template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth);
