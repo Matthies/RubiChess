@@ -345,7 +345,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     // Nullmove pruning
     int bestknownscore = (hashscore != NOSCORE ? hashscore : staticeval);
-    if (!PVNode && !isCheckbb && depth >= 3 && bestknownscore >= beta && ph < 250 && movestack[mstop - 1].movecode && movestack[mstop - 1].movecode)
+    if (!PVNode && !isCheckbb && depth >= 3 && bestknownscore >= beta /*&& ph < 250 && movestack[mstop - 1].movecode && movestack[mstop - 1].movecode)*/
+        && (ply  >= nullmoveply || ply % 2 != nullmoveside))
     {
         playNullMove();
         U64 nmhash = hash;
@@ -355,14 +356,28 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
         if (score >= beta)
         {
-            SDEBUGPRINT(isDebugPv, debugInsert, " Cutoff by null move: %d", score);
-            return score;
+            if (MATEFORME(score))
+                score = beta;
+            SDEBUGPRINT(isDebugPv, debugInsert, " Possible cutoff by null move: %d", score);
+
+            if (abs(beta) < 5000 && (depth < 12 || nullmoveply))
+                return score;
+
+            // Verification search
+            nullmoveply = ply + 3 * (depth - R) / 4;
+            nullmoveside = ply & 1;
+            int verificationscore = alphabeta(beta - 1, beta, depth - R);
+            nullmoveside = nullmoveply = 0;
+            if (verificationscore >= beta)
+                return score;
         }
+#if 0
         else {
             uint16_t nmrefutemove = tp.getMoveCode(nmhash);
             if (nmrefutemove && mailbox[GETTO(nmrefutemove)] != BLANK)
                 nmrefutetarget = GETTO(nmrefutemove);
         }
+#endif
     }
 
     // ProbCut

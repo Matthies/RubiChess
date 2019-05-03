@@ -938,6 +938,8 @@ public:
     int ply;        // 0 at root position
     int rootheight; // fixed stack offset in root position 
     int seldepth;
+    int nullmoveside;
+    int nullmoveply = 0;
     chessmovelist rootmovelist;
     chessmovesequencelist pvline;
     chessmove bestmove[MAXMULTIPV];
