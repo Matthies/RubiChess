@@ -556,6 +556,12 @@ Ursache scheint zu sein, dass eigentlich der schwarze Zug nicht erwartet wurde, 
 Einen Zug später wird immer noch:
 r2q1rk1/1p4pp/2n1b3/pPbpp3/Q4P2/2P4P/P2BN1P1/2KR1B1R w - - 1 18 
 
+Und ein weiteres Problem: Rubi rechnet unterschiedlich für die folgenden beiden (identischen) Spielstellungen
+r2q1rk1/1p4pp/2n1b3/pPbpp3/Q4P2/2P4P/P2BN1P1/2KR1B1R w - - 1 18 moves b5c6
+r2q1rk1/1p4pp/2P1b3/p1bpp3/Q4P2/2P4P/P2BN1P1/2KR1B1R b - - 0 18
+
+PV-debug für b7b5 a4b3 a5a4 b3b2 d8e7 f4e5 c5a3 e2d4 sollte zeigen, warum b7b5 zu spät gefunden wird.
+
 
 Und gleich noch eine schlechte Evaluierung aus dem Spiel Rubi-Rodent in Grahams 4CPU-Turnier "":
 r7/1b1pq3/p5k1/PpR1Bp2/1P2p1p1/2Q1P1P1/5PK1/8 w - - 10 40 
