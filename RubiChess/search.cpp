@@ -345,11 +345,12 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     // Nullmove pruning with verification like SF does it
     int bestknownscore = (hashscore != NOSCORE ? hashscore : staticeval);
-    if (!isCheckbb && depth >= 3 && bestknownscore >= beta && (ply  >= nullmoveply || ply % 2 != nullmoveside))
+    if (!isCheckbb && depth >= 2 && bestknownscore >= beta && (ply  >= nullmoveply || ply % 2 != nullmoveside))
     {
         playNullMove();
         U64 nmhash = hash;
-        int R = 3 + (depth / 6) + (bestknownscore - beta) / 150;
+        int R = 4 + (depth / 6) + (bestknownscore - beta) / 150 + !PVNode * 2;
+
         score = -alphabeta(-beta, -beta + 1, depth - R);
         unplayNullMove();
 
