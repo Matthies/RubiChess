@@ -349,7 +349,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     {
         playNullMove();
         U64 nmhash = hash;
-        int R = 4 + (depth / 6) + (bestknownscore - beta) / 150 + !PVNode * 2;
+        int R = 3 + (depth / 4) + (bestknownscore - beta) / 100 - PVNode;
 
         score = -alphabeta(-beta, -beta + 1, depth - R);
         unplayNullMove();
