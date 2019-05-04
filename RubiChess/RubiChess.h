@@ -428,7 +428,7 @@ void registeralltuners(chessposition *pos);
 // utils stuff
 //
 vector<string> SplitString(const char* s);
-unsigned char AlgebraicToIndex(string s, int base);
+unsigned char AlgebraicToIndex(string s);
 string IndexToAlgebraic(int i);
 string AlgebraicFromShort(string s, chessposition *pos);
 void BitboardDraw(U64 b);

@@ -58,14 +58,12 @@ string IndexToAlgebraic(int i)
     return s;
 }
 
-unsigned char AlgebraicToIndex(string s, int base)
+unsigned char AlgebraicToIndex(string s)
 {
     char file = (char)(s[0] - 'a');
     char rank = (char)(s[1] - '1');
-    if (file >= 0 && file < 8 && rank >= 0 && rank < 8)
-        return (unsigned char)(base == 64 ? (rank << 3 | file) : (rank << 4 | file));
-    else
-        return (unsigned char)0x88;
+
+    return (unsigned char)(rank << 3 | file);
 }
 
 void BitboardDraw(U64 b)
@@ -127,7 +125,7 @@ string AlgebraicFromShort(string s, chessposition *pos)
     if (i > 0 && s[i] >= '1' && s[i] <= '8' && s[i - 1] >= 'a' && s[i - 1] <= 'h')
     {
         // Target field
-        to = AlgebraicToIndex(&s[i - 1], 0x88);
+        to = AlgebraicToIndex(&s[i - 1]);
         i -= 2;
     }
     // Skip the capture x

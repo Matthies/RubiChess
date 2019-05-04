@@ -373,8 +373,8 @@ int chessposition::getFromFen(const char* sFen)
     s = token[3];
     if (s.length() == 2)
     {
-        int i = AlgebraicToIndex(s, BOARDSIZE);
-        if (i < 0x88)
+        int i = AlgebraicToIndex(s);
+        if (i < 64)
         {
             ept = i;
         }
@@ -411,37 +411,29 @@ bool chessposition::applyMove(string s)
     bool retval = false;
     PieceCode promotion;
 
-    from = AlgebraicToIndex(s, BOARDSIZE);
-    to = AlgebraicToIndex(&s[2], BOARDSIZE);
-    chessmovelist cmlist;
-    cmlist.length = getMoves(&cmlist.move[0]);
+    from = AlgebraicToIndex(s);
+    to = AlgebraicToIndex(&s[2]);
+
     if (s.size() > 4)
         promotion = (PieceCode)((GetPieceType(s[4]) << 1) | (state & S2MMASK));
     else
         promotion = BLANK;
-    for (int i = 0; i < cmlist.length; i++)
+
+    chessmove m = chessmove(from, to, promotion, BLANK, BLANK);
+    m.code = shortMove2FullMove((uint16_t)m.code);
+
+    prepareStack();
+
+    if (playMove(&m))
     {
-        if (GETFROM(cmlist.move[i].code) == from && GETTO(cmlist.move[i].code) == to && GETPROMOTION(cmlist.move[i].code) == promotion)
+        if (halfmovescounter == 0)
         {
-            if (playMove(&(cmlist.move[i])))
-            {
-                if (halfmovescounter == 0)
-                {
-                    // Keep the list short, we have to keep below MAXMOVELISTLENGTH
-                    mstop = 0;
-                    rp.clean();
-                    rp.addPosition(hash);
-                }
-                retval = true;
-            }
-            else {
-                retval = false;
-            }
-            break;
+            // Keep the list short, we have to keep below MAXMOVELISTLENGTH
+            mstop = 0;
         }
+        return true;
     }
-    rootheight = mstop;
-    return retval;
+    return false;
 }
 
 
@@ -752,7 +744,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
     myassert(capture >= BLANK && capture <= BQUEEN, this, 1, capture);
 
     // correct target for type of piece?
-    if (!(movesTo(pc, from) & BITSET(to)))
+    if (!(movesTo(pc, from) & BITSET(to)) && to != ept)
         return false;
 
     // correct s2m?
@@ -2449,11 +2441,24 @@ void engine::communicate(string inputstring)
                 }
                 chessposition *rootpos = &sthread[0].pos;
                 rootpos->getFromFen(fen.c_str());
+                U64 hashlist[MAXMOVESEQUENCELENGTH];
+                hashlist[0] = rootpos->hash;
+                int hashlistlength = 1;
                 for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
                 {
                     if (!rootpos->applyMove(*it))
                         printf("info string Alarm! Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
+                    if (rootpos->halfmovescounter == 0)
+                    {
+                        // Remove the positions from repetition table to avoid wrong values by hash collisions
+                        for (int i = 0; i < hashlistlength; i++)
+                            rootpos->rp.removePosition(hashlist[i]);
+                        hashlistlength = 0;
+                    }
+
+                    hashlist[hashlistlength++] = rootpos->hash;
                 }
+                rootpos->rootheight = rootpos->mstop;
                 rootpos->ply = 0;
                 rootpos->getRootMoves();
                 rootpos->tbFilterRootMoves();
@@ -2623,7 +2628,7 @@ void engine::communicate(string inputstring)
                 {
                     if (commandargs[ci] == "searchmoves")
                     {
-                        while (++ci < cs && AlgebraicToIndex(commandargs[ci], 0x88) != 0x88 && AlgebraicToIndex(&commandargs[ci][2], 0x88) != 0x88)
+                        while (++ci < cs && AlgebraicToIndex(commandargs[ci]) < 64 && AlgebraicToIndex(&commandargs[ci][2]) < 64)
                             searchmoves.push_back(commandargs[ci]);
                     }
 
