@@ -343,10 +343,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         futility = (staticeval < alpha - (100 + 80 * depth));
     }
 
-    // Nullmove pruning
+    // Nullmove pruning with verification like SF does it
     int bestknownscore = (hashscore != NOSCORE ? hashscore : staticeval);
-    if (!PVNode && !isCheckbb && depth >= 3 && bestknownscore >= beta /*&& ph < 250 && movestack[mstop - 1].movecode && movestack[mstop - 1].movecode)*/
-        && (ply  >= nullmoveply || ply % 2 != nullmoveside))
+    if (!isCheckbb && depth >= 3 && bestknownscore >= beta && (ply  >= nullmoveply || ply % 2 != nullmoveside))
     {
         playNullMove();
         U64 nmhash = hash;
@@ -358,18 +357,23 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         {
             if (MATEFORME(score))
                 score = beta;
-            SDEBUGPRINT(isDebugPv, debugInsert, " Possible cutoff by null move: %d", score);
 
-            if (abs(beta) < 5000 && (depth < 12 || nullmoveply))
+            if (abs(beta) < 5000 && (depth < 12 || nullmoveply)) {
+                SDEBUGPRINT(isDebugPv, debugInsert, "Low-depth-cutoff by null move: %d", score);
                 return score;
-
+            }
             // Verification search
             nullmoveply = ply + 3 * (depth - R) / 4;
-            nullmoveside = ply & 1;
+            nullmoveside = ply % 2;
             int verificationscore = alphabeta(beta - 1, beta, depth - R);
             nullmoveside = nullmoveply = 0;
-            if (verificationscore >= beta)
+            if (verificationscore >= beta) {
+                SDEBUGPRINT(isDebugPv, debugInsert, "Verified cutoff by null move: %d", score);
                 return score;
+            }
+            else {
+                SDEBUGPRINT(isDebugPv, debugInsert, "Verification refutes cutoff by null move: %d", score);
+            }
         }
 #if 0
         else {

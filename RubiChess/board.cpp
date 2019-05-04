@@ -2307,6 +2307,8 @@ void engine::prepareThreads()
     sthread[0].pos.bestmove[0].code = 0;
     sthread[0].pos.pvline.length = 0;
     sthread[0].pos.nodes = 0;
+    sthread[0].pos.nullmoveply = 0;
+    sthread[0].pos.nullmoveside = 0;
     for (int i = 1; i < Threads; i++)
     {
         sthread[i].pos = sthread[0].pos;
@@ -2317,6 +2319,8 @@ void engine::prepareThreads()
         sthread[i].pos.bestmove[0].code = 0;
         sthread[i].pos.pvline.length = 0;
         sthread[i].pos.nodes = 0;
+        sthread[i].pos.nullmoveply = 0;
+        sthread[i].pos.nullmoveside = 0;
     }
 }
 
