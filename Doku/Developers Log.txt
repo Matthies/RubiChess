@@ -566,3 +566,30 @@ PV-debug für b7b5 a4b3 a5a4 b3b2 d8e7 f4e5 c5a3 e2d4 sollte zeigen, warum b7b5 z
 Und gleich noch eine schlechte Evaluierung aus dem Spiel Rubi-Rodent in Grahams 4CPU-Turnier "":
 r7/1b1pq3/p5k1/PpR1Bp2/1P2p1p1/2Q1P1P1/5PK1/8 w - - 10 40 
 Rubi unterschätzt den offensichtlich besten Zug Qd4 nicht bzw. zu spät.
+
+5.5.2019:
+Im folgenden Endspiel sieht Rubi nicht, dass Nirvana mit einem Turmopfer durch zwei verbundene Passer
+den Sieg erreichen kann. Ev. Passedpawn-Extension im Endspiel?
+
+[Event "Computer Schach Partie"]
+[Site "?"]
+[Date "2019.05.05"]
+[Round "?"]
+[White "Spieler"]
+[Black "Spieler"]
+[Result "*"]
+[BlackElo "2400"]
+[Time "20:44:32"]
+[WhiteElo "2400"]
+[TimeControl "10+0"]
+[SetUp "1"]
+[FEN "8/4r1k1/p5p1/P2KN2p/4R3/1P6/2P2b2/8 w - - 0 50"]
+[Termination "unterminated"]
+[PlyCount "32"]
+[WhiteType "Rubi-1.4"]
+[BlackType "Nirvana"]
+
+50. Nd3 Rd7+ 51. Ke6 Rf7 52. Nxf2 Rxf2 53. c4 g5 54. Re5 Kg6 55. c5 g4 56.
+c6 Rc2 57. Kd7 g3 58. c7 Rxc7+ 59. Kxc7 g2 60. Re1 h4 61. Rg1 h3 62. b4 Kf5
+63. b5 axb5 64. a6 h2 65. Rxg2 h1=Q *
+
