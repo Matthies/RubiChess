@@ -186,7 +186,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 
 
 
-int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowed)
+int chessposition::alphabeta(int alpha, int beta, int depth)
 {
     int score;
     int hashscore = NOSCORE;
@@ -343,26 +343,46 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
         futility = (staticeval < alpha - (100 + 80 * depth));
     }
 
-    // Nullmove pruning
+    // Nullmove pruning with verification like SF does it
     int bestknownscore = (hashscore != NOSCORE ? hashscore : staticeval);
-    if (nullmoveallowed && !isCheckbb && depth >= 3 && bestknownscore >= beta && ph < 250)
+    if (!isCheckbb && depth >= 2 && bestknownscore >= beta && (ply  >= nullmoveply || ply % 2 != nullmoveside))
     {
         playNullMove();
         U64 nmhash = hash;
-        int R = 3 + (depth / 6) + (bestknownscore - beta) / 150;
-        score = -alphabeta(-beta, -beta + 1, depth - R, false);
+        int R = 4 + (depth / 6) + (bestknownscore - beta) / 150 + !PVNode * 2;
+
+        score = -alphabeta(-beta, -beta + 1, depth - R);
         unplayNullMove();
 
         if (score >= beta)
         {
-            SDEBUGPRINT(isDebugPv, debugInsert, " Cutoff by null move: %d", score);
-            return score;
+            if (MATEFORME(score))
+                score = beta;
+
+            if (abs(beta) < 5000 && (depth < 12 || nullmoveply)) {
+                SDEBUGPRINT(isDebugPv, debugInsert, "Low-depth-cutoff by null move: %d", score);
+                return score;
+            }
+            // Verification search
+            nullmoveply = ply + 3 * (depth - R) / 4;
+            nullmoveside = ply % 2;
+            int verificationscore = alphabeta(beta - 1, beta, depth - R);
+            nullmoveside = nullmoveply = 0;
+            if (verificationscore >= beta) {
+                SDEBUGPRINT(isDebugPv, debugInsert, "Verified cutoff by null move: %d", score);
+                return score;
+            }
+            else {
+                SDEBUGPRINT(isDebugPv, debugInsert, "Verification refutes cutoff by null move: %d", score);
+            }
         }
+#if 0
         else {
             uint16_t nmrefutemove = tp.getMoveCode(nmhash);
             if (nmrefutemove && mailbox[GETTO(nmrefutemove)] != BLANK)
                 nmrefutetarget = GETTO(nmrefutemove);
         }
+#endif
     }
 
     // ProbCut
@@ -379,7 +399,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
 
             if (playMove(&movelist->move[i]))
             {
-                int probcutscore = -alphabeta(-rbeta, -rbeta + 1, depth - 4, false);
+                int probcutscore = -alphabeta(-rbeta, -rbeta + 1, depth - 4);
 
                 unplayMove(&movelist->move[i]);
 
@@ -401,7 +421,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
     if (PVNode && !hashmovecode && depth >= iidmin)
     {
         SDEBUGPRINT(isDebugPv, debugInsert, " Entering iid...");
-        alphabeta(alpha, beta, depth - iiddelta, true);
+        alphabeta(alpha, beta, depth - iiddelta);
         hashmovecode = tp.getMoveCode(newhash);
     }
 
@@ -463,7 +483,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
             SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s tested for singularity", debugMove.toString().c_str());
             excludemovestack[mstop - 1] = hashmovecode;
             int sBeta = max(hashscore - 2 * depth, SCOREBLACKWINS);
-            int redScore = alphabeta(sBeta - 1, sBeta, depth / 2, true);
+            int redScore = alphabeta(sBeta - 1, sBeta, depth / 2);
             excludemovestack[mstop - 1] = 0;
 
             if (redScore < sBeta)
@@ -502,22 +522,22 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool nullmoveallowe
             {
                 // First move ("PV-move"); do a normal search
                 effectiveDepth = depth + extendall - reduction + extendMove;
-                score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
+                score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
                 if (reduction && score > alpha)
                 {
                     // research without reduction
                     effectiveDepth += reduction;
-                    score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
+                    score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
                 }
             }
             else {
                 // try a PV-Search
                 effectiveDepth = depth + extendall;
-                score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1, true);
+                score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
                 if (score > alpha && score < beta)
                 {
                     // reasearch with full window
-                    score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
+                    score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
                 }
             }
             unplayMove(m);
@@ -741,22 +761,22 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         {
             // First move ("PV-move"); do a normal search
             effectiveDepth = depth + extendall - reduction;
-            score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
+            score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
             if (reduction && score > alpha)
             {
                 // research without reduction
                 effectiveDepth += reduction;
-                score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
+                score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
             }
         }
         else {
             // try a PV-Search
             effectiveDepth = depth + extendall;
-            score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1, true);
+            score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
             if (score > alpha && score < beta)
             {
                 // reasearch with full window
-                score = -alphabeta(-beta, -alpha, effectiveDepth - 1, true);
+                score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
             }
         }
 

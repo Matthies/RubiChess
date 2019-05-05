@@ -934,6 +934,8 @@ public:
     int ply;        // 0 at root position
     int rootheight; // fixed stack offset in root position 
     int seldepth;
+    int nullmoveside;
+    int nullmoveply = 0;
     chessmovelist rootmovelist;
     chessmovesequencelist pvline;
     chessmove bestmove[MAXMULTIPV];
@@ -1008,7 +1010,7 @@ public:
     int getScaling(int col);
 
     template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth);
-    int alphabeta(int alpha, int beta, int depth, bool nullmoveallowed);
+    int alphabeta(int alpha, int beta, int depth);
     int getQuiescence(int alpha, int beta, int depth);
     void updateHistory(int side, int from, int to, int value);
     void updateCounterHistory(int32_t **cmptr, int pc, int to, int value);
