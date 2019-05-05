@@ -28,10 +28,6 @@
 #endif
 
 #if 0
-#define DEBUGEVAL
-#endif
-
-#if 0
 #define FINDMEMORYLEAKS
 #endif
 
@@ -1023,9 +1019,6 @@ public:
     string getPv();
     bool triggerDebug(chessmove* nextmove);
     void sdebug(int indent, const char* format, ...);
-#endif
-#ifdef DEBUGEVAL
-    void debugeval(const char* format, ...);
 #endif
     int testRepetiton();
     void mirror();

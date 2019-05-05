@@ -991,16 +991,6 @@ string chessposition::toFen()
 }
 
 
-#ifdef DEBUGEVAL
-void chessposition::debugeval(const char* format, ...)
-{
-    va_list argptr;
-    va_start(argptr, format);
-    vfprintf(stdout, format, argptr);
-    va_end(argptr);
-}
-#endif
-
 #ifdef SDEBUG
 void chessposition::updatePvTable(uint32_t movecode)
 {
@@ -2515,8 +2505,8 @@ void engine::communicate(string inputstring)
                             }
                             if (s.size() < 4)
                                 continue;
-                            int from = AlgebraicToIndex(s, BOARDSIZE);
-                            int to = AlgebraicToIndex(&s[2], BOARDSIZE);
+                            int from = AlgebraicToIndex(s);
+                            int to = AlgebraicToIndex(&s[2]);
                             int promotion = (s.size() <= 4) ? BLANK : (GetPieceType(s[4]) << 1); // Remember: S2m is missing here
                             rootpos->pvdebug[i++] = to | (from << 6) | (promotion << 12);
                         }
