@@ -593,3 +593,17 @@ den Sieg erreichen kann. Ev. Passedpawn-Extension im Endspiel?
 c6 Rc2 57. Kd7 g3 58. c7 Rxc7+ 59. Kxc7 g2 60. Re1 h4 61. Rg1 h3 62. b4 Kf5
 63. b5 axb5 64. a6 h2 65. Rxg2 h1=Q *
 
+Und ein weiteres mieses Spiel bei Graham:
+[Event "Computer game"]
+[Site "GrahamCCRL.dyndns.org\\Rubi Royals v Winter Warriors.a1b"]
+[Date "2019.05.06"]
+[Round "?"]
+[White "RubiChess 1.4"]
+[Black "Amoeba 3.0.w64p-l"]
+[TimeControl "40/1500"]
+[Result "*"]
+
+1.d4 Nf6 2.c4 e6 3.Nf3 d5 4.Nc3 Bb4 5.cxd5 exd5 6.Qb3 c5 7.dxc5 Nc6 8.Bg5 O-O 
+9.e3 Be6 10.O-O-O Bxc5 11.Qxb7 Rc8 12.Qb5 Bb4 13.Bh4 Qd6 14.Bxf6 gxf6 15.Qa4 Ne5 
+16.Kd2 Nxf3+ 17.gxf3 Qc5 18.Qc2 d4 19.Rg1+ Kh8 20.exd4 Qxd4+ 21.Kc1 Qb6 22.Rd3 
+Bf5 23.Rg4 Bxc3 24.bxc3 Rfe8 25.Re4 *
