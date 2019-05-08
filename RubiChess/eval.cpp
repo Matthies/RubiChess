@@ -90,6 +90,7 @@ static void registertuner(chessposition *pos, eval *e, string name, int index1, 
     pos->tps.index2[i] = index2;
     pos->tps.bound2[i] = bound2;
     pos->tps.tune[i] = tune;
+    pos->tps.used[i] = 0;
     pos->tps.count++;
 }
 
@@ -109,7 +110,7 @@ void registeralltuners(chessposition *pos)
 
     registertuner(pos, &eps.ePawnpushthreatbonus, "ePawnpushthreatbonus", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eSafepawnattackbonus, "eSafepawnattackbonus", 0, 0, 0, 0, tuneIt);
-    tuneIt = false;
+    tuneIt = true;
     registertuner(pos, &eps.eHangingpiecepenalty, "eHangingpiecepenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eTempo, "eTempo", 0, 0, 0, 0, tuneIt);
     tuneIt = true;
@@ -130,23 +131,23 @@ void registeralltuners(chessposition *pos)
     tuneIt = false;
     registertuner(pos, &eps.eDoublebishopbonus, "eDoublebishopbonus", 0, 0, 0, 0, tuneIt);
 
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 28; j++)
             registertuner(pos, &eps.eMobilitybonus[i][j], "eMobilitybonus", j, 28, i, 4, tuneIt && (j < maxmobility[i]));
 
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 2; i++)
         registertuner(pos, &eps.eSlideronfreefilebonus[i], "eSlideronfreefilebonus", i, 2, 0, 0, tuneIt);
     for (i = 0; i < 7; i++)
         registertuner(pos, &eps.eMaterialvalue[i], "eMaterialvalue", i, 7, 0, 0, false);
     registertuner(pos, &eps.eKingshieldbonus, "eKingshieldbonus", 0, 0, 0, 0, tuneIt);
-    tuneIt = false;
+    tuneIt = true;
     registertuner(pos, &eps.eWeakkingringpenalty, "eWeakkingringpenalty", 0, 0, 0, 0, tuneIt);
     for (i = 0; i < 7; i++)
         registertuner(pos, &eps.eKingattackweight[i], "eKingattackweight", i, 7, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
 
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eSafecheckbonus[i], "eSafecheckbonus", i, 6, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
     registertuner(pos, &eps.eKingdangerbyqueen, "eKingdangerbyqueen", 0, 0, 0, 0, tuneIt);

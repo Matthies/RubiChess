@@ -582,6 +582,7 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                             sqsum[sqindex][0] += e->g[0] * *pos->tps.ev[e->index];
                             sqsum[sqindex][1] += e->g[1] * *pos->tps.ev[e->index];
                         }
+                        pos->tps.used[e->index]++;
                         e++;
                     }
                     for (int i = 0; i < 4; i++)
@@ -647,6 +648,7 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                                 sqsum[sqindex][0] += e->g[0] * *pos->tps.ev[e->index];
                                 sqsum[sqindex][1] += e->g[1] * *pos->tps.ev[e->index];
                             }
+                            pos->tps.used[e->index]++;
                             e++;
                         }
                         for (int i = 0; i < 4; i++)
@@ -821,14 +823,14 @@ static void collectTuners(chessposition *pos, tunerpool *pool, tuner **freeTuner
                 if (tn->ev[pi].type == 0 &&  tn->ev[pi] != *pos->tps.ev[pi]
                     || tn->ev[pi].type == 1 && tn->ev[pi] != *pos->tps.ev[pi])
                 {
-                    printf("%2d %4d  %40s  %0.10f  %s  -> %s\n", i, pi, nameTunedParameter(pos, pi).c_str(), tn->error,
+                    printf("%2d %4d  %7d   %40s  %0.10f  %s  -> %s\n", i, pi, pos->tps.used[pi], nameTunedParameter(pos, pi).c_str(), tn->error,
                         getValueStringValue(pos->tps.ev[pi]).c_str(),
                         getValueStringValue(&(tn->ev[pi])).c_str());
                     pool->lastImproved = pi;
                     *pos->tps.ev[pi] = tn->ev[pi];
                 }
                 else {
-                    printf("%2d %4d  %40s  %0.10f  %s  constant\n", i, pi, nameTunedParameter(pos, pi).c_str(), tn->error,
+                    printf("%2d %4d  %7d   %40s  %0.10f  %s  constant\n", i, pi, pos->tps.used[pi], nameTunedParameter(pos, pi).c_str(), tn->error,
                         getValueStringValue(&(tn->ev[pi])).c_str());
                 }
             }

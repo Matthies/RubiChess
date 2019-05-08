@@ -391,6 +391,7 @@ struct tuneparamselection {
     int bound1[NUMOFEVALPARAMS];
     int index2[NUMOFEVALPARAMS];
     int bound2[NUMOFEVALPARAMS];
+    int used[NUMOFEVALPARAMS];
 
     int count;
 };
