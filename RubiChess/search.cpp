@@ -425,6 +425,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         hashmovecode = tp.getMoveCode(newhash);
     }
 
+    // Reset pv of child nodes
+    pvtable[ply + 1][0] = 0;
+
     MoveSelector ms = {};
     ms.SetPreferredMoves(this, hashmovecode, killer[0][ply], killer[1][ply], nmrefutetarget, excludeMove);
 
@@ -590,9 +593,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                     SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s raising alpha to %d", debugMove.toString().c_str(), score);
                     alpha = score;
                     eval_type = HASHEXACT;
-#ifdef SDEBUG
                     updatePvTable(bestcode);
-#endif
                 }
             }
 
@@ -672,7 +673,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
         if (fullhashmove)
         {
-            bestmove[0].code = fullhashmove;
+            pvtable[0][0] = bestmove[0].code = fullhashmove;
             if (score > alpha) bestmovescore[0] = score;
             return score;
         }
@@ -715,6 +716,9 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
             }
         }
     }
+
+    // Reset pv of child nodes
+    pvtable[1][0] = 0;
 
     // get static evaluation of the position
     if (staticeval == NOSCORE)
@@ -839,9 +843,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                 bestmove[0] = *m;
                 bestmovescore[0] = score;
                 eval_type = HASHEXACT;
-#ifdef SDEBUG
                 updatePvTable(m->code);
-#endif
             }
             if (score >= beta)
             {
@@ -905,7 +907,8 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int mpvIndex)
     char s[4096];
     chessposition *pos = &thr->pos;
     en.lastReport = msRun;
-    string pvstring = pos->pvline.toString();
+    //string pvstring = pos->pvline.toString();
+    string pvstring = pos->getPv();
     int score = pos->bestmovescore[mpvIndex];
     U64 nodes = en.getTotalNodes();
 
@@ -1059,7 +1062,7 @@ static void search_gen1(searchthread *thr)
                             pos->bestmove[i].code = pos->shortMove2FullMove(mc);
                         }
 
-                        pos->getpvline(thr->depth, i);
+                        //pos->getpvline(thr->depth, i);
 
                         uciScore(thr, inWindow, nowtime, i);
 
@@ -1084,7 +1087,7 @@ static void search_gen1(searchthread *thr)
                 if (!pos->bestmove[0].code && pos->rootmovelist.length > 0)
                     pos->bestmove[0].code = pos->rootmovelist.move[0].code;
 
-                pos->getpvline(thr->depth, 0);
+                //pos->getpvline(thr->depth, 0);
 
                 uciScore(thr, inWindow, nowtime, 0);
             }
@@ -1147,18 +1150,21 @@ static void search_gen1(searchthread *thr)
             pos->bestmove[0] = bestthr->pos.bestmove[0];
             pos->bestmovescore[0] = bestthr->pos.bestmovescore[0];
             inWindow = 1;
-            pos->getpvline(bestthr->lastCompleteDepth, 0);
+            //pos->getpvline(bestthr->lastCompleteDepth, 0);
         }
         if (!reportedThisDepth || bestthr->index)
             uciScore(thr, inWindow, getTime(), 0);
 
         string strBestmove;
         string strPonder = "";
-        if (pos->pvline.length > 0 && pos->pvline.move[0].code)
+        chessmove bm, pm;
+        bm.code = pos->pvtable[0][0];
+        pm.code = pos->pvtable[0][1];
+        if (bm.code)
         {
-            strBestmove = pos->pvline.move[0].toString();
-            if (en.ponder && pos->pvline.length > 1 && pos->pvline.move[1].code)
-                strPonder = " ponder " + pos->pvline.move[1].toString();
+            strBestmove = bm.toString();
+            if (en.ponder && pm.code)
+                strPonder = " ponder " + pm.toString();
         }
         else {
             if (pos->bestmove[0].code)

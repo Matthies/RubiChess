@@ -637,6 +637,7 @@ void chessposition::unplayNullMove()
 }
 
 
+#if 0
 void chessposition::getpvline(int depth, int pvnum)
 {
     chessmove cm;
@@ -672,6 +673,7 @@ void chessposition::getpvline(int depth, int pvnum)
     for (int i = pvline.length; i;)
         unplayMove(&(pvline.move[--i]));
 }
+#endif
 
 
 uint32_t chessposition::shortMove2FullMove(uint16_t c)
@@ -991,7 +993,6 @@ string chessposition::toFen()
 }
 
 
-#ifdef SDEBUG
 void chessposition::updatePvTable(uint32_t movecode)
 {
     pvtable[ply][0] = movecode;
@@ -1007,7 +1008,7 @@ void chessposition::updatePvTable(uint32_t movecode)
 
 string chessposition::getPv()
 {
-    string s = "PV:";
+    string s = "";
     for (int i = 0; pvtable[0][i]; i++)
     {
         chessmove cm;
@@ -1017,6 +1018,7 @@ string chessposition::getPv()
     return s;
 }
 
+#ifdef SDEBUG
 bool chessposition::triggerDebug(chessmove* nextmove)
 {
     if (pvdebug[0] == 0)
@@ -2289,7 +2291,7 @@ void engine::prepareThreads()
 {
     sthread[0].pos.bestmovescore[0] = NOSCORE;
     sthread[0].pos.bestmove[0].code = 0;
-    sthread[0].pos.pvline.length = 0;
+    //sthread[0].pos.pvline.length = 0;
     sthread[0].pos.nodes = 0;
     sthread[0].pos.nullmoveply = 0;
     sthread[0].pos.nullmoveside = 0;
@@ -2301,7 +2303,7 @@ void engine::prepareThreads()
         // early reset of variables that are important for bestmove selection
         sthread[i].pos.bestmovescore[0] = NOSCORE;
         sthread[i].pos.bestmove[0].code = 0;
-        sthread[i].pos.pvline.length = 0;
+        //sthread[i].pos.pvline.length = 0;
         sthread[i].pos.nodes = 0;
         sthread[i].pos.nullmoveply = 0;
         sthread[i].pos.nullmoveside = 0;
