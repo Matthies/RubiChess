@@ -1013,8 +1013,7 @@ public:
     template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth);
     int alphabeta(int alpha, int beta, int depth);
     int getQuiescence(int alpha, int beta, int depth);
-    void updateHistory(int side, int from, int to, int value);
-    void updateCounterHistory(int32_t **cmptr, int pc, int to, int value);
+    void updateHistory(uint32_t code, int32_t **cmptr, int value);
     void getCmptr(int32_t **cmptr);
 
 #ifdef SDEBUG
