@@ -49,26 +49,26 @@ void searchinit()
     }
 }
 
-void chessposition::getCmptr(int32_t **cmptr)
+void chessposition::getCmptr(int16_t **cmptr)
 {
     for (int i = 0, j = mstop - 1; i < CMPLIES; i++, j--)
     {
         uint32_t c;
         if (j >= 0 && (c = movestack[j].movecode))
-            cmptr[i] = (int32_t*)counterhistory[GETPIECE(c)][GETTO(c)];
+            cmptr[i] = (int16_t*)counterhistory[GETPIECE(c)][GETTO(c)];
         else
             cmptr[i] = NULL;
     }
 }
 
 
-inline void chessposition::updateHistory(uint32_t code, int32_t **cmptr, int value)
+inline void chessposition::updateHistory(uint32_t code, int16_t **cmptr, int value)
 {
     int pc = GETPIECE(code);
     int s2m = pc & S2MMASK;
     int from = GETFROM(code);
     int to = GETTO(code);
-    value = max(-625, min(625, value));
+    value = max(-400, min(400, value));
     int delta = 32 * value - history[s2m][from][to] * abs(value) / 512;
     history[s2m][from][to] += delta;
     for (int i = 0; i < CMPLIES; i++)
