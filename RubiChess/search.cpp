@@ -49,35 +49,33 @@ void searchinit()
     }
 }
 
-void chessposition::getCmptr(int32_t **cmptr)
+void chessposition::getCmptr(int16_t **cmptr)
 {
     for (int i = 0, j = mstop - 1; i < CMPLIES; i++, j--)
     {
         uint32_t c;
         if (j >= 0 && (c = movestack[j].movecode))
-            cmptr[i] = (int32_t*)counterhistory[GETPIECE(c)][GETTO(c)];
+            cmptr[i] = (int16_t*)counterhistory[GETPIECE(c)][GETTO(c)];
         else
             cmptr[i] = NULL;
     }
 }
 
 
-inline void chessposition::updateHistory(int side, int from, int to, int value)
+inline void chessposition::updateHistory(uint32_t code, int16_t **cmptr, int value)
 {
-    //value = max(-400, min(400, value));
-    //int delta = value - history[side][from][to] * abs(value) / 10692;
-    //history[side][from][to] += delta;
-    history[side][from][to] += value;
-}
-
-inline void chessposition::updateCounterHistory(int32_t **cmptr, int pc, int to, int value)
-{
-    //value = max(-400, min(400, value));
-    //int delta = value - history[side][from][to] * abs(value) / 10692;
-    //history[side][from][to] += delta;
+    int pc = GETPIECE(code);
+    int s2m = pc & S2MMASK;
+    int from = GETFROM(code);
+    int to = GETTO(code);
+    value = max(-400, min(400, value));
+    int delta = 32 * value - history[s2m][from][to] * abs(value) / 512;
+    history[s2m][from][to] += delta;
     for (int i = 0; i < CMPLIES; i++)
-        if (cmptr[i])
-            cmptr[i][pc * 64 + to] += value;
+        if (cmptr[i]) {
+            int delta = 32 * value - cmptr[i][pc * 64 + to] * abs(value) / 512;
+            cmptr[i][pc * 64 + to] += delta;
+        }
 }
 
 
@@ -357,7 +355,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     if (!isCheckbb && depth >= 2 && bestknownscore >= beta && (ply  >= nullmoveply || ply % 2 != nullmoveside))
     {
         playNullMove();
-        U64 nmhash = hash;
         int R = 4 + (depth / 6) + (bestknownscore - beta) / 150 + !PVNode * 2;
 
         score = -alphabeta(-beta, -beta + 1, depth - R);
@@ -568,13 +565,11 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 {
                     if (!ISCAPTURE(m->code))
                     {
-                        updateHistory(state & S2MMASK, GETFROM(m->code), GETTO(m->code), depth * depth);
-                        updateCounterHistory(ms.cmptr, GETPIECE(m->code), GETTO(m->code), depth * depth);
+                        updateHistory(m->code, ms.cmptr, depth * depth);
                         for (int i = 0; i < quietsPlayed; i++)
                         {
                             uint32_t qm = quietMoves[i];
-                            updateHistory(state & S2MMASK, GETFROM(qm), GETTO(qm), -(depth * depth));
-                            updateCounterHistory(ms.cmptr, GETPIECE(qm), GETTO(qm), -(depth * depth));
+                            updateHistory(qm, ms.cmptr, -(depth * depth));
                         }
 
                         // Killermove
@@ -734,6 +729,9 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
     int quietsPlayed = 0;
     uint32_t quietMoves[MAXMOVELISTLENGTH];
 
+    // FIXME: Dummy move selector for now; only used to pass null cmptr to updateHistory
+    MoveSelector ms = {};
+
     for (int i = 0; i < rootmovelist.length; i++)
     {
         for (int j = i + 1; j < rootmovelist.length; j++)
@@ -856,11 +854,11 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                 // Killermove
                 if (!ISCAPTURE(m->code))
                 {
-                    updateHistory(state & S2MMASK, GETFROM(m->code), GETTO(m->code), depth * depth);
+                    updateHistory(m->code, ms.cmptr, depth * depth);
                     for (int i = 0; i < quietsPlayed - 1; i++)
                     {
                         uint32_t qm = quietMoves[i];
-                        updateHistory(state & S2MMASK, GETFROM(qm), GETTO(qm), -(depth * depth));
+                        updateHistory(qm, ms.cmptr, -(depth * depth));
                     }
 
                     if (killer[0][0] != m->code)

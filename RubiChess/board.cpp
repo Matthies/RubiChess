@@ -408,7 +408,6 @@ int chessposition::getFromFen(const char* sFen)
 bool chessposition::applyMove(string s)
 {
     unsigned int from, to;
-    bool retval = false;
     PieceCode promotion;
 
     from = AlgebraicToIndex(s);
@@ -438,7 +437,7 @@ bool chessposition::applyMove(string s)
 
 
 template <MoveType Mt>
-void evaluateMoves(chessmovelist *ml, chessposition *pos, int32_t **cmptr)
+void evaluateMoves(chessmovelist *ml, chessposition *pos, int16_t **cmptr)
 {
     for (int i = 0; i < ml->length; i++)
     {
