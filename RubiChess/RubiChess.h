@@ -246,7 +246,7 @@ typedef const int32_t eval;
 
 #define TAPEREDANDSCALEDEVAL(s, p, c) ((GETMGVAL(s) * (256 - (p)) + GETEGVAL(s) * (p) * (c) / SCALE_NORMAL) / 256)
 
-#define NUMOFEVALPARAMS (2*5*4 + 5 + 4*8 + 2*8 + 8 + 5 + 4*28 + 2 + 7 + 1 + 7 + 6 + 6 + 2 + 7*64)
+#define NUMOFEVALPARAMS (2*5*4 + 5 + 4*8 + 2*8 + 8 + 2 + 5*6 + 2 + 4*28 + 2 + 7 + 1 + 7 + 6 + 6 + 2 + 7*64)
 struct evalparamset {
     // Powered by Laser games :-)
     eval ePawnstormblocked[4][5] = {
@@ -278,8 +278,15 @@ struct evalparamset {
     eval eAttackingpawnbonus[8] = {  VALUE(   0,   0), VALUE( -48,  12), VALUE( -14,   4), VALUE( -14,  -6), VALUE( -14,  -6), VALUE( -15,   1), VALUE(   0,   0), VALUE(   0,   0)  };
     eval eIsolatedpawnpenalty =  VALUE( -13, -12);
     eval eDoublepawnpenalty =  VALUE(  -9, -21);
-    eval eConnectedbonus =  VALUE(   7,  -2);
-    eval eBackwardpawnpenalty =  VALUE(  -8, -11);
+    eval eConnectedbonus[6][5] = {
+        {  VALUE(   7,  -7), VALUE(   8,  -5), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
+        {  VALUE(   3,  -8), VALUE(   3,  -7), VALUE(  10,   7), VALUE(  15,  15), VALUE(  18,  18)  },
+        {  VALUE(  24,  50), VALUE(   5,  -1), VALUE(  10,   0), VALUE(  17,   3), VALUE(  16,   9)  },
+        {  VALUE(  -5,  10), VALUE(   0,  10), VALUE(  15,   5), VALUE(  38,  14), VALUE(  32,   5)  },
+        {  VALUE(  36, 184), VALUE(  79,  72), VALUE(  31,  36), VALUE(   7,  38), VALUE(   3,  94)  },
+        {  VALUE( -57, 253), VALUE(  38, 232), VALUE( 132, 124), VALUE(   7,4096), VALUE(   0,   4)  }
+    };
+    eval eBackwardpawnpenalty =  VALUE( -10, -15);
     eval eDoublebishopbonus =  VALUE(  56,  38);
     eval eMobilitybonus[4][28] = {
         {  VALUE(  15, -97), VALUE(  35, -30), VALUE(  48,  -9), VALUE(  54,   2), VALUE(  60,  15), VALUE(  67,  27), VALUE(  73,  27), VALUE(  80,  24),
