@@ -408,7 +408,6 @@ int chessposition::getFromFen(const char* sFen)
 bool chessposition::applyMove(string s)
 {
     unsigned int from, to;
-    bool retval = false;
     PieceCode promotion;
 
     from = AlgebraicToIndex(s);

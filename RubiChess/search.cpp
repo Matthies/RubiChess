@@ -346,7 +346,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     if (!isCheckbb && depth >= 2 && bestknownscore >= beta && (ply  >= nullmoveply || ply % 2 != nullmoveside))
     {
         playNullMove();
-        U64 nmhash = hash;
         int R = 4 + (depth / 6) + (bestknownscore - beta) / 150 + !PVNode * 2;
 
         score = -alphabeta(-beta, -beta + 1, depth - R);
