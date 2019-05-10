@@ -1016,7 +1016,7 @@ public:
     void updateHistory(int side, int from, int to, int value);
     void updateCounterHistory(int32_t **cmptr, int pc, int to, int value);
     void getCmptr(int32_t **cmptr);
-    void updatePvTable(uint32_t movecode);
+    void updatePvTable(uint32_t movecode, bool recursive);
     string getPv();
 
 #ifdef SDEBUG

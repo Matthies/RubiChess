@@ -993,14 +993,17 @@ string chessposition::toFen()
 }
 
 
-void chessposition::updatePvTable(uint32_t movecode)
+void chessposition::updatePvTable(uint32_t movecode, bool recursive)
 {
     pvtable[ply][0] = movecode;
     int i = 0;
-    while (pvtable[ply + 1][i])
+    if (recursive)
     {
-        pvtable[ply][i + 1] = pvtable[ply + 1][i];
-        i++;
+        while (pvtable[ply + 1][i])
+        {
+            pvtable[ply][i + 1] = pvtable[ply + 1][i];
+            i++;
+        }
     }
     pvtable[ply][i + 1] = 0;
 

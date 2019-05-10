@@ -97,11 +97,13 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     // FIXME: Should quiescience nodes count for the statistics?
     //en.nodes++;
 
+    // Reset pv
+    pvtable[ply][0] = 0;
+
 #ifdef SDEBUG
     chessmove debugMove;
     int debugInsert = ply - rootheight;
     bool isDebugPv = triggerDebug(&debugMove);
-    pvtable[ply][0] = 0;
 #endif
 
     if (!myIsCheck)
@@ -159,6 +161,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
                 }
                 if (score > alpha)
                 {
+                    updatePvTable(m->code, true);
                     alpha = score;
 #ifdef EVALTUNE
                     foundpts = true;
@@ -204,12 +207,14 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     nodes++;
 
+    // Reset pv
+    pvtable[ply][0] = 0;
+
 #ifdef SDEBUG
     chessmove debugMove;
     string excludestr = "";
     int debugInsert = ply - rootheight;
     bool isDebugPv = triggerDebug(&debugMove);
-    pvtable[ply][0] = 0;
 #endif
 
     // test for remis via repetition
@@ -254,9 +259,13 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     bool tpHit = tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
     if (tpHit && rp.getPositionCount(hash) <= 1)  //FIXME: This test on the repetition table works like a "is not PV"; should be fixed in the future)
     {
+        uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
+        if (fullhashmove)
+            updatePvTable(fullhashmove, false);
         SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from TT.", hashscore);
         return hashscore;
     }
+
 
 
     // TB
@@ -425,9 +434,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         hashmovecode = tp.getMoveCode(newhash);
     }
 
-    // Reset pv of child nodes
-    pvtable[ply + 1][0] = 0;
-
     MoveSelector ms = {};
     ms.SetPreferredMoves(this, hashmovecode, killer[0][ply], killer[1][ply], nmrefutetarget, excludeMove);
 
@@ -593,7 +599,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                     SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s raising alpha to %d", debugMove.toString().c_str(), score);
                     alpha = score;
                     eval_type = HASHEXACT;
-                    updatePvTable(bestcode);
+                    updatePvTable(bestcode, true);
                 }
             }
 
@@ -649,6 +655,9 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
 
     nodes++;
 
+    // reset pv
+    pvtable[0][0] = 0;
+
     if (isMultiPV)
     {
         lastmoveindex = 0;
@@ -661,7 +670,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
     chessmove debugMove;
     int debugInsert = ply - rootheight;
     bool isDebugPv = triggerDebug(&debugMove);
-    pvtable[0][0] = 0;
     SDEBUGPRINT(true, debugInsert, "(depth=%2d) Rootsearch Next pv debug move: %s  [%3d,%3d]", depth, debugMove.code ? debugMove.toString().c_str() : "", alpha, beta);
 #endif
 
@@ -673,8 +681,9 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
         if (fullhashmove)
         {
-            pvtable[0][0] = bestmove[0].code = fullhashmove;
+            bestmove[0].code = fullhashmove;
             if (score > alpha) bestmovescore[0] = score;
+            updatePvTable(fullhashmove, false);
             return score;
         }
     }
@@ -716,9 +725,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
             }
         }
     }
-
-    // Reset pv of child nodes
-    pvtable[1][0] = 0;
 
     // get static evaluation of the position
     if (staticeval == NOSCORE)
@@ -843,7 +849,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                 bestmove[0] = *m;
                 bestmovescore[0] = score;
                 eval_type = HASHEXACT;
-                updatePvTable(m->code);
+                updatePvTable(m->code, true);
             }
             if (score >= beta)
             {
@@ -964,7 +970,7 @@ static void search_gen1(searchthread *thr)
 
     // increment generation counter for tt aging
     tp.nextSearch();
-    
+
     uint32_t lastBestMove = 0;
     int constantRootMoves = 0;
     bool bExitIteration;
