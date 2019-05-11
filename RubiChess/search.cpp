@@ -1273,7 +1273,7 @@ void searchguide()
             {
                 en.stopLevel = ENGINESTOPIMMEDIATELY;
             }
-            else if (en.maxnodes && en.maxnodes <= en.getTotalNodes())
+            else if (en.maxnodes && en.maxnodes <= en.getTotalNodes() && en.stopLevel < ENGINESTOPIMMEDIATELY)
             {
                 en.stopLevel = ENGINESTOPIMMEDIATELY;
             }
