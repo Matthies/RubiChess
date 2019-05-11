@@ -36,9 +36,9 @@ void searchinit()
         for (int m = 0; m < 64; m++)
         {
             // reduction for not improving positions
-            reductiontable[0][d][m] = (int)round(log(d) * log(m) / 1.6);
+            reductiontable[0][d][m] = (int)round(log(d) * log(m) / 1.5);
             // reduction for improving positions
-            reductiontable[1][d][m] = (int)round(log(d) * log(m) / 2.7);
+            reductiontable[1][d][m] = (int)round(log(d) * log(m) / 2.6);
         }
     for (int d = 0; d < MAXLMPDEPTH; d++)
     {
@@ -59,6 +59,20 @@ void chessposition::getCmptr(int16_t **cmptr)
         else
             cmptr[i] = NULL;
     }
+}
+
+inline int chessposition::getHistory(uint32_t code, int16_t **cmptr)
+{
+    int pc = GETPIECE(code);
+    int s2m = pc & S2MMASK;
+    int from = GETFROM(code);
+    int to = GETTO(code);
+    int value = history[s2m][from][to];
+    for (int i = 0; i < CMPLIES; i++)
+        if (cmptr[i])
+            value += cmptr[i][pc * 64 + to];
+
+    return value;
 }
 
 
@@ -503,16 +517,22 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 continue;
             }
 
+            int stats = getHistory(m->code, ms.cmptr);
             int reduction = 0;
             // Late move reduction
             if (!extendall && depth > 2 && !ISTACTICAL(m->code))
             {
                 reduction = reductiontable[positionImproved][depth][min(63, LegalMoves)];
                 SDEBUGPRINT(isDebugPv && isDebugMove && reduction, debugInsert, " PV move %s (value=%d) with depth reduced by %d", debugMove.toString().c_str(), m->value, reduction);
-
+#if 0
                 if (m->value < 0)
                     // more reduction for moves with bad history
                     reduction++;
+#else
+                // adjust reduction by stats value
+                reduction -= stats / 20000;
+                reduction = min(depth, max(0, reduction));
+#endif
             }
 
             if (eval_type != HASHEXACT)
