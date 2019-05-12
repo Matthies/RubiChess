@@ -36,9 +36,9 @@ void searchinit()
         for (int m = 0; m < 64; m++)
         {
             // reduction for not improving positions
-            reductiontable[0][d][m] = (int)round(log(d) * log(m) / 1.1);
+            reductiontable[0][d][m] = (int)round(log(d) * log(m) / 1.3);
             // reduction for improving positions
-            reductiontable[1][d][m] = (int)round(log(d) * log(m) / 2.2);
+            reductiontable[1][d][m] = (int)round(log(d) * log(m) / 2.1);
         }
     for (int d = 0; d < MAXLMPDEPTH; d++)
     {
