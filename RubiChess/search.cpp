@@ -36,9 +36,9 @@ void searchinit()
         for (int m = 0; m < 64; m++)
         {
             // reduction for not improving positions
-            reductiontable[0][d][m] = (int)round(log(d) * log(m) / 1.4);
+            reductiontable[0][d][m] = (int)round(log(d) * log(m) / 1.0);
             // reduction for improving positions
-            reductiontable[1][d][m] = (int)round(log(d) * log(m) / 2.5);
+            reductiontable[1][d][m] = (int)round(log(d) * log(m) / 2.1);
         }
     for (int d = 0; d < MAXLMPDEPTH; d++)
     {
@@ -530,7 +530,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                     reduction++;
 #else
                 // adjust reduction by stats value
-                reduction -= stats / 20000;
+                reduction -= stats / 10000;
                 reduction = min(depth, max(0, reduction));
 #endif
             }
