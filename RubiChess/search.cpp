@@ -387,13 +387,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 SDEBUGPRINT(isDebugPv, debugInsert, "Verification refutes cutoff by null move: %d", score);
             }
         }
-#if 0
-        else {
-            uint16_t nmrefutemove = tp.getMoveCode(nmhash);
-            if (nmrefutemove && mailbox[GETTO(nmrefutemove)] != BLANK)
-                nmrefutetarget = GETTO(nmrefutemove);
-        }
-#endif
     }
 
     // ProbCut
@@ -524,15 +517,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             {
                 reduction = reductiontable[positionImproved][depth][min(63, LegalMoves)];
                 SDEBUGPRINT(isDebugPv && isDebugMove && reduction, debugInsert, " PV move %s (value=%d) with depth reduced by %d", debugMove.toString().c_str(), m->value, reduction);
-#if 0
-                if (m->value < 0)
-                    // more reduction for moves with bad history
-                    reduction++;
-#else
+
                 // adjust reduction by stats value
                 reduction -= stats / 10000;
                 reduction = min(depth, max(0, reduction));
-#endif
             }
 
             if (eval_type != HASHEXACT)
