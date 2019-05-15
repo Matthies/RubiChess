@@ -1022,6 +1022,7 @@ public:
     int getQuiescence(int alpha, int beta, int depth);
     void updateHistory(uint32_t code, int16_t **cmptr, int value);
     void getCmptr(int16_t **cmptr);
+    int getHistory(uint32_t code, int16_t **cmptr);
 
 #ifdef SDEBUG
     void updatePvTable(uint32_t movecode);
