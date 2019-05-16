@@ -2415,7 +2415,7 @@ void engine::communicate(string inputstring)
     bool bMoves;
     thread *searchguidethread = nullptr;
     bool pendingisready = false;
-    bool pendingposition = true;
+    bool pendingposition = (inputstring == "");
     do
     {
         if (stopLevel >= ENGINESTOPIMMEDIATELY)
