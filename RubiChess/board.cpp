@@ -2404,7 +2404,7 @@ static void waitForSearchGuide(thread **th)
 
 void engine::communicate(string inputstring)
 {
-    string fen;
+    string fen = STARTFEN;
     vector<string> moves;
     vector<string> searchmoves;
     vector<string> commandargs;
@@ -2415,7 +2415,7 @@ void engine::communicate(string inputstring)
     bool bMoves;
     thread *searchguidethread = nullptr;
     bool pendingisready = false;
-    bool pendingposition = false;
+    bool pendingposition = true;
     do
     {
         if (stopLevel >= ENGINESTOPIMMEDIATELY)
@@ -2590,7 +2590,7 @@ void engine::communicate(string inputstring)
                 if (commandargs[ci] == "startpos")
                 {
                     ci++;
-                    fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+                    fen = STARTFEN;
                 }
                 else if (commandargs[ci] == "fen")
                 {
