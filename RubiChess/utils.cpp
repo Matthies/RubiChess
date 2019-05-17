@@ -133,9 +133,9 @@ string AlgebraicFromShort(string s, chessposition *pos)
         i--;
     // rank or file for ambiguous moves
     if (i >= 0 && s[i] >= 'a' && s[i] <= 'h')
-        from = (from & 0xf0) | (s[i--] - 'a');
+        from = (from & 0xb8) | (s[i--] - 'a');
     if (i >= 0 && s[i] >= '1' && s[i] <= '8')
-        from = (from & 0x0f) | ((s[i--] - '1') << 4);
+        from = (from & 0x47) | ((s[i--] - '1') << 3);
 
     // The Figure
     if (i >= 0 && s[i] >= 'A')
