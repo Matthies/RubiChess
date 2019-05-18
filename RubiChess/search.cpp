@@ -155,6 +155,13 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
             // Leave out capture that is delta-pruned
             continue;
 
+        if (myIsCheck && !ISTACTICAL(m->code)
+            && ( depth < 0 || ms.capturemovenum > 1)
+            && bestscore > SCOREBLACKWINS
+            && !see(m->code, 0))
+            // Leave out check evasions that lose a piece
+            continue;
+
         bool isLegal = playMove(m);
         if (isLegal)
         {
