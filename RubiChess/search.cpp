@@ -116,9 +116,19 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     pvtable[ply][0] = 0;
 #endif
 
+    int hashscore = NOSCORE;
+    uint16_t hashmovecode = 0;
+    int staticeval = NOSCORE;
+    bool tpHit = tp.probeHash(hash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
+    if (tpHit)
+    {
+        SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from TT.", hashscore);
+        return hashscore;
+    }
+
     if (!myIsCheck)
     {
-        bestscore = patscore = S2MSIGN(state & S2MMASK) * getValue<NOTRACE>();
+        bestscore = patscore = (staticeval != NOSCORE ? staticeval : S2MSIGN(state & S2MMASK) * getValue<NOTRACE>());
         if (patscore >= beta)
         {
             SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (fail high by patscore).", patscore);
@@ -155,15 +165,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
             // Leave out capture that is delta-pruned
             continue;
 
-        if (myIsCheck && !ISTACTICAL(m->code)
-            && ( depth < 0 || ms.capturemovenum > 2)
-            && bestscore > SCOREBLACKWINS
-            && !see(m->code, 0))
-            // Leave out check evasions that lose a piece
-            continue;
-
-        bool isLegal = playMove(m);
-        if (isLegal)
+        if (playMove(m))
         {
             ms.legalmovenum++;
             score = -getQuiescence(-beta, -alpha, depth - 1);
