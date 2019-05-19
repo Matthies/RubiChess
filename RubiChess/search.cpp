@@ -247,6 +247,18 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         return SCOREDRAW;
     }
 
+
+    // Reached depth? Do a qsearch
+    if (depth <= 0)
+    {
+        // update selective depth info
+        if (seldepth < ply + 1)
+            seldepth = ply + 1;
+
+        return getQuiescence(alpha, beta, depth);
+    }
+
+
     // Get move for singularity check and change hash to seperate partial searches from full searches
     uint16_t excludeMove = excludemovestack[mstop - 1];
     excludemovestack[mstop] = 0;
@@ -311,16 +323,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             }
             return score;
         }
-    }
-
-
-    if (depth <= 0)
-    {
-        // update selective depth info
-        if (seldepth < ply + 1)
-           seldepth = ply + 1;
-
-        return getQuiescence(alpha, beta, depth);
     }
 
     // Check extension
