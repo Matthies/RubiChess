@@ -156,7 +156,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
             continue;
 
         if (myIsCheck && !ISTACTICAL(m->code)
-            && ( depth < 0 || ms.capturemovenum > 1)
+            && ( depth < 0 || ms.capturemovenum > 2)
             && bestscore > SCOREBLACKWINS
             && !see(m->code, 0))
             // Leave out check evasions that lose a piece
