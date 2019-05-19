@@ -881,7 +881,7 @@ public:
     int16_t *cmptr[CMPLIES];
 
 public:
-    void SetPreferredMoves(chessposition *p);  // for quiescence move selector
+    void SetPreferredMoves(chessposition *p, uint16_t hshm);  // for quiescence move selector
     void SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, int nmrfttarget, int excludemove);
     chessmove* next();
 };

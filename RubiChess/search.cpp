@@ -155,7 +155,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     prepareStack();
 
     MoveSelector ms = {};
-    ms.SetPreferredMoves(this);
+    ms.SetPreferredMoves(this, hashmovecode);
 
     chessmove *m;
 

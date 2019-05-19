@@ -206,10 +206,12 @@ void chessmovelist::sort(uint32_t hashmove, uint32_t killer1, uint32_t killer2)
     {
         if (move[i].code == hashmove)
             move[i].value = PVVAL;
+#if 0
         else if (move[i].code == killer1)
             move[i].value = KILLERVAL1;
         else if (move[i].code == killer2)
             move[i].value = KILLERVAL2;
+#endif
     }
     for (int i = 0; i < length - 1; i++)
     {
@@ -2081,16 +2083,17 @@ int chessposition::getBestPossibleCapture()
 
 
 // MoveSelector for quiescence search
-void MoveSelector::SetPreferredMoves(chessposition *p)
+void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm)
 {
     pos = p;
-    hashmove.code = 0;
+    hashmove.code = p->shortMove2FullMove(hshm);
     killermove1.code = killermove2.code = 0;
     refutetarget = BOARDSIZE;
     if (!p->isCheckbb)
     {
         onlyGoodCaptures = true;
-        state = TACTICALINITSTATE;
+        if (!ISTACTICAL(hashmove.code))
+            state = TACTICALINITSTATE;
     }
     else
     {
