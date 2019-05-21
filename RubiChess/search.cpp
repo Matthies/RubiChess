@@ -36,9 +36,9 @@ void searchinit()
         for (int m = 0; m < 64; m++)
         {
             // reduction for not improving positions
-            reductiontable[0][d][m] = (int)round(log(d) * log(m) / 1.6);
+            reductiontable[0][d][m] = (int)round(log(d) * log(m) / 1.2);
             // reduction for improving positions
-            reductiontable[1][d][m] = (int)round(log(d) * log(m) / 2.7);
+            reductiontable[1][d][m] = (int)round(log(d) * log(m) / 2.1);
         }
     for (int d = 0; d < MAXLMPDEPTH; d++)
     {
@@ -59,6 +59,20 @@ void chessposition::getCmptr(int16_t **cmptr)
         else
             cmptr[i] = NULL;
     }
+}
+
+inline int chessposition::getHistory(uint32_t code, int16_t **cmptr)
+{
+    int pc = GETPIECE(code);
+    int s2m = pc & S2MMASK;
+    int from = GETFROM(code);
+    int to = GETTO(code);
+    int value = history[s2m][from][to];
+    for (int i = 0; i < CMPLIES; i++)
+        if (cmptr[i])
+            value += cmptr[i][pc * 64 + to];
+
+    return value;
 }
 
 
@@ -382,13 +396,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 SDEBUGPRINT(isDebugPv, debugInsert, "Verification refutes cutoff by null move: %d", score);
             }
         }
-#if 0
-        else {
-            uint16_t nmrefutemove = tp.getMoveCode(nmhash);
-            if (nmrefutemove && mailbox[GETTO(nmrefutemove)] != BLANK)
-                nmrefutetarget = GETTO(nmrefutemove);
-        }
-#endif
     }
 
     // ProbCut
@@ -512,6 +519,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 continue;
             }
 
+            int stats = getHistory(m->code, ms.cmptr);
             int reduction = 0;
             // Late move reduction
             if (!extendall && depth > 2 && !ISTACTICAL(m->code))
@@ -519,9 +527,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 reduction = reductiontable[positionImproved][depth][min(63, LegalMoves)];
                 SDEBUGPRINT(isDebugPv && isDebugMove && reduction, debugInsert, " PV move %s (value=%d) with depth reduced by %d", debugMove.toString().c_str(), m->value, reduction);
 
-                if (m->value < 0)
-                    // more reduction for moves with bad history
-                    reduction++;
+                // adjust reduction by stats value
+                reduction -= stats / 10000;
+                reduction = min(depth, max(0, reduction));
             }
 
             if (eval_type != HASHEXACT)
@@ -1282,6 +1290,10 @@ void searchguide()
                 en.resetPonder();
             }
             else if (en.endtime2 && nowtime >= en.endtime2 && en.stopLevel < ENGINESTOPIMMEDIATELY)
+            {
+                en.stopLevel = ENGINESTOPIMMEDIATELY;
+            }
+            else if (en.maxnodes && en.maxnodes <= en.getTotalNodes() && en.stopLevel < ENGINESTOPIMMEDIATELY)
             {
                 en.stopLevel = ENGINESTOPIMMEDIATELY;
             }

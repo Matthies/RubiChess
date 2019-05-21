@@ -577,6 +577,9 @@ extern Materialhash mh;
 //
 // board stuff
 //
+
+#define STARTFEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
 #define BOARDSIZE 64
 #define RANKMASK 0x38
 
@@ -1024,6 +1027,7 @@ public:
     void getCmptr(int16_t **cmptr);
     void updatePvTable(uint32_t movecode, bool recursive);
     string getPv();
+    int getHistory(uint32_t code, int16_t **cmptr);
 
 #ifdef SDEBUG
     bool triggerDebug(chessmove* nextmove);

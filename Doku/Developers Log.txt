@@ -607,3 +607,24 @@ Und ein weiteres mieses Spiel bei Graham:
 9.e3 Be6 10.O-O-O Bxc5 11.Qxb7 Rc8 12.Qb5 Bb4 13.Bh4 Qd6 14.Bxf6 gxf6 15.Qa4 Ne5 
 16.Kd2 Nxf3+ 17.gxf3 Qc5 18.Qc2 d4 19.Rg1+ Kh8 20.exd4 Qxd4+ 21.Kc1 Qb6 22.Rd3 
 Bf5 23.Rg4 Bxc3 24.bxc3 Rfe8 25.Re4 *
+
+
+11.5.2019:
+Ein weiteres interessantes Spiel in Grahams Div2, in dem Rubi den Durchbruch von Vajolet nicht sieht bzw. stoppen kann.
+
+[Event "Computer game"]
+[Site "GrahamCCRL.dyndns.org\\74th Amateur D2.e1e"]
+[Date "2019.05.11"]
+[Round "?"]
+[White "Vajolet2 2.7.0"]
+[Black "RubiChess 1.4"]
+[TimeControl "40/1500"]
+[SetUp "1"]
+[FEN "4r1k1/2pq1rb1/1p1p1npp/pP1Np3/P1P1Pp2/3P1P2/2QB2PP/R2R2K1 b - - 0 24"]
+[Result "1-0"]
+
+24...g5 25.Rac1 g4 26.Bc3 Nxd5 27.cxd5 gxf3 28.gxf3 Bf6 29.Kh1 Ree7 30.Rg1+ Rg7 
+31.Rxg7+ Rxg7 32.Rg1 Rxg1+ 33.Kxg1 Qh3 34.Qg2+ Qxg2+ 35.Kxg2 Kg7 36.Bd2 Kg6 
+37.d4 exd4 38.Bxf4 d3 39.Bd2 Bd4 40.f4 h5 41.Kf3 Kf7 42.Be1 Ke8 43.Bg3 Kf7 44.e5 
+Kf8 45.e6 d2 46.Ke2 Be3 47.f5 Bg5 48.Bf2 Ke7 49.Bd4 d1=R 50.Kxd1 Bh4 1-0
+

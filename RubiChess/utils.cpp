@@ -97,7 +97,7 @@ string AlgebraicFromShort(string s, chessposition *pos)
     pos->prepareStack();
     ml.length = pos->getMoves(&ml.move[0]);
     PieceType pt = PAWN;
-    int to = 0x88, from = 0x88;
+    int to = 0xc0, from = 0xc0;
     int i = (int)s.size() - 1;
     // Skip check +
     if (i >= 0 && s[i] == '+')
@@ -133,9 +133,9 @@ string AlgebraicFromShort(string s, chessposition *pos)
         i--;
     // rank or file for ambiguous moves
     if (i >= 0 && s[i] >= 'a' && s[i] <= 'h')
-        from = (from & 0xf0) | (s[i--] - 'a');
+        from = (from & 0xb8) | (s[i--] - 'a');
     if (i >= 0 && s[i] >= '1' && s[i] <= '8')
-        from = (from & 0x0f) | ((s[i--] - '1') << 4);
+        from = (from & 0x47) | ((s[i--] - '1') << 3);
 
     // The Figure
     if (i >= 0 && s[i] >= 'A')
@@ -147,10 +147,10 @@ string AlgebraicFromShort(string s, chessposition *pos)
     {
         if (pt == (GETPIECE(ml.move[i].code) >> 1)
             && promotion == (GETPROMOTION(ml.move[i].code) >> 1)
-            && ((from & 0x80) || ((from & 0x70) == ((GETFROM(ml.move[i].code) & 0x38) << 1)))
-            && ((from & 0x08) || ((from & 0x07) == (GETFROM(ml.move[i].code) & 0x07)))
-            && ((to & 0x80) || ((to & 0x70) == ((GETTO(ml.move[i].code) & 0x38) << 1)))
-            && ((to & 0x08) || ((to & 0x07) == (GETTO(ml.move[i].code) & 0x07))))
+            && ((from & 0x80) || ((from & 0x38) == (GETFROM(ml.move[i].code) & 0x38)))
+            && ((from & 0x40) || ((from & 0x07) == (GETFROM(ml.move[i].code) & 0x07)))
+            && ((to & 0x80) || ((to & 0x38) == (GETTO(ml.move[i].code) & 0x38)))
+            && ((to & 0x40) || ((to & 0x07) == (GETTO(ml.move[i].code) & 0x07))))
         {
             // test if the move is legal; otherwise we need to search further
             if (pos->playMove(&ml.move[i]))

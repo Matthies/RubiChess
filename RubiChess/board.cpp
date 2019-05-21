@@ -2409,7 +2409,7 @@ static void waitForSearchGuide(thread **th)
 
 void engine::communicate(string inputstring)
 {
-    string fen;
+    string fen = STARTFEN;
     vector<string> moves;
     vector<string> searchmoves;
     vector<string> commandargs;
@@ -2420,7 +2420,7 @@ void engine::communicate(string inputstring)
     bool bMoves;
     thread *searchguidethread = nullptr;
     bool pendingisready = false;
-    bool pendingposition = false;
+    bool pendingposition = (inputstring == "");
     do
     {
         if (stopLevel >= ENGINESTOPIMMEDIATELY)
@@ -2595,7 +2595,7 @@ void engine::communicate(string inputstring)
                 if (commandargs[ci] == "startpos")
                 {
                     ci++;
-                    fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+                    fen = STARTFEN;
                 }
                 else if (commandargs[ci] == "fen")
                 {
@@ -2620,7 +2620,7 @@ void engine::communicate(string inputstring)
             case GO:
                 resetPonder();
                 searchmoves.clear();
-                wtime = btime = winc = binc = movestogo = mate = maxdepth = 0;
+                wtime = btime = winc = binc = movestogo = mate = maxdepth = maxnodes = 0;
                 infinite = false;
                 while (ci < cs)
                 {
@@ -2661,6 +2661,11 @@ void engine::communicate(string inputstring)
                     {
                         if (++ci < cs)
                             movestogo = stoi(commandargs[ci++]);
+                    }
+                    else if (commandargs[ci] == "nodes")
+                    {
+                        if (++ci < cs)
+                            maxnodes = stoi(commandargs[ci++]);
                     }
                     else if (commandargs[ci] == "mate")
                     {
