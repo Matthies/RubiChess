@@ -855,8 +855,8 @@ public:
 	string toString();
 	string toStringWithValue();
 	void print();
-    void sort(const unsigned int refutetarget = BOARDSIZE);
-    void sort(uint32_t hashmove, uint32_t killer1, uint32_t killer2);
+    void sort();
+    //void sort(uint32_t hashmove, uint32_t killer1, uint32_t killer2);
 };
 
 
@@ -881,7 +881,7 @@ public:
     int16_t *cmptr[CMPLIES];
 
 public:
-    void SetPreferredMoves(chessposition *p, uint16_t hshm);  // for quiescence move selector
+    void SetPreferredMoves(chessposition *p);  // for quiescence move selector
     void SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, int nmrfttarget, int excludemove);
     chessmove* next();
 };
