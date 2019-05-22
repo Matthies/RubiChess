@@ -684,7 +684,10 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
         if (fullhashmove)
         {
-            bestmove[0].code = fullhashmove;
+            if (bestmove[0].code != fullhashmove) {
+                bestmove[0].code = fullhashmove;
+                pondermove.code = 0;
+            }
             if (score > alpha) bestmovescore[0] = score;
             updatePvTable(fullhashmove, false);
             return score;
@@ -851,11 +854,12 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         {
             if (!isMultiPV)
             {
+                updatePvTable(m->code, true);
+                bestmove[0].code = pvtable[0][0];
+                pondermove.code = pvtable[0][1];
                 alpha = score;
-                bestmove[0] = *m;
                 bestmovescore[0] = score;
                 eval_type = HASHEXACT;
-                updatePvTable(m->code, true);
             }
             if (score >= beta)
             {
@@ -998,6 +1002,7 @@ static void search_gen1(searchthread *thr)
         {
             // remis via repetition or 50 moves rule
             pos->bestmove[0].code = 0;
+            pos->pondermove.code = 0;
             score = pos->bestmovescore[0] = SCOREDRAW;
             en.stopLevel = ENGINESTOPPED;
         }
@@ -1158,8 +1163,9 @@ static void search_gen1(searchthread *thr)
         if (bestthr->index)
         {
             // as the other threads may still run we cannot risk to do a getpvline on these
-            // so just copy the bestmove to this thread and do it here
+            // so just copy the bestmove and pondermove to this thread and do it here
             pos->bestmove[0] = bestthr->pos.bestmove[0];
+            pos->pondermove = bestthr->pos.pondermove;
             pos->bestmovescore[0] = bestthr->pos.bestmovescore[0];
             inWindow = 1;
             //pos->getpvline(bestthr->lastCompleteDepth, 0);
@@ -1169,6 +1175,7 @@ static void search_gen1(searchthread *thr)
 
         string strBestmove;
         string strPonder = "";
+#if 0
         chessmove bm, pm;
         bm.code = pos->pvtable[0][0];
         pm.code = pos->pvtable[0][1];
@@ -1179,12 +1186,18 @@ static void search_gen1(searchthread *thr)
                 strPonder = " ponder " + pm.toString();
         }
         else {
+#endif
+
             if (pos->bestmove[0].code)
                 strBestmove = pos->bestmove[0].toString();
             else
                 strBestmove = pos->defaultmove.toString();
-        }
-        char s[64];
+
+            if (pos->pondermove.code)
+                strPonder = " ponder " + pos->pondermove.toString();
+
+
+            char s[64];
         sprintf_s(s, "bestmove %s%s\n", strBestmove.c_str(), strPonder.c_str());
         cout << s;
 

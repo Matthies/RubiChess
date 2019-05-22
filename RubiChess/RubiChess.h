@@ -951,6 +951,7 @@ public:
     //chessmovesequencelist pvline;
     chessmove bestmove[MAXMULTIPV];
     int bestmovescore[MAXMULTIPV];
+    chessmove pondermove;
     uint32_t killer[2][MAXDEPTH];
     int16_t history[2][64][64];
     int16_t counterhistory[14][64][14*64];
