@@ -855,8 +855,11 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
             if (!isMultiPV)
             {
                 updatePvTable(m->code, true);
-                bestmove[0].code = pvtable[0][0];
-                pondermove.code = pvtable[0][1];
+                if (bestmove[0].code != pvtable[0][0])
+                {
+                    bestmove[0].code = pvtable[0][0];
+                    pondermove.code = pvtable[0][1];
+                }
                 alpha = score;
                 bestmovescore[0] = score;
                 eval_type = HASHEXACT;
@@ -1098,6 +1101,7 @@ static void search_gen1(searchthread *thr)
                     int dummystaticeval;
                     tp.probeHash(pos->hash, &score, &dummystaticeval, &mc, MAXDEPTH, alpha, beta, 0);
                     pos->bestmove[0].code = pos->shortMove2FullMove(mc);
+                    pos->pondermove.code = 0;
                 }
                     
                 // still no bestmove...
@@ -1185,19 +1189,28 @@ static void search_gen1(searchthread *thr)
             if (en.ponder && pm.code)
                 strPonder = " ponder " + pm.toString();
         }
-        else {
 #endif
 
-            if (pos->bestmove[0].code)
-                strBestmove = pos->bestmove[0].toString();
-            else
-                strBestmove = pos->defaultmove.toString();
+        if (pos->bestmove[0].code)
+            strBestmove = pos->bestmove[0].toString();
+        else
+            strBestmove = pos->defaultmove.toString();
 
+        if (en.ponder)
+        {
+            if (!pos->pondermove.code)
+            {
+                // Get the ponder move from TT
+                pos->playMove(&pos->bestmove[0]);
+                uint16_t pondershort = tp.getMoveCode(pos->hash);
+                pos->pondermove.code = pos->shortMove2FullMove(pondershort);
+                pos->unplayMove(&pos->bestmove[0]);
+            }
             if (pos->pondermove.code)
                 strPonder = " ponder " + pos->pondermove.toString();
+        }
 
-
-            char s[64];
+        char s[64];
         sprintf_s(s, "bestmove %s%s\n", strBestmove.c_str(), strPonder.c_str());
         cout << s;
 
