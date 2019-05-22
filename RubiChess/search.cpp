@@ -279,7 +279,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     }
 
 
-
     // TB
     // The test for rule50_count() == 0 is required to prevent probing in case
     // the root position is a TB position but only WDL tables are available.
@@ -926,7 +925,6 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int mpvIndex)
     char s[4096];
     chessposition *pos = &thr->pos;
     en.lastReport = msRun;
-    //string pvstring = pos->pvline.toString();
     string pvstring = pos->getPv();
     int score = pos->bestmovescore[mpvIndex];
     U64 nodes = en.getTotalNodes();
