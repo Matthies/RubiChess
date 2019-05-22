@@ -1196,7 +1196,7 @@ static void search_gen1(searchthread *thr)
                 strPonder = " ponder " + pos->pondermove.toString();
         }
 
-        cout << "bestmove " + strBestmove + strPonder;
+        cout << "bestmove " + strBestmove + strPonder + "\n";
 
         en.stopLevel = ENGINESTOPPED;
 
