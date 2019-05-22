@@ -948,7 +948,6 @@ public:
     int nullmoveside;
     int nullmoveply = 0;
     chessmovelist rootmovelist;
-    //chessmovesequencelist pvline;
     chessmove bestmove[MAXMULTIPV];
     int bestmovescore[MAXMULTIPV];
     chessmove pondermove;
@@ -1012,7 +1011,6 @@ public:
     void unplayMove(chessmove *cm);
     void playNullMove();
     void unplayNullMove();
-    //void getpvline(int depth, int pvnum);
     bool moveGivesCheck(uint32_t c);  // simple and imperfect as it doesn't handle special moves and cases (mainly to avoid pruning of important moves)
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
     uint32_t shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal

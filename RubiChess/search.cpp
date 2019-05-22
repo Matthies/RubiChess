@@ -1012,7 +1012,6 @@ static void search_gen1(searchthread *thr)
         else
         {
             score = pos->rootsearch<RT>(alpha, beta, thr->depth);
-            //printf("info string Rootsearch: alpha=%d beta=%d depth=%d score=%d bestscore[0]=%d bestscore[%d]=%d\n", alpha, beta, depth, score, pos.bestmovescore[0], en.MultiPV - 1,  pos.bestmovescore[en.MultiPV - 1]);
 
             // new aspiration window
             if (score == alpha)
@@ -1082,8 +1081,6 @@ static void search_gen1(searchthread *thr)
                             pos->bestmove[i].code = pos->shortMove2FullMove(mc);
                         }
 
-                        //pos->getpvline(thr->depth, i);
-
                         uciScore(thr, inWindow, nowtime, i);
 
                         i++;
@@ -1107,8 +1104,6 @@ static void search_gen1(searchthread *thr)
                 // still no bestmove...
                 if (!pos->bestmove[0].code && pos->rootmovelist.length > 0)
                     pos->bestmove[0].code = pos->rootmovelist.move[0].code;
-
-                //pos->getpvline(thr->depth, 0);
 
                 uciScore(thr, inWindow, nowtime, 0);
             }
@@ -1166,35 +1161,26 @@ static void search_gen1(searchthread *thr)
         }
         if (bestthr->index)
         {
-            // as the other threads may still run we cannot risk to do a getpvline on these
-            // so just copy the bestmove and pondermove to this thread and do it here
+            // copy best moves and score from best thread to thread 0
             pos->bestmove[0] = bestthr->pos.bestmove[0];
             pos->pondermove = bestthr->pos.pondermove;
             pos->bestmovescore[0] = bestthr->pos.bestmovescore[0];
             inWindow = 1;
-            //pos->getpvline(bestthr->lastCompleteDepth, 0);
         }
         if (!reportedThisDepth || bestthr->index)
             uciScore(thr, inWindow, getTime(), 0);
 
         string strBestmove;
         string strPonder = "";
-#if 0
-        chessmove bm, pm;
-        bm.code = pos->pvtable[0][0];
-        pm.code = pos->pvtable[0][1];
-        if (bm.code)
-        {
-            strBestmove = bm.toString();
-            if (en.ponder && pm.code)
-                strPonder = " ponder " + pm.toString();
-        }
-#endif
 
-        if (pos->bestmove[0].code)
-            strBestmove = pos->bestmove[0].toString();
-        else
-            strBestmove = pos->defaultmove.toString();
+        if (!pos->bestmove[0].code)
+        {
+            // Not enough time to get any bestmove? Fall back to default move
+            pos->bestmove[0] = pos->defaultmove;
+            pos->pondermove.code = 0;
+        }
+
+        strBestmove = pos->bestmove[0].toString();
 
         if (en.ponder)
         {
@@ -1210,15 +1196,12 @@ static void search_gen1(searchthread *thr)
                 strPonder = " ponder " + pos->pondermove.toString();
         }
 
-        char s[64];
-        sprintf_s(s, "bestmove %s%s\n", strBestmove.c_str(), strPonder.c_str());
-        cout << s;
+        cout << "bestmove " + strBestmove + strPonder;
 
         en.stopLevel = ENGINESTOPPED;
 
     }
 
-    //en.stopLevel = ENGINESTOPPED;
     // Remember some exit values for benchmark output
     en.benchscore = score;
     en.benchdepth = thr->depth - 1;
