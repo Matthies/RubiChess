@@ -183,7 +183,7 @@ void chessmovelist::print()
     printf("%s", toString().c_str());
 }
 
-// Sorting for normal MoveSelector
+// Sorting for MoveSelector
 void chessmovelist::sort()
 {
     for (int i = 0; i < length - 1; i++)
@@ -194,29 +194,6 @@ void chessmovelist::sort()
     }
 }
 
-#if 0
-// Sorting for evasion MoveSelector; FIXME: preparing high values for hash and killermoves is ugly
-void chessmovelist::sort(uint32_t hashmove, uint32_t killer1, uint32_t killer2)
-{
-    for (int i = 0; i < length - 1; i++)
-    {
-        if (move[i].code == hashmove)
-            move[i].value = PVVAL;
-#if 0
-        else if (move[i].code == killer1)
-            move[i].value = KILLERVAL1;
-        else if (move[i].code == killer2)
-            move[i].value = KILLERVAL2;
-#endif
-    }
-    for (int i = 0; i < length - 1; i++)
-    {
-        for (int j = i + 1; j < length; j++)
-            if (move[i].value < move[j].value)
-                swap(move[i], move[j]);
-    }
-}
-#endif
 
 chessmovesequencelist::chessmovesequencelist()
 {
@@ -2084,7 +2061,6 @@ void MoveSelector::SetPreferredMoves(chessposition *p)
     pos = p;
     hashmove.code = 0;
     killermove1.code = killermove2.code = 0;
-    refutetarget = BOARDSIZE;
     if (!p->isCheckbb)
     {
         onlyGoodCaptures = true;
@@ -2101,7 +2077,7 @@ void MoveSelector::SetPreferredMoves(chessposition *p)
 }
 
 // MoveSelector for alphabeta search
-void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, int nmrfttarget, int excludemove)
+void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, int excludemove)
 {
     pos = p;
     hashmove.code = p->shortMove2FullMove(hshm);
@@ -2109,7 +2085,6 @@ void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t k
         killermove1.code = kllm1;
     if (kllm2 != hshm)
         killermove2.code = kllm2;
-    refutetarget = nmrfttarget;
     pos->getCmptr(&cmptr[0]);
     if (!excludemove)
     {

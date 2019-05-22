@@ -220,7 +220,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     chessmove *m;
     int extendall = 0;
     int effectiveDepth;
-    unsigned int nmrefutetarget = BOARDSIZE;
     bool PVNode = (alpha != beta - 1);
 
     nodes++;
@@ -441,7 +440,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     }
 
     MoveSelector ms = {};
-    ms.SetPreferredMoves(this, hashmovecode, killer[0][ply], killer[1][ply], nmrefutetarget, excludeMove);
+    ms.SetPreferredMoves(this, hashmovecode, killer[0][ply], killer[1][ply], excludeMove);
 
     int  LegalMoves = 0;
     int quietsPlayed = 0;
