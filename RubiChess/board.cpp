@@ -36,6 +36,7 @@ U64 kingdangerMask[64][2];
 U64 fileMask[64];
 U64 rankMask[64];
 U64 betweenMask[64][64];
+U64 lineMask[64][64];
 int castleindex[64][64] = { 0 };
 U64 castlekingto[64][2] = { 0ULL };
 int castlerights[64];
@@ -765,21 +766,58 @@ bool chessposition::moveIsLegal(uint32_t c)
     int you = me ^ S2MMASK;
     int from = GETFROM(c);
     int to = GETTO(c);
-    int myKing = kingpos[me];
-    if (!isCheckbb)
-    {
-        if ((GETPIECE(c) >> 1) == KING)
-        {
-            bool legal = !(isAttacked(to));
-            return legal;
-        }
-        else
-        {
 
+    // castle moves are always legal; move generator checks for it
+    if (ISCASTLE(c))
+        return true;
+
+    if (GETEPCAPTURE(c))
+    {
+        int epfield = (from & 0x38) | (to & 0x07);
+        int pc = GETPIECE(c);
+        BitboardClear(epfield, pc ^ S2MMASK);
+        BitboardMove(from, to, pc);
+        bool legal = !isAttacked(kingpos[me]);
+        BitboardMove(to, from, pc);
+        BitboardSet(epfield, pc ^ S2MMASK);
+        if (!legal)
+            return false;
+    }
+
+    // Moving king: just check if target square is attacked
+    if ((GETPIECE(c) >> 1) == KING)
+        return !(isAttacked(to));
+
+    // Other pieces: Do they expose the king to an attacking piece?
+    if ((kingPinned[me] & BITSET(from))
+        && !(lineMask[from][to] & BITSET(kingpos[me])))
+        return false;
+
+
+    return true;
+}
+
+
+void chessposition::updatePins()
+{
+    for (int me = WHITE; me <= BLACK; me++)
+    {
+        int you = me ^ S2MMASK;
+        int k = kingpos[me];
+        kingPinned[me] = 0ULL;
+        U64 occ = occupied00[you];
+        U64 attackers = mRookAttacks[k][MAGICROOKINDEX(occ, k)] & (piece00[WROOK | you] | piece00[WQUEEN | you]);
+        attackers |= mBishopAttacks[k][MAGICBISHOPINDEX(occ, k)] & (piece00[WBISHOP | you] | piece00[WQUEEN | you]);
+        
+        while (attackers)
+        {
+            int index = pullLsb(&attackers);
+            U64 potentialPinners = betweenMask[index][k] & occupied00[me];
+            if (ONEORZERO(potentialPinners))
+                kingPinned[me] |= potentialPinners;
         }
     }
 
-    return true;
 }
 
 
@@ -1150,6 +1188,8 @@ void initBitmaphelper()
         {
             squareDistance[from][j] = max(abs(RANK(from) - RANK(j)), abs(FILE(from) - FILE(j)));
             betweenMask[from][j] = 0ULL;
+            lineMask[from][j] = 0ULL;
+            
             if (abs(FILE(from) - FILE(j)) == 1)
             {
                 neighbourfilesMask[from] |= BITSET(j);
@@ -1161,12 +1201,16 @@ void initBitmaphelper()
                 fileMask[from] |= BITSET(j);
                 for (int i = min(RANK(from), RANK(j)) + 1; i < max(RANK(from), RANK(j)); i++)
                     betweenMask[from][j] |= BITSET(INDEX(i, FILE(from)));
+                for (int i = 0; i < 8; i++)
+                    lineMask[from][j] |= BITSET(INDEX(i, FILE(from)));
             }
             if (RANK(from) == RANK(j))
             {
                 rankMask[from] |= BITSET(j);
                 for (int i = min(FILE(from), FILE(j)) + 1; i < max(FILE(from), FILE(j)); i++)
                     betweenMask[from][j] |= BITSET(INDEX(RANK(from), i));
+                for (int i = 0; i < 8; i++)
+                    lineMask[from][j] |= BITSET(INDEX(RANK(from), i));
             }
             if (from != j && abs(RANK(from) - RANK(j)) == abs(FILE(from) - FILE(j)))
             {
@@ -1174,6 +1218,14 @@ void initBitmaphelper()
                 int dy = (RANK(from) < RANK(j) ? 1 : -1);
                 for (int i = 1; FILE(from) +  i * dx != FILE(j); i++)
                     betweenMask[from][j] |= BITSET(INDEX(RANK(from) + i * dy, FILE(from) + i * dx));
+
+                for (int i = -7; i < 8; i++)
+                {
+                    int r = RANK(from) + i * dy;
+                    int f = FILE(from) + i * dx;
+                    if (r >= 0 && r < 8 && f >= 0 && f < 8)
+                        lineMask[from][j] |= BITSET(INDEX(r, f));
+                }
             }
         }
 
@@ -2054,6 +2106,8 @@ void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t k
         captures = &pos->singularcaptureslist[pos->ply];
         quiets = &pos->singularquietslist[pos->ply];
     }
+    if (p->isCheckbb)
+        state = EVASIONINITSTATE;
 }
 
 

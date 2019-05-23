@@ -118,6 +118,7 @@ void Sleep(long x);
 #define BUILD __DATE__ " " __TIME__
 
 #define BITSET(x) (1ULL << (x))
+#define ONEORZERO(x) (!((x) & ((x) - 1)))
 #ifdef _WIN32
 #define GETLSB(i,x) _BitScanForward64((DWORD*)&(i), (x))
 inline int pullLsb(unsigned long long *x) {
@@ -674,7 +675,7 @@ const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 2
 #define ISCAPTURE(x) ((x) & 0xf0000)
 #define GETPIECE(x) (((x) & 0xf0000000) >> 28)
 #define GETTACTICALVALUE(x) (materialvalue[GETCAPTURE(x) >> 1] + (ISPROMOTION(x) ? materialvalue[GETPROMOTION(x) >> 1] - materialvalue[PAWN] : 0))
-
+#define ISCASTLE(c) (((c) & 0xe0000249) == 0xc0000000)
 #define GIVECHECKFLAG 0x08000000
 #define GIVESCHECK(x) ((x) & GIVECHECKFLAG)
 
@@ -794,6 +795,8 @@ struct chessmovestack
     int halfmovescounter;
     int fullmovescounter;
     U64 isCheckbb;
+    U64 kingPinned[2];
+    U64 queenPinned[2];
     uint32_t movecode;
 };
 
@@ -933,6 +936,8 @@ public:
     int halfmovescounter;
     int fullmovescounter;
     U64 isCheckbb;
+    U64 kingPinned[2];
+    U64 queenPinned[2];
     uint32_t movecode;
 
     uint8_t mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
@@ -1009,6 +1014,7 @@ public:
     void unplayMove(chessmove *cm);
     void playNullMove();
     void unplayNullMove();
+    void updatePins();
     bool moveGivesCheck(uint32_t c);  // simple and imperfect as it doesn't handle special moves and cases (mainly to avoid pruning of important moves)
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
     bool moveIsLegal(uint32_t c);   // test if the move is legal means the moving side isn't checked after the move

@@ -154,6 +154,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         }
     }
 
+    updatePins();
     prepareStack();
 
     MoveSelector ms = {};
@@ -166,6 +167,13 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         if (!myIsCheck && patscore + materialvalue[GETCAPTURE(m->code) >> 1] + deltapruningmargin <= alpha)
             // Leave out capture that is delta-pruned
             continue;
+#if 1
+        if (!moveIsLegal(m->code))
+        {
+            //print();
+            continue;
+        }
+#endif
 
         if (playMove(m))
         {
@@ -336,6 +344,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     if (isCheckbb)
         extendall = 1;
 
+    updatePins();
     prepareStack();
 
     // get static evaluation of the position
@@ -418,6 +427,13 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         {
             if (!see(movelist->move[i].code, rbeta - staticeval))
                 continue;
+#if 0
+            if (!moveIsLegal(movelist->move[i].code))
+            {
+                //print();
+                continue;
+            }
+#endif
 
             if (playMove(&movelist->move[i]))
             {
@@ -455,11 +471,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     uint32_t quietMoves[MAXMOVELISTLENGTH];
     while ((m = ms.next()))
     {
-        if (!moveIsLegal(m->code))
-        {
-            print();
-            continue;
-        }
 #ifdef SDEBUG
         bool isDebugMove = ((debugMove.code & 0xeff) == (m->code & 0xeff));
 #endif
@@ -520,7 +531,18 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             }
         }
 
+#if 1
+        if (!moveIsLegal(m->code))
+        {
+            //print();
+            continue;
+        }
+#endif
         isLegal = playMove(m);
+        if (!isLegal) {
+            printf("ALarm. Move %s\n", m->toString().c_str());
+            print();
+        }
         if (isLegal)
         {
             LegalMoves++;
