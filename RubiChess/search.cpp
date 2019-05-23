@@ -116,9 +116,19 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     pvtable[ply][0] = 0;
 #endif
 
+    int hashscore = NOSCORE;
+    uint16_t hashmovecode = 0;
+    int staticeval = NOSCORE;
+    bool tpHit = tp.probeHash(hash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
+    if (tpHit)
+    {
+        SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from TT.", hashscore);
+        return hashscore;
+    }
+
     if (!myIsCheck)
     {
-        bestscore = patscore = S2MSIGN(state & S2MMASK) * getValue<NOTRACE>();
+        bestscore = patscore = (staticeval != NOSCORE ? staticeval : S2MSIGN(state & S2MMASK) * getValue<NOTRACE>());
         if (patscore >= beta)
         {
             SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (fail high by patscore).", patscore);
@@ -155,8 +165,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
             // Leave out capture that is delta-pruned
             continue;
 
-        bool isLegal = playMove(m);
-        if (isLegal)
+        if (playMove(m))
         {
             ms.legalmovenum++;
             score = -getQuiescence(-beta, -alpha, depth - 1);
@@ -211,7 +220,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     chessmove *m;
     int extendall = 0;
     int effectiveDepth;
-    unsigned int nmrefutetarget = BOARDSIZE;
     bool PVNode = (alpha != beta - 1);
 
     nodes++;
@@ -237,6 +245,18 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         SDEBUGPRINT(isDebugPv, debugInsert, "Draw (50 moves)");
         return SCOREDRAW;
     }
+
+
+    // Reached depth? Do a qsearch
+    if (depth <= 0)
+    {
+        // update selective depth info
+        if (seldepth < ply + 1)
+            seldepth = ply + 1;
+
+        return getQuiescence(alpha, beta, depth);
+    }
+
 
     // Get move for singularity check and change hash to seperate partial searches from full searches
     uint16_t excludeMove = excludemovestack[mstop - 1];
@@ -302,16 +322,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             }
             return score;
         }
-    }
-
-
-    if (depth <= 0)
-    {
-        // update selective depth info
-        if (seldepth < ply + 1)
-           seldepth = ply + 1;
-
-        return getQuiescence(alpha, beta, depth);
     }
 
     // Check extension
@@ -430,7 +440,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     }
 
     MoveSelector ms = {};
-    ms.SetPreferredMoves(this, hashmovecode, killer[0][ply], killer[1][ply], nmrefutetarget, excludeMove);
+    ms.SetPreferredMoves(this, hashmovecode, killer[0][ply], killer[1][ply], excludeMove);
 
     int  LegalMoves = 0;
     int quietsPlayed = 0;

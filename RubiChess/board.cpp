@@ -183,34 +183,9 @@ void chessmovelist::print()
     printf("%s", toString().c_str());
 }
 
-// Sorting for normal MoveSelector
-void chessmovelist::sort(const unsigned int refutetarget)
+// Sorting for MoveSelector
+void chessmovelist::sort()
 {
-    for (int i = 0; i < length - 1; i++)
-    {
-        if (refutetarget < BOARDSIZE && GETFROM(move[i].code) == refutetarget)
-        {
-            // moves escaping from last null move refute target better than moves with negative history 
-            move[i].value = max(0, move[i].value);
-        }
-        for (int j = i + 1; j < length; j++)
-            if (move[i].value < move[j].value)
-                swap(move[i], move[j]);
-    }
-}
-
-// Sorting for evasion MoveSelector; FIXME: preparing high values for hash and killermoves is ugly
-void chessmovelist::sort(uint32_t hashmove, uint32_t killer1, uint32_t killer2)
-{
-    for (int i = 0; i < length - 1; i++)
-    {
-        if (move[i].code == hashmove)
-            move[i].value = PVVAL;
-        else if (move[i].code == killer1)
-            move[i].value = KILLERVAL1;
-        else if (move[i].code == killer2)
-            move[i].value = KILLERVAL2;
-    }
     for (int i = 0; i < length - 1; i++)
     {
         for (int j = i + 1; j < length; j++)
@@ -2086,11 +2061,11 @@ void MoveSelector::SetPreferredMoves(chessposition *p)
     pos = p;
     hashmove.code = 0;
     killermove1.code = killermove2.code = 0;
-    refutetarget = BOARDSIZE;
     if (!p->isCheckbb)
     {
         onlyGoodCaptures = true;
-        state = TACTICALINITSTATE;
+        if (!ISTACTICAL(hashmove.code))
+            state = TACTICALINITSTATE;
     }
     else
     {
@@ -2102,7 +2077,7 @@ void MoveSelector::SetPreferredMoves(chessposition *p)
 }
 
 // MoveSelector for alphabeta search
-void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, int nmrfttarget, int excludemove)
+void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, int excludemove)
 {
     pos = p;
     hashmove.code = p->shortMove2FullMove(hshm);
@@ -2110,7 +2085,6 @@ void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t k
         killermove1.code = kllm1;
     if (kllm2 != hshm)
         killermove2.code = kllm2;
-    refutetarget = nmrfttarget;
     pos->getCmptr(&cmptr[0]);
     if (!excludemove)
     {
@@ -2175,7 +2149,7 @@ chessmove* MoveSelector::next()
         state++;
         quiets->length = CreateMovelist<QUIET>(pos, &quiets->move[0]);
         evaluateMoves<QUIET>(quiets, pos, &cmptr[0]);
-        quiets->sort(refutetarget);
+        quiets->sort();
         quietmovenum = 0;
     case QUIETSTATE:
         while (quietmovenum < quiets->length
@@ -2209,7 +2183,7 @@ chessmove* MoveSelector::next()
         state++;
         captures->length = CreateMovelist<EVASION>(pos, &captures->move[0]);
         evaluateMoves<ALL>(captures, pos, &cmptr[0]);
-        captures->sort(hashmove.code, killermove1.code, killermove2.code);
+        captures->sort();
         capturemovenum = 0;
     case EVASIONSTATE:
         if (capturemovenum < captures->length)
