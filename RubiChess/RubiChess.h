@@ -946,9 +946,9 @@ public:
     int nullmoveside;
     int nullmoveply = 0;
     chessmovelist rootmovelist;
-    chessmovesequencelist pvline;
     chessmove bestmove[MAXMULTIPV];
     int bestmovescore[MAXMULTIPV];
+    chessmove pondermove;
     uint32_t killer[2][MAXDEPTH];
     int16_t history[2][64][64];
     int16_t counterhistory[14][64][14*64];
@@ -961,8 +961,8 @@ public:
     uint16_t pvdebug[MAXMOVESEQUENCELENGTH];
     bool debugRecursive;
     bool debugOnlySubtree;
-    uint32_t pvtable[MAXDEPTH][MAXDEPTH];
 #endif
+    uint32_t pvtable[MAXDEPTH][MAXDEPTH];
     int ph; // to store the phase during different evaluation functions
     int sc; // to stor scaling factor used for evaluation
     int useTb;
@@ -1009,7 +1009,6 @@ public:
     void unplayMove(chessmove *cm);
     void playNullMove();
     void unplayNullMove();
-    void getpvline(int depth, int pvnum);
     bool moveGivesCheck(uint32_t c);  // simple and imperfect as it doesn't handle special moves and cases (mainly to avoid pruning of important moves)
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
     uint32_t shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal
@@ -1023,11 +1022,11 @@ public:
     int getQuiescence(int alpha, int beta, int depth);
     void updateHistory(uint32_t code, int16_t **cmptr, int value);
     void getCmptr(int16_t **cmptr);
+    void updatePvTable(uint32_t movecode, bool recursive);
+    string getPv();
     int getHistory(uint32_t code, int16_t **cmptr);
 
 #ifdef SDEBUG
-    void updatePvTable(uint32_t movecode);
-    string getPv();
     bool triggerDebug(chessmove* nextmove);
     void sdebug(int indent, const char* format, ...);
 #endif
