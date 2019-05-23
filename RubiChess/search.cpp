@@ -455,6 +455,11 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     uint32_t quietMoves[MAXMOVELISTLENGTH];
     while ((m = ms.next()))
     {
+        if (!moveIsLegal(m->code))
+        {
+            print();
+            continue;
+        }
 #ifdef SDEBUG
         bool isDebugMove = ((debugMove.code & 0xeff) == (m->code & 0xeff));
 #endif

@@ -759,6 +759,30 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
 }
 
 
+bool chessposition::moveIsLegal(uint32_t c)
+{
+    int me = state & S2MMASK;
+    int you = me ^ S2MMASK;
+    int from = GETFROM(c);
+    int to = GETTO(c);
+    int myKing = kingpos[me];
+    if (!isCheckbb)
+    {
+        if ((GETPIECE(c) >> 1) == KING)
+        {
+            bool legal = !(isAttacked(to));
+            return legal;
+        }
+        else
+        {
+
+        }
+    }
+
+    return true;
+}
+
+
 bool chessposition::moveGivesCheck(uint32_t c)
 {
     int pc = GETPIECE(c);

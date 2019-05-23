@@ -1011,6 +1011,7 @@ public:
     void unplayNullMove();
     bool moveGivesCheck(uint32_t c);  // simple and imperfect as it doesn't handle special moves and cases (mainly to avoid pruning of important moves)
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
+    bool moveIsLegal(uint32_t c);   // test if the move is legal means the moving side isn't checked after the move
     uint32_t shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal
     template <EvalType Et> int getPositionValue();
     template <EvalType Et> int getPawnAndKingValue(pawnhashentry **entry);
