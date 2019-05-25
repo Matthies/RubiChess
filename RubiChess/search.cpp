@@ -175,8 +175,9 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
             continue;
         }
 #endif
+        playMove(m);
 
-        if (playMove(m))
+        if (true)
         {
             ms.legalmovenum++;
             score = -getQuiescence(-beta, -alpha, depth - 1);
@@ -428,13 +429,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         {
             if (!see(movelist->move[i].code, rbeta - staticeval))
                 continue;
-#if 1
-            if (!moveIsLegal(movelist->move[i].code))
-            {
-                //print();
-                continue;
-            }
-#endif
 
             if (playMove(&movelist->move[i]))
             {
@@ -539,12 +533,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             continue;
         }
 #endif
-        isLegal = playMove(m);
-        if (!isLegal) {
-            printf("ALarm. Move %s\n", m->toString().c_str());
-            print();
-        }
-        if (isLegal)
+        playMove(m);
+
+        if (true/*isLegal*/)
         {
             LegalMoves++;
 
