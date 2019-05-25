@@ -128,6 +128,8 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         return hashscore;
     }
 
+    updatePins();
+
     if (!myIsCheck)
     {
         bestscore = patscore = (staticeval != NOSCORE ? staticeval : S2MSIGN(state & S2MMASK) * getValue<NOTRACE>());
@@ -154,7 +156,6 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         }
     }
 
-    updatePins();
     prepareStack();
 
     MoveSelector ms = {};
@@ -427,7 +428,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         {
             if (!see(movelist->move[i].code, rbeta - staticeval))
                 continue;
-#if 0
+#if 1
             if (!moveIsLegal(movelist->move[i].code))
             {
                 //print();
