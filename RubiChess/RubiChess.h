@@ -250,7 +250,7 @@ typedef const int32_t eval;
 #define NUMOFEVALPARAMS (6 + 2*5*4 + 5 + 4*8 + 2*8 + 8 + 2 + 5*6 + 2 + 4*28 + 2 + 7 + 1 + 7 + 6 + 6 + 2 + 7*64)
 struct evalparamset {
     // Powered by Laser games :-)
-    eval eKingpinpenalty[6] = {  VALUE(   0,   0), VALUE(   0,   0), VALUE( -32, -92), VALUE(   1,-104), VALUE( -47, -43), VALUE( -44, -54)  };
+    eval eKingpinpenalty[6] = {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  38, -74), VALUE(  65, -61), VALUE( -29,  68), VALUE( -44, 163)  };
     eval ePawnstormblocked[4][5] = {
         {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  -6,  -4), VALUE(  26, -11), VALUE(  30, -11)  },
         {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  -3, -13), VALUE(  24, -19), VALUE(   8,  -8)  },
@@ -291,22 +291,22 @@ struct evalparamset {
     eval eBackwardpawnpenalty =  VALUE( -10, -15);
     eval eDoublebishopbonus =  VALUE(  56,  38);
     eval eMobilitybonus[4][28] = {
-        {  VALUE(  14, -90), VALUE(  35, -26), VALUE(  49,  -3), VALUE(  55,  10), VALUE(  63,  20), VALUE(  69,  32), VALUE(  75,  32), VALUE(  82,  32),
-           VALUE(  84,  22), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
+        {  VALUE(  16, -90), VALUE(  38, -26), VALUE(  51,   1), VALUE(  57,  13), VALUE(  64,  27), VALUE(  71,  37), VALUE(  77,  36), VALUE(  84,  36),
+           VALUE(  86,  30), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
-        {  VALUE(  19, -32), VALUE(  32,  -8), VALUE(  50,  12), VALUE(  57,  19), VALUE(  67,  32), VALUE(  74,  33), VALUE(  79,  38), VALUE(  79,  46),
-           VALUE(  81,  47), VALUE(  81,  48), VALUE(  83,  45), VALUE(  81,  39), VALUE(  74,  51), VALUE(  70,  27), VALUE(   0,   0), VALUE(   0,   0),
+        {  VALUE(  21, -25), VALUE(  34,  -6), VALUE(  51,  13), VALUE(  59,  23), VALUE(  69,  34), VALUE(  75,  40), VALUE(  81,  43), VALUE(  81,  50),
+           VALUE(  84,  51), VALUE(  83,  55), VALUE(  85,  52), VALUE(  81,  47), VALUE(  72,  59), VALUE(  72,  31), VALUE(   0,   0), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
-        {  VALUE( -60,  10), VALUE(  13,   0), VALUE(  30,  48), VALUE(  33,  63), VALUE(  35,  73), VALUE(  37,  82), VALUE(  39,  88), VALUE(  46,  89),
-           VALUE(  47,  92), VALUE(  49, 102), VALUE(  52, 103), VALUE(  48, 108), VALUE(  47, 109), VALUE(  48, 111), VALUE(  45, 110), VALUE(   0,   0),
+        {  VALUE( -57,  11), VALUE(  14,  17), VALUE(  31,  57), VALUE(  34,  70), VALUE(  36,  82), VALUE(  38,  90), VALUE(  40,  92), VALUE(  46,  96),
+           VALUE(  47, 101), VALUE(  50, 111), VALUE(  54, 109), VALUE(  50, 115), VALUE(  49, 118), VALUE(  50, 116), VALUE(  44, 116), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
-        {  VALUE(-4097,  83), VALUE(  12,-166), VALUE(  -3,  -5), VALUE(   3,  40), VALUE(   4,  80), VALUE(   3, 138), VALUE(   5, 154), VALUE(  10, 158),
-           VALUE(   9, 182), VALUE(  14, 170), VALUE(  13, 200), VALUE(  16, 203), VALUE(  16, 208), VALUE(  18, 217), VALUE(  16, 235), VALUE(  19, 238),
-           VALUE(  19, 239), VALUE(  21, 237), VALUE(  17, 243), VALUE(  10, 260), VALUE(  45, 232), VALUE(  67, 222), VALUE(  71, 224), VALUE(  84, 211),
-           VALUE(  69, 248), VALUE( 109, 216), VALUE( 106, 200), VALUE( 114, 189)  }
+        {  VALUE(-4097,  83), VALUE(  13,-157), VALUE(  -2,  31), VALUE(   3,  75), VALUE(   5,  94), VALUE(   4, 152), VALUE(   6, 161), VALUE(  11, 177),
+           VALUE(  10, 192), VALUE(  15, 187), VALUE(  14, 212), VALUE(  17, 213), VALUE(  16, 227), VALUE(  18, 229), VALUE(  17, 242), VALUE(  19, 251),
+           VALUE(  20, 253), VALUE(  21, 256), VALUE(  18, 263), VALUE(  13, 270), VALUE(  45, 244), VALUE(  67, 233), VALUE(  72, 241), VALUE(  80, 230),
+           VALUE(  69, 264), VALUE( 108, 231), VALUE( 107, 230), VALUE( 114, 198)  }
     };
     eval eSlideronfreefilebonus[2] = {  VALUE(  21,   7), VALUE(  43,   1)  };
     eval eMaterialvalue[7] = {  VALUE(   0,   0), VALUE( 100, 100), VALUE( 314, 314), VALUE( 314, 314), VALUE( 483, 483), VALUE( 913, 913), VALUE(32509,32509)  };

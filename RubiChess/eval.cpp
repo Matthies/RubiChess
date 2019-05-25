@@ -433,13 +433,6 @@ int chessposition::getPositionValue()
             result += EVAL(eps.eMaterialvalue[p], S2MSIGN(me));
             if (bTrace) te.material[me] += EVAL(eps.ePsqt[p][psqtindex], S2MSIGN(me)) + EVAL(eps.eMaterialvalue[p], S2MSIGN(me));
 
-            // Penalty for a piece pinning the king
-            if (kingPinned[me] & (BITSET(index)))
-            {
-                result += EVAL(eps.eKingpinpenalty[p], S2MSIGN(me));
-                if (bTrace) te.mobility[me] += EVAL(eps.eKingpinpenalty[p], S2MSIGN(me));
-            }
-
             U64 attack = 0ULL;
             if (shifting[p] & 0x2) // rook and queen
             {
@@ -465,8 +458,17 @@ int chessposition::getPositionValue()
 
             // mobility bonus
             U64 mobility = attack & goodMobility[me];
-            result += EVAL(eps.eMobilitybonus[p - 2][POPCOUNT(mobility)], S2MSIGN(me));
-            if (bTrace) te.mobility[me] += EVAL(eps.eMobilitybonus[p - 2][POPCOUNT(mobility)], S2MSIGN(me));
+
+            // Penalty for a piece pinning the king
+            if (kingPinned[me] & (BITSET(index)))
+            {
+                result += EVAL(eps.eKingpinpenalty[p], S2MSIGN(me));
+                if (bTrace) te.mobility[me] += EVAL(eps.eKingpinpenalty[p], S2MSIGN(me));
+            }
+            else {
+                result += EVAL(eps.eMobilitybonus[p - 2][POPCOUNT(mobility)], S2MSIGN(me));
+                if (bTrace) te.mobility[me] += EVAL(eps.eMobilitybonus[p - 2][POPCOUNT(mobility)], S2MSIGN(me));
+            }
 
             // king danger
             if (mobility & kingdangerarea[you])
