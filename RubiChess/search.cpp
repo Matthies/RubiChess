@@ -128,8 +128,6 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         return hashscore;
     }
 
-    updatePins();
-
     if (!myIsCheck)
     {
         bestscore = patscore = (staticeval != NOSCORE ? staticeval : S2MSIGN(state & S2MMASK) * getValue<NOTRACE>());
@@ -168,13 +166,6 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         if (!myIsCheck && patscore + materialvalue[GETCAPTURE(m->code) >> 1] + deltapruningmargin <= alpha)
             // Leave out capture that is delta-pruned
             continue;
-#if 0
-        if (!moveIsLegal(m->code))
-        {
-            //print();
-            continue;
-        }
-#endif
 
         if (playMove(m))
         {
@@ -344,7 +335,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     if (isCheckbb)
         extendall = 1;
 
-    updatePins();
     prepareStack();
 
     // get static evaluation of the position
@@ -523,14 +513,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 extendMove = 1;
             }
         }
-
-#if 0
-        if (!moveIsLegal(m->code))
-        {
-            //print();
-            continue;
-        }
-#endif
 
         if (playMove(m))
         {

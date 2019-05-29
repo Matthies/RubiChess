@@ -459,13 +459,14 @@ int chessposition::getPositionValue()
             // mobility bonus
             U64 mobility = attack & goodMobility[me];
 
-            // Penalty for a piece pinning the king
+            // Penalty for a piece pinned in front of the king
             if (kingPinned[me] & (BITSET(index)))
             {
                 result += EVAL(eps.eKingpinpenalty[p], S2MSIGN(me));
                 if (bTrace) te.mobility[me] += EVAL(eps.eKingpinpenalty[p], S2MSIGN(me));
             }
             else {
+                // Piece is not pinned; give him some mobility bonus
                 result += EVAL(eps.eMobilitybonus[p - 2][POPCOUNT(mobility)], S2MSIGN(me));
                 if (bTrace) te.mobility[me] += EVAL(eps.eMobilitybonus[p - 2][POPCOUNT(mobility)], S2MSIGN(me));
             }
@@ -581,6 +582,7 @@ int chessposition::getValue()
     resetTuner();
 #endif
     ph = phase();
+    updatePins();
     int positionscore = getPositionValue<Et>();
     int sideToScale = positionscore > SCOREDRAW ? WHITE : BLACK;
     sc = getScaling(sideToScale);

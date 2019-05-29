@@ -760,44 +760,6 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
 }
 
 
-bool chessposition::moveIsLegal(uint32_t c)
-{
-    int me = state & S2MMASK;
-    int you = me ^ S2MMASK;
-    int from = GETFROM(c);
-    int to = GETTO(c);
-
-    // castle moves are always legal; move generator checks for it
-    if (ISCASTLE(c))
-        return true;
-
-    if (GETEPCAPTURE(c))
-    {
-        int epfield = (from & 0x38) | (to & 0x07);
-        int pc = GETPIECE(c);
-        BitboardClear(epfield, pc ^ S2MMASK);
-        BitboardMove(from, to, pc);
-        bool legal = !isAttacked(kingpos[me]);
-        BitboardMove(to, from, pc);
-        BitboardSet(epfield, pc ^ S2MMASK);
-        if (!legal)
-            return false;
-    }
-
-    // Moving king: just check if target square is attacked
-    if ((GETPIECE(c) >> 1) == KING)
-        return !(isAttacked(to));
-
-    // Other pieces: Do they expose the king to an attacking piece?
-    if ((kingPinned[me] & BITSET(from))
-        && !(lineMask[from][to] & BITSET(kingpos[me])))
-        return false;
-
-
-    return true;
-}
-
-
 void chessposition::updatePins()
 {
     for (int me = WHITE; me <= BLACK; me++)
@@ -817,7 +779,6 @@ void chessposition::updatePins()
                 kingPinned[me] |= potentialPinners;
         }
     }
-
 }
 
 

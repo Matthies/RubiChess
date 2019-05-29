@@ -137,7 +137,6 @@ long long engine::perft(int depth, bool dotests)
     else
         movelist.length = rootpos->getMoves(&movelist.move[0]);
 
-    rootpos->updatePins();
     rootpos->prepareStack();
 
     //printf("Path: %s \nMovelist : %s\n", p->actualpath.toString().c_str(), movelist->toString().c_str());
