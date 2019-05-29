@@ -148,25 +148,11 @@ long long engine::perft(int depth, bool dotests)
     {
         for (int i = 0; i < movelist.length; i++)
         {
-            bool legal = rootpos->moveIsLegal(movelist.move[i].code);
             if (rootpos->playMove(&movelist.move[i]))
             {
                 //printf("%s ok ", movelist->move[i].toString().c_str());
                 retval++;
                 rootpos->unplayMove(&movelist.move[i]);
-                if (!legal) {
-                    printf("Alarm1");
-                    rootpos->print();
-                    printf("Move %s wurde falsch als nicht legal erkannt.\n", movelist.move[i].toString().c_str());
-
-                }
-            }
-            else {
-                if (legal) {
-                    printf("Alarm2");
-                    rootpos->print();
-                    printf("Move %s wurde falsch als legal erkannt.\n", movelist.move[i].toString().c_str());
-                }
             }
         }
     }

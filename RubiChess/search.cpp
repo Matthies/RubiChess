@@ -168,16 +168,15 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         if (!myIsCheck && patscore + materialvalue[GETCAPTURE(m->code) >> 1] + deltapruningmargin <= alpha)
             // Leave out capture that is delta-pruned
             continue;
-#if 1
+#if 0
         if (!moveIsLegal(m->code))
         {
             //print();
             continue;
         }
 #endif
-        playMove(m);
 
-        if (true)
+        if (playMove(m))
         {
             ms.legalmovenum++;
             score = -getQuiescence(-beta, -alpha, depth - 1);
@@ -226,7 +225,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     int hashscore = NOSCORE;
     uint16_t hashmovecode = 0;
     int staticeval = NOSCORE;
-    bool isLegal;
     int bestscore = NOSCORE;
     uint32_t bestcode = 0;
     int eval_type = HASHALPHA;
@@ -526,16 +524,15 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             }
         }
 
-#if 1
+#if 0
         if (!moveIsLegal(m->code))
         {
             //print();
             continue;
         }
 #endif
-        playMove(m);
 
-        if (true/*isLegal*/)
+        if (playMove(m))
         {
             LegalMoves++;
 
