@@ -1058,7 +1058,8 @@ public:
     U64 endtime2; // time to send STOPPIMMEDIATELY signal
     U64 frequency;
     float fh, fhf;
-    int wtime, btime, winc, binc, movestogo, maxnodes, mate, movetime, maxdepth;
+    int wtime, btime, winc, binc, movestogo, mate, movetime, maxdepth;
+    U64 maxnodes;
     bool infinite;
     bool debug = false;
     bool moveoutput;

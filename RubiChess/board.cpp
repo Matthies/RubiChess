@@ -2522,7 +2522,8 @@ void engine::communicate(string inputstring)
             case GO:
                 resetPonder();
                 searchmoves.clear();
-                wtime = btime = winc = binc = movestogo = mate = maxdepth = maxnodes = 0;
+                wtime = btime = winc = binc = movestogo = mate = maxdepth = 0;
+                maxnodes = 0ULL;
                 infinite = false;
                 while (ci < cs)
                 {
@@ -2567,7 +2568,7 @@ void engine::communicate(string inputstring)
                     else if (commandargs[ci] == "nodes")
                     {
                         if (++ci < cs)
-                            maxnodes = stoi(commandargs[ci++]);
+                            maxnodes = stoull(commandargs[ci++]);
                     }
                     else if (commandargs[ci] == "mate")
                     {
