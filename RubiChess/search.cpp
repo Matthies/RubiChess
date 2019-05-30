@@ -216,7 +216,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     int hashscore = NOSCORE;
     uint16_t hashmovecode = 0;
     int staticeval = NOSCORE;
-    bool isLegal;
     int bestscore = NOSCORE;
     uint32_t bestcode = 0;
     int eval_type = HASHALPHA;
@@ -515,8 +514,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             }
         }
 
-        isLegal = playMove(m);
-        if (isLegal)
+        if (playMove(m))
         {
             LegalMoves++;
 

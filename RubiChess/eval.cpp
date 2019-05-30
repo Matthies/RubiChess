@@ -97,10 +97,13 @@ static void registertuner(chessposition *pos, eval *e, string name, int index1, 
 void registeralltuners(chessposition *pos)
 {
     int i, j;
-    bool tuneIt = false;
+    bool tuneIt = true;
 
     pos->tps.count = 0;
 
+    for (i = 0; i < 6; i++)
+        registertuner(pos, &eps.eKingpinpenalty[i], "eKingpinpenalty", i, 6, 0, 0, tuneIt && (i > PAWN));
+    tuneIt = false;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 5; j++)
             registertuner(pos, &eps.ePawnstormblocked[i][j], "ePawnstormblocked", j, 5, i, 4, tuneIt);
@@ -127,7 +130,7 @@ void registeralltuners(chessposition *pos)
     registertuner(pos, &eps.eIsolatedpawnpenalty, "eIsolatedpawnpenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eDoublepawnpenalty, "eDoublepawnpenalty", 0, 0, 0, 0, tuneIt);
 
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 6; i++)
         for (j = 0; j < 5; j++)
             registertuner(pos, &eps.eConnectedbonus[i][j], "eConnectedbonus", j, 5, i, 6, tuneIt);
@@ -136,7 +139,7 @@ void registeralltuners(chessposition *pos)
     tuneIt = false;
     registertuner(pos, &eps.eDoublebishopbonus, "eDoublebishopbonus", 0, 0, 0, 0, tuneIt);
 
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 28; j++)
             registertuner(pos, &eps.eMobilitybonus[i][j], "eMobilitybonus", j, 28, i, 4, tuneIt && (j < maxmobility[i]));
@@ -455,8 +458,18 @@ int chessposition::getPositionValue()
 
             // mobility bonus
             U64 mobility = attack & goodMobility[me];
-            result += EVAL(eps.eMobilitybonus[p - 2][POPCOUNT(mobility)], S2MSIGN(me));
-            if (bTrace) te.mobility[me] += EVAL(eps.eMobilitybonus[p - 2][POPCOUNT(mobility)], S2MSIGN(me));
+
+            // Penalty for a piece pinned in front of the king
+            if (kingPinned[me] & (BITSET(index)))
+            {
+                result += EVAL(eps.eKingpinpenalty[p], S2MSIGN(me));
+                if (bTrace) te.mobility[me] += EVAL(eps.eKingpinpenalty[p], S2MSIGN(me));
+            }
+            else {
+                // Piece is not pinned; give him some mobility bonus
+                result += EVAL(eps.eMobilitybonus[p - 2][POPCOUNT(mobility)], S2MSIGN(me));
+                if (bTrace) te.mobility[me] += EVAL(eps.eMobilitybonus[p - 2][POPCOUNT(mobility)], S2MSIGN(me));
+            }
 
             // king danger
             if (mobility & kingdangerarea[you])
@@ -569,6 +582,7 @@ int chessposition::getValue()
     resetTuner();
 #endif
     ph = phase();
+    updatePins();
     int positionscore = getPositionValue<Et>();
     int sideToScale = positionscore > SCOREDRAW ? WHITE : BLACK;
     sc = getScaling(sideToScale);

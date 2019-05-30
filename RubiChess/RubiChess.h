@@ -118,6 +118,7 @@ void Sleep(long x);
 #define BUILD __DATE__ " " __TIME__
 
 #define BITSET(x) (1ULL << (x))
+#define ONEORZERO(x) (!((x) & ((x) - 1)))
 #ifdef _WIN32
 #define GETLSB(i,x) _BitScanForward64((DWORD*)&(i), (x))
 inline int pullLsb(unsigned long long *x) {
@@ -246,9 +247,10 @@ typedef const int32_t eval;
 
 #define TAPEREDANDSCALEDEVAL(s, p, c) ((GETMGVAL(s) * (256 - (p)) + GETEGVAL(s) * (p) * (c) / SCALE_NORMAL) / 256)
 
-#define NUMOFEVALPARAMS (2*5*4 + 5 + 4*8 + 2*8 + 8 + 2 + 5*6 + 2 + 4*28 + 2 + 7 + 1 + 7 + 6 + 6 + 2 + 7*64)
+#define NUMOFEVALPARAMS (6 + 2*5*4 + 5 + 4*8 + 2*8 + 8 + 2 + 5*6 + 2 + 4*28 + 2 + 7 + 1 + 7 + 6 + 6 + 2 + 7*64)
 struct evalparamset {
     // Powered by Laser games :-)
+    eval eKingpinpenalty[6] = {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  38, -74), VALUE(  65, -61), VALUE( -29,  68), VALUE( -44, 163)  };
     eval ePawnstormblocked[4][5] = {
         {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  -6,  -4), VALUE(  26, -11), VALUE(  30, -11)  },
         {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  -3, -13), VALUE(  24, -19), VALUE(   8,  -8)  },
@@ -289,22 +291,22 @@ struct evalparamset {
     eval eBackwardpawnpenalty =  VALUE( -10, -15);
     eval eDoublebishopbonus =  VALUE(  56,  38);
     eval eMobilitybonus[4][28] = {
-        {  VALUE(  15, -97), VALUE(  35, -30), VALUE(  48,  -9), VALUE(  54,   2), VALUE(  60,  15), VALUE(  67,  27), VALUE(  73,  27), VALUE(  80,  24),
-           VALUE(  83,  17), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
+        {  VALUE(  16, -90), VALUE(  38, -26), VALUE(  51,   1), VALUE(  57,  13), VALUE(  64,  27), VALUE(  71,  37), VALUE(  77,  36), VALUE(  84,  36),
+           VALUE(  86,  30), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
-        {  VALUE(  19, -46), VALUE(  31, -19), VALUE(  48,   3), VALUE(  54,  13), VALUE(  66,  21), VALUE(  72,  27), VALUE(  77,  31), VALUE(  77,  37),
-           VALUE(  79,  39), VALUE(  79,  41), VALUE(  79,  38), VALUE(  79,  32), VALUE(  75,  42), VALUE(  75,  20), VALUE(   0,   0), VALUE(   0,   0),
+        {  VALUE(  21, -25), VALUE(  34,  -6), VALUE(  51,  13), VALUE(  59,  23), VALUE(  69,  34), VALUE(  75,  40), VALUE(  81,  43), VALUE(  81,  50),
+           VALUE(  84,  51), VALUE(  83,  55), VALUE(  85,  52), VALUE(  81,  47), VALUE(  72,  59), VALUE(  72,  31), VALUE(   0,   0), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
-        {  VALUE( -60,  13), VALUE(  14,   5), VALUE(  30,  41), VALUE(  33,  54), VALUE(  34,  65), VALUE(  36,  70), VALUE(  38,  74), VALUE(  44,  75),
-           VALUE(  46,  82), VALUE(  48,  93), VALUE(  50,  92), VALUE(  48,  95), VALUE(  46, 100), VALUE(  48,  98), VALUE(  44,  98), VALUE(   0,   0),
+        {  VALUE( -57,  11), VALUE(  14,  17), VALUE(  31,  57), VALUE(  34,  70), VALUE(  36,  82), VALUE(  38,  90), VALUE(  40,  92), VALUE(  46,  96),
+           VALUE(  47, 101), VALUE(  50, 111), VALUE(  54, 109), VALUE(  50, 115), VALUE(  49, 118), VALUE(  50, 116), VALUE(  44, 116), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
-        {  VALUE(-4097,  83), VALUE(   7,-166), VALUE(  -3,  -7), VALUE(   1,  34), VALUE(   1,  58), VALUE(   0, 125), VALUE(   2, 134), VALUE(   7, 128),
-           VALUE(   7, 150), VALUE(  13, 141), VALUE(  14, 163), VALUE(  16, 166), VALUE(  17, 173), VALUE(  18, 189), VALUE(  15, 206), VALUE(  20, 206),
-           VALUE(  20, 217), VALUE(  22, 211), VALUE(  19, 218), VALUE(  14, 232), VALUE(  49, 201), VALUE(  71, 194), VALUE(  76, 198), VALUE(  83, 187),
-           VALUE(  72, 218), VALUE( 118, 187), VALUE( 102, 190), VALUE(  98, 190)  }
+        {  VALUE(-4097,  83), VALUE(  13,-157), VALUE(  -2,  31), VALUE(   3,  75), VALUE(   5,  94), VALUE(   4, 152), VALUE(   6, 161), VALUE(  11, 177),
+           VALUE(  10, 192), VALUE(  15, 187), VALUE(  14, 212), VALUE(  17, 213), VALUE(  16, 227), VALUE(  18, 229), VALUE(  17, 242), VALUE(  19, 251),
+           VALUE(  20, 253), VALUE(  21, 256), VALUE(  18, 263), VALUE(  13, 270), VALUE(  45, 244), VALUE(  67, 233), VALUE(  72, 241), VALUE(  80, 230),
+           VALUE(  69, 264), VALUE( 108, 231), VALUE( 107, 230), VALUE( 114, 198)  }
     };
     eval eSlideronfreefilebonus[2] = {  VALUE(  21,   7), VALUE(  43,   1)  };
     eval eMaterialvalue[7] = {  VALUE(   0,   0), VALUE( 100, 100), VALUE( 314, 314), VALUE( 314, 314), VALUE( 483, 483), VALUE( 913, 913), VALUE(32509,32509)  };
@@ -674,7 +676,7 @@ const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 2
 #define ISCAPTURE(x) ((x) & 0xf0000)
 #define GETPIECE(x) (((x) & 0xf0000000) >> 28)
 #define GETTACTICALVALUE(x) (materialvalue[GETCAPTURE(x) >> 1] + (ISPROMOTION(x) ? materialvalue[GETPROMOTION(x) >> 1] - materialvalue[PAWN] : 0))
-
+#define ISCASTLE(c) (((c) & 0xe0000249) == 0xc0000000)
 #define GIVECHECKFLAG 0x08000000
 #define GIVESCHECK(x) ((x) & GIVECHECKFLAG)
 
@@ -922,6 +924,7 @@ public:
     U64 occupied00[2];
     U64 attackedBy2[2];
     U64 attackedBy[2][7];
+    U64 kingPinned[2];
 
     // The following block is mapped/copied to the movestack, so its important to keep the order
     int state;
@@ -1010,6 +1013,7 @@ public:
     void unplayMove(chessmove *cm);
     void playNullMove();
     void unplayNullMove();
+    void updatePins();
     bool moveGivesCheck(uint32_t c);  // simple and imperfect as it doesn't handle special moves and cases (mainly to avoid pruning of important moves)
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
     uint32_t shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal
