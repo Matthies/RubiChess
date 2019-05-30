@@ -948,6 +948,7 @@ public:
     chessmovelist rootmovelist;
     chessmove bestmove[MAXMULTIPV];
     int bestmovescore[MAXMULTIPV];
+    int lastbestmovescore;
     chessmove pondermove;
     uint32_t killer[2][MAXDEPTH];
     int16_t history[2][64][64];

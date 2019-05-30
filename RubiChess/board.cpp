@@ -2440,6 +2440,7 @@ void engine::communicate(string inputstring)
             case UCINEWGAME:
                 // invalidate hash
                 tp.clean();
+                sthread[0].pos.lastbestmovescore = NOSCORE;
                 break;
             case SETOPTION:
                 if (en.stopLevel < ENGINESTOPPED)
