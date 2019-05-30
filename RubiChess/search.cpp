@@ -1051,7 +1051,7 @@ static void search_gen1(searchthread *thr)
                     // bench mode reached needed score
                     en.stopLevel = ENGINEWANTSTOP;
                 }
-                else {
+                else if (thr->depth > 4) {
                     // next depth with new aspiration window
                     deltaalpha = 8;
                     deltabeta = 8;
