@@ -69,7 +69,7 @@ PieceType GetPieceType(char c)
 }
 
 
-char PieceChar(PieceCode c)
+char PieceChar(PieceCode c, bool lower = false)
 {
     PieceType p = (PieceType)(c >> 1);
     int color = (c & 1);
@@ -98,7 +98,7 @@ char PieceChar(PieceCode c)
         o = ' ';
         break;
     }
-    if (!color)
+    if (!lower && !color)
         o = (char)(o + ('A' - 'a'));
     return o;
 }
@@ -144,7 +144,7 @@ string chessmove::toString()
     to = GETTO(code);
     promotion = GETPROMOTION(code);
 
-    sprintf_s(s, "%c%d%c%d%c", (from & 0x7) + 'a', ((from >> 3) & 0x7) + 1, (to & 0x7) + 'a', ((to >> 3) & 0x7) + 1, PieceChar(promotion));
+    sprintf_s(s, "%c%d%c%d%c", (from & 0x7) + 'a', ((from >> 3) & 0x7) + 1, (to & 0x7) + 'a', ((to >> 3) & 0x7) + 1, PieceChar(promotion, true));
     return s;
 }
 
