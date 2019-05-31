@@ -436,7 +436,7 @@ static void printTunedParameters(chessposition *pos)
 int tuningratio = 1;
 
 char *texelpts = NULL;
-int texelptsnum;
+U64 texelptsnum;
 
 
 static int getGradientValue(struct tuner *tn, positiontuneset *p, evalparam *e)
@@ -823,14 +823,14 @@ static void collectTuners(chessposition *pos, tunerpool *pool, tuner **freeTuner
                 if (tn->ev[pi].type == 0 &&  tn->ev[pi] != *pos->tps.ev[pi]
                     || tn->ev[pi].type == 1 && tn->ev[pi] != *pos->tps.ev[pi])
                 {
-                    printf("%2d %4d  %7d   %40s  %0.10f  %s  -> %s\n", i, pi, pos->tps.used[pi], nameTunedParameter(pos, pi).c_str(), tn->error,
+                    printf("%2d %4d  %9lld   %40s  %0.10f  %s  -> %s\n", i, pi, pos->tps.used[pi], nameTunedParameter(pos, pi).c_str(), tn->error,
                         getValueStringValue(pos->tps.ev[pi]).c_str(),
                         getValueStringValue(&(tn->ev[pi])).c_str());
                     pool->lastImproved = pi;
                     *pos->tps.ev[pi] = tn->ev[pi];
                 }
                 else {
-                    printf("%2d %4d  %7d   %40s  %0.10f  %s  constant\n", i, pi, pos->tps.used[pi], nameTunedParameter(pos, pi).c_str(), tn->error,
+                    printf("%2d %4d  %9lld   %40s  %0.10f  %s  constant\n", i, pi, pos->tps.used[pi], nameTunedParameter(pos, pi).c_str(), tn->error,
                         getValueStringValue(&(tn->ev[pi])).c_str());
                 }
             }
@@ -911,6 +911,13 @@ void TexelTune(string fenfilename)
                 break;
             if (!pos.tps.tune[i])
                 continue;
+            if (pos.tps.used[i] * 100000 / texelptsnum < 1)
+            {
+                printf("   %4d  %9lld   %40s   %s  canceled, too few positions in testset\n", i, pos.tps.used[i],
+                    nameTunedParameter(&pos, i).c_str(),
+                    getValueStringValue(pos.tps.ev[i]).c_str());
+                continue;
+            }
 
             tuner *tn;
 

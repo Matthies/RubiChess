@@ -247,7 +247,6 @@ typedef const int32_t eval;
 
 #define TAPEREDANDSCALEDEVAL(s, p, c) ((GETMGVAL(s) * (256 - (p)) + GETEGVAL(s) * (p) * (c) / SCALE_NORMAL) / 256)
 
-#define NUMOFEVALPARAMS (6 + 2*5*4 + 5 + 4*8 + 2*8 + 8 + 2 + 5*6 + 2 + 4*28 + 2 + 7 + 1 + 7 + 6 + 6 + 2 + 7*64)
 struct evalparamset {
     // Powered by Laser games :-)
     eval eKingpinpenalty[6] = {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  38, -74), VALUE(  65, -61), VALUE( -29,  68), VALUE( -44, 163)  };
@@ -379,6 +378,8 @@ struct evalparamset {
 
 #ifdef EVALTUNE
 
+#define NUMOFEVALPARAMS (sizeof(evalparamset) / sizeof(eval))
+
 struct evalparam {
     uint16_t index;
     int16_t g[2];
@@ -400,7 +401,7 @@ struct tuneparamselection {
     int bound1[NUMOFEVALPARAMS];
     int index2[NUMOFEVALPARAMS];
     int bound2[NUMOFEVALPARAMS];
-    int used[NUMOFEVALPARAMS];
+    U64 used[NUMOFEVALPARAMS];
 
     int count;
 };
