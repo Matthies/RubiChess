@@ -36,6 +36,7 @@ U64 kingdangerMask[64][2];
 U64 fileMask[64];
 U64 rankMask[64];
 U64 betweenMask[64][64];
+U64 lineMask[64][64];
 int castleindex[64][64] = { 0 };
 U64 castlekingto[64][2] = { 0ULL };
 int castlerights[64];
@@ -759,6 +760,28 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
 }
 
 
+void chessposition::updatePins()
+{
+    for (int me = WHITE; me <= BLACK; me++)
+    {
+        int you = me ^ S2MMASK;
+        int k = kingpos[me];
+        kingPinned[me] = 0ULL;
+        U64 occ = occupied00[you];
+        U64 attackers = mRookAttacks[k][MAGICROOKINDEX(occ, k)] & (piece00[WROOK | you] | piece00[WQUEEN | you]);
+        attackers |= mBishopAttacks[k][MAGICBISHOPINDEX(occ, k)] & (piece00[WBISHOP | you] | piece00[WQUEEN | you]);
+        
+        while (attackers)
+        {
+            int index = pullLsb(&attackers);
+            U64 potentialPinners = betweenMask[index][k] & occupied00[me];
+            if (ONEORZERO(potentialPinners))
+                kingPinned[me] |= potentialPinners;
+        }
+    }
+}
+
+
 bool chessposition::moveGivesCheck(uint32_t c)
 {
     int pc = GETPIECE(c);
@@ -1126,6 +1149,8 @@ void initBitmaphelper()
         {
             squareDistance[from][j] = max(abs(RANK(from) - RANK(j)), abs(FILE(from) - FILE(j)));
             betweenMask[from][j] = 0ULL;
+            lineMask[from][j] = 0ULL;
+            
             if (abs(FILE(from) - FILE(j)) == 1)
             {
                 neighbourfilesMask[from] |= BITSET(j);
@@ -1137,12 +1162,16 @@ void initBitmaphelper()
                 fileMask[from] |= BITSET(j);
                 for (int i = min(RANK(from), RANK(j)) + 1; i < max(RANK(from), RANK(j)); i++)
                     betweenMask[from][j] |= BITSET(INDEX(i, FILE(from)));
+                for (int i = 0; i < 8; i++)
+                    lineMask[from][j] |= BITSET(INDEX(i, FILE(from)));
             }
             if (RANK(from) == RANK(j))
             {
                 rankMask[from] |= BITSET(j);
                 for (int i = min(FILE(from), FILE(j)) + 1; i < max(FILE(from), FILE(j)); i++)
                     betweenMask[from][j] |= BITSET(INDEX(RANK(from), i));
+                for (int i = 0; i < 8; i++)
+                    lineMask[from][j] |= BITSET(INDEX(RANK(from), i));
             }
             if (from != j && abs(RANK(from) - RANK(j)) == abs(FILE(from) - FILE(j)))
             {
@@ -1150,6 +1179,14 @@ void initBitmaphelper()
                 int dy = (RANK(from) < RANK(j) ? 1 : -1);
                 for (int i = 1; FILE(from) +  i * dx != FILE(j); i++)
                     betweenMask[from][j] |= BITSET(INDEX(RANK(from) + i * dy, FILE(from) + i * dx));
+
+                for (int i = -7; i < 8; i++)
+                {
+                    int r = RANK(from) + i * dy;
+                    int f = FILE(from) + i * dx;
+                    if (r >= 0 && r < 8 && f >= 0 && f < 8)
+                        lineMask[from][j] |= BITSET(INDEX(r, f));
+                }
             }
         }
 
@@ -2030,6 +2067,8 @@ void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t k
         captures = &pos->singularcaptureslist[pos->ply];
         quiets = &pos->singularquietslist[pos->ply];
     }
+    if (p->isCheckbb)
+        state = EVASIONINITSTATE;
 }
 
 
@@ -2440,6 +2479,7 @@ void engine::communicate(string inputstring)
             case UCINEWGAME:
                 // invalidate hash
                 tp.clean();
+                sthread[0].pos.lastbestmovescore = NOSCORE;
                 break;
             case SETOPTION:
                 if (en.stopLevel < ENGINESTOPPED)
@@ -2521,7 +2561,8 @@ void engine::communicate(string inputstring)
             case GO:
                 resetPonder();
                 searchmoves.clear();
-                wtime = btime = winc = binc = movestogo = mate = maxdepth = maxnodes = 0;
+                wtime = btime = winc = binc = movestogo = mate = maxdepth = 0;
+                maxnodes = 0ULL;
                 infinite = false;
                 while (ci < cs)
                 {
@@ -2566,7 +2607,7 @@ void engine::communicate(string inputstring)
                     else if (commandargs[ci] == "nodes")
                     {
                         if (++ci < cs)
-                            maxnodes = stoi(commandargs[ci++]);
+                            maxnodes = stoull(commandargs[ci++]);
                     }
                     else if (commandargs[ci] == "mate")
                     {

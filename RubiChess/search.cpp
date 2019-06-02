@@ -216,7 +216,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     int hashscore = NOSCORE;
     uint16_t hashmovecode = 0;
     int staticeval = NOSCORE;
-    bool isLegal;
     int bestscore = NOSCORE;
     uint32_t bestcode = 0;
     int eval_type = HASHALPHA;
@@ -515,8 +514,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             }
         }
 
-        isLegal = playMove(m);
-        if (isLegal)
+        if (playMove(m))
         {
             LegalMoves++;
 
@@ -1113,6 +1111,10 @@ static void search_gen1(searchthread *thr)
                 if (!pos->bestmove[0].code && pos->rootmovelist.length > 0)
                     pos->bestmove[0].code = pos->rootmovelist.move[0].code;
 
+                if (pos->rootmovelist.length == 1 && pos->lastbestmovescore != NOSCORE)
+                    // Don't report score of instamove; use the score of last position instead
+                    pos->bestmovescore[0] = pos->lastbestmovescore;
+
                 uciScore(thr, inWindow, nowtime, 0);
             }
         }
@@ -1135,7 +1137,7 @@ static void search_gen1(searchthread *thr)
         }
 
         // early exit in playing mode as there is exactly one possible move
-        bExitIteration = (pos->rootmovelist.length == 1 && thr->depth > 4 && en.endtime1 && !en.isPondering());
+        bExitIteration = (pos->rootmovelist.length == 1 && en.endtime1 && !en.isPondering());
 
         // early exit in TB win/lose position
         bExitIteration = bExitIteration || (pos->tbPosition && abs(score) >= SCORETBWIN - 100);
@@ -1175,6 +1177,10 @@ static void search_gen1(searchthread *thr)
             pos->bestmovescore[0] = bestthr->pos.bestmovescore[0];
             inWindow = 1;
         }
+
+        // remember score for next search in case of an instamove
+        pos->lastbestmovescore = pos->bestmovescore[0];
+
         if (!reportedThisDepth || bestthr->index)
             uciScore(thr, inWindow, getTime(), 0);
 
