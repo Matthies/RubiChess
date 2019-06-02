@@ -272,6 +272,24 @@ struct evalparamset {
         {  VALUE(   0,   0), VALUE(   3,   7), VALUE(   6,  12), VALUE(  10,  41), VALUE(  26,  95), VALUE(  67, 200), VALUE( 120, 301), VALUE(   0,   0)  },
         {  VALUE(   0,   0), VALUE(   9,   7), VALUE(  -3,  21), VALUE(   1,  39), VALUE(  16,  54), VALUE(  58,  73), VALUE(  34,  55), VALUE(   0,   0)  }
     };
+    eval eKingsupportspasserbonus[7][8] = {
+        {  VALUE(0,   0), VALUE(13,   7), VALUE(32,  -6), VALUE(57,  -6), VALUE(73, -13), VALUE(138, -31), VALUE(145, -22), VALUE(0,   0)  },
+        {  VALUE(0,   0), VALUE(18,   7), VALUE(-8,   7), VALUE(10,   0), VALUE(18, -21), VALUE(101, -73), VALUE(151, -71), VALUE(0,   0)  },
+        {  VALUE(0,   0), VALUE(21,  -2), VALUE(-7,   0), VALUE(-6, -16), VALUE(-15, -41), VALUE(37, -84), VALUE(120,-124), VALUE(0,   0)  },
+        {  VALUE(0,   0), VALUE(5,   6), VALUE(-7,   7), VALUE(-5, -23), VALUE(-28, -45), VALUE(-22, -78), VALUE(34,-110), VALUE(0,   0)  },
+        {  VALUE(0,   0), VALUE(16,   3), VALUE(13, -13), VALUE(6, -22), VALUE(-5, -60), VALUE(-57, -70), VALUE(27,-105), VALUE(0,   0)  },
+        {  VALUE(0,   0), VALUE(11,   7), VALUE(19,  -6), VALUE(35, -27), VALUE(2, -49), VALUE(1,-100), VALUE(-39, -67), VALUE(0,   0)  },
+        {  VALUE(0,   0), VALUE(-11,  18), VALUE(-29,  21), VALUE(15, -27), VALUE(-8, -58), VALUE(-17, -92), VALUE(-39, -97), VALUE(0,   0)  }
+    };
+    eval eKingdefendspasserpenalty[7][8] = {
+        {  VALUE(0,   0), VALUE(-5,  18), VALUE(-15,  43), VALUE(10,  16), VALUE(-5,  37), VALUE(34,  25), VALUE(29,  -9), VALUE(0,   0)  },
+        {  VALUE(0,   0), VALUE(37,   4), VALUE(10,  -1), VALUE(12,   4), VALUE(42,   3), VALUE(45,   7), VALUE(1,  53), VALUE(0,   0)  },
+        {  VALUE(0,   0), VALUE(31,  -3), VALUE(6,   2), VALUE(11,   2), VALUE(28,  18), VALUE(56,  69), VALUE(29,  97), VALUE(0,   0)  },
+        {  VALUE(0,   0), VALUE(11,  -2), VALUE(5,  -1), VALUE(1,   5), VALUE(21,  69), VALUE(49, 115), VALUE(11, 144), VALUE(0,   0)  },
+        {  VALUE(0,   0), VALUE(6, -17), VALUE(0,  -3), VALUE(-8,  40), VALUE(14,  82), VALUE(48, 121), VALUE(10, 153), VALUE(0,   0)  },
+        {  VALUE(0,   0), VALUE(-17,  -5), VALUE(-15,  15), VALUE(-9,  29), VALUE(13,  73), VALUE(7, 143), VALUE(34, 138), VALUE(0,   0)  },
+        {  VALUE(0,   0), VALUE(-33, -11), VALUE(-29,  12), VALUE(-9,  29), VALUE(-1,  66), VALUE(6, 125), VALUE(81,  77), VALUE(0,   0)  }
+    };
     eval ePotentialpassedpawnbonus[2][8] = {
         {  VALUE(   0,   0), VALUE(  28, -15), VALUE(  -6,   4), VALUE(  13,   5), VALUE(  32,  51), VALUE(  72,  81), VALUE(  44, 108), VALUE(   0,   0)  },
         {  VALUE(   0,   0), VALUE(  -1,  -3), VALUE(   0,  -3), VALUE(   5,   5), VALUE(  21,  33), VALUE(  58,  62), VALUE( -14,  10), VALUE(   0,   0)  }
