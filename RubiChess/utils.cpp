@@ -111,8 +111,8 @@ string AlgebraicFromShort(string s, chessposition *pos)
     if (castle0 >= 2)
     {
         pt = KING;
-        from = (from & 0xf0) | ('e' - 'a');
-        to = (to & 0xf0) | (castle0 == 2 ? 'g' - 'a' : 'c' - 'a');
+        from = (from & 0x80) | ('e' - 'a');
+        to = (to & 0x80) | (castle0 == 2 ? 'g' - 'a' : 'c' - 'a');
     }
     if (i >= 0 && s[i] >= 'A')
     {
@@ -132,10 +132,10 @@ string AlgebraicFromShort(string s, chessposition *pos)
     if (i >= 0 && s[i] == 'x')
         i--;
     // rank or file for ambiguous moves
-    if (i >= 0 && s[i] >= 'a' && s[i] <= 'h')
-        from = (from & 0xb8) | (s[i--] - 'a');
     if (i >= 0 && s[i] >= '1' && s[i] <= '8')
         from = (from & 0x47) | ((s[i--] - '1') << 3);
+    if (i >= 0 && s[i] >= 'a' && s[i] <= 'h')
+        from = (from & 0xb8) | (s[i--] - 'a');
 
     // The Figure
     if (i >= 0 && s[i] >= 'A')
@@ -168,18 +168,18 @@ string AlgebraicFromShort(string s, chessposition *pos)
 #ifdef EVALTUNE
 
 chessposition pos;
+U64 fenWritten;
 
 static void writeFenToFile(ofstream *fenfile, string fenlines[], int gamepositions, int ppg)
 {
-    double fp = (!ppg ? 1.0 : (double) gamepositions / ppg);
-    int count = 0;
+    int fentowrite = (ppg ? ppg : gamepositions);
 
-    for (int i = 0; i < gamepositions; i++)
+    while (fentowrite--)
     {
-        if (count * fp > i)
-            continue;
-        count++;
+        int i = rand() % gamepositions;
         *fenfile << fenlines[i];
+        fenWritten++;
+        fenlines[i] = fenlines[--gamepositions];
     }
 }
 
@@ -189,19 +189,27 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
     pos.pwnhsh = new Pawnhash(0);
     pos.tps.count = 0;
     int gamescount = 0;
+    fenWritten = 0ULL;
     bool mateFound;
     string line;
     string line1, line2;
     string rest_of_last_line = "";
     string fenfilename = pgnfilename + ".fen";
     string fenmovefilename = pgnfilename + ".fenmove";
-    // Open the pgn file for reading
-    ifstream pgnfile(pgnfilename);
-    if (!pgnfile.is_open())
+
+    // The following is Windows-only; FIXME: C++--17 offers portable filesystem handling
+    bool folderMode = (GetFileAttributes(pgnfilename.c_str()) & FILE_ATTRIBUTE_DIRECTORY);
+    if (folderMode)
     {
-        printf("Cannot open %s for reading.\n", pgnfilename.c_str());
-        return false;
+        if (pgnfilename.substr(pgnfilename.length() - 1, 1) != "\\")
+            pgnfilename += "\\";
     }
+
+    WIN32_FIND_DATA fd;
+    HANDLE pgnhandle = FindFirstFile((pgnfilename + "*.pgn").c_str(), &fd);
+    if (pgnhandle == INVALID_HANDLE_VALUE)
+        return false;
+
     ofstream fenfile(fenfilename);
     if (!fenfile.is_open())
     {
@@ -218,124 +226,145 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
             return false;
         }
     }
-    int newgamestarts = 0;
-    int result = 0;
-    string newfen;
-    string moves;
-    string lastmove;
-    bool valueChecked;
-    int gamepositions = 0;
-    string fenlines[2048];
-    while (getline(pgnfile, line))
+    do
     {
-        line2 = line1;
-        line1 = line;
+        string pgnfullname = (folderMode ? pgnfilename + fd.cFileName : pgnfilename);
+        // Open the pgn file for reading
+        ifstream pgnfile(pgnfullname);
 
-        smatch match;
-        string fen;
-        double score;
-        // We assume that the [Result] section comes first, then the [FEN] section
-        if (regex_search(line, match, regex("\\[Result\\s+\"(.*)\\-(.*)\"")))
+        if (!pgnfile.is_open())
         {
-            gamescount++;
-            if (gamepositions)
-                writeFenToFile(&fenfile, fenlines, gamepositions, ppg);
-            gamepositions = 0;
-            // Write last game
-            if (!quietonly && !ppg && newgamestarts == 2)
-                fenmovefile << to_string(result) + "#" + newfen + " moves " + moves + "\n";
+            printf("Cannot open %s for reading.\n", pgnfullname.c_str());
+            return false;
+        }
+        printf("Reading %s ...\n", pgnfullname.c_str());
+        int newgamestarts = 0;
+        int result = 0;
+        string newfen;
+        string moves;
+        string lastmove;
+        bool valueChecked;
+        int gamepositions = 0;
+        string fenlines[2048];
+        while (getline(pgnfile, line))
+        {
+            line2 = line1;
+            line1 = line;
 
-            if (match.str(1) == "0")
-                result = -1;
-            else if (match.str(1) == "1")
-                result = 1;
-            else
-                result = 0;
-            newgamestarts = 1;
-            moves = "";
-            mateFound = false;
-        }
-        if (newgamestarts == 1 && regex_search(line, match, regex("\\[FEN\\s+\"(.*)\"")))
-        {
-            newfen = match.str(1);
-            newgamestarts++;
-            valueChecked = true;
-            fen = newfen;
-            pos.getFromFen(fen.c_str());
-            fenlines[gamepositions++] = to_string(result) + "#" + fen + "#\n";
-        }
-        // Don't export games that were lost on time or by stalled connection
-        if (regex_search(line, match, regex("\\[Termination\\s+\".*(forfeit|stalled).*\"")))
-        {
-            printf("Skip this match: %s\n", line.c_str());
-            newgamestarts = 0;
-            valueChecked = true;
-        }
-
-        // search for the moves
-        if (newgamestarts == 2 && !regex_search(line, match, regex("\\[.*\\]")))
-        {
-            bool foundInLine;
-            do
+            smatch match;
+            string fen;
+            double score;
+            // We assume that the [Result] section comes first, then the [FEN] section
+            if (regex_search(line, match, regex("\\[Result\\s+\"(.*)\\-(.*)\"")))
             {
-                foundInLine = false;
-                if (regex_search(line, match, regex("^(\\s*\\d+\\.\\s+)")))
-                {
-                    // skip move number
-                    line = match.suffix();
-                }
-                if (regex_search(line, match, regex("^\\s*(([O\\-]{3,5})\\+?|([KQRBN]?[a-h]*[1-8]*x?[a-h]+[1-8]+(=[QRBN])?)\\+?)")))
-                {
-                    // Found move
-                    if (!valueChecked)
-                    {
-                        // Score tag of last move missing; just output without score
-                        fenlines[gamepositions++] = to_string(result) + "#" + fen + "#0\n";
-                        moves = moves + lastmove + " ";
-                    }
+                gamescount++;
+                if (gamepositions)
+                    writeFenToFile(&fenfile, fenlines, gamepositions, ppg);
+                gamepositions = 0;
+                // Write last game
+                if (!quietonly && !ppg && newgamestarts == 2)
+                    fenmovefile << to_string(result) + "#" + newfen + " moves " + moves + "\n";
 
-                    foundInLine = true;
-                    valueChecked = false;
-                    lastmove = AlgebraicFromShort(match.str(), &pos);
-                    if (lastmove == "" || !pos.applyMove(lastmove))
-                    {
-                        printf("Alarm (game %d): %s\n", gamescount, match.str().c_str());
-                        pos.print();
-                        printf("last Lines:\n%s\n%s\n\n", line2.c_str(), line1.c_str());
-                    }
-                    pos.isQuiet = !pos.isCheckbb;
-                    if (quietonly && pos.isQuiet)
-                        pos.getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
-                    if (!quietonly || pos.isQuiet)
-                        fen = pos.toFen();
-                    else
-                        fen = "";
-                    line = match.suffix();
-                }
-                if (!valueChecked)
+                if (match.str(1) == "0")
+                    result = -1;
+                else if (match.str(1) == "1")
+                    result = 1;
+                else
+                    result = 0;
+                newgamestarts = 1;
+                moves = "";
+                mateFound = false;
+            }
+            bool fenFound;
+            if (newgamestarts == 1 && 
+                ((fenFound = regex_search(line, match, regex("\\[FEN\\s+\"(.*)\"")))
+                    || !regex_search(line, match, regex("\\["))))
+            {
+                newfen = fenFound ? match.str(1) : STARTFEN;
+                newgamestarts++;
+                valueChecked = true;
+                fen = newfen;
+                pos.getFromFen(fen.c_str());
+                // Skip positions inside TB area
+                if (POPCOUNT(pos.occupied00[0] | pos.occupied00[1]) >= 7)
+                    fenlines[gamepositions++] = to_string(result) + "#" + fen + "#\n";
+            }
+            // Don't export games that were lost on time or by stalled connection
+            if (regex_search(line, match, regex("\\[Termination\\s+\".*(forfeit|stalled).*\"")))
+            {
+                printf("Skip this match: %s\n", line.c_str());
+                newgamestarts = 0;
+                valueChecked = true;
+            }
+
+            // search for the moves
+            if (newgamestarts == 2 && !regex_search(line, match, regex("\\[.*\\]")))
+            {
+                bool foundInLine;
+                do
                 {
-                    if (regex_search(line, match, regex("^\\s*(\\{((\\+|\\-)?((\\d+\\.\\d+)|(M\\d+)))\\/[^\\}]*\\})")))
+                    foundInLine = false;
+                    if (regex_search(line, match, regex("^(\\s*\\d+\\.\\s*)")))
                     {
-                        foundInLine = true;
-                        string scorestr = match.str(2);
-                        // Only output if no mate score detected
-                        if ((scorestr[0] == 'M' || scorestr[1] == 'M')
-                            || (score = stod(match.str(2))) >= 30)
-                            mateFound = true;
-                        if (!mateFound && fen != "")
+                        // skip move number
+                        line = match.suffix();
+                    }
+                    if (regex_search(line, match, regex("^\\s*(([O\\-]{3,5})\\+?|([KQRBN]?[a-h]*[1-8]*x?[a-h]+[1-8]+(=[QRBN])?)\\+?)")))
+                    {
+                        // Found move
+                        if (!valueChecked)
                         {
-                            fenlines[gamepositions++] = to_string(result) + "#" + fen + "#" + to_string(score) + "\n";
+                            // Score tag of last move missing; just output without score
+                            fenlines[gamepositions++] = to_string(result) + "#" + fen + "#0\n";
                             moves = moves + lastmove + " ";
                         }
+
+                        foundInLine = true;
+                        valueChecked = false;
+                        lastmove = AlgebraicFromShort(match.str(), &pos);
+                        if (lastmove == "" || !pos.applyMove(lastmove))
+                        {
+                            printf("Alarm (game %d): %s\n", gamescount, match.str().c_str());
+                            pos.print();
+                            printf("last Lines:\n%s\n%s\n\n", line2.c_str(), line1.c_str());
+                        }
+                        pos.isQuiet = !pos.isCheckbb;
+                        if (quietonly && pos.isQuiet)
+                            pos.getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
+                        if (!quietonly || pos.isQuiet)
+                            fen = pos.toFen();
+                        else
+                            fen = "";
                         line = match.suffix();
-                        valueChecked = true;
                     }
-                }
-            } while (foundInLine);
+                    if (!valueChecked)
+                    {
+                        if (regex_search(line, match, regex("^\\s*(\\{((\\+|\\-)?((\\d+\\.\\d+)|(M\\d+)))\\/[^\\}]*\\})")))
+                        {
+                            foundInLine = true;
+                            string scorestr = match.str(2);
+                            // Only output if no mate score detected
+                            if ((scorestr[0] == 'M' || scorestr[1] == 'M')
+                                || (score = stod(match.str(2))) >= 30)
+                                mateFound = true;
+                            if (!mateFound && fen != "")
+                            {
+                                fenlines[gamepositions++] = to_string(result) + "#" + fen + "#" + to_string(score) + "\n";
+                                moves = moves + lastmove + " ";
+                            }
+                            line = match.suffix();
+                            valueChecked = true;
+                        }
+                    }
+                } while (foundInLine);
+            }
         }
-    }
-    if (gamepositions)
-        writeFenToFile(&fenfile, fenlines, gamepositions, ppg);
+        if (gamepositions)
+            writeFenToFile(&fenfile, fenlines, gamepositions, ppg);
+
+        printf("Position so far:  %9lld\n", fenWritten);
+
+    } while (FindNextFile(pgnhandle, &fd));
 
     delete pos.pwnhsh;
     return true;

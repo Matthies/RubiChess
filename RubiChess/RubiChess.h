@@ -23,7 +23,7 @@
 #define SDEBUG
 #endif
 
-#if 0
+#if 1
 #define EVALTUNE
 #endif
 
