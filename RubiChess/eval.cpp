@@ -116,11 +116,11 @@ void registeralltuners(chessposition *pos)
     tuneIt = false;
     registertuner(pos, &eps.eHangingpiecepenalty, "eHangingpiecepenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eTempo, "eTempo", 0, 0, 0, 0, tuneIt);
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 8; j++)
             registertuner(pos, &eps.ePassedpawnbonus[i][j], "ePassedpawnbonus", j, 8, i, 4, tuneIt && (j > 0 && j < 7));
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 7; i++)
         for (j = 0; j < 8; j++)
             registertuner(pos, &eps.eKingsupportspasserbonus[i][j], "eKingsupportspasserbonus", j, 8, i, 7, tuneIt && (j > 0 && j < 7));
@@ -158,18 +158,18 @@ void registeralltuners(chessposition *pos)
     for (i = 0; i < 7; i++)
         registertuner(pos, &eps.eMaterialvalue[i], "eMaterialvalue", i, 7, 0, 0, false);
     registertuner(pos, &eps.eKingshieldbonus, "eKingshieldbonus", 0, 0, 0, 0, tuneIt);
-    tuneIt = false;
+
+    // kingdanger evals
+    tuneIt = true;
     registertuner(pos, &eps.eWeakkingringpenalty, "eWeakkingringpenalty", 0, 0, 0, 0, tuneIt);
     for (i = 0; i < 7; i++)
         registertuner(pos, &eps.eKingattackweight[i], "eKingattackweight", i, 7, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
-
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eSafecheckbonus[i], "eSafecheckbonus", i, 6, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
     registertuner(pos, &eps.eKingdangerbyqueen, "eKingdangerbyqueen", 0, 0, 0, 0, tuneIt);
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eKingringattack[i], "eKingringattack", i, 6, 0, 0, tuneIt);
-
     registertuner(pos, &eps.eKingdangeradjust, "eKingdangeradjust", 0, 0, 0, 0, tuneIt);
     
     tuneIt = false;
