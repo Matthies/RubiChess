@@ -198,17 +198,19 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
     string fenmovefilename = pgnfilename + ".fenmove";
 
     // The following is Windows-only; FIXME: C++--17 offers portable filesystem handling
+    WIN32_FIND_DATA fd;
+    HANDLE pgnhandle;
     bool folderMode = (GetFileAttributes(pgnfilename.c_str()) & FILE_ATTRIBUTE_DIRECTORY);
     if (folderMode)
     {
         if (pgnfilename.substr(pgnfilename.length() - 1, 1) != "\\")
             pgnfilename += "\\";
+
+        pgnhandle = FindFirstFile((pgnfilename + "*.pgn").c_str(), &fd);
+        if (pgnhandle == INVALID_HANDLE_VALUE)
+            return false;
     }
 
-    WIN32_FIND_DATA fd;
-    HANDLE pgnhandle = FindFirstFile((pgnfilename + "*.pgn").c_str(), &fd);
-    if (pgnhandle == INVALID_HANDLE_VALUE)
-        return false;
 
     ofstream fenfile(fenfilename);
     if (!fenfile.is_open())
@@ -364,7 +366,7 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
 
         printf("Position so far:  %9lld\n", fenWritten);
 
-    } while (FindNextFile(pgnhandle, &fd));
+    } while (folderMode && FindNextFile(pgnhandle, &fd));
 
     delete pos.pwnhsh;
     return true;

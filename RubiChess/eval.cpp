@@ -128,7 +128,7 @@ void registeralltuners(chessposition *pos)
         for (j = 0; j < 8; j++)
             registertuner(pos, &eps.eKingdefendspasserpenalty[i][j], "eKingdefendspasserpenalty", j, 8, i, 7, tuneIt && (j > 0 && j < 7));
 
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 2; i++)
         for (j = 0; j < 8; j++)
             registertuner(pos, &eps.ePotentialpassedpawnbonus[i][j], "ePotentialpassedpawnbonus", j, 8, i, 2, tuneIt && (j > 0 && j < 7));
