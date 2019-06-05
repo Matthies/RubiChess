@@ -756,6 +756,7 @@ static void tuneParameter(struct tuner *tn)
             pa[1] = GETMGVAL(v);
             lastp = pa[g];
             p = lastp + delta;
+            p = min(512, max(-512, p));
             tn->ev[tn->paramindex].replace(g, lastp);
             pmin = lastp;
         }
@@ -766,6 +767,7 @@ static void tuneParameter(struct tuner *tn)
             pa[0] = e->v;
             lastp = pa[g];
             p = lastp + delta;
+            p = min(512, max(-512, p));
             tn->ev[tn->paramindex].replace(lastp);
             pmin = lastp;
         }
