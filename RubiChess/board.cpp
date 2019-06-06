@@ -951,6 +951,20 @@ string chessposition::toFen()
 }
 
 
+void chessposition::updateMultiPvTable(int pvindex, uint32_t movecode, bool recursive)
+{
+    uint32_t *table = (pvindex ? multipvtable[pvindex] : pvtable[0]);
+    table[0] = movecode;
+    int i = 0;
+    while (pvtable[1][i])
+    {
+        table[i + 1] = pvtable[1][i];
+        i++;
+    }
+    table[i + 1] = 0;
+}
+
+
 void chessposition::updatePvTable(uint32_t movecode, bool recursive)
 {
     pvtable[ply][0] = movecode;
@@ -964,16 +978,16 @@ void chessposition::updatePvTable(uint32_t movecode, bool recursive)
         }
     }
     pvtable[ply][i + 1] = 0;
-
 }
 
-string chessposition::getPv()
+string chessposition::getPv(int mpvindex)
 {
+    uint32_t *table = (mpvindex ? multipvtable[mpvindex] : pvtable[0]);
     string s = "";
-    for (int i = 0; pvtable[0][i]; i++)
+    for (int i = 0; table[i]; i++)
     {
         chessmove cm;
-        cm.code = pvtable[0][i];
+        cm.code = table[i];
         s += cm.toString() + " ";
     }
     return s;

@@ -986,6 +986,7 @@ public:
     bool debugOnlySubtree;
 #endif
     uint32_t pvtable[MAXDEPTH][MAXDEPTH];
+    uint32_t multipvtable[MAXMULTIPV][MAXDEPTH];
     int ph; // to store the phase during different evaluation functions
     int sc; // to stor scaling factor used for evaluation
     int useTb;
@@ -1047,7 +1048,8 @@ public:
     void updateHistory(uint32_t code, int16_t **cmptr, int value);
     void getCmptr(int16_t **cmptr);
     void updatePvTable(uint32_t movecode, bool recursive);
-    string getPv();
+    void updateMultiPvTable(int pvindex, uint32_t movecode, bool recursive);
+    string getPv(int mpvindex = 0);
     int getHistory(uint32_t code, int16_t **cmptr);
 
 #ifdef SDEBUG

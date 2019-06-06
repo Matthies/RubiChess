@@ -673,7 +673,10 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         lastmoveindex = 0;
         maxmoveindex = min(en.MultiPV, rootmovelist.length);
         for (int i = 0; i < maxmoveindex; i++)
+        {
+            multipvtable[i][0] = 0;
             bestmovescore[i] = SHRT_MIN + 1;
+        }
     }
 
 #ifdef SDEBUG
@@ -837,8 +840,12 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                 {
                     bestmovescore[newindex] = bestmovescore[newindex - 1];
                     bestmove[newindex] = bestmove[newindex - 1];
+                    uint32_t *srctable = (newindex - 1 ? multipvtable[newindex - 1] : pvtable[0]);
+                    memcpy(multipvtable[newindex], srctable, sizeof(multipvtable[newindex]));
                     newindex--;
                 }
+                updateMultiPvTable(newindex, m->code, true);
+
                 bestmovescore[newindex] = score;
                 bestmove[newindex] = *m;
                 if (lastmoveindex < maxmoveindex - 1)
@@ -933,7 +940,7 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int mpvIndex)
     char s[4096];
     chessposition *pos = &thr->pos;
     en.lastReport = msRun;
-    string pvstring = pos->getPv();
+    string pvstring = pos->getPv(mpvIndex);
     int score = pos->bestmovescore[mpvIndex];
     U64 nodes = en.getTotalNodes();
 
