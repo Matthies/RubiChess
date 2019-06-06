@@ -844,7 +844,7 @@ void chessposition::print(ostream* os)
     *os << "Ply: " + to_string(ply) + "\n";
     *os << "rootheight: " + to_string(rootheight) + "\n";
     stringstream ss;
-    ss << hex << bestmove[0].code;
+    ss << hex << bestmove.code;
     *os << "bestmove[0].code: 0x" + ss.str() + "\n";
 }
 
@@ -951,6 +951,20 @@ string chessposition::toFen()
 }
 
 
+void chessposition::updateMultiPvTable(int pvindex, uint32_t movecode, bool recursive)
+{
+    uint32_t *table = (pvindex ? multipvtable[pvindex] : pvtable[0]);
+    table[0] = movecode;
+    int i = 0;
+    while (pvtable[1][i])
+    {
+        table[i + 1] = pvtable[1][i];
+        i++;
+    }
+    table[i + 1] = 0;
+}
+
+
 void chessposition::updatePvTable(uint32_t movecode, bool recursive)
 {
     pvtable[ply][0] = movecode;
@@ -964,16 +978,16 @@ void chessposition::updatePvTable(uint32_t movecode, bool recursive)
         }
     }
     pvtable[ply][i + 1] = 0;
-
 }
 
-string chessposition::getPv()
+string chessposition::getPv(int mpvindex)
 {
+    uint32_t *table = (mpvindex ? multipvtable[mpvindex] : pvtable[0]);
     string s = "";
-    for (int i = 0; pvtable[0][i]; i++)
+    for (int i = 0; table[i]; i++)
     {
         chessmove cm;
-        cm.code = pvtable[0][i];
+        cm.code = table[i];
         s += cm.toString() + " ";
     }
     return s;
@@ -2234,7 +2248,7 @@ void engine::allocThreads()
 void engine::prepareThreads()
 {
     sthread[0].pos.bestmovescore[0] = NOSCORE;
-    sthread[0].pos.bestmove[0].code = 0;
+    sthread[0].pos.bestmove.code = 0;
     sthread[0].pos.nodes = 0;
     sthread[0].pos.nullmoveply = 0;
     sthread[0].pos.nullmoveside = 0;
@@ -2245,7 +2259,7 @@ void engine::prepareThreads()
         sthread[i].pos.threadindex = i;
         // early reset of variables that are important for bestmove selection
         sthread[i].pos.bestmovescore[0] = NOSCORE;
-        sthread[i].pos.bestmove[0].code = 0;
+        sthread[i].pos.bestmove.code = 0;
         sthread[i].pos.nodes = 0;
         sthread[i].pos.nullmoveply = 0;
         sthread[i].pos.nullmoveside = 0;
