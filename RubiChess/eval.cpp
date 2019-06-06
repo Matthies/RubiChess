@@ -24,8 +24,6 @@
 const int materialvalue[7] = { 0,  100,  314,  314,  483,  913, 32509 };  // some evaluation depends on bishop value >= knight value!!!
 const int maxmobility[4] = { 9, 14, 15, 28 }; // indexed by piece - 2
 
-evalparamset eps;
-
 #ifdef EVALTUNE
 
 sqevallist sqglobal;
@@ -210,6 +208,24 @@ static string splitvaluestring(int v[])
     return ss.str();
 }
 
+
+
+// get psqt for eval tracing
+void chessposition::getpsqval()
+{
+    te.material[0] = te.material[1] = 0;
+    for (int i = 0; i < 64; i++)
+    {
+        PieceCode pc = mailbox[i];
+        if (pc)
+        {
+            PieceType p = pc >> 1;
+            int s2m = pc & S2MMASK;
+            te.material[s2m] += S2MSIGN(s2m) * (eps.eMaterialvalue[p] + eps.ePsqt[p][PSQTINDEX(i, s2m)]);
+        }
+    }
+}
+
 template <EvalType Et>
 int chessposition::getPawnAndKingValue(pawnhashentry **entry)
 {
@@ -221,14 +237,6 @@ int chessposition::getPawnAndKingValue(pawnhashentry **entry)
     pawnhashentry *entryptr = *entry;
     if (bTrace || !hashexist)
     {
-        entryptr->value = EVAL(eps.ePsqt[KING][PSQTINDEX(kingpos[0], 0)], 1)
-            + EVAL(eps.ePsqt[KING][PSQTINDEX(kingpos[1], 1)], -1)
-            + EVAL(eps.eMaterialvalue[PAWN], POPCOUNT(piece00[WPAWN]) - POPCOUNT(piece00[BPAWN]));
-        if (bTrace) {
-            te.material[0] += EVAL(eps.ePsqt[KING][PSQTINDEX(kingpos[0], 0)], 1) + EVAL(eps.eMaterialvalue[PAWN], POPCOUNT(piece00[WPAWN]));
-            te.material[1] += EVAL(eps.ePsqt[KING][PSQTINDEX(kingpos[1], 1)], -1) + EVAL(eps.eMaterialvalue[PAWN], -POPCOUNT(piece00[BPAWN]));
-        }
-
         // kingshield safety
         entryptr->value += EVAL(eps.eKingshieldbonus, POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1]));
         if (bTrace) {
@@ -249,10 +257,6 @@ int chessposition::getPawnAndKingValue(pawnhashentry **entry)
             while (pb)
             {
                 index = pullLsb(&pb);
-                int psqtindex = PSQTINDEX(index, me);
-                entryptr->value += EVAL(eps.ePsqt[PAWN][psqtindex], S2MSIGN(me));
-                if (bTrace) te.material[me] += EVAL(eps.ePsqt[PAWN][psqtindex], S2MSIGN(me));
-
                 entryptr->attackedBy2[me] |= (entryptr->attacked[me] & pawn_attacks_to[index][me]);
                 entryptr->attacked[me] |= pawn_attacks_to[index][me];
                 entryptr->semiopen[me] &= (int)(~BITSET(FILE(index)));
@@ -442,11 +446,6 @@ int chessposition::getPositionValue()
         while (pb)
         {
             index = pullLsb(&pb);
-            int psqtindex = PSQTINDEX(index, me);
-            result += EVAL(eps.ePsqt[p][psqtindex], S2MSIGN(me));
-            result += EVAL(eps.eMaterialvalue[p], S2MSIGN(me));
-            if (bTrace) te.material[me] += EVAL(eps.ePsqt[p][psqtindex], S2MSIGN(me)) + EVAL(eps.eMaterialvalue[p], S2MSIGN(me));
-
             U64 attack = 0ULL;
             if (shifting[p] & 0x2) // rook and queen
             {
@@ -597,7 +596,7 @@ int chessposition::getValue()
 #endif
     ph = phase();
     updatePins();
-    int positionscore = getPositionValue<Et>();
+    int positionscore = psqval + getPositionValue<Et>();
     int sideToScale = positionscore > SCOREDRAW ? WHITE : BLACK;
     sc = getScaling(sideToScale);
 
@@ -608,6 +607,7 @@ int chessposition::getValue()
 
     if (bTrace)
     {
+        getpsqval();
         stringstream ss;
         ss << std::showpoint << std::noshowpos << std::fixed << std::setprecision(2)
             << "              |    White    |    Black    |    Total   \n"

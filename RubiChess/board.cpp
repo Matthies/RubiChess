@@ -41,6 +41,7 @@ int castleindex[64][64] = { 0 };
 U64 castlekingto[64][2] = { 0ULL };
 int castlerights[64];
 int squareDistance[64][64];  // decreased by 1 for directly indexing evaluation arrays
+int psqtable[14][64];
 
 
 PieceType GetPieceType(char c)
@@ -228,6 +229,8 @@ int chessposition::getFromFen(const char* sFen)
     string s;
     vector<string> token = SplitString(sFen);
     int numToken = (int)token.size();
+
+    psqval = 0;
 
     for (int i = 0; i < 14; i++)
         piece00[i] = 0ULL;
@@ -1136,6 +1139,14 @@ void initBitmaphelper()
 
     for (int from = 0; from < 64; from++)
     {
+        // initialize psqtable for faster evaluation
+        for (int pc = 0; pc <= BKING; pc++)
+        {
+            int p = pc >> 1;
+            int s2m = pc & S2MMASK;
+            psqtable[pc][from] = S2MSIGN(s2m) * (eps.eMaterialvalue[p] + eps.ePsqt[p][PSQTINDEX(from, s2m)]);
+        }
+
         king_attacks[from] = knight_attacks[from] = 0ULL;
         pawn_moves_to[from][0] = pawn_attacks_to[from][0] = pawn_moves_to_double[from][0] = 0ULL;
         pawn_moves_to[from][1] = pawn_attacks_to[from][1] = pawn_moves_to_double[from][1] = 0ULL;
@@ -1320,6 +1331,7 @@ void chessposition::BitboardSet(int index, PieceCode p)
     int s2m = p & 0x1;
     piece00[p] |= BITSET(index);
     occupied00[s2m] |= BITSET(index);
+    psqval += psqtable[p][index];
 }
 
 
@@ -1330,6 +1342,7 @@ void chessposition::BitboardClear(int index, PieceCode p)
     int s2m = p & 0x1;
     piece00[p] ^= BITSET(index);
     occupied00[s2m] ^= BITSET(index);
+    psqval -= psqtable[p][index];
 }
 
 
@@ -1341,6 +1354,7 @@ void chessposition::BitboardMove(int from, int to, PieceCode p)
     int s2m = p & 0x1;
     piece00[p] ^= (BITSET(from) | BITSET(to));
     occupied00[s2m] ^= (BITSET(from) | BITSET(to));
+    psqval += psqtable[p][to] - psqtable[p][from];
 }
 
 
@@ -2674,5 +2688,7 @@ void engine::communicate(string inputstring)
 }
 
 
+// Some global objects
+evalparamset eps;
 zobrist zb;
 engine en;
