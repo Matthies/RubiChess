@@ -968,7 +968,7 @@ public:
     int nullmoveside;
     int nullmoveply = 0;
     chessmovelist rootmovelist;
-    chessmove bestmove[MAXMULTIPV];
+    chessmove bestmove;
     int bestmovescore[MAXMULTIPV];
     int lastbestmovescore;
     chessmove pondermove;

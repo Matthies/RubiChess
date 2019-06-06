@@ -694,8 +694,8 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
         if (fullhashmove)
         {
-            if (bestmove[0].code != fullhashmove) {
-                bestmove[0].code = fullhashmove;
+            if (bestmove.code != fullhashmove) {
+                bestmove.code = fullhashmove;
                 pondermove.code = 0;
             }
             if (score > alpha) bestmovescore[0] = score;
@@ -839,7 +839,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                 while (newindex > 0 && score > bestmovescore[newindex - 1])
                 {
                     bestmovescore[newindex] = bestmovescore[newindex - 1];
-                    bestmove[newindex] = bestmove[newindex - 1];
                     uint32_t *srctable = (newindex - 1 ? multipvtable[newindex - 1] : pvtable[0]);
                     memcpy(multipvtable[newindex], srctable, sizeof(multipvtable[newindex]));
                     newindex--;
@@ -847,7 +846,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                 updateMultiPvTable(newindex, m->code, true);
 
                 bestmovescore[newindex] = score;
-                bestmove[newindex] = *m;
                 if (lastmoveindex < maxmoveindex - 1)
                     lastmoveindex++;
                 if (bestmovescore[maxmoveindex - 1] > alpha)
@@ -860,7 +858,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
 
         // We have a new best move.
         // Now it gets a little tricky what to do with it
-        // The move becomes the new bestmove[0] (take for UCI output) if
+        // The move becomes the new bestmove (take for UCI output) if
         // - it is the first one
         // - it raises alpha
         // If it fails low we don't change bestmove anymore but remember it in bestFailingLow for move ordering
@@ -869,9 +867,9 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
             if (!isMultiPV)
             {
                 updatePvTable(m->code, true);
-                if (bestmove[0].code != pvtable[0][0])
+                if (bestmove.code != pvtable[0][0])
                 {
-                    bestmove[0].code = pvtable[0][0];
+                    bestmove.code = pvtable[0][0];
                     pondermove.code = pvtable[0][1];
                 }
                 alpha = score;
@@ -904,8 +902,8 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         else if (!isMultiPV)
         {
             // at fail low don't overwrite an existing move
-            if (!bestmove[0].code)
-                bestmove[0] = *m;
+            if (!bestmove.code)
+                bestmove = *m;
         }
     }
 
@@ -914,17 +912,12 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
     if (isMultiPV)
     {
         if (eval_type == HASHEXACT)
-        {
-            tp.addHash(hash, bestmovescore[0], staticeval, eval_type, depth, (uint16_t)bestmove[0].code);
             return bestmovescore[maxmoveindex - 1];
-        }
-        else {
-            tp.addHash(hash, alpha, staticeval, eval_type, depth, (uint16_t)bestmove[0].code);
+        else
             return alpha;
-        }
     }
     else {
-        tp.addHash(hash, alpha, staticeval, eval_type, depth, (uint16_t)bestmove[0].code);
+        tp.addHash(hash, alpha, staticeval, eval_type, depth, (uint16_t)bestmove.code);
         return alpha;
     }
 }
@@ -1010,14 +1003,14 @@ static void search_gen1(searchthread *thr)
         if (pos->rootmovelist.length == 0)
         {
             // mate / stalemate
-            pos->bestmove[0].code = 0;
+            pos->bestmove.code = 0;
             score = pos->bestmovescore[0] =  (pos->isCheckbb ? SCOREBLACKWINS : SCOREDRAW);
             en.stopLevel = ENGINESTOPPED;
         }
         else if (pos->testRepetiton() >= 2 || pos->halfmovescounter >= 100)
         {
             // remis via repetition or 50 moves rule
-            pos->bestmove[0].code = 0;
+            pos->bestmove.code = 0;
             pos->pondermove.code = 0;
             score = pos->bestmovescore[0] = SCOREDRAW;
             en.stopLevel = ENGINESTOPPED;
@@ -1078,45 +1071,30 @@ static void search_gen1(searchthread *thr)
                 if (inWindow == 1)
                 {
                     // MultiPV output only if in aspiration window
-                    // FIXME: This is a bit ugly... code more consistent with SinglePV would be better
-                    // but I had to fight against performance regression so I devided it this way
                     int i = 0;
                     int maxmoveindex = min(en.MultiPV, pos->rootmovelist.length);
                     do
                     {
-                        // The only case that bestmove is not set can happen if rootsearch hit the TP table
-                        // so get bestmovecode from there
-                        if (!pos->bestmove[i].code)
-                        {
-                            uint16_t mc;
-                            int dummystaticeval;
-                            tp.probeHash(pos->hash, &pos->bestmovescore[i], &dummystaticeval, &mc, thr->depth, alpha, beta, 0);
-                            pos->bestmove[i].code = pos->shortMove2FullMove(mc);
-                        }
-
                         uciScore(thr, inWindow, nowtime, i);
-
                         i++;
-                    } while (i < maxmoveindex
-                        && (pos->bestmove[i].code || (pos->bestmove[i].code = tp.getMoveCode(pos->hash)))
-                        && pos->bestmovescore[i] > SHRT_MIN + 1);
+                    } while (i < maxmoveindex);
                 }
             }
             else {
                 // The only two cases that bestmove is not set can happen if alphabeta hit the TP table or we are in TB
                 // so get bestmovecode from there or it was a TB hit so just get the first rootmove
-                if (!pos->bestmove[0].code)
+                if (!pos->bestmove.code)
                 {
                     uint16_t mc = 0;
                     int dummystaticeval;
                     tp.probeHash(pos->hash, &score, &dummystaticeval, &mc, MAXDEPTH, alpha, beta, 0);
-                    pos->bestmove[0].code = pos->shortMove2FullMove(mc);
+                    pos->bestmove.code = pos->shortMove2FullMove(mc);
                     pos->pondermove.code = 0;
                 }
                     
                 // still no bestmove...
-                if (!pos->bestmove[0].code && pos->rootmovelist.length > 0)
-                    pos->bestmove[0].code = pos->rootmovelist.move[0].code;
+                if (!pos->bestmove.code && pos->rootmovelist.length > 0)
+                    pos->bestmove.code = pos->rootmovelist.move[0].code;
 
                 if (pos->rootmovelist.length == 1 && pos->lastbestmovescore != NOSCORE)
                     // Don't report score of instamove; use the score of last position instead
@@ -1135,9 +1113,9 @@ static void search_gen1(searchthread *thr)
             thr->depth++;
             reportedThisDepth = true;
             constantRootMoves++;
-            if (lastBestMove != pos->bestmove[0].code)
+            if (lastBestMove != pos->bestmove.code)
             {
-                lastBestMove = pos->bestmove[0].code;
+                lastBestMove = pos->bestmove.code;
                 constantRootMoves = 0;
             }
             resetEndTime(constantRootMoves);
@@ -1179,7 +1157,7 @@ static void search_gen1(searchthread *thr)
         if (bestthr->index)
         {
             // copy best moves and score from best thread to thread 0
-            pos->bestmove[0] = bestthr->pos.bestmove[0];
+            pos->bestmove = bestthr->pos.bestmove;
             pos->pondermove = bestthr->pos.pondermove;
             pos->bestmovescore[0] = bestthr->pos.bestmovescore[0];
             inWindow = 1;
@@ -1194,24 +1172,24 @@ static void search_gen1(searchthread *thr)
         string strBestmove;
         string strPonder = "";
 
-        if (!pos->bestmove[0].code)
+        if (!pos->bestmove.code)
         {
             // Not enough time to get any bestmove? Fall back to default move
-            pos->bestmove[0] = pos->defaultmove;
+            pos->bestmove = pos->defaultmove;
             pos->pondermove.code = 0;
         }
 
-        strBestmove = pos->bestmove[0].toString();
+        strBestmove = pos->bestmove.toString();
 
         if (en.ponder)
         {
             if (!pos->pondermove.code)
             {
                 // Get the ponder move from TT
-                pos->playMove(&pos->bestmove[0]);
+                pos->playMove(&pos->bestmove);
                 uint16_t pondershort = tp.getMoveCode(pos->hash);
                 pos->pondermove.code = pos->shortMove2FullMove(pondershort);
-                pos->unplayMove(&pos->bestmove[0]);
+                pos->unplayMove(&pos->bestmove);
             }
             if (pos->pondermove.code)
                 strPonder = " ponder " + pos->pondermove.toString();

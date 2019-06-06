@@ -844,7 +844,7 @@ void chessposition::print(ostream* os)
     *os << "Ply: " + to_string(ply) + "\n";
     *os << "rootheight: " + to_string(rootheight) + "\n";
     stringstream ss;
-    ss << hex << bestmove[0].code;
+    ss << hex << bestmove.code;
     *os << "bestmove[0].code: 0x" + ss.str() + "\n";
 }
 
@@ -2248,7 +2248,7 @@ void engine::allocThreads()
 void engine::prepareThreads()
 {
     sthread[0].pos.bestmovescore[0] = NOSCORE;
-    sthread[0].pos.bestmove[0].code = 0;
+    sthread[0].pos.bestmove.code = 0;
     sthread[0].pos.nodes = 0;
     sthread[0].pos.nullmoveply = 0;
     sthread[0].pos.nullmoveside = 0;
@@ -2259,7 +2259,7 @@ void engine::prepareThreads()
         sthread[i].pos.threadindex = i;
         // early reset of variables that are important for bestmove selection
         sthread[i].pos.bestmovescore[0] = NOSCORE;
-        sthread[i].pos.bestmove[0].code = 0;
+        sthread[i].pos.bestmove.code = 0;
         sthread[i].pos.nodes = 0;
         sthread[i].pos.nullmoveply = 0;
         sthread[i].pos.nullmoveside = 0;
