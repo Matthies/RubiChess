@@ -24,8 +24,6 @@
 const int materialvalue[7] = { 0,  100,  314,  314,  483,  913, 32509 };  // some evaluation depends on bishop value >= knight value!!!
 const int maxmobility[4] = { 9, 14, 15, 28 }; // indexed by piece - 2
 
-evalparamset eps;
-
 #ifdef EVALTUNE
 
 sqevallist sqglobal;
@@ -116,11 +114,11 @@ void registeralltuners(chessposition *pos)
     tuneIt = false;
     registertuner(pos, &eps.eHangingpiecepenalty, "eHangingpiecepenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eTempo, "eTempo", 0, 0, 0, 0, tuneIt);
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 8; j++)
             registertuner(pos, &eps.ePassedpawnbonus[i][j], "ePassedpawnbonus", j, 8, i, 4, tuneIt && (j > 0 && j < 7));
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 7; i++)
         for (j = 0; j < 8; j++)
             registertuner(pos, &eps.eKingsupportspasserbonus[i][j], "eKingsupportspasserbonus", j, 8, i, 7, tuneIt && (j > 0 && j < 7));
@@ -158,18 +156,18 @@ void registeralltuners(chessposition *pos)
     for (i = 0; i < 7; i++)
         registertuner(pos, &eps.eMaterialvalue[i], "eMaterialvalue", i, 7, 0, 0, false);
     registertuner(pos, &eps.eKingshieldbonus, "eKingshieldbonus", 0, 0, 0, 0, tuneIt);
-    tuneIt = false;
+
+    // kingdanger evals
+    tuneIt = true;
     registertuner(pos, &eps.eWeakkingringpenalty, "eWeakkingringpenalty", 0, 0, 0, 0, tuneIt);
     for (i = 0; i < 7; i++)
         registertuner(pos, &eps.eKingattackweight[i], "eKingattackweight", i, 7, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
-
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eSafecheckbonus[i], "eSafecheckbonus", i, 6, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
     registertuner(pos, &eps.eKingdangerbyqueen, "eKingdangerbyqueen", 0, 0, 0, 0, tuneIt);
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eKingringattack[i], "eKingringattack", i, 6, 0, 0, tuneIt);
-
     registertuner(pos, &eps.eKingdangeradjust, "eKingdangeradjust", 0, 0, 0, 0, tuneIt);
     
     tuneIt = false;
@@ -210,6 +208,24 @@ static string splitvaluestring(int v[])
     return ss.str();
 }
 
+
+
+// get psqt for eval tracing
+void chessposition::getpsqval()
+{
+    te.material[0] = te.material[1] = 0;
+    for (int i = 0; i < 64; i++)
+    {
+        PieceCode pc = mailbox[i];
+        if (pc)
+        {
+            PieceType p = pc >> 1;
+            int s2m = pc & S2MMASK;
+            te.material[s2m] += S2MSIGN(s2m) * (eps.eMaterialvalue[p] + eps.ePsqt[p][PSQTINDEX(i, s2m)]);
+        }
+    }
+}
+
 template <EvalType Et>
 int chessposition::getPawnAndKingValue(pawnhashentry **entry)
 {
@@ -221,14 +237,6 @@ int chessposition::getPawnAndKingValue(pawnhashentry **entry)
     pawnhashentry *entryptr = *entry;
     if (bTrace || !hashexist)
     {
-        entryptr->value = EVAL(eps.ePsqt[KING][PSQTINDEX(kingpos[0], 0)], 1)
-            + EVAL(eps.ePsqt[KING][PSQTINDEX(kingpos[1], 1)], -1)
-            + EVAL(eps.eMaterialvalue[PAWN], POPCOUNT(piece00[WPAWN]) - POPCOUNT(piece00[BPAWN]));
-        if (bTrace) {
-            te.material[0] += EVAL(eps.ePsqt[KING][PSQTINDEX(kingpos[0], 0)], 1) + EVAL(eps.eMaterialvalue[PAWN], POPCOUNT(piece00[WPAWN]));
-            te.material[1] += EVAL(eps.ePsqt[KING][PSQTINDEX(kingpos[1], 1)], -1) + EVAL(eps.eMaterialvalue[PAWN], -POPCOUNT(piece00[BPAWN]));
-        }
-
         // kingshield safety
         entryptr->value += EVAL(eps.eKingshieldbonus, POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1]));
         if (bTrace) {
@@ -249,10 +257,6 @@ int chessposition::getPawnAndKingValue(pawnhashentry **entry)
             while (pb)
             {
                 index = pullLsb(&pb);
-                int psqtindex = PSQTINDEX(index, me);
-                entryptr->value += EVAL(eps.ePsqt[PAWN][psqtindex], S2MSIGN(me));
-                if (bTrace) te.material[me] += EVAL(eps.ePsqt[PAWN][psqtindex], S2MSIGN(me));
-
                 entryptr->attackedBy2[me] |= (entryptr->attacked[me] & pawn_attacks_to[index][me]);
                 entryptr->attacked[me] |= pawn_attacks_to[index][me];
                 entryptr->semiopen[me] &= (int)(~BITSET(FILE(index)));
@@ -442,11 +446,6 @@ int chessposition::getPositionValue()
         while (pb)
         {
             index = pullLsb(&pb);
-            int psqtindex = PSQTINDEX(index, me);
-            result += EVAL(eps.ePsqt[p][psqtindex], S2MSIGN(me));
-            result += EVAL(eps.eMaterialvalue[p], S2MSIGN(me));
-            if (bTrace) te.material[me] += EVAL(eps.ePsqt[p][psqtindex], S2MSIGN(me)) + EVAL(eps.eMaterialvalue[p], S2MSIGN(me));
-
             U64 attack = 0ULL;
             if (shifting[p] & 0x2) // rook and queen
             {
@@ -597,7 +596,7 @@ int chessposition::getValue()
 #endif
     ph = phase();
     updatePins();
-    int positionscore = getPositionValue<Et>();
+    int positionscore = psqval + getPositionValue<Et>();
     int sideToScale = positionscore > SCOREDRAW ? WHITE : BLACK;
     sc = getScaling(sideToScale);
 
@@ -608,6 +607,7 @@ int chessposition::getValue()
 
     if (bTrace)
     {
+        getpsqval();
         stringstream ss;
         ss << std::showpoint << std::noshowpos << std::fixed << std::setprecision(2)
             << "              |    White    |    Black    |    Total   \n"

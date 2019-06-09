@@ -326,14 +326,14 @@ struct evalparamset {
            VALUE(  69, 264), VALUE( 108, 231), VALUE( 107, 230), VALUE( 114, 198)  }
     };
     eval eSlideronfreefilebonus[2] = {  VALUE(  21,   7), VALUE(  43,   1)  };
-    eval eMaterialvalue[7] = {  VALUE(   0,   0), VALUE( 100, 100), VALUE( 314, 314), VALUE( 314, 314), VALUE( 483, 483), VALUE( 913, 913), VALUE(32509,32509)  };
+    eval eMaterialvalue[7] = {  VALUE(   0,   0), VALUE( 100, 100), VALUE( 314, 314), VALUE( 314, 314), VALUE( 483, 483), VALUE( 913, 913), VALUE(0,0)  };
     eval eKingshieldbonus =  VALUE(  15,  -2);
-    eval eWeakkingringpenalty =  SQVALUE(   1,  72);
-    eval eKingattackweight[7] = {  SQVALUE(   1,   0), SQVALUE(   1,   0), SQVALUE(   1,  14), SQVALUE(   1,  21), SQVALUE(   1,  14), SQVALUE(   1,  27), SQVALUE(   1,   0)  };
-    eval eSafecheckbonus[6] = {  SQVALUE(   1,   0), SQVALUE(   1,   0), SQVALUE(   1, 341), SQVALUE(   1,  55), SQVALUE(   1, 315), SQVALUE(   1, 218)  };
-    eval eKingdangerbyqueen =  SQVALUE(   1,-149);
-    eval eKingringattack[6] = {  SQVALUE(   1,  54), SQVALUE(   1,   0), SQVALUE(   1,  15), SQVALUE(   1,   0), SQVALUE(   1,   0), SQVALUE(   1, -30)  };
-    eval eKingdangeradjust =  SQVALUE(   1,  10);
+    eval eWeakkingringpenalty =  SQVALUE(   1,  67);
+    eval eKingattackweight[7] = {  SQVALUE(   1,   0), SQVALUE(   1,   0), SQVALUE(   1,  30), SQVALUE(   1,  16), SQVALUE(   1,  16), SQVALUE(   1,  39), SQVALUE(   1,   0)  };
+    eval eSafecheckbonus[6] = {  SQVALUE(   1,   0), SQVALUE(   1,   0), SQVALUE(   1, 282), SQVALUE(   1,  55), SQVALUE(   1, 243), SQVALUE(   1, 216)  };
+    eval eKingdangerbyqueen =  SQVALUE(   1,-156);
+    eval eKingringattack[6] = {  SQVALUE(   1,  87), SQVALUE(   1,   0), SQVALUE(   1,  28), SQVALUE(   1,   0), SQVALUE(   1,   0), SQVALUE(   1, -17)  };
+    eval eKingdangeradjust =  SQVALUE(   1,   9);
     eval ePsqt[7][64] = {
         {  VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
@@ -672,6 +672,9 @@ const int shifting[] = { 0, 0, 0, 1, 2, 3, 0 };
 
 const struct { int offset; bool needsblank; } pawnmove[] = { { 0x10, true }, { 0x0f, false }, { 0x11, false } };
 extern const int materialvalue[];
+extern int psqtable[14][64];
+extern evalparamset eps;
+
 // values for move ordering
 const int mvv[] = { 0U << 27, 1U << 27, 2U << 27, 2U << 27, 3U << 27, 4U << 27, 5U << 27 };
 const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 24 };
@@ -968,7 +971,7 @@ public:
     int nullmoveside;
     int nullmoveply = 0;
     chessmovelist rootmovelist;
-    chessmove bestmove[MAXMULTIPV];
+    chessmove bestmove;
     int bestmovescore[MAXMULTIPV];
     int lastbestmovescore;
     chessmove pondermove;
@@ -979,6 +982,7 @@ public:
     Pawnhash *pwnhsh;
     repetition rp;
     int threadindex;
+    int psqval;
 #ifdef SDEBUG
     unsigned long long debughash = 0;
     uint16_t pvdebug[MAXMOVESEQUENCELENGTH];
@@ -986,6 +990,7 @@ public:
     bool debugOnlySubtree;
 #endif
     uint32_t pvtable[MAXDEPTH][MAXDEPTH];
+    uint32_t multipvtable[MAXMULTIPV][MAXDEPTH];
     int ph; // to store the phase during different evaluation functions
     int sc; // to stor scaling factor used for evaluation
     int useTb;
@@ -1036,6 +1041,7 @@ public:
     bool moveGivesCheck(uint32_t c);  // simple and imperfect as it doesn't handle special moves and cases (mainly to avoid pruning of important moves)
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
     uint32_t shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal
+    void getpsqval();  // only for eval trace
     template <EvalType Et> int getPositionValue();
     template <EvalType Et> int getPawnAndKingValue(pawnhashentry **entry);
     template <EvalType Et> int getValue();
@@ -1047,7 +1053,8 @@ public:
     void updateHistory(uint32_t code, int16_t **cmptr, int value);
     void getCmptr(int16_t **cmptr);
     void updatePvTable(uint32_t movecode, bool recursive);
-    string getPv();
+    void updateMultiPvTable(int pvindex, uint32_t movecode, bool recursive);
+    string getPv(int mpvindex = 0);
     int getHistory(uint32_t code, int16_t **cmptr);
 
 #ifdef SDEBUG

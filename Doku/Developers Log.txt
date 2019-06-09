@@ -628,3 +628,8 @@ Ein weiteres interessantes Spiel in Grahams Div2, in dem Rubi den Durchbruch von
 37.d4 exd4 38.Bxf4 d3 39.Bd2 Bd4 40.f4 h5 41.Kf3 Kf7 42.Be1 Ke8 43.Bg3 Kf7 44.e5 
 Kf8 45.e6 d2 46.Ke2 Be3 47.f5 Bg5 48.Bf2 Ke7 49.Bd4 d1=R 50.Kxd1 Bh4 1-0
 
+
+08.06.2019:
+In der Position r4rk1/pp3ppp/2n1bP2/q1b3B1/8/P1Q2N2/1P3PPP/2KR1B1R b - - 0 14 
+findet Rubi die beiden besten Züge Bb4 und Nb4 nicht und will statt dessen Qc3+
+spielen. Selbst Arasan hat hier schon lange den Sieg für Schwarz erkannt.
