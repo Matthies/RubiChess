@@ -91,6 +91,34 @@ string GetSystemInfo()
 #endif
 
 
+void pseudolegaltest()
+{
+    struct pseudolegal
+    {
+        string fen;
+        uint32_t move;
+        bool pseudolegal;
+    } pseudolegaltest[] =
+    {
+        { "8/7k/6r1/1P2p3/4PpP1/7K/4B3/8 b - g3 0 55", 0x90000b96, false },
+        { "", 0 }
+    };
+
+    int i = 0;
+    chessposition *pos = &en.sthread[0].pos;
+    while (pseudolegaltest[i].fen != "")
+    {
+        pos->getFromFen(pseudolegaltest[i].fen.c_str());
+        chessmove m;
+        m.code = pseudolegaltest[i].move;
+        bool legal = pos->moveIsPseudoLegal(m.code);
+        if (legal != pseudolegaltest[i].pseudolegal)
+            printf("Pseudolegaltest failed for %s move %s\n", pseudolegaltest[i].fen.c_str(), m.toString().c_str());
+        i++;
+    }
+}
+
+
 long long engine::perft(int depth, bool dotests)
 {
     long long retval = 0;
@@ -248,6 +276,9 @@ void perftest(bool dotests, int maxdepth)
     df = float(perftlasttime - perftstarttime) / (float)en.frequency;
     printf("========================================================================\n");
     printf("Total:             %*llu  %*f sec.  %*d nps \n", 10, totalresult, 10, df, 8, (int)(df > 0.0 ? (double)totalresult / df : 0));
+
+    if (dotests)
+        pseudolegaltest();
 }
 
 
