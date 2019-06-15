@@ -584,6 +584,7 @@ void chessposition::mirror()
     int kingpostemp = kingpos[0];
     kingpos[0] = kingpos[1] ^ RANKMASK;
     kingpos[1] = kingpostemp ^ RANKMASK;
+    materialhash = zb.getMaterialHash(this);
 }
 
 
