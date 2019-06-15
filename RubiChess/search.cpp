@@ -1111,6 +1111,7 @@ static void search_gen1(searchthread *thr)
                 thr->depth += SkipSize[cycle];
 
             thr->depth++;
+            if (en.isPondering() && thr->depth > maxdepth) thr->depth--;  // stay on maxdepth when pondering
             reportedThisDepth = true;
             constantRootMoves++;
             if (lastBestMove != pos->bestmove.code)
@@ -1125,7 +1126,7 @@ static void search_gen1(searchthread *thr)
         bExitIteration = (pos->rootmovelist.length == 1 && en.endtime1 && !en.isPondering());
 
         // early exit in TB win/lose position
-        bExitIteration = bExitIteration || (pos->tbPosition && abs(score) >= SCORETBWIN - 100);
+        bExitIteration = bExitIteration || (pos->tbPosition && abs(score) >= SCORETBWIN - 100 && !en.isPondering());
 
         // exit if STOPSOON is requested and we're in aspiration window
         bExitIteration = bExitIteration || (en.stopLevel == ENGINESTOPSOON && inWindow == 1);
