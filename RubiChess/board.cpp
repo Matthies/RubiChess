@@ -685,7 +685,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
     myassert(capture >= BLANK && capture <= BQUEEN, this, 1, capture);
 
     // correct target for type of piece?
-    if (!(movesTo(pc, from) & BITSET(to)) && (!ept || to != ept))
+    if (!(movesTo(pc, from) & BITSET(to)) && (!ept || to != ept || p != PAWN))
         return false;
 
     // correct s2m?
