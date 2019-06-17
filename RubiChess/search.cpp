@@ -512,7 +512,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s is singular", debugMove.toString().c_str());
                 extendMove = 1;
             }
-            else if (staticeval >= beta && sBeta >= beta)
+            else if (bestknownscore >= beta && sBeta >= beta)
             {
                 // Hashscore for lower depth and static eval cut and we have at least a second good move => lets cut here
                 return sBeta;
