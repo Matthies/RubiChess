@@ -210,7 +210,7 @@ static string splitvaluestring(int v[])
 
 
 
-// get psqt for eval tracing
+// get psqt for eval tracing and tuning
 void chessposition::getpsqval()
 {
     te.material[0] = te.material[1] = 0;
@@ -221,7 +221,8 @@ void chessposition::getpsqval()
         {
             PieceType p = pc >> 1;
             int s2m = pc & S2MMASK;
-            te.material[s2m] += S2MSIGN(s2m) * (eps.eMaterialvalue[p] + eps.ePsqt[p][PSQTINDEX(i, s2m)]);
+            te.material[s2m] += EVAL(eps.eMaterialvalue[p], S2MSIGN(s2m));
+            te.material[s2m] += EVAL(eps.ePsqt[p][PSQTINDEX(i, s2m)], S2MSIGN(s2m));
         }
     }
 }
@@ -593,6 +594,7 @@ int chessposition::getValue()
     if (bTrace) te = { 0 };
 #ifdef EVALTUNE
     resetTuner();
+    getpsqval();
 #endif
     ph = phase();
     updatePins();
