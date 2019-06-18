@@ -633,3 +633,38 @@ Kf8 45.e6 d2 46.Ke2 Be3 47.f5 Bg5 48.Bf2 Ke7 49.Bd4 d1=R 50.Kxd1 Bh4 1-0
 In der Position r4rk1/pp3ppp/2n1bP2/q1b3B1/8/P1Q2N2/1P3PPP/2KR1B1R b - - 0 14 
 findet Rubi die beiden besten Züge Bb4 und Nb4 nicht und will statt dessen Qc3+
 spielen. Selbst Arasan hat hier schon lange den Sieg für Schwarz erkannt.
+
+
+18.06.2019:
+[Event "CCC 9: The Gauntlet Qualification (5|2)"]
+[Site "Chess.com"]
+[Date "2019.06.18"]
+[Round "168"]
+[White "Rubi"]
+[Black "Winter"]
+[Result "1/2-1/2"]
+[ECO "A01"]
+[GameDuration "00:14:34"]
+[GameEndTime "2019-06-18T11:43:33.863 PDT"]
+[GameStartTime "2019-06-18T11:28:58.922 PDT"]
+[Opening "Nimzovich-Larsen attack"]
+[PlyCount "168"]
+[Termination "adjudication"]
+[TimeControl "300+2"]
+[Variation "Modern Variation"]
+
+1. b3 e5 2. Bb2 Nc6 3. e3 d5 4. Bb5 Bd6 5. Nf3 Qe7 6. c4 dxc4 7. bxc4 Nf6 8. c5
+Bxc5 9. Nxe5 O-O 10. Nxc6 bxc6 11. Bxc6 Rb8 12. Qc2 Qd6 13. Bf3 Ba6 14. Nc3 Bd3
+15. Qc1 Bb4 16. a3 Ba5 17. Na4 Rb3 18. Qc5 Bxd2+ 19. Kd1 Qd7 20. Kxd2 Qxa4 21.
+Bxf6 gxf6 22. Bd1 Rd8 23. Ke1 Qb5 24. Qxc7 Rd7 25. Qc8+ Kg7 26. Bxb3 Qa5+ 27.
+Kd1 Bb5+ 28. Qxd7 Bxd7 29. Rb1 Qxa3 30. Bc2 Qc3 31. Rb3 Qc4 32. Kc1 Qe2 33. e4
+Qxf2 34. Rg3+ Kf8 35. Rd1 Ke7 36. Ra3 Qf4+ 37. Kb2 Qxh2 38. Rd5 Qg1 39. Rda5
+Qd4+ 40. Kc1 Kf8 41. g3 Qg1+ 42. Kb2 Bc6 43. Rxa7 Kg7 44. R7a6 Qc5 45. Rb3 Bxe4
+46. Bxe4 Qd4+ 47. Rc3 Qxe4 48. Rac6 Qg2+ 49. Kc1 Qe2 50. R6c4 Qe1+ 51. Kc2 Qe6
+52. Kb2 Kg6 53. Rf4 Qe2+ 54. Rc2 Qb5+ 55. Kc1 Qd3 56. Rcf2 Kg5 57. R2f3 Qd6 58.
+Rf5+ Kg6 59. g4 Qc6+ 60. Kd1 Qb6 61. Ke2 Qe6+ 62. Kf2 Qc6 63. Kg3 Qc7+ 64. Kh3
+Qd8 65. R3f4 Kg7 66. Kg2 Qe7 67. Kg3 Qe3+ 68. Kh2 Qa3 69. Kg2 Kf8 70. Rxf6 Qa2+
+71. Kh3 Qd5 72. Kg3 Kg7 73. R6f5 Qe6 74. Rf3 Qd6+ 75. R5f4 Qe7 76. Rf5 Qe6 77.
+g5 Qe1+ 78. Kg2 Qe2+ 79. Rf2 Qg4+ 80. Kh2 Qh4+ 81. Kg2 Qg4+ 82. Kf1 Qe4 83.
+Rxf7+ Kg6 84. Kg1 Kxg5 1/2-1/2
+Schwieriges Spiel beim CCC gegen WInter, bei dem SF nach 23. Ke1 Schwarz mit -5 als Sieger sieht. Glücklicherweise findet Winter Ba6 ebensowenig wie Rubi.
