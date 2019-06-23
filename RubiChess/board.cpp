@@ -837,7 +837,7 @@ void chessposition::print(ostream* os)
     *os << "Fullmoves: " + to_string(fullmovescounter) + "\n";
     *os << "Hash: " + to_string(hash) + " (should be " + to_string(zb.getHash(this)) +  ")\n";
     *os << "Pawn Hash: " + to_string(pawnhash) + " (should be " + to_string(zb.getPawnHash(this)) + ")\n";
-    *os << "Value: " + to_string(getValue<NOTRACE>()) + "\n";
+    *os << "Value: " + to_string(getEval<NOTRACE>()) + "\n";
     *os << "Repetitions: " + to_string(rp.getPositionCount(hash)) + "\n";
     *os << "Phase: " + to_string(phase()) + "\n";
     *os << "Pseudo-legal Moves: " + pseudolegalmoves.toStringWithValue() + "\n";
@@ -2679,7 +2679,7 @@ void engine::communicate(string inputstring)
                 stopLevel = ENGINESTOPIMMEDIATELY;
                 break;
             case EVAL:
-                sthread[0].pos.getValue<TRACE>();
+                sthread[0].pos.getEval<TRACE>();
                 break;
             default:
                 break;
