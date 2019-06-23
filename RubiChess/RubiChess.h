@@ -937,6 +937,14 @@ template <MoveType Mt> void evaluateMoves(chessmovelist *ml, chessposition *pos,
 
 enum AttackType { FREE, OCCUPIED };
 
+struct positioneval {
+    pawnhashentry *phentry;
+    int kingattackpiececount[2][7] = { 0 };
+    int kingringattacks[2] = { 0 };
+    int kingattackers[2];
+};
+
+
 class chessposition
 {
 public:
@@ -1041,6 +1049,7 @@ public:
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
     uint32_t shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal
     void getpsqval();  // only for eval trace
+    template <EvalType Et, PieceType Pt, int Me> int getPieceValue(positioneval *posEval);
     template <EvalType Et> int getPositionValue();
     template <EvalType Et> int getPawnAndKingValue(pawnhashentry **entry);
     template <EvalType Et> int getValue();
