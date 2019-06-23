@@ -1,0 +1,7 @@
+Multi-cut / reduction on cut nodes
+
+STC[0,5]:
+Score of RubiChess-cu5 vs RubiChess-ms: 1027 - 949 - 1801  [0.510] 3777
+Elo difference: 7.18 +/- 8.00
+SPRT: llr 1.4, lbound -1.39, ubound 1.39 - H1 was accepted
+
