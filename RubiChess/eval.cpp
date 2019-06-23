@@ -228,7 +228,7 @@ void chessposition::getpsqval()
 }
 
 template <EvalType Et>
-int chessposition::getPawnAndKingValue(pawnhashentry **entry)
+int chessposition::getPawnAndKingEval(pawnhashentry **entry)
 {
     const bool bTrace = (Et == TRACE);
     int val = 0;
@@ -398,102 +398,185 @@ int chessposition::getPawnAndKingValue(pawnhashentry **entry)
 }
 
 
-template <EvalType Et>
-int chessposition::getPositionValue()
+template <EvalType Et, PieceType Pt, int Me>
+int chessposition::getPieceEval(positioneval *pe)
 {
     const bool bTrace = (Et == TRACE);
-    pawnhashentry *phentry;
+    const int You = Me ^ S2MMASK;
+    int result = 0;
+    const int pc = Pt * 2 + Me;
+    U64 pb = piece00[pc];
     int index;
-    int kingattackpiececount[2][7] = { 0 };
-    int kingattackers[2];
-    int kingringattacks[2] = { 0 };
-    U64 occupied = occupied00[0] | occupied00[1];
-    memset(attackedBy, 0, sizeof(attackedBy));
 
+    while (pb)
+    {
+        index = pullLsb(&pb);
+        U64 attack = 0ULL;
+        if (Pt == ROOK || Pt == QUEEN)
+        {
+            U64 occupied = occupied00[0] | occupied00[1];
+            U64 xrayrookoccupied = occupied ^ (piece00[WROOK + Me] | piece00[WQUEEN + Me]);
+            attack = mRookAttacks[index][MAGICROOKINDEX(xrayrookoccupied, index)];
+
+            // extrabonus for rook on (semi-)open file  
+            if (Pt == ROOK && (pe->phentry->semiopen[Me] & BITSET(FILE(index)))) {
+                result += EVAL(eps.eSlideronfreefilebonus[bool(pe->phentry->semiopen[You] & BITSET(FILE(index)))], S2MSIGN(Me));
+                if (bTrace) te.rooks[Me] += EVAL(eps.eSlideronfreefilebonus[bool(pe->phentry->semiopen[You] & BITSET(FILE(index)))], S2MSIGN(Me));
+            }
+        }
+
+        if (Pt == BISHOP || Pt == QUEEN)
+        {
+            U64 occupied = occupied00[0] | occupied00[1];
+            U64 xraybishopoccupied = occupied ^ (piece00[WBISHOP + Me] | piece00[WQUEEN + Me]);
+            attack |= mBishopAttacks[index][MAGICBISHOPINDEX(xraybishopoccupied, index)];
+        }
+
+        if (Pt == KNIGHT)
+            attack = knight_attacks[index];
+
+        // update attack bitboard
+        attackedBy[Me][Pt] |= attack;
+        attackedBy2[Me] |= (attackedBy[Me][0] & attack);
+        attackedBy[Me][0] |= attack;
+
+        // mobility bonus
+        U64 goodMobility = ~((piece00[WPAWN + Me] & (RANK2(Me) | RANK3(Me))) | attackedBy[You][PAWN] | piece00[WKING + Me]);
+        U64 mobility = attack & goodMobility;
+
+        // Penalty for a piece pinned in front of the king
+        if (kingPinned[Me] & (BITSET(index)))
+        {
+            result += EVAL(eps.eKingpinpenalty[Pt], S2MSIGN(Me));
+            if (bTrace) te.mobility[Me] += EVAL(eps.eKingpinpenalty[Pt], S2MSIGN(Me));
+        }
+        else {
+            // Piece is not pinned; give him some mobility bonus
+            result += EVAL(eps.eMobilitybonus[Pt - 2][POPCOUNT(mobility)], S2MSIGN(Me));
+            if (bTrace) te.mobility[Me] += EVAL(eps.eMobilitybonus[Pt - 2][POPCOUNT(mobility)], S2MSIGN(Me));
+        }
+
+        // king danger
+        U64 kingdangerarea = kingdangerMask[kingpos[You]][You];
+        if (mobility & kingdangerarea)
+        {
+            pe->kingringattacks[Me] += POPCOUNT(mobility & kingdangerarea);
+            pe->kingattackpiececount[Me][Pt] += POPCOUNT(mobility & kingdangerarea);
+            pe->kingattackers[Me]++;
+        }
+    }
+    return result;
+}
+
+
+template <EvalType Et, int Me>
+int chessposition::getLateEval(positioneval *pe)
+{
+    const bool bTrace = (Et == TRACE);
+    const int You = Me ^ S2MMASK;
+    int index;
+    int result = 0;
+    U64 occupied = occupied00[0] | occupied00[1];
+
+    // Passed pawns
+    U64 ppb;
+    ppb = pe->phentry->passedpawnbb[Me];
+    while (ppb)
+    {
+        index = pullLsb(&ppb);
+        int target = index + (Me ? -8 : 8);
+        bool targetoccupied = (occupied & BITSET(target));
+        bool targetsafe = (~attackedBy[You][0] & BITSET(target));
+        result += EVAL(eps.ePassedpawnbonus[(targetsafe << 1) + targetoccupied][RRANK(index, Me)], S2MSIGN(Me));
+        if (bTrace) te.ppawns[Me] += EVAL(eps.ePassedpawnbonus[(targetsafe << 1) + targetoccupied][RRANK(index, Me)], S2MSIGN(Me));
+    }
+
+    // King safety; calculate the danger for my king
+    int kingdanger = SQEVAL(eps.eKingdangeradjust, 1, You);
+    kingdanger += SQEVAL(eps.eKingringattack[POPCOUNT(kingdangerMask[kingpos[Me]][Me]) - 4], pe->kingringattacks[You], You);
+
+    // My attacked and poorly defended squares
+    U64 myweaksquares = attackedBy[You][0]
+        & ~attackedBy2[Me]
+        & (~attackedBy[Me][0] | attackedBy[Me][KING] | attackedBy[Me][QUEEN]);
+
+    // Your safe target squares
+    U64 yoursafetargets = (~attackedBy[Me][0] | (myweaksquares & attackedBy2[You])) & ~occupied00[You];
+
+    // penalty for weak squares in our king ring
+    kingdanger += SQEVAL(eps.eWeakkingringpenalty, POPCOUNT(myweaksquares & kingdangerMask[kingpos[Me]][Me]), You);
+
+    for (int p = KNIGHT; p <= QUEEN; p++) {
+        // Attacks to our king ring
+        if (pe->kingattackpiececount[You][p])
+        {
+            kingdanger += SQEVAL(eps.eKingattackweight[p], pe->kingattackpiececount[You][p] * pe->kingattackers[You], You);
+        }
+
+        if (movesTo(p << 1, kingpos[Me]) & attackedBy[You][p] & yoursafetargets)
+        {
+            // Bonus for safe checks
+            kingdanger += SQEVAL(eps.eSafecheckbonus[p], 1, You);
+        }
+
+    }
+    kingdanger += SQEVAL(eps.eKingdangerbyqueen, !piece00[WQUEEN | You], You);
+    result += SQRESULT(kingdanger, You);
+    if (bTrace) te.kingattackpower[You] += SQRESULT(kingdanger, You);
+
+    // Threats
+    U64 hisNonPawns = occupied00[You] ^ piece00[WPAWN + You];
+    U64 hisAttackedNonPawns = (hisNonPawns & attackedBy[Me][PAWN]);
+    if (hisAttackedNonPawns)
+    {
+        // Our safe or protected pawns
+        U64 ourSafePawns = piece00[WPAWN | Me] & (~attackedBy[You][0] | attackedBy[Me][0]);
+        U64 safeThreats = PAWNATTACK(Me, ourSafePawns) & hisAttackedNonPawns;
+        result += EVAL(eps.eSafepawnattackbonus, S2MSIGN(Me) * POPCOUNT(safeThreats));
+        if (bTrace) te.threats[Me] += EVAL(eps.eSafepawnattackbonus, S2MSIGN(Me) * POPCOUNT(safeThreats));
+    }
+
+    // Threat by pawn push
+    // Get empty squares for pawn pushes
+    U64 pawnPush = PAWNPUSH(Me, piece00[WPAWN | Me]) & ~occupied;
+    pawnPush |= PAWNPUSH(Me, pawnPush & RANK3(Me)) & ~occupied;
+
+    // Filter squares that are attacked by opponent pawn or by any piece and undefeated
+    pawnPush &= ~attackedBy[You][PAWN] & (attackedBy[Me][0] | ~attackedBy[You][0]);
+
+    // Get opponents pieces that are attacked from these pawn pushes and not already attacked now
+    U64 attackedPieces = PAWNATTACK(Me, pawnPush) & occupied00[You] & ~attackedBy[Me][PAWN];
+    result += EVAL(eps.ePawnpushthreatbonus, S2MSIGN(Me) * POPCOUNT(attackedPieces));
+    if (bTrace) te.threats[Me] += EVAL(eps.ePawnpushthreatbonus, S2MSIGN(Me) * POPCOUNT(attackedPieces));
+
+    // Hanging pieces
+    U64 hanging = occupied00[Me] & ~attackedBy[Me][0] & attackedBy[You][0];
+    result += EVAL(eps.eHangingpiecepenalty, S2MSIGN(Me) * POPCOUNT(hanging));
+    if (bTrace) te.threats[You] += EVAL(eps.eHangingpiecepenalty, S2MSIGN(Me) * POPCOUNT(hanging));
+
+    return result;
+}
+
+
+template <EvalType Et>
+int chessposition::getGeneralEval(positioneval *pe)
+{
+    const bool bTrace = (Et == TRACE);
     int result = EVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
     if (bTrace) te.tempo[state & S2MMASK] += EVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
 
-    result += getPawnAndKingValue<Et>(&phentry);
-
     attackedBy[0][KING] = king_attacks[kingpos[0]];
-    attackedBy2[0] = phentry->attackedBy2[0] | (attackedBy[0][KING] & phentry->attacked[0]);
-    attackedBy[0][0] = attackedBy[0][KING] | phentry->attacked[0];
+    attackedBy2[0] = pe->phentry->attackedBy2[0] | (attackedBy[0][KING] & pe->phentry->attacked[0]);
+    attackedBy[0][0] = attackedBy[0][KING] | pe->phentry->attacked[0];
     attackedBy[1][KING] = king_attacks[kingpos[1]];
-    attackedBy2[1] = phentry->attackedBy2[1] | (attackedBy[1][KING] & phentry->attacked[1]);
-    attackedBy[1][0] = attackedBy[1][KING] | phentry->attacked[1];
+    attackedBy2[1] = pe->phentry->attackedBy2[1] | (attackedBy[1][KING] & pe->phentry->attacked[1]);
+    attackedBy[1][0] = attackedBy[1][KING] | pe->phentry->attacked[1];
 
-    attackedBy[0][PAWN] = phentry->attacked[0];
-    attackedBy[1][PAWN] = phentry->attacked[1];
+    attackedBy[0][PAWN] = pe->phentry->attacked[0];
+    attackedBy[1][PAWN] = pe->phentry->attacked[1];
 
-    kingattackers[0] = POPCOUNT(attackedBy[0][PAWN] & kingdangerMask[kingpos[1]][1]);
-    kingattackers[1] = POPCOUNT(attackedBy[1][PAWN] & kingdangerMask[kingpos[0]][0]);
-
-    U64 goodMobility[2];
-    goodMobility[0] = ~((piece00[WPAWN] & (RANK2(0) | RANK3(0))) | attackedBy[1][PAWN] | piece00[WKING]);
-    goodMobility[1] = ~((piece00[BPAWN] & (RANK2(1) | RANK3(1))) | attackedBy[0][PAWN] | piece00[BKING]);
-
-    U64 kingdangerarea[2] = { kingdangerMask[kingpos[0]][0], kingdangerMask[kingpos[1]][1] };
-
-    U64 xrayrookoccupied[2] = { occupied ^ (piece00[WROOK] | piece00[WQUEEN]), occupied ^ (piece00[BROOK] | piece00[BQUEEN]) };
-    U64 xraybishopoccupied[2] = { occupied ^ (piece00[WBISHOP] | piece00[WQUEEN]), occupied ^ (piece00[BBISHOP] | piece00[BQUEEN]) };
-
-    for (int pc = WKNIGHT; pc <= BQUEEN; pc++)
-    {
-        int p = (pc >> 1);
-        int me = pc & S2MMASK;
-        int you = me ^ S2MMASK;
-        U64 pb = piece00[pc];
-
-        while (pb)
-        {
-            index = pullLsb(&pb);
-            U64 attack = 0ULL;
-            if (shifting[p] & 0x2) // rook and queen
-            {
-                attack = mRookAttacks[index][MAGICROOKINDEX(xrayrookoccupied[me], index)];
-
-                // extrabonus for rook on (semi-)open file  
-                if (p == ROOK && (phentry->semiopen[me] & BITSET(FILE(index)))) {
-                    result += EVAL(eps.eSlideronfreefilebonus[bool(phentry->semiopen[you] & BITSET(FILE(index)))], S2MSIGN(me));
-                    if (bTrace) te.rooks[me] += EVAL(eps.eSlideronfreefilebonus[bool(phentry->semiopen[you] & BITSET(FILE(index)))], S2MSIGN(me));
-                }
-            }
-
-            if (shifting[p] & 0x1) // bishop and queen)
-                attack |= mBishopAttacks[index][MAGICBISHOPINDEX(xraybishopoccupied[me], index)];
-
-            if (p == KNIGHT)
-                attack = knight_attacks[index];
-
-            // update attack bitboard
-            attackedBy[me][p] |= attack;
-            attackedBy2[me] |= (attackedBy[me][0] & attack);
-            attackedBy[me][0] |= attack;
-
-            // mobility bonus
-            U64 mobility = attack & goodMobility[me];
-
-            // Penalty for a piece pinned in front of the king
-            if (kingPinned[me] & (BITSET(index)))
-            {
-                result += EVAL(eps.eKingpinpenalty[p], S2MSIGN(me));
-                if (bTrace) te.mobility[me] += EVAL(eps.eKingpinpenalty[p], S2MSIGN(me));
-            }
-            else {
-                // Piece is not pinned; give him some mobility bonus
-                result += EVAL(eps.eMobilitybonus[p - 2][POPCOUNT(mobility)], S2MSIGN(me));
-                if (bTrace) te.mobility[me] += EVAL(eps.eMobilitybonus[p - 2][POPCOUNT(mobility)], S2MSIGN(me));
-            }
-
-            // king danger
-            if (mobility & kingdangerarea[you])
-            {
-                kingringattacks[me] += POPCOUNT(mobility & kingdangerarea[you]);
-                kingattackpiececount[me][p] += POPCOUNT(mobility & kingdangerarea[you]);
-                kingattackers[me]++;
-            }
-        }
-    }
+    pe->kingattackers[0] = POPCOUNT(attackedBy[0][PAWN] & kingdangerMask[kingpos[1]][1]);
+    pe->kingattackers[1] = POPCOUNT(attackedBy[1][PAWN] & kingdangerMask[kingpos[0]][0]);
 
     // bonus for double bishop
     result += EVAL(eps.eDoublebishopbonus, ((POPCOUNT(piece00[WBISHOP]) >= 2) - (POPCOUNT(piece00[BBISHOP]) >= 2)));
@@ -502,93 +585,12 @@ int chessposition::getPositionValue()
         te.bishops[1] += EVAL(eps.eDoublebishopbonus, -(POPCOUNT(piece00[BBISHOP]) >= 2));
     }
 
-    for (int me = 0; me < 2; me++)
-    {
-        int you = me ^ S2MMASK;
-
-        // Passed pawns
-        U64 ppb;
-        ppb = phentry->passedpawnbb[me];
-        while (ppb)
-        {
-            index = pullLsb(&ppb);
-            int target = index + (me ? -8 : 8);
-            bool targetoccupied = (occupied & BITSET(target));
-            bool targetsafe = (~attackedBy[you][0] & BITSET(target));
-            result += EVAL(eps.ePassedpawnbonus[(targetsafe << 1) + targetoccupied][RRANK(index, me)], S2MSIGN(me));
-            if (bTrace) te.ppawns[me] += EVAL(eps.ePassedpawnbonus[(targetsafe << 1) + targetoccupied][RRANK(index, me)], S2MSIGN(me));
-        }
-
-        // King safety; calculate the danger for my king
-        int kingdanger = SQEVAL(eps.eKingdangeradjust, 1, you);
-        kingdanger += SQEVAL(eps.eKingringattack[POPCOUNT(kingdangerarea[me]) - 4], kingringattacks[you], you);
-
-        // My attacked and poorly defended squares
-        U64 myweaksquares = attackedBy[you][0]
-            & ~attackedBy2[me]
-            & (~attackedBy[me][0] | attackedBy[me][KING] | attackedBy[me][QUEEN]);
-
-        // Your safe target squares
-        U64 yoursafetargets = (~attackedBy[me][0] | (myweaksquares & attackedBy2[you])) & ~occupied00[you];
-
-        // penalty for weak squares in our king ring
-        kingdanger += SQEVAL(eps.eWeakkingringpenalty, POPCOUNT(myweaksquares & kingdangerMask[kingpos[me]][me]), you);
-
-        for (int p = KNIGHT; p <= QUEEN; p++) {
-            // Attacks to our king ring
-            if (kingattackpiececount[you][p])
-            {
-                kingdanger += SQEVAL(eps.eKingattackweight[p], kingattackpiececount[you][p] * kingattackers[you], you);
-            }
-
-            if (movesTo(p << 1, kingpos[me]) & attackedBy[you][p] & yoursafetargets)
-            {
-                // Bonus for safe checks
-                kingdanger += SQEVAL(eps.eSafecheckbonus[p], 1, you);
-            }
-
-        }
-        kingdanger += SQEVAL(eps.eKingdangerbyqueen, !piece00[WQUEEN | you], you);
-        result += SQRESULT(kingdanger, you);
-        if (bTrace) te.kingattackpower[you] += SQRESULT(kingdanger, you);
-
-        // Threats
-        U64 hisNonPawns = occupied00[you] ^ piece00[WPAWN | you];
-        U64 hisAttackedNonPawns = (hisNonPawns & attackedBy[me][PAWN]);
-        if (hisAttackedNonPawns)
-        {
-            // Our safe or protected pawns
-            U64 ourSafePawns = piece00[WPAWN | me] & (~attackedBy[you][0] | attackedBy[me][0]);
-            U64 safeThreats = PAWNATTACK(me, ourSafePawns) & hisAttackedNonPawns;
-            result += EVAL(eps.eSafepawnattackbonus, S2MSIGN(me) * POPCOUNT(safeThreats));
-            if (bTrace) te.threats[me] += EVAL(eps.eSafepawnattackbonus, S2MSIGN(me) * POPCOUNT(safeThreats));
-        }
-
-        // Threat by pawn push
-        // Get empty squares for pawn pushes
-        U64 pawnPush = PAWNPUSH(me, piece00[WPAWN | me]) & ~occupied;
-        pawnPush |= PAWNPUSH(me, pawnPush & RANK3(me)) & ~occupied;
-
-        // Filter squares that are attacked by opponent pawn or by any piece and undefeated
-        pawnPush &= ~attackedBy[you][PAWN] & (attackedBy[me][0] | ~attackedBy[you][0]);
-
-        // Get opponents pieces that are attacked from these pawn pushes and not already attacked now
-        U64 attackedPieces = PAWNATTACK(me, pawnPush) & occupied00[you] & ~attackedBy[me][PAWN];
-        result += EVAL(eps.ePawnpushthreatbonus, S2MSIGN(me) * POPCOUNT(attackedPieces));
-        if (bTrace) te.threats[me] += EVAL(eps.ePawnpushthreatbonus, S2MSIGN(me) * POPCOUNT(attackedPieces));
-
-        // Hanging pieces
-        U64 hanging = occupied00[me] & ~attackedBy[me][0] & attackedBy[you][0];
-        result += EVAL(eps.eHangingpiecepenalty, S2MSIGN(me) * POPCOUNT(hanging));
-        if (bTrace) te.threats[you] += EVAL(eps.eHangingpiecepenalty, S2MSIGN(me) * POPCOUNT(hanging));
-    }
-
     return result;
 }
 
 
 template <EvalType Et>
-int chessposition::getValue()
+int chessposition::getEval()
 {
     const bool bTrace = (Et == TRACE);
     if (bTrace) te = { 0 };
@@ -598,14 +600,28 @@ int chessposition::getValue()
 #endif
     ph = phase();
     updatePins();
-    int positionscore = psqval + getPositionValue<Et>();
-    int sideToScale = positionscore > SCOREDRAW ? WHITE : BLACK;
+    positioneval pe;
+
+    // reset the attackedBy information
+    memset(attackedBy, 0, sizeof(attackedBy));
+
+    int pawnEval = getPawnAndKingEval<Et>(&pe.phentry);
+    int generalEval = getGeneralEval<Et>(&pe);
+    int piecesEval = getPieceEval<Et, KNIGHT, 0>(&pe)   + getPieceEval<Et, KNIGHT, 1>(&pe)
+                    + getPieceEval<Et, BISHOP, 0>(&pe) + getPieceEval<Et, BISHOP, 1>(&pe)
+                    + getPieceEval<Et, ROOK, 0>(&pe)   + getPieceEval<Et, ROOK, 1>(&pe)
+                    + getPieceEval<Et, QUEEN, 0>(&pe)  + getPieceEval<Et, QUEEN, 1>(&pe);
+    int lateEval = getLateEval<Et, 0>(&pe) + getLateEval<Et, 1>(&pe);
+
+    int totalEval = psqval + pawnEval + generalEval + piecesEval + lateEval;
+
+    int sideToScale = totalEval > SCOREDRAW ? WHITE : BLACK;
     sc = getScaling(sideToScale);
 
     if (!bTrace && sc == SCALE_DRAW)
         return SCOREDRAW;
 
-    int score = TAPEREDANDSCALEDEVAL(positionscore, ph, sc);
+    int score = TAPEREDANDSCALEDEVAL(totalEval, ph, sc);
 
     if (bTrace)
     {
@@ -625,7 +641,7 @@ int chessposition::getValue()
             << " King attacks | " << splitvaluestring(te.kingattackpower)
             << "        Tempo | " << splitvaluestring(te.tempo)
             << " -------------+-------------+-------------+------------\n"
-            << "        Total |  Ph=" << setw(3) << ph << "/256 |  Sc=" << setw(3) << sc << "/128 | " << splitvaluestring(positionscore) << "\n"
+            << "        Total |  Ph=" << setw(3) << ph << "/256 |  Sc=" << setw(3) << sc << "/128 | " << splitvaluestring(totalEval) << "\n"
             << "\nResulting score: " << cp(score) << "\n";
 
         cout << ss.str();
@@ -677,5 +693,5 @@ int chessposition::getScaling(int col)
 
 // Explicit template instantiation
 // This avoids putting these definitions in header file
-template int chessposition::getValue<NOTRACE>();
-template int chessposition::getValue<TRACE>();
+template int chessposition::getEval<NOTRACE>();
+template int chessposition::getEval<TRACE>();

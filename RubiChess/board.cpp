@@ -837,7 +837,7 @@ void chessposition::print(ostream* os)
     *os << "Fullmoves: " + to_string(fullmovescounter) + "\n";
     *os << "Hash: " + to_string(hash) + " (should be " + to_string(zb.getHash(this)) +  ")\n";
     *os << "Pawn Hash: " + to_string(pawnhash) + " (should be " + to_string(zb.getPawnHash(this)) + ")\n";
-    *os << "Value: " + to_string(getValue<NOTRACE>()) + "\n";
+    *os << "Value: " + to_string(getEval<NOTRACE>()) + "\n";
     *os << "Repetitions: " + to_string(rp.getPositionCount(hash)) + "\n";
     *os << "Phase: " + to_string(phase()) + "\n";
     *os << "Pseudo-legal Moves: " + pseudolegalmoves.toStringWithValue() + "\n";
@@ -1836,11 +1836,11 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
             while (frombits)
             {
                 from = pullLsb(&frombits);
-                if (shifting[p] & 0x1)
+                if (p == BISHOP || p == QUEEN)
                 {
                     tobits |= (MAGICBISHOPATTACKS(occupiedbits, from) & targetbits);
                 }
-                if (shifting[p] & 0x2)
+                if (p == ROOK || p == QUEEN)
                 {
                     tobits |= (MAGICROOKATTACKS(occupiedbits, from) & targetbits);
                 }
@@ -2011,9 +2011,9 @@ bool chessposition::see(uint32_t move, int threshold)
         seeOccupied ^= BITSET(attackerIndex);
 
         // Add new shifting attackers but exclude already moved attackers using current seeOccupied
-        if (nextPiece == PAWN || shifting[nextPiece] & 0x1 || nextPiece == KING)
+        if ((nextPiece & 0x1) || nextPiece == KING)  // pawn, bishop, queen, king
             attacker |= (MAGICBISHOPATTACKS(seeOccupied, to) & potentialBishopAttackers);
-        if (shifting[nextPiece] & 0x2 || nextPiece == KING)
+        if (nextPiece == ROOK || nextPiece == QUEEN || nextPiece == KING)
             attacker |= (MAGICROOKATTACKS(seeOccupied, to) & potentialRookAttackers);
 
         // Remove attacker
@@ -2679,7 +2679,7 @@ void engine::communicate(string inputstring)
                 stopLevel = ENGINESTOPIMMEDIATELY;
                 break;
             case EVAL:
-                sthread[0].pos.getValue<TRACE>();
+                sthread[0].pos.getEval<TRACE>();
                 break;
             default:
                 break;

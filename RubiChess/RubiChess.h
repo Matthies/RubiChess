@@ -668,7 +668,6 @@ const int knightoffset[] = { -6, -10, -15, -17, 6, 10, 15, 17 };
 const int diagonaloffset[] = { -7, -9, 7, 9 };
 const int orthogonaloffset[] = { -8, -1, 1, 8 };
 const int orthogonalanddiagonaloffset[] = { -8, -1, 1, 8, -7, -9, 7, 9 };
-const int shifting[] = { 0, 0, 0, 1, 2, 3, 0 };
 
 const struct { int offset; bool needsblank; } pawnmove[] = { { 0x10, true }, { 0x0f, false }, { 0x11, false } };
 extern const int materialvalue[];
@@ -938,6 +937,14 @@ template <MoveType Mt> void evaluateMoves(chessmovelist *ml, chessposition *pos,
 
 enum AttackType { FREE, OCCUPIED };
 
+struct positioneval {
+    pawnhashentry *phentry;
+    int kingattackpiececount[2][7] = { 0 };
+    int kingringattacks[2] = { 0 };
+    int kingattackers[2];
+};
+
+
 class chessposition
 {
 public:
@@ -1042,9 +1049,11 @@ public:
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
     uint32_t shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal
     void getpsqval();  // only for eval trace
-    template <EvalType Et> int getPositionValue();
-    template <EvalType Et> int getPawnAndKingValue(pawnhashentry **entry);
-    template <EvalType Et> int getValue();
+    template <EvalType Et> int getGeneralEval(positioneval *pe);
+    template <EvalType Et, PieceType Pt, int Me> int getPieceEval(positioneval *pe);
+    template <EvalType Et, int Me> int getLateEval(positioneval *pe);
+    template <EvalType Et> int getPawnAndKingEval(pawnhashentry **entry);
+    template <EvalType Et> int getEval();
     int getScaling(int col);
 
     template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth);
