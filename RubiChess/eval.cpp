@@ -448,7 +448,7 @@ int chessposition::getPositionValue()
         {
             index = pullLsb(&pb);
             U64 attack = 0ULL;
-            if (shifting[p] & 0x2) // rook and queen
+            if (p == ROOK || p == QUEEN)
             {
                 attack = mRookAttacks[index][MAGICROOKINDEX(xrayrookoccupied[me], index)];
 
@@ -459,7 +459,7 @@ int chessposition::getPositionValue()
                 }
             }
 
-            if (shifting[p] & 0x1) // bishop and queen)
+            if (p == BISHOP || p == QUEEN)
                 attack |= mBishopAttacks[index][MAGICBISHOPINDEX(xraybishopoccupied[me], index)];
 
             if (p == KNIGHT)

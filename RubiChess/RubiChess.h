@@ -668,7 +668,6 @@ const int knightoffset[] = { -6, -10, -15, -17, 6, 10, 15, 17 };
 const int diagonaloffset[] = { -7, -9, 7, 9 };
 const int orthogonaloffset[] = { -8, -1, 1, 8 };
 const int orthogonalanddiagonaloffset[] = { -8, -1, 1, 8, -7, -9, 7, 9 };
-const int shifting[] = { 0, 0, 0, 1, 2, 3, 0 };
 
 const struct { int offset; bool needsblank; } pawnmove[] = { { 0x10, true }, { 0x0f, false }, { 0x11, false } };
 extern const int materialvalue[];

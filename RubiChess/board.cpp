@@ -1836,11 +1836,11 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
             while (frombits)
             {
                 from = pullLsb(&frombits);
-                if (shifting[p] & 0x1)
+                if (p == BISHOP || p == QUEEN)
                 {
                     tobits |= (MAGICBISHOPATTACKS(occupiedbits, from) & targetbits);
                 }
-                if (shifting[p] & 0x2)
+                if (p == ROOK || p == QUEEN)
                 {
                     tobits |= (MAGICROOKATTACKS(occupiedbits, from) & targetbits);
                 }
@@ -2011,9 +2011,9 @@ bool chessposition::see(uint32_t move, int threshold)
         seeOccupied ^= BITSET(attackerIndex);
 
         // Add new shifting attackers but exclude already moved attackers using current seeOccupied
-        if (nextPiece == PAWN || shifting[nextPiece] & 0x1 || nextPiece == KING)
+        if ((nextPiece & 0x1) || nextPiece == KING)  // pawn, bishop, queen, king
             attacker |= (MAGICBISHOPATTACKS(seeOccupied, to) & potentialBishopAttackers);
-        if (shifting[nextPiece] & 0x2 || nextPiece == KING)
+        if (nextPiece == ROOK || nextPiece == QUEEN || nextPiece == KING)
             attacker |= (MAGICROOKATTACKS(seeOccupied, to) & potentialRookAttackers);
 
         // Remove attacker
