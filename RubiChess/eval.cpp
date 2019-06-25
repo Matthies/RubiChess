@@ -227,174 +227,145 @@ void chessposition::getpsqval()
     }
 }
 
-template <EvalType Et>
-int chessposition::getPawnAndKingEval(pawnhashentry **entry)
+template <EvalType Et, int Me>
+void chessposition::getPawnAndKingEval(pawnhashentry *entryptr)
 {
     const bool bTrace = (Et == TRACE);
-    int val = 0;
+    const int You = Me ^ S2MMASK;
+    const int pc = WPAWN | Me;
     int index;
+    
+    // kingshield safety
+    entryptr->value += EVAL(eps.eKingshieldbonus, S2MSIGN(Me) * POPCOUNT(piece00[WPAWN | Me] & kingshieldMask[kingpos[Me]][Me]));
+    if (bTrace) te.kingattackpower[You] += EVAL(eps.eKingshieldbonus, S2MSIGN(Me) * POPCOUNT(piece00[WPAWN | Me] & kingshieldMask[kingpos[Me]][Me]));
 
-    bool hashexist = pwnhsh->probeHash(pawnhash, entry);
-    pawnhashentry *entryptr = *entry;
-    if (bTrace || !hashexist)
+    entryptr->semiopen[Me] = 0xff;
+    entryptr->passedpawnbb[Me] = 0ULL;
+    entryptr->isolatedpawnbb[Me] = 0ULL;
+    entryptr->backwardpawnbb[Me] = 0ULL;
+    const U64 yourPawns = piece00[pc ^ S2MMASK];
+    const U64 myPawns = piece00[pc];
+    U64 pb = myPawns;
+    while (pb)
     {
-        // kingshield safety
-        entryptr->value += EVAL(eps.eKingshieldbonus, POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]) - POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1]));
-        if (bTrace) {
-            te.kingattackpower[0] += EVAL(eps.eKingshieldbonus, -POPCOUNT(piece00[BPAWN] & kingshieldMask[kingpos[1]][1]));
-            te.kingattackpower[1] += EVAL(eps.eKingshieldbonus, POPCOUNT(piece00[WPAWN] & kingshieldMask[kingpos[0]][0]));
-        }
-        for (int pc = WPAWN; pc <= BPAWN; pc++)
+        index = pullLsb(&pb);
+        entryptr->attackedBy2[Me] |= (entryptr->attacked[Me] & pawn_attacks_to[index][Me]);
+        entryptr->attacked[Me] |= pawn_attacks_to[index][Me];
+        entryptr->semiopen[Me] &= (int)(~BITSET(FILE(index)));
+
+        U64 yourStoppers = passedPawnMask[index][Me] & yourPawns;
+        if (!yourStoppers)
         {
-            int me = pc & S2MMASK;
-            int you = me ^ S2MMASK;
-            entryptr->semiopen[me] = 0xff;
-            entryptr->passedpawnbb[me] = 0ULL;
-            entryptr->isolatedpawnbb[me] = 0ULL;
-            entryptr->backwardpawnbb[me] = 0ULL;
-            U64 yourPawns = piece00[pc ^ S2MMASK];
-            U64 myPawns = piece00[pc];
-            U64 pb = myPawns;
-            while (pb)
+            // passed pawn
+            entryptr->passedpawnbb[Me] |= BITSET(index);
+            int mykingdistance = squareDistance[index][kingpos[Me]];
+            int yourkingdistance = squareDistance[index][kingpos[You]];
+            entryptr->value += EVAL(eps.eKingsupportspasserbonus[mykingdistance][RRANK(index, Me)], S2MSIGN(Me));
+            if (bTrace) te.pawns[Me] += EVAL(eps.eKingsupportspasserbonus[mykingdistance][RRANK(index, Me)], S2MSIGN(Me));
+            entryptr->value += EVAL(eps.eKingdefendspasserpenalty[yourkingdistance][RRANK(index, Me)], S2MSIGN(Me));
+            if (bTrace) te.pawns[Me] += EVAL(eps.eKingdefendspasserpenalty[yourkingdistance][RRANK(index, Me)], S2MSIGN(Me));
+        }
+        else {
+            // test for potential passer
+            U64 mySupporters = myPawns & pawn_attacks_to[index][You];
+            U64 myPushsupporters = myPawns & pawn_attacks_to[PAWNPUSHINDEX(Me, index)][You];
+            U64 yourAttackers = yourPawns & pawn_attacks_to[index][Me];
+            U64 yourPushattackers = yourPawns & pawn_attacks_to[PAWNPUSHINDEX(Me, index)][Me];
+            if ((!yourStoppers ^ yourAttackers ^ yourPushattackers))
             {
-                index = pullLsb(&pb);
-                entryptr->attackedBy2[me] |= (entryptr->attacked[me] & pawn_attacks_to[index][me]);
-                entryptr->attacked[me] |= pawn_attacks_to[index][me];
-                entryptr->semiopen[me] &= (int)(~BITSET(FILE(index)));
-
-                U64 yourStoppers = passedPawnMask[index][me] & yourPawns;
-                if (!yourStoppers)
+                // Lets see if we can get rid of the remaining stoppers
+                if (POPCOUNT(myPushsupporters) >= POPCOUNT(yourPushattackers))
                 {
-                    // passed pawn
-                    entryptr->passedpawnbb[me] |= BITSET(index);
-                    int mykingdistance = squareDistance[index][kingpos[me]];
-                    int yourkingdistance = squareDistance[index][kingpos[you]];
-                    entryptr->value += EVAL(eps.eKingsupportspasserbonus[mykingdistance][RRANK(index, me)], S2MSIGN(me));
-                    if (bTrace) te.pawns[me] += EVAL(eps.eKingsupportspasserbonus[mykingdistance][RRANK(index, me)], S2MSIGN(me));
-                    entryptr->value += EVAL(eps.eKingdefendspasserpenalty[yourkingdistance][RRANK(index, me)], S2MSIGN(me));
-                    if (bTrace) te.pawns[me] += EVAL(eps.eKingdefendspasserpenalty[yourkingdistance][RRANK(index, me)], S2MSIGN(me));
-                }
-                else {
-                    // test for potential passer
-                    U64 mySupporters = myPawns & pawn_attacks_to[index][you];
-                    U64 myPushsupporters = myPawns & pawn_attacks_to[PAWNPUSHINDEX(me, index)][you];
-                    U64 yourAttackers = yourPawns & pawn_attacks_to[index][me];
-                    U64 yourPushattackers = yourPawns & pawn_attacks_to[PAWNPUSHINDEX(me, index)][me];
-                    if ((!yourStoppers ^ yourAttackers ^ yourPushattackers))
-                    {
-                        // Lets see if we can get rid of the remaining stoppers
-                        if (POPCOUNT(myPushsupporters) >= POPCOUNT(yourPushattackers))
-                        {
-                            // exchange is possible
-                            entryptr->value += EVAL(eps.ePotentialpassedpawnbonus[POPCOUNT(mySupporters) >= POPCOUNT(yourAttackers)][RRANK(index, me)], S2MSIGN(me));
-                            if (bTrace) te.pawns[me] += EVAL(eps.ePotentialpassedpawnbonus[POPCOUNT(mySupporters) >= POPCOUNT(yourAttackers)][RRANK(index, me)], S2MSIGN(me));
-                        }
-                    }
-
-                }
-
-                if (!(myPawns & neighbourfilesMask[index]))
-                {
-                    // isolated pawn
-                    entryptr->isolatedpawnbb[me] |= BITSET(index);
-                }
-                else
-                {
-                    if (pawn_attacks_to[index][me] & yourPawns)
-                    {
-                        entryptr->value += EVAL(eps.eAttackingpawnbonus[RRANK(index, me)], S2MSIGN(me));
-                        if (bTrace) te.pawns[me] += EVAL(eps.eAttackingpawnbonus[RRANK(index, me)], S2MSIGN(me));
-                    }
-                    U64 supporting = myPawns & pawn_attacks_to[index][you];
-                    U64 phalanx = myPawns & phalanxMask[index];
-                    if (supporting || phalanx)
-                    {
-                        entryptr->value += EVAL(eps.eConnectedbonus[RRANK(index, me) - 1][POPCOUNT(supporting) * 2 + (bool)phalanx], S2MSIGN(me));
-                        if (bTrace) te.pawns[me] += EVAL(eps.eConnectedbonus[RRANK(index, me) - 1][POPCOUNT(supporting) * 2 + (bool)phalanx], S2MSIGN(me));
-                    }
-                    if (!((passedPawnMask[index][you] | phalanxMask[index]) & myPawns))
-                    {
-                        // test for backward pawn
-                        U64 mynextpawns = myPawns & neighbourfilesMask[index];
-                        U64 pawnstoreach = yourStoppers | mynextpawns;
-                        int nextpawn;
-                        if (me ? GETMSB(nextpawn, pawnstoreach) : GETLSB(nextpawn, pawnstoreach))
-                        {
-                            U64 nextpawnrank = rankMask[nextpawn];
-                            U64 shiftneigbours = (me ? nextpawnrank >> 8 : nextpawnrank << 8);
-                            if ((nextpawnrank | (shiftneigbours & neighbourfilesMask[index])) & yourStoppers)
-                            {
-                                // backward pawn detected
-                                entryptr->backwardpawnbb[me] |= BITSET(index);
-                            }
-                        }
-                    }
+                    // exchange is possible
+                    entryptr->value += EVAL(eps.ePotentialpassedpawnbonus[POPCOUNT(mySupporters) >= POPCOUNT(yourAttackers)][RRANK(index, Me)], S2MSIGN(Me));
+                    if (bTrace) te.pawns[Me] += EVAL(eps.ePotentialpassedpawnbonus[POPCOUNT(mySupporters) >= POPCOUNT(yourAttackers)][RRANK(index, Me)], S2MSIGN(Me));
                 }
             }
+        }
 
-            // Pawn storm evaluation
-            int ki = kingpos[me];
-            int kf = FILE(ki);
-            int kr = RANK(ki);
-            for (int f = max(0, kf - 1), j = ki + f - kf; f <= min(kf + 1, 7); f++, j++)
+        if (!(myPawns & neighbourfilesMask[index]))
+        {
+            // isolated pawn
+            entryptr->isolatedpawnbb[Me] |= BITSET(index);
+        }
+        else
+        {
+            if (pawn_attacks_to[index][Me] & yourPawns)
             {
-                U64 mask = (filebarrierMask[j][me] | BITSET(j)); // FIXME: Better mask would be useful
-                U64 yourStormingPawn = piece00[WPAWN | you] & mask;
-                int yourDist = 7;
-                if (yourStormingPawn)
+                entryptr->value += EVAL(eps.eAttackingpawnbonus[RRANK(index, Me)], S2MSIGN(Me));
+                if (bTrace) te.pawns[Me] += EVAL(eps.eAttackingpawnbonus[RRANK(index, Me)], S2MSIGN(Me));
+            }
+            U64 supporting = myPawns & pawn_attacks_to[index][You];
+            U64 phalanx = myPawns & phalanxMask[index];
+            if (supporting || phalanx)
+            {
+                entryptr->value += EVAL(eps.eConnectedbonus[RRANK(index, Me) - 1][POPCOUNT(supporting) * 2 + (bool)phalanx], S2MSIGN(Me));
+                if (bTrace) te.pawns[Me] += EVAL(eps.eConnectedbonus[RRANK(index, Me) - 1][POPCOUNT(supporting) * 2 + (bool)phalanx], S2MSIGN(Me));
+            }
+            if (!((passedPawnMask[index][You] | phalanxMask[index]) & myPawns))
+            {
+                // test for backward pawn
+                U64 mynextpawns = myPawns & neighbourfilesMask[index];
+                U64 pawnstoreach = yourStoppers | mynextpawns;
+                int nextpawn;
+                if (Me ? GETMSB(nextpawn, pawnstoreach) : GETLSB(nextpawn, pawnstoreach))
                 {
-                    int nextPawn;
-                    if (me)
-                        GETMSB(nextPawn, yourStormingPawn);
-                    else
-                        GETLSB(nextPawn, yourStormingPawn);
-                    yourDist = abs(RANK(nextPawn) - kr);
-                }
-
-                if (yourDist > 4)   // long way for the pawn so we don't care... maybe extend later
-                    continue;
-
-                U64 myProtectingPawn = piece00[WPAWN | me] & mask;
-                int myDist = 7;
-                if (myProtectingPawn)
-                {
-                    int nextPawn;
-                    if (me)
-                        GETMSB(nextPawn, myProtectingPawn);
-                    else
-                        GETLSB(nextPawn, myProtectingPawn);
-                    myDist = abs(RANK(nextPawn) - kr);
-                }
-
-                bool isBlocked = (myDist != 7 && (myDist == yourDist - 1));
-                if (isBlocked) {
-                    entryptr->value += EVAL(eps.ePawnstormblocked[BORDERDIST(f)][yourDist], S2MSIGN(me));
-                    if (bTrace) te.kingattackpower[me] += EVAL(eps.ePawnstormblocked[BORDERDIST(f)][yourDist], S2MSIGN(me));
-                }
-                else {
-                    entryptr->value += EVAL(eps.ePawnstormfree[BORDERDIST(f)][yourDist], S2MSIGN(me));
-                    if (bTrace) te.kingattackpower[me] += EVAL(eps.ePawnstormfree[BORDERDIST(f)][yourDist], S2MSIGN(me));
+                    U64 nextpawnrank = rankMask[nextpawn];
+                    U64 shiftneigbours = (Me ? nextpawnrank >> 8 : nextpawnrank << 8);
+                    if ((nextpawnrank | (shiftneigbours & neighbourfilesMask[index])) & yourStoppers)
+                    {
+                        // backward pawn detected
+                        entryptr->backwardpawnbb[Me] |= BITSET(index);
+                    }
                 }
             }
         }
     }
 
-    for (int s = 0; s < 2; s++)
+    // Pawn storm evaluation
+    int ki = kingpos[Me];
+    int kf = FILE(ki);
+    int kr = RANK(ki);
+    for (int f = max(0, kf - 1), j = ki + f - kf; f <= min(kf + 1, 7); f++, j++)
     {
-        // isolated pawns
-        val += EVAL(eps.eIsolatedpawnpenalty, S2MSIGN(s) * POPCOUNT(entryptr->isolatedpawnbb[s]));
-        if (bTrace) te.pawns[s] += EVAL(eps.eIsolatedpawnpenalty, S2MSIGN(s) * POPCOUNT(entryptr->isolatedpawnbb[s]));
+        U64 mask = (filebarrierMask[j][Me] | BITSET(j)); // FIXME: Better mask would be useful
+        U64 yourStormingPawn = piece00[WPAWN | You] & mask;
+        int yourDist = 7;
+        if (yourStormingPawn)
+        {
+            int nextPawn;
+            if (Me)
+                GETMSB(nextPawn, yourStormingPawn);
+            else
+                GETLSB(nextPawn, yourStormingPawn);
+            yourDist = abs(RANK(nextPawn) - kr);
+        }
 
-        // doubled pawns
-        val += EVAL(eps.eDoublepawnpenalty, S2MSIGN(s) * POPCOUNT(piece00[WPAWN | s] & (s ? piece00[WPAWN | s] >> 8 : piece00[WPAWN | s] << 8)));
-        if (bTrace) te.pawns[s] += EVAL(eps.eDoublepawnpenalty, S2MSIGN(s) * POPCOUNT(piece00[WPAWN | s] & (s ? piece00[WPAWN | s] >> 8 : piece00[WPAWN | s] << 8)));
+        if (yourDist > 4)   // long way for the pawn so we don't care... maybe extend later
+            continue;
 
-        // backward pawns
-        val += EVAL(eps.eBackwardpawnpenalty, S2MSIGN(s) * POPCOUNT(entryptr->backwardpawnbb[s]));
-        if (bTrace) te.pawns[s] += EVAL(eps.eBackwardpawnpenalty, S2MSIGN(s) * POPCOUNT(entryptr->backwardpawnbb[s]));
+        U64 myProtectingPawn = piece00[WPAWN | Me] & mask;
+        int myDist = 7;
+        if (myProtectingPawn)
+        {
+            int nextPawn;
+            if (Me)
+                GETMSB(nextPawn, myProtectingPawn);
+            else
+                GETLSB(nextPawn, myProtectingPawn);
+            myDist = abs(RANK(nextPawn) - kr);
+        }
+
+        bool isBlocked = (myDist != 7 && (myDist == yourDist - 1));
+        if (isBlocked) {
+            entryptr->value += EVAL(eps.ePawnstormblocked[BORDERDIST(f)][yourDist], S2MSIGN(Me));
+            if (bTrace) te.kingattackpower[Me] += EVAL(eps.ePawnstormblocked[BORDERDIST(f)][yourDist], S2MSIGN(Me));
+        }
+        else {
+            entryptr->value += EVAL(eps.ePawnstormfree[BORDERDIST(f)][yourDist], S2MSIGN(Me));
+            if (bTrace) te.kingattackpower[Me] += EVAL(eps.ePawnstormfree[BORDERDIST(f)][yourDist], S2MSIGN(Me));
+        }
     }
-
-    return val + entryptr->value;
 }
 
 
@@ -558,32 +529,35 @@ int chessposition::getLateEval(positioneval *pe)
 }
 
 
-template <EvalType Et>
+template <EvalType Et, int Me>
 int chessposition::getGeneralEval(positioneval *pe)
 {
     const bool bTrace = (Et == TRACE);
-    int result = EVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
-    if (bTrace) te.tempo[state & S2MMASK] += EVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
+    const int You = Me ^ S2MMASK;
 
-    attackedBy[0][KING] = king_attacks[kingpos[0]];
-    attackedBy2[0] = pe->phentry->attackedBy2[0] | (attackedBy[0][KING] & pe->phentry->attacked[0]);
-    attackedBy[0][0] = attackedBy[0][KING] | pe->phentry->attacked[0];
-    attackedBy[1][KING] = king_attacks[kingpos[1]];
-    attackedBy2[1] = pe->phentry->attackedBy2[1] | (attackedBy[1][KING] & pe->phentry->attacked[1]);
-    attackedBy[1][0] = attackedBy[1][KING] | pe->phentry->attacked[1];
+    // isolated pawns
+    int result = EVAL(eps.eIsolatedpawnpenalty, S2MSIGN(Me) * POPCOUNT(pe->phentry->isolatedpawnbb[Me]));
+    if (bTrace) te.pawns[Me] += EVAL(eps.eIsolatedpawnpenalty, S2MSIGN(Me) * POPCOUNT(pe->phentry->isolatedpawnbb[Me]));
 
-    attackedBy[0][PAWN] = pe->phentry->attacked[0];
-    attackedBy[1][PAWN] = pe->phentry->attacked[1];
+    // doubled pawns
+    result += EVAL(eps.eDoublepawnpenalty, S2MSIGN(Me) * POPCOUNT(piece00[WPAWN | Me] & (Me ? piece00[WPAWN | Me] >> 8 : piece00[WPAWN | Me] << 8)));
+    if (bTrace) te.pawns[Me] += EVAL(eps.eDoublepawnpenalty, S2MSIGN(Me) * POPCOUNT(piece00[WPAWN | Me] & (Me ? piece00[WPAWN | Me] >> 8 : piece00[WPAWN | Me] << 8)));
 
-    pe->kingattackers[0] = POPCOUNT(attackedBy[0][PAWN] & kingdangerMask[kingpos[1]][1]);
-    pe->kingattackers[1] = POPCOUNT(attackedBy[1][PAWN] & kingdangerMask[kingpos[0]][0]);
+    // backward pawns
+    result += EVAL(eps.eBackwardpawnpenalty, S2MSIGN(Me) * POPCOUNT(pe->phentry->backwardpawnbb[Me]));
+    if (bTrace) te.pawns[Me] += EVAL(eps.eBackwardpawnpenalty, S2MSIGN(Me) * POPCOUNT(pe->phentry->backwardpawnbb[Me]));
+
+    attackedBy[Me][KING] = king_attacks[kingpos[Me]];
+    attackedBy2[Me] = pe->phentry->attackedBy2[Me] | (attackedBy[Me][KING] & pe->phentry->attacked[Me]);
+    attackedBy[Me][0] = attackedBy[Me][KING] | pe->phentry->attacked[Me];
+
+    attackedBy[Me][PAWN] = pe->phentry->attacked[Me];
+
+    pe->kingattackers[Me] = POPCOUNT(attackedBy[Me][PAWN] & kingdangerMask[kingpos[You]][You]);
 
     // bonus for double bishop
-    result += EVAL(eps.eDoublebishopbonus, ((POPCOUNT(piece00[WBISHOP]) >= 2) - (POPCOUNT(piece00[BBISHOP]) >= 2)));
-    if (bTrace) {
-        te.bishops[0] += EVAL(eps.eDoublebishopbonus, (POPCOUNT(piece00[WBISHOP]) >= 2));
-        te.bishops[1] += EVAL(eps.eDoublebishopbonus, -(POPCOUNT(piece00[BBISHOP]) >= 2));
-    }
+    result += EVAL(eps.eDoublebishopbonus, S2MSIGN(Me) * (POPCOUNT(piece00[WBISHOP | Me]) >= 2));
+    if (bTrace) te.bishops[Me] += EVAL(eps.eDoublebishopbonus, S2MSIGN(Me) * (POPCOUNT(piece00[WBISHOP | Me]) >= 2));
 
     return result;
 }
@@ -605,8 +579,15 @@ int chessposition::getEval()
     // reset the attackedBy information
     memset(attackedBy, 0, sizeof(attackedBy));
 
-    int pawnEval = getPawnAndKingEval<Et>(&pe.phentry);
-    int generalEval = getGeneralEval<Et>(&pe);
+    bool hashexist = pwnhsh->probeHash(pawnhash, &pe.phentry);
+    if (bTrace || !hashexist)
+    {
+        getPawnAndKingEval<Et, 0>(pe.phentry);
+        getPawnAndKingEval<Et, 1>(pe.phentry);
+    }
+
+    int pawnEval = pe.phentry->value;
+    int generalEval = getGeneralEval<Et, 0>(&pe) + getGeneralEval<Et, 1>(&pe);
     int piecesEval = getPieceEval<Et, KNIGHT, 0>(&pe)   + getPieceEval<Et, KNIGHT, 1>(&pe)
                     + getPieceEval<Et, BISHOP, 0>(&pe) + getPieceEval<Et, BISHOP, 1>(&pe)
                     + getPieceEval<Et, ROOK, 0>(&pe)   + getPieceEval<Et, ROOK, 1>(&pe)
@@ -614,6 +595,8 @@ int chessposition::getEval()
     int lateEval = getLateEval<Et, 0>(&pe) + getLateEval<Et, 1>(&pe);
 
     int totalEval = psqval + pawnEval + generalEval + piecesEval + lateEval;
+    totalEval += EVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
+    if (bTrace) te.tempo[state & S2MMASK] += EVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
 
     int sideToScale = totalEval > SCOREDRAW ? WHITE : BLACK;
     sc = getScaling(sideToScale);

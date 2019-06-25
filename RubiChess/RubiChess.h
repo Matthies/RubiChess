@@ -1049,10 +1049,10 @@ public:
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
     uint32_t shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal
     void getpsqval();  // only for eval trace
-    template <EvalType Et> int getGeneralEval(positioneval *pe);
+    template <EvalType Et, int Me> int getGeneralEval(positioneval *pe);
     template <EvalType Et, PieceType Pt, int Me> int getPieceEval(positioneval *pe);
     template <EvalType Et, int Me> int getLateEval(positioneval *pe);
-    template <EvalType Et> int getPawnAndKingEval(pawnhashentry **entry);
+    template <EvalType Et, int Me> void getPawnAndKingEval(pawnhashentry *entry);
     template <EvalType Et> int getEval();
     int getScaling(int col);
 
