@@ -28,3 +28,4 @@ Bitboard-1.2:               11620752
 RubiChess-1.3:               9607817
 RubiChess-1.3.1:            10329806
 RubiChess-1.4:              10910778
+RubiChess-1.5:               7157102
