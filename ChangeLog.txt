@@ -1,5 +1,8 @@
 ChangeLog
 =========
+1.6 (release 2019-xx-xx) :
+    - ...
+
 1.5 (release 2019-06-27) :
     - Replaced the (sometimes wrong) pv reading from hash table with a real pv table
     - Texel-tuning: Ignore parameters with too few positions in tuning set
