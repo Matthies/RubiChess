@@ -972,6 +972,10 @@ static void search_gen1(searchthread *thr)
     int inWindow;
     bool reportedThisDepth;
 
+#ifdef TDEBUG
+    en.bStopCount = false;
+#endif
+
     const bool isMultiPV = (RT == MultiPVSearch);
     chessposition *pos = &thr->pos;
 
@@ -1023,6 +1027,13 @@ static void search_gen1(searchthread *thr)
         else
         {
             score = pos->rootsearch<RT>(alpha, beta, thr->depth);
+#ifdef TDEBUG
+            if (en.stopLevel == ENGINESTOPIMMEDIATELY && thr->index == 0)
+            {
+                en.t2stop++;
+                en.bStopCount = true;
+            }
+#endif
 
             // new aspiration window
             if (score == alpha)
@@ -1146,6 +1157,11 @@ static void search_gen1(searchthread *thr)
     
     if (thr->index == 0)
     {
+#ifdef TDEBUG
+        if (!en.bStopCount)
+            en.t1stop++;
+        printf("info string stop info full iteration / immediate:  %4d /%4d\n", en.t1stop, en.t2stop);
+#endif
         // Output of best move
         searchthread *bestthr = thr;
         int bestscore = bestthr->pos.bestmovescore[0];
@@ -1264,7 +1280,7 @@ void resetEndTime(int constantRootMoves, bool complete)
 void startSearchTime(bool complete = true)
 {
     en.starttime = getTime();
-    resetEndTime(complete, 0);
+    resetEndTime(0, complete);
 }
 
 
@@ -1311,7 +1327,7 @@ void searchguide()
             {
                 en.stopLevel = ENGINESTOPIMMEDIATELY;
             }
-            else if (en.endtime1 && nowtime >= en.endtime2 && en.stopLevel < ENGINESTOPSOON)
+            else if (en.endtime1 && nowtime >= en.endtime1 && en.stopLevel < ENGINESTOPSOON)
             {
                 en.stopLevel = ENGINESTOPSOON;
                 Sleep(10);

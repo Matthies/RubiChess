@@ -24,6 +24,10 @@
 #endif
 
 #if 0
+#define TDEBUG
+#endif
+
+#if 0
 #define EVALTUNE
 #endif
 
@@ -1120,6 +1124,11 @@ public:
     int stopLevel = ENGINESTOPPED;
 #ifdef STACKDEBUG
     string assertfile = "";
+#endif
+#ifdef TDEBUG
+    int t1stop = 0;     // regular stop
+    int t2stop = 0;     // immediate stop
+    bool bStopCount;
 #endif
     void communicate(string inputstring);
     void setOption(string sName, string sValue);
