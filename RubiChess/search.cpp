@@ -1130,12 +1130,22 @@ static void search_gen1(searchthread *thr)
             if (en.isPondering() && thr->depth > maxdepth) thr->depth--;  // stay on maxdepth when pondering
             reportedThisDepth = true;
             constantRootMoves++;
-            if (lastBestMove != pos->bestmove.code)
-            {
-                lastBestMove = pos->bestmove.code;
-                constantRootMoves = 0;
-            }
-            resetEndTime(constantRootMoves);
+        }
+
+        if (lastBestMove != pos->bestmove.code)
+        {
+            // New best move is found; reset thinking time
+            lastBestMove = pos->bestmove.code;
+            constantRootMoves = 0;
+        }
+
+        // Reset remaining time if depth is finished or new best move is found
+        if (thr->index == 0)
+        {
+            if (inWindow == 1 || !constantRootMoves)
+                resetEndTime(constantRootMoves);
+            if (!constantRootMoves && en.stopLevel == ENGINESTOPSOON)
+                en.stopLevel = ENGINERUN;
         }
 
         // early exit in playing mode as there is exactly one possible move
@@ -1240,8 +1250,8 @@ void resetEndTime(int constantRootMoves, bool complete)
         // should garantee timetouse > 0
         // stop soon at 0.5...1.5 x average movetime
         // stop immediately at 1.3...2.3 x average movetime
-        int f1 = max(5, 15 - constantRootMoves * 2);
-        int f2 = max(13, 23 - constantRootMoves * 2);
+        int f1 = max(9, 19 - constantRootMoves * 2);
+        int f2 = max(15, 25 - constantRootMoves * 2);
         if (complete)
             en.endtime1 = en.starttime + timetouse * en.frequency * f1 / (en.movestogo + 1) / 10000;
         en.endtime2 = en.starttime + min(max(0, timetouse - overhead * en.movestogo), f2 * timetouse / (en.movestogo + 1) / 10) * en.frequency / 1000;
@@ -1254,8 +1264,8 @@ void resetEndTime(int constantRootMoves, bool complete)
             // sudden death with increment; split the remaining time in (256-phase) timeslots
             // stop soon after 6..10 timeslot
             // stop immediately after 10..18 timeslots
-            int f1 = max(6, 10 - constantRootMoves);
-            int f2 = max(10, 18 - constantRootMoves);
+            int f1 = max(7, 17 - constantRootMoves * 2);
+            int f2 = max(15, 25 - constantRootMoves * 2);
             if (complete)
                 en.endtime1 = en.starttime + max(timeinc, f1 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
             en.endtime2 = en.starttime + min(max(0, timetouse - overhead), max(timeinc, f2 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
@@ -1274,6 +1284,10 @@ void resetEndTime(int constantRootMoves, bool complete)
     else {
         en.endtime1 = en.endtime2 = 0;
     }
+
+#ifdef TDEBUG
+    printf("info string Time for this move: %4.2f  /  %4.2f\n", (en.endtime1 - en.starttime) / (double)en.frequency, (en.endtime2 - en.starttime) / (double)en.frequency);
+#endif
 }
 
 
