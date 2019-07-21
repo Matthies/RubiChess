@@ -996,9 +996,6 @@ static void search_gen1(searchthread *thr)
     alpha = SHRT_MIN + 1;
     beta = SHRT_MAX;
 
-    // increment generation counter for tt aging
-    tp.nextSearch();
-
     uint32_t lastBestMove = 0;
     int constantRootMoves = 0;
     bool bExitIteration;
@@ -1305,6 +1302,9 @@ void searchguide()
     en.moveoutput = false;
     en.tbhits = 0;
     en.fh = en.fhf = 0;
+
+    // increment generation counter for tt aging
+    tp.nextSearch();
 
     for (int tnum = 0; tnum < en.Threads; tnum++)
     {
