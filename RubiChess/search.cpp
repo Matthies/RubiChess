@@ -1177,7 +1177,8 @@ static void search_gen1(searchthread *thr)
             // search for a better score in the other threads
             searchthread *hthr = &en.sthread[i];
             if (hthr->lastCompleteDepth >= bestthr->lastCompleteDepth
-                && hthr->pos.bestmovescore[0] > bestscore)
+                && hthr->pos.bestmovescore[0] > bestscore
+                && hthr->pos.pvtable[0][0])
             {
                 bestscore = hthr->pos.bestmovescore[0];
                 bestthr = hthr;
@@ -1189,6 +1190,7 @@ static void search_gen1(searchthread *thr)
             pos->bestmove = bestthr->pos.bestmove;
             pos->pondermove = bestthr->pos.pondermove;
             pos->bestmovescore[0] = bestthr->pos.bestmovescore[0];
+            memcpy(pos->pvtable[0], bestthr->pos.pvtable[0], sizeof(bestthr->pos.pvtable[0]));
             inWindow = 1;
         }
 
