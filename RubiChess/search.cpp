@@ -1263,7 +1263,7 @@ void resetEndTime(int constantRootMoves, bool complete)
             // sudden death with increment; split the remaining time in (256-phase) timeslots
             // stop soon after 6..10 timeslot
             // stop immediately after 10..18 timeslots
-            int f1 = max(7, 17 - constantRootMoves * 2);
+            int f1 = max(5, 15 - constantRootMoves * 2);
             int f2 = max(15, 25 - constantRootMoves * 2);
             if (complete)
                 en.endtime1 = en.starttime + max(timeinc, f1 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
