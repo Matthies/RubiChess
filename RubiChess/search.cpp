@@ -912,7 +912,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         }
     }
 
-    SDEBUGPRINT(true, 0, getPv().c_str());
+    SDEBUGPRINT(true, 0, getPv(pvtable[0]).c_str());
 
     if (isMultiPV)
     {
@@ -938,7 +938,7 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int mpvIndex)
     char s[4096];
     chessposition *pos = &thr->pos;
     en.lastReport = msRun;
-    string pvstring = pos->getPv(mpvIndex);
+    string pvstring = pos->getPv(mpvIndex ? pos->pvtable[mpvIndex] : pos->lastpv);
     int score = pos->bestmovescore[mpvIndex];
     U64 nodes = en.getTotalNodes();
 
@@ -1001,6 +1001,7 @@ static void search_gen1(searchthread *thr)
     bool bExitIteration;
     en.lastReport = 0;
     U64 nowtime;
+    pos->lastpv[0] = 0;
     do
     {
         inWindow = 1;
@@ -1074,6 +1075,19 @@ static void search_gen1(searchthread *thr)
                 }
             }
         }
+
+        // copy new pv to lastpv
+        if (pos->pvtable[0][0])
+        {
+            int i = 0;
+            while (pos->pvtable[0][i])
+            {
+                pos->lastpv[i] = pos->pvtable[0][i];
+                i++;
+            }
+            pos->lastpv[i] = 0;
+        }
+
         if (score > NOSCORE && thr->index == 0)
         {
             nowtime = getTime();
@@ -1177,21 +1191,27 @@ static void search_gen1(searchthread *thr)
             // search for a better score in the other threads
             searchthread *hthr = &en.sthread[i];
             if (hthr->lastCompleteDepth >= bestthr->lastCompleteDepth
-                && hthr->pos.bestmovescore[0] > bestscore
-                && hthr->pos.pvtable[0][0])
+                && hthr->pos.bestmovescore[0] > bestscore)
             {
                 bestscore = hthr->pos.bestmovescore[0];
                 bestthr = hthr;
             }
         }
-        if (bestthr->index)
+        if (pos->bestmove.code != bestthr->pos.bestmove.code)
         {
             // copy best moves and score from best thread to thread 0
+            int i = 0;
+            while (bestthr->pos.lastpv[i])
+            {
+                pos->lastpv[i] = bestthr->pos.lastpv[i];
+                i++;
+            }
+            pos->lastpv[i] = 0;
             pos->bestmove = bestthr->pos.bestmove;
             pos->pondermove = bestthr->pos.pondermove;
             pos->bestmovescore[0] = bestthr->pos.bestmovescore[0];
-            memcpy(pos->pvtable[0], bestthr->pos.pvtable[0], sizeof(bestthr->pos.pvtable[0]));
             inWindow = 1;
+            //printf("info string different bestmove from helper  lastpv:%x\n", bestthr->pos.lastpv[0]);
         }
 
         // remember score for next search in case of an instamove
@@ -1273,8 +1293,8 @@ void resetEndTime(int constantRootMoves, bool complete)
             // sudden death without increment; play for another x;y moves
             // stop soon at 1/35...1/45 time slot
             // stop immediately at 1/20...1/30 time slot
-            int f1 = min(45, 35 + constantRootMoves * 2);
-            int f2 = min(30, 20 + constantRootMoves * 2);
+            int f1 = min(42, 32 + constantRootMoves * 2);
+            int f2 = min(22, 12 + constantRootMoves * 2);
             if (complete)
                 en.endtime1 = en.starttime + timetouse / f1 * en.frequency / 1000;
             en.endtime2 = en.starttime + min(max(0, timetouse - overhead), timetouse / f2) * en.frequency / 1000;
