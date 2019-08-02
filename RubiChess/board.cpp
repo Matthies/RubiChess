@@ -986,7 +986,6 @@ void chessposition::updatePvTable(uint32_t movecode, bool recursive)
 
 string chessposition::getPv(uint32_t *table)
 {
-    //uint32_t *table = (mpvindex ? multipvtable[mpvindex] : pvtable[0]);
     string s = "";
     for (int i = 0; table[i]; i++)
     {
