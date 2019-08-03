@@ -24,6 +24,10 @@
 #endif
 
 #if 0
+#define TDEBUG
+#endif
+
+#if 0
 #define EVALTUNE
 #endif
 
@@ -998,6 +1002,7 @@ public:
 #endif
     uint32_t pvtable[MAXDEPTH][MAXDEPTH];
     uint32_t multipvtable[MAXMULTIPV][MAXDEPTH];
+    uint32_t lastpv[MAXDEPTH];
     int ph; // to store the phase during different evaluation functions
     int sc; // to stor scaling factor used for evaluation
     int useTb;
@@ -1063,7 +1068,7 @@ public:
     void getCmptr(int16_t **cmptr);
     void updatePvTable(uint32_t movecode, bool recursive);
     void updateMultiPvTable(int pvindex, uint32_t movecode, bool recursive);
-    string getPv(int mpvindex = 0);
+    string getPv(uint32_t *table);
     int getHistory(uint32_t code, int16_t **cmptr);
 
 #ifdef SDEBUG
@@ -1120,6 +1125,11 @@ public:
     int stopLevel = ENGINESTOPPED;
 #ifdef STACKDEBUG
     string assertfile = "";
+#endif
+#ifdef TDEBUG
+    int t1stop = 0;     // regular stop
+    int t2stop = 0;     // immediate stop
+    bool bStopCount;
 #endif
     void communicate(string inputstring);
     void setOption(string sName, string sValue);

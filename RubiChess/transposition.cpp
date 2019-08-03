@@ -176,7 +176,7 @@ int transposition::setSize(int sizeMb)
 void transposition::clean()
 {
     memset(table, 0, (size_t)(size * sizeof(transpositioncluster)));
-    numOfSearchShiftTwo = 0xfc; // 0x3f << 2; will be incremented / reset to 0 before first search 
+    numOfSearchShiftTwo = 0;
 }
 
 
@@ -185,12 +185,12 @@ unsigned int transposition::getUsedinPermill()
     unsigned int used = 0;
 
     // Take 1000 samples
-    for (int i = 0; i < 1000; i++)
+    for (int i = 0; i < 1000 / TTBUCKETNUM; i++)
         for (int j = 0; j < TTBUCKETNUM; j++)
-            if (table[i].entry[j].hashupper)
+            if ((table[i].entry[j].boundAndAge & 0xfc) == numOfSearchShiftTwo)
                 used++;
 
-    return used / TTBUCKETNUM;
+    return used;
 }
 
 
