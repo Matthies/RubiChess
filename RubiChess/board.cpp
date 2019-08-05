@@ -361,11 +361,21 @@ int chessposition::getFromFen(const char* sFen)
 
     /* half moves */
     if (numToken > 4)
-        halfmovescounter = stoi(token[4]);
+    {
+        try {
+            halfmovescounter = stoi(token[4]);
+        }
+        catch (...) {}
+    }
 
     /* full moves */
     if (numToken > 5)
-        fullmovescounter = stoi(token[5]);
+    {
+        try {
+            fullmovescounter = stoi(token[5]);
+        }
+        catch (...) {}
+    }
 
     isCheckbb = isAttackedBy<OCCUPIED>(kingpos[state & S2MMASK], (state & S2MMASK) ^ S2MMASK);
 
