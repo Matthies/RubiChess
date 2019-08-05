@@ -1267,8 +1267,8 @@ void resetEndTime(int constantRootMoves, bool complete)
     if (en.movestogo)
     {
         // should garantee timetouse > 0
-        // stop soon at 0.5...1.5 x average movetime
-        // stop immediately at 1.3...2.3 x average movetime
+        // stop soon at 0.9...1.9 x average movetime
+        // stop immediately at 1.5...2.5 x average movetime
         int f1 = max(9, 19 - constantRootMoves * 2);
         int f2 = max(15, 25 - constantRootMoves * 2);
         if (complete)
@@ -1281,8 +1281,8 @@ void resetEndTime(int constantRootMoves, bool complete)
         if (timeinc)
         {
             // sudden death with increment; split the remaining time in (256-phase) timeslots
-            // stop soon after 6..10 timeslot
-            // stop immediately after 10..18 timeslots
+            // stop soon after 5..15 timeslot
+            // stop immediately after 15..25 timeslots
             int f1 = max(5, 15 - constantRootMoves * 2);
             int f2 = max(15, 25 - constantRootMoves * 2);
             if (complete)
@@ -1291,8 +1291,8 @@ void resetEndTime(int constantRootMoves, bool complete)
         }
         else {
             // sudden death without increment; play for another x;y moves
-            // stop soon at 1/35...1/45 time slot
-            // stop immediately at 1/20...1/30 time slot
+            // stop soon at 1/32...1/42 time slot
+            // stop immediately at 1/12...1/22 time slot
             int f1 = min(42, 32 + constantRootMoves * 2);
             int f2 = min(22, 12 + constantRootMoves * 2);
             if (complete)
