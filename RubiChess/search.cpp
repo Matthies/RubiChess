@@ -250,6 +250,11 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         return SCOREDRAW;
     }
 
+    if (en.stopLevel == ENGINESTOPIMMEDIATELY)
+    {
+        // time is over; immediate stop requested
+        return alpha;
+    }
 
     // Reached depth? Do a qsearch
     if (depth <= 0)
@@ -567,12 +572,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 }
             }
             unplayMove(m);
-
-            if (en.stopLevel == ENGINESTOPIMMEDIATELY)
-            {
-                // time is over; immediate stop requested
-                return alpha;
-            }
 
             SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s scored %d", debugMove.toString().c_str(), score);
 
