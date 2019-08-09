@@ -221,6 +221,7 @@ public:
         v = ((int32_t)((uint32_t)(m) << 16) + (e)); g[0] = 0; type = 0;
     }
     eval(int t, int i, int x) { type = t; groupindex = i; v = x; sqglobal.store(this); }
+    eval(int x) { v = (x); g[0] = 0; type = 1; }
     bool operator !=(const eval &x) { return this->type != x.type || this->v != x.v; }
     operator int() const { return v; }
     void addGrad(int i, int s = 0) { this->g[s] += i; }
@@ -233,10 +234,11 @@ public:
 
 #define VALUE(m, e) eval(m, e)
 #define EVAL(e, f) ((e).addGrad(f), (e) * (f))
-#define SQVALUE(i, v) eval(1, i, v)
+#define SQVALUE(i, v) eval(2, i, v)
 #define SQEVAL(e, f, s) ((e).addGrad(f, s), (e) * (f))
 #define SQRESULT(v,s) ( v > 0 ? ((int32_t)((uint32_t)((v) * (v) * S2MSIGN(s) / 2048) << 16) + ((v) * S2MSIGN(s) / 16)) : 0 )
-
+#define CVALUE(v) eval(v)
+#define CEVAL(e, f) ((e).addGrad(f), (e) * (f))
 #else // EVALTUNE
 
 #define SQVALUE(i, v) (v)
@@ -244,6 +246,8 @@ public:
 #define EVAL(e, f) ((e) * (f))
 #define SQEVAL(e, f, s) ((e) * (f))
 #define SQRESULT(v,s) ( v > 0 ? VALUE((v) * (v) * S2MSIGN(s) / 2048, (v) * S2MSIGN(s) / 16) : 0 )
+#define CVALUE(v) (v)
+#define CEVAL(e, f) ((e) * (f))
 typedef const int32_t eval;
 #endif
 
@@ -253,6 +257,7 @@ typedef const int32_t eval;
 
 struct evalparamset {
     // Powered by Laser games :-)
+    eval eTempo =  CVALUE(  20);
     eval eKingpinpenalty[6] = {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  38, -74), VALUE(  65, -61), VALUE( -29,  68), VALUE( -44, 163)  };
     eval ePawnstormblocked[4][5] = {
         {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  -6,  -4), VALUE(  26, -11), VALUE(  30, -11)  },
@@ -269,7 +274,6 @@ struct evalparamset {
     eval ePawnpushthreatbonus =  VALUE(  20,  13);
     eval eSafepawnattackbonus =  VALUE(  66,  25);
     eval eHangingpiecepenalty =  VALUE( -23, -36);
-    eval eTempo =  VALUE(  30,  27);
     eval ePassedpawnbonus[4][8] = {
         {  VALUE(   0,   0), VALUE(  10,   4), VALUE(   0,   8), VALUE(  10,  25), VALUE(  35,  46), VALUE(  74,  81), VALUE(  44, 108), VALUE(   0,   0)  },
         {  VALUE(   0,   0), VALUE( -19,  -4), VALUE( -15,  12), VALUE(  -5,  17), VALUE(  17,  34), VALUE(  42,  60), VALUE( -12,  42), VALUE(   0,   0)  },

@@ -40,7 +40,7 @@ void chessposition::getPositionTuneSet(positiontuneset *p, evalparam *e)
     p->sc = sc;
     p->num = 0;
     for (int i = 0; i < tps.count; i++)
-        if (tps.ev[i]->getGrad() || (tps.ev[i]->type == 1 && tps.ev[i]->getGrad(1)))
+        if (tps.ev[i]->getGrad() || (tps.ev[i]->type == 2 && tps.ev[i]->getGrad(1)))
         {
             e->index = i;
             e->g[0] = tps.ev[i]->getGrad(0);
@@ -68,7 +68,7 @@ string chessposition::getGradientString()
     string s = "";
     for (int i = 0; i < pts.num; i++)
     {
-        if (tps.ev[i]->type == 0)
+        if (tps.ev[i]->type <= 1)
             s = s + tps.name[ev[i].index] + "(" + to_string(ev[i].g[0]) + ") ";
         else
             s = s + tps.name[ev[i].index] + "(" + to_string(ev[i].g[0]) + "/" + to_string(ev[i].g[1]) + ") ";
@@ -99,9 +99,10 @@ void registeralltuners(chessposition *pos)
 
     pos->tps.count = 0;
 
+    registertuner(pos, &eps.eTempo, "eTempo", 0, 0, 0, 0, tuneIt);
+    tuneIt = false;
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eKingpinpenalty[i], "eKingpinpenalty", i, 6, 0, 0, tuneIt && (i > PAWN));
-    tuneIt = false;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 5; j++)
             registertuner(pos, &eps.ePawnstormblocked[i][j], "ePawnstormblocked", j, 5, i, 4, tuneIt);
@@ -113,7 +114,6 @@ void registeralltuners(chessposition *pos)
     registertuner(pos, &eps.eSafepawnattackbonus, "eSafepawnattackbonus", 0, 0, 0, 0, tuneIt);
     tuneIt = false;
     registertuner(pos, &eps.eHangingpiecepenalty, "eHangingpiecepenalty", 0, 0, 0, 0, tuneIt);
-    registertuner(pos, &eps.eTempo, "eTempo", 0, 0, 0, 0, tuneIt);
     tuneIt = false;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 8; j++)
@@ -170,7 +170,7 @@ void registeralltuners(chessposition *pos)
         registertuner(pos, &eps.eKingringattack[i], "eKingringattack", i, 6, 0, 0, tuneIt);
     registertuner(pos, &eps.eKingdangeradjust, "eKingdangeradjust", 0, 0, 0, 0, tuneIt);
     
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
             registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
@@ -595,8 +595,6 @@ int chessposition::getEval()
     int lateEval = getLateEval<Et, 0>(&pe) + getLateEval<Et, 1>(&pe);
 
     int totalEval = psqval + pawnEval + generalEval + piecesEval + lateEval;
-    totalEval += EVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
-    if (bTrace) te.tempo[state & S2MMASK] += EVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
 
     int sideToScale = totalEval > SCOREDRAW ? WHITE : BLACK;
     sc = getScaling(sideToScale);
@@ -604,7 +602,9 @@ int chessposition::getEval()
     if (!bTrace && sc == SCALE_DRAW)
         return SCOREDRAW;
 
-    int score = TAPEREDANDSCALEDEVAL(totalEval, ph, sc);
+    if (bTrace) te.tempo[state & S2MMASK] += CEVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
+
+    int score = TAPEREDANDSCALEDEVAL(totalEval, ph, sc) + CEVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
 
     if (bTrace)
     {

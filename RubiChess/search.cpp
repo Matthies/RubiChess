@@ -95,7 +95,7 @@ inline void chessposition::updateHistory(uint32_t code, int16_t **cmptr, int val
 
 int chessposition::getQuiescence(int alpha, int beta, int depth)
 {
-    int patscore, score;
+    int score;
     int bestscore = SHRT_MIN;
     bool myIsCheck = (bool)isCheckbb;
 #ifdef EVALTUNE
@@ -130,27 +130,40 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 
     if (!myIsCheck)
     {
-        bestscore = patscore = (staticeval != NOSCORE ? staticeval : S2MSIGN(state & S2MMASK) * getEval<NOTRACE>());
-        if (patscore >= beta)
+#ifdef EVALTUNE
+        staticeval = S2MSIGN(state & S2MMASK) * getEval<NOTRACE>();
+#else
+        // get static evaluation of the position
+        if (staticeval == NOSCORE)
+        {
+            if (movestack[mstop - 1].movecode == 0)
+                staticeval = -staticevalstack[mstop - 1] + CEVAL(eps.eTempo, 2);
+            else
+                staticeval = S2MSIGN(state & S2MMASK) * getEval<NOTRACE>();
+        }
+#endif
+
+        bestscore = staticeval;
+        if (staticeval >= beta)
         {
             SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (fail high by patscore).", patscore);
-            return patscore;
+            return staticeval;
         }
-        if (patscore > alpha)
+        if (staticeval > alpha)
         {
 #ifdef EVALTUNE
             getPositionTuneSet(&targetpts, &ev[0]);
             foundpts = true;
 #endif
-            alpha = patscore;
+            alpha = staticeval;
         }
 
         // Delta pruning
         int bestCapture = getBestPossibleCapture();
-        if (patscore + deltapruningmargin + bestCapture < alpha)
+        if (staticeval + deltapruningmargin + bestCapture < alpha)
         {
-            SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (delta pruning by patscore).", patscore);
-            return patscore;
+            SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (delta pruning by patscore).", staticeval);
+            return staticeval;
         }
     }
 
@@ -163,7 +176,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 
     while ((m = ms.next()))
     {
-        if (!myIsCheck && patscore + materialvalue[GETCAPTURE(m->code) >> 1] + deltapruningmargin <= alpha)
+        if (!myIsCheck && staticeval + materialvalue[GETCAPTURE(m->code) >> 1] + deltapruningmargin <= alpha)
             // Leave out capture that is delta-pruned
             continue;
 
@@ -344,7 +357,13 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     // get static evaluation of the position
     if (staticeval == NOSCORE)
-        staticeval = S2MSIGN(state & S2MMASK) * getEval<NOTRACE>();
+    {
+        if (movestack[mstop - 1].movecode == 0)
+            // just reverse the staticeval before the null move respecting the tempo
+            staticeval = -staticevalstack[mstop - 1] + CEVAL(eps.eTempo, 2);
+        else
+            staticeval = S2MSIGN(state & S2MMASK) * getEval<NOTRACE>();
+    }
     staticevalstack[mstop] = staticeval;
 
     bool positionImproved = (mstop >= rootheight + 2

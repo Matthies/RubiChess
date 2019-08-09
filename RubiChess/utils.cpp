@@ -386,7 +386,15 @@ static string getValueStringValue(eval *e)
             se.insert(se.begin(), 4 - se.length(), ' ');
         return "VALUE(" + sm + "," + se + ")";
     }
-    else {
+    else if (e->type == 1)
+    {
+        string si = to_string(*e);
+        if (si.length() < 4)
+            si.insert(si.begin(), 4 - si.length(), ' ');
+        return "CVALUE(" + si + ")";
+    }
+    else
+    {
         string si = to_string(e->groupindex);
         if (si.length() < 4)
             si.insert(si.begin(), 4 - si.length(), ' ');
@@ -476,7 +484,7 @@ static int getGradientValue(struct tuner *tn, positiontuneset *p, evalparam *e)
     int sqsum[4][2] = { 0 };
     for (int i = 0; i < p->num; i++)
     {
-        if (tn->ev[e->index].type == 0)
+        if (tn->ev[e->index].type <= 1)
         {
             v += tn->ev[e->index] * e->g[0];
         }
@@ -534,7 +542,8 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
     int bw;
     char R;
     string fen;
-    int Qi, Qa;
+    int Qi, Qr;
+    int Q[2];
     U64 buffersize;
     char *pnext;
     long long minfreebuffer = sizeof(positiontuneset) + NUMOFEVALPARAMS * sizeof(evalparam) * 1024;
@@ -595,16 +604,17 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                     positiontuneset *nextpts = (positiontuneset*)pnext;
                     *nextpts = pos->pts;
                     nextpts->R = R;
-                    Qa = 0;
+                    Q[0] = Q[1] = 0;
                     evalparam *e = (evalparam *)(pnext + sizeof(positiontuneset));
                     int sqsum[4][2] = { 0 };
                     for (int i = 0; i < pos->pts.num; i++)
                     {
                         *e = pos->ev[i];
                         //printf("%20s: %08x  %3d\n", pos->tps.name[e->index].c_str(), *pos->tps.ev[i], e->g);
-                        if (pos->tps.ev[e->index]->type == 0)
+                        int ty = pos->tps.ev[e->index]->type;
+                        if (ty <= 1)
                         {
-                            Qa += e->g[0] * *pos->tps.ev[e->index];
+                            Q[ty] += e->g[0] * *pos->tps.ev[e->index];
                             //printf("l %3d: %3d * %08x         = %08x\n", e->index, e->g[0], (int)*pos->tps.ev[e->index], Qa);
                         }
                         else
@@ -619,15 +629,16 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                     for (int i = 0; i < 4; i++)
                     {
                         if (sqsum[i][0] == 0 && sqsum[i][1] == 0) continue;
-                        Qa += SQRESULT(sqsum[i][0], 0) + SQRESULT(sqsum[i][1], 1);
+                        Q[0] += SQRESULT(sqsum[i][0], 0) + SQRESULT(sqsum[i][1], 1);
                     }
+                    Qr = TAPEREDANDSCALEDEVAL(Q[0], nextpts->ph, nextpts->sc) + Q[1];
                     if (MATEDETECTED(Qi))
                         n--;
-                    else if (Qi != (nextpts->sc == SCALE_DRAW ? SCOREDRAW : TAPEREDANDSCALEDEVAL(Qa, nextpts->ph, nextpts->sc)))
-                        printf("%d  Alarm. Gradient evaluation differs from qsearch value: %d != %d.\n", n, TAPEREDANDSCALEDEVAL(Qa, nextpts->ph, nextpts->sc), Qi);
+                    else if (Qi != (nextpts->sc == SCALE_DRAW ? SCOREDRAW : Qr))
+                        printf("%d  Alarm. Gradient evaluation differs from qsearch value: %d != %d.\n", n, Qr, Qi);
                     else
                     {
-                        //printf("%d  gesamt: %08x\n", n, Qa);
+                        //printf("%d  gesamt: %08x\n", n, Q);
                         pnext = (char*)e;
                         n++;
                         if (n % 0x2000 == 0) printf(".");
@@ -661,16 +672,17 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                         positiontuneset *nextpts = (positiontuneset*)pnext;
                         *nextpts = pos->pts;
                         nextpts->R = R;
-                        Qa = 0;
+                        Q[0] = Q[1] = 0;
                         evalparam *e = (evalparam *)(pnext + sizeof(positiontuneset));
                         int sqsum[4][2] = { 0 };
                         for (int i = 0; i < pos->pts.num; i++)
                         {
                             *e = pos->ev[i];
+                            int ty = pos->tps.ev[e->index]->type;
                             //printf("%20s: %08x  %3d\n", pos->tps.name[e->index].c_str(), *pos->tps.ev[i], e->g);
-                            if (pos->tps.ev[e->index]->type == 0)
+                            if (ty <= 1)
                             {
-                                Qa += e->g[0] * *pos->tps.ev[e->index];
+                                Q[ty] += e->g[0] * *pos->tps.ev[e->index];
                                 //printf("l %3d: %3d * %08x         = %08x\n", e->index, e->g, (int)*pos->tps.ev[e->index], Qa);
                             }
                             else
@@ -685,9 +697,10 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                         for (int i = 0; i < 4; i++)
                         {
                             if (sqsum[i][0] == 0 && sqsum[i][1] == 0) continue;
-                            Qa += SQRESULT(sqsum[i][0], 0) + SQRESULT(sqsum[i][1], 1);
+                            Q[0] += SQRESULT(sqsum[i][0], 0) + SQRESULT(sqsum[i][1], 1);
                         }
-                        if (Qi != (nextpts->sc == SCALE_DRAW ? SCOREDRAW : TAPEREDANDSCALEDEVAL(Qa, nextpts->ph, nextpts->sc)))
+                        Qr = TAPEREDANDSCALEDEVAL(Q[0], nextpts->ph, nextpts->sc) + Q[1];
+                        if (Qi != (nextpts->sc == SCALE_DRAW ? SCOREDRAW : Qr))
                             printf("Alarm. Gradient evaluation differs from qsearch value.\n");
                         else
                         {
@@ -853,8 +866,7 @@ static void collectTuners(chessposition *pos, tunerpool *pool, tuner **freeTuner
 
             if (pi >= 0)
             {
-                if (tn->ev[pi].type == 0 &&  tn->ev[pi] != *pos->tps.ev[pi]
-                    || tn->ev[pi].type == 1 && tn->ev[pi] != *pos->tps.ev[pi])
+                if (tn->ev[pi] != *pos->tps.ev[pi])
                 {
                     printf("%2d %4d  %9lld   %40s  %0.10f  %s  -> %s\n", i, pi, pos->tps.used[pi], nameTunedParameter(pos, pi).c_str(), tn->error,
                         getValueStringValue(pos->tps.ev[pi]).c_str(),
