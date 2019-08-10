@@ -1,0 +1,63 @@
+#
+# Start MSVC Command prompt for x64 native tools and
+# for fastest build: nmake /f Makefile.clang build
+# for a quick build: nmake /f Makefile.clang all
+#
+LLVMInstallDir="C:\Program Files\LLVM""
+
+CXX=$(LLVMInstallDir)\bin\clang-cl.exe
+LD=$(LLVMInstallDir)\bin\lld-link.exe
+
+#SOURCE=board.cpp eval.cpp main.cpp search.cpp tbprobe.cpp transposition.cpp uci.cpp utils.cpp
+SOURCE=*.cpp
+OBJ=*.obj
+RELDIR=Release-clang
+EXE1=RubiChess
+EXE2=RubiChess-oldcpu
+PROFEXE1=$(EXE1)-Prof
+PROFEXE2=$(EXE2)-Prof
+PROFDATATOOLEXE=..\Tools\llvm-profdata
+
+CXXFLAGS=/GX /O2 /Oi /Ot /c -flto -fuse-ld=lld
+ARCHFLAGS=-msse3 -mpopcnt
+LDFLAGS=/OPT:REF /OPT:ICF
+PROFLIB=$(LLVMInstallDir)\lib\clang\8.0.0\lib\windows\clang_rt.profile-x86_64.lib
+
+all: RubiChess RubiChess-oldcpu
+
+$(RELDIR):
+	mkdir $(RELDIR)
+
+RubiChess: $(RELDIR)
+	$(CXX) $(CXXFLAGS) $(ARCHFLAGS) $(SOURCE) 
+	$(LD) $(LDFLAGS) /OUT:$(RELDIR)\$(EXE1).exe $(OBJ)
+
+RubiChess-oldcpu: $(RELDIR)
+	$(CXX) $(CXXFLAGS) $(SOURCE) 
+	$(LD) $(LDFLAGS) /OUT:$(RELDIR)\$(EXE2).exe $(OBJ)
+
+profile-build: $(RELDIR)
+	$(CXX) $(CXXFLAGS) $(ARCHFLAGS) $(SOURCE) -fprofile-instr-generate=$(PROFEXE1).clangprof-raw
+	$(LD) $(LDFLAGS) /OUT:$(PROFEXE1).exe $(OBJ) $(PROFLIB)
+	$(PROFEXE1) -bench > nul
+	$(PROFDATATOOLEXE) merge -output=$(PROFEXE1).clangprof $(PROFEXE1).clangprof-raw
+	$(CXX) $(CXXFLAGS) $(ARCHFLAGS) $(SOURCE) -fprofile-instr-use=$(PROFEXE1).clangprof
+	$(LD) $(LDFLAGS) /OUT:$(RELDIR)\$(EXE1).exe $(OBJ)
+
+	$(CXX) $(CXXFLAGS) $(SOURCE) -fprofile-instr-generate=$(PROFEXE2).clangprof-raw
+	$(LD) $(LDFLAGS) /OUT:$(PROFEXE2).exe $(OBJ) $(PROFLIB)
+	$(PROFEXE2) -bench > nul
+	$(PROFDATATOOLEXE) merge -output=$(PROFEXE2).clangprof $(PROFEXE2).clangprof-raw
+	$(CXX) $(CXXFLAGS) $(SOURCE) -fprofile-instr-use=$(PROFEXE2).clangprof
+	$(LD) $(LDFLAGS) /OUT:$(RELDIR)\$(EXE2).exe $(OBJ)
+
+build: profile-build profile-clean
+
+profile-clean:
+	del $(PROFEXE1)*
+	del $(PROFEXE2)*
+	del *.obj
+
+clean: profile-clean
+	del $(RELDIR)\$(EXE1).exe
+	del $(RELDIR)\$(EXE2).exe

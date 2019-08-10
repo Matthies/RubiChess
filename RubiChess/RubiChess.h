@@ -49,8 +49,6 @@
 #define _CRTDBG_MAP_ALLOC
 #endif
 
-using namespace std;
-
 #include <iostream>
 #include <iomanip>
 #include <stdarg.h>
@@ -98,6 +96,8 @@ using namespace std;
 void Sleep(long x);
 
 #endif
+
+using namespace std;
 
 #ifdef _MSC_VER
 // Hack to avoid warning in tbprobe.cpp
