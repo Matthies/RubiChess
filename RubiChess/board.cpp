@@ -863,7 +863,7 @@ void chessposition::print(ostream* os)
 }
 
 
-#if defined(STACKDEBUG) || defined(SDEBUG)
+#if 1 || defined(STACKDEBUG) || defined(SDEBUG)
 string chessposition::movesOnStack()
 {
     string s = "";

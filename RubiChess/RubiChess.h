@@ -569,9 +569,11 @@ public:
     bool probeHash(U64 hash, pawnhashentry **entry);
 };
 
+#define REPSIZE 0x10000
+#define REPMASK (REPSIZE - 1)
 class repetition
 {
-    unsigned char table[0x10000];
+    unsigned char table[REPSIZE];
 public:
     void clean();
     void addPosition(unsigned long long hash);

@@ -1,4 +1,4 @@
-/*
+﻿/*
   RubiChess is a UCI chess playing engine by Andreas Matthies.
 
   RubiChess is free software: you can redistribute it and/or modify
@@ -146,7 +146,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         bestscore = staticeval;
         if (staticeval >= beta)
         {
-            SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (fail high by patscore).", patscore);
+            SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (fail high by patscore).", staticeval);
             return staticeval;
         }
         if (staticeval > alpha)
@@ -250,7 +250,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 #endif
 
     // test for remis via repetition
-    if (testRepetiton() >= 2)
+    int rep = testRepetiton();
+    if (rep >= 2)
     {
         SDEBUGPRINT(isDebugPv, debugInsert, "Draw (repetition)");
         return SCOREDRAW;
@@ -306,13 +307,35 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     U64 newhash = hash ^ excludeMove;
 
     bool tpHit = tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
-    if (tpHit && rp.getPositionCount(hash) <= 1)  //FIXME: This test on the repetition table works like a "is not PV"; should be fixed in the future)
+    if (tpHit)
     {
-        uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
-        if (fullhashmove)
-            updatePvTable(fullhashmove, false);
-        SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from TT.", hashscore);
-        return hashscore;
+        //int irp = rp.getPositionCount(hash);
+        if (!rep /*irp <= 1*/)  //FIXME: This test on the repetition table works like a "is not PV"; should be fixed in the future)
+        {
+            uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
+            if (fullhashmove)
+                updatePvTable(fullhashmove, false);
+            SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from TT.", hashscore);
+            return hashscore;
+        }
+        else {
+            /*
+            Folgende Fälle treten auf (am Beispiel position fen 2R5/r3b1k1/p2p4/P1pPp2p/6q1/2P2N1r/4Q1P1/5RK1 w - - 0 1)
+
+            1. Root-Repetition:
+            rep = 2: c8e8  g7f7  e8c8  f7g7
+            
+            2. Repetition, die von testRepetiton() durch Null-Move und (vorzeitigen) Halfmovescounter=0 Abbruch nicht erkannt wird
+            rep = 2: c8c5  (none) f3g5  (none) g5f3
+
+            3. Repetition-Hash-Kollision:
+            rep = 2: f3e5  d6e5  e2e5  e7f6  f1f6  g4c8  g2h3  g7h7  e5h5  h7g8  f6h6  a7g7 (a.)  g1f2  c8f8  f2e3  g7g3  e3e4  f8e7  h6e6  e7g5  h5g5  g3g5  e6a6  g5h5  a6a8  g8h7 (b.)
+            a. 0x1a266d1938-044e75	‭1884313449182547573‬
+            b. 0x3049d2a4fa-044e75	‭3479543793131474549‬
+            */
+            //cout << "rep = 2: " + movesOnStack() + "\n";
+            //testRepetiton();
+        }
     }
 
 
@@ -711,22 +734,32 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
 
     if (!isMultiPV
         && !useRootmoveScore
-        && tp.probeHash(hash, &score, &staticeval, &hashmovecode, depth, alpha, beta, 0)
-        && rp.getPositionCount(hash) <= 1)  //FIXME: Is this really needed in rootsearch?
+        && tp.probeHash(hash, &score, &staticeval, &hashmovecode, depth, alpha, beta, 0))
     {
-        uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
-        if (fullhashmove)
+        int tp = testRepetiton();
+#if 0
+
+        int irp = rp.getPositionCount(hash);
+        if ((irp == 2) != (tp == 1))
+            cout << "root-rep rp.positioncount= " + to_string(irp) + "  testrepetition = " + to_string(tp) + " : " + movesOnStack() + "\n";
+
+
+#endif
+        if (!tp)  //FIXME: Is this really needed in rootsearch?
         {
-            if (bestmove.code != fullhashmove) {
-                bestmove.code = fullhashmove;
-                pondermove.code = 0;
+            uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
+            if (fullhashmove)
+            {
+                if (bestmove.code != fullhashmove) {
+                    bestmove.code = fullhashmove;
+                    pondermove.code = 0;
+                }
+                if (score > alpha) bestmovescore[0] = score;
+                updatePvTable(fullhashmove, false);
+                return score;
             }
-            if (score > alpha) bestmovescore[0] = score;
-            updatePvTable(fullhashmove, false);
-            return score;
         }
     }
-
     if (isCheckbb)
         extendall = 1;
 
