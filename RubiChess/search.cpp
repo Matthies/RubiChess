@@ -718,16 +718,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         && !useRootmoveScore
         && tp.probeHash(hash, &score, &staticeval, &hashmovecode, depth, alpha, beta, 0))
     {
-        int tp = testRepetiton();
-#if 0
-
-        int irp = rp.getPositionCount(hash);
-        if ((irp == 2) != (tp == 1))
-            cout << "root-rep rp.positioncount= " + to_string(irp) + "  testrepetition = " + to_string(tp) + " : " + movesOnStack() + "\n";
-
-
-#endif
-        if (!tp)
+        if (!testRepetiton())
         {
             // Not a single repetition so we trust the hash value but in some very rare cases it could happen that
             // a. the hashmove triggers 3-fold directly
@@ -977,7 +968,7 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int mpvIndex)
     char s[4096];
     chessposition *pos = &thr->pos;
     en.lastReport = msRun;
-    string pvstring = pos->getPv(mpvIndex ? pos->pvtable[mpvIndex] : pos->lastpv);
+    string pvstring = pos->getPv(mpvIndex ? pos->multipvtable[mpvIndex] : pos->lastpv);
     int score = pos->bestmovescore[mpvIndex];
     U64 nodes = en.getTotalNodes();
 
