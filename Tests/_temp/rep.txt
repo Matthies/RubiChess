@@ -8,15 +8,24 @@ MTC: Elo difference: -10.71 +/- 10.12
 
 rep4b: Rootsearch - "getPositionCount <= 1" durch "testRepetition == 0" ersetzt
 MTC: 50,2% (Elo difference ~ +2 +/- 7)
-STC(PC):
+STC(PC): Elo difference -5.16 +/- 6.75
 STC(Server): Elo difference: 3.89 +/- 6.54
 
 rep5: Rootsearch wie 4, alphabeta ohne zusätzlichen "getPositionCount Test, also immer hashmove und score
 ... -10 Elo
 
 rep6: Rootsearch wie 4, alphabeta mit testrepetition == 1 Test zusätzlichen "getPositionCount Test, also immer hashmove und score
+MTC: Elo difference: 6.98 +/- 9.39
+LTC: Elo difference: 2.95 +/- 22.74
 
+rep6c: Clean, also um repetition bereinigt
 
+rep7: testrepetition sucht nur bis zum ersten (bzw. letzten) Nullmove nach repetition
+MTC: Elo difference: 9.29 +/- 10.62
+LTC: Passed [-3,1] nach 3000 Spielen mit 50,6%
+
+rep7a: Abbruch bei Null move an den Anfang der Schleife gestellt (geringfügig anderer Bench!)
+... nicht so überzeugend in einem schnellen MTC
 
 Eine Partie, die das Problem der nicht erkannten 3fold repetition sogar in der Master-Version zeigt. Die vorvorletzte Position war noch nie besucht, deshalb nimmt RubiChess vermutlich ohne Bedenken den Hash-Zug 99. .. Kc4 {+1.79/29 0.20s}:
 [Event "?"]

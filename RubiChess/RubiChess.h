@@ -180,7 +180,6 @@ typedef unsigned long long U64;
 
 // Forward definitions
 class transposition;
-class repetition;
 class uci;
 class chessposition;
 class searchthread;
@@ -567,18 +566,6 @@ public:
     Pawnhash(int sizeMb);
     ~Pawnhash();
     bool probeHash(U64 hash, pawnhashentry **entry);
-};
-
-#define REPSIZE 0x10000
-#define REPMASK (REPSIZE - 1)
-class repetition
-{
-    unsigned char table[REPSIZE];
-public:
-    void clean();
-    void addPosition(unsigned long long hash);
-    void removePosition(unsigned long long hash);
-    int getPositionCount(unsigned long long hash);
 };
 
 
@@ -997,7 +984,6 @@ public:
     int16_t counterhistory[14][64][14*64];
     uint32_t bestFailingLow;
     Pawnhash *pwnhsh;
-    repetition rp;
     int threadindex;
     int psqval;
 #ifdef SDEBUG
