@@ -172,7 +172,7 @@ long long engine::perft(int depth, bool dotests)
     return retval;
 }
 
-void perftest(bool dotests, int maxdepth)
+static void perftest(bool dotests, int maxdepth)
 {
     struct perftestresultstruct
     {
@@ -251,7 +251,7 @@ void perftest(bool dotests, int maxdepth)
 }
 
 
-void doBenchmark()
+static void doBenchmark(int constdepth)
 {
     struct benchmarkstruct
     {
@@ -375,7 +375,11 @@ void doBenchmark()
         en.communicate("ucinewgame" + bm->fen);
         en.communicate("position fen " + bm->fen);
         starttime = getTime();
-        int dp = bm->depth;
+        int dp;
+        if (constdepth)
+            dp = constdepth;
+        else
+            dp = bm->depth;
         if (bm->terminationscore)
             en.terminationscore = bm->terminationscore;
         else
@@ -416,7 +420,7 @@ void doBenchmark()
 
 #ifdef _WIN32
 
-void readfromengine(HANDLE pipe, enginestate *es)
+static void readfromengine(HANDLE pipe, enginestate *es)
 {
     DWORD dwRead;
     CHAR chBuf[BUFSIZE];
@@ -511,13 +515,13 @@ void readfromengine(HANDLE pipe, enginestate *es)
     } while (true);
 }
 
-BOOL writetoengine(HANDLE pipe, const char *s)
+static BOOL writetoengine(HANDLE pipe, const char *s)
 {
     DWORD written;
     return WriteFile(pipe, s, (DWORD)strlen(s), &written, NULL);
 }
 
-void testengine(string epdfilename, int startnum, string engineprg, string logfilename, string comparefilename, int maxtime, int flags)
+static void testengine(string epdfilename, int startnum, string engineprg, string logfilename, string comparefilename, int maxtime, int flags)
 {
     struct enginestate es;
     string line;
@@ -750,7 +754,7 @@ void testengine(string epdfilename, int startnum, string engineprg, string logfi
 
 #else // _WIN32
 
-void testengine(string epdfilename, int startnum, string engineprg, string logfilename, string comparefilename, int maxtime, int flags)
+static void testengine(string epdfilename, int startnum, string engineprg, string logfilename, string comparefilename, int maxtime, int flags)
 {
     // not yet implemented
 }
@@ -761,7 +765,7 @@ int main(int argc, char* argv[])
 {
     int startnum = 1;
     int perfmaxdepth = 0;
-    bool benchmark = false;
+    int benchmark = -1;
     bool dotests = false;
     bool enginetest = false;
     string epdfile = "";
@@ -784,7 +788,7 @@ int main(int argc, char* argv[])
         char type;
         const char *defaultval;
     } allowedargs[] = {
-        { "-bench", "Do benchmark test for some positions.", &benchmark, 0, NULL },
+        { "-bench", "Do benchmark test for some positions.", &benchmark, 1, "0" },
         { "-perft", "Do performance and move generator testing.", &perfmaxdepth, 1, "0" },
         { "-dotests","test the hash function and value for positions and mirror (use with -perft)", &dotests, 0, NULL },
         { "-enginetest", "bulk testing of epd files", &enginetest, 0, NULL },
@@ -884,10 +888,10 @@ int main(int argc, char* argv[])
     {
         // do a perft test
         perftest(dotests, perfmaxdepth);
-    } else if (benchmark)
+    } else if (benchmark >= 0)
     {
         // benchmark mode
-        doBenchmark();
+        doBenchmark(benchmark);
     } else if (enginetest)
     {
         //engine test mode
