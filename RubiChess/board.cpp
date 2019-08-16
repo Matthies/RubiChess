@@ -382,8 +382,6 @@ int chessposition::getFromFen(const char* sFen)
     hash = zb.getHash(this);
     pawnhash = zb.getPawnHash(this);
     materialhash = zb.getMaterialHash(this);
-    rp.clean();
-    rp.addPosition(hash);
     memset(history, 0, sizeof(history));
     memset(counterhistory, 0, sizeof(counterhistory));
     memset(killer, 0, sizeof(killer));
@@ -539,9 +537,12 @@ int chessposition::testRepetiton()
             }
         }
         if (movestack[i].halfmovescounter == 0)
+            // no more reversible moves
+            break;
+        if (movestack[i].movecode == 0)
+            // null move
             break;
     }
-
     return hit;
 }
 
@@ -848,7 +849,7 @@ void chessposition::print(ostream* os)
     *os << "Hash: " + to_string(hash) + " (should be " + to_string(zb.getHash(this)) +  ")\n";
     *os << "Pawn Hash: " + to_string(pawnhash) + " (should be " + to_string(zb.getPawnHash(this)) + ")\n";
     *os << "Value: " + to_string(getEval<NOTRACE>()) + "\n";
-    *os << "Repetitions: " + to_string(rp.getPositionCount(hash)) + "\n";
+    *os << "Repetitions: " + to_string(testRepetiton()) + "\n";
     *os << "Phase: " + to_string(phase()) + "\n";
     *os << "Pseudo-legal Moves: " + pseudolegalmoves.toStringWithValue() + "\n";
 #if defined(STACKDEBUG) || defined(SDEBUG)
@@ -1542,7 +1543,6 @@ bool chessposition::playMove(chessmove *cm)
     PREFETCH(&tp.table[hash & tp.sizemask]);
 
     ply++;
-    rp.addPosition(hash);
     movestack[mstop++].movecode = cm->code;
     myassert(mstop < MAXMOVESEQUENCELENGTH, this, 1, mstop);
 
@@ -1559,7 +1559,6 @@ void chessposition::unplayMove(chessmove *cm)
     PieceCode capture = GETCAPTURE(cm->code);
     int s2m;
 
-    rp.removePosition(hash);
     ply--;
 
     mstop--;
@@ -2418,22 +2417,10 @@ void engine::communicate(string inputstring)
                 }
                 chessposition *rootpos = &sthread[0].pos;
                 rootpos->getFromFen(fen.c_str());
-                U64 hashlist[MAXMOVESEQUENCELENGTH];
-                hashlist[0] = rootpos->hash;
-                int hashlistlength = 1;
                 for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
                 {
                     if (!rootpos->applyMove(*it))
                         printf("info string Alarm! Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
-                    if (rootpos->halfmovescounter == 0)
-                    {
-                        // Remove the positions from repetition table to avoid wrong values by hash collisions
-                        for (int i = 0; i < hashlistlength; i++)
-                            rootpos->rp.removePosition(hashlist[i]);
-                        hashlistlength = 0;
-                    }
-
-                    hashlist[hashlistlength++] = rootpos->hash;
                 }
                 rootpos->rootheight = rootpos->mstop;
                 rootpos->ply = 0;

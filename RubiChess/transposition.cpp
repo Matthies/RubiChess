@@ -359,27 +359,6 @@ bool Pawnhash::probeHash(U64 hash, pawnhashentry **entry)
 }
 
 
-void repetition::clean()
-{
-    memset(table, 0, 0x10000);
-}
-
-void repetition::addPosition(unsigned long long hash)
-{
-    table[hash & 0xffff]++;
-}
-
-void repetition::removePosition(unsigned long long hash)
-{
-    table[hash & 0xffff]--;
-}
-
-int repetition::getPositionCount(unsigned long long hash)
-{
-    return table[hash & 0xffff];
-}
-
-
 bool  Materialhash::probeHash(U64 hash, Materialhashentry **entry)
 {
     *entry = &table[hash & MATERIALHASHMASK];

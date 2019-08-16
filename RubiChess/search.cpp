@@ -1,4 +1,4 @@
-/*
+﻿/*
   RubiChess is a UCI chess playing engine by Andreas Matthies.
 
   RubiChess is free software: you can redistribute it and/or modify
@@ -146,7 +146,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         bestscore = staticeval;
         if (staticeval >= beta)
         {
-            SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (fail high by patscore).", patscore);
+            SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (fail high by patscore).", staticeval);
             return staticeval;
         }
         if (staticeval > alpha)
@@ -250,7 +250,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 #endif
 
     // test for remis via repetition
-    if (testRepetiton() >= 2)
+    int rep = testRepetiton();
+    if (rep >= 2)
     {
         SDEBUGPRINT(isDebugPv, debugInsert, "Draw (repetition)");
         return SCOREDRAW;
@@ -306,13 +307,17 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     U64 newhash = hash ^ excludeMove;
 
     bool tpHit = tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
-    if (tpHit && rp.getPositionCount(hash) <= 1)  //FIXME: This test on the repetition table works like a "is not PV"; should be fixed in the future)
+    if (tpHit)
     {
-        uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
-        if (fullhashmove)
-            updatePvTable(fullhashmove, false);
-        SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from TT.", hashscore);
-        return hashscore;
+        if (!rep)
+        {
+            // not a single repetition; we can (almost) safely trust the hash value
+            uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
+            if (fullhashmove)
+                updatePvTable(fullhashmove, false);
+            SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from TT.", hashscore);
+            return hashscore;
+        }
     }
 
 
@@ -711,22 +716,38 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
 
     if (!isMultiPV
         && !useRootmoveScore
-        && tp.probeHash(hash, &score, &staticeval, &hashmovecode, depth, alpha, beta, 0)
-        && rp.getPositionCount(hash) <= 1)  //FIXME: Is this really needed in rootsearch?
+        && tp.probeHash(hash, &score, &staticeval, &hashmovecode, depth, alpha, beta, 0))
     {
-        uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
-        if (fullhashmove)
+        int tp = testRepetiton();
+#if 0
+
+        int irp = rp.getPositionCount(hash);
+        if ((irp == 2) != (tp == 1))
+            cout << "root-rep rp.positioncount= " + to_string(irp) + "  testrepetition = " + to_string(tp) + " : " + movesOnStack() + "\n";
+
+
+#endif
+        if (!tp)
         {
-            if (bestmove.code != fullhashmove) {
-                bestmove.code = fullhashmove;
-                pondermove.code = 0;
+            // Not a single repetition so we trust the hash value but in some very rare cases it could happen that
+            // a. the hashmove triggers 3-fold directly
+            // b. the hashmove allows the opponent to get a 3-fold
+            // see rep.txt in the test folder for examples
+            // maybe this could be fixed in the future by using cuckoo tables like SF does it
+            // https://marcelk.net/2013-04-06/paper/upcoming-rep-v2.pdf
+            uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
+            if (fullhashmove)
+            {
+                if (bestmove.code != fullhashmove) {
+                    bestmove.code = fullhashmove;
+                    pondermove.code = 0;
+                }
+                if (score > alpha) bestmovescore[0] = score;
+                updatePvTable(fullhashmove, false);
+                return score;
             }
-            if (score > alpha) bestmovescore[0] = score;
-            updatePvTable(fullhashmove, false);
-            return score;
         }
     }
-
     if (isCheckbb)
         extendall = 1;
 
