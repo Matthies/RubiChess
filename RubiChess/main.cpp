@@ -763,23 +763,24 @@ static void testengine(string epdfilename, int startnum, string engineprg, strin
 
 int main(int argc, char* argv[])
 {
-    int startnum = 1;
-    int perfmaxdepth = 0;
-    int benchmark = -1;
-    bool dotests = false;
-    bool enginetest = false;
-    string epdfile = "";
-    string engineprg = "";
-    string logfile = "";
-    string comparefile = "";
+    int startnum;
+    int perfmaxdepth;
+    bool benchmark;
+    int depth;
+    bool dotests;
+    bool enginetest;
+    string epdfile;
+    string engineprg;
+    string logfile;
+    string comparefile;
 #ifdef EVALTUNE
-    string pgnconvertfile = "";
-    string fentuningfile = "";
-    bool quietonly = 0;
-    int ppg = 0;
+    string pgnconvertfile;
+    string fentuningfile;
+    bool quietonly;
+    int ppg;
 #endif
-    int maxtime = 0;
-    int flags = 0;
+    int maxtime;
+    int flags;
 
     struct arguments {
         const char *cmd;
@@ -788,7 +789,8 @@ int main(int argc, char* argv[])
         char type;
         const char *defaultval;
     } allowedargs[] = {
-        { "-bench", "Do benchmark test for some positions.", &benchmark, 1, "0" },
+        { "-bench", "Do benchmark test for some positions.", &benchmark, 0, NULL },
+        { "-depth", "Depth for benchmark (0 for per-position-default)", &depth, 1, "0" },
         { "-perft", "Do performance and move generator testing.", &perfmaxdepth, 1, "0" },
         { "-dotests","test the hash function and value for positions and mirror (use with -perft)", &dotests, 0, NULL },
         { "-enginetest", "bulk testing of epd files", &enginetest, 0, NULL },
@@ -888,10 +890,10 @@ int main(int argc, char* argv[])
     {
         // do a perft test
         perftest(dotests, perfmaxdepth);
-    } else if (benchmark >= 0)
+    } else if (benchmark)
     {
         // benchmark mode
-        doBenchmark(benchmark);
+        doBenchmark(depth);
     } else if (enginetest)
     {
         //engine test mode
