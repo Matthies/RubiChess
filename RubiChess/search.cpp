@@ -87,7 +87,7 @@ inline void chessposition::updateHistory(uint32_t code, int16_t **cmptr, int val
     history[s2m][from][to] += delta;
     for (int i = 0; i < CMPLIES; i++)
         if (cmptr[i]) {
-            int delta = 32 * value - cmptr[i][pc * 64 + to] * abs(value) / 512;
+            delta = 32 * value - cmptr[i][pc * 64 + to] * abs(value) / 512;
             cmptr[i][pc * 64 + to] += delta;
         }
 }
@@ -475,8 +475,14 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         hashmovecode = tp.getMoveCode(newhash);
     }
 
+    // Get possible countermove from table
+    uint32_t lastmove = movestack[mstop - 1].movecode;
+    uint32_t counter = 0;
+    if (lastmove)
+        counter = countermove[GETPIECE(lastmove)][GETTO(lastmove)];
+
     MoveSelector ms = {};
-    ms.SetPreferredMoves(this, hashmovecode, killer[0][ply], killer[1][ply], excludeMove);
+    ms.SetPreferredMoves(this, hashmovecode, killer[0][ply], killer[1][ply], counter, excludeMove);
 
     int  LegalMoves = 0;
     int quietsPlayed = 0;
@@ -621,6 +627,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                             killer[1][ply] = killer[0][ply];
                             killer[0][ply] = m->code;
                         }
+
+                        // save countermove
+                        if (lastmove)
+                            countermove[GETPIECE(lastmove)][GETTO(lastmove)] = m->code;
                     }
 
                     SDEBUGPRINT(isDebugPv, debugInsert, " Beta-cutoff by move %s: %d  %s%s", m->toString().c_str(), score, excludestr.c_str(), excludeMove ? " : not singular" : "");
