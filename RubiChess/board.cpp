@@ -2175,7 +2175,8 @@ chessmove* MoveSelector::next()
         while (quietmovenum < quiets->length
             && (quiets->move[quietmovenum].code == hashmove.code
                 || quiets->move[quietmovenum].code == killermove1.code
-                || quiets->move[quietmovenum].code == killermove2.code))
+                || quiets->move[quietmovenum].code == killermove2.code
+                || quiets->move[quietmovenum].code == countermove.code))
         {
             quietmovenum++;
         }
