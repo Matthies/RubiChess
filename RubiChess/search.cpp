@@ -481,6 +481,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     if (lastmove)
         counter = countermove[GETPIECE(lastmove)][GETTO(lastmove)];
 
+    // Reset killers for child ply
+    killer[0][ply + 1] = killer[1][ply + 1] = 0;
+
     MoveSelector ms = {};
     ms.SetPreferredMoves(this, hashmovecode, killer[0][ply], killer[1][ply], counter, excludeMove);
 
