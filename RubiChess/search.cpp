@@ -615,7 +615,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
                 if (score >= beta)
                 {
-                    if (!ISCAPTURE(m->code))
+                    if (!ISTACTICAL(m->code))
                     {
                         updateHistory(m->code, ms.cmptr, depth * depth);
                         for (int i = 0; i < quietsPlayed; i++)
@@ -927,7 +927,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
             if (score >= beta)
             {
                 // Killermove
-                if (!ISCAPTURE(m->code))
+                if (!ISTACTICAL(m->code))
                 {
                     updateHistory(m->code, ms.cmptr, depth * depth);
                     for (int i = 0; i < quietsPlayed - 1; i++)
