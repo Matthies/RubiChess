@@ -980,7 +980,7 @@ public:
     int bestmovescore[MAXMULTIPV];
     int lastbestmovescore;
     chessmove pondermove;
-    uint32_t killer[2][MAXDEPTH];
+    uint32_t killer[MAXDEPTH][2];
     uint32_t countermove[14][64];
     int16_t history[2][64][64];
     int16_t counterhistory[14][64][14*64];

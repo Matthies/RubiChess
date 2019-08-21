@@ -482,10 +482,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         counter = countermove[GETPIECE(lastmove)][GETTO(lastmove)];
 
     // Reset killers for child ply
-    killer[0][ply + 1] = killer[1][ply + 1] = 0;
+    killer[ply + 1][0] = killer[ply + 1][1] = 0;
 
     MoveSelector ms = {};
-    ms.SetPreferredMoves(this, hashmovecode, killer[0][ply], killer[1][ply], counter, excludeMove);
+    ms.SetPreferredMoves(this, hashmovecode, killer[ply][0], killer[ply][1], counter, excludeMove);
 
     int  LegalMoves = 0;
     int quietsPlayed = 0;
@@ -625,10 +625,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                         }
 
                         // Killermove
-                        if (killer[0][ply] != m->code)
+                        if (killer[ply][0] != m->code)
                         {
-                            killer[1][ply] = killer[0][ply];
-                            killer[0][ply] = m->code;
+                            killer[ply][1] = killer[ply][0];
+                            killer[ply][0] = m->code;
                         }
 
                         // save countermove
@@ -776,7 +776,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
             {
                 m->value = KILLERVAL1;
             }
-            else if (killer[1][0] == m->code)
+            else if (killer[0][1] == m->code)
             {
                 m->value = KILLERVAL2;
             }
@@ -938,7 +938,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
 
                     if (killer[0][0] != m->code)
                     {
-                        killer[1][0] = killer[0][0];
+                        killer[0][1] = killer[0][0];
                         killer[0][0] = m->code;
                     }
                 }

@@ -5,3 +5,8 @@ MTC:
 Score of RubiChess-cm3 vs RubiChess-ms: 492 - 434 - 1141  [0.514] 2067
 Elo difference: 9.75 +/- 10.01
 SPRT: llr 1.39, lbound -1.39, ubound 1.39 - H1 was accepted
+
+cm4: mit !ISTACTICAL statt !ISCAPTURE Korrektur
+
+cm5: mit !ISTACTICAL statt !ISCAPTURE Korrektur und vermutlich besserer killer-Indizierung [ply][0..1]
+MTC (Server): failed mit 49,8% nach 3850 Spielen
