@@ -385,6 +385,7 @@ int chessposition::getFromFen(const char* sFen)
     memset(history, 0, sizeof(history));
     memset(counterhistory, 0, sizeof(counterhistory));
     memset(killer, 0, sizeof(killer));
+    memset(countermove, 0, sizeof(countermove));
     mstop = 0;
     rootheight = 0;
     return 0;
@@ -2086,7 +2087,7 @@ void MoveSelector::SetPreferredMoves(chessposition *p)
 }
 
 // MoveSelector for alphabeta search
-void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, int excludemove)
+void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, uint32_t counter, int excludemove)
 {
     pos = p;
     hashmove.code = p->shortMove2FullMove(hshm);
@@ -2094,6 +2095,8 @@ void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t k
         killermove1.code = kllm1;
     if (kllm2 != hshm)
         killermove2.code = kllm2;
+    if (counter != hshm && counter != kllm1 && counter != kllm2)
+        countermove.code = counter;
     pos->getCmptr(&cmptr[0]);
     if (!excludemove)
     {
@@ -2156,6 +2159,12 @@ chessmove* MoveSelector::next()
         {
             return &killermove2;
         }
+    case COUNTERMOVESTATE:
+        state++;
+        if (pos->moveIsPseudoLegal(countermove.code))
+        {
+            return &countermove;
+        }
     case QUIETINITSTATE:
         state++;
         quiets->length = CreateMovelist<QUIET>(pos, &quiets->move[0]);
@@ -2166,7 +2175,8 @@ chessmove* MoveSelector::next()
         while (quietmovenum < quiets->length
             && (quiets->move[quietmovenum].code == hashmove.code
                 || quiets->move[quietmovenum].code == killermove1.code
-                || quiets->move[quietmovenum].code == killermove2.code))
+                || quiets->move[quietmovenum].code == killermove2.code
+                || quiets->move[quietmovenum].code == countermove.code))
         {
             quietmovenum++;
         }

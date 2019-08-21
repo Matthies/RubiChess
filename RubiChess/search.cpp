@@ -87,7 +87,7 @@ inline void chessposition::updateHistory(uint32_t code, int16_t **cmptr, int val
     history[s2m][from][to] += delta;
     for (int i = 0; i < CMPLIES; i++)
         if (cmptr[i]) {
-            int delta = 32 * value - cmptr[i][pc * 64 + to] * abs(value) / 512;
+            delta = 32 * value - cmptr[i][pc * 64 + to] * abs(value) / 512;
             cmptr[i][pc * 64 + to] += delta;
         }
 }
@@ -475,8 +475,17 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         hashmovecode = tp.getMoveCode(newhash);
     }
 
+    // Get possible countermove from table
+    uint32_t lastmove = movestack[mstop - 1].movecode;
+    uint32_t counter = 0;
+    if (lastmove)
+        counter = countermove[GETPIECE(lastmove)][GETTO(lastmove)];
+
+    // Reset killers for child ply
+    killer[ply + 1][0] = killer[ply + 1][1] = 0;
+
     MoveSelector ms = {};
-    ms.SetPreferredMoves(this, hashmovecode, killer[0][ply], killer[1][ply], excludeMove);
+    ms.SetPreferredMoves(this, hashmovecode, killer[ply][0], killer[ply][1], counter, excludeMove);
 
     int  LegalMoves = 0;
     int quietsPlayed = 0;
@@ -606,7 +615,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
                 if (score >= beta)
                 {
-                    if (!ISCAPTURE(m->code))
+                    if (!ISTACTICAL(m->code))
                     {
                         updateHistory(m->code, ms.cmptr, depth * depth);
                         for (int i = 0; i < quietsPlayed; i++)
@@ -616,11 +625,15 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                         }
 
                         // Killermove
-                        if (killer[0][ply] != m->code)
+                        if (killer[ply][0] != m->code)
                         {
-                            killer[1][ply] = killer[0][ply];
-                            killer[0][ply] = m->code;
+                            killer[ply][1] = killer[ply][0];
+                            killer[ply][0] = m->code;
                         }
+
+                        // save countermove
+                        if (lastmove)
+                            countermove[GETPIECE(lastmove)][GETTO(lastmove)] = m->code;
                     }
 
                     SDEBUGPRINT(isDebugPv, debugInsert, " Beta-cutoff by move %s: %d  %s%s", m->toString().c_str(), score, excludestr.c_str(), excludeMove ? " : not singular" : "");
@@ -763,7 +776,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
             {
                 m->value = KILLERVAL1;
             }
-            else if (killer[1][0] == m->code)
+            else if (killer[0][1] == m->code)
             {
                 m->value = KILLERVAL2;
             }
@@ -914,7 +927,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
             if (score >= beta)
             {
                 // Killermove
-                if (!ISCAPTURE(m->code))
+                if (!ISTACTICAL(m->code))
                 {
                     updateHistory(m->code, ms.cmptr, depth * depth);
                     for (int i = 0; i < quietsPlayed - 1; i++)
@@ -925,7 +938,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
 
                     if (killer[0][0] != m->code)
                     {
-                        killer[1][0] = killer[0][0];
+                        killer[0][1] = killer[0][0];
                         killer[0][0] = m->code;
                     }
                 }
