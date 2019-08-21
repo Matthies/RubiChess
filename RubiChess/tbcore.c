@@ -20,9 +20,9 @@
 #endif
 #include "tbcore.h"
 
-#define TBMAX_PIECE 254
-#define TBMAX_PAWN 256
-#define HSHMAX 5
+#define TBMAX_PIECE 650
+#define TBMAX_PAWN 861
+//#define HSHMAX 5
 
 #define Swap(a,b) {int tmp=a;a=b;b=tmp;}
 
@@ -47,7 +47,7 @@ static int TBnum_piece, TBnum_pawn;
 static struct TBEntry_piece TB_piece[TBMAX_PIECE];
 static struct TBEntry_pawn TB_pawn[TBMAX_PAWN];
 
-static struct TBHashEntry TB_hash[1 << TBHASHBITS][HSHMAX];
+static struct TBHashEntry TB_hash[1 << TBHASHBITS];
 
 #define DTZ_ENTRIES 64
 
@@ -145,15 +145,10 @@ static void add_to_hash(struct TBEntry *ptr, uint64 key)
 
   hshidx = key >> (64 - TBHASHBITS);
   i = 0;
-  while (i < HSHMAX && TB_hash[hshidx][i].ptr)
-    i++;
-  if (i == HSHMAX) {
-    printf("HSHMAX too low!\n");
-    exit(1);
-  } else {
-    TB_hash[hshidx][i].key = key;
-    TB_hash[hshidx][i].ptr = ptr;
-  }
+  while (TB_hash[hshidx].ptr)
+      hshidx = (hshidx + 1) & ((1 << TBHASHBITS) - 1);
+  TB_hash[hshidx].key = key;
+  TB_hash[hshidx].ptr = ptr;
 }
 
 static char pchr[] = {'K', 'Q', 'R', 'B', 'N', 'P'};
@@ -243,6 +238,32 @@ static void init_tb(char *str)
   if (key2 != key) add_to_hash(entry, key2);
 }
 
+
+const int maxpiece = 7;
+
+bool digit5(char c[], int x, int l, int y = -1)
+{
+    int d[maxpiece - 2];
+    int i = 0;
+    while (l--)
+    {
+        d[i] = x % 5;
+        if (y >= 0)
+        {
+            int yd = y % 5;
+            if (yd > d[i])
+                return false;
+            y = yd == d[i] ? y / 5 : -1;
+        }
+        if (i && d[i] < d[i - 1])
+            return false;
+        c[i] = pchr[d[i] + 1];
+        i++;
+        x /= 5;
+    }
+    return true;
+}
+
 void init_tablebases(char *path)
 {
   char str[16];
@@ -301,14 +322,15 @@ void init_tablebases(char *path)
   TBlargest = 0;
 
   for (i = 0; i < (1 << TBHASHBITS); i++)
-    for (j = 0; j < HSHMAX; j++) {
-      TB_hash[i][j].key = 0ULL;
-      TB_hash[i][j].ptr = NULL;
-    }
+  {
+      TB_hash[i].key = 0ULL;
+      TB_hash[i].ptr = NULL;
+  }
 
   for (i = 0; i < DTZ_ENTRIES; i++)
     DTZ_table[i].entry = NULL;
 
+#if 0
   for (i = 1; i < 6; i++) {
     sprintf_s(str, "K%cvK", pchr[i]);
     init_tb(str);
@@ -363,7 +385,35 @@ void init_tablebases(char *path)
 	  sprintf_s(str, "K%c%c%c%cvK", pchr[i], pchr[j], pchr[k], pchr[l]);
 	  init_tb(str);
 	}
+#else
+  char w[maxpiece - 2];  // white pieces in order
+  char b[maxpiece - 2];  // black pieces in order
+  for (int p = 1; p <= maxpiece - 2; p++)       // total pieces besides kings
+      for (int pw = (p + 1) / 2; pw <= p; pw++)    // pieces of white
+      {
+          int pb = p - pw;    // pieces of black
+          int cw = 1;   // combinations for white
+          for (int f = 0; f < pw; f++) cw *= 5;
+          int cb = 1;   // combinations for black
+          for (int f = 0; f < pb; f++) cb *= 5;
+          for (int ow = 0; ow < cw; ow++)
+          {
+              if (digit5(w, ow, pw))
+              {
+                  for (int ob = 0; ob < cb; ob++)
+                  {
+                      if (digit5(b, ob, pb, pw == pb ? ow : -1))
+                      {
+                          string s = "K" + string(w, pw) + "vK" + string(b, pb);
+                          cout << s + "\n";
+                          init_tb((char*)s.c_str());
+                      }
+                  }
+              }
+          }
+      }
 
+#endif
   printf("info string Found %d tablebases.\n", TBnum_piece + TBnum_pawn);
 }
 
@@ -1290,12 +1340,11 @@ void load_dtz_table(char *str, uint64 key1, uint64 key2)
   DTZ_table[0].entry = NULL;
 
   // find corresponding WDL entry
-  ptr2 = TB_hash[key1 >> (64 - TBHASHBITS)];
-  for (i = 0; i < HSHMAX; i++)
-    if (ptr2[i].key == key1) break;
-  if (i == HSHMAX) return;
-  ptr = ptr2[i].ptr;
-
+  int hashIdx = key1 >> (64 - TBHASHBITS);
+  while (TB_hash[hashIdx].key != key1)
+      hashIdx = (hashIdx + 1) & ((1 << TBHASHBITS) - 1);
+  ptr = TB_hash[hashIdx].ptr;
+  if (!ptr) return;
   ptr3 = (struct TBEntry *)malloc(ptr->has_pawns
 				? sizeof(struct DTZEntry_pawn)
 				: sizeof(struct DTZEntry_piece));

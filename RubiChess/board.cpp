@@ -2227,7 +2227,7 @@ engine::engine()
     setOption("Move Overhead", "50");
     setOption("MultiPV", "1");
     setOption("Ponder", "false");
-    setOption("SyzygyPath", "<empty>");
+    setOption("SyzygyPath", "I:\\Dasi-AM\\tb-syzygy");
     setOption("Syzygy50MoveRule", "true");
 
 #ifdef _WIN32

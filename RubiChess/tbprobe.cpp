@@ -127,15 +127,15 @@ static int probe_wdl_table(int *success, chessposition *pos)
     if (key == (zb.boardtable[WKING] ^ zb.boardtable[BKING]))
         return 0;
 
-    ptr2 = TB_hash[key >> (64 - TBHASHBITS)];
-    for (i = 0; i < HSHMAX; i++)
-        if (ptr2[i].key == key) break;
-    if (i == HSHMAX) {
+    int hashIdx = key >> (64 - TBHASHBITS);
+    while (TB_hash[hashIdx].key != key)
+        hashIdx = (hashIdx + 1) & ((1 << TBHASHBITS) - 1);
+    ptr = TB_hash[hashIdx].ptr;
+    if (!ptr) {
         *success = 0;
         return 0;
     }
 
-    ptr = ptr2[i].ptr;
     if (!ptr->ready) {
         LOCK(TB_mutex);
         if (!ptr->ready) {
@@ -244,14 +244,15 @@ static int probe_dtz_table(int wdl, int *success, chessposition *pos)
 	DTZ_table[i] = DTZ_table[i - 1];
       DTZ_table[0] = table_entry;
     } else {
-      struct TBHashEntry *ptr2 = TB_hash[key >> (64 - TBHASHBITS)];
-      for (i = 0; i < HSHMAX; i++)
-	if (ptr2[i].key == key) break;
-      if (i == HSHMAX) {
+        int hashIdx = key >> (64 - TBHASHBITS);
+      
+        while (TB_hash[hashIdx].key && TB_hash[hashIdx].key != key)
+            hashIdx = (hashIdx + 1) & ((1 << TBHASHBITS) - 1);
+        ptr = TB_hash[hashIdx].ptr;
+      if (!ptr) {
 	*success = 0;
 	return 0;
       }
-      ptr = ptr2[i].ptr;
       char str[16];
       int mirror = (ptr->key != key);
       prt_str(str, mirror, pos);
