@@ -128,7 +128,7 @@ static int probe_wdl_table(int *success, chessposition *pos)
         return 0;
 
     int hashIdx = key >> (64 - TBHASHBITS);
-    while (TB_hash[hashIdx].key != key)
+    while (TB_hash[hashIdx].key && TB_hash[hashIdx].key != key)
         hashIdx = (hashIdx + 1) & ((1 << TBHASHBITS) - 1);
     ptr = TB_hash[hashIdx].ptr;
     if (!ptr) {
@@ -246,7 +246,7 @@ static int probe_dtz_table(int wdl, int *success, chessposition *pos)
     } else {
         int hashIdx = key >> (64 - TBHASHBITS);
       
-        while (TB_hash[hashIdx].key && TB_hash[hashIdx].key != key)
+        while (TB_hash[hashIdx].key && TB_hash[hashIdx].key && TB_hash[hashIdx].key != key)
             hashIdx = (hashIdx + 1) & ((1 << TBHASHBITS) - 1);
         ptr = TB_hash[hashIdx].ptr;
       if (!ptr) {
