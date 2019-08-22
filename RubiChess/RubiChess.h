@@ -880,7 +880,7 @@ public:
 
 
 enum MoveSelector_State { INITSTATE, HASHMOVESTATE, TACTICALINITSTATE, TACTICALSTATE, KILLERMOVE1STATE, KILLERMOVE2STATE,
-    QUIETINITSTATE, QUIETSTATE, BADTACTICALSTATE, BADTACTICALEND, EVASIONINITSTATE, EVASIONSTATE };
+    COUNTERMOVESTATE, QUIETINITSTATE, QUIETSTATE, BADTACTICALSTATE, BADTACTICALEND, EVASIONINITSTATE, EVASIONSTATE };
 
 class MoveSelector
 {
@@ -892,6 +892,7 @@ public:
     chessmove hashmove;
     chessmove killermove1;
     chessmove killermove2;
+    chessmove countermove;
     int capturemovenum;
     int quietmovenum;
     int legalmovenum;
@@ -900,7 +901,7 @@ public:
 
 public:
     void SetPreferredMoves(chessposition *p);  // for quiescence move selector
-    void SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, int excludemove);
+    void SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, uint32_t counter, int excludemove);
     chessmove* next();
 };
 
@@ -979,7 +980,8 @@ public:
     int bestmovescore[MAXMULTIPV];
     int lastbestmovescore;
     chessmove pondermove;
-    uint32_t killer[2][MAXDEPTH];
+    uint32_t killer[MAXDEPTH][2];
+    uint32_t countermove[14][64];
     int16_t history[2][64][64];
     int16_t counterhistory[14][64][14*64];
     uint32_t bestFailingLow;
