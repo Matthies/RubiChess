@@ -43,7 +43,7 @@
 #define DTZSUFFIX ".rtbz"
 #define WDLDIR "RTBWDIR"
 #define DTZDIR "RTBZDIR"
-#define TBPIECES 6
+#define TBPIECES 7
 
 #define WDL_MAGIC 0x5d23e871
 #define DTZ_MAGIC 0xa50c66d7
