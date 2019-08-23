@@ -44,18 +44,18 @@ int TBlargest = 0;
 // No need to make this very efficient.
 static void prt_str(char *str, int color, chessposition *pos)
 {
-  PieceType pt;
-  int i;
-  
-  for (pt = KING; pt >= PAWN; pt--)
-    for (i = POPCOUNT(pos->piece00[(pt << 1) | color]); i > 0; i--)
-      *str++ = pchr[6 - pt];
-  *str++ = 'v';
-  color ^= S2MMASK;
-  for (pt = KING; pt >= PAWN; pt--)
-    for (i = POPCOUNT(pos->piece00[(pt << 1) | color]); i > 0; i--)
-      *str++ = pchr[6 - pt];
-  *str++ = 0;
+    PieceType pt;
+    int i;
+
+    for (pt = KING; pt >= PAWN; pt--)
+        for (i = POPCOUNT(pos->piece00[(pt << 1) | color]); i > 0; i--)
+            *str++ = pchr[6 - pt];
+    *str++ = 'v';
+    color ^= S2MMASK;
+    for (pt = KING; pt >= PAWN; pt--)
+        for (i = POPCOUNT(pos->piece00[(pt << 1) | color]); i > 0; i--)
+            *str++ = pchr[6 - pt];
+    *str++ = 0;
 }
 
 // Given a position, produce a 64-bit material signature key.
@@ -64,23 +64,23 @@ static void prt_str(char *str, int color, chessposition *pos)
 static uint64 calc_key(int mirror, chessposition *pos)
 {
     int color;
-  PieceType pt;
-  int i;
-  uint64 key = 0;
-  color = !mirror ? 0 : 1;
+    PieceType pt;
+    int i;
+    uint64 key = 0;
+    color = !mirror ? 0 : 1;
 
 
-  for (pt = PAWN; pt <= KING; pt++)
-    for (i = POPCOUNT(pos->piece00[(pt << 1) | color]); i > 0; i--)
-        key ^= zb.boardtable[((i - 1) << 4) | (pt << 1)];
-        //key ^= Zobrist::psq[WHITE][pt][i - 1];
-  color ^= S2MMASK;
-  for (pt = PAWN; pt <= KING; pt++)
-    for (i = POPCOUNT(pos->piece00[(pt << 1) | color]); i > 0; i--)
-        key ^= zb.boardtable[((i - 1) << 4) | (pt << 1) | 1];
-        //key ^= Zobrist::psq[BLACK][pt][i - 1];
+    for (pt = PAWN; pt <= KING; pt++)
+        for (i = POPCOUNT(pos->piece00[(pt << 1) | color]); i > 0; i--)
+            key ^= zb.boardtable[((i - 1) << 4) | (pt << 1)];
+    //key ^= Zobrist::psq[WHITE][pt][i - 1];
+    color ^= S2MMASK;
+    for (pt = PAWN; pt <= KING; pt++)
+        for (i = POPCOUNT(pos->piece00[(pt << 1) | color]); i > 0; i--)
+            key ^= zb.boardtable[((i - 1) << 4) | (pt << 1) | 1];
+    //key ^= Zobrist::psq[BLACK][pt][i - 1];
 
-  return key;
+    return key;
 }
 
 // Produce a 64-bit material key corresponding to the material combination
@@ -90,23 +90,23 @@ static uint64 calc_key(int mirror, chessposition *pos)
 // Again no need to be efficient here.
 static uint64 calc_key_from_pcs(int *pcs, int mirror)
 {
-  int color;
-  PieceType pt;
-  int i;
-  uint64 key = 0;
+    int color;
+    PieceType pt;
+    int i;
+    uint64 key = 0;
 
-  color = !mirror ? 0 : 8;
-  for (pt = PAWN; pt <= KING; pt++)
-    for (i = 0; i < pcs[color + pt]; i++)
-        key ^= zb.boardtable[(i << 4) | (pt << 1)];
-        //key ^= Zobrist::psq[WHITE][pt][i];
-  color ^= 8;
-  for (pt = PAWN; pt <= KING; pt++)
-    for (i = 0; i < pcs[color + pt]; i++)
-        key ^= zb.boardtable[(i << 4) | (pt << 1) | 1];
-  //key ^= Zobrist::psq[BLACK][pt][i];
+    color = !mirror ? 0 : 8;
+    for (pt = PAWN; pt <= KING; pt++)
+        for (i = 0; i < pcs[color + pt]; i++)
+            key ^= zb.boardtable[(i << 4) | (pt << 1)];
+    //key ^= Zobrist::psq[WHITE][pt][i];
+    color ^= 8;
+    for (pt = PAWN; pt <= KING; pt++)
+        for (i = 0; i < pcs[color + pt]; i++)
+            key ^= zb.boardtable[(i << 4) | (pt << 1) | 1];
+    //key ^= Zobrist::psq[BLACK][pt][i];
 
-  return key;
+    return key;
 }
 
 // probe_wdl_table and probe_dtz_table require similar adaptations.
@@ -227,126 +227,129 @@ static int probe_wdl_table(int *success, chessposition *pos)
 // en passant rights.
 static int probe_dtz_table(int wdl, int *success, chessposition *pos)
 {
-  struct TBEntry *ptr;
-  uint64 idx;
-  int i, res;
-  int p[TBPIECES];
+    struct TBEntry *ptr;
+    uint64 idx;
+    int i, res;
+    int p[TBPIECES];
 
-  // Obtain the position's material signature key.
-  uint64 key = pos->materialhash;
+    // Obtain the position's material signature key.
+    uint64 key = pos->materialhash;
 
-  if (DTZ_table[0].key1 != key && DTZ_table[0].key2 != key) {
-    for (i = 1; i < DTZ_ENTRIES; i++)
-      if (DTZ_table[i].key1 == key || DTZ_table[i].key2 == key) break;
-    if (i < DTZ_ENTRIES) {
-      struct DTZTableEntry table_entry = DTZ_table[i];
-      for (; i > 0; i--)
-	DTZ_table[i] = DTZ_table[i - 1];
-      DTZ_table[0] = table_entry;
-    } else {
-        int hashIdx = key >> (64 - TBHASHBITS);
-      
-        while (TB_hash[hashIdx].key && TB_hash[hashIdx].key && TB_hash[hashIdx].key != key)
-            hashIdx = (hashIdx + 1) & ((1 << TBHASHBITS) - 1);
-        ptr = TB_hash[hashIdx].ptr;
-      if (!ptr) {
-	*success = 0;
-	return 0;
-      }
-      char str[16];
-      int mirror = (ptr->key != key);
-      prt_str(str, mirror, pos);
-      if (DTZ_table[DTZ_ENTRIES - 1].entry)
-	free_dtz_entry(DTZ_table[DTZ_ENTRIES-1].entry);
-      for (i = DTZ_ENTRIES - 1; i > 0; i--)
-	DTZ_table[i] = DTZ_table[i - 1];
-      load_dtz_table(str, calc_key(mirror, pos), calc_key(!mirror, pos));
+    if (DTZ_table[0].key1 != key && DTZ_table[0].key2 != key) {
+        for (i = 1; i < DTZ_ENTRIES; i++)
+            if (DTZ_table[i].key1 == key || DTZ_table[i].key2 == key) break;
+        if (i < DTZ_ENTRIES) {
+            struct DTZTableEntry table_entry = DTZ_table[i];
+            for (; i > 0; i--)
+                DTZ_table[i] = DTZ_table[i - 1];
+            DTZ_table[0] = table_entry;
+        }
+        else {
+            int hashIdx = key >> (64 - TBHASHBITS);
+            while (TB_hash[hashIdx].key && TB_hash[hashIdx].key && TB_hash[hashIdx].key != key)
+                hashIdx = (hashIdx + 1) & ((1 << TBHASHBITS) - 1);
+            ptr = TB_hash[hashIdx].ptr;
+            if (!ptr) {
+                *success = 0;
+                return 0;
+            }
+            char str[16];
+            int mirror = (ptr->key != key);
+            prt_str(str, mirror, pos);
+            if (DTZ_table[DTZ_ENTRIES - 1].entry)
+                free_dtz_entry(DTZ_table[DTZ_ENTRIES - 1].entry);
+            for (i = DTZ_ENTRIES - 1; i > 0; i--)
+                DTZ_table[i] = DTZ_table[i - 1];
+            load_dtz_table(str, calc_key(mirror, pos), calc_key(!mirror, pos));
+        }
     }
-  }
 
-  ptr = DTZ_table[0].entry;
-  if (!ptr) {
-    *success = 0;
-    return 0;
-  }
+    ptr = DTZ_table[0].entry;
+    if (!ptr) {
+        *success = 0;
+        return 0;
+    }
 
-  int bside, mirror, cmirror;
-  if (!ptr->symmetric) {
-    if (key != ptr->key) {
-      cmirror = 8;
-      mirror = 0x38;
-      bside = (pos->w2m());
-    } else {
-      cmirror = mirror = 0;
-      bside = !(pos->w2m());
+    int bside, mirror, cmirror;
+    if (!ptr->symmetric) {
+        if (key != ptr->key) {
+            cmirror = 8;
+            mirror = 0x38;
+            bside = (pos->w2m());
+        }
+        else {
+            cmirror = mirror = 0;
+            bside = !(pos->w2m());
+        }
     }
-  } else {
-    cmirror = pos->w2m() ? 0 : 8;
-    mirror = pos->w2m() ? 0 : 0x38;
-    bside = 0;
-  }
+    else {
+        cmirror = pos->w2m() ? 0 : 8;
+        mirror = pos->w2m() ? 0 : 0x38;
+        bside = 0;
+    }
 
-  if (!ptr->has_pawns) {
-    struct DTZEntry_piece *entry = (struct DTZEntry_piece *)ptr;
-    if ((entry->flags & 1) != bside && !entry->symmetric) {
-      *success = -1;
-      return 0;
-    }
-    ubyte *pc = entry->pieces;
-    for (i = 0; i < entry->num;) {
-      U64 bb = pos->piece00[SYZYGY2RUBI_PT(pc[i] ^ cmirror)];
-      int index;
-      while (bb)
-      {
-          index = pullLsb(&bb);
-          p[i++] = index;
-      }
-    }
-    idx = encode_piece((struct TBEntry_piece *)entry, entry->norm, p, entry->factor);
-    res = decompress_pairs(entry->precomp, idx);
+    if (!ptr->has_pawns) {
+        struct DTZEntry_piece *entry = (struct DTZEntry_piece *)ptr;
+        if ((entry->flags & 1) != bside && !entry->symmetric) {
+            *success = -1;
+            return 0;
+        }
+        ubyte *pc = entry->pieces;
+        for (i = 0; i < entry->num;) {
+            U64 bb = pos->piece00[SYZYGY2RUBI_PT(pc[i] ^ cmirror)];
+            int index;
+            while (bb)
+            {
+                index = pullLsb(&bb);
+                p[i++] = index;
+            }
+        }
+        idx = encode_piece((struct TBEntry_piece *)entry, entry->norm, p, entry->factor);
+        res = decompress_pairs(entry->precomp, idx);
 
-    if (entry->flags & 2)
-      res = entry->map[entry->map_idx[wdl_to_map[wdl + 2]] + res];
+        if (entry->flags & 2)
+            res = entry->map[entry->map_idx[wdl_to_map[wdl + 2]] + res];
 
-    if (!(entry->flags & pa_flags[wdl + 2]) || (wdl & 1))
-      res *= 2;
-  } else {
-    struct DTZEntry_pawn *entry = (struct DTZEntry_pawn *)ptr;
-    int k = entry->file[0].pieces[0] ^ cmirror;
-    U64 bb = pos->piece00[SYZYGY2RUBI_PT(k)];
-    i = 0;
-    int index;
-    while (bb)
-    {
-        index = pullLsb(&bb);
-        p[i++] = index ^ mirror;
+        if (!(entry->flags & pa_flags[wdl + 2]) || (wdl & 1))
+            res *= 2;
     }
-    int f = pawn_file((struct TBEntry_pawn *)entry, p);
-    if ((entry->flags[f] & 1) != bside) {
-      *success = -1;
-      return 0;
-    }
-    ubyte *pc = entry->file[f].pieces;
-    for (; i < entry->num;) {
-        bb = pos->piece00[SYZYGY2RUBI_PT(pc[i] ^ cmirror)];
+    else {
+        struct DTZEntry_pawn *entry = (struct DTZEntry_pawn *)ptr;
+        int k = entry->file[0].pieces[0] ^ cmirror;
+        U64 bb = pos->piece00[SYZYGY2RUBI_PT(k)];
+        i = 0;
         int index;
         while (bb)
         {
             index = pullLsb(&bb);
             p[i++] = index ^ mirror;
         }
+        int f = pawn_file((struct TBEntry_pawn *)entry, p);
+        if ((entry->flags[f] & 1) != bside) {
+            *success = -1;
+            return 0;
+        }
+        ubyte *pc = entry->file[f].pieces;
+        for (; i < entry->num;) {
+            bb = pos->piece00[SYZYGY2RUBI_PT(pc[i] ^ cmirror)];
+            int index;
+            while (bb)
+            {
+                index = pullLsb(&bb);
+                p[i++] = index ^ mirror;
+            }
+        }
+        idx = encode_pawn((struct TBEntry_pawn *)entry, entry->file[f].norm, p, entry->file[f].factor);
+        res = decompress_pairs(entry->file[f].precomp, idx);
+
+        if (entry->flags[f] & 2)
+            res = entry->map[entry->map_idx[f][wdl_to_map[wdl + 2]] + res];
+
+        if (!(entry->flags[f] & pa_flags[wdl + 2]) || (wdl & 1))
+            res *= 2;
     }
-    idx = encode_pawn((struct TBEntry_pawn *)entry, entry->file[f].norm, p, entry->file[f].factor);
-    res = decompress_pairs(entry->file[f].precomp, idx);
 
-    if (entry->flags[f] & 2)
-      res = entry->map[entry->map_idx[f][wdl_to_map[wdl + 2]] + res];
-
-    if (!(entry->flags[f] & pa_flags[wdl + 2]) || (wdl & 1))
-      res *= 2;
-  }
-
-  return res;
+    return res;
 }
 
 
@@ -404,97 +407,97 @@ static int probe_ab(int alpha, int beta, int *success, chessposition *pos)
 //  2 : win
 int probe_wdl(int *success, chessposition *pos)
 {
-  *success = 1;
-  int best_cap = -3, best_ep = -3;
-  int i;
+    *success = 1;
+    int best_cap = -3, best_ep = -3;
+    int i;
 
-  // Generate (at least) all legal captures including (under)promotions.
-  chessmovelist movelist;
-  pos->prepareStack();
-  movelist.length = pos->getMoves(&movelist.move[0]);
+    // Generate (at least) all legal captures including (under)promotions.
+    chessmovelist movelist;
+    pos->prepareStack();
+    movelist.length = pos->getMoves(&movelist.move[0]);
 
-  // We do capture resolution, letting best_cap keep track of the best
-  // capture without ep rights and letting best_ep keep track of still
-  // better ep captures if they exist.
-  for (i = 0; i < movelist.length; i++)
-  {
-      chessmove *m = &movelist.move[i];
-      if (ISCAPTURE(m->code))
-      {
-          if (pos->playMove(m))
-          {
-              //printf("probe_wdl (ply=%d) testing capture/promotion/evasion move %s...\n", pos.ply, pos.actualpath.toString().c_str());
-              int v = -probe_ab(-2, -best_cap, success, pos);
-              //printf("probe_wdl (ply=%d) tested  capture/promotion/evasion move %s... v=%d\n", pos.ply, pos.actualpath.toString().c_str(), v);
-              pos->unplayMove(m);
-              if (*success == 0) return 0;
-              if (v > best_cap) {
-                  if (v == 2) {
-                      *success = 2;
-                      return 2;
-                  }
-                  if (!GETEPCAPTURE(m->code))
-                      best_cap = v;
-                  else if (v > best_ep)
-                      best_ep = v;
-              }
+    // We do capture resolution, letting best_cap keep track of the best
+    // capture without ep rights and letting best_ep keep track of still
+    // better ep captures if they exist.
+    for (i = 0; i < movelist.length; i++)
+    {
+        chessmove *m = &movelist.move[i];
+        if (ISCAPTURE(m->code))
+        {
+            if (pos->playMove(m))
+            {
+                //printf("probe_wdl (ply=%d) testing capture/promotion/evasion move %s...\n", pos.ply, pos.actualpath.toString().c_str());
+                int v = -probe_ab(-2, -best_cap, success, pos);
+                //printf("probe_wdl (ply=%d) tested  capture/promotion/evasion move %s... v=%d\n", pos.ply, pos.actualpath.toString().c_str(), v);
+                pos->unplayMove(m);
+                if (*success == 0) return 0;
+                if (v > best_cap) {
+                    if (v == 2) {
+                        *success = 2;
+                        return 2;
+                    }
+                    if (!GETEPCAPTURE(m->code))
+                        best_cap = v;
+                    else if (v > best_ep)
+                        best_ep = v;
+                }
 
-          }
-      }
-  }
-
-  int v = probe_wdl_table(success, pos);
-  if (*success == 0)
-      return 0;
-
-  // Now max(v, best_cap) is the WDL value of the position without ep rights.
-  // If the position without ep rights is not stalemate or no ep captures
-  // exist, then the value of the position is max(v, best_cap, best_ep).
-  // If the position without ep rights is stalemate and best_ep > -3,
-  // then the value of the position is best_ep (and we will have v == 0).
-
-  if (best_ep > best_cap) {
-    if (best_ep > v) { // ep capture (possibly cursed losing) is best.
-      *success = 2;
-      return best_ep;
+            }
+        }
     }
-    best_cap = best_ep;
-  }
 
-  // Now max(v, best_cap) is the WDL value of the position unless
-  // the position without ep rights is stalemate and best_ep > -3.
+    int v = probe_wdl_table(success, pos);
+    if (*success == 0)
+        return 0;
 
-  if (best_cap >= v) {
-    // No need to test for the stalemate case here: either there are
-    // non-ep captures, or best_cap == best_ep >= v anyway.
-    *success = 1 + (best_cap > 0);
-    return best_cap;
-  }
+    // Now max(v, best_cap) is the WDL value of the position without ep rights.
+    // If the position without ep rights is not stalemate or no ep captures
+    // exist, then the value of the position is max(v, best_cap, best_ep).
+    // If the position without ep rights is stalemate and best_ep > -3,
+    // then the value of the position is best_ep (and we will have v == 0).
 
-  // Now handle the stalemate case.
-  if (best_ep > -3 && v == 0) {
-    // Check for stalemate in the position with ep captures.
-      for (i = 0; i < movelist.length; i++)
-      {
-          chessmove *m = &movelist.move[i];
-          if (GETEPCAPTURE(m->code))
-              continue;
-
-          if (pos->playMove(m))
-          {
-              pos->unplayMove(m);
-              break;
-          }
-      }
-
-    if (i == movelist.length) { // Stalemate detected.
-      *success = 2;
-      return best_ep;
+    if (best_ep > best_cap) {
+        if (best_ep > v) { // ep capture (possibly cursed losing) is best.
+            *success = 2;
+            return best_ep;
+        }
+        best_cap = best_ep;
     }
-  }
 
-  // Stalemate / en passant not an issue, so v is the correct value.
-  return v;
+    // Now max(v, best_cap) is the WDL value of the position unless
+    // the position without ep rights is stalemate and best_ep > -3.
+
+    if (best_cap >= v) {
+        // No need to test for the stalemate case here: either there are
+        // non-ep captures, or best_cap == best_ep >= v anyway.
+        *success = 1 + (best_cap > 0);
+        return best_cap;
+    }
+
+    // Now handle the stalemate case.
+    if (best_ep > -3 && v == 0) {
+        // Check for stalemate in the position with ep captures.
+        for (i = 0; i < movelist.length; i++)
+        {
+            chessmove *m = &movelist.move[i];
+            if (GETEPCAPTURE(m->code))
+                continue;
+
+            if (pos->playMove(m))
+            {
+                pos->unplayMove(m);
+                break;
+            }
+        }
+
+        if (i == movelist.length) { // Stalemate detected.
+            *success = 2;
+            return best_ep;
+        }
+    }
+
+    // Stalemate / en passant not an issue, so v is the correct value.
+    return v;
 }
 
 static int wdl_to_dtz[] = {
