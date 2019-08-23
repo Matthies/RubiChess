@@ -22,7 +22,6 @@
 
 #define TBMAX_PIECE 650
 #define TBMAX_PAWN 861
-//#define HSHMAX 5
 
 #define Swap(a,b) {int tmp=a;a=b;b=tmp;}
 
@@ -239,11 +238,9 @@ static void init_tb(char *str)
 }
 
 
-const int maxpiece = 7;
-
 bool digit5(char c[], int x, int l, int y = -1)
 {
-    int d[maxpiece - 2];
+    int d[TBPIECES - 2];
     int i = 0;
     while (l--)
     {
@@ -266,8 +263,7 @@ bool digit5(char c[], int x, int l, int y = -1)
 
 void init_tablebases(char *path)
 {
-  char str[16];
-  int i, j, k, l;
+  int i, j;
 
   if (!initialized) {
     init_indices();
@@ -330,65 +326,9 @@ void init_tablebases(char *path)
   for (i = 0; i < DTZ_ENTRIES; i++)
     DTZ_table[i].entry = NULL;
 
-#if 0
-  for (i = 1; i < 6; i++) {
-    sprintf_s(str, "K%cvK", pchr[i]);
-    init_tb(str);
-  }
-
-  for (i = 1; i < 6; i++)
-    for (j = i; j < 6; j++) {
-      sprintf_s(str, "K%cvK%c", pchr[i], pchr[j]);
-      init_tb(str);
-    }
-
-  for (i = 1; i < 6; i++)
-    for (j = i; j < 6; j++) {
-      sprintf_s(str, "K%c%cvK", pchr[i], pchr[j]);
-      init_tb(str);
-    }
-
-  for (i = 1; i < 6; i++)
-    for (j = i; j < 6; j++)
-      for (k = 1; k < 6; k++) {
-	sprintf_s(str, "K%c%cvK%c", pchr[i], pchr[j], pchr[k]);
-	init_tb(str);
-      }
-
-  for (i = 1; i < 6; i++)
-    for (j = i; j < 6; j++)
-      for (k = j; k < 6; k++) {
-	sprintf_s(str, "K%c%c%cvK", pchr[i], pchr[j], pchr[k]);
-	init_tb(str);
-      }
-
-  for (i = 1; i < 6; i++)
-    for (j = i; j < 6; j++)
-      for (k = i; k < 6; k++)
-	for (l = (i == k) ? j : k; l < 6; l++) {
-	  sprintf_s(str, "K%c%cvK%c%c", pchr[i], pchr[j], pchr[k], pchr[l]);
-	  init_tb(str);
-	}
-
-  for (i = 1; i < 6; i++)
-    for (j = i; j < 6; j++)
-      for (k = j; k < 6; k++)
-	for (l = 1; l < 6; l++) {
-	  sprintf_s(str, "K%c%c%cvK%c", pchr[i], pchr[j], pchr[k], pchr[l]);
-	  init_tb(str);
-	}
-
-  for (i = 1; i < 6; i++)
-    for (j = i; j < 6; j++)
-      for (k = j; k < 6; k++)
-	for (l = k; l < 6; l++) {
-	  sprintf_s(str, "K%c%c%c%cvK", pchr[i], pchr[j], pchr[k], pchr[l]);
-	  init_tb(str);
-	}
-#else
-  char w[maxpiece - 2];  // white pieces in order
-  char b[maxpiece - 2];  // black pieces in order
-  for (int p = 1; p <= maxpiece - 2; p++)       // total pieces besides kings
+  char w[TBPIECES - 2];  // white pieces in order
+  char b[TBPIECES - 2];  // black pieces in order
+  for (int p = 1; p <= TBPIECES - 2; p++)       // total pieces besides kings
       for (int pw = (p + 1) / 2; pw <= p; pw++)    // pieces of white
       {
           int pb = p - pw;    // pieces of black
@@ -405,7 +345,6 @@ void init_tablebases(char *path)
                       if (digit5(b, ob, pb, pw == pb ? ow : -1))
                       {
                           string s = "K" + string(w, pw) + "vK" + string(b, pb);
-                          cout << s + "\n";
                           init_tb((char*)s.c_str());
                       }
                   }
@@ -413,7 +352,6 @@ void init_tablebases(char *path)
           }
       }
 
-#endif
   printf("info string Found %d tablebases.\n", TBnum_piece + TBnum_pawn);
 }
 
@@ -1331,9 +1269,7 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
 
 void load_dtz_table(char *str, uint64 key1, uint64 key2)
 {
-  int i;
   struct TBEntry *ptr, *ptr3;
-  struct TBHashEntry *ptr2;
 
   DTZ_table[0].key1 = key1;
   DTZ_table[0].key2 = key2;
