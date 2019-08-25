@@ -140,10 +140,9 @@ static void unmap_file(char *data, uint64 mapping)
 
 static void add_to_hash(struct TBEntry *ptr, uint64 key)
 {
-  int i, hshidx;
+  int hshidx;
 
   hshidx = key >> (64 - TBHASHBITS);
-  i = 0;
   while (TB_hash[hshidx].ptr)
       hshidx = (hshidx + 1) & ((1 << TBHASHBITS) - 1);
   TB_hash[hshidx].key = key;
@@ -160,7 +159,6 @@ static void init_tb(char *str)
   uint64 key, key2;
   int color;
   char *s;
-
   fd = open_tb(str, WDLSUFFIX);
   if (fd == FD_ERR) return;
   close_tb(fd);

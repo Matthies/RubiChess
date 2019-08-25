@@ -679,7 +679,7 @@ const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 2
 #define KILLERVAL2 (KILLERVAL1 - 1)
 #define NMREFUTEVAL (1 << 25)
 #define BADTACTICALFLAG (1 << 30)
-#define TBFILTER INT32_MIN
+//#define TBFILTER INT32_MIN
 
 #define ISEPCAPTURE 0x40
 #define GETFROM(x) (((x) & 0x0fc0) >> 6)

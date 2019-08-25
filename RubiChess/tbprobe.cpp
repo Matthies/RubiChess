@@ -113,7 +113,6 @@ static uint64 calc_key_from_pcs(int *pcs, int mirror)
 static int probe_wdl_table(int *success, chessposition *pos)
 {
     struct TBEntry *ptr;
-    struct TBHashEntry *ptr2;
     uint64 idx;
     uint64 key;
     int i;
@@ -142,7 +141,7 @@ static int probe_wdl_table(int *success, chessposition *pos)
             char str[16];
             prt_str(str, ptr->key != key, pos);
             if (!init_table_wdl(ptr, str)) {
-                ptr2[i].key = 0ULL;
+                ptr->key = 0ULL;
                 *success = 0;
                 UNLOCK(TB_mutex);
                 return 0;
@@ -563,9 +562,9 @@ int probe_dtz(int *success, chessposition *pos)
 
             if (pos->playMove(m))
             {
-                //printf("probe_dtz (ply=%d)testing non-capture pawn move %s...\n", pos.ply, pos.actualpath.toString().c_str());
+                //printf("probe_dtz (ply=%d)testing non-capture pawn move %s...\n", pos->ply, m->toString().c_str());
                 int v = -probe_wdl(success, pos);
-                //printf("probe_dtz (ply=%d)tested  non-capture pawn move %s... v=%d\n", pos.ply, pos.actualpath.toString().c_str(), v);
+                //printf("probe_dtz (ply=%d)tested  non-capture pawn move %s... v=%d\n", pos->ply, m->toString().c_str(), v);
                 pos->unplayMove(m);
                 if (*success == 0)
                     return 0;
@@ -659,7 +658,7 @@ int root_probe(chessposition *pos)
     {
         chessmove *m = &pos->rootmovelist.move[i];
         pos->playMove(m);
-        //printf("root_probe (ply=%d) Testing move %s...\n", pos.ply, m->toString().c_str());
+        //printf("info string root_probe(_dtz) (ply=%d) Testing move %s...\n", pos->ply, m->toString().c_str());
         int v = 0;
         if (pos->isCheckbb && dtz > 0) {
             chessmovelist nextmovelist;
@@ -690,12 +689,11 @@ int root_probe(chessposition *pos)
             }
         }
 
-        //printf("root_probe (ply=%d) Tested  move %s... value=%d\n", pos.ply, pos.actualpath.toString().c_str(), v);
+        //printf("info string root_probe(_dtz) (ply=%d) Tested  move %s... value=%d\n", pos->ply, m->toString().c_str(), v);
         pos->unplayMove(m);
         if (!success)
-        {
             return 0;
-        }
+
         m->value = v;
     }
 
@@ -703,6 +701,7 @@ int root_probe(chessposition *pos)
     int cnt50 = pos->halfmovescounter;
 
     // Now be a bit smart about filtering out moves.
+    int mi = 0;
     if (dtz > 0) { // winning (or 50-move rule draw)
         int best = 0xffff;
         for (int i = 0; i < pos->rootmovelist.length; i++)
@@ -715,27 +714,20 @@ int root_probe(chessposition *pos)
 
         // If the current phase has not seen repetitions, then try all moves
         // that stay safely within the 50-move budget, if there are any.
-        for (int i = 0; i < pos->rootmovelist.length; i++)
+        while (mi < pos->rootmovelist.length)
         {
-            int v = pos->rootmovelist.move[i].value;
-            if (v <= 0)
+            int v = pos->rootmovelist.move[mi].value;
+            if (v <= 0
+                || v > best && v + cnt50 > 100 && en.Syzygy50MoveRule)
             {
-                // Bad move, filter it out
-                pos->rootmovelist.move[i].value = TBFILTER;
-            }
-            else if (best + cnt50 <= 100 || !en.Syzygy50MoveRule)
-            {
-                // We can win
-                if (v + cnt50 > 100 && en.Syzygy50MoveRule)
-                    // Cursed win; filter this move
-                    pos->rootmovelist.move[i].value = TBFILTER;
-                else
-                    pos->rootmovelist.move[i].value = SCORETBWIN - v;
+                // delete moves that are known for not winning
+                pos->rootmovelist.length--;
+                swap(pos->rootmovelist.move[mi], pos->rootmovelist.move[pos->rootmovelist.length]);
             }
             else
             {
-                // Win might be cursed
-                pos->rootmovelist.move[i].value = 100 - v;
+                pos->rootmovelist.move[mi].value = SCORETBWIN - v;
+                mi++;
             }
         }
         pos->useRootmoveScore = 1;
@@ -748,27 +740,37 @@ int root_probe(chessposition *pos)
             if (v < best)
                 best = v;
         }
-        for (int i = 0; i < pos->rootmovelist.length; i++)
+        while (mi < pos->rootmovelist.length)
         {
-            int v = pos->rootmovelist.move[i].value;
+            int v = pos->rootmovelist.move[mi].value;
             if (en.Syzygy50MoveRule && -best + cnt50 > 100)
             {
-                // We can reach a draw by 50-moves-rule so filter moves that don't preserve this
                 if (-v + cnt50 <= 100)
-                    pos->rootmovelist.move[i].value = TBFILTER;
+                {
+                    // We can reach a draw by 50-moves-rule so delete moves that don't preserve this
+                    pos->rootmovelist.length--;
+                    swap(pos->rootmovelist.move[mi], pos->rootmovelist.move[pos->rootmovelist.length]);
+                }
             }
             else {
-                // We will lose
-                pos->rootmovelist.move[i].value = -SCORETBWIN - v;
+                // We will probably lose
+                pos->rootmovelist.move[mi].value = -SCORETBWIN - v;
+                mi++;
             }
         }
     }
     else { // drawing
-           // Try all moves that preserve the draw.
-        for (int i = 0; i < pos->rootmovelist.length; i++)
+        while (mi < pos->rootmovelist.length)
         {
-            if (pos->rootmovelist.move[i].value < 0)
-                pos->rootmovelist.move[i].value = TBFILTER;
+            if (pos->rootmovelist.move[mi].value < 0)
+            {
+                // We can reach a draw so delete moves that don't preserve this
+                pos->rootmovelist.length--;
+                swap(pos->rootmovelist.move[mi], pos->rootmovelist.move[pos->rootmovelist.length]);
+            }
+            else {
+                mi++;
+            }
         }
         pos->useRootmoveScore = 1;
     }
@@ -796,27 +798,39 @@ int root_probe_wdl(chessposition *pos)
     {
         chessmove *m = &pos->rootmovelist.move[i];
         pos->playMove(m);
+        printf("info string root_probe_wdl (ply=%d) Testing move %s...\n", pos->ply, m->toString().c_str());
         int v = -probe_wdl(&success, pos);
+        printf("info string root_probe_wdl (ply=%d) Tested  move %s... value=%d\n", pos->ply, m->toString().c_str(), v);
         pos->unplayMove(m);
         if (!success)
             return false;
+        if (!en.Syzygy50MoveRule)
+            v = v > 0 ? 2 : v < 0 ? -2 : 0;
+
         m->value = v;
 
         if (v > best)
             best = v;
     }
 
-    for (int i = 0; i < pos->rootmovelist.length; i++)
+    int mi = 0;
+    while (mi < pos->rootmovelist.length)
     {
-        chessmove *m = &pos->rootmovelist.move[i];
+        chessmove *m = &pos->rootmovelist.move[mi];
         if (m->value < best)
-            m->value = TBFILTER;
-        else
-            m->value = wdl_to_Value[wdl + 2];
+        {
+            // Delete non-optimal move
+            pos->rootmovelist.length--;
+            swap(pos->rootmovelist.move[mi], pos->rootmovelist.move[pos->rootmovelist.length]);
+        }
+        else {
+            m->value = wdl_to_Value[m->value + 2];
+            mi++;
+        }
     }
 
     if (best > 0)
-        pos->useRootmoveScore = 1;
+        ;// pos->useRootmoveScore = 1;
 
-    return 1;
+    return (best <= 0); // When winning we need to search for the best move
 }

@@ -847,8 +847,9 @@ void chessposition::print(ostream* os)
     *os << "EPT: " + to_string(ept) + "\n";
     *os << "Halfmoves: " + to_string(halfmovescounter) + "\n";
     *os << "Fullmoves: " + to_string(fullmovescounter) + "\n";
-    *os << "Hash: " + to_string(hash) + " (should be " + to_string(zb.getHash(this)) +  ")\n";
-    *os << "Pawn Hash: " + to_string(pawnhash) + " (should be " + to_string(zb.getPawnHash(this)) + ")\n";
+    *os << "Hash: 0x" << hex << hash << " (should be 0x" << hex << zb.getHash(this) << ")\n";
+    *os << "Pawn Hash: 0x" << hex << pawnhash << " (should be 0x" << hex << zb.getPawnHash(this) << ")\n";
+    *os << "Material Hash: 0x" << hex << materialhash << " (should be 0x" << hex << zb.getMaterialHash(this) << ")\n";
     *os << "Value: " + to_string(getEval<NOTRACE>()) + "\n";
     *os << "Repetitions: " + to_string(testRepetiton()) + "\n";
     *os << "Phase: " + to_string(phase()) + "\n";
