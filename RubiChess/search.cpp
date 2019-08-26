@@ -333,11 +333,11 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (success) {
             en.tbhits++;
             int bound;
-            if (v < -1) {
+            if (v <= -1 - en.Syzygy50MoveRule) {
                 bound = HASHALPHA;
                 score = -SCORETBWIN + ply;
             }
-            else if (v > 1) {
+            else if (v >= 1 + en.Syzygy50MoveRule) {
                 bound = HASHBETA;
                 score = SCORETBWIN - ply;
             }
@@ -1166,7 +1166,8 @@ static void search_gen1(searchthread *thr)
                 if (!pos->bestmove.code && pos->rootmovelist.length > 0)
                     pos->bestmove.code = pos->rootmovelist.move[0].code;
 
-                if (pos->rootmovelist.length == 1 && pos->lastbestmovescore != NOSCORE)
+                if (pos->rootmovelist.length == 1 && en.endtime1 && !en.isPondering() && pos->lastbestmovescore != NOSCORE)
+                    // FIXME: This doesn't work for TB-reduced rootmovelist
                     // Don't report score of instamove; use the score of last position instead
                     pos->bestmovescore[0] = pos->lastbestmovescore;
 

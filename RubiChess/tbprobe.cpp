@@ -798,9 +798,9 @@ int root_probe_wdl(chessposition *pos)
     {
         chessmove *m = &pos->rootmovelist.move[i];
         pos->playMove(m);
-        printf("info string root_probe_wdl (ply=%d) Testing move %s...\n", pos->ply, m->toString().c_str());
+        //printf("info string root_probe_wdl (ply=%d) Testing move %s...\n", pos->ply, m->toString().c_str());
         int v = -probe_wdl(&success, pos);
-        printf("info string root_probe_wdl (ply=%d) Tested  move %s... value=%d\n", pos->ply, m->toString().c_str(), v);
+        //printf("info string root_probe_wdl (ply=%d) Tested  move %s... value=%d\n", pos->ply, m->toString().c_str(), v);
         pos->unplayMove(m);
         if (!success)
             return false;
@@ -828,9 +828,6 @@ int root_probe_wdl(chessposition *pos)
             mi++;
         }
     }
-
-    if (best > 0)
-        ;// pos->useRootmoveScore = 1;
 
     return (best <= 0); // When winning we need to search for the best move
 }
