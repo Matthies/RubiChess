@@ -743,14 +743,11 @@ int root_probe(chessposition *pos)
         while (mi < pos->rootmovelist.length)
         {
             int v = pos->rootmovelist.move[mi].value;
-            if (en.Syzygy50MoveRule && -best + cnt50 > 100)
+            if (en.Syzygy50MoveRule && -best + cnt50 > 100 && -v + cnt50 <= 100)
             {
-                if (-v + cnt50 <= 100)
-                {
-                    // We can reach a draw by 50-moves-rule so delete moves that don't preserve this
-                    pos->rootmovelist.length--;
-                    swap(pos->rootmovelist.move[mi], pos->rootmovelist.move[pos->rootmovelist.length]);
-                }
+                // We can reach a draw by 50-moves-rule so delete moves that don't preserve this
+                pos->rootmovelist.length--;
+                swap(pos->rootmovelist.move[mi], pos->rootmovelist.move[pos->rootmovelist.length]);
             }
             else {
                 // We will probably lose
