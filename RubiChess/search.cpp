@@ -1166,8 +1166,7 @@ static void search_gen1(searchthread *thr)
                 if (!pos->bestmove.code && pos->rootmovelist.length > 0)
                     pos->bestmove.code = pos->rootmovelist.move[0].code;
 
-                if (pos->rootmovelist.length == 1 && en.endtime1 && !en.isPondering() && pos->lastbestmovescore != NOSCORE)
-                    // FIXME: This doesn't work for TB-reduced rootmovelist
+                if (pos->rootmovelist.length == 1 && !pos->tbPosition && en.endtime1 && !en.isPondering() && pos->lastbestmovescore != NOSCORE)
                     // Don't report score of instamove; use the score of last position instead
                     pos->bestmovescore[0] = pos->lastbestmovescore;
 

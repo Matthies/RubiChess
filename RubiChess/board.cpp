@@ -488,7 +488,7 @@ void chessposition::tbFilterRootMoves()
     useRootmoveScore = 0;
     if (POPCOUNT(occupied00[0] | occupied00[1]) <= TBlargest)
     {
-        if ((tbPosition = root_probe(this))) {
+        if ((tbPosition = root_probe_dtz(this))) {
             en.tbhits++;
             // The current root position is in the tablebases.
             // RootMoves now contains only moves that preserve the draw or win.

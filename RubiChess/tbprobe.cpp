@@ -645,7 +645,7 @@ static int wdl_to_Value[5] = {
 //
 // A return value of 0 indicates that not all probes were successful and that
 // no moves were filtered out.
-int root_probe(chessposition *pos)
+int root_probe_dtz(chessposition *pos)
 {
     int success;
 
@@ -750,8 +750,16 @@ int root_probe(chessposition *pos)
                 swap(pos->rootmovelist.move[mi], pos->rootmovelist.move[pos->rootmovelist.length]);
             }
             else {
-                // We will probably lose
-                pos->rootmovelist.move[mi].value = -SCORETBWIN - v;
+                if (!en.Syzygy50MoveRule || -best + cnt50 <= 100)
+                {
+                    // We will probably lose
+                    pos->rootmovelist.move[mi].value = -SCORETBWIN - v;
+                }
+                else {
+                    // We can reach a draw by 50-moves-rule
+                    pos->rootmovelist.move[mi].value = SCOREDRAW;
+                    pos->useRootmoveScore = 1;
+                }
                 mi++;
             }
         }
@@ -786,7 +794,7 @@ int root_probe_wdl(chessposition *pos)
 
     int wdl = probe_wdl(&success, pos);
     if (!success)
-        return false;
+        return 0;
 
     int best = -2;
 
@@ -800,7 +808,7 @@ int root_probe_wdl(chessposition *pos)
         //printf("info string root_probe_wdl (ply=%d) Tested  move %s... value=%d\n", pos->ply, m->toString().c_str(), v);
         pos->unplayMove(m);
         if (!success)
-            return false;
+            return 0;
         if (!en.Syzygy50MoveRule)
             v = v > 0 ? 2 : v < 0 ? -2 : 0;
 
