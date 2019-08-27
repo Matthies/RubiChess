@@ -446,6 +446,7 @@ int probe_wdl(int *success, chessposition *pos)
     }
 
     int v = probe_wdl_table(success, pos);
+    printf("probe_wdl: probe_wdl_table returns %d\n", v);
     if (*success == 0)
         return 0;
 
@@ -658,7 +659,7 @@ int root_probe_dtz(chessposition *pos)
     {
         chessmove *m = &pos->rootmovelist.move[i];
         pos->playMove(m);
-        //printf("info string root_probe(_dtz) (ply=%d) Testing move %s...\n", pos->ply, m->toString().c_str());
+        printf("info string root_probe(_dtz) (ply=%d) Testing move %s...\n", pos->ply, m->toString().c_str());
         int v = 0;
         if (pos->isCheckbb && dtz > 0) {
             chessmovelist nextmovelist;
@@ -689,7 +690,7 @@ int root_probe_dtz(chessposition *pos)
             }
         }
 
-        //printf("info string root_probe(_dtz) (ply=%d) Tested  move %s... value=%d\n", pos->ply, m->toString().c_str(), v);
+        printf("info string root_probe(_dtz) (ply=%d) Tested  move %s... value=%d\n", pos->ply, m->toString().c_str(), v);
         pos->unplayMove(m);
         if (!success)
             return 0;
@@ -699,7 +700,6 @@ int root_probe_dtz(chessposition *pos)
 
     // Obtain 50-move counter for the root position.
     int cnt50 = pos->halfmovescounter;
-    // FIXME: The use of rep needs testing...
     int rep = pos->testRepetiton();
 
     // Now be a bit smart about filtering out moves.

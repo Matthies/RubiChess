@@ -670,6 +670,7 @@ static uint64 encode_pawn(struct TBEntry_pawn *ptr, ubyte *norm, int *pos, uint6
   int i, j, k, m, s, t;
   int n = ptr->num;
 
+
   if (pos[0] & 0x04)
     for (i = 0; i < n; i++)
       pos[i] ^= 0x07;
@@ -683,7 +684,9 @@ static uint64 encode_pawn(struct TBEntry_pawn *ptr, ubyte *norm, int *pos, uint6
   idx = pawnidx[t][flap[pos[0]]];
   for (i = t; i > 0; i--)
     idx += binomial[t - i][ptwist[pos[i]]];
+  //printf("idx first pawns (%I64x * %I64x)...\n", idx, factor[0]);
   idx *= factor[0];
+  //printf("idx first pawns: %I64x\n", idx);
 
 // remaining pawns
   i = ptr->pawns[0];
@@ -700,6 +703,7 @@ static uint64 encode_pawn(struct TBEntry_pawn *ptr, ubyte *norm, int *pos, uint6
       s += binomial[m - i][p - j - 8];
     }
     idx += ((uint64)s) * factor[i];
+    //printf("idx  next pawns (%x * %I64x): %I64x\n", s, factor[i], idx);
     i = t;
   }
 
@@ -716,6 +720,7 @@ static uint64 encode_pawn(struct TBEntry_pawn *ptr, ubyte *norm, int *pos, uint6
       s += binomial[m - i][p - j];
     }
     idx += ((uint64)s) * ((uint64)factor[i]);
+    //printf("idx  last pawns (%x * %I64x): %I64x\n", s, factor[i], idx);
     i += t;
   }
 
@@ -742,7 +747,7 @@ static int subfactor(int k, int n)
 static uint64 calc_factors_piece(uint64 *factor, int num, int order, ubyte *norm, ubyte enc_type)
 {
   int i, k, n;
-  uint64 f;
+  unsigned int f;
   static int pivfac[] = { 31332, 28056, 462 };
 
   n = 64 - norm[0];
