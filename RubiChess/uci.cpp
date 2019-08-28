@@ -19,7 +19,7 @@
 #include "RubiChess.h"
 
 
-void uci::send(const char* format, ...)
+void engine::send(const char* format, ...)
 {
     va_list argptr;
     va_start(argptr, format);
@@ -29,7 +29,7 @@ void uci::send(const char* format, ...)
     //cout << s;
 }
 
-GuiToken uci::parse(vector<string>* args, string ss)
+GuiToken engine::parse(vector<string>* args, string ss)
 {
     bool firsttoken = false;
 

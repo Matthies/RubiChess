@@ -658,7 +658,7 @@ int root_probe_dtz(chessposition *pos)
     {
         chessmove *m = &pos->rootmovelist.move[i];
         pos->playMove(m);
-        //printf("info string root_probe(_dtz) (ply=%d) Testing move %s...\n", pos->ply, m->toString().c_str());
+        //printf("info string root_probe_dtz (ply=%d) Testing move %s...\n", pos->ply, m->toString().c_str());
         int v = 0;
         if (pos->isCheckbb && dtz > 0) {
             chessmovelist nextmovelist;
@@ -689,7 +689,7 @@ int root_probe_dtz(chessposition *pos)
             }
         }
 
-        //printf("info string root_probe(_dtz) (ply=%d) Tested  move %s... value=%d\n", pos->ply, m->toString().c_str(), v);
+        //printf("info string root_probe_dtz (ply=%d) Tested  move %s... value=%d\n", pos->ply, m->toString().c_str(), v);
         pos->unplayMove(m);
         if (!success)
             return 0;
@@ -728,11 +728,15 @@ int root_probe_dtz(chessposition *pos)
             }
             else
             {
-                pos->rootmovelist.move[mi].value = SCORETBWIN - v - (rep ? cnt50 : 0);
+                if (!en.Syzygy50MoveRule || v + cnt50 <= 100)
+                    // win
+                    pos->rootmovelist.move[mi].value = SCORETBWIN - v - (rep ? cnt50 : 0);
+                else
+                    // cursed win = draw
+                    pos->rootmovelist.move[mi].value = SCOREDRAW;
                 mi++;
             }
         }
-        pos->useRootmoveScore = 1;
     }
     else if (dtz < 0) {
         int best = 0;
@@ -760,7 +764,6 @@ int root_probe_dtz(chessposition *pos)
                 else {
                     // We can reach a draw by 50-moves-rule
                     pos->rootmovelist.move[mi].value = SCOREDRAW;
-                    pos->useRootmoveScore = 1;
                 }
                 mi++;
             }
@@ -779,9 +782,10 @@ int root_probe_dtz(chessposition *pos)
                 mi++;
             }
         }
-        pos->useRootmoveScore = 1;
     }
 
+    // Be fair and report the expected score in any case (even if the opponenmt has a hard job to save the win/draw
+    pos->useRootmoveScore = 1;
     return 1;
 }
 
@@ -827,10 +831,12 @@ int root_probe_wdl(chessposition *pos)
         if (m->value < best)
         {
             // Delete non-optimal move
+            //printf("info string root_probe_wdl (ply=%d) Removing non-optimal move %s...\n", pos->ply, m->toString().c_str());
             pos->rootmovelist.length--;
             swap(pos->rootmovelist.move[mi], pos->rootmovelist.move[pos->rootmovelist.length]);
         }
         else {
+            //printf("info string root_probe_wdl (ply=%d) Optimal move %s gets value %d\n", pos->ply, m->toString().c_str(), wdl_to_Value[m->value + 2]);
             m->value = wdl_to_Value[m->value + 2];
             mi++;
         }

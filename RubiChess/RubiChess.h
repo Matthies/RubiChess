@@ -180,7 +180,6 @@ typedef unsigned long long U64;
 
 // Forward definitions
 class transposition;
-class uci;
 class chessposition;
 class searchthread;
 struct pawnhashentry;
@@ -1072,6 +1071,30 @@ public:
     void mirror();
 };
 
+//
+// uci stuff
+//
+
+enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL };
+
+const map<string, GuiToken> GuiCommandMap = {
+    { "uci", UCI },
+    { "debug", UCIDEBUG },
+    { "isready", ISREADY },
+    { "setoption", SETOPTION },
+    { "register", REGISTER },
+    { "ucinewgame", UCINEWGAME },
+    { "position", POSITION },
+    { "go", GO },
+    { "stop", STOP },
+    { "ponderhit", PONDERHIT },
+    { "quit", QUIT },
+    { "eval", EVAL }
+};
+
+//
+// engine stuff
+//
 
 #define ENGINERUN 0
 #define ENGINEWANTSTOP 1
@@ -1085,7 +1108,6 @@ class engine
 public:
     engine();
     ~engine();
-    uci *myUci;
     const char* name = ENGINEVER;
     const char* author = "Andreas Matthies";
     bool isWhite;
@@ -1107,7 +1129,7 @@ public:
     int MultiPV;
     bool ponder;
     string SyzygyPath;
-    bool Syzygy50MoveRule;
+    bool Syzygy50MoveRule = true;
     int Threads;
     searchthread *sthread;
     enum { NO, PONDERING, HITPONDER } pondersearch;
@@ -1124,6 +1146,8 @@ public:
     int t2stop = 0;     // immediate stop
     bool bStopCount;
 #endif
+    GuiToken parse(vector<string>*, string ss);
+    void send(const char* format, ...);
     void communicate(string inputstring);
     void setOption(string sName, string sValue);
     void allocThreads();
@@ -1186,35 +1210,6 @@ public:
 void searchguide();
 void searchinit();
 void resetEndTime(int constantRootMoves, bool complete = true);
-
-//
-// uci stuff
-//
-
-enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL };
-
-const map<string, GuiToken> GuiCommandMap = {
-    { "uci", UCI },
-    { "debug", UCIDEBUG },
-    { "isready", ISREADY },
-    { "setoption", SETOPTION },
-    { "register", REGISTER },
-    { "ucinewgame", UCINEWGAME },
-    { "position", POSITION },
-    { "go", GO },
-    { "stop", STOP },
-    { "ponderhit", PONDERHIT },
-    { "quit", QUIT },
-    { "eval", EVAL }
-};
-
-class uci
-{
-    int state;
-public:
-    GuiToken parse(vector<string>*, string ss);
-    void send(const char* format, ...);
-};
 
 
 //
