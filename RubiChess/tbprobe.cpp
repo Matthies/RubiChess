@@ -720,7 +720,7 @@ int root_probe_dtz(chessposition *pos)
         {
             int v = pos->rootmovelist.move[mi].value;
             if (v <= 0
-                || v > best && v + cnt50 > 100 && en.Syzygy50MoveRule)
+                || (v > best && v + cnt50 > 100 && en.Syzygy50MoveRule))
             {
                 // delete moves that are known for not winning
                 pos->rootmovelist.length--;
@@ -798,10 +798,11 @@ int root_probe_wdl(chessposition *pos)
 {
     int success;
 
+#if 0
     int wdl = probe_wdl(&success, pos);
     if (!success)
         return 0;
-
+#endif
     int best = -2;
 
     // Probe each move.

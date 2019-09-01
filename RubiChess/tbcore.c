@@ -64,10 +64,10 @@ static FD open_tb(const char *str, const char *suffix)
   char file[256];
 
   for (i = 0; i < num_paths; i++) {
-    strcpy(file, paths[i]);
-    strcat(file, "/");
-    strcat(file, str);
-    strcat(file, suffix);
+    strcpy_s(file, paths[i]);
+    strcat_s(file, "/");
+    strcat_s(file, str);
+    strcat_s(file, suffix);
 #ifndef _WIN32
     fd = open(file, O_RDONLY);
 #else
@@ -292,8 +292,9 @@ void init_tablebases(char *path)
   char *p = path;
   if (strlen(p) == 0 || !strcmp(p, "<empty>")) return;
 
-  path_string = (char *)malloc(strlen(p) + 1);
-  strcpy(path_string, p);
+  size_t l = strlen(p) + 1;
+  path_string = (char *)malloc(l);
+  strcpy_s(path_string, l, p);
   num_paths = 0;
   for (i = 0;; i++) {
     if (path_string[i] != SEP_CHAR)

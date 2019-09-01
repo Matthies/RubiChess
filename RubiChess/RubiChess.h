@@ -100,10 +100,6 @@ void Sleep(long x);
 using namespace std;
 
 #ifdef _MSC_VER
-// Hack to avoid warning in tbprobe.cpp
-#define strcpy(a,b) strcpy_s(a,256,b)
-#define strcat(a,b) strcat_s(a,256,b)
-
 #ifdef EVALTUNE
 #define PREFETCH(a) (void)(0)
 #else
