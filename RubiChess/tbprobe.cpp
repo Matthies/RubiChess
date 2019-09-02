@@ -73,12 +73,10 @@ static uint64 calc_key(int mirror, chessposition *pos)
     for (pt = PAWN; pt <= KING; pt++)
         for (i = POPCOUNT(pos->piece00[(pt << 1) | color]); i > 0; i--)
             key ^= zb.boardtable[((i - 1) << 4) | (pt << 1)];
-    //key ^= Zobrist::psq[WHITE][pt][i - 1];
     color ^= S2MMASK;
     for (pt = PAWN; pt <= KING; pt++)
         for (i = POPCOUNT(pos->piece00[(pt << 1) | color]); i > 0; i--)
             key ^= zb.boardtable[((i - 1) << 4) | (pt << 1) | 1];
-    //key ^= Zobrist::psq[BLACK][pt][i - 1];
 
     return key;
 }
@@ -99,12 +97,10 @@ static uint64 calc_key_from_pcs(int *pcs, int mirror)
     for (pt = PAWN; pt <= KING; pt++)
         for (i = 0; i < pcs[color + pt]; i++)
             key ^= zb.boardtable[(i << 4) | (pt << 1)];
-    //key ^= Zobrist::psq[WHITE][pt][i];
     color ^= 8;
     for (pt = PAWN; pt <= KING; pt++)
         for (i = 0; i < pcs[color + pt]; i++)
             key ^= zb.boardtable[(i << 4) | (pt << 1) | 1];
-    //key ^= Zobrist::psq[BLACK][pt][i];
 
     return key;
 }
@@ -794,12 +790,6 @@ int root_probe_dtz(chessposition *pos)
 int root_probe_wdl(chessposition *pos)
 {
     int success;
-
-#if 0
-    int wdl = probe_wdl(&success, pos);
-    if (!success)
-        return 0;
-#endif
     int best = -2;
 
     // Probe each move.
