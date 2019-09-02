@@ -748,9 +748,9 @@ int root_probe_dtz(chessposition *pos)
         while (mi < pos->rootmovelist.length)
         {
             int v = pos->rootmovelist.move[mi].value;
-            if (v != best)
+            if (en.Syzygy50MoveRule && -best + cnt50 > 100 && -v + cnt50 <= 100)
             {
-                // Take no risk; delete any move that is worse than the best
+                // We can reach a draw by 50-moves-rule so delete moves that don't preserve this
                 pos->rootmovelist.length--;
                 swap(pos->rootmovelist.move[mi], pos->rootmovelist.move[pos->rootmovelist.length]);
             }
