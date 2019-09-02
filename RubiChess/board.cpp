@@ -483,13 +483,12 @@ void chessposition::getRootMoves()
 
 void chessposition::tbFilterRootMoves()
 {
-    useTb = TBlargest;
+    useTb = min(TBlargest, en.SyzygyProbeLimit);
     tbPosition = 0;
     useRootmoveScore = 0;
-    if (POPCOUNT(occupied00[0] | occupied00[1]) <= TBlargest)
+    if (POPCOUNT(occupied00[0] | occupied00[1]) <= useTb)
     {
-        if ((tbPosition = root_probe(this))) {
-            en.tbhits++;
+        if ((tbPosition = root_probe_dtz(this))) {
             // The current root position is in the tablebases.
             // RootMoves now contains only moves that preserve the draw or win.
 
@@ -847,8 +846,9 @@ void chessposition::print(ostream* os)
     *os << "EPT: " + to_string(ept) + "\n";
     *os << "Halfmoves: " + to_string(halfmovescounter) + "\n";
     *os << "Fullmoves: " + to_string(fullmovescounter) + "\n";
-    *os << "Hash: " + to_string(hash) + " (should be " + to_string(zb.getHash(this)) +  ")\n";
-    *os << "Pawn Hash: " + to_string(pawnhash) + " (should be " + to_string(zb.getPawnHash(this)) + ")\n";
+    *os << "Hash: 0x" << hex << hash << " (should be 0x" << hex << zb.getHash(this) << ")\n";
+    *os << "Pawn Hash: 0x" << hex << pawnhash << " (should be 0x" << hex << zb.getPawnHash(this) << ")\n";
+    *os << "Material Hash: 0x" << hex << materialhash << " (should be 0x" << hex << zb.getMaterialHash(this) << ")\n";
     *os << "Value: " + to_string(getEval<NOTRACE>()) + "\n";
     *os << "Repetitions: " + to_string(testRepetiton()) + "\n";
     *os << "Phase: " + to_string(phase()) + "\n";
@@ -2239,6 +2239,7 @@ engine::engine()
     setOption("Ponder", "false");
     setOption("SyzygyPath", "<empty>");
     setOption("Syzygy50MoveRule", "true");
+    setOption("SyzygyProbeLimit", "7");
 
 #ifdef _WIN32
     LARGE_INTEGER f;
@@ -2376,11 +2377,22 @@ void engine::setOption(string sName, string sValue)
     if (sName == "syzygypath")
     {
         SyzygyPath = sValue;
-        init_tablebases((char *)SyzygyPath.c_str());
+        init_tablebases((char*)SyzygyPath.c_str());
+    }
+    if (sName == "syzygyprobelimit")
+    {
+        newint = stoi(sValue);
+        if (newint >= 0 && newint <= 7)
+            SyzygyProbeLimit = newint;
     }
     if (sName == "syzygy50moverule")
     {
-        Syzygy50MoveRule = (lValue == "true");
+        bool newSyzygy50MoveRule = (lValue == "true");
+        if (Syzygy50MoveRule != newSyzygy50MoveRule)
+        {
+            Syzygy50MoveRule = newSyzygy50MoveRule;
+            tp.clean();
+        }
     }
 }
 
@@ -2445,13 +2457,13 @@ void engine::communicate(string inputstring)
             }
             if (pendingisready)
             {
-                myUci->send("readyok\n");
+                send("readyok\n");
                 pendingisready = false;
             }
         }
         else {
             commandargs.clear();
-            command = myUci->parse(&commandargs, inputstring);  // blocking!!
+            command = parse(&commandargs, inputstring);  // blocking!!
             ci = 0;
             cs = commandargs.size();
             switch (command)
@@ -2500,17 +2512,18 @@ void engine::communicate(string inputstring)
                 }
                 break;
             case UCI:
-                myUci->send("id name %s\n", name);
-                myUci->send("id author %s\n", author);
-                myUci->send("option name Clear Hash type button\n");
-                myUci->send("option name Hash type spin default 256 min 1 max 1048576\n");
-                myUci->send("option name Move Overhead type spin default 50 min 0 max 5000\n");
-                myUci->send("option name MultiPV type spin default 1 min 1 max %d\n", MAXMULTIPV);
-                myUci->send("option name Ponder type check default false\n");
-                myUci->send("option name SyzygyPath type string default <empty>\n");
-                myUci->send("option name Syzygy50MoveRule type check default true\n");
-                myUci->send("option name Threads type spin default 1 min 1 max 128\n");
-                myUci->send("uciok\n", author);
+                send("id name %s\n", name);
+                send("id author %s\n", author);
+                send("option name Clear Hash type button\n");
+                send("option name Hash type spin default 256 min 1 max 1048576\n");
+                send("option name Move Overhead type spin default 50 min 0 max 5000\n");
+                send("option name MultiPV type spin default 1 min 1 max %d\n", MAXMULTIPV);
+                send("option name Ponder type check default false\n");
+                send("option name SyzygyPath type string default <empty>\n");
+                send("option name Syzygy50MoveRule type check default true\n");
+                send("option name SyzygyProbeLimit type spin default 7 min 0 max 7\n");
+                send("option name Threads type spin default 1 min 1 max 128\n");
+                send("uciok\n", author);
                 break;
             case UCINEWGAME:
                 // invalidate hash
@@ -2520,7 +2533,7 @@ void engine::communicate(string inputstring)
             case SETOPTION:
                 if (en.stopLevel < ENGINESTOPPED)
                 {
-                    myUci->send("info string Changing option while searching is not supported.\n");
+                    send("info string Changing option while searching is not supported.\n");
                     break;
                 }
                 bGetName = bGetValue = false;

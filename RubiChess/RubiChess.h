@@ -100,10 +100,6 @@ void Sleep(long x);
 using namespace std;
 
 #ifdef _MSC_VER
-// Hack to avoid warning in tbprobe.cpp
-#define strcpy(a,b) strcpy_s(a,256,b)
-#define strcat(a,b) strcat_s(a,256,b)
-
 #ifdef EVALTUNE
 #define PREFETCH(a) (void)(0)
 #else
@@ -180,7 +176,6 @@ typedef unsigned long long U64;
 
 // Forward definitions
 class transposition;
-class uci;
 class chessposition;
 class searchthread;
 struct pawnhashentry;
@@ -679,7 +674,6 @@ const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 2
 #define KILLERVAL2 (KILLERVAL1 - 1)
 #define NMREFUTEVAL (1 << 25)
 #define BADTACTICALFLAG (1 << 30)
-#define TBFILTER INT32_MIN
 
 #define ISEPCAPTURE 0x40
 #define GETFROM(x) (((x) & 0x0fc0) >> 6)
@@ -1073,6 +1067,30 @@ public:
     void mirror();
 };
 
+//
+// uci stuff
+//
+
+enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL };
+
+const map<string, GuiToken> GuiCommandMap = {
+    { "uci", UCI },
+    { "debug", UCIDEBUG },
+    { "isready", ISREADY },
+    { "setoption", SETOPTION },
+    { "register", REGISTER },
+    { "ucinewgame", UCINEWGAME },
+    { "position", POSITION },
+    { "go", GO },
+    { "stop", STOP },
+    { "ponderhit", PONDERHIT },
+    { "quit", QUIT },
+    { "eval", EVAL }
+};
+
+//
+// engine stuff
+//
 
 #define ENGINERUN 0
 #define ENGINEWANTSTOP 1
@@ -1086,7 +1104,6 @@ class engine
 public:
     engine();
     ~engine();
-    uci *myUci;
     const char* name = ENGINEVER;
     const char* author = "Andreas Matthies";
     bool isWhite;
@@ -1108,7 +1125,8 @@ public:
     int MultiPV;
     bool ponder;
     string SyzygyPath;
-    bool Syzygy50MoveRule;
+    bool Syzygy50MoveRule = true;
+    int SyzygyProbeLimit;
     int Threads;
     searchthread *sthread;
     enum { NO, PONDERING, HITPONDER } pondersearch;
@@ -1125,6 +1143,8 @@ public:
     int t2stop = 0;     // immediate stop
     bool bStopCount;
 #endif
+    GuiToken parse(vector<string>*, string ss);
+    void send(const char* format, ...);
     void communicate(string inputstring);
     void setOption(string sName, string sValue);
     void allocThreads();
@@ -1188,35 +1208,6 @@ void searchguide();
 void searchinit();
 void resetEndTime(int constantRootMoves, bool complete = true);
 
-//
-// uci stuff
-//
-
-enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL };
-
-const map<string, GuiToken> GuiCommandMap = {
-    { "uci", UCI },
-    { "debug", UCIDEBUG },
-    { "isready", ISREADY },
-    { "setoption", SETOPTION },
-    { "register", REGISTER },
-    { "ucinewgame", UCINEWGAME },
-    { "position", POSITION },
-    { "go", GO },
-    { "stop", STOP },
-    { "ponderhit", PONDERHIT },
-    { "quit", QUIT },
-    { "eval", EVAL }
-};
-
-class uci
-{
-    int state;
-public:
-    GuiToken parse(vector<string>*, string ss);
-    void send(const char* format, ...);
-};
-
 
 //
 // TB stuff
@@ -1226,6 +1217,6 @@ extern int TBlargest; // 5 if 5-piece tables, 6 if 6-piece tables were found.
 void init_tablebases(char *path);
 int probe_wdl(int *success, chessposition *pos);
 int probe_dtz(int *success, chessposition *pos);
-int root_probe(chessposition *pos);
+int root_probe_dtz(chessposition *pos);
 int root_probe_wdl(chessposition *pos);
 

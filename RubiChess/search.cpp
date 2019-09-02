@@ -333,11 +333,11 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (success) {
             en.tbhits++;
             int bound;
-            if (v < -1) {
+            if (v <= -1 - en.Syzygy50MoveRule) {
                 bound = HASHALPHA;
                 score = -SCORETBWIN + ply;
             }
-            else if (v > 1) {
+            else if (v >= 1 + en.Syzygy50MoveRule) {
                 bound = HASHBETA;
                 score = SCORETBWIN - ply;
             }
@@ -860,8 +860,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s scored %d", debugMove.toString().c_str(), score);
 
         unplayMove(m);
-        if (useRootmoveScore)
-            score = m->value;
 
         if (en.stopLevel == ENGINESTOPIMMEDIATELY)
         {
@@ -1166,9 +1164,13 @@ static void search_gen1(searchthread *thr)
                 if (!pos->bestmove.code && pos->rootmovelist.length > 0)
                     pos->bestmove.code = pos->rootmovelist.move[0].code;
 
-                if (pos->rootmovelist.length == 1 && pos->lastbestmovescore != NOSCORE)
+                if (pos->rootmovelist.length == 1 && !pos->tbPosition && en.endtime1 && !en.isPondering() && pos->lastbestmovescore != NOSCORE)
                     // Don't report score of instamove; use the score of last position instead
                     pos->bestmovescore[0] = pos->lastbestmovescore;
+
+                if (pos->useRootmoveScore)
+                    // We have a tablebase score so report this
+                    pos->bestmovescore[0] = pos->rootmovelist.move[0].value;
 
                 uciScore(thr, inWindow, nowtime, 0);
             }
@@ -1365,7 +1367,7 @@ void searchguide()
     startSearchTime();
 
     en.moveoutput = false;
-    en.tbhits = 0;
+    en.tbhits = en.sthread[0].pos.tbPosition;  // Rootpos in TB => report at least one tbhit
     en.fh = en.fhf = 0;
 
     // increment generation counter for tt aging

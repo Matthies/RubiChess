@@ -20,9 +20,8 @@
 #endif
 #include "tbcore.h"
 
-#define TBMAX_PIECE 254
-#define TBMAX_PAWN 256
-#define HSHMAX 5
+#define TBMAX_PIECE 650
+#define TBMAX_PAWN 861
 
 #define Swap(a,b) {int tmp=a;a=b;b=tmp;}
 
@@ -47,7 +46,7 @@ static int TBnum_piece, TBnum_pawn;
 static struct TBEntry_piece TB_piece[TBMAX_PIECE];
 static struct TBEntry_pawn TB_pawn[TBMAX_PAWN];
 
-static struct TBHashEntry TB_hash[1 << TBHASHBITS][HSHMAX];
+static struct TBHashEntry TB_hash[1 << TBHASHBITS];
 
 #define DTZ_ENTRIES 64
 
@@ -65,15 +64,15 @@ static FD open_tb(const char *str, const char *suffix)
   char file[256];
 
   for (i = 0; i < num_paths; i++) {
-    strcpy(file, paths[i]);
-    strcat(file, "/");
-    strcat(file, str);
-    strcat(file, suffix);
+    strcpy_s(file, paths[i]);
+    strcat_s(file, "/");
+    strcat_s(file, str);
+    strcat_s(file, suffix);
 #ifndef _WIN32
     fd = open(file, O_RDONLY);
 #else
     fd = CreateFile(file, GENERIC_READ, FILE_SHARE_READ, NULL,
-			  OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+			  OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, NULL);
 #endif
     if (fd != FD_ERR) return fd;
   }
@@ -141,19 +140,13 @@ static void unmap_file(char *data, uint64 mapping)
 
 static void add_to_hash(struct TBEntry *ptr, uint64 key)
 {
-  int i, hshidx;
+  int hshidx;
 
   hshidx = key >> (64 - TBHASHBITS);
-  i = 0;
-  while (i < HSHMAX && TB_hash[hshidx][i].ptr)
-    i++;
-  if (i == HSHMAX) {
-    printf("HSHMAX too low!\n");
-    exit(1);
-  } else {
-    TB_hash[hshidx][i].key = key;
-    TB_hash[hshidx][i].ptr = ptr;
-  }
+  while (TB_hash[hshidx].ptr)
+      hshidx = (hshidx + 1) & ((1 << TBHASHBITS) - 1);
+  TB_hash[hshidx].key = key;
+  TB_hash[hshidx].ptr = ptr;
 }
 
 static char pchr[] = {'K', 'Q', 'R', 'B', 'N', 'P'};
@@ -166,7 +159,6 @@ static void init_tb(char *str)
   uint64 key, key2;
   int color;
   char *s;
-
   fd = open_tb(str, WDLSUFFIX);
   if (fd == FD_ERR) return;
   close_tb(fd);
@@ -206,16 +198,16 @@ static void init_tb(char *str)
       exit(1);
     }
     entry = (struct TBEntry *)&TB_piece[TBnum_piece++];
+    memset(entry, 0, sizeof(TBEntry_piece));
   } else {
     if (TBnum_pawn == TBMAX_PAWN) {
       printf("TBMAX_PAWN limit too low!\n");
       exit(1);
     }
     entry = (struct TBEntry *)&TB_pawn[TBnum_pawn++];
+    memset(entry, 0, sizeof(TBEntry_pawn));
   }
   entry->key = key;
-  entry->ready = 0;
-  entry->num = 0;
   for (i = 0; i < 16; i++)
     entry->num += pcs[i];
   entry->symmetric = (key == key2);
@@ -243,10 +235,33 @@ static void init_tb(char *str)
   if (key2 != key) add_to_hash(entry, key2);
 }
 
+
+bool digit5(char c[], int x, int l, int y = -1)
+{
+    int d[TBPIECES - 2];
+    int i = 0;
+    while (l--)
+    {
+        d[i] = x % 5;
+        if (y >= 0)
+        {
+            int yd = y % 5;
+            if (yd > d[i])
+                return false;
+            y = yd == d[i] ? y / 5 : -1;
+        }
+        if (i && d[i] < d[i - 1])
+            return false;
+        c[i] = pchr[d[i] + 1];
+        i++;
+        x /= 5;
+    }
+    return true;
+}
+
 void init_tablebases(char *path)
 {
-  char str[16];
-  int i, j, k, l;
+  int i, j;
 
   if (!initialized) {
     init_indices();
@@ -267,8 +282,12 @@ void init_tablebases(char *path)
       free_wdl_entry(entry);
     }
     for (i = 0; i < DTZ_ENTRIES; i++)
-      if (DTZ_table[i].entry)
-	free_dtz_entry(DTZ_table[i].entry);
+        if (DTZ_table[i].entry)
+        {
+            free_dtz_entry(DTZ_table[i].entry);
+            DTZ_table[i].key1 = DTZ_table[i].key2 = 0;
+            DTZ_table[i].entry = NULL;
+        }
     LOCK_DESTROY(TB_mutex);
     path_string = NULL;
   }
@@ -277,8 +296,9 @@ void init_tablebases(char *path)
   char *p = path;
   if (strlen(p) == 0 || !strcmp(p, "<empty>")) return;
 
-  path_string = (char *)malloc(strlen(p) + 1);
-  strcpy(path_string, p);
+  size_t l = strlen(p) + 1;
+  path_string = (char *)malloc(l);
+  strcpy_s(path_string, l, p);
   num_paths = 0;
   for (i = 0;; i++) {
     if (path_string[i] != SEP_CHAR)
@@ -301,70 +321,41 @@ void init_tablebases(char *path)
   TBlargest = 0;
 
   for (i = 0; i < (1 << TBHASHBITS); i++)
-    for (j = 0; j < HSHMAX; j++) {
-      TB_hash[i][j].key = 0ULL;
-      TB_hash[i][j].ptr = NULL;
-    }
+  {
+      TB_hash[i].key = 0ULL;
+      TB_hash[i].ptr = NULL;
+  }
 
   for (i = 0; i < DTZ_ENTRIES; i++)
     DTZ_table[i].entry = NULL;
 
-  for (i = 1; i < 6; i++) {
-    sprintf_s(str, "K%cvK", pchr[i]);
-    init_tb(str);
-  }
-
-  for (i = 1; i < 6; i++)
-    for (j = i; j < 6; j++) {
-      sprintf_s(str, "K%cvK%c", pchr[i], pchr[j]);
-      init_tb(str);
-    }
-
-  for (i = 1; i < 6; i++)
-    for (j = i; j < 6; j++) {
-      sprintf_s(str, "K%c%cvK", pchr[i], pchr[j]);
-      init_tb(str);
-    }
-
-  for (i = 1; i < 6; i++)
-    for (j = i; j < 6; j++)
-      for (k = 1; k < 6; k++) {
-	sprintf_s(str, "K%c%cvK%c", pchr[i], pchr[j], pchr[k]);
-	init_tb(str);
+  char w[TBPIECES - 2];  // white pieces in order
+  char b[TBPIECES - 2];  // black pieces in order
+  for (int p = 1; p <= TBPIECES - 2; p++)       // total pieces besides kings
+      for (int pw = (p + 1) / 2; pw <= p; pw++)    // pieces of white
+      {
+          int pb = p - pw;    // pieces of black
+          int cw = 1;   // combinations for white
+          for (int f = 0; f < pw; f++) cw *= 5;
+          int cb = 1;   // combinations for black
+          for (int f = 0; f < pb; f++) cb *= 5;
+          for (int ow = 0; ow < cw; ow++)
+          {
+              if (digit5(w, ow, pw))
+              {
+                  for (int ob = 0; ob < cb; ob++)
+                  {
+                      if (digit5(b, ob, pb, pw == pb ? ow : -1))
+                      {
+                          string s = "K" + string(w, pw) + "vK" + string(b, pb);
+                          init_tb((char*)s.c_str());
+                      }
+                  }
+              }
+          }
       }
 
-  for (i = 1; i < 6; i++)
-    for (j = i; j < 6; j++)
-      for (k = j; k < 6; k++) {
-	sprintf_s(str, "K%c%c%cvK", pchr[i], pchr[j], pchr[k]);
-	init_tb(str);
-      }
-
-  for (i = 1; i < 6; i++)
-    for (j = i; j < 6; j++)
-      for (k = i; k < 6; k++)
-	for (l = (i == k) ? j : k; l < 6; l++) {
-	  sprintf_s(str, "K%c%cvK%c%c", pchr[i], pchr[j], pchr[k], pchr[l]);
-	  init_tb(str);
-	}
-
-  for (i = 1; i < 6; i++)
-    for (j = i; j < 6; j++)
-      for (k = j; k < 6; k++)
-	for (l = 1; l < 6; l++) {
-	  sprintf_s(str, "K%c%c%cvK%c", pchr[i], pchr[j], pchr[k], pchr[l]);
-	  init_tb(str);
-	}
-
-  for (i = 1; i < 6; i++)
-    for (j = i; j < 6; j++)
-      for (k = j; k < 6; k++)
-	for (l = k; l < 6; l++) {
-	  sprintf_s(str, "K%c%c%c%cvK", pchr[i], pchr[j], pchr[k], pchr[l]);
-	  init_tb(str);
-	}
-
-  printf("info string Found %d tablebases.\n", TBnum_piece + TBnum_pawn);
+  printf("info string Found %d (%d pawn-less / %d with pawn) tablebases.\n", TBnum_piece + TBnum_pawn, TBnum_piece, TBnum_pawn);
 }
 
 static const signed char offdiag[] = {
@@ -554,16 +545,16 @@ static const short KK_idx[10][64] = {
     -1, -1, -1, -1, -1, -1, -1,461 }
 };
 
-static int binomial[5][64];
-static int pawnidx[5][24];
-static int pfactor[5][4];
+static int binomial[6][64];
+static int pawnidx[6][24];
+static int pfactor[6][4];
 
 static void init_indices(void)
 {
   int i, j, k;
 
 // binomial[k-1][n] = Bin(n, k)
-  for (i = 0; i < 5; i++)
+  for (i = 0; i < 6; i++)
     for (j = 0; j < 64; j++) {
       int f = j;
       int l = 1;
@@ -574,7 +565,7 @@ static void init_indices(void)
       binomial[i][j] = f / l;
     }
 
-  for (i = 0; i < 5; i++) {
+  for (i = 0; i < 6; i++) {
     int s = 0;
     for (j = 0; j < 6; j++) {
       pawnidx[i][j] = s;
@@ -602,7 +593,7 @@ static void init_indices(void)
   }
 }
 
-static uint64 encode_piece(struct TBEntry_piece *ptr, ubyte *norm, int *pos, int *factor)
+static uint64 encode_piece(struct TBEntry_piece *ptr, ubyte *norm, int *pos, uint64 *factor)
 {
   uint64 idx;
   int i, j, k, m, l, p;
@@ -678,7 +669,7 @@ static int pawn_file(struct TBEntry_pawn *ptr, int *pos)
   return file_to_file[pos[0] & 0x07];
 }
 
-static uint64 encode_pawn(struct TBEntry_pawn *ptr, ubyte *norm, int *pos, int *factor)
+static uint64 encode_pawn(struct TBEntry_pawn *ptr, ubyte *norm, int *pos, uint64 *factor)
 {
   uint64 idx;
   int i, j, k, m, s, t;
@@ -713,7 +704,7 @@ static uint64 encode_pawn(struct TBEntry_pawn *ptr, ubyte *norm, int *pos, int *
 	j += (p > pos[k]);
       s += binomial[m - i][p - j - 8];
     }
-    idx += ((uint64)s) * ((uint64)factor[i]);
+    idx += ((uint64)s) * factor[i];
     i = t;
   }
 
@@ -753,7 +744,7 @@ static int subfactor(int k, int n)
   return f / l;
 }
 
-static uint64 calc_factors_piece(int *factor, int num, int order, ubyte *norm, ubyte enc_type)
+static uint64 calc_factors_piece(uint64 *factor, int num, int order, ubyte *norm, ubyte enc_type)
 {
   int i, k, n;
   uint64 f;
@@ -764,10 +755,10 @@ static uint64 calc_factors_piece(int *factor, int num, int order, ubyte *norm, u
   f = 1;
   for (i = norm[0], k = 0; i < num || k == order; k++) {
     if (k == order) {
-      factor[0] = (int)f;
+      factor[0] = f;
       f *= pivfac[enc_type];
     } else {
-      factor[i] = (int)f;
+      factor[i] = f;
       f *= subfactor(norm[i], n);
       n -= norm[i];
       i += norm[i];
@@ -777,7 +768,7 @@ static uint64 calc_factors_piece(int *factor, int num, int order, ubyte *norm, u
   return f;
 }
 
-static uint64 calc_factors_pawn(int *factor, int num, int order, int order2, ubyte *norm, int file)
+static uint64 calc_factors_pawn(uint64 *factor, int num, int order, int order2, ubyte *norm, int file)
 {
   int i, k, n;
   uint64 f;
@@ -789,13 +780,13 @@ static uint64 calc_factors_pawn(int *factor, int num, int order, int order2, uby
   f = 1;
   for (k = 0; i < num || k == order || k == order2; k++) {
     if (k == order) {
-      factor[0] = (int)f;
+      factor[0] = f;
       f *= pfactor[norm[0] - 1][file];
     } else if (k == order2) {
-      factor[norm[0]] = (int)f;
+      factor[norm[0]] = f;
       f *= subfactor(norm[norm[0]], 48 - norm[0]);
     } else {
-      factor[i] = (int)f;
+      factor[i] = f;
       f *= subfactor(norm[i], n);
       n -= norm[i];
       i += norm[i];
@@ -1281,21 +1272,18 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
 
 void load_dtz_table(char *str, uint64 key1, uint64 key2)
 {
-  int i;
   struct TBEntry *ptr, *ptr3;
-  struct TBHashEntry *ptr2;
 
   DTZ_table[0].key1 = key1;
   DTZ_table[0].key2 = key2;
   DTZ_table[0].entry = NULL;
 
   // find corresponding WDL entry
-  ptr2 = TB_hash[key1 >> (64 - TBHASHBITS)];
-  for (i = 0; i < HSHMAX; i++)
-    if (ptr2[i].key == key1) break;
-  if (i == HSHMAX) return;
-  ptr = ptr2[i].ptr;
-
+  int hashIdx = key1 >> (64 - TBHASHBITS);
+  while (TB_hash[hashIdx].key != key1)
+      hashIdx = (hashIdx + 1) & ((1 << TBHASHBITS) - 1);
+  ptr = TB_hash[hashIdx].ptr;
+  if (!ptr) return;
   ptr3 = (struct TBEntry *)malloc(ptr->has_pawns
 				? sizeof(struct DTZEntry_pawn)
 				: sizeof(struct DTZEntry_piece));
