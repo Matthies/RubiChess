@@ -860,8 +860,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s scored %d", debugMove.toString().c_str(), score);
 
         unplayMove(m);
-        if (useRootmoveScore)
-            score = m->value;
 
         if (en.stopLevel == ENGINESTOPIMMEDIATELY)
         {
@@ -1170,6 +1168,10 @@ static void search_gen1(searchthread *thr)
                     // Don't report score of instamove; use the score of last position instead
                     pos->bestmovescore[0] = pos->lastbestmovescore;
 
+                if (pos->useRootmoveScore)
+                    // We have a tablebase score so report this
+                    pos->bestmovescore[0] = pos->rootmovelist.move[0].value;
+
                 uciScore(thr, inWindow, nowtime, 0);
             }
         }
@@ -1365,7 +1367,7 @@ void searchguide()
     startSearchTime();
 
     en.moveoutput = false;
-    en.tbhits = 0;
+    en.tbhits = en.sthread[0].pos.tbPosition;  // Rootpos in TB => report at least one tbhit
     en.fh = en.fhf = 0;
 
     // increment generation counter for tt aging

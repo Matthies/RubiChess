@@ -1126,6 +1126,7 @@ public:
     bool ponder;
     string SyzygyPath;
     bool Syzygy50MoveRule = true;
+    int SyzygyProbeLimit;
     int Threads;
     searchthread *sthread;
     enum { NO, PONDERING, HITPONDER } pondersearch;

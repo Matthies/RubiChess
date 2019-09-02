@@ -719,10 +719,9 @@ int root_probe_dtz(chessposition *pos)
         while (mi < pos->rootmovelist.length)
         {
             int v = pos->rootmovelist.move[mi].value;
-            if (v <= 0
-                || (v > best && v + cnt50 > 100 && en.Syzygy50MoveRule))
+            if (v != best)
             {
-                // delete moves that are known for not winning
+                // delete moves that are known for not winning or have a worse dtz than best move
                 pos->rootmovelist.length--;
                 swap(pos->rootmovelist.move[mi], pos->rootmovelist.move[pos->rootmovelist.length]);
             }
@@ -749,22 +748,20 @@ int root_probe_dtz(chessposition *pos)
         while (mi < pos->rootmovelist.length)
         {
             int v = pos->rootmovelist.move[mi].value;
-            if (en.Syzygy50MoveRule && -best + cnt50 > 100 && -v + cnt50 <= 100)
+            if (v != best)
             {
-                // We can reach a draw by 50-moves-rule so delete moves that don't preserve this
+                // Take no risk; delete any move that is worse than the best
                 pos->rootmovelist.length--;
                 swap(pos->rootmovelist.move[mi], pos->rootmovelist.move[pos->rootmovelist.length]);
             }
-            else {
-                if (!en.Syzygy50MoveRule || -best + cnt50 <= 100)
-                {
+            else
+            {
+                if (!en.Syzygy50MoveRule || -v + cnt50 <= 100)
                     // We will probably lose
                     pos->rootmovelist.move[mi].value = -SCORETBWIN - v;
-                }
-                else {
+                else
                     // We can reach a draw by 50-moves-rule
                     pos->rootmovelist.move[mi].value = SCOREDRAW;
-                }
                 mi++;
             }
         }

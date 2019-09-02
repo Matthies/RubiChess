@@ -198,16 +198,16 @@ static void init_tb(char *str)
       exit(1);
     }
     entry = (struct TBEntry *)&TB_piece[TBnum_piece++];
+    memset(entry, 0, sizeof(TBEntry_piece));
   } else {
     if (TBnum_pawn == TBMAX_PAWN) {
       printf("TBMAX_PAWN limit too low!\n");
       exit(1);
     }
     entry = (struct TBEntry *)&TB_pawn[TBnum_pawn++];
+    memset(entry, 0, sizeof(TBEntry_pawn));
   }
   entry->key = key;
-  entry->ready = 0;
-  entry->num = 0;
   for (i = 0; i < 16; i++)
     entry->num += pcs[i];
   entry->symmetric = (key == key2);
@@ -282,8 +282,12 @@ void init_tablebases(char *path)
       free_wdl_entry(entry);
     }
     for (i = 0; i < DTZ_ENTRIES; i++)
-      if (DTZ_table[i].entry)
-	free_dtz_entry(DTZ_table[i].entry);
+        if (DTZ_table[i].entry)
+        {
+            free_dtz_entry(DTZ_table[i].entry);
+            DTZ_table[i].key1 = DTZ_table[i].key2 = 0;
+            DTZ_table[i].entry = NULL;
+        }
     LOCK_DESTROY(TB_mutex);
     path_string = NULL;
   }
@@ -351,7 +355,7 @@ void init_tablebases(char *path)
           }
       }
 
-  printf("info string Found %d tablebases.\n", TBnum_piece + TBnum_pawn);
+  printf("info string Found %d (%d pawn-less / %d with pawn) tablebases.\n", TBnum_piece + TBnum_pawn, TBnum_piece, TBnum_pawn);
 }
 
 static const signed char offdiag[] = {

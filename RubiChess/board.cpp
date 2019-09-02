@@ -483,13 +483,12 @@ void chessposition::getRootMoves()
 
 void chessposition::tbFilterRootMoves()
 {
-    useTb = TBlargest;
+    useTb = min(TBlargest, en.SyzygyProbeLimit);
     tbPosition = 0;
     useRootmoveScore = 0;
-    if (POPCOUNT(occupied00[0] | occupied00[1]) <= TBlargest)
+    if (POPCOUNT(occupied00[0] | occupied00[1]) <= useTb)
     {
         if ((tbPosition = root_probe_dtz(this))) {
-            en.tbhits++;
             // The current root position is in the tablebases.
             // RootMoves now contains only moves that preserve the draw or win.
 
@@ -2240,6 +2239,7 @@ engine::engine()
     setOption("Ponder", "false");
     setOption("SyzygyPath", "<empty>");
     setOption("Syzygy50MoveRule", "true");
+    setOption("SyzygyProbeLimit", "7");
 
 #ifdef _WIN32
     LARGE_INTEGER f;
@@ -2379,6 +2379,12 @@ void engine::setOption(string sName, string sValue)
         SyzygyPath = sValue;
         init_tablebases((char*)SyzygyPath.c_str());
     }
+    if (sName == "syzygyprobelimit")
+    {
+        newint = stoi(sValue);
+        if (newint >= 0 && newint <= 7)
+            SyzygyProbeLimit = newint;
+    }
     if (sName == "syzygy50moverule")
     {
         bool newSyzygy50MoveRule = (lValue == "true");
@@ -2515,6 +2521,7 @@ void engine::communicate(string inputstring)
                 send("option name Ponder type check default false\n");
                 send("option name SyzygyPath type string default <empty>\n");
                 send("option name Syzygy50MoveRule type check default true\n");
+                send("option name SyzygyProbeLimit type spin default 7 min 0 max 7\n");
                 send("option name Threads type spin default 1 min 1 max 128\n");
                 send("uciok\n", author);
                 break;
