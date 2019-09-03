@@ -27,7 +27,7 @@
 #define TDEBUG
 #endif
 
-#if 0
+#if 1
 #define EVALTUNE
 #endif
 
@@ -309,6 +309,7 @@ struct evalparamset {
     };
     eval eBackwardpawnpenalty =  VALUE( -10, -15);
     eval eDoublebishopbonus =  VALUE(  56,  38);
+    eval ePawnblocksbishoppenalty = VALUE(-10, -10);
     eval eMobilitybonus[4][28] = {
         {  VALUE(  16, -90), VALUE(  38, -26), VALUE(  51,   1), VALUE(  57,  13), VALUE(  64,  27), VALUE(  71,  37), VALUE(  77,  36), VALUE(  84,  36),
            VALUE(  86,  30), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
