@@ -145,7 +145,7 @@ void registeralltuners(chessposition *pos)
     tuneIt = false;
     registertuner(pos, &eps.eDoublebishopbonus, "eDoublebishopbonus", 0, 0, 0, 0, tuneIt);
     tuneIt = true;
-    registertuner(pos, &eps.eDoublebishopbonus, "ePawnblocksbishoppenalty", 0, 0, 0, 0, tuneIt);
+    registertuner(pos, &eps.ePawnblocksbishoppenalty, "ePawnblocksbishoppenalty", 0, 0, 0, 0, tuneIt);
 
     tuneIt = false;
     for (i = 0; i < 4; i++)
