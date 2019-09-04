@@ -533,6 +533,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
         int extendMove = 0;
 
+        // Singular extension
         if ((m->code & 0xffff) == hashmovecode
             && depth > 7
             && !excludeMove
@@ -547,6 +548,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
             if (redScore < sBeta)
             {
+                // Move is singular
                 SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s is singular", debugMove.toString().c_str());
                 extendMove = 1;
             }
@@ -764,29 +766,18 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
 
             //PV moves gets top score
             if (hashmovecode == (m->code & 0xffff))
-            {
                 m->value = PVVAL;
-            }
             else if (bestFailingLow == m->code)
-            {
                 m->value = KILLERVAL2 - 1;
-            }
             // killermoves gets score better than non-capture
             else if (killer[0][0] == m->code)
-            {
                 m->value = KILLERVAL1;
-            }
             else if (killer[0][1] == m->code)
-            {
                 m->value = KILLERVAL2;
-            }
             else if (GETCAPTURE(m->code) != BLANK)
-            {
                 m->value = (mvv[GETCAPTURE(m->code) >> 1] | lva[GETPIECE(m->code) >> 1]);
-            }
-            else {
+            else 
                 m->value = history[state & S2MMASK][GETFROM(m->code)][GETTO(m->code)];
-            }
         }
     }
 
@@ -804,12 +795,8 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
     for (int i = 0; i < rootmovelist.length; i++)
     {
         for (int j = i + 1; j < rootmovelist.length; j++)
-        {
             if (rootmovelist.move[i] < rootmovelist.move[j])
-            {
                 swap(rootmovelist.move[i], rootmovelist.move[j]);
-            }
-        }
 
         m = &rootmovelist.move[i];
 #ifdef SDEBUG
@@ -1368,7 +1355,6 @@ void searchguide()
 
     en.moveoutput = false;
     en.tbhits = en.sthread[0].pos.tbPosition;  // Rootpos in TB => report at least one tbhit
-    en.fh = en.fhf = 0;
 
     // increment generation counter for tt aging
     tp.nextSearch();
