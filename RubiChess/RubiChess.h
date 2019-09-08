@@ -253,6 +253,7 @@ typedef const int32_t eval;
 
 struct evalparamset {
     // Powered by Laser games :-)
+#if 0
     eval eTempo =  CVALUE(  20);
     eval eKingpinpenalty[6] = {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  38, -74), VALUE(  65, -61), VALUE( -29,  68), VALUE( -44, 163)  };
     eval ePawnstormblocked[4][5] = {
@@ -338,7 +339,6 @@ struct evalparamset {
     eval eKingdangerbyqueen =  SQVALUE(   1,-156);
     eval eKingringattack[6] = {  SQVALUE(   1,  87), SQVALUE(   1,   0), SQVALUE(   1,  28), SQVALUE(   1,   0), SQVALUE(   1,   0), SQVALUE(   1, -17)  };
     eval eKingdangeradjust =  SQVALUE(   1,   9);
-#if 0 // original
     eval ePsqt[7][64] = {
         {  VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
@@ -397,7 +397,92 @@ struct evalparamset {
            VALUE(  44, -34), VALUE(  34, -18), VALUE(   9,   6), VALUE( -57,  32), VALUE( -37,  33), VALUE( -19,  20), VALUE(  10,  -3), VALUE(  20, -25),
            VALUE(  22, -69), VALUE(  51, -66), VALUE(  26, -25), VALUE( -59,   3), VALUE(  -3, -30), VALUE( -42,   1), VALUE(  18, -37), VALUE(  14, -71)  }
     };
-#else  // only psqt
+#else  // everything but kingdanger
+    eval eTempo =  CVALUE(  20);
+    eval eKingpinpenalty[6] = {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  14, -24), VALUE(  22, -21), VALUE( -34,  69), VALUE( -94, 172)  };
+    eval ePawnstormblocked[4][5] = {
+        {  VALUE(   0,   0), VALUE(   0,   0), VALUE( -11,  -4), VALUE(  31, -14), VALUE(  34,  -2)  },
+        {  VALUE(   0,   0), VALUE(   0,   0), VALUE(   1,  -9), VALUE(  22, -13), VALUE(  -4,   1)  },
+        {  VALUE(   0,   0), VALUE(   0,   0), VALUE(   4, -17), VALUE(  -8,  -4), VALUE(  -5,  -2)  },
+        {  VALUE(   0,   0), VALUE(   0,   0), VALUE(   8, -15), VALUE(   2,  -3), VALUE(  19, -10)  }
+    };
+    eval ePawnstormfree[4][5] = {
+        {  VALUE( -19,  44), VALUE(  90,  29), VALUE(   2,  12), VALUE( -18,   7), VALUE(  -2,   3)  },
+        {  VALUE(  -9,  36), VALUE(  -5,  44), VALUE( -29,  14), VALUE( -12,   3), VALUE(   7,   0)  },
+        {  VALUE(  16,  32), VALUE(  -9,  44), VALUE( -10,   5), VALUE( -14,   1), VALUE(  -5,   5)  },
+        {  VALUE(  34,   8), VALUE(   7,  34), VALUE( -10,  -1), VALUE( -22,   7), VALUE(  -6,  11)  }
+    };
+    eval ePawnpushthreatbonus =  VALUE(  24,  17);
+    eval eSafepawnattackbonus =  VALUE(  57,  -7);
+    eval eHangingpiecepenalty =  VALUE(   1, -32);
+    eval ePassedpawnbonus[4][8] = {
+        {  VALUE(   0,   0), VALUE(  -8,   6), VALUE( -13,   9), VALUE(   4,  31), VALUE(  35,  55), VALUE(  71,  90), VALUE(  44, 122), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE( -25,  -3), VALUE( -29,   3), VALUE(  -5,   6), VALUE(  21,  33), VALUE(  53,  41), VALUE( -14,  53), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE(  -8,  16), VALUE(  -9,  19), VALUE(  -8,  61), VALUE(   8, 118), VALUE(  27, 234), VALUE( 106, 282), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE(   0,   1), VALUE(  -9,  18), VALUE( -11,  36), VALUE(  21,  57), VALUE(  78,  72), VALUE(  30,  85), VALUE(   0,   0)  }
+    };
+    eval eKingsupportspasserbonus[7][8] = {
+        {  VALUE(   0,   0), VALUE(   6,   6), VALUE( -18,  22), VALUE(   2,  19), VALUE(  12,   9), VALUE( 137,  -1), VALUE( 148,  16), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE(  -2,  13), VALUE( -21,   8), VALUE( -25,   8), VALUE( -37, -11), VALUE(  93, -59), VALUE( 206, -70), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE(  12,  13), VALUE(  -7,   0), VALUE(  -6, -19), VALUE( -33, -33), VALUE(   8, -72), VALUE( 123,-105), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE(  -1,  16), VALUE(   6,  -3), VALUE(   5, -22), VALUE( -21, -56), VALUE( -50, -70), VALUE(  35, -98), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE(  15,   5), VALUE(   9,  -7), VALUE(  24, -24), VALUE(   4, -63), VALUE( -51, -89), VALUE(  13,-109), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE(  33,   4), VALUE(  44, -18), VALUE(  48, -28), VALUE(   0, -47), VALUE(  -3,-104), VALUE( -32, -88), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE(  12,   5), VALUE(   1,   4), VALUE(  45, -37), VALUE(  25, -68), VALUE(  -2, -75), VALUE(  23, -91), VALUE(   0,   0)  }
+    };
+    eval eKingdefendspasserpenalty[7][8] = {
+        {  VALUE(   0,   0), VALUE( -35,  69), VALUE( -46,  43), VALUE( -88,  33), VALUE( -34,  33), VALUE(  11,  22), VALUE(  23, -21), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE( -40,  28), VALUE( -64,  21), VALUE( -31,   9), VALUE(  18,   4), VALUE(  68, -14), VALUE(  16,  29), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE( -21,   9), VALUE( -26,  10), VALUE(   3,  -2), VALUE(  30,  16), VALUE(  42,  82), VALUE(  39, 105), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE( -19,   0), VALUE(  -2,   0), VALUE(   4,   6), VALUE(  26,  68), VALUE(  30, 129), VALUE(  26, 141), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE(  -8, -10), VALUE(   3,  -3), VALUE( -14,  42), VALUE(   7,  95), VALUE(  44, 130), VALUE(  27, 145), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE( -11,  -6), VALUE( -12,  17), VALUE( -13,  48), VALUE(   7,  89), VALUE(  38, 132), VALUE(  18, 154), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE( -50,   4), VALUE( -29,   9), VALUE( -26,  31), VALUE(   1,  88), VALUE(  -2, 128), VALUE(  83, 116), VALUE(   0,   0)  }
+    };
+    eval ePotentialpassedpawnbonus[2][8] = {
+        {  VALUE(   0,   0), VALUE(  11,  22), VALUE(  -8,   4), VALUE(  14,  11), VALUE(  44,  24), VALUE(  86,  80), VALUE(  44, 108), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE(  -3,  12), VALUE(  -1,  11), VALUE(   5,   5), VALUE(  21,  12), VALUE(  36, 109), VALUE( -14,  10), VALUE(   0,   0)  }
+    };
+    eval eAttackingpawnbonus[8] = {  VALUE(   0,   0), VALUE( -30,  34), VALUE( -15,   4), VALUE( -11,   9), VALUE( -14,   2), VALUE( -21,   2), VALUE(   0,   0), VALUE(   0,   0)  };
+    eval eIsolatedpawnpenalty =  VALUE( -14, -13);
+    eval eDoublepawnpenalty =  VALUE( -13, -22);
+    eval eConnectedbonus[6][5] = {
+        {  VALUE(   7,  -7), VALUE(   8,  -4), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
+        {  VALUE(   3,  -8), VALUE(   3,  -2), VALUE(  10,  11), VALUE(  22,  14), VALUE(  30,  18)  },
+        {  VALUE(  38,  24), VALUE(  11,   3), VALUE(  14,   6), VALUE(  21,  14), VALUE(  22,   9)  },
+        {  VALUE( -14,  12), VALUE(  12,  27), VALUE(  20,  15), VALUE(  34,  32), VALUE(  30,  16)  },
+        {  VALUE( 101, -48), VALUE(  69,  87), VALUE(  51,  46), VALUE( 135,  53), VALUE(  21,  90)  },
+        {  VALUE( -57, 253), VALUE(  20, 223), VALUE( 134,  74), VALUE(   7,4096), VALUE(   0, 485)  }
+    };
+    eval eBackwardpawnpenalty =  VALUE( -17, -12);
+    eval eDoublebishopbonus =  VALUE(  54,  54);
+    eval eMobilitybonus[4][28] = {
+        {  VALUE( -25, -38), VALUE(  24,  -9), VALUE(  44,  22), VALUE(  55,  34), VALUE(  62,  47), VALUE(  68,  56), VALUE(  76,  56), VALUE(  84,  56),
+           VALUE(  84,  51), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
+           VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
+           VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
+        {  VALUE(  -5,   0), VALUE(  29,   0), VALUE(  48,  18), VALUE(  56,  38), VALUE(  69,  46), VALUE(  76,  52), VALUE(  82,  60), VALUE(  83,  66),
+           VALUE(  87,  66), VALUE(  87,  72), VALUE(  89,  67), VALUE( 101,  67), VALUE(  92,  75), VALUE(  89,  77), VALUE(   0,   0), VALUE(   0,   0),
+           VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
+           VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
+        {  VALUE( -54,  14), VALUE(  14,  36), VALUE(  33,  78), VALUE(  35,  86), VALUE(  36,  92), VALUE(  34, 107), VALUE(  39, 110), VALUE(  43, 115),
+           VALUE(  46, 119), VALUE(  52, 125), VALUE(  50, 132), VALUE(  51, 137), VALUE(  49, 142), VALUE(  60, 135), VALUE(  45, 141), VALUE(   0,   0),
+           VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
+           VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
+        {  VALUE(-4097,  83), VALUE( -60,-147), VALUE( -36,  34), VALUE(  -1,  13), VALUE( -12, 156), VALUE(   1, 162), VALUE(  -2, 223), VALUE(   3, 223),
+           VALUE(   5, 242), VALUE(  10, 241), VALUE(  10, 256), VALUE(  13, 261), VALUE(  14, 267), VALUE(  14, 274), VALUE(  17, 283), VALUE(  16, 292),
+           VALUE(  16, 294), VALUE(  17, 301), VALUE(   9, 314), VALUE(  12, 317), VALUE(  24, 300), VALUE(  43, 293), VALUE(  40, 286), VALUE(  58, 269),
+           VALUE(  25, 293), VALUE( 108, 270), VALUE( 136, 217), VALUE( 242, 257)  }
+    };
+    eval eSlideronfreefilebonus[2] = {  VALUE(  20,   9), VALUE(  44,  12)  };
+    eval eMaterialvalue[7] = {  VALUE(   0,   0), VALUE( 100, 100), VALUE( 314, 314), VALUE( 314, 314), VALUE( 483, 483), VALUE( 913, 913), VALUE(   0,   0)  };
+    eval eKingshieldbonus =  VALUE(  22,  -6);
+    eval eWeakkingringpenalty =  SQVALUE(   1,  67);
+    eval eKingattackweight[7] = {  SQVALUE(   1,   0), SQVALUE(   1,   0), SQVALUE(   1,  30), SQVALUE(   1,  16), SQVALUE(   1,  16), SQVALUE(   1,  39), SQVALUE(   1,   0)  };
+    eval eSafecheckbonus[6] = {  SQVALUE(   1,   0), SQVALUE(   1,   0), SQVALUE(   1, 282), SQVALUE(   1,  55), SQVALUE(   1, 243), SQVALUE(   1, 216)  };
+    eval eKingdangerbyqueen =  SQVALUE(   1,-156);
+    eval eKingringattack[6] = {  SQVALUE(   1,  87), SQVALUE(   1,   0), SQVALUE(   1,  28), SQVALUE(   1,   0), SQVALUE(   1,   0), SQVALUE(   1, -17)  };
+    eval eKingdangeradjust =  SQVALUE(   1,   9);
         eval ePsqt[7][64] = {
         {  VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
