@@ -686,3 +686,10 @@ In this game Rubi plays horrible 38. Qh5 and throws the draw away:
 23.Raf1 Rg8 24.a4 b6 25.b4 Rc8 26.Nf4 Bf5 27.R3f2 Be4 28.a5 bxa5 29.bxa5 Rb8 
 30.Qd1 Rb5 31.e6 fxe6 32.Qh5+ Kd8 33.Qf7 Re8 34.Nxe6+ Kc8 35.Ng7 Rd8 36.a6 h3 
 37.g3 Ra5 38.Qh5 d4 39.Qxa5 dxe3 40.Rb2 Bd3 41.Qe5 *
+
+06.09.2019
+Interessante Position aus dem TCEC-Chat: 5kbQ/pp4p1/n3p2p/3p2r1/7N/2PPP2P/PP3PP1/4n2K b - - 0 5
+Nur Rxg2 oder notfalls Nxg2 gewinnen. Aber selbst SF hat arge Schwierigkeiten.
+Übungsstück für SDEBUG.
+
+Und noch einer. Matt in 4: 8/p4pp1/PpbB1p2/1p6/1P1k4/2NpNPp1/1P1P4/6K1 w - - 0 1

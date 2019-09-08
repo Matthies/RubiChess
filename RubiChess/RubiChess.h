@@ -49,6 +49,9 @@
 #define _CRTDBG_MAP_ALLOC
 #endif
 
+#ifdef _MSC_VER
+#define _CRT_SECURE_NO_WARNINGS
+#endif
 #include <iostream>
 #include <iomanip>
 #include <stdarg.h>
@@ -57,7 +60,6 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#define __STDC_WANT_LIB_EXT1__ 1
 #include <string.h>
 #include <sstream>
 #include <vector>
@@ -112,11 +114,6 @@ using namespace std;
 #else
 #define PREFETCH(a) __builtin_prefetch(a)
 #endif
-#endif
-
-#ifndef __STDC_LIB_EXT1__
-#define strcat_s(s,d) strcat(s,d)
-#define strcpy_s(s,n,d) strcpy(s,d)
 #endif
 
 #define ENGINEVER "RubiChess " VERNUM
