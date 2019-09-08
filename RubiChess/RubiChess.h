@@ -434,6 +434,7 @@ struct tuner {
     int paramindex;
     eval ev[NUMOFEVALPARAMS];
     int paramcount;
+    double starterror;
     double error;
     bool busy = false;
 };
