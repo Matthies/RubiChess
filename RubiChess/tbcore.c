@@ -64,7 +64,7 @@ static FD open_tb(const char *str, const char *suffix)
   char file[256];
 
   for (i = 0; i < num_paths; i++) {
-    strcpy_s(file, paths[i]);
+    strcpy_s(file, 256, paths[i]);
     strcat_s(file, "/");
     strcat_s(file, str);
     strcat_s(file, suffix);

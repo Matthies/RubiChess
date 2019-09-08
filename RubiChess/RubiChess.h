@@ -57,6 +57,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#define __STDC_WANT_LIB_EXT1__ 1
 #include <string.h>
 #include <sstream>
 #include <vector>
@@ -113,6 +114,10 @@ using namespace std;
 #endif
 #endif
 
+#ifndef __STDC_LIB_EXT1__
+#define strcat_s(s,d) strcat(s,d)
+#define strcpy_s(s,n,d) strcpy(s,d)
+#endif
 
 #define ENGINEVER "RubiChess " VERNUM
 #define BUILD __DATE__ " " __TIME__
