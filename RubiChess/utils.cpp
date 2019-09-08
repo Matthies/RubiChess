@@ -533,6 +533,7 @@ static double TexelEvalError(struct tuner *tn)
 
 static void getGradsFromFen(chessposition *pos, string fenfilename)
 {
+    int fentype = -1;
     int gamescount = 0;
     bool fenmovemode = (fenfilename.find(".fenmove") != string::npos);
     string line;
@@ -564,7 +565,7 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
     buffersize = minfreebuffer;
     texelpts = (char*)malloc(buffersize);
     pnext = (char*)texelpts;
-    printf("Reading positions");
+    printf("Reading positions\n");
     while (getline(fenfile, line))
     {
         if (texelpts + buffersize - pnext < minfreebuffer)
@@ -576,16 +577,62 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
         }
         if (!fenmovemode)
         {
+            // "(.*)\\s+(c9\\s+)?\"?((1\\-0)|(0\\-1)|(1/2))\"?"
             fen = "";
-            if (regex_search(line, match, regex("(.*)#(.*)#(.*)")))
+            if ((fentype < 0 || fentype == 1) && regex_search(line, match, regex("(.*)#(.*)#(.*)")))
             {
+                // my own fen format
+                if (fentype < 0)
+                {
+                    printf("Format: score#fen#eval (from pgn2fen)\n");
+                    fentype = 1;
+                }
                 fen = match.str(2);
                 R = (stoi(match.str(1)) + 1);
             }
-            else if (regex_search(line, match, regex("(.*)\\s+(c9\\s+)?\"?((1\\-0)|(0\\-1)|(1/2))\"?")))
+            else if ((fentype < 0 || fentype == 2) && regex_search(line, match, regex("(.*)\\s+((1\\-0)|(0\\-1)|(1/2))")))
             {
+                // FENS_JEFFREY
+                if (fentype < 0)
+                {
+                    printf("Format: fen 1-0|0-1|1/2 (from FENS_JEFFREY)\n");
+                    fentype = 2;
+                }
                 fen = match.str(1);
-                R = (match.str(3) == "1-0" ? 2 : (match.str(3) == "0-1" ? 0 : 1));
+                R = (match.str(2) == "1-0" ? 2 : (match.str(2) == "0-1" ? 0 : 1));
+            }
+            else if ((fentype < 0 || fentype == 3) && regex_search(line, match, regex("(.*)\\s+c9\\s+\"((1\\-0)|(0\\-1)|(1/2))")))
+            {
+                // quiet-labled (zurichess)
+                if (fentype < 0)
+                {
+                    printf("Format: fen c9 \"1-0|0-1|1/2\" (from quiet-labled)\n");
+                    fentype = 3;
+                }
+                fen = match.str(1);
+                R = (match.str(2) == "1-0" ? 2 : (match.str(2) == "0-1" ? 0 : 1));
+            }
+            else if ((fentype < 0 || fentype == 4) && regex_search(line, match, regex("(.*)\\s+c1(.*)c2\\s+\"((1.0)|(0.5)|(0.0))")))
+            {
+                // big3
+                if (fentype < 0)
+                {
+                    printf("Format: fen c1 ... c2 \"1.0|0.5|0.0\" (from big3)\n");
+                    fentype = 4;
+                }
+                fen = match.str(1);
+                R = (match.str(3) == "1.0" ? 2 : (match.str(3) == "0.0" ? 0 : 1));
+            }
+            else if ((fentype < 0 || fentype == 5) && regex_search(line, match, regex("(.*)\\|(.*)")))
+            {
+                // lichess
+                if (fentype < 0)
+                {
+                    printf("Format: fen |White|Black|Draw (from lichess-quiet)\n");
+                    fentype = 5;
+                }
+                fen = match.str(1);
+                R = (match.str(2) == "White" ? 2 : (match.str(2) == "Black" ? 0 : 1));
             }
             if (fen != "")
             {
@@ -787,7 +834,7 @@ static void tuneParameter(struct tuner *tn)
             pmin = lastp;
         }
         if (Emin < 0)
-            Emin = TexelEvalError(tn);
+            tn->starterror = Emin = TexelEvalError(tn);
         do
         {
             if (subParam == 2)
@@ -868,7 +915,7 @@ static void collectTuners(chessposition *pos, tunerpool *pool, tuner **freeTuner
             {
                 if (tn->ev[pi] != *pos->tps.ev[pi])
                 {
-                    printf("%2d %4d  %9lld   %40s  %0.10f  %s  -> %s\n", i, pi, pos->tps.used[pi], nameTunedParameter(pos, pi).c_str(), tn->error,
+                    printf("%2d %4d  %9lld   %40s  %0.10f -> %0.10f  %s  -> %s\n", i, pi, pos->tps.used[pi], nameTunedParameter(pos, pi).c_str(), tn->starterror, tn->error,
                         getValueStringValue(pos->tps.ev[pi]).c_str(),
                         getValueStringValue(&(tn->ev[pi])).c_str());
                     pool->lastImproved = pi;
