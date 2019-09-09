@@ -144,6 +144,8 @@ void registeralltuners(chessposition *pos)
     registertuner(pos, &eps.eBackwardpawnpenalty, "eBackwardpawnpenalty", 0, 0, 0, 0, tuneIt);
     tuneIt = false;
     registertuner(pos, &eps.eDoublebishopbonus, "eDoublebishopbonus", 0, 0, 0, 0, tuneIt);
+    tuneIt = true;
+    registertuner(pos, &eps.ePawnblocksbishoppenalty, "ePawnblocksbishoppenalty", 0, 0, 0, 0, tuneIt);
 
     tuneIt = false;
     for (i = 0; i < 4; i++)
@@ -401,6 +403,13 @@ int chessposition::getPieceEval(positioneval *pe)
             U64 occupied = occupied00[0] | occupied00[1];
             U64 xraybishopoccupied = occupied ^ (piece00[WBISHOP + Me] | piece00[WQUEEN + Me]);
             attack |= mBishopAttacks[index][MAGICBISHOPINDEX(xraybishopoccupied, index)];
+
+            if (Pt == BISHOP)
+            {
+                U64 blockingpawns = piece00[WPAWN + Me] & (BITSET(index) & WHITEBB ? WHITEBB : BLACKBB);
+                result += EVAL(eps.ePawnblocksbishoppenalty, S2MSIGN(Me) * POPCOUNT(blockingpawns));
+                if (bTrace) te.bishops[Me] += EVAL(eps.ePawnblocksbishoppenalty, S2MSIGN(Me) * POPCOUNT(blockingpawns));
+            }
         }
 
         if (Pt == KNIGHT)
