@@ -693,3 +693,10 @@ Nur Rxg2 oder notfalls Nxg2 gewinnen. Aber selbst SF hat arge Schwierigkeiten.
 Übungsstück für SDEBUG.
 
 Und noch einer. Matt in 4: 8/p4pp1/PpbB1p2/1p6/1P1k4/2NpNPp1/1P1P4/6K1 w - - 0 1
+
+
+20.09.2019
+Interessante Position TCEC divp KMCTS - SF
+1r4k1/p1b2rqp/2P1pnb1/1p1p2p1/3Pnp2/B2BPPP1/P1Q1N1KP/1R3RN1 w - - 0 24 
+KMCTS spielt blunder g4.
+Rubi (und offensichtlich auch KMCTS) übersehen danach den Gewinnerzug h5.
