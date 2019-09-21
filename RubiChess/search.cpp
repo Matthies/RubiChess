@@ -560,7 +560,20 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         }
 
         int stats = getHistory(m->code, ms.cmptr);
-        int reduction = ISTACTICAL(m->code) ? 0 :reductiontable[positionImproved][depth][min(63, LegalMoves + 1)];
+        int reduction = 0;
+
+        // Late move reduction
+        if (depth > 2 && !ISTACTICAL(m->code))
+        {
+            reduction = reductiontable[positionImproved][depth][min(63, LegalMoves + 1)];
+
+            // adjust reduction by stats value
+            reduction -= stats / 10000;
+            reduction = min(depth, max(0, reduction));
+
+            SDEBUGPRINT(isDebugPv && isDebugMove && reduction, debugInsert, " PV move %s (value=%d) with depth reduced by %d", debugMove.toString().c_str(), m->value, reduction);
+        }
+
         int pc = GETPIECE(m->code);
         int to = GETTO(m->code);
         effectiveDepth = depth + extendall - reduction + extendMove;
@@ -581,16 +594,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by futility: staticeval(%d) < alpha(%d) - futilityMargin(%d)", debugMove.toString().c_str(), staticeval, alpha, 100 + 80 * depth);
                 unplayMove(m);
                 continue;
-            }
-
-            // Late move reduction
-            if (depth > 2 && !ISTACTICAL(m->code))
-            {
-                SDEBUGPRINT(isDebugPv && isDebugMove && reduction, debugInsert, " PV move %s (value=%d) with depth reduced by %d", debugMove.toString().c_str(), m->value, reduction);
-
-                // adjust reduction by stats value
-                reduction -= stats / 10000;
-                reduction = min(depth, max(0, reduction));
             }
 
             if (eval_type != HASHEXACT)
