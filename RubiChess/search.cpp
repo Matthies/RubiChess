@@ -559,6 +559,31 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             }
         }
 
+        int stats = getHistory(m->code, ms.cmptr);
+        int reduction = 0;
+
+        // Late move reduction
+        if (depth > 2 && !ISTACTICAL(m->code))
+        {
+            reduction = reductiontable[positionImproved][depth][min(63, LegalMoves + 1)];
+
+            // adjust reduction by stats value
+            reduction -= stats / 10000;
+            reduction = min(depth, max(0, reduction));
+
+            SDEBUGPRINT(isDebugPv && isDebugMove && reduction, debugInsert, " PV move %s (value=%d) with depth reduced by %d", debugMove.toString().c_str(), m->value, reduction);
+        }
+
+        int pc = GETPIECE(m->code);
+        int to = GETTO(m->code);
+        effectiveDepth = depth + extendall - reduction + extendMove;
+
+        // Prune moves with bad counter move history
+        if (!ISTACTICAL(m->code) && effectiveDepth < 4
+            && ms.cmptr[0] && ms.cmptr[0][pc * 64 + to] < 0
+            && ms.cmptr[1] && ms.cmptr[1][pc * 64 + to] < 0)
+            continue;
+
         if (playMove(m))
         {
             LegalMoves++;
@@ -571,23 +596,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 continue;
             }
 
-            int stats = getHistory(m->code, ms.cmptr);
-            int reduction = 0;
-            // Late move reduction
-            if (!extendall && depth > 2 && !ISTACTICAL(m->code))
-            {
-                reduction = reductiontable[positionImproved][depth][min(63, LegalMoves)];
-                SDEBUGPRINT(isDebugPv && isDebugMove && reduction, debugInsert, " PV move %s (value=%d) with depth reduced by %d", debugMove.toString().c_str(), m->value, reduction);
-
-                // adjust reduction by stats value
-                reduction -= stats / 10000;
-                reduction = min(depth, max(0, reduction));
-            }
-
             if (eval_type != HASHEXACT)
             {
                 // First move ("PV-move"); do a normal search
-                effectiveDepth = depth + extendall - reduction + extendMove;
                 score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
                 if (reduction && score > alpha)
                 {
@@ -598,7 +609,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             }
             else {
                 // try a PV-Search
-                effectiveDepth = depth + extendall;
                 score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
                 if (score > alpha && score < beta)
                 {
