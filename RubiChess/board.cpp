@@ -2231,7 +2231,7 @@ searchthread::~searchthread()
 engine::engine()
 {
     initBitmaphelper();
-
+    rootposition.pwnhsh = new Pawnhash(1);  // some dummy pawnhash just to make the prefetch in playMove happy
     setOption("Threads", "1");  // order is important as the pawnhash depends on Threads > 0
     setOption("hash", "256");
     setOption("Move Overhead", "50");
@@ -2254,6 +2254,7 @@ engine::~engine()
 {
     setOption("SyzygyPath", "<empty>");
     delete[] sthread;
+    delete rootposition.pwnhsh;
 }
 
 void engine::allocPawnhash()
@@ -2277,20 +2278,15 @@ void engine::allocThreads()
         sthread[i].numofthreads = Threads;
     }
     allocPawnhash();
+    prepareThreads();
 }
 
 
 void engine::prepareThreads()
 {
-    sthread[0].pos.bestmovescore[0] = NOSCORE;
-    sthread[0].pos.bestmove.code = 0;
-    sthread[0].pos.nodes = 0;
-    sthread[0].pos.nullmoveply = 0;
-    sthread[0].pos.nullmoveside = 0;
-    for (int i = 1; i < Threads; i++)
+    for (int i = 0; i < Threads; i++)
     {
-        sthread[i].pos = sthread[0].pos;
-        sthread[i].pos.pwnhsh = sthread[i].pwnhsh;
+        sthread[i].pos = rootposition;
         sthread[i].pos.threadindex = i;
         // early reset of variables that are important for bestmove selection
         sthread[i].pos.bestmovescore[0] = NOSCORE;
@@ -2437,21 +2433,20 @@ void engine::communicate(string inputstring)
                     stopLevel = ENGINESTOPIMMEDIATELY;
                     waitForSearchGuide(&searchguidethread);
                 }
-                chessposition *rootpos = &sthread[0].pos;
-                rootpos->getFromFen(fen.c_str());
+                rootposition.getFromFen(fen.c_str());
                 for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
                 {
-                    if (!rootpos->applyMove(*it))
+                    if (!rootposition.applyMove(*it))
                         printf("info string Alarm! Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
                 }
-                rootpos->rootheight = rootpos->mstop;
-                rootpos->ply = 0;
-                rootpos->getRootMoves();
-                rootpos->tbFilterRootMoves();
+                rootposition.rootheight = rootposition.mstop;
+                rootposition.ply = 0;
+                rootposition.getRootMoves();
+                rootposition.tbFilterRootMoves();
                 prepareThreads();
                 if (debug)
                 {
-                    rootpos->print();
+                    rootposition.print();
                 }
                 pendingposition = false;
             }
@@ -2471,32 +2466,29 @@ void engine::communicate(string inputstring)
             case UCIDEBUG:
                 if (ci < cs)
                 {
-#ifdef SDEBUG
-                    chessposition *rootpos = &sthread[0].pos;
-#endif
                     if (commandargs[ci] == "on")
                         debug = true;
                     else if (commandargs[ci] == "off")
                         debug = false;
 #ifdef SDEBUG
                     else if (commandargs[ci] == "this")
-                        rootpos->debughash = rootpos->hash;
+                        rootposition.debughash = rootposition.hash;
                     else if (commandargs[ci] == "pv")
                     {
-                        rootpos->debugOnlySubtree = false;
-                        rootpos->debugRecursive = false;
+                        rootposition.debugOnlySubtree = false;
+                        rootposition.debugRecursive = false;
                         int i = 0;
                         while (++ci < cs)
                         {
                             string s = commandargs[ci];
                             if (s == "recursive")
                             {
-                                rootpos->debugRecursive = true;
+                                rootposition.debugRecursive = true;
                                 continue;
                             }
                             if (s == "sub")
                             {
-                                rootpos->debugOnlySubtree = true;
+                                rootposition.debugOnlySubtree = true;
                                 continue;
                             }
                             if (s.size() < 4)
@@ -2504,9 +2496,9 @@ void engine::communicate(string inputstring)
                             int from = AlgebraicToIndex(s);
                             int to = AlgebraicToIndex(&s[2]);
                             int promotion = (s.size() <= 4) ? BLANK : (GetPieceType(s[4]) << 1); // Remember: S2m is missing here
-                            rootpos->pvdebug[i++] = to | (from << 6) | (promotion << 12);
+                            rootposition.pvdebug[i++] = to | (from << 6) | (promotion << 12);
                         }
-                        rootpos->pvdebug[i] = 0;
+                        rootposition.pvdebug[i] = 0;
                     }
 #endif
                 }
