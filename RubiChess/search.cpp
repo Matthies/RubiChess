@@ -915,6 +915,10 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                     bestmove.code = pvtable[0][0];
                     pondermove.code = pvtable[0][1];
                 }
+                else if (pvtable[0][1]) {
+                    // use new ponder move
+                    pondermove.code = pvtable[0][1];
+                }
                 alpha = score;
                 bestmovescore[0] = score;
                 eval_type = HASHEXACT;
@@ -1115,16 +1119,16 @@ static void search_gen1(searchthread *thr)
         }
 
         // copy new pv to lastpv
-        if (pos->pvtable[0][0])
+        bool bDiffers = false;
+        int i = 0;
+        while (pos->pvtable[0][i])
         {
-            int i = 0;
-            while (pos->pvtable[0][i])
-            {
-                pos->lastpv[i] = pos->pvtable[0][i];
-                i++;
-            }
-            pos->lastpv[i] = 0;
+            bDiffers = bDiffers || (pos->lastpv[i] != pos->pvtable[0][i]);
+            pos->lastpv[i] = pos->pvtable[0][i];
+            i++;
         }
+        if (bDiffers)
+            pos->lastpv[i] = 0;
 
         if (score > NOSCORE && thr->index == 0)
         {
