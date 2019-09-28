@@ -1376,15 +1376,15 @@ void searchguide()
     // increment generation counter for tt aging
     tp.nextSearch();
 
-    for (int tnum = 0; tnum < en.Threads; tnum++)
-    {
-        if (en.MultiPV > 1)
-            en.sthread[tnum].thr = thread(&search_gen1<MultiPVSearch>, &en.sthread[tnum]);
-        else if (en.ponder)
-            en.sthread[tnum].thr = thread(&search_gen1<PonderSearch>, &en.sthread[tnum]);
-        else
+    if (en.MultiPV == 1 && !en.ponder)
+        for (int tnum = 0; tnum < en.Threads; tnum++)
             en.sthread[tnum].thr = thread(&search_gen1<SinglePVSearch>, &en.sthread[tnum]);
-    }
+    else if (en.ponder)
+        for (int tnum = 0; tnum < en.Threads; tnum++)
+            en.sthread[tnum].thr = thread(&search_gen1<PonderSearch>, &en.sthread[tnum]);
+    else
+        for (int tnum = 0; tnum < en.Threads; tnum++)
+            en.sthread[tnum].thr = thread(&search_gen1<MultiPVSearch>, &en.sthread[tnum]);
 
     U64 nowtime;
     while (en.stopLevel != ENGINESTOPPED)
