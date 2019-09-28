@@ -1122,16 +1122,16 @@ static void search_gen1(searchthread *thr)
         }
 
         // copy new pv to lastpv
-        bool bDiffers = false;
-        int i = 0;
-        while (pos->pvtable[0][i])
+        if (pos->pvtable[0][0])
         {
-            bDiffers = bDiffers || (pos->lastpv[i] != pos->pvtable[0][i]);
-            pos->lastpv[i] = pos->pvtable[0][i];
-            i++;
-        }
-        if (bDiffers)
+            int i = 0;
+            while (pos->pvtable[0][i])
+            {
+                pos->lastpv[i] = pos->pvtable[0][i];
+                i++;
+            }
             pos->lastpv[i] = 0;
+        }
 
         if (score > NOSCORE && thr->index == 0)
         {
@@ -1292,7 +1292,7 @@ static void search_gen1(searchthread *thr)
                 pos->unplayMove(&pos->bestmove);
             }
             if (pos->pondermove.code)
-                strPonder = " ponder " + pos->pondermove.toString();
+                strPonder = "ponder " + pos->pondermove.toString();
         }
 
         cout << "bestmove " + strBestmove + strPonder + "\n";
