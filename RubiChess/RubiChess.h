@@ -926,7 +926,7 @@ extern U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 
 enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7, EVASION = 8, QUIETWITHCHECK = 9 };
-enum RootsearchType { SinglePVSearch, MultiPVSearch };
+enum RootsearchType { SinglePVSearch, MultiPVSearch, PonderSearch };
 
 template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* m);
 template <MoveType Mt> void evaluateMoves(chessmovelist *ml, chessposition *pos, int16_t **cmptr);
