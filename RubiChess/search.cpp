@@ -1121,17 +1121,17 @@ static void search_gen1(searchthread *thr)
             }
         }
 
-        // copy new pv to lastpv
-        if (pos->pvtable[0][0])
+        // copy new pv to lastpv; preserve identical and longer lastpv
+        int i = 0;
+        int bDiffers = false;
+        while (pos->pvtable[0][i])
         {
-            int i = 0;
-            while (pos->pvtable[0][i])
-            {
-                pos->lastpv[i] = pos->pvtable[0][i];
-                i++;
-            }
-            pos->lastpv[i] = 0;
+            bDiffers = bDiffers || (pos->lastpv[i] != pos->pvtable[0][i]);
+            pos->lastpv[i] = pos->pvtable[0][i];
+            i++;
         }
+        if (bDiffers)
+            pos->lastpv[i] = 0;
 
         if (score > NOSCORE && thr->index == 0)
         {
