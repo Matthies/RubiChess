@@ -1281,7 +1281,7 @@ static void search_gen1(searchthread *thr)
 
         strBestmove = pos->bestmove.toString();
 
-        if (doPonder && en.ponder)
+        if (doPonder)
         {
             if (!pos->pondermove.code)
             {
@@ -1292,7 +1292,7 @@ static void search_gen1(searchthread *thr)
                 pos->unplayMove(&pos->bestmove);
             }
             if (pos->pondermove.code)
-                strPonder = "ponder " + pos->pondermove.toString();
+                strPonder = " ponder " + pos->pondermove.toString();
         }
 
         cout << "bestmove " + strBestmove + strPonder + "\n";
