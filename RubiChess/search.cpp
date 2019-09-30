@@ -715,6 +715,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
     int maxmoveindex;
 
     const bool isMultiPV = (RT == MultiPVSearch);
+    const bool doPonder = (RT == PonderSearch);
 
     nodes++;
 
@@ -756,7 +757,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
             {
                 if (bestmove.code != fullhashmove) {
                     bestmove.code = fullhashmove;
-                    pondermove.code = 0;
+                    if (doPonder) pondermove.code = 0;
                 }
                 if (score > alpha) bestmovescore[0] = score;
                 updatePvTable(fullhashmove, false);
@@ -913,6 +914,10 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                 if (bestmove.code != pvtable[0][0])
                 {
                     bestmove.code = pvtable[0][0];
+                    if (doPonder) pondermove.code = pvtable[0][1];
+                }
+                else if (doPonder && pvtable[0][1]) {
+                    // use new ponder move
                     pondermove.code = pvtable[0][1];
                 }
                 alpha = score;
@@ -1015,6 +1020,8 @@ static void search_gen1(searchthread *thr)
 #endif
 
     const bool isMultiPV = (RT == MultiPVSearch);
+    const bool doPonder = (RT == PonderSearch);
+
     chessposition *pos = &thr->pos;
 
     if (en.mate > 0)  // FIXME: Not tested for a long time.
@@ -1056,7 +1063,7 @@ static void search_gen1(searchthread *thr)
         {
             // remis via repetition or 50 moves rule
             pos->bestmove.code = 0;
-            pos->pondermove.code = 0;
+            if (doPonder) pos->pondermove.code = 0;
             score = pos->bestmovescore[0] = SCOREDRAW;
             en.stopLevel = ENGINESTOPPED;
         }
@@ -1114,17 +1121,17 @@ static void search_gen1(searchthread *thr)
             }
         }
 
-        // copy new pv to lastpv
-        if (pos->pvtable[0][0])
+        // copy new pv to lastpv; preserve identical and longer lastpv
+        int i = 0;
+        int bDiffers = false;
+        while (pos->pvtable[0][i])
         {
-            int i = 0;
-            while (pos->pvtable[0][i])
-            {
-                pos->lastpv[i] = pos->pvtable[0][i];
-                i++;
-            }
-            pos->lastpv[i] = 0;
+            bDiffers = bDiffers || (pos->lastpv[i] != pos->pvtable[0][i]);
+            pos->lastpv[i] = pos->pvtable[0][i];
+            i++;
         }
+        if (bDiffers)
+            pos->lastpv[i] = 0;
 
         if (score > NOSCORE && thr->index == 0)
         {
@@ -1154,7 +1161,7 @@ static void search_gen1(searchthread *thr)
                     int dummystaticeval;
                     tp.probeHash(pos->hash, &score, &dummystaticeval, &mc, MAXDEPTH, alpha, beta, 0);
                     pos->bestmove.code = pos->shortMove2FullMove(mc);
-                    pos->pondermove.code = 0;
+                    if (doPonder) pos->pondermove.code = 0;
                 }
                     
                 // still no bestmove...
@@ -1180,7 +1187,7 @@ static void search_gen1(searchthread *thr)
                 thr->depth += SkipSize[cycle];
 
             thr->depth++;
-            if (en.isPondering() && thr->depth > maxdepth) thr->depth--;  // stay on maxdepth when pondering
+            if (doPonder && en.isPondering() && thr->depth > maxdepth) thr->depth--;  // stay on maxdepth when pondering
             reportedThisDepth = true;
             constantRootMoves++;
         }
@@ -1250,7 +1257,7 @@ static void search_gen1(searchthread *thr)
             }
             pos->lastpv[i] = 0;
             pos->bestmove = bestthr->pos.bestmove;
-            pos->pondermove = bestthr->pos.pondermove;
+            if (doPonder) pos->pondermove = bestthr->pos.pondermove;
             pos->bestmovescore[0] = bestthr->pos.bestmovescore[0];
             inWindow = 1;
             //printf("info string different bestmove from helper  lastpv:%x\n", bestthr->pos.lastpv[0]);
@@ -1269,12 +1276,12 @@ static void search_gen1(searchthread *thr)
         {
             // Not enough time to get any bestmove? Fall back to default move
             pos->bestmove = pos->defaultmove;
-            pos->pondermove.code = 0;
+            if (doPonder) pos->pondermove.code = 0;
         }
 
         strBestmove = pos->bestmove.toString();
 
-        if (en.ponder)
+        if (doPonder)
         {
             if (!pos->pondermove.code)
             {
@@ -1369,13 +1376,15 @@ void searchguide()
     // increment generation counter for tt aging
     tp.nextSearch();
 
-    for (int tnum = 0; tnum < en.Threads; tnum++)
-    {
-        if (en.MultiPV > 1)
-            en.sthread[tnum].thr = thread(&search_gen1<MultiPVSearch>, &en.sthread[tnum]);
-        else
+    if (en.MultiPV == 1 && !en.ponder)
+        for (int tnum = 0; tnum < en.Threads; tnum++)
             en.sthread[tnum].thr = thread(&search_gen1<SinglePVSearch>, &en.sthread[tnum]);
-    }
+    else if (en.ponder)
+        for (int tnum = 0; tnum < en.Threads; tnum++)
+            en.sthread[tnum].thr = thread(&search_gen1<PonderSearch>, &en.sthread[tnum]);
+    else
+        for (int tnum = 0; tnum < en.Threads; tnum++)
+            en.sthread[tnum].thr = thread(&search_gen1<MultiPVSearch>, &en.sthread[tnum]);
 
     U64 nowtime;
     while (en.stopLevel != ENGINESTOPPED)
