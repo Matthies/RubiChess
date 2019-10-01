@@ -174,7 +174,7 @@ void registeralltuners(chessposition *pos)
         registertuner(pos, &eps.eKingringattack[i], "eKingringattack", i, 6, 0, 0, tuneIt);
     registertuner(pos, &eps.eKingdangeradjust, "eKingdangeradjust", 0, 0, 0, 0, tuneIt);
     
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
             registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, i == ROOK && tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
@@ -570,7 +570,7 @@ int chessposition::getGeneralEval(positioneval *pe)
     result += EVAL(eps.eDoublebishopbonus, S2MSIGN(Me) * (POPCOUNT(piece00[WBISHOP | Me]) >= 2));
     if (bTrace) te.bishops[Me] += EVAL(eps.eDoublebishopbonus, S2MSIGN(Me) * (POPCOUNT(piece00[WBISHOP | Me]) >= 2));
 
-    // bonus for took on 7th pressing against the king
+    // bonus for rook on 7th pressing against the king
     if ((piece00[WROOK | Me] & RANK7(Me)) && (piece00[WKING | You] & (RANK7(Me) | RANK8(Me))))
     {
         result += EVAL(eps.eRookon7thbonus, S2MSIGN(Me));
