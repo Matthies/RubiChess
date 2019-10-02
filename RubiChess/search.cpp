@@ -504,7 +504,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         {
             // Proceed to next moveselector state manually to save some time
             ms.state++;
-            ms.capturemovenum = 0;
+            //ms.capturemovenum = 0;
             continue;
         }
 

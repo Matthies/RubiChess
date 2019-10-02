@@ -186,14 +186,22 @@ void chessmovelist::print()
 }
 
 // Sorting for MoveSelector
-void chessmovelist::sort()
+chessmove* chessmovelist::getNextMove(int minval = MININT)
 {
-    for (int i = 0; i < length - 1; i++)
+    int current = -1;
+    for (int i = 0; i < length; i++)
     {
-        for (int j = i + 1; j < length; j++)
-            if (move[i].value < move[j].value)
-                swap(move[i], move[j]);
+        if (move[i].value > minval)
+        {
+            minval = move[i].value;
+            current = i;
+        }
     }
+
+    if (current >= 0)
+        return &move[current];
+
+    return nullptr;
 }
 
 
@@ -2115,6 +2123,7 @@ void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t k
 
 chessmove* MoveSelector::next()
 {
+    chessmove *m;
     switch (state)
     {
     case INITSTATE:
@@ -2129,20 +2138,20 @@ chessmove* MoveSelector::next()
         state++;
         captures->length = CreateMovelist<TACTICAL>(pos, &captures->move[0]);
         evaluateMoves<CAPTURE>(captures, pos, &cmptr[0]);
-        captures->sort();
-        capturemovenum = 0;
+        //captures->sort();
+        //capturemovenum = 0;
     case TACTICALSTATE:
-        while (capturemovenum < captures->length
-            && (captures->move[capturemovenum].code == hashmove.code
-                || !pos->see(captures->move[capturemovenum].code, onlyGoodCaptures)))
+        while (m = captures->getNextMove(0))
         {
-            // mark the move for BADTACTICALSTATE
-            captures->move[capturemovenum].value |= BADTACTICALFLAG;
-            capturemovenum++;
-        }
-        if (capturemovenum < captures->length)
-        {
-            return &captures->move[capturemovenum++];
+            if (!pos->see(m->code, onlyGoodCaptures))
+            {
+                m->value |= BADTACTICALFLAG;
+            }
+            else {
+                m->value = MININT;
+                if (m->code != hashmove.code)
+                    return m;
+            }
         }
         state++;
         if (onlyGoodCaptures)
@@ -2169,33 +2178,27 @@ chessmove* MoveSelector::next()
         state++;
         quiets->length = CreateMovelist<QUIET>(pos, &quiets->move[0]);
         evaluateMoves<QUIET>(quiets, pos, &cmptr[0]);
-        quiets->sort();
-        quietmovenum = 0;
+        //quiets->sort();
+        //quietmovenum = 0;
     case QUIETSTATE:
-        while (quietmovenum < quiets->length
-            && (quiets->move[quietmovenum].code == hashmove.code
-                || quiets->move[quietmovenum].code == killermove1.code
-                || quiets->move[quietmovenum].code == killermove2.code
-                || quiets->move[quietmovenum].code == countermove.code))
+        while (m = quiets->getNextMove())
         {
-            quietmovenum++;
-        }
-        if (quietmovenum < quiets->length)
-        {
-            return &quiets->move[quietmovenum++];
+            m->value = MININT;
+            if (m->code != hashmove.code
+                && m->code != killermove1.code
+                && m->code != killermove2.code
+                && m->code != countermove.code)
+                return m;
         }
         state++;
-        capturemovenum = 0;
+        //capturemovenum = 0;
     case BADTACTICALSTATE:
-        while (capturemovenum < captures->length
-            && (captures->move[capturemovenum].code == hashmove.code
-                || !(captures->move[capturemovenum].value & BADTACTICALFLAG)))
+        while (m = captures->getNextMove())
         {
-            capturemovenum++;
-        }
-        if (capturemovenum < captures->length)
-        {
-            return &captures->move[capturemovenum++];
+            bool bBadTactical = (m->value & BADTACTICALFLAG);
+            m->value = MININT;
+            if (bBadTactical)
+                return m;
         }
         state++;
     case BADTACTICALEND:
@@ -2204,12 +2207,14 @@ chessmove* MoveSelector::next()
         state++;
         captures->length = CreateMovelist<EVASION>(pos, &captures->move[0]);
         evaluateMoves<ALL>(captures, pos, &cmptr[0]);
-        captures->sort();
-        capturemovenum = 0;
+        //captures->sort();
+        //capturemovenum = 0;
     case EVASIONSTATE:
-        if (capturemovenum < captures->length)
-            return &captures->move[capturemovenum++];
-
+        while (m = captures->getNextMove())
+        {
+            m->value = MININT;
+            return m;
+        }
         state++;
     default:
         return nullptr;

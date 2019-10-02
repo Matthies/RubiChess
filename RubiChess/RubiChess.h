@@ -679,7 +679,7 @@ const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 2
 #define KILLERVAL1 (1 << 26)
 #define KILLERVAL2 (KILLERVAL1 - 1)
 #define NMREFUTEVAL (1 << 25)
-#define BADTACTICALFLAG (1 << 30)
+#define BADTACTICALFLAG (1 << 31)
 
 #define ISEPCAPTURE 0x40
 #define GETFROM(x) (((x) & 0x0fc0) >> 6)
@@ -875,7 +875,7 @@ public:
 	string toString();
 	string toStringWithValue();
 	void print();
-    void sort();
+    chessmove* getNextMove(int minval);
 };
 
 
@@ -893,8 +893,8 @@ public:
     chessmove killermove1;
     chessmove killermove2;
     chessmove countermove;
-    int capturemovenum;
-    int quietmovenum;
+    //int capturemovenum;
+    //int quietmovenum;
     int legalmovenum;
     bool onlyGoodCaptures;
     int16_t *cmptr[CMPLIES];
