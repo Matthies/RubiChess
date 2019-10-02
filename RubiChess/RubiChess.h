@@ -893,8 +893,6 @@ public:
     chessmove killermove1;
     chessmove killermove2;
     chessmove countermove;
-    //int capturemovenum;
-    //int quietmovenum;
     int legalmovenum;
     bool onlyGoodCaptures;
     int16_t *cmptr[CMPLIES];

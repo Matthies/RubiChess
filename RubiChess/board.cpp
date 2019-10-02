@@ -2138,10 +2138,8 @@ chessmove* MoveSelector::next()
         state++;
         captures->length = CreateMovelist<TACTICAL>(pos, &captures->move[0]);
         evaluateMoves<CAPTURE>(captures, pos, &cmptr[0]);
-        //captures->sort();
-        //capturemovenum = 0;
     case TACTICALSTATE:
-        while (m = captures->getNextMove(0))
+        while ((m = captures->getNextMove(0)))
         {
             if (!pos->see(m->code, onlyGoodCaptures))
             {
@@ -2178,10 +2176,8 @@ chessmove* MoveSelector::next()
         state++;
         quiets->length = CreateMovelist<QUIET>(pos, &quiets->move[0]);
         evaluateMoves<QUIET>(quiets, pos, &cmptr[0]);
-        //quiets->sort();
-        //quietmovenum = 0;
     case QUIETSTATE:
-        while (m = quiets->getNextMove())
+        while ((m = quiets->getNextMove()))
         {
             m->value = MININT;
             if (m->code != hashmove.code
@@ -2191,9 +2187,8 @@ chessmove* MoveSelector::next()
                 return m;
         }
         state++;
-        //capturemovenum = 0;
     case BADTACTICALSTATE:
-        while (m = captures->getNextMove())
+        while ((m = captures->getNextMove()))
         {
             bool bBadTactical = (m->value & BADTACTICALFLAG);
             m->value = MININT;
@@ -2207,10 +2202,8 @@ chessmove* MoveSelector::next()
         state++;
         captures->length = CreateMovelist<EVASION>(pos, &captures->move[0]);
         evaluateMoves<ALL>(captures, pos, &cmptr[0]);
-        //captures->sort();
-        //capturemovenum = 0;
     case EVASIONSTATE:
-        while (m = captures->getNextMove())
+        while ((m = captures->getNextMove()))
         {
             m->value = MININT;
             return m;
