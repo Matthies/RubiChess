@@ -166,6 +166,7 @@ enum { WHITE, BLACK };
 #define RANK2(s) ((s) ? 0x00ff000000000000 : 0x000000000000ff00)
 #define RANK3(s) ((s) ? 0x0000ff0000000000 : 0x0000000000ff0000)
 #define RANK7(s) ((s) ? 0x000000000000ff00 : 0x00ff000000000000)
+#define RANK8(s) ((s) ? 0x00000000000000ff : 0xff00000000000000)
 #define FILEABB 0x0101010101010101
 #define FILEHBB 0x8080808080808080
 #define ISOUTERFILE(x) (FILE(x) == 0 || FILE(x) == 7)
@@ -330,6 +331,7 @@ struct evalparamset {
            VALUE(  20, 253), VALUE(  21, 256), VALUE(  18, 263), VALUE(  13, 270), VALUE(  45, 244), VALUE(  67, 233), VALUE(  72, 241), VALUE(  80, 230),
            VALUE(  69, 264), VALUE( 108, 231), VALUE( 107, 230), VALUE( 114, 198)  }
     };
+    eval eRookon7thbonus =  VALUE(  -1,  22);
     eval eSlideronfreefilebonus[2] = {  VALUE(  21,   7), VALUE(  43,   1)  };
     eval eMaterialvalue[7] = {  VALUE(   0,   0), VALUE( 100, 100), VALUE( 314, 314), VALUE( 314, 314), VALUE( 483, 483), VALUE( 913, 913), VALUE(0,0)  };
     eval eKingshieldbonus =  VALUE(  15,  -2);
