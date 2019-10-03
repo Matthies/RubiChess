@@ -186,7 +186,7 @@ void chessmovelist::print()
 }
 
 // Sorting for MoveSelector
-chessmove* chessmovelist::getNextMove(int minval = MININT)
+chessmove* chessmovelist::getNextMove(int minval = INT_MIN)
 {
     int current = -1;
     for (int i = 0; i < length; i++)
@@ -2146,7 +2146,7 @@ chessmove* MoveSelector::next()
                 m->value |= BADTACTICALFLAG;
             }
             else {
-                m->value = MININT;
+                m->value = INT_MIN;
                 if (m->code != hashmove.code)
                     return m;
             }
@@ -2179,7 +2179,7 @@ chessmove* MoveSelector::next()
     case QUIETSTATE:
         while ((m = quiets->getNextMove()))
         {
-            m->value = MININT;
+            m->value = INT_MIN;
             if (m->code != hashmove.code
                 && m->code != killermove1.code
                 && m->code != killermove2.code
@@ -2191,7 +2191,7 @@ chessmove* MoveSelector::next()
         while ((m = captures->getNextMove()))
         {
             bool bBadTactical = (m->value & BADTACTICALFLAG);
-            m->value = MININT;
+            m->value = INT_MIN;
             if (bBadTactical)
                 return m;
         }
@@ -2205,7 +2205,7 @@ chessmove* MoveSelector::next()
     case EVASIONSTATE:
         while ((m = captures->getNextMove()))
         {
-            m->value = MININT;
+            m->value = INT_MIN;
             return m;
         }
         state++;
