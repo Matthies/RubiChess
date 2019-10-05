@@ -704,4 +704,4 @@ Rubi (und offensichtlich auch KMCTS) übersehen danach den Gewinnerzug h5.
 03.10.2019
 Spiel TCEC S16 SuFi Spiel 42 SF - Allie
 8/4pkb1/2p3pp/ppNrP3/P1n1NP1P/5qP1/KP6/2Q1R3 b - - 5 36
-Rubi findet den Gewinnerzug f5 nicht.
+Rubi findet nach Allies Bf8 den Gewinnerzug f5 nicht.
