@@ -1263,7 +1263,7 @@ static void search_gen1(searchthread *thr)
         }
 
         // remember score for next search in case of an instamove
-        pos->lastbestmovescore = pos->bestmovescore[0];
+        en.rootposition.lastbestmovescore = pos->bestmovescore[0];
 
         if (!reportedThisDepth || bestthr->index)
             uciScore(thr, inWindow, getTime(), 0);
