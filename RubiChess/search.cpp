@@ -247,6 +247,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     string excludestr = "";
     int debugInsert = ply - rootheight;
     bool isDebugPv = triggerDebug(&debugMove);
+    if (isDebugPv)
+        pvdepth[ply - 1] = depth;
 #endif
 
     // test for remis via repetition
@@ -736,7 +738,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
     chessmove debugMove;
     int debugInsert = ply - rootheight;
     bool isDebugPv = triggerDebug(&debugMove);
-    SDEBUGPRINT(true, debugInsert, "(depth=%2d) Rootsearch Next pv debug move: %s  [%3d,%3d]", depth, debugMove.code ? debugMove.toString().c_str() : "", alpha, beta);
+    //SDEBUGPRINT(true, debugInsert, "(depth=%2d) Rootsearch Next pv debug move: %s  [%3d,%3d]", depth, debugMove.code ? debugMove.toString().c_str() : "", alpha, beta);
 #endif
 
     if (!isMultiPV
@@ -760,6 +762,12 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                 }
                 if (score > alpha) bestmovescore[0] = score;
                 updatePvTable(fullhashmove, false);
+#ifdef SDEBUG
+                if (debugMove.code == (fullhashmove & 0xeff))
+                    pvaborttype[0] = PVA_FROMTT;
+                else
+                    pvaborttype[0] = PVA_DIFFERENTFROMTT;
+#endif
                 return score;
             }
         }
@@ -811,8 +819,8 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         m = &rootmovelist.move[i];
 #ifdef SDEBUG
         bool isDebugMove = (debugMove.code == (m->code & 0xeff));
+        SDEBUGDO(isDebugMove, pvmovenum[0] = i;)
 #endif
-
         playMove(m);
 
         if (en.moveoutput && !threadindex)
@@ -854,7 +862,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
             }
         }
 
-        SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s scored %d", debugMove.toString().c_str(), score);
+        SDEBUGDO(isDebugMove, pvabortval[0] = score;)
 
         unplayMove(m);
 
@@ -869,7 +877,10 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
 
         if ((isMultiPV && score <= bestmovescore[lastmoveindex])
             || (!isMultiPV && score <= bestscore))
+        {
+            SDEBUGDO(isDebugMove, pvaborttype[0] = PVA_FAILEDLOW;)
             continue;
+        }
 
         bestscore = score;
         bestFailingLow = m->code;
@@ -954,7 +965,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         }
     }
 
-    SDEBUGPRINT(true, 0, getPv(pvtable[0]).c_str());
+    //SDEBUGPRINT(true, 0, getPv(pvtable[0]).c_str());
 
     if (isMultiPV)
     {

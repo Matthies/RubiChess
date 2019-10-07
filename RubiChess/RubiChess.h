@@ -19,7 +19,7 @@
 
 #define VERNUM "1.6-dev"
 
-#if 0
+#if 1
 #define SDEBUG
 #endif
 
@@ -940,6 +940,9 @@ struct positioneval {
     int kingattackers[2];
 };
 
+#ifdef SDEBUG
+enum PvAbortType { PVA_UNKNOWN, PVA_FROMTT, PVA_DIFFERENTFROMTT, PVA_LMPRUNED, PVA_FAILEDLOW, PVA_BESTMOVE };
+#endif
 
 class chessposition
 {
@@ -989,8 +992,12 @@ public:
 #ifdef SDEBUG
     unsigned long long debughash = 0;
     uint16_t pvdebug[MAXMOVESEQUENCELENGTH];
-    bool debugRecursive;
-    bool debugOnlySubtree;
+    //bool debugRecursive;
+    //bool debugOnlySubtree;
+    int pvdepth[MAXMOVESEQUENCELENGTH];
+    int pvmovenum[MAXMOVESEQUENCELENGTH];
+    PvAbortType pvaborttype[MAXMOVESEQUENCELENGTH];
+    int pvabortval[MAXMOVESEQUENCELENGTH];
 #endif
     uint32_t pvtable[MAXDEPTH][MAXDEPTH];
     uint32_t multipvtable[MAXMULTIPV][MAXDEPTH];
@@ -1185,8 +1192,10 @@ extern engine en;
 
 #ifdef SDEBUG
 #define SDEBUGPRINT(b, d, f, ...) if (b) sdebug(d, f, ##__VA_ARGS__)
+#define SDEBUGDO(c, s) if (c) {s}
 #else
 #define SDEBUGPRINT(b, d, f, ...)
+#define SDEBUGDO(c, s)
 #endif
 
 

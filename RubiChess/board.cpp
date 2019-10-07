@@ -1032,6 +1032,7 @@ bool chessposition::triggerDebug(chessmove* nextmove)
     }
     nextmove->code = pvdebug[j];
  
+#if 0
     if (debugOnlySubtree)
         return (pvdebug[j] == 0);
 
@@ -1039,6 +1040,9 @@ bool chessposition::triggerDebug(chessmove* nextmove)
         return true;
 
     return (j + rootheight == mstop);
+#endif
+
+    return true;
 }
 
 void chessposition::sdebug(int indent, const char* format, ...)
@@ -2473,12 +2477,13 @@ void engine::communicate(string inputstring)
                         rootposition.debughash = rootposition.hash;
                     else if (commandargs[ci] == "pv")
                     {
-                        rootposition.debugOnlySubtree = false;
-                        rootposition.debugRecursive = false;
+                        //rootposition.debugOnlySubtree = false;
+                        //rootposition.debugRecursive = false;
                         int i = 0;
                         while (++ci < cs)
                         {
                             string s = commandargs[ci];
+#if 0
                             if (s == "recursive")
                             {
                                 rootposition.debugRecursive = true;
@@ -2489,6 +2494,7 @@ void engine::communicate(string inputstring)
                                 rootposition.debugOnlySubtree = true;
                                 continue;
                             }
+#endif
                             if (s.size() < 4)
                                 continue;
                             int from = AlgebraicToIndex(s);
@@ -2497,6 +2503,7 @@ void engine::communicate(string inputstring)
                             rootposition.pvdebug[i++] = to | (from << 6) | (promotion << 12);
                         }
                         rootposition.pvdebug[i] = 0;
+                        prepareThreads();
                     }
 #endif
                 }
