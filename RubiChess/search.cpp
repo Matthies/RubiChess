@@ -720,6 +720,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
 
     // reset pv
     pvtable[0][0] = 0;
+    bestmovescore[0] = SHRT_MIN + 1;
 
     if (isMultiPV)
     {
@@ -758,8 +759,8 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                     bestmove.code = fullhashmove;
                     if (doPonder) pondermove.code = 0;
                 }
-                if (score > alpha) bestmovescore[0] = score;
                 updatePvTable(fullhashmove, false);
+                if (score > alpha) bestmovescore[0] = score;
                 return score;
             }
         }
