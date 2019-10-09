@@ -720,7 +720,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
 
     // reset pv
     pvtable[0][0] = 0;
-    bestmovescore[0] = SHRT_MIN + 1;
 
     if (isMultiPV)
     {
@@ -1051,6 +1050,8 @@ static void search_gen1(searchthread *thr)
     {
         inWindow = 1;
         pos->seldepth = thr->depth;
+        if (thr->index)
+            pos->bestmovescore[0] = NOSCORE;
 
         if (pos->rootmovelist.length == 0)
         {
