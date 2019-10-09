@@ -758,8 +758,8 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                     bestmove.code = fullhashmove;
                     if (doPonder) pondermove.code = 0;
                 }
-                if (score > alpha) bestmovescore[0] = score;
                 updatePvTable(fullhashmove, false);
+                if (score > alpha) bestmovescore[0] = score;
                 return score;
             }
         }
@@ -1050,6 +1050,8 @@ static void search_gen1(searchthread *thr)
     {
         inWindow = 1;
         pos->seldepth = thr->depth;
+        if (thr->index)
+            pos->bestmovescore[0] = NOSCORE;
 
         if (pos->rootmovelist.length == 0)
         {
