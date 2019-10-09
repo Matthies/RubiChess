@@ -1045,6 +1045,7 @@ bool chessposition::triggerDebug(chessmove* nextmove)
     return true;
 }
 
+#if 0
 void chessposition::sdebug(int indent, const char* format, ...)
 {
     fprintf(stderr, "%*s", indent, "");
@@ -1053,6 +1054,25 @@ void chessposition::sdebug(int indent, const char* format, ...)
     vfprintf(stderr, format, argptr);
     va_end(argptr);
     fprintf(stderr, "\n");
+}
+#endif
+
+
+const char* PvAbortStr[] = {
+    "unknown", "pv from tt", "different move in tt", "razor-pruned", "reverse-futility-pruned", "nullmove-pruned", "probcut-pruned", "late-move-pruned",
+    "futility-pruned", "bad-see-pruned", "bad-history-pruned", "multicut-pruned", "bestmove", "not best move", "ommitted", "betacut"
+};
+
+
+void chessposition::pvdebugout()
+{
+    printf("Move  Num Dep  Val  Reason\n");
+    for (int i = 0; pvdebug[i]; i++)
+    {
+        chessmove m;
+        m.code = pvdebug[i];
+        printf("%s  %2d  %2d  %4d  %s\n", m.toString().c_str(), pvmovenum[i], pvdepth[i], pvabortval[i], PvAbortStr[pvaborttype[i]]);
+    }
 }
 
 #endif

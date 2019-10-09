@@ -941,7 +941,9 @@ struct positioneval {
 };
 
 #ifdef SDEBUG
-enum PvAbortType { PVA_UNKNOWN = 0, PVA_FROMTT, PVA_DIFFERENTFROMTT, PVA_LMPRUNED, PVA_FUTILITYPRUNED, PVA_SEEPRUNED, PVA_MULTICUT, PVA_FAILEDLOW, PVA_BESTMOVE };
+enum PvAbortType {
+    PVA_UNKNOWN = 0, PVA_FROMTT, PVA_DIFFERENTFROMTT, PVA_RAZORPRUNED, PVA_REVFUTILITYPRUNED, PVA_NMPRUNED, PVA_PROBCUTPRUNED, PVA_LMPRUNED,
+    PVA_FUTILITYPRUNED, PVA_SEEPRUNED, PVA_BADHISTORYPRUNED, PVA_MULTICUT, PVA_BESTMOVE, PVA_NOTBESTMOVE, PVA_OMMITTED, PVA_BETACUTPRUNED }; 
 #endif
 
 class chessposition
@@ -1072,7 +1074,8 @@ public:
 
 #ifdef SDEBUG
     bool triggerDebug(chessmove* nextmove);
-    void sdebug(int indent, const char* format, ...);
+    //void sdebug(int indent, const char* format, ...);
+    void pvdebugout();
 #endif
     int testRepetiton();
     void mirror();
@@ -1191,10 +1194,10 @@ public:
 extern engine en;
 
 #ifdef SDEBUG
-#define SDEBUGPRINT(b, d, f, ...) if (b) sdebug(d, f, ##__VA_ARGS__)
+//#define SDEBUGPRINT(b, d, f, ...) if (b) sdebug(d, f, ##__VA_ARGS__)
 #define SDEBUGDO(c, s) if (c) {s}
 #else
-#define SDEBUGPRINT(b, d, f, ...)
+//#define SDEBUGPRINT(b, d, f, ...)
 #define SDEBUGDO(c, s)
 #endif
 
