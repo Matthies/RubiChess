@@ -116,6 +116,9 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     chessmove debugMove;
     int debugInsert = ply - rootheight;
     bool isDebugPv = triggerDebug(&debugMove);
+    bool debugMovePlayed = false;
+    if (isDebugPv)
+        pvdepth[ply - 1] = depth;
 #endif
 
     int hashscore = NOSCORE;
@@ -247,6 +250,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     string excludestr = "";
     int debugInsert = ply - rootheight;
     bool isDebugPv = triggerDebug(&debugMove);
+    bool debugMovePlayed = false;
     if (isDebugPv)
         pvdepth[ply - 1] = depth;
 #endif
@@ -496,6 +500,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     {
 #ifdef SDEBUG
         bool isDebugMove = ((debugMove.code & 0xeff) == (m->code & 0xeff));
+        SDEBUGDO(isDebugMove, pvmovenum[ply] = LegalMoves;);
 #endif
         // Leave out the move to test for singularity
         if ((m->code & 0xffff) == excludeMove)
@@ -506,6 +511,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         {
             // Proceed to next moveselector state manually to save some time
             ms.state++;
+            SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_LMPRUNED;);
             continue;
         }
 
@@ -515,7 +521,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         {
             if (LegalMoves)
             {
-                SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by futility: staticeval(%d) < alpha(%d) - futilityMargin(%d)", debugMove.toString().c_str(), staticeval, alpha, 100 + 80 * depth);
+                SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_FUTILITYPRUNED;);
                 continue;
             }
             else if (staticeval > bestscore)
@@ -528,7 +534,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         // Prune tactical moves with bad SEE
         if (!isCheckbb && depth < 8 && bestscore > NOSCORE && ms.state >= BADTACTICALSTATE && !see(m->code, -20 * depth * depth))
         {
-            SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by bad SEE", debugMove.toString().c_str());
+            SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_SEEPRUNED;);
             continue;
         }
 
@@ -550,12 +556,12 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             if (redScore < sBeta)
             {
                 // Move is singular
-                SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s is singular", debugMove.toString().c_str());
                 extendMove = 1;
             }
             else if (bestknownscore >= beta && sBeta >= beta)
             {
                 // Hashscore for lower depth and static eval cut and we have at least a second good move => lets cut here
+                SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_MULTICUT;);
                 return sBeta;
             }
         }
@@ -571,8 +577,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             // adjust reduction by stats value
             reduction -= stats / 10000;
             reduction = min(depth, max(0, reduction));
-
-            SDEBUGPRINT(isDebugPv && isDebugMove && reduction, debugInsert, " PV move %s (value=%d) with depth reduced by %d", debugMove.toString().c_str(), m->value, reduction);
         }
 
         int pc = GETPIECE(m->code);
@@ -588,6 +592,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (playMove(m))
         {
             LegalMoves++;
+            SDEBUGDO(isDebugMove, debugMovePlayed = true;)
 
             // Check again for futility pruning now that we found a valid move
             if (futilityPrune)
@@ -738,6 +743,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
     chessmove debugMove;
     int debugInsert = ply - rootheight;
     bool isDebugPv = triggerDebug(&debugMove);
+    bool debugMovePlayed = false;
     //SDEBUGPRINT(true, debugInsert, "(depth=%2d) Rootsearch Next pv debug move: %s  [%3d,%3d]", depth, debugMove.code ? debugMove.toString().c_str() : "", alpha, beta);
 #endif
 
@@ -819,7 +825,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         m = &rootmovelist.move[i];
 #ifdef SDEBUG
         bool isDebugMove = (debugMove.code == (m->code & 0xeff));
-        SDEBUGDO(isDebugMove, pvmovenum[0] = i;)
+        SDEBUGDO(isDebugMove, pvmovenum[0] = i; debugMovePlayed = true;)
 #endif
         playMove(m);
 
