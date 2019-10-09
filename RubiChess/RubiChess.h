@@ -17,7 +17,7 @@
 
 #pragma once
 
-#define VERNUM "1.6-dev"
+#define VERNUM "1.6-beta1"
 
 #if 0
 #define SDEBUG
