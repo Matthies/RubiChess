@@ -617,6 +617,12 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             }
             unplayMove(m);
 
+            if (en.stopLevel == ENGINESTOPIMMEDIATELY)
+            {
+                // time is over; immediate stop requested
+                return beta;
+            }
+
             SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s scored %d", debugMove.toString().c_str(), score);
 
             if (score > bestscore)
