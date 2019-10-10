@@ -1056,10 +1056,6 @@ static void search_gen1(searchthread *thr)
     {
         inWindow = 1;
         pos->seldepth = thr->depth;
-#if 0
-        if (thr->index)
-            pos->bestmovescore[0] = NOSCORE;
-#endif
         if (pos->rootmovelist.length == 0)
         {
             // mate / stalemate
