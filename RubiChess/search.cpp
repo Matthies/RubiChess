@@ -267,7 +267,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     if (en.stopLevel == ENGINESTOPIMMEDIATELY)
     {
         // time is over; immediate stop requested
-        return alpha;
+        return beta;
     }
 
     // Reached depth? Do a qsearch
@@ -616,6 +616,12 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 }
             }
             unplayMove(m);
+
+            if (en.stopLevel == ENGINESTOPIMMEDIATELY)
+            {
+                // time is over; immediate stop requested
+                return beta;
+            }
 
             SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s scored %d", debugMove.toString().c_str(), score);
 
@@ -1050,9 +1056,6 @@ static void search_gen1(searchthread *thr)
     {
         inWindow = 1;
         pos->seldepth = thr->depth;
-        if (thr->index)
-            pos->bestmovescore[0] = NOSCORE;
-
         if (pos->rootmovelist.length == 0)
         {
             // mate / stalemate
