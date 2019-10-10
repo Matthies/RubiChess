@@ -267,7 +267,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     if (en.stopLevel == ENGINESTOPIMMEDIATELY)
     {
         // time is over; immediate stop requested
-        return alpha;
+        return beta;
     }
 
     // Reached depth? Do a qsearch
@@ -739,12 +739,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
     SDEBUGPRINT(true, debugInsert, "(depth=%2d) Rootsearch Next pv debug move: %s  [%3d,%3d]", depth, debugMove.code ? debugMove.toString().c_str() : "", alpha, beta);
 #endif
 
-    if (en.stopLevel == ENGINESTOPIMMEDIATELY)
-    {
-        // time over; immediate stop requested
-        return alpha;
-    }
-
     if (!isMultiPV
         && !useRootmoveScore
         && tp.probeHash(hash, &score, &staticeval, &hashmovecode, depth, alpha, beta, 0))
@@ -863,6 +857,12 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s scored %d", debugMove.toString().c_str(), score);
 
         unplayMove(m);
+
+        if (en.stopLevel == ENGINESTOPIMMEDIATELY)
+        {
+            // time over; immediate stop requested
+            return bestscore;
+        }
 
         if (!ISTACTICAL(m->code))
             quietMoves[quietsPlayed++] = m->code;
