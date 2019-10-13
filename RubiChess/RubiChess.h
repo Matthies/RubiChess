@@ -260,11 +260,11 @@ typedef const int32_t eval;
 
 struct evalparamset {
     // Powered by Laser games :-)
-    eval eComplexpasserbonus =  EVALUE(  -1);
-    eval eComplexpawnsbonus =  EVALUE(   5);
-    eval eComplexpawnflanksbonus =  EVALUE(  27);
-    eval eComplexonlypawnsbonus =  EVALUE(  62);
-    eval eComplexadjust =  EVALUE( -42);
+    eval eComplexpasserbonus =  EVALUE(   1);
+    eval eComplexpawnsbonus =  EVALUE(   6);
+    eval eComplexpawnflanksbonus =  EVALUE(  18);
+    eval eComplexonlypawnsbonus =  EVALUE(  49);
+    eval eComplexadjust =  EVALUE(  -9);
     eval eTempo =  CVALUE(  20);
     eval eKingpinpenalty[6] = {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  38, -74), VALUE(  65, -61), VALUE( -29,  68), VALUE( -44, 163)  };
     eval ePawnstormblocked[4][5] = {
