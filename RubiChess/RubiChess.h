@@ -262,9 +262,11 @@ struct evalparamset {
     // Powered by Laser games :-)
     eval eComplexpasserbonus =  EVALUE(   1);
     eval eComplexpawnsbonus =  EVALUE(   6);
-    eval eComplexpawnflanksbonus =  EVALUE(  18);
+    eval eComplexpawnflanksbonus =  EVALUE(  21);
     eval eComplexonlypawnsbonus =  EVALUE(  49);
-    eval eComplexadjust =  EVALUE(  -9);
+    eval eComplexkingfiledeltabonus =  EVALUE(   1);
+    eval eComplexhardtowinpenalty =  EVALUE( -38);
+    eval eComplexadjust =  EVALUE(  -8);
     eval eTempo =  CVALUE(  20);
     eval eKingpinpenalty[6] = {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  38, -74), VALUE(  65, -61), VALUE( -29,  68), VALUE( -44, 163)  };
     eval ePawnstormblocked[4][5] = {
@@ -568,7 +570,9 @@ typedef struct pawnhashentry {
     U64 attackedBy2[2];
     bool bothFlanks;
     unsigned char semiopen[2];
-    char padding[2];
+    int8_t kingfiledelta;  // relative to the rank delta
+
+    char padding[1];
 } S_PAWNHASHENTRY;
 
 

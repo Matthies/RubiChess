@@ -560,7 +560,7 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
     char R;
     string fen;
     int Qi, Qr;
-    int Q[2];
+    int Q[4];
     U64 buffersize;
     char *pnext;
     long long minfreebuffer = sizeof(positiontuneset) + NUMOFEVALPARAMS * sizeof(evalparam) * 1024;
@@ -667,7 +667,7 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                     positiontuneset *nextpts = (positiontuneset*)pnext;
                     *nextpts = pos->pts;
                     nextpts->R = R;
-                    Q[0] = Q[1] = 0;
+                    Q[0] = Q[1] = Q[2] = Q[3] = 0;
                     evalparam *e = (evalparam *)(pnext + sizeof(positiontuneset));
                     int sqsum[4][2] = { 0 };
                     for (int i = 0; i < pos->pts.num; i++)
@@ -694,7 +694,10 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                         if (sqsum[i][0] == 0 && sqsum[i][1] == 0) continue;
                         Q[0] += SQRESULT(sqsum[i][0], 0) + SQRESULT(sqsum[i][1], 1);
                     }
-                    Qr = TAPEREDANDSCALEDEVAL(Q[0], nextpts->ph, nextpts->sc) + Q[1];
+                    int evaleg = GETEGVAL(Q[0]);
+                    int sign = (evaleg > 0) - (evaleg < 0);
+                    Q[3] = sign * max(Q[3], -abs(evaleg));
+                    Qr = TAPEREDANDSCALEDEVAL(Q[0] + Q[3], nextpts->ph, nextpts->sc) + Q[1];
                     if (MATEDETECTED(Qi))
                         n--;
                     else if (Qi != (nextpts->sc == SCALE_DRAW ? SCOREDRAW : Qr))
@@ -735,7 +738,7 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                         positiontuneset *nextpts = (positiontuneset*)pnext;
                         *nextpts = pos->pts;
                         nextpts->R = R;
-                        Q[0] = Q[1] = 0;
+                        Q[0] = Q[1] = Q[2] = Q[3] = 0;
                         evalparam *e = (evalparam *)(pnext + sizeof(positiontuneset));
                         int sqsum[4][2] = { 0 };
                         for (int i = 0; i < pos->pts.num; i++)
@@ -762,7 +765,10 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                             if (sqsum[i][0] == 0 && sqsum[i][1] == 0) continue;
                             Q[0] += SQRESULT(sqsum[i][0], 0) + SQRESULT(sqsum[i][1], 1);
                         }
-                        Qr = TAPEREDANDSCALEDEVAL(Q[0], nextpts->ph, nextpts->sc) + Q[1];
+                        int evaleg = GETEGVAL(Q[0]);
+                        int sign = (evaleg > 0) - (evaleg < 0);
+                        Q[3] = sign * max(Q[3], -abs(evaleg));
+                        Qr = TAPEREDANDSCALEDEVAL(Q[0] + Q[3], nextpts->ph, nextpts->sc) + Q[1];
                         if (Qi != (nextpts->sc == SCALE_DRAW ? SCOREDRAW : Qr))
                             printf("Alarm. Gradient evaluation differs from qsearch value.\n");
                         else
