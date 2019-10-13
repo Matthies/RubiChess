@@ -68,7 +68,7 @@ string chessposition::getGradientString()
     string s = "";
     for (int i = 0; i < pts.num; i++)
     {
-        if (tps.ev[i]->type <= 1)
+        if (tps.ev[i]->type != 2)
             s = s + tps.name[ev[i].index] + "(" + to_string(ev[i].g[0]) + ") ";
         else
             s = s + tps.name[ev[i].index] + "(" + to_string(ev[i].g[0]) + "/" + to_string(ev[i].g[1]) + ") ";
@@ -95,10 +95,18 @@ static void registertuner(chessposition *pos, eval *e, string name, int index1, 
 void registeralltuners(chessposition *pos)
 {
     int i, j;
-    bool tuneIt = false;
+    bool tuneIt;
 
     pos->tps.count = 0;
 
+    tuneIt = true;
+    registertuner(pos, &eps.eComplexpasserbonus, "eComplexpasserbonus", 0, 0, 0, 0, tuneIt);
+    registertuner(pos, &eps.eComplexpawnsbonus, "eComplexpawnsbonus", 0, 0, 0, 0, tuneIt);
+    registertuner(pos, &eps.eComplexpawnflanksbonus, "eComplexpawnflanksbonus", 0, 0, 0, 0, tuneIt);
+    registertuner(pos, &eps.eComplexonlypawnsbonus, "eComplexonlypawnsbonus", 0, 0, 0, 0, tuneIt);
+    registertuner(pos, &eps.eComplexadjust, "eComplexadjust", 0, 0, 0, 0, tuneIt);
+
+    tuneIt = false;
     registertuner(pos, &eps.eTempo, "eTempo", 0, 0, 0, 0, tuneIt);
     tuneIt = false;
     for (i = 0; i < 6; i++)
@@ -152,7 +160,7 @@ void registeralltuners(chessposition *pos)
         for (j = 0; j < 28; j++)
             registertuner(pos, &eps.eMobilitybonus[i][j], "eMobilitybonus", j, 28, i, 4, tuneIt && (j < maxmobility[i]));
 
-    tuneIt = true;
+    tuneIt = false;
     registertuner(pos, &eps.eRookon7thbonus, "eRookon7thbonus", 0, 0, 0, 0, tuneIt);
     tuneIt = false;
     for (i = 0; i < 2; i++)

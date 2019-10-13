@@ -211,7 +211,7 @@ extern sqevallist sqglobal;
 
 class eval {
 public:
-    int type;
+    int type;  // 0=linear mg->eg  1=constant  2=squre  3=only eg (0->eg)
     int groupindex;
     int32_t v;
     int g[2];
@@ -238,6 +238,8 @@ public:
 #define SQRESULT(v,s) ( v > 0 ? ((int32_t)((uint32_t)((v) * (v) * S2MSIGN(s) / 2048) << 16) + ((v) * S2MSIGN(s) / 16)) : 0 )
 #define CVALUE(v) eval(v)
 #define CEVAL(e, f) ((e).addGrad(f), (e) * (f))
+#define EVALUE(v) eval(3, 0, v)
+#define EEVAL(e, f) ((e).addGrad(f), (e) * (f))
 #else // EVALTUNE
 
 #define SQVALUE(i, v) (v)
@@ -258,11 +260,11 @@ typedef const int32_t eval;
 
 struct evalparamset {
     // Powered by Laser games :-)
-    eval eComplexpasserbonus = EVALUE(0);
-    eval eComplexpawnsbonus = EVALUE(0);
-    eval eComplexpawnflanksbonus = EVALUE(0);
-    eval eComplexonlypawnsbonus = EVALUE(0);
-    eval eComplexadjust = EVALUE(0);
+    eval eComplexpasserbonus =  EVALUE(  -1);
+    eval eComplexpawnsbonus =  EVALUE(   5);
+    eval eComplexpawnflanksbonus =  EVALUE(  27);
+    eval eComplexonlypawnsbonus =  EVALUE(  62);
+    eval eComplexadjust =  EVALUE( -42);
     eval eTempo =  CVALUE(  20);
     eval eKingpinpenalty[6] = {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  38, -74), VALUE(  65, -61), VALUE( -29,  68), VALUE( -44, 163)  };
     eval ePawnstormblocked[4][5] = {
