@@ -717,7 +717,7 @@ int chessposition::getScaling(int col, Materialhashentry** mhentry)
     for (int me = WHITE; me <= BLACK; me++)
     {
         int you = me ^ S2MMASK;
-        
+
         if (pawns[me] == 0 && nonpawnvalue[me] - nonpawnvalue[you] <= materialvalue[BISHOP])
             e->scale[me] = nonpawnvalue[me] < materialvalue[ROOK] ? SCALE_DRAW : SCALE_HARDTOWIN;
 
@@ -725,6 +725,13 @@ int chessposition::getScaling(int col, Materialhashentry** mhentry)
             e->scale[me] = SCALE_ONEPAWN;
     }
 
+    U64 bishopsbb = (piece00[WBISHOP] | piece00[BBISHOP]);
+    if (bishops[WHITE] == 1 && bishops[BLACK] == 1
+        && (bishopsbb & WHITEBB) && (bishopsbb & BLACKBB)
+        && nonpawnvalue[WHITE] <= materialvalue[BISHOP]
+        && nonpawnvalue[BLACK] <= materialvalue[BISHOP])
+        e->scale[WHITE] = e->scale[BLACK] = SCALE_OCB;
+    
     e->onlyPawns = (nonpawnvalue[0] + nonpawnvalue[1] == 0);
     e->numOfPawns = pawns[0] + pawns[1];
 

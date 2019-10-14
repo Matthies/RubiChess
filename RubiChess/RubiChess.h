@@ -260,10 +260,10 @@ typedef const int32_t eval;
 
 struct evalparamset {
     // Powered by Laser games :-)
-    eval eComplexpasserbonus =  EVALUE(  -3);
+    eval eComplexpasserbonus =  EVALUE(  -2);
     eval eComplexpawnsbonus =  EVALUE(   4);
     eval eComplexpawnflanksbonus =  EVALUE(  31);
-    eval eComplexonlypawnsbonus =  EVALUE(  65);
+    eval eComplexonlypawnsbonus =  EVALUE(  64);
     eval eComplexkingfiledeltabonus =  EVALUE(  -1);
     eval eComplexhardtowinpenalty =  EVALUE( -28);
     eval eComplexadjust =  EVALUE( -37);
@@ -471,6 +471,7 @@ void registeralltuners(chessposition *pos);
 #define SCALE_DRAW 0
 #define SCALE_ONEPAWN 48
 #define SCALE_HARDTOWIN 10
+#define SCALE_OCB 32
 
 enum EvalType { NOTRACE, TRACE};
 
