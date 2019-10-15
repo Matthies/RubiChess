@@ -264,9 +264,6 @@ struct evalparamset {
     eval eComplexpawnflanksbonus = EVALUE(34);
     eval eComplexonlypawnsbonus = EVALUE(61);
     eval eComplexadjust = EVALUE(-39);
-    //eval eComplexpasserbonus =  EVALUE(  -2);
-    //eval eComplexkingfiledeltabonus =  EVALUE(  -1);
-    //eval eComplexhardtowinpenalty =  EVALUE( -28);
     eval eTempo =  CVALUE(  20);
     eval eKingpinpenalty[6] = {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  38, -74), VALUE(  65, -61), VALUE( -29,  68), VALUE( -44, 163)  };
     eval ePawnstormblocked[4][5] = {
@@ -571,8 +568,6 @@ typedef struct pawnhashentry {
     U64 attackedBy2[2];
     bool bothFlanks;
     unsigned char semiopen[2];
-    //int8_t kingfiledelta;  // relative to the rank delta
-
     char padding[2];
 } S_PAWNHASHENTRY;
 
