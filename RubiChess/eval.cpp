@@ -100,7 +100,7 @@ void registeralltuners(chessposition *pos)
     pos->tps.count = 0;
 
     tuneIt = true;
-    registertuner(pos, &eps.eComplexpasserbonus, "eComplexpasserbonus", 0, 0, 0, 0, tuneIt);
+    //registertuner(pos, &eps.eComplexpasserbonus, "eComplexpasserbonus", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eComplexpawnsbonus, "eComplexpawnsbonus", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eComplexpawnflanksbonus, "eComplexpawnflanksbonus", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eComplexonlypawnsbonus, "eComplexonlypawnsbonus", 0, 0, 0, 0, tuneIt);
@@ -676,8 +676,8 @@ int chessposition::getComplexity(int eval, pawnhashentry *phentry, Materialhashe
         int sign = (evaleg > 0) - (evaleg < 0);
         bool hardtowin = phentry->kingfiledelta < 0 && !phentry->bothFlanks && !phentry->passedpawnbb[WHITE] && !phentry->passedpawnbb[BLACK];
         
-        complexity = EEVAL(eps.eComplexpasserbonus, POPCOUNT(phentry->passedpawnbb[WHITE] | phentry->passedpawnbb[BLACK]));
-        complexity += EEVAL(eps.eComplexpawnsbonus, mhentry->numOfPawns);
+        //complexity = EEVAL(eps.eComplexpasserbonus, POPCOUNT(phentry->passedpawnbb[WHITE] | phentry->passedpawnbb[BLACK]));
+        complexity = EEVAL(eps.eComplexpawnsbonus, mhentry->numOfPawns);
         complexity += EEVAL(eps.eComplexpawnflanksbonus, phentry->bothFlanks);
         complexity += EEVAL(eps.eComplexonlypawnsbonus, mhentry->onlyPawns);
         complexity += EEVAL(eps.eComplexkingfiledeltabonus, phentry->kingfiledelta);
