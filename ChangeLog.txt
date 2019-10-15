@@ -1,7 +1,21 @@
 ChangeLog
 =========
-1.6 (release 2019-xx-xx) :
-    - ...
+1.6 (release 2019-10-15) :
+    - Support for 7-men Syzygy tablebase
+    - Improved time management and fixed a related bug causing time violations in some special positions
+    - Faster evaluation after null move
+    - Removed old and obsolete repetition hash table
+    - Reintroduce counter move as third preferred quiet move
+    - Evaluate penalty for pawns on same color as bishop
+    - Evaluate bonus for rook on rank 7
+    - Retune psq parameters with lichess quiet position set
+    - Prune quiet moves with bad counter move history
+    - Fix for ponder mode not switching to better ponder move sometimes
+    - Added parameter for depth used in bench mode
+    - Change TB scores to make TCEC GUI not read it as mate score
+    - Avoid complete sorting of movelist, just loop for best remaining move
+    - Fix voting of best thread, bug was probably introduced with the time management fix
+    - Switched to Clang compiler for Windows releases using lto and profiling
 
 1.5 (release 2019-06-27) :
     - Replaced the (sometimes wrong) pv reading from hash table with a real pv table
