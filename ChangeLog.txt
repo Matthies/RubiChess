@@ -1,5 +1,8 @@
 ChangeLog
 =========
+1.7 (release 20xx-xx-xx) :
+    - ...
+
 1.6 (release 2019-10-15) :
     - Support for 7-men Syzygy tablebase
     - Improved time management and fixed a related bug causing time violations in some special positions
