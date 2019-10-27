@@ -1657,7 +1657,7 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
         while (targetbits)
         {
             to = pullLsb(&targetbits);
-            if (!pos->isAttackedBy<OCCUPIED>(to, you) && !pos->isAttackedByMySlider(to, occupiedbits ^ BITSET(king), you))
+            if (!pos->isAttackedBy<OCCUPIEDANDKING>(to, you) && !pos->isAttackedByMySlider(to, occupiedbits ^ BITSET(king), you))
             {
                 appendMoveToList(&m, king, to, WKING | me, pos->mailbox[to]);
             }
@@ -1936,9 +1936,10 @@ template <AttackType At> U64 chessposition::isAttackedBy(int index, int col)
     return (knight_attacks[index] & piece00[WKNIGHT | col])
         | (MAGICROOKATTACKS(occ, index) & (piece00[WROOK | col] | piece00[WQUEEN | col]))
         | (MAGICBISHOPATTACKS(occ, index) & (piece00[WBISHOP | col] | piece00[WQUEEN | col]))
-        | (piece00[WPAWN | col] & (At == OCCUPIED ?
+        | (piece00[WPAWN | col] & (At != FREE ?
             pawn_attacks_from[index][col] :
-            pawn_moves_from[index][col] | (pawn_moves_from_double[index][col] & PAWNPUSH(col ^ S2MMASK, ~occ))));
+            pawn_moves_from[index][col] | (pawn_moves_from_double[index][col] & PAWNPUSH(col ^ S2MMASK, ~occ))))
+        | (At == OCCUPIEDANDKING ? (king_attacks[index] & piece00[WKING | col]) : 0ULL);
 }
 
 

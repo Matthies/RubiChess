@@ -258,10 +258,20 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     }
 
     // test for remis via 50 moves rule
-    if (halfmovescounter > 100)
+    if (halfmovescounter >= 100)
     {
-        SDEBUGPRINT(isDebugPv, debugInsert, "Draw (50 moves)");
-        return SCOREDRAW;
+        if (!isCheckbb)
+        {
+            SDEBUGPRINT(isDebugPv, debugInsert, "Draw (50 moves)");
+            return SCOREDRAW;
+        } else {
+            // special case: test for checkmate
+            chessmovelist evasions;
+            if (CreateMovelist<EVASION>(this, &evasions.move[0]) > 0)
+                return SCOREDRAW;
+            else
+                return SCOREBLACKWINS + ply;
+        }
     }
 
     if (en.stopLevel == ENGINESTOPIMMEDIATELY)

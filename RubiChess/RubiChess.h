@@ -931,7 +931,7 @@ enum RootsearchType { SinglePVSearch, MultiPVSearch, PonderSearch };
 template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* m);
 template <MoveType Mt> void evaluateMoves(chessmovelist *ml, chessposition *pos, int16_t **cmptr);
 
-enum AttackType { FREE, OCCUPIED };
+enum AttackType { FREE, OCCUPIED, OCCUPIEDANDKING };
 
 struct positioneval {
     pawnhashentry *phentry;
