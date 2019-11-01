@@ -1687,11 +1687,10 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
             targetbits = betweenMask[king][attacker];
             while (true)
             {
+                frombits = frombits & ~pos->kingPinned[me];
                 while (frombits)
                 {
                     from = pullLsb(&frombits);
-                    if ((pos->kingPinned[me] & BITSET(from)) && lineMask[from][to] != lineMask[from][king])
-                        continue;
                     pc = pos->mailbox[from];
                     if ((pc >> 1) == PAWN)
                     {
