@@ -1029,6 +1029,7 @@ public:
     void print(ostream* os = &cout);
     int phase();
     U64 movesTo(PieceCode pc, int from);
+    template <PieceType Pt> U64 pieceMovesTo(int from);
     bool isAttacked(int index);
     U64 isAttackedByMySlider(int index, U64 occ, int me);  // special simple version to detect giving check by removing blocker
     U64 attackedByBB(int index, U64 occ);  // returns bitboard of all pieces of both colors attacking index square 
