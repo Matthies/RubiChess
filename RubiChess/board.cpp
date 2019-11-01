@@ -1554,7 +1554,7 @@ bool chessposition::playMove(chessmove *cm)
     ply++;
     movestack[mstop++].movecode = cm->code;
     myassert(mstop < MAXMOVESEQUENCELENGTH, this, 1, mstop);
-
+    updatePins();
     return true;
 }
 
@@ -1690,6 +1690,8 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                 while (frombits)
                 {
                     from = pullLsb(&frombits);
+                    if ((pos->kingPinned[me] & BITSET(from)) && lineMask[from][to] != lineMask[from][king])
+                        continue;
                     pc = pos->mailbox[from];
                     if ((pc >> 1) == PAWN)
                     {

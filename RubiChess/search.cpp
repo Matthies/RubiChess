@@ -180,28 +180,28 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
             // Leave out capture that is delta-pruned
             continue;
 
-        if (playMove(m))
+        if (!playMove(m))
+            continue;
+
+        ms.legalmovenum++;
+        score = -getQuiescence(-beta, -alpha, depth - 1);
+        unplayMove(m);
+        if (score > bestscore)
         {
-            ms.legalmovenum++;
-            score = -getQuiescence(-beta, -alpha, depth - 1);
-            unplayMove(m);
-            if (score > bestscore)
+            bestscore = score;
+            if (score >= beta)
             {
-                bestscore = score;
-                if (score >= beta)
-                {
-                    SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (fail high).", score);
-                    return score;
-                }
-                if (score > alpha)
-                {
-                    updatePvTable(m->code, true);
-                    alpha = score;
+                SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (fail high).", score);
+                return score;
+            }
+            if (score > alpha)
+            {
+                updatePvTable(m->code, true);
+                alpha = score;
 #ifdef EVALTUNE
-                    foundpts = true;
-                    copyPositionTuneSet(&this->pts, &this->ev[0], &targetpts, &ev[0]);
+                foundpts = true;
+                copyPositionTuneSet(&this->pts, &this->ev[0], &targetpts, &ev[0]);
 #endif
-                }
             }
         }
     }
@@ -593,97 +593,97 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             && ms.cmptr[1] && ms.cmptr[1][pc * 64 + to] < 0)
             continue;
 
-        if (playMove(m))
+        if (!playMove(m))
+            continue;
+
+        LegalMoves++;
+
+        // Check again for futility pruning now that we found a valid move
+        if (futilityPrune)
         {
-            LegalMoves++;
-
-            // Check again for futility pruning now that we found a valid move
-            if (futilityPrune)
-            {
-                SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by futility: staticeval(%d) < alpha(%d) - futilityMargin(%d)", debugMove.toString().c_str(), staticeval, alpha, 100 + 80 * depth);
-                unplayMove(m);
-                continue;
-            }
-
-            if (eval_type != HASHEXACT)
-            {
-                // First move ("PV-move"); do a normal search
-                score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
-                if (reduction && score > alpha)
-                {
-                    // research without reduction
-                    effectiveDepth += reduction;
-                    score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
-                }
-            }
-            else {
-                // try a PV-Search
-                score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
-                if (score > alpha && score < beta)
-                {
-                    // reasearch with full window
-                    score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
-                }
-            }
+            SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by futility: staticeval(%d) < alpha(%d) - futilityMargin(%d)", debugMove.toString().c_str(), staticeval, alpha, 100 + 80 * depth);
             unplayMove(m);
-
-            if (en.stopLevel == ENGINESTOPIMMEDIATELY)
-            {
-                // time is over; immediate stop requested
-                return beta;
-            }
-
-            SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s scored %d", debugMove.toString().c_str(), score);
-
-            if (score > bestscore)
-            {
-                bestscore = score;
-                bestcode = m->code;
-
-                if (score >= beta)
-                {
-                    if (!ISTACTICAL(m->code))
-                    {
-                        updateHistory(m->code, ms.cmptr, depth * depth);
-                        for (int i = 0; i < quietsPlayed; i++)
-                        {
-                            uint32_t qm = quietMoves[i];
-                            updateHistory(qm, ms.cmptr, -(depth * depth));
-                        }
-
-                        // Killermove
-                        if (killer[ply][0] != m->code)
-                        {
-                            killer[ply][1] = killer[ply][0];
-                            killer[ply][0] = m->code;
-                        }
-
-                        // save countermove
-                        if (lastmove)
-                            countermove[GETPIECE(lastmove)][GETTO(lastmove)] = m->code;
-                    }
-
-                    SDEBUGPRINT(isDebugPv, debugInsert, " Beta-cutoff by move %s: %d  %s%s", m->toString().c_str(), score, excludestr.c_str(), excludeMove ? " : not singular" : "");
-                    if (!excludeMove)
-                    {
-                        SDEBUGPRINT(isDebugPv, debugInsert, " ->Hash(%d) = %d(beta)", effectiveDepth, score);
-                        tp.addHash(newhash, FIXMATESCOREADD(score, ply), staticeval, HASHBETA, effectiveDepth, (uint16_t)bestcode);
-                    }
-                    return score;   // fail soft beta-cutoff
-                }
-
-                if (score > alpha)
-                {
-                    SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s raising alpha to %d", debugMove.toString().c_str(), score);
-                    alpha = score;
-                    eval_type = HASHEXACT;
-                    updatePvTable(bestcode, true);
-                }
-            }
-
-            if (!ISTACTICAL(m->code))
-                quietMoves[quietsPlayed++] = m->code;
+            continue;
         }
+
+        if (eval_type != HASHEXACT)
+        {
+            // First move ("PV-move"); do a normal search
+            score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
+            if (reduction && score > alpha)
+            {
+                // research without reduction
+                effectiveDepth += reduction;
+                score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
+            }
+        }
+        else {
+            // try a PV-Search
+            score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
+            if (score > alpha && score < beta)
+            {
+                // reasearch with full window
+                score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
+            }
+        }
+        unplayMove(m);
+
+        if (en.stopLevel == ENGINESTOPIMMEDIATELY)
+        {
+            // time is over; immediate stop requested
+            return beta;
+        }
+
+        SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s scored %d", debugMove.toString().c_str(), score);
+
+        if (score > bestscore)
+        {
+            bestscore = score;
+            bestcode = m->code;
+
+            if (score >= beta)
+            {
+                if (!ISTACTICAL(m->code))
+                {
+                    updateHistory(m->code, ms.cmptr, depth * depth);
+                    for (int i = 0; i < quietsPlayed; i++)
+                    {
+                        uint32_t qm = quietMoves[i];
+                        updateHistory(qm, ms.cmptr, -(depth * depth));
+                    }
+
+                    // Killermove
+                    if (killer[ply][0] != m->code)
+                    {
+                        killer[ply][1] = killer[ply][0];
+                        killer[ply][0] = m->code;
+                    }
+
+                    // save countermove
+                    if (lastmove)
+                        countermove[GETPIECE(lastmove)][GETTO(lastmove)] = m->code;
+                }
+
+                SDEBUGPRINT(isDebugPv, debugInsert, " Beta-cutoff by move %s: %d  %s%s", m->toString().c_str(), score, excludestr.c_str(), excludeMove ? " : not singular" : "");
+                if (!excludeMove)
+                {
+                    SDEBUGPRINT(isDebugPv, debugInsert, " ->Hash(%d) = %d(beta)", effectiveDepth, score);
+                    tp.addHash(newhash, FIXMATESCOREADD(score, ply), staticeval, HASHBETA, effectiveDepth, (uint16_t)bestcode);
+                }
+                return score;   // fail soft beta-cutoff
+            }
+
+            if (score > alpha)
+            {
+                SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s raising alpha to %d", debugMove.toString().c_str(), score);
+                alpha = score;
+                eval_type = HASHEXACT;
+                updatePvTable(bestcode, true);
+            }
+        }
+
+        if (!ISTACTICAL(m->code))
+            quietMoves[quietsPlayed++] = m->code;
     }
 
     if (LegalMoves == 0)

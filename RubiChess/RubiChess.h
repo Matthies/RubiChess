@@ -802,6 +802,8 @@ extern U64 rankMask[64];
 extern U64 betweenMask[64][64];
 
 extern int squareDistance[64][64];
+extern U64 lineMask[64][64];
+
 
 struct chessmovestack
 {
@@ -815,6 +817,7 @@ struct chessmovestack
     int fullmovescounter;
     U64 isCheckbb;
     uint32_t movecode;
+    U64 kingPinned[2];
 };
 
 #define MAXMOVELISTLENGTH 256	// for lists of possible pseudo-legal moves
@@ -949,7 +952,6 @@ public:
     U64 occupied00[2];
     U64 attackedBy2[2];
     U64 attackedBy[2][7];
-    U64 kingPinned[2];
 
     // The following block is mapped/copied to the movestack, so its important to keep the order
     int state;
@@ -962,6 +964,7 @@ public:
     int fullmovescounter;
     U64 isCheckbb;
     uint32_t movecode;
+    U64 kingPinned[2];
 
     uint8_t mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
     chessmovestack movestack[MAXMOVESEQUENCELENGTH];

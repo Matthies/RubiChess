@@ -591,7 +591,7 @@ int chessposition::getEval()
     getpsqval();
 #endif
     ph = phase();
-    updatePins();
+    //updatePins();
     positioneval pe;
 
     // reset the attackedBy information
