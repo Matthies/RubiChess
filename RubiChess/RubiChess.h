@@ -816,6 +816,7 @@ struct chessmovestack
     int halfmovescounter;
     int fullmovescounter;
     U64 isCheckbb;
+    int lastnullmove;
     uint32_t movecode;
     U64 kingPinned[2];
 };
@@ -963,6 +964,7 @@ public:
     int halfmovescounter;
     int fullmovescounter;
     U64 isCheckbb;
+    int lastnullmove;
     uint32_t movecode;
     U64 kingPinned[2];
 

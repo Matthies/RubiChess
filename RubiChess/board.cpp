@@ -397,6 +397,7 @@ int chessposition::getFromFen(const char* sFen)
     memset(countermove, 0, sizeof(countermove));
     mstop = 0;
     rootheight = 0;
+    lastnullmove = -1;
     return 0;
 }
 
@@ -534,7 +535,8 @@ void chessposition::tbFilterRootMoves()
 int chessposition::testRepetiton()
 {
     int hit = 0;
-    for (int i = mstop - 1; i >= 0; i--)
+    int lastrepply = max(mstop - halfmovescounter, lastnullmove + 1);
+    for (int i = mstop - 4; i >= lastrepply; i -= 2)
     {
         if (hash == movestack[i].hash)
         {
@@ -545,12 +547,6 @@ int chessposition::testRepetiton()
                 break;
             }
         }
-        if (movestack[i].halfmovescounter == 0)
-            // no more reversible moves
-            break;
-        if (movestack[i].movecode == 0)
-            // null move
-            break;
     }
     return hit;
 }
@@ -618,6 +614,7 @@ void chessposition::prepareStack()
 
 void chessposition::playNullMove()
 {
+    lastnullmove = mstop;
     movestack[mstop++].movecode = 0;
     state ^= S2MMASK;
     hash ^= zb.s2m;
@@ -631,7 +628,7 @@ void chessposition::unplayNullMove()
     state ^= S2MMASK;
     hash ^= zb.s2m;
     ply--;
-    mstop--;
+    lastnullmove = movestack[--mstop].lastnullmove;
     myassert(mstop >= 0, this, 1, mstop);
 }
 
