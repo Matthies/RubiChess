@@ -386,6 +386,7 @@ int chessposition::getFromFen(const char* sFen)
     }
 
     isCheckbb = isAttackedBy<OCCUPIED>(kingpos[state & S2MMASK], (state & S2MMASK) ^ S2MMASK);
+    updatePins();
 
     hash = zb.getHash(this);
     pawnhash = zb.getPawnHash(this);

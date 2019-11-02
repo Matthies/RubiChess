@@ -628,12 +628,14 @@ extern Materialhash mh;
 #define WKING 12
 #define BKING 13
 
-#define S2MMASK 0x01
-#define WQCMASK 0x02
-#define WKCMASK 0x04
-#define BQCMASK 0x08
-#define BKCMASK 0x10
-#define CASTLEMASK 0x1E
+// My son wants this in binary :-)
+#define S2MMASK     0b00001
+#define WQCMASK     0b00010
+#define WKCMASK     0b00100
+#define BQCMASK     0b01000
+#define BKCMASK     0b10000
+#define CASTLEMASK  0b11110
+
 #define WQC 1
 #define WKC 2
 #define BQC 3
