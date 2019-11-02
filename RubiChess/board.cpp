@@ -808,6 +808,11 @@ void chessposition::updatePins()
 bool chessposition::moveGivesCheck(uint32_t c)
 {
     int pc = GETPIECE(c);
+
+    // As long as discovered checks aren't handled, we can assume that king moves never give check
+    if ((pc >> 1) == KING)
+        return false;
+
     int me = pc & S2MMASK;
     int you = me ^ S2MMASK;
     int yourKing = kingpos[you];
@@ -1554,7 +1559,7 @@ bool chessposition::playMove(chessmove *cm)
     ply++;
     movestack[mstop++].movecode = cm->code;
     myassert(mstop < MAXMOVESEQUENCELENGTH, this, 1, mstop);
-
+    updatePins();
     return true;
 }
 
@@ -1657,7 +1662,7 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
         while (targetbits)
         {
             to = pullLsb(&targetbits);
-            if (!pos->isAttackedBy<OCCUPIED>(to, you) && !pos->isAttackedByMySlider(to, occupiedbits ^ BITSET(king), you))
+            if (!pos->isAttackedBy<OCCUPIEDANDKING>(to, you) && !pos->isAttackedByMySlider(to, occupiedbits ^ BITSET(king), you))
             {
                 appendMoveToList(&m, king, to, WKING | me, pos->mailbox[to]);
             }
@@ -1687,6 +1692,7 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
             targetbits = betweenMask[king][attacker];
             while (true)
             {
+                frombits = frombits & ~pos->kingPinned[me];
                 while (frombits)
                 {
                     from = pullLsb(&frombits);
@@ -1929,6 +1935,26 @@ U64 chessposition::movesTo(PieceCode pc, int from)
 }
 
 
+template <PieceType Pt>
+U64 chessposition::pieceMovesTo(int from)
+{
+    U64 occ = occupied00[0] | occupied00[1];
+    switch (Pt)
+    {
+    case KNIGHT:
+        return knight_attacks[from];
+    case BISHOP:
+        return MAGICBISHOPATTACKS(occ, from);
+    case ROOK:
+        return MAGICROOKATTACKS(occ, from);
+    case QUEEN:
+        return MAGICBISHOPATTACKS(occ, from) | MAGICROOKATTACKS(occ, from);
+    default:
+        return 0ULL;
+    }
+}
+
+
 // this is only used for king attacks, so opponent king attacks can be left out
 template <AttackType At> U64 chessposition::isAttackedBy(int index, int col)
 {
@@ -1936,9 +1962,10 @@ template <AttackType At> U64 chessposition::isAttackedBy(int index, int col)
     return (knight_attacks[index] & piece00[WKNIGHT | col])
         | (MAGICROOKATTACKS(occ, index) & (piece00[WROOK | col] | piece00[WQUEEN | col]))
         | (MAGICBISHOPATTACKS(occ, index) & (piece00[WBISHOP | col] | piece00[WQUEEN | col]))
-        | (piece00[WPAWN | col] & (At == OCCUPIED ?
+        | (piece00[WPAWN | col] & (At != FREE ?
             pawn_attacks_from[index][col] :
-            pawn_moves_from[index][col] | (pawn_moves_from_double[index][col] & PAWNPUSH(col ^ S2MMASK, ~occ))));
+            pawn_moves_from[index][col] | (pawn_moves_from_double[index][col] & PAWNPUSH(col ^ S2MMASK, ~occ))))
+        | (At == OCCUPIEDANDKING ? (king_attacks[index] & piece00[WKING | col]) : 0ULL);
 }
 
 
@@ -2697,6 +2724,13 @@ void engine::communicate(string inputstring)
     } while (command != QUIT && (inputstring == "" || pendingposition));
     waitForSearchGuide(&searchguidethread);
 }
+
+// Explicit template instantiation
+// This avoids putting these definitions in header file
+template U64 chessposition::pieceMovesTo<KNIGHT>(int);
+template U64 chessposition::pieceMovesTo<BISHOP>(int);
+template U64 chessposition::pieceMovesTo<ROOK>(int);
+template U64 chessposition::pieceMovesTo<QUEEN>(int);
 
 
 // Some global objects

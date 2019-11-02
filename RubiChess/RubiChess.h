@@ -815,6 +815,7 @@ struct chessmovestack
     int fullmovescounter;
     U64 isCheckbb;
     uint32_t movecode;
+    U64 kingPinned[2];
 };
 
 #define MAXMOVELISTLENGTH 256	// for lists of possible pseudo-legal moves
@@ -931,7 +932,7 @@ enum RootsearchType { SinglePVSearch, MultiPVSearch, PonderSearch };
 template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* m);
 template <MoveType Mt> void evaluateMoves(chessmovelist *ml, chessposition *pos, int16_t **cmptr);
 
-enum AttackType { FREE, OCCUPIED };
+enum AttackType { FREE, OCCUPIED, OCCUPIEDANDKING };
 
 struct positioneval {
     pawnhashentry *phentry;
@@ -949,7 +950,6 @@ public:
     U64 occupied00[2];
     U64 attackedBy2[2];
     U64 attackedBy[2][7];
-    U64 kingPinned[2];
 
     // The following block is mapped/copied to the movestack, so its important to keep the order
     int state;
@@ -962,6 +962,7 @@ public:
     int fullmovescounter;
     U64 isCheckbb;
     uint32_t movecode;
+    U64 kingPinned[2];
 
     uint8_t mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
     chessmovestack movestack[MAXMOVESEQUENCELENGTH];
@@ -1026,6 +1027,7 @@ public:
     void print(ostream* os = &cout);
     int phase();
     U64 movesTo(PieceCode pc, int from);
+    template <PieceType Pt> U64 pieceMovesTo(int from);
     bool isAttacked(int index);
     U64 isAttackedByMySlider(int index, U64 occ, int me);  // special simple version to detect giving check by removing blocker
     U64 attackedByBB(int index, U64 occ);  // returns bitboard of all pieces of both colors attacking index square 
