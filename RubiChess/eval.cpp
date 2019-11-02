@@ -488,21 +488,7 @@ int chessposition::getLateEval(positioneval *pe)
     // penalty for weak squares in our king ring
     kingdanger += SQEVAL(eps.eWeakkingringpenalty, POPCOUNT(myweaksquares & kingdangerMask[kingpos[Me]][Me]), You);
 
-#if 0
-    for (int p = KNIGHT; p <= QUEEN; p++) {
-        // Attacks to our king ring
-        if (pe->kingattackpiececount[You][p])
-        {
-            kingdanger += SQEVAL(eps.eKingattackweight[p], pe->kingattackpiececount[You][p] * pe->kingattackers[You], You);
-        }
-
-        if (movesTo(p << 1, kingpos[Me]) & attackedBy[You][p] & yoursafetargets)
-        {
-            // Bonus for safe checks
-            kingdanger += SQEVAL(eps.eSafecheckbonus[p], 1, You);
-        }
-    }
-#else
+    // Safe checks and attacks to king area
     kingdanger += SQEVAL(eps.eKingattackweight[KNIGHT], pe->kingattackpiececount[You][KNIGHT] * pe->kingattackers[You], You);
     if (pieceMovesTo<KNIGHT>(kingpos[Me]) & attackedBy[You][KNIGHT] & yoursafetargets)
         kingdanger += SQEVAL(eps.eSafecheckbonus[KNIGHT], 1, You);
@@ -515,7 +501,7 @@ int chessposition::getLateEval(positioneval *pe)
     kingdanger += SQEVAL(eps.eKingattackweight[QUEEN], pe->kingattackpiececount[You][QUEEN] * pe->kingattackers[You], You);
     if (pieceMovesTo<QUEEN>(kingpos[Me]) & attackedBy[You][QUEEN] & yoursafetargets)
         kingdanger += SQEVAL(eps.eSafecheckbonus[QUEEN], 1, You);
-#endif
+
     kingdanger += SQEVAL(eps.eKingdangerbyqueen, !piece00[WQUEEN | You], You);
     result += SQRESULT(kingdanger, You);
     if (bTrace) te.kingattackpower[You] += SQRESULT(kingdanger, You);
@@ -605,7 +591,6 @@ int chessposition::getEval()
     getpsqval();
 #endif
     ph = phase();
-    //updatePins();
     positioneval pe;
 
     // reset the attackedBy information

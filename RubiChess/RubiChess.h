@@ -802,8 +802,6 @@ extern U64 rankMask[64];
 extern U64 betweenMask[64][64];
 
 extern int squareDistance[64][64];
-extern U64 lineMask[64][64];
-
 
 struct chessmovestack
 {
