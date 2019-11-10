@@ -575,14 +575,21 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (depth > 2 && !ISTACTICAL(m->code))
         {
             reduction = reductiontable[positionImproved][depth][min(63, LegalMoves + 1)];
-            en.stats_n++;
-            en.stat_lmr += reductiontable[positionImproved][depth][min(63, LegalMoves + 1)];
+
+            en.stat_n++;
+            en.stat_pi[positionImproved]++;
+            en.stat_lmr[positionImproved] += reductiontable[positionImproved][depth][min(63, LegalMoves + 1)];
 
             // adjust reduction by stats value
             reduction -= stats / 10000;
             en.stat_history += stats / 10000;
 
+            int red0 = reduction;
             reduction = min(depth, max(0, reduction));
+            int red1 = reduction;
+
+            en.stat_correction += (red1 - red0);
+            en.stat_total += reduction;
 
             SDEBUGPRINT(isDebugPv && isDebugMove && reduction, debugInsert, " PV move %s (value=%d) with depth reduced by %d", debugMove.toString().c_str(), m->value, reduction);
         }
@@ -1448,7 +1455,14 @@ void searchguide()
         en.sthread[tnum].thr.join();
     en.stopLevel = ENGINETERMINATEDSEARCH;
 
-    double f1 = en.stat_lmr / (double)en.stats_n;
-    double f2 = en.stat_history / (double)en.stats_n;
-    printf("info string Reduction stats:  lmr: %.4f   hist: %.4f   n=%lld  \n", f1, f2, en.stats_n);
+
+    double f10 = en.stat_lmr[0] / (double)en.stat_pi[0];
+    double f11 = en.stat_lmr[1] / (double)en.stat_pi[1];
+    double f1 = (en.stat_lmr[0] + en.stat_lmr[1]) / (double)en.stat_n;
+    double f2 = en.stat_history / (double)en.stat_n;
+    double f3 = en.stat_pv / (double)en.stat_n;
+    double f4 = en.stat_correction / (double)en.stat_n;
+    double ft = en.stat_total / (double)en.stat_n;
+    printf("info string Reduction stats:  lmr[0]: %.4f   lmr[1]: %.4f   lmr: %.4f   hist: %.4f   pv: %.4f   corr: %.4f   total: %.4f   error: %.4f   n=%lld  \n",
+        f10, f11, f1, f2, f3, f4, ft, (f1 + f2 + f3 + f4 - ft), en.stat_n);
 }
