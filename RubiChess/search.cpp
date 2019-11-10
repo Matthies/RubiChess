@@ -568,6 +568,11 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             }
         }
 
+#ifdef STATISTICS
+        en.stat_moves_n++;
+        en.stat_extendmove += extendMove;
+#endif
+
         int stats = getHistory(m->code, ms.cmptr);
         int reduction = 0;
 
@@ -576,20 +581,23 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         {
             reduction = reductiontable[positionImproved][depth][min(63, LegalMoves + 1)];
 
-            en.stat_n++;
-            en.stat_pi[positionImproved]++;
-            en.stat_lmr[positionImproved] += reductiontable[positionImproved][depth][min(63, LegalMoves + 1)];
-
             // adjust reduction by stats value
             reduction -= stats / 10000;
+
+#ifdef STATISTICS
+            en.stat_red_n++;
+            en.stat_pi[positionImproved]++;
+            en.stat_lmr[positionImproved] += reductiontable[positionImproved][depth][min(63, LegalMoves + 1)];
             en.stat_history -= stats / 10000;
-
             int red0 = reduction;
+#endif
             reduction = min(depth, max(0, reduction));
-            int red1 = reduction;
 
+#ifdef STATISTICS
+            int red1 = reduction;
             en.stat_correction += (red1 - red0);
             en.stat_total += reduction;
+#endif
 
             SDEBUGPRINT(isDebugPv && isDebugMove && reduction, debugInsert, " PV move %s (value=%d) with depth reduced by %d", debugMove.toString().c_str(), m->value, reduction);
         }
@@ -1455,14 +1463,18 @@ void searchguide()
         en.sthread[tnum].thr.join();
     en.stopLevel = ENGINETERMINATEDSEARCH;
 
-
+#ifdef STATISTICS
     double f10 = en.stat_lmr[0] / (double)en.stat_pi[0];
     double f11 = en.stat_lmr[1] / (double)en.stat_pi[1];
-    double f1 = (en.stat_lmr[0] + en.stat_lmr[1]) / (double)en.stat_n;
-    double f2 = en.stat_history / (double)en.stat_n;
-    double f3 = en.stat_pv / (double)en.stat_n;
-    double f4 = en.stat_correction / (double)en.stat_n;
-    double ft = en.stat_total / (double)en.stat_n;
-    printf("info string Reduction stats:  lmr[0]: %.4f   lmr[1]: %.4f   lmr: %.4f   hist: %.4f   pv: %.4f   corr: %.4f   total: %.4f   error: %.4f   n=%lld  \n",
-        f10, f11, f1, f2, f3, f4, ft, (f1 + f2 + f3 + f4 - ft), en.stat_n);
+    double f1 = (en.stat_lmr[0] + en.stat_lmr[1]) / (double)en.stat_red_n;
+    double f2 = en.stat_history / (double)en.stat_red_n;
+    double f3 = en.stat_pv / (double)en.stat_red_n;
+    double f4 = en.stat_correction / (double)en.stat_red_n;
+    double ft = en.stat_total / (double)en.stat_red_n;
+    printf("info string Reduction stats:  lmr[0]: %.4f   lmr[1]: %.4f   lmr: %.4f   hist: %.4f   pv: %.4f   corr: %.4f   total: %.4f   error: %.4f   n=%lld\n",
+        f10, f11, f1, f2, f3, f4, ft, (f1 + f2 + f3 + f4 - ft), en.stat_red_n);
+
+    f1 = en.stat_extendmove / (double)en.stat_moves_n;
+    printf("info string Extensions stats;  exmoves: %.4f   moves=%lld\n", f1, en.stat_moves_n);
+#endif
 }

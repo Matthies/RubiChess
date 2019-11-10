@@ -19,6 +19,10 @@
 
 #define VERNUM "1.7-dev"
 
+#if 1
+#define STATISTICS
+#endif
+
 #if 0
 #define SDEBUG
 #endif
@@ -1151,13 +1155,17 @@ public:
     int t2stop = 0;     // immediate stop
     bool bStopCount;
 #endif
-    U64 stat_n = 0;
+#ifdef STATISTICS
+    U64 stat_moves_n = 0;
+    U64 stat_red_n = 0;
     U64 stat_total = 0;
     U64 stat_lmr[2] = { 0 };
     U64 stat_pi[2] = { 0 };
+    U64 stat_extendmove = 0;
     signed long long stat_history = 0;
     signed long long stat_pv = 0;
     signed long long stat_correction = 0;
+#endif
     GuiToken parse(vector<string>*, string ss);
     void send(const char* format, ...);
     void communicate(string inputstring);
