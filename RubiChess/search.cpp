@@ -582,7 +582,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
             // adjust reduction by stats value
             reduction -= stats / 10000;
-            en.stat_history += stats / 10000;
+            en.stat_history -= stats / 10000;
 
             int red0 = reduction;
             reduction = min(depth, max(0, reduction));
