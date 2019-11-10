@@ -575,9 +575,13 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (depth > 2 && !ISTACTICAL(m->code))
         {
             reduction = reductiontable[positionImproved][depth][min(63, LegalMoves + 1)];
+            en.stats_n++;
+            en.stat_lmr += reductiontable[positionImproved][depth][min(63, LegalMoves + 1)];
 
             // adjust reduction by stats value
             reduction -= stats / 10000;
+            en.stat_history += stats / 10000;
+
             reduction = min(depth, max(0, reduction));
 
             SDEBUGPRINT(isDebugPv && isDebugMove && reduction, debugInsert, " PV move %s (value=%d) with depth reduced by %d", debugMove.toString().c_str(), m->value, reduction);
@@ -1443,4 +1447,8 @@ void searchguide()
     for (int tnum = 0; tnum < en.Threads; tnum++)
         en.sthread[tnum].thr.join();
     en.stopLevel = ENGINETERMINATEDSEARCH;
+
+    double f1 = en.stat_lmr / (double)en.stats_n;
+    double f2 = en.stat_history / (double)en.stats_n;
+    printf("info string Reduction stats:  lmr: %.4f   hist: %.4f   n=%lld  \n", f1, f2, en.stats_n);
 }

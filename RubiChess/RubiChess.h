@@ -1151,6 +1151,9 @@ public:
     int t2stop = 0;     // immediate stop
     bool bStopCount;
 #endif
+    U64 stats_n = 0;
+    U64 stat_lmr = 0;
+    signed long long stat_history = 0;
     GuiToken parse(vector<string>*, string ss);
     void send(const char* format, ...);
     void communicate(string inputstring);
