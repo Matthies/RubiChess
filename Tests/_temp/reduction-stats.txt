@@ -1,0 +1,12 @@
+
+10 Spiele 10.0+1.0
+MS: 2019-11-10 14:47:11,113<--1:info string Reduction stats:  lmr[0]: 2.4507   lmr[1]: 1.3615   lmr: 2.0713   hist: -0.1659   pv: 0.0000   corr: 0.1482   total: 2.0536   error: -0.0000   n=519702313
+EX: 2019-11-10 14:47:15,572<--2:info string Reduction stats:  lmr[0]: 3.4977   lmr[1]: 2.5182   lmr: 3.1560   hist: 0.0495   pv: -0.4279   corr: 0.0440   total: 2.8215   error: 0.0000   n=585412914
+
+6 Spiele 60.0+2.0
+MS: 2019-11-10 15:19:24,005<--1:info string Reduction stats:  lmr[0]: 2.5099   lmr[1]: 1.4046   lmr: 2.1251   hist: 0.0321   pv: 0.0000   corr: 0.0895   total: 2.2467   error: -0.0000   n=716185760
+EX: 2019-11-10 15:19:26,166<--2:info string Reduction stats:  lmr[0]: 3.5327   lmr[1]: 2.5622   lmr: 3.1964   hist: 0.4998   pv: -0.3298   corr: -0.1262   total: 3.2401   error: 0.0000   n=868485541
+
+4 Spiele 10.0+1.0 mit angepasster reduction
+MS: 2019-11-10 16:30:10,146<--1:info string Reduction stats:  lmr[0]: 2.3721   lmr[1]: 1.3247   lmr: 2.0319   hist: -0.1987   pv: 0.0000   corr: 0.1722   total: 2.0054   error: 0.0000   n=338340505
+EX: 2019-11-10 16:30:11,366<--2:info string Reduction stats:  lmr[0]: 3.2243   lmr[1]: 2.0235   lmr: 2.8416   hist: 0.0199   pv: -0.5021   corr: 0.0500   total: 2.4094   error: 0.0000   n=363429750
