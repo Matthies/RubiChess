@@ -36,9 +36,9 @@ void searchinit()
         for (int m = 0; m < 64; m++)
         {
             // reduction for not improving positions
-            reductiontable[0][d][m] = (int)round(log(d) * log(m) / 1.2);
+            reductiontable[0][d][m] = 1 + (int)round(log(d * 1.5) * log(m) * 0.60);
             // reduction for improving positions
-            reductiontable[1][d][m] = (int)round(log(d) * log(m) / 2.1);
+            reductiontable[1][d][m] = (int)round(log(d * 1.5) * log(m * 2) * 0.43);
         }
     for (int d = 0; d < MAXLMPDEPTH; d++)
     {
@@ -82,12 +82,12 @@ inline void chessposition::updateHistory(uint32_t code, int16_t **cmptr, int val
     int s2m = pc & S2MMASK;
     int from = GETFROM(code);
     int to = GETTO(code);
-    value = max(-400, min(400, value));
-    int delta = 32 * value - history[s2m][from][to] * abs(value) / 512;
+    value = max(-256, min(256, value));
+    int delta = 32 * value - history[s2m][from][to] * abs(value) / 256;
     history[s2m][from][to] += delta;
     for (int i = 0; i < CMPLIES; i++)
         if (cmptr[i]) {
-            delta = 32 * value - cmptr[i][pc * 64 + to] * abs(value) / 512;
+            delta = 32 * value - cmptr[i][pc * 64 + to] * abs(value) / 256;
             cmptr[i][pc * 64 + to] += delta;
         }
 }
@@ -540,6 +540,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             continue;
         }
 
+        int stats = getHistory(m->code, ms.cmptr);
         int extendMove = 0;
 
         // Singular extension
@@ -568,7 +569,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             }
         }
 
-        int stats = getHistory(m->code, ms.cmptr);
         int reduction = 0;
 
         // Late move reduction
@@ -577,7 +577,11 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             reduction = reductiontable[positionImproved][depth][min(63, LegalMoves + 1)];
 
             // adjust reduction by stats value
-            reduction -= stats / 10000;
+            reduction -= stats / 4096;
+
+            // adjust reduction at PV nodes
+            reduction -= PVNode;
+
             reduction = min(depth, max(0, reduction));
 
             SDEBUGPRINT(isDebugPv && isDebugMove && reduction, debugInsert, " PV move %s (value=%d) with depth reduced by %d", debugMove.toString().c_str(), m->value, reduction);
