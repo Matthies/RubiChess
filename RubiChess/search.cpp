@@ -592,9 +592,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             en.stat_pi[positionImproved]++;
             en.stat_lmr[positionImproved] += reductiontable[positionImproved][depth][min(63, LegalMoves + 1)];
             en.stat_history -= stats / 4096;
+            en.stat_pv -= PVNode;
             int red0 = reduction;
 #endif
-
             reduction = min(depth, max(0, reduction));
 
 #ifdef STATISTICS

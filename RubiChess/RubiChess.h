@@ -19,7 +19,7 @@
 
 #define VERNUM "1.7-dev"
 
-#if 1
+#if 0
 #define STATISTICS
 #endif
 
