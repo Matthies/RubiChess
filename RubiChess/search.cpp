@@ -18,6 +18,9 @@
 
 #include "RubiChess.h"
 
+#ifdef STATISTICS
+struct statistic statistics;
+#endif
 
 const int deltapruningmargin = 100;
 
@@ -249,11 +252,15 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     bool isDebugPv = triggerDebug(&debugMove);
 #endif
 
+    STATISTICSINC(ab_n);
+    STATISTICSADD(ab_pv, PVNode);
+
     // test for remis via repetition
     int rep = testRepetiton();
     if (rep >= 2)
     {
         SDEBUGPRINT(isDebugPv, debugInsert, "Draw (repetition)");
+        STATISTICSINC(ab_draw);
         return SCOREDRAW;
     }
 
@@ -263,14 +270,20 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (!isCheckbb)
         {
             SDEBUGPRINT(isDebugPv, debugInsert, "Draw (50 moves)");
+            STATISTICSINC(ab_draw);
             return SCOREDRAW;
         } else {
             // special case: test for checkmate
             chessmovelist evasions;
             if (CreateMovelist<EVASION>(this, &evasions.move[0]) > 0)
+            {
+                STATISTICSINC(ab_draw);
                 return SCOREDRAW;
-            else
+            }
+            else {
+                STATISTICSINC(ab_win);
                 return SCOREBLACKWINS + ply;
+            }
         }
     }
 
@@ -287,6 +300,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (seldepth < ply + 1)
             seldepth = ply + 1;
 
+        STATISTICSINC(ab_qs);
         return getQuiescence(alpha, beta, depth);
     }
 
@@ -326,6 +340,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             if (fullhashmove)
                 updatePvTable(fullhashmove, false);
             SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from TT.", hashscore);
+            STATISTICSINC(ab_tt);
             return hashscore;
         }
     }
@@ -360,6 +375,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 tp.addHash(hash, score, staticeval, bound, MAXDEPTH, 0);
                 SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from TB.", score);
             }
+            STATISTICSINC(ab_tb);
             return score;
         }
     }
@@ -406,6 +422,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (!isCheckbb && staticeval - depth * (72 - 20 * positionImproved) > beta)
         {
             SDEBUGPRINT(isDebugPv, debugInsert, " Cutoff by reverse futility pruning: staticscore(%d) - revMargin(%d) > beta(%d)", staticeval, depth * (72 - 20 * positionImproved), beta);
+            STATISTICSINC(prune_futility);
             return staticeval;
         }
         futility = (staticeval < alpha - (100 + 80 * depth));
@@ -428,6 +445,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
             if (abs(beta) < 5000 && (depth < 12 || nullmoveply)) {
                 SDEBUGPRINT(isDebugPv, debugInsert, "Low-depth-cutoff by null move: %d", score);
+                STATISTICSINC(prune_nm);
                 return score;
             }
             // Verification search
@@ -437,6 +455,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             nullmoveside = nullmoveply = 0;
             if (verificationscore >= beta) {
                 SDEBUGPRINT(isDebugPv, debugInsert, "Verified cutoff by null move: %d", score);
+                STATISTICSINC(prune_nm);
                 return score;
             }
             else {
@@ -467,6 +486,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 {
                     // ProbCut off
                     delete movelist;
+                    STATISTICSINC(prune_probcut);
                     return probcutscore;
                 }
             }
@@ -505,6 +525,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 #ifdef SDEBUG
         bool isDebugMove = ((debugMove.code & 0xeff) == (m->code & 0xeff));
 #endif
+        STATISTICSINC(moves_n[(bool)ISTACTICAL(m->code)]);
         // Leave out the move to test for singularity
         if ((m->code & 0xffff) == excludeMove)
             continue;
@@ -514,6 +535,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         {
             // Proceed to next moveselector state manually to save some time
             ms.state++;
+            STATISTICSINC(moves_pruned_lmp);
             continue;
         }
 
@@ -524,6 +546,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             if (LegalMoves)
             {
                 SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by futility: staticeval(%d) < alpha(%d) - futilityMargin(%d)", debugMove.toString().c_str(), staticeval, alpha, 100 + 80 * depth);
+                STATISTICSINC(moves_pruned_futility);
                 continue;
             }
             else if (staticeval > bestscore)
@@ -537,6 +560,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (!isCheckbb && depth < 8 && bestscore > NOSCORE && ms.state >= BADTACTICALSTATE && !see(m->code, -20 * depth * depth))
         {
             SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by bad SEE", debugMove.toString().c_str());
+            STATISTICSINC(moves_pruned_badsee);
             continue;
         }
 
@@ -560,19 +584,16 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             {
                 // Move is singular
                 SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s is singular", debugMove.toString().c_str());
+                STATISTICSINC(extend_singular);
                 extendMove = 1;
             }
             else if (bestknownscore >= beta && sBeta >= beta)
             {
                 // Hashscore for lower depth and static eval cut and we have at least a second good move => lets cut here
+                STATISTICSINC(prune_multicut);
                 return sBeta;
             }
         }
-
-#ifdef STATISTICS
-        en.stat_moves_n++;
-        en.stat_extendmove += extendMove;
-#endif
 
         int reduction = 0;
 
@@ -587,21 +608,17 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             // adjust reduction at PV nodes
             reduction -= PVNode;
 
-#ifdef STATISTICS
-            en.stat_red_n++;
-            en.stat_pi[positionImproved]++;
-            en.stat_lmr[positionImproved] += reductiontable[positionImproved][depth][min(63, LegalMoves + 1)];
-            en.stat_history -= stats / 4096;
-            en.stat_pv -= PVNode;
-            int red0 = reduction;
-#endif
+            STATISTICSINC(red_pi[positionImproved]);
+            STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, LegalMoves + 1)]);
+            STATISTICSADD(red_history, -stats / 4096);
+            STATISTICSADD(red_pv, -(int)PVNode);
+            STATISTICSDO(int red0 = reduction);
+
             reduction = min(depth, max(0, reduction));
 
-#ifdef STATISTICS
-            int red1 = reduction;
-            en.stat_correction += (red1 - red0);
-            en.stat_total += reduction;
-#endif
+            STATISTICSDO(int red1 = reduction);
+            STATISTICSADD(red_correction, red1 - red0);
+            STATISTICSADD(red_total, reduction);
 
             SDEBUGPRINT(isDebugPv && isDebugMove && reduction, debugInsert, " PV move %s (value=%d) with depth reduced by %d", debugMove.toString().c_str(), m->value, reduction);
         }
@@ -1468,17 +1485,60 @@ void searchguide()
     en.stopLevel = ENGINETERMINATEDSEARCH;
 
 #ifdef STATISTICS
-    double f10 = en.stat_lmr[0] / (double)en.stat_pi[0];
-    double f11 = en.stat_lmr[1] / (double)en.stat_pi[1];
-    double f1 = (en.stat_lmr[0] + en.stat_lmr[1]) / (double)en.stat_red_n;
-    double f2 = en.stat_history / (double)en.stat_red_n;
-    double f3 = en.stat_pv / (double)en.stat_red_n;
-    double f4 = en.stat_correction / (double)en.stat_red_n;
-    double ft = en.stat_total / (double)en.stat_red_n;
-    printf("info string Reduction stats:  lmr[0]: %.4f   lmr[1]: %.4f   lmr: %.4f   hist: %.4f   pv: %.4f   corr: %.4f   total: %.4f   error: %.4f   n=%lld\n",
-        f10, f11, f1, f2, f3, f4, ft, (f1 + f2 + f3 + f4 - ft), en.stat_red_n);
-
-    f1 = en.stat_extendmove / (double)en.stat_moves_n;
-    printf("info string Extensions stats;  exmoves: %.4f   moves=%lld\n", f1, en.stat_moves_n);
+    search_statistics();
 #endif
 }
+
+#ifdef STATISTICS
+void search_statistics()
+{
+    U64 n, i1, i2;
+    double f0, f1, f2, f3, f4, f5, f10, f11;
+
+    printf("====Statistics======================================================================================================================\n");
+
+    // general statistics
+    n = statistics.ab_n;
+    f0 = 100.0 * statistics.ab_pv / (double)n;
+    f1 = 100.0 * statistics.ab_tt / (double)n;
+    f2 = 100.0 * statistics.ab_tb / (double)n;
+    f3 = 100.0 * statistics.ab_qs / (double)n;
+    f4 = 100.0 * statistics.ab_draw / (double)n;
+    f5 = 100.0 * statistics.ab_win / (double)n;
+    printf("Total AB:%12lld   %%PV-Nodes: %5.2f   %%TT-Hits:  %5.2f   %%TB-Hits: %5.2f   %%QSCalls: %5.2f   %%Draw: %5.2f   %%Win: %5.2f\n", n, f0, f1, f2, f3, f4, f5);
+
+    // node pruning
+    f0 = 100.0 * statistics.prune_futility / (double)n;
+    f1 = 100.0 * statistics.prune_nm / (double)n;
+    f2 = 100.0 * statistics.prune_probcut / (double)n;
+    f3 = 100.0 * statistics.prune_multicut / (double)n;
+    printf("                        %%Futility: %5.2f   %%NullMove: %5.2f   %%ProbeC.: %5.2f   %%MultiC.: %7.4f\n", f0, f1, f2, f3);
+
+    // move statistics
+    i1 = statistics.moves_n[0]; // quiet moves
+    i2 = statistics.moves_n[1]; // tactical moves
+    n = i1 + i2;
+    f0 = 100.0 * i1 / (double)n;
+    f1 = 100.0 * i2 / (double)n;
+    f2 = 100.0 * statistics.moves_pruned_lmp / (double)n;
+    f3 = 100.0 * statistics.moves_pruned_futility / (double)n;
+    f4 = 100.0 * statistics.moves_pruned_badsee / (double)n;
+    printf("Moves:   %12lld   %%Quiet-M.: %5.2f   %%Tact.-M.: %5.2f   %%LMP-M.:  %5.2f   %%FutilM.: %5.2f   %%BadSEE: %5.2f\n", n, f0, f1, f2, f3, f4);
+
+    // late move reduction statistics
+    U64 red_n = statistics.red_pi[0] + statistics.red_pi[1];
+    f10 = statistics.red_lmr[0] / (double)statistics.red_pi[0];
+    f11 = statistics.red_lmr[1] / (double)statistics.red_pi[1];
+    f1 = (statistics.red_lmr[0] + statistics.red_lmr[1]) / (double)red_n;
+    f2 = statistics.red_history / (double)red_n;
+    f3 = statistics.red_pv / (double)red_n;
+    f4 = statistics.red_correction / (double)red_n;
+    f5 = statistics.red_total / (double)red_n;
+    printf("Reduct.  %12lld   lmr[0]: %4.2f   lmr[1]: %4.2f   lmr: %4.2f   hist: %4.2f   pv: %4.2f   corr: %4.2f   total: %4.2f\n", red_n, f10, f11, f1, f2, f3, f4, f5);
+
+    f0 = 100.0 * statistics.extend_singular / (double)n;
+    printf("Extensions: %%singular: %7.4f\n", f0);
+
+    printf("====================================================================================================================================\n");
+}
+#endif

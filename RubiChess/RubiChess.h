@@ -19,7 +19,7 @@
 
 #define VERNUM "1.7-dev"
 
-#if 0
+#if 1
 #define STATISTICS
 #endif
 
@@ -180,6 +180,7 @@ enum { WHITE, BLACK };
 
 
 typedef unsigned long long U64;
+typedef signed long long S64;
 
 // Forward definitions
 class transposition;
@@ -1155,17 +1156,6 @@ public:
     int t2stop = 0;     // immediate stop
     bool bStopCount;
 #endif
-#ifdef STATISTICS
-    U64 stat_moves_n = 0;
-    U64 stat_red_n = 0;
-    U64 stat_total = 0;
-    U64 stat_lmr[2] = { 0 };
-    U64 stat_pi[2] = { 0 };
-    U64 stat_extendmove = 0;
-    signed long long stat_history = 0;
-    signed long long stat_pv = 0;
-    signed long long stat_correction = 0;
-#endif
     GuiToken parse(vector<string>*, string ss);
     void send(const char* format, ...);
     void communicate(string inputstring);
@@ -1242,4 +1232,52 @@ int probe_wdl(int *success, chessposition *pos);
 int probe_dtz(int *success, chessposition *pos);
 int root_probe_dtz(chessposition *pos);
 int root_probe_wdl(chessposition *pos);
+
+
+//
+// statistics stuff
+//
+#ifdef STATISTICS
+struct statistic {
+    U64 ab_n;                   // total calls to alphabeta
+    U64 ab_pv;                  // number of PV nodes
+    U64 ab_tt;                  // alphabeta exit by tt hit
+    U64 ab_draw;                // alphabeta returns draw
+    U64 ab_win;                 // alphabeta returns win
+    U64 ab_qs;                  // alphabeta calls qsearch
+    U64 ab_tb;                  // alphabeta exits with tb score
+
+    U64 prune_futility;         // nodes pruned by reverse futility
+    U64 prune_nm;               // nodes pruned by null move;
+    U64 prune_probcut;          // nodes pruned by PobCut
+    U64 prune_multicut;         // nodes pruned by Multicut (detected by failed singular test)
+
+    U64 moves_n[2];             // all moves in alphabeta move loop split into quites ans tactical
+    U64 moves_pruned_lmp;       // moves pruned by lmp
+    U64 moves_pruned_futility;  // moves pruned by futility
+    U64 moves_pruned_badsee;    // moves pruned by bad see
+
+    U64 red_total;              // total reductions
+    U64 red_lmr[2];             // total late-move-reductions for (not) improved moves
+    U64 red_pi[2];              // number of quiets moves that are reduced split into (not) / improved moves
+    S64 red_history;            // total reduction by history
+    S64 red_pv;                 // total reduction by pv nodes
+    S64 red_correction;         // total reduction correction by over-/underflow
+
+    U64 extend_singular;        // total extended moves
+};
+
+extern struct statistic statistics;
+
+void search_statistics();
+
+#define STATISTICSINC(x)        statistics.x++ 
+#define STATISTICSADD(x, v)     statistics.x += (v)
+#define STATISTICSDO(x)         x
+
+#else
+#define STATISTICSINC(x)
+#define STATISTICSADD(x, v)
+#define STATISTICSDO(x)
+#endif
 
