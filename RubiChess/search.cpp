@@ -121,6 +121,8 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     bool isDebugPv = triggerDebug(&debugMove);
 #endif
 
+    STATISTICSINC(qs_n[myIsCheck]);
+
     int hashscore = NOSCORE;
     uint16_t hashmovecode = 0;
     int staticeval = NOSCORE;
@@ -128,6 +130,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     if (tpHit)
     {
         SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from TT.", hashscore);
+        STATISTICSINC(qs_tt);
         return hashscore;
     }
 
@@ -150,6 +153,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         if (staticeval >= beta)
         {
             SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (fail high by patscore).", staticeval);
+            STATISTICSINC(qs_pat);
             return staticeval;
         }
         if (staticeval > alpha)
@@ -166,6 +170,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         if (staticeval + deltapruningmargin + bestCapture < alpha)
         {
             SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (delta pruning by patscore).", staticeval);
+            STATISTICSINC(qs_delta);
             return staticeval;
         }
     }
@@ -174,18 +179,23 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 
     MoveSelector ms = {};
     ms.SetPreferredMoves(this);
+    STATISTICSINC(qs_loop_n);
 
     chessmove *m;
 
     while ((m = ms.next()))
     {
         if (!myIsCheck && staticeval + materialvalue[GETCAPTURE(m->code) >> 1] + deltapruningmargin <= alpha)
+        {
             // Leave out capture that is delta-pruned
+            STATISTICSINC(qs_move_delta);
             continue;
+        }
 
         if (!playMove(m))
             continue;
 
+        STATISTICSINC(qs_moves);
         ms.legalmovenum++;
         score = -getQuiescence(-beta, -alpha, depth - 1);
         unplayMove(m);
@@ -195,6 +205,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
             if (score >= beta)
             {
                 SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (fail high).", score);
+                STATISTICSINC(qs_moves_fh);
                 return score;
             }
             if (score > alpha)
@@ -260,30 +271,25 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     if (rep >= 2)
     {
         SDEBUGPRINT(isDebugPv, debugInsert, "Draw (repetition)");
-        STATISTICSINC(ab_draw);
+        STATISTICSINC(ab_draw_or_win);
         return SCOREDRAW;
     }
 
     // test for remis via 50 moves rule
     if (halfmovescounter >= 100)
     {
+        STATISTICSINC(ab_draw_or_win);
         if (!isCheckbb)
         {
             SDEBUGPRINT(isDebugPv, debugInsert, "Draw (50 moves)");
-            STATISTICSINC(ab_draw);
             return SCOREDRAW;
         } else {
             // special case: test for checkmate
             chessmovelist evasions;
             if (CreateMovelist<EVASION>(this, &evasions.move[0]) > 0)
-            {
-                STATISTICSINC(ab_draw);
                 return SCOREDRAW;
-            }
-            else {
-                STATISTICSINC(ab_win);
+            else
                 return SCOREBLACKWINS + ply;
-            }
         }
     }
 
@@ -516,6 +522,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     MoveSelector ms = {};
     ms.SetPreferredMoves(this, hashmovecode, killer[ply][0], killer[ply][1], counter, excludeMove);
+    STATISTICSINC(moves_loop_n);
 
     int  LegalMoves = 0;
     int quietsPlayed = 0;
@@ -646,6 +653,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             continue;
         }
 
+        STATISTICSINC(moves_played[(bool)ISTACTICAL(m->code)]);
+
         if (eval_type != HASHEXACT)
         {
             // First move ("PV-move"); do a normal search
@@ -705,6 +714,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 }
 
                 SDEBUGPRINT(isDebugPv, debugInsert, " Beta-cutoff by move %s: %d  %s%s", m->toString().c_str(), score, excludestr.c_str(), excludeMove ? " : not singular" : "");
+                STATISTICSINC(moves_fail_high);
+
                 if (!excludeMove)
                 {
                     SDEBUGPRINT(isDebugPv, debugInsert, " ->Hash(%d) = %d(beta)", effectiveDepth, score);
@@ -731,6 +742,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (excludeMove)
             return alpha;
 
+        STATISTICSINC(ab_draw_or_win);
         if (isCheckbb) {
             // It's a mate
             SDEBUGPRINT(isDebugPv, debugInsert, " Return score: %d  (mate)", SCOREBLACKWINS + ply);
@@ -1352,7 +1364,7 @@ static void search_gen1(searchthread *thr)
         cout << "bestmove " + strBestmove + strPonder + "\n";
 
         en.stopLevel = ENGINESTOPPED;
-
+        en.benchmove = pos->bestmove.code;
     }
 
     // Remember some exit values for benchmark output
@@ -1492,27 +1504,41 @@ void searchguide()
 #ifdef STATISTICS
 void search_statistics()
 {
-    U64 n, i1, i2;
-    double f0, f1, f2, f3, f4, f5, f10, f11;
+    U64 n, i1, i2, i3;
+    double f0, f1, f2, f3, f4, f5, f6, f10, f11;
 
-    printf("====Statistics======================================================================================================================\n");
+    printf("(ST)====Statistics====================================================================================================================================\n");
 
-    // general statistics
+    // quiescense search statistics
+    i1 = statistics.qs_n[0];
+    i2 = statistics.qs_n[1];
+    n = i1 + i2;
+    f0 = 100.0 * i2 / (double)n;
+    f1 = 100.0 * statistics.qs_tt / (double)n;
+    f2 = 100.0 * statistics.qs_pat / (double)n;
+    f3 = 100.0 * statistics.qs_delta / (double)n;
+    i3 = statistics.qs_move_delta + statistics.qs_moves;
+    f4 =  i3 / (double)statistics.qs_loop_n;
+    f5 = 100.0 * statistics.qs_move_delta / (double)i3;
+    f6 = 100.0 * statistics.qs_moves_fh / (double)statistics.qs_moves;
+    printf("(ST) QSearch: %12lld   %%InCheck:  %5.2f   %%TT-Hits:  %5.2f   %%Std.Pat: %5.2f   %%DeltaPr: %5.2f   Mvs/Lp: %5.2f   %%DlPrM: %5.2f   %%FailHi: %5.2f\n", n, f0, f1, f2, f3, f4, f5, f6);
+
+    // general aplhabeta statistics
     n = statistics.ab_n;
     f0 = 100.0 * statistics.ab_pv / (double)n;
     f1 = 100.0 * statistics.ab_tt / (double)n;
     f2 = 100.0 * statistics.ab_tb / (double)n;
     f3 = 100.0 * statistics.ab_qs / (double)n;
-    f4 = 100.0 * statistics.ab_draw / (double)n;
-    f5 = 100.0 * statistics.ab_win / (double)n;
-    printf("Total AB:%12lld   %%PV-Nodes: %5.2f   %%TT-Hits:  %5.2f   %%TB-Hits: %5.2f   %%QSCalls: %5.2f   %%Draw: %5.2f   %%Win: %5.2f\n", n, f0, f1, f2, f3, f4, f5);
+    f4 = 100.0 * statistics.ab_draw_or_win / (double)n;
+    printf("(ST) Total AB:%12lld   %%PV-Nodes: %5.2f   %%TT-Hits:  %5.2f   %%TB-Hits: %5.2f   %%QSCalls: %5.2f   %%Draw/Mates: %5.2f\n", n, f0, f1, f2, f3, f4);
 
     // node pruning
     f0 = 100.0 * statistics.prune_futility / (double)n;
     f1 = 100.0 * statistics.prune_nm / (double)n;
     f2 = 100.0 * statistics.prune_probcut / (double)n;
     f3 = 100.0 * statistics.prune_multicut / (double)n;
-    printf("                        %%Futility: %5.2f   %%NullMove: %5.2f   %%ProbeC.: %5.2f   %%MultiC.: %7.4f\n", f0, f1, f2, f3);
+    f4 = 100.0 * (statistics.prune_futility + statistics.prune_nm + statistics.prune_probcut + statistics.prune_multicut) / (double)n;
+    printf("(ST) Node pruning            %%Futility: %5.2f   %%NullMove: %5.2f   %%ProbeC.: %5.2f   %%MultiC.: %7.5f Total:  %5.2f\n", f0, f1, f2, f3, f4);
 
     // move statistics
     i1 = statistics.moves_n[0]; // quiet moves
@@ -1523,7 +1549,10 @@ void search_statistics()
     f2 = 100.0 * statistics.moves_pruned_lmp / (double)n;
     f3 = 100.0 * statistics.moves_pruned_futility / (double)n;
     f4 = 100.0 * statistics.moves_pruned_badsee / (double)n;
-    printf("Moves:   %12lld   %%Quiet-M.: %5.2f   %%Tact.-M.: %5.2f   %%LMP-M.:  %5.2f   %%FutilM.: %5.2f   %%BadSEE: %5.2f\n", n, f0, f1, f2, f3, f4);
+    f5 = n / (double)statistics.moves_loop_n;
+    i3 = statistics.moves_played[0] + statistics.moves_played[1];
+    f6 = 100.0 * statistics.moves_fail_high / (double)i3;
+    printf("(ST) Moves:   %12lld   %%Quiet-M.: %5.2f   %%Tact.-M.: %5.2f   %%LMP-M.:  %5.2f   %%FutilM.: %5.2f   %%BadSEE: %5.2f  Mvs/Lp: %5.2f   %%FailHi: %5.2f\n", n, f0, f1, f2, f3, f4, f5, f6);
 
     // late move reduction statistics
     U64 red_n = statistics.red_pi[0] + statistics.red_pi[1];
@@ -1534,11 +1563,11 @@ void search_statistics()
     f3 = statistics.red_pv / (double)red_n;
     f4 = statistics.red_correction / (double)red_n;
     f5 = statistics.red_total / (double)red_n;
-    printf("Reduct.  %12lld   lmr[0]: %4.2f   lmr[1]: %4.2f   lmr: %4.2f   hist: %4.2f   pv: %4.2f   corr: %4.2f   total: %4.2f\n", red_n, f10, f11, f1, f2, f3, f4, f5);
+    printf("(ST) Reduct.  %12lld   lmr[0]: %4.2f   lmr[1]: %4.2f   lmr: %4.2f   hist: %4.2f   pv: %4.2f   corr: %4.2f   total: %4.2f\n", red_n, f10, f11, f1, f2, f3, f4, f5);
 
     f0 = 100.0 * statistics.extend_singular / (double)n;
-    printf("Extensions: %%singular: %7.4f\n", f0);
+    printf("(ST) Extensions: %%singular: %7.4f\n", f0);
 
-    printf("====================================================================================================================================\n");
+    printf("(ST)==================================================================================================================================================\n");
 }
 #endif

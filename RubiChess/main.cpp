@@ -251,126 +251,145 @@ static void perftest(bool dotests, int maxdepth)
 }
 
 
-static void doBenchmark(int constdepth)
+struct benchmarkstruct
 {
-    struct benchmarkstruct
-    {
-        string name;
-        string fen;
-        int depth;
-        int terminationscore;
-        int resethash;
-        long long time;
-        long long nodes;
-        int score;
-        int depthAtExit;
-    } benchmark[] =
+    string name;
+    string fen;
+    int depth;
+    int terminationscore;
+    long long time;
+    long long nodes;
+    int score;
+    int depthAtExit;
+    uint32_t move;
+};
+
+static void doBenchmark(int constdepth, string epdfilename)
+{
+    struct benchmarkstruct benchmark[] =
     {
         {   
             "Startposition",
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             14,
-            0,
-            1
+            0
         },
         {
             "Lasker Test",
             "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1",
             28,
-            0,
-            1
+            0
         },
         {
             "IQ4 63",
             "2R5/r3b1k1/p2p4/P1pPp2p/6q1/2P2N1r/4Q1P1/5RK1 w - - 0 1 ",
             14,
-            300,
-            1
+            300
         },
         {
             "Wacnew 167",
             "7Q/ppp2q2/3p2k1/P2Ppr1N/1PP5/7R/5rP1/6K1 b - - 0 1",
             14,
-            1000,
-            1
+            1000
         },
         { 
             "Wacnew 212",
             "rn1qr2Q/pbppk1p1/1p2pb2/4N3/3P4/2N5/PPP3PP/R4RK1 w - - 0 1",
             14,
-            500,
-            1
+            500
         },
         {
             "Carlos 6",
             "rn1q1r2/1bp1bpk1/p3p2p/1p2N1pn/3P4/1BN1P1B1/PPQ2PPP/2R2RK1 w - - 0 1",
             13,
-            300,
-            1
+            300
         },
          
         {
             "Arasan19 83",
             "6k1/p4qp1/1p3r1p/2pPp1p1/1PP1PnP1/2P1KR1P/1B6/7Q b - - 0 1 ",
             14,
-            200,
-            1
+            200
         },
         {
             "Arasan19 192",
             "r2qk2r/1b1nbp1p/p1n1p1p1/1pp1P3/6Q1/2NPB1PN/PPP3BP/R4RK1 w kq - 0 1",
             13,
-            150,
-            1
+            150
         },
         {
             "BT2630 12",
             "8/pp3k2/2p1qp2/2P5/5P2/1R2p1rp/PP2R3/4K2Q b - - 0 1",
             15,
-            300,
-            1
+            300
         },
         {
             "IQ4 116",
             "4r1k1/1p2qrpb/p1p4p/2Pp1p2/1Q1Rn3/PNN1P1P1/1P3PP1/3R2K1 b - - 0 1",
             14,
-            300,
-            1
+            300
         },
         {
             "Arasan12 114",
             "br4k1/1qrnbppp/pp1ppn2/8/NPPBP3/PN3P2/5QPP/2RR1B1K w - - 0 1",
             15,
-            150,
-            1
+            150
         },
         {
             "Arasan12 140",
             "r1b1rk2/p1pq2p1/1p1b1p1p/n2P4/2P1NP2/P2B1R2/1BQ3PP/R6K w - - 0 1",
             15,
-            300,
-            1
+            300
         },
         {
             "Arasan12 137",
             "r4k2/1b3ppp/p2n1P2/q1p3PQ/Np1rp3/1P1B4/P1P4P/2K1R2R w - - 0 1",
             14,
-            200,
-            1
+            200
         },
         {
-            "", "", 0, 0
+            "", "", 0
         }
     };
 
     long long starttime, endtime;
+    list<struct benchmarkstruct> bmlist;
+
+    ifstream epdfile;
+    bool bGetFromEpd = false;
+    if (epdfilename != "")
+    {
+        epdfile.open(epdfilename, ifstream::in);
+        bGetFromEpd = epdfile.is_open();
+        if (!bGetFromEpd)
+            printf("Cannot open file %s for reading.\n", epdfilename.c_str());
+    }
 
     int i = 0;
-    while (benchmark[i].fen != "")
+    struct benchmarkstruct epdbm;
+    while (true)
     {
-        struct benchmarkstruct *bm = &benchmark[i];
-        if (bm->resethash)
-            en.setOption("clear hash", "true");
+        struct benchmarkstruct *bm;
+        if (!bGetFromEpd)
+        {
+            // standard bench with included positions
+            bm = &benchmark[i];
+        }
+        else
+        {
+            // read positions from epd file
+            bm = &epdbm;
+            string line;
+            bm->fen = "";
+            getline(epdfile, line);
+            vector<string> fv = SplitString(line.c_str());
+            for (int i = 0; i < min(4, fv.size()); i++)
+                bm->fen = bm->fen + fv[i] + " ";
+
+            bm->depth = 10;  // default depth for epd bench
+            bm->terminationscore = 0;
+        }
+        if (bm->fen == "") break;
 
         en.communicate("ucinewgame" + bm->fen);
         en.communicate("position fen " + bm->fen);
@@ -394,6 +413,9 @@ static void doBenchmark(int constdepth)
         bm->nodes = en.getTotalNodes();
         bm->score = en.benchscore;
         bm->depthAtExit = en.benchdepth;
+        bm->move = en.benchmove;
+
+        bmlist.push_back(*bm);
         i++;
     }
 
@@ -403,17 +425,19 @@ static void doBenchmark(int constdepth)
     long long totalnodes = 0;
     fprintf(stderr, "\n\nBenchmark results for %s (Build %s):\n", en.name, BUILD);
     fprintf(stderr, "System: %s\n", GetSystemInfo().c_str());
-    fprintf(stderr, "===============================================================================================================\n");
-    while (benchmark[i].fen != "")
+    fprintf(stderr, "=======================================================================================================================\n");
+
+    for (list<struct benchmarkstruct>::iterator bm = bmlist.begin(); bm != bmlist.end(); bm++)
     {
-        struct benchmarkstruct *bm = &benchmark[i];
         totaltime += bm->time;
         totalnodes += bm->nodes;
-        fprintf(stderr, "Bench # %2d (%20s / %2d): %7d cp  %4d ply  %10f sec.  %10lld nodes %10lld nps\n", i + 1, bm->name.c_str(), bm->depth, bm->score, bm->depthAtExit, (float)bm->time / (float)en.frequency, bm->nodes, bm->nodes * en.frequency / bm->time);
+        chessmove m;
+        m.code = bm->move;
+        fprintf(stderr, "Bench # %3d (%20s / %2d):  %5s %7d cp  %4d ply  %10f sec.  %10lld nodes %10lld nps\n", i + 1, bm->name.c_str(), bm->depth, m.toString().c_str(), bm->score, bm->depthAtExit, (float)bm->time / (float)en.frequency, bm->nodes, bm->nodes * en.frequency / bm->time);
         i++;
     }
-    fprintf(stderr, "===============================================================================================================\n");
-    fprintf(stderr, "Overall:                                                      %10f sec.  %10lld nodes %*lld nps\n", ((float)totaltime / (float)en.frequency), totalnodes, 10, totalnodes * en.frequency / totaltime);
+    fprintf(stderr, "=======================================================================================================================\n");
+    fprintf(stderr, "Overall:                                                              %10f sec.  %10lld nodes %*lld nps\n", ((float)totaltime / (float)en.frequency), totalnodes, 10, totalnodes * en.frequency / totaltime);
 }
 
 
@@ -794,7 +818,7 @@ int main(int argc, char* argv[])
         { "-perft", "Do performance and move generator testing.", &perfmaxdepth, 1, "0" },
         { "-dotests","test the hash function and value for positions and mirror (use with -perft)", &dotests, 0, NULL },
         { "-enginetest", "bulk testing of epd files", &enginetest, 0, NULL },
-        { "-epdfile", "the epd file to test (use with -enginetest)", &epdfile, 2, "" },
+        { "-epdfile", "the epd file to test (use with -enginetest or -bench)", &epdfile, 2, "" },
         { "-logfile", "output file (use with -enginetest)", &logfile, 2, "enginetest.log" },
         { "-engineprg", "the uci engine to test (use with -enginetest)", &engineprg, 2, "rubichess.exe" },
         { "-maxtime", "time for each test in seconds (use with -enginetest)", &maxtime, 1, "30" },
@@ -893,7 +917,7 @@ int main(int argc, char* argv[])
     } else if (benchmark)
     {
         // benchmark mode
-        doBenchmark(depth);
+        doBenchmark(depth, epdfile);
     } else if (enginetest)
     {
         //engine test mode
