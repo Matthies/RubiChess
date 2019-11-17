@@ -24,7 +24,7 @@ void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am)
     *fen = "";
     string f;
     vector<string> fv = SplitString(input.c_str());
-    for (int i = 0; i < min(4, fv.size()); i++)
+    for (int i = 0; i < min(4, (int)fv.size()); i++)
         f = f + fv[i] + " ";
 
     chessposition *p = &en.sthread[0].pos;
