@@ -2661,10 +2661,9 @@ void engine::communicate(string inputstring)
                     }
                     else if (commandargs[ci] == "movetime")
                     {
-                        movestogo = 1;
-                        winc = binc = 0;
+                        wtime = btime = 0;
                         if (++ci < cs)
-                            wtime = btime = stoi(commandargs[ci++]);
+                            winc = binc = stoi(commandargs[ci++]);
                     }
                     else if (commandargs[ci] == "movestogo")
                     {

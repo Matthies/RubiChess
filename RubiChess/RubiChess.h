@@ -20,6 +20,10 @@
 #define VERNUM "1.7-dev"
 
 #if 0
+#define STATISTICS
+#endif
+
+#if 0
 #define SDEBUG
 #endif
 
@@ -59,6 +63,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <list>
 #include <string>
 #include <string.h>
 #include <sstream>
@@ -176,6 +181,7 @@ enum { WHITE, BLACK };
 
 
 typedef unsigned long long U64;
+typedef signed long long S64;
 
 // Forward definitions
 class transposition;
@@ -464,6 +470,7 @@ enum EvalType { NOTRACE, TRACE};
 //
 // utils stuff
 //
+void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am);
 vector<string> SplitString(const char* s);
 unsigned char AlgebraicToIndex(string s);
 string IndexToAlgebraic(int i);
@@ -1140,8 +1147,8 @@ public:
     enum { NO, PONDERING, HITPONDER } pondersearch;
     int terminationscore = SHRT_MAX;
     int lastReport;
-    int benchscore;
     int benchdepth;
+    string benchmove;
     int stopLevel = ENGINESTOPPED;
 #ifdef STACKDEBUG
     string assertfile = "";
@@ -1227,4 +1234,64 @@ int probe_wdl(int *success, chessposition *pos);
 int probe_dtz(int *success, chessposition *pos);
 int root_probe_dtz(chessposition *pos);
 int root_probe_wdl(chessposition *pos);
+
+
+//
+// statistics stuff
+//
+#ifdef STATISTICS
+struct statistic {
+    U64 qs_n[2];                // total calls to qs split into no check / check
+    U64 qs_tt;                  // qs hits tt
+    U64 qs_pat;                 // qs returns with pat score
+    U64 qs_delta;               // qs return with delta pruning before move loop
+    U64 qs_loop_n;              // qs enters moves loop
+    U64 qs_move_delta;          // qs moves delta-pruned
+    U64 qs_moves;               // moves done in qs
+    U64 qs_moves_fh;            // qs moves that cause a fail high
+
+    U64 ab_n;                   // total calls to alphabeta
+    U64 ab_pv;                  // number of PV nodes
+    U64 ab_tt;                  // alphabeta exit by tt hit
+    U64 ab_draw_or_win;         // alphabeta returns draw or mate score
+    U64 ab_qs;                  // alphabeta calls qsearch
+    U64 ab_tb;                  // alphabeta exits with tb score
+
+    U64 prune_futility;         // nodes pruned by reverse futility
+    U64 prune_nm;               // nodes pruned by null move;
+    U64 prune_probcut;          // nodes pruned by PobCut
+    U64 prune_multicut;         // nodes pruned by Multicut (detected by failed singular test)
+
+    U64 moves_loop_n;           // counts how often the moves loop is entered
+    U64 moves_n[2];             // all moves in alphabeta move loop split into quites ans tactical
+    U64 moves_pruned_lmp;       // moves pruned by lmp
+    U64 moves_pruned_futility;  // moves pruned by futility
+    U64 moves_pruned_badsee;    // moves pruned by bad see
+    U64 moves_played[2];        // moves that are played split into quites ans tactical
+    U64 moves_fail_high;        // moves that cause a fail high;
+
+    U64 red_total;              // total reductions
+    U64 red_lmr[2];             // total late-move-reductions for (not) improved moves
+    U64 red_pi[2];              // number of quiets moves that are reduced split into (not) / improved moves
+    S64 red_history;            // total reduction by history
+    S64 red_pv;                 // total reduction by pv nodes
+    S64 red_correction;         // total reduction correction by over-/underflow
+
+    U64 extend_singular;        // total extended moves
+};
+
+extern struct statistic statistics;
+
+void search_statistics();
+
+// some macros to limit the ifdef STATISTICS inside the code
+#define STATISTICSINC(x)        statistics.x++ 
+#define STATISTICSADD(x, v)     statistics.x += (v)
+#define STATISTICSDO(x)         x
+
+#else
+#define STATISTICSINC(x)
+#define STATISTICSADD(x, v)
+#define STATISTICSDO(x)
+#endif
 
