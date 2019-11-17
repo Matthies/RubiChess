@@ -1364,11 +1364,10 @@ static void search_gen1(searchthread *thr)
         cout << "bestmove " + strBestmove + strPonder + "\n";
 
         en.stopLevel = ENGINESTOPPED;
-        en.benchmove = pos->bestmove.code;
+        en.benchmove = strBestmove;
     }
 
-    // Remember some exit values for benchmark output
-    en.benchscore = score;
+    // Remember depth for benchmark output
     en.benchdepth = thr->depth - 1;
 }
 
@@ -1414,6 +1413,11 @@ void resetEndTime(int constantRootMoves, bool complete)
                 en.endtime1 = en.starttime + timetouse / f1 * en.frequency / 1000;
             en.endtime2 = en.starttime + min(max(0, timetouse - overhead), timetouse / f2) * en.frequency / 1000;
         }
+    }
+    else if (timeinc)
+    {
+        // timetouse = 0 => movetime mode: Use exactly timeinc without overhead or early stop
+        en.endtime1 = en.endtime2 = en.starttime + timeinc * en.frequency / 1000;
     }
     else {
         en.endtime1 = en.endtime2 = 0;

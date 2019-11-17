@@ -470,6 +470,7 @@ enum EvalType { NOTRACE, TRACE};
 //
 // utils stuff
 //
+void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am);
 vector<string> SplitString(const char* s);
 unsigned char AlgebraicToIndex(string s);
 string IndexToAlgebraic(int i);
@@ -1146,9 +1147,8 @@ public:
     enum { NO, PONDERING, HITPONDER } pondersearch;
     int terminationscore = SHRT_MAX;
     int lastReport;
-    int benchscore;
     int benchdepth;
-    uint32_t benchmove;
+    string benchmove;
     int stopLevel = ENGINESTOPPED;
 #ifdef STACKDEBUG
     string assertfile = "";
