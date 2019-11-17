@@ -434,18 +434,18 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime)
     long long totalnodes = 0;
     fprintf(stderr, "\n\nBenchmark results for %s (Build %s):\n", en.name, BUILD);
     fprintf(stderr, "System: %s\n", GetSystemInfo().c_str());
-    fprintf(stderr, "=======================================================================================================================\n");
+    fprintf(stderr, "=============================================================================================================\n");
 
     const string solvedstr[] = { "-", "o", "+" };
     for (list<struct benchmarkstruct>::iterator bm = bmlist.begin(); bm != bmlist.end(); bm++)
     {
         totaltime += bm->time;
         totalnodes += bm->nodes;
-        fprintf(stderr, "Bench # %3d (%20s / %2d): %s  %5s %7d cp  %4d ply  %10f sec.  %10lld nodes %10lld nps\n", i + 1, bm->name.c_str(), bm->depth, solvedstr[bm->solved].c_str(), bm->move.c_str(), bm->score, bm->depthAtExit, (float)bm->time / (float)en.frequency, bm->nodes, bm->nodes * en.frequency / bm->time);
+        fprintf(stderr, "Bench # %3d (%14s / %2d): %s  %5s %6d cp %3d ply %10f sec. %10lld nodes %10lld nps\n", i + 1, bm->name.c_str(), bm->depth, solvedstr[bm->solved].c_str(), bm->move.c_str(), bm->score, bm->depthAtExit, (float)bm->time / (float)en.frequency, bm->nodes, bm->nodes * en.frequency / bm->time);
         i++;
     }
-    fprintf(stderr, "=======================================================================================================================\n");
-    fprintf(stderr, "Overall:                                                              %10f sec.  %10lld nodes %*lld nps\n", ((float)totaltime / (float)en.frequency), totalnodes, 10, totalnodes * en.frequency / totaltime);
+    fprintf(stderr, "=============================================================================================================\n");
+    fprintf(stderr, "Overall:                                                      %10f sec. %10lld nodes %*lld nps\n", ((float)totaltime / (float)en.frequency), totalnodes, 10, totalnodes * en.frequency / totaltime);
 }
 
 
