@@ -18,6 +18,9 @@
 
 #include "RubiChess.h"
 
+#ifdef STATISTICS
+struct statistic statistics;
+#endif
 
 const int deltapruningmargin = 100;
 
@@ -36,9 +39,9 @@ void searchinit()
         for (int m = 0; m < 64; m++)
         {
             // reduction for not improving positions
-            reductiontable[0][d][m] = (int)round(log(d) * log(m) / 1.2);
+            reductiontable[0][d][m] = 1 + (int)round(log(d * 1.5) * log(m) * 0.60);
             // reduction for improving positions
-            reductiontable[1][d][m] = (int)round(log(d) * log(m) / 2.1);
+            reductiontable[1][d][m] = (int)round(log(d * 1.5) * log(m * 2) * 0.43);
         }
     for (int d = 0; d < MAXLMPDEPTH; d++)
     {
@@ -82,12 +85,12 @@ inline void chessposition::updateHistory(uint32_t code, int16_t **cmptr, int val
     int s2m = pc & S2MMASK;
     int from = GETFROM(code);
     int to = GETTO(code);
-    value = max(-400, min(400, value));
-    int delta = 32 * value - history[s2m][from][to] * abs(value) / 512;
+    value = max(-256, min(256, value));
+    int delta = 32 * value - history[s2m][from][to] * abs(value) / 256;
     history[s2m][from][to] += delta;
     for (int i = 0; i < CMPLIES; i++)
         if (cmptr[i]) {
-            delta = 32 * value - cmptr[i][pc * 64 + to] * abs(value) / 512;
+            delta = 32 * value - cmptr[i][pc * 64 + to] * abs(value) / 256;
             cmptr[i][pc * 64 + to] += delta;
         }
 }
@@ -118,6 +121,8 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     bool isDebugPv = triggerDebug(&debugMove);
 #endif
 
+    STATISTICSINC(qs_n[myIsCheck]);
+
     int hashscore = NOSCORE;
     uint16_t hashmovecode = 0;
     int staticeval = NOSCORE;
@@ -125,6 +130,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     if (tpHit)
     {
         SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from TT.", hashscore);
+        STATISTICSINC(qs_tt);
         return hashscore;
     }
 
@@ -147,6 +153,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         if (staticeval >= beta)
         {
             SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (fail high by patscore).", staticeval);
+            STATISTICSINC(qs_pat);
             return staticeval;
         }
         if (staticeval > alpha)
@@ -163,6 +170,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         if (staticeval + deltapruningmargin + bestCapture < alpha)
         {
             SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (delta pruning by patscore).", staticeval);
+            STATISTICSINC(qs_delta);
             return staticeval;
         }
     }
@@ -171,37 +179,43 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 
     MoveSelector ms = {};
     ms.SetPreferredMoves(this);
+    STATISTICSINC(qs_loop_n);
 
     chessmove *m;
 
     while ((m = ms.next()))
     {
         if (!myIsCheck && staticeval + materialvalue[GETCAPTURE(m->code) >> 1] + deltapruningmargin <= alpha)
+        {
             // Leave out capture that is delta-pruned
+            STATISTICSINC(qs_move_delta);
+            continue;
+        }
+
+        if (!playMove(m))
             continue;
 
-        if (playMove(m))
+        STATISTICSINC(qs_moves);
+        ms.legalmovenum++;
+        score = -getQuiescence(-beta, -alpha, depth - 1);
+        unplayMove(m);
+        if (score > bestscore)
         {
-            ms.legalmovenum++;
-            score = -getQuiescence(-beta, -alpha, depth - 1);
-            unplayMove(m);
-            if (score > bestscore)
+            bestscore = score;
+            if (score >= beta)
             {
-                bestscore = score;
-                if (score >= beta)
-                {
-                    SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (fail high).", score);
-                    return score;
-                }
-                if (score > alpha)
-                {
-                    updatePvTable(m->code, true);
-                    alpha = score;
+                SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (fail high).", score);
+                STATISTICSINC(qs_moves_fh);
+                return score;
+            }
+            if (score > alpha)
+            {
+                updatePvTable(m->code, true);
+                alpha = score;
 #ifdef EVALTUNE
-                    foundpts = true;
-                    copyPositionTuneSet(&this->pts, &this->ev[0], &targetpts, &ev[0]);
+                foundpts = true;
+                copyPositionTuneSet(&this->pts, &this->ev[0], &targetpts, &ev[0]);
 #endif
-                }
             }
         }
     }
@@ -249,19 +263,34 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     bool isDebugPv = triggerDebug(&debugMove);
 #endif
 
+    STATISTICSINC(ab_n);
+    STATISTICSADD(ab_pv, PVNode);
+
     // test for remis via repetition
     int rep = testRepetiton();
     if (rep >= 2)
     {
         SDEBUGPRINT(isDebugPv, debugInsert, "Draw (repetition)");
+        STATISTICSINC(ab_draw_or_win);
         return SCOREDRAW;
     }
 
     // test for remis via 50 moves rule
-    if (halfmovescounter > 100)
+    if (halfmovescounter >= 100)
     {
-        SDEBUGPRINT(isDebugPv, debugInsert, "Draw (50 moves)");
-        return SCOREDRAW;
+        STATISTICSINC(ab_draw_or_win);
+        if (!isCheckbb)
+        {
+            SDEBUGPRINT(isDebugPv, debugInsert, "Draw (50 moves)");
+            return SCOREDRAW;
+        } else {
+            // special case: test for checkmate
+            chessmovelist evasions;
+            if (CreateMovelist<EVASION>(this, &evasions.move[0]) > 0)
+                return SCOREDRAW;
+            else
+                return SCOREBLACKWINS + ply;
+        }
     }
 
     if (en.stopLevel == ENGINESTOPIMMEDIATELY)
@@ -277,6 +306,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (seldepth < ply + 1)
             seldepth = ply + 1;
 
+        STATISTICSINC(ab_qs);
         return getQuiescence(alpha, beta, depth);
     }
 
@@ -316,6 +346,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             if (fullhashmove)
                 updatePvTable(fullhashmove, false);
             SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from TT.", hashscore);
+            STATISTICSINC(ab_tt);
             return hashscore;
         }
     }
@@ -350,6 +381,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 tp.addHash(hash, score, staticeval, bound, MAXDEPTH, 0);
                 SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from TB.", score);
             }
+            STATISTICSINC(ab_tb);
             return score;
         }
     }
@@ -396,6 +428,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (!isCheckbb && staticeval - depth * (72 - 20 * positionImproved) > beta)
         {
             SDEBUGPRINT(isDebugPv, debugInsert, " Cutoff by reverse futility pruning: staticscore(%d) - revMargin(%d) > beta(%d)", staticeval, depth * (72 - 20 * positionImproved), beta);
+            STATISTICSINC(prune_futility);
             return staticeval;
         }
         futility = (staticeval < alpha - (100 + 80 * depth));
@@ -418,6 +451,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
             if (abs(beta) < 5000 && (depth < 12 || nullmoveply)) {
                 SDEBUGPRINT(isDebugPv, debugInsert, "Low-depth-cutoff by null move: %d", score);
+                STATISTICSINC(prune_nm);
                 return score;
             }
             // Verification search
@@ -427,6 +461,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             nullmoveside = nullmoveply = 0;
             if (verificationscore >= beta) {
                 SDEBUGPRINT(isDebugPv, debugInsert, "Verified cutoff by null move: %d", score);
+                STATISTICSINC(prune_nm);
                 return score;
             }
             else {
@@ -457,6 +492,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 {
                     // ProbCut off
                     delete movelist;
+                    STATISTICSINC(prune_probcut);
                     return probcutscore;
                 }
             }
@@ -486,6 +522,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     MoveSelector ms = {};
     ms.SetPreferredMoves(this, hashmovecode, killer[ply][0], killer[ply][1], counter, excludeMove);
+    STATISTICSINC(moves_loop_n);
 
     int  LegalMoves = 0;
     int quietsPlayed = 0;
@@ -495,6 +532,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 #ifdef SDEBUG
         bool isDebugMove = ((debugMove.code & 0xeff) == (m->code & 0xeff));
 #endif
+        STATISTICSINC(moves_n[(bool)ISTACTICAL(m->code)]);
         // Leave out the move to test for singularity
         if ((m->code & 0xffff) == excludeMove)
             continue;
@@ -504,6 +542,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         {
             // Proceed to next moveselector state manually to save some time
             ms.state++;
+            STATISTICSINC(moves_pruned_lmp);
             continue;
         }
 
@@ -514,6 +553,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             if (LegalMoves)
             {
                 SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by futility: staticeval(%d) < alpha(%d) - futilityMargin(%d)", debugMove.toString().c_str(), staticeval, alpha, 100 + 80 * depth);
+                STATISTICSINC(moves_pruned_futility);
                 continue;
             }
             else if (staticeval > bestscore)
@@ -527,9 +567,11 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (!isCheckbb && depth < 8 && bestscore > NOSCORE && ms.state >= BADTACTICALSTATE && !see(m->code, -20 * depth * depth))
         {
             SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by bad SEE", debugMove.toString().c_str());
+            STATISTICSINC(moves_pruned_badsee);
             continue;
         }
 
+        int stats = getHistory(m->code, ms.cmptr);
         int extendMove = 0;
 
         // Singular extension
@@ -549,16 +591,17 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             {
                 // Move is singular
                 SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s is singular", debugMove.toString().c_str());
+                STATISTICSINC(extend_singular);
                 extendMove = 1;
             }
             else if (bestknownscore >= beta && sBeta >= beta)
             {
                 // Hashscore for lower depth and static eval cut and we have at least a second good move => lets cut here
+                STATISTICSINC(prune_multicut);
                 return sBeta;
             }
         }
 
-        int stats = getHistory(m->code, ms.cmptr);
         int reduction = 0;
 
         // Late move reduction
@@ -567,8 +610,22 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             reduction = reductiontable[positionImproved][depth][min(63, LegalMoves + 1)];
 
             // adjust reduction by stats value
-            reduction -= stats / 10000;
+            reduction -= stats / 4096;
+
+            // adjust reduction at PV nodes
+            reduction -= PVNode;
+
+            STATISTICSINC(red_pi[positionImproved]);
+            STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, LegalMoves + 1)]);
+            STATISTICSADD(red_history, -stats / 4096);
+            STATISTICSADD(red_pv, -(int)PVNode);
+            STATISTICSDO(int red0 = reduction);
+
             reduction = min(depth, max(0, reduction));
+
+            STATISTICSDO(int red1 = reduction);
+            STATISTICSADD(red_correction, red1 - red0);
+            STATISTICSADD(red_total, reduction);
 
             SDEBUGPRINT(isDebugPv && isDebugMove && reduction, debugInsert, " PV move %s (value=%d) with depth reduced by %d", debugMove.toString().c_str(), m->value, reduction);
         }
@@ -583,97 +640,101 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             && ms.cmptr[1] && ms.cmptr[1][pc * 64 + to] < 0)
             continue;
 
-        if (playMove(m))
+        if (!playMove(m))
+            continue;
+
+        LegalMoves++;
+
+        // Check again for futility pruning now that we found a valid move
+        if (futilityPrune)
         {
-            LegalMoves++;
-
-            // Check again for futility pruning now that we found a valid move
-            if (futilityPrune)
-            {
-                SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by futility: staticeval(%d) < alpha(%d) - futilityMargin(%d)", debugMove.toString().c_str(), staticeval, alpha, 100 + 80 * depth);
-                unplayMove(m);
-                continue;
-            }
-
-            if (eval_type != HASHEXACT)
-            {
-                // First move ("PV-move"); do a normal search
-                score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
-                if (reduction && score > alpha)
-                {
-                    // research without reduction
-                    effectiveDepth += reduction;
-                    score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
-                }
-            }
-            else {
-                // try a PV-Search
-                score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
-                if (score > alpha && score < beta)
-                {
-                    // reasearch with full window
-                    score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
-                }
-            }
+            SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by futility: staticeval(%d) < alpha(%d) - futilityMargin(%d)", debugMove.toString().c_str(), staticeval, alpha, 100 + 80 * depth);
             unplayMove(m);
-
-            if (en.stopLevel == ENGINESTOPIMMEDIATELY)
-            {
-                // time is over; immediate stop requested
-                return beta;
-            }
-
-            SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s scored %d", debugMove.toString().c_str(), score);
-
-            if (score > bestscore)
-            {
-                bestscore = score;
-                bestcode = m->code;
-
-                if (score >= beta)
-                {
-                    if (!ISTACTICAL(m->code))
-                    {
-                        updateHistory(m->code, ms.cmptr, depth * depth);
-                        for (int i = 0; i < quietsPlayed; i++)
-                        {
-                            uint32_t qm = quietMoves[i];
-                            updateHistory(qm, ms.cmptr, -(depth * depth));
-                        }
-
-                        // Killermove
-                        if (killer[ply][0] != m->code)
-                        {
-                            killer[ply][1] = killer[ply][0];
-                            killer[ply][0] = m->code;
-                        }
-
-                        // save countermove
-                        if (lastmove)
-                            countermove[GETPIECE(lastmove)][GETTO(lastmove)] = m->code;
-                    }
-
-                    SDEBUGPRINT(isDebugPv, debugInsert, " Beta-cutoff by move %s: %d  %s%s", m->toString().c_str(), score, excludestr.c_str(), excludeMove ? " : not singular" : "");
-                    if (!excludeMove)
-                    {
-                        SDEBUGPRINT(isDebugPv, debugInsert, " ->Hash(%d) = %d(beta)", effectiveDepth, score);
-                        tp.addHash(newhash, FIXMATESCOREADD(score, ply), staticeval, HASHBETA, effectiveDepth, (uint16_t)bestcode);
-                    }
-                    return score;   // fail soft beta-cutoff
-                }
-
-                if (score > alpha)
-                {
-                    SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s raising alpha to %d", debugMove.toString().c_str(), score);
-                    alpha = score;
-                    eval_type = HASHEXACT;
-                    updatePvTable(bestcode, true);
-                }
-            }
-
-            if (!ISTACTICAL(m->code))
-                quietMoves[quietsPlayed++] = m->code;
+            continue;
         }
+
+        STATISTICSINC(moves_played[(bool)ISTACTICAL(m->code)]);
+
+        if (eval_type != HASHEXACT)
+        {
+            // First move ("PV-move"); do a normal search
+            score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
+            if (reduction && score > alpha)
+            {
+                // research without reduction
+                effectiveDepth += reduction;
+                score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
+            }
+        }
+        else {
+            // try a PV-Search
+            score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
+            if (score > alpha && score < beta)
+            {
+                // reasearch with full window
+                score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
+            }
+        }
+        unplayMove(m);
+
+        if (en.stopLevel == ENGINESTOPIMMEDIATELY)
+        {
+            // time is over; immediate stop requested
+            return beta;
+        }
+
+        SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s scored %d", debugMove.toString().c_str(), score);
+
+        if (score > bestscore)
+        {
+            bestscore = score;
+            bestcode = m->code;
+
+            if (score >= beta)
+            {
+                if (!ISTACTICAL(m->code))
+                {
+                    updateHistory(m->code, ms.cmptr, depth * depth);
+                    for (int i = 0; i < quietsPlayed; i++)
+                    {
+                        uint32_t qm = quietMoves[i];
+                        updateHistory(qm, ms.cmptr, -(depth * depth));
+                    }
+
+                    // Killermove
+                    if (killer[ply][0] != m->code)
+                    {
+                        killer[ply][1] = killer[ply][0];
+                        killer[ply][0] = m->code;
+                    }
+
+                    // save countermove
+                    if (lastmove)
+                        countermove[GETPIECE(lastmove)][GETTO(lastmove)] = m->code;
+                }
+
+                SDEBUGPRINT(isDebugPv, debugInsert, " Beta-cutoff by move %s: %d  %s%s", m->toString().c_str(), score, excludestr.c_str(), excludeMove ? " : not singular" : "");
+                STATISTICSINC(moves_fail_high);
+
+                if (!excludeMove)
+                {
+                    SDEBUGPRINT(isDebugPv, debugInsert, " ->Hash(%d) = %d(beta)", effectiveDepth, score);
+                    tp.addHash(newhash, FIXMATESCOREADD(score, ply), staticeval, HASHBETA, effectiveDepth, (uint16_t)bestcode);
+                }
+                return score;   // fail soft beta-cutoff
+            }
+
+            if (score > alpha)
+            {
+                SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s raising alpha to %d", debugMove.toString().c_str(), score);
+                alpha = score;
+                eval_type = HASHEXACT;
+                updatePvTable(bestcode, true);
+            }
+        }
+
+        if (!ISTACTICAL(m->code))
+            quietMoves[quietsPlayed++] = m->code;
     }
 
     if (LegalMoves == 0)
@@ -681,6 +742,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (excludeMove)
             return alpha;
 
+        STATISTICSINC(ab_draw_or_win);
         if (isCheckbb) {
             // It's a mate
             SDEBUGPRINT(isDebugPv, debugInsert, " Return score: %d  (mate)", SCOREBLACKWINS + ply);
@@ -1302,11 +1364,10 @@ static void search_gen1(searchthread *thr)
         cout << "bestmove " + strBestmove + strPonder + "\n";
 
         en.stopLevel = ENGINESTOPPED;
-
+        en.benchmove = strBestmove;
     }
 
-    // Remember some exit values for benchmark output
-    en.benchscore = score;
+    // Remember depth for benchmark output
     en.benchdepth = thr->depth - 1;
 }
 
@@ -1352,6 +1413,11 @@ void resetEndTime(int constantRootMoves, bool complete)
                 en.endtime1 = en.starttime + timetouse / f1 * en.frequency / 1000;
             en.endtime2 = en.starttime + min(max(0, timetouse - overhead), timetouse / f2) * en.frequency / 1000;
         }
+    }
+    else if (timeinc)
+    {
+        // timetouse = 0 => movetime mode: Use exactly timeinc without overhead or early stop
+        en.endtime1 = en.endtime2 = en.starttime + timeinc * en.frequency / 1000;
     }
     else {
         en.endtime1 = en.endtime2 = 0;
@@ -1433,4 +1499,79 @@ void searchguide()
     for (int tnum = 0; tnum < en.Threads; tnum++)
         en.sthread[tnum].thr.join();
     en.stopLevel = ENGINETERMINATEDSEARCH;
+
+#ifdef STATISTICS
+    search_statistics();
+#endif
 }
+
+#ifdef STATISTICS
+void search_statistics()
+{
+    U64 n, i1, i2, i3;
+    double f0, f1, f2, f3, f4, f5, f6, f10, f11;
+
+    printf("(ST)====Statistics====================================================================================================================================\n");
+
+    // quiescense search statistics
+    i1 = statistics.qs_n[0];
+    i2 = statistics.qs_n[1];
+    n = i1 + i2;
+    f0 = 100.0 * i2 / (double)n;
+    f1 = 100.0 * statistics.qs_tt / (double)n;
+    f2 = 100.0 * statistics.qs_pat / (double)n;
+    f3 = 100.0 * statistics.qs_delta / (double)n;
+    i3 = statistics.qs_move_delta + statistics.qs_moves;
+    f4 =  i3 / (double)statistics.qs_loop_n;
+    f5 = 100.0 * statistics.qs_move_delta / (double)i3;
+    f6 = 100.0 * statistics.qs_moves_fh / (double)statistics.qs_moves;
+    printf("(ST) QSearch: %12lld   %%InCheck:  %5.2f   %%TT-Hits:  %5.2f   %%Std.Pat: %5.2f   %%DeltaPr: %5.2f   Mvs/Lp: %5.2f   %%DlPrM: %5.2f   %%FailHi: %5.2f\n", n, f0, f1, f2, f3, f4, f5, f6);
+
+    // general aplhabeta statistics
+    n = statistics.ab_n;
+    f0 = 100.0 * statistics.ab_pv / (double)n;
+    f1 = 100.0 * statistics.ab_tt / (double)n;
+    f2 = 100.0 * statistics.ab_tb / (double)n;
+    f3 = 100.0 * statistics.ab_qs / (double)n;
+    f4 = 100.0 * statistics.ab_draw_or_win / (double)n;
+    printf("(ST) Total AB:%12lld   %%PV-Nodes: %5.2f   %%TT-Hits:  %5.2f   %%TB-Hits: %5.2f   %%QSCalls: %5.2f   %%Draw/Mates: %5.2f\n", n, f0, f1, f2, f3, f4);
+
+    // node pruning
+    f0 = 100.0 * statistics.prune_futility / (double)n;
+    f1 = 100.0 * statistics.prune_nm / (double)n;
+    f2 = 100.0 * statistics.prune_probcut / (double)n;
+    f3 = 100.0 * statistics.prune_multicut / (double)n;
+    f4 = 100.0 * (statistics.prune_futility + statistics.prune_nm + statistics.prune_probcut + statistics.prune_multicut) / (double)n;
+    printf("(ST) Node pruning            %%Futility: %5.2f   %%NullMove: %5.2f   %%ProbeC.: %5.2f   %%MultiC.: %7.5f Total:  %5.2f\n", f0, f1, f2, f3, f4);
+
+    // move statistics
+    i1 = statistics.moves_n[0]; // quiet moves
+    i2 = statistics.moves_n[1]; // tactical moves
+    n = i1 + i2;
+    f0 = 100.0 * i1 / (double)n;
+    f1 = 100.0 * i2 / (double)n;
+    f2 = 100.0 * statistics.moves_pruned_lmp / (double)n;
+    f3 = 100.0 * statistics.moves_pruned_futility / (double)n;
+    f4 = 100.0 * statistics.moves_pruned_badsee / (double)n;
+    f5 = n / (double)statistics.moves_loop_n;
+    i3 = statistics.moves_played[0] + statistics.moves_played[1];
+    f6 = 100.0 * statistics.moves_fail_high / (double)i3;
+    printf("(ST) Moves:   %12lld   %%Quiet-M.: %5.2f   %%Tact.-M.: %5.2f   %%LMP-M.:  %5.2f   %%FutilM.: %5.2f   %%BadSEE: %5.2f  Mvs/Lp: %5.2f   %%FailHi: %5.2f\n", n, f0, f1, f2, f3, f4, f5, f6);
+
+    // late move reduction statistics
+    U64 red_n = statistics.red_pi[0] + statistics.red_pi[1];
+    f10 = statistics.red_lmr[0] / (double)statistics.red_pi[0];
+    f11 = statistics.red_lmr[1] / (double)statistics.red_pi[1];
+    f1 = (statistics.red_lmr[0] + statistics.red_lmr[1]) / (double)red_n;
+    f2 = statistics.red_history / (double)red_n;
+    f3 = statistics.red_pv / (double)red_n;
+    f4 = statistics.red_correction / (double)red_n;
+    f5 = statistics.red_total / (double)red_n;
+    printf("(ST) Reduct.  %12lld   lmr[0]: %4.2f   lmr[1]: %4.2f   lmr: %4.2f   hist: %4.2f   pv: %4.2f   corr: %4.2f   total: %4.2f\n", red_n, f10, f11, f1, f2, f3, f4, f5);
+
+    f0 = 100.0 * statistics.extend_singular / (double)n;
+    printf("(ST) Extensions: %%singular: %7.4f\n", f0);
+
+    printf("(ST)==================================================================================================================================================\n");
+}
+#endif

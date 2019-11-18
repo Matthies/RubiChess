@@ -19,6 +19,61 @@
 #include "RubiChess.h"
 
 
+void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am)
+{
+    *fen = "";
+    string f;
+    vector<string> fv = SplitString(input.c_str());
+    for (int i = 0; i < min(4, (int)fv.size()); i++)
+        f = f + fv[i] + " ";
+
+    chessposition *p = &en.sthread[0].pos;
+    if (p->getFromFen(f.c_str()) < 0)
+        return;
+
+    *fen = f;
+    *bm = *am = "";
+    bool searchbestmove = false;
+    bool searchavoidmove = false;
+    string moveliststr;
+    for (unsigned int i = 4; i < fv.size(); i++)
+    {
+        if (searchbestmove || searchavoidmove)
+        {
+            size_t smk = fv[i].find(';');
+            if (smk != string::npos)
+                fv[i] = fv[i].substr(0, smk);
+            if (moveliststr != "")
+                moveliststr += " ";
+            moveliststr += AlgebraicFromShort(fv[i], p);
+            if (smk != string::npos)
+            {
+                if (searchbestmove)
+                {
+                    *bm = moveliststr;
+                    searchbestmove = false;
+                }
+                else if (searchavoidmove)
+                {
+                    *am = moveliststr;
+                    searchavoidmove = false;
+                }
+            }
+        }
+        if (strstr(fv[i].c_str(), "bm") != NULL)
+        {
+            searchbestmove = true;
+            moveliststr = "";
+        }
+        if (strstr(fv[i].c_str(), "am") != NULL)
+        {
+            searchavoidmove = true;
+            moveliststr = "";
+        }
+    }
+}
+
+
 vector<string> SplitString(const char* s)
 {
     string ss(s);
