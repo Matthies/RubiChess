@@ -860,7 +860,7 @@ public:
 };
 
 #define MAXMULTIPV 64
-#define MAXTHREADS 128
+#define MAXTHREADS 256
 #define CMPLIES 2
 
 
