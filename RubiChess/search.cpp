@@ -1110,6 +1110,7 @@ static void search_gen1(searchthread *thr)
 
     uint32_t lastBestMove = 0;
     int constantRootMoves = 0;
+    int lastiterationscore = NOSCORE;
     bool bExitIteration;
     en.lastReport = 0;
     U64 nowtime;
@@ -1247,6 +1248,16 @@ static void search_gen1(searchthread *thr)
         }
         if (inWindow == 1)
         {
+            if (lastiterationscore > pos->bestmovescore[0] + 20)
+            {
+                // Score decreases hard; use more thinking time
+                constantRootMoves = -1;
+#ifdef TDEBUG
+                printf("info string Score descreases... more thinking time at depth %d...\n", thr->depth);
+#endif
+            }
+            lastiterationscore = pos->bestmovescore[0];
+
             // Skip some depths depending on current depth and thread number using Laser's method
             int cycle = thr->index % 16;
             if (thr->index && (thr->depth + cycle) % SkipDepths[cycle] == 0)
