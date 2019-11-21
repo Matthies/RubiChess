@@ -269,7 +269,7 @@ struct evalparamset {
     eval eComplexpawnsbonus = EVALUE(4);
     eval eComplexpawnflanksbonus = EVALUE(66);
     eval eComplexonlypawnsbonus = EVALUE(71);
-    eval eComplexadjust = EVALUE(-136);
+    eval eComplexadjust = EVALUE(-85);
     //eval eComplexpasserbonus =  EVALUE(  -2);
     //eval eComplexkingfiledeltabonus =  EVALUE(  -1);
     //eval eComplexhardtowinpenalty =  EVALUE( -28);
