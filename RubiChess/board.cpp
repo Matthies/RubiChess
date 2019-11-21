@@ -2540,7 +2540,7 @@ void engine::communicate(string inputstring)
                 send("option name SyzygyPath type string default <empty>\n");
                 send("option name Syzygy50MoveRule type check default true\n");
                 send("option name SyzygyProbeLimit type spin default 7 min 0 max 7\n");
-                send("option name Threads type spin default 1 min 1 max 128\n");
+                send("option name Threads type spin default 1 min 1 max %d\n", MAXTHREADS);
                 send("uciok\n", author);
                 break;
             case UCINEWGAME:
