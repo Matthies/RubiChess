@@ -987,7 +987,7 @@ static void collectTuners(chessposition *pos, tunerpool *pool, tuner **freeTuner
 }
 
 
-void TexelTune(string fenfilename)
+void TexelTune(string fenfilename, bool noqs)
 {
 #if 0 // enable to calculate constant k 
     // FIXME: Needs to be rewritten after eval rewrite
@@ -1028,6 +1028,7 @@ void TexelTune(string fenfilename)
 #endif
     pos.pwnhsh = new Pawnhash(0);
     registeralltuners(&pos);
+    pos.noQs = noqs;
     en.setOption("hash", "4"); // we don't need tt; save all the memory for game data
     getGradsFromFen(&pos, fenfilename);
 
