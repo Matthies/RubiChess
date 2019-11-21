@@ -161,7 +161,7 @@ inline int pullMsb(unsigned long long *x) {
 enum { WHITE, BLACK };
 #define WHITEBB 0x55aa55aa55aa55aa
 #define BLACKBB 0xaa55aa55aa55aa55
-#define FLANKLEFT 0x0f0f0f0f0f0f0f0f
+#define FLANKLEFT  0x0f0f0f0f0f0f0f0f
 #define FLANKRIGHT 0xf0f0f0f0f0f0f0f0
 #define RANK(x) ((x) >> 3)
 #define RRANK(x,s) ((s) ? ((x) >> 3) ^ 7 : ((x) >> 3))
@@ -267,9 +267,9 @@ typedef const int32_t eval;
 struct evalparamset {
     // Powered by Laser games :-)
     eval eComplexpawnsbonus = EVALUE(4);
-    eval eComplexpawnflanksbonus = EVALUE(34);
-    eval eComplexonlypawnsbonus = EVALUE(61);
-    eval eComplexadjust = EVALUE(-39);
+    eval eComplexpawnflanksbonus = EVALUE(66);
+    eval eComplexonlypawnsbonus = EVALUE(71);
+    eval eComplexadjust = EVALUE(-136);
     //eval eComplexpasserbonus =  EVALUE(  -2);
     //eval eComplexkingfiledeltabonus =  EVALUE(  -1);
     //eval eComplexhardtowinpenalty =  EVALUE( -28);

@@ -99,13 +99,14 @@ void registeralltuners(chessposition *pos)
 
     pos->tps.count = 0;
 
-    tuneIt = true;
+    tuneIt = false;
     //registertuner(pos, &eps.eComplexpasserbonus, "eComplexpasserbonus", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eComplexpawnsbonus, "eComplexpawnsbonus", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eComplexpawnflanksbonus, "eComplexpawnflanksbonus", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eComplexonlypawnsbonus, "eComplexonlypawnsbonus", 0, 0, 0, 0, tuneIt);
     //registertuner(pos, &eps.eComplexkingfiledeltabonus, "eComplexkingfiledeltabonus", 0, 0, 0, 0, tuneIt);
     //registertuner(pos, &eps.eComplexhardtowinpenalty, "eComplexhardtowinpenalty", 0, 0, 0, 0, tuneIt);
+    tuneIt = true;
     registertuner(pos, &eps.eComplexadjust, "eComplexadjust", 0, 0, 0, 0, tuneIt);
 
     tuneIt = false;
