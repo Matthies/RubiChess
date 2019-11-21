@@ -578,8 +578,6 @@ typedef struct pawnhashentry {
     U64 attackedBy2[2];
     bool bothFlanks;
     unsigned char semiopen[2];
-    //int8_t kingfiledelta;  // relative to the rank delta
-
     char padding[2];
 } S_PAWNHASHENTRY;
 

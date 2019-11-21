@@ -615,7 +615,6 @@ int chessposition::getEval()
         getPawnAndKingEval<Et, 1>(pe.phentry);
         U64 pawns = piece00[WPAWN] | piece00[BPAWN];
         pe.phentry->bothFlanks = ((pawns & FLANKLEFT) && (pawns & FLANKRIGHT));
-        //pe.phentry->kingfiledelta = abs(FILE(kingpos[WHITE]) - FILE(kingpos[BLACK])) - abs(RANK(kingpos[WHITE]) - RANK(kingpos[BLACK]));
     }
 
     int pawnEval = pe.phentry->value;
@@ -670,23 +669,14 @@ int chessposition::getEval()
 
 int chessposition::getComplexity(int eval, pawnhashentry *phentry, Materialhashentry *mhentry)
 {
-        int complexity;
         int evaleg = GETEGVAL(eval);
-
         int sign = (evaleg > 0) - (evaleg < 0);
-        //bool hardtowin = phentry->kingfiledelta < 0 && !phentry->bothFlanks && !phentry->passedpawnbb[WHITE] && !phentry->passedpawnbb[BLACK];
-        
-        //complexity = EEVAL(eps.eComplexpasserbonus, POPCOUNT(phentry->passedpawnbb[WHITE] | phentry->passedpawnbb[BLACK]));
-        complexity = EEVAL(eps.eComplexpawnsbonus, mhentry->numOfPawns);
+        int complexity = EEVAL(eps.eComplexpawnsbonus, mhentry->numOfPawns);
         complexity += EEVAL(eps.eComplexpawnflanksbonus, phentry->bothFlanks);
         complexity += EEVAL(eps.eComplexonlypawnsbonus, mhentry->onlyPawns);
-        //complexity += EEVAL(eps.eComplexkingfiledeltabonus, phentry->kingfiledelta);
-        //complexity += EEVAL(eps.eComplexhardtowinpenalty, hardtowin);
         complexity += EEVAL(eps.eComplexadjust, 1);
 
-        int result = sign * max(complexity, -abs(evaleg));
-
-        return result;
+        return sign * max(complexity, -abs(evaleg));
 }
 
 
