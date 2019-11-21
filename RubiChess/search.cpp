@@ -1384,7 +1384,7 @@ void resetEndTime(int constantRootMoves, bool complete)
 {
     int timetouse = (en.isWhite ? en.wtime : en.btime);
     int timeinc = (en.isWhite ? en.winc : en.binc);
-    int overhead = en.moveOverhead * en.Threads;
+    int overhead = en.moveOverhead + 8 * en.Threads;
 
     if (en.movestogo)
     {
