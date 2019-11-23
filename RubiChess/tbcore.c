@@ -1205,7 +1205,7 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
       litidx -= d->sizetable[block++] + 1;
   }
 
-  uint32 *ptr = (uint32 *)(d->data + (block << d->blocksize));
+  uint32 *ptr = (uint32 *)(d->data + ((size_t)block << d->blocksize));
 
   int m = d->min_len;
   ushort *offset = d->offset;

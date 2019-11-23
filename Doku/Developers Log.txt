@@ -705,3 +705,112 @@ Rubi (und offensichtlich auch KMCTS) übersehen danach den Gewinnerzug h5.
 Spiel TCEC S16 SuFi Spiel 42 SF - Allie
 8/4pkb1/2p3pp/ppNrP3/P1n1NP1P/5qP1/KP6/2Q1R3 b - - 5 36
 Rubi findet nach Allies Bf8 den Gewinnerzug f5 nicht.
+
+
+10.10.2019
+Im ccc11 bullet test spielt Rubi trotz jeder Menge tablebase einen schlimmen Endspiel-Blunder 72. Kd5
+Ev. ein Problem im Zusammenhang mit schlechten Einträgen in tt durch abgebrochene Suche?
+Dann wäre es durch Commit ab0de7c9116930274f57f49b7b0f4610f2cb44e4 gelöst.
+
+[Event "CCC11 Bullet Test (1|1)"]
+[Site "?"]
+[Date "2019.10.09"]
+[Round "1"]
+[White "Rubi"]
+[Black "Lc0"]
+[Result "0-1"]
+[ECO "C26"]
+[GameDuration "00:05:26"]
+[GameEndTime "2019-10-09T16:26:55.067 PDT"]
+[GameStartTime "2019-10-09T16:21:28.283 PDT"]
+[Opening "Vienna"]
+[PlyCount "160"]
+[TimeControl "60+1"]
+[Variation "Falkbeer Variation"]
+
+1. e4 e5 2. Nc3 Nf6 3. f4 exf4 4. e5 Ng8 5. Nf3 d6 6. d4 dxe5 7. Qe2 Be7 8. Qxe5
+Nf6 9. Bxf4 c6 10. Bc4 Nbd7 11. Qe2 Nb6 12. Bb3 a5 13. a4 Nbd5 14. Be5 O-O 15.
+O-O Be6 16. Rae1 Re8 17. Ng5 Nxc3 18. Qd3 Ncd5 19. Bxf6 Bxf6 20. Qxh7+ Kf8 21.
+Qh8+ Ke7 22. Rxe6+ Kd7 23. Rxe8 Qxe8 24. Qh3+ Kc7 25. Qg3+ Kb6 26. Nf3 Ka7 27.
+Ne5 Rc8 28. c3 Qe6 29. Nc4 Re8 30. h3 Qe7 31. Nxa5 Ne3 32. Rf3 c5 33. dxc5 Qe4
+34. Ba2 Qc2 35. Nc6+ Ka8 36. Rxe3 Qc1+ 37. Kf2 Qd2+ 38. Kf1 Qxe3 39. Qxe3 Rxe3
+40. Nb4 Bh4 41. Nc2 Re5 42. b4 Bg5 43. Kf2 Bd2 44. Bxf7 Rf5+ 45. Ke2 Rxf7 46.
+Kxd2 Rf2+ 47. Kd3 Rxg2 48. c4 Rh2 49. a5 Rxh3+ 50. Kd2 g5 51. Ne3 Rf3 52. b5 Kb8
+53. Ke2 Rf8 54. Ke1 Rf7 55. Ke2 Rf8 56. c6 bxc6 57. bxc6 Kc7 58. Nc2 g4 59. Nd4
+Rf6 60. c5 g3 61. a6 g2 62. a7 g1=Q 63. a8=Q Rf2+ 64. Kd3 Qf1+ 65. Ke4 Qh1+ 66.
+Kd3 Qf1+ 67. Kc3 Qc1+ 68. Kd3 Rd2+ 69. Ke4 Qe1+ 70. Kd5 Qh1+ 71. Ke5 Qh2+ 72.
+Kd5 Qg2+ 73. Kc4 Qf1+ 74. Kd5 Qf5+ 75. Kc4 Qd3+ 76. Kd5 Qxd4+ 77. Ke6 Qe4+ 78.
+Kf7 Rf2+ 79. Kg8 Qg6+ 80. Kh8 Rh2# 0-1
+
+31.10.2019
+Im ccc Gambit Bonus spielt Rubi eine fürchterliche Partie gegen Winter, die
+trotz Springer-Vorsprung verloren wird.
+Viele schlechte Züge, aber insbesondere 17. .. Qxe6
+
+[Event "Halloween Gambit Bonus (5|2)"]
+[Site "?"]
+[Date "2019.10.30"]
+[Round "1"]
+[White "Winter"]
+[Black "Rubi"]
+[Result "1-0"]
+[ECO "C46"]
+[GameDuration "00:13:35"]
+[GameEndTime "2019-10-30T17:11:41.405 PDT"]
+[GameStartTime "2019-10-30T16:58:06.238 PDT"]
+[Opening "Four knights"]
+[PlyCount "145"]
+[TimeControl "300+2"]
+[Variation "Schultze-Mueller gambit"]
+
+1. e4 e5 2. Nf3 Nc6 3. Nc3 Nf6 4. Nxe5 Nxe5 5. d4 Ng6 6. e5 Ng8 7. Bc4 d5 8.
+Bxd5 N8e7 9. Bg5 Qd7 10. Be4 Nf5 11. Qd3 h6 12. Bd2 Nxd4 13. O-O-O c6 14. Rhe1
+Ne7 15. g4 Ne6 16. Qg3 Nc5 17. e6 Qxe6 18. Bf3 Qg6 19. h4 f5 20. h5 Qf7 21. Qe5
+Ne6 22. Nb5 Qf6 23. Nd6+ Kd7 24. Qa5 b6 25. Qa4 Qd4 26. Nc4 b5 27. Ne5+ Qxe5 28.
+Qa5 fxg4 29. Bxg4 Qd4 30. Bc3 Qxd1+ 31. Kxd1 Ke8 32. Bxe6 Bxe6 33. Rxe6 Kd7 34.
+Re5 Nc8 35. a4 Bd6 36. Re1 Rb8 37. Rg1 Re8 38. Rxg7+ Re7 39. Bf6 Rxg7 40. Bxg7
+Bf4 41. Qb4 Bd6 42. Qg4+ Kc7 43. Bxh6 Nb6 44. a5 Nd7 45. Bf4 Rd8 46. Bxd6+ Kxd6
+47. Qd4+ Ke6 48. h6 c5 49. Qg4+ Kf7 50. Kc1 Nf6 51. Qg7+ Ke6 52. h7 Nxh7 53.
+Qxh7 Rd7 54. Qe4+ Kd6 55. Qg6+ Ke7 56. Qc6 c4 57. Qxb5 c3 58. Qe5+ Kf7 59. Qxc3
+Re7 60. b4 Kg6 61. b5 Kf7 62. a6 Re8 63. Qc7+ Ke6 64. Qxa7 Kd6 65. Qd4+ Ke6 66.
+b6 Kf7 67. a7 Rg8 68. b7 Rg1+ 69. Kb2 Rg8 70. b8=Q Rxb8+ 71. axb8=Q Kg6 72. Qg8+
+Kf5 73. Qgg4# 1-0
+
+
+In this position (resulting from ACT2-3 test) 2k5/8/5p2/p4P1p/P2Pp2P/4N1Pq/7P/7K b - - 0 4
+Rubi doesn't detect the "draw by no-progress". Black can find enough moves to avoid 3-fold
+so this seems to need some special no-progress-detection.
+
+
+22.11.2019
+[Event "Computer game"]
+[Site "GrahamCCRL.dyndns.org\\RubiChess Gauntlet.e1e"]
+[Date "2019.11.22"]
+[Round "?"]
+[White "RubiChess 1.6"]
+[Black "Komodo 10 64-bit"]
+[Result "0-1"]
+[BlackElo "2200"]
+[WhiteElo "2200"]
+[TimeControl "40/960:300"]
+[SetUp "1"]
+[FEN "r3k2r/p1qb1ppp/2pbp1n1/3p4/4P3/3B1N2/PPP1QPPP/R1B2RK1 w kq - 0 12"]
+[Termination "normal"]
+[PlyCount "103"]
+[WhiteType "program"]
+[BlackType "program"]
+
+12. Re1 Rb8 13. c4 O-O 14. e5 Bb4 15. Rd1 dxc4 16. Bxg6 fxg6 17. Qxc4 Be7
+18. b3 Rb5 19. Be3 Rd5 20. Rac1 Qa5 21. h3 Rc8 22. Rd2 Ba3 23. Rcc2 Be7 24.
+Qg4 Qc7 25. b4 a5 26. Bc5 Bxc5 27. Rxc5 axb4 28. Rdxd5 exd5 29. Qxb4 Qb8
+30. Qh4 h6 31. a4 Qb1+ 32. Kh2 g5 33. Qd4 Rf8 34. a5 Qa2 35. e6 Be8 36. Kg3
+Rf4 37. Qe5 Qa3 38. Qc3 Qa4 39. Kh2 g4 40. hxg4 Rxg4 41. Qe5 Rg6 42. g3 Qg4
+43. Nd4 Rg5 44. Qf4 Rh5+ 45. Kg2 Qh3+ 46. Kf3 Qh1+ 47. Ke2 Qa1 48. Nxc6 Rh1
+49. Ne7+ Kh7 50. Qf5+ g6 51. Qxd5 Qe1+ 52. Kd3 Qd1+ 53. Ke3 Re1+ 54. Kf4
+g5+ 55. Kf5 Qb1+ 56. Kf6 Qb2+ 57. Qe5 Rxe5 58. Rxe5 Qxf2+ 59. Nf5 Qb2 60.
+Nd6 Qa3 61. Ke7 Qxg3 62. Rc5 Qa3 63. Rc7 0-1
+
+SF sagt, dass das Spiel nach 48. Nxc6 verloren ist (besser wäre Tc1).
+Aber selbst nach 52. ... Qd1+ glaubt Rubi an ein Remis (mindestens bis Tiefe 41).
+Ist der gewünschte Zug 53. Ke3 dann gespielt, erkennt Rubi sofort die Niederlage.
+Hier passiert irgendein falsches Pruning. Sollte untersucht werden.

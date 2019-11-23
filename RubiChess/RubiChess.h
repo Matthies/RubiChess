@@ -17,7 +17,11 @@
 
 #pragma once
 
-#define VERNUM "1.6-dev"
+#define VERNUM "1.7-dev"
+
+#if 0
+#define STATISTICS
+#endif
 
 #if 1
 #define SDEBUG
@@ -59,6 +63,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <list>
 #include <string>
 #include <string.h>
 #include <sstream>
@@ -176,6 +181,7 @@ enum { WHITE, BLACK };
 
 
 typedef unsigned long long U64;
+typedef signed long long S64;
 
 // Forward definitions
 class transposition;
@@ -464,6 +470,7 @@ enum EvalType { NOTRACE, TRACE};
 //
 // utils stuff
 //
+void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am);
 vector<string> SplitString(const char* s);
 unsigned char AlgebraicToIndex(string s);
 string IndexToAlgebraic(int i);
@@ -476,7 +483,7 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
 #ifdef EVALTUNE
 typedef void(*initevalfunc)(void);
 bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg);
-void TexelTune(string fenfilename);
+void TexelTune(string fenfilename, bool noqs);
 
 extern int tuningratio;
 
@@ -628,12 +635,14 @@ extern Materialhash mh;
 #define WKING 12
 #define BKING 13
 
-#define S2MMASK 0x01
-#define WQCMASK 0x02
-#define WKCMASK 0x04
-#define BQCMASK 0x08
-#define BKCMASK 0x10
-#define CASTLEMASK 0x1E
+// My son wants this in binary :-)
+#define S2MMASK     0b00001
+#define WQCMASK     0b00010
+#define WKCMASK     0b00100
+#define BQCMASK     0b01000
+#define BKCMASK     0b10000
+#define CASTLEMASK  0b11110
+
 #define WQC 1
 #define WKC 2
 #define BQC 3
@@ -815,6 +824,7 @@ struct chessmovestack
     int fullmovescounter;
     U64 isCheckbb;
     uint32_t movecode;
+    U64 kingPinned[2];
 };
 
 #define MAXMOVELISTLENGTH 256	// for lists of possible pseudo-legal moves
@@ -850,7 +860,7 @@ public:
 };
 
 #define MAXMULTIPV 64
-#define MAXTHREADS 128
+#define MAXTHREADS 256
 #define CMPLIES 2
 
 
@@ -931,7 +941,7 @@ enum RootsearchType { SinglePVSearch, MultiPVSearch, PonderSearch };
 template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* m);
 template <MoveType Mt> void evaluateMoves(chessmovelist *ml, chessposition *pos, int16_t **cmptr);
 
-enum AttackType { FREE, OCCUPIED };
+enum AttackType { FREE, OCCUPIED, OCCUPIEDANDKING };
 
 struct positioneval {
     pawnhashentry *phentry;
@@ -954,7 +964,6 @@ public:
     U64 occupied00[2];
     U64 attackedBy2[2];
     U64 attackedBy[2][7];
-    U64 kingPinned[2];
 
     // The following block is mapped/copied to the movestack, so its important to keep the order
     int state;
@@ -967,6 +976,7 @@ public:
     int fullmovescounter;
     U64 isCheckbb;
     uint32_t movecode;
+    U64 kingPinned[2];
 
     uint8_t mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
     chessmovestack movestack[MAXMOVESEQUENCELENGTH];
@@ -1016,6 +1026,7 @@ public:
     chessmovelist singularquietslist[MAXDEPTH];
 #ifdef EVALTUNE
     bool isQuiet;
+    bool noQs;
     tuneparamselection tps;
     positiontuneset pts;
     evalparam ev[NUMOFEVALPARAMS];
@@ -1035,6 +1046,7 @@ public:
     void print(ostream* os = &cout);
     int phase();
     U64 movesTo(PieceCode pc, int from);
+    template <PieceType Pt> U64 pieceMovesTo(int from);
     bool isAttacked(int index);
     U64 isAttackedByMySlider(int index, U64 occ, int me);  // special simple version to detect giving check by removing blocker
     U64 attackedByBB(int index, U64 occ);  // returns bitboard of all pieces of both colors attacking index square 
@@ -1146,8 +1158,8 @@ public:
     enum { NO, PONDERING, HITPONDER } pondersearch;
     int terminationscore = SHRT_MAX;
     int lastReport;
-    int benchscore;
     int benchdepth;
+    string benchmove;
     int stopLevel = ENGINESTOPPED;
 #ifdef STACKDEBUG
     string assertfile = "";
@@ -1235,4 +1247,64 @@ int probe_wdl(int *success, chessposition *pos);
 int probe_dtz(int *success, chessposition *pos);
 int root_probe_dtz(chessposition *pos);
 int root_probe_wdl(chessposition *pos);
+
+
+//
+// statistics stuff
+//
+#ifdef STATISTICS
+struct statistic {
+    U64 qs_n[2];                // total calls to qs split into no check / check
+    U64 qs_tt;                  // qs hits tt
+    U64 qs_pat;                 // qs returns with pat score
+    U64 qs_delta;               // qs return with delta pruning before move loop
+    U64 qs_loop_n;              // qs enters moves loop
+    U64 qs_move_delta;          // qs moves delta-pruned
+    U64 qs_moves;               // moves done in qs
+    U64 qs_moves_fh;            // qs moves that cause a fail high
+
+    U64 ab_n;                   // total calls to alphabeta
+    U64 ab_pv;                  // number of PV nodes
+    U64 ab_tt;                  // alphabeta exit by tt hit
+    U64 ab_draw_or_win;         // alphabeta returns draw or mate score
+    U64 ab_qs;                  // alphabeta calls qsearch
+    U64 ab_tb;                  // alphabeta exits with tb score
+
+    U64 prune_futility;         // nodes pruned by reverse futility
+    U64 prune_nm;               // nodes pruned by null move;
+    U64 prune_probcut;          // nodes pruned by PobCut
+    U64 prune_multicut;         // nodes pruned by Multicut (detected by failed singular test)
+
+    U64 moves_loop_n;           // counts how often the moves loop is entered
+    U64 moves_n[2];             // all moves in alphabeta move loop split into quites ans tactical
+    U64 moves_pruned_lmp;       // moves pruned by lmp
+    U64 moves_pruned_futility;  // moves pruned by futility
+    U64 moves_pruned_badsee;    // moves pruned by bad see
+    U64 moves_played[2];        // moves that are played split into quites ans tactical
+    U64 moves_fail_high;        // moves that cause a fail high;
+
+    U64 red_total;              // total reductions
+    U64 red_lmr[2];             // total late-move-reductions for (not) improved moves
+    U64 red_pi[2];              // number of quiets moves that are reduced split into (not) / improved moves
+    S64 red_history;            // total reduction by history
+    S64 red_pv;                 // total reduction by pv nodes
+    S64 red_correction;         // total reduction correction by over-/underflow
+
+    U64 extend_singular;        // total extended moves
+};
+
+extern struct statistic statistics;
+
+void search_statistics();
+
+// some macros to limit the ifdef STATISTICS inside the code
+#define STATISTICSINC(x)        statistics.x++ 
+#define STATISTICSADD(x, v)     statistics.x += (v)
+#define STATISTICSDO(x)         x
+
+#else
+#define STATISTICSINC(x)
+#define STATISTICSADD(x, v)
+#define STATISTICSDO(x)
+#endif
 
