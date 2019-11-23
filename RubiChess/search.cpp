@@ -138,7 +138,6 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     bool tpHit = tp.probeHash(hash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
     if (tpHit)
     {
-        //SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from TT.", hashscore);
         STATISTICSINC(qs_tt);
         return hashscore;
     }
@@ -161,7 +160,6 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         bestscore = staticeval;
         if (staticeval >= beta)
         {
-            //SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (fail high by patscore).", staticeval);
             STATISTICSINC(qs_pat);
             return staticeval;
         }
@@ -178,7 +176,6 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         int bestCapture = getBestPossibleCapture();
         if (staticeval + deltapruningmargin + bestCapture < alpha)
         {
-            //SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (delta pruning by patscore).", staticeval);
             STATISTICSINC(qs_delta);
             return staticeval;
         }
@@ -213,7 +210,6 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
             bestscore = score;
             if (score >= beta)
             {
-                //SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from qsearch (fail high).", score);
                 STATISTICSINC(qs_moves_fh);
                 return score;
             }
@@ -275,9 +271,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     int rep = testRepetiton();
     if (rep >= 2)
     {
-        //SDEBUGPRINT(isDebugPv, debugInsert, "Draw (repetition)");
         STATISTICSINC(ab_draw_or_win);
         return SCOREDRAW;
+    }
 
     // test for remis via 50 moves rule
     if (halfmovescounter >= 100)
@@ -285,7 +281,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         STATISTICSINC(ab_draw_or_win);
         if (!isCheckbb)
         {
-            //SDEBUGPRINT(isDebugPv, debugInsert, "Draw (50 moves)");
             return SCOREDRAW;
         } else {
             // special case: test for checkmate
@@ -329,11 +324,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
             if (fullhashmove)
                 updatePvTable(fullhashmove, false);
-            //SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from TT.", hashscore);
+
             STATISTICSINC(ab_tt);
-
             SDEBUGDO(isDebugPv, pvabortval[ply] = hashscore; if (debugMove.code == (fullhashmove & 0xefff)) pvaborttype[ply] = PVA_FROMTT; else pvaborttype[ply] = PVA_DIFFERENTFROMTT; );
-
             return hashscore;
         }
     }
@@ -420,7 +413,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         // reverse futility pruning
         if (!isCheckbb && staticeval - depth * (72 - 20 * positionImproved) > beta)
         {
-            //SDEBUGPRINT(isDebugPv, debugInsert, " Cutoff by reverse futility pruning: staticscore(%d) - revMargin(%d) > beta(%d)", staticeval, depth * (72 - 20 * positionImproved), beta);
             STATISTICSINC(prune_futility);
             SDEBUGDO(isDebugPv, pvabortval[ply] = staticeval; pvaborttype[ply] = PVA_REVFUTILITYPRUNED;);
             return staticeval;
@@ -444,7 +436,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 score = beta;
 
             if (abs(beta) < 5000 && (depth < 12 || nullmoveply)) {
-                //SDEBUGPRINT(isDebugPv, debugInsert, "Low-depth-cutoff by null move: %d", score);
                 STATISTICSINC(prune_nm);
                 SDEBUGDO(isDebugPv, pvabortval[ply] = score; pvaborttype[ply] = PVA_NMPRUNED;);
                 return score;
@@ -455,7 +446,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             int verificationscore = alphabeta(beta - 1, beta, depth - R);
             nullmoveside = nullmoveply = 0;
             if (verificationscore >= beta) {
-                //SDEBUGPRINT(isDebugPv, debugInsert, "Verified cutoff by null move: %d", score);
                 STATISTICSINC(prune_nm);
                 SDEBUGDO(isDebugPv, pvabortval[ply] = score; pvaborttype[ply] = PVA_NMPRUNED;);
                 return score;
@@ -547,7 +537,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         {
             if (LegalMoves)
             {
-                //SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by futility: staticeval(%d) < alpha(%d) - futilityMargin(%d)", debugMove.toString().c_str(), staticeval, alpha, 100 + 80 * depth);
                 STATISTICSINC(moves_pruned_futility);
                 SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_FUTILITYPRUNED;);
                 continue;
@@ -562,7 +551,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         // Prune tactical moves with bad SEE
         if (!isCheckbb && depth < 8 && bestscore > NOSCORE && ms.state >= BADTACTICALSTATE && !see(m->code, -20 * depth * depth))
         {
-            //SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by bad SEE", debugMove.toString().c_str());
             STATISTICSINC(moves_pruned_badsee);
             SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_SEEPRUNED;);
             continue;
@@ -586,7 +574,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             if (redScore < sBeta)
             {
                 // Move is singular
-                //SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s is singular", debugMove.toString().c_str());
                 STATISTICSINC(extend_singular);
                 extendMove = 1;
             }
@@ -623,8 +610,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             STATISTICSDO(int red1 = reduction);
             STATISTICSADD(red_correction, red1 - red0);
             STATISTICSADD(red_total, reduction);
-
-            //SDEBUGPRINT(isDebugPv && isDebugMove && reduction, debugInsert, " PV move %s (value=%d) with depth reduced by %d", debugMove.toString().c_str(), m->value, reduction);
         }
 
         int pc = GETPIECE(m->code);
@@ -649,7 +634,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         // Check again for futility pruning now that we found a valid move
         if (futilityPrune)
         {
-            //SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by futility: staticeval(%d) < alpha(%d) - futilityMargin(%d)", debugMove.toString().c_str(), staticeval, alpha, 100 + 80 * depth);
             unplayMove(m);
             SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_FUTILITYPRUNED;);
             continue;
@@ -685,7 +669,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             return beta;
         }
 
-        //SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s scored %d", debugMove.toString().c_str(), score);
         SDEBUGDO(isDebugMove, pvabortval[ply] = score;);
 
         if (score > bestscore)
@@ -716,21 +699,17 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                         countermove[GETPIECE(lastmove)][GETTO(lastmove)] = m->code;
                 }
 
-                SDEBUGPRINT(isDebugPv, debugInsert, " Beta-cutoff by move %s: %d  %s%s", m->toString().c_str(), score, excludestr.c_str(), excludeMove ? " : not singular" : "");
                 STATISTICSINC(moves_fail_high);
 
                 if (!excludeMove)
-                {
-                    //SDEBUGPRINT(isDebugPv, debugInsert, " ->Hash(%d) = %d(beta)", effectiveDepth, score);
                     tp.addHash(newhash, FIXMATESCOREADD(score, ply), staticeval, HASHBETA, effectiveDepth, (uint16_t)bestcode);
-                }
+
                 SDEBUGDO(isDebugPv, pvaborttype[ply] = isDebugMove ? PVA_BESTMOVE : debugMovePlayed ? PVA_NOTBESTMOVE : PVA_OMMITTED;);
                 return score;   // fail soft beta-cutoff
             }
 
             if (score > alpha)
             {
-                //SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s raising alpha to %d", debugMove.toString().c_str(), score);
                 SDEBUGDO(isDebugPv, pvaborttype[ply] = isDebugMove ? PVA_BESTMOVE : debugMovePlayed ? PVA_NOTBESTMOVE : PVA_OMMITTED;);
                 alpha = score;
                 eval_type = HASHEXACT;
@@ -1026,8 +1005,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                 bestmove = *m;
         }
     }
-
-    //SDEBUGPRINT(true, 0, getPv(pvtable[0]).c_str());
 
     if (isMultiPV)
     {
