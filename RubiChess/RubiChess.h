@@ -275,9 +275,12 @@ struct evalparamset {
     //cp11: 65/65/-95   48,9% vs cp10 failed badly
     //cp12: 65/65/-105  49,0% vs cp10 failed badly
     //cp13: 65/60/-100  50,0% vs cp10
-    //cp14: 60/60/-100  ... % vs cp10
+    //cp14: 60/60/-100  49,5% vs cp10 failed
+    //cp15: 70/60/-100  ... % vs cp10
+    //cp16: 70/65/-100  49,5% vs cp10 failed
+    //cp17: 60/65/-100  ... % vs cp10
     eval eComplexpawnflanksbonus = EVALUE(60);
-    eval eComplexonlypawnsbonus = EVALUE(60);
+    eval eComplexonlypawnsbonus = EVALUE(65);
     eval eComplexadjust = EVALUE(-100);
     //eval eComplexpasserbonus =  EVALUE(  -2);
     //eval eComplexkingfiledeltabonus =  EVALUE(  -1);
