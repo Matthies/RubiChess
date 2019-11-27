@@ -265,28 +265,11 @@ typedef const int32_t eval;
 #define TAPEREDANDSCALEDEVAL(s, p, c) ((GETMGVAL(s) * (256 - (p)) + GETEGVAL(s) * (p) * (c) / SCALE_NORMAL) / 256)
 
 struct evalparamset {
-    // Powered by Laser games :-)
+    // Tuned with Lichess-quiet (psqt), lc0games (kingdanger), manually (complex) and Laser games (everything else)
     eval eComplexpawnsbonus = EVALUE(4);
-    //cp6:  66/71/-100  passed vs ms
-    //cp7:  70/70/-100  49,7% vs cp6
-    //cp8:  60/70/-100  50,0% vs cp6
-    //cp9:  65/70/-105  49,1% vs cp6 failed
-    //cp10: 65/65/-100  50,3% vs cp6 passed STC[-3,1]
-    //cp11: 65/65/-95   48,9% vs cp10 failed badly
-    //cp12: 65/65/-105  49,0% vs cp10 failed badly
-    //cp13: 65/60/-100  50,0% vs cp10
-    //cp14: 60/60/-100  49,5% vs cp10 failed
-    //cp15: 70/60/-100  49,3% vs cp10
-    //cp16: 70/65/-100  49,5% vs cp10 failed
-    //cp17: 60/65/-100  49,7% vs cp10 failed
-    //cp18: 65/65/-102  49,9% vs cp10
-    //cp19: 65/65/-98   49,9% vs cp10 after 10000 games played
     eval eComplexpawnflanksbonus = EVALUE(65);
     eval eComplexonlypawnsbonus = EVALUE(65);
-    eval eComplexadjust = EVALUE(-98);
-    //eval eComplexpasserbonus =  EVALUE(  -2);
-    //eval eComplexkingfiledeltabonus =  EVALUE(  -1);
-    //eval eComplexhardtowinpenalty =  EVALUE( -28);
+    eval eComplexadjust = EVALUE(-100);
     eval eTempo =  CVALUE(  20);
     eval eKingpinpenalty[6] = {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  38, -74), VALUE(  65, -61), VALUE( -29,  68), VALUE( -44, 163)  };
     eval ePawnstormblocked[4][5] = {
@@ -581,7 +564,7 @@ public:
     void nextSearch() { numOfSearchShiftTwo = (numOfSearchShiftTwo + 4) & 0xfc; }
 };
 
-// 32 + 32 + 5*2*64 + 2*8 + 32 + 16  = 
+
 typedef struct pawnhashentry {
     uint32_t hashupper;
     int32_t value;
@@ -592,7 +575,6 @@ typedef struct pawnhashentry {
     U64 attackedBy2[2];
     bool bothFlanks;
     unsigned char semiopen[2];
-    char padding[2];
 } S_PAWNHASHENTRY;
 
 

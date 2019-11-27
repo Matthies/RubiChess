@@ -99,14 +99,10 @@ void registeralltuners(chessposition *pos)
 
     pos->tps.count = 0;
 
-    tuneIt = false;
-    //registertuner(pos, &eps.eComplexpasserbonus, "eComplexpasserbonus", 0, 0, 0, 0, tuneIt);
+    tuneIt = false;  // the complex parameters needed to be tuned manually
     registertuner(pos, &eps.eComplexpawnsbonus, "eComplexpawnsbonus", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eComplexpawnflanksbonus, "eComplexpawnflanksbonus", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eComplexonlypawnsbonus, "eComplexonlypawnsbonus", 0, 0, 0, 0, tuneIt);
-    //registertuner(pos, &eps.eComplexkingfiledeltabonus, "eComplexkingfiledeltabonus", 0, 0, 0, 0, tuneIt);
-    //registertuner(pos, &eps.eComplexhardtowinpenalty, "eComplexhardtowinpenalty", 0, 0, 0, 0, tuneIt);
-    tuneIt = true;
     registertuner(pos, &eps.eComplexadjust, "eComplexadjust", 0, 0, 0, 0, tuneIt);
 
     tuneIt = false;
@@ -201,6 +197,7 @@ struct traceeval {
     int kingattackpower[2];
     int threats[2];
     int ppawns[2];
+    int complexity[2];
     int tempo[2];
 };
 
@@ -633,9 +630,14 @@ int chessposition::getEval()
     if (!bTrace && sc == SCALE_DRAW)
         return SCOREDRAW;
 
-    totalEval += getComplexity(totalEval, pe.phentry, pe.mhentry);
+    int complexity = getComplexity(totalEval, pe.phentry, pe.mhentry);
+    totalEval += complexity;
 
-    if (bTrace) te.tempo[state & S2MMASK] += CEVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
+    if (bTrace)
+    {
+        te.tempo[state & S2MMASK] += CEVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
+        te.complexity[complexity < 0] += complexity;
+    }
 
     int score = TAPEREDANDSCALEDEVAL(totalEval, ph, sc) + CEVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
 
@@ -655,9 +657,10 @@ int chessposition::getEval()
             << "     Mobility | " << splitvaluestring(te.mobility)
             << "      Threats | " << splitvaluestring(te.threats)
             << " King attacks | " << splitvaluestring(te.kingattackpower)
-            << "        Tempo | " << splitvaluestring(te.tempo)
+            << "   Complexity | " << splitvaluestring(te.complexity)
             << " -------------+-------------+-------------+------------\n"
-            << "        Total |  Ph=" << setw(3) << ph << "/256 |  Sc=" << setw(3) << sc << "/128 | " << splitvaluestring(totalEval) << "\n"
+            << "        Total |  Ph=" << setw(3) << ph << "/256 |  Sc=" << setw(3) << sc << "/128 | " << splitvaluestring(totalEval) << " => " << cp(TAPEREDANDSCALEDEVAL(totalEval, ph, sc)) << "\n"
+            << "        Tempo | " << splitvaluestring(te.tempo)
             << "\nResulting score: " << cp(score) << "\n";
 
         cout << ss.str();
