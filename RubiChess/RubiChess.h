@@ -31,7 +31,7 @@
 #define TDEBUG
 #endif
 
-#if 0
+#if 1
 #define EVALTUNE
 #endif
 
@@ -308,15 +308,15 @@ struct evalparamset {
     eval eAttackingpawnbonus[8] = {  VALUE(   0,   0), VALUE( -48,  12), VALUE( -14,   4), VALUE( -14,  -6), VALUE( -14,  -6), VALUE( -15,   1), VALUE(   0,   0), VALUE(   0,   0)  };
     eval eIsolatedpawnpenalty =  VALUE( -13, -12);
     eval eDoublepawnpenalty =  VALUE(  -9, -21);
-    eval eConnectedbonus[6][5] = {
-        {  VALUE(   7,  -7), VALUE(   8,  -5), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
-        {  VALUE(   3,  -8), VALUE(   3,  -7), VALUE(  10,   7), VALUE(  15,  15), VALUE(  18,  18)  },
-        {  VALUE(  24,  50), VALUE(   5,  -1), VALUE(  10,   0), VALUE(  17,   3), VALUE(  16,   9)  },
-        {  VALUE(  -5,  10), VALUE(   0,  10), VALUE(  15,   5), VALUE(  38,  14), VALUE(  32,   5)  },
-        {  VALUE(  36, 184), VALUE(  79,  72), VALUE(  31,  36), VALUE(   7,  38), VALUE(   3,  94)  },
-        {  VALUE( -57, 253), VALUE(  38, 232), VALUE( 132, 124), VALUE(   7,4096), VALUE(   0,   4)  }
+    eval eConnectedbonus[6][6] = {
+        {  VALUE(   0,   0), VALUE(  10, -11), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE(   5,  -9), VALUE(  14,   0), VALUE(  20,   7), VALUE(  25,  11), VALUE(  24,  56)  },
+        {  VALUE(   0,   0), VALUE(   4,  -4), VALUE(  11,  -3), VALUE(  20,  -2), VALUE(  20,   1), VALUE(  -8,  19)  },
+        {  VALUE(   0,   0), VALUE(  -1,  17), VALUE(  15,   2), VALUE(  40,  14), VALUE(  40, -12), VALUE(  36, 216)  },
+        {  VALUE(   0,   0), VALUE(  89,  78), VALUE(  31,  49), VALUE(   7,  39), VALUE(  17, 109), VALUE( -57, 253)  },
+        {  VALUE(   0,   0), VALUE( -25, 266), VALUE( 132, 109), VALUE(   7,4096), VALUE(   0,   4), VALUE(   0,   0)  }
     };
-    eval eBackwardpawnpenalty =  VALUE( -10, -15);
+    eval eBackwardpawnpenalty =  VALUE( -10, -14);
     eval eDoublebishopbonus =  VALUE(  56,  38);
     eval ePawnblocksbishoppenalty = VALUE(-2, -4);
     eval eMobilitybonus[4][28] = {
