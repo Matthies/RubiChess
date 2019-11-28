@@ -556,13 +556,13 @@ static void init_indices(void)
 // binomial[k-1][n] = Bin(n, k)
   for (i = 0; i < 6; i++)
     for (j = 0; j < 64; j++) {
-      int f = j;
-      int l = 1;
+      long long f = j;
+      long long l = 1;
       for (k = 1; k <= i; k++) {
-	f *= (j - k);
-	l *= (k + 1);
+          f *= (j - k);
+          l *= (k + 1);
       }
-      binomial[i][j] = f / l;
+      binomial[i][j] = (int) (f / l);
     }
 
   for (i = 0; i < 6; i++) {
