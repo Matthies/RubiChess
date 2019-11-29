@@ -15,12 +15,14 @@ cp16: 70/65/-100  49,5% vs cp10 failed
 cp17: 60/65/-100  49,7% vs cp10 failed
 cp18: 65/65/-102  49,9% vs cp10
 cp19: 65/65/-98   50,0% vs cp10 (-0,3Elo)
-cp10 final test vs master [0,5] tests passed: 51,3% (VSTC), ...% (LTC)
+Tests for cp10:
+cp10 vs master [0,5] tests passed: 51,3% (VSTC), 50,9% (LTC)
+cp10 vs cp6 6000 games LTC: 49,8%
 
-Final result:
+Final result: cp6!
 eComplexpawnsbonus=4
-eComplexpawnflanksbonus=65
-eComplexonlypawnsbonus=65
+eComplexpawnflanksbonus=66
+eComplexonlypawnsbonus=71
 eComplexadjust=-100
 make it into master.
 
