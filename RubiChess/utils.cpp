@@ -448,7 +448,7 @@ static string getValueStringValue(eval *e)
             si.insert(si.begin(), 4 - si.length(), ' ');
         return "CVALUE(" + si + ")";
     }
-    else
+    else if (e->type == 2)
     {
         string si = to_string(e->groupindex);
         if (si.length() < 4)
@@ -457,6 +457,13 @@ static string getValueStringValue(eval *e)
         if (sv.length() < 4)
             sv.insert(sv.begin(), 4 - sv.length(), ' ');
         return "SQVALUE(" + si + "," + sv + ")";
+    }
+    else
+    {
+        string si = to_string(*e);
+        if (si.length() < 4)
+            si.insert(si.begin(), 4 - si.length(), ' ');
+        return "EVALUE(" + si + ")";
     }
 }
 
@@ -536,20 +543,24 @@ U64 texelptsnum;
 static int getGradientValue(struct tuner *tn, positiontuneset *p, evalparam *e)
 {
     int v = 0;
+    int complexity = 0;
     int sqsum[4][2] = { 0 };
     for (int i = 0; i < p->num; i++)
     {
-        if (tn->ev[e->index].type <= 1)
+        int type = tn->ev[e->index].type;
+        if (type <= 1)
         {
             v += tn->ev[e->index] * e->g[0];
         }
-        else
+        else if (type == 2)
         {
             int sqindex = tn->ev[e->index].groupindex;
             sqsum[sqindex][0] += tn->ev[e->index] * e->g[0];
             sqsum[sqindex][1] += tn->ev[e->index] * e->g[1];
         }
-            ;// v += tn->ev[e->index].sqval(e->g[0]) + tn->ev[e->index].sqval(e->g[1]);
+        else {
+            complexity += tn->ev[e->index] * e->g[0];
+        }
         e++;
     }
     for (int i = 0; i < 4; i++)
@@ -557,6 +568,11 @@ static int getGradientValue(struct tuner *tn, positiontuneset *p, evalparam *e)
         if (sqsum[i][0] == 0 && sqsum[i][1] == 0) continue;
         v += SQRESULT(sqsum[i][0], 0) + SQRESULT(sqsum[i][1], 1);
     }
+
+    // compelexity
+    int evaleg = GETEGVAL(v);
+    int sign = (evaleg > 0) - (evaleg < 0);
+    v += sign * max(complexity, -abs(evaleg));
 
     return v;
 }
@@ -599,7 +615,7 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
     char R;
     string fen;
     int Qi, Qr;
-    int Q[2];
+    int Q[4];
     U64 buffersize;
     char *pnext;
     long long minfreebuffer = sizeof(positiontuneset) + NUMOFEVALPARAMS * sizeof(evalparam) * 1024;
@@ -706,7 +722,7 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                     positiontuneset *nextpts = (positiontuneset*)pnext;
                     *nextpts = pos->pts;
                     nextpts->R = R;
-                    Q[0] = Q[1] = 0;
+                    Q[0] = Q[1] = Q[2] = Q[3] = 0;
                     evalparam *e = (evalparam *)(pnext + sizeof(positiontuneset));
                     int sqsum[4][2] = { 0 };
                     for (int i = 0; i < pos->pts.num; i++)
@@ -714,7 +730,7 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                         *e = pos->ev[i];
                         //printf("%20s: %08x  %3d\n", pos->tps.name[e->index].c_str(), *pos->tps.ev[i], e->g);
                         int ty = pos->tps.ev[e->index]->type;
-                        if (ty <= 1)
+                        if (ty != 2)
                         {
                             Q[ty] += e->g[0] * *pos->tps.ev[e->index];
                             //printf("l %3d: %3d * %08x         = %08x\n", e->index, e->g[0], (int)*pos->tps.ev[e->index], Qa);
@@ -733,7 +749,10 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                         if (sqsum[i][0] == 0 && sqsum[i][1] == 0) continue;
                         Q[0] += SQRESULT(sqsum[i][0], 0) + SQRESULT(sqsum[i][1], 1);
                     }
-                    Qr = TAPEREDANDSCALEDEVAL(Q[0], nextpts->ph, nextpts->sc) + Q[1];
+                    int evaleg = GETEGVAL(Q[0]);
+                    int sign = (evaleg > 0) - (evaleg < 0);
+                    Q[3] = sign * max(Q[3], -abs(evaleg));
+                    Qr = TAPEREDANDSCALEDEVAL(Q[0] + Q[3], nextpts->ph, nextpts->sc) + Q[1];
                     if (MATEDETECTED(Qi))
                         n--;
                     else if (Qi != (nextpts->sc == SCALE_DRAW ? SCOREDRAW : Qr))
@@ -774,7 +793,7 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                         positiontuneset *nextpts = (positiontuneset*)pnext;
                         *nextpts = pos->pts;
                         nextpts->R = R;
-                        Q[0] = Q[1] = 0;
+                        Q[0] = Q[1] = Q[2] = Q[3] = 0;
                         evalparam *e = (evalparam *)(pnext + sizeof(positiontuneset));
                         int sqsum[4][2] = { 0 };
                         for (int i = 0; i < pos->pts.num; i++)
@@ -782,7 +801,7 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                             *e = pos->ev[i];
                             int ty = pos->tps.ev[e->index]->type;
                             //printf("%20s: %08x  %3d\n", pos->tps.name[e->index].c_str(), *pos->tps.ev[i], e->g);
-                            if (ty <= 1)
+                            if (ty != 2)
                             {
                                 Q[ty] += e->g[0] * *pos->tps.ev[e->index];
                                 //printf("l %3d: %3d * %08x         = %08x\n", e->index, e->g, (int)*pos->tps.ev[e->index], Qa);
@@ -801,7 +820,10 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                             if (sqsum[i][0] == 0 && sqsum[i][1] == 0) continue;
                             Q[0] += SQRESULT(sqsum[i][0], 0) + SQRESULT(sqsum[i][1], 1);
                         }
-                        Qr = TAPEREDANDSCALEDEVAL(Q[0], nextpts->ph, nextpts->sc) + Q[1];
+                        int evaleg = GETEGVAL(Q[0]);
+                        int sign = (evaleg > 0) - (evaleg < 0);
+                        Q[3] = sign * max(Q[3], -abs(evaleg));
+                        Qr = TAPEREDANDSCALEDEVAL(Q[0] + Q[3], nextpts->ph, nextpts->sc) + Q[1];
                         if (Qi != (nextpts->sc == SCALE_DRAW ? SCOREDRAW : Qr))
                             printf("Alarm. Gradient evaluation differs from qsearch value.\n");
                         else

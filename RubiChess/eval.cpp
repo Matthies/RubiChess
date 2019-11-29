@@ -68,7 +68,7 @@ string chessposition::getGradientString()
     string s = "";
     for (int i = 0; i < pts.num; i++)
     {
-        if (tps.ev[i]->type <= 1)
+        if (tps.ev[i]->type != 2)
             s = s + tps.name[ev[i].index] + "(" + to_string(ev[i].g[0]) + ") ";
         else
             s = s + tps.name[ev[i].index] + "(" + to_string(ev[i].g[0]) + "/" + to_string(ev[i].g[1]) + ") ";
@@ -95,10 +95,17 @@ static void registertuner(chessposition *pos, eval *e, string name, int index1, 
 void registeralltuners(chessposition *pos)
 {
     int i, j;
-    bool tuneIt = false;
+    bool tuneIt;
 
     pos->tps.count = 0;
 
+    tuneIt = false;  // the complex parameters needed to be tuned manually
+    registertuner(pos, &eps.eComplexpawnsbonus, "eComplexpawnsbonus", 0, 0, 0, 0, tuneIt);
+    registertuner(pos, &eps.eComplexpawnflanksbonus, "eComplexpawnflanksbonus", 0, 0, 0, 0, tuneIt);
+    registertuner(pos, &eps.eComplexonlypawnsbonus, "eComplexonlypawnsbonus", 0, 0, 0, 0, tuneIt);
+    registertuner(pos, &eps.eComplexadjust, "eComplexadjust", 0, 0, 0, 0, tuneIt);
+
+    tuneIt = false;
     registertuner(pos, &eps.eTempo, "eTempo", 0, 0, 0, 0, tuneIt);
     tuneIt = false;
     for (i = 0; i < 6; i++)
@@ -152,7 +159,7 @@ void registeralltuners(chessposition *pos)
         for (j = 0; j < 28; j++)
             registertuner(pos, &eps.eMobilitybonus[i][j], "eMobilitybonus", j, 28, i, 4, tuneIt && (j < maxmobility[i]));
 
-    tuneIt = true;
+    tuneIt = false;
     registertuner(pos, &eps.eRookon7thbonus, "eRookon7thbonus", 0, 0, 0, 0, tuneIt);
     tuneIt = false;
     for (i = 0; i < 2; i++)
@@ -190,6 +197,7 @@ struct traceeval {
     int kingattackpower[2];
     int threats[2];
     int ppawns[2];
+    int complexity[2];
     int tempo[2];
 };
 
@@ -599,8 +607,11 @@ int chessposition::getEval()
     bool hashexist = pwnhsh->probeHash(pawnhash, &pe.phentry);
     if (bTrace || !hashexist)
     {
+        if (bTrace) pe.phentry->value = 0;
         getPawnAndKingEval<Et, 0>(pe.phentry);
         getPawnAndKingEval<Et, 1>(pe.phentry);
+        U64 pawns = piece00[WPAWN] | piece00[BPAWN];
+        pe.phentry->bothFlanks = ((pawns & FLANKLEFT) && (pawns & FLANKRIGHT));
     }
 
     int pawnEval = pe.phentry->value;
@@ -614,12 +625,19 @@ int chessposition::getEval()
     int totalEval = psqval + pawnEval + generalEval + piecesEval + lateEval;
 
     int sideToScale = totalEval > SCOREDRAW ? WHITE : BLACK;
-    sc = getScaling(sideToScale);
 
+    sc = getScaling(sideToScale, &pe.mhentry);
     if (!bTrace && sc == SCALE_DRAW)
         return SCOREDRAW;
 
-    if (bTrace) te.tempo[state & S2MMASK] += CEVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
+    int complexity = getComplexity(totalEval, pe.phentry, pe.mhentry);
+    totalEval += complexity;
+
+    if (bTrace)
+    {
+        te.tempo[state & S2MMASK] += CEVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
+        te.complexity[complexity < 0] += complexity;
+    }
 
     int score = TAPEREDANDSCALEDEVAL(totalEval, ph, sc) + CEVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
 
@@ -639,9 +657,10 @@ int chessposition::getEval()
             << "     Mobility | " << splitvaluestring(te.mobility)
             << "      Threats | " << splitvaluestring(te.threats)
             << " King attacks | " << splitvaluestring(te.kingattackpower)
-            << "        Tempo | " << splitvaluestring(te.tempo)
+            << "   Complexity | " << splitvaluestring(te.complexity)
             << " -------------+-------------+-------------+------------\n"
-            << "        Total |  Ph=" << setw(3) << ph << "/256 |  Sc=" << setw(3) << sc << "/128 | " << splitvaluestring(totalEval) << "\n"
+            << "        Total |  Ph=" << setw(3) << ph << "/256 |  Sc=" << setw(3) << sc << "/128 | " << splitvaluestring(totalEval) << " => " << cp(TAPEREDANDSCALEDEVAL(totalEval, ph, sc)) << "\n"
+            << "        Tempo | " << splitvaluestring(te.tempo)
             << "\nResulting score: " << cp(score) << "\n";
 
         cout << ss.str();
@@ -651,14 +670,25 @@ int chessposition::getEval()
 }
 
 
-
-
-int chessposition::getScaling(int col)
+int chessposition::getComplexity(int eval, pawnhashentry *phentry, Materialhashentry *mhentry)
 {
-    Materialhashentry* e;
-    if (mh.probeHash(materialhash, &e))
-        return e->scale[col];
+        int evaleg = GETEGVAL(eval);
+        int sign = (evaleg > 0) - (evaleg < 0);
+        int complexity = EEVAL(eps.eComplexpawnsbonus, mhentry->numOfPawns);
+        complexity += EEVAL(eps.eComplexpawnflanksbonus, phentry->bothFlanks);
+        complexity += EEVAL(eps.eComplexonlypawnsbonus, mhentry->onlyPawns);
+        complexity += EEVAL(eps.eComplexadjust, 1);
 
+        return sign * max(complexity, -abs(evaleg));
+}
+
+
+int chessposition::getScaling(int col, Materialhashentry** mhentry)
+{
+    if (mh.probeHash(materialhash, mhentry))
+        return (*mhentry)->scale[col];
+
+    Materialhashentry *e = *mhentry;
     // Calculate scaling for endgames with special material
     const int pawns[2] = { POPCOUNT(piece00[WPAWN]), POPCOUNT(piece00[BPAWN]) };
     const int knights[2] = { POPCOUNT(piece00[WKNIGHT]), POPCOUNT(piece00[BKNIGHT]) };
@@ -680,13 +710,23 @@ int chessposition::getScaling(int col)
     for (int me = WHITE; me <= BLACK; me++)
     {
         int you = me ^ S2MMASK;
-        
+
         if (pawns[me] == 0 && nonpawnvalue[me] - nonpawnvalue[you] <= materialvalue[BISHOP])
             e->scale[me] = nonpawnvalue[me] < materialvalue[ROOK] ? SCALE_DRAW : SCALE_HARDTOWIN;
 
         if (pawns[me] == 1 && nonpawnvalue[me] - nonpawnvalue[you] <= materialvalue[BISHOP])
             e->scale[me] = SCALE_ONEPAWN;
     }
+
+    U64 bishopsbb = (piece00[WBISHOP] | piece00[BBISHOP]);
+    if (bishops[WHITE] == 1 && bishops[BLACK] == 1
+        && (bishopsbb & WHITEBB) && (bishopsbb & BLACKBB)
+        && nonpawnvalue[WHITE] <= materialvalue[BISHOP]
+        && nonpawnvalue[BLACK] <= materialvalue[BISHOP])
+        e->scale[WHITE] = e->scale[BLACK] = SCALE_OCB;
+    
+    e->onlyPawns = (nonpawnvalue[0] + nonpawnvalue[1] == 0);
+    e->numOfPawns = pawns[0] + pawns[1];
 
     return e->scale[col];
 }

@@ -161,6 +161,8 @@ inline int pullMsb(unsigned long long *x) {
 enum { WHITE, BLACK };
 #define WHITEBB 0x55aa55aa55aa55aa
 #define BLACKBB 0xaa55aa55aa55aa55
+#define FLANKLEFT  0x0f0f0f0f0f0f0f0f
+#define FLANKRIGHT 0xf0f0f0f0f0f0f0f0
 #define RANK(x) ((x) >> 3)
 #define RRANK(x,s) ((s) ? ((x) >> 3) ^ 7 : ((x) >> 3))
 #define FILE(x) ((x) & 0x7)
@@ -215,7 +217,7 @@ extern sqevallist sqglobal;
 
 class eval {
 public:
-    int type;
+    int type;  // 0=linear mg->eg  1=constant  2=squre  3=only eg (0->eg)
     int groupindex;
     int32_t v;
     int g[2];
@@ -242,6 +244,8 @@ public:
 #define SQRESULT(v,s) ( v > 0 ? ((int32_t)((uint32_t)((v) * (v) * S2MSIGN(s) / 2048) << 16) + ((v) * S2MSIGN(s) / 16)) : 0 )
 #define CVALUE(v) eval(v)
 #define CEVAL(e, f) ((e).addGrad(f), (e) * (f))
+#define EVALUE(v) eval(3, 0, v)
+#define EEVAL(e, f) ((e).addGrad(f), (e) * (f))
 #else // EVALTUNE
 
 #define SQVALUE(i, v) (v)
@@ -251,6 +255,8 @@ public:
 #define SQRESULT(v,s) ( v > 0 ? VALUE((v) * (v) * S2MSIGN(s) / 2048, (v) * S2MSIGN(s) / 16) : 0 )
 #define CVALUE(v) (v)
 #define CEVAL(e, f) ((e) * (f))
+#define EVALUE(e) VALUE(0, e)
+#define EEVAL(e, f) ((e) * (f))
 typedef const int32_t eval;
 #endif
 
@@ -259,7 +265,11 @@ typedef const int32_t eval;
 #define TAPEREDANDSCALEDEVAL(s, p, c) ((GETMGVAL(s) * (256 - (p)) + GETEGVAL(s) * (p) * (c) / SCALE_NORMAL) / 256)
 
 struct evalparamset {
-    // Powered by Laser games :-)
+    // Tuned with Lichess-quiet (psqt), lc0games (kingdanger), manually (complex) and Laser games (everything else)
+    eval eComplexpawnsbonus = EVALUE(4);
+    eval eComplexpawnflanksbonus = EVALUE(66);
+    eval eComplexonlypawnsbonus = EVALUE(71);
+    eval eComplexadjust = EVALUE(-100);
     eval eTempo =  CVALUE(  20);
     eval eKingpinpenalty[6] = {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  38, -74), VALUE(  65, -61), VALUE( -29,  68), VALUE( -44, 163)  };
     eval ePawnstormblocked[4][5] = {
@@ -464,6 +474,7 @@ void registeralltuners(chessposition *pos);
 #define SCALE_DRAW 0
 #define SCALE_ONEPAWN 48
 #define SCALE_HARDTOWIN 10
+#define SCALE_OCB 32
 
 enum EvalType { NOTRACE, TRACE};
 
@@ -553,15 +564,17 @@ public:
     void nextSearch() { numOfSearchShiftTwo = (numOfSearchShiftTwo + 4) & 0xfc; }
 };
 
+
 typedef struct pawnhashentry {
     uint32_t hashupper;
+    int32_t value;
     U64 passedpawnbb[2];
     U64 isolatedpawnbb[2];
     U64 backwardpawnbb[2];
-    int semiopen[2];
     U64 attacked[2];
     U64 attackedBy2[2];
-    int32_t value;
+    bool bothFlanks;
+    unsigned char semiopen[2];
 } S_PAWNHASHENTRY;
 
 
@@ -584,6 +597,8 @@ public:
 struct Materialhashentry {
     U64 hash;
     int scale[2];
+    bool onlyPawns;
+    int numOfPawns;
 };
 
 
@@ -945,6 +960,7 @@ enum AttackType { FREE, OCCUPIED, OCCUPIEDANDKING };
 
 struct positioneval {
     pawnhashentry *phentry;
+    Materialhashentry *mhentry;
     int kingattackpiececount[2][7] = { 0 };
     int kingringattacks[2] = { 0 };
     int kingattackers[2];
@@ -1063,7 +1079,8 @@ public:
     template <EvalType Et, int Me> int getLateEval(positioneval *pe);
     template <EvalType Et, int Me> void getPawnAndKingEval(pawnhashentry *entry);
     template <EvalType Et> int getEval();
-    int getScaling(int col);
+    int getScaling(int col, Materialhashentry** mhentry);
+    int getComplexity(int eval, pawnhashentry *phentry, Materialhashentry *mhentry);
 
     template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth);
     int alphabeta(int alpha, int beta, int depth);
