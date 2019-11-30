@@ -308,27 +308,15 @@ struct evalparamset {
     eval eAttackingpawnbonus[8] = {  VALUE(   0,   0), VALUE( -48,  12), VALUE( -14,   4), VALUE( -14,  -6), VALUE( -14,  -6), VALUE( -15,   1), VALUE(   0,   0), VALUE(   0,   0)  };
     eval eIsolatedpawnpenalty =  VALUE( -13, -12);
     eval eDoublepawnpenalty =  VALUE(  -9, -21);
-#if 0 //Laser
-    eval eConnectedbonus[6][6] = {
-        {  VALUE(   0,   0), VALUE(  10, -11), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
-        {  VALUE(   0,   0), VALUE(   5,  -9), VALUE(  14,   0), VALUE(  20,   7), VALUE(  25,  11), VALUE(  24,  56)  },
-        {  VALUE(   0,   0), VALUE(   4,  -4), VALUE(  11,  -3), VALUE(  20,  -2), VALUE(  20,   1), VALUE(  -8,  19)  },
-        {  VALUE(   0,   0), VALUE(  -1,  17), VALUE(  15,   2), VALUE(  40,  14), VALUE(  40, -12), VALUE(  36, 216)  },
-        {  VALUE(   0,   0), VALUE(  89,  78), VALUE(  31,  49), VALUE(   7,  39), VALUE(  17, 109), VALUE( -57, 253)  },
-        {  VALUE(   0,   0), VALUE( -25, 266), VALUE( 132, 109), VALUE(   7,4096), VALUE(   0,   4), VALUE(   0,   0)  }
-    };
-    eval eBackwardpawnpenalty =  VALUE( -10, -14);
-#else //lichess-quiet
     eval eConnectedbonus[6][6] = {
         {  VALUE(   0,   0), VALUE(   9,  -2), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
         {  VALUE(   0,   0), VALUE(   2,   3), VALUE(  11,  12), VALUE(  23,  18), VALUE(  32,  22), VALUE(  51,  21)  },
         {  VALUE(   0,   0), VALUE(  11,   4), VALUE(  14,   8), VALUE(  22,  13), VALUE(  22,   9), VALUE( -11,  11)  },
         {  VALUE(   0,   0), VALUE(  15,  22), VALUE(  21,  16), VALUE(  35,  19), VALUE(  33,  16), VALUE( 113, -70)  },
         {  VALUE(   0,   0), VALUE(  57,  97), VALUE(  50,  54), VALUE(  70,  71), VALUE(  33,  85), VALUE( -57, 253)  },
-        {  VALUE(   0,   0), VALUE(  38, 213), VALUE( 133,  99), VALUE(   7,4096), VALUE(   0, 578), VALUE(   0,   0)  }
+        {  VALUE(   0,   0), VALUE(  38, 213), VALUE( 133,  99), VALUE(   7, 400), VALUE(   0, 578), VALUE(   0,   0)  }
     };
     eval eBackwardpawnpenalty =  VALUE( -16, -11);
-#endif
     eval eDoublebishopbonus =  VALUE(  56,  38);
     eval ePawnblocksbishoppenalty = VALUE(-2, -4);
     eval eMobilitybonus[4][28] = {
