@@ -780,3 +780,37 @@ Kf5 73. Qgg4# 1-0
 In this position (resulting from ACT2-3 test) 2k5/8/5p2/p4P1p/P2Pp2P/4N1Pq/7P/7K b - - 0 4
 Rubi doesn't detect the "draw by no-progress". Black can find enough moves to avoid 3-fold
 so this seems to need some special no-progress-detection.
+
+
+22.11.2019
+[Event "Computer game"]
+[Site "GrahamCCRL.dyndns.org\\RubiChess Gauntlet.e1e"]
+[Date "2019.11.22"]
+[Round "?"]
+[White "RubiChess 1.6"]
+[Black "Komodo 10 64-bit"]
+[Result "0-1"]
+[BlackElo "2200"]
+[WhiteElo "2200"]
+[TimeControl "40/960:300"]
+[SetUp "1"]
+[FEN "r3k2r/p1qb1ppp/2pbp1n1/3p4/4P3/3B1N2/PPP1QPPP/R1B2RK1 w kq - 0 12"]
+[Termination "normal"]
+[PlyCount "103"]
+[WhiteType "program"]
+[BlackType "program"]
+
+12. Re1 Rb8 13. c4 O-O 14. e5 Bb4 15. Rd1 dxc4 16. Bxg6 fxg6 17. Qxc4 Be7
+18. b3 Rb5 19. Be3 Rd5 20. Rac1 Qa5 21. h3 Rc8 22. Rd2 Ba3 23. Rcc2 Be7 24.
+Qg4 Qc7 25. b4 a5 26. Bc5 Bxc5 27. Rxc5 axb4 28. Rdxd5 exd5 29. Qxb4 Qb8
+30. Qh4 h6 31. a4 Qb1+ 32. Kh2 g5 33. Qd4 Rf8 34. a5 Qa2 35. e6 Be8 36. Kg3
+Rf4 37. Qe5 Qa3 38. Qc3 Qa4 39. Kh2 g4 40. hxg4 Rxg4 41. Qe5 Rg6 42. g3 Qg4
+43. Nd4 Rg5 44. Qf4 Rh5+ 45. Kg2 Qh3+ 46. Kf3 Qh1+ 47. Ke2 Qa1 48. Nxc6 Rh1
+49. Ne7+ Kh7 50. Qf5+ g6 51. Qxd5 Qe1+ 52. Kd3 Qd1+ 53. Ke3 Re1+ 54. Kf4
+g5+ 55. Kf5 Qb1+ 56. Kf6 Qb2+ 57. Qe5 Rxe5 58. Rxe5 Qxf2+ 59. Nf5 Qb2 60.
+Nd6 Qa3 61. Ke7 Qxg3 62. Rc5 Qa3 63. Rc7 0-1
+
+SF sagt, dass das Spiel nach 48. Nxc6 verloren ist (besser wäre Tc1).
+Aber selbst nach 52. ... Qd1+ glaubt Rubi an ein Remis (mindestens bis Tiefe 41).
+Ist der gewünschte Zug 53. Ke3 dann gespielt, erkennt Rubi sofort die Niederlage.
+Hier passiert irgendein falsches Pruning. Sollte untersucht werden.

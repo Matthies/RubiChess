@@ -2537,7 +2537,7 @@ void engine::communicate(string inputstring)
                 send("option name SyzygyPath type string default <empty>\n");
                 send("option name Syzygy50MoveRule type check default true\n");
                 send("option name SyzygyProbeLimit type spin default 7 min 0 max 7\n");
-                send("option name Threads type spin default 1 min 1 max 128\n");
+                send("option name Threads type spin default 1 min 1 max %d\n", MAXTHREADS);
                 send("uciok\n", author);
                 break;
             case UCINEWGAME:
@@ -2658,10 +2658,9 @@ void engine::communicate(string inputstring)
                     }
                     else if (commandargs[ci] == "movetime")
                     {
-                        movestogo = 1;
-                        winc = binc = 0;
+                        wtime = btime = 0;
                         if (++ci < cs)
-                            wtime = btime = stoi(commandargs[ci++]);
+                            winc = binc = stoi(commandargs[ci++]);
                     }
                     else if (commandargs[ci] == "movestogo")
                     {

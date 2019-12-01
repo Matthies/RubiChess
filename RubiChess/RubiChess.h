@@ -20,6 +20,10 @@
 #define VERNUM "1.7-dev"
 
 #if 0
+#define STATISTICS
+#endif
+
+#if 0
 #define SDEBUG
 #endif
 
@@ -59,6 +63,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <list>
 #include <string>
 #include <string.h>
 #include <sstream>
@@ -156,6 +161,8 @@ inline int pullMsb(unsigned long long *x) {
 enum { WHITE, BLACK };
 #define WHITEBB 0x55aa55aa55aa55aa
 #define BLACKBB 0xaa55aa55aa55aa55
+#define FLANKLEFT  0x0f0f0f0f0f0f0f0f
+#define FLANKRIGHT 0xf0f0f0f0f0f0f0f0
 #define RANK(x) ((x) >> 3)
 #define RRANK(x,s) ((s) ? ((x) >> 3) ^ 7 : ((x) >> 3))
 #define FILE(x) ((x) & 0x7)
@@ -176,6 +183,7 @@ enum { WHITE, BLACK };
 
 
 typedef unsigned long long U64;
+typedef signed long long S64;
 
 // Forward definitions
 class transposition;
@@ -209,7 +217,7 @@ extern sqevallist sqglobal;
 
 class eval {
 public:
-    int type;
+    int type;  // 0=linear mg->eg  1=constant  2=squre  3=only eg (0->eg)
     int groupindex;
     int32_t v;
     int g[2];
@@ -236,6 +244,8 @@ public:
 #define SQRESULT(v,s) ( v > 0 ? ((int32_t)((uint32_t)((v) * (v) * S2MSIGN(s) / 2048) << 16) + ((v) * S2MSIGN(s) / 16)) : 0 )
 #define CVALUE(v) eval(v)
 #define CEVAL(e, f) ((e).addGrad(f), (e) * (f))
+#define EVALUE(v) eval(3, 0, v)
+#define EEVAL(e, f) ((e).addGrad(f), (e) * (f))
 #else // EVALTUNE
 
 #define SQVALUE(i, v) (v)
@@ -245,6 +255,8 @@ public:
 #define SQRESULT(v,s) ( v > 0 ? VALUE((v) * (v) * S2MSIGN(s) / 2048, (v) * S2MSIGN(s) / 16) : 0 )
 #define CVALUE(v) (v)
 #define CEVAL(e, f) ((e) * (f))
+#define EVALUE(e) VALUE(0, e)
+#define EEVAL(e, f) ((e) * (f))
 typedef const int32_t eval;
 #endif
 
@@ -253,7 +265,11 @@ typedef const int32_t eval;
 #define TAPEREDANDSCALEDEVAL(s, p, c) ((GETMGVAL(s) * (256 - (p)) + GETEGVAL(s) * (p) * (c) / SCALE_NORMAL) / 256)
 
 struct evalparamset {
-    // Powered by Laser games :-)
+    // Tuned with Lichess-quiet (psqt), lc0games (kingdanger), manually (complex) and Laser games (everything else)
+    eval eComplexpawnsbonus = EVALUE(4);
+    eval eComplexpawnflanksbonus = EVALUE(66);
+    eval eComplexonlypawnsbonus = EVALUE(71);
+    eval eComplexadjust = EVALUE(-100);
     eval eTempo =  CVALUE(  20);
     eval eKingpinpenalty[6] = {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  38, -74), VALUE(  65, -61), VALUE( -29,  68), VALUE( -44, 163)  };
     eval ePawnstormblocked[4][5] = {
@@ -302,15 +318,15 @@ struct evalparamset {
     eval eAttackingpawnbonus[8] = {  VALUE(   0,   0), VALUE( -48,  12), VALUE( -14,   4), VALUE( -14,  -6), VALUE( -14,  -6), VALUE( -15,   1), VALUE(   0,   0), VALUE(   0,   0)  };
     eval eIsolatedpawnpenalty =  VALUE( -13, -12);
     eval eDoublepawnpenalty =  VALUE(  -9, -21);
-    eval eConnectedbonus[6][5] = {
-        {  VALUE(   7,  -7), VALUE(   8,  -5), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
-        {  VALUE(   3,  -8), VALUE(   3,  -7), VALUE(  10,   7), VALUE(  15,  15), VALUE(  18,  18)  },
-        {  VALUE(  24,  50), VALUE(   5,  -1), VALUE(  10,   0), VALUE(  17,   3), VALUE(  16,   9)  },
-        {  VALUE(  -5,  10), VALUE(   0,  10), VALUE(  15,   5), VALUE(  38,  14), VALUE(  32,   5)  },
-        {  VALUE(  36, 184), VALUE(  79,  72), VALUE(  31,  36), VALUE(   7,  38), VALUE(   3,  94)  },
-        {  VALUE( -57, 253), VALUE(  38, 232), VALUE( 132, 124), VALUE(   7,4096), VALUE(   0,   4)  }
+    eval eConnectedbonus[6][6] = {
+        {  VALUE(   0,   0), VALUE(   9,  -2), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE(   2,   3), VALUE(  11,  12), VALUE(  23,  18), VALUE(  32,  22), VALUE(  51,  21)  },
+        {  VALUE(   0,   0), VALUE(  11,   4), VALUE(  14,   8), VALUE(  22,  13), VALUE(  22,   9), VALUE( -11,  11)  },
+        {  VALUE(   0,   0), VALUE(  15,  22), VALUE(  21,  16), VALUE(  35,  19), VALUE(  33,  16), VALUE( 113, -70)  },
+        {  VALUE(   0,   0), VALUE(  57,  97), VALUE(  50,  54), VALUE(  70,  71), VALUE(  33,  85), VALUE( -57, 253)  },
+        {  VALUE(   0,   0), VALUE(  38, 213), VALUE( 133,  99), VALUE(   7, 400), VALUE(   0, 578), VALUE(   0,   0)  }
     };
-    eval eBackwardpawnpenalty =  VALUE( -10, -15);
+    eval eBackwardpawnpenalty =  VALUE( -16, -11);
     eval eDoublebishopbonus =  VALUE(  56,  38);
     eval ePawnblocksbishoppenalty = VALUE(-2, -4);
     eval eMobilitybonus[4][28] = {
@@ -458,12 +474,14 @@ void registeralltuners(chessposition *pos);
 #define SCALE_DRAW 0
 #define SCALE_ONEPAWN 48
 #define SCALE_HARDTOWIN 10
+#define SCALE_OCB 32
 
 enum EvalType { NOTRACE, TRACE};
 
 //
 // utils stuff
 //
+void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am);
 vector<string> SplitString(const char* s);
 unsigned char AlgebraicToIndex(string s);
 string IndexToAlgebraic(int i);
@@ -476,7 +494,7 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
 #ifdef EVALTUNE
 typedef void(*initevalfunc)(void);
 bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg);
-void TexelTune(string fenfilename);
+void TexelTune(string fenfilename, bool noqs);
 
 extern int tuningratio;
 
@@ -546,15 +564,17 @@ public:
     void nextSearch() { numOfSearchShiftTwo = (numOfSearchShiftTwo + 4) & 0xfc; }
 };
 
+
 typedef struct pawnhashentry {
     uint32_t hashupper;
+    int32_t value;
     U64 passedpawnbb[2];
     U64 isolatedpawnbb[2];
     U64 backwardpawnbb[2];
-    int semiopen[2];
     U64 attacked[2];
     U64 attackedBy2[2];
-    int32_t value;
+    bool bothFlanks;
+    unsigned char semiopen[2];
 } S_PAWNHASHENTRY;
 
 
@@ -577,6 +597,8 @@ public:
 struct Materialhashentry {
     U64 hash;
     int scale[2];
+    bool onlyPawns;
+    int numOfPawns;
 };
 
 
@@ -854,7 +876,7 @@ public:
 };
 
 #define MAXMULTIPV 64
-#define MAXTHREADS 128
+#define MAXTHREADS 256
 #define CMPLIES 2
 
 
@@ -939,6 +961,7 @@ enum AttackType { FREE, OCCUPIED, OCCUPIEDANDKING };
 
 struct positioneval {
     pawnhashentry *phentry;
+    Materialhashentry *mhentry;
     int kingattackpiececount[2][7] = { 0 };
     int kingringattacks[2] = { 0 };
     int kingattackers[2];
@@ -1012,6 +1035,7 @@ public:
     chessmovelist singularquietslist[MAXDEPTH];
 #ifdef EVALTUNE
     bool isQuiet;
+    bool noQs;
     tuneparamselection tps;
     positiontuneset pts;
     evalparam ev[NUMOFEVALPARAMS];
@@ -1057,7 +1081,8 @@ public:
     template <EvalType Et, int Me> int getLateEval(positioneval *pe);
     template <EvalType Et, int Me> void getPawnAndKingEval(pawnhashentry *entry);
     template <EvalType Et> int getEval();
-    int getScaling(int col);
+    int getScaling(int col, Materialhashentry** mhentry);
+    int getComplexity(int eval, pawnhashentry *phentry, Materialhashentry *mhentry);
 
     template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth);
     int alphabeta(int alpha, int beta, int depth);
@@ -1142,8 +1167,8 @@ public:
     enum { NO, PONDERING, HITPONDER } pondersearch;
     int terminationscore = SHRT_MAX;
     int lastReport;
-    int benchscore;
     int benchdepth;
+    string benchmove;
     int stopLevel = ENGINESTOPPED;
 #ifdef STACKDEBUG
     string assertfile = "";
@@ -1229,4 +1254,64 @@ int probe_wdl(int *success, chessposition *pos);
 int probe_dtz(int *success, chessposition *pos);
 int root_probe_dtz(chessposition *pos);
 int root_probe_wdl(chessposition *pos);
+
+
+//
+// statistics stuff
+//
+#ifdef STATISTICS
+struct statistic {
+    U64 qs_n[2];                // total calls to qs split into no check / check
+    U64 qs_tt;                  // qs hits tt
+    U64 qs_pat;                 // qs returns with pat score
+    U64 qs_delta;               // qs return with delta pruning before move loop
+    U64 qs_loop_n;              // qs enters moves loop
+    U64 qs_move_delta;          // qs moves delta-pruned
+    U64 qs_moves;               // moves done in qs
+    U64 qs_moves_fh;            // qs moves that cause a fail high
+
+    U64 ab_n;                   // total calls to alphabeta
+    U64 ab_pv;                  // number of PV nodes
+    U64 ab_tt;                  // alphabeta exit by tt hit
+    U64 ab_draw_or_win;         // alphabeta returns draw or mate score
+    U64 ab_qs;                  // alphabeta calls qsearch
+    U64 ab_tb;                  // alphabeta exits with tb score
+
+    U64 prune_futility;         // nodes pruned by reverse futility
+    U64 prune_nm;               // nodes pruned by null move;
+    U64 prune_probcut;          // nodes pruned by PobCut
+    U64 prune_multicut;         // nodes pruned by Multicut (detected by failed singular test)
+
+    U64 moves_loop_n;           // counts how often the moves loop is entered
+    U64 moves_n[2];             // all moves in alphabeta move loop split into quites ans tactical
+    U64 moves_pruned_lmp;       // moves pruned by lmp
+    U64 moves_pruned_futility;  // moves pruned by futility
+    U64 moves_pruned_badsee;    // moves pruned by bad see
+    U64 moves_played[2];        // moves that are played split into quites ans tactical
+    U64 moves_fail_high;        // moves that cause a fail high;
+
+    U64 red_total;              // total reductions
+    U64 red_lmr[2];             // total late-move-reductions for (not) improved moves
+    U64 red_pi[2];              // number of quiets moves that are reduced split into (not) / improved moves
+    S64 red_history;            // total reduction by history
+    S64 red_pv;                 // total reduction by pv nodes
+    S64 red_correction;         // total reduction correction by over-/underflow
+
+    U64 extend_singular;        // total extended moves
+};
+
+extern struct statistic statistics;
+
+void search_statistics();
+
+// some macros to limit the ifdef STATISTICS inside the code
+#define STATISTICSINC(x)        statistics.x++ 
+#define STATISTICSADD(x, v)     statistics.x += (v)
+#define STATISTICSDO(x)         x
+
+#else
+#define STATISTICSINC(x)
+#define STATISTICSADD(x, v)
+#define STATISTICSDO(x)
+#endif
 

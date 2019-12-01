@@ -1,0 +1,28 @@
+Tuning of complex parameters failed with all the three position sets, so I tried manually until following results passed the tests:
+eComplexpawnsbonus=4 was fixed in all tests.
+eComplexpawnflanksbonus/eComplexonlypawnsbonus/eComplexadjust were tuned with following results:
+cp6:  66/71/-100  vs master [0,5] tests passed: 51,4% (STC), 51,6% (LTC)
+cp7:  70/70/-100  49,7% vs cp6
+cp8:  60/70/-100  50,0% vs cp6
+cp9: 65/70/-105  49,1% vs cp6 failed
+cp10: 65/65/-100  50,3% vs cp6 passed STC[-3,1]
+cp11: 65/65/-95   48,9% vs cp10 failed badly
+cp12: 65/65/-105  49,0% vs cp10 failed badly
+cp13: 65/60/-100  50,0% vs cp10
+cp14: 60/60/-100  49,5% vs cp10 failed
+cp15: 70/60/-100  49,3% vs cp10
+cp16: 70/65/-100  49,5% vs cp10 failed
+cp17: 60/65/-100  49,7% vs cp10 failed
+cp18: 65/65/-102  49,9% vs cp10
+cp19: 65/65/-98   50,0% vs cp10 (-0,3Elo)
+Tests for cp10:
+cp10 vs master [0,5] tests passed: 51,3% (VSTC), 50,9% (LTC)
+cp10 vs cp6 6000 games LTC: 49,8%
+
+Final result: cp6!
+eComplexpawnsbonus=4
+eComplexpawnflanksbonus=66
+eComplexonlypawnsbonus=71
+eComplexadjust=-100
+make it into master.
+
