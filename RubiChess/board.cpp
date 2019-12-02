@@ -531,6 +531,55 @@ void chessposition::tbFilterRootMoves()
 }
 
 
+U64 cuckooHash[0x2000];
+uint16_t cuckooMove[0x2000];
+#define cuckooH1(x) ((x) & 0x1fff)
+#define cuckooH2(x) (((x) >> 16) & 0x1fff)
+
+
+void initCuckoo()
+{
+    // Init cuckoo tables
+    memset(cuckooHash, 0, sizeof(cuckooHash));
+    memset(cuckooMove, 0, sizeof(cuckooMove));
+
+    for (PieceCode p = WKNIGHT; p <= BKING; p++)
+        for (int from = 0; from < 64; from++)
+            for (int to = from + 1; to < 64; to++)
+            {
+                bool movePossible = false;
+                U64 toB = BITSET(to);
+                switch (p >> 1)
+                {
+                case KNIGHT:
+                    movePossible = toB & knight_attacks[from];
+                case BISHOP:
+                    movePossible = toB & MAGICBISHOPATTACKS(0, from);
+                case ROOK:
+                    movePossible = toB & MAGICROOKATTACKS(0, from);
+                case QUEEN:
+                    movePossible = toB & (MAGICBISHOPATTACKS(0, from) | MAGICROOKATTACKS(0, from));
+                case KING:
+                    movePossible = toB & king_attacks[from];
+                }
+                if (movePossible)
+                {
+                    U64 mh = zb.boardtable[(to << 4) | p] ^ zb.boardtable[(from << 4) | p] ^ zb.s2m;
+                    uint16_t mo = (from << 6) | to;
+                    int i = cuckooH1(mh);
+                    while (true)
+                    {
+                        swap(cuckooHash[i], mh);
+                        swap(cuckooMove[i], mo);
+                        if (mh == 0)
+                            break;
+                        i = (i == cuckooH1(mh)) ? cuckooH2(mh) : cuckooH1(mh);
+                    }
+                }
+            }
+}
+
+
 /* test the actualmove for three-fold-repetition as the repetition table may give false positive due to table collisions */
 int chessposition::testRepetiton()
 {
@@ -1345,6 +1394,8 @@ void initBitmaphelper()
                 epthelper[from] |= BITSET(from + 1);
         }
     }
+
+    initCuckoo();
 }
 
 

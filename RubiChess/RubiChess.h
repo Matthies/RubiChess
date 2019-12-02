@@ -525,8 +525,8 @@ public:
     u8 modHash(int i);
 };
 
-#define TTBUCKETNUM 3
 
+#define TTBUCKETNUM 3
 
 struct transpositionentry {
     uint32_t hashupper;
@@ -539,7 +539,6 @@ struct transpositionentry {
 
 struct transpositioncluster {
     transpositionentry entry[TTBUCKETNUM];
-    //char padding[2];
 };
 
 
