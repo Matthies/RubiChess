@@ -538,7 +538,8 @@ int chessposition::testRepetiton()
     int lastrepply = max(mstop - halfmovescounter, lastnullmove + 1);
     for (int i = mstop - 4; i >= lastrepply; i -= 2)
     {
-        if (hash == movestack[i].hash)
+        U64 hashdiff = hash ^ movestack[i].hash;
+        if (hashdiff == 0)
         {
             hit++;
             if (i > rootheight)
