@@ -280,7 +280,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     {
         SDEBUGPRINT(isDebugPv, debugInsert, "Draw (repetition)");
         STATISTICSINC(ab_draw_or_win);
-        return SCOREDRAW;
+        alpha = SCOREDRAW;
+        if (alpha >= beta)
+            return alpha;
     }
 
     // test for remis via 50 moves rule
@@ -290,14 +292,21 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (!isCheckbb)
         {
             SDEBUGPRINT(isDebugPv, debugInsert, "Draw (50 moves)");
-            return SCOREDRAW;
+            alpha = SCOREDRAW;
+            if (alpha >= beta)
+                return alpha;
         } else {
             // special case: test for checkmate
             chessmovelist evasions;
             if (CreateMovelist<EVASION>(this, &evasions.move[0]) > 0)
-                return SCOREDRAW;
-            else
+            {
+                alpha = SCOREDRAW;
+                if (alpha >= beta)
+                    return alpha;
+            }
+            else {
                 return SCOREBLACKWINS + ply;
+            }
         }
     }
 

@@ -580,7 +580,8 @@ void initCuckoo()
 }
 
 
-/* test the actualmove for three-fold-repetition as the repetition table may give false positive due to table collisions */
+#if 0
+// test for three-fold-repetition going back the position hash stack
 int chessposition::testRepetiton()
 {
     int hit = 0;
@@ -600,7 +601,65 @@ int chessposition::testRepetiton()
     }
     return hit;
 }
+#else
+// test for game cycle using the cuckoo table approach described in https://marcelk.net/2013-04-06/paper/upcoming-rep-v2.pdf
+int chessposition::testRepetiton()
+{
+    int hit = 0;
+    int lastrepply = max(mstop - halfmovescounter, lastnullmove + 1);
+    for (int i = mstop - 3; i >= lastrepply; i -= 2)
+    {
+        U64 hashdiff = hash ^ movestack[i].hash;
+#if 0
+        if ((j = H1(moveKey), cuckoo[j] == moveKey)
+            || (j = H2(moveKey), cuckoo[j] == moveKey))
+        {
+            Move move = cuckooMove[j];
+            Square s1 = from_sq(move);
+            Square s2 = to_sq(move);
 
+            if (!(between_bb(s1, s2) & pieces()))
+            {
+                if (ply > i)
+                    return true;
+            }
+        }
+#endif
+        int ch;
+        if ((ch = cuckooH1(hashdiff), cuckooHash[ch] == hashdiff)
+            || (ch = cuckooH2(hashdiff), cuckooHash[ch] == hashdiff))
+        {
+            uint32_t mo = cuckooMove[ch];
+            int from = GETFROM(mo);
+            int to = GETTO(mo);
+            if (!(betweenMask[from][to] & (occupied00[WHITE] | occupied00[BLACK])))
+            {
+                hit++;
+                if (i > rootheight)
+                {
+                    hit++;
+                    //print();
+                    break;
+                }
+
+                PieceCode p = mailbox[from];
+                if (!p)
+                    p = mailbox[to];
+
+                if ((p & S2MMASK) != (state & S2MMASK))
+                {
+                    printf("info string fake rep %d - %d\n", from, to);
+                    //print();
+                    hit--;
+                }
+
+            }
+        }
+    }
+    return hit;
+}
+
+#endif
 
 
 void chessposition::mirror()
@@ -911,10 +970,10 @@ void chessposition::print(ostream* os)
     *os << "Pawn Hash: 0x" << hex << pawnhash << " (should be 0x" << hex << zb.getPawnHash(this) << ")\n";
     *os << "Material Hash: 0x" << hex << materialhash << " (should be 0x" << hex << zb.getMaterialHash(this) << ")\n";
     *os << "Value: " + to_string(getEval<NOTRACE>()) + "\n";
-    *os << "Repetitions: " + to_string(testRepetiton()) + "\n";
+    //*os << "Repetitions: " + to_string(testRepetiton()) + "\n";
     *os << "Phase: " + to_string(phase()) + "\n";
     *os << "Pseudo-legal Moves: " + pseudolegalmoves.toStringWithValue() + "\n";
-#if defined(STACKDEBUG) || defined(SDEBUG)
+#if 1 || defined(STACKDEBUG) || defined(SDEBUG)
     *os << "Moves in current search: " + movesOnStack() + "\n";
 #endif
     *os << "mstop: " + to_string(mstop) + "\n";
@@ -926,7 +985,7 @@ void chessposition::print(ostream* os)
 }
 
 
-#if defined(STACKDEBUG) || defined(SDEBUG)
+#if 1 || defined(STACKDEBUG) || defined(SDEBUG)
 string chessposition::movesOnStack()
 {
     string s = "";
