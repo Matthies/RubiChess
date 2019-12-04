@@ -553,14 +553,19 @@ void initCuckoo()
                 {
                 case KNIGHT:
                     movePossible = toB & knight_attacks[from];
+                    break;
                 case BISHOP:
                     movePossible = toB & MAGICBISHOPATTACKS(0, from);
+                    break;
                 case ROOK:
                     movePossible = toB & MAGICROOKATTACKS(0, from);
+                    break;
                 case QUEEN:
                     movePossible = toB & (MAGICBISHOPATTACKS(0, from) | MAGICROOKATTACKS(0, from));
+                    break;
                 case KING:
                     movePossible = toB & king_attacks[from];
+                    break;
                 }
                 if (movePossible)
                 {
