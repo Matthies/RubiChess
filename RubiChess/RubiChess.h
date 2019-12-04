@@ -1098,6 +1098,7 @@ public:
     void sdebug(int indent, const char* format, ...);
 #endif
     int testRepetiton();
+    bool testUpcomingRepetiton();
     void mirror();
 };
 

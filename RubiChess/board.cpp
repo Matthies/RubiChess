@@ -580,7 +580,7 @@ void initCuckoo()
 }
 
 
-#if 0
+#if 1
 // test for three-fold-repetition going back the position hash stack
 int chessposition::testRepetiton()
 {
@@ -601,30 +601,15 @@ int chessposition::testRepetiton()
     }
     return hit;
 }
-#else
+
 // test for game cycle using the cuckoo table approach described in https://marcelk.net/2013-04-06/paper/upcoming-rep-v2.pdf
-int chessposition::testRepetiton()
+bool chessposition::testUpcomingRepetiton()
 {
-    int hit = 0;
+    //int hit = 0;
     int lastrepply = max(mstop - halfmovescounter, lastnullmove + 1);
     for (int i = mstop - 3; i >= lastrepply; i -= 2)
     {
         U64 hashdiff = hash ^ movestack[i].hash;
-#if 0
-        if ((j = H1(moveKey), cuckoo[j] == moveKey)
-            || (j = H2(moveKey), cuckoo[j] == moveKey))
-        {
-            Move move = cuckooMove[j];
-            Square s1 = from_sq(move);
-            Square s2 = to_sq(move);
-
-            if (!(between_bb(s1, s2) & pieces()))
-            {
-                if (ply > i)
-                    return true;
-            }
-        }
-#endif
         int ch;
         if ((ch = cuckooH1(hashdiff), cuckooHash[ch] == hashdiff)
             || (ch = cuckooH2(hashdiff), cuckooHash[ch] == hashdiff))
@@ -634,29 +619,25 @@ int chessposition::testRepetiton()
             int to = GETTO(mo);
             if (!(betweenMask[from][to] & (occupied00[WHITE] | occupied00[BLACK])))
             {
-                hit++;
                 if (i > rootheight)
-                {
-                    hit++;
-                    //print();
-                    break;
-                }
+                    return true;
 
                 PieceCode p = mailbox[from];
                 if (!p)
                     p = mailbox[to];
 
+                // filter moves of wrong color
                 if ((p & S2MMASK) != (state & S2MMASK))
-                {
-                    printf("info string fake rep %d - %d\n", from, to);
-                    //print();
-                    hit--;
-                }
+                    continue;
 
+                // At or before root find another repetition
+                for(int j = i - 2; j >= lastrepply; j -= 2)
+                    if (movestack[i].hash == movestack[j].hash)
+                        return true;
             }
         }
     }
-    return hit;
+    return false;
 }
 
 #endif
