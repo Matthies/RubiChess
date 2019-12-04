@@ -607,6 +607,8 @@ bool chessposition::testUpcomingRepetiton()
 {
     //int hit = 0;
     int lastrepply = max(mstop - halfmovescounter, lastnullmove + 1);
+    myassert(lastrepply >= 0, this, 1, lastrepply);
+
     for (int i = mstop - 3; i >= lastrepply; i -= 2)
     {
         U64 hashdiff = hash ^ movestack[i].hash;

@@ -275,7 +275,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     STATISTICSADD(ab_pv, PVNode);
 
     // test for remis via repetition
-    int rep = testUpcomingRepetiton();
+    bool rep = testUpcomingRepetiton();
     //int repold = testRepetiton();
 #if 0
     if (rep != repold)
@@ -286,7 +286,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         int repold = testRepetiton();
     }
 #endif
-    if (rep >= 2 && alpha < SCOREDRAW)
+    if (rep && alpha < SCOREDRAW)
     {
         SDEBUGPRINT(isDebugPv, debugInsert, "Draw (repetition)");
         STATISTICSINC(ab_draw_or_win);
@@ -366,7 +366,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     bool tpHit = tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
     if (tpHit)
     {
-        if (1 || !rep)
+        if (!rep)
         {
             // not a single repetition; we can (almost) safely trust the hash value
             uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
