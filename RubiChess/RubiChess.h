@@ -525,8 +525,8 @@ public:
     u8 modHash(int i);
 };
 
-
 #define TTBUCKETNUM 3
+
 
 struct transpositionentry {
     uint32_t hashupper;
@@ -539,6 +539,7 @@ struct transpositionentry {
 
 struct transpositioncluster {
     transpositionentry entry[TTBUCKETNUM];
+    //char padding[2];
 };
 
 
@@ -1098,7 +1099,6 @@ public:
     void sdebug(int indent, const char* format, ...);
 #endif
     int testRepetiton();
-    bool testUpcomingRepetiton();
     void mirror();
 };
 

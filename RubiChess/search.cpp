@@ -275,24 +275,12 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     STATISTICSADD(ab_pv, PVNode);
 
     // test for remis via repetition
-    bool rep = testUpcomingRepetiton();
-    //int repold = testRepetiton();
-#if 0
-    if (rep != repold)
-    {
-        printf("info string rep=%d repold=%d\n", rep, repold);
-        print();
-        int rep = testUpcomingRepetiton();
-        int repold = testRepetiton();
-    }
-#endif
-    if (rep && alpha < SCOREDRAW)
+    int rep = testRepetiton();
+    if (rep >= 2)
     {
         SDEBUGPRINT(isDebugPv, debugInsert, "Draw (repetition)");
         STATISTICSINC(ab_draw_or_win);
-        alpha = SCOREDRAW;
-        if (alpha >= beta)
-            return alpha;
+        return SCOREDRAW;
     }
 
     // test for remis via 50 moves rule
@@ -302,21 +290,14 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (!isCheckbb)
         {
             SDEBUGPRINT(isDebugPv, debugInsert, "Draw (50 moves)");
-            alpha = SCOREDRAW;
-            if (alpha >= beta)
-                return alpha;
+            return SCOREDRAW;
         } else {
             // special case: test for checkmate
             chessmovelist evasions;
             if (CreateMovelist<EVASION>(this, &evasions.move[0]) > 0)
-            {
-                alpha = SCOREDRAW;
-                if (alpha >= beta)
-                    return alpha;
-            }
-            else {
+                return SCOREDRAW;
+            else
                 return SCOREBLACKWINS + ply;
-            }
         }
     }
 
@@ -838,12 +819,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         && !useRootmoveScore
         && tp.probeHash(hash, &score, &staticeval, &hashmovecode, depth, alpha, beta, 0))
     {
-#if 0
-        int t1 = testRepetiton();
-        int t2 = testUpcomingRepetiton();
-        if (t1 != t2)
-            printf("info string repetition in root old=%d new=%d\n", t1, t2);
-#endif
         if (!testRepetiton())
         {
             // Not a single repetition so we trust the hash value but in some very rare cases it could happen that
