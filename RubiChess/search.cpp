@@ -1289,7 +1289,7 @@ static void search_gen1(searchthread *thr)
         bExitIteration = bExitIteration || (pos->tbPosition && abs(score) >= SCORETBWIN - 100 && !en.isPondering());
 
         // exit if STOPSOON is requested and we're in aspiration window
-        bExitIteration = bExitIteration || (en.stopLevel == ENGINESTOPSOON && inWindow == 1);
+        bExitIteration = bExitIteration || (en.stopLevel == ENGINESTOPSOON && inWindow == 1 && constantRootMoves && thr->index == 0);
 
         // exit if STOPIMMEDIATELY
         bExitIteration = bExitIteration || (en.stopLevel == ENGINESTOPIMMEDIATELY);
