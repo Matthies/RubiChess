@@ -877,6 +877,7 @@ public:
 
 #define MAXMULTIPV 64
 #define MAXTHREADS 256
+#define DEFAULTHASH 16
 #define CMPLIES 2
 
 

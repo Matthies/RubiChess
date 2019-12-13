@@ -265,7 +265,7 @@ struct benchmarkstruct
     int solved;
 };
 
-static void doBenchmark(int constdepth, string epdfilename, int consttime)
+static void doBenchmark(int constdepth, string epdfilename, int consttime, bool openbench)
 {
     struct benchmarkstruct benchmark[] =
     {
@@ -446,6 +446,8 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime)
     }
     fprintf(stderr, "=============================================================================================================\n");
     fprintf(stderr, "Overall:                                                      %10f sec. %10lld nodes %*lld nps\n", ((float)totaltime / (float)en.frequency), totalnodes, 10, totalnodes * en.frequency / totaltime);
+    if (openbench)
+        printf("Time  : %lld\nNodes : %lld\nNPS   : %lld\n", totaltime * 1000 / en.frequency, totalnodes, totalnodes * en.frequency / totaltime);
 }
 
 
@@ -753,6 +755,7 @@ int main(int argc, char* argv[])
     int startnum;
     int perfmaxdepth;
     bool benchmark;
+    bool openbench;
     int depth;
     bool dotests;
     bool enginetest;
@@ -777,6 +780,7 @@ int main(int argc, char* argv[])
         const char *defaultval;
     } allowedargs[] = {
         { "-bench", "Do benchmark test for some positions.", &benchmark, 0, NULL },
+        { "bench", "Do benchmark test for some positions.", &openbench, 0, NULL },
         { "-depth", "Depth for benchmark (0 for per-position-default)", &depth, 1, "0" },
         { "-perft", "Do performance and move generator testing.", &perfmaxdepth, 1, "0" },
         { "-dotests","test the hash function and value for positions and mirror (use with -perft)", &dotests, 0, NULL },
@@ -877,10 +881,10 @@ int main(int argc, char* argv[])
     {
         // do a perft test
         perftest(dotests, perfmaxdepth);
-    } else if (benchmark)
+    } else if (benchmark || openbench)
     {
         // benchmark mode
-        doBenchmark(depth, epdfile, maxtime);
+        doBenchmark(depth, epdfile, maxtime, openbench);
     } else if (enginetest)
     {
         //engine test mode
