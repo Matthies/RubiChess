@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26430.15
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RubiChess", "RubiChess\RubiChess.vcxproj", "{83509B25-2DA0-42F8-8ABE-F3DB5C736D23}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RubiChess", "src\RubiChess.vcxproj", "{83509B25-2DA0-42F8-8ABE-F3DB5C736D23}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
