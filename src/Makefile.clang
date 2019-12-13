@@ -2,7 +2,8 @@
 # Start MSVC Command prompt for x64 native tools and
 # for fastest build: nmake /f Makefile.clang build
 # for a quick build: nmake /f Makefile.clang all
-#
+# llvm-profdata.exe and .dll from Tools folder need to be copied into the LLVM bin folder or any other folder in PATH
+
 LLVMInstallDir="C:\Program Files\LLVM""
 
 CXX=$(LLVMInstallDir)\bin\clang-cl.exe
@@ -16,7 +17,7 @@ EXE1=RubiChess
 EXE2=RubiChess-oldcpu
 PROFEXE1=$(EXE1)-Prof
 PROFEXE2=$(EXE2)-Prof
-PROFDATATOOLEXE=..\Tools\llvm-profdata
+PROFDATATOOLEXE=llvm-profdata
 
 CXXFLAGS=/GX /O2 /Oi /Ot /c -flto -fuse-ld=lld
 ARCHFLAGS=-msse3 -mpopcnt
