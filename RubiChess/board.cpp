@@ -2256,7 +2256,7 @@ engine::engine()
     initBitmaphelper();
     rootposition.pwnhsh = new Pawnhash(1);  // some dummy pawnhash just to make the prefetch in playMove happy
     setOption("Threads", "1");  // order is important as the pawnhash depends on Threads > 0
-    setOption("hash", "256");
+    setOption("hash", to_string(DEFAULTHASH));
     setOption("Move Overhead", "50");
     setOption("MultiPV", "1");
     setOption("Ponder", "false");
@@ -2530,7 +2530,7 @@ void engine::communicate(string inputstring)
                 send("id name %s\n", name);
                 send("id author %s\n", author);
                 send("option name Clear Hash type button\n");
-                send("option name Hash type spin default 256 min 1 max 1048576\n");
+                send("option name Hash type spin default %d min 1 max 1048576\n", DEFAULTHASH);
                 send("option name Move Overhead type spin default 50 min 0 max 5000\n");
                 send("option name MultiPV type spin default 1 min 1 max %d\n", MAXMULTIPV);
                 send("option name Ponder type check default false\n");
