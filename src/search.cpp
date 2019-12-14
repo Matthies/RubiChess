@@ -1096,6 +1096,7 @@ static void search_gen1(searchthread *thr)
 
     const bool isMultiPV = (RT == MultiPVSearch);
     const bool doPonder = (RT == PonderSearch);
+    const bool isMainThread = (thr->index == 0);
 
     chessposition *pos = &thr->pos;
 
@@ -1145,7 +1146,7 @@ static void search_gen1(searchthread *thr)
         {
             score = pos->rootsearch<RT>(alpha, beta, thr->depth);
 #ifdef TDEBUG
-            if (en.stopLevel == ENGINESTOPIMMEDIATELY && thr->index == 0)
+            if (en.stopLevel == ENGINESTOPIMMEDIATELY && isMainThread)
             {
                 en.t2stop++;
                 en.bStopCount = true;
@@ -1207,7 +1208,7 @@ static void search_gen1(searchthread *thr)
         if (bDiffers)
             pos->lastpv[i] = 0;
 
-        if (score > NOSCORE && thr->index == 0)
+        if (score > NOSCORE && isMainThread)
         {
             nowtime = getTime();
 
@@ -1274,7 +1275,7 @@ static void search_gen1(searchthread *thr)
         }
 
         // Reset remaining time if depth is finished or new best move is found
-        if (thr->index == 0)
+        if (isMainThread)
         {
             if (inWindow == 1 || !constantRootMoves)
                 resetEndTime(constantRootMoves);
@@ -1289,7 +1290,7 @@ static void search_gen1(searchthread *thr)
         bExitIteration = bExitIteration || (pos->tbPosition && abs(score) >= SCORETBWIN - 100 && !en.isPondering());
 
         // exit if STOPSOON is requested and we're in aspiration window
-        bExitIteration = bExitIteration || (en.stopLevel == ENGINESTOPSOON && inWindow == 1);
+        bExitIteration = bExitIteration || (en.stopLevel == ENGINESTOPSOON && inWindow == 1 && constantRootMoves && isMainThread);
 
         // exit if STOPIMMEDIATELY
         bExitIteration = bExitIteration || (en.stopLevel == ENGINESTOPIMMEDIATELY);
@@ -1299,7 +1300,7 @@ static void search_gen1(searchthread *thr)
 
     } while (!bExitIteration);
     
-    if (thr->index == 0)
+    if (isMainThread)
     {
 #ifdef TDEBUG
         if (!en.bStopCount)
