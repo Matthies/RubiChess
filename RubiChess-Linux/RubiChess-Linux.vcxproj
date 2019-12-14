@@ -62,53 +62,53 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <IncludePath>$(IncludePath)</IncludePath>
-    <AdditionalSourcesToCopyMapping>$(ProjectDir)..\RubiChess\tbcore.c:=$(RemoteProjectDir)/tbcore.c</AdditionalSourcesToCopyMapping>
+    <AdditionalSourcesToCopyMapping>$(ProjectDir)..\src\tbcore.c:=$(RemoteProjectDir)/tbcore.c</AdditionalSourcesToCopyMapping>
     <TargetName>RubiChess</TargetName>
     <TargetExt />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
     <IncludePath>$(IncludePath)</IncludePath>
-    <AdditionalSourcesToCopyMapping>$(ProjectDir)..\RubiChess\tbcore.c:=$(RemoteProjectDir)/tbcore.c</AdditionalSourcesToCopyMapping>
+    <AdditionalSourcesToCopyMapping>$(ProjectDir)..\src\tbcore.c:=$(RemoteProjectDir)/tbcore.c</AdditionalSourcesToCopyMapping>
     <TargetName>RubiChess</TargetName>
     <TargetExt />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>$(IncludePath)</IncludePath>
-    <AdditionalSourcesToCopyMapping>$(ProjectDir)..\RubiChess\tbcore.c:=$(RemoteProjectDir)/tbcore.c</AdditionalSourcesToCopyMapping>
+    <AdditionalSourcesToCopyMapping>$(ProjectDir)..\src\tbcore.c:=$(RemoteProjectDir)/tbcore.c</AdditionalSourcesToCopyMapping>
     <TargetName>RubiChess</TargetName>
     <TargetExt />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>$(IncludePath)</IncludePath>
-    <AdditionalSourcesToCopyMapping>$(ProjectDir)..\RubiChess\tbcore.c:=$(RemoteProjectDir)/tbcore.c</AdditionalSourcesToCopyMapping>
+    <AdditionalSourcesToCopyMapping>$(ProjectDir)..\src\tbcore.c:=$(RemoteProjectDir)/tbcore.c</AdditionalSourcesToCopyMapping>
     <TargetName>RubiChess</TargetName>
     <TargetExt />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
     <IncludePath>$(IncludePath)</IncludePath>
-    <AdditionalSourcesToCopyMapping>$(ProjectDir)..\RubiChess\tbcore.c:=$(RemoteProjectDir)/tbcore.c</AdditionalSourcesToCopyMapping>
+    <AdditionalSourcesToCopyMapping>$(ProjectDir)..\src\tbcore.c:=$(RemoteProjectDir)/tbcore.c</AdditionalSourcesToCopyMapping>
     <TargetName>RubiChess</TargetName>
     <TargetExt />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
     <IncludePath>$(IncludePath)</IncludePath>
-    <AdditionalSourcesToCopyMapping>$(ProjectDir)..\RubiChess\tbcore.c:=$(RemoteProjectDir)/tbcore.c</AdditionalSourcesToCopyMapping>
+    <AdditionalSourcesToCopyMapping>$(ProjectDir)..\src\tbcore.c:=$(RemoteProjectDir)/tbcore.c</AdditionalSourcesToCopyMapping>
     <TargetName>RubiChess</TargetName>
     <TargetExt />
   </PropertyGroup>
   <ItemGroup>
-    <ClCompile Include="..\RubiChess\board.cpp" />
-    <ClCompile Include="..\RubiChess\eval.cpp" />
-    <ClCompile Include="..\RubiChess\main.cpp" />
-    <ClCompile Include="..\RubiChess\search.cpp" />
-    <ClCompile Include="..\RubiChess\tbprobe.cpp" />
-    <ClCompile Include="..\RubiChess\transposition.cpp" />
-    <ClCompile Include="..\RubiChess\uci.cpp" />
-    <ClCompile Include="..\RubiChess\utils.cpp" />
+    <ClCompile Include="..\src\board.cpp" />
+    <ClCompile Include="..\src\eval.cpp" />
+    <ClCompile Include="..\src\main.cpp" />
+    <ClCompile Include="..\src\search.cpp" />
+    <ClCompile Include="..\src\tbprobe.cpp" />
+    <ClCompile Include="..\src\transposition.cpp" />
+    <ClCompile Include="..\src\uci.cpp" />
+    <ClCompile Include="..\src\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\RubiChess\RubiChess.h" />
-    <ClInclude Include="..\RubiChess\tbcore.h" />
+    <ClInclude Include="..\src\RubiChess.h" />
+    <ClInclude Include="..\src\tbcore.h" />
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <Link>
