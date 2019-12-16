@@ -780,7 +780,7 @@ int main(int argc, char* argv[])
         const char *defaultval;
     } allowedargs[] = {
         { "-bench", "Do benchmark test for some positions.", &benchmark, 0, NULL },
-        { "bench", "Do benchmark test for some positions.", &openbench, 0, NULL },
+        { "bench", "Do benchmark with OpenBench compatible output.", &openbench, 0, NULL },
         { "-depth", "Depth for benchmark (0 for per-position-default)", &depth, 1, "0" },
         { "-perft", "Do performance and move generator testing.", &perfmaxdepth, 1, "0" },
         { "-dotests","test the hash function and value for positions and mirror (use with -perft)", &dotests, 0, NULL },

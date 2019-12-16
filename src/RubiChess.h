@@ -126,7 +126,7 @@ using namespace std;
 
 #define BITSET(x) (1ULL << (x))
 #define ONEORZERO(x) (!((x) & ((x) - 1)))
-#ifdef _WIN32
+#ifdef _MSC_VER
 #define GETLSB(i,x) _BitScanForward64((DWORD*)&(i), (x))
 inline int pullLsb(unsigned long long *x) {
     DWORD i;
