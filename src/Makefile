@@ -19,13 +19,22 @@ PGOBENCH2 = ./$(EXE2) -bench
 PROFDIR1 = OPT
 PROFDIR2 = NOPOCNT
 
+GITVER = $(shell 2>/dev/null git show --name-only --abbrev-commit --date=format:%Y%m%d%H%M%S | grep -i "date" | grep -o -E '[0-9]+')
+GITID = $(shell 2>/dev/null git show --name-only --abbrev-commit | grep -i -o -E "ommit[[:blank:]]+[0-9a-f]+" | grep -o -E '[0-9a-f]+')
+ifneq ($(GITVER),)
+    GITDEFINE = -D GITVER=\"$(GITVER)\"
+endif
+ifneq ($(GITID),)
+    GITDEFINE += -D GITID=\"$(GITID)\"
+endif
+
 .PHONY: clean profile-build gcc-profile-make gcc-profile-use all
 
 all: RubiChess
 old: RubiChess-oldcpu
 
 RubiChess:
-	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(LDFLAGS) $(EXTRALDFLAGS) -o $(EXE)
+	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(LDFLAGS) $(EXTRALDFLAGS) $(GITDEFINE) -o $(EXE)
 
 RubiChess-oldcpu:
 	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) *.cpp $(LDFLAGS) $(EXTRALDFLAGS) -o $(EXE2)

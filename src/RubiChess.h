@@ -17,7 +17,8 @@
 
 #pragma once
 
-#define VERNUM "1.7-dev"
+#define VERNUM "1.7"
+//#define VERSTABLE
 
 #if 0
 #define STATISTICS
@@ -121,8 +122,21 @@ using namespace std;
 #endif
 #endif
 
-#define ENGINEVER "RubiChess " VERNUM
+#ifndef VERSTABLE
+#ifdef GITVER
+#define VERSION VERNUM "-dev " GITVER
+#else
+#define VERSION VERNUM "-dev"
+#endif
+#else
+#define VERSION VERNUM
+#endif
+#define ENGINEVER "RubiChess " VERSION
+#ifdef GITID
+#define BUILD __DATE__ " " __TIME__ " commit " GITID
+#else
 #define BUILD __DATE__ " " __TIME__
+#endif
 
 #define BITSET(x) (1ULL << (x))
 #define ONEORZERO(x) (!((x) & ((x) - 1)))
