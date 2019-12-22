@@ -602,183 +602,115 @@ static double TexelEvalError(struct tuner *tn)
     return E / texelptsnum;
 }
 
-static void getGradsFromFen(chessposition *pos, string fenfilename)
+static void getGradsFromFen(chessposition *pos, string fenfilenames)
 {
-    int fentype = -1;
-    int gamescount = 0;
-    bool fenmovemode = (fenfilename.find(".fenmove") != string::npos);
-    string line;
-    smatch match;
-    int n;
-    int c;
-    int bw;
-    char R;
-    string fen;
-    int Qi, Qr;
-    int Q[4];
-    U64 buffersize;
-    char *pnext;
-    long long minfreebuffer = sizeof(positiontuneset) + NUMOFEVALPARAMS * sizeof(evalparam) * 1024;
-    int msb;
-    GETMSB(msb, minfreebuffer);
-    minfreebuffer = (1ULL << (msb + 1));
-    const U64 maxbufferincrement = minfreebuffer << 10;
-        
-    n = 0;
-    bw = 0;
-    c = tuningratio;
-    ifstream fenfile(fenfilename);
-    if (!fenfile.is_open())
+    int n = 0;
+    while (fenfilenames != "")
     {
-        printf("Cannot open %s for reading.\n", fenfilename.c_str());
-        return;
-    }
-    buffersize = minfreebuffer;
-    texelpts = (char*)malloc(buffersize);
-    pnext = (char*)texelpts;
-    printf("Reading positions\n");
-    while (getline(fenfile, line))
-    {
-        if (texelpts + buffersize - pnext < minfreebuffer)
+        size_t i = fenfilenames.find('*');
+        string filename = (i == string::npos) ? fenfilenames : fenfilenames.substr(0, i);
+        fenfilenames = (i == string::npos) ? "" : fenfilenames.substr(i + 1, string::npos);
+
+        int fentype = -1;
+        int gamescount = 0;
+        bool fenmovemode = (filename.find(".fenmove") != string::npos);
+        string line;
+        smatch match;
+        int c;
+        int bw;
+        char R;
+        string fen;
+        int Qi, Qr;
+        int Q[4];
+        U64 buffersize;
+        char *pnext;
+        long long minfreebuffer = sizeof(positiontuneset) + NUMOFEVALPARAMS * sizeof(evalparam) * 1024;
+        int msb;
+        GETMSB(msb, minfreebuffer);
+        minfreebuffer = (1ULL << (msb + 1));
+        const U64 maxbufferincrement = minfreebuffer << 10;
+
+        bw = 0;
+        c = tuningratio;
+        ifstream fenfile(filename);
+        if (!fenfile.is_open())
         {
-            buffersize = min(buffersize + maxbufferincrement, buffersize * 2);
-            char *oldtexelpts = texelpts;
-            texelpts = (char*)realloc(texelpts, buffersize);
-            pnext += (texelpts - oldtexelpts);
+            printf("\nCannot open %s for reading.\n", filename.c_str());
+            continue;
         }
-        if (!fenmovemode)
+        buffersize = minfreebuffer;
+        texelpts = (char*)malloc(buffersize);
+        pnext = (char*)texelpts;
+        printf("\nReading positions from %s\n", filename.c_str());
+        while (getline(fenfile, line))
         {
-            // "(.*)\\s+(c9\\s+)?\"?((1\\-0)|(0\\-1)|(1/2))\"?"
-            fen = "";
-            if ((fentype < 0 || fentype == 1) && regex_search(line, match, regex("(.*)#(.*)#(.*)")))
+            if (texelpts + buffersize - pnext < minfreebuffer)
             {
-                // my own fen format
-                if (fentype < 0)
-                {
-                    printf("Format: score#fen#eval (from pgn2fen)\n");
-                    fentype = 1;
-                }
-                fen = match.str(2);
-                R = (stoi(match.str(1)) + 1);
+                buffersize = min(buffersize + maxbufferincrement, buffersize * 2);
+                char *oldtexelpts = texelpts;
+                texelpts = (char*)realloc(texelpts, buffersize);
+                pnext += (texelpts - oldtexelpts);
             }
-            else if ((fentype < 0 || fentype == 2) && regex_search(line, match, regex("(.*)\\s+((1\\-0)|(0\\-1)|(1/2))")))
+            if (!fenmovemode)
             {
-                // FENS_JEFFREY
-                if (fentype < 0)
+                // "(.*)\\s+(c9\\s+)?\"?((1\\-0)|(0\\-1)|(1/2))\"?"
+                fen = "";
+                if ((fentype < 0 || fentype == 1) && regex_search(line, match, regex("(.*)#(.*)#(.*)")))
                 {
-                    printf("Format: fen 1-0|0-1|1/2 (from FENS_JEFFREY)\n");
-                    fentype = 2;
-                }
-                fen = match.str(1);
-                R = (match.str(2) == "1-0" ? 2 : (match.str(2) == "0-1" ? 0 : 1));
-            }
-            else if ((fentype < 0 || fentype == 3) && regex_search(line, match, regex("(.*)\\s+c9\\s+\"((1\\-0)|(0\\-1)|(1/2))")))
-            {
-                // quiet-labled (zurichess)
-                if (fentype < 0)
-                {
-                    printf("Format: fen c9 \"1-0|0-1|1/2\" (from quiet-labled)\n");
-                    fentype = 3;
-                }
-                fen = match.str(1);
-                R = (match.str(2) == "1-0" ? 2 : (match.str(2) == "0-1" ? 0 : 1));
-            }
-            else if ((fentype < 0 || fentype == 4) && regex_search(line, match, regex("(.*)\\s+c1(.*)c2\\s+\"((1.0)|(0.5)|(0.0))")))
-            {
-                // big3
-                if (fentype < 0)
-                {
-                    printf("Format: fen c1 ... c2 \"1.0|0.5|0.0\" (from big3)\n");
-                    fentype = 4;
-                }
-                fen = match.str(1);
-                R = (match.str(3) == "1.0" ? 2 : (match.str(3) == "0.0" ? 0 : 1));
-            }
-            else if ((fentype < 0 || fentype == 5) && regex_search(line, match, regex("(.*)\\|(.*)")))
-            {
-                // lichess
-                if (fentype < 0)
-                {
-                    printf("Format: fen |White|Black|Draw (from lichess-quiet)\n");
-                    fentype = 5;
-                }
-                fen = match.str(1);
-                R = (match.str(2) == "White" ? 2 : (match.str(2) == "Black" ? 0 : 1));
-            }
-            if (fen != "")
-            {
-                bw = 1 - bw;
-                if (bw)
-                    c++;
-                if (c > tuningratio)
-                    c = 1;
-                if (c == tuningratio)
-                {
-                    pos->getFromFen(fen.c_str());
-                    pos->ply = 0;
-                    Qi = pos->getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
-                    if (!pos->w2m())
-                        Qi = -Qi;
-                    positiontuneset *nextpts = (positiontuneset*)pnext;
-                    *nextpts = pos->pts;
-                    nextpts->R = R;
-                    Q[0] = Q[1] = Q[2] = Q[3] = 0;
-                    evalparam *e = (evalparam *)(pnext + sizeof(positiontuneset));
-                    int sqsum[4][2] = { 0 };
-                    for (int i = 0; i < pos->pts.num; i++)
+                    // my own fen format
+                    if (fentype < 0)
                     {
-                        *e = pos->ev[i];
-                        //printf("%20s: %08x  %3d\n", pos->tps.name[e->index].c_str(), *pos->tps.ev[i], e->g);
-                        int ty = pos->tps.ev[e->index]->type;
-                        if (ty != 2)
-                        {
-                            Q[ty] += e->g[0] * *pos->tps.ev[e->index];
-                            //printf("l %3d: %3d * %08x         = %08x\n", e->index, e->g[0], (int)*pos->tps.ev[e->index], Qa);
-                        }
-                        else
-                        {
-                            int sqindex = pos->tps.ev[e->index]->groupindex;
-                            sqsum[sqindex][0] += e->g[0] * *pos->tps.ev[e->index];
-                            sqsum[sqindex][1] += e->g[1] * *pos->tps.ev[e->index];
-                        }
-                        pos->tps.used[e->index]++;
-                        e++;
+                        printf("Format: score#fen#eval (from pgn2fen)\n");
+                        fentype = 1;
                     }
-                    for (int i = 0; i < 4; i++)
-                    {
-                        if (sqsum[i][0] == 0 && sqsum[i][1] == 0) continue;
-                        Q[0] += SQRESULT(sqsum[i][0], 0) + SQRESULT(sqsum[i][1], 1);
-                    }
-                    int evaleg = GETEGVAL(Q[0]);
-                    int sign = (evaleg > 0) - (evaleg < 0);
-                    Q[3] = sign * max(Q[3], -abs(evaleg));
-                    Qr = TAPEREDANDSCALEDEVAL(Q[0] + Q[3], nextpts->ph, nextpts->sc) + Q[1];
-                    if (MATEDETECTED(Qi))
-                        n--;
-                    else if (Qi != (nextpts->sc == SCALE_DRAW ? SCOREDRAW : Qr))
-                        printf("%d  Alarm. Gradient evaluation differs from qsearch value: %d != %d.\n", n, Qr, Qi);
-                    else
-                    {
-                        //printf("%d  gesamt: %08x\n", n, Q);
-                        pnext = (char*)e;
-                        n++;
-                        if (n % 0x2000 == 0) printf(".");
-                    }
+                    fen = match.str(2);
+                    R = (stoi(match.str(1)) + 1);
                 }
-            }
-        }
-        else
-        {
-            if (regex_search(line, match, regex("(.*)#(.*)moves(.*)")))
-            {
-                gamescount++;
-                R = (stoi(match.str(1)) + 1);
-                pos->getFromFen(match.str(2).c_str());
-                pos->ply = 0;
-                vector<string> movelist = SplitString(match.str(3).c_str());
-                vector<string>::iterator move = movelist.begin();
-                bool gameend;
-                do
+                else if ((fentype < 0 || fentype == 2) && regex_search(line, match, regex("(.*)\\s+((1\\-0)|(0\\-1)|(1/2))")))
+                {
+                    // FENS_JEFFREY
+                    if (fentype < 0)
+                    {
+                        printf("Format: fen 1-0|0-1|1/2 (from FENS_JEFFREY)\n");
+                        fentype = 2;
+                    }
+                    fen = match.str(1);
+                    R = (match.str(2) == "1-0" ? 2 : (match.str(2) == "0-1" ? 0 : 1));
+                }
+                else if ((fentype < 0 || fentype == 3) && regex_search(line, match, regex("(.*)\\s+c9\\s+\"((1\\-0)|(0\\-1)|(1/2))")))
+                {
+                    // quiet-labled (zurichess)
+                    if (fentype < 0)
+                    {
+                        printf("Format: fen c9 \"1-0|0-1|1/2\" (from quiet-labled)\n");
+                        fentype = 3;
+                    }
+                    fen = match.str(1);
+                    R = (match.str(2) == "1-0" ? 2 : (match.str(2) == "0-1" ? 0 : 1));
+                }
+                else if ((fentype < 0 || fentype == 4) && regex_search(line, match, regex("(.*)\\s+c1(.*)c2\\s+\"((1.0)|(0.5)|(0.0))")))
+                {
+                    // big3
+                    if (fentype < 0)
+                    {
+                        printf("Format: fen c1 ... c2 \"1.0|0.5|0.0\" (from big3)\n");
+                        fentype = 4;
+                    }
+                    fen = match.str(1);
+                    R = (match.str(3) == "1.0" ? 2 : (match.str(3) == "0.0" ? 0 : 1));
+                }
+                else if ((fentype < 0 || fentype == 5) && regex_search(line, match, regex("(.*)\\|(.*)")))
+                {
+                    // lichess
+                    if (fentype < 0)
+                    {
+                        printf("Format: fen |White|Black|Draw (from lichess-quiet)\n");
+                        fentype = 5;
+                    }
+                    fen = match.str(1);
+                    R = (match.str(2) == "White" ? 2 : (match.str(2) == "Black" ? 0 : 1));
+                }
+                if (fen != "")
                 {
                     bw = 1 - bw;
                     if (bw)
@@ -787,6 +719,8 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                         c = 1;
                     if (c == tuningratio)
                     {
+                        pos->getFromFen(fen.c_str());
+                        pos->ply = 0;
                         Qi = pos->getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
                         if (!pos->w2m())
                             Qi = -Qi;
@@ -799,12 +733,12 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                         for (int i = 0; i < pos->pts.num; i++)
                         {
                             *e = pos->ev[i];
-                            int ty = pos->tps.ev[e->index]->type;
                             //printf("%20s: %08x  %3d\n", pos->tps.name[e->index].c_str(), *pos->tps.ev[i], e->g);
+                            int ty = pos->tps.ev[e->index]->type;
                             if (ty != 2)
                             {
                                 Q[ty] += e->g[0] * *pos->tps.ev[e->index];
-                                //printf("l %3d: %3d * %08x         = %08x\n", e->index, e->g, (int)*pos->tps.ev[e->index], Qa);
+                                //printf("l %3d: %3d * %08x         = %08x\n", e->index, e->g[0], (int)*pos->tps.ev[e->index], Qa);
                             }
                             else
                             {
@@ -824,30 +758,103 @@ static void getGradsFromFen(chessposition *pos, string fenfilename)
                         int sign = (evaleg > 0) - (evaleg < 0);
                         Q[3] = sign * max(Q[3], -abs(evaleg));
                         Qr = TAPEREDANDSCALEDEVAL(Q[0] + Q[3], nextpts->ph, nextpts->sc) + Q[1];
-                        if (Qi != (nextpts->sc == SCALE_DRAW ? SCOREDRAW : Qr))
-                            printf("Alarm. Gradient evaluation differs from qsearch value.\n");
+                        if (MATEDETECTED(Qi))
+                            n--;
+                        else if (Qi != (nextpts->sc == SCALE_DRAW ? SCOREDRAW : Qr))
+                            printf("%d  Alarm. Gradient evaluation differs from qsearch value: %d != %d.\n", n, Qr, Qi);
                         else
                         {
-                            //printf("gesamt: %d\n", Qa);
+                            //printf("%d  gesamt: %08x\n", n, Q);
                             pnext = (char*)e;
                             n++;
                             if (n % 0x2000 == 0) printf(".");
                         }
                     }
-                    gameend = (move == movelist.end());
-                    if (!gameend)
+                }
+            }
+            else
+            {
+                if (regex_search(line, match, regex("(.*)#(.*)moves(.*)")))
+                {
+                    gamescount++;
+                    R = (stoi(match.str(1)) + 1);
+                    pos->getFromFen(match.str(2).c_str());
+                    pos->ply = 0;
+                    vector<string> movelist = SplitString(match.str(3).c_str());
+                    vector<string>::iterator move = movelist.begin();
+                    bool gameend;
+                    do
                     {
-                        if (!pos->applyMove(*move))
+                        bw = 1 - bw;
+                        if (bw)
+                            c++;
+                        if (c > tuningratio)
+                            c = 1;
+                        if (c == tuningratio)
                         {
-                            printf("Alarm (game %d)! Move %s seems illegal.\nLine: %s\n", gamescount, move->c_str(), line.c_str());
-                            pos->print();
+                            Qi = pos->getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
+                            if (!pos->w2m())
+                                Qi = -Qi;
+                            positiontuneset *nextpts = (positiontuneset*)pnext;
+                            *nextpts = pos->pts;
+                            nextpts->R = R;
+                            Q[0] = Q[1] = Q[2] = Q[3] = 0;
+                            evalparam *e = (evalparam *)(pnext + sizeof(positiontuneset));
+                            int sqsum[4][2] = { 0 };
+                            for (int i = 0; i < pos->pts.num; i++)
+                            {
+                                *e = pos->ev[i];
+                                int ty = pos->tps.ev[e->index]->type;
+                                //printf("%20s: %08x  %3d\n", pos->tps.name[e->index].c_str(), *pos->tps.ev[i], e->g);
+                                if (ty != 2)
+                                {
+                                    Q[ty] += e->g[0] * *pos->tps.ev[e->index];
+                                    //printf("l %3d: %3d * %08x         = %08x\n", e->index, e->g, (int)*pos->tps.ev[e->index], Qa);
+                                }
+                                else
+                                {
+                                    int sqindex = pos->tps.ev[e->index]->groupindex;
+                                    sqsum[sqindex][0] += e->g[0] * *pos->tps.ev[e->index];
+                                    sqsum[sqindex][1] += e->g[1] * *pos->tps.ev[e->index];
+                                }
+                                pos->tps.used[e->index]++;
+                                e++;
+                            }
+                            for (int i = 0; i < 4; i++)
+                            {
+                                if (sqsum[i][0] == 0 && sqsum[i][1] == 0) continue;
+                                Q[0] += SQRESULT(sqsum[i][0], 0) + SQRESULT(sqsum[i][1], 1);
+                            }
+                            int evaleg = GETEGVAL(Q[0]);
+                            int sign = (evaleg > 0) - (evaleg < 0);
+                            Q[3] = sign * max(Q[3], -abs(evaleg));
+                            Qr = TAPEREDANDSCALEDEVAL(Q[0] + Q[3], nextpts->ph, nextpts->sc) + Q[1];
+                            if (Qi != (nextpts->sc == SCALE_DRAW ? SCOREDRAW : Qr))
+                                printf("Alarm. Gradient evaluation differs from qsearch value.\n");
+                            else
+                            {
+                                //printf("gesamt: %d\n", Qa);
+                                pnext = (char*)e;
+                                n++;
+                                if (n % 0x2000 == 0) printf(".");
+                            }
                         }
-                        move++;
-                    }
+                        gameend = (move == movelist.end());
+                        if (!gameend)
+                        {
+                            if (!pos->applyMove(*move))
+                            {
+                                printf("Alarm (game %d)! Move %s seems illegal.\nLine: %s\n", gamescount, move->c_str(), line.c_str());
+                                pos->print();
+                            }
+                            move++;
+                        }
 
-                } while (!gameend);
+                    } while (!gameend);
+                }
             }
         }
+
     }
 
     texelptsnum = n;
@@ -1009,7 +1016,7 @@ static void collectTuners(chessposition *pos, tunerpool *pool, tuner **freeTuner
 }
 
 
-void TexelTune(string fenfilename, bool noqs)
+void TexelTune(string fenfilenames, bool noqs)
 {
 #if 0 // enable to calculate constant k 
     // FIXME: Needs to be rewritten after eval rewrite
@@ -1052,7 +1059,7 @@ void TexelTune(string fenfilename, bool noqs)
     registeralltuners(&pos);
     pos.noQs = noqs;
     en.setOption("hash", "4"); // we don't need tt; save all the memory for game data
-    getGradsFromFen(&pos, fenfilename);
+    getGradsFromFen(&pos, fenfilenames);
 
     printf("Tuning starts now.\nPress 'P' to output current parameters.\nPress 'B' to break after current tuning loop.\nPress 'S' for immediate break.\n\n");
 

@@ -765,7 +765,7 @@ int main(int argc, char* argv[])
     string comparefile;
 #ifdef EVALTUNE
     string pgnconvertfile;
-    string fentuningfile;
+    string fentuningfiles;
     bool quietonly;
     int ppg;
 #endif
@@ -800,7 +800,7 @@ int main(int argc, char* argv[])
         { "-pgnfile", "converts games in a PGN file to fen for tuning them later", &pgnconvertfile, 2, "" },
         { "-quietonly", "convert only quiet positions (when used with -pgnfile); don't do qsearch (when used with -fentuning)", &quietonly, 0, NULL },
         { "-ppg", "use only <n> positions per game (0 = every position, use with -pgnfile)", &ppg, 1, "0" },
-        { "-fentuning", "reads FENs from file and tunes eval parameters against it", &fentuningfile, 2, "" },
+        { "-fentuning", "reads FENs from files (filenames separated by *) and tunes eval parameters against it", &fentuningfiles, 2, "" },
         { "-tuningratio", "use only every <n>th double move from the FEN to speed up the analysis", &tuningratio, 1, "1" },
 #endif
         { NULL, NULL, NULL, 0, NULL }
@@ -895,9 +895,9 @@ int main(int argc, char* argv[])
     {
         PGNtoFEN(pgnconvertfile, quietonly, ppg);
     }
-    else if (fentuningfile != "")
+    else if (fentuningfiles != "")
     {
-        TexelTune(fentuningfile, quietonly);
+        TexelTune(fentuningfiles, quietonly);
     }
 #endif
     else {
