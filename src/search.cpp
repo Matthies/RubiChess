@@ -891,7 +891,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
 
         playMove(m);
 
-        if (en.moveoutput && !threadindex)
+        if (en.moveoutput && !threadindex && (!doPonder || depth < MAXDEPTH))
         {
             char s[256];
             sprintf_s(s, "info depth %d currmove %s currmovenumber %d\n", depth, m->toString().c_str(), i + 1);
@@ -1251,7 +1251,8 @@ static void search_gen1(searchthread *thr)
                     // We have a tablebase score so report this
                     pos->bestmovescore[0] = pos->rootmovelist.move[0].value;
 
-                uciScore(thr, inWindow, nowtime, 0);
+                if (!doPonder || thr->depth < maxdepth)
+                    uciScore(thr, inWindow, nowtime, 0);
             }
         }
         if (inWindow == 1)
