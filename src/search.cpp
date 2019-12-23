@@ -532,7 +532,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     ms.SetPreferredMoves(this, hashmovecode, killer[ply][0], killer[ply][1], counter, excludeMove);
     STATISTICSINC(moves_loop_n);
 
-    int  LegalMoves = 0;
+    int legalMoves = 0;
     int quietsPlayed = 0;
     uint32_t quietMoves[MAXMOVELISTLENGTH];
     while ((m = ms.next()))
@@ -558,7 +558,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         bool futilityPrune = futility && !ISTACTICAL(m->code) && !isCheckbb && alpha <= 900 && !moveGivesCheck(m->code);
         if (futilityPrune)
         {
-            if (LegalMoves)
+            if (legalMoves)
             {
                 SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s pruned by futility: staticeval(%d) < alpha(%d) - futilityMargin(%d)", debugMove.toString().c_str(), staticeval, alpha, 100 + 80 * depth);
                 STATISTICSINC(moves_pruned_futility);
@@ -615,7 +615,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         // Late move reduction
         if (depth > 2 && !ISTACTICAL(m->code))
         {
-            reduction = reductiontable[positionImproved][depth][min(63, LegalMoves + 1)];
+            reduction = reductiontable[positionImproved][depth][min(63, legalMoves + 1)];
 
             // adjust reduction by stats value
             reduction -= stats / 4096;
@@ -623,8 +623,11 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             // adjust reduction at PV nodes
             reduction -= PVNode;
 
+            // adjust reduction with opponents move number
+            reduction -= (LegalMoves[mstop - 1] > 12);
+
             STATISTICSINC(red_pi[positionImproved]);
-            STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, LegalMoves + 1)]);
+            STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, legalMoves + 1)]);
             STATISTICSADD(red_history, -stats / 4096);
             STATISTICSADD(red_pv, -(int)PVNode);
             STATISTICSDO(int red0 = reduction);
@@ -651,7 +654,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (!playMove(m))
             continue;
 
-        LegalMoves++;
+        legalMoves++;
 
         // Check again for futility pruning now that we found a valid move
         if (futilityPrune)
@@ -662,6 +665,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         }
 
         STATISTICSINC(moves_played[(bool)ISTACTICAL(m->code)]);
+
+        LegalMoves[mstop] = legalMoves;
 
         if (eval_type != HASHEXACT)
         {
@@ -745,7 +750,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             quietMoves[quietsPlayed++] = m->code;
     }
 
-    if (LegalMoves == 0)
+    if (legalMoves == 0)
     {
         if (excludeMove)
             return alpha;
