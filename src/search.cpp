@@ -532,11 +532,12 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     ms.SetPreferredMoves(this, hashmovecode, killer[ply][0], killer[ply][1], counter, excludeMove);
     STATISTICSINC(moves_loop_n);
 
-    int legalMoves = LegalMoves[mstop] = 0;
+    int legalMoves = 0;
     int quietsPlayed = 0;
     uint32_t quietMoves[MAXMOVELISTLENGTH];
     while ((m = ms.next()))
     {
+        ms.legalmovenum++;
 #ifdef SDEBUG
         bool isDebugMove = ((debugMove.code & 0xeff) == (m->code & 0xeff));
 #endif
@@ -624,7 +625,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             reduction -= PVNode;
 
             // adjust reduction with opponents move number
-            reduction -= (LegalMoves[mstop] > 15);
+            reduction -= (LegalMoves[mstop] > 10);
 
             STATISTICSINC(red_pi[positionImproved]);
             STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, legalMoves + 1)]);
@@ -666,7 +667,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
         STATISTICSINC(moves_played[(bool)ISTACTICAL(m->code)]);
 
-        LegalMoves[mstop] = legalMoves;
+        LegalMoves[mstop] = ms.legalmovenum;
 
         if (eval_type != HASHEXACT)
         {
