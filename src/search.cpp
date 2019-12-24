@@ -625,7 +625,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             reduction -= PVNode;
 
             // adjust reduction with opponents move number
-            reduction -= (LegalMoves[mstop] > 15);
+            reduction -= (LegalMoves[mstop] / 16);
 
             STATISTICSINC(red_pi[positionImproved]);
             STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, legalMoves + 1)]);
