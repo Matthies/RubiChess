@@ -532,7 +532,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     ms.SetPreferredMoves(this, hashmovecode, killer[ply][0], killer[ply][1], counter, excludeMove);
     STATISTICSINC(moves_loop_n);
 
-    int legalMoves = 0;
+    int legalMoves = LegalMoves[mstop] = 0;
     int quietsPlayed = 0;
     uint32_t quietMoves[MAXMOVELISTLENGTH];
     while ((m = ms.next()))
