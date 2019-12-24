@@ -265,6 +265,27 @@ struct benchmarkstruct
     int solved;
 };
 
+const string solvedstr[] = { "-", "o", "+" };
+
+
+static void benchTableHeader(FILE* out)
+{
+        fprintf(out, "\n\nBenchmark results for %s (Build %s):\n", en.name, BUILD);
+        fprintf(out, "System: %s\n", GetSystemInfo().c_str());
+        fprintf(out, "=============================================================================================================\n");
+}
+
+static void benchTableItem(FILE* out, int i, benchmarkstruct *bm)
+{
+    fprintf(out, "Bench # %3d (%14s / %2d): %s  %5s %6d cp %3d ply %10f sec. %10lld nodes %10lld nps\n", i + 1, bm->name.c_str(), bm->depth, solvedstr[bm->solved].c_str(), bm->move.c_str(), bm->score, bm->depthAtExit, (float)bm->time / (float)en.frequency, bm->nodes, bm->nodes * en.frequency / bm->time);
+}
+
+static void benchTableFooder(FILE *out, long long totaltime, long long totalnodes)
+{
+    fprintf(out, "=============================================================================================================\n");
+    fprintf(out, "Overall:                                                      %10f sec. %10lld nodes %*lld nps\n", ((float)totaltime / (float)en.frequency), totalnodes, 10, totalnodes * en.frequency / totaltime);
+}
+
 static void doBenchmark(int constdepth, string epdfilename, int consttime, bool openbench)
 {
     struct benchmarkstruct benchmark[] =
@@ -368,6 +389,8 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, bool 
 
     int i = 0;
     struct benchmarkstruct epdbm;
+    FILE *tableout = openbench ? stdout : stderr;
+
     while (true)
     {
         string avoidmoves = "";
@@ -424,6 +447,8 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, bool 
         if (avoidmoves != "")
             bm->solved = (bestmoves.find(bm->move) != string::npos) ? 0 : 2;
 
+        benchTableItem(tableout, i, bm);
+
         bmlist.push_back(*bm);
         i++;
     }
@@ -432,21 +457,16 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, bool 
     i = 0;
     long long totaltime = 0;
     long long totalnodes = 0;
-    FILE *tableout = openbench ? stdout : stderr;
-    fprintf(tableout, "\n\nBenchmark results for %s (Build %s):\n", en.name, BUILD);
-    fprintf(tableout, "System: %s\n", GetSystemInfo().c_str());
-    fprintf(tableout, "=============================================================================================================\n");
+    benchTableHeader(tableout);
 
-    const string solvedstr[] = { "-", "o", "+" };
     for (list<struct benchmarkstruct>::iterator bm = bmlist.begin(); bm != bmlist.end(); bm++)
     {
         totaltime += bm->time;
         totalnodes += bm->nodes;
-        fprintf(tableout, "Bench # %3d (%14s / %2d): %s  %5s %6d cp %3d ply %10f sec. %10lld nodes %10lld nps\n", i + 1, bm->name.c_str(), bm->depth, solvedstr[bm->solved].c_str(), bm->move.c_str(), bm->score, bm->depthAtExit, (float)bm->time / (float)en.frequency, bm->nodes, bm->nodes * en.frequency / bm->time);
+        benchTableItem(tableout, i, &*bm);
         i++;
     }
-    fprintf(tableout, "=============================================================================================================\n");
-    fprintf(tableout, "Overall:                                                      %10f sec. %10lld nodes %*lld nps\n", ((float)totaltime / (float)en.frequency), totalnodes, 10, totalnodes * en.frequency / totaltime);
+    benchTableFooder(tableout, totaltime, totalnodes);
     if (openbench)
         printf("Time  : %lld\nNodes : %lld\nNPS   : %lld\n", totaltime * 1000 / en.frequency, totalnodes, totalnodes * en.frequency / totaltime);
 }
