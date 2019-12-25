@@ -175,8 +175,32 @@ int transposition::setSize(int sizeMb)
 
 void transposition::clean()
 {
+#if 0
     memset(table, 0, (size_t)(size * sizeof(transpositioncluster)));
+#else
+    U64 now1 = getTime();
+    size_t totalsize = size * sizeof(transpositioncluster);
+    size_t sizePerThread = totalsize / en.Threads;
+    printf("table=   %llx size=%llx\n", table, totalsize);
+    thread tthread[MAXTHREADS];
+    for (int i = 0; i < en.Threads; i++)
+    {
+        void *start = (char*)table + i * sizePerThread;
+        printf("%d: start=%llx size=%llx\n", i, start, sizePerThread);
+        tthread[i] = thread(memset, start, 0, sizePerThread);
+    }
+    printf("r: start=%llx size=%llx\n", (char*)table + en.Threads * sizePerThread, totalsize - en.Threads * sizePerThread);
+    memset((char*)table + en.Threads * sizePerThread, 0, totalsize - en.Threads * sizePerThread);
+    for (int i = 0; i < en.Threads; i++)
+    {
+        if (tthread[i].joinable())
+            tthread[i].join();
+    }
+#endif
     numOfSearchShiftTwo = 0;
+    U64 now2 = getTime();
+    if (en.frequency)
+        printf("TTinit Time: %lld ms\n", (now2 - now1) * 1000 / en.frequency);
 }
 
 
