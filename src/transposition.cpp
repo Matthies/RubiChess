@@ -175,7 +175,20 @@ int transposition::setSize(int sizeMb)
 
 void transposition::clean()
 {
-    memset(table, 0, (size_t)(size * sizeof(transpositioncluster)));
+    size_t totalsize = size * sizeof(transpositioncluster);
+    size_t sizePerThread = totalsize / en.Threads;
+    thread tthread[MAXTHREADS];
+    for (int i = 0; i < en.Threads; i++)
+    {
+        void *start = (char*)table + i * sizePerThread;
+        tthread[i] = thread(memset, start, 0, sizePerThread);
+    }
+    memset((char*)table + en.Threads * sizePerThread, 0, totalsize - en.Threads * sizePerThread);
+    for (int i = 0; i < en.Threads; i++)
+    {
+        if (tthread[i].joinable())
+            tthread[i].join();
+    }
     numOfSearchShiftTwo = 0;
 }
 
