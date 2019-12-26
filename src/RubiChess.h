@@ -370,7 +370,7 @@ struct evalparamset {
     eval eSafecheckbonus[6] = {  SQVALUE(   1,   0), SQVALUE(   1,   0), SQVALUE(   1, 282), SQVALUE(   1,  55), SQVALUE(   1, 243), SQVALUE(   1, 216)  };
     eval eKingdangerbyqueen =  SQVALUE(   1,-156);
     eval eKingringattack[6] = {  SQVALUE(   1,  87), SQVALUE(   1,   0), SQVALUE(   1,  28), SQVALUE(   1,   0), SQVALUE(   1,   0), SQVALUE(   1, -17)  };
-    eval eKingdangeradjust =  SQVALUE(   1,   9);
+    eval eKingdangeradjust =  SQVALUE(   1,   0);
     eval ePsqt[7][64] = {
         {  VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
