@@ -447,7 +447,8 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, bool 
         if (avoidmoves != "")
             bm->solved = (bestmoves.find(bm->move) != string::npos) ? 0 : 2;
 
-        benchTableItem(tableout, i, bm);
+        if (bGetFromEpd)
+            benchTableItem(tableout, i, bm);
 
         bmlist.push_back(*bm);
         i++;
