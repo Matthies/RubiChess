@@ -334,6 +334,18 @@ void chessposition::getPawnAndKingEval(pawnhashentry *entryptr)
         }
     }
 
+    // isolated pawns
+    entryptr->value += EVAL(eps.eIsolatedpawnpenalty, S2MSIGN(Me) * POPCOUNT(entryptr->isolatedpawnbb[Me]));
+    if (bTrace) te.pawns[Me] += EVAL(eps.eIsolatedpawnpenalty, S2MSIGN(Me) * POPCOUNT(entryptr->isolatedpawnbb[Me]));
+
+    // doubled pawns
+    entryptr->value += EVAL(eps.eDoublepawnpenalty, S2MSIGN(Me) * POPCOUNT(piece00[WPAWN | Me] & (Me ? piece00[WPAWN | Me] >> 8 : piece00[WPAWN | Me] << 8)));
+    if (bTrace) te.pawns[Me] += EVAL(eps.eDoublepawnpenalty, S2MSIGN(Me) * POPCOUNT(piece00[WPAWN | Me] & (Me ? piece00[WPAWN | Me] >> 8 : piece00[WPAWN | Me] << 8)));
+
+    // backward pawns
+    entryptr->value += EVAL(eps.eBackwardpawnpenalty, S2MSIGN(Me) * POPCOUNT(entryptr->backwardpawnbb[Me]));
+    if (bTrace) te.pawns[Me] += EVAL(eps.eBackwardpawnpenalty, S2MSIGN(Me) * POPCOUNT(entryptr->backwardpawnbb[Me]));
+
     // Pawn storm evaluation
     int ki = kingpos[Me];
     int kf = FILE(ki);
@@ -554,18 +566,6 @@ int chessposition::getGeneralEval(positioneval *pe)
     const bool bTrace = (Et == TRACE);
     const int You = Me ^ S2MMASK;
 
-    // isolated pawns
-    int result = EVAL(eps.eIsolatedpawnpenalty, S2MSIGN(Me) * POPCOUNT(pe->phentry->isolatedpawnbb[Me]));
-    if (bTrace) te.pawns[Me] += EVAL(eps.eIsolatedpawnpenalty, S2MSIGN(Me) * POPCOUNT(pe->phentry->isolatedpawnbb[Me]));
-
-    // doubled pawns
-    result += EVAL(eps.eDoublepawnpenalty, S2MSIGN(Me) * POPCOUNT(piece00[WPAWN | Me] & (Me ? piece00[WPAWN | Me] >> 8 : piece00[WPAWN | Me] << 8)));
-    if (bTrace) te.pawns[Me] += EVAL(eps.eDoublepawnpenalty, S2MSIGN(Me) * POPCOUNT(piece00[WPAWN | Me] & (Me ? piece00[WPAWN | Me] >> 8 : piece00[WPAWN | Me] << 8)));
-
-    // backward pawns
-    result += EVAL(eps.eBackwardpawnpenalty, S2MSIGN(Me) * POPCOUNT(pe->phentry->backwardpawnbb[Me]));
-    if (bTrace) te.pawns[Me] += EVAL(eps.eBackwardpawnpenalty, S2MSIGN(Me) * POPCOUNT(pe->phentry->backwardpawnbb[Me]));
-
     attackedBy[Me][KING] = king_attacks[kingpos[Me]];
     attackedBy2[Me] = pe->phentry->attackedBy2[Me] | (attackedBy[Me][KING] & pe->phentry->attacked[Me]);
     attackedBy[Me][0] = attackedBy[Me][KING] | pe->phentry->attacked[Me];
@@ -575,7 +575,7 @@ int chessposition::getGeneralEval(positioneval *pe)
     pe->kingattackers[Me] = POPCOUNT(attackedBy[Me][PAWN] & kingdangerMask[kingpos[You]][You]);
 
     // bonus for double bishop
-    result += EVAL(eps.eDoublebishopbonus, S2MSIGN(Me) * (POPCOUNT(piece00[WBISHOP | Me]) >= 2));
+    int result = EVAL(eps.eDoublebishopbonus, S2MSIGN(Me) * (POPCOUNT(piece00[WBISHOP | Me]) >= 2));
     if (bTrace) te.bishops[Me] += EVAL(eps.eDoublebishopbonus, S2MSIGN(Me) * (POPCOUNT(piece00[WBISHOP | Me]) >= 2));
 
     // bonus for rook on 7th pressing against the king
