@@ -143,7 +143,7 @@ void registeralltuners(chessposition *pos)
     registertuner(pos, &eps.eIsolatedpawnpenalty, "eIsolatedpawnpenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eDoublepawnpenalty, "eDoublepawnpenalty", 0, 0, 0, 0, tuneIt);
 
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 6; i++)
         for (j = 0; j < 6; j++)
             registertuner(pos, &eps.eConnectedbonus[i][j], "eConnectedbonus", j, 6, i, 6, tuneIt);
@@ -161,6 +161,9 @@ void registeralltuners(chessposition *pos)
 
     tuneIt = false;
     registertuner(pos, &eps.eRookon7thbonus, "eRookon7thbonus", 0, 0, 0, 0, tuneIt);
+    tuneIt = true;
+    for (i = 0; i < 2; i++)
+        registertuner(pos, &eps.eMinoroutpost[i], "eMinoroutpost", i, 2, 0, 0, tuneIt);
     tuneIt = false;
     for (i = 0; i < 2; i++)
         registertuner(pos, &eps.eSlideronfreefilebonus[i], "eSlideronfreefilebonus", i, 2, 0, 0, tuneIt);
@@ -436,6 +439,18 @@ int chessposition::getPieceEval(positioneval *pe)
 
         if (Pt == KNIGHT)
             attack = knight_attacks[index];
+
+        if (Pt == KNIGHT || Pt == BISHOP)
+        {
+            // bonus for (protected) outpost minor
+            if ((BITSET(index) & OUTPOSTAREA(Me)) && !(passedPawnMask[index][Me] & piece00[WPAWN | You]))
+            {
+                bool isProtected = (BITSET(index) & attackedBy[Me][PAWN]);
+                bool isCentral = (BITSET(index) & ~(FILEABB | FILEHBB));
+                result += EVAL(eps.eMinoroutpost[isProtected], S2MSIGN(Me) * (1 + isCentral));
+                if (bTrace) te.bishops[Me] += EVAL(eps.eMinoroutpost[isProtected], S2MSIGN(Me) * (1 + isCentral));
+            }
+        }
 
         // update attack bitboard
         attackedBy[Me][Pt] |= attack;
