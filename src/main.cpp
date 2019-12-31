@@ -277,7 +277,7 @@ static void benchTableHeader(FILE* out)
 
 static void benchTableItem(FILE* out, int i, benchmarkstruct *bm)
 {
-    fprintf(out, "Bench # %3d (%14s / %2d): %s  %5s %6d cp %3d ply %10f sec. %10lld nodes %10lld nps\n", i + 1, bm->name.c_str(), bm->depth, solvedstr[bm->solved].c_str(), bm->move.c_str(), bm->score, bm->depthAtExit, (float)bm->time / (float)en.frequency, bm->nodes, bm->nodes * en.frequency / bm->time);
+    fprintf(out, "Bench # %3d (%14s / %2d): %s  %5s %6d cp %3d ply %10f sec. %10lld nodes %10lld nps\n", i, bm->name.c_str(), bm->depth, solvedstr[bm->solved].c_str(), bm->move.c_str(), bm->score, bm->depthAtExit, (float)bm->time / (float)en.frequency, bm->nodes, bm->nodes * en.frequency / bm->time);
 }
 
 static void benchTableFooder(FILE *out, long long totaltime, long long totalnodes)
@@ -286,7 +286,7 @@ static void benchTableFooder(FILE *out, long long totaltime, long long totalnode
     fprintf(out, "Overall:                                                      %10f sec. %10lld nodes %*lld nps\n", ((float)totaltime / (float)en.frequency), totalnodes, 10, totalnodes * en.frequency / totaltime);
 }
 
-static void doBenchmark(int constdepth, string epdfilename, int consttime, bool openbench)
+static void doBenchmark(int constdepth, string epdfilename, int consttime, int startnum, bool openbench)
 {
     struct benchmarkstruct benchmark[] =
     {
@@ -414,6 +414,8 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, bool 
         }
         if (bm->fen == "") break;
 
+        if (++i < startnum) continue;
+
         en.communicate("ucinewgame" + bm->fen);
         en.communicate("position fen " + bm->fen);
         starttime = getTime();
@@ -451,7 +453,6 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, bool 
             benchTableItem(tableout, i, bm);
 
         bmlist.push_back(*bm);
-        i++;
     }
 
     en.terminationscore = SHRT_MAX;
@@ -464,12 +465,14 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, bool 
     {
         totaltime += bm->time;
         totalnodes += bm->nodes;
-        benchTableItem(tableout, i, &*bm);
-        i++;
+        benchTableItem(tableout, ++i, &*bm);
     }
-    benchTableFooder(tableout, totaltime, totalnodes);
-    if (openbench)
-        printf("Time  : %lld\nNodes : %lld\nNPS   : %lld\n", totaltime * 1000 / en.frequency, totalnodes, totalnodes * en.frequency / totaltime);
+    if (totaltime)
+    {
+        benchTableFooder(tableout, totaltime, totalnodes);
+        if (openbench)
+            printf("Time  : %lld\nNodes : %lld\nNPS   : %lld\n", totaltime * 1000 / en.frequency, totalnodes, totalnodes * en.frequency / totaltime);
+    }
 }
 
 
@@ -811,7 +814,7 @@ int main(int argc, char* argv[])
         { "-logfile", "output file (use with -enginetest)", &logfile, 2, "enginetest.log" },
         { "-engineprg", "the uci engine to test (use with -enginetest)", &engineprg, 2, "rubichess.exe" },
         { "-maxtime", "time for each test in seconds (use with -enginetest or -bench)", &maxtime, 1, "0" },
-        { "-startnum", "number of the test in epd to start with (use with -enginetest)", &startnum, 1, "1" },
+        { "-startnum", "number of the test in epd to start with (use with -enginetest or -bench)", &startnum, 1, "1" },
         { "-compare", "for fast comparision against logfile from other engine (use with -enginetest)", &comparefile, 2, "" },
         { "-flags", "1=skip easy (0 sec.) compares; 2=break 5 seconds after first find; 4=break after compare time is over (use with -enginetest)", &flags, 1, "0" },
         { "-option", "Set UCI option by commandline", NULL, 3, NULL },
@@ -906,7 +909,7 @@ int main(int argc, char* argv[])
     } else if (benchmark || openbench)
     {
         // benchmark mode
-        doBenchmark(depth, epdfile, maxtime, openbench);
+        doBenchmark(depth, epdfile, maxtime, startnum, openbench);
     } else if (enginetest)
     {
         //engine test mode
