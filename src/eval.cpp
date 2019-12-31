@@ -439,7 +439,7 @@ int chessposition::getPieceEval(positioneval *pe)
 
         if (Pt == KNIGHT)
             attack = knight_attacks[index];
-
+#if 0
         if (Pt == KNIGHT || Pt == BISHOP)
         {
             // bonus for (protected) outpost minor
@@ -451,7 +451,7 @@ int chessposition::getPieceEval(positioneval *pe)
                 if (bTrace) te.bishops[Me] += EVAL(eps.eMinoroutpost[isProtected], S2MSIGN(Me) * (1 + isCentral));
             }
         }
-
+#endif
         // update attack bitboard
         attackedBy[Me][Pt] |= attack;
         attackedBy2[Me] |= (attackedBy[Me][0] & attack);
