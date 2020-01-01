@@ -32,7 +32,7 @@
 #define TDEBUG
 #endif
 
-#if 0
+#if 1
 #define EVALTUNE
 #endif
 
@@ -363,7 +363,7 @@ struct evalparamset {
            VALUE(  69, 264), VALUE( 108, 231), VALUE( 107, 230), VALUE( 114, 198)  }
     };
     eval eRookon7thbonus =  VALUE(  -1,  22);
-    eval eMinoroutpost[2] = {  VALUE(  -9,   2), VALUE(  13,   3)  };
+    //eval eMinoroutpost[2] = {  VALUE(  -9,   2), VALUE(  13,   3)  };
     eval eSlideronfreefilebonus[2] = {  VALUE(  21,   7), VALUE(  43,   1)  };
     eval eMaterialvalue[7] = {  VALUE(   0,   0), VALUE( 100, 100), VALUE( 314, 314), VALUE( 314, 314), VALUE( 483, 483), VALUE( 913, 913), VALUE(0,0)  };
     eval eKingshieldbonus =  VALUE(  15,  -2);

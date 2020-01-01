@@ -161,9 +161,11 @@ void registeralltuners(chessposition *pos)
 
     tuneIt = false;
     registertuner(pos, &eps.eRookon7thbonus, "eRookon7thbonus", 0, 0, 0, 0, tuneIt);
+#if 0
     tuneIt = true;
     for (i = 0; i < 2; i++)
         registertuner(pos, &eps.eMinoroutpost[i], "eMinoroutpost", i, 2, 0, 0, tuneIt);
+#endif
     tuneIt = false;
     for (i = 0; i < 2; i++)
         registertuner(pos, &eps.eSlideronfreefilebonus[i], "eSlideronfreefilebonus", i, 2, 0, 0, tuneIt);
