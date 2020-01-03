@@ -500,75 +500,97 @@ static void readfromengine(HANDLE pipe, enginestate *es)
                 es->phase = 2;
             if (es->phase == 2)
             {
-                const char *bestmovestr = strstr(s, "bestmove ");
-                const char *pv = strstr(s, " pv ");
-                const char *score = strstr(s, " cp ");
-                const char *mate = strstr(s, " mate ");
-                const char *bmptr = NULL;
-                if (bestmovestr != NULL)
+                if (es->doEval)
                 {
-                    bmptr = bestmovestr;
-                }
-                if (pv != NULL)
-                {
-                    bmptr = pv;
-                }
-                if (bmptr)
-                {
-                    token = SplitString(bmptr);
-                    if (token.size() > 1)
+                    const char *strEval;
+                    if ((strEval = strstr(s, "evaluation: ")) || (strEval = strstr(s, "score: ")))
                     {
-                        es->enginesbestmove = token[1];
-                        string myPv = token[1];
-                        bool bestmovefound = (strstr(es->bestmoves.c_str(), myPv.c_str()) != NULL
-                            || (es->bestmoves == "" && strstr(es->avoidmoves.c_str(), myPv.c_str()) == NULL));
+                        vector<string> scoretoken = SplitString(strEval);
+                        if (scoretoken.size() > 1)
+                        {
+                            try
+                            {
+                                es->score = int(stof(scoretoken[1]) * 100);
+                                //printf("%d\n", es->score);
+                            }
+                            catch (const invalid_argument&) {}
+                        }
+                        es->phase = 3;
+                    }
+                }
+                else
+                {
 
-                        if (score)
+                    const char *bestmovestr = strstr(s, "bestmove ");
+                    const char *pv = strstr(s, " pv ");
+                    const char *score = strstr(s, " cp ");
+                    const char *mate = strstr(s, " mate ");
+                    const char *bmptr = NULL;
+                    if (bestmovestr != NULL)
+                    {
+                        bmptr = bestmovestr;
+                    }
+                    if (pv != NULL)
+                    {
+                        bmptr = pv;
+                    }
+                    if (bmptr)
+                    {
+                        token = SplitString(bmptr);
+                        if (token.size() > 1)
                         {
-                            vector<string> scoretoken = SplitString(score);
-                            if (scoretoken.size() > 1)
+                            es->enginesbestmove = token[1];
+                            string myPv = token[1];
+                            bool bestmovefound = (strstr(es->bestmoves.c_str(), myPv.c_str()) != NULL
+                                || (es->bestmoves == "" && strstr(es->avoidmoves.c_str(), myPv.c_str()) == NULL));
+
+                            if (score)
                             {
-                                try
+                                vector<string> scoretoken = SplitString(score);
+                                if (scoretoken.size() > 1)
                                 {
-                                    if (bestmovefound)
-                                        es->score = stoi(scoretoken[1]);
-                                    else
-                                        es->allscore = stoi(scoretoken[1]);
+                                    try
+                                    {
+                                        if (bestmovefound)
+                                            es->score = stoi(scoretoken[1]);
+                                        else
+                                            es->allscore = stoi(scoretoken[1]);
+                                    }
+                                    catch (const invalid_argument&) {}
                                 }
-                                catch (const invalid_argument&) {}
                             }
-                        }
-                        if (mate)
-                        {
-                            vector<string> matetoken = SplitString(mate);
-                            if (matetoken.size() > 1)
+                            if (mate)
                             {
-                                try
+                                vector<string> matetoken = SplitString(mate);
+                                if (matetoken.size() > 1)
                                 {
-                                    if (bestmovefound)
-                                        es->score = SCOREWHITEWINS - stoi(matetoken[1]);
-                                    else
-                                        es->allscore = SCOREWHITEWINS - stoi(matetoken[1]);
+                                    try
+                                    {
+                                        if (bestmovefound)
+                                            es->score = SCOREWHITEWINS - stoi(matetoken[1]);
+                                        else
+                                            es->allscore = SCOREWHITEWINS - stoi(matetoken[1]);
+                                    }
+                                    catch (const invalid_argument&) {}
                                 }
-                                catch (const invalid_argument&) {}
                             }
-                        }
-                        if (bestmovefound)
-                        {
-                            if (es->firstbesttimesec < 0)
+                            if (bestmovefound)
                             {
-                                es->firstbesttimesec = (clock() - es->starttime) / CLOCKS_PER_SEC;
+                                if (es->firstbesttimesec < 0)
+                                {
+                                    es->firstbesttimesec = (clock() - es->starttime) / CLOCKS_PER_SEC;
+                                    //printf("%d %d  %d\n", es->firstbesttimesec, es->starttime, clock());
+                                }
+                            }
+                            else {
+                                es->firstbesttimesec = -1;
                                 //printf("%d %d  %d\n", es->firstbesttimesec, es->starttime, clock());
                             }
                         }
-                        else {
-                            es->firstbesttimesec = -1;
-                            //printf("%d %d  %d\n", es->firstbesttimesec, es->starttime, clock());
-                        }
                     }
+                    if (bestmovestr)
+                        es->phase = 3;
                 }
-                if (bestmovestr)
-                    es->phase = 3;
             }
         }
     } while (true);
@@ -580,14 +602,27 @@ static BOOL writetoengine(HANDLE pipe, const char *s)
     return WriteFile(pipe, s, (DWORD)strlen(s), &written, NULL);
 }
 
-static void testengine(string epdfilename, int startnum, string engineprg, string logfilename, string comparefilename, int maxtime, int flags)
+static void testengine(string epdfilename, int startnum, string engineprgs, string logfilename, string comparefilename, int maxtime, int flags)
 {
-    struct enginestate es;
+    struct enginestate es[4];
+    struct enginestate ges;
+    string engineprg[4];
+    int numEngines = 0;
     string line;
-    thread *readThread;
+    thread *readThread[4];
     ifstream comparefile;
     bool compare = false;
     char buf[1024];
+    bool doEval = (flags & 0x08);
+    while (engineprgs != "" && numEngines < 4)
+    {
+        size_t i = engineprgs.find('*');
+        engineprg[numEngines] = (i == string::npos) ? engineprgs : engineprgs.substr(0, i);
+        engineprgs = (i == string::npos) ? "" : engineprgs.substr(i + 1, string::npos);
+        es[numEngines++].doEval = (flags & 0x08);
+    }
+
+    int sleepDelay = 10;
 
     // Default time for enginetest: 30s
     if (!maxtime) maxtime = 30;
@@ -621,60 +656,74 @@ static void testengine(string epdfilename, int startnum, string engineprg, strin
         printf("Cannot open %s.\n", logfilename.c_str());
         return;
     }
-    logfile << "num passed bestmove foundmove score time\n";
+    if (!doEval)
+        logfile << "num passed bestmove foundmove score time\n";
+    else
+        logfile << "fen eval\n";
 
     // Start the engine with linked pipes
-    HANDLE g_hChildStd_IN_Rd = NULL;
-    HANDLE g_hChildStd_IN_Wr = NULL;
-    HANDLE g_hChildStd_OUT_Rd = NULL;
-    HANDLE g_hChildStd_OUT_Wr = NULL;
-
-    SECURITY_ATTRIBUTES sa;
-    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
-    sa.bInheritHandle = TRUE;
-    sa.lpSecurityDescriptor = NULL;
-
-    if (!CreatePipe(&g_hChildStd_OUT_Rd, &g_hChildStd_OUT_Wr, &sa, 0)
-        || !SetHandleInformation(g_hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0)
-        || !CreatePipe(&g_hChildStd_IN_Rd, &g_hChildStd_IN_Wr, &sa, 0)
-        || !SetHandleInformation(g_hChildStd_IN_Wr, HANDLE_FLAG_INHERIT, 0))
+    HANDLE g_hChildStd_IN_Rd[4] = { NULL };
+    HANDLE g_hChildStd_IN_Wr[4] = { NULL };
+    HANDLE g_hChildStd_OUT_Rd[4] = { NULL };
+    HANDLE g_hChildStd_OUT_Wr[4] = { NULL };
+    BOOL bSuccess;
+    for (int i = 0; i < numEngines; i++)
     {
-        printf("Cannot pipe connection to engine process.\n");
-        return;
+        SECURITY_ATTRIBUTES sa;
+        sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+        sa.bInheritHandle = TRUE;
+        sa.lpSecurityDescriptor = NULL;
+
+        if (!CreatePipe(&g_hChildStd_OUT_Rd[i], &g_hChildStd_OUT_Wr[i], &sa, 0)
+            || !SetHandleInformation(g_hChildStd_OUT_Rd[i], HANDLE_FLAG_INHERIT, 0)
+            || !CreatePipe(&g_hChildStd_IN_Rd[i], &g_hChildStd_IN_Wr[i], &sa, 0)
+            || !SetHandleInformation(g_hChildStd_IN_Wr[i], HANDLE_FLAG_INHERIT, 0))
+        {
+            printf("Cannot pipe connection to engine process.\n");
+            return;
+        }
+
+        PROCESS_INFORMATION piProcInfo;
+        STARTUPINFO siStartInfo;
+        bSuccess = FALSE;
+        ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
+        ZeroMemory(&siStartInfo, sizeof(STARTUPINFO));
+        siStartInfo.cb = sizeof(STARTUPINFO);
+        siStartInfo.hStdError = g_hChildStd_OUT_Wr[i];
+        siStartInfo.hStdOutput = g_hChildStd_OUT_Wr[i];
+        siStartInfo.hStdInput = g_hChildStd_IN_Rd[i];
+        siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
+
+        bSuccess = CreateProcess(NULL, (LPSTR)engineprg[i].c_str(), NULL, NULL, TRUE, 0, NULL, NULL, &siStartInfo, &piProcInfo);
+        if (!bSuccess)
+        {
+            printf("Cannot create process for engine %s.\n", engineprg[i].c_str());
+            return;
+        }
+        CloseHandle(piProcInfo.hProcess);
+        CloseHandle(piProcInfo.hThread);
+        readThread[i] = new thread(&readfromengine, g_hChildStd_OUT_Rd[i], &es[i]);
     }
-
-    PROCESS_INFORMATION piProcInfo;
-    STARTUPINFO siStartInfo;
-    BOOL bSuccess = FALSE;
-    ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
-    ZeroMemory(&siStartInfo, sizeof(STARTUPINFO));
-    siStartInfo.cb = sizeof(STARTUPINFO);
-    siStartInfo.hStdError = g_hChildStd_OUT_Wr;
-    siStartInfo.hStdOutput = g_hChildStd_OUT_Wr;
-    siStartInfo.hStdInput = g_hChildStd_IN_Rd;
-    siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
-
-    bSuccess = CreateProcess(NULL, (LPSTR)engineprg.c_str(), NULL, NULL, TRUE, 0, NULL, NULL, &siStartInfo, &piProcInfo);
-    if (!bSuccess)
-    {
-        printf("Cannot create process for engine %s.\n", engineprg.c_str());
-        return;
-    }
-    CloseHandle(piProcInfo.hProcess);
-    CloseHandle(piProcInfo.hThread);
-    readThread = new thread(&readfromengine, g_hChildStd_OUT_Rd, &es);
-
     // Read epd line by line
     int linenum = 0;
     while (getline(epdfile, line))
     {
         string fenstr;
-        getFenAndBmFromEpd(line, &fenstr, &(es.bestmoves), &(es.avoidmoves));
+        getFenAndBmFromEpd(line, &fenstr, &(ges.bestmoves), &(ges.avoidmoves));
 
         if (fenstr != "" && ++linenum >= startnum)
         {
+            if (doEval)
+            {
+                // Skip positions with check
+                en.sthread[0].pos.getFromFen(fenstr.c_str());
+                if (en.sthread[0].pos.isCheckbb)
+                    continue;
+                fenstr = en.sthread[0].pos.toFen();
+            }
+
             // Get data from compare file
-            es.doCompare = false;
+            ges.doCompare = false;
             if (compare)
             {
                 vector<string> cv;
@@ -692,15 +741,15 @@ static void testengine(string epdfilename, int startnum, string engineprg, strin
                 }
                 if (compareindex == linenum)
                 {
-                    es.doCompare = true;
-                    es.comparesuccess = (cv[1] == "+");
-                    es.comparescore = SCOREBLACKWINS;
-                    es.comparetime = -1;
+                    ges.doCompare = true;
+                    ges.comparesuccess = (cv[1] == "+");
+                    ges.comparescore = SCOREBLACKWINS;
+                    ges.comparetime = -1;
                     if (cv.size() > 4)
                     {
                         try
                         {
-                            es.comparescore = stoi(cv[4]);
+                            ges.comparescore = stoi(cv[4]);
                         }
                         catch (const invalid_argument&) {}
                     }
@@ -708,61 +757,96 @@ static void testengine(string epdfilename, int startnum, string engineprg, strin
                     {
                         try
                         {
-                            es.comparetime = stoi(cv[5]);
+                            ges.comparetime = stoi(cv[5]);
                         }
                         catch (const invalid_argument&) {}
-                        if (es.comparetime == 0 && (flags & 0x1))
+                        if (ges.comparetime == 0 && (flags & 0x1))
                             // nothing to improve; skip this test
                             continue;
                     }
                 }
             }
-            // Initialize the engine
-            es.phase = 0;
-            es.score = SCOREBLACKWINS;
-            bSuccess = writetoengine(g_hChildStd_IN_Wr, "uci\n");
-            while (es.phase == 0)
-                Sleep(1000);
-            bSuccess = writetoengine(g_hChildStd_IN_Wr, "ucinewgame\n");
-            bSuccess = writetoengine(g_hChildStd_IN_Wr, "isready\n");
-            while (es.phase == 1)
-                Sleep(1000);
-
-            es.starttime = clock();
-            es.firstbesttimesec = -1;
-            sprintf_s(buf, "position fen %s 0 1\ngo infinite\n", fenstr.c_str());
-            bSuccess = writetoengine(g_hChildStd_IN_Wr, buf);
-            bool engineStopped = false;
-            while (es.phase < 3)
+            for (int i = 0; i < numEngines; i++)
             {
-                Sleep(1000);
-                clock_t now = clock();
-                if (!engineStopped
-                    && ((now - es.starttime) / CLOCKS_PER_SEC > maxtime
-                        || es.score > SCOREWHITEWINS - MAXDEPTH
-                        || ((flags & 0x2) && es.doCompare && es.comparesuccess && (now - es.starttime) / CLOCKS_PER_SEC > es.comparetime)
-                        || ((flags & 0x2) && es.firstbesttimesec >= 0 && ((now - es.starttime) / CLOCKS_PER_SEC) > es.firstbesttimesec + 5)))
+                // Initialize the engine
+                es[i].bestmoves = ges.bestmoves;
+                es[i].avoidmoves = ges.avoidmoves;
+                es[i].doCompare = ges.doCompare;
+                es[i].comparescore = ges.comparescore;
+                es[i].comparesuccess = ges.comparesuccess;
+                es[i].comparetime = ges.comparetime;
+                es[i].phase = 0;
+                es[i].score = SCOREBLACKWINS;
+
+                bSuccess = writetoengine(g_hChildStd_IN_Wr[i], "uci\n");
+                while (es[i].phase == 0)
+                    Sleep(sleepDelay);
+                bSuccess = writetoengine(g_hChildStd_IN_Wr[i], "ucinewgame\n");
+                bSuccess = writetoengine(g_hChildStd_IN_Wr[i], "isready\n");
+                while (es[i].phase == 1)
+                    Sleep(sleepDelay);
+
+                es[i].starttime = clock();
+                es[i].firstbesttimesec = -1;
+
+                sprintf_s(buf, "position fen %s 0 1\n%s\n", fenstr.c_str(), doEval ? "eval" : "go infinite");
+
+                bSuccess = writetoengine(g_hChildStd_IN_Wr[i], buf);
+            }
+
+            for (int i = 0; i < numEngines; i++)
+            {
+                bool engineStopped = false;
+                while (es[i].phase < 3)
                 {
-                    bSuccess = writetoengine(g_hChildStd_IN_Wr, "stop\n");
-                    engineStopped = true;
+                    Sleep(sleepDelay);
+                    clock_t now = clock();
+                    if (!engineStopped
+                        && ((now - es[i].starttime) / CLOCKS_PER_SEC > maxtime
+                            || es[i].score > SCOREWHITEWINS - MAXDEPTH
+                            || ((flags & 0x2) && es[i].doCompare && es[i].comparesuccess && (now - es[i].starttime) / CLOCKS_PER_SEC > es[i].comparetime)
+                            || ((flags & 0x2) && es[i].firstbesttimesec >= 0 && ((now - es[i].starttime) / CLOCKS_PER_SEC) > es[i].firstbesttimesec + 5)))
+                    {
+                        bSuccess = writetoengine(g_hChildStd_IN_Wr[i], "stop\n");
+                        engineStopped = true;
+                    }
+                }
+                if (!doEval)
+                {
+                    if (es[i].firstbesttimesec >= 0)
+                    {
+                        printf("e#%d  %d  %s: %s  found: %s  score: %d  time: %d\n", i, linenum, (es[i].bestmoves != "" ? "bm" : "am"), (es[i].bestmoves != "" ? es[i].bestmoves.c_str() : es[i].avoidmoves.c_str()), es[i].enginesbestmove.c_str(), es[i].score, es[i].firstbesttimesec);
+                        logfile << "e#" << i << " " << linenum << " + \"" << (es[i].bestmoves != "" ? es[i].bestmoves.c_str() : (es[i].avoidmoves + "(a)").c_str()) << "\" " << es[i].enginesbestmove.c_str() << " " << es[i].score << " " << es[i].firstbesttimesec << "\n";
+
+                    }
+                    else
+                    {
+                        printf("e#%d  %d  %s: %s  found: %s ... failed  score: %d\n", i, linenum, (es[i].bestmoves != "" ? "bm" : "am"), (es[i].bestmoves != "" ? es[i].bestmoves.c_str() : es[i].avoidmoves.c_str()), es[i].enginesbestmove.c_str(), es[i].allscore);
+                        logfile << "e#" << i << " " << linenum << " - \"" << (es[i].bestmoves != "" ? es[i].bestmoves.c_str() : (es[i].avoidmoves + "(a)").c_str()) << "\" " << es[i].enginesbestmove.c_str() << " " << es[i].allscore << "\n";
+                    }
                 }
             }
-            if (es.firstbesttimesec >= 0)
-            {
-                printf("%d  %s: %s  found: %s  score: %d  time: %d\n", linenum, (es.bestmoves != "" ? "bm" : "am"), (es.bestmoves != "" ? es.bestmoves.c_str() : es.avoidmoves.c_str()), es.enginesbestmove.c_str(), es.score, es.firstbesttimesec);
-                logfile << linenum << " + \"" << (es.bestmoves != "" ? es.bestmoves.c_str() : (es.avoidmoves + "(a)").c_str()) << "\" " << es.enginesbestmove.c_str() << " " << es.score << " " << es.firstbesttimesec << "\n";
 
-            }
-            else
+            if (doEval)
             {
-                printf("%d  %s: %s  found: %s ... failed  score: %d\n", linenum, (es.bestmoves != "" ? "bm" : "am"), (es.bestmoves != "" ? es.bestmoves.c_str() : es.avoidmoves.c_str()), es.enginesbestmove.c_str(), es.allscore);
-                logfile << linenum << " - \"" << (es.bestmoves != "" ? es.bestmoves.c_str() : (es.avoidmoves + "(a)").c_str()) << "\" " << es.enginesbestmove.c_str() << " " << es.allscore << "\n";
+                printf("\"%s\" ", fenstr.c_str());
+                logfile << "\"" << fenstr << "\" ";
+                for (int i = 0; i < numEngines; i++)
+                {
+                    printf("%5d ", es[i].score);
+                    logfile << es[i].score << " ";
+                }
+                printf("\n");
+                logfile << "\n";
             }
         }
     }
-    bSuccess = writetoengine(g_hChildStd_IN_Wr, "quit\n");
-    readThread->detach();
-    delete readThread;
+    for (int i = 0; i < numEngines; i++)
+    {
+        bSuccess = writetoengine(g_hChildStd_IN_Wr[i], "quit\n");
+        readThread[i]->detach();
+        delete readThread[i];
+    }
 }
 
 
@@ -812,11 +896,11 @@ int main(int argc, char* argv[])
         { "-enginetest", "bulk testing of epd files", &enginetest, 0, NULL },
         { "-epdfile", "the epd file to test (use with -enginetest or -bench)", &epdfile, 2, "" },
         { "-logfile", "output file (use with -enginetest)", &logfile, 2, "enginetest.log" },
-        { "-engineprg", "the uci engine to test (use with -enginetest)", &engineprg, 2, "rubichess.exe" },
+        { "-engineprg", "the uci engine to test (use with -enginetest)", &engineprg, 2, "" },
         { "-maxtime", "time for each test in seconds (use with -enginetest or -bench)", &maxtime, 1, "0" },
         { "-startnum", "number of the test in epd to start with (use with -enginetest or -bench)", &startnum, 1, "1" },
         { "-compare", "for fast comparision against logfile from other engine (use with -enginetest)", &comparefile, 2, "" },
-        { "-flags", "1=skip easy (0 sec.) compares; 2=break 5 seconds after first find; 4=break after compare time is over (use with -enginetest)", &flags, 1, "0" },
+        { "-flags", "1=skip easy (0 sec.) compares; 2=break 5 seconds after first find; 4=break after compare time is over; 8=eval only (use with -enginetest)", &flags, 1, "0" },
         { "-option", "Set UCI option by commandline", NULL, 3, NULL },
 #ifdef STACKDEBUG
         { "-assertfile", "output assert info to file", &en.assertfile, 2, "" },
