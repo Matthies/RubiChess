@@ -719,6 +719,7 @@ static void testengine(string epdfilename, int startnum, string engineprgs, stri
                 en.sthread[0].pos.getFromFen(fenstr.c_str());
                 if (en.sthread[0].pos.isCheckbb)
                     continue;
+                fenstr = en.sthread[0].pos.toFen();
             }
 
             // Get data from compare file
@@ -815,23 +816,28 @@ static void testengine(string epdfilename, int startnum, string engineprgs, stri
                     if (es[i].firstbesttimesec >= 0)
                     {
                         printf("e#%d  %d  %s: %s  found: %s  score: %d  time: %d\n", i, linenum, (es[i].bestmoves != "" ? "bm" : "am"), (es[i].bestmoves != "" ? es[i].bestmoves.c_str() : es[i].avoidmoves.c_str()), es[i].enginesbestmove.c_str(), es[i].score, es[i].firstbesttimesec);
-                        logfile << i << linenum << " + \"" << (es[i].bestmoves != "" ? es[i].bestmoves.c_str() : (es[i].avoidmoves + "(a)").c_str()) << "\" " << es[i].enginesbestmove.c_str() << " " << es[i].score << " " << es[i].firstbesttimesec << "\n";
+                        logfile << "e#" << i << " " << linenum << " + \"" << (es[i].bestmoves != "" ? es[i].bestmoves.c_str() : (es[i].avoidmoves + "(a)").c_str()) << "\" " << es[i].enginesbestmove.c_str() << " " << es[i].score << " " << es[i].firstbesttimesec << "\n";
 
                     }
                     else
                     {
                         printf("e#%d  %d  %s: %s  found: %s ... failed  score: %d\n", i, linenum, (es[i].bestmoves != "" ? "bm" : "am"), (es[i].bestmoves != "" ? es[i].bestmoves.c_str() : es[i].avoidmoves.c_str()), es[i].enginesbestmove.c_str(), es[i].allscore);
-                        logfile << linenum << " - \"" << (es[i].bestmoves != "" ? es[i].bestmoves.c_str() : (es[i].avoidmoves + "(a)").c_str()) << "\" " << es[i].enginesbestmove.c_str() << " " << es[i].allscore << "\n";
+                        logfile << "e#" << i << " " << linenum << " - \"" << (es[i].bestmoves != "" ? es[i].bestmoves.c_str() : (es[i].avoidmoves + "(a)").c_str()) << "\" " << es[i].enginesbestmove.c_str() << " " << es[i].allscore << "\n";
                     }
                 }
             }
 
             if (doEval)
             {
-                printf("%s ", fenstr.c_str());
+                printf("\"%s\" ", fenstr.c_str());
+                logfile << "\"" << fenstr << "\" ";
                 for (int i = 0; i < numEngines; i++)
+                {
                     printf("%5d ", es[i].score);
+                    logfile << es[i].score << " ";
+                }
                 printf("\n");
+                logfile << "\n";
             }
         }
     }
