@@ -1212,6 +1212,7 @@ public:
 
 PieceType GetPieceType(char c);
 
+// enginestate is for communication with external engine process
 struct enginestate
 {
 public:
@@ -1224,6 +1225,7 @@ public:
     int allscore;
     string enginesbestmove;
     bool doCompare;
+    bool doEval;
     bool comparesuccess;
     int comparetime;
     int comparescore;
