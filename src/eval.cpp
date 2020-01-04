@@ -441,7 +441,7 @@ int chessposition::getPieceEval(positioneval *pe)
 
         if (Pt == KNIGHT)
             attack = knight_attacks[index];
-#if 1
+#if 0
         if (Pt == KNIGHT || Pt == BISHOP)
         {
             // bonus for (protected) outpost minor
