@@ -185,7 +185,7 @@ void registeralltuners(chessposition *pos)
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eKingringattack[i], "eKingringattack", i, 6, 0, 0, tuneIt);
     tuneIt = true;
-    registertuner(pos, &eps.eKingdangeradjust, "eKingdangeradjust", 0, 0, 0, 0, tuneIt);
+    //registertuner(pos, &eps.eKingdangeradjust, "eKingdangeradjust", 0, 0, 0, 0, tuneIt);
     
     tuneIt = false;
     for (i = 0; i < 7; i++)
@@ -541,7 +541,7 @@ int chessposition::getLateEval(positioneval *pe)
 
     kingdanger += SQEVAL(eps.eKingdangerbyqueen, !piece00[WQUEEN | You], You);
     result += SQRESULT(kingdanger, You);
-    result += EVAL(eps.eKingdangeradjust, You);
+    //result += EVAL(eps.eKingdangeradjust, S2MSIGN(You));
     if (bTrace) te.kingattackpower[You] += SQRESULT(kingdanger, You);
 
     // Threats
