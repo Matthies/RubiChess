@@ -1,7 +1,15 @@
 ChangeLog
 =========
-1.7 (release 20xx-xx-xx) :
-    - ...
+1.6.1 (release 2020-01-12) :
+    - Statistic for several search features enabled via STATISTICS
+    - Some lmr tweaks based on analyzing this statistics
+    - Fixed some bugs in the tuner and retuned several parts of evaluation parameters
+    - Evaluate complexity of endgames (idea by SF and several other engines)
+    - OpenBench compatibility
+    - Simplification in repetition detection
+    - Fix in 50-moves detection
+    - Bench mode can be run on epd files and test for bestmove detection
+    - Enginetest mode can print static evaluation now for comparison
 
 1.6 (release 2019-10-15) :
     - Support for 7-men Syzygy tablebase
