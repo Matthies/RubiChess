@@ -406,13 +406,14 @@ int chessposition::getFromFen(const char* sFen)
 bool chessposition::applyMove(string s)
 {
     unsigned int from, to;
+    PieceType promtype;
     PieceCode promotion;
 
     from = AlgebraicToIndex(s);
     to = AlgebraicToIndex(&s[2]);
 
-    if (s.size() > 4)
-        promotion = (PieceCode)((GetPieceType(s[4]) << 1) | (state & S2MMASK));
+    if (s.size() > 4 && (promtype = GetPieceType(s[4])) != BLANKTYPE)
+        promotion = (PieceCode)((promtype << 1) | (state & S2MMASK));
     else
         promotion = BLANK;
 
@@ -601,6 +602,7 @@ void chessposition::mirror()
     kingpos[0] = kingpos[1] ^ RANKMASK;
     kingpos[1] = kingpostemp ^ RANKMASK;
     materialhash = zb.getMaterialHash(this);
+    updatePins();
 }
 
 
