@@ -512,8 +512,8 @@ int chessposition::getLateEval(positioneval *pe)
     }
 
     // King safety; calculate the danger for my king
-    int kingdanger = SQEVAL(eps.eKingdangeradjust, 1, You);
-    kingdanger += SQEVAL(eps.eKingringattack[POPCOUNT(kingdangerMask[kingpos[Me]][Me]) - 4], pe->kingringattacks[You], You);
+    //int kingdanger = SQEVAL(eps.eKingdangeradjust, 1, You);
+    int kingdanger = SQEVAL(eps.eKingringattack[POPCOUNT(kingdangerMask[kingpos[Me]][Me]) - 4], pe->kingringattacks[You], You);
 
     // My attacked and poorly defended squares
     U64 myweaksquares = attackedBy[You][0]
