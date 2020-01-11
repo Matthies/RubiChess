@@ -1,6 +1,6 @@
 ChangeLog
 =========
-1.6.1 (release 2020-01-12) :
+1.6.1 (release 2020-01-11) :
     - Statistic for several search features enabled via STATISTICS
     - Some lmr tweaks based on analyzing this statistics
     - Fixed some bugs in the tuner and retuned several parts of evaluation parameters
