@@ -1,5 +1,8 @@
 ChangeLog
 =========
+1.6.1.1 (release 2020-01-11 for TCEC S17) :
+	- King danger eval tuned
+
 1.6.1 (release 2020-01-11) :
     - Statistic for several search features enabled via STATISTICS
     - Some lmr tweaks based on analyzing this statistics

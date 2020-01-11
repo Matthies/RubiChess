@@ -17,7 +17,7 @@
 
 #pragma once
 
-#define VERNUM "1.6.1"
+#define VERNUM "1.6.1.1"
 #define VERSTABLE
 
 #if 0
