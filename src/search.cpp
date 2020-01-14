@@ -515,7 +515,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         ms.legalmovenum++;
 #ifdef SDEBUG
         bool isDebugMove = (debugMove.code == (m->code & 0xefff));
-        SDEBUGDO(isDebugMove, pvmovenum[ply] = LegalMoves;);
+        SDEBUGDO(isDebugMove, pvmovenum[ply] = legalMoves;);
 #endif
         STATISTICSINC(moves_n[(bool)ISTACTICAL(m->code)]);
         // Leave out the move to test for singularity
