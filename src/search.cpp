@@ -127,7 +127,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     chessmove debugMove;
     bool isDebugPv = triggerDebug(&debugMove);
     bool debugMovePlayed = false;
-    SDEBUGDO(isDebugPv, pvaborttype[ply] = PVA_UNKNOWN; pvdepth[ply - 1] = depth;);
+    SDEBUGDO(isDebugPv, pvaborttype[ply + 1] = PVA_UNKNOWN; pvdepth[ply] = depth; pvmovenum[ply] = -1;);
 #endif
 
     STATISTICSINC(qs_n[myIsCheck]);
@@ -261,7 +261,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     chessmove debugMove;
     bool isDebugPv = triggerDebug(&debugMove);
     bool debugMovePlayed = false;
-    SDEBUGDO(isDebugPv, pvaborttype[ply] = PVA_UNKNOWN; pvdepth[ply - 1] = depth;);
+    SDEBUGDO(isDebugPv, pvaborttype[ply + 1] = PVA_UNKNOWN; pvdepth[ply] = depth; pvmovenum[ply] = 0;);
 #endif
 
     STATISTICSINC(ab_n);
@@ -515,7 +515,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         ms.legalmovenum++;
 #ifdef SDEBUG
         bool isDebugMove = (debugMove.code == (m->code & 0xefff));
-        SDEBUGDO(isDebugMove, pvmovenum[ply] = legalMoves;);
+        SDEBUGDO(isDebugMove, pvmovenum[ply] = legalMoves + 1;);
+        SDEBUGDO(pvmovenum[ply] <= 0, pvmovenum[ply] = -(legalMoves + 1););
 #endif
         STATISTICSINC(moves_n[(bool)ISTACTICAL(m->code)]);
         // Leave out the move to test for singularity
@@ -789,7 +790,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
     chessmove debugMove;
     bool isDebugPv = triggerDebug(&debugMove);
     bool debugMovePlayed = false;
-    SDEBUGDO(isDebugPv, pvaborttype[ply] = PVA_UNKNOWN; pvdepth[ply - 1] = depth;);
+    SDEBUGDO(isDebugPv, pvaborttype[1] = PVA_UNKNOWN; pvdepth[0] = depth; pvmovenum[ply] = 0;);
 #endif
 
     if (!isMultiPV
@@ -865,7 +866,8 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         m = &rootmovelist.move[i];
 #ifdef SDEBUG
         bool isDebugMove = (debugMove.code == (m->code & 0xefff));
-        SDEBUGDO(isDebugMove, pvmovenum[0] = i; debugMovePlayed = true;)
+        SDEBUGDO(isDebugMove, pvmovenum[0] = i + 1; debugMovePlayed = true;)
+        SDEBUGDO(pvmovenum[0] <= 0, pvmovenum[0] = -(i + 1););
 #endif
         playMove(m);
 
@@ -967,7 +969,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         {
             if (!isMultiPV)
             {
-                SDEBUGDO(isDebugPv, pvaborttype[ply] = isDebugMove ? PVA_BESTMOVE : debugMovePlayed ? PVA_NOTBESTMOVE : PVA_OMMITTED;);
+                SDEBUGDO(isDebugPv, pvaborttype[0] = isDebugMove ? PVA_BESTMOVE : debugMovePlayed ? PVA_NOTBESTMOVE : PVA_OMMITTED;);
                 updatePvTable(m->code, true);
                 if (bestmove.code != pvtable[0][0])
                 {

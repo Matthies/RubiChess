@@ -1071,13 +1071,16 @@ const char* PvAbortStr[] = {
 
 void chessposition::pvdebugout()
 {
-    printf("Move  Num Dep  Val  Reason\n");
+    printf("====================================\nMove  Num Dep   Val  Reason\n------------------------------------\n");
     for (int i = 0; pvdebug[i]; i++)
     {
         chessmove m;
         m.code = pvdebug[i];
-        printf("%s  %2d  %2d  %4d  %s\n", m.toString().c_str(), pvmovenum[i], pvdepth[i], pvabortval[i], PvAbortStr[pvaborttype[i]]);
+        printf("%s %s%2d  %2d  %4d  %s\n", m.toString().c_str(), pvmovenum[i] <= 0 ? ">" : " ", abs(pvmovenum[i]), pvdepth[i], pvabortval[i], PvAbortStr[pvaborttype[i]]);
+        if (pvaborttype[i + 1] == PVA_UNKNOWN || pvaborttype[i] == PVA_OMMITTED)
+            break;
     }
+    printf("====================================\n\n");
 }
 
 #endif
