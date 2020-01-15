@@ -1065,7 +1065,7 @@ void chessposition::sdebug(int indent, const char* format, ...)
 
 const char* PvAbortStr[] = {
     "unknown", "pv from tt", "different move in tt", "razor-pruned", "reverse-futility-pruned", "nullmove-pruned", "probcut-pruned", "late-move-pruned",
-    "futility-pruned", "bad-see-pruned", "bad-history-pruned", "multicut-pruned", "bestmove", "not best move", "ommitted", "betacut"
+    "futility-pruned", "bad-see-pruned", "bad-history-pruned", "multicut-pruned", "bestmove", "not best move", "omitted", "betacut", "below alpha"
 };
 
 
@@ -1076,8 +1076,8 @@ void chessposition::pvdebugout()
     {
         chessmove m;
         m.code = pvdebug[i];
-        printf("%s %s%2d  %2d  %4d  %s\n", m.toString().c_str(), pvmovenum[i] <= 0 ? ">" : " ", abs(pvmovenum[i]), pvdepth[i], pvabortval[i], PvAbortStr[pvaborttype[i]]);
-        if (pvaborttype[i + 1] == PVA_UNKNOWN || pvaborttype[i] == PVA_OMMITTED)
+        printf("%s %s%2d  %2d  %4d  %s\n", m.toString().c_str(), pvmovenum[i] < 0 ? ">" : " ", abs(pvmovenum[i]), pvdepth[i], pvabortval[i], PvAbortStr[pvaborttype[i]]);
+        if (pvaborttype[i + 1] == PVA_UNKNOWN || pvaborttype[i] == PVA_OMITTED)
             break;
     }
     printf("====================================\n\n");
