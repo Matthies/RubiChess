@@ -821,8 +821,8 @@ bool chessposition::moveGivesCheck(uint32_t c)
     if (movesTo(pc, GETTO(c)) & BITSET(yourKing))
         return true;
 
-#if 0
-    // test for discovered check; seems a good idea but doesn't work, maybe too expensive for too few positives
+#if 1
+    // test for discovered check
     if (isAttackedByMySlider(yourKing, (occupied00[0] | occupied00[1]) ^ BITSET(GETTO(c)) ^ BITSET(GETFROM(c)), me))
         return true;
 #endif
