@@ -1052,7 +1052,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
 }
 
 
-static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int mpvIndex)
+static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, int mpvIndex = 0)
 {
     int msRun = (int)((nowtime - en.starttime) * 1000 / en.frequency);
     if (inWindow != 1 && (msRun - en.lastReport) < 200)
@@ -1063,7 +1063,6 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int mpvIndex)
     chessposition *pos = &thr->pos;
     en.lastReport = msRun;
     string pvstring = pos->getPv(mpvIndex ? pos->multipvtable[mpvIndex] : pos->lastpv);
-    int score = pos->bestmovescore[mpvIndex];
     U64 nodes = en.getTotalNodes();
 
     if (!MATEDETECTED(score))
@@ -1228,7 +1227,7 @@ static void search_gen1(searchthread *thr)
                     int maxmoveindex = min(en.MultiPV, pos->rootmovelist.length);
                     do
                     {
-                        uciScore(thr, inWindow, nowtime, i);
+                        uciScore(thr, inWindow, nowtime, pos->bestmovescore[i], i);
                         i++;
                     } while (i < maxmoveindex);
                 }
@@ -1258,7 +1257,7 @@ static void search_gen1(searchthread *thr)
                     pos->bestmovescore[0] = pos->rootmovelist.move[0].value;
 
                 if (!doPonder || thr->depth < maxdepth)
-                    uciScore(thr, inWindow, nowtime, 0);
+                    uciScore(thr, inWindow, nowtime, inWindow == 1 ? pos->bestmovescore[0] : score);
             }
         }
         if (inWindow == 1)
@@ -1349,7 +1348,7 @@ static void search_gen1(searchthread *thr)
         en.rootposition.lastbestmovescore = pos->bestmovescore[0];
 
         if (!reportedThisDepth || bestthr->index)
-            uciScore(thr, inWindow, getTime(), 0);
+            uciScore(thr, inWindow, getTime(), inWindow == 1 ? pos->bestmovescore[0] : score);
 
         string strBestmove;
         string strPonder = "";
