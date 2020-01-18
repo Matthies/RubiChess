@@ -809,7 +809,7 @@ bool chessposition::moveGivesCheck(uint32_t c)
 {
     int pc = GETPIECE(c);
 
-    // As long as discovered checks aren't handled, we can assume that king moves never give check
+    // We assume that king moves don't give check; this missed some discovered checks but is faster
     if ((pc >> 1) == KING)
         return false;
 
@@ -821,11 +821,9 @@ bool chessposition::moveGivesCheck(uint32_t c)
     if (movesTo(pc, GETTO(c)) & BITSET(yourKing))
         return true;
 
-#if 1
     // test for discovered check
     if (isAttackedByMySlider(yourKing, (occupied00[0] | occupied00[1]) ^ BITSET(GETTO(c)) ^ BITSET(GETFROM(c)), me))
         return true;
-#endif
 
     return false;
 }
