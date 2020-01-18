@@ -257,7 +257,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     chessmove *m;
     int extendall = 0;
     int effectiveDepth;
-    bool PVNode = (alpha != beta - 1);
+    const bool PVNode = (alpha != beta - 1);
 
     nodes++;
 
@@ -355,7 +355,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 updatePvTable(fullhashmove, false);
             SDEBUGPRINT(isDebugPv, debugInsert, " Got score %d from TT.", hashscore);
             STATISTICSINC(ab_tt);
-            return hashscore;
+            if (!PVNode)
+                return hashscore;
         }
     }
 
