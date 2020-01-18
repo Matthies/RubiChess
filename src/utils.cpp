@@ -568,7 +568,7 @@ static int getGradientValue(struct tuner *tn, positiontuneset *p, evalparam *e)
 {
     int v = 0;
     int complexity = 0;
-    int sqsum[4][2] = { 0 };
+    int sqsum[4][2] = { { 0 } };
     for (int i = 0; i < p->num; i++)
     {
         int type = tn->ev[e->index].type;
@@ -753,7 +753,7 @@ static void getGradsFromFen(chessposition *pos, string fenfilenames)
                         nextpts->R = R;
                         Q[0] = Q[1] = Q[2] = Q[3] = 0;
                         evalparam *e = (evalparam *)(pnext + sizeof(positiontuneset));
-                        int sqsum[4][2] = { 0 };
+                        int sqsum[4][2] = { { 0 } };
                         for (int i = 0; i < pos->pts.num; i++)
                         {
                             *e = pos->ev[i];
@@ -824,7 +824,7 @@ static void getGradsFromFen(chessposition *pos, string fenfilenames)
                             nextpts->R = R;
                             Q[0] = Q[1] = Q[2] = Q[3] = 0;
                             evalparam *e = (evalparam *)(pnext + sizeof(positiontuneset));
-                            int sqsum[4][2] = { 0 };
+                            int sqsum[4][2] = { { 0 } };
                             for (int i = 0; i < pos->pts.num; i++)
                             {
                                 *e = pos->ev[i];

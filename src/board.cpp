@@ -37,8 +37,8 @@ U64 fileMask[64];
 U64 rankMask[64];
 U64 betweenMask[64][64];
 U64 lineMask[64][64];
-int castleindex[64][64] = { 0 };
-U64 castlekingto[64][2] = { 0ULL };
+int castleindex[64][64] = { { 0 } };
+U64 castlekingto[64][2] = { { 0ULL } };
 int castlerights[64];
 int squareDistance[64][64];  // decreased by 1 for directly indexing evaluation arrays
 int psqtable[14][64];
