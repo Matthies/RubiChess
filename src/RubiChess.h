@@ -978,7 +978,7 @@ enum AttackType { FREE, OCCUPIED, OCCUPIEDANDKING };
 struct positioneval {
     pawnhashentry *phentry;
     Materialhashentry *mhentry;
-    int kingattackpiececount[2][7] = { 0 };
+    int kingattackpiececount[2][7] = { { 0 } };
     int kingringattacks[2] = { 0 };
     int kingattackers[2];
 };
