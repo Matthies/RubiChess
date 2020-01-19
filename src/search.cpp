@@ -670,26 +670,26 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
         LegalMoves[mstop] = ms.legalmovenum;
 
-        if (eval_type != HASHEXACT)
+        if (reduction)
         {
-            // First move ("PV-move"); do a normal search
-            score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
-            if (reduction && score > alpha)
+            // LMR search; test against alpha
+            score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
+            if (score > alpha)
             {
                 // research without reduction
                 effectiveDepth += reduction;
-                score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
+                score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
             }
         }
-        else {
-            // try a PV-Search
+        else if (!PVNode || legalMoves > 1)
+        {
+            // Np PV node or not the first move; test against alpha
             score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
-            if (score > alpha && score < beta)
-            {
-                // reasearch with full window
-                score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
-            }
         }
+        // (re)search with full window at PV nodes or if necessary
+        if (PVNode && (legalMoves == 1 || score > alpha))
+            score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
+
         unplayMove(m);
 
         if (en.stopLevel == ENGINESTOPIMMEDIATELY)
