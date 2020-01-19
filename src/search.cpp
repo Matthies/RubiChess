@@ -686,7 +686,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             // Np PV node or not the first move; test against alpha
             score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
         }
-        // (re)search with full window at PV nodes or if necessary
+        // (re)search with full window at PV nodes if necessary
         if (PVNode && (legalMoves == 1 || score > alpha))
             score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
 
