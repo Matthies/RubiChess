@@ -913,7 +913,29 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
             reduction = reductiontable[0][depth][min(63, i + 1)];
         }
 
-        int effectiveDepth;
+        int effectiveDepth = depth + extendall - reduction;
+
+        if (reduction)
+        {
+            // LMR search; test against alpha
+            score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
+            if (score > alpha)
+            {
+                // research without reduction
+                effectiveDepth += reduction;
+                score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
+            }
+        }
+        else if (i > 0)
+        {
+            // Not the first move; test against alpha
+            score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
+        }
+        // (re)search with full window if necessary
+        if (i == 0 || score > alpha)
+            score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
+
+#if 0
         if (eval_type != HASHEXACT)
         {
             // First move ("PV-move"); do a normal search
@@ -936,7 +958,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                 score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
             }
         }
-
+#endif
         SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s scored %d", debugMove.toString().c_str(), score);
 
         unplayMove(m);
