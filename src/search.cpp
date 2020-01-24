@@ -910,7 +910,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         // Late move reduction
         if (!extendall && depth > 2 && !ISTACTICAL(m->code))
         {
-            reduction = reductiontable[0][depth][min(63, i + 1)];
+            reduction = reductiontable[1][depth][min(63, i + 1)];
         }
 
         int effectiveDepth = depth + extendall - reduction;
