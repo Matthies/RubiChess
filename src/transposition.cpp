@@ -341,9 +341,8 @@ Pawnhash::Pawnhash(int sizeMb)
     size = (1ULL << msb);
 
     sizemask = size - 1;
-    //table = (S_PAWNHASHENTRY*)malloc((size_t)(size * sizeof(S_PAWNHASHENTRY)));
     table = new S_PAWNHASHENTRY[size];
-    memset(table, 0, (size_t)(sizeof(table)));
+    memset(table, 0, (size_t)(size * sizeof(S_PAWNHASHENTRY)));
 }
 
 Pawnhash::~Pawnhash()
