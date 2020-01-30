@@ -910,32 +910,30 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         // Late move reduction
         if (!extendall && depth > 2 && !ISTACTICAL(m->code))
         {
-            reduction = reductiontable[0][depth][min(63, i + 1)];
+            reduction = reductiontable[1][depth][min(63, i + 1)];
         }
 
-        int effectiveDepth;
-        if (eval_type != HASHEXACT)
+        int effectiveDepth = depth + extendall - reduction;
+
+        if (reduction)
         {
-            // First move ("PV-move"); do a normal search
-            effectiveDepth = depth + extendall - reduction;
-            score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
-            if (reduction && score > alpha)
+            // LMR search; test against alpha
+            score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
+            if (score > alpha)
             {
                 // research without reduction
                 effectiveDepth += reduction;
-                score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
+                score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
             }
         }
-        else {
-            // try a PV-Search
-            effectiveDepth = depth + extendall;
+        else if (i > 0)
+        {
+            // Not the first move; test against alpha
             score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
-            if (score > alpha && score < beta)
-            {
-                // reasearch with full window
-                score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
-            }
         }
+        // (re)search with full window if necessary
+        if (i == 0 || score > alpha)
+            score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
 
         SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s scored %d", debugMove.toString().c_str(), score);
 
