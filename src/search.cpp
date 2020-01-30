@@ -935,30 +935,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         if (i == 0 || score > alpha)
             score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
 
-#if 0
-        if (eval_type != HASHEXACT)
-        {
-            // First move ("PV-move"); do a normal search
-            effectiveDepth = depth + extendall - reduction;
-            score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
-            if (reduction && score > alpha)
-            {
-                // research without reduction
-                effectiveDepth += reduction;
-                score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
-            }
-        }
-        else {
-            // try a PV-Search
-            effectiveDepth = depth + extendall;
-            score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
-            if (score > alpha && score < beta)
-            {
-                // reasearch with full window
-                score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
-            }
-        }
-#endif
         SDEBUGPRINT(isDebugPv && isDebugMove, debugInsert, " PV move %s scored %d", debugMove.toString().c_str(), score);
 
         unplayMove(m);
