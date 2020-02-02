@@ -363,7 +363,8 @@ struct evalparamset {
            VALUE(  69, 264), VALUE( 108, 231), VALUE( 107, 230), VALUE( 114, 198)  }
     };
     eval eRookon7thbonus =  VALUE(  -1,  22);
-    //eval eMinoroutpost[2] = {  VALUE( -11,   0), VALUE(  14,   0)  };
+    eval eMinoroutpost[4] = {  VALUE( -12,  -3), VALUE(   8, -13), VALUE( -20,  -7), VALUE(  12,  -5)  };
+    eval eMinorbehindpawn[6] = {  VALUE(   6,  11), VALUE(   9,   1), VALUE(  10,  -4), VALUE(  19,   1), VALUE(  24,   0), VALUE(  59,  24)  };
     eval eSlideronfreefilebonus[2] = {  VALUE(  21,   7), VALUE(  43,   1)  };
     eval eMaterialvalue[7] = {  VALUE(   0,   0), VALUE( 100, 100), VALUE( 314, 314), VALUE( 314, 314), VALUE( 483, 483), VALUE( 913, 913), VALUE(   0,   0)  };
     eval eKingshieldbonus =  VALUE(  15,  -2);

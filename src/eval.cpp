@@ -161,10 +161,13 @@ void registeralltuners(chessposition *pos)
 
     tuneIt = false;
     registertuner(pos, &eps.eRookon7thbonus, "eRookon7thbonus", 0, 0, 0, 0, tuneIt);
-#if 0
+#if 1
     tuneIt = true;
-    for (i = 0; i < 2; i++)
-        registertuner(pos, &eps.eMinoroutpost[i], "eMinoroutpost", i, 2, 0, 0, tuneIt);
+    for (i = 0; i < 4; i++)
+        registertuner(pos, &eps.eMinoroutpost[i], "eMinoroutpost", i, 4, 0, 0, tuneIt);
+    tuneIt = true;
+    for (i = 0; i < 6; i++)
+        registertuner(pos, &eps.eMinorbehindpawn[i], "eMinorbehindpawn", i, 6, 0, 0, tuneIt);
 #endif
     tuneIt = false;
     for (i = 0; i < 2; i++)
@@ -174,17 +177,16 @@ void registeralltuners(chessposition *pos)
     registertuner(pos, &eps.eKingshieldbonus, "eKingshieldbonus", 0, 0, 0, 0, tuneIt);
 
     // kingdanger evals
-    tuneIt = true;
+    tuneIt = false;
     registertuner(pos, &eps.eWeakkingringpenalty, "eWeakkingringpenalty", 0, 0, 0, 0, tuneIt);
     for (i = 0; i < 7; i++)
         registertuner(pos, &eps.eKingattackweight[i], "eKingattackweight", i, 7, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eSafecheckbonus[i], "eSafecheckbonus", i, 6, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
     registertuner(pos, &eps.eKingdangerbyqueen, "eKingdangerbyqueen", 0, 0, 0, 0, tuneIt);
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eKingringattack[i], "eKingringattack", i, 6, 0, 0, tuneIt);
-    tuneIt = true;
     
     tuneIt = false;
     for (i = 0; i < 7; i++)
@@ -441,16 +443,25 @@ int chessposition::getPieceEval(positioneval *pe)
 
         if (Pt == KNIGHT)
             attack = knight_attacks[index];
-#if 0
+#if 1
         if (Pt == KNIGHT || Pt == BISHOP)
         {
+            U64 minorbb = BITSET(index);
             // bonus for (protected) outpost minor
-            if ((BITSET(index) & OUTPOSTAREA(Me)) && !(passedPawnMask[index][Me] & piece00[WPAWN | You]))
+            bool isOutpost = (minorbb & OUTPOSTAREA(Me)) && !(passedPawnMask[index][Me] & piece00[WPAWN | You]);
+            bool isBehindPawn = (minorbb & PAWNPUSH(You, piece00[WPAWN + Me]));
+            if (isOutpost)
             {
                 bool isProtected = (BITSET(index) & attackedBy[Me][PAWN]);
                 bool isCentral = (BITSET(index) & ~(FILEABB | FILEHBB));
-                result += EVAL(eps.eMinoroutpost[isProtected], S2MSIGN(Me) * (1 + isCentral));
-                if (bTrace) te.bishops[Me] += EVAL(eps.eMinoroutpost[isProtected], S2MSIGN(Me) * (1 + isCentral));
+                result += EVAL(eps.eMinoroutpost[isProtected + isCentral * 2], S2MSIGN(Me));
+                if (bTrace) te.bishops[Me] += EVAL(eps.eMinoroutpost[isProtected + isCentral * 2], S2MSIGN(Me));
+            }
+            if (isBehindPawn)
+            {
+                int r = RRANK(index, Me);
+                result += EVAL(eps.eMinorbehindpawn[r], S2MSIGN(Me));
+                if (bTrace) te.bishops[Me] += EVAL(eps.eMinorbehindpawn[r], S2MSIGN(Me));
             }
         }
 #endif
