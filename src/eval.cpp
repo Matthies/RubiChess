@@ -450,6 +450,7 @@ int chessposition::getPieceEval(positioneval *pe)
             // bonus for (protected) outpost minor
             bool isOutpost = (minorbb & OUTPOSTAREA(Me)) && !(passedPawnMask[index][Me] & piece00[WPAWN | You]);
             bool isBehindPawn = (minorbb & PAWNPUSH(You, piece00[WPAWN + Me]));
+#if 0
             if (isOutpost)
             {
                 bool isProtected = (BITSET(index) & attackedBy[Me][PAWN]);
@@ -457,6 +458,7 @@ int chessposition::getPieceEval(positioneval *pe)
                 result += EVAL(eps.eMinoroutpost[isProtected + isCentral * 2], S2MSIGN(Me));
                 if (bTrace) te.bishops[Me] += EVAL(eps.eMinoroutpost[isProtected + isCentral * 2], S2MSIGN(Me));
             }
+#endif
             if (isBehindPawn)
             {
                 int r = RRANK(index, Me);
