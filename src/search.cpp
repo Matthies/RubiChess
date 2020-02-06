@@ -1262,10 +1262,10 @@ static void search_gen1(searchthread *thr)
         }
         if (inWindow == 1)
         {
-            if (lastiterationscore > pos->bestmovescore[0] + 20)
+            if (lastiterationscore > pos->bestmovescore[0] + 10)
             {
-                // Score decreases hard; use more thinking time
-                constantRootMoves = -1;
+                // Score decreases; use more thinking time
+                constantRootMoves--;
 #ifdef TDEBUG
                 printf("info string Score descreases... more thinking time at depth %d...\n", thr->depth);
 #endif
