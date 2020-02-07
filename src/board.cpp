@@ -467,7 +467,6 @@ void evaluateMoves(chessmovelist *ml, chessposition *pos, int16_t **cmptr)
 
 void chessposition::getRootMoves()
 {
-    // Precalculating the list of legal moves didn't work well for some unknown reason but we need the number of legal moves in MultiPV mode
     chessmovelist movelist;
     prepareStack();
     movelist.length = getMoves(&movelist.move[0]);
@@ -475,11 +474,47 @@ void chessposition::getRootMoves()
 
     int bestval = SCOREBLACKWINS;
     rootmovelist.length = 0;
+
+    uint16_t moveTo3fold = 0;
+    bool bImmediate3fold = false;
+    int ttscore, tteval;
+    uint16_t tthashmovecode;
+    bool tthit = tp.probeHash(hash, &ttscore, &tteval, &tthashmovecode, 0, SHRT_MIN + 1, SHRT_MAX, 0);
+
     excludemovestack[0] = 0; // FIXME: Not very nice; is it worth to do do singular testing in root search?
     for (int i = 0; i < movelist.length; i++)
     {
         if (playMove(&movelist.move[i]))
         {
+            if (tthit)
+            {
+                // Test for immediate or possible 3fold to fix a possibly wrong hash entry
+                if (testRepetiton() >= 2)
+                {
+                    // This move triggers 3fold; remember move to update hash
+                    bImmediate3fold = true;
+                    moveTo3fold = movelist.move[i].code;
+                }
+                else if ((uint16_t)movelist.move[i].code == tthashmovecode)
+                {
+                    // Test if this move makes a 3fold possible for opponent
+                    prepareStack();
+                    chessmovelist followupmovelist;
+                    followupmovelist.length = getMoves(&followupmovelist.move[0]);
+                    for (int j = 0; j < followupmovelist.length; j++)
+                    {
+                        if (playMove(&followupmovelist.move[j]))
+                        {
+                            if (testRepetiton() >= 2)
+                                // 3fold for opponent is possible
+                                moveTo3fold = movelist.move[i].code;
+
+                            unplayMove(&followupmovelist.move[j]);
+                        }
+                    }
+                }
+            }
+
             rootmovelist.move[rootmovelist.length++] = movelist.move[i];
             unplayMove(&movelist.move[i]);
             if (bestval < movelist.move[i].value)
@@ -489,6 +524,9 @@ void chessposition::getRootMoves()
             }
         }
     }
+    if (moveTo3fold)
+        // Hashmove triggers 3fold immediately or with following move; fix hash
+        tp.addHash(hash, SCOREDRAW, tteval, bImmediate3fold ? HASHBETA : HASHALPHA, MAXDEPTH, moveTo3fold);
 }
 
 
@@ -532,7 +570,9 @@ void chessposition::tbFilterRootMoves()
 }
 
 
-/* test the actualmove for three-fold-repetition as the repetition table may give false positive due to table collisions */
+// test the actual move for three-fold-repetition
+// maybe this could be fixed in the future by using cuckoo tables like SF does it
+// https://marcelk.net/2013-04-06/paper/upcoming-rep-v2.pdf
 int chessposition::testRepetiton()
 {
     int hit = 0;
