@@ -826,7 +826,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         && !useRootmoveScore
         && tp.probeHash(hash, &score, &staticeval, &hashmovecode, depth, alpha, beta, 0))
     {
-        if (!testRepetiton())
+        if (true || !testRepetiton())
         {
             // Not a single repetition so we trust the hash value but in some very rare cases it could happen that
             // a. the hashmove triggers 3-fold directly
