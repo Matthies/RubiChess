@@ -570,7 +570,9 @@ void chessposition::tbFilterRootMoves()
 }
 
 
-/* test the actualmove for three-fold-repetition as the repetition table may give false positive due to table collisions */
+// test the actual move for three-fold-repetition
+// maybe this could be fixed in the future by using cuckoo tables like SF does it
+// https://marcelk.net/2013-04-06/paper/upcoming-rep-v2.pdf
 int chessposition::testRepetiton()
 {
     int hit = 0;

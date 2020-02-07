@@ -826,27 +826,20 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         && !useRootmoveScore
         && tp.probeHash(hash, &score, &staticeval, &hashmovecode, depth, alpha, beta, 0))
     {
-        if (true || !testRepetiton())
+        // Hash is fixed regarding scores that don't see actual 3folds so we can trust the entry
+        uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
+        if (fullhashmove)
         {
-            // Not a single repetition so we trust the hash value but in some very rare cases it could happen that
-            // a. the hashmove triggers 3-fold directly
-            // b. the hashmove allows the opponent to get a 3-fold
-            // see rep.txt in the test folder for examples
-            // maybe this could be fixed in the future by using cuckoo tables like SF does it
-            // https://marcelk.net/2013-04-06/paper/upcoming-rep-v2.pdf
-            uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
-            if (fullhashmove)
-            {
-                if (bestmove.code != fullhashmove) {
-                    bestmove.code = fullhashmove;
-                    if (doPonder) pondermove.code = 0;
-                }
-                updatePvTable(fullhashmove, false);
-                if (score > alpha) bestmovescore[0] = score;
-                return score;
+            if (bestmove.code != fullhashmove) {
+                bestmove.code = fullhashmove;
+                if (doPonder) pondermove.code = 0;
             }
+            updatePvTable(fullhashmove, false);
+            if (score > alpha) bestmovescore[0] = score;
+            return score;
         }
     }
+
     if (isCheckbb)
         extendall = 1;
 
