@@ -691,23 +691,23 @@ uint32_t chessposition::shortMove2FullMove(uint16_t c)
     myassert(capture >= BLANK && capture <= BKING, this, 1, capture);
     myassert(pc >= WPAWN && pc <= BKING, this, 1, pc);
 
-    int ept = 0;
+    int myept = 0;
     if (p == PAWN)
     {
         if (FILE(from) != FILE(to) && capture == BLANK)
         {
             // ep capture
             capture = pc ^ S2MMASK;
-            ept = ISEPCAPTURE;
+            myept = ISEPCAPTURE;
         }
         else if ((from ^ to) == 16 && (epthelper[to] & piece00[pc ^ 1]))
         {
             // double push enables epc
-            ept = (from + to) / 2;
+            myept = (from + to) / 2;
         }
     }
 
-    uint32_t fc = (pc << 28) | (ept << 20) | (capture << 16) | c;
+    uint32_t fc = (pc << 28) | (myept << 20) | (capture << 16) | c;
     if (moveIsPseudoLegal(fc))
         return fc;
     else
@@ -726,7 +726,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
     PieceCode pc = GETPIECE(c);
     PieceCode capture = GETCAPTURE(c);
     PieceType p = pc >> 1;
-    unsigned int s2m = (pc & S2MMASK);
+    unsigned int piececol = (pc & S2MMASK);
 
     myassert(pc >= WPAWN && pc <= BKING, this, 1, pc);
 
@@ -739,7 +739,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
         return false;
 
     // correct color of capture? capturing the king is illegal
-    if (capture && (s2m == (capture & S2MMASK) || capture >= WKING))
+    if (capture && (piececol == (capture & S2MMASK) || capture >= WKING))
         return false;
 
     myassert(capture >= BLANK && capture <= BQUEEN, this, 1, capture);
@@ -749,7 +749,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
         return false;
 
     // correct s2m?
-    if (s2m != (state & S2MMASK))
+    if (piececol != (state & S2MMASK))
         return false;
 
     // only pawn can promote
@@ -767,9 +767,9 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
                 return false;
 
             // test if "making ep capture possible" is both true or false
-            int ept = GETEPT(c);
+            int myept = GETEPT(c);
             {
-                if (!ept == (bool)(epthelper[to] & piece00[pc ^ 1]))
+                if (!myept == (bool)(epthelper[to] & piece00[pc ^ 1]))
                     return false;
             }
         }
@@ -780,7 +780,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
                 return false;
 
             // missing promotion
-            if (RRANK(to, s2m) == 7 && !GETPROMOTION(c))
+            if (RRANK(to, piececol) == 7 && !GETPROMOTION(c))
                 return false;
         }
     }
@@ -1018,10 +1018,10 @@ string chessposition::toFen()
 }
 
 
-void chessposition::updateMultiPvTable(int pvindex, uint32_t movecode, bool recursive)
+void chessposition::updateMultiPvTable(int pvindex, uint32_t mc)
 {
     uint32_t *table = (pvindex ? multipvtable[pvindex] : pvtable[0]);
-    table[0] = movecode;
+    table[0] = mc;
     int i = 0;
     while (pvtable[1][i])
     {
@@ -1032,9 +1032,9 @@ void chessposition::updateMultiPvTable(int pvindex, uint32_t movecode, bool recu
 }
 
 
-void chessposition::updatePvTable(uint32_t movecode, bool recursive)
+void chessposition::updatePvTable(uint32_t mc, bool recursive)
 {
-    pvtable[ply][0] = movecode;
+    pvtable[ply][0] = mc;
     int i = 0;
     if (recursive)
     {
@@ -2193,16 +2193,19 @@ chessmove* MoveSelector::next()
     {
     case INITSTATE:
         state++;
+        // fall through
     case HASHMOVESTATE:
         state++;
         if (hashmove.code)
         {
             return &hashmove;
         }
+        // fall through
     case TACTICALINITSTATE:
         state++;
         captures->length = CreateMovelist<TACTICAL>(pos, &captures->move[0]);
         evaluateMoves<CAPTURE>(captures, pos, &cmptr[0]);
+        // fall through
     case TACTICALSTATE:
         while ((m = captures->getNextMove(0)))
         {
@@ -2219,28 +2222,33 @@ chessmove* MoveSelector::next()
         state++;
         if (onlyGoodCaptures)
             return nullptr;
+        // fall through
     case KILLERMOVE1STATE:
         state++;
         if (pos->moveIsPseudoLegal(killermove1.code))
         {
             return &killermove1;
         }
+        // fall through
     case KILLERMOVE2STATE:
         state++;
         if (pos->moveIsPseudoLegal(killermove2.code))
         {
             return &killermove2;
         }
+        // fall through
     case COUNTERMOVESTATE:
         state++;
         if (pos->moveIsPseudoLegal(countermove.code))
         {
             return &countermove;
         }
+        // fall through
     case QUIETINITSTATE:
         state++;
         quiets->length = CreateMovelist<QUIET>(pos, &quiets->move[0]);
         evaluateMoves<QUIET>(quiets, pos, &cmptr[0]);
+        // fall through
     case QUIETSTATE:
         while ((m = quiets->getNextMove()))
         {
@@ -2252,6 +2260,7 @@ chessmove* MoveSelector::next()
                 return m;
         }
         state++;
+        // fall through
     case BADTACTICALSTATE:
         while ((m = captures->getNextMove()))
         {
@@ -2261,12 +2270,14 @@ chessmove* MoveSelector::next()
                 return m;
         }
         state++;
+        // fall through
     case BADTACTICALEND:
         return nullptr;
     case EVASIONINITSTATE:
         state++;
         captures->length = CreateMovelist<EVASION>(pos, &captures->move[0]);
         evaluateMoves<ALL>(captures, pos, &cmptr[0]);
+        // fall through
     case EVASIONSTATE:
         while ((m = captures->getNextMove()))
         {
@@ -2274,6 +2285,7 @@ chessmove* MoveSelector::next()
             return m;
         }
         state++;
+        // fall through
     default:
         return nullptr;
     }

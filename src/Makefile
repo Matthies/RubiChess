@@ -1,15 +1,40 @@
-CXX=g++
-CXXFLAGS=-g -std=c++11 -Wall -O3 -flto $(EXTRACXXFLAGS)
-ifeq ($(shell uname -m),x86_64)
-    ARCHFLAGS=-msse3 -mpopcnt
-endif
-ifeq ($(shell uname -m),armv7l)
-    ARCHFLAGS=-march=armv7-a
-endif
-LDFLAGS=-pthread  $(EXTRALDFLAGS)
 
-profile_make = gcc-profile-make
-profile_use = gcc-profile-use
+
+ifeq ($(COMP),)
+	COMP=gcc
+endif
+
+CXXFLAGS=-std=c++11 -Wall -O3 -flto $(EXTRACXXFLAGS)
+
+ifeq ($(COMP),gcc)
+	CXX=g++
+	CXXFLAGS += -pedantic -Wextra -Wshadow
+	ifeq ($(shell uname -m),x86_64)
+		ARCHFLAGS=-msse3 -mpopcnt
+	endif
+	ifeq ($(shell uname -m),armv7l)
+		ARCHFLAGS=-march=armv7-a
+	endif
+	LDFLAGS=-pthread  $(EXTRALDFLAGS)
+
+	profile_make = gcc-profile-make
+	profile_use = gcc-profile-use
+endif
+
+ifeq ($(COMP),clang)
+	CXX=clang++
+	CXXFLAGS=-g -std=c++11 -Wall -O3 -flto $(EXTRACXXFLAGS)
+	ifeq ($(shell uname -m),x86_64)
+		ARCHFLAGS=-msse3 -mpopcnt
+	endif
+	ifeq ($(shell uname -m),armv7l)
+		ARCHFLAGS=-march=armv7-a
+	endif
+	LDFLAGS=-pthread  $(EXTRALDFLAGS)
+
+	profile_make = gcc-profile-make
+	profile_use = gcc-profile-use
+endif
 
 DEPS = RubiChess.h
 EXE = RubiChess

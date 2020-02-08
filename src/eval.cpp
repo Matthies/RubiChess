@@ -609,7 +609,7 @@ template <EvalType Et>
 int chessposition::getEval()
 {
     const bool bTrace = (Et == TRACE);
-    if (bTrace) te = { 0 };
+    if (bTrace) te = { { 0 }, { 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 } };
 #ifdef EVALTUNE
     resetTuner();
     getpsqval();
@@ -686,9 +686,9 @@ int chessposition::getEval()
 }
 
 
-int chessposition::getComplexity(int eval, pawnhashentry *phentry, Materialhashentry *mhentry)
+int chessposition::getComplexity(int val, pawnhashentry *phentry, Materialhashentry *mhentry)
 {
-        int evaleg = GETEGVAL(eval);
+        int evaleg = GETEGVAL(val);
         int sign = (evaleg > 0) - (evaleg < 0);
         int complexity = EEVAL(eps.eComplexpawnsbonus, mhentry->numOfPawns);
         complexity += EEVAL(eps.eComplexpawnflanksbonus, phentry->bothFlanks);

@@ -537,7 +537,6 @@ public:
     u8 getHash(chessposition *pos);
     u8 getPawnHash(chessposition *pos);
     u8 getMaterialHash(chessposition *pos);
-    u8 modHash(int i);
 };
 
 #define TTBUCKETNUM 3
@@ -665,13 +664,13 @@ extern Materialhash mh;
 #define WKING 12
 #define BKING 13
 
-// My son wants this in binary :-)
-#define S2MMASK     0b00001
-#define WQCMASK     0b00010
-#define WKCMASK     0b00100
-#define BQCMASK     0b01000
-#define BKCMASK     0b10000
-#define CASTLEMASK  0b11110
+// My son wants this in binary :-) but -pendantic claims that it's not C11 standard :-(
+#define S2MMASK     0x01
+#define WQCMASK     0x02
+#define WKCMASK     0x04
+#define BQCMASK     0x08
+#define BKCMASK     0x10
+#define CASTLEMASK  0x1e
 
 #define WQC 1
 #define WKC 2
@@ -1106,8 +1105,8 @@ public:
     int getQuiescence(int alpha, int beta, int depth);
     void updateHistory(uint32_t code, int16_t **cmptr, int value);
     void getCmptr(int16_t **cmptr);
-    void updatePvTable(uint32_t movecode, bool recursive);
-    void updateMultiPvTable(int pvindex, uint32_t movecode, bool recursive);
+    void updatePvTable(uint32_t mc, bool recursive);
+    void updateMultiPvTable(int pvindex, uint32_t mc);
     string getPv(uint32_t *table);
     int getHistory(uint32_t code, int16_t **cmptr);
 

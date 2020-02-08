@@ -74,9 +74,9 @@ void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am)
 }
 
 
-vector<string> SplitString(const char* s)
+vector<string> SplitString(const char* c)
 {
-    string ss(s);
+    string ss(c);
     vector<string> result;
     istringstream iss(ss);
     bool quotes = false;

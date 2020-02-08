@@ -960,7 +960,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                     memcpy(multipvtable[newindex], srctable, sizeof(multipvtable[newindex]));
                     newindex--;
                 }
-                updateMultiPvTable(newindex, m->code, true);
+                updateMultiPvTable(newindex, m->code);
 
                 bestmovescore[newindex] = score;
                 if (lastmoveindex < maxmoveindex - 1)
@@ -1003,9 +1003,9 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                 if (!ISTACTICAL(m->code))
                 {
                     updateHistory(m->code, ms.cmptr, depth * depth);
-                    for (int i = 0; i < quietsPlayed - 1; i++)
+                    for (int q = 0; i < quietsPlayed - 1; q++)
                     {
-                        uint32_t qm = quietMoves[i];
+                        uint32_t qm = quietMoves[q];
                         updateHistory(qm, ms.cmptr, -(depth * depth));
                     }
 
@@ -1215,7 +1215,7 @@ static void search_gen1(searchthread *thr)
                 if (inWindow == 1)
                 {
                     // MultiPV output only if in aspiration window
-                    int i = 0;
+                    i = 0;
                     int maxmoveindex = min(en.MultiPV, pos->rootmovelist.length);
                     do
                     {
