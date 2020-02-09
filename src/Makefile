@@ -23,7 +23,7 @@ endif
 
 ifeq ($(COMP),clang)
 	CXX=clang++
-	CXXFLAGS=-g -std=c++11 -Wall -O3 -flto $(EXTRACXXFLAGS)
+	CXXFLAGS += -pedantic -Wextra -Wshadow
 	ifeq ($(shell uname -m),x86_64)
 		ARCHFLAGS=-msse3 -mpopcnt
 	endif
@@ -32,8 +32,8 @@ ifeq ($(COMP),clang)
 	endif
 	LDFLAGS=-pthread  $(EXTRALDFLAGS)
 
-	profile_make = gcc-profile-make
-	profile_use = gcc-profile-use
+	profile_make = clang-profile-make
+	profile_use = clang-profile-use
 endif
 
 DEPS = RubiChess.h
@@ -80,6 +80,16 @@ gcc-profile-make:
 gcc-profile-use:
 	$(MAKE) EXTRACXXFLAGS='-fprofile-use=$(PROFDIR1) -fno-peel-loops -fno-tracer' EXTRALDFLAGS='-lgcov' $(EXE)
 	$(MAKE) EXTRACXXFLAGS='-fprofile-use=$(PROFDIR2) -fno-peel-loops -fno-tracer' EXTRALDFLAGS='-lgcov' $(EXE2)
+
+clang-profile-make:
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS='-fprofile-instr-generate$(PROFDIR1)' EXTRALDFLAGS=' -fprofile-instr-generate' $(EXE)
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS='-fprofile-instr-generate=$(PROFDIR2)' EXTRALDFLAGS=' -fprofile-instr-generate' $(EXE2)
+
+clang-profile-use:
+	llvm-profdata merge -output=$(PROFDIR1)\$(EXE).profdata $(PROFDIR1)\*.profraw
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS='-fprofile-instr-use=$(PROFDIR1)\$(EXE).profdata' EXTRALDFLAGS='-fprofile-use ' $(EXE)
+	llvm-profdata merge -output=$(PROFDIR2)\$(EXE2).profdata $(PROFDIR2)\*.profraw
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS='-fprofile-instr-use=$(PROFDIR2)\$(EXE2).profdata' EXTRALDFLAGS='-fprofile-use ' $(EXE2)
 
 profile-build: clean
 	@echo "Building instrumented executable ..."
