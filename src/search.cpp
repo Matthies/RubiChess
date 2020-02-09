@@ -104,13 +104,13 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 #ifdef EVALTUNE
     if (depth < 0) isQuiet = false;
     positiontuneset targetpts;
-    evalparam ev[NUMOFEVALPARAMS];
+    evalparam myev[NUMOFEVALPARAMS];
     if (noQs)
     {
         // just evaluate and return (for tuning sets with just quiet positions)
         score = S2MSIGN(state & S2MMASK) * getEval<NOTRACE>();
-        getPositionTuneSet(&targetpts, &ev[0]);
-        copyPositionTuneSet(&targetpts, &ev[0], &this->pts, &this->ev[0]);
+        getPositionTuneSet(&targetpts, &myev[0]);
+        copyPositionTuneSet(&targetpts, &myev[0], &this->pts, &this->ev[0]);
         return score;
     }
 
