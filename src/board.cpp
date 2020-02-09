@@ -1389,8 +1389,8 @@ void initBitmaphelper()
 
 void chessposition::BitboardSet(int index, PieceCode p)
 {
-    myassert(index >= 0 && index < 64, this, 0);
-    myassert(p >= BLANK && p <= BKING, this, 0);
+    myassert(index >= 0 && index < 64, this, 1, index);
+    myassert(p >= BLANK && p <= BKING, this, 1, p);
     int s2m = p & 0x1;
     piece00[p] |= BITSET(index);
     occupied00[s2m] |= BITSET(index);
@@ -1400,8 +1400,8 @@ void chessposition::BitboardSet(int index, PieceCode p)
 
 void chessposition::BitboardClear(int index, PieceCode p)
 {
-    myassert(index >= 0 && index < 64, this, 0);
-    myassert(p >= BLANK && p <= BKING, this, 0);
+    myassert(index >= 0 && index < 64, this, 1, index);
+    myassert(p >= BLANK && p <= BKING, this, 1, p);
     int s2m = p & 0x1;
     piece00[p] ^= BITSET(index);
     occupied00[s2m] ^= BITSET(index);
@@ -1411,9 +1411,9 @@ void chessposition::BitboardClear(int index, PieceCode p)
 
 void chessposition::BitboardMove(int from, int to, PieceCode p)
 {
-    myassert(from >= 0 && from < 64, this, 0);
-    myassert(to >= 0 && to < 64, this, 0);
-    myassert(p >= BLANK && p <= BKING, this, 0);
+    myassert(from >= 0 && from < 64, this, 1, from);
+    myassert(to >= 0 && to < 64, this, 1, to);
+    myassert(p >= BLANK && p <= BKING, this, 1, p);
     int s2m = p & 0x1;
     piece00[p] ^= (BITSET(from) | BITSET(to));
     occupied00[s2m] ^= (BITSET(from) | BITSET(to));

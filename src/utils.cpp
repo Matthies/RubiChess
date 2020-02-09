@@ -198,7 +198,7 @@ string AlgebraicFromShort(string s, chessposition *pos)
 
     // i < 0 hopefully
     // get the correct move
-    for (int i = 0; i < ml.length; i++)
+    for (i = 0; i < ml.length; i++)
     {
         if (pt == (GETPIECE(ml.move[i].code) >> 1)
             && promotion == (GETPROMOTION(ml.move[i].code) >> 1)
