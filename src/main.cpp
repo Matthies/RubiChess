@@ -863,15 +863,8 @@ static void testengine(string epdfilename, int startnum, string engineprgs, stri
     }
 }
 
+#endif // _WIN32
 
-#else // _WIN32
-
-static void testengine(string epdfilename, int startnum, string engineprg, string logfilename, string comparefilename, int maxtime, int flags)
-{
-    // not yet implemented
-}
-
-#endif
 
 int main(int argc, char* argv[])
 {
@@ -1010,8 +1003,10 @@ int main(int argc, char* argv[])
         doBenchmark(depth, epdfile, maxtime, startnum, openbench);
     } else if (enginetest)
     {
+#ifdef _WIN32
         //engine test mode
         testengine(epdfile, startnum, engineprg, logfile, comparefile, maxtime, flags);
+#endif
     }
 #ifdef EVALTUNE
     else if (pgnconvertfile != "")
