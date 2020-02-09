@@ -70,6 +70,7 @@ objclean:
 profileclean:
 	$(RM) -rf $(PROFDIR1)
 	$(RM) -rf $(PROFDIR2)
+	$(RM) *.clangprof-raw *.profdata
 
 clean: objclean profileclean
 
@@ -82,14 +83,14 @@ gcc-profile-use:
 	$(MAKE) EXTRACXXFLAGS='-fprofile-use=$(PROFDIR2) -fno-peel-loops -fno-tracer' EXTRALDFLAGS='-lgcov' $(EXE2)
 
 clang-profile-make:
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS='-fprofile-instr-generate$(PROFDIR1)' EXTRALDFLAGS=' -fprofile-instr-generate' $(EXE)
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS='-fprofile-instr-generate=$(PROFDIR2)' EXTRALDFLAGS=' -fprofile-instr-generate' $(EXE2)
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS='-fprofile-instr-generate=$(EXE).clangprof-raw' EXTRALDFLAGS=' -fprofile-instr-generate=$(EXE).clangprof-raw' $(EXE)
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS='-fprofile-instr-generate=$(EXE2).clangprof-raw' EXTRALDFLAGS=' -fprofile-instr-generate=$(EXE2).clangprof-raw' $(EXE2)
 
 clang-profile-use:
-	llvm-profdata merge -output=$(PROFDIR1)\$(EXE).profdata $(PROFDIR1)\*.profraw
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS='-fprofile-instr-use=$(PROFDIR1)\$(EXE).profdata' EXTRALDFLAGS='-fprofile-use ' $(EXE)
-	llvm-profdata merge -output=$(PROFDIR2)\$(EXE2).profdata $(PROFDIR2)\*.profraw
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS='-fprofile-instr-use=$(PROFDIR2)\$(EXE2).profdata' EXTRALDFLAGS='-fprofile-use ' $(EXE2)
+	llvm-profdata merge -output=$(EXE).profdata $(EXE).clangprof-raw
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS='-fprofile-instr-use=$(EXE).profdata' EXTRALDFLAGS='-fprofile-instr-use=$(EXE).profdata' $(EXE)
+	llvm-profdata merge -output=$(EXE2).profdata $(EXE).clangprof-raw
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS='-fprofile-instr-use=$(EXE2).profdata' EXTRALDFLAGS='-fprofile-instr-use=$(EXE2).profdata' $(EXE2)
 
 profile-build: clean
 	@echo "Building instrumented executable ..."
