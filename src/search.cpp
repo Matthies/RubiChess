@@ -1003,7 +1003,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                 if (!ISTACTICAL(m->code))
                 {
                     updateHistory(m->code, ms.cmptr, depth * depth);
-                    for (int q = 0; i < quietsPlayed - 1; q++)
+                    for (int q = 0; q < quietsPlayed - 1; q++)
                     {
                         uint32_t qm = quietMoves[q];
                         updateHistory(qm, ms.cmptr, -(depth * depth));
