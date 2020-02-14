@@ -30,7 +30,7 @@ ifeq ($(COMP),clang)
 	ifeq ($(shell uname -m),armv7l)
 		ARCHFLAGS=-march=armv7-a
 	endif
-	LDFLAGS=-pthread  $(EXTRALDFLAGS)
+	LDFLAGS=-lpthread  -fuse-ld=lld $(EXTRALDFLAGS)
 
 	profile_make = clang-profile-make
 	profile_use = clang-profile-use
