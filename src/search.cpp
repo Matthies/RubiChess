@@ -104,13 +104,13 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 #ifdef EVALTUNE
     if (depth < 0) isQuiet = false;
     positiontuneset targetpts;
-    evalparam ev[NUMOFEVALPARAMS];
+    evalparam myev[NUMOFEVALPARAMS];
     if (noQs)
     {
         // just evaluate and return (for tuning sets with just quiet positions)
         score = S2MSIGN(state & S2MMASK) * getEval<NOTRACE>();
-        getPositionTuneSet(&targetpts, &ev[0]);
-        copyPositionTuneSet(&targetpts, &ev[0], &this->pts, &this->ev[0]);
+        getPositionTuneSet(&targetpts, &myev[0]);
+        copyPositionTuneSet(&targetpts, &myev[0], &this->pts, &this->ev[0]);
         return score;
     }
 
@@ -278,7 +278,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     int rep = testRepetiton();
     if (rep >= 2)
     {
-        SDEBUGPRINT(isDebugPv, debugInsert, "Draw (repetition)");
+        SDEBUGPRINT(isDebugPv, debugInsert, "Draw (repetition)", NULL);
         STATISTICSINC(ab_draw_or_win);
         return SCOREDRAW;
     }
@@ -289,7 +289,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         STATISTICSINC(ab_draw_or_win);
         if (!isCheckbb)
         {
-            SDEBUGPRINT(isDebugPv, debugInsert, "Draw (50 moves)");
+            SDEBUGPRINT(isDebugPv, debugInsert, "Draw (50 moves)", NULL);
             return SCOREDRAW;
         } else {
             // special case: test for checkmate
@@ -515,7 +515,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     const int iiddelta = 2;
     if (PVNode && !hashmovecode && depth >= iidmin)
     {
-        SDEBUGPRINT(isDebugPv, debugInsert, " Entering iid...");
+        SDEBUGPRINT(isDebugPv, debugInsert, " Entering iid...", NULL);
         alphabeta(alpha, beta, depth - iiddelta);
         hashmovecode = tp.getMoveCode(newhash);
     }
@@ -765,7 +765,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         }
         else {
             // It's a stalemate
-            SDEBUGPRINT(isDebugPv, debugInsert, " Return score: 0  (stalemate)");
+            SDEBUGPRINT(isDebugPv, debugInsert, " Return score: 0  (stalemate)", NULL);
             return SCOREDRAW;
         }
     }
@@ -960,7 +960,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                     memcpy(multipvtable[newindex], srctable, sizeof(multipvtable[newindex]));
                     newindex--;
                 }
-                updateMultiPvTable(newindex, m->code, true);
+                updateMultiPvTable(newindex, m->code);
 
                 bestmovescore[newindex] = score;
                 if (lastmoveindex < maxmoveindex - 1)
@@ -1003,9 +1003,9 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                 if (!ISTACTICAL(m->code))
                 {
                     updateHistory(m->code, ms.cmptr, depth * depth);
-                    for (int i = 0; i < quietsPlayed - 1; i++)
+                    for (int q = 0; q < quietsPlayed - 1; q++)
                     {
-                        uint32_t qm = quietMoves[i];
+                        uint32_t qm = quietMoves[q];
                         updateHistory(qm, ms.cmptr, -(depth * depth));
                     }
 
@@ -1028,7 +1028,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         }
     }
 
-    SDEBUGPRINT(true, 0, getPv(pvtable[0]).c_str());
+    SDEBUGPRINT(true, 0, getPv(pvtable[0]).c_str(), NULL);
 
     if (isMultiPV)
     {
@@ -1215,7 +1215,7 @@ static void search_gen1(searchthread *thr)
                 if (inWindow == 1)
                 {
                     // MultiPV output only if in aspiration window
-                    int i = 0;
+                    i = 0;
                     int maxmoveindex = min(en.MultiPV, pos->rootmovelist.length);
                     do
                     {

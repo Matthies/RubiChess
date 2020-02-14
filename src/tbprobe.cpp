@@ -204,7 +204,6 @@ static int probe_wdl_table(int *success, chessposition *pos)
         ubyte *pc = entry->file[f].pieces[bside];
         for (; i < entry->num;) {
             bb = pos->piece00[SYZYGY2RUBI_PT(pc[i] ^ cmirror)];
-            int index;
             while (bb)
             {
                 index = pullLsb(&bb);
@@ -327,7 +326,6 @@ static int probe_dtz_table(int wdl, int *success, chessposition *pos)
         ubyte *pc = entry->file[f].pieces;
         for (; i < entry->num;) {
             bb = pos->piece00[SYZYGY2RUBI_PT(pc[i] ^ cmirror)];
-            int index;
             while (bb)
             {
                 index = pullLsb(&bb);

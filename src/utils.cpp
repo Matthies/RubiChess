@@ -74,9 +74,9 @@ void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am)
 }
 
 
-vector<string> SplitString(const char* s)
+vector<string> SplitString(const char* c)
 {
-    string ss(s);
+    string ss(c);
     vector<string> result;
     istringstream iss(ss);
     bool quotes = false;
@@ -198,7 +198,7 @@ string AlgebraicFromShort(string s, chessposition *pos)
 
     // i < 0 hopefully
     // get the correct move
-    for (int i = 0; i < ml.length; i++)
+    for (i = 0; i < ml.length; i++)
     {
         if (pt == (GETPIECE(ml.move[i].code) >> 1)
             && promotion == (GETPROMOTION(ml.move[i].code) >> 1)
@@ -250,7 +250,7 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
     pos.tps.count = 0;
     int gamescount = 0;
     fenWritten = 0ULL;
-    bool mateFound;
+    bool mateFound = false;
     string line, newline;
     string line1, line2;
     string rest_of_last_line = "";
@@ -259,7 +259,7 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
 
     // The following is Windows-only; FIXME: C++--17 offers portable filesystem handling
     WIN32_FIND_DATA fd;
-    HANDLE pgnhandle;
+    HANDLE pgnhandle = INVALID_HANDLE_VALUE;
     bool folderMode = (GetFileAttributes(pgnfilename.c_str()) & FILE_ATTRIBUTE_DIRECTORY);
     if (folderMode)
     {
@@ -305,7 +305,7 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
         string newfen;
         string moves;
         string lastmove;
-        bool valueChecked;
+        bool valueChecked = true;;
         int gamepositions = 0;
         string fenlines[2048];
         string scoreBracket;
@@ -369,12 +369,12 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
                 bool foundInLine;
                 do
                 {
-                    if (foundInLine = regex_search(line, match, regex("^(\\s*\\d+\\.\\s*)")))
+                    if ((foundInLine = regex_search(line, match, regex("^(\\s*\\d+\\.\\s*)"))))
                     {
                         // skip move number
                         line = match.suffix();
                     }
-                    else if (foundInLine = regex_search(line, match, regex("^\\s*(([O\\-]{3,5})\\+?|([KQRBN]?[a-h]*[1-8]*x?[a-h]+[1-8]+(=[QRBN])?)\\+?)")))
+                    else if ((foundInLine = regex_search(line, match, regex("^\\s*(([O\\-]{3,5})\\+?|([KQRBN]?[a-h]*[1-8]*x?[a-h]+[1-8]+(=[QRBN])?)\\+?)"))))
                     {
                         // Found move
                         if (!valueChecked)
@@ -401,7 +401,7 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
                             fen = "";
                         line = match.suffix();
                     }
-                    else if (foundInLine = regex_search(line, match, regex("\\s*(\\{[^\\}]*\\})")))
+                    else if ((foundInLine = regex_search(line, match, regex("\\s*(\\{[^\\}]*\\})"))))
                     {
                         scoreBracket = match.str(1);
                         line = match.suffix();
@@ -505,28 +505,28 @@ static string getValueStringValue(eval *e)
 }
 
 
-static string nameTunedParameter(chessposition *pos, int i)
+static string nameTunedParameter(chessposition *p, int i)
 {
-    string name = pos->tps.name[i];
-    if (pos->tps.bound2[i] > 0)
+    string name = p->tps.name[i];
+    if (p->tps.bound2[i] > 0)
     {
-        name += "[" + to_string(pos->tps.index2[i]) + "][" + to_string(pos->tps.index1[i]) + "]";
+        name += "[" + to_string(p->tps.index2[i]) + "][" + to_string(p->tps.index1[i]) + "]";
     }
-    else if (pos->tps.bound1[i] > 0)
+    else if (p->tps.bound1[i] > 0)
     {
-        name += "[" + to_string(pos->tps.index1[i]) + "] = { ";
+        name += "[" + to_string(p->tps.index1[i]) + "] = { ";
     }
     return name;
 }
 
 
-static void printTunedParameters(chessposition *pos)
+static void printTunedParameters(chessposition *p)
 {
     string lastname = "";
     string output = "";
-    for (int i = 0; i < pos->tps.count; i++)
+    for (int i = 0; i < p->tps.count; i++)
     {
-        if (lastname != pos->tps.name[i])
+        if (lastname != p->tps.name[i])
         {
             if (output != "")
             {
@@ -534,35 +534,35 @@ static void printTunedParameters(chessposition *pos)
                 printf("%s", output.c_str());
                 output = "";
             }
-            lastname = pos->tps.name[i];
+            lastname = p->tps.name[i];
             output = "    eval " + lastname;
-            if (pos->tps.bound2[i] > 0)
+            if (p->tps.bound2[i] > 0)
             {
-                output += "[" + to_string(pos->tps.bound2[i]) + "][" + to_string(pos->tps.bound1[i]) + "] = {\n        { ";
+                output += "[" + to_string(p->tps.bound2[i]) + "][" + to_string(p->tps.bound1[i]) + "] = {\n        { ";
             }
-            else if (pos->tps.bound1[i] > 0)
+            else if (p->tps.bound1[i] > 0)
             {
-                output += "[" + to_string(pos->tps.bound1[i]) + "] = { ";
+                output += "[" + to_string(p->tps.bound1[i]) + "] = { ";
             }
             else {
                 output += " = ";
             }
         }
 
-        output = output + " " + getValueStringValue(pos->tps.ev[i]);
+        output = output + " " + getValueStringValue(p->tps.ev[i]);
 
-        if (pos->tps.index1[i] < pos->tps.bound1[i] - 1)
+        if (p->tps.index1[i] < p->tps.bound1[i] - 1)
         {
             output += ",";
-            if (!((pos->tps.index1[i] + 1) & (pos->tps.bound2[i] ? 0x7 : 0x7)))
+            if (!((p->tps.index1[i] + 1) & (p->tps.bound2[i] ? 0x7 : 0x7)))
                 output += "\n          ";
         }
-        else if (pos->tps.index1[i] == pos->tps.bound1[i] - 1)
+        else if (p->tps.index1[i] == p->tps.bound1[i] - 1)
         {
             output += "  }";
-            if (pos->tps.index2[i] < pos->tps.bound2[i] - 1)
+            if (p->tps.index2[i] < p->tps.bound2[i] - 1)
                 output += ",\n        { ";
-            else if (pos->tps.index2[i] == pos->tps.bound2[i] - 1)
+            else if (p->tps.index2[i] == p->tps.bound2[i] - 1)
                 output += "\n    }";
         }
     }
@@ -639,14 +639,14 @@ static double TexelEvalError(struct tuner *tn)
     return E / texelptsnum;
 }
 
-static void getGradsFromFen(chessposition *pos, string fenfilenames)
+static void getGradsFromFen(string fenfilenames)
 {
     int n = 0;
     while (fenfilenames != "")
     {
-        size_t i = fenfilenames.find('*');
-        string filename = (i == string::npos) ? fenfilenames : fenfilenames.substr(0, i);
-        fenfilenames = (i == string::npos) ? "" : fenfilenames.substr(i + 1, string::npos);
+        size_t spi = fenfilenames.find('*');
+        string filename = (spi == string::npos) ? fenfilenames : fenfilenames.substr(0, spi);
+        fenfilenames = (spi == string::npos) ? "" : fenfilenames.substr(spi + 1, string::npos);
 
         int fentype = -1;
         int gamescount = 0;
@@ -692,6 +692,7 @@ static void getGradsFromFen(chessposition *pos, string fenfilenames)
             {
                 // "(.*)\\s+(c9\\s+)?\"?((1\\-0)|(0\\-1)|(1/2))\"?"
                 fen = "";
+                R = 1; // draw as default
                 if ((fentype < 0 || fentype == 1) && regex_search(line, match, regex("(.*)#(.*)#(.*)")))
                 {
                     // my own fen format
@@ -756,34 +757,34 @@ static void getGradsFromFen(chessposition *pos, string fenfilenames)
                         c = 1;
                     if (c == tuningratio)
                     {
-                        pos->getFromFen(fen.c_str());
-                        pos->ply = 0;
-                        Qi = pos->getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
-                        if (!pos->w2m())
+                        pos.getFromFen(fen.c_str());
+                        pos.ply = 0;
+                        Qi = pos.getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
+                        if (!pos.w2m())
                             Qi = -Qi;
                         positiontuneset *nextpts = (positiontuneset*)pnext;
-                        *nextpts = pos->pts;
+                        *nextpts = pos.pts;
                         nextpts->R = R;
                         Q[0] = Q[1] = Q[2] = Q[3] = 0;
                         evalparam *e = (evalparam *)(pnext + sizeof(positiontuneset));
                         int sqsum[4][2] = { { 0 } };
-                        for (int i = 0; i < pos->pts.num; i++)
+                        for (int i = 0; i < pos.pts.num; i++)
                         {
-                            *e = pos->ev[i];
-                            //printf("%20s: %08x  %3d\n", pos->tps.name[e->index].c_str(), *pos->tps.ev[i], e->g);
-                            int ty = pos->tps.ev[e->index]->type;
+                            *e = pos.ev[i];
+                            //printf("%20s: %08x  %3d\n", pos.tps.name[e->index].c_str(), *pos.tps.ev[i], e->g);
+                            int ty = pos.tps.ev[e->index]->type;
                             if (ty != 2)
                             {
-                                Q[ty] += e->g[0] * *pos->tps.ev[e->index];
-                                //printf("l %3d: %3d * %08x         = %08x\n", e->index, e->g[0], (int)*pos->tps.ev[e->index], Qa);
+                                Q[ty] += e->g[0] * *pos.tps.ev[e->index];
+                                //printf("l %3d: %3d * %08x         = %08x\n", e->index, e->g[0], (int)*pos.tps.ev[e->index], Qa);
                             }
                             else
                             {
-                                int sqindex = pos->tps.ev[e->index]->groupindex;
-                                sqsum[sqindex][0] += e->g[0] * *pos->tps.ev[e->index];
-                                sqsum[sqindex][1] += e->g[1] * *pos->tps.ev[e->index];
+                                int sqindex = pos.tps.ev[e->index]->groupindex;
+                                sqsum[sqindex][0] += e->g[0] * *pos.tps.ev[e->index];
+                                sqsum[sqindex][1] += e->g[1] * *pos.tps.ev[e->index];
                             }
-                            pos->tps.used[e->index]++;
+                            pos.tps.used[e->index]++;
                             e++;
                         }
                         for (int i = 0; i < 4; i++)
@@ -815,8 +816,8 @@ static void getGradsFromFen(chessposition *pos, string fenfilenames)
                 {
                     gamescount++;
                     R = (stoi(match.str(1)) + 1);
-                    pos->getFromFen(match.str(2).c_str());
-                    pos->ply = 0;
+                    pos.getFromFen(match.str(2).c_str());
+                    pos.ply = 0;
                     vector<string> movelist = SplitString(match.str(3).c_str());
                     vector<string>::iterator move = movelist.begin();
                     bool gameend;
@@ -829,32 +830,32 @@ static void getGradsFromFen(chessposition *pos, string fenfilenames)
                             c = 1;
                         if (c == tuningratio)
                         {
-                            Qi = pos->getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
-                            if (!pos->w2m())
+                            Qi = pos.getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
+                            if (!pos.w2m())
                                 Qi = -Qi;
                             positiontuneset *nextpts = (positiontuneset*)pnext;
-                            *nextpts = pos->pts;
+                            *nextpts = pos.pts;
                             nextpts->R = R;
                             Q[0] = Q[1] = Q[2] = Q[3] = 0;
                             evalparam *e = (evalparam *)(pnext + sizeof(positiontuneset));
                             int sqsum[4][2] = { { 0 } };
-                            for (int i = 0; i < pos->pts.num; i++)
+                            for (int i = 0; i < pos.pts.num; i++)
                             {
-                                *e = pos->ev[i];
-                                int ty = pos->tps.ev[e->index]->type;
-                                //printf("%20s: %08x  %3d\n", pos->tps.name[e->index].c_str(), *pos->tps.ev[i], e->g);
+                                *e = pos.ev[i];
+                                int ty = pos.tps.ev[e->index]->type;
+                                //printf("%20s: %08x  %3d\n", pos->tps.name[e->index].c_str(), *pos.tps.ev[i], e->g);
                                 if (ty != 2)
                                 {
-                                    Q[ty] += e->g[0] * *pos->tps.ev[e->index];
-                                    //printf("l %3d: %3d * %08x         = %08x\n", e->index, e->g, (int)*pos->tps.ev[e->index], Qa);
+                                    Q[ty] += e->g[0] * *pos.tps.ev[e->index];
+                                    //printf("l %3d: %3d * %08x         = %08x\n", e->index, e->g, (int)*pos.tps.ev[e->index], Qa);
                                 }
                                 else
                                 {
-                                    int sqindex = pos->tps.ev[e->index]->groupindex;
-                                    sqsum[sqindex][0] += e->g[0] * *pos->tps.ev[e->index];
-                                    sqsum[sqindex][1] += e->g[1] * *pos->tps.ev[e->index];
+                                    int sqindex = pos.tps.ev[e->index]->groupindex;
+                                    sqsum[sqindex][0] += e->g[0] * *pos.tps.ev[e->index];
+                                    sqsum[sqindex][1] += e->g[1] * *pos.tps.ev[e->index];
                                 }
-                                pos->tps.used[e->index]++;
+                                pos.tps.used[e->index]++;
                                 e++;
                             }
                             for (int i = 0; i < 4; i++)
@@ -879,10 +880,10 @@ static void getGradsFromFen(chessposition *pos, string fenfilenames)
                         gameend = (move == movelist.end());
                         if (!gameend)
                         {
-                            if (!pos->applyMove(*move))
+                            if (!pos.applyMove(*move))
                             {
                                 printf("Alarm (game %d)! Move %s seems illegal.\nLine: %s\n", gamescount, move->c_str(), line.c_str());
-                                pos->print();
+                                pos.print();
                             }
                             move++;
                         }
@@ -900,11 +901,11 @@ static void getGradsFromFen(chessposition *pos, string fenfilenames)
 
 
 
-static void copyParams(chessposition *pos, struct tuner *tn)
+static void copyParams(chessposition *p, struct tuner *tn)
 {
-    for (int i = 0; i < pos->tps.count; i++)
-        tn->ev[i] = *pos->tps.ev[i];
-    tn->paramcount = pos->tps.count;
+    for (int i = 0; i < p->tps.count; i++)
+        tn->ev[i] = *p->tps.ev[i];
+    tn->paramcount = p->tps.count;
 }
 
 
@@ -993,9 +994,9 @@ static void tuneParameter(struct tuner *tn)
 }
 
 
-static void updateTunerPointer(chessposition *pos, tunerpool *pool)
+static void updateTunerPointer(chessposition *p, tunerpool *pool)
 {
-    int num = pos->tps.count;
+    int num = p->tps.count;
     int newLowRunning = pool->highRunning;
 
     for (int i = 0; i < en.Threads; i++)
@@ -1014,7 +1015,7 @@ static void updateTunerPointer(chessposition *pos, tunerpool *pool)
 }
 
 // Collects params of finished tuners, updates 'low' and 'improved' mark and returns free tuner
-static void collectTuners(chessposition *pos, tunerpool *pool, tuner **freeTuner)
+static void collectTuners(chessposition *p, tunerpool *pool, tuner **freeTuner)
 {
     if (freeTuner) *freeTuner = nullptr;
     for (int i = 0; i < en.Threads; i++)
@@ -1034,16 +1035,16 @@ static void collectTuners(chessposition *pos, tunerpool *pool, tuner **freeTuner
 
             if (pi >= 0)
             {
-                if (tn->ev[pi] != *pos->tps.ev[pi])
+                if (tn->ev[pi] != *p->tps.ev[pi])
                 {
-                    printf("%2d %4d  %9lld   %40s  %0.10f -> %0.10f  %s  -> %s\n", i, pi, pos->tps.used[pi], nameTunedParameter(pos, pi).c_str(), tn->starterror, tn->error,
-                        getValueStringValue(pos->tps.ev[pi]).c_str(),
+                    printf("%2d %4d  %9lld   %40s  %0.10f -> %0.10f  %s  -> %s\n", i, pi, p->tps.used[pi], nameTunedParameter(p, pi).c_str(), tn->starterror, tn->error,
+                        getValueStringValue(p->tps.ev[pi]).c_str(),
                         getValueStringValue(&(tn->ev[pi])).c_str());
                     pool->lastImproved = pi;
-                    *pos->tps.ev[pi] = tn->ev[pi];
+                    *p->tps.ev[pi] = tn->ev[pi];
                 }
                 else {
-                    printf("%2d %4d  %9lld   %40s  %0.10f  %s  constant\n", i, pi, pos->tps.used[pi], nameTunedParameter(pos, pi).c_str(), tn->error,
+                    printf("%2d %4d  %9lld   %40s  %0.10f  %s  constant\n", i, pi, p->tps.used[pi], nameTunedParameter(p, pi).c_str(), tn->error,
                         getValueStringValue(&(tn->ev[pi])).c_str());
                 }
             }
@@ -1096,21 +1097,21 @@ void TexelTune(string fenfilenames, bool noqs)
     registeralltuners(&pos);
     pos.noQs = noqs;
     en.setOption("hash", "4"); // we don't need tt; save all the memory for game data
-    getGradsFromFen(&pos, fenfilenames);
+    getGradsFromFen(fenfilenames);
 
     printf("Tuning starts now.\nPress 'P' to output current parameters.\nPress 'B' to break after current tuning loop.\nPress 'S' for immediate break.\n\n");
 
-    tunerpool tp;
-    tp.tn = new struct tuner[en.Threads];
-    tp.lowRunning = -1;
-    tp.highRunning = -1;
-    tp.lastImproved = -1;
+    tunerpool tpool;
+    tpool.tn = new struct tuner[en.Threads];
+    tpool.lowRunning = -1;
+    tpool.highRunning = -1;
+    tpool.lastImproved = -1;
 
     for (int i = 0; i < en.Threads; i++)
     {
-        tp.tn[i].busy = false;
-        tp.tn[i].index = i;
-        tp.tn[i].paramindex = -1;
+        tpool.tn[i].busy = false;
+        tpool.tn[i].index = i;
+        tpool.tn[i].paramindex = -1;
     }
 
     bool improved = true;
@@ -1135,11 +1136,11 @@ void TexelTune(string fenfilenames, bool noqs)
 
             tuner *tn;
 
-            tp.highRunning = i;
+            tpool.highRunning = i;
 
             do
             {
-                collectTuners(&pos, &tp, &tn);
+                collectTuners(&pos, &tpool, &tn);
                 if (!tn)
                 {
                     Sleep(100);
@@ -1167,15 +1168,15 @@ void TexelTune(string fenfilenames, bool noqs)
 
             tn->thr = thread(&tuneParameter, tn);
 
-            updateTunerPointer(&pos, &tp);
-            if (tp.highRunning == tp.lastImproved)
+            updateTunerPointer(&pos, &tpool);
+            if (tpool.highRunning == tpool.lastImproved)
             {
                 while (tn->busy)
                     // Complete loop without improvement... wait for last tuning finish
                     Sleep(100);
-                collectTuners(&pos, &tp, &tn);
+                collectTuners(&pos, &tpool, &tn);
 
-                if (tp.highRunning == tp.lastImproved)
+                if (tpool.highRunning == tpool.lastImproved)
                 {
                     // still no improvement after last finished thread => exit
                     improved = false;
@@ -1184,8 +1185,8 @@ void TexelTune(string fenfilenames, bool noqs)
             }
         }
     }
-    collectTuners(&pos, &tp, nullptr);
-    delete[] tp.tn;
+    collectTuners(&pos, &tpool, nullptr);
+    delete[] tpool.tn;
     free(texelpts);
     delete pos.pwnhsh;
     printTunedParameters(&pos);

@@ -22,10 +22,10 @@
 
 // static values for the search/pruning/material stuff
 const int materialvalue[7] = { 0,  100,  314,  314,  483,  913, 32509 };  // some evaluation depends on bishop value >= knight value!!!
-const int maxmobility[4] = { 9, 14, 15, 28 }; // indexed by piece - 2
 
 #ifdef EVALTUNE
 
+const int maxmobility[4] = { 9, 14, 15, 28 }; // indexed by piece - 2
 sqevallist sqglobal;
 
 void chessposition::resetTuner()
@@ -609,7 +609,7 @@ template <EvalType Et>
 int chessposition::getEval()
 {
     const bool bTrace = (Et == TRACE);
-    if (bTrace) te = { 0 };
+    if (bTrace) te = { { 0 }, { 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 } };
 #ifdef EVALTUNE
     resetTuner();
     getpsqval();
@@ -686,9 +686,9 @@ int chessposition::getEval()
 }
 
 
-int chessposition::getComplexity(int eval, pawnhashentry *phentry, Materialhashentry *mhentry)
+int chessposition::getComplexity(int val, pawnhashentry *phentry, Materialhashentry *mhentry)
 {
-        int evaleg = GETEGVAL(eval);
+        int evaleg = GETEGVAL(val);
         int sign = (evaleg > 0) - (evaleg < 0);
         int complexity = EEVAL(eps.eComplexpawnsbonus, mhentry->numOfPawns);
         complexity += EEVAL(eps.eComplexpawnflanksbonus, phentry->bothFlanks);

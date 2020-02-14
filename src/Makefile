@@ -1,15 +1,40 @@
-CXX=g++
-CXXFLAGS=-g -std=c++11 -Wall -O3 -flto $(EXTRACXXFLAGS)
-ifeq ($(shell uname -m),x86_64)
-    ARCHFLAGS=-msse3 -mpopcnt
-endif
-ifeq ($(shell uname -m),armv7l)
-    ARCHFLAGS=-march=armv7-a
-endif
-LDFLAGS=-pthread  $(EXTRALDFLAGS)
 
-profile_make = gcc-profile-make
-profile_use = gcc-profile-use
+
+ifeq ($(COMP),)
+	COMP=gcc
+endif
+
+CXXFLAGS=-std=c++11 -Wall -O3 -flto $(EXTRACXXFLAGS)
+
+ifeq ($(COMP),gcc)
+	CXX=g++
+	CXXFLAGS += -pedantic -Wextra -Wshadow
+	ifeq ($(shell uname -m),x86_64)
+		ARCHFLAGS=-msse3 -mpopcnt
+	endif
+	ifeq ($(shell uname -m),armv7l)
+		ARCHFLAGS=-march=armv7-a
+	endif
+	LDFLAGS=-pthread  $(EXTRALDFLAGS)
+
+	profile_make = gcc-profile-make
+	profile_use = gcc-profile-use
+endif
+
+ifeq ($(COMP),clang)
+	CXX=clang++
+	CXXFLAGS += -pedantic -Wextra -Wshadow
+	ifeq ($(shell uname -m),x86_64)
+		ARCHFLAGS=-msse3 -mpopcnt
+	endif
+	ifeq ($(shell uname -m),armv7l)
+		ARCHFLAGS=-march=armv7-a
+	endif
+	LDFLAGS=-lpthread  -fuse-ld=lld $(EXTRALDFLAGS)
+
+	profile_make = clang-profile-make
+	profile_use = clang-profile-use
+endif
 
 DEPS = RubiChess.h
 EXE = RubiChess
@@ -45,6 +70,7 @@ objclean:
 profileclean:
 	$(RM) -rf $(PROFDIR1)
 	$(RM) -rf $(PROFDIR2)
+	$(RM) *.clangprof-raw *.profdata
 
 clean: objclean profileclean
 
@@ -55,6 +81,16 @@ gcc-profile-make:
 gcc-profile-use:
 	$(MAKE) EXTRACXXFLAGS='-fprofile-use=$(PROFDIR1) -fno-peel-loops -fno-tracer' EXTRALDFLAGS='-lgcov' $(EXE)
 	$(MAKE) EXTRACXXFLAGS='-fprofile-use=$(PROFDIR2) -fno-peel-loops -fno-tracer' EXTRALDFLAGS='-lgcov' $(EXE2)
+
+clang-profile-make:
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS='-fprofile-instr-generate=$(EXE).clangprof-raw' EXTRALDFLAGS=' -fprofile-instr-generate=$(EXE).clangprof-raw' $(EXE)
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS='-fprofile-instr-generate=$(EXE2).clangprof-raw' EXTRALDFLAGS=' -fprofile-instr-generate=$(EXE2).clangprof-raw' $(EXE2)
+
+clang-profile-use:
+	llvm-profdata merge -output=$(EXE).profdata $(EXE).clangprof-raw
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS='-fprofile-instr-use=$(EXE).profdata' EXTRALDFLAGS='-fprofile-instr-use=$(EXE).profdata' $(EXE)
+	llvm-profdata merge -output=$(EXE2).profdata $(EXE).clangprof-raw
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS='-fprofile-instr-use=$(EXE2).profdata' EXTRALDFLAGS='-fprofile-instr-use=$(EXE2).profdata' $(EXE2)
 
 profile-build: clean
 	@echo "Building instrumented executable ..."
