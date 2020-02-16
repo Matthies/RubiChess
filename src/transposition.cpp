@@ -171,7 +171,7 @@ int transposition::setSize(int sizeMb)
     // Round up hashSize to the next 2M for alignment
     allocsize = ((allocsize + HashAlignBytes - 1u) / HashAlignBytes) * HashAlignBytes;
 
-    table = aligned_alloc(HashAlignBytes, allocsize);
+    table = (transpositioncluster*)aligned_alloc(HashAlignBytes, allocsize);
 
     // Linux-specific call to request huge pages, in case the aligned_alloc()
     // call above doesn't already trigger them (depends on transparent huge page
