@@ -431,10 +431,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     // futility pruning
     bool futility = false;
-    if (depth <= 6)
+    if (depth <= 8)
     {
         // reverse futility pruning
-        if (!isCheckbb && staticeval - depth * (72 - 20 * positionImproved) > beta)
+        if (!isCheckbb && staticeval - depth * (90 - 20 * positionImproved) > beta)
         {
             SDEBUGPRINT(isDebugPv, debugInsert, " Cutoff by reverse futility pruning: staticscore(%d) - revMargin(%d) > beta(%d)", staticeval, depth * (72 - 20 * positionImproved), beta);
             STATISTICSINC(prune_futility);
