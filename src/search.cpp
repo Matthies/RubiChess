@@ -792,7 +792,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
     int staticeval = NOSCORE;
     int eval_type = HASHALPHA;
     chessmove *m;
-    int extendall = 0;
     int lastmoveindex;
     int maxmoveindex;
 
@@ -839,10 +838,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
             return score;
         }
     }
-#if 0
-    if (isCheckbb)
-        extendall = 1;
-#endif
+
     if (!tbPosition)
     {
         // Reset move values
@@ -901,12 +897,12 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         int reduction = 0;
 
         // Late move reduction
-        if (!extendall && depth > 2 && !ISTACTICAL(m->code))
+        if (depth > 2 && !ISTACTICAL(m->code))
         {
             reduction = reductiontable[1][depth][min(63, i + 1)];
         }
 
-        int effectiveDepth = depth + extendall - reduction;
+        int effectiveDepth = depth - reduction;
 
         if (reduction)
         {
