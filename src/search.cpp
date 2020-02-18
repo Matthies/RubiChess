@@ -431,10 +431,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     // futility pruning
     bool futility = false;
-    if (depth <= 6)
+    if (depth <= 8)
     {
         // reverse futility pruning
-        if (!isCheckbb && staticeval - depth * (72 - 20 * positionImproved) > beta)
+        if (!isCheckbb && staticeval - depth * (70 - 20 * positionImproved) > beta)
         {
             SDEBUGPRINT(isDebugPv, debugInsert, " Cutoff by reverse futility pruning: staticscore(%d) - revMargin(%d) > beta(%d)", staticeval, depth * (72 - 20 * positionImproved), beta);
             STATISTICSINC(prune_futility);
@@ -792,7 +792,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
     int staticeval = NOSCORE;
     int eval_type = HASHALPHA;
     chessmove *m;
-    int extendall = 0;
     int lastmoveindex;
     int maxmoveindex;
 
@@ -839,9 +838,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
             return score;
         }
     }
-
-    if (isCheckbb)
-        extendall = 1;
 
     if (!tbPosition)
     {
@@ -901,12 +897,12 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         int reduction = 0;
 
         // Late move reduction
-        if (!extendall && depth > 2 && !ISTACTICAL(m->code))
+        if (depth > 2 && !ISTACTICAL(m->code))
         {
             reduction = reductiontable[1][depth][min(63, i + 1)];
         }
 
-        int effectiveDepth = depth + extendall - reduction;
+        int effectiveDepth = depth - reduction;
 
         if (reduction)
         {
