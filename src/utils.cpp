@@ -578,39 +578,55 @@ char *texelpts = NULL;
 U64 texelptsnum;
 
 
-static int getGradientValue(struct tuner *tn, positiontuneset *p, evalparam *e)
+static int getGradientValue(eval *ev, positiontuneset *p, evalparam *e, bool debug = false)
 {
     int v = 0;
     int complexity = 0;
     int sqsum[4][2] = { { 0 } };
     for (int i = 0; i < p->num; i++)
     {
-        int type = tn->ev[e->index].type;
+        int type = ev[e->index].type;
+        if (debug)
+            printf("%30s ", nameTunedParameter(&pos, e->index).c_str());
         if (type <= 1)
         {
-            v += tn->ev[e->index] * e->g[0];
+            v += ev[e->index] * e->g[0];
+            if (debug)
+                printf(" %08x * %3d = %08x \n", ev[e->index].v, e->g[0], ev[e->index] * e->g[0]);
         }
         else if (type == 2)
         {
-            int sqindex = tn->ev[e->index].groupindex;
-            sqsum[sqindex][0] += tn->ev[e->index] * e->g[0];
-            sqsum[sqindex][1] += tn->ev[e->index] * e->g[1];
+            int sqindex = ev[e->index].groupindex;
+            sqsum[sqindex][0] += ev[e->index] * e->g[0];
+            sqsum[sqindex][1] += ev[e->index] * e->g[1];
+            if (debug) {
+                printf(" sq0: %d * %d = %d \n", ev[e->index].v, e->g[0], ev[e->index] * e->g[0]);
+                printf(" sq1: %d * %d = %d \n", ev[e->index].v, e->g[1], ev[e->index] * e->g[1]);
+            }
         }
         else {
-            complexity += tn->ev[e->index] * e->g[0];
+            complexity += ev[e->index] * e->g[0];
+            if (debug)
+                printf(" Compl: %08x * %3d = %08x \n", ev[e->index].v, e->g[0], ev[e->index] * e->g[0]);
         }
         e++;
     }
+    if (debug)
+        printf("linear gesamt: %08x\n", v);
     for (int i = 0; i < 4; i++)
     {
         if (sqsum[i][0] == 0 && sqsum[i][1] == 0) continue;
         v += SQRESULT(sqsum[i][0], 0) + SQRESULT(sqsum[i][1], 1);
+        if (debug)
+            printf("sq-gesamt: %3d + %3d = %3d\n", SQRESULT(sqsum[i][0], 0), SQRESULT(sqsum[i][1], 1), SQRESULT(sqsum[i][0], 0) + SQRESULT(sqsum[i][1], 1));
     }
 
     // compelexity
     int evaleg = GETEGVAL(v);
     int sign = (evaleg > 0) - (evaleg < 0);
     v += sign * max(complexity, -abs(evaleg));
+    if (debug)
+        printf("gesamt: %08x\n", v);
 
     return v;
 }
@@ -631,7 +647,7 @@ static double TexelEvalError(struct tuner *tn)
         if (p->sc == SCALE_DRAW)
             Qi = SCOREDRAW;
         else
-            Qi = TAPEREDANDSCALEDEVAL(getGradientValue(tn, p, e), p->ph, p->sc);
+            Qi = TAPEREDANDSCALEDEVAL(getGradientValue(tn->ev, p, e), p->ph, p->sc);
         double sigmoid = 1 / (1 + pow(10.0, - texel_k * Qi / 400.0));
         E += (Ri - sigmoid) * (Ri - sigmoid);
         p = (positiontuneset*)((char*)p + sizeof(positiontuneset) + p->num * sizeof(evalparam));
@@ -772,12 +788,10 @@ static void getGradsFromFen(string fenfilenames)
                         for (int i = 0; i < pos.pts.num; i++)
                         {
                             *e = pos.ev[i];
-                            //printf("%20s: %08x  %3d\n", pos.tps.name[e->index].c_str(), *pos.tps.ev[i], e->g);
                             int ty = pos.tps.ev[e->index]->type;
                             if (ty != 2)
                             {
                                 Q[ty] += e->g[0] * *pos.tps.ev[e->index];
-                                //printf("l %3d: %3d * %08x         = %08x\n", e->index, e->g[0], (int)*pos.tps.ev[e->index], Qa);
                             }
                             else
                             {
@@ -800,7 +814,10 @@ static void getGradsFromFen(string fenfilenames)
                         if (MATEDETECTED(Qi))
                             n--;
                         else if (Qi != (nextpts->sc == SCALE_DRAW ? SCOREDRAW : Qr))
-                            printf("%d  Alarm. Gradient evaluation differs from qsearch value: %d != %d.\n", n, Qr, Qi);
+                        {
+                            printf("\n%d  Alarm. Gradient evaluation differs from qsearch value: %d != %d.\nFEN: %s\n", n, Qr, Qi, fen.c_str());
+                            getGradientValue(*pos.tps.ev, nextpts, (evalparam *)(pnext + sizeof(positiontuneset)), true);
+                        }
                         else
                         {
                             //printf("%d  gesamt: %08x\n", n, Q);
@@ -1099,6 +1116,7 @@ void TexelTune(string fenfilenames, bool noqs)
     pos.noQs = noqs;
     en.setOption("hash", "4"); // we don't need tt; save all the memory for game data
     getGradsFromFen(fenfilenames);
+    if (!texelptsnum) return;
 
     printf("Tuning starts now.\nPress 'P' to output current parameters.\nPress 'B' to break after current tuning loop.\nPress 'S' for immediate break.\n\n");
 

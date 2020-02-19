@@ -167,7 +167,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         if (staticeval > alpha)
         {
 #ifdef EVALTUNE
-            getPositionTuneSet(&targetpts, &ev[0]);
+            getPositionTuneSet(&targetpts, &myev[0]);
             foundpts = true;
 #endif
             alpha = staticeval;
@@ -222,14 +222,14 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
                 alpha = score;
 #ifdef EVALTUNE
                 foundpts = true;
-                copyPositionTuneSet(&this->pts, &this->ev[0], &targetpts, &ev[0]);
+                copyPositionTuneSet(&this->pts, &this->ev[0], &targetpts, &myev[0]);
 #endif
             }
         }
     }
 #ifdef EVALTUNE
     if (foundpts)
-        copyPositionTuneSet(&targetpts, &ev[0], &this->pts, &this->ev[0]);
+        copyPositionTuneSet(&targetpts, &myev[0], &this->pts, &this->ev[0]);
 #endif
 
     if (myIsCheck && !ms.legalmovenum)
