@@ -344,6 +344,7 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
                 ((fenFound = regex_search(line, match, regex("\\[FEN\\s+\"(.*)\"")))
                     || !regex_search(line, match, regex("\\["))))
             {
+                line = match.suffix();
                 newfen = fenFound ? match.str(1) : STARTFEN;
                 newgamestarts++;
                 valueChecked = true;
