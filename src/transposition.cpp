@@ -83,12 +83,6 @@ unsigned long long zobrist::getRnd()
 }
 
 
-u8 zobrist::modHash(int i)
-{
-    return 0;
-}
-
-
 u8 zobrist::getHash(chessposition *pos)
 {
     u8 hash = 0;

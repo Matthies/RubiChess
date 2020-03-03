@@ -104,13 +104,13 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 #ifdef EVALTUNE
     if (depth < 0) isQuiet = false;
     positiontuneset targetpts;
-    evalparam ev[NUMOFEVALPARAMS];
+    evalparam myev[NUMOFEVALPARAMS];
     if (noQs)
     {
         // just evaluate and return (for tuning sets with just quiet positions)
         score = S2MSIGN(state & S2MMASK) * getEval<NOTRACE>();
-        getPositionTuneSet(&targetpts, &ev[0]);
-        copyPositionTuneSet(&targetpts, &ev[0], &this->pts, &this->ev[0]);
+        getPositionTuneSet(&targetpts, &myev[0]);
+        copyPositionTuneSet(&targetpts, &myev[0], &this->pts, &this->ev[0]);
         return score;
     }
 
@@ -166,7 +166,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         if (staticeval > alpha)
         {
 #ifdef EVALTUNE
-            getPositionTuneSet(&targetpts, &ev[0]);
+            getPositionTuneSet(&targetpts, &myev[0]);
             foundpts = true;
 #endif
             alpha = staticeval;
@@ -219,14 +219,14 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
                 alpha = score;
 #ifdef EVALTUNE
                 foundpts = true;
-                copyPositionTuneSet(&this->pts, &this->ev[0], &targetpts, &ev[0]);
+                copyPositionTuneSet(&this->pts, &this->ev[0], &targetpts, &myev[0]);
 #endif
             }
         }
     }
 #ifdef EVALTUNE
     if (foundpts)
-        copyPositionTuneSet(&targetpts, &ev[0], &this->pts, &this->ev[0]);
+        copyPositionTuneSet(&targetpts, &myev[0], &this->pts, &this->ev[0]);
 #endif
 
     if (myIsCheck && !ms.legalmovenum)
@@ -411,10 +411,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     // futility pruning
     bool futility = false;
-    if (depth <= 6)
+    if (depth <= 8)
     {
         // reverse futility pruning
-        if (!isCheckbb && staticeval - depth * (72 - 20 * positionImproved) > beta)
+        if (!isCheckbb && staticeval - depth * (70 - 20 * positionImproved) > beta)
         {
             STATISTICSINC(prune_futility);
             SDEBUGDO(isDebugPv, pvabortval[ply] = staticeval; pvaborttype[ply] = PVA_REVFUTILITYPRUNED;);
@@ -766,7 +766,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
     int staticeval = NOSCORE;
     int eval_type = HASHALPHA;
     chessmove *m;
-    int extendall = 0;
     int lastmoveindex;
     int maxmoveindex;
 
@@ -800,30 +799,19 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         && !useRootmoveScore
         && tp.probeHash(hash, &score, &staticeval, &hashmovecode, depth, alpha, beta, 0))
     {
-        if (!testRepetiton())
+        // Hash is fixed regarding scores that don't see actual 3folds so we can trust the entry
+        uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
+        if (fullhashmove)
         {
-            // Not a single repetition so we trust the hash value but in some very rare cases it could happen that
-            // a. the hashmove triggers 3-fold directly
-            // b. the hashmove allows the opponent to get a 3-fold
-            // see rep.txt in the test folder for examples
-            // maybe this could be fixed in the future by using cuckoo tables like SF does it
-            // https://marcelk.net/2013-04-06/paper/upcoming-rep-v2.pdf
-            uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
-            if (fullhashmove)
-            {
-                if (bestmove.code != fullhashmove) {
-                    bestmove.code = fullhashmove;
-                    if (doPonder) pondermove.code = 0;
-                }
-                updatePvTable(fullhashmove, false);
-                if (score > alpha) bestmovescore[0] = score;
-                SDEBUGDO(true, pvabortval[0] = score; if (debugMove.code == (fullhashmove & 0xefff)) pvaborttype[ply] = PVA_FROMTT; else pvaborttype[ply] = PVA_DIFFERENTFROMTT; );
-                return score;
+            if (bestmove.code != fullhashmove) {
+                bestmove.code = fullhashmove;
+                if (doPonder) pondermove.code = 0;
             }
+            updatePvTable(fullhashmove, false);
+            if (score > alpha) bestmovescore[0] = score;
+            return score;
         }
     }
-    if (isCheckbb)
-        extendall = 1;
 
     if (!tbPosition)
     {
@@ -885,34 +873,32 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         int reduction = 0;
 
         // Late move reduction
-        if (!extendall && depth > 2 && !ISTACTICAL(m->code))
+        if (depth > 2 && !ISTACTICAL(m->code))
         {
-            reduction = reductiontable[0][depth][min(63, i + 1)];
+            reduction = reductiontable[1][depth][min(63, i + 1)];
         }
 
-        int effectiveDepth;
-        if (eval_type != HASHEXACT)
+        int effectiveDepth = depth - reduction;
+
+        if (reduction)
         {
-            // First move ("PV-move"); do a normal search
-            effectiveDepth = depth + extendall - reduction;
-            score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
-            if (reduction && score > alpha)
+            // LMR search; test against alpha
+            score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
+            if (score > alpha)
             {
                 // research without reduction
                 effectiveDepth += reduction;
-                score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
+                score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
             }
         }
-        else {
-            // try a PV-Search
-            effectiveDepth = depth + extendall;
+        else if (i > 0)
+        {
+            // Not the first move; test against alpha
             score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
-            if (score > alpha && score < beta)
-            {
-                // reasearch with full window
-                score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
-            }
         }
+        // (re)search with full window if necessary
+        if (i == 0 || score > alpha)
+            score = -alphabeta(-beta, -alpha, effectiveDepth - 1);
 
         SDEBUGDO(isDebugMove, pvabortval[0] = score;)
 
@@ -949,7 +935,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                     memcpy(multipvtable[newindex], srctable, sizeof(multipvtable[newindex]));
                     newindex--;
                 }
-                updateMultiPvTable(newindex, m->code, true);
+                updateMultiPvTable(newindex, m->code);
 
                 bestmovescore[newindex] = score;
                 if (lastmoveindex < maxmoveindex - 1)
@@ -994,9 +980,9 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                 if (!ISTACTICAL(m->code))
                 {
                     updateHistory(m->code, ms.cmptr, depth * depth);
-                    for (int i = 0; i < quietsPlayed - 1; i++)
+                    for (int q = 0; q < quietsPlayed - 1; q++)
                     {
-                        uint32_t qm = quietMoves[i];
+                        uint32_t qm = quietMoves[q];
                         updateHistory(qm, ms.cmptr, -(depth * depth));
                     }
 
@@ -1044,20 +1030,19 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, in
     en.lastReport = msRun;
     string pvstring = pos->getPv(mpvIndex ? pos->multipvtable[mpvIndex] : pos->lastpv);
     U64 nodes = en.getTotalNodes();
+    U64 nps = (nowtime == en.starttime) ? 1 : nodes / 1024 * en.frequency / (nowtime - en.starttime) * 1024;  // lower resolution to avoid overflow under Linux in high performance systems
 
     if (!MATEDETECTED(score))
     {
         sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score cp %d %s nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
-            thr->depth, pos->seldepth, mpvIndex + 1, msRun, score, boundscore[inWindow], nodes,
-            (nowtime > en.starttime ? nodes * en.frequency / (nowtime - en.starttime) : 1),
+            thr->depth, pos->seldepth, mpvIndex + 1, msRun, score, boundscore[inWindow], nodes, nps,
             en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
     }
     else
     {
         int matein = (score > 0 ? (SCOREWHITEWINS - score + 1) / 2 : (SCOREBLACKWINS - score) / 2);
         sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score mate %d nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
-            thr->depth, pos->seldepth, mpvIndex + 1, msRun, matein, nodes,
-            (nowtime > en.starttime ? nodes * en.frequency / (nowtime - en.starttime) : 1),
+            thr->depth, pos->seldepth, mpvIndex + 1, msRun, matein, nodes, nps,
             en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
     }
     cout << s;
@@ -1206,7 +1191,7 @@ static void search_gen1(searchthread *thr)
                 if (inWindow == 1)
                 {
                     // MultiPV output only if in aspiration window
-                    int i = 0;
+                    i = 0;
                     int maxmoveindex = min(en.MultiPV, pos->rootmovelist.length);
                     do
                     {

@@ -467,7 +467,6 @@ void evaluateMoves(chessmovelist *ml, chessposition *pos, int16_t **cmptr)
 
 void chessposition::getRootMoves()
 {
-    // Precalculating the list of legal moves didn't work well for some unknown reason but we need the number of legal moves in MultiPV mode
     chessmovelist movelist;
     prepareStack();
     movelist.length = getMoves(&movelist.move[0]);
@@ -475,11 +474,47 @@ void chessposition::getRootMoves()
 
     int bestval = SCOREBLACKWINS;
     rootmovelist.length = 0;
+
+    uint16_t moveTo3fold = 0;
+    bool bImmediate3fold = false;
+    int ttscore, tteval;
+    uint16_t tthashmovecode;
+    bool tthit = tp.probeHash(hash, &ttscore, &tteval, &tthashmovecode, 0, SHRT_MIN + 1, SHRT_MAX, 0);
+
     excludemovestack[0] = 0; // FIXME: Not very nice; is it worth to do do singular testing in root search?
     for (int i = 0; i < movelist.length; i++)
     {
         if (playMove(&movelist.move[i]))
         {
+            if (tthit)
+            {
+                // Test for immediate or possible 3fold to fix a possibly wrong hash entry
+                if (testRepetiton() >= 2)
+                {
+                    // This move triggers 3fold; remember move to update hash
+                    bImmediate3fold = true;
+                    moveTo3fold = movelist.move[i].code;
+                }
+                else if ((uint16_t)movelist.move[i].code == tthashmovecode)
+                {
+                    // Test if this move makes a 3fold possible for opponent
+                    prepareStack();
+                    chessmovelist followupmovelist;
+                    followupmovelist.length = getMoves(&followupmovelist.move[0]);
+                    for (int j = 0; j < followupmovelist.length; j++)
+                    {
+                        if (playMove(&followupmovelist.move[j]))
+                        {
+                            if (testRepetiton() >= 2)
+                                // 3fold for opponent is possible
+                                moveTo3fold = movelist.move[i].code;
+
+                            unplayMove(&followupmovelist.move[j]);
+                        }
+                    }
+                }
+            }
+
             rootmovelist.move[rootmovelist.length++] = movelist.move[i];
             unplayMove(&movelist.move[i]);
             if (bestval < movelist.move[i].value)
@@ -489,6 +524,9 @@ void chessposition::getRootMoves()
             }
         }
     }
+    if (moveTo3fold)
+        // Hashmove triggers 3fold immediately or with following move; fix hash
+        tp.addHash(hash, SCOREDRAW, tteval, bImmediate3fold ? HASHBETA : HASHALPHA, MAXDEPTH, moveTo3fold);
 }
 
 
@@ -532,7 +570,9 @@ void chessposition::tbFilterRootMoves()
 }
 
 
-/* test the actualmove for three-fold-repetition as the repetition table may give false positive due to table collisions */
+// test the actual move for three-fold-repetition
+// maybe this could be fixed in the future by using cuckoo tables like SF does it
+// https://marcelk.net/2013-04-06/paper/upcoming-rep-v2.pdf
 int chessposition::testRepetiton()
 {
     int hit = 0;
@@ -651,23 +691,23 @@ uint32_t chessposition::shortMove2FullMove(uint16_t c)
     myassert(capture >= BLANK && capture <= BKING, this, 1, capture);
     myassert(pc >= WPAWN && pc <= BKING, this, 1, pc);
 
-    int ept = 0;
+    int myept = 0;
     if (p == PAWN)
     {
         if (FILE(from) != FILE(to) && capture == BLANK)
         {
             // ep capture
             capture = pc ^ S2MMASK;
-            ept = ISEPCAPTURE;
+            myept = ISEPCAPTURE;
         }
         else if ((from ^ to) == 16 && (epthelper[to] & piece00[pc ^ 1]))
         {
             // double push enables epc
-            ept = (from + to) / 2;
+            myept = (from + to) / 2;
         }
     }
 
-    uint32_t fc = (pc << 28) | (ept << 20) | (capture << 16) | c;
+    uint32_t fc = (pc << 28) | (myept << 20) | (capture << 16) | c;
     if (moveIsPseudoLegal(fc))
         return fc;
     else
@@ -686,7 +726,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
     PieceCode pc = GETPIECE(c);
     PieceCode capture = GETCAPTURE(c);
     PieceType p = pc >> 1;
-    unsigned int s2m = (pc & S2MMASK);
+    unsigned int piececol = (pc & S2MMASK);
 
     myassert(pc >= WPAWN && pc <= BKING, this, 1, pc);
 
@@ -699,7 +739,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
         return false;
 
     // correct color of capture? capturing the king is illegal
-    if (capture && (s2m == (capture & S2MMASK) || capture >= WKING))
+    if (capture && (piececol == (capture & S2MMASK) || capture >= WKING))
         return false;
 
     myassert(capture >= BLANK && capture <= BQUEEN, this, 1, capture);
@@ -709,7 +749,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
         return false;
 
     // correct s2m?
-    if (s2m != (state & S2MMASK))
+    if (piececol != (state & S2MMASK))
         return false;
 
     // only pawn can promote
@@ -727,9 +767,9 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
                 return false;
 
             // test if "making ep capture possible" is both true or false
-            int ept = GETEPT(c);
+            int myept = GETEPT(c);
             {
-                if (!ept == (bool)(epthelper[to] & piece00[pc ^ 1]))
+                if (!myept == (bool)(epthelper[to] & piece00[pc ^ 1]))
                     return false;
             }
         }
@@ -740,7 +780,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
                 return false;
 
             // missing promotion
-            if (RRANK(to, s2m) == 7 && !GETPROMOTION(c))
+            if (RRANK(to, piececol) == 7 && !GETPROMOTION(c))
                 return false;
         }
     }
@@ -978,10 +1018,10 @@ string chessposition::toFen()
 }
 
 
-void chessposition::updateMultiPvTable(int pvindex, uint32_t movecode, bool recursive)
+void chessposition::updateMultiPvTable(int pvindex, uint32_t mc)
 {
     uint32_t *table = (pvindex ? multipvtable[pvindex] : pvtable[0]);
-    table[0] = movecode;
+    table[0] = mc;
     int i = 0;
     while (pvtable[1][i])
     {
@@ -992,9 +1032,9 @@ void chessposition::updateMultiPvTable(int pvindex, uint32_t movecode, bool recu
 }
 
 
-void chessposition::updatePvTable(uint32_t movecode, bool recursive)
+void chessposition::updatePvTable(uint32_t mc, bool recursive)
 {
-    pvtable[ply][0] = movecode;
+    pvtable[ply][0] = mc;
     int i = 0;
     if (recursive)
     {
@@ -1376,8 +1416,8 @@ void initBitmaphelper()
 
 void chessposition::BitboardSet(int index, PieceCode p)
 {
-    myassert(index >= 0 && index < 64, this, 0);
-    myassert(p >= BLANK && p <= BKING, this, 0);
+    myassert(index >= 0 && index < 64, this, 1, index);
+    myassert(p >= BLANK && p <= BKING, this, 1, p);
     int s2m = p & 0x1;
     piece00[p] |= BITSET(index);
     occupied00[s2m] |= BITSET(index);
@@ -1387,8 +1427,8 @@ void chessposition::BitboardSet(int index, PieceCode p)
 
 void chessposition::BitboardClear(int index, PieceCode p)
 {
-    myassert(index >= 0 && index < 64, this, 0);
-    myassert(p >= BLANK && p <= BKING, this, 0);
+    myassert(index >= 0 && index < 64, this, 1, index);
+    myassert(p >= BLANK && p <= BKING, this, 1, p);
     int s2m = p & 0x1;
     piece00[p] ^= BITSET(index);
     occupied00[s2m] ^= BITSET(index);
@@ -1398,9 +1438,9 @@ void chessposition::BitboardClear(int index, PieceCode p)
 
 void chessposition::BitboardMove(int from, int to, PieceCode p)
 {
-    myassert(from >= 0 && from < 64, this, 0);
-    myassert(to >= 0 && to < 64, this, 0);
-    myassert(p >= BLANK && p <= BKING, this, 0);
+    myassert(from >= 0 && from < 64, this, 1, from);
+    myassert(to >= 0 && to < 64, this, 1, to);
+    myassert(p >= BLANK && p <= BKING, this, 1, p);
     int s2m = p & 0x1;
     piece00[p] ^= (BITSET(from) | BITSET(to));
     occupied00[s2m] ^= (BITSET(from) | BITSET(to));
@@ -2180,16 +2220,19 @@ chessmove* MoveSelector::next()
     {
     case INITSTATE:
         state++;
+        // fall through
     case HASHMOVESTATE:
         state++;
         if (hashmove.code)
         {
             return &hashmove;
         }
+        // fall through
     case TACTICALINITSTATE:
         state++;
         captures->length = CreateMovelist<TACTICAL>(pos, &captures->move[0]);
         evaluateMoves<CAPTURE>(captures, pos, &cmptr[0]);
+        // fall through
     case TACTICALSTATE:
         while ((m = captures->getNextMove(0)))
         {
@@ -2206,28 +2249,33 @@ chessmove* MoveSelector::next()
         state++;
         if (onlyGoodCaptures)
             return nullptr;
+        // fall through
     case KILLERMOVE1STATE:
         state++;
         if (pos->moveIsPseudoLegal(killermove1.code))
         {
             return &killermove1;
         }
+        // fall through
     case KILLERMOVE2STATE:
         state++;
         if (pos->moveIsPseudoLegal(killermove2.code))
         {
             return &killermove2;
         }
+        // fall through
     case COUNTERMOVESTATE:
         state++;
         if (pos->moveIsPseudoLegal(countermove.code))
         {
             return &countermove;
         }
+        // fall through
     case QUIETINITSTATE:
         state++;
         quiets->length = CreateMovelist<QUIET>(pos, &quiets->move[0]);
         evaluateMoves<QUIET>(quiets, pos, &cmptr[0]);
+        // fall through
     case QUIETSTATE:
         while ((m = quiets->getNextMove()))
         {
@@ -2239,6 +2287,7 @@ chessmove* MoveSelector::next()
                 return m;
         }
         state++;
+        // fall through
     case BADTACTICALSTATE:
         while ((m = captures->getNextMove()))
         {
@@ -2248,12 +2297,14 @@ chessmove* MoveSelector::next()
                 return m;
         }
         state++;
+        // fall through
     case BADTACTICALEND:
         return nullptr;
     case EVASIONINITSTATE:
         state++;
         captures->length = CreateMovelist<EVASION>(pos, &captures->move[0]);
         evaluateMoves<ALL>(captures, pos, &cmptr[0]);
+        // fall through
     case EVASIONSTATE:
         while ((m = captures->getNextMove()))
         {
@@ -2261,6 +2312,7 @@ chessmove* MoveSelector::next()
             return m;
         }
         state++;
+        // fall through
     default:
         return nullptr;
     }

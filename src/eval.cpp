@@ -22,10 +22,10 @@
 
 // static values for the search/pruning/material stuff
 const int materialvalue[7] = { 0,  100,  314,  314,  483,  913, 32509 };  // some evaluation depends on bishop value >= knight value!!!
-const int maxmobility[4] = { 9, 14, 15, 28 }; // indexed by piece - 2
 
 #ifdef EVALTUNE
 
+const int maxmobility[4] = { 9, 14, 15, 28 }; // indexed by piece - 2
 sqevallist sqglobal;
 
 void chessposition::resetTuner()
@@ -161,11 +161,11 @@ void registeralltuners(chessposition *pos)
 
     tuneIt = false;
     registertuner(pos, &eps.eRookon7thbonus, "eRookon7thbonus", 0, 0, 0, 0, tuneIt);
-#if 0
-    tuneIt = true;
-    for (i = 0; i < 2; i++)
-        registertuner(pos, &eps.eMinoroutpost[i], "eMinoroutpost", i, 2, 0, 0, tuneIt);
-#endif
+
+    tuneIt = false;
+    for (i = 0; i < 6; i++)
+        registertuner(pos, &eps.eMinorbehindpawn[i], "eMinorbehindpawn", i, 6, 0, 0, tuneIt);
+
     tuneIt = false;
     for (i = 0; i < 2; i++)
         registertuner(pos, &eps.eSlideronfreefilebonus[i], "eSlideronfreefilebonus", i, 2, 0, 0, tuneIt);
@@ -174,19 +174,18 @@ void registeralltuners(chessposition *pos)
     registertuner(pos, &eps.eKingshieldbonus, "eKingshieldbonus", 0, 0, 0, 0, tuneIt);
 
     // kingdanger evals
-    tuneIt = true;
+    tuneIt = false;
     registertuner(pos, &eps.eWeakkingringpenalty, "eWeakkingringpenalty", 0, 0, 0, 0, tuneIt);
     for (i = 0; i < 7; i++)
         registertuner(pos, &eps.eKingattackweight[i], "eKingattackweight", i, 7, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eSafecheckbonus[i], "eSafecheckbonus", i, 6, 0, 0, tuneIt && (i >= KNIGHT && i <= QUEEN));
     registertuner(pos, &eps.eKingdangerbyqueen, "eKingdangerbyqueen", 0, 0, 0, 0, tuneIt);
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eKingringattack[i], "eKingringattack", i, 6, 0, 0, tuneIt);
-    tuneIt = true;
     
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
             registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
@@ -441,19 +440,20 @@ int chessposition::getPieceEval(positioneval *pe)
 
         if (Pt == KNIGHT)
             attack = knight_attacks[index];
-#if 0
+
         if (Pt == KNIGHT || Pt == BISHOP)
         {
-            // bonus for (protected) outpost minor
-            if ((BITSET(index) & OUTPOSTAREA(Me)) && !(passedPawnMask[index][Me] & piece00[WPAWN | You]))
+            U64 minorbb = BITSET(index);
+            // bonus depending on rank if minor is shielded by pawn
+            bool isBehindPawn = (minorbb & PAWNPUSH(You, piece00[WPAWN + Me]));
+            if (isBehindPawn)
             {
-                bool isProtected = (BITSET(index) & attackedBy[Me][PAWN]);
-                bool isCentral = (BITSET(index) & ~(FILEABB | FILEHBB));
-                result += EVAL(eps.eMinoroutpost[isProtected], S2MSIGN(Me) * (1 + isCentral));
-                if (bTrace) te.bishops[Me] += EVAL(eps.eMinoroutpost[isProtected], S2MSIGN(Me) * (1 + isCentral));
+                int r = RRANK(index, Me);
+                result += EVAL(eps.eMinorbehindpawn[r], S2MSIGN(Me));
+                if (bTrace) te.bishops[Me] += EVAL(eps.eMinorbehindpawn[r], S2MSIGN(Me));
             }
         }
-#endif
+
         // update attack bitboard
         attackedBy[Me][Pt] |= attack;
         attackedBy2[Me] |= (attackedBy[Me][0] & attack);
@@ -609,7 +609,7 @@ template <EvalType Et>
 int chessposition::getEval()
 {
     const bool bTrace = (Et == TRACE);
-    if (bTrace) te = { 0 };
+    if (bTrace) te = { { 0 }, { 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 } };
 #ifdef EVALTUNE
     resetTuner();
     getpsqval();
@@ -686,9 +686,9 @@ int chessposition::getEval()
 }
 
 
-int chessposition::getComplexity(int eval, pawnhashentry *phentry, Materialhashentry *mhentry)
+int chessposition::getComplexity(int val, pawnhashentry *phentry, Materialhashentry *mhentry)
 {
-        int evaleg = GETEGVAL(eval);
+        int evaleg = GETEGVAL(val);
         int sign = (evaleg > 0) - (evaleg < 0);
         int complexity = EEVAL(eps.eComplexpawnsbonus, mhentry->numOfPawns);
         complexity += EEVAL(eps.eComplexpawnflanksbonus, phentry->bothFlanks);

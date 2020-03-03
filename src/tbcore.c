@@ -293,12 +293,12 @@ void init_tablebases(char *path)
   }
 
   // if path is an empty string or equals "<empty>", we are done.
-  char *p = path;
-  if (strlen(p) == 0 || !strcmp(p, "<empty>")) return;
+  char *pa = path;
+  if (strlen(pa) == 0 || !strcmp(pa, "<empty>")) return;
 
-  size_t l = strlen(p) + 1;
+  size_t l = strlen(pa) + 1;
   path_string = (char *)malloc(l);
-  strcpy(path_string, p);
+  strcpy(path_string, pa);
   num_paths = 0;
   for (i = 0;; i++) {
     if (path_string[i] != SEP_CHAR)
