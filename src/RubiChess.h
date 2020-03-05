@@ -24,7 +24,7 @@
 #define STATISTICS
 #endif
 
-#if 1
+#if 0
 #define SDEBUG
 #endif
 
@@ -1038,8 +1038,6 @@ public:
 #ifdef SDEBUG
     unsigned long long debughash = 0;
     uint16_t pvdebug[MAXMOVESEQUENCELENGTH];
-    //bool debugRecursive;
-    //bool debugOnlySubtree;
     int pvdepth[MAXMOVESEQUENCELENGTH];
     int pvmovenum[MAXMOVESEQUENCELENGTH];
     PvAbortType pvaborttype[MAXMOVESEQUENCELENGTH];
@@ -1121,7 +1119,6 @@ public:
 
 #ifdef SDEBUG
     bool triggerDebug(chessmove* nextmove);
-    //void sdebug(int indent, const char* format, ...);
     void pvdebugout();
 #endif
     int testRepetiton();
@@ -1243,10 +1240,8 @@ public:
 extern engine en;
 
 #ifdef SDEBUG
-//#define SDEBUGPRINT(b, d, f, ...) if (b) sdebug(d, f, ##__VA_ARGS__)
 #define SDEBUGDO(c, s) if (c) {s}
 #else
-//#define SDEBUGPRINT(b, d, f, ...)
 #define SDEBUGDO(c, s)
 #endif
 

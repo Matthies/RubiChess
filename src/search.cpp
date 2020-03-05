@@ -126,7 +126,6 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 #ifdef SDEBUG
     chessmove debugMove;
     bool isDebugPv = triggerDebug(&debugMove);
-    bool debugMovePlayed = false;
     SDEBUGDO(isDebugPv, pvaborttype[ply + 1] = PVA_UNKNOWN; pvdepth[ply] = depth; pvmovenum[ply] = -1;);
 #endif
 
@@ -396,9 +395,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         {
             if (depth == 1 && ralpha < alpha)
             {
-                int score = getQuiescence(alpha, beta, depth);
-                SDEBUGDO(isDebugPv, pvabortval[ply] = score; pvaborttype[ply] = PVA_RAZORPRUNED;);
-                return score;
+                int qscore = getQuiescence(alpha, beta, depth);
+                SDEBUGDO(isDebugPv, pvabortval[ply] = qscore; pvaborttype[ply] = PVA_RAZORPRUNED;);
+                return qscore;
             }
             int value = getQuiescence(ralpha, ralpha + 1, depth);
             if (value <= ralpha)
