@@ -393,17 +393,18 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         const int ralpha = alpha - 250 - depth * 50;
         if (staticeval < ralpha)
         {
+            int qscore;
             if (depth == 1 && ralpha < alpha)
             {
-                int qscore = getQuiescence(alpha, beta, depth);
+                qscore = getQuiescence(alpha, beta, depth);
                 SDEBUGDO(isDebugPv, pvabortval[ply] = qscore; pvaborttype[ply] = PVA_RAZORPRUNED;);
                 return qscore;
             }
-            int value = getQuiescence(ralpha, ralpha + 1, depth);
-            if (value <= ralpha)
+            qscore = getQuiescence(ralpha, ralpha + 1, depth);
+            if (qscore <= ralpha)
             {
-                SDEBUGDO(isDebugPv, pvabortval[ply] = value; pvaborttype[ply] = PVA_RAZORPRUNED;);
-                return value;
+                SDEBUGDO(isDebugPv, pvabortval[ply] = qscore; pvaborttype[ply] = PVA_RAZORPRUNED;);
+                return qscore;
             }
         }
     }
