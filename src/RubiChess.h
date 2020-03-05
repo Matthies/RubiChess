@@ -982,6 +982,11 @@ struct positioneval {
     int kingattackers[2];
 };
 
+#ifdef SDEBUG
+enum PvAbortType {
+    PVA_UNKNOWN = 0, PVA_FROMTT, PVA_DIFFERENTFROMTT, PVA_RAZORPRUNED, PVA_REVFUTILITYPRUNED, PVA_NMPRUNED, PVA_PROBCUTPRUNED, PVA_LMPRUNED,
+    PVA_FUTILITYPRUNED, PVA_SEEPRUNED, PVA_BADHISTORYPRUNED, PVA_MULTICUT, PVA_BESTMOVE, PVA_NOTBESTMOVE, PVA_OMITTED, PVA_BETACUT, PVA_BELOWALPHA }; 
+#endif
 
 class chessposition
 {
@@ -1033,8 +1038,10 @@ public:
 #ifdef SDEBUG
     unsigned long long debughash = 0;
     uint16_t pvdebug[MAXMOVESEQUENCELENGTH];
-    bool debugRecursive;
-    bool debugOnlySubtree;
+    int pvdepth[MAXMOVESEQUENCELENGTH];
+    int pvmovenum[MAXMOVESEQUENCELENGTH];
+    PvAbortType pvaborttype[MAXMOVESEQUENCELENGTH];
+    int pvabortval[MAXMOVESEQUENCELENGTH];
 #endif
     uint32_t pvtable[MAXDEPTH][MAXDEPTH];
     uint32_t multipvtable[MAXMULTIPV][MAXDEPTH];
@@ -1112,7 +1119,7 @@ public:
 
 #ifdef SDEBUG
     bool triggerDebug(chessmove* nextmove);
-    void sdebug(int indent, const char* format, ...);
+    void pvdebugout();
 #endif
     int testRepetiton();
     void mirror();
@@ -1233,9 +1240,9 @@ public:
 extern engine en;
 
 #ifdef SDEBUG
-#define SDEBUGPRINT(b, d, f, ...) if (b) sdebug(d, f, ##__VA_ARGS__)
+#define SDEBUGDO(c, s) if (c) {s}
 #else
-#define SDEBUGPRINT(b, d, f, ...)
+#define SDEBUGDO(c, s)
 #endif
 
 
