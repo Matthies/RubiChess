@@ -18,6 +18,10 @@
 
 #include "RubiChess.h"
 
+#if defined(__linux__)
+static const size_t HashAlignBytes = 2ull << 20;
+#include <sys/mman.h> // madvise
+#endif
 
 /* A small noncryptographic PRNG */
 /* http://www.burtleburtle.net/bob/rand/smallprng.html */
@@ -160,9 +164,23 @@ int transposition::setSize(int sizeMb)
     GETMSB(msb, maxsize);
     size = (1ULL << msb);
     restMb = (int)(((maxsize ^ size) >> 20) * sizeof(transpositioncluster));  // return rest for pawnhash
- 
     sizemask = size - 1;
-    table = (transpositioncluster*)malloc((size_t)(size * sizeof(transpositioncluster)));
+    size_t allocsize = (size_t)(size * sizeof(transpositioncluster));
+
+#if defined(__linux__)  // Many thanks to Sami Kiminki for advise on the huge page theory and for this patch
+    // Round up hashSize to the next 2M for alignment
+    allocsize = ((allocsize + HashAlignBytes - 1u) / HashAlignBytes) * HashAlignBytes;
+
+    table = (transpositioncluster*)aligned_alloc(HashAlignBytes, allocsize);
+
+    // Linux-specific call to request huge pages, in case the aligned_alloc()
+    // call above doesn't already trigger them (depends on transparent huge page
+    // settings)
+    madvise(table, allocsize, MADV_HUGEPAGE);
+#else
+    table = (transpositioncluster*)malloc(allocsize);
+#endif
+
     clean();
     return restMb;
 }
