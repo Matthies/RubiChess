@@ -162,7 +162,7 @@ void registeralltuners(chessposition *pos)
     tuneIt = false;
     registertuner(pos, &eps.eRookon7thbonus, "eRookon7thbonus", 0, 0, 0, 0, tuneIt);
 
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eMinorbehindpawn[i], "eMinorbehindpawn", i, 6, 0, 0, tuneIt);
 
@@ -188,7 +188,7 @@ void registeralltuners(chessposition *pos)
     tuneIt = true;
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
-            registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && i >= KNIGHT && i <= BISHOP && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
+            registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
 }
 #endif
 
