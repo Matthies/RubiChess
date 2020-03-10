@@ -345,15 +345,15 @@ struct evalparamset {
     };
     eval eBackwardpawnpenalty =  VALUE( -16, -11);
     eval eDoublebishopbonus =  VALUE(  56,  38);
-    eval ePawnblocksbishoppenalty =  VALUE( -11, -18);
     //eval eBishopcentercontrolbonus = VALUE(0, 0);
+    eval ePawnblocksbishoppenalty =  VALUE( -10, -18);
     eval eMobilitybonus[4][28] = {
         {  VALUE(  16, -90), VALUE(  38, -26), VALUE(  51,   1), VALUE(  57,  13), VALUE(  64,  27), VALUE(  71,  37), VALUE(  77,  36), VALUE(  84,  36),
            VALUE(  86,  30), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
-        {  VALUE(  21, -25), VALUE(  34,  -6), VALUE(  51,  13), VALUE(  59,  23), VALUE(  69,  34), VALUE(  75,  40), VALUE(  81,  43), VALUE(  81,  50),
-           VALUE(  84,  51), VALUE(  83,  55), VALUE(  85,  52), VALUE(  81,  47), VALUE(  72,  59), VALUE(  72,  31), VALUE(   0,   0), VALUE(   0,   0),
+        {  VALUE(  -7, -25), VALUE(  24,  -6), VALUE(  47,  -1), VALUE(  54,  21), VALUE(  67,  33), VALUE(  74,  39), VALUE(  81,  43), VALUE(  81,  50),
+           VALUE(  86,  51), VALUE(  85,  59), VALUE(  87,  53), VALUE(  92,  57), VALUE( 102,  53), VALUE(  90,  62), VALUE(   0,   0), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
         {  VALUE( -57,  11), VALUE(  14,  17), VALUE(  31,  57), VALUE(  34,  70), VALUE(  36,  82), VALUE(  38,  90), VALUE(  40,  92), VALUE(  46,  96),
@@ -400,14 +400,14 @@ struct evalparamset {
            VALUE( -27,  39), VALUE(  -1,  35), VALUE(  20,  35), VALUE(  17,  56), VALUE(  30,  50), VALUE(  30,  34), VALUE(  33,  30), VALUE(   6,  39),
            VALUE( -32,  54), VALUE( -19,  27), VALUE( -11,  40), VALUE(  15,  38), VALUE(  18,  33), VALUE(  15,  29), VALUE(   7,  43), VALUE(   1,  59),
            VALUE( -64,  50), VALUE(  -7,  41), VALUE( -24,  45), VALUE(   4,  48), VALUE(  12,  41), VALUE(  11,  28), VALUE(  -5,  42), VALUE( -32,  42)  },
-        {  VALUE(   5,  78), VALUE( -56,  94), VALUE(  30,  71), VALUE( -27,  82), VALUE( -40,  81), VALUE( -12,  78), VALUE( -18,  52), VALUE( -21,  59),
-           VALUE(  -6,  59), VALUE(  -2,  69), VALUE(   6,  72), VALUE(  29,  68), VALUE(  24,  63), VALUE(   1,  67), VALUE(  -6,  58), VALUE( -22,  59),
-           VALUE(  28,  66), VALUE(  40,  72), VALUE(  41,  70), VALUE(  66,  50), VALUE(  39,  59), VALUE(  87,  75), VALUE(  43,  68), VALUE(  65,  55),
-           VALUE(  15,  81), VALUE(  44,  74), VALUE(  53,  69), VALUE(  62,  81), VALUE(  72,  70), VALUE(  45,  77), VALUE(  65,  61), VALUE(  13,  71),
-           VALUE(  24,  70), VALUE(  24,  75), VALUE(  42,  76), VALUE(  60,  75), VALUE(  52,  74), VALUE(  50,  69), VALUE(  40,  62), VALUE(  64,  40),
-           VALUE(  25,  43), VALUE(  44,  70), VALUE(  31,  70), VALUE(  31,  67), VALUE(  37,  74), VALUE(  36,  70), VALUE(  51,  51), VALUE(  38,  56),
-           VALUE(  30,  46), VALUE(  29,  42), VALUE(  36,  39), VALUE(  15,  62), VALUE(  24,  60), VALUE(  46,  41), VALUE(  49,  43), VALUE(  41,  28),
-           VALUE(  25,  45), VALUE(  46,  30), VALUE(  32,  49), VALUE(  11,  57), VALUE(  32,  58), VALUE(  10,  64), VALUE(  30,  53), VALUE(  33,  30)  },
+        {  VALUE(   5,  79), VALUE( -51,  96), VALUE(  29,  73), VALUE( -29,  89), VALUE( -42,  83), VALUE( -12,  77), VALUE( -19,  53), VALUE( -21,  69),
+           VALUE(  -6,  60), VALUE(  -1,  70), VALUE(   6,  71), VALUE(  28,  67), VALUE(  21,  62), VALUE(   3,  66), VALUE(  -5,  52), VALUE( -23,  59),
+           VALUE(  27,  67), VALUE(  36,  75), VALUE(  40,  71), VALUE(  63,  50), VALUE(  40,  58), VALUE(  87,  66), VALUE(  40,  66), VALUE(  66,  55),
+           VALUE(  16,  79), VALUE(  42,  78), VALUE(  53,  68), VALUE(  61,  74), VALUE(  71,  65), VALUE(  44,  77), VALUE(  63,  64), VALUE(  13,  71),
+           VALUE(  26,  70), VALUE(  21,  74), VALUE(  41,  75), VALUE(  60,  72), VALUE(  50,  73), VALUE(  48,  68), VALUE(  40,  57), VALUE(  66,  43),
+           VALUE(  25,  45), VALUE(  45,  69), VALUE(  30,  69), VALUE(  29,  69), VALUE(  35,  74), VALUE(  36,  70), VALUE(  53,  52), VALUE(  37,  56),
+           VALUE(  33,  47), VALUE(  28,  44), VALUE(  34,  40), VALUE(  15,  63), VALUE(  24,  59), VALUE(  45,  45), VALUE(  49,  43), VALUE(  43,  37),
+           VALUE(  25,  48), VALUE(  47,  38), VALUE(  35,  50), VALUE(  14,  58), VALUE(  32,  61), VALUE(  13,  67), VALUE(  31,  55), VALUE(  41,  33)  },
         {  VALUE(  36, 113), VALUE( -12, 136), VALUE(  12, 131), VALUE(  12, 136), VALUE(   2, 123), VALUE(  20, 128), VALUE(  22, 121), VALUE(  54, 109),
            VALUE(   5, 114), VALUE(  -8, 125), VALUE(  10, 129), VALUE(  23, 120), VALUE(  15, 113), VALUE(  14, 114), VALUE(   9, 114), VALUE(  37, 102),
            VALUE(  -7, 141), VALUE(  21, 133), VALUE(  17, 138), VALUE(  21, 120), VALUE(  64, 103), VALUE(  64, 105), VALUE(  83, 106), VALUE(  47, 108),

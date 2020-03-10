@@ -155,7 +155,7 @@ void registeralltuners(chessposition *pos)
     registertuner(pos, &eps.ePawnblocksbishoppenalty, "ePawnblocksbishoppenalty", 0, 0, 0, 0, tuneIt);
     //registertuner(pos, &eps.eBishopcentercontrolbonus, "eBishopcentercontrolbonus", 0, 0, 0, 0, tuneIt);
 
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 28; j++)
             registertuner(pos, &eps.eMobilitybonus[i][j], "eMobilitybonus", j, 28, i, 4, tuneIt && i == BISHOP-2 && (j < maxmobility[i]));
