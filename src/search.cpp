@@ -252,7 +252,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     const bool PVNode = (alpha != beta - 1);
 
     nodes++;
-    if (!(nodes & 0x2fff))
+    if (!(nodes & 0x3fff))
         searchCheckForStop();
 
 
