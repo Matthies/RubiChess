@@ -91,6 +91,60 @@ string GetSystemInfo()
 #endif
 
 
+void generateEpd(string egn)
+{
+    chessposition *pos = &en.sthread[0].pos;
+    int pcs[16];
+
+    int n = 1000;
+    string eg = egn;
+    size_t si = egn.find('/');
+    if (si != string::npos)
+    {
+        try { n = stoi(egn.substr(si + 1)); }
+        catch (const invalid_argument&) {}
+        eg = egn.substr(0, si);
+    }
+
+    pos->halfmovescounter = pos->ept = 0;
+    pos->fullmovescounter = 1;
+    int i = 0;
+    srand((unsigned)time(NULL));
+    while (i < n)
+    {
+        getPcsFromStr(eg.c_str(), pcs);
+        memset(pos->mailbox, 0, sizeof(pos->mailbox));
+        memset(pos->piece00, 0, sizeof(pos->piece00));
+        pos->state = rand() % 1;
+        for (int p = PAWN; p <= KING; p++)
+            for (int c = WHITE; c <= BLACK; c++)
+            {
+                int pi = p + c * 8;
+                while (pcs[pi])
+                {
+                    int sq = rand() % 64;
+                    if (!pos->mailbox[sq] && (p != PAWN || (sq >= 8 && sq < 56)))
+                    {
+                        pos->mailbox[sq] = p * 2 + c;
+                        pos->piece00[p * 2 + c] = BITSET(sq);
+                        if (p == KING)
+                            pos->kingpos[c] = sq;
+                        pcs[pi]--;
+                    }
+                }
+            }
+        // Check if position is legal
+        bool isLegal = !pos->isAttackedBy<OCCUPIED>(pos->kingpos[pos->state ^ S2MMASK], pos->state)
+            && squareDistance[pos->kingpos[0]][pos->kingpos[1]] > 0;
+        if (isLegal)
+        {
+            i++;
+            cout << pos->toFen() << "\n";
+        }
+    }
+}
+
+
 long long engine::perft(int depth, bool dotests)
 {
     long long retval = 0;
@@ -879,6 +933,7 @@ int main(int argc, char* argv[])
     string engineprg;
     string logfile;
     string comparefile;
+    string genepd;
 #ifdef EVALTUNE
     string pgnconvertfile;
     string fentuningfiles;
@@ -909,6 +964,7 @@ int main(int argc, char* argv[])
         { "-compare", "for fast comparision against logfile from other engine (use with -enginetest)", &comparefile, 2, "" },
         { "-flags", "1=skip easy (0 sec.) compares; 2=break 5 seconds after first find; 4=break after compare time is over; 8=eval only (use with -enginetest)", &flags, 1, "0" },
         { "-option", "Set UCI option by commandline", NULL, 3, NULL },
+        { "-generate", "Generates epd file with n (default 1000) random endgame positions of the given type; format: egstr/n ", &genepd, 2, "" },
 #ifdef STACKDEBUG
         { "-assertfile", "output assert info to file", &en.assertfile, 2, "" },
 #endif
@@ -1007,6 +1063,10 @@ int main(int argc, char* argv[])
         //engine test mode
         testengine(epdfile, startnum, engineprg, logfile, comparefile, maxtime, flags);
 #endif
+    }
+    else if (genepd != "")
+    {
+        generateEpd(genepd);
     }
 #ifdef EVALTUNE
     else if (pgnconvertfile != "")

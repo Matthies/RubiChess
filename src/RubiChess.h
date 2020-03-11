@@ -496,6 +496,8 @@ enum EvalType { NOTRACE, TRACE};
 //
 // utils stuff
 //
+U64 calc_key_from_pcs(int *pcs, int mirror);
+void getPcsFromStr(const char* str, int *pcs);
 void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am);
 vector<string> SplitString(const char* s);
 unsigned char AlgebraicToIndex(string s);

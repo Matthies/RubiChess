@@ -18,6 +18,63 @@
 
 #include "RubiChess.h"
 
+// Produce a 64-bit material key corresponding to the material combination
+// defined by pcs[16], where pcs[1], ..., pcs[6] is the number of white
+// pawns, ..., kings and pcs[9], ..., pcs[14] is the number of black
+// pawns, ..., kings.
+// Again no need to be efficient here.
+U64 calc_key_from_pcs(int *pcs, int mirror)
+{
+    int color;
+    PieceType pt;
+    int i;
+    U64 key = 0;
+
+    color = !mirror ? 0 : 8;
+    for (pt = PAWN; pt <= KING; pt++)
+        for (i = 0; i < pcs[color + pt]; i++)
+            key ^= zb.boardtable[(i << 4) | (pt << 1)];
+    color ^= 8;
+    for (pt = PAWN; pt <= KING; pt++)
+        for (i = 0; i < pcs[color + pt]; i++)
+            key ^= zb.boardtable[(i << 4) | (pt << 1) | 1];
+
+    return key;
+}
+
+
+// Order of pieces taken from tbcore!
+void getPcsFromStr(const char* str, int *pcs)
+{
+    for (int i = 0; i < 16; i++)
+        pcs[i] = 0;
+    int color = 0;
+    for (const char *s = str; *s; s++)
+        switch (*s) {
+        case 'P':
+            pcs[PAWN | color]++;
+            break;
+        case 'N':
+            pcs[KNIGHT | color]++;
+            break;
+        case 'B':
+            pcs[BISHOP | color]++;
+            break;
+        case 'R':
+            pcs[ROOK | color]++;
+            break;
+        case 'Q':
+            pcs[QUEEN | color]++;
+            break;
+        case 'K':
+            pcs[KING | color]++;
+            break;
+        case 'v':
+            color = 0x08;
+            break;
+        }
+}
+
 
 void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am)
 {

@@ -2780,3 +2780,7 @@ template U64 chessposition::pieceMovesTo<QUEEN>(int);
 evalparamset eps;
 zobrist zb;
 engine en;
+
+// Explicit template instantiation
+// This avoids putting these definitions in header file
+template U64 chessposition::isAttackedBy<OCCUPIED>(int index, int col);
