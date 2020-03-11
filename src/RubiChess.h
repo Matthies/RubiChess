@@ -1266,7 +1266,9 @@ public:
     ~searchthread();
 };
 
-void searchguide();
+//void searchguide();
+void searchStart();
+void searchWaitStop();
 void searchinit();
 void resetEndTime(int constantRootMoves, bool complete = true);
 

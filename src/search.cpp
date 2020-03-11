@@ -1419,6 +1419,39 @@ void startSearchTime(bool complete = true)
 }
 
 
+void searchStart()
+{
+    startSearchTime();
+
+    en.moveoutput = false;
+    en.tbhits = en.sthread[0].pos.tbPosition;  // Rootpos in TB => report at least one tbhit
+
+    // increment generation counter for tt aging
+    tp.nextSearch();
+
+    if (en.MultiPV == 1 && !en.ponder)
+        for (int tnum = 0; tnum < en.Threads; tnum++)
+            en.sthread[tnum].thr = thread(&search_gen1<SinglePVSearch>, &en.sthread[tnum]);
+    else if (en.ponder)
+        for (int tnum = 0; tnum < en.Threads; tnum++)
+            en.sthread[tnum].thr = thread(&search_gen1<PonderSearch>, &en.sthread[tnum]);
+    else
+        for (int tnum = 0; tnum < en.Threads; tnum++)
+            en.sthread[tnum].thr = thread(&search_gen1<MultiPVSearch>, &en.sthread[tnum]);
+}
+
+
+void searchWaitStop()
+{
+    // Make the other threads stop now
+    en.stopLevel = ENGINESTOPIMMEDIATELY;
+    for (int tnum = 0; tnum < en.Threads; tnum++)
+        en.sthread[tnum].thr.join();
+    en.stopLevel = ENGINETERMINATEDSEARCH;
+}
+
+
+#if 0
 void searchguide()
 {
     startSearchTime();
@@ -1487,6 +1520,7 @@ void searchguide()
     search_statistics();
 #endif
 }
+#endif
 
 #ifdef STATISTICS
 void search_statistics()

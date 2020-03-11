@@ -2472,6 +2472,7 @@ void engine::setOption(string sName, string sValue)
     }
 }
 
+#if 0
 static void waitForSearchGuide(thread **th)
 {
     if (*th)
@@ -2482,6 +2483,7 @@ static void waitForSearchGuide(thread **th)
     }
     *th = nullptr;
 }
+#endif
 
 void engine::communicate(string inputstring)
 {
@@ -2494,14 +2496,14 @@ void engine::communicate(string inputstring)
     bool bGetName, bGetValue;
     string sName, sValue;
     bool bMoves;
-    thread *searchguidethread = nullptr;
+    //thread *searchguidethread = nullptr;
     bool pendingisready = false;
     bool pendingposition = (inputstring == "");
     do
     {
         if (stopLevel >= ENGINESTOPIMMEDIATELY)
         {
-            waitForSearchGuide(&searchguidethread);
+            searchWaitStop();
         }
         if (pendingisready || pendingposition)
         {
@@ -2511,7 +2513,7 @@ void engine::communicate(string inputstring)
                 if (stopLevel < ENGINESTOPIMMEDIATELY)
                 {
                     stopLevel = ENGINESTOPIMMEDIATELY;
-                    waitForSearchGuide(&searchguidethread);
+                    searchWaitStop();
                 }
                 rootposition.getFromFen(fen.c_str());
                 for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
@@ -2743,11 +2745,12 @@ void engine::communicate(string inputstring)
                 }
                 isWhite = (sthread[0].pos.w2m());
                 stopLevel = ENGINERUN;
-                searchguidethread = new thread(&searchguide);
+                //searchguidethread = new thread(&searchguide);
+                searchStart();
                 if (inputstring != "")
                 {
                     // bench mode; wait for end of search
-                    waitForSearchGuide(&searchguidethread);
+                    searchWaitStop();
                 }
                 break;
             case PONDERHIT:
@@ -2765,7 +2768,7 @@ void engine::communicate(string inputstring)
             }
         }
     } while (command != QUIT && (inputstring == "" || pendingposition));
-    waitForSearchGuide(&searchguidethread);
+    searchWaitStop();
 }
 
 // Explicit template instantiation
