@@ -252,6 +252,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     const bool PVNode = (alpha != beta - 1);
 
     nodes++;
+    if (!(nodes & 0x2fff))
+        searchCheckForStop();
+
 
     // Reset pv
     pvtable[ply][0] = 0;
@@ -772,7 +775,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
     const bool isMultiPV = (RT == MultiPVSearch);
     const bool doPonder = (RT == PonderSearch);
 
-    nodes++;
+    //nodes++;
 
     // reset pv
     pvtable[0][0] = 0;
@@ -1348,10 +1351,12 @@ static void search_gen1(searchthread *thr)
 
         en.stopLevel = ENGINESTOPPED;
         en.benchmove = strBestmove;
-    }
 
-    // Remember depth for benchmark output
-    en.benchdepth = thr->depth - 1;
+        // Remember depth for benchmark output
+        en.benchdepth = thr->depth - 1;
+
+        //searchWaitStop();
+    }
 }
 
 
@@ -1448,6 +1453,50 @@ void searchWaitStop()
     for (int tnum = 0; tnum < en.Threads; tnum++)
         en.sthread[tnum].thr.join();
     en.stopLevel = ENGINETERMINATEDSEARCH;
+}
+
+
+void searchCheckForStop()
+{
+    U64 nowtime = getTime();
+
+    // Enable currentmove output after 3 seconds
+    if (!en.moveoutput && nowtime - en.starttime > 3 * en.frequency)
+        en.moveoutput = true;
+
+    if (en.stopLevel == ENGINESTOPPED)
+        // search thread triggered stop; is this still needed; could probably call searchWaitstop() directly
+        searchWaitStop();
+
+    if (en.isPondering())
+        // pondering... just continue searching
+        return;
+
+    if (en.testPonderHit())
+    {
+        // ponderhit
+        startSearchTime(false);
+        en.resetPonder();
+        return;
+    }
+
+    if (en.endtime2 && nowtime >= en.endtime2 && en.stopLevel < ENGINESTOPIMMEDIATELY)
+    {
+        en.stopLevel = ENGINESTOPIMMEDIATELY;
+        return;
+    }
+
+    if (en.maxnodes && en.maxnodes <= en.getTotalNodes() && en.stopLevel < ENGINESTOPIMMEDIATELY)
+    {
+        en.stopLevel = ENGINESTOPIMMEDIATELY;
+        return;
+    }
+
+    if (en.endtime1 && nowtime >= en.endtime1 && en.stopLevel < ENGINESTOPSOON)
+    {
+        en.stopLevel = ENGINESTOPSOON;
+        return;
+    }
 }
 
 

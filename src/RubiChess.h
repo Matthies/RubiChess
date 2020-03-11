@@ -1194,7 +1194,7 @@ public:
     int lastReport;
     int benchdepth;
     string benchmove;
-    int stopLevel = ENGINESTOPPED;
+    int stopLevel = ENGINETERMINATEDSEARCH;
 #ifdef STACKDEBUG
     string assertfile = "";
 #endif
@@ -1268,6 +1268,7 @@ public:
 
 //void searchguide();
 void searchStart();
+void searchCheckForStop();
 void searchWaitStop();
 void searchinit();
 void resetEndTime(int constantRootMoves, bool complete = true);

@@ -2501,7 +2501,7 @@ void engine::communicate(string inputstring)
     bool pendingposition = (inputstring == "");
     do
     {
-        if (stopLevel >= ENGINESTOPIMMEDIATELY)
+        if (stopLevel >= ENGINESTOPIMMEDIATELY && stopLevel < ENGINETERMINATEDSEARCH)
         {
             searchWaitStop();
         }
