@@ -252,9 +252,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     const bool PVNode = (alpha != beta - 1);
 
     nodes++;
-    if (!(nodes & 0x3fff))
+    if (!threadindex && !(nodes & 0x3fff))
         searchCheckForStop();
-
 
     // Reset pv
     pvtable[ply][0] = 0;
@@ -1412,7 +1411,7 @@ void resetEndTime(int constantRootMoves, bool complete)
     }
 
 #ifdef TDEBUG
-    printf("info string Time for this move: %4.2f  /  %4.2f\n", (en.endtime1 - en.starttime) / (double)en.frequency, (en.endtime2 - en.starttime) / (double)en.frequency);
+    printf("info string Time for this move: %4.3f  /  %4.3f\n", (en.endtime1 - en.starttime) / (double)en.frequency, (en.endtime2 - en.starttime) / (double)en.frequency);
 #endif
 }
 
@@ -1448,6 +1447,9 @@ void searchStart()
 
 void searchWaitStop()
 {
+    if (en.stopLevel == ENGINETERMINATEDSEARCH)
+        return;
+
     // Make the other threads stop now
     en.stopLevel = ENGINESTOPIMMEDIATELY;
     for (int tnum = 0; tnum < en.Threads; tnum++)

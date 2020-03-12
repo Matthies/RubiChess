@@ -2501,7 +2501,7 @@ void engine::communicate(string inputstring)
     bool pendingposition = (inputstring == "");
     do
     {
-        if (stopLevel >= ENGINESTOPIMMEDIATELY && stopLevel < ENGINETERMINATEDSEARCH)
+        if (stopLevel >= ENGINESTOPIMMEDIATELY)
         {
             searchWaitStop();
         }
@@ -2758,7 +2758,8 @@ void engine::communicate(string inputstring)
                 break;
             case STOP:
             case QUIT:
-                stopLevel = ENGINESTOPIMMEDIATELY;
+                if (stopLevel < ENGINESTOPIMMEDIATELY)
+                    stopLevel = ENGINESTOPIMMEDIATELY;
                 break;
             case EVAL:
                 sthread[0].pos.getEval<TRACE>();
