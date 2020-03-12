@@ -1269,7 +1269,7 @@ public:
 //void searchguide();
 void searchStart();
 void searchCheckForStop();
-void searchWaitStop();
+void searchWaitStop(bool forceStop = true);
 void searchinit();
 void resetEndTime(int constantRootMoves, bool complete = true);
 

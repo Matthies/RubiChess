@@ -474,6 +474,7 @@ void chessposition::getRootMoves()
 
     int bestval = SCOREBLACKWINS;
     rootmovelist.length = 0;
+    defaultmove.code = 0;
 
     uint16_t moveTo3fold = 0;
     bool bImmediate3fold = false;
@@ -2543,6 +2544,8 @@ void engine::communicate(string inputstring)
             command = parse(&commandargs, inputstring);  // blocking!!
             ci = 0;
             cs = commandargs.size();
+            if (en.stopLevel == ENGINESTOPIMMEDIATELY)
+                searchWaitStop();
             switch (command)
             {
             case UCIDEBUG:
@@ -2596,7 +2599,7 @@ void engine::communicate(string inputstring)
             case SETOPTION:
                 if (en.stopLevel < ENGINESTOPPED)
                 {
-                    send("info string Changing option while searching is not supported.\n");
+                    send("info string Changing option while searching is not supported. stopLevel = %d\n", en.stopLevel);
                     break;
                 }
                 bGetName = bGetValue = false;
@@ -2750,7 +2753,7 @@ void engine::communicate(string inputstring)
                 if (inputstring != "")
                 {
                     // bench mode; wait for end of search
-                    searchWaitStop();
+                    searchWaitStop(false);
                 }
                 break;
             case PONDERHIT:
@@ -2769,7 +2772,8 @@ void engine::communicate(string inputstring)
             }
         }
     } while (command != QUIT && (inputstring == "" || pendingposition));
-    searchWaitStop();
+    if (inputstring == "")
+        searchWaitStop();
 }
 
 // Explicit template instantiation

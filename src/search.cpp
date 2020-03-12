@@ -1348,7 +1348,7 @@ static void search_gen1(searchthread *thr)
 
         cout << "bestmove " + strBestmove + strPonder + "\n";
 
-        en.stopLevel = ENGINESTOPPED;
+        en.stopLevel = ENGINESTOPIMMEDIATELY;
         en.benchmove = strBestmove;
 
         // Remember depth for benchmark output
@@ -1445,15 +1445,17 @@ void searchStart()
 }
 
 
-void searchWaitStop()
+void searchWaitStop(bool forceStop)
 {
     if (en.stopLevel == ENGINETERMINATEDSEARCH)
         return;
 
     // Make the other threads stop now
-    en.stopLevel = ENGINESTOPIMMEDIATELY;
+    if (forceStop)
+        en.stopLevel = ENGINESTOPIMMEDIATELY;
     for (int tnum = 0; tnum < en.Threads; tnum++)
-        en.sthread[tnum].thr.join();
+        if (en.sthread[tnum].thr.joinable())
+            en.sthread[tnum].thr.join();
     en.stopLevel = ENGINETERMINATEDSEARCH;
 }
 
@@ -1465,10 +1467,6 @@ void searchCheckForStop()
     // Enable currentmove output after 3 seconds
     if (!en.moveoutput && nowtime - en.starttime > 3 * en.frequency)
         en.moveoutput = true;
-
-    if (en.stopLevel == ENGINESTOPPED)
-        // search thread triggered stop; is this still needed; could probably call searchWaitstop() directly
-        searchWaitStop();
 
     if (en.isPondering())
         // pondering... just continue searching
