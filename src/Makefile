@@ -4,7 +4,7 @@ ifeq ($(COMP),)
 	COMP=gcc
 endif
 
-CXXFLAGS=-std=c++11 -Wall -O3 $(EXTRACXXFLAGS)
+CXXFLAGS=-std=c++11 -Wall -O3 -g $(EXTRACXXFLAGS)
 
 ifeq ($(COMP),gcc)
 	CXX=g++
