@@ -1154,7 +1154,7 @@ const map<string, GuiToken> GuiCommandMap = {
 
 #define ENGINERUN 0
 #define ENGINEWANTSTOP 1
-#define ENGINESTOPSOON 2
+//#define ENGINESTOPSOON 2
 #define ENGINESTOPIMMEDIATELY 3
 #define ENGINESTOPPED 4
 #define ENGINETERMINATEDSEARCH 5
@@ -1268,7 +1268,7 @@ public:
 
 //void searchguide();
 void searchStart();
-void searchCheckForStop();
+void searchCheckForImmediateStop();
 void searchWaitStop(bool forceStop = true);
 void searchinit();
 void resetEndTime(int constantRootMoves, bool complete = true);

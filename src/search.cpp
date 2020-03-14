@@ -252,8 +252,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     const bool PVNode = (alpha != beta - 1);
 
     nodes++;
-    if (!threadindex && !(nodes & 0x3fff))
-        searchCheckForStop();
+    if (!threadindex && !(nodes & 0x1fff))
+        searchCheckForImmediateStop();
 
     // Reset pv
     pvtable[ply][0] = 0;
@@ -1094,7 +1094,6 @@ static void search_gen1(searchthread *thr)
 
     uint32_t lastBestMove = 0;
     int constantRootMoves = 0;
-    bool bExitIteration;
     en.lastReport = 0;
     U64 nowtime;
     pos->lastpv[0] = 0;
@@ -1187,6 +1186,10 @@ static void search_gen1(searchthread *thr)
         {
             nowtime = getTime();
 
+            // Enable currentmove output after 3 seconds
+            if (!en.moveoutput && nowtime - en.starttime > 3 * en.frequency)
+                en.moveoutput = true;
+
             // search was successfull
             if (isMultiPV)
             {
@@ -1255,26 +1258,33 @@ static void search_gen1(searchthread *thr)
         {
             if (inWindow == 1 || !constantRootMoves)
                 resetEndTime(constantRootMoves);
-            if (!constantRootMoves && en.stopLevel == ENGINESTOPSOON)
-                en.stopLevel = ENGINERUN;
         }
 
+        // exit if STOPIMMEDIATELY
+        if (en.stopLevel == ENGINESTOPIMMEDIATELY)
+            break;
+
+        // Pondering; just continue next iteration
+        if (doPonder && en.isPondering())
+            continue;
+
         // early exit in playing mode as there is exactly one possible move
-        bExitIteration = (pos->rootmovelist.length == 1 && en.endtime1 && !en.isPondering());
+        if (pos->rootmovelist.length == 1 && en.endtime1)
+            break;
 
         // early exit in TB win/lose position
-        bExitIteration = bExitIteration || (pos->tbPosition && abs(score) >= SCORETBWIN - 100 && !en.isPondering());
+        if (pos->tbPosition && abs(score) >= SCORETBWIN - 100)
+            break;
 
         // exit if STOPSOON is requested and we're in aspiration window
-        bExitIteration = bExitIteration || (en.stopLevel == ENGINESTOPSOON && inWindow == 1 && constantRootMoves && isMainThread);
-
-        // exit if STOPIMMEDIATELY
-        bExitIteration = bExitIteration || (en.stopLevel == ENGINESTOPIMMEDIATELY);
+        if (en.endtime1 && nowtime >= en.endtime1 && inWindow == 1 && constantRootMoves && isMainThread)
+            break;
 
         // exit if max depth is reached
-        bExitIteration = bExitIteration || (thr->depth > maxdepth);
+        if (thr->depth > maxdepth)
+            break;
 
-    } while (!bExitIteration);
+    } while (1);
     
     if (isMainThread)
     {
@@ -1460,14 +1470,8 @@ void searchWaitStop(bool forceStop)
 }
 
 
-void searchCheckForStop()
+inline void searchCheckForImmediateStop()
 {
-    U64 nowtime = getTime();
-
-    // Enable currentmove output after 3 seconds
-    if (!en.moveoutput && nowtime - en.starttime > 3 * en.frequency)
-        en.moveoutput = true;
-
     if (en.isPondering())
         // pondering... just continue searching
         return;
@@ -1480,6 +1484,8 @@ void searchCheckForStop()
         return;
     }
 
+    U64 nowtime = getTime();
+
     if (en.endtime2 && nowtime >= en.endtime2 && en.stopLevel < ENGINESTOPIMMEDIATELY)
     {
         en.stopLevel = ENGINESTOPIMMEDIATELY;
@@ -1489,12 +1495,6 @@ void searchCheckForStop()
     if (en.maxnodes && en.maxnodes <= en.getTotalNodes() && en.stopLevel < ENGINESTOPIMMEDIATELY)
     {
         en.stopLevel = ENGINESTOPIMMEDIATELY;
-        return;
-    }
-
-    if (en.endtime1 && nowtime >= en.endtime1 && en.stopLevel < ENGINESTOPSOON)
-    {
-        en.stopLevel = ENGINESTOPSOON;
         return;
     }
 }
