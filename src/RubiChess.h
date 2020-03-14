@@ -1160,6 +1160,8 @@ const map<string, GuiToken> GuiCommandMap = {
 #define ENGINESTOPPED 4
 #define ENGINETERMINATEDSEARCH 5
 
+#define NODESPERCHECK 0xfff
+
 class engine
 {
 public:
@@ -1172,9 +1174,7 @@ public:
     U64 starttime;
     U64 endtime1; // time to send STOPSOON signal
     U64 endtime2; // time to send STOPPIMMEDIATELY signal
-    U64 lastCheck;
     U64 frequency;
-    U64 nodesPerCheck;
     int wtime, btime, winc, binc, movestogo, mate, movetime, maxdepth;
     U64 maxnodes;
     bool infinite;

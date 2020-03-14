@@ -1428,7 +1428,7 @@ void resetEndTime(int constantRootMoves, bool complete)
 
 void startSearchTime(bool complete = true)
 {
-    en.starttime = en.lastCheck = getTime();
+    en.starttime = getTime();
     resetEndTime(0, complete);
 }
 
@@ -1472,7 +1472,7 @@ void searchWaitStop(bool forceStop)
 
 inline void chessposition::CheckForImmediateStop()
 {
-    if (threadindex || (nodes & en.nodesPerCheck))
+    if (threadindex || (nodes & NODESPERCHECK))
         return;
 
     if (en.isPondering())
@@ -1488,17 +1488,6 @@ inline void chessposition::CheckForImmediateStop()
     }
 
     U64 nowtime = getTime();
-
-    int checkMs = (int)((nowtime - en.lastCheck) * 1000 / en.frequency);
-    en.lastCheck = nowtime;
-    if (checkMs < 5) {
-        en.nodesPerCheck = en.nodesPerCheck * 2 + 1;
-        //printf("info string ms=%d check increase to %d\n", checkMs, en.nodesPerCheck);
-    }
-    else if (checkMs > 10) {
-        en.nodesPerCheck = en.nodesPerCheck / 2;
-        //printf("info string ms=%d check decrease to %d\n", checkMs, en.nodesPerCheck);
-    }
 
     if (en.endtime2 && nowtime >= en.endtime2 && en.stopLevel < ENGINESTOPIMMEDIATELY)
     {
