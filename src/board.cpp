@@ -2322,6 +2322,10 @@ engine::engine()
     setOption("Syzygy50MoveRule", "true");
     setOption("SyzygyProbeLimit", "7");
 
+    // Start with time checks every 8192 nodes (~ 8ms assuming 1.000.000nps)
+    // This is calibrated in search
+    nodesPerCheck = 0x2000 - 1;
+
 #ifdef _WIN32
     LARGE_INTEGER f;
     QueryPerformanceFrequency(&f);

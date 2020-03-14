@@ -1118,6 +1118,7 @@ public:
     void updateMultiPvTable(int pvindex, uint32_t mc);
     string getPv(uint32_t *table);
     int getHistory(uint32_t code, int16_t **cmptr);
+    inline void CheckForImmediateStop();
 
 #ifdef SDEBUG
     bool triggerDebug(chessmove* nextmove);
@@ -1171,7 +1172,9 @@ public:
     U64 starttime;
     U64 endtime1; // time to send STOPSOON signal
     U64 endtime2; // time to send STOPPIMMEDIATELY signal
+    U64 lastCheck;
     U64 frequency;
+    U64 nodesPerCheck;
     int wtime, btime, winc, binc, movestogo, mate, movetime, maxdepth;
     U64 maxnodes;
     bool infinite;
@@ -1268,7 +1271,6 @@ public:
 
 //void searchguide();
 void searchStart();
-void searchCheckForImmediateStop();
 void searchWaitStop(bool forceStop = true);
 void searchinit();
 void resetEndTime(int constantRootMoves, bool complete = true);

@@ -252,8 +252,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     const bool PVNode = (alpha != beta - 1);
 
     nodes++;
-    if (!threadindex && !(nodes & 0x1fff))
-        searchCheckForImmediateStop();
+    CheckForImmediateStop();
 
     // Reset pv
     pvtable[ply][0] = 0;
@@ -774,7 +773,8 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
     const bool isMultiPV = (RT == MultiPVSearch);
     const bool doPonder = (RT == PonderSearch);
 
-    //nodes++;
+    nodes++;
+    CheckForImmediateStop();
 
     // reset pv
     pvtable[0][0] = 0;
@@ -1182,10 +1182,10 @@ static void search_gen1(searchthread *thr)
         if (bDiffers)
             pos->lastpv[i] = 0;
 
+        nowtime = getTime();
+
         if (score > NOSCORE && isMainThread)
         {
-            nowtime = getTime();
-
             // Enable currentmove output after 3 seconds
             if (!en.moveoutput && nowtime - en.starttime > 3 * en.frequency)
                 en.moveoutput = true;
@@ -1355,7 +1355,7 @@ static void search_gen1(searchthread *thr)
             if (pos->pondermove.code)
                 strPonder = " ponder " + pos->pondermove.toString();
         }
-
+        //printf("info string check interval = %lld\n", en.nodesPerCheck);
         cout << "bestmove " + strBestmove + strPonder + "\n";
 
         en.stopLevel = ENGINESTOPIMMEDIATELY;
@@ -1428,7 +1428,7 @@ void resetEndTime(int constantRootMoves, bool complete)
 
 void startSearchTime(bool complete = true)
 {
-    en.starttime = getTime();
+    en.starttime = en.lastCheck = getTime();
     resetEndTime(0, complete);
 }
 
@@ -1470,8 +1470,11 @@ void searchWaitStop(bool forceStop)
 }
 
 
-inline void searchCheckForImmediateStop()
+inline void chessposition::CheckForImmediateStop()
 {
+    if (threadindex || (nodes & en.nodesPerCheck))
+        return;
+
     if (en.isPondering())
         // pondering... just continue searching
         return;
@@ -1485,6 +1488,17 @@ inline void searchCheckForImmediateStop()
     }
 
     U64 nowtime = getTime();
+
+    int checkMs = (int)((nowtime - en.lastCheck) * 1000 / en.frequency);
+    en.lastCheck = nowtime;
+    if (checkMs < 5) {
+        en.nodesPerCheck = en.nodesPerCheck * 2 + 1;
+        //printf("info string ms=%d check increase to %d\n", checkMs, en.nodesPerCheck);
+    }
+    else if (checkMs > 10) {
+        en.nodesPerCheck = en.nodesPerCheck / 2;
+        //printf("info string ms=%d check decrease to %d\n", checkMs, en.nodesPerCheck);
+    }
 
     if (en.endtime2 && nowtime >= en.endtime2 && en.stopLevel < ENGINESTOPIMMEDIATELY)
     {
