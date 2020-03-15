@@ -863,7 +863,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         playMove(m);
 
 #ifndef SDEBUG
-        if (en.moveoutput && !threadindex && (!doPonder || depth < MAXDEPTH))
+        if (en.moveoutput && !threadindex && (!doPonder || depth < MAXDEPTH - 1))
         {
             char s[256];
             sprintf_s(s, "info depth %d currmove %s currmovenumber %d\n", depth, m->toString().c_str(), i + 1);
@@ -1084,7 +1084,7 @@ static void search_gen1(searchthread *thr)
         if (en.maxdepth > 0)
             maxdepth = en.maxdepth;
         else
-            maxdepth = MAXDEPTH;
+            maxdepth = MAXDEPTH - 1;
     }
 
     alpha = SHRT_MIN + 1;
