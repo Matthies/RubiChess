@@ -1178,6 +1178,7 @@ static void search_gen1(searchthread *thr)
             bDiffers = bDiffers || (pos->lastpv[i] != pos->pvtable[0][i]);
             pos->lastpv[i] = pos->pvtable[0][i];
             i++;
+            if (i == MAXDEPTH - 1) break;
         }
         if (bDiffers)
             pos->lastpv[i] = 0;
@@ -1315,6 +1316,7 @@ static void search_gen1(searchthread *thr)
             {
                 pos->lastpv[i] = bestthr->pos.lastpv[i];
                 i++;
+                if (i == MAXDEPTH - 1) break;
             }
             pos->lastpv[i] = 0;
             pos->bestmove = bestthr->pos.bestmove;
