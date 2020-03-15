@@ -606,7 +606,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             reduction -= PVNode;
 
             // adjust reduction with opponents move number
-            reduction -= (LegalMoves[mstop] > 15);
+            reduction -= (LegalMoves[ply] > 15);
 
             STATISTICSINC(red_pi[positionImproved]);
             STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, legalMoves + 1)]);
@@ -650,7 +650,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
         STATISTICSINC(moves_played[(bool)ISTACTICAL(m->code)]);
 
-        LegalMoves[mstop] = ms.legalmovenum;
+        LegalMoves[ply] = ms.legalmovenum;
 
         if (reduction)
         {
