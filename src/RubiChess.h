@@ -1155,10 +1155,8 @@ const map<string, GuiToken> GuiCommandMap = {
 
 #define ENGINERUN 0
 #define ENGINEWANTSTOP 1
-//#define ENGINESTOPSOON 2
-#define ENGINESTOPIMMEDIATELY 3
-//#define ENGINESTOPPED 4
-#define ENGINETERMINATEDSEARCH 5
+#define ENGINESTOPIMMEDIATELY 2
+#define ENGINETERMINATEDSEARCH 3
 
 #define NODESPERCHECK 0xfff
 
@@ -1172,8 +1170,8 @@ public:
     bool isWhite;
     U64 tbhits;
     U64 starttime;
-    U64 endtime1; // time to send STOPSOON signal
-    U64 endtime2; // time to send STOPPIMMEDIATELY signal
+    U64 endtime1; // time to stop before starting next iteration
+    U64 endtime2; // time to stop immediately
     U64 frequency;
     int wtime, btime, winc, binc, movestogo, mate, movetime, maxdepth;
     U64 maxnodes;
@@ -1269,7 +1267,6 @@ public:
     ~searchthread();
 };
 
-//void searchguide();
 void searchStart();
 void searchWaitStop(bool forceStop = true);
 void searchinit();

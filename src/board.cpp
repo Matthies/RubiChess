@@ -2473,18 +2473,6 @@ void engine::setOption(string sName, string sValue)
     }
 }
 
-#if 0
-static void waitForSearchGuide(thread **th)
-{
-    if (*th)
-    {
-        if ((*th)->joinable())
-            (*th)->join();
-        delete *th;
-    }
-    *th = nullptr;
-}
-#endif
 
 void engine::communicate(string inputstring)
 {
@@ -2497,7 +2485,6 @@ void engine::communicate(string inputstring)
     bool bGetName, bGetValue;
     string sName, sValue;
     bool bMoves;
-    //thread *searchguidethread = nullptr;
     bool pendingisready = false;
     bool pendingposition = (inputstring == "");
     do
@@ -2748,7 +2735,6 @@ void engine::communicate(string inputstring)
                 }
                 isWhite = (sthread[0].pos.w2m());
                 stopLevel = ENGINERUN;
-                //searchguidethread = new thread(&searchguide);
                 searchStart();
                 if (inputstring != "")
                 {

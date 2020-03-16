@@ -1107,7 +1107,6 @@ static void search_gen1(searchthread *thr)
             // mate / stalemate
             pos->bestmove.code = 0;
             score = pos->bestmovescore[0] =  (pos->isCheckbb ? SCOREBLACKWINS : SCOREDRAW);
-            //en.stopLevel = ENGINESTOPPED;
         }
         else if (isDraw)
         {
@@ -1115,7 +1114,6 @@ static void search_gen1(searchthread *thr)
             pos->bestmove.code = 0;
             if (doPonder) pos->pondermove.code = 0;
             score = pos->bestmovescore[0] = SCOREDRAW;
-            //en.stopLevel = ENGINESTOPPED;
         }
         else
         {
@@ -1358,7 +1356,7 @@ static void search_gen1(searchthread *thr)
             if (pos->pondermove.code)
                 strPonder = " ponder " + pos->pondermove.toString();
         }
-        //printf("info string check interval = %lld\n", en.nodesPerCheck);
+
         cout << "bestmove " + strBestmove + strPonder + "\n";
 
         en.stopLevel = ENGINESTOPIMMEDIATELY;
@@ -1367,7 +1365,9 @@ static void search_gen1(searchthread *thr)
         // Remember depth for benchmark output
         en.benchdepth = thr->depth - 1;
 
-        //searchWaitStop();
+#ifdef STATISTICS
+        search_statistics();
+#endif
     }
 }
 
@@ -1388,7 +1388,6 @@ void resetEndTime(int constantRootMoves, bool complete)
         if (complete)
             en.endtime1 = en.starttime + timetouse * en.frequency * f1 / (en.movestogo + 1) / 10000;
         en.endtime2 = en.starttime + min(max(0, timetouse - overhead * en.movestogo), f2 * timetouse / (en.movestogo + 1) / 10) * en.frequency / 1000;
-        //printf("info string difftime1=%lld  difftime2=%lld\n", (endtime1 - en.starttime) * 1000 / en.frequency , (endtime2 - en.starttime) * 1000 / en.frequency);
     }
     else if (timetouse) {
         int ph = en.sthread[0].pos.phase();
@@ -1506,76 +1505,6 @@ inline void chessposition::CheckForImmediateStop()
 }
 
 
-#if 0
-void searchguide()
-{
-    startSearchTime();
-
-    en.moveoutput = false;
-    en.tbhits = en.sthread[0].pos.tbPosition;  // Rootpos in TB => report at least one tbhit
-
-    // increment generation counter for tt aging
-    tp.nextSearch();
-
-    if (en.MultiPV == 1 && !en.ponder)
-        for (int tnum = 0; tnum < en.Threads; tnum++)
-            en.sthread[tnum].thr = thread(&search_gen1<SinglePVSearch>, &en.sthread[tnum]);
-    else if (en.ponder)
-        for (int tnum = 0; tnum < en.Threads; tnum++)
-            en.sthread[tnum].thr = thread(&search_gen1<PonderSearch>, &en.sthread[tnum]);
-    else
-        for (int tnum = 0; tnum < en.Threads; tnum++)
-            en.sthread[tnum].thr = thread(&search_gen1<MultiPVSearch>, &en.sthread[tnum]);
-
-    U64 nowtime;
-    while (en.stopLevel != ENGINESTOPPED)
-    {
-        nowtime = getTime();
-
-        if (nowtime - en.starttime > 3 * en.frequency)
-            en.moveoutput = true;
-
-        if (en.stopLevel < ENGINESTOPPED)
-        {
-            if (en.isPondering())
-            {
-                Sleep(10);
-            }
-            else if (en.testPonderHit())
-            {
-                startSearchTime(false);
-                en.resetPonder();
-            }
-            else if (en.endtime2 && nowtime >= en.endtime2 && en.stopLevel < ENGINESTOPIMMEDIATELY)
-            {
-                en.stopLevel = ENGINESTOPIMMEDIATELY;
-            }
-            else if (en.maxnodes && en.maxnodes <= en.getTotalNodes() && en.stopLevel < ENGINESTOPIMMEDIATELY)
-            {
-                en.stopLevel = ENGINESTOPIMMEDIATELY;
-            }
-            else if (en.endtime1 && nowtime >= en.endtime1 && en.stopLevel < ENGINESTOPSOON)
-            {
-                en.stopLevel = ENGINESTOPSOON;
-                Sleep(10);
-            }
-            else {
-                Sleep(10);
-            }
-        }
-    }
-
-    // Make the other threads stop now
-    en.stopLevel = ENGINESTOPIMMEDIATELY;
-    for (int tnum = 0; tnum < en.Threads; tnum++)
-        en.sthread[tnum].thr.join();
-    en.stopLevel = ENGINETERMINATEDSEARCH;
-
-#ifdef STATISTICS
-    search_statistics();
-#endif
-}
-#endif
 
 #ifdef STATISTICS
 void search_statistics()
