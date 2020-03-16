@@ -1097,6 +1097,7 @@ static void search_gen1(searchthread *thr)
     en.lastReport = 0;
     U64 nowtime;
     pos->lastpv[0] = 0;
+    bool isDraw = (pos->testRepetiton() >= 2) || (pos->halfmovescounter >= 100);
     do
     {
         inWindow = 1;
@@ -1106,15 +1107,15 @@ static void search_gen1(searchthread *thr)
             // mate / stalemate
             pos->bestmove.code = 0;
             score = pos->bestmovescore[0] =  (pos->isCheckbb ? SCOREBLACKWINS : SCOREDRAW);
-            en.stopLevel = ENGINESTOPPED;
+            //en.stopLevel = ENGINESTOPPED;
         }
-        else if (pos->testRepetiton() >= 2 || pos->halfmovescounter >= 100)
+        else if (isDraw)
         {
             // remis via repetition or 50 moves rule
             pos->bestmove.code = 0;
             if (doPonder) pos->pondermove.code = 0;
             score = pos->bestmovescore[0] = SCOREDRAW;
-            en.stopLevel = ENGINESTOPPED;
+            //en.stopLevel = ENGINESTOPPED;
         }
         else
         {
@@ -1219,7 +1220,7 @@ static void search_gen1(searchthread *thr)
                 }
                     
                 // still no bestmove...
-                if (!pos->bestmove.code && pos->rootmovelist.length > 0)
+                if (!pos->bestmove.code && pos->rootmovelist.length > 0 && !isDraw)
                     pos->bestmove.code = pos->rootmovelist.move[0].code;
 
                 if (pos->rootmovelist.length == 1 && !pos->tbPosition && en.endtime1 && !en.isPondering() && pos->lastbestmovescore != NOSCORE)
@@ -1335,7 +1336,7 @@ static void search_gen1(searchthread *thr)
         string strBestmove;
         string strPonder = "";
 
-        if (!pos->bestmove.code)
+        if (!pos->bestmove.code && !isDraw)
         {
             // Not enough time to get any bestmove? Fall back to default move
             pos->bestmove = pos->defaultmove;

@@ -2597,7 +2597,7 @@ void engine::communicate(string inputstring)
                 sthread[0].pos.lastbestmovescore = NOSCORE;
                 break;
             case SETOPTION:
-                if (en.stopLevel < ENGINESTOPPED)
+                if (en.stopLevel != ENGINETERMINATEDSEARCH)
                 {
                     send("info string Changing option while searching is not supported. stopLevel = %d\n", en.stopLevel);
                     break;
