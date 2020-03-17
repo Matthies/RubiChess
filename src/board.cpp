@@ -474,6 +474,7 @@ void chessposition::getRootMoves()
 
     int bestval = SCOREBLACKWINS;
     rootmovelist.length = 0;
+    defaultmove.code = 0;
 
     uint16_t moveTo3fold = 0;
     bool bImmediate3fold = false;
@@ -2472,16 +2473,6 @@ void engine::setOption(string sName, string sValue)
     }
 }
 
-static void waitForSearchGuide(thread **th)
-{
-    if (*th)
-    {
-        if ((*th)->joinable())
-            (*th)->join();
-        delete *th;
-    }
-    *th = nullptr;
-}
 
 void engine::communicate(string inputstring)
 {
@@ -2494,14 +2485,13 @@ void engine::communicate(string inputstring)
     bool bGetName, bGetValue;
     string sName, sValue;
     bool bMoves;
-    thread *searchguidethread = nullptr;
     bool pendingisready = false;
     bool pendingposition = (inputstring == "");
     do
     {
         if (stopLevel >= ENGINESTOPIMMEDIATELY)
         {
-            waitForSearchGuide(&searchguidethread);
+            searchWaitStop();
         }
         if (pendingisready || pendingposition)
         {
@@ -2511,7 +2501,7 @@ void engine::communicate(string inputstring)
                 if (stopLevel < ENGINESTOPIMMEDIATELY)
                 {
                     stopLevel = ENGINESTOPIMMEDIATELY;
-                    waitForSearchGuide(&searchguidethread);
+                    searchWaitStop();
                 }
                 rootposition.getFromFen(fen.c_str());
                 for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
@@ -2541,6 +2531,8 @@ void engine::communicate(string inputstring)
             command = parse(&commandargs, inputstring);  // blocking!!
             ci = 0;
             cs = commandargs.size();
+            if (en.stopLevel == ENGINESTOPIMMEDIATELY)
+                searchWaitStop();
             switch (command)
             {
             case UCIDEBUG:
@@ -2592,9 +2584,9 @@ void engine::communicate(string inputstring)
                 sthread[0].pos.lastbestmovescore = NOSCORE;
                 break;
             case SETOPTION:
-                if (en.stopLevel < ENGINESTOPPED)
+                if (en.stopLevel != ENGINETERMINATEDSEARCH)
                 {
-                    send("info string Changing option while searching is not supported.\n");
+                    send("info string Changing option while searching is not supported. stopLevel = %d\n", en.stopLevel);
                     break;
                 }
                 bGetName = bGetValue = false;
@@ -2743,11 +2735,11 @@ void engine::communicate(string inputstring)
                 }
                 isWhite = (sthread[0].pos.w2m());
                 stopLevel = ENGINERUN;
-                searchguidethread = new thread(&searchguide);
+                searchStart();
                 if (inputstring != "")
                 {
                     // bench mode; wait for end of search
-                    waitForSearchGuide(&searchguidethread);
+                    searchWaitStop(false);
                 }
                 break;
             case PONDERHIT:
@@ -2755,7 +2747,8 @@ void engine::communicate(string inputstring)
                 break;
             case STOP:
             case QUIT:
-                stopLevel = ENGINESTOPIMMEDIATELY;
+                if (stopLevel < ENGINESTOPIMMEDIATELY)
+                    stopLevel = ENGINESTOPIMMEDIATELY;
                 break;
             case EVAL:
                 sthread[0].pos.getEval<TRACE>();
@@ -2765,7 +2758,8 @@ void engine::communicate(string inputstring)
             }
         }
     } while (command != QUIT && (inputstring == "" || pendingposition));
-    waitForSearchGuide(&searchguidethread);
+    if (inputstring == "")
+        searchWaitStop();
 }
 
 // Explicit template instantiation
