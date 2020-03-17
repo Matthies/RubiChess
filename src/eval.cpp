@@ -433,7 +433,7 @@ int chessposition::getPieceEval(positioneval *pe)
                 U64 blockingpawns = myRammedPawns & (BITSET(index) & WHITEBB ? WHITEBB : BLACKBB);
                 result += EVAL(eps.ePawnblocksbishoppenalty, S2MSIGN(Me) * POPCOUNT(blockingpawns));
                 if (bTrace) te.bishops[Me] += EVAL(eps.ePawnblocksbishoppenalty, S2MSIGN(Me) * POPCOUNT(blockingpawns));
-#if 0
+#if 1
                 if (MORETHANONE(mBishopAttacks[index][MAGICBISHOPINDEX(piece00[WPAWN] | piece00[BPAWN], index)] & CENTER))
                 {
                     result += EVAL(eps.eBishopcentercontrolbonus, S2MSIGN(Me));
