@@ -53,7 +53,6 @@ static struct TBHashEntry TB_hash[1 << TBHASHBITS];
 static struct DTZTableEntry DTZ_table[DTZ_ENTRIES];
 
 static void init_indices(void);
-static uint64 calc_key_from_pcs(int *pcs, int mirror);
 static void free_wdl_entry(struct TBEntry *entry);
 static void free_dtz_entry(struct TBEntry *entry);
 
@@ -157,39 +156,12 @@ static void init_tb(char *str)
   struct TBEntry *entry;
   int i, j, pcs[16];
   uint64 key, key2;
-  int color;
-  char *s;
   fd = open_tb(str, WDLSUFFIX);
   if (fd == FD_ERR) return;
   close_tb(fd);
 
-  for (i = 0; i < 16; i++)
-    pcs[i] = 0;
-  color = 0;
-  for (s = str; *s; s++)
-    switch (*s) {
-    case 'P':
-      pcs[TB_PAWN | color]++;
-      break;
-    case 'N':
-      pcs[TB_KNIGHT | color]++;
-      break;
-    case 'B':
-      pcs[TB_BISHOP | color]++;
-      break;
-    case 'R':
-      pcs[TB_ROOK | color]++;
-      break;
-    case 'Q':
-      pcs[TB_QUEEN | color]++;
-      break;
-    case 'K':
-      pcs[TB_KING | color]++;
-      break;
-    case 'v':
-      color = 0x08;
-      break;
-    }
+  getPcsFromStr(str, pcs);
+
   key = calc_key_from_pcs(pcs, 0);
   key2 = calc_key_from_pcs(pcs, 1);
   if (pcs[TB_WPAWN] + pcs[TB_BPAWN] == 0) {

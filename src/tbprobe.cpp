@@ -81,29 +81,6 @@ static uint64 calc_key(int mirror, chessposition *pos)
     return key;
 }
 
-// Produce a 64-bit material key corresponding to the material combination
-// defined by pcs[16], where pcs[1], ..., pcs[6] is the number of white
-// pawns, ..., kings and pcs[9], ..., pcs[14] is the number of black
-// pawns, ..., kings.
-// Again no need to be efficient here.
-static uint64 calc_key_from_pcs(int *pcs, int mirror)
-{
-    int color;
-    PieceType pt;
-    int i;
-    uint64 key = 0;
-
-    color = !mirror ? 0 : 8;
-    for (pt = PAWN; pt <= KING; pt++)
-        for (i = 0; i < pcs[color + pt]; i++)
-            key ^= zb.boardtable[(i << 4) | (pt << 1)];
-    color ^= 8;
-    for (pt = PAWN; pt <= KING; pt++)
-        for (i = 0; i < pcs[color + pt]; i++)
-            key ^= zb.boardtable[(i << 4) | (pt << 1) | 1];
-
-    return key;
-}
 
 // probe_wdl_table and probe_dtz_table require similar adaptations.
 static int probe_wdl_table(int *success, chessposition *pos)

@@ -499,6 +499,8 @@ enum EvalType { NOTRACE, TRACE};
 //
 // utils stuff
 //
+U64 calc_key_from_pcs(int *pcs, int mirror);
+void getPcsFromStr(const char* str, int *pcs);
 void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am);
 vector<string> SplitString(const char* s);
 unsigned char AlgebraicToIndex(string s);
@@ -1119,6 +1121,7 @@ public:
     void updateMultiPvTable(int pvindex, uint32_t mc);
     string getPv(uint32_t *table);
     int getHistory(uint32_t code, int16_t **cmptr);
+    inline void CheckForImmediateStop();
 
 #ifdef SDEBUG
     bool triggerDebug(chessmove* nextmove);
@@ -1155,10 +1158,10 @@ const map<string, GuiToken> GuiCommandMap = {
 
 #define ENGINERUN 0
 #define ENGINEWANTSTOP 1
-#define ENGINESTOPSOON 2
-#define ENGINESTOPIMMEDIATELY 3
-#define ENGINESTOPPED 4
-#define ENGINETERMINATEDSEARCH 5
+#define ENGINESTOPIMMEDIATELY 2
+#define ENGINETERMINATEDSEARCH 3
+
+#define NODESPERCHECK 0xfff
 
 class engine
 {
@@ -1170,8 +1173,8 @@ public:
     bool isWhite;
     U64 tbhits;
     U64 starttime;
-    U64 endtime1; // time to send STOPSOON signal
-    U64 endtime2; // time to send STOPPIMMEDIATELY signal
+    U64 endtime1; // time to stop before starting next iteration
+    U64 endtime2; // time to stop immediately
     U64 frequency;
     int wtime, btime, winc, binc, movestogo, mate, movetime, maxdepth;
     U64 maxnodes;
@@ -1195,7 +1198,7 @@ public:
     int lastReport;
     int benchdepth;
     string benchmove;
-    int stopLevel = ENGINESTOPPED;
+    int stopLevel = ENGINETERMINATEDSEARCH;
 #ifdef STACKDEBUG
     string assertfile = "";
 #endif
@@ -1267,7 +1270,8 @@ public:
     ~searchthread();
 };
 
-void searchguide();
+void searchStart();
+void searchWaitStop(bool forceStop = true);
 void searchinit();
 void resetEndTime(int constantRootMoves, bool complete = true);
 

@@ -252,6 +252,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     const bool PVNode = (alpha != beta - 1);
 
     nodes++;
+    CheckForImmediateStop();
 
     // Reset pv
     pvtable[ply][0] = 0;
@@ -605,7 +606,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             reduction -= PVNode;
 
             // adjust reduction with opponents move number
-            reduction -= (LegalMoves[mstop] > 15);
+            reduction -= (LegalMoves[ply] > 15);
 
             STATISTICSINC(red_pi[positionImproved]);
             STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, legalMoves + 1)]);
@@ -649,7 +650,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
         STATISTICSINC(moves_played[(bool)ISTACTICAL(m->code)]);
 
-        LegalMoves[mstop] = ms.legalmovenum;
+        LegalMoves[ply] = ms.legalmovenum;
 
         if (reduction)
         {
@@ -773,6 +774,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
     const bool doPonder = (RT == PonderSearch);
 
     nodes++;
+    CheckForImmediateStop();
 
     // reset pv
     pvtable[0][0] = 0;
@@ -863,7 +865,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         playMove(m);
 
 #ifndef SDEBUG
-        if (en.moveoutput && !threadindex && (!doPonder || depth < MAXDEPTH))
+        if (en.moveoutput && !threadindex && (!doPonder || depth < MAXDEPTH - 1))
         {
             char s[256];
             sprintf_s(s, "info depth %d currmove %s currmovenumber %d\n", depth, m->toString().c_str(), i + 1);
@@ -1084,7 +1086,7 @@ static void search_gen1(searchthread *thr)
         if (en.maxdepth > 0)
             maxdepth = en.maxdepth;
         else
-            maxdepth = MAXDEPTH;
+            maxdepth = MAXDEPTH - 1;
     }
 
     alpha = SHRT_MIN + 1;
@@ -1092,10 +1094,10 @@ static void search_gen1(searchthread *thr)
 
     uint32_t lastBestMove = 0;
     int constantRootMoves = 0;
-    bool bExitIteration;
     en.lastReport = 0;
     U64 nowtime;
     pos->lastpv[0] = 0;
+    bool isDraw = (pos->testRepetiton() >= 2) || (pos->halfmovescounter >= 100);
     do
     {
         inWindow = 1;
@@ -1105,15 +1107,13 @@ static void search_gen1(searchthread *thr)
             // mate / stalemate
             pos->bestmove.code = 0;
             score = pos->bestmovescore[0] =  (pos->isCheckbb ? SCOREBLACKWINS : SCOREDRAW);
-            en.stopLevel = ENGINESTOPPED;
         }
-        else if (pos->testRepetiton() >= 2 || pos->halfmovescounter >= 100)
+        else if (isDraw)
         {
             // remis via repetition or 50 moves rule
             pos->bestmove.code = 0;
             if (doPonder) pos->pondermove.code = 0;
             score = pos->bestmovescore[0] = SCOREDRAW;
-            en.stopLevel = ENGINESTOPPED;
         }
         else
         {
@@ -1177,13 +1177,18 @@ static void search_gen1(searchthread *thr)
             bDiffers = bDiffers || (pos->lastpv[i] != pos->pvtable[0][i]);
             pos->lastpv[i] = pos->pvtable[0][i];
             i++;
+            if (i == MAXDEPTH - 1) break;
         }
         if (bDiffers)
             pos->lastpv[i] = 0;
 
+        nowtime = getTime();
+
         if (score > NOSCORE && isMainThread)
         {
-            nowtime = getTime();
+            // Enable currentmove output after 3 seconds
+            if (!en.moveoutput && nowtime - en.starttime > 3 * en.frequency)
+                en.moveoutput = true;
 
             // search was successfull
             if (isMultiPV)
@@ -1213,7 +1218,7 @@ static void search_gen1(searchthread *thr)
                 }
                     
                 // still no bestmove...
-                if (!pos->bestmove.code && pos->rootmovelist.length > 0)
+                if (!pos->bestmove.code && pos->rootmovelist.length > 0 && !isDraw)
                     pos->bestmove.code = pos->rootmovelist.move[0].code;
 
                 if (pos->rootmovelist.length == 1 && !pos->tbPosition && en.endtime1 && !en.isPondering() && pos->lastbestmovescore != NOSCORE)
@@ -1253,26 +1258,33 @@ static void search_gen1(searchthread *thr)
         {
             if (inWindow == 1 || !constantRootMoves)
                 resetEndTime(constantRootMoves);
-            if (!constantRootMoves && en.stopLevel == ENGINESTOPSOON)
-                en.stopLevel = ENGINERUN;
         }
 
+        // exit if STOPIMMEDIATELY
+        if (en.stopLevel == ENGINESTOPIMMEDIATELY)
+            break;
+
+        // Pondering; just continue next iteration
+        if (doPonder && en.isPondering())
+            continue;
+
         // early exit in playing mode as there is exactly one possible move
-        bExitIteration = (pos->rootmovelist.length == 1 && en.endtime1 && !en.isPondering());
+        if (pos->rootmovelist.length == 1 && en.endtime1)
+            break;
 
         // early exit in TB win/lose position
-        bExitIteration = bExitIteration || (pos->tbPosition && abs(score) >= SCORETBWIN - 100 && !en.isPondering());
+        if (pos->tbPosition && abs(score) >= SCORETBWIN - 100)
+            break;
 
         // exit if STOPSOON is requested and we're in aspiration window
-        bExitIteration = bExitIteration || (en.stopLevel == ENGINESTOPSOON && inWindow == 1 && constantRootMoves && isMainThread);
-
-        // exit if STOPIMMEDIATELY
-        bExitIteration = bExitIteration || (en.stopLevel == ENGINESTOPIMMEDIATELY);
+        if (en.endtime1 && nowtime >= en.endtime1 && inWindow == 1 && constantRootMoves && isMainThread)
+            break;
 
         // exit if max depth is reached
-        bExitIteration = bExitIteration || (thr->depth > maxdepth);
+        if (thr->depth > maxdepth)
+            break;
 
-    } while (!bExitIteration);
+    } while (1);
     
     if (isMainThread)
     {
@@ -1303,6 +1315,7 @@ static void search_gen1(searchthread *thr)
             {
                 pos->lastpv[i] = bestthr->pos.lastpv[i];
                 i++;
+                if (i == MAXDEPTH - 1) break;
             }
             pos->lastpv[i] = 0;
             pos->bestmove = bestthr->pos.bestmove;
@@ -1321,7 +1334,7 @@ static void search_gen1(searchthread *thr)
         string strBestmove;
         string strPonder = "";
 
-        if (!pos->bestmove.code)
+        if (!pos->bestmove.code && !isDraw)
         {
             // Not enough time to get any bestmove? Fall back to default move
             pos->bestmove = pos->defaultmove;
@@ -1346,12 +1359,16 @@ static void search_gen1(searchthread *thr)
 
         cout << "bestmove " + strBestmove + strPonder + "\n";
 
-        en.stopLevel = ENGINESTOPPED;
+        en.stopLevel = ENGINESTOPIMMEDIATELY;
         en.benchmove = strBestmove;
-    }
 
-    // Remember depth for benchmark output
-    en.benchdepth = thr->depth - 1;
+        // Remember depth for benchmark output
+        en.benchdepth = thr->depth - 1;
+
+#ifdef STATISTICS
+        search_statistics();
+#endif
+    }
 }
 
 
@@ -1371,7 +1388,6 @@ void resetEndTime(int constantRootMoves, bool complete)
         if (complete)
             en.endtime1 = en.starttime + timetouse * en.frequency * f1 / (en.movestogo + 1) / 10000;
         en.endtime2 = en.starttime + min(max(0, timetouse - overhead * en.movestogo), f2 * timetouse / (en.movestogo + 1) / 10) * en.frequency / 1000;
-        //printf("info string difftime1=%lld  difftime2=%lld\n", (endtime1 - en.starttime) * 1000 / en.frequency , (endtime2 - en.starttime) * 1000 / en.frequency);
     }
     else if (timetouse) {
         int ph = en.sthread[0].pos.phase();
@@ -1407,7 +1423,7 @@ void resetEndTime(int constantRootMoves, bool complete)
     }
 
 #ifdef TDEBUG
-    printf("info string Time for this move: %4.2f  /  %4.2f\n", (en.endtime1 - en.starttime) / (double)en.frequency, (en.endtime2 - en.starttime) / (double)en.frequency);
+    printf("info string Time for this move: %4.3f  /  %4.3f\n", (en.endtime1 - en.starttime) / (double)en.frequency, (en.endtime2 - en.starttime) / (double)en.frequency);
 #endif
 }
 
@@ -1419,7 +1435,7 @@ void startSearchTime(bool complete = true)
 }
 
 
-void searchguide()
+void searchStart()
 {
     startSearchTime();
 
@@ -1438,55 +1454,57 @@ void searchguide()
     else
         for (int tnum = 0; tnum < en.Threads; tnum++)
             en.sthread[tnum].thr = thread(&search_gen1<MultiPVSearch>, &en.sthread[tnum]);
+}
 
-    U64 nowtime;
-    while (en.stopLevel != ENGINESTOPPED)
-    {
-        nowtime = getTime();
 
-        if (nowtime - en.starttime > 3 * en.frequency)
-            en.moveoutput = true;
-
-        if (en.stopLevel < ENGINESTOPPED)
-        {
-            if (en.isPondering())
-            {
-                Sleep(10);
-            }
-            else if (en.testPonderHit())
-            {
-                startSearchTime(false);
-                en.resetPonder();
-            }
-            else if (en.endtime2 && nowtime >= en.endtime2 && en.stopLevel < ENGINESTOPIMMEDIATELY)
-            {
-                en.stopLevel = ENGINESTOPIMMEDIATELY;
-            }
-            else if (en.maxnodes && en.maxnodes <= en.getTotalNodes() && en.stopLevel < ENGINESTOPIMMEDIATELY)
-            {
-                en.stopLevel = ENGINESTOPIMMEDIATELY;
-            }
-            else if (en.endtime1 && nowtime >= en.endtime1 && en.stopLevel < ENGINESTOPSOON)
-            {
-                en.stopLevel = ENGINESTOPSOON;
-                Sleep(10);
-            }
-            else {
-                Sleep(10);
-            }
-        }
-    }
+void searchWaitStop(bool forceStop)
+{
+    if (en.stopLevel == ENGINETERMINATEDSEARCH)
+        return;
 
     // Make the other threads stop now
-    en.stopLevel = ENGINESTOPIMMEDIATELY;
+    if (forceStop)
+        en.stopLevel = ENGINESTOPIMMEDIATELY;
     for (int tnum = 0; tnum < en.Threads; tnum++)
-        en.sthread[tnum].thr.join();
+        if (en.sthread[tnum].thr.joinable())
+            en.sthread[tnum].thr.join();
     en.stopLevel = ENGINETERMINATEDSEARCH;
-
-#ifdef STATISTICS
-    search_statistics();
-#endif
 }
+
+
+inline void chessposition::CheckForImmediateStop()
+{
+    if (threadindex || (nodes & NODESPERCHECK))
+        return;
+
+    if (en.isPondering())
+        // pondering... just continue searching
+        return;
+
+    if (en.testPonderHit())
+    {
+        // ponderhit
+        startSearchTime(false);
+        en.resetPonder();
+        return;
+    }
+
+    U64 nowtime = getTime();
+
+    if (en.endtime2 && nowtime >= en.endtime2 && en.stopLevel < ENGINESTOPIMMEDIATELY)
+    {
+        en.stopLevel = ENGINESTOPIMMEDIATELY;
+        return;
+    }
+
+    if (en.maxnodes && en.maxnodes <= en.getTotalNodes() && en.stopLevel < ENGINESTOPIMMEDIATELY)
+    {
+        en.stopLevel = ENGINESTOPIMMEDIATELY;
+        return;
+    }
+}
+
+
 
 #ifdef STATISTICS
 void search_statistics()
