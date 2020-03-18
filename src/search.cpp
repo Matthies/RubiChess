@@ -878,6 +878,8 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         if (depth > 2 && !ISTACTICAL(m->code))
         {
             reduction = reductiontable[1][depth][min(63, i + 1)];
+            STATISTICSINC(red_pi[1]);
+            STATISTICSADD(red_lmr[1], reductiontable[1][depth][min(63, i + 1)]);
         }
 
         int effectiveDepth = depth - reduction;
