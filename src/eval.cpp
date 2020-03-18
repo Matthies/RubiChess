@@ -151,10 +151,11 @@ void registeralltuners(chessposition *pos)
     registertuner(pos, &eps.eBackwardpawnpenalty, "eBackwardpawnpenalty", 0, 0, 0, 0, tuneIt);
     tuneIt = false;
     registertuner(pos, &eps.eDoublebishopbonus, "eDoublebishopbonus", 0, 0, 0, 0, tuneIt);
-    tuneIt = false;
+    tuneIt = true;
     registertuner(pos, &eps.ePawnblocksbishoppenalty, "ePawnblocksbishoppenalty", 0, 0, 0, 0, tuneIt);
+    registertuner(pos, &eps.eBishopcentercontrolbonus, "eBishopcentercontrolbonus", 0, 0, 0, 0, tuneIt);
 
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 28; j++)
             registertuner(pos, &eps.eMobilitybonus[i][j], "eMobilitybonus", j, 28, i, 4, tuneIt && (j < maxmobility[i]));
@@ -185,7 +186,7 @@ void registeralltuners(chessposition *pos)
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eKingringattack[i], "eKingringattack", i, 6, 0, 0, tuneIt);
     
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
             registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
@@ -255,10 +256,6 @@ void chessposition::getPawnAndKingEval(pawnhashentry *entryptr)
     entryptr->value += EVAL(eps.eKingshieldbonus, S2MSIGN(Me) * POPCOUNT(piece00[WPAWN | Me] & kingshieldMask[kingpos[Me]][Me]));
     if (bTrace) te.kingattackpower[You] += EVAL(eps.eKingshieldbonus, S2MSIGN(Me) * POPCOUNT(piece00[WPAWN | Me] & kingshieldMask[kingpos[Me]][Me]));
 
-    entryptr->semiopen[Me] = 0xff;
-    entryptr->passedpawnbb[Me] = 0ULL;
-    entryptr->isolatedpawnbb[Me] = 0ULL;
-    entryptr->backwardpawnbb[Me] = 0ULL;
     const U64 yourPawns = piece00[pc ^ S2MMASK];
     const U64 myPawns = piece00[pc];
     U64 pb = myPawns;
@@ -406,6 +403,7 @@ int chessposition::getPieceEval(positioneval *pe)
     const int pc = Pt * 2 + Me;
     U64 pb = piece00[pc];
     int index;
+    const U64 myRammedPawns = piece00[WPAWN | Me] & PAWNPUSH(You, piece00[WPAWN | You]);
 
     while (pb)
     {
@@ -432,9 +430,15 @@ int chessposition::getPieceEval(positioneval *pe)
 
             if (Pt == BISHOP)
             {
-                U64 blockingpawns = piece00[WPAWN + Me] & (BITSET(index) & WHITEBB ? WHITEBB : BLACKBB);
+                U64 blockingpawns = myRammedPawns & (BITSET(index) & WHITEBB ? WHITEBB : BLACKBB);
                 result += EVAL(eps.ePawnblocksbishoppenalty, S2MSIGN(Me) * POPCOUNT(blockingpawns));
                 if (bTrace) te.bishops[Me] += EVAL(eps.ePawnblocksbishoppenalty, S2MSIGN(Me) * POPCOUNT(blockingpawns));
+
+                if (MORETHANONE(mBishopAttacks[index][MAGICBISHOPINDEX(piece00[WPAWN] | piece00[BPAWN], index)] & CENTER))
+                {
+                    result += EVAL(eps.eBishopcentercontrolbonus, S2MSIGN(Me));
+                    if (bTrace) te.bishops[Me] += EVAL(eps.eBishopcentercontrolbonus, S2MSIGN(Me));
+                }
             }
         }
 
