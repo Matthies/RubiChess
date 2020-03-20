@@ -938,6 +938,7 @@ int main(int argc, char* argv[])
     string pgnconvertfile;
     string fentuningfiles;
     bool quietonly;
+    bool optk;
     int ppg;
 #endif
     int maxtime;
@@ -973,6 +974,7 @@ int main(int argc, char* argv[])
         { "-quietonly", "convert only quiet positions (when used with -pgnfile); don't do qsearch (when used with -fentuning)", &quietonly, 0, NULL },
         { "-ppg", "use only <n> positions per game (0 = every position, use with -pgnfile)", &ppg, 1, "0" },
         { "-fentuning", "reads FENs from files (filenames separated by *) and tunes eval parameters against it", &fentuningfiles, 2, "" },
+        { "-optk", "optimize constant k before tuning, use with -fentuning)", &optk, 0, NULL },
         { "-tuningratio", "use only every <n>th double move from the FEN to speed up the analysis", &tuningratio, 1, "1" },
 #endif
         { NULL, NULL, NULL, 0, NULL }
@@ -1075,7 +1077,7 @@ int main(int argc, char* argv[])
     }
     else if (fentuningfiles != "")
     {
-        TexelTune(fentuningfiles, quietonly);
+        TexelTune(fentuningfiles, quietonly, optk);
     }
 #endif
     else {

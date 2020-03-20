@@ -688,9 +688,9 @@ static int getGradientValue(eval *ev, positiontuneset *p, evalparam *e, bool deb
     return v;
 }
 
-const double texel_k = 1.121574;
+double texel_k = 1.121574;
 
-static double TexelEvalError(struct tuner *tn)
+static double TexelEvalError(struct tuner *tn, double k = texel_k)
 {
     double Ri, Qi;
     double E = 0.0;
@@ -705,7 +705,7 @@ static double TexelEvalError(struct tuner *tn)
             Qi = SCOREDRAW;
         else
             Qi = TAPEREDANDSCALEDEVAL(getGradientValue(tn->ev, p, e), p->ph, p->sc);
-        double sigmoid = 1 / (1 + pow(10.0, - texel_k * Qi / 400.0));
+        double sigmoid = 1 / (1 + pow(10.0, - k * Qi / 400.0));
         E += (Ri - sigmoid) * (Ri - sigmoid);
         p = (positiontuneset*)((char*)p + sizeof(positiontuneset) + p->num * sizeof(evalparam));
     }
@@ -1129,45 +1129,8 @@ static void collectTuners(chessposition *p, tunerpool *pool, tuner **freeTuner)
 }
 
 
-void TexelTune(string fenfilenames, bool noqs)
+void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK)
 {
-#if 0 // enable to calculate constant k 
-    // FIXME: Needs to be rewritten after eval rewrite
-    double E[2];
-    double bound[2] = { 0.0, 2.0 };
-    double x, lastx;
-    //double delta;
-    lastx = (bound[0] + bound[1]) / 2;
-
-    E[0] = TexelEvalError(fenfilename, bound[0]);
-    E[1] = TexelEvalError(fenfilename, bound[1]);
-    Emin = TexelEvalError(fenfilename, lastx);
-    if (Emin > E[0] || Emin > E[1])
-    {
-        printf("Tuning Error! Wrong bounds.\n");
-        return;
-    }
-
-    while (bound[1] - bound[0] > 0.001)
-    {
-        x = (lastx + bound[direction]) / 2;
-        Error = TexelEvalError(fenfilename, x);
-        if (Error > Emin)
-        {
-            bound[direction] = x;
-            E[direction] = Error;
-        }
-        else {
-            E[1 - direction] = Emin;
-            bound[1 - direction] = lastx;
-            lastx = x;
-            Emin = Error;
-        }
-        direction = 1 - direction;
-    }
-    printf("Tuningscore b0=%0.10f (%0.10f) b1=%0.10f (%0.10f)", bound[0], E[0], bound[1], E[1]);
-    k = (bound[0] + bound[1]) / 2;
-#endif
     pos.pwnhsh = new Pawnhash(0);
     registeralltuners(&pos);
     pos.noQs = noqs;
@@ -1175,13 +1138,12 @@ void TexelTune(string fenfilenames, bool noqs)
     getGradsFromFen(fenfilenames);
     if (!texelptsnum) return;
 
-    printf("Tuning starts now.\nPress 'P' to output current parameters.\nPress 'B' to break after current tuning loop.\nPress 'S' for immediate break.\n\n");
-
     tunerpool tpool;
     tpool.tn = new struct tuner[en.Threads];
     tpool.lowRunning = -1;
     tpool.highRunning = -1;
     tpool.lastImproved = -1;
+    tuner *tn;
 
     for (int i = 0; i < en.Threads; i++)
     {
@@ -1190,9 +1152,56 @@ void TexelTune(string fenfilenames, bool noqs)
         tpool.tn[i].paramindex = -1;
     }
 
+    if (bOptimizeK)
+    {
+        printf("Finding optimal tuning constant k for this position set first...\n");
+
+        tn = &tpool.tn[0];
+        copyParams(&pos, tn);
+        double E[2];
+        double Emin, Error;
+        double bound[2] = { 0.0, 10.0 };
+        double x, lastx;
+        int direction = 0;
+        //double delta;
+        lastx = (bound[0] + bound[1]) / 2;
+
+        E[0] = TexelEvalError(tn, bound[0]);
+        E[1] = TexelEvalError(tn, bound[1]);
+        Emin = TexelEvalError(tn, lastx);
+        if (Emin > E[0] || Emin > E[1])
+        {
+            printf("Tuning Error! Wrong bounds. E0=%0.10f  E1=%0.10f  Ed=%0.10f\n", E[0], E[1], Emin);
+            return;
+        }
+
+        while (bound[1] - bound[0] > 0.001)
+        {
+            x = (lastx + bound[direction]) / 2;
+            Error = TexelEvalError(tn, x);
+            printf("Tuningscore b0=%0.10f (%0.10f) b1=%0.10f (%0.10f)\n", bound[0], E[0], bound[1], E[1]);
+            if (Error > Emin)
+            {
+                bound[direction] = x;
+                E[direction] = Error;
+            }
+            else {
+                E[1 - direction] = Emin;
+                bound[1 - direction] = lastx;
+                lastx = x;
+                Emin = Error;
+            }
+            direction = 1 - direction;
+        }
+        texel_k = (bound[0] + bound[1]) / 2.0;
+        printf("Best k for this tuning set: %0.10f\n", texel_k);
+    }
+
     bool improved = true;
     bool leaveSoon = false;
     bool leaveNow = false;
+
+    printf("Tuning starts now.\nPress 'P' to output current parameters.\nPress 'B' to break after current tuning loop.\nPress 'S' for immediate break.\n\n");
 
     while (improved && !leaveSoon && !leaveNow)
     {
@@ -1209,11 +1218,7 @@ void TexelTune(string fenfilenames, bool noqs)
                     getValueStringValue(pos.tps.ev[i]).c_str());
                 continue;
             }
-
-            tuner *tn;
-
             tpool.highRunning = i;
-
             do
             {
                 collectTuners(&pos, &tpool, &tn);

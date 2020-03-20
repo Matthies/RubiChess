@@ -514,7 +514,7 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
 #ifdef EVALTUNE
 typedef void(*initevalfunc)(void);
 bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg);
-void TexelTune(string fenfilename, bool noqs);
+void TexelTune(string fenfilename, bool noqs, bool bOptimizeK);
 
 extern int tuningratio;
 
