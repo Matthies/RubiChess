@@ -110,6 +110,7 @@ void registeralltuners(chessposition *pos)
     tuneIt = false;
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eKingpinpenalty[i], "eKingpinpenalty", i, 6, 0, 0, tuneIt && (i > PAWN));
+    tuneIt = true;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 5; j++)
             registertuner(pos, &eps.ePawnstormblocked[i][j], "ePawnstormblocked", j, 5, i, 4, tuneIt);
@@ -137,13 +138,13 @@ void registeralltuners(chessposition *pos)
     for (i = 0; i < 2; i++)
         for (j = 0; j < 8; j++)
             registertuner(pos, &eps.ePotentialpassedpawnbonus[i][j], "ePotentialpassedpawnbonus", j, 8, i, 2, tuneIt && (j > 0 && j < 7));
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 8; i++)
         registertuner(pos, &eps.eAttackingpawnbonus[i], "eAttackingpawnbonus", i, 8, 0, 0, tuneIt && (i > 0 && i < 7));
     registertuner(pos, &eps.eIsolatedpawnpenalty, "eIsolatedpawnpenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eDoublepawnpenalty, "eDoublepawnpenalty", 0, 0, 0, 0, tuneIt);
 
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 6; i++)
         for (j = 0; j < 6; j++)
             registertuner(pos, &eps.eConnectedbonus[i][j], "eConnectedbonus", j, 6, i, 6, tuneIt);
@@ -284,6 +285,16 @@ void chessposition::getPawnAndKingEval(pawnhashentry *entryptr)
             U64 myPushsupporters = myPawns & pawn_attacks_to[PAWNPUSHINDEX(Me, index)][You];
             U64 yourAttackers = yourPawns & pawn_attacks_to[index][Me];
             U64 yourPushattackers = yourPawns & pawn_attacks_to[PAWNPUSHINDEX(Me, index)][Me];
+#if 0
+            if (!(yourStoppers ^ yourAttackers ^ yourPushattackers) != (!yourStoppers ^ yourAttackers ^ yourPushattackers)
+                && POPCOUNT(myPushsupporters) >= POPCOUNT(yourPushattackers))
+            {
+                BitboardDraw(!yourStoppers ^ yourAttackers ^ yourPushattackers);
+                BitboardDraw(!(yourStoppers ^ yourAttackers ^ yourPushattackers));
+                printf("%d %s\n", index, this->toFen().c_str());
+                
+            }
+#endif
             if (!(yourStoppers ^ yourAttackers ^ yourPushattackers))
             {
                 // Lets see if we can get rid of the remaining stoppers
