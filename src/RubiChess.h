@@ -32,7 +32,7 @@
 #define TDEBUG
 #endif
 
-#if 0
+#if 1
 #define EVALTUNE
 #endif
 
@@ -290,19 +290,19 @@ struct evalparamset {
     eval eTempo =  CVALUE(  20);
     eval eKingpinpenalty[6] = {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  38, -74), VALUE(  65, -61), VALUE( -29,  68), VALUE( -44, 163)  };
     eval ePawnstormblocked[4][5] = {
-        {  VALUE(   0,   0), VALUE(   0,   0), VALUE( -11,  -4), VALUE(  37, -16), VALUE(  36,  -3)  },
-        {  VALUE(   0,   0), VALUE(   0,   0), VALUE(   4, -16), VALUE(  23, -20), VALUE(   2,  -7)  },
-        {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  -2, -18), VALUE(  -9,  -3), VALUE(  -4,  -5)  },
-        {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  -9,  -6), VALUE(   0,  -1), VALUE(  16,  -6)  }
+        {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  -6,  -4), VALUE(  26, -11), VALUE(  30, -11)  },
+        {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  -3, -13), VALUE(  24, -19), VALUE(   8,  -8)  },
+        {  VALUE(   0,   0), VALUE(   0,   0), VALUE(   6, -13), VALUE(  -9,   2), VALUE(  -5,   4)  },
+        {  VALUE(   0,   0), VALUE(   0,   0), VALUE( -25,  -3), VALUE(  -9,   7), VALUE(   9,  -1)  }
     };
     eval ePawnstormfree[4][5] = {
-        {  VALUE( -14,  39), VALUE( 106,  23), VALUE(   1,   7), VALUE( -18,   4), VALUE(  -1,   2)  },
-        {  VALUE(  -6,  35), VALUE(  -1,  37), VALUE( -39,  18), VALUE( -16,   3), VALUE(   6,  -1)  },
-        {  VALUE(   1,  34), VALUE( -10,  45), VALUE( -20,  12), VALUE( -17,   3), VALUE(  -4,   8)  },
-        {  VALUE(  42,   7), VALUE(  13,  37), VALUE( -19,   2), VALUE( -19,   2), VALUE( -10,  12)  }
+        {  VALUE(   9,  46), VALUE(  37,  67), VALUE( -33,  37), VALUE( -11,   8), VALUE(  -3,   4)  },
+        {  VALUE( -13,  64), VALUE( -32,  62), VALUE( -61,  31), VALUE( -10,   5), VALUE(   3,   3)  },
+        {  VALUE( -28,  45), VALUE( -12,  46), VALUE( -27,  14), VALUE( -12,   3), VALUE(  -4,   8)  },
+        {  VALUE(  31,  29), VALUE( -10,  57), VALUE( -19,   2), VALUE( -16,   5), VALUE( -13,  12)  }
     };
-    eval ePawnpushthreatbonus =  VALUE(  22,  22);
-    eval eSafepawnattackbonus =  VALUE(  54, -12);
+    eval ePawnpushthreatbonus =  VALUE(  20,  13);
+    eval eSafepawnattackbonus =  VALUE(  66,  25);
     eval eHangingpiecepenalty =  VALUE( -23, -36);
     eval ePassedpawnbonus[4][8] = {
         {  VALUE(   0,   0), VALUE(  10,   4), VALUE(   0,   8), VALUE(  10,  25), VALUE(  35,  46), VALUE(  74,  81), VALUE(  44, 108), VALUE(   0,   0)  },
@@ -329,21 +329,21 @@ struct evalparamset {
         {  VALUE(   0,   0), VALUE( -33,  -3), VALUE( -29,  18), VALUE( -11,  31), VALUE(   0,  70), VALUE(   6, 125), VALUE(  83,  77), VALUE(   0,   0)  }
     };
     eval ePotentialpassedpawnbonus[2][8] = {
-        {  VALUE(   0,   0), VALUE( -51, -10), VALUE( -22,  -1), VALUE(  -5,  34), VALUE(  37,  19), VALUE(  68,  42), VALUE(   0,   0), VALUE(   0,   0)  },
-        {  VALUE(   0,   0), VALUE( -41,   9), VALUE( -14,  18), VALUE(  -3,  27), VALUE(  29,  30), VALUE(  68,  11), VALUE(   0,   0), VALUE(   0,   0)  }
+        {  VALUE(   0,   0), VALUE(  28, -15), VALUE(  -3,  14), VALUE(  17,   5), VALUE(  37,  60), VALUE(  75,  81), VALUE(  44, 108), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE(  -2,   0), VALUE(   1,   2), VALUE(   6,   6), VALUE(  20,  25), VALUE(  53,   7), VALUE( -14,  10), VALUE(   0,   0)  }
     };
-    eval eAttackingpawnbonus[8] = {  VALUE(   0,   0), VALUE( -55,  -1), VALUE( -33,  -5), VALUE( -13,  -6), VALUE( -14,  -6), VALUE( -15,   1), VALUE(   0,   0), VALUE(   0,   0)  };
-    eval eIsolatedpawnpenalty =  VALUE( -16,  -8);
-    eval eDoublepawnpenalty =  VALUE(  -9, -25);
+    eval eAttackingpawnbonus[8] = {  VALUE(   0,   0), VALUE( -48,  12), VALUE( -14,   4), VALUE( -14,  -6), VALUE( -14,  -6), VALUE( -15,   1), VALUE(   0,   0), VALUE(   0,   0)  };
+    eval eIsolatedpawnpenalty =  VALUE( -13, -12);
+    eval eDoublepawnpenalty =  VALUE(  -9, -21);
     eval eConnectedbonus[6][6] = {
         {  VALUE(   0,   0), VALUE(   9,  -2), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
-        {  VALUE(   0,   0), VALUE(   3,   4), VALUE(  10,  13), VALUE(  25,  18), VALUE(  34,  20), VALUE(  56,  23)  },
-        {  VALUE(   0,   0), VALUE(  16,   4), VALUE(  14,   8), VALUE(  27,  14), VALUE(  21,  10), VALUE( -12,  15)  },
-        {  VALUE(   0,   0), VALUE(  22,  28), VALUE(  19,  19), VALUE(  44,  26), VALUE(  29,  17), VALUE( 110, -42)  },
-        {  VALUE(   0,   0), VALUE(  62, 107), VALUE(  52,  54), VALUE(  70,  73), VALUE(  32,  84), VALUE( -57, 253)  },
-        {  VALUE(   0,   0), VALUE(  38, 241), VALUE( 146,  92), VALUE(   7, 400), VALUE(   3, 578), VALUE(   0,   0)  }
+        {  VALUE(   0,   0), VALUE(   2,   3), VALUE(  11,  12), VALUE(  23,  18), VALUE(  32,  22), VALUE(  51,  21)  },
+        {  VALUE(   0,   0), VALUE(  11,   4), VALUE(  14,   8), VALUE(  22,  13), VALUE(  22,   9), VALUE( -11,  11)  },
+        {  VALUE(   0,   0), VALUE(  15,  22), VALUE(  21,  16), VALUE(  35,  19), VALUE(  33,  16), VALUE( 113, -70)  },
+        {  VALUE(   0,   0), VALUE(  57,  97), VALUE(  50,  54), VALUE(  70,  71), VALUE(  33,  85), VALUE( -57, 253)  },
+        {  VALUE(   0,   0), VALUE(  38, 213), VALUE( 133,  99), VALUE(   7, 400), VALUE(   0, 578), VALUE(   0,   0)  }
     };
-    eval eBackwardpawnpenalty =  VALUE( -14, -11);
+    eval eBackwardpawnpenalty =  VALUE( -16, -11);
     eval eDoublebishopbonus =  VALUE(  56,  38);
     eval ePawnblocksbishoppenalty =  VALUE( -10, -18);
     eval eBishopcentercontrolbonus =  VALUE(  25,  13);
@@ -514,7 +514,7 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
 #ifdef EVALTUNE
 typedef void(*initevalfunc)(void);
 bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg);
-void TexelTune(string fenfilename, bool noqs, bool bOptimizeK);
+void TexelTune(string fenfilename, bool noqs, bool bOptimizeK, string correlation);
 
 extern int tuningratio;
 
