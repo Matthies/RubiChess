@@ -32,7 +32,7 @@
 #define TDEBUG
 #endif
 
-#if 1
+#if 0
 #define EVALTUNE
 #endif
 
@@ -329,10 +329,10 @@ struct evalparamset {
         {  VALUE(   0,   0), VALUE( -33,  -3), VALUE( -29,  18), VALUE( -11,  31), VALUE(   0,  70), VALUE(   6, 125), VALUE(  83,  77), VALUE(   0,   0)  }
     };
     eval ePotentialpassedpawnbonus[2][8] = {
-        {  VALUE(   0,   0), VALUE(  28, -15), VALUE(  -3,  14), VALUE(  17,   5), VALUE(  37,  60), VALUE(  75,  81), VALUE(  44, 108), VALUE(   0,   0)  },
-        {  VALUE(   0,   0), VALUE(  -2,   0), VALUE(   1,   2), VALUE(   6,   6), VALUE(  20,  25), VALUE(  53,   7), VALUE( -14,  10), VALUE(   0,   0)  }
+        {  VALUE(   0,   0), VALUE( -50,  12), VALUE( -25,  13), VALUE(   2,  27), VALUE(  36,  31), VALUE(  63,  42), VALUE(  44, 108), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE( -37,   9), VALUE( -14,  17), VALUE(   3,  32), VALUE(  36,  42), VALUE(  69,   7), VALUE( -14,  10), VALUE(   0,   0)  }
     };
-    eval eAttackingpawnbonus[8] = {  VALUE(   0,   0), VALUE( -48,  12), VALUE( -14,   4), VALUE( -14,  -6), VALUE( -14,  -6), VALUE( -15,   1), VALUE(   0,   0), VALUE(   0,   0)  };
+    eval eAttackingpawnbonus[8] = {  VALUE(   0,   0), VALUE( -55,  -5), VALUE( -33,  -1), VALUE(  -8, -13), VALUE( -14,  -6), VALUE( -12,   1), VALUE(   0,   0), VALUE(   0,   0)  };
     eval eIsolatedpawnpenalty =  VALUE( -13, -12);
     eval eDoublepawnpenalty =  VALUE(  -9, -21);
     eval eConnectedbonus[6][6] = {

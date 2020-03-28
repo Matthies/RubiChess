@@ -110,7 +110,7 @@ void registeralltuners(chessposition *pos)
     tuneIt = false;
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eKingpinpenalty[i], "eKingpinpenalty", i, 6, 0, 0, tuneIt && (i > PAWN));
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 5; j++)
             registertuner(pos, &eps.ePawnstormblocked[i][j], "ePawnstormblocked", j, 5, i, 4, tuneIt);
@@ -141,10 +141,11 @@ void registeralltuners(chessposition *pos)
     tuneIt = true;
     for (i = 0; i < 8; i++)
         registertuner(pos, &eps.eAttackingpawnbonus[i], "eAttackingpawnbonus", i, 8, 0, 0, tuneIt && (i > 0 && i < 7));
+    tuneIt = false;
     registertuner(pos, &eps.eIsolatedpawnpenalty, "eIsolatedpawnpenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eDoublepawnpenalty, "eDoublepawnpenalty", 0, 0, 0, 0, tuneIt);
 
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 6; i++)
         for (j = 0; j < 6; j++)
             registertuner(pos, &eps.eConnectedbonus[i][j], "eConnectedbonus", j, 6, i, 6, tuneIt);
@@ -187,7 +188,7 @@ void registeralltuners(chessposition *pos)
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eKingringattack[i], "eKingringattack", i, 6, 0, 0, tuneIt);
     
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
             registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && i==PAWN && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
