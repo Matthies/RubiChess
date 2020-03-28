@@ -1179,30 +1179,51 @@ void getCorrelation(string correlationParams)
     while (correlationParams != "")
     {
         size_t spi = correlationParams.find('*');
-        string correlation = (spi == string::npos) ? correlationParams : correlationParams.substr(0, spi);
+        string correlationparam = (spi == string::npos) ? correlationParams : correlationParams.substr(0, spi);
         correlationParams = (spi == string::npos) ? "" : correlationParams.substr(spi + 1, string::npos);
         int x;
         try {
-            x = stoi(correlation);
+            x = stoi(correlationparam);
         }
         catch (...) {}
 
+        // skip (almost) unused parameters
+        if (pos.tps.used[x] * 100000 / texelptsnum < 1)
+            continue;
+
         // Get average of this param
         double xAvg = getAvgParamVal(x);
-        printf("%d  %30s  avg=%2.3f\n", x, nameTunedParameter(&pos, x).c_str(), xAvg);
+        struct {
+            double avg;
+            double coeff;
+            int index;
+        } correlation[NUMOFEVALPARAMS];
         // loop all parameters and get correlation
         for (int y = 0; y < pos.tps.count; y++)
         {
+            correlation[y].index = -1;
             if (pos.tps.ev[y]->type != pos.tps.ev[x]->type)
                 continue;
             if (pos.tps.used[y] * 100000 / texelptsnum < 1)
                 continue;
-            double yAvg = getAvgParamVal(y);
-            double cor = getCorrelationCoeff(x, y, xAvg, yAvg);
-            printf("%d  %40s  avg=%10.3f  cor=%10.3f\n", y, nameTunedParameter(&pos, y).c_str(), yAvg, cor);
+            correlation[y].avg = getAvgParamVal(y);
+            correlation[y].coeff = getCorrelationCoeff(x, y, xAvg, correlation[y].avg);
+            correlation[y].index = y;
         }
 
-
+        // sort them by absolute correlation
+        for (int i = 0; i < pos.tps.count; i++)
+        {
+            if (correlation[i].index < 0) continue;
+            for (int j = i + 1; j < pos.tps.count; j++)
+            {
+                if (correlation[j].index < 0) continue;
+                if (abs(correlation[j].coeff) > abs(correlation[i].coeff))
+                    swap(correlation[i], correlation[j]);
+            }
+            int y = correlation[i].index;
+            printf("%3d\t%30s\tavg=\t%.4f\t%3d\t%30s\tavg=\t%.4f\tcor=\t%.4f\n", x, nameTunedParameter(&pos, x).c_str(), xAvg, y, nameTunedParameter(&pos, y).c_str(), correlation[i].avg, correlation[i].coeff);
+        }
     }
 
 }
