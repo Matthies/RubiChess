@@ -135,17 +135,17 @@ void registeralltuners(chessposition *pos)
             registertuner(pos, &eps.eKingdefendspasserpenalty[i][j], "eKingdefendspasserpenalty", j, 8, i, 7, tuneIt && (j > 0 && j < 7));
 
     tuneIt = true;
-    for (i = 0; i < 2; i++)
+    for (i = 0; i < 4; i++)
         for (j = 0; j < 8; j++)
-            registertuner(pos, &eps.ePotentialpassedpawnbonus[i][j], "ePotentialpassedpawnbonus", j, 8, i, 2, tuneIt && (j > 0 && j < 7));
-    tuneIt = true;
+            registertuner(pos, &eps.ePotentialpassedpawnbonus[i][j], "ePotentialpassedpawnbonus", j, 8, i, 4, tuneIt && (j > 0 && j < 7));
+    tuneIt = false;
     for (i = 0; i < 8; i++)
         registertuner(pos, &eps.eAttackingpawnbonus[i], "eAttackingpawnbonus", i, 8, 0, 0, tuneIt && (i > 0 && i < 7));
     tuneIt = false;
     registertuner(pos, &eps.eIsolatedpawnpenalty, "eIsolatedpawnpenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eDoublepawnpenalty, "eDoublepawnpenalty", 0, 0, 0, 0, tuneIt);
 
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 6; i++)
         for (j = 0; j < 6; j++)
             registertuner(pos, &eps.eConnectedbonus[i][j], "eConnectedbonus", j, 6, i, 6, tuneIt);
@@ -293,18 +293,21 @@ void chessposition::getPawnAndKingEval(pawnhashentry *entryptr)
             {
                 BitboardDraw(!yourStoppers ^ yourAttackers ^ yourPushattackers);
                 BitboardDraw(!(yourStoppers ^ yourAttackers ^ yourPushattackers));
+                BitboardDraw(!yourStoppers);
                 printf("%d %s\n", index, this->toFen().c_str());
                 
             }
 #endif
-            if (!(yourStoppers ^ yourAttackers ^ yourPushattackers))
+            //if ((!yourStoppers ^ yourAttackers ^ yourPushattackers))
+            if (yourAttackers || yourPushattackers)
             {
                 // Lets see if we can get rid of the remaining stoppers
                 if (POPCOUNT(myPushsupporters) >= POPCOUNT(yourPushattackers))
                 {
                     // exchange is possible
-                    entryptr->value += EVAL(eps.ePotentialpassedpawnbonus[POPCOUNT(mySupporters) >= POPCOUNT(yourAttackers)][RRANK(index, Me)], S2MSIGN(Me));
-                    if (bTrace) te.pawns[Me] += EVAL(eps.ePotentialpassedpawnbonus[POPCOUNT(mySupporters) >= POPCOUNT(yourAttackers)][RRANK(index, Me)], S2MSIGN(Me));
+                    int sev = (POPCOUNT(mySupporters) >= POPCOUNT(yourAttackers)) + 2 * (bool)(!(yourStoppers ^ yourAttackers ^ yourPushattackers));
+                    entryptr->value += EVAL(eps.ePotentialpassedpawnbonus[sev][RRANK(index, Me)], S2MSIGN(Me));
+                    if (bTrace) te.pawns[Me] += EVAL(eps.ePotentialpassedpawnbonus[sev][RRANK(index, Me)], S2MSIGN(Me));
                 }
             }
         }

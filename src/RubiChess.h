@@ -328,20 +328,22 @@ struct evalparamset {
         {  VALUE(   0,   0), VALUE( -17,  -5), VALUE( -15,  15), VALUE(  -7,  31), VALUE(  13,  73), VALUE(   7, 143), VALUE(  34, 138), VALUE(   0,   0)  },
         {  VALUE(   0,   0), VALUE( -33,  -3), VALUE( -29,  18), VALUE( -11,  31), VALUE(   0,  70), VALUE(   6, 125), VALUE(  83,  77), VALUE(   0,   0)  }
     };
-    eval ePotentialpassedpawnbonus[2][8] = {
-        {  VALUE(   0,   0), VALUE(   4, -48), VALUE(   4,   7), VALUE(  -3,  21), VALUE(  29,  50), VALUE(  39,  68), VALUE(  44, 108), VALUE(   0,   0)  },
-        {  VALUE(   0,   0), VALUE( -20,   1), VALUE(  -4,  -1), VALUE(  -1,  17), VALUE(   5,  29), VALUE(  39,  11), VALUE( -14,  10), VALUE(   0,   0)  }
+    eval ePotentialpassedpawnbonus[4][8] = {
+        {  VALUE(   0,   0), VALUE(  37,  10), VALUE(   2,  -2), VALUE(  15,   7), VALUE(  42,  26), VALUE(  75,  44), VALUE(   0,   0), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE(  -1,   1), VALUE(   0,   3), VALUE(   6,   0), VALUE(  13,  -9), VALUE(  40,   5), VALUE(   0,   0), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE( -11,  12), VALUE( -24,  -3), VALUE(   6,  34), VALUE(  46,  44), VALUE(  94,  80), VALUE(   0,   0), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE( -40,   9), VALUE(  -9,  16), VALUE(   5,  31), VALUE(  36,  45), VALUE( 116,   7), VALUE(   0,   0), VALUE(   0,   0)  }
     };
-    eval eAttackingpawnbonus[8] = {  VALUE(   0,   0), VALUE( -69, -24), VALUE( -28, -41), VALUE( -20, -20), VALUE( -17, -21), VALUE( -15,   2), VALUE(   0,   0), VALUE(   0,   0)  };
+    eval eAttackingpawnbonus[8] = {  VALUE(   0,   0), VALUE( -48,  12), VALUE( -14,   4), VALUE( -14,  -6), VALUE( -14,  -6), VALUE( -15,   1), VALUE(   0,   0), VALUE(   0,   0)  };
     eval eIsolatedpawnpenalty =  VALUE( -13, -12);
     eval eDoublepawnpenalty =  VALUE(  -9, -21);
     eval eConnectedbonus[6][6] = {
-        {  VALUE(   0,   0), VALUE(  11,  -9), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
-        {  VALUE(   0,   0), VALUE(   4,  -3), VALUE(  13,   7), VALUE(  21,  12), VALUE(  29,  15), VALUE(  33,  22)  },
-        {  VALUE(   0,   0), VALUE(   8,   1), VALUE(  11,   2), VALUE(  26,   8), VALUE(  20,   7), VALUE(  -9,  41)  },
-        {  VALUE(   0,   0), VALUE(  16,  22), VALUE(  15,   9), VALUE(  50,  44), VALUE(  35,   7), VALUE(  40, 183)  },
-        {  VALUE(   0,   0), VALUE(  88, 103), VALUE(  25,  66), VALUE(  70,  43), VALUE(  35,  90), VALUE( -57, 253)  },
-        {  VALUE(   0,   0), VALUE(  38, 247), VALUE( 125, 129), VALUE(   7, 400), VALUE(   0, 578), VALUE(   0,   0)  }
+        {  VALUE(   0,   0), VALUE(   9,  -2), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE(   2,   3), VALUE(  11,  12), VALUE(  23,  18), VALUE(  32,  22), VALUE(  51,  21)  },
+        {  VALUE(   0,   0), VALUE(  11,   4), VALUE(  14,   8), VALUE(  22,  13), VALUE(  22,   9), VALUE( -11,  11)  },
+        {  VALUE(   0,   0), VALUE(  15,  22), VALUE(  21,  16), VALUE(  35,  19), VALUE(  33,  16), VALUE( 113, -70)  },
+        {  VALUE(   0,   0), VALUE(  57,  97), VALUE(  50,  54), VALUE(  70,  71), VALUE(  33,  85), VALUE( -57, 253)  },
+        {  VALUE(   0,   0), VALUE(  38, 213), VALUE( 133,  99), VALUE(   7, 400), VALUE(   0, 578), VALUE(   0,   0)  }
     };
     eval eBackwardpawnpenalty =  VALUE( -16, -11);
     eval eDoublebishopbonus =  VALUE(  56,  38);
