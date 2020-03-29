@@ -329,10 +329,10 @@ struct evalparamset {
         {  VALUE(   0,   0), VALUE( -33,  -3), VALUE( -29,  18), VALUE( -11,  31), VALUE(   0,  70), VALUE(   6, 125), VALUE(  83,  77), VALUE(   0,   0)  }
     };
     eval ePotentialpassedpawnbonus[2][8] = {
-        {  VALUE(   0,   0), VALUE( -13, -22), VALUE(  -1,   1), VALUE(  -3,  30), VALUE(  24,  62), VALUE(  32,  52), VALUE(  44, 108), VALUE(   0,   0)  },
-        {  VALUE(   0,   0), VALUE( -18,  -2), VALUE(  -7,  11), VALUE(   1,  17), VALUE(   3,  36), VALUE(  39,   7), VALUE( -14,  10), VALUE(   0,   0)  }
+        {  VALUE(   0,   0), VALUE(   4, -48), VALUE(   4,   7), VALUE(  -3,  21), VALUE(  29,  50), VALUE(  39,  68), VALUE(  44, 108), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE( -20,   1), VALUE(  -4,  -1), VALUE(  -1,  17), VALUE(   5,  29), VALUE(  39,  11), VALUE( -14,  10), VALUE(   0,   0)  }
     };
-    eval eAttackingpawnbonus[8] = {  VALUE(   0,   0), VALUE( -69, -35), VALUE( -34, -12), VALUE( -20, -12), VALUE( -19, -13), VALUE(  -6, -12), VALUE(   0,   0), VALUE(   0,   0)  };
+    eval eAttackingpawnbonus[8] = {  VALUE(   0,   0), VALUE( -69, -24), VALUE( -28, -41), VALUE( -20, -20), VALUE( -17, -21), VALUE( -15,   2), VALUE(   0,   0), VALUE(   0,   0)  };
     eval eIsolatedpawnpenalty =  VALUE( -13, -12);
     eval eDoublepawnpenalty =  VALUE(  -9, -21);
     eval eConnectedbonus[6][6] = {
