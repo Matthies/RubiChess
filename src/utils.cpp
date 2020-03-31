@@ -635,13 +635,15 @@ char *texelpts = NULL;
 U64 texelptsnum;
 
 
-static int getGradientValue(eval *ev, positiontuneset *p, evalparam *e, bool debug = false)
+static int getGradientValue(eval *ev, positiontuneset *p, evalparam *e, bool debug = false, int corParam = -1)
 {
     int v = 0;
     int complexity = 0;
     int sqsum[4][2] = { { 0 } };
-    for (int i = 0; i < p->num; i++)
+    for (int i = 0; i < p->num; i++, e++)
     {
+        if (corParam >= 0 && corParam != e->index)
+            continue;
         int type = ev[e->index].type;
         if (debug)
             printf("%30s ", nameTunedParameter(&pos, e->index).c_str());
@@ -666,7 +668,6 @@ static int getGradientValue(eval *ev, positiontuneset *p, evalparam *e, bool deb
             if (debug)
                 printf(" Compl: %08x * %3d = %08x \n", ev[e->index].v, e->g[0], ev[e->index] * e->g[0]);
         }
-        e++;
     }
     if (debug)
         printf("linear gesamt: %08x\n", v);
@@ -1129,7 +1130,105 @@ static void collectTuners(chessposition *p, tunerpool *pool, tuner **freeTuner)
 }
 
 
-void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK)
+static double getAvgParamVal(int iParam)
+{
+    // Get average
+    positiontuneset *p = (positiontuneset*)texelpts;
+    int pSum = 0;
+    for (U64 i = 0; i < texelptsnum; i++)
+    {
+        evalparam *e = (evalparam *)((char*)p + sizeof(positiontuneset));
+        if (p->sc != SCALE_DRAW)
+            pSum += TAPEREDANDSCALEDEVAL(getGradientValue(*pos.tps.ev, p, e, false, iParam), p->ph, p->sc);
+        p = (positiontuneset*)((char*)p + sizeof(positiontuneset) + p->num * sizeof(evalparam));
+    }
+    double pAvg = pSum / (double)texelptsnum;
+    return pAvg;
+}
+
+static double getCorrelationCoeff(int ix, int iy, double ax, double ay)
+{
+    // Get correlation
+    double counter = 0.0;
+    double denominatorfactorx = 0.0;
+    double denominatorfactory = 0.0;
+    positiontuneset *p = (positiontuneset*)texelpts;
+    for (U64 i = 0; i < texelptsnum; i++)
+    {
+        int px = 0, py = 0;
+        evalparam *e = (evalparam *)((char*)p + sizeof(positiontuneset));
+        if (p->sc != SCALE_DRAW)
+        {
+            px = TAPEREDANDSCALEDEVAL(getGradientValue(*pos.tps.ev, p, e, false, ix), p->ph, p->sc);
+            py = TAPEREDANDSCALEDEVAL(getGradientValue(*pos.tps.ev, p, e, false, iy), p->ph, p->sc);
+        }
+        counter += (px - ax) * (py - ay);
+        denominatorfactorx += (px - ax) * (px - ax);
+        denominatorfactory += (py - ay) * (py - ay);
+
+        p = (positiontuneset*)((char*)p + sizeof(positiontuneset) + p->num * sizeof(evalparam));
+    }
+
+    double cor = counter / sqrt(denominatorfactorx * denominatorfactory);
+    return cor;
+}
+
+
+void getCorrelation(string correlationParams)
+{
+    while (correlationParams != "")
+    {
+        size_t spi = correlationParams.find('*');
+        string correlationparam = (spi == string::npos) ? correlationParams : correlationParams.substr(0, spi);
+        correlationParams = (spi == string::npos) ? "" : correlationParams.substr(spi + 1, string::npos);
+        int x;
+        try {
+            x = stoi(correlationparam);
+        }
+        catch (...) {}
+
+        // skip (almost) unused parameters
+        if (pos.tps.used[x] * 100000 / texelptsnum < 1)
+            continue;
+
+        // Get average of this param
+        double xAvg = getAvgParamVal(x);
+        struct {
+            double avg;
+            double coeff;
+            int index;
+        } correlation[NUMOFEVALPARAMS];
+        // loop all parameters and get correlation
+        for (int y = 0; y < pos.tps.count; y++)
+        {
+            correlation[y].index = -1;
+            if (pos.tps.ev[y]->type != pos.tps.ev[x]->type)
+                continue;
+            if (pos.tps.used[y] * 100000 / texelptsnum < 1)
+                continue;
+            correlation[y].avg = getAvgParamVal(y);
+            correlation[y].coeff = getCorrelationCoeff(x, y, xAvg, correlation[y].avg);
+            correlation[y].index = y;
+        }
+
+        // sort them by absolute correlation
+        for (int i = 0; i < pos.tps.count; i++)
+        {
+            if (correlation[i].index < 0) continue;
+            for (int j = i + 1; j < pos.tps.count; j++)
+            {
+                if (correlation[j].index < 0) continue;
+                if (abs(correlation[j].coeff) > abs(correlation[i].coeff))
+                    swap(correlation[i], correlation[j]);
+            }
+            int y = correlation[i].index;
+            printf("%3d\t%30s\tavg=\t%.4f\t%3d\t%30s\tavg=\t%.4f\tcor=\t%.4f\n", x, nameTunedParameter(&pos, x).c_str(), xAvg, y, nameTunedParameter(&pos, y).c_str(), correlation[i].avg, correlation[i].coeff);
+        }
+    }
+
+}
+
+void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK, string correlation)
 {
     pos.pwnhsh = new Pawnhash(0);
     registeralltuners(&pos);
@@ -1137,6 +1236,12 @@ void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK)
     en.setOption("hash", "4"); // we don't need tt; save all the memory for game data
     getGradsFromFen(fenfilenames);
     if (!texelptsnum) return;
+
+    if (correlation != "")
+    {
+        getCorrelation(correlation);
+        return;
+    }
 
     tunerpool tpool;
     tpool.tn = new struct tuner[en.Threads];
