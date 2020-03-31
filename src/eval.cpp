@@ -192,7 +192,7 @@ void registeralltuners(chessposition *pos)
     tuneIt = false;
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
-            registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && i==PAWN && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
+            registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
 }
 #endif
 
@@ -287,27 +287,15 @@ void chessposition::getPawnAndKingEval(pawnhashentry *entryptr)
             U64 myPushsupporters = myPawns & pawn_attacks_to[PAWNPUSHINDEX(Me, index)][You];
             U64 yourAttackers = yourPawns & pawn_attacks_to[index][Me];
             U64 yourPushattackers = yourPawns & pawn_attacks_to[PAWNPUSHINDEX(Me, index)][Me];
-#if 0
-            if (!(yourStoppers ^ yourAttackers ^ yourPushattackers) != (!yourStoppers ^ yourAttackers ^ yourPushattackers)
-                && POPCOUNT(myPushsupporters) >= POPCOUNT(yourPushattackers))
-            {
-                BitboardDraw(!yourStoppers ^ yourAttackers ^ yourPushattackers);
-                BitboardDraw(!(yourStoppers ^ yourAttackers ^ yourPushattackers));
-                BitboardDraw(!yourStoppers);
-                printf("%d %s\n", index, this->toFen().c_str());
-                
-            }
-#endif
-            //if ((!yourStoppers ^ yourAttackers ^ yourPushattackers))
             if (yourAttackers || yourPushattackers)
             {
                 // Lets see if we can get rid of the remaining stoppers
                 if (POPCOUNT(myPushsupporters) >= POPCOUNT(yourPushattackers))
                 {
-                    // exchange is possible
-                    int sev = (POPCOUNT(mySupporters) >= POPCOUNT(yourAttackers)) + 2 * (bool)(!(yourStoppers ^ yourAttackers ^ yourPushattackers));
-                    entryptr->value += EVAL(eps.ePotentialpassedpawnbonus[sev][RRANK(index, Me)], S2MSIGN(Me));
-                    if (bTrace) te.pawns[Me] += EVAL(eps.ePotentialpassedpawnbonus[sev][RRANK(index, Me)], S2MSIGN(Me));
+                    // exchange is possible; bonus defferentiates between pawn majority and waiting enemy pawns behind
+                    int severity = (POPCOUNT(mySupporters) >= POPCOUNT(yourAttackers)) + 2 * (bool)(!(yourStoppers ^ yourAttackers ^ yourPushattackers));
+                    entryptr->value += EVAL(eps.ePotentialpassedpawnbonus[severity][RRANK(index, Me)], S2MSIGN(Me));
+                    if (bTrace) te.pawns[Me] += EVAL(eps.ePotentialpassedpawnbonus[severity][RRANK(index, Me)], S2MSIGN(Me));
                 }
             }
         }
