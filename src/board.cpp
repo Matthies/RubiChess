@@ -2356,7 +2356,7 @@ void engine::allocThreads()
     }
     allocPawnhash();
     prepareThreads();
-    resetStats();
+    //resetStats();
 }
 
 
@@ -2365,6 +2365,7 @@ void engine::prepareThreads()
     for (int i = 0; i < Threads; i++)
     {
         memcpy(&sthread[i].pos, &rootposition, offsetof(chessposition, history));
+        resetStats();
         sthread[i].pos.threadindex = i;
         // early reset of variables that are important for bestmove selection
         sthread[i].pos.bestmovescore[0] = NOSCORE;
