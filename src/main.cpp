@@ -484,7 +484,7 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, int s
 
         if (++i < startnum) continue;
 
-        en.communicate("ucinewgame" + bm->fen);
+        en.communicate("ucinewgame");
         en.communicate("position fen " + bm->fen);
         starttime = getTime();
         int dp = 0;
