@@ -1035,9 +1035,6 @@ public:
     chessmove pondermove;
     int LegalMoves[MAXDEPTH];
     uint32_t killer[MAXDEPTH][2];
-    uint32_t countermove[14][64];
-    int16_t history[2][64][64];
-    int16_t counterhistory[14][64][14*64];
     uint32_t bestFailingLow;
     Pawnhash *pwnhsh;
     int threadindex;
@@ -1074,6 +1071,11 @@ public:
     void copyPositionTuneSet(positiontuneset *from, evalparam *efrom, positiontuneset *to, evalparam *eto);
     string getGradientString();
 #endif
+    // ...
+    int16_t history[2][64][64];
+    int16_t counterhistory[14][64][14 * 64];
+    uint32_t countermove[14][64];
+
     bool w2m();
     void BitboardSet(int index, PieceCode p);
     void BitboardClear(int index, PieceCode p);
@@ -1222,6 +1224,7 @@ public:
     void resetPonder() { pondersearch = NO; }
     long long perft(int depth, bool dotests);
     void prepareThreads();
+    void resetStats();
 };
 
 PieceType GetPieceType(char c);
