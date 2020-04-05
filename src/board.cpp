@@ -2364,7 +2364,8 @@ void engine::prepareThreads()
 {
     for (int i = 0; i < Threads; i++)
     {
-        memcpy(&sthread[i].pos, &rootposition, offsetof(chessposition, history));
+        // copy new position to the threads copy but keep old history data
+        memcpy((void*)&sthread[i].pos, &rootposition, offsetof(chessposition, history));
         sthread[i].pos.threadindex = i;
         // early reset of variables that are important for bestmove selection
         sthread[i].pos.bestmovescore[0] = NOSCORE;
