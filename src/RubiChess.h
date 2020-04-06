@@ -24,7 +24,7 @@
 #define STATISTICS
 #endif
 
-#if 0
+#if 1
 #define SDEBUG
 #endif
 
@@ -531,6 +531,11 @@ typedef struct ranctx { u8 a; u8 b; u8 c; u8 d; } ranctx;
 
 #define rot(x,k) (((x)<<(k))|((x)>>(64-(k))))
 
+#define BOUNDMASK 0x03 
+#define HASHALPHA 0x01
+#define HASHBETA 0x02
+#define HASHEXACT 0x00
+
 class zobrist
 {
 public:
@@ -560,6 +565,11 @@ struct transpositionentry {
 
 struct transpositioncluster {
     transpositionentry entry[TTBUCKETNUM];
+#ifdef SDEBUG
+    U64 debugHash;
+    int debugIndex;
+    string debugStoredBy;
+#endif
     //char padding[2];
 };
 
@@ -583,6 +593,28 @@ public:
     uint16_t getMoveCode(U64 hash);
     unsigned int getUsedinPermill();
     void nextSearch() { numOfSearchShiftTwo = (numOfSearchShiftTwo + 4) & 0xfc; }
+#ifdef SDEBUG
+    void markDebugSlot(U64 h, int i) {
+        table[h & sizemask].debugHash = h; table[h & sizemask].debugIndex = i;
+    }
+    int isDebugPosition(U64 h) { return (h != table[h & sizemask].debugHash) ? -1 : table[h & sizemask].debugIndex; }
+    string debugGetPv(U64 h) {
+        unsigned long long i = h & sizemask;
+        transpositioncluster* data = &table[i];
+        for (int i = 0; i < TTBUCKETNUM; i++)
+        {
+            transpositionentry *e = &(data->entry[i]);
+            if (e->hashupper == (h >> 32))
+                return "Depth=" + to_string(e->depth) + " Value=" + to_string(e->value) + "(" + to_string(e->boundAndAge & BOUNDMASK) + ")  pv=" + data->debugStoredBy;
+        }
+        return "";
+    }
+    void debugSetPv(U64 h, string s) {
+        U64 i = h & sizemask;
+        if (table[i].debugHash != h) return;
+        table[i].debugStoredBy = s;
+    }
+#endif
 };
 
 
@@ -689,11 +721,6 @@ const int castlerookfrom[] = {0, 0, 7, 56, 63 };
 const int castlerookto[] = {0, 3, 5, 59, 61 };
 
 const int EPTSIDEMASK[2] = { 0x8, 0x10 };
-
-#define BOUNDMASK 0x03 
-#define HASHALPHA 0x01
-#define HASHBETA 0x02
-#define HASHEXACT 0x00
 
 #define MAXDEPTH 256
 #define NOSCORE SHRT_MIN
@@ -1041,11 +1068,17 @@ public:
     int psqval;
 #ifdef SDEBUG
     unsigned long long debughash = 0;
-    uint16_t pvdebug[MAXMOVESEQUENCELENGTH];
+    struct {
+        uint32_t code;
+        U64 hash;
+    } pvdebug[MAXMOVESEQUENCELENGTH];
+    int pvalpha[MAXMOVESEQUENCELENGTH];
+    int pvbeta[MAXMOVESEQUENCELENGTH];
     int pvdepth[MAXMOVESEQUENCELENGTH];
     int pvmovenum[MAXMOVESEQUENCELENGTH];
     PvAbortType pvaborttype[MAXMOVESEQUENCELENGTH];
     int pvabortval[MAXMOVESEQUENCELENGTH];
+    string pvadditionalinfo[MAXMOVESEQUENCELENGTH];
 #endif
     uint32_t pvtable[MAXDEPTH][MAXDEPTH];
     uint32_t multipvtable[MAXMULTIPV][MAXDEPTH];
@@ -1083,7 +1116,7 @@ public:
     void BitboardPrint(U64 b);
     int getFromFen(const char* sFen);
     string toFen();
-    bool applyMove(string s);
+    bool applyMove(string s, bool resetMstop = true);
     void print(ostream* os = &cout);
     int phase();
     U64 movesTo(PieceCode pc, int from);

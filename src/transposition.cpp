@@ -159,7 +159,9 @@ int transposition::setSize(int sizeMb)
     int msb = 0;
     if (size > 0)
         delete table;
-    U64 maxsize = ((U64)sizeMb << 20) / sizeof(transpositioncluster);
+    U64 maxsize = ((U64)sizeMb << 20) / sizeof(transpositionentry[TTBUCKETNUM]);
+    if (maxsize != ((U64)sizeMb << 20) / sizeof(transpositioncluster))
+        printf("Alarm");
     if (!maxsize) return 0;
     GETMSB(msb, maxsize);
     size = (1ULL << msb);
@@ -221,6 +223,8 @@ unsigned int transposition::getUsedinPermill()
 
 void transposition::addHash(U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode)
 {
+    if (val == -94 && depth == 4)
+        printf("Alarm\n");
     unsigned long long index = hash & sizemask;
     transpositioncluster *cluster = &table[index];
     transpositionentry *e;
@@ -258,6 +262,14 @@ void transposition::addHash(U64 hash, int val, int16_t staticeval, int bound, in
         &&  depth < leastValuableEntry->depth - 3)
         return;
 
+#ifdef SDEBUG
+    if (cluster->debugHash && (uint32_t)(cluster->debugHash >> 32) == leastValuableEntry->hashupper)
+    {
+        cluster->debugIndex = -1;
+        cluster->debugStoredBy = "";
+    }
+
+#endif
     leastValuableEntry->hashupper = (uint32_t)(hash >> 32);
     leastValuableEntry->depth = (uint8_t)depth;
     leastValuableEntry->value = (short)val;
