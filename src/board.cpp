@@ -2169,11 +2169,11 @@ void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t k
 {
     pos = p;
     hashmove.code = p->shortMove2FullMove(hshm);
-    if (kllm1 != hshm)
+    if (kllm1 != hashmove.code)
         killermove1.code = kllm1;
-    if (kllm2 != hshm)
+    if (kllm2 != hashmove.code)
         killermove2.code = kllm2;
-    if (counter != hshm && counter != kllm1 && counter != kllm2)
+    if (counter != hashmove.code && counter != kllm1 && counter != kllm2)
         countermove.code = counter;
     pos->getCmptr(&cmptr[0]);
     if (!excludemove)
