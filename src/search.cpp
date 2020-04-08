@@ -1512,7 +1512,7 @@ inline void chessposition::CheckForImmediateStop()
 void search_statistics()
 {
     U64 n, i1, i2, i3;
-    double f0, f1, f2, f3, f4, f5, f6, f10, f11;
+    double f0, f1, f2, f3, f4, f5, f6, f7, f10, f11;
 
     printf("(ST)====Statistics====================================================================================================================================\n");
 
@@ -1559,7 +1559,8 @@ void search_statistics()
     f5 = n / (double)statistics.moves_loop_n;
     i3 = statistics.moves_played[0] + statistics.moves_played[1];
     f6 = 100.0 * statistics.moves_fail_high / (double)i3;
-    printf("(ST) Moves:   %12lld   %%Quiet-M.: %5.2f   %%Tact.-M.: %5.2f   %%LMP-M.:  %5.2f   %%FutilM.: %5.2f   %%BadSEE: %5.2f  Mvs/Lp: %5.2f   %%FailHi: %5.2f\n", n, f0, f1, f2, f3, f4, f5, f6);
+    f7 = 100.0 * statistics.moves_bad_hash / i2;
+    printf("(ST) Moves:   %12lld   %%Quiet-M.: %5.2f   %%Tact.-M.: %5.2f   %%BadHshM: %5.2f   %%LMP-M.:  %5.2f   %%FutilM.: %5.2f   %%BadSEE: %5.2f  Mvs/Lp: %5.2f   %%FailHi: %5.2f\n", n, f0, f1, f7, f2, f3, f4, f5, f6);
 
     // late move reduction statistics
     U64 red_n = statistics.red_pi[0] + statistics.red_pi[1];

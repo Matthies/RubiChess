@@ -2268,8 +2268,10 @@ chessmove* MoveSelector::next()
         {
             bool bBadTactical = (m->value & BADTACTICALFLAG);
             m->value = INT_MIN;
-            if (bBadTactical)
+            if (bBadTactical) {
+                STATISTICSDO(if (m->code == hashmove.code) STATISTICSINC(moves_bad_hash));
                 return m;
+            }
         }
         state++;
         // fall through

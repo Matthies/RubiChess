@@ -1326,6 +1326,7 @@ struct statistic {
     U64 moves_pruned_badsee;    // moves pruned by bad see
     U64 moves_played[2];        // moves that are played split into quites ans tactical
     U64 moves_fail_high;        // moves that cause a fail high;
+    U64 moves_bad_hash;         // hash moves that are repicked in the bad tactical stage
 
     U64 red_total;              // total reductions
     U64 red_lmr[2];             // total late-move-reductions for (not) improved moves
