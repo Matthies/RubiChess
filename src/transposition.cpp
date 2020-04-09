@@ -260,10 +260,7 @@ void transposition::addHash(U64 hash, int val, int16_t staticeval, int bound, in
 
 #ifdef SDEBUG
     if (cluster->debugHash && (uint32_t)(cluster->debugHash >> 32) == leastValuableEntry->hashupper)
-    {
-        cluster->debugIndex = -1;
         cluster->debugStoredBy = "";
-    }
 
 #endif
     leastValuableEntry->hashupper = (uint32_t)(hash >> 32);

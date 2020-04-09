@@ -24,7 +24,7 @@
 #define STATISTICS
 #endif
 
-#if 0
+#if 1
 #define SDEBUG
 #endif
 
