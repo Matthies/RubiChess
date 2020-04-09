@@ -331,9 +331,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             {
                 STATISTICSINC(ab_tt);
                 SDEBUGDO(isDebugPv, pvabortval[ply] = hashscore; if (debugMove.code == fullhashmove) pvaborttype[ply] = PVA_FROMTT; else pvaborttype[ply] =  PVA_DIFFERENTFROMTT; );
-                if (isDebugPv)
-                    tpHit = tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
                 SDEBUGDO(isDebugPv, pvadditionalinfo[ply] = tp.debugGetPv(newhash); );
+                SDEBUGDO(debugTransposition, pvadditionalinfo[ply] = tp.debugGetPv(newhash); );
                 return hashscore;
             }
         }
@@ -727,7 +726,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                     tp.addHash(newhash, FIXMATESCOREADD(score, ply), staticeval, HASHBETA, effectiveDepth, (uint16_t)bestcode);
 
                 SDEBUGDO(isDebugPv, pvaborttype[ply] = isDebugMove ? PVA_BETACUT : debugMovePlayed ? PVA_NOTBESTMOVE : PVA_OMITTED;);
-                SDEBUGDO(isDebugPv || debugTransposition, tp.debugSetPv(newhash, movesOnStack() + "effectiveDepth=" + to_string(effectiveDepth)););
+                SDEBUGDO(isDebugPv || debugTransposition, tp.debugSetPv(newhash, movesOnStack() + " " + (debugTransposition ? "(transposition)" : "") + " effectiveDepth=" + to_string(effectiveDepth)););
                 return score;   // fail soft beta-cutoff
             }
 
@@ -763,7 +762,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     if (bestcode && !excludeMove)
     {
         tp.addHash(newhash, FIXMATESCOREADD(bestscore, ply), staticeval, eval_type, depth, (uint16_t)bestcode);
-        SDEBUGDO(isDebugPv || debugTransposition, tp.debugSetPv(newhash, movesOnStack()););
+        SDEBUGDO(isDebugPv || debugTransposition, tp.debugSetPv(newhash, movesOnStack()) + " " + (debugTransposition ? "(transposition)" : ""););
     }
 
     return bestscore;

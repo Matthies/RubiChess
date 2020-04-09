@@ -1084,7 +1084,7 @@ const char* PvAbortStr[] = {
 
 void chessposition::pvdebugout()
 {
-    printf("================================================\nWindow    Move  Num Dep   Val          Reason\n------------------------------------------------\n");
+    printf("================================================\n  Window  Move  Num Dep   Val          Reason\n------------------------------------------------\n");
     for (int i = 0; pvdebug[i].code; i++)
     {
         chessmove m;

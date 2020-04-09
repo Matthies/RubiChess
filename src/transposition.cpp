@@ -160,8 +160,6 @@ int transposition::setSize(int sizeMb)
     if (size > 0)
         delete table;
     U64 maxsize = ((U64)sizeMb << 20) / sizeof(transpositionentry[TTBUCKETNUM]);
-    if (maxsize != ((U64)sizeMb << 20) / sizeof(transpositioncluster))
-        printf("Alarm");
     if (!maxsize) return 0;
     GETMSB(msb, maxsize);
     size = (1ULL << msb);
@@ -223,8 +221,6 @@ unsigned int transposition::getUsedinPermill()
 
 void transposition::addHash(U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode)
 {
-    if (val == -94 && depth == 4)
-        printf("Alarm\n");
     unsigned long long index = hash & sizemask;
     transpositioncluster *cluster = &table[index];
     transpositionentry *e;
