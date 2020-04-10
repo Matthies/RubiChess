@@ -426,7 +426,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     // Nullmove pruning with verification like SF does it
     int bestknownscore = (hashscore != NOSCORE ? hashscore : staticeval);
-    if (!isCheckbb && depth >= 2 && bestknownscore >= beta && (ply  >= nullmoveply || ply % 2 != nullmoveside))
+    if (!isCheckbb && depth >= 2 && bestknownscore >= beta && (ply  >= nullmoveply || ply % 2 != nullmoveside) && ph < 255)
     {
         playNullMove();
         int R = 4 + (depth / 6) + (bestknownscore - beta) / 150 + !PVNode * 2;
@@ -590,6 +590,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 SDEBUGDO(isDebugPv, pvabortval[ply] = sBeta; pvaborttype[ply] = PVA_MULTICUT;);
                 return sBeta;
             }
+        }
+        else if (ph > 200 && GETCAPTURE(m->code) >= WKNIGHT)
+        {
+            extendMove = 1;
         }
 
         int reduction = 0;
