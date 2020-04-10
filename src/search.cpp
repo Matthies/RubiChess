@@ -591,13 +591,14 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 return sBeta;
             }
         }
+        // Extend captures that lead into endgame
         else if (ph > 200 && GETCAPTURE(m->code) >= WKNIGHT)
         {
             extendMove = 1;
         }
-        int reduction = 0;
 
         // Late move reduction
+        int reduction = 0;
         if (depth > 2 && !ISTACTICAL(m->code))
         {
             reduction = reductiontable[positionImproved][depth][min(63, legalMoves + 1)];
