@@ -591,12 +591,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 return sBeta;
             }
         }
-#if 0
         else if (ph > 200 && GETCAPTURE(m->code) >= WKNIGHT)
         {
             extendMove = 1;
         }
-#endif
         int reduction = 0;
 
         // Late move reduction
