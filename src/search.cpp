@@ -240,7 +240,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         // It's a mate
         return SCOREBLACKWINS + ply;
 
-    tp.addHash(hash, score, staticeval, eval_type, 0, (uint16_t)bestcode);
+    tp.addHash(hash, alpha, staticeval, eval_type, 0, (uint16_t)bestcode);
     return bestscore;
 }
 
