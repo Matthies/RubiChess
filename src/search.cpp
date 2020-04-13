@@ -160,6 +160,8 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         if (staticeval >= beta)
         {
             STATISTICSINC(qs_pat);
+            tp.addHash(hash, staticeval, staticeval, HASHBETA, 0, 0);
+
             return staticeval;
         }
         if (staticeval > alpha)
@@ -172,10 +174,11 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         }
 
         // Delta pruning
-        int bestCapture = getBestPossibleCapture();
-        if (staticeval + deltapruningmargin + bestCapture < alpha)
+        int bestExpectableScore = staticeval + deltapruningmargin + getBestPossibleCapture();
+        if (bestExpectableScore < alpha)
         {
             STATISTICSINC(qs_delta);
+            tp.addHash(hash, bestExpectableScore, staticeval, HASHALPHA, 0, 0);
             return staticeval;
         }
     }
@@ -186,6 +189,8 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     ms.SetPreferredMoves(this);
     STATISTICSINC(qs_loop_n);
 
+    uint32_t bestcode = 0;
+    int eval_type = HASHALPHA;
     chessmove *m;
 
     while ((m = ms.next()))
@@ -207,14 +212,17 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         if (score > bestscore)
         {
             bestscore = score;
+            bestcode = m->code;
             if (score >= beta)
             {
                 STATISTICSINC(qs_moves_fh);
+                tp.addHash(hash, score, staticeval, HASHBETA, 0, (uint16_t)bestcode);
                 return score;
             }
             if (score > alpha)
             {
                 updatePvTable(m->code, true);
+                eval_type = HASHEXACT;
                 alpha = score;
 #ifdef EVALTUNE
                 foundpts = true;
@@ -232,6 +240,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         // It's a mate
         return SCOREBLACKWINS + ply;
 
+    tp.addHash(hash, alpha, staticeval, eval_type, 0, (uint16_t)bestcode);
     return bestscore;
 }
 
