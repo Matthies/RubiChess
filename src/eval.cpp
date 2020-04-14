@@ -229,6 +229,41 @@ static string splitvaluestring(int v[])
 }
 
 
+void register_endgame(string gamesignature, int(*endgame)(chessposition*))
+{
+    int pcs[16];
+    getPcsFromStr(gamesignature.c_str(), pcs);
+    for (int col = WHITE; col <= BLACK; col++)
+    {
+        U64 mathash = calc_key_from_pcs(pcs, col);
+        Materialhashentry* e;
+        mh.probeHash(mathash, &e);
+        e->endgame = endgame;
+    }
+}
+
+// some common endgames that need help of special evaluation
+static int KBNvK(chessposition *p)
+{
+    int strongside = p->piece00[WBISHOP] ? WHITE : BLACK;
+    int ks = p->kingpos[strongside];
+    int kw = p->kingpos[strongside ^ S2MMASK];
+    int bishopcol = p->piece00[WBISHOP + strongside] & WHITEBB ? WHITE : BLACK;
+    int c1 = bishopcol == WHITE ? 7 : 0;  // lower corner of same color as bishop
+    int c2 = bishopcol == WHITE ? 56 : 63;  // upper corner of same color as bishop
+
+    const double pw = 0.5;
+    int kwcornerdistance = (int)(10.0 * min(pow(abs(FILE(c1) - FILE(kw)), pw) + pow(abs(RANK(c1) - RANK(kw)), pw),
+        pow(abs(FILE(c2) - FILE(kw)), pw) + pow(abs(RANK(c2) - RANK(kw)), pw)));
+
+    return (SCOREWONENDGAME - kwcornerdistance * 10 + squareDistance[ks][kw] - p->testRepetiton() * 50 - p->halfmovescounter) * S2MSIGN(strongside);
+}
+
+void initEval()
+{
+    register_endgame("KBNvK", &KBNvK);
+}
+
 
 // get psqt for eval tracing and tuning
 void chessposition::getpsqval()
@@ -629,6 +664,9 @@ int chessposition::getEval()
     memset(attackedBy, 0, sizeof(attackedBy));
 
     bool hashexist = pwnhsh->probeHash(pawnhash, &pe.phentry);
+    if (mh.probeHash(materialhash, &pe.mhentry) && pe.mhentry->endgame)
+        return pe.mhentry->endgame(this);
+
     if (bTrace || !hashexist)
     {
         if (bTrace) pe.phentry->value = 0;
@@ -650,7 +688,7 @@ int chessposition::getEval()
 
     int sideToScale = totalEval > SCOREDRAW ? WHITE : BLACK;
 
-    sc = getScaling(sideToScale, &pe.mhentry);
+    sc = getScaling(sideToScale, pe.mhentry);
     if (!bTrace && sc == SCALE_DRAW)
         return SCOREDRAW;
 
@@ -707,12 +745,14 @@ int chessposition::getComplexity(int val, pawnhashentry *phentry, Materialhashen
 }
 
 
-int chessposition::getScaling(int col, Materialhashentry** mhentry)
+int chessposition::getScaling(int col, Materialhashentry* mhentry)
 {
-    if (mh.probeHash(materialhash, mhentry))
-        return (*mhentry)->scale[col];
+    if (mhentry->scale[col] != SCALE_NONE)
+        return mhentry->scale[col];
 
-    Materialhashentry *e = *mhentry;
+    // Default
+    mhentry->scale[WHITE] = mhentry->scale[BLACK] = SCALE_NORMAL;
+
     // Calculate scaling for endgames with special material
     const int pawns[2] = { POPCOUNT(piece00[WPAWN]), POPCOUNT(piece00[BPAWN]) };
     const int knights[2] = { POPCOUNT(piece00[WKNIGHT]), POPCOUNT(piece00[BKNIGHT]) };
@@ -736,10 +776,10 @@ int chessposition::getScaling(int col, Materialhashentry** mhentry)
         int you = me ^ S2MMASK;
 
         if (pawns[me] == 0 && nonpawnvalue[me] - nonpawnvalue[you] <= materialvalue[BISHOP])
-            e->scale[me] = nonpawnvalue[me] < materialvalue[ROOK] ? SCALE_DRAW : SCALE_HARDTOWIN;
+            mhentry->scale[me] = nonpawnvalue[me] < materialvalue[ROOK] ? SCALE_DRAW : SCALE_HARDTOWIN;
 
         if (pawns[me] == 1 && nonpawnvalue[me] - nonpawnvalue[you] <= materialvalue[BISHOP])
-            e->scale[me] = SCALE_ONEPAWN;
+            mhentry->scale[me] = SCALE_ONEPAWN;
     }
 
     U64 bishopsbb = (piece00[WBISHOP] | piece00[BBISHOP]);
@@ -747,12 +787,12 @@ int chessposition::getScaling(int col, Materialhashentry** mhentry)
         && (bishopsbb & WHITEBB) && (bishopsbb & BLACKBB)
         && nonpawnvalue[WHITE] <= materialvalue[BISHOP]
         && nonpawnvalue[BLACK] <= materialvalue[BISHOP])
-        e->scale[WHITE] = e->scale[BLACK] = SCALE_OCB;
+        mhentry->scale[WHITE] = mhentry->scale[BLACK] = SCALE_OCB;
     
-    e->onlyPawns = (nonpawnvalue[0] + nonpawnvalue[1] == 0);
-    e->numOfPawns = pawns[0] + pawns[1];
+    mhentry->onlyPawns = (nonpawnvalue[0] + nonpawnvalue[1] == 0);
+    mhentry->numOfPawns = pawns[0] + pawns[1];
 
-    return e->scale[col];
+    return mhentry->scale[col];
 }
 
 // Explicit template instantiation

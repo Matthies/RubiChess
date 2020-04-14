@@ -490,6 +490,7 @@ void registeralltuners(chessposition *pos);
 
 #endif
 
+#define SCALE_NONE -1
 #define SCALE_NORMAL 128
 #define SCALE_DRAW 0
 #define SCALE_ONEPAWN 48
@@ -497,6 +498,7 @@ void registeralltuners(chessposition *pos);
 #define SCALE_OCB 32
 
 enum EvalType { NOTRACE, TRACE};
+void initEval();
 
 //
 // utils stuff
@@ -620,6 +622,7 @@ struct Materialhashentry {
     int scale[2];
     bool onlyPawns;
     int numOfPawns;
+    int(*endgame)(chessposition*);
 };
 
 
@@ -701,6 +704,7 @@ const int EPTSIDEMASK[2] = { 0x8, 0x10 };
 #define SCOREWHITEWINS (-SCOREBLACKWINS)
 #define SCOREDRAW 0
 #define SCORETBWIN 29900
+#define SCOREWONENDGAME 10000
 
 #define MATEFORME(s) ((s) > SCOREWHITEWINS - MAXDEPTH)
 #define MATEFOROPPONENT(s) ((s) < SCOREBLACKWINS + MAXDEPTH)
@@ -1113,7 +1117,7 @@ public:
     template <EvalType Et, int Me> int getLateEval(positioneval *pe);
     template <EvalType Et, int Me> void getPawnAndKingEval(pawnhashentry *entry);
     template <EvalType Et> int getEval();
-    int getScaling(int col, Materialhashentry** mhentry);
+    int getScaling(int col, Materialhashentry *mhentry);
     int getComplexity(int eval, pawnhashentry *phentry, Materialhashentry *mhentry);
 
     template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth);

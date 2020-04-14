@@ -2310,6 +2310,7 @@ searchthread::~searchthread()
 engine::engine()
 {
     initBitmaphelper();
+    initEval();
     rootposition.pwnhsh = new Pawnhash(1);  // some dummy pawnhash just to make the prefetch in playMove happy
     setOption("Threads", "1");  // order is important as the pawnhash depends on Threads > 0
     setOption("hash", to_string(DEFAULTHASH));
