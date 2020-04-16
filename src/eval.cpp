@@ -238,7 +238,6 @@ void register_endgame(string gamesignature, int(*endgame)(chessposition*))
         U64 mathash = calc_key_from_pcs(pcs, col);
         Materialhashentry* e;
         mh.probeHash(mathash, &e);
-        e->endgame = endgame;
     }
 }
 
@@ -252,7 +251,7 @@ static int KBNvK(chessposition *p)
     int c1 = bishopcol == WHITE ? 7 : 0;  // lower corner of same color as bishop
     int c2 = bishopcol == WHITE ? 56 : 63;  // upper corner of same color as bishop
 
-    const double pw = 0.5;
+    const double pw = 0.7;
     int kwcornerdistance = (int)(10.0 * min(pow(abs(FILE(c1) - FILE(kw)), pw) + pow(abs(RANK(c1) - RANK(kw)), pw),
         pow(abs(FILE(c2) - FILE(kw)), pw) + pow(abs(RANK(c2) - RANK(kw)), pw)));
 
@@ -261,7 +260,7 @@ static int KBNvK(chessposition *p)
 
 void initEval()
 {
-    register_endgame("KBNvK", &KBNvK);
+    //register_endgame("KBNvK", &KBNvK);
 }
 
 
@@ -663,10 +662,14 @@ int chessposition::getEval()
     // reset the attackedBy information
     memset(attackedBy, 0, sizeof(attackedBy));
 
-    bool hashexist = pwnhsh->probeHash(pawnhash, &pe.phentry);
-    if (mh.probeHash(materialhash, &pe.mhentry) && pe.mhentry->endgame)
+    bool hashexist = mh.probeHash(materialhash, &pe.mhentry);
+    if (!hashexist)
+        getScaling(pe.mhentry);
+
+    if (pe.mhentry->endgame)
         return pe.mhentry->endgame(this);
 
+    hashexist = pwnhsh->probeHash(pawnhash, &pe.phentry);
     if (bTrace || !hashexist)
     {
         if (bTrace) pe.phentry->value = 0;
@@ -688,7 +691,7 @@ int chessposition::getEval()
 
     int sideToScale = totalEval > SCOREDRAW ? WHITE : BLACK;
 
-    sc = getScaling(sideToScale, pe.mhentry);
+    sc = pe.mhentry->scale[sideToScale];
     if (!bTrace && sc == SCALE_DRAW)
         return SCOREDRAW;
 
@@ -745,14 +748,8 @@ int chessposition::getComplexity(int val, pawnhashentry *phentry, Materialhashen
 }
 
 
-int chessposition::getScaling(int col, Materialhashentry* mhentry)
+void chessposition::getScaling(Materialhashentry* mhentry)
 {
-    if (mhentry->scale[col] != SCALE_NONE)
-        return mhentry->scale[col];
-
-    // Default
-    mhentry->scale[WHITE] = mhentry->scale[BLACK] = SCALE_NORMAL;
-
     // Calculate scaling for endgames with special material
     const int pawns[2] = { POPCOUNT(piece00[WPAWN]), POPCOUNT(piece00[BPAWN]) };
     const int knights[2] = { POPCOUNT(piece00[WKNIGHT]), POPCOUNT(piece00[BKNIGHT]) };
@@ -769,6 +766,22 @@ int chessposition::getScaling(int col, Materialhashentry* mhentry)
         + rooks[BLACK] * materialvalue[ROOK]
         + queens[BLACK] * materialvalue[QUEEN]
     };
+
+    int stronger = (nonpawnvalue[WHITE] > nonpawnvalue[BLACK] || (nonpawnvalue[WHITE] == nonpawnvalue[BLACK] && pawns[WHITE] >= pawns[BLACK])) ? WHITE : BLACK;
+    int weaker = 1 - stronger;
+
+    // special endgames
+    if (piece00[WKNIGHT | stronger] && piece00[WBISHOP | stronger]
+        && (occupied00[stronger] ^ piece00[WKNIGHT | stronger] ^ piece00[WBISHOP | stronger]) == piece00[WKING | stronger]
+        && piece00[WKING | weaker] == occupied00[weaker])
+    {
+        mhentry->endgame = KBNvK;
+        return;
+    }
+
+
+    // Default scaling
+    mhentry->scale[WHITE] = mhentry->scale[BLACK] = SCALE_NORMAL;
 
     // Check for insufficient material using simnple heuristic from chessprogramming site
     for (int me = WHITE; me <= BLACK; me++)
@@ -792,7 +805,7 @@ int chessposition::getScaling(int col, Materialhashentry* mhentry)
     mhentry->onlyPawns = (nonpawnvalue[0] + nonpawnvalue[1] == 0);
     mhentry->numOfPawns = pawns[0] + pawns[1];
 
-    return mhentry->scale[col];
+    //return mhentry->scale[col];
 }
 
 // Explicit template instantiation

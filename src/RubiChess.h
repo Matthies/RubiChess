@@ -490,7 +490,6 @@ void registeralltuners(chessposition *pos);
 
 #endif
 
-#define SCALE_NONE -1
 #define SCALE_NORMAL 128
 #define SCALE_DRAW 0
 #define SCALE_ONEPAWN 48
@@ -1117,7 +1116,7 @@ public:
     template <EvalType Et, int Me> int getLateEval(positioneval *pe);
     template <EvalType Et, int Me> void getPawnAndKingEval(pawnhashentry *entry);
     template <EvalType Et> int getEval();
-    int getScaling(int col, Materialhashentry *mhentry);
+    void getScaling(Materialhashentry *mhentry);
     int getComplexity(int eval, pawnhashentry *phentry, Materialhashentry *mhentry);
 
     template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth);

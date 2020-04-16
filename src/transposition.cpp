@@ -394,11 +394,6 @@ bool  Materialhash::probeHash(U64 hash, Materialhashentry **entry)
         return true;
 
     (*entry)->hash = hash;
-    (*entry)->scale[WHITE] = (*entry)->scale[BLACK] = SCALE_NONE;
-    if ((*entry)->endgame) {
-        (*entry)->endgame = nullptr;
-        printf("info string Alarm. endgame overwritten");
-    }
     return false;
 }
 
