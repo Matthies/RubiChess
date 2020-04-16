@@ -229,6 +229,7 @@ static string splitvaluestring(int v[])
 }
 
 
+#if 0  // this could be usefull if endgames are preregistered
 void register_endgame(string gamesignature, int(*endgame)(chessposition*))
 {
     int pcs[16];
@@ -240,6 +241,8 @@ void register_endgame(string gamesignature, int(*endgame)(chessposition*))
         mh.probeHash(mathash, &e);
     }
 }
+#endif
+
 
 // some common endgames that need help of special evaluation
 static int KBNvK(chessposition *p)
@@ -256,11 +259,6 @@ static int KBNvK(chessposition *p)
         pow(abs(FILE(c2) - FILE(kw)), pw) + pow(abs(RANK(c2) - RANK(kw)), pw)));
 
     return (SCOREWONENDGAME - kwcornerdistance * 10 + squareDistance[ks][kw] - p->testRepetiton() * 50 - p->halfmovescounter) * S2MSIGN(strongside);
-}
-
-void initEval()
-{
-    //register_endgame("KBNvK", &KBNvK);
 }
 
 

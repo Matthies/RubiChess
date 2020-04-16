@@ -389,15 +389,12 @@ bool Pawnhash::probeHash(U64 hash, pawnhashentry **entry)
 
 Materialhash::Materialhash()
 {
-    //table = (Materialhashentry*)_mm_malloc(MATERIALHASHSIZE * sizeof(Materialhashentry), 64);
-    table = (Materialhashentry*)aligned_alloc(64, MATERIALHASHSIZE * sizeof(Materialhashentry));    
-    //table = (Materialhashentry*)aligned_alloc(MATERIALHASHSIZE * sizeof(Materialhashentry));
+    table = (Materialhashentry*)allocalign64(MATERIALHASHSIZE * sizeof(Materialhashentry));
 }
 
 Materialhash::~Materialhash()
 {
-    //_mm_free(table);
-    free(table);
+    freealigned64(table);
 }
 
 bool  Materialhash::probeHash(U64 hash, Materialhashentry **entry)

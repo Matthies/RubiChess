@@ -98,11 +98,16 @@
 #include <crtdbg.h>
 #endif
 
+#define allocalign64(x) _aligned_malloc(x, 64)
+#define freealigned64(x) _aligned_free(x)
+
 #else //_WIN32
 
 #define myassert(expression, pos, num, ...) (void)(0)
 #define sprintf_s sprintf
 void Sleep(long x);
+#define allocalign64(x) aligned_alloc(64, x)
+#define freealigned64(x) free(x)
 
 #endif
 
@@ -497,7 +502,6 @@ void registeralltuners(chessposition *pos);
 #define SCALE_OCB 32
 
 enum EvalType { NOTRACE, TRACE};
-void initEval();
 
 //
 // utils stuff
