@@ -387,12 +387,25 @@ bool Pawnhash::probeHash(U64 hash, pawnhashentry **entry)
 }
 
 
+Materialhash::Materialhash()
+{
+    table = (Materialhashentry*)_mm_malloc(MATERIALHASHSIZE * sizeof(Materialhashentry), 64);
+    //table = (Materialhashentry*)aligned_alloc(MATERIALHASHSIZE * sizeof(Materialhashentry));
+}
+
+Materialhash::~Materialhash()
+{
+    _mm_free(table);
+    //free(table);
+}
+
 bool  Materialhash::probeHash(U64 hash, Materialhashentry **entry)
 {
     *entry = &table[hash & MATERIALHASHMASK];
     if ((*entry)->hash == hash)
         return true;
 
+    (*entry)->endgame = nullptr;
     (*entry)->hash = hash;
     return false;
 }

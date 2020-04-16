@@ -628,7 +628,9 @@ struct Materialhashentry {
 class Materialhash
 {
 public:
-    Materialhashentry table[MATERIALHASHSIZE];
+    Materialhashentry *table;
+    Materialhash();
+    ~Materialhash();
     bool probeHash(U64 hash, Materialhashentry **entry);
 };
 
