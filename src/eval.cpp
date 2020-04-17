@@ -660,7 +660,7 @@ int chessposition::getEval()
     // reset the attackedBy information
     memset(attackedBy, 0, sizeof(attackedBy));
 
-    bool hashexist = mh.probeHash(materialhash, &pe.mhentry);
+    bool hashexist = mtrlhsh.probeHash(materialhash, &pe.mhentry);
     if (!hashexist)
         getScaling(pe.mhentry);
 

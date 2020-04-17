@@ -410,4 +410,3 @@ bool  Materialhash::probeHash(U64 hash, Materialhashentry **entry)
 
 
 transposition tp;
-Materialhash mh;

@@ -641,7 +641,6 @@ public:
 
 extern zobrist zb;
 extern transposition tp;
-extern Materialhash mh;
 
 
 //
@@ -1084,6 +1083,7 @@ public:
     int16_t history[2][64][64];
     int16_t counterhistory[14][64][14 * 64];
     uint32_t countermove[14][64];
+    Materialhash mtrlhsh;
 
     bool w2m();
     void BitboardSet(int index, PieceCode p);
