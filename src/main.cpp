@@ -115,7 +115,8 @@ void generateEpd(string egn)
         getPcsFromStr(eg.c_str(), pcs);
         memset(pos->mailbox, 0, sizeof(pos->mailbox));
         memset(pos->piece00, 0, sizeof(pos->piece00));
-        pos->state = rand() % 1;
+        pos->psqval = 0;
+        pos->state = rand() % 2;
         for (int p = PAWN; p <= KING; p++)
             for (int c = WHITE; c <= BLACK; c++)
             {
@@ -123,10 +124,11 @@ void generateEpd(string egn)
                 while (pcs[pi])
                 {
                     int sq = rand() % 64;
-                    if (!pos->mailbox[sq] && (p != PAWN || (sq >= 8 && sq < 56)))
+                    // Avoid pawns on rank 7
+                    if (!pos->mailbox[sq] && (p != PAWN || (RRANK(sq, c) > 0 && RRANK(sq, c) < 6)))
                     {
                         pos->mailbox[sq] = p * 2 + c;
-                        pos->piece00[p * 2 + c] = BITSET(sq);
+                        pos->BitboardSet(sq, p * 2 + c);
                         if (p == KING)
                             pos->kingpos[c] = sq;
                         pcs[pi]--;
@@ -138,8 +140,21 @@ void generateEpd(string egn)
             && squareDistance[pos->kingpos[0]][pos->kingpos[1]] > 0;
         if (isLegal)
         {
-            i++;
-            cout << pos->toFen() << "\n";
+            pos->hash = zb.getHash(pos);
+            pos->pawnhash = zb.getPawnHash(pos);
+            pos->materialhash = zb.getMaterialHash(pos);
+            pos->mstop = 1;
+            pos->movestack[0].movecode = -1;  // Avoid fast eval after null move
+            pos->rootheight = 0;
+            pos->lastnullmove = -1;
+            int staticeval = S2MSIGN(pos->state & S2MMASK) * pos->getEval<NOTRACE>();
+            int quietval = pos->getQuiescence(SCOREBLACKWINS, SCOREWHITEWINS, 0);
+            bool isQuiet = (abs(staticeval - quietval) < 100);
+            if (isQuiet)
+            {
+                i++;
+                cout << pos->toFen() << "\n";
+            }
         }
     }
 }

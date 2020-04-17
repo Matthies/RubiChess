@@ -98,11 +98,16 @@
 #include <crtdbg.h>
 #endif
 
+#define allocalign64(x) _aligned_malloc(x, 64)
+#define freealigned64(x) _aligned_free(x)
+
 #else //_WIN32
 
 #define myassert(expression, pos, num, ...) (void)(0)
 #define sprintf_s sprintf
 void Sleep(long x);
+#define allocalign64(x) aligned_alloc(64, x)
+#define freealigned64(x) free(x)
 
 #endif
 
@@ -548,9 +553,11 @@ public:
 
 #define TTBUCKETNUM 3
 
+typedef uint16_t hashupper_t;
+#define GETHASHUPPER(x) (hashupper_t)((x) >> (64 - sizeof(hashupper_t) * 8))
 
 struct transpositionentry {
-    uint32_t hashupper;
+    hashupper_t hashupper;
     uint16_t movecode;
     int16_t value;
     int16_t staticeval;
@@ -560,7 +567,7 @@ struct transpositionentry {
 
 struct transpositioncluster {
     transpositionentry entry[TTBUCKETNUM];
-    //char padding[2];
+    uint8_t padding[(64 - sizeof(transpositionentry) * TTBUCKETNUM) % 16];
 };
 
 
@@ -620,20 +627,22 @@ struct Materialhashentry {
     int scale[2];
     bool onlyPawns;
     int numOfPawns;
+    int(*endgame)(chessposition*);
 };
 
 
 class Materialhash
 {
 public:
-    Materialhashentry table[MATERIALHASHSIZE];
+    Materialhashentry *table;
+    Materialhash();
+    ~Materialhash();
     bool probeHash(U64 hash, Materialhashentry **entry);
 };
 
 
 extern zobrist zb;
 extern transposition tp;
-extern Materialhash mh;
 
 
 //
@@ -701,6 +710,7 @@ const int EPTSIDEMASK[2] = { 0x8, 0x10 };
 #define SCOREWHITEWINS (-SCOREBLACKWINS)
 #define SCOREDRAW 0
 #define SCORETBWIN 29900
+#define SCOREWONENDGAME 10000
 
 #define MATEFORME(s) ((s) > SCOREWHITEWINS - MAXDEPTH)
 #define MATEFOROPPONENT(s) ((s) < SCOREBLACKWINS + MAXDEPTH)
@@ -1075,6 +1085,7 @@ public:
     int16_t history[2][64][64];
     int16_t counterhistory[14][64][14 * 64];
     uint32_t countermove[14][64];
+    Materialhash mtrlhsh;
 
     bool w2m();
     void BitboardSet(int index, PieceCode p);
@@ -1113,7 +1124,7 @@ public:
     template <EvalType Et, int Me> int getLateEval(positioneval *pe);
     template <EvalType Et, int Me> void getPawnAndKingEval(pawnhashentry *entry);
     template <EvalType Et> int getEval();
-    int getScaling(int col, Materialhashentry** mhentry);
+    void getScaling(Materialhashentry *mhentry);
     int getComplexity(int eval, pawnhashentry *phentry, Materialhashentry *mhentry);
 
     template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth);

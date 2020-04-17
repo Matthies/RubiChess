@@ -1547,7 +1547,7 @@ bool chessposition::playMove(chessmove *cm)
         return false;
     }
     
-    PREFETCH(&mh.table[materialhash & MATERIALHASHMASK]);
+    PREFETCH(&mtrlhsh.table[materialhash & MATERIALHASHMASK]);
 
     // remove castle rights
     int oldcastle = (state & CASTLEMASK);
