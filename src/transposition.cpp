@@ -230,7 +230,7 @@ void transposition::addHash(U64 hash, int val, int16_t staticeval, int bound, in
     {
         // First try to find a free or matching entry
         e = &(cluster->entry[i]);
-        if (cluster->entry[i].hashupper == (uint32_t)(hash >> 32) || !cluster->entry[i].hashupper)
+        if (cluster->entry[i].hashupper == GETHASHUPPER(hash) || !cluster->entry[i].hashupper)
         {
             leastValuableEntry = e;
             break;
@@ -254,11 +254,11 @@ void transposition::addHash(U64 hash, int val, int16_t staticeval, int bound, in
     // Don't overwrite an entry from the same position, unless we have
     // an exact bound or depth that is nearly as good as the old one
     if (bound != HASHEXACT
-        &&  leastValuableEntry->hashupper == (uint32_t)(hash >> 32)
+        &&  leastValuableEntry->hashupper == GETHASHUPPER(hash)
         &&  depth < leastValuableEntry->depth - 3)
         return;
 
-    leastValuableEntry->hashupper = (uint32_t)(hash >> 32);
+    leastValuableEntry->hashupper = GETHASHUPPER(hash);
     leastValuableEntry->depth = (uint8_t)depth;
     leastValuableEntry->value = (short)val;
     leastValuableEntry->boundAndAge = (uint8_t)(bound | numOfSearchShiftTwo);
@@ -274,7 +274,7 @@ void transposition::printHashentry(U64 hash)
     printf("Hashentry for %llx\n", hash);
     for (int i = 0; i < TTBUCKETNUM; i++)
     {
-        if ((data->entry[i].hashupper) == (hash >> 32))
+        if ((data->entry[i].hashupper) == GETHASHUPPER(hash))
         {
             printf("Match in upper part: %x / %x\n", (unsigned int)data->entry[i].hashupper, (unsigned int)(hash >> 32));
             printf("Move code: %x\n", (unsigned int)data->entry[i].movecode);
@@ -300,7 +300,7 @@ bool transposition::probeHash(U64 hash, int *val, int *staticeval, uint16_t *mov
     for (int i = 0; i < TTBUCKETNUM; i++)
     {
         transpositionentry *e = &(data->entry[i]);
-        if (e->hashupper == (hash >> 32))
+        if (e->hashupper == GETHASHUPPER(hash))
         {
             *movecode = e->movecode;
             *staticeval = e->staticeval;
@@ -336,7 +336,7 @@ uint16_t transposition::getMoveCode(U64 hash)
     transpositioncluster *data = &table[index];
     for (int i = 0; i < TTBUCKETNUM; i++)
     {
-        if ((data->entry[i].hashupper) == (hash >> 32))
+        if ((data->entry[i].hashupper) == GETHASHUPPER(hash))
             return data->entry[i].movecode;
     }
     return 0;

@@ -553,9 +553,11 @@ public:
 
 #define TTBUCKETNUM 3
 
+typedef uint16_t hashupper_t;
+#define GETHASHUPPER(x) (hashupper_t)((x) >> (64 - sizeof(hashupper_t) * 8))
 
 struct transpositionentry {
-    uint32_t hashupper;
+    hashupper_t hashupper;
     uint16_t movecode;
     int16_t value;
     int16_t staticeval;
@@ -565,7 +567,7 @@ struct transpositionentry {
 
 struct transpositioncluster {
     transpositionentry entry[TTBUCKETNUM];
-    //char padding[2];
+    uint8_t padding[(64 - sizeof(transpositionentry) * TTBUCKETNUM) % 16];
 };
 
 
