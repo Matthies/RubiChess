@@ -150,7 +150,7 @@ u8 zobrist::getMaterialHash(chessposition *pos)
 transposition::~transposition()
 {
     if (size > 0)
-        delete table;
+        freealigned64(table);
 }
 
 int transposition::setSize(int sizeMb)
@@ -158,7 +158,7 @@ int transposition::setSize(int sizeMb)
     int restMb = 0;
     int msb = 0;
     if (size > 0)
-        delete table;
+        freealigned64(table);
     U64 maxsize = ((U64)sizeMb << 20) / sizeof(transpositioncluster);
     if (!maxsize) return 0;
     GETMSB(msb, maxsize);
@@ -178,7 +178,7 @@ int transposition::setSize(int sizeMb)
     // settings)
     madvise(table, allocsize, MADV_HUGEPAGE);
 #else
-    table = (transpositioncluster*)malloc(allocsize);
+    table = (transpositioncluster*)allocalign64(allocsize);
 #endif
 
     clean();
