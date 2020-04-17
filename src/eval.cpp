@@ -207,6 +207,11 @@ struct traceeval {
     int ppawns[2];
     int complexity[2];
     int tempo[2];
+    int sc;
+    int ph;
+    int total;
+    int score;
+    int endgame;
 };
 
 traceeval te;
@@ -228,8 +233,34 @@ static string splitvaluestring(int v[])
     return ss.str();
 }
 
+void traceEvalOut()
+{
+    stringstream ss;
+    ss << std::showpoint << std::noshowpos << std::fixed << std::setprecision(2)
+        << "              |    White    |    Black    |    Total   \n"
+        << "              |   MG    EG  |   MG    EG  |   MG    EG \n"
+        << " -------------+-------------+-------------+------------\n"
+        << "     Material | " << splitvaluestring(te.material)
+        << "      Bishops | " << splitvaluestring(te.bishops)
+        << "        Rooks | " << splitvaluestring(te.rooks)
+        << "        Pawns | " << splitvaluestring(te.pawns)
+        << "      Passers | " << splitvaluestring(te.ppawns)
+        << "     Mobility | " << splitvaluestring(te.mobility)
+        << "      Threats | " << splitvaluestring(te.threats)
+        << " King attacks | " << splitvaluestring(te.kingattackpower)
+        << "   Complexity | " << splitvaluestring(te.complexity)
+        << " -------------+-------------+-------------+------------\n"
+        << "        Total |  Ph=" << setw(3) << te.ph << "/256 |  Sc=" << setw(3) << te.sc << "/128 | " << splitvaluestring(te.total)
+        << " => " << cp(TAPEREDANDSCALEDEVAL(te.total, te.ph, te.sc)) << "\n"
+        << "        Tempo | " << splitvaluestring(te.tempo)
+        << "      Endgame | " << setw(5) << cp(te.endgame) << "\n"
+        << "    Resulting | " << setw(5) << cp(te.score) << "\n";
 
-#if 0  // this could be usefull if endgames are preregistered
+    cout << ss.str();
+
+}
+
+#if 0  // this could be useful if endgames are preregistered
 void register_endgame(string gamesignature, int(*endgame)(chessposition*))
 {
     int pcs[16];
@@ -649,13 +680,14 @@ template <EvalType Et>
 int chessposition::getEval()
 {
     const bool bTrace = (Et == TRACE);
-    if (bTrace) te = { { 0 }, { 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 } };
+    if (bTrace) te = { { 0 }, { 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 }, 0, 0, 0, 0, 0 };
 #ifdef EVALTUNE
     resetTuner();
     getpsqval();
 #endif
     ph = phase();
     positioneval pe;
+    int score;
 
     // reset the attackedBy information
     memset(attackedBy, 0, sizeof(attackedBy));
@@ -665,7 +697,15 @@ int chessposition::getEval()
         getScaling(pe.mhentry);
 
     if (pe.mhentry->endgame)
-        return pe.mhentry->endgame(this);
+    {
+        score = pe.mhentry->endgame(this);
+        if (bTrace)
+        {
+            te.endgame = te.score = score;
+            traceEvalOut();
+        }
+        return score;
+    }
 
     hashexist = pwnhsh->probeHash(pawnhash, &pe.phentry);
     if (bTrace || !hashexist)
@@ -702,31 +742,16 @@ int chessposition::getEval()
         te.complexity[complexity < 0] += complexity;
     }
 
-    int score = TAPEREDANDSCALEDEVAL(totalEval, ph, sc) + CEVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
+    score = TAPEREDANDSCALEDEVAL(totalEval, ph, sc) + CEVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
 
     if (bTrace)
     {
         getpsqval();
-        stringstream ss;
-        ss << std::showpoint << std::noshowpos << std::fixed << std::setprecision(2)
-            << "              |    White    |    Black    |    Total   \n"
-            << "              |   MG    EG  |   MG    EG  |   MG    EG \n"
-            << " -------------+-------------+-------------+------------\n"
-            << "     Material | " << splitvaluestring(te.material)
-            << "      Bishops | " << splitvaluestring(te.bishops)
-            << "        Rooks | " << splitvaluestring(te.rooks)
-            << "        Pawns | " << splitvaluestring(te.pawns)
-            << "      Passers | " << splitvaluestring(te.ppawns)
-            << "     Mobility | " << splitvaluestring(te.mobility)
-            << "      Threats | " << splitvaluestring(te.threats)
-            << " King attacks | " << splitvaluestring(te.kingattackpower)
-            << "   Complexity | " << splitvaluestring(te.complexity)
-            << " -------------+-------------+-------------+------------\n"
-            << "        Total |  Ph=" << setw(3) << ph << "/256 |  Sc=" << setw(3) << sc << "/128 | " << splitvaluestring(totalEval) << " => " << cp(TAPEREDANDSCALEDEVAL(totalEval, ph, sc)) << "\n"
-            << "        Tempo | " << splitvaluestring(te.tempo)
-            << "\nResulting score: " << cp(score) << "\n";
-
-        cout << ss.str();
+        te.sc = sc;
+        te.ph = ph;
+        te.total = totalEval;
+        te.score = score;
+        traceEvalOut();
     }
 
     return score;
@@ -802,8 +827,6 @@ void chessposition::getScaling(Materialhashentry* mhentry)
     
     mhentry->onlyPawns = (nonpawnvalue[0] + nonpawnvalue[1] == 0);
     mhentry->numOfPawns = pawns[0] + pawns[1];
-
-    //return mhentry->scale[col];
 }
 
 // Explicit template instantiation
