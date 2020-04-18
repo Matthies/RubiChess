@@ -134,18 +134,18 @@ void registeralltuners(chessposition *pos)
         for (j = 0; j < 8; j++)
             registertuner(pos, &eps.eKingdefendspasserpenalty[i][j], "eKingdefendspasserpenalty", j, 8, i, 7, tuneIt && (j > 0 && j < 7));
 
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 8; j++)
             registertuner(pos, &eps.ePotentialpassedpawnbonus[i][j], "ePotentialpassedpawnbonus", j, 8, i, 4, tuneIt && (j > 0 && j < 7));
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 8; i++)
         registertuner(pos, &eps.eAttackingpawnbonus[i], "eAttackingpawnbonus", i, 8, 0, 0, tuneIt && (i > 0 && i < 7));
     tuneIt = false;
     registertuner(pos, &eps.eIsolatedpawnpenalty, "eIsolatedpawnpenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eDoublepawnpenalty, "eDoublepawnpenalty", 0, 0, 0, 0, tuneIt);
 
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 6; i++)
         for (j = 0; j < 6; j++)
             registertuner(pos, &eps.eConnectedbonus[i][j], "eConnectedbonus", j, 6, i, 6, tuneIt);
@@ -157,6 +157,8 @@ void registeralltuners(chessposition *pos)
     tuneIt = false;
     registertuner(pos, &eps.ePawnblocksbishoppenalty, "ePawnblocksbishoppenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eBishopcentercontrolbonus, "eBishopcentercontrolbonus", 0, 0, 0, 0, tuneIt);
+    tuneIt = true;
+    registertuner(pos, &eps.eKnightOutpost, "eKnightOutpost", 0, 0, 0, 0, tuneIt);
 
     tuneIt = false;
     for (i = 0; i < 4; i++)
@@ -510,7 +512,9 @@ int chessposition::getPieceEval(positioneval *pe)
         }
 
         if (Pt == KNIGHT)
+        {
             attack = knight_attacks[index];
+        }
 
         if (Pt == KNIGHT || Pt == BISHOP)
         {
@@ -642,6 +646,15 @@ int chessposition::getLateEval(positioneval *pe)
     U64 hanging = occupied00[Me] & ~attackedBy[Me][0] & attackedBy[You][0];
     result += EVAL(eps.eHangingpiecepenalty, S2MSIGN(Me) * POPCOUNT(hanging));
     if (bTrace) te.threats[You] += EVAL(eps.eHangingpiecepenalty, S2MSIGN(Me) * POPCOUNT(hanging));
+
+    // Knight outposts for 'You' cause we already calculated possible pawnpushed for 'Me' that might be important to defend against outpost
+    U64 outpost = piece00[WKNIGHT | You] & OUTPOSTAREA(You) & attackedBy[You][PAWN] & ~(attackedPieces | attackedBy[Me][PAWN]);
+    if (outpost)
+    {
+        result += EVAL(eps.eKnightOutpost, S2MSIGN(You) * POPCOUNT(outpost));
+        if (bTrace) te.bishops[You] += EVAL(eps.eKnightOutpost, S2MSIGN(You) * POPCOUNT(outpost));
+    }
+
 
     return result;
 }
