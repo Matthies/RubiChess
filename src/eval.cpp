@@ -200,7 +200,7 @@ void registeralltuners(chessposition *pos)
 
 struct traceeval {
     int rooks[2];
-    int bishops[2];
+    int minors[2];
     int material[2];
     int pawns[2];
     int mobility[2];
@@ -243,7 +243,7 @@ void traceEvalOut()
         << "              |   MG    EG  |   MG    EG  |   MG    EG \n"
         << " -------------+-------------+-------------+------------\n"
         << "     Material | " << splitvaluestring(te.material)
-        << "      Bishops | " << splitvaluestring(te.bishops)
+        << "       Minors | " << splitvaluestring(te.minors)
         << "        Rooks | " << splitvaluestring(te.rooks)
         << "        Pawns | " << splitvaluestring(te.pawns)
         << "      Passers | " << splitvaluestring(te.ppawns)
@@ -501,12 +501,12 @@ int chessposition::getPieceEval(positioneval *pe)
             {
                 U64 blockingpawns = myRammedPawns & (BITSET(index) & WHITEBB ? WHITEBB : BLACKBB);
                 result += EVAL(eps.ePawnblocksbishoppenalty, S2MSIGN(Me) * POPCOUNT(blockingpawns));
-                if (bTrace) te.bishops[Me] += EVAL(eps.ePawnblocksbishoppenalty, S2MSIGN(Me) * POPCOUNT(blockingpawns));
+                if (bTrace) te.minors[Me] += EVAL(eps.ePawnblocksbishoppenalty, S2MSIGN(Me) * POPCOUNT(blockingpawns));
 
                 if (MORETHANONE(mBishopAttacks[index][MAGICBISHOPINDEX(piece00[WPAWN] | piece00[BPAWN], index)] & CENTER))
                 {
                     result += EVAL(eps.eBishopcentercontrolbonus, S2MSIGN(Me));
-                    if (bTrace) te.bishops[Me] += EVAL(eps.eBishopcentercontrolbonus, S2MSIGN(Me));
+                    if (bTrace) te.minors[Me] += EVAL(eps.eBishopcentercontrolbonus, S2MSIGN(Me));
                 }
             }
         }
@@ -525,7 +525,7 @@ int chessposition::getPieceEval(positioneval *pe)
             {
                 int r = RRANK(index, Me);
                 result += EVAL(eps.eMinorbehindpawn[r], S2MSIGN(Me));
-                if (bTrace) te.bishops[Me] += EVAL(eps.eMinorbehindpawn[r], S2MSIGN(Me));
+                if (bTrace) te.minors[Me] += EVAL(eps.eMinorbehindpawn[r], S2MSIGN(Me));
             }
         }
 
@@ -652,7 +652,7 @@ int chessposition::getLateEval(positioneval *pe)
     if (outpost)
     {
         result += EVAL(eps.eKnightOutpost, S2MSIGN(You) * POPCOUNT(outpost));
-        if (bTrace) te.bishops[You] += EVAL(eps.eKnightOutpost, S2MSIGN(You) * POPCOUNT(outpost));
+        if (bTrace) te.minors[You] += EVAL(eps.eKnightOutpost, S2MSIGN(You) * POPCOUNT(outpost));
     }
 
 
@@ -676,7 +676,7 @@ int chessposition::getGeneralEval(positioneval *pe)
 
     // bonus for double bishop
     int result = EVAL(eps.eDoublebishopbonus, S2MSIGN(Me) * (POPCOUNT(piece00[WBISHOP | Me]) >= 2));
-    if (bTrace) te.bishops[Me] += EVAL(eps.eDoublebishopbonus, S2MSIGN(Me) * (POPCOUNT(piece00[WBISHOP | Me]) >= 2));
+    if (bTrace) te.minors[Me] += EVAL(eps.eDoublebishopbonus, S2MSIGN(Me) * (POPCOUNT(piece00[WBISHOP | Me]) >= 2));
 
     // bonus for rook on 7th pressing against the king
     if ((piece00[WROOK | Me] & RANK7(Me)) && (piece00[WKING | You] & (RANK7(Me) | RANK8(Me))))
