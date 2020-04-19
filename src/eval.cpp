@@ -134,18 +134,18 @@ void registeralltuners(chessposition *pos)
         for (j = 0; j < 8; j++)
             registertuner(pos, &eps.eKingdefendspasserpenalty[i][j], "eKingdefendspasserpenalty", j, 8, i, 7, tuneIt && (j > 0 && j < 7));
 
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 8; j++)
             registertuner(pos, &eps.ePotentialpassedpawnbonus[i][j], "ePotentialpassedpawnbonus", j, 8, i, 4, tuneIt && (j > 0 && j < 7));
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 8; i++)
         registertuner(pos, &eps.eAttackingpawnbonus[i], "eAttackingpawnbonus", i, 8, 0, 0, tuneIt && (i > 0 && i < 7));
     tuneIt = false;
     registertuner(pos, &eps.eIsolatedpawnpenalty, "eIsolatedpawnpenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eDoublepawnpenalty, "eDoublepawnpenalty", 0, 0, 0, 0, tuneIt);
 
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 6; i++)
         for (j = 0; j < 6; j++)
             registertuner(pos, &eps.eConnectedbonus[i][j], "eConnectedbonus", j, 6, i, 6, tuneIt);
@@ -157,6 +157,8 @@ void registeralltuners(chessposition *pos)
     tuneIt = false;
     registertuner(pos, &eps.ePawnblocksbishoppenalty, "ePawnblocksbishoppenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eBishopcentercontrolbonus, "eBishopcentercontrolbonus", 0, 0, 0, 0, tuneIt);
+    tuneIt = true;
+    registertuner(pos, &eps.eKnightOutpost, "eKnightOutpost", 0, 0, 0, 0, tuneIt);
 
     tuneIt = false;
     for (i = 0; i < 4; i++)
@@ -189,16 +191,16 @@ void registeralltuners(chessposition *pos)
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eKingringattack[i], "eKingringattack", i, 6, 0, 0, tuneIt);
     
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
-            registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
+            registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, i==KNIGHT && j >= 16 && j < 40 && tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
 }
 #endif
 
 struct traceeval {
     int rooks[2];
-    int bishops[2];
+    int minors[2];
     int material[2];
     int pawns[2];
     int mobility[2];
@@ -241,7 +243,7 @@ void traceEvalOut()
         << "              |   MG    EG  |   MG    EG  |   MG    EG \n"
         << " -------------+-------------+-------------+------------\n"
         << "     Material | " << splitvaluestring(te.material)
-        << "      Bishops | " << splitvaluestring(te.bishops)
+        << "       Minors | " << splitvaluestring(te.minors)
         << "        Rooks | " << splitvaluestring(te.rooks)
         << "        Pawns | " << splitvaluestring(te.pawns)
         << "      Passers | " << splitvaluestring(te.ppawns)
@@ -499,18 +501,20 @@ int chessposition::getPieceEval(positioneval *pe)
             {
                 U64 blockingpawns = myRammedPawns & (BITSET(index) & WHITEBB ? WHITEBB : BLACKBB);
                 result += EVAL(eps.ePawnblocksbishoppenalty, S2MSIGN(Me) * POPCOUNT(blockingpawns));
-                if (bTrace) te.bishops[Me] += EVAL(eps.ePawnblocksbishoppenalty, S2MSIGN(Me) * POPCOUNT(blockingpawns));
+                if (bTrace) te.minors[Me] += EVAL(eps.ePawnblocksbishoppenalty, S2MSIGN(Me) * POPCOUNT(blockingpawns));
 
                 if (MORETHANONE(mBishopAttacks[index][MAGICBISHOPINDEX(piece00[WPAWN] | piece00[BPAWN], index)] & CENTER))
                 {
                     result += EVAL(eps.eBishopcentercontrolbonus, S2MSIGN(Me));
-                    if (bTrace) te.bishops[Me] += EVAL(eps.eBishopcentercontrolbonus, S2MSIGN(Me));
+                    if (bTrace) te.minors[Me] += EVAL(eps.eBishopcentercontrolbonus, S2MSIGN(Me));
                 }
             }
         }
 
         if (Pt == KNIGHT)
+        {
             attack = knight_attacks[index];
+        }
 
         if (Pt == KNIGHT || Pt == BISHOP)
         {
@@ -521,7 +525,7 @@ int chessposition::getPieceEval(positioneval *pe)
             {
                 int r = RRANK(index, Me);
                 result += EVAL(eps.eMinorbehindpawn[r], S2MSIGN(Me));
-                if (bTrace) te.bishops[Me] += EVAL(eps.eMinorbehindpawn[r], S2MSIGN(Me));
+                if (bTrace) te.minors[Me] += EVAL(eps.eMinorbehindpawn[r], S2MSIGN(Me));
             }
         }
 
@@ -643,6 +647,15 @@ int chessposition::getLateEval(positioneval *pe)
     result += EVAL(eps.eHangingpiecepenalty, S2MSIGN(Me) * POPCOUNT(hanging));
     if (bTrace) te.threats[You] += EVAL(eps.eHangingpiecepenalty, S2MSIGN(Me) * POPCOUNT(hanging));
 
+    // Knight outposts for 'You' cause we already calculated possible pawnpushed for 'Me' that might be important to defend against outpost
+    U64 outpost = piece00[WKNIGHT | You] & OUTPOSTAREA(You) & attackedBy[You][PAWN] & ~(attackedPieces | attackedBy[Me][PAWN]);
+    if (outpost)
+    {
+        result += EVAL(eps.eKnightOutpost, S2MSIGN(You) * POPCOUNT(outpost));
+        if (bTrace) te.minors[You] += EVAL(eps.eKnightOutpost, S2MSIGN(You) * POPCOUNT(outpost));
+    }
+
+
     return result;
 }
 
@@ -663,7 +676,7 @@ int chessposition::getGeneralEval(positioneval *pe)
 
     // bonus for double bishop
     int result = EVAL(eps.eDoublebishopbonus, S2MSIGN(Me) * (POPCOUNT(piece00[WBISHOP | Me]) >= 2));
-    if (bTrace) te.bishops[Me] += EVAL(eps.eDoublebishopbonus, S2MSIGN(Me) * (POPCOUNT(piece00[WBISHOP | Me]) >= 2));
+    if (bTrace) te.minors[Me] += EVAL(eps.eDoublebishopbonus, S2MSIGN(Me) * (POPCOUNT(piece00[WBISHOP | Me]) >= 2));
 
     // bonus for rook on 7th pressing against the king
     if ((piece00[WROOK | Me] & RANK7(Me)) && (piece00[WKING | You] & (RANK7(Me) | RANK8(Me))))
