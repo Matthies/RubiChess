@@ -18,7 +18,7 @@
 #pragma once
 
 #define VERNUM "1.7"
-//#define VERSTABLE
+#define VERSTABLE
 
 #if 0
 #define STATISTICS
@@ -127,14 +127,17 @@ using namespace std;
 #endif
 #endif
 
+#ifndef PROCDESC
+#define PROCDESC "general"
+#endif
 #ifndef VERSTABLE
 #ifdef GITVER
-#define VERSION VERNUM "-dev " GITVER
+#define VERSION VERNUM "-dev " PROCDESC " " GITVER
 #else
-#define VERSION VERNUM "-dev"
+#define VERSION VERNUM "-dev " PROCDESC
 #endif
 #else
-#define VERSION VERNUM
+#define VERSION VERNUM " " PROCDESC
 #endif
 #define ENGINEVER "RubiChess " VERSION
 #ifdef GITID

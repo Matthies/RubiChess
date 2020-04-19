@@ -39,6 +39,8 @@ endif
 DEPS = RubiChess.h
 EXE = RubiChess
 EXE2 = RubiChess-oldcpu
+EXEDESC = -D PROCDESC=\"Popcnt\"
+EXE2DESC = -D PROCDESC=\"Oldcpu\"
 PGOBENCH1 = ./$(EXE) -bench
 PGOBENCH2 = ./$(EXE2) -bench
 PROFDIR1 = OPT
@@ -59,10 +61,10 @@ all: RubiChess
 old: RubiChess-oldcpu
 
 RubiChess:
-	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(LDFLAGS) $(EXTRALDFLAGS) $(GITDEFINE) -o $(EXE)
+	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(LDFLAGS) $(EXTRALDFLAGS) $(GITDEFINE) $(EXEDESC) -o $(EXE)
 
 RubiChess-oldcpu:
-	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) *.cpp $(LDFLAGS) $(EXTRALDFLAGS) -o $(EXE2)
+	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) *.cpp $(LDFLAGS) $(EXTRALDFLAGS) $(GITDEFINE) $(EXE2DESC) -o $(EXE2)
 
 objclean:
 	$(RM) $(EXE) $(EXE2) *.o
