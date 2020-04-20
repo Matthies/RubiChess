@@ -823,8 +823,11 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                 if (doPonder) pondermove.code = 0;
             }
             updatePvTable(fullhashmove, false);
-            if (score > alpha) bestmovescore[0] = score;
-            return score;
+            if (score > alpha)
+            {
+                bestmovescore[0] = score;
+                return score;
+            }
         }
     }
 
@@ -1106,6 +1109,7 @@ static void search_gen1(searchthread *thr)
 
     alpha = SHRT_MIN + 1;
     beta = SHRT_MAX;
+    //tp.addHash(0xc572395a1a1e00c4, SHRT_MIN + 1, -200, HASHALPHA, 2, 0xb5d);
 
     uint32_t lastBestMove = 0;
     int constantRootMoves = 0;
