@@ -823,11 +823,8 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                 if (doPonder) pondermove.code = 0;
             }
             updatePvTable(fullhashmove, false);
-            if (score > alpha)
-            {
-                bestmovescore[0] = score;
-                return score;
-            }
+            if (score > alpha) bestmovescore[0] = score;
+            if (score > SHRT_MIN + 1) return score;
         }
     }
 
