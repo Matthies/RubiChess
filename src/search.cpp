@@ -1106,7 +1106,6 @@ static void search_gen1(searchthread *thr)
 
     alpha = SHRT_MIN + 1;
     beta = SHRT_MAX;
-    //tp.addHash(0xc572395a1a1e00c4, SHRT_MIN + 1, -200, HASHALPHA, 2, 0xb5d);
 
     uint32_t lastBestMove = 0;
     int constantRootMoves = 0;

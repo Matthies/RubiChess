@@ -222,16 +222,6 @@ unsigned int transposition::getUsedinPermill()
 void transposition::addHash(U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode)
 {
     unsigned long long index = hash & sizemask;
-#if 0
-    if (hash == 0x794749c7de7e28c5)
-    {
-        chessmove m;
-        m.code = movecode;
-        printf("info string Alarm %d  %d  %s\n", val, bound, m.toString().c_str());
-    }
-    if (index == 0x1e00c4 && hash != 0xc572395a1a1e00c4 && GETHASHUPPER(hash) == GETHASHUPPER(0xc572395a1a1e00c4))
-        printf("info string Alarm\n");
-#endif
     transpositioncluster *cluster = &table[index];
     transpositionentry *e;
     transpositionentry *leastValuableEntry;
