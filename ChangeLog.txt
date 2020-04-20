@@ -1,5 +1,8 @@
 ChangeLog
 =========
+1.7.1 (release 2020-04-20) :
+    - Fixes a bug that in some rare cases lets the root search get stuck at depth 1 with a failing low move from the tt
+
 1.7 (release 2020-04-19) :
     - moveGivesCheck handles discovered checks now
     - Several fixes in the PVS logic (was unchanged since 0.4 release and quite buggy)
