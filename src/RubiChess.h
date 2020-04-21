@@ -106,9 +106,13 @@
 #define myassert(expression, pos, num, ...) (void)(0)
 #define sprintf_s sprintf
 void Sleep(long x);
+#ifdef ANDROID
+#define allocalign64(x) malloc(x)
+#define freealigned64(x) free(x)
+#else
 #define allocalign64(x) aligned_alloc(64, x)
 #define freealigned64(x) free(x)
-
+#endif
 #endif
 
 using namespace std;
