@@ -199,6 +199,7 @@ enum { WHITE, BLACK };
 #define BORDERDIST(f) ((f) > 3 ? 7 - (f) : (f))
 #define PROMOTERANK(x) (RANK(x) == 0 || RANK(x) == 7)
 #define PROMOTERANKBB 0xff000000000000ff
+#define RANK1(s) ((s) ? 0xff00000000000000 : 0x00000000000000ff)
 #define RANK2(s) ((s) ? 0x00ff000000000000 : 0x000000000000ff00)
 #define RANK3(s) ((s) ? 0x0000ff0000000000 : 0x0000000000ff0000)
 #define RANK7(s) ((s) ? 0x000000000000ff00 : 0x00ff000000000000)
@@ -1204,12 +1205,14 @@ public:
     bool infinite;
     bool debug = false;
     bool moveoutput;
+    int stopLevel = ENGINETERMINATEDSEARCH;
     int sizeOfTp = 0;
     int restSizeOfTp = 0;
     int sizeOfPh;
     int moveOverhead;
     int MultiPV;
     bool ponder;
+    bool chess960;
     string SyzygyPath;
     bool Syzygy50MoveRule = true;
     int SyzygyProbeLimit;
@@ -1221,7 +1224,6 @@ public:
     int lastReport;
     int benchdepth;
     string benchmove;
-    int stopLevel = ENGINETERMINATEDSEARCH;
 #ifdef STACKDEBUG
     string assertfile = "";
 #endif

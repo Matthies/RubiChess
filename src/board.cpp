@@ -232,6 +232,23 @@ bool chessposition::w2m()
 }
 
 
+void initCastleRights(int queenrookfile, int kingrookfile)
+{
+    for (int from = 0; from < 64; from++)
+    {
+        castlerights[from] = ~0;
+        if (RANK(from) == 0 && FILE(from) == queenrookfile)
+            castlerights[from] &= ~WQCMASK;
+        if (RANK(from) == 0 && FILE(from) == kingrookfile)
+            castlerights[from] &= ~WKCMASK;
+        if (RANK(from) == 7 && FILE(from) == queenrookfile)
+            castlerights[from] &= ~BQCMASK;
+        if (RANK(from) == 7 && FILE(from) == kingrookfile)
+            castlerights[from] &= ~BKCMASK;
+    }
+}
+
+
 int chessposition::getFromFen(const char* sFen)
 {
     string s;
@@ -333,27 +350,44 @@ int chessposition::getFromFen(const char* sFen)
         state |= S2MMASK;
 
     /* castle rights */
+    int border[2] = { -1 };
     s = token[2];
     for (unsigned int i = 0; i < s.length(); i++)
     {
-        switch (s[i])
+        bool gCastle;
+        int col;
+        int rookfile = -1;
+        const string usualcastles = "QKqk";
+        char c = s[i];
+        int castleindex = (int)usualcastles.find(c);
+        if (castleindex != string::npos)
         {
-        case 'Q':
-            state |= WQCMASK;
-            break;
-        case 'K':
-            state |= WKCMASK;
-            break;
-        case 'q':
-            state |= BQCMASK;
-            break;
-        case 'k':
-            state |= BKCMASK;
-            break;
-        default:
-            break;
+            state |= (WQCMASK << castleindex);
+            col = castleindex / 2;
+            gCastle = castleindex % 2;
+            U64 rookbb = (piece00[WROOK | col] & RANK1(col)) >> (56 * col);
+            myassert(rookbb, this, 1, rookbb);
+            if (gCastle)
+                GETMSB(rookfile, rookbb);
+            else
+                GETLSB(rookfile, rookbb);
         }
+        else if (en.chess960)
+        {
+            const string castles960 = "ABCDEFGHabcdefgh";
+            castleindex = (int)castles960.find(c);
+            if (castleindex != string::npos)
+            {
+                col = castleindex / 8;
+                rookfile = castleindex % 8;
+                gCastle = (rookfile > FILE(kingpos[col]));
+                state |= (WQCMASK << (col * 2 + gCastle));
+            }
+        }
+        if (rookfile >= 0)
+            border[gCastle] = rookfile;
     }
+    initCastleRights(border[0], border[1]);
 
     /* en passant target */
     ept = 0;
@@ -1225,15 +1259,6 @@ void initBitmaphelper()
         neighbourfilesMask[from] = 0ULL;
         fileMask[from] = 0ULL;
         rankMask[from] = 0ULL;
-        castlerights[from] = ~0;
-        if (from == 0x00)
-            castlerights[from] &= ~WQCMASK;
-        if (from == 0x07)
-            castlerights[from] &= ~WKCMASK;
-        if (from == 0x38)
-            castlerights[from] &= ~BQCMASK;
-        if (from == 0x3f)
-            castlerights[from] &= ~BKCMASK;
 
         for (int j = 0; j < 64; j++)
         {
@@ -2319,6 +2344,7 @@ engine::engine()
     setOption("SyzygyPath", "<empty>");
     setOption("Syzygy50MoveRule", "true");
     setOption("SyzygyProbeLimit", "7");
+    setOption("UCI_Chess960", "false");
 
 #ifdef _WIN32
     LARGE_INTEGER f;
@@ -2481,6 +2507,10 @@ void engine::setOption(string sName, string sValue)
             tp.clean();
         }
     }
+    if (sName == "uci_chess960")
+    {
+        chess960 = (lValue == "true");
+    }
 }
 
 
@@ -2586,6 +2616,7 @@ void engine::communicate(string inputstring)
                 send("option name Syzygy50MoveRule type check default true\n");
                 send("option name SyzygyProbeLimit type spin default 7 min 0 max 7\n");
                 send("option name Threads type spin default 1 min 1 max %d\n", MAXTHREADS);
+                send("option name UCI_Chess960 type check default false\n");
                 send("uciok\n", author);
                 break;
             case UCINEWGAME:
