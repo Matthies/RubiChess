@@ -18,7 +18,7 @@
 
 #include "RubiChess.h"
 
-#if defined(__linux__) && !defined(ANDROID)
+#if defined(__linux__) && !defined(__ANDROID__)
 static const size_t HashAlignBytes = 2ull << 20;
 #include <sys/mman.h> // madvise
 #endif
