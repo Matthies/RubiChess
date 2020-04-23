@@ -696,6 +696,8 @@ extern transposition tp;
 #define BQCMASK     0x08
 #define BKCMASK     0x10
 #define CASTLEMASK  0x1e
+#define GETCASTLEFILE(s,i) (((s) >> (i * 4 + 8)) & 0x7)
+#define SETCASTLEFILE(f,i) (((f) << (i * 4 + 8)) | (WQCMASK << i))
 
 #define WQC 1
 #define WKC 2
@@ -703,8 +705,8 @@ extern transposition tp;
 #define BKC 4
 const int QCMASK[2] = { WQCMASK, BQCMASK };
 const int KCMASK[2] = { WKCMASK, BKCMASK };
-const int castlerookfrom[] = {0, 0, 7, 56, 63 };
-const int castlerookto[] = {0, 3, 5, 59, 61 };
+//const int castlerookfrom[] = {0, 0, 7, 56, 63 };
+//const int castlerookto[] = {0, 3, 5, 59, 61 };
 
 const int EPTSIDEMASK[2] = { 0x8, 0x10 };
 
@@ -745,11 +747,14 @@ const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 2
 #define NMREFUTEVAL (1 << 25)
 #define BADTACTICALFLAG (1 << 31)
 
-#define ISEPCAPTURE 0x40
+#define EPCAPTUREFLAG 0x4000000
+#define CASTLEFLAG    0x8000000
 #define GETFROM(x) (((x) & 0x0fc0) >> 6)
 #define GETTO(x) ((x) & 0x003f)
 #define GETEPT(x) (((x) & 0x03f00000) >> 20)
-#define GETEPCAPTURE(x) (((x) >> 20) & ISEPCAPTURE)
+#define ISEPCAPTURE(x) ((x) & EPCAPTUREFLAG)
+#define ISCASTLE(x) ((x) & CASTLEFLAG)
+#define ISEPCAPTUREORCASTLE(x) ((x) & (EPCAPTUREFLAG | CASTLEFLAG))
 
 #define GETPROMOTION(x) (((x) & 0xf000) >> 12)
 #define GETCAPTURE(x) (((x) & 0xf0000) >> 16)
@@ -758,9 +763,9 @@ const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 2
 #define ISCAPTURE(x) ((x) & 0xf0000)
 #define GETPIECE(x) (((x) & 0xf0000000) >> 28)
 #define GETTACTICALVALUE(x) (materialvalue[GETCAPTURE(x) >> 1] + (ISPROMOTION(x) ? materialvalue[GETPROMOTION(x) >> 1] - materialvalue[PAWN] : 0))
-#define ISCASTLE(c) (((c) & 0xe0000249) == 0xc0000000)
-#define GIVECHECKFLAG 0x08000000
-#define GIVESCHECK(x) ((x) & GIVECHECKFLAG)
+//#define ISCASTLE(c) (((c) & 0xe0000249) == 0xc0000000)
+//#define GIVECHECKFLAG 0x08000000
+//#define GIVESCHECK(x) ((x) & GIVECHECKFLAG)
 
 #define PAWNATTACK(s, p) ((s) ? (((p) & ~FILEHBB) >> 7) | (((p) & ~FILEABB) >> 9) : (((p) & ~FILEABB) << 7) | (((p) & ~FILEHBB) << 9))
 #define PAWNPUSH(s, p) ((s) ? ((p) >> 8) : ((p) << 8))
