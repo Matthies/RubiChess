@@ -1496,8 +1496,6 @@ bool chessposition::playMove(chessmove *cm)
     PieceCode pfrom = GETPIECE(cm->code);
     PieceType ptype = (pfrom >> 1);
     int eptnew = GETEPT(cm->code);
-    if (ISCASTLE(cm->code))
-        printf("Alarm\n");
 
     PieceCode promote = GETPROMOTION(cm->code);
     PieceCode capture = GETCAPTURE(cm->code);
@@ -1618,12 +1616,12 @@ bool chessposition::playMove(chessmove *cm)
 
             // Correction for the king
             BitboardMove(to, kingto, pfrom);
-            kingpos[s2m] = to;
+            kingpos[s2m] = kingto;
             mailbox[to] = BLANK;
             mailbox[kingto] = pfrom;
 
             // Reset the rook
-            BitboardSet(rookto, (PieceCode)(WROOK | s2m));
+            BitboardMove(to, rookto, (PieceCode)(WROOK | s2m));
             mailbox[rookto] = (PieceCode)(WROOK | s2m);
 
             // Fix hash for rook move
@@ -1664,8 +1662,6 @@ bool chessposition::playMove(chessmove *cm)
     movestack[mstop++].movecode = cm->code;
     myassert(mstop < MAXMOVESEQUENCELENGTH, this, 1, mstop);
     updatePins();
-    if (hash != zb.getHash(this))
-        printf("alarm %llx %llx\n", hash, );
 
     return true;
 }
