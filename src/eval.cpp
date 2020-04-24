@@ -296,7 +296,7 @@ static int KBNvK(chessposition *p)
 
 
 // get psqt for eval tracing and tuning
-void chessposition::getpsqval()
+int chessposition::getpsqval()
 {
     te.material[0] = te.material[1] = 0;
     for (int i = 0; i < 64; i++)
@@ -306,10 +306,11 @@ void chessposition::getpsqval()
         {
             PieceType p = pc >> 1;
             int s2m = pc & S2MMASK;
-            te.material[s2m] += EVAL(eps.eMaterialvalue[p], S2MSIGN(s2m));
-            te.material[s2m] += EVAL(eps.ePsqt[p][PSQTINDEX(i, s2m)], S2MSIGN(s2m));
+            int score = EVAL(eps.eMaterialvalue[p], S2MSIGN(s2m)) + EVAL(eps.ePsqt[p][PSQTINDEX(i, s2m)], S2MSIGN(s2m));
+            te.material[s2m] += score;
         }
     }
+    return te.material[0] + te.material[1];
 }
 
 template <EvalType Et, int Me>

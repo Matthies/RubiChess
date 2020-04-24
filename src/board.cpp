@@ -485,12 +485,13 @@ void evaluateMoves(chessmovelist *ml, chessposition *pos, int16_t **cmptr)
         }
         if (Mt == QUIET || (Mt == ALL && !GETCAPTURE(mc)))
         {
-            ml->move[i].value = pos->history[piece & S2MMASK][GETFROM(mc)][GETTO(mc)];
+            int to = GETCORRECTTO(mc);
+            ml->move[i].value = pos->history[piece & S2MMASK][GETFROM(mc)][to];
             if (cmptr)
             {
                 for (int j = 0; j < CMPLIES && cmptr[j]; j++)
                 {
-                    ml->move[i].value += cmptr[j][piece * 64 + GETTO(mc)];
+                    ml->move[i].value += cmptr[j][piece * 64 + to];
                 }
             }
 
@@ -504,7 +505,6 @@ void evaluateMoves(chessmovelist *ml, chessposition *pos, int16_t **cmptr)
 void chessposition::getRootMoves()
 {
     chessmovelist movelist;
-    print();
     prepareStack();
     movelist.length = getMoves(&movelist.move[0]);
     evaluateMoves<ALL>(&movelist, this, NULL);
@@ -781,6 +781,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
     if (mailbox[from] != pc)
         return false;
 
+    // special test for castles; FIXME: This code is almost duplicate to the move generation
     if (ISCASTLE(c))
     {
         // king in check => castle is illegal
@@ -794,35 +795,35 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
             return false;
 
         // test if path to target is occupied
-        //...
-
-        U64 occupied = occupied00[0] | occupied00[1];
         bool gCastle = (from < to);
+        int cstli = s2m * 2 + gCastle;
 
-        if (from > to)
+
+        if ((state & (WQCMASK << cstli)) == 0)
+            return false;
+
+        int rookfrom = GETCASTLEFILE(state, cstli) + 56 * s2m;
+        int kingfrom = kingpos[s2m];
+        int rookto = 3 + 2 * gCastle + 56 * s2m;
+        int kingto = 2 + 4 * gCastle + 56 * s2m;
+
+        U64 castleblockers = ((occupied00[0] | occupied00[1]) ^ BITSET(rookfrom) ^ BITSET(kingfrom))
+            & (betweenMask[kingfrom][kingto] | betweenMask[rookfrom][rookto] | BITSET(rookto) | BITSET(kingto));
+
+        if (castleblockers)
+            return false;
+
+        // test if king path is attacked
+        U64 kingwalkbb = betweenMask[kingfrom][kingto] | BITSET(kingto);
+        bool attacked = false;
+        while (kingwalkbb)
         {
-            //queen castle
-            if (occupied & (s2m ? 0x0e00000000000000 : 0x000000000000000e)
-                || isAttacked(from - 1)
-                || isAttacked(from - 2)
-                || !(state & QCMASK[s2m]))
-            {
+            to = pullLsb(&kingwalkbb);
+            if (isAttacked(to))
                 return false;
-            }
         }
-        else
-        {
-            // king castle
-            if (occupied & (s2m ? 0x6000000000000000 : 0x0000000000000060)
-                || isAttacked(from + 1)
-                || isAttacked(from + 2)
-                || !(state & KCMASK[s2m]))
-            {
-                return false;
-            }
-        }
+        return true;
     }
-
 
     // correct capture?
     if (mailbox[to] != capture && !ISEPCAPTUREORCASTLE(c))
@@ -2182,7 +2183,7 @@ int chessposition::phase()
 bool chessposition::see(uint32_t move, int threshold)
 {
     int from = GETFROM(move);
-    int to = GETTO(move);
+    int to = GETCORRECTTO(move);
 
     int value = GETTACTICALVALUE(move) - threshold;
 

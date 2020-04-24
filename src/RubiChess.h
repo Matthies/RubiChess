@@ -751,6 +751,7 @@ const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 2
 #define CASTLEFLAG    0x8000000
 #define GETFROM(x) (((x) & 0x0fc0) >> 6)
 #define GETTO(x) ((x) & 0x003f)
+#define GETCORRECTTO(x) (ISCASTLE(x) ? 2 + 4 * (GETTO(x) > GETFROM(x)) + 56 * (GETPIECE(x) & S2MMASK) : GETTO(x))
 #define GETEPT(x) (((x) & 0x03f00000) >> 20)
 #define ISEPCAPTURE(x) ((x) & EPCAPTUREFLAG)
 #define ISCASTLE(x) ((x) & CASTLEFLAG)
@@ -1132,7 +1133,7 @@ public:
     bool moveGivesCheck(uint32_t c);  // simple and imperfect as it doesn't handle special moves and cases (mainly to avoid pruning of important moves)
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
     uint32_t shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal
-    void getpsqval();  // only for eval trace
+    int getpsqval();  // only for eval trace and mirror test
     template <EvalType Et, int Me> int getGeneralEval(positioneval *pe);
     template <EvalType Et, PieceType Pt, int Me> int getPieceEval(positioneval *pe);
     template <EvalType Et, int Me> int getLateEval(positioneval *pe);
