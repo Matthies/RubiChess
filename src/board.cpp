@@ -664,7 +664,9 @@ void chessposition::mirror()
         }
     }
 
-    int newstate = (state & S2MMASK) ^ S2MMASK;
+    int newstate = state;
+    newstate ^= S2MMASK;
+    newstate &= ~CASTLEMASK;
     if (state & WQCMASK) newstate |= BQCMASK;
     if (state & WKCMASK) newstate |= BKCMASK;
     if (state & BQCMASK) newstate |= WQCMASK;
@@ -948,7 +950,7 @@ void chessposition::print(ostream* os)
     chessmovelist pseudolegalmoves;
     pseudolegalmoves.length = getMoves(&pseudolegalmoves.move[0]);
     *os << "\nFEN: " + toFen() + "\n";
-    *os << "State: " + to_string(state) + "\n";
+    *os << "State: " << std::hex << state << "\n";
     *os << "EPT: " + to_string(ept) + "\n";
     *os << "Halfmoves: " + to_string(halfmovescounter) + "\n";
     *os << "Fullmoves: " + to_string(fullmovescounter) + "\n";
@@ -1494,6 +1496,8 @@ bool chessposition::playMove(chessmove *cm)
     PieceCode pfrom = GETPIECE(cm->code);
     PieceType ptype = (pfrom >> 1);
     int eptnew = GETEPT(cm->code);
+    if (ISCASTLE(cm->code))
+        printf("Alarm\n");
 
     PieceCode promote = GETPROMOTION(cm->code);
     PieceCode capture = GETCAPTURE(cm->code);
@@ -1557,7 +1561,7 @@ bool chessposition::playMove(chessmove *cm)
         kingpos[s2m] = to;  // this is wrong for castles but will be corrected later and castlemoves are proven to be legal
 
     // Here we can test the move for being legal
-    if (isAttacked(kingpos[s2m]))
+    if (!ISCASTLE(cm->code) && isAttacked(kingpos[s2m]))
     {
         // Move is illegal; just do the necessary subset of unplayMove
         hash = movestack[mstop].hash;
@@ -1660,6 +1664,9 @@ bool chessposition::playMove(chessmove *cm)
     movestack[mstop++].movecode = cm->code;
     myassert(mstop < MAXMOVESEQUENCELENGTH, this, 1, mstop);
     updatePins();
+    if (hash != zb.getHash(this))
+        printf("alarm %llx %llx\n", hash, );
+
     return true;
 }
 
@@ -1733,6 +1740,9 @@ void chessposition::unplayMove(chessmove *cm)
     else {
         mailbox[to] = BLANK;
     }
+    if (hash != zb.getHash(this))
+        printf("alarm\n");
+
 }
 
 
