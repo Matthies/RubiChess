@@ -1,0 +1,66 @@
+#
+# Start MSVC Command prompt for x64 native tools and
+# for fastest build: nmake /f Makefile.clang build
+# for a quick build: nmake /f Makefile.clang all
+# llvm-profdata.exe and .dll from Tools folder need to be copied into the LLVM bin folder or any other folder in PATH
+
+LLVMInstallDir="C:\Program Files\LLVM""
+
+CXX=$(LLVMInstallDir)\bin\clang-cl.exe
+LD=$(LLVMInstallDir)\bin\lld-link.exe
+
+#SOURCE=board.cpp eval.cpp main.cpp search.cpp tbprobe.cpp transposition.cpp uci.cpp utils.cpp
+SOURCE=*.cpp
+OBJ=*.obj
+RELDIR=Release-clang
+EXE1=RubiChess
+EXE2=RubiChess-oldcpu
+EXEDESC=-D PROCDESC=\"Popcnt\"
+EXE2DESC=-D PROCDESC=\"Oldcpu\"
+PROFEXE1=$(EXE1)-Prof
+PROFEXE2=$(EXE2)-Prof
+PROFDATATOOLEXE=llvm-profdata
+
+CXXFLAGS=/GX /O2 /Oi /Ot /c -flto -fuse-ld=lld /Z7 -gcodeview
+ARCHFLAGS=-msse3 -mpopcnt
+LDFLAGS=/OPT:REF /OPT:ICF /debug
+PROFLIB=$(LLVMInstallDir)\lib\clang\8.0.0\lib\windows\clang_rt.profile-x86_64.lib
+
+all: RubiChess RubiChess-oldcpu
+
+$(RELDIR):
+	mkdir $(RELDIR)
+
+RubiChess: $(RELDIR)
+	$(CXX) $(CXXFLAGS) $(ARCHFLAGS) $(SOURCE) $(EXEDESC)
+	$(LD) $(LDFLAGS) /OUT:$(RELDIR)\$(EXE1).exe $(OBJ)
+
+RubiChess-oldcpu: $(RELDIR)
+	$(CXX) $(CXXFLAGS) $(SOURCE) $(EXE2DESC)
+	$(LD) $(LDFLAGS) /OUT:$(RELDIR)\$(EXE2).exe $(OBJ)
+
+profile-build: $(RELDIR)
+	$(CXX) $(CXXFLAGS) $(ARCHFLAGS) $(SOURCE) -fprofile-instr-generate=$(PROFEXE1).clangprof-raw $(EXEDESC)
+	$(LD) $(LDFLAGS) /OUT:$(PROFEXE1).exe $(OBJ) $(PROFLIB)
+	$(PROFEXE1) -bench > nul
+	$(PROFDATATOOLEXE) merge -output=$(PROFEXE1).clangprof $(PROFEXE1).clangprof-raw
+	$(CXX) $(CXXFLAGS) $(ARCHFLAGS) $(SOURCE) -fprofile-instr-use=$(PROFEXE1).clangprof $(EXEDESC)
+	$(LD) $(LDFLAGS) /OUT:$(RELDIR)\$(EXE1).exe $(OBJ)
+
+	$(CXX) $(CXXFLAGS) $(SOURCE) -fprofile-instr-generate=$(PROFEXE2).clangprof-raw $(EXE2DESC)
+	$(LD) $(LDFLAGS) /OUT:$(PROFEXE2).exe $(OBJ) $(PROFLIB)
+	$(PROFEXE2) -bench > nul
+	$(PROFDATATOOLEXE) merge -output=$(PROFEXE2).clangprof $(PROFEXE2).clangprof-raw
+	$(CXX) $(CXXFLAGS) $(SOURCE) -fprofile-instr-use=$(PROFEXE2).clangprof $(EXE2DESC)
+	$(LD) $(LDFLAGS) /OUT:$(RELDIR)\$(EXE2).exe $(OBJ)
+
+build: profile-build profile-clean
+
+profile-clean:
+	del $(PROFEXE1)*
+	del $(PROFEXE2)*
+	del *.obj
+
+clean: profile-clean
+	del $(RELDIR)\$(EXE1).exe
+	del $(RELDIR)\$(EXE2).exe

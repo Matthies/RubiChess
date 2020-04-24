@@ -504,6 +504,7 @@ void evaluateMoves(chessmovelist *ml, chessposition *pos, int16_t **cmptr)
 void chessposition::getRootMoves()
 {
     chessmovelist movelist;
+    print();
     prepareStack();
     movelist.length = getMoves(&movelist.move[0]);
     evaluateMoves<ALL>(&movelist, this, NULL);
@@ -1502,7 +1503,7 @@ bool chessposition::playMove(chessmove *cm)
 
     myassert(!promote || (ptype == PAWN && RRANK(to,s2m)==7), this, 4, promote, ptype, to, s2m);
     myassert(pfrom == mailbox[from], this, 3, pfrom, from, mailbox[from]);
-    myassert(ISEPCAPTURE(cm->code) || capture == mailbox[to], this, 2, capture, mailbox[to]);
+    myassert(ISEPCAPTUREORCASTLE(cm->code) || capture == mailbox[to], this, 2, capture, mailbox[to]);
 
     halfmovescounter++;
 
@@ -1615,20 +1616,24 @@ bool chessposition::playMove(chessmove *cm)
             int kingto = 2 + 4 * gCastle + 56 * s2m;
 
             // Correction for the king
-            BitboardMove(to, kingto, pfrom);
-            kingpos[s2m] = kingto;
-            mailbox[to] = BLANK;
-            mailbox[kingto] = pfrom;
+            if (to != kingto)
+            {
+                BitboardMove(to, kingto, pfrom);
+                kingpos[s2m] = kingto;
+                mailbox[to] = BLANK;
+                mailbox[kingto] = pfrom;
+                hash ^= zb.boardtable[(to << 4) | pfrom] ^ zb.boardtable[(kingto << 4) | pfrom];
+            }
 
-            // Reset the rook
-            BitboardMove(to, rookto, (PieceCode)(WROOK | s2m));
-            mailbox[rookto] = (PieceCode)(WROOK | s2m);
+            // Set the rook
+            if (to != rookto)
+            {
+                BitboardMove(to, rookto, (PieceCode)(WROOK | s2m));
+                mailbox[rookto] = (PieceCode)(WROOK | s2m);
+                hash ^= zb.boardtable[(rookto << 4) | (PieceCode)(WROOK | s2m)] ^ zb.boardtable[(to << 4) | (PieceCode)(WROOK | s2m)];
+            }
 
-            // Fix hash for rook move
-            hash ^= zb.boardtable[(rookto << 4) | (PieceCode)(WROOK | s2m)] ^ zb.boardtable[(to << 4) | (PieceCode)(WROOK | s2m)];
-
-            // Fix hash for king move
-            hash ^= zb.boardtable[(to << 4) | pfrom] ^ zb.boardtable[(kingto << 4) | pfrom];
+            // (Re)set to to correct square for the following pawnhash correction
             to = kingto;
         }
 
@@ -1662,7 +1667,17 @@ bool chessposition::playMove(chessmove *cm)
     movestack[mstop++].movecode = cm->code;
     myassert(mstop < MAXMOVESEQUENCELENGTH, this, 1, mstop);
     updatePins();
-
+#if 0
+    if (hash != zb.getHash(this))
+        printf("hashalarm\n");
+    if (materialhash != zb.getMaterialHash(this))
+    {
+        print();
+        printf("materialhashalarm\n");
+    }
+    if (pawnhash != zb.getPawnHash(this))
+        printf("hashalarm\n");
+#endif
     return true;
 }
 
@@ -1671,7 +1686,8 @@ void chessposition::unplayMove(chessmove *cm)
 {
     int from = GETFROM(cm->code);
     int to = GETTO(cm->code);
-    PieceCode pto = mailbox[to];
+    PieceCode pfrom = GETPIECE(cm->code);
+
     PieceCode promote = GETPROMOTION(cm->code);
     PieceCode capture = GETCAPTURE(cm->code);
     int s2m;
@@ -1685,36 +1701,34 @@ void chessposition::unplayMove(chessmove *cm)
 
     s2m = state & S2MMASK;
 
+    // Correct the castle anomaly so that the generic undo works after
     if (ISCASTLE(cm->code))
     {
         bool gCastle = (to > from);
         int rookto = 3 + 2 * gCastle + 56 * s2m;
         int kingto = 2 + 4 * gCastle + 56 * s2m;
 
-        if (rookto != to)
+        // Remove the rook and let the generic recreate it via capture undo
+        capture = (PieceCode)(WROOK | s2m);
+        BitboardClear(rookto, (PieceCode)(WROOK | s2m));
+        mailbox[rookto] = BLANK;
+
+        // Move the king to 'to' square
+        if (to != kingto)
         {
-            BitboardMove(rookto, to, (PieceCode)(WROOK | s2m));
-            mailbox[to] = (PieceCode)(WROOK | s2m);
-            mailbox[rookto] = BLANK;
-        }
-        if (kingto != from)
-        {
-            BitboardMove(kingto, from, (PieceCode)(WKING | s2m));
-            mailbox[from] = (PieceCode)(WKING | s2m);
+            BitboardMove(kingto, to, pfrom);
             mailbox[kingto] = BLANK;
         }
-        return;
     }
 
+    mailbox[from] = pfrom;
     if (promote != BLANK)
     {
-        mailbox[from] = (PieceCode)(WPAWN | s2m);
-        BitboardClear(to, pto);
-        BitboardSet(from, (PieceCode)(WPAWN | s2m));
+        BitboardClear(to, promote);
+        BitboardSet(from, pfrom);
     }
     else {
-        BitboardMove(to, from, pto);
-        mailbox[from] = pto;
+        BitboardMove(to, from, pfrom);
     }
 
     if (capture != BLANK)
@@ -1736,9 +1750,6 @@ void chessposition::unplayMove(chessmove *cm)
     else {
         mailbox[to] = BLANK;
     }
-    if (hash != zb.getHash(this))
-        printf("alarm\n");
-
 }
 
 
