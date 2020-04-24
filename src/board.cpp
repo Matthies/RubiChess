@@ -142,7 +142,10 @@ string chessmove::toString()
     int from, to;
     PieceCode promotion;
     from = GETFROM(code);
-    to = GETTO(code);
+    if (!en.chess960)
+        to = GETCORRECTTO(code);
+    else
+        to = GETTO(code);
     promotion = GETPROMOTION(code);
 
     sprintf_s(s, "%c%d%c%d%c", (from & 0x7) + 'a', ((from >> 3) & 0x7) + 1, (to & 0x7) + 'a', ((to >> 3) & 0x7) + 1, PieceChar(promotion, true));
@@ -814,15 +817,16 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
             return false;
 
         // test if king path is attacked
+        BitboardClear(rookfrom, (PieceType)(WROOK | s2m));
         U64 kingwalkbb = betweenMask[kingfrom][kingto] | BITSET(kingto);
         bool attacked = false;
-        while (kingwalkbb)
+        while (!attacked && kingwalkbb)
         {
             to = pullLsb(&kingwalkbb);
-            if (isAttacked(to))
-                return false;
+            attacked = isAttacked(to);
         }
-        return true;
+        BitboardSet(rookfrom, (PieceType)(WROOK | s2m));
+        return !attacked;
     }
 
     // correct capture?
@@ -1967,6 +1971,7 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                     if (castleblockers)
                         continue;
 
+                    pos->BitboardClear(rookfrom, (PieceType)(WROOK | me));
                     U64 kingwalkbb = betweenMask[kingfrom][kingto] | BITSET(kingto);
                     bool attacked = false;
                     while (!attacked && kingwalkbb)
@@ -1974,6 +1979,7 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                         to = pullLsb(&kingwalkbb);
                         attacked = pos->isAttacked(to);
                     }
+                    pos->BitboardSet(rookfrom, (PieceType)(WROOK | me));
 
                     if (attacked)
                         continue;
