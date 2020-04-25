@@ -1634,9 +1634,9 @@ bool chessposition::playMove(chessmove *cm)
             if (to != rookto)
             {
                 BitboardMove(to, rookto, (PieceCode)(WROOK | s2m));
-                mailbox[rookto] = (PieceCode)(WROOK | s2m);
                 hash ^= zb.boardtable[(rookto << 4) | (PieceCode)(WROOK | s2m)] ^ zb.boardtable[(to << 4) | (PieceCode)(WROOK | s2m)];
             }
+            mailbox[rookto] = (PieceCode)(WROOK | s2m);
 
             // (Re)set to to correct square for the following pawnhash correction
             to = kingto;
