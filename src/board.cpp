@@ -37,9 +37,12 @@ U64 fileMask[64];
 U64 rankMask[64];
 U64 betweenMask[64][64];
 U64 lineMask[64][64];
-//int castleindex[64][64] = { { 0 } };
-U64 castlekingto[64][2] = { { 0ULL } };
 int castlerights[64];
+const int castlerookto[4] = { 3, 5, 59, 61 };
+const int castlekingto[4] = { 2, 6, 58, 62 };
+int castlerookfrom[4];
+U64 castleblockers[4];
+U64 castlekingwalk[4];
 int squareDistance[64][64];  // decreased by 1 for directly indexing evaluation arrays
 int psqtable[14][64];
 
@@ -235,19 +238,31 @@ bool chessposition::w2m()
 }
 
 
-void initCastleRights(int queenrookfile, int kingrookfile)
+void initCastleRights(int rookfiles[], int kingfile)
 {
     for (int from = 0; from < 64; from++)
     {
         castlerights[from] = ~0;
-        if (RANK(from) == 0 && FILE(from) == queenrookfile)
+        if (RANK(from) == 0 && FILE(from) == rookfiles[0])
             castlerights[from] &= ~WQCMASK;
-        if (RANK(from) == 0 && FILE(from) == kingrookfile)
+        if (RANK(from) == 0 && FILE(from) == rookfiles[1])
             castlerights[from] &= ~WKCMASK;
-        if (RANK(from) == 7 && FILE(from) == queenrookfile)
+        if (RANK(from) == 7 && FILE(from) == rookfiles[0])
             castlerights[from] &= ~BQCMASK;
-        if (RANK(from) == 7 && FILE(from) == kingrookfile)
+        if (RANK(from) == 7 && FILE(from) == rookfiles[1])
             castlerights[from] &= ~BKCMASK;
+    }
+
+    for (int i = 0; i < 4; i++)
+    {
+        int col = i / 2;
+        int gCastle = i % 2;
+        castlerookfrom[i] = rookfiles[gCastle] + 56 * col;
+        castleblockers[i] = betweenMask[kingfile + 56 * col][castlekingto[i]]
+            | betweenMask[castlerookfrom[i]][castlerookto[i]]
+            | BITSET(castlerookto[i]) | BITSET(castlekingto[i]);
+
+        castlekingwalk[i] = betweenMask[kingfile + 56 * col][castlekingto[i]] | BITSET(castlekingto[i]);
     }
 }
 
@@ -353,7 +368,8 @@ int chessposition::getFromFen(const char* sFen)
         state |= S2MMASK;
 
     /* castle rights */
-    int border[2] = { -1 };
+    int rookfiles[2] = { -1, -1 };
+    int kingfile = -1;
     s = token[2];
     for (unsigned int i = 0; i < s.length(); i++)
     {
@@ -389,10 +405,15 @@ int chessposition::getFromFen(const char* sFen)
         if (rookfile >= 0)
         {
             state |= SETCASTLEFILE(rookfile, castleindex);
-            border[gCastle] = rookfile;
+            if (rookfiles[gCastle] >= 0 && rookfiles[gCastle] != rookfile)
+                printf("info string Alarm! Castlerights for both sides but rooks on different files.");
+            rookfiles[gCastle] = rookfile;
+            if (kingfile >= 0 && kingfile != FILE(kingpos[col]))
+                printf("info string Alarm! Castlerights for both sides but kings on different files.");
+            kingfile = FILE(kingpos[col]);
         }
     }
-    initCastleRights(border[0], border[1]);
+    initCastleRights(rookfiles, kingfile);
 
     /* en passant target */
     ept = 0;
@@ -753,7 +774,8 @@ uint32_t chessposition::shortMove2FullMove(uint16_t c)
     if (p == KING && capture == (WROOK | (pc & S2MMASK)))
     {
         // castle move
-        myeptcastle = CASTLEFLAG;
+        int cstli = (to > from) + (pc & S2MMASK) * 2;
+        myeptcastle = CASTLEFLAG | (cstli << 20);
         capture = 0;
     }
 
@@ -787,45 +809,40 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
     // special test for castles; FIXME: This code is almost duplicate to the move generation
     if (ISCASTLE(c))
     {
-        // king in check => castle is illegal
-        if (isAttacked(from))
-            return false;
-
         int s2m = state & S2MMASK;
+
+        // king in check => castle is illegal
+        if (isAttacked(from, s2m))
+            return false;
 
         // test if move is on first rank
         if (RRANK(from, s2m) || RRANK(to, s2m))
             return false;
 
-        // test if path to target is occupied
-        bool gCastle = (from < to);
-        int cstli = s2m * 2 + gCastle;
+        int cstli = GETCASTLEINDEX(c);
 
-
-        if ((state & (WQCMASK << cstli)) == 0)
+        // Test for correct rook
+        if (castlerookfrom[cstli] != to)
             return false;
 
-        int rookfrom = GETCASTLEFILE(state, cstli) + 56 * s2m;
-        int kingfrom = kingpos[s2m];
-        int rookto = 3 + 2 * gCastle + 56 * s2m;
-        int kingto = 2 + 4 * gCastle + 56 * s2m;
+        // test for castle right
+        if (!(state & (WQCMASK << cstli)))
+            return false;
 
-        U64 castleblockers = ((occupied00[0] | occupied00[1]) ^ BITSET(rookfrom) ^ BITSET(kingfrom))
-            & (betweenMask[kingfrom][kingto] | betweenMask[rookfrom][rookto] | BITSET(rookto) | BITSET(kingto));
-
-        if (castleblockers)
+        // test if path to target is occupied
+        if (castleblockers[cstli] & ((occupied00[0] | occupied00[1]) ^ BITSET(from) ^ BITSET(to)))
             return false;
 
         // test if king path is attacked
-        BitboardClear(rookfrom, (PieceType)(WROOK | s2m));
-        U64 kingwalkbb = betweenMask[kingfrom][kingto] | BITSET(kingto);
+        BitboardClear(to, (PieceType)(WROOK | s2m));
+        U64 kingwalkbb = castlekingwalk[cstli];
         bool attacked = false;
         while (!attacked && kingwalkbb)
         {
-            to = pullLsb(&kingwalkbb);
-            attacked = isAttacked(to);
+            int walkto = pullLsb(&kingwalkbb);
+            attacked = isAttacked(walkto, s2m);
         }
-        BitboardSet(rookfrom, (PieceType)(WROOK | s2m));
+        BitboardSet(to, (PieceType)(WROOK | s2m));
         return !attacked;
     }
 
@@ -1497,156 +1514,161 @@ void chessposition::BitboardPrint(U64 b)
 bool chessposition::playMove(chessmove *cm)
 {
     int s2m = state & S2MMASK;
-    int from = GETFROM(cm->code);
-    int to = GETTO(cm->code);
-    PieceCode pfrom = GETPIECE(cm->code);
-    PieceType ptype = (pfrom >> 1);
-    int eptnew = GETEPT(cm->code);
-
-    PieceCode promote = GETPROMOTION(cm->code);
-    PieceCode capture = GETCAPTURE(cm->code);
-
-    myassert(!promote || (ptype == PAWN && RRANK(to,s2m)==7), this, 4, promote, ptype, to, s2m);
-    myassert(pfrom == mailbox[from], this, 3, pfrom, from, mailbox[from]);
-    myassert(ISEPCAPTUREORCASTLE(cm->code) || capture == mailbox[to], this, 2, capture, mailbox[to]);
+    int eptnew = 0;
+    int oldcastle = (state & CASTLEMASK);
 
     halfmovescounter++;
 
-    // Fix hash regarding capture
-    if (capture != BLANK && !ISEPCAPTURE(cm->code))
+    if (ISCASTLE(cm->code))
     {
-        hash ^= zb.boardtable[(to << 4) | capture];
-        if ((capture >> 1) == PAWN)
-            pawnhash ^= zb.boardtable[(to << 4) | capture];
-        BitboardClear(to, capture);
-        materialhash ^= zb.boardtable[(POPCOUNT(piece00[capture]) << 4) | capture];
-        halfmovescounter = 0;
-    }
+        // Get castle squares and move king and rook
+        int kingfrom = GETFROM(cm->code);
+        int rookfrom = GETTO(cm->code);
+        int cstli = GETCASTLEINDEX(cm->code);
+        int kingto = castlekingto[cstli];
+        int rookto = castlerookto[cstli];
+        PieceCode kingpc = (PieceCode)(WKING | s2m);
+        PieceCode rookpc = (PieceCode)(WROOK | s2m);
 
-    if (promote == BLANK)
-    {
-        mailbox[to] = pfrom;
-        BitboardMove(from, to, pfrom);
-    }
-    else {
-        mailbox[to] = promote;
-        BitboardClear(from, pfrom);
-        materialhash ^= zb.boardtable[(POPCOUNT(piece00[pfrom]) << 4) | pfrom];
-        materialhash ^= zb.boardtable[(POPCOUNT(piece00[promote]) << 4) | promote];
-        BitboardSet(to, promote);
-        // just double the hash-switch for target to make the pawn vanish
-        pawnhash ^= zb.boardtable[(to << 4) | mailbox[to]];
-    }
+        mailbox[kingfrom] = BLANK;
+        mailbox[rookfrom] = BLANK;
+        mailbox[kingto] = kingpc;
+        mailbox[rookto] = rookpc;
 
-    hash ^= zb.boardtable[(to << 4) | mailbox[to]];
-    hash ^= zb.boardtable[(from << 4) | pfrom];
-
-    mailbox[from] = BLANK;
-
-    /* PAWN specials */
-    if (ptype == PAWN)
-    {
-        pawnhash ^= zb.boardtable[(to << 4) | mailbox[to]];
-        pawnhash ^= zb.boardtable[(from << 4) | pfrom];
-        halfmovescounter = 0;
-
-        if (ept && to == ept)
+        if (kingfrom != kingto)
         {
-            int epfield = (from & 0x38) | (to & 0x07);
-            BitboardClear(epfield, (pfrom ^ S2MMASK));
-            mailbox[epfield] = BLANK;
-            hash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
-            pawnhash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
-            materialhash ^= zb.boardtable[(POPCOUNT(piece00[(pfrom ^ S2MMASK)]) << 4) | (pfrom ^ S2MMASK)];
+            kingpos[s2m] = kingto;
+            BitboardMove(kingfrom, kingto, kingpc);
+            hash ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
+            pawnhash ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
         }
-    }
-
-    if (ptype == KING)
-        kingpos[s2m] = to;  // this is wrong for castles but will be corrected later and castlemoves are proven to be legal
-
-    // Here we can test the move for being legal
-    if (!ISCASTLE(cm->code) && isAttacked(kingpos[s2m]))
-    {
-        // Move is illegal; just do the necessary subset of unplayMove
-        hash = movestack[mstop].hash;
-        pawnhash = movestack[mstop].pawnhash;
-        materialhash = movestack[mstop].materialhash;
-        kingpos[s2m] = movestack[mstop].kingpos[s2m];
-        halfmovescounter = movestack[mstop].halfmovescounter;
-        mailbox[from] = pfrom;
-        if (promote != BLANK)
+        if (rookfrom != rookto)
         {
-            BitboardClear(to, mailbox[to]);
-            BitboardSet(from, pfrom);
+            BitboardMove(rookfrom, rookto, rookpc);
+            hash ^= zb.boardtable[(rookfrom << 4) | rookpc] ^ zb.boardtable[(rookto << 4) | rookpc];
+        }
+        state &= (s2m ? ~(BQCMASK | BKCMASK) : ~(WQCMASK | WKCMASK));
+    }
+    else
+    {
+        int from = GETFROM(cm->code);
+        int to = GETTO(cm->code);
+        PieceCode pfrom = GETPIECE(cm->code);
+        PieceType ptype = (pfrom >> 1);
+        PieceCode promote = GETPROMOTION(cm->code);
+        PieceCode capture = GETCAPTURE(cm->code);
+
+        myassert(!promote || (ptype == PAWN && RRANK(to, s2m) == 7), this, 4, promote, ptype, to, s2m);
+        myassert(pfrom == mailbox[from], this, 3, pfrom, from, mailbox[from]);
+        myassert(ISEPCAPTURE(cm->code) || capture == mailbox[to], this, 2, capture, mailbox[to]);
+
+        // Fix hash regarding capture
+        if (capture != BLANK && !ISEPCAPTURE(cm->code))
+        {
+            hash ^= zb.boardtable[(to << 4) | capture];
+            if ((capture >> 1) == PAWN)
+                pawnhash ^= zb.boardtable[(to << 4) | capture];
+            BitboardClear(to, capture);
+            materialhash ^= zb.boardtable[(POPCOUNT(piece00[capture]) << 4) | capture];
+            halfmovescounter = 0;
+        }
+
+        if (promote == BLANK)
+        {
+            mailbox[to] = pfrom;
+            BitboardMove(from, to, pfrom);
         }
         else {
-            BitboardMove(to, from, pfrom);
+            mailbox[to] = promote;
+            BitboardClear(from, pfrom);
+            materialhash ^= zb.boardtable[(POPCOUNT(piece00[pfrom]) << 4) | pfrom];
+            materialhash ^= zb.boardtable[(POPCOUNT(piece00[promote]) << 4) | promote];
+            BitboardSet(to, promote);
+            // just double the hash-switch for target to make the pawn vanish
+            pawnhash ^= zb.boardtable[(to << 4) | mailbox[to]];
         }
 
-        if (capture != BLANK)
+        hash ^= zb.boardtable[(to << 4) | mailbox[to]];
+        hash ^= zb.boardtable[(from << 4) | pfrom];
+
+        mailbox[from] = BLANK;
+
+        /* PAWN specials */
+        if (ptype == PAWN)
         {
+            eptnew = GETEPT(cm->code);
+            pawnhash ^= zb.boardtable[(to << 4) | mailbox[to]];
+            pawnhash ^= zb.boardtable[(from << 4) | pfrom];
+            halfmovescounter = 0;
+
             if (ept && to == ept)
             {
-                // special ep capture
                 int epfield = (from & 0x38) | (to & 0x07);
-                BitboardSet(epfield, capture);
-                mailbox[epfield] = capture;
-                mailbox[to] = BLANK;
-            }
-            else
-            {
-                BitboardSet(to, capture);
-                mailbox[to] = capture;
+                BitboardClear(epfield, (pfrom ^ S2MMASK));
+                mailbox[epfield] = BLANK;
+                hash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
+                pawnhash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
+                materialhash ^= zb.boardtable[(POPCOUNT(piece00[(pfrom ^ S2MMASK)]) << 4) | (pfrom ^ S2MMASK)];
             }
         }
-        else {
-            mailbox[to] = BLANK;
-        }
-        return false;
-    }
-    
-    PREFETCH(&mtrlhsh.table[materialhash & MATERIALHASHMASK]);
 
-    // remove castle rights
-    int oldcastle = (state & CASTLEMASK);
-    state &= (castlerights[from] & castlerights[to]);
-    if (ptype == KING)
-    {
-        /* handle castle */
-        state &= (s2m ? ~(BQCMASK | BKCMASK) : ~(WQCMASK | WKCMASK));
-        if (ISCASTLE(cm->code))
+        if (ptype == KING)
+            kingpos[s2m] = to;  // this is wrong for castles but will be corrected later and castlemoves are proven to be legal
+
+        // Here we can test the move for being legal
+        if (isAttacked(kingpos[s2m], s2m))
         {
-            bool gCastle = (to > from);
-            int rookto = 3 + 2 * gCastle + 56 * s2m;
-            int kingto = 2 + 4 * gCastle + 56 * s2m;
-
-            // Correction for the king
-            if (to != kingto)
+            // Move is illegal; just do the necessary subset of unplayMove
+            hash = movestack[mstop].hash;
+            pawnhash = movestack[mstop].pawnhash;
+            materialhash = movestack[mstop].materialhash;
+            kingpos[s2m] = movestack[mstop].kingpos[s2m];
+            halfmovescounter = movestack[mstop].halfmovescounter;
+            mailbox[from] = pfrom;
+            if (promote != BLANK)
             {
-                BitboardMove(to, kingto, pfrom);
-                kingpos[s2m] = kingto;
+                BitboardClear(to, mailbox[to]);
+                BitboardSet(from, pfrom);
+            }
+            else {
+                BitboardMove(to, from, pfrom);
+            }
+
+            if (capture != BLANK)
+            {
+                if (ept && to == ept)
+                {
+                    // special ep capture
+                    int epfield = (from & 0x38) | (to & 0x07);
+                    BitboardSet(epfield, capture);
+                    mailbox[epfield] = capture;
+                    mailbox[to] = BLANK;
+                }
+                else
+                {
+                    BitboardSet(to, capture);
+                    mailbox[to] = capture;
+                }
+            }
+            else {
                 mailbox[to] = BLANK;
-                mailbox[kingto] = pfrom;
-                hash ^= zb.boardtable[(to << 4) | pfrom] ^ zb.boardtable[(kingto << 4) | pfrom];
             }
-
-            // Set the rook
-            if (to != rookto)
-            {
-                BitboardMove(to, rookto, (PieceCode)(WROOK | s2m));
-                hash ^= zb.boardtable[(rookto << 4) | (PieceCode)(WROOK | s2m)] ^ zb.boardtable[(to << 4) | (PieceCode)(WROOK | s2m)];
-            }
-            mailbox[rookto] = (PieceCode)(WROOK | s2m);
-
-            // (Re)set to to correct square for the following pawnhash correction
-            to = kingto;
+            return false;
         }
 
-        // Store king position in pawn hash
-        pawnhash ^= zb.boardtable[(from << 4) | pfrom] ^ zb.boardtable[(to << 4) | pfrom];
+        // remove castle rights
+        state &= (castlerights[from] & castlerights[to]);
+        if (ptype == KING)
+        {
+            /* handle castle */
+            state &= (s2m ? ~(BQCMASK | BKCMASK) : ~(WQCMASK | WKCMASK));
+            // Store king position in pawn hash
+            pawnhash ^= zb.boardtable[(from << 4) | pfrom] ^ zb.boardtable[(to << 4) | pfrom];
 
+        }
     }
 
+    PREFETCH(&mtrlhsh.table[materialhash & MATERIALHASHMASK]);
     PREFETCH(&pwnhsh->table[pawnhash & pwnhsh->sizemask]);
 
     state ^= S2MMASK;
@@ -1689,71 +1711,74 @@ bool chessposition::playMove(chessmove *cm)
 
 void chessposition::unplayMove(chessmove *cm)
 {
-    int from = GETFROM(cm->code);
-    int to = GETTO(cm->code);
-    PieceCode pfrom = GETPIECE(cm->code);
-
-    PieceCode promote = GETPROMOTION(cm->code);
-    PieceCode capture = GETCAPTURE(cm->code);
-    int s2m;
-
     ply--;
-
     mstop--;
     myassert(mstop >= 0, this, 1, mstop);
     // copy data from stack back to position
     memcpy(&state, &movestack[mstop], sizeof(chessmovestack));
 
-    s2m = state & S2MMASK;
-
     // Correct the castle anomaly so that the generic undo works after
     if (ISCASTLE(cm->code))
     {
-        bool gCastle = (to > from);
-        int rookto = 3 + 2 * gCastle + 56 * s2m;
-        int kingto = 2 + 4 * gCastle + 56 * s2m;
+        // Get castle squares and undo king and rook move
+        int kingfrom = GETFROM(cm->code);
+        int rookfrom = GETTO(cm->code);
+        int cstli = GETCASTLEINDEX(cm->code);
+        int kingto = castlekingto[cstli];
+        int rookto = castlerookto[cstli];
+        int s2m = cstli / 2;
+        PieceCode kingpc = (PieceCode)(WKING | s2m);
+        PieceCode rookpc = (PieceCode)(WROOK | s2m);
 
-        // Remove the rook and let the generic recreate it via capture undo
-        capture = (PieceCode)(WROOK | s2m);
-        BitboardClear(rookto, (PieceCode)(WROOK | s2m));
+        mailbox[kingto] = BLANK;
         mailbox[rookto] = BLANK;
+        mailbox[kingfrom] = kingpc;
+        mailbox[rookfrom] = rookpc;
 
-        // Move the king to 'to' square
-        if (to != kingto)
+        if (kingfrom != kingto)
+            BitboardMove(kingto, kingfrom, kingpc);
+
+        if (rookfrom != rookto)
+            BitboardMove(rookto, rookfrom, rookpc);
+    }
+    else
+    {
+        int from = GETFROM(cm->code);
+        int to = GETTO(cm->code);
+        PieceCode pfrom = GETPIECE(cm->code);
+
+        PieceCode promote = GETPROMOTION(cm->code);
+        PieceCode capture = GETCAPTURE(cm->code);
+
+        mailbox[from] = pfrom;
+        if (promote != BLANK)
         {
-            BitboardMove(kingto, to, pfrom);
-            mailbox[kingto] = BLANK;
+            BitboardClear(to, promote);
+            BitboardSet(from, pfrom);
         }
-    }
+        else {
+            BitboardMove(to, from, pfrom);
+        }
 
-    mailbox[from] = pfrom;
-    if (promote != BLANK)
-    {
-        BitboardClear(to, promote);
-        BitboardSet(from, pfrom);
-    }
-    else {
-        BitboardMove(to, from, pfrom);
-    }
-
-    if (capture != BLANK)
-    {
-        if (ept && to == ept)
+        if (capture != BLANK)
         {
-            // special ep capture
-            int epfield = (from & 0x38) | (to & 0x07);
-            BitboardSet(epfield, capture);
-            mailbox[epfield] = capture;
+            if (ept && to == ept)
+            {
+                // special ep capture
+                int epfield = (from & 0x38) | (to & 0x07);
+                BitboardSet(epfield, capture);
+                mailbox[epfield] = capture;
+                mailbox[to] = BLANK;
+            }
+            else
+            {
+                BitboardSet(to, capture);
+                mailbox[to] = capture;
+            }
+        }
+        else {
             mailbox[to] = BLANK;
         }
-        else
-        {
-            BitboardSet(to, capture);
-            mailbox[to] = capture;
-        }
-    }
-    else {
-        mailbox[to] = BLANK;
     }
 }
 
@@ -1958,26 +1983,18 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                 {
                     if ((pos->state & (WQCMASK << cstli)) == 0)
                         continue;
-
-                    bool gCastle = cstli % 2;
-                    int rookfrom = GETCASTLEFILE(pos->state, cstli) + 56 * me;
                     int kingfrom = pos->kingpos[me];
-                    int rookto = 3 + 2 * gCastle + 56 * me;
-                    int kingto = 2 + 4 * gCastle + 56 * me;
-
-                    U64 castleblockers = (occupiedbits ^ BITSET(rookfrom) ^ BITSET(kingfrom))
-                        & (betweenMask[kingfrom][kingto] | betweenMask[rookfrom][rookto] | BITSET(rookto) | BITSET(kingto));
-
-                    if (castleblockers)
+                    int rookfrom = castlerookfrom[cstli];
+                    if (castleblockers[cstli] & (occupiedbits ^ BITSET(rookfrom) ^ BITSET(kingfrom)))
                         continue;
 
                     pos->BitboardClear(rookfrom, (PieceType)(WROOK | me));
-                    U64 kingwalkbb = betweenMask[kingfrom][kingto] | BITSET(kingto);
+                    U64 kingwalkbb = castlekingwalk[cstli];
                     bool attacked = false;
                     while (!attacked && kingwalkbb)
                     {
                         to = pullLsb(&kingwalkbb);
-                        attacked = pos->isAttacked(to);
+                        attacked = pos->isAttacked(to, me);
                     }
                     pos->BitboardSet(rookfrom, (PieceType)(WROOK | me));
 
@@ -1986,7 +2003,7 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
 
                     // Create castle move 'king captures rook' and add castle flag manually
                     appendMoveToList(&m, kingfrom, rookfrom, pc, BLANK);
-                    (m - 1)->code |= CASTLEFLAG;
+                    (m - 1)->code |= (CASTLEFLAG | cstli << 20);
 
 #if 0
                     if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
@@ -1999,37 +2016,6 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                         return 1;
 #endif
                 }
-#if 0
-                if (pos->state & QCMASK[me])
-                {
-                    //BitboardDraw(pos->attackedBy[you][0]);
-                    /* queen castle */
-                    if (!(occupiedbits & (me ? 0x0e00000000000000 : 0x000000000000000e))
-                        && !pos->isAttacked(from) && !pos->isAttacked(from - 1) && !pos->isAttacked(from - 2))
-                    {
-                        appendMoveToList(&m, from, from - 2, pc, BLANK);
-                        if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
-                        {
-                            pos->unplayMove(m - 1);
-                            return 1;
-                        }
-                    }
-                }
-                if (pos->state & KCMASK[me])
-                {
-                    /* kink castle */
-                    if (!(occupiedbits & (me ? 0x6000000000000000 : 0x0000000000000060))
-                        && !pos->isAttacked(from) && !pos->isAttacked(from + 1) && !pos->isAttacked(from + 2))
-                    {
-                        appendMoveToList(&m, from, from + 2, pc, BLANK);
-                        if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
-                        {
-                            pos->unplayMove(m - 1);
-                            return 1;
-                        }
-                    }
-                }
-#endif
             }
             break;
         default:
@@ -2106,7 +2092,7 @@ U64 chessposition::movesTo(PieceCode pc, int from)
     case QUEEN:
         return MAGICBISHOPATTACKS(occ, from) | MAGICROOKATTACKS(occ, from);
     case KING:
-        return king_attacks[from] | castlekingto[from][s2m];
+        return king_attacks[from];
     default:
         return 0ULL;
     }
@@ -2147,9 +2133,9 @@ template <AttackType At> U64 chessposition::isAttackedBy(int index, int col)
 }
 
 
-bool chessposition::isAttacked(int index)
+bool chessposition::isAttacked(int index, int Me)
 {
-    int opponent = (state & S2MMASK) ^ 1;
+    int opponent = Me ^ S2MMASK;
 
     return knight_attacks[index] & piece00[WKNIGHT | opponent]
         || king_attacks[index] & piece00[WKING | opponent]

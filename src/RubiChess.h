@@ -751,10 +751,12 @@ const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 2
 #define CASTLEFLAG    0x8000000
 #define GETFROM(x) (((x) & 0x0fc0) >> 6)
 #define GETTO(x) ((x) & 0x003f)
-#define GETCORRECTTO(x) (ISCASTLE(x) ? 2 + 4 * (GETTO(x) > GETFROM(x)) + 56 * (GETPIECE(x) & S2MMASK) : GETTO(x))
+//#define GETCORRECTTO(x) (ISCASTLE(x) ? 2 + 4 * (GETTO(x) > GETFROM(x)) + 56 * (GETPIECE(x) & S2MMASK) : GETTO(x))
+#define GETCORRECTTO(x) (ISCASTLE(x) ? castlekingto[GETCASTLEINDEX(x)] : GETTO(x))
 #define GETEPT(x) (((x) & 0x03f00000) >> 20)
 #define ISEPCAPTURE(x) ((x) & EPCAPTUREFLAG)
 #define ISCASTLE(x) ((x) & CASTLEFLAG)
+#define GETCASTLEINDEX(x) (((x) & 0x00300000) >> 20)
 #define ISEPCAPTUREORCASTLE(x) ((x) & (EPCAPTUREFLAG | CASTLEFLAG))
 
 #define GETPROMOTION(x) (((x) & 0xf000) >> 12)
@@ -872,6 +874,7 @@ extern U64 rankMask[64];
 extern U64 betweenMask[64][64];
 
 extern int squareDistance[64][64];
+extern const int castlekingto[4];
 
 struct chessmovestack
 {
@@ -1114,7 +1117,7 @@ public:
     int phase();
     U64 movesTo(PieceCode pc, int from);
     template <PieceType Pt> U64 pieceMovesTo(int from);
-    bool isAttacked(int index);
+    bool isAttacked(int index, int me);
     U64 isAttackedByMySlider(int index, U64 occ, int me);  // special simple version to detect giving check by removing blocker
     U64 attackedByBB(int index, U64 occ);  // returns bitboard of all pieces of both colors attacking index square 
     template <AttackType At> U64 isAttackedBy(int index, int col);    // returns the bitboard of cols pieces attacking the index square; At controls if pawns are moved to block or capture
