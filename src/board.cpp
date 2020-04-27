@@ -742,7 +742,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
     myassert(capture >= BLANK && capture <= BQUEEN, this, 1, capture);
 
     // correct target for type of piece?
-    if (!(movesTo(pc, from) & BITSET(to)) && (!ept || to != ept || p != PAWN))
+    if (!(movesTo(pc, from) & BITSET(to)))
         return false;
 
     // correct s2m?
@@ -1958,7 +1958,7 @@ U64 chessposition::movesTo(PieceCode pc, int from)
     {
     case PAWN:
         return ((pawn_moves_to[from][s2m] | pawn_moves_to_double[from][s2m]) & ~occ)
-                | (pawn_attacks_to[from][s2m] & occ);
+                | (pawn_attacks_to[from][s2m] & (occ | BITSET(ept)));
     case KNIGHT:
         return knight_attacks[from];
     case BISHOP:
@@ -2529,6 +2529,11 @@ void engine::communicate(string inputstring)
                     rootposition.print();
                 }
                 pendingposition = false;
+#if 0
+                uint16_t test = 0xc14;
+                uint32_t testfull = rootposition.shortMove2FullMove(test);
+#endif
+
             }
             if (pendingisready)
             {
