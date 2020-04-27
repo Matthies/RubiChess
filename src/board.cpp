@@ -2531,11 +2531,6 @@ void engine::communicate(string inputstring)
                     rootposition.print();
                 }
                 pendingposition = false;
-#if 0
-                uint16_t test = 0xc14;
-                uint32_t testfull = rootposition.shortMove2FullMove(test);
-#endif
-
             }
             if (pendingisready)
             {

@@ -561,7 +561,7 @@ public:
 
 #define TTBUCKETNUM 3
 
-typedef uint8_t hashupper_t;
+typedef uint16_t hashupper_t;
 #define GETHASHUPPER(x) (hashupper_t)((x) >> (64 - sizeof(hashupper_t) * 8))
 
 struct transpositionentry {
