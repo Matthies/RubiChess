@@ -656,7 +656,8 @@ void chessposition::playNullMove()
     lastnullmove = mstop;
     movestack[mstop++].movecode = 0;
     state ^= S2MMASK;
-    hash ^= zb.s2m;
+    hash ^= zb.s2m ^ zb.ept[ept];
+    ept = 0;
     ply++;
     myassert(mstop < MAXMOVESEQUENCELENGTH, this, 1, mstop);
 }
@@ -665,9 +666,10 @@ void chessposition::playNullMove()
 void chessposition::unplayNullMove()
 {
     state ^= S2MMASK;
-    hash ^= zb.s2m;
     ply--;
     lastnullmove = movestack[--mstop].lastnullmove;
+    ept = movestack[mstop].ept;
+    hash ^= zb.s2m^ zb.ept[ept];
     myassert(mstop >= 0, this, 1, mstop);
 }
 
