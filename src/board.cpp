@@ -1958,7 +1958,7 @@ U64 chessposition::movesTo(PieceCode pc, int from)
     {
     case PAWN:
         return ((pawn_moves_to[from][s2m] | pawn_moves_to_double[from][s2m]) & ~occ)
-                | (pawn_attacks_to[from][s2m] & (occ | BITSET(ept)));
+                | (pawn_attacks_to[from][s2m] & (occ | (ept ? BITSET(ept) : 0ULL)));
     case KNIGHT:
         return knight_attacks[from];
     case BISHOP:
