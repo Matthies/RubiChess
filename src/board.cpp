@@ -723,7 +723,8 @@ void chessposition::playNullMove()
     lastnullmove = mstop;
     movestack[mstop++].movecode = 0;
     state ^= S2MMASK;
-    hash ^= zb.s2m;
+    hash ^= zb.s2m ^ zb.ept[ept];
+    ept = 0;
     ply++;
     myassert(mstop < MAXMOVESEQUENCELENGTH, this, 1, mstop);
 }
@@ -732,9 +733,10 @@ void chessposition::playNullMove()
 void chessposition::unplayNullMove()
 {
     state ^= S2MMASK;
-    hash ^= zb.s2m;
     ply--;
     lastnullmove = movestack[--mstop].lastnullmove;
+    ept = movestack[mstop].ept;
+    hash ^= zb.s2m^ zb.ept[ept];
     myassert(mstop >= 0, this, 1, mstop);
 }
 
@@ -857,7 +859,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
     myassert(capture >= BLANK && capture <= BQUEEN, this, 1, capture);
 
     // correct target for type of piece?
-    if (!(movesTo(pc, from) & BITSET(to)) && (!ept || to != ept || p != PAWN))
+    if (!(movesTo(pc, from) & BITSET(to)))
         return false;
 
     // correct s2m?
@@ -2082,7 +2084,7 @@ U64 chessposition::movesTo(PieceCode pc, int from)
     {
     case PAWN:
         return ((pawn_moves_to[from][s2m] | pawn_moves_to_double[from][s2m]) & ~occ)
-                | (pawn_attacks_to[from][s2m] & occ);
+                | (pawn_attacks_to[from][s2m] & (occ | (ept ? BITSET(ept) : 0ULL)));
     case KNIGHT:
         return knight_attacks[from];
     case BISHOP:

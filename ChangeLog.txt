@@ -3,6 +3,10 @@ ChangeLog
 1.8 (release 20xx-xx-xx) :
     - ...
 
+1.7.2 (release 2020-04-27) :
+    - Fixed a bug in the test for ep capture moves being legal
+    - Fix for Android compilation
+
 1.7.1 (release 2020-04-20) :
     - Fixes a bug that in some rare cases lets the root search get stuck at depth 1 with a failing low move from the tt
 

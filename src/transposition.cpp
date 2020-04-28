@@ -167,7 +167,7 @@ int transposition::setSize(int sizeMb)
     sizemask = size - 1;
     size_t allocsize = (size_t)(size * sizeof(transpositioncluster));
 
-#if defined(__linux__) && !defined(ANDROID) // Many thanks to Sami Kiminki for advise on the huge page theory and for this patch
+#if defined(__linux__) && !defined(__ANDROID__) // Many thanks to Sami Kiminki for advise on the huge page theory and for this patch
     // Round up hashSize to the next 2M for alignment
     allocsize = ((allocsize + HashAlignBytes - 1u) / HashAlignBytes) * HashAlignBytes;
 
