@@ -1913,8 +1913,7 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                 }
                 if (Mt & CAPTURE)
                 {
-                    /* FIXME: ept & EPTSIDEMASK[me] is a quite ugly test for correct side respecting null move pruning */
-                    tobits |= (pawn_attacks_to[from][me] & (pos->occupied00[you] | ((pos->ept & EPTSIDEMASK[me]) ? BITSET(pos->ept) : 0ULL)));
+                    tobits |= (pawn_attacks_to[from][me] & (pos->occupied00[you] | (pos->ept ? BITSET(pos->ept) : 0ULL)));
                 }
                 while (tobits)
                 {

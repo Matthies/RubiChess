@@ -708,7 +708,7 @@ const int KCMASK[2] = { WKCMASK, BKCMASK };
 //const int castlerookfrom[] = {0, 0, 7, 56, 63 };
 //const int castlerookto[] = {0, 3, 5, 59, 61 };
 
-const int EPTSIDEMASK[2] = { 0x8, 0x10 };
+//const int EPTSIDEMASK[2] = { 0x8, 0x10 };
 
 #define BOUNDMASK 0x03 
 #define HASHALPHA 0x01
