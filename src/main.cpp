@@ -332,7 +332,6 @@ static void perftest(bool dotests, int maxdepth)
     else
         ptr = perftestresults;
 
-
     while (ptr[i].fen != "")
     {
         en.sthread[0].pos.getFromFen(ptr[i].fen.c_str());

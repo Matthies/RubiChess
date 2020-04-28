@@ -705,10 +705,8 @@ extern transposition tp;
 #define BKC 4
 const int QCMASK[2] = { WQCMASK, BQCMASK };
 const int KCMASK[2] = { WKCMASK, BKCMASK };
-//const int castlerookfrom[] = {0, 0, 7, 56, 63 };
-//const int castlerookto[] = {0, 3, 5, 59, 61 };
-
-//const int EPTSIDEMASK[2] = { 0x8, 0x10 };
+const int castlerookto[4] = { 3, 5, 59, 61 };
+const int castlekingto[4] = { 2, 6, 58, 62 };
 
 #define BOUNDMASK 0x03 
 #define HASHALPHA 0x01
@@ -747,11 +745,22 @@ const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 2
 #define NMREFUTEVAL (1 << 25)
 #define BADTACTICALFLAG (1 << 31)
 
+
+// 32bit move code has the following format
+// 10987654321098765432109876543210 Bit#
+// xxxx                             Piece code
+//     x                            Castle flag
+//      x                           EP capture flag
+//       xxxxxx                     EP capture target square
+//           xx                     castle index (00=white queen 01=white king 10=black queen 11=black king)
+//             xxxx                 captured piece code
+//                 xxxx             promotion piece code
+//                     xxxxxx       from square
+//                           xxxxxx to square
 #define EPCAPTUREFLAG 0x4000000
 #define CASTLEFLAG    0x8000000
 #define GETFROM(x) (((x) & 0x0fc0) >> 6)
 #define GETTO(x) ((x) & 0x003f)
-//#define GETCORRECTTO(x) (ISCASTLE(x) ? 2 + 4 * (GETTO(x) > GETFROM(x)) + 56 * (GETPIECE(x) & S2MMASK) : GETTO(x))
 #define GETCORRECTTO(x) (ISCASTLE(x) ? castlekingto[GETCASTLEINDEX(x)] : GETTO(x))
 #define GETEPT(x) (((x) & 0x03f00000) >> 20)
 #define ISEPCAPTURE(x) ((x) & EPCAPTUREFLAG)
@@ -766,9 +775,6 @@ const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 2
 #define ISCAPTURE(x) ((x) & 0xf0000)
 #define GETPIECE(x) (((x) & 0xf0000000) >> 28)
 #define GETTACTICALVALUE(x) (materialvalue[GETCAPTURE(x) >> 1] + (ISPROMOTION(x) ? materialvalue[GETPROMOTION(x) >> 1] - materialvalue[PAWN] : 0))
-//#define ISCASTLE(c) (((c) & 0xe0000249) == 0xc0000000)
-//#define GIVECHECKFLAG 0x08000000
-//#define GIVESCHECK(x) ((x) & GIVECHECKFLAG)
 
 #define PAWNATTACK(s, p) ((s) ? (((p) & ~FILEHBB) >> 7) | (((p) & ~FILEABB) >> 9) : (((p) & ~FILEABB) << 7) | (((p) & ~FILEHBB) << 9))
 #define PAWNPUSH(s, p) ((s) ? ((p) >> 8) : ((p) << 8))
@@ -874,7 +880,6 @@ extern U64 rankMask[64];
 extern U64 betweenMask[64][64];
 
 extern int squareDistance[64][64];
-extern const int castlekingto[4];
 
 struct chessmovestack
 {

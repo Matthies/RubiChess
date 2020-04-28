@@ -38,8 +38,6 @@ U64 rankMask[64];
 U64 betweenMask[64][64];
 U64 lineMask[64][64];
 int castlerights[64];
-const int castlerookto[4] = { 3, 5, 59, 61 };
-const int castlekingto[4] = { 2, 6, 58, 62 };
 int castlerookfrom[4];
 U64 castleblockers[4];
 U64 castlekingwalk[4];
@@ -378,10 +376,10 @@ int chessposition::getFromFen(const char* sFen)
         int rookfile = -1;
         const string usualcastles = "QKqk";
         char c = s[i];
-        int castleindex = (int)usualcastles.find(c);
+        size_t castleindex = usualcastles.find(c);
         if (castleindex != string::npos)
         {
-            col = castleindex / 2;
+            col = (int)castleindex / 2;
             gCastle = castleindex % 2;
             U64 rookbb = (piece00[WROOK | col] & RANK1(col)) >> (56 * col);
             myassert(rookbb, this, 1, rookbb);
@@ -396,7 +394,7 @@ int chessposition::getFromFen(const char* sFen)
             castleindex = (int)castles960.find(c);
             if (castleindex != string::npos)
             {
-                col = castleindex / 8;
+                col = (int)castleindex / 8;
                 rookfile = castleindex % 8;
                 gCastle = (rookfile > FILE(kingpos[col]));
                 castleindex = col * 2 + gCastle;
@@ -1280,14 +1278,6 @@ const U64 rookmagics[] = {
 void initBitmaphelper()
 {
     int to;
-#if 0
-    castleindex[4][2] = WQC;
-    castleindex[4][6] = WKC;
-    castleindex[60][58] = BQC;
-    castleindex[60][62] = BKC;
-    castlekingto[4][0] = BITSET(2) | BITSET(6);
-    castlekingto[60][1] = BITSET(58) | BITSET(62);
-#endif
     for (int from = 0; from < 64; from++)
     {
         // initialize psqtable for faster evaluation
@@ -1521,6 +1511,7 @@ bool chessposition::playMove(chessmove *cm)
 
     halfmovescounter++;
 
+    // Castle has special play
     if (ISCASTLE(cm->code))
     {
         // Get castle squares and move king and rook
@@ -1696,17 +1687,7 @@ bool chessposition::playMove(chessmove *cm)
     movestack[mstop++].movecode = cm->code;
     myassert(mstop < MAXMOVESEQUENCELENGTH, this, 1, mstop);
     updatePins();
-#if 0
-    if (hash != zb.getHash(this))
-        printf("hashalarm\n");
-    if (materialhash != zb.getMaterialHash(this))
-    {
-        print();
-        printf("materialhashalarm\n");
-    }
-    if (pawnhash != zb.getPawnHash(this))
-        printf("hashalarm\n");
-#endif
+
     return true;
 }
 
@@ -1719,7 +1700,7 @@ void chessposition::unplayMove(chessmove *cm)
     // copy data from stack back to position
     memcpy(&state, &movestack[mstop], sizeof(chessmovestack));
 
-    // Correct the castle anomaly so that the generic undo works after
+    // Castle has special undo
     if (ISCASTLE(cm->code))
     {
         // Get castle squares and undo king and rook move
@@ -2006,16 +1987,9 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
                     appendMoveToList(&m, kingfrom, rookfrom, pc, BLANK);
                     (m - 1)->code |= (CASTLEFLAG | cstli << 20);
 
-#if 0
-                    if (Mt == QUIETWITHCHECK && pos->playMove(m - 1))
-                    {
-                        pos->unplayMove(m - 1);
-                        return 1;
-                    }
-#else
                     if (Mt == QUIETWITHCHECK)
+                        // castle is always legal
                         return 1;
-#endif
                 }
             }
             break;
