@@ -1,5 +1,8 @@
 ChangeLog
 =========
+1.8 (release 20xx-xx-xx) :
+    - ...
+
 1.7.2 (release 2020-04-27) :
     - Fixed a bug in the test for ep capture moves being legal
     - Fix for Android compilation
