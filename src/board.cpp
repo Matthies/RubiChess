@@ -369,16 +369,18 @@ int chessposition::getFromFen(const char* sFen)
     int rookfiles[2] = { -1, -1 };
     int kingfile = -1;
     s = token[2];
+    const string usualcastles = "QKqk";
+    const string castles960 = "ABCDEFGHabcdefgh";
     for (unsigned int i = 0; i < s.length(); i++)
     {
         bool gCastle;
         int col;
         int rookfile = -1;
-        const string usualcastles = "QKqk";
         char c = s[i];
-        size_t castleindex = usualcastles.find(c);
-        if (castleindex != string::npos)
+        size_t castleindex;
+        if ((castleindex = usualcastles.find(c)) != string::npos)
         {
+            en.chess960 = false;
             col = (int)castleindex / 2;
             gCastle = castleindex % 2;
             U64 rookbb = (piece00[WROOK | col] & RANK1(col)) >> (56 * col);
@@ -388,17 +390,13 @@ int chessposition::getFromFen(const char* sFen)
             else
                 GETLSB(rookfile, rookbb);
         }
-        else if (en.chess960)
+        else if ((castleindex = (int)castles960.find(c)) != string::npos)
         {
-            const string castles960 = "ABCDEFGHabcdefgh";
-            castleindex = (int)castles960.find(c);
-            if (castleindex != string::npos)
-            {
-                col = (int)castleindex / 8;
-                rookfile = castleindex % 8;
-                gCastle = (rookfile > FILE(kingpos[col]));
-                castleindex = col * 2 + gCastle;
-            }
+            en.chess960 = true;
+            col = (int)castleindex / 8;
+            rookfile = castleindex % 8;
+            gCastle = (rookfile > FILE(kingpos[col]));
+            castleindex = col * 2 + gCastle;
         }
         if (rookfile >= 0)
         {
@@ -2868,6 +2866,13 @@ void engine::communicate(string inputstring)
                 break;
             case EVAL:
                 sthread[0].pos.getEval<TRACE>();
+                break;
+            case PERFT:
+                if (ci < cs) {
+                    maxdepth = stoi(commandargs[ci++]);
+                    cout << perft(maxdepth, false) << "\n";
+                }
+                break;
                 break;
             default:
                 break;
