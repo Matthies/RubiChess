@@ -380,7 +380,6 @@ int chessposition::getFromFen(const char* sFen)
         size_t castleindex;
         if ((castleindex = usualcastles.find(c)) != string::npos)
         {
-            en.chess960 = false;
             col = (int)castleindex / 2;
             gCastle = castleindex % 2;
             U64 rookbb = (piece00[WROOK | col] & RANK1(col)) >> (56 * col);
@@ -392,7 +391,6 @@ int chessposition::getFromFen(const char* sFen)
         }
         else if ((castleindex = (int)castles960.find(c)) != string::npos)
         {
-            en.chess960 = true;
             col = (int)castleindex / 8;
             rookfile = castleindex % 8;
             gCastle = (rookfile > FILE(kingpos[col]));
@@ -407,6 +405,9 @@ int chessposition::getFromFen(const char* sFen)
             if (kingfile >= 0 && kingfile != FILE(kingpos[col]))
                 printf("info string Alarm! Castlerights for both sides but kings on different files.");
             kingfile = FILE(kingpos[col]);
+            // Set chess960 if non-standard rook/king setup is found
+            if (kingfile != 4 || rookfiles[gCastle] != gCastle * 7)
+                en.chess960 = true;
         }
     }
     initCastleRights(rookfiles, kingfile);

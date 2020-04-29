@@ -223,8 +223,8 @@ string AlgebraicFromShort(string s, chessposition *pos)
     if (castle0 >= 2)
     {
         pt = KING;
-        from = (from & 0x80) | ('e' - 'a');
-        to = (to & 0x80) | (castle0 == 2 ? 'g' - 'a' : 'c' - 'a');
+        from = pos->kingpos[pos->state & S2MMASK];
+        to = (from & 0x38) | castlerookfrom[castle0 == 2];
     }
     if (i >= 0 && s[i] >= 'A')
     {
@@ -401,7 +401,6 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
                 ((fenFound = regex_search(line, match, regex("\\[FEN\\s+\"(.*)\"")))
                     || !regex_search(line, match, regex("\\["))))
             {
-                line = match.suffix();
                 newfen = fenFound ? match.str(1) : STARTFEN;
                 newgamestarts++;
                 valueChecked = true;
@@ -420,6 +419,9 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
                 newgamestarts = 0;
                 valueChecked = true;
             }
+
+            if (regex_search(line, match, regex("^\\[.*\\]$")))
+                line = "";
 
             // search for the moves
             if (newgamestarts == 2 && !regex_search(line, match, regex("^\\[.*\\]$")))
@@ -444,6 +446,7 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
                         }
                         valueChecked = false;
                         lastmove = AlgebraicFromShort(match.str(1), &pos);
+                        //printf("%5s  %5s\n", match.str(1).c_str(), lastmove.c_str());
                         if (lastmove == "" || !pos.applyMove(lastmove))
                         {
                             printf("Alarm (game %d): %s\n", gamescount, match.str(1).c_str());

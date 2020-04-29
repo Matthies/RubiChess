@@ -880,7 +880,7 @@ extern U64 rankMask[64];
 extern U64 betweenMask[64][64];
 
 extern int squareDistance[64][64];
-
+extern int castlerookfrom[4];
 struct chessmovestack
 {
     int state;
