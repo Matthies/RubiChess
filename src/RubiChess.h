@@ -199,6 +199,7 @@ enum { WHITE, BLACK };
 #define BORDERDIST(f) ((f) > 3 ? 7 - (f) : (f))
 #define PROMOTERANK(x) (RANK(x) == 0 || RANK(x) == 7)
 #define PROMOTERANKBB 0xff000000000000ff
+#define RANK1(s) ((s) ? 0xff00000000000000 : 0x00000000000000ff)
 #define RANK2(s) ((s) ? 0x00ff000000000000 : 0x000000000000ff00)
 #define RANK3(s) ((s) ? 0x0000ff0000000000 : 0x0000000000ff0000)
 #define RANK7(s) ((s) ? 0x000000000000ff00 : 0x00ff000000000000)
@@ -695,6 +696,8 @@ extern transposition tp;
 #define BQCMASK     0x08
 #define BKCMASK     0x10
 #define CASTLEMASK  0x1e
+#define GETCASTLEFILE(s,i) (((s) >> (i * 4 + 8)) & 0x7)
+#define SETCASTLEFILE(f,i) (((f) << (i * 4 + 8)) | (WQCMASK << i))
 
 #define WQC 1
 #define WKC 2
@@ -702,10 +705,8 @@ extern transposition tp;
 #define BKC 4
 const int QCMASK[2] = { WQCMASK, BQCMASK };
 const int KCMASK[2] = { WKCMASK, BKCMASK };
-const int castlerookfrom[] = {0, 0, 7, 56, 63 };
-const int castlerookto[] = {0, 3, 5, 59, 61 };
-
-const int EPTSIDEMASK[2] = { 0x8, 0x10 };
+const int castlerookto[4] = { 3, 5, 59, 61 };
+const int castlekingto[4] = { 2, 6, 58, 62 };
 
 #define BOUNDMASK 0x03 
 #define HASHALPHA 0x01
@@ -744,11 +745,28 @@ const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 2
 #define NMREFUTEVAL (1 << 25)
 #define BADTACTICALFLAG (1 << 31)
 
-#define ISEPCAPTURE 0x40
+
+// 32bit move code has the following format
+// 10987654321098765432109876543210 Bit#
+// xxxx                             Piece code
+//     x                            Castle flag
+//      x                           EP capture flag
+//       xxxxxx                     EP capture target square
+//           xx                     castle index (00=white queen 01=white king 10=black queen 11=black king)
+//             xxxx                 captured piece code
+//                 xxxx             promotion piece code
+//                     xxxxxx       from square
+//                           xxxxxx to square
+#define EPCAPTUREFLAG 0x4000000
+#define CASTLEFLAG    0x8000000
 #define GETFROM(x) (((x) & 0x0fc0) >> 6)
 #define GETTO(x) ((x) & 0x003f)
+#define GETCORRECTTO(x) (ISCASTLE(x) ? castlekingto[GETCASTLEINDEX(x)] : GETTO(x))
 #define GETEPT(x) (((x) & 0x03f00000) >> 20)
-#define GETEPCAPTURE(x) (((x) >> 20) & ISEPCAPTURE)
+#define ISEPCAPTURE(x) ((x) & EPCAPTUREFLAG)
+#define ISCASTLE(x) ((x) & CASTLEFLAG)
+#define GETCASTLEINDEX(x) (((x) & 0x00300000) >> 20)
+#define ISEPCAPTUREORCASTLE(x) ((x) & (EPCAPTUREFLAG | CASTLEFLAG))
 
 #define GETPROMOTION(x) (((x) & 0xf000) >> 12)
 #define GETCAPTURE(x) (((x) & 0xf0000) >> 16)
@@ -757,9 +775,6 @@ const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 2
 #define ISCAPTURE(x) ((x) & 0xf0000)
 #define GETPIECE(x) (((x) & 0xf0000000) >> 28)
 #define GETTACTICALVALUE(x) (materialvalue[GETCAPTURE(x) >> 1] + (ISPROMOTION(x) ? materialvalue[GETPROMOTION(x) >> 1] - materialvalue[PAWN] : 0))
-#define ISCASTLE(c) (((c) & 0xe0000249) == 0xc0000000)
-#define GIVECHECKFLAG 0x08000000
-#define GIVESCHECK(x) ((x) & GIVECHECKFLAG)
 
 #define PAWNATTACK(s, p) ((s) ? (((p) & ~FILEHBB) >> 7) | (((p) & ~FILEABB) >> 9) : (((p) & ~FILEABB) << 7) | (((p) & ~FILEHBB) << 9))
 #define PAWNPUSH(s, p) ((s) ? ((p) >> 8) : ((p) << 8))
@@ -1107,7 +1122,7 @@ public:
     int phase();
     U64 movesTo(PieceCode pc, int from);
     template <PieceType Pt> U64 pieceMovesTo(int from);
-    bool isAttacked(int index);
+    bool isAttacked(int index, int me);
     U64 isAttackedByMySlider(int index, U64 occ, int me);  // special simple version to detect giving check by removing blocker
     U64 attackedByBB(int index, U64 occ);  // returns bitboard of all pieces of both colors attacking index square 
     template <AttackType At> U64 isAttackedBy(int index, int col);    // returns the bitboard of cols pieces attacking the index square; At controls if pawns are moved to block or capture
@@ -1126,7 +1141,7 @@ public:
     bool moveGivesCheck(uint32_t c);  // simple and imperfect as it doesn't handle special moves and cases (mainly to avoid pruning of important moves)
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
     uint32_t shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal
-    void getpsqval();  // only for eval trace
+    int getpsqval();  // only for eval trace and mirror test
     template <EvalType Et, int Me> int getGeneralEval(positioneval *pe);
     template <EvalType Et, PieceType Pt, int Me> int getPieceEval(positioneval *pe);
     template <EvalType Et, int Me> int getLateEval(positioneval *pe);
@@ -1204,12 +1219,14 @@ public:
     bool infinite;
     bool debug = false;
     bool moveoutput;
+    int stopLevel = ENGINETERMINATEDSEARCH;
     int sizeOfTp = 0;
     int restSizeOfTp = 0;
     int sizeOfPh;
     int moveOverhead;
     int MultiPV;
     bool ponder;
+    bool chess960;
     string SyzygyPath;
     bool Syzygy50MoveRule = true;
     int SyzygyProbeLimit;
@@ -1221,7 +1238,6 @@ public:
     int lastReport;
     int benchdepth;
     string benchmove;
-    int stopLevel = ENGINETERMINATEDSEARCH;
 #ifdef STACKDEBUG
     string assertfile = "";
 #endif

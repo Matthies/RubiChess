@@ -406,7 +406,7 @@ int probe_wdl(int *success, chessposition *pos)
                         *success = 2;
                         return 2;
                     }
-                    if (!GETEPCAPTURE(m->code))
+                    if (!ISEPCAPTURE(m->code))
                         best_cap = v;
                     else if (v > best_ep)
                         best_ep = v;
@@ -450,7 +450,7 @@ int probe_wdl(int *success, chessposition *pos)
         for (i = 0; i < movelist.length; i++)
         {
             chessmove *m = &movelist.move[i];
-            if (GETEPCAPTURE(m->code))
+            if (ISEPCAPTURE(m->code))
                 continue;
 
             if (pos->playMove(m))

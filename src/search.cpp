@@ -58,7 +58,7 @@ void chessposition::getCmptr(int16_t **cmptr)
     {
         uint32_t c;
         if (j >= 0 && (c = movestack[j].movecode))
-            cmptr[i] = (int16_t*)counterhistory[GETPIECE(c)][GETTO(c)];
+            cmptr[i] = (int16_t*)counterhistory[GETPIECE(c)][GETCORRECTTO(c)];
         else
             cmptr[i] = NULL;
     }
@@ -69,7 +69,7 @@ inline int chessposition::getHistory(uint32_t code, int16_t **cmptr)
     int pc = GETPIECE(code);
     int s2m = pc & S2MMASK;
     int from = GETFROM(code);
-    int to = GETTO(code);
+    int to = GETCORRECTTO(code);
     int value = history[s2m][from][to];
     for (int i = 0; i < CMPLIES; i++)
         if (cmptr[i])
@@ -84,7 +84,7 @@ inline void chessposition::updateHistory(uint32_t code, int16_t **cmptr, int val
     int pc = GETPIECE(code);
     int s2m = pc & S2MMASK;
     int from = GETFROM(code);
-    int to = GETTO(code);
+    int to = GETCORRECTTO(code);
     value = max(-256, min(256, value));
     int delta = 32 * value - history[s2m][from][to] * abs(value) / 256;
     history[s2m][from][to] += delta;
@@ -511,7 +511,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     uint32_t lastmove = movestack[mstop - 1].movecode;
     uint32_t counter = 0;
     if (lastmove)
-        counter = countermove[GETPIECE(lastmove)][GETTO(lastmove)];
+        counter = countermove[GETPIECE(lastmove)][GETCORRECTTO(lastmove)];
 
     // Reset killers for child ply
     killer[ply + 1][0] = killer[ply + 1][1] = 0;
@@ -635,7 +635,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         }
 
         int pc = GETPIECE(m->code);
-        int to = GETTO(m->code);
+        int to = GETCORRECTTO(m->code);
         effectiveDepth = depth + extendall - reduction + extendMove;
 
         // Prune moves with bad counter move history
@@ -720,7 +720,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
                     // save countermove
                     if (lastmove)
-                        countermove[GETPIECE(lastmove)][GETTO(lastmove)] = m->code;
+                        countermove[GETPIECE(lastmove)][GETCORRECTTO(lastmove)] = m->code;
                 }
 
                 STATISTICSINC(moves_fail_high);
@@ -848,7 +848,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
             else if (GETCAPTURE(m->code) != BLANK)
                 m->value = (mvv[GETCAPTURE(m->code) >> 1] | lva[GETPIECE(m->code) >> 1]);
             else 
-                m->value = history[state & S2MMASK][GETFROM(m->code)][GETTO(m->code)];
+                m->value = history[state & S2MMASK][GETFROM(m->code)][GETCORRECTTO(m->code)];
         }
     }
 

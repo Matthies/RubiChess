@@ -183,6 +183,12 @@ long long engine::perft(int depth, bool dotests)
             rootpos->print();
         }
         int val1 = rootpos->getEval<NOTRACE>();
+        int psq1 = rootpos->getpsqval();
+        if (rootpos->psqval != psq1)
+        {
+            printf("PSQ-Test  :error  incremental:%d  recalculated:%d\n", rootpos->psqval, psq1);
+            rootpos->print();
+        }
         rootpos->mirror();
         int val2 = rootpos->getEval<NOTRACE>();
         rootpos->mirror();
@@ -247,7 +253,8 @@ static void perftest(bool dotests, int maxdepth)
     {
         string fen;
         unsigned long long nodes[10];
-    } perftestresults[] =
+    };
+    perftestresultstruct perftestresults[] =
     {
         {
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
@@ -279,10 +286,38 @@ static void perftest(bool dotests, int maxdepth)
         }
     };
 
+    perftestresultstruct perftestresults960[] =
+    {
+        {
+            "8/8/8/4B2b/6nN/8/5P2/2R1K2k w Q - 0 1",
+            { 1, 34, 318, 9002, 118388, 3223406, 44554839, 1205627532 }
+        },
+        {
+            "2r5/8/8/8/8/8/6PP/k2KR3 w K - 0 1",
+            { 1, 17, 242, 3931, 57700, 985298, 14751778, 259604208, 3914405614 }
+        },
+        {
+            "4r3/3k4/8/8/8/8/6PP/qR1K1R2 w KQ - 0 1",
+            { 1, 19, 628, 12858, 405636, 8992652, 281330710, 6447669114 }
+        },
+        {
+            "r1k1r2q/p1ppp1pp/8/8/8/8/P1PPP1PP/R1K1R2Q w KQkq - 0 1",
+            { 1, 23, 522, 12333, 285754, 7096972, 172843489, 4557457200 }
+        },
+        {
+            "r1k2r1q/p1ppp1pp/8/8/8/8/P1PPP1PP/R1K2R1Q w KQkq - 0 1",
+            { 1, 28, 738, 20218, 541480, 15194841, 418430598, 12094237108 }
+        },
+        {
+            "",
+            {}
+        }
+    };
+
     int i = 0;
     printf("\n\nPerft results for %s (Build %s)\n", en.name, BUILD);
     printf("System: %s\n", GetSystemInfo().c_str());
-    printf("Depth = %d      Hash-/Mirror-Tests %s\n", maxdepth, (dotests ? "enabled" : "disabled"));
+    printf("Depth = %d    %8s  Hash-/Mirror-Tests %s\n", maxdepth, en.chess960 ? "Chess960" : "", dotests ? "enabled" : "disabled");
     printf("========================================================================\n");
 
     float df;
@@ -291,11 +326,17 @@ static void perftest(bool dotests, int maxdepth)
     long long perftstarttime = getTime();
     long long perftlasttime = perftstarttime;
 
-    while (perftestresults[i].fen != "")
+    perftestresultstruct *ptr;
+    if (en.chess960)
+        ptr = perftestresults960;
+    else
+        ptr = perftestresults;
+
+    while (ptr[i].fen != "")
     {
-        en.sthread[0].pos.getFromFen(perftestresults[i].fen.c_str());
+        en.sthread[0].pos.getFromFen(ptr[i].fen.c_str());
         int j = 0;
-        while (perftestresults[i].nodes[j] > 0 && j <= maxdepth)
+        while (ptr[i].nodes[j] > 0 && j <= maxdepth)
         {
             long long starttime = getTime();
 
@@ -305,13 +346,13 @@ static void perftest(bool dotests, int maxdepth)
             perftlasttime = getTime();
             df = float(perftlasttime - starttime) / (float) en.frequency;
             printf("Perft %d depth %d  : %*llu  %*f sec.  %*d nps ", i + 1, j, 10, result, 10, df, 8, (int)(df > 0.0 ? (double)result / df : 0));
-            if (result == perftestresults[i].nodes[j])
+            if (result == ptr[i].nodes[j])
                 printf("  OK\n");
             else
-                printf("  wrong (should be %llu)\n", perftestresults[i].nodes[j]);
+                printf("  wrong (should be %llu)\n", ptr[i].nodes[j]);
             j++;
         }
-        if (perftestresults[++i].fen != "")
+        if (ptr[++i].fen != "")
             printf("\n");
     }
     df = float(perftlasttime - perftstarttime) / (float)en.frequency;
