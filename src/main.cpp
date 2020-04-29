@@ -965,6 +965,7 @@ int main(int argc, char* argv[])
 {
     int startnum;
     int perfmaxdepth;
+    bool verbose;
     bool benchmark;
     bool openbench;
     int depth;
@@ -993,6 +994,7 @@ int main(int argc, char* argv[])
         char type;
         const char *defaultval;
     } allowedargs[] = {
+        { "-verbose", "Show the parameterlist and actuel values.", &verbose, 0, NULL },
         { "-bench", "Do benchmark test for some positions.", &benchmark, 0, NULL },
         { "bench", "Do benchmark with OpenBench compatible output.", &openbench, 0, NULL },
         { "-depth", "Depth for benchmark (0 for per-position-default)", &depth, 1, "0" },
@@ -1042,8 +1044,6 @@ int main(int argc, char* argv[])
 
     cout.setf(ios_base::unitbuf);
 
-    printf("%s (Build %s)\n UCI compatible chess engine by %s\nParameterlist:\n", en.name, BUILD, en.author);
-
     int paramindex = 0;
     for (int j = 0; allowedargs[j].cmd; j++)
     {
@@ -1061,18 +1061,18 @@ int main(int argc, char* argv[])
         {
         case 0:
             *(bool*)(allowedargs[j].variable) = (val > 0);
-            printf(" %s: %s  (%s)\n", allowedargs[j].cmd, *(bool*)(allowedargs[j].variable) ? "yes" : "no", allowedargs[j].info);
+            if (verbose) printf(" %s: %s  (%s)\n", allowedargs[j].cmd, *(bool*)(allowedargs[j].variable) ? "yes" : "no", allowedargs[j].info);
             paramindex = 0;
             break;
         case 1:
             try { *(int*)(allowedargs[j].variable) = stoi((val > 0 && val < argc - 1 ? argv[val + 1] : allowedargs[j].defaultval)); }
             catch (const invalid_argument&) {}
-            printf(" %s: %d  (%s)\n", allowedargs[j].cmd, *(int*)(allowedargs[j].variable), allowedargs[j].info);
+            if (verbose) printf(" %s: %d  (%s)\n", allowedargs[j].cmd, *(int*)(allowedargs[j].variable), allowedargs[j].info);
             paramindex = 0;
             break;
         case 2:
             *(string*)(allowedargs[j].variable) = (val > 0 && val < argc - 1 ? argv[val + 1] : allowedargs[j].defaultval);
-            printf(" %s: %s  (%s)\n", allowedargs[j].cmd, (*(string*)(allowedargs[j].variable)).c_str(), allowedargs[j].info);
+            if (verbose) printf(" %s: %s  (%s)\n", allowedargs[j].cmd, (*(string*)(allowedargs[j].variable)).c_str(), allowedargs[j].info);
             paramindex = 0;
             break;
         case 3:
@@ -1081,7 +1081,7 @@ int main(int argc, char* argv[])
                 string optionName(argv[val + 1]);
                 string optionValue(val < argc - 2 ? argv[val + 2] : "");
                 en.setOption(optionName, optionValue);
-                printf(" %s (%s) %s: %s\n", allowedargs[j].cmd, allowedargs[j].info, optionName.c_str(), optionValue.c_str());
+                if (verbose) printf(" %s (%s) %s: %s\n", allowedargs[j].cmd, allowedargs[j].info, optionName.c_str(), optionValue.c_str());
                 // search for more -option parameters starting after current (ugly hack)
                 paramindex++;
                 j--;
@@ -1092,7 +1092,7 @@ int main(int argc, char* argv[])
         }
     }
 
-    printf("Here we go...\n\n");
+    if (verbose) printf("%s (Build %s)\n UCI compatible chess engine by %s\n", en.name, BUILD, en.author);
 
     if (perfmaxdepth)
     {
