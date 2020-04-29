@@ -1173,7 +1173,8 @@ public:
 // uci stuff
 //
 
-enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL };
+enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL, PERFT
+};
 
 const map<string, GuiToken> GuiCommandMap = {
     { "uci", UCI },
@@ -1187,7 +1188,8 @@ const map<string, GuiToken> GuiCommandMap = {
     { "stop", STOP },
     { "ponderhit", PONDERHIT },
     { "quit", QUIT },
-    { "eval", EVAL }
+    { "eval", EVAL },
+    { "perft", PERFT }
 };
 
 //

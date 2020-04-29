@@ -197,15 +197,16 @@ long long engine::perft(int depth, bool dotests)
         {
             printf("Mirrortest  :error  (%d / %d / %d)\n", val1, val2, val3);
             rootpos->print();
-            //printf("Position value: %d\n", pos.getPositionValue<NOTRACE>());
             rootpos->mirror();
             rootpos->print();
-            //printf("Position value: %d\n", pos.getPositionValue<NOTRACE>());
             rootpos->mirror();
             rootpos->print();
-            //printf("Position value: %d\n", pos.getPositionValue<NOTRACE>());
         }
     }
+
+    if (depth == 0)
+        return 1;
+
     chessmovelist movelist;
     if (rootpos->isCheckbb)
         movelist.length = rootpos->getMoves(&movelist.move[0], EVASION);
@@ -214,36 +215,14 @@ long long engine::perft(int depth, bool dotests)
 
     rootpos->prepareStack();
 
-    //printf("Path: %s \nMovelist : %s\n", p->actualpath.toString().c_str(), movelist->toString().c_str());
-
-    if (depth == 0)
-        retval = 1;
-    else if (depth == 1)
+    for (int i = 0; i < movelist.length; i++)
     {
-        for (int i = 0; i < movelist.length; i++)
+        if (rootpos->playMove(&movelist.move[i]))
         {
-            if (rootpos->playMove(&movelist.move[i]))
-            {
-                //printf("%s ok ", movelist->move[i].toString().c_str());
-                retval++;
-                rootpos->unplayMove(&movelist.move[i]);
-            }
+            retval += perft(depth - 1, dotests);
+            rootpos->unplayMove(&movelist.move[i]);
         }
     }
-
-    else
-    {
-        for (int i = 0; i < movelist.length; i++)
-        {
-            if (rootpos->playMove(&movelist.move[i]))
-            {
-                //printf("\nMove: %s  ", movelist->move[i].toString().c_str());
-                retval += perft(depth - 1, dotests);
-                rootpos->unplayMove(&movelist.move[i]);
-            }
-        }
-    }
-    //printf("\nAnzahl: %d\n", retval);
     return retval;
 }
 

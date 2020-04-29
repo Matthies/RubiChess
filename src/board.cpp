@@ -2869,6 +2869,13 @@ void engine::communicate(string inputstring)
             case EVAL:
                 sthread[0].pos.getEval<TRACE>();
                 break;
+            case PERFT:
+                if (ci < cs) {
+                    maxdepth = stoi(commandargs[ci++]);
+                    cout << perft(maxdepth, false) << "\n";
+                }
+                break;
+                break;
             default:
                 break;
             }
