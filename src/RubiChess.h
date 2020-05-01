@@ -930,9 +930,9 @@ public:
 };
 
 #define MAXMULTIPV 64
-#define MAXTHREADS 256
+#define MAXTHREADS  256
+#define MAXHASH     0x100000  // 1TB ... never tested
 #define DEFAULTHASH 16
-#define CMPLIES 2
 
 
 // FIXME: This is ugly! Almost the same classes with doubled code.
@@ -959,6 +959,7 @@ public:
     chessmove* getNextMove(int minval);
 };
 
+#define CMPLIES 2
 
 enum MoveSelector_State { INITSTATE, HASHMOVESTATE, TACTICALINITSTATE, TACTICALSTATE, KILLERMOVE1STATE, KILLERMOVE2STATE,
     COUNTERMOVESTATE, QUIETINITSTATE, QUIETSTATE, BADTACTICALSTATE, BADTACTICALEND, EVASIONINITSTATE, EVASIONSTATE };
@@ -1195,6 +1196,33 @@ const map<string, GuiToken> GuiCommandMap = {
 //
 // engine stuff
 //
+class engine;   //forward definition
+
+enum ucioptiontype { ucicheck, ucispin, ucicombo, ucibutton, ucistring };
+
+struct ucioption_t
+{
+    string name;
+    ucioptiontype type;
+    string def;
+    int min;
+    int max;
+    string varlist;
+    void *enginevar;
+    void (*setoption)();
+};
+
+class ucioptions_t
+{
+    map<string, ucioption_t> optionmap;
+public:
+    void Register(void *e, string n, ucioptiontype t, string d, int mi = 0, int ma = 0, void(*setop)() = nullptr, string v = ""); //engine*, ucioption_t*
+    void Set(string n, string v, bool force = false);
+    void Print();
+};
+
+typedef map<string, ucioption_t>::iterator optionmapiterator;
+
 
 #define ENGINERUN 0
 #define ENGINEWANTSTOP 1
@@ -1222,7 +1250,7 @@ public:
     bool debug = false;
     bool moveoutput;
     int stopLevel = ENGINETERMINATEDSEARCH;
-    int sizeOfTp = 0;
+    int Hash;
     int restSizeOfTp = 0;
     int sizeOfPh;
     int moveOverhead;
@@ -1240,6 +1268,7 @@ public:
     int lastReport;
     int benchdepth;
     string benchmove;
+    ucioptions_t ucioptions;
 #ifdef STACKDEBUG
     string assertfile = "";
 #endif
@@ -1251,7 +1280,6 @@ public:
     GuiToken parse(vector<string>*, string ss);
     void send(const char* format, ...);
     void communicate(string inputstring);
-    void setOption(string sName, string sValue);
     void allocThreads();
     void allocPawnhash();
     U64 getTotalNodes();
