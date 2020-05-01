@@ -2841,7 +2841,8 @@ void ucioptions_t::Register(void *e, string n, ucioptiontype t, string d, int mi
 
     it = optionmap.insert(optionmap.end(), pair<string, ucioption_t>(ln , u));
 
-    if (t != ucibutton)
+    if (t < ucibutton)
+        // Set default value
         Set(n, d, true);
 }
 
@@ -2856,6 +2857,7 @@ void ucioptions_t::Set(string n, string v, bool force)
 
     ucioption_t *op = &(it->second);
     bool bChanged = false;
+    smatch m;
     switch (op->type)
     {
     case ucispin:
@@ -2882,6 +2884,20 @@ void ucioptions_t::Set(string n, string v, bool force)
         break;  // FIXME: to be implemented when Rubi gets first combo option
     case ucibutton:
         bChanged = true;
+        break;
+    case ucieval:
+        eval eVal;
+        if (regex_search(v, m, regex("Value\\(.*(\\-?\\d+)\\s*,\\s*(\\-?\\d+).*\\)")))
+        {
+            string sMg = m.str(1);
+            string sEg = m.str(2);
+            try {
+                eVal = VALUE(stoi(sMg), stoi(sEg));
+                if ((bChanged = (force || eVal != *(eval*)(op->enginevar))))
+                    *(eval*)(op->enginevar) = eVal;
+            }
+            catch (...) {}
+        }
         break;
     default:
         break;
@@ -2911,6 +2927,8 @@ void ucioptions_t::Print()
         case ucibutton:
             cout << "button\n";
             break;
+        case ucieval:
+            cout << "string default " << op->def << "\n";
         case ucicombo:
             break; // FIXME: to be implemented...
         default:

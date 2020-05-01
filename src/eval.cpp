@@ -22,10 +22,10 @@
 
 // static values for the search/pruning/material stuff
 const int materialvalue[7] = { 0,  100,  314,  314,  483,  913, 32509 };  // some evaluation depends on bishop value >= knight value!!!
+const int maxmobility[4] = { 9, 14, 15, 28 }; // indexed by piece - 2
 
 #ifdef EVALTUNE
 
-const int maxmobility[4] = { 9, 14, 15, 28 }; // indexed by piece - 2
 sqevallist sqglobal;
 
 void chessposition::resetTuner()
@@ -91,13 +91,32 @@ static void registertuner(chessposition *pos, eval *e, string name, int index1, 
     pos->tps.used[i] = 0;
     pos->tps.count++;
 }
+#else
 
-void registeralltuners(chessposition *pos)
+static void registertuner(chessposition *pos, eval *e, string name, int index1, int bound1, int index2, int bound2, bool tune)
+{
+    ostringstream osName, osDef;
+    size_t maxdig1 = bound1 > 0 ? to_string(bound1 - 1).length() : 0;
+    size_t maxdig2 = bound2 > 0 ? to_string(bound2 - 1).length() : 0;
+    osName << name;
+    if (bound2 > 0)
+    {
+        osName << "_" << setw(maxdig2) << setfill('0') << to_string(index2) << "_" << setw(maxdig1) << setfill('0') << to_string(index1);
+    }
+    else if (bound1 > 0)
+    {
+        osName << "_" << setw(maxdig1) << setfill('0') << to_string(index1);
+    }
+    osDef << "Value( " << setw(4) << GETMGVAL(*e) << "," << setw(4) << GETEGVAL(*e) << ")";
+    en.ucioptions.Register((void*)e, osName.str(), ucieval, osDef.str());
+}
+#endif
+
+void registerallevals(chessposition *pos)
 {
     int i, j;
     bool tuneIt;
 
-    pos->tps.count = 0;
 
     tuneIt = false;  // the complex parameters needed to be tuned manually
     registertuner(pos, &eps.eComplexpawnsbonus, "eComplexpawnsbonus", 0, 0, 0, 0, tuneIt);
@@ -190,13 +209,13 @@ void registeralltuners(chessposition *pos)
     registertuner(pos, &eps.eKingdangerbyqueen, "eKingdangerbyqueen", 0, 0, 0, 0, tuneIt);
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eKingringattack[i], "eKingringattack", i, 6, 0, 0, tuneIt);
-    
+
     tuneIt = true;
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
-            registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, i==KNIGHT && j >= 16 && j < 40 && tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
+            registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, i == KNIGHT && j >= 16 && j < 40 && tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
 }
-#endif
+
 
 struct traceeval {
     int rooks[2];
