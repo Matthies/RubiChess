@@ -2441,7 +2441,6 @@ engine::engine()
     initBitmaphelper();
     rootposition.pwnhsh = new Pawnhash(1);  // some dummy pawnhash just to make the prefetch in playMove happy
     
-    ucioptions.Register(nullptr, "Clear Hash", ucibutton, "", 0, 0, uciClearHash);
     ucioptions.Register(&Threads, "Threads", ucispin, "1", 1, MAXTHREADS, uciSetThreads);  // order is important as the pawnhash depends on Threads > 0
     ucioptions.Register(&Hash, "Hash", ucispin, to_string(DEFAULTHASH), 1, MAXHASH, uciSetHash);
     ucioptions.Register(&moveOverhead, "Move Overhead", ucispin, "50", 0, 5000, nullptr);
@@ -2451,6 +2450,7 @@ engine::engine()
     ucioptions.Register(&Syzygy50MoveRule, "Syzygy50MoveRule", ucicheck, "true");
     ucioptions.Register(&SyzygyProbeLimit, "SyzygyProbeLimit", ucispin, "7", 0, 7, nullptr);
     ucioptions.Register(&chess960, "UCI_Chess960", ucicheck, "false");
+    ucioptions.Register(nullptr, "Clear Hash", ucibutton, "", 0, 0, uciClearHash);
 
 #ifdef _WIN32
     LARGE_INTEGER f;
@@ -2841,7 +2841,8 @@ void ucioptions_t::Register(void *e, string n, ucioptiontype t, string d, int mi
 
     it = optionmap.insert(optionmap.end(), pair<string, ucioption_t>(ln , u));
 
-    Set(n, d, true);
+    if (t != ucibutton)
+        Set(n, d, true);
 }
 
 
@@ -2880,6 +2881,7 @@ void ucioptions_t::Set(string n, string v, bool force)
     case ucicombo:
         break;  // FIXME: to be implemented when Rubi gets first combo option
     case ucibutton:
+        bChanged = true;
         break;
     default:
         break;
