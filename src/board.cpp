@@ -2394,6 +2394,37 @@ chessmove* MoveSelector::next()
 }
 
 
+//
+// callbacks for ucioptions
+//
+
+static void uciSetThreads()
+{
+    en.sizeOfPh = min(128, max(16, en.restSizeOfTp / en.Threads));
+    en.allocThreads();
+}
+
+static void uciSetHash()
+{
+    int newRestSizeTp = tp.setSize(en.Hash);
+    if (en.restSizeOfTp != newRestSizeTp)
+    {
+        en.restSizeOfTp = newRestSizeTp;
+        uciSetThreads();
+    }
+}
+
+static void uciClearHash()
+{
+    tp.clean();
+}
+
+static void uciSetSyzygyPath()
+{
+    init_tablebases((char*)en.SyzygyPath.c_str());
+}
+
+
 searchthread::searchthread()
 {
     pwnhsh = NULL;
@@ -2409,15 +2440,17 @@ engine::engine()
 {
     initBitmaphelper();
     rootposition.pwnhsh = new Pawnhash(1);  // some dummy pawnhash just to make the prefetch in playMove happy
-    setOption("Threads", "1");  // order is important as the pawnhash depends on Threads > 0
-    setOption("hash", to_string(DEFAULTHASH));
-    setOption("Move Overhead", "50");
-    setOption("MultiPV", "1");
-    setOption("Ponder", "false");
-    setOption("SyzygyPath", "<empty>");
-    setOption("Syzygy50MoveRule", "true");
-    setOption("SyzygyProbeLimit", "7");
-    setOption("UCI_Chess960", "false");
+    
+    ucioptions.Register(nullptr, "Clear Hash", ucibutton, "", 0, 0, uciClearHash);
+    ucioptions.Register(&Threads, "Threads", ucispin, "1", 1, MAXTHREADS, uciSetThreads);  // order is important as the pawnhash depends on Threads > 0
+    ucioptions.Register(&Hash, "Hash", ucispin, to_string(DEFAULTHASH), 1, MAXHASH, uciSetHash);
+    ucioptions.Register(&moveOverhead, "Move Overhead", ucispin, "50", 0, 5000, nullptr);
+    ucioptions.Register(&MultiPV, "MultiPV", ucispin, "1", 1, MAXMULTIPV, nullptr);
+    ucioptions.Register(&ponder, "Ponder", ucicheck, "false");
+    ucioptions.Register(&SyzygyPath, "SyzygyPath", ucistring, "<empty>", 0, 0, uciSetSyzygyPath);
+    ucioptions.Register(&Syzygy50MoveRule, "Syzygy50MoveRule", ucicheck, "true");
+    ucioptions.Register(&SyzygyProbeLimit, "SyzygyProbeLimit", ucispin, "7", 0, 7, nullptr);
+    ucioptions.Register(&chess960, "UCI_Chess960", ucicheck, "false");
 
 #ifdef _WIN32
     LARGE_INTEGER f;
@@ -2430,7 +2463,7 @@ engine::engine()
 
 engine::~engine()
 {
-    setOption("SyzygyPath", "<empty>");
+    ucioptions.Set("SyzygyPath", "<empty>");
     delete[] sthread;
     delete rootposition.pwnhsh;
 }
@@ -2495,95 +2528,6 @@ U64 engine::getTotalNodes()
         nodes += sthread[i].pos.nodes;
 
     return nodes;
-}
-
-
-void engine::setOption(string sName, string sValue)
-{
-    bool resetTp = false;
-    bool resetTh = false;
-    int newint;
-    string lValue = sValue;
-    transform(sName.begin(), sName.end(), sName.begin(), ::tolower);
-    transform(lValue.begin(), lValue.end(), lValue.begin(), ::tolower);
-    if (sName == "clear hash")
-        tp.clean();
-    if (sName == "ponder")
-    {
-        ponder = (lValue == "true");
-    }
-    if (sName == "multipv")
-    {
-        newint = stoi(sValue);
-        if (newint >= 1 && newint <= MAXMULTIPV)
-            MultiPV = newint;
-    }
-    if (sName == "threads")
-    {
-        newint = stoi(sValue);
-        if (newint >= 1 && newint <= MAXTHREADS && newint != Threads)
-        {
-            Threads = newint;
-            resetTh = true;
-        }
-    }
-    if (sName == "hash")
-    {
-        newint = stoi(sValue);
-        if (newint < 1)
-            // at least a small hash table is required
-            return;
-        if (sizeOfTp != newint)
-        {
-            sizeOfTp = newint;
-            resetTp = true;
-        }
-    }
-    if (resetTp && sizeOfTp)
-    {
-        int newRestSizeTp = tp.setSize(sizeOfTp);
-        if (restSizeOfTp != newRestSizeTp)
-        {
-            restSizeOfTp = newRestSizeTp;
-            resetTh = true;
-        }
-    }
-    if (resetTh)
-    {
-        sizeOfPh = min(128, max(16, restSizeOfTp / Threads));
-        allocThreads();
-    }
-    if (sName == "move overhead")
-    {
-        newint = stoi(sValue);
-        if (newint < 0 || newint > 5000)
-            return;
-        moveOverhead = newint;
-    }
-    if (sName == "syzygypath")
-    {
-        SyzygyPath = sValue;
-        init_tablebases((char*)SyzygyPath.c_str());
-    }
-    if (sName == "syzygyprobelimit")
-    {
-        newint = stoi(sValue);
-        if (newint >= 0 && newint <= 7)
-            SyzygyProbeLimit = newint;
-    }
-    if (sName == "syzygy50moverule")
-    {
-        bool newSyzygy50MoveRule = (lValue == "true");
-        if (Syzygy50MoveRule != newSyzygy50MoveRule)
-        {
-            Syzygy50MoveRule = newSyzygy50MoveRule;
-            tp.clean();
-        }
-    }
-    if (sName == "uci_chess960")
-    {
-        chess960 = (lValue == "true");
-    }
 }
 
 
@@ -2680,16 +2624,7 @@ void engine::communicate(string inputstring)
             case UCI:
                 send("id name %s\n", name);
                 send("id author %s\n", author);
-                send("option name Clear Hash type button\n");
-                send("option name Hash type spin default %d min 1 max 1048576\n", DEFAULTHASH);
-                send("option name Move Overhead type spin default 50 min 0 max 5000\n");
-                send("option name MultiPV type spin default 1 min 1 max %d\n", MAXMULTIPV);
-                send("option name Ponder type check default false\n");
-                send("option name SyzygyPath type string default <empty>\n");
-                send("option name Syzygy50MoveRule type check default true\n");
-                send("option name SyzygyProbeLimit type spin default 7 min 0 max 7\n");
-                send("option name Threads type spin default 1 min 1 max %d\n", MAXTHREADS);
-                send("option name UCI_Chess960 type check default false\n");
+                ucioptions.Print();
                 send("uciok\n", author);
                 break;
             case UCINEWGAME:
@@ -2713,7 +2648,7 @@ void engine::communicate(string inputstring)
 
                     if (sLower == "name")
                     {
-                        setOption(sName, sValue);
+                        ucioptions.Set(sName, sValue);
                         bGetName = true;
                         bGetValue = false;
                         sName = "";
@@ -2738,7 +2673,7 @@ void engine::communicate(string inputstring)
                     }
                     ci++;
                 }
-                setOption(sName, sValue);
+                ucioptions.Set(sName, sValue);
                 break;
             case ISREADY:
                 pendingisready = true;
@@ -2883,6 +2818,105 @@ void engine::communicate(string inputstring)
     if (inputstring == "")
         searchWaitStop();
 }
+
+
+void ucioptions_t::Register(void *e, string n, ucioptiontype t, string d, int mi, int ma, void(*setop)(), string v)
+{
+    string ln = n;
+    transform(n.begin(), n.end(), ln.begin(), ::tolower);
+    optionmapiterator it = optionmap.find(ln);
+
+    if (it != optionmap.end())
+        return;
+
+    ucioption_t u;
+    u.name = n;
+    u.type = t;
+    u.def = d;
+    u.min = mi;
+    u.max = ma;
+    u.varlist = v;
+    u.enginevar = e;
+    u.setoption = setop;
+
+    it = optionmap.insert(optionmap.end(), pair<string, ucioption_t>(ln , u));
+
+    Set(n, d, true);
+}
+
+
+void ucioptions_t::Set(string n, string v, bool force)
+{
+    transform(n.begin(), n.end(), n.begin(), ::tolower);
+    optionmapiterator it = optionmap.find(n);
+
+    if (it == optionmap.end())
+        return;
+
+    ucioption_t *op = &(it->second);
+    bool bChanged = false;
+    switch (op->type)
+    {
+    case ucispin:
+        int iVal;
+        try {
+            iVal = stoi(v);
+            if ((bChanged = (iVal >= op->min && iVal <= op->max && (force || iVal != *(int*)(op->enginevar)))))
+                *(int*)(op->enginevar) = iVal;
+        }
+        catch (...) {}
+        break;
+    case ucistring:
+        if ((bChanged = (force || v != *(string*)op->enginevar)))
+            *(string*)op->enginevar = v;
+        break;
+    case ucicheck:
+        transform(v.begin(), v.end(), v.begin(), ::tolower);
+        bool bVal;
+        bVal = (v == "true");
+        if ((bChanged = (force || (bVal != *(bool*)(op->enginevar)))))
+            *(bool*)op->enginevar = bVal;
+        break;
+    case ucicombo:
+        break;  // FIXME: to be implemented when Rubi gets first combo option
+    case ucibutton:
+        break;
+    default:
+        break;
+    }
+    if (bChanged && op->setoption) op->setoption();
+}
+
+
+void ucioptions_t::Print()
+{
+    for (optionmapiterator it = optionmap.begin(); it != optionmap.end(); it++)
+    {
+        ucioption_t *op = &(it->second);
+        cout << "option name " << op->name << " type ";
+
+        switch (op->type)
+        {
+        case ucispin:
+            cout << "spin default " << op->def << " min " << op->min << " max " << op->max << "\n";
+            break;
+        case ucistring:
+            cout << "string default " << op->def << "\n";
+            break;
+        case ucicheck:
+            cout << "check default " << op->def << "\n";
+            break;
+        case ucibutton:
+            cout << "button\n";
+            break;
+        case ucicombo:
+            break; // FIXME: to be implemented...
+        default:
+            break;
+        }
+    }
+}
+
 
 // Explicit template instantiation
 // This avoids putting these definitions in header file

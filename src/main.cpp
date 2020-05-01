@@ -1080,7 +1080,7 @@ int main(int argc, char* argv[])
             {
                 string optionName(argv[val + 1]);
                 string optionValue(val < argc - 2 ? argv[val + 2] : "");
-                en.setOption(optionName, optionValue);
+                en.ucioptions.Set(optionName, optionValue);
                 if (verbose) printf(" %s (%s) %s: %s\n", allowedargs[j].cmd, allowedargs[j].info, optionName.c_str(), optionValue.c_str());
                 // search for more -option parameters starting after current (ugly hack)
                 paramindex++;
