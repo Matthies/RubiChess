@@ -24,6 +24,21 @@
 const int materialvalue[7] = { 0,  100,  314,  314,  483,  913, 32509 };  // some evaluation depends on bishop value >= knight value!!!
 const int maxmobility[4] = { 9, 14, 15, 28 }; // indexed by piece - 2
 
+void initPsqtable()
+{
+    // initialize psqtable for faster evaluation
+    for (int from = 0; from < 64; from++)
+    {
+        for (int pc = 0; pc <= BKING; pc++)
+        {
+            int p = pc >> 1;
+            int s2m = pc & S2MMASK;
+            psqtable[pc][from] = S2MSIGN(s2m) * (eps.eMaterialvalue[p] + eps.ePsqt[p][PSQTINDEX(from, s2m)]);
+        }
+    }
+}
+
+
 #ifdef EVALTUNE
 
 sqevallist sqglobal;
@@ -108,7 +123,7 @@ static void registertuner(chessposition *pos, eval *e, string name, int index1, 
         osName << "_" << setw(maxdig1) << setfill('0') << to_string(index1);
     }
     osDef << "Value( " << setw(4) << GETMGVAL(*e) << "," << setw(4) << GETEGVAL(*e) << ")";
-    en.ucioptions.Register((void*)e, osName.str(), ucieval, osDef.str());
+    en.ucioptions.Register((void*)e, osName.str(), ucieval, osDef.str(), 0, 0, initPsqtable);
 }
 #endif
 

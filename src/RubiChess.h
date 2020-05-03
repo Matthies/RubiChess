@@ -502,6 +502,7 @@ struct tunerpool {
 #endif
 
 void registerallevals(chessposition *pos = nullptr);
+void initPsqtable();
 
 #define SCALE_NORMAL 128
 #define SCALE_DRAW 0
