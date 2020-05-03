@@ -1236,7 +1236,6 @@ void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK, string correlati
     pos.pwnhsh = new Pawnhash(0);
     registeralltuners(&pos);
     pos.noQs = noqs;
-    en.setOption("hash", "4"); // we don't need tt; save all the memory for game data
     getGradsFromFen(fenfilenames);
     if (!texelptsnum) return;
 
