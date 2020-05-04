@@ -471,7 +471,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     {
         int rbeta = min(SCOREWHITEWINS, beta + 100);
         chessmovelist *movelist = new chessmovelist;
-        movelist->length = getMoves(&movelist->move[0], TACTICAL);
+        movelist->length = CreateMovelist<TACTICAL>(this, &movelist->move[0]);
 
         for (int i = 0; i < movelist->length; i++)
         {

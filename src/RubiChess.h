@@ -779,6 +779,7 @@ const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 2
 #define PAWNATTACK(s, p) ((s) ? (((p) & ~FILEHBB) >> 7) | (((p) & ~FILEABB) >> 9) : (((p) & ~FILEABB) << 7) | (((p) & ~FILEHBB) << 9))
 #define PAWNPUSH(s, p) ((s) ? ((p) >> 8) : ((p) << 8))
 #define PAWNPUSHINDEX(s, i) ((s) ? (i) - 8 : (i) + 8)
+#define PAWNPUSHDOUBLEINDEX(s, i) ((s) ? (i) - 16 : (i) + 16)
 
 // passedPawnMask[18][WHITE]:
 // 01110000
@@ -1007,10 +1008,13 @@ extern SMagic mRookTbl[64];
 extern U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 
-enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7, EVASION = 8, QUIETWITHCHECK = 9 };
+enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7, EVASION = 8 };
 enum RootsearchType { SinglePVSearch, MultiPVSearch, PonderSearch };
 
-template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* m);
+template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart);
+template <PieceType Pt> inline int CreateMovelistPiece(chessposition *pos, chessmove* mstart, U64 occ, U64 targets, int me);
+template <MoveType Mt> inline int CreateMovelistPawn(chessposition *pos, chessmove* mstart, int me);
+inline int CreateMovelistCastle(chessposition *pos, chessmove* mstart, int me);
 template <MoveType Mt> void evaluateMoves(chessmovelist *ml, chessposition *pos, int16_t **cmptr);
 
 enum AttackType { FREE, OCCUPIED, OCCUPIEDANDKING };
@@ -1129,7 +1133,7 @@ public:
     template <AttackType At> U64 isAttackedBy(int index, int col);    // returns the bitboard of cols pieces attacking the index square; At controls if pawns are moved to block or capture
     bool see(uint32_t move, int threshold);
     int getBestPossibleCapture();
-    int getMoves(chessmove *m, MoveType t = ALL);
+    //int getMoves(chessmove *m, MoveType t = ALL);
     void getRootMoves();
     void tbFilterRootMoves();
     void prepareStack();

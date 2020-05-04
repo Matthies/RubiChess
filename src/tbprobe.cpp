@@ -331,7 +331,7 @@ static int probe_ab(int alpha, int beta, int *success, chessposition *pos)
     // It is OK to generate more, as long as they are filtered out below.
     chessmovelist movelist;
     pos->prepareStack();
-    movelist.length = pos->getMoves(&movelist.move[0]);
+    movelist.length = CreateMovelist<ALL>(pos, &movelist.move[0]);
     for (int i = 0; i < movelist.length; i++)
     {
         chessmove *m = &movelist.move[i];
@@ -384,7 +384,7 @@ int probe_wdl(int *success, chessposition *pos)
     // Generate (at least) all legal captures including (under)promotions.
     chessmovelist movelist;
     pos->prepareStack();
-    movelist.length = pos->getMoves(&movelist.move[0]);
+    movelist.length = CreateMovelist<ALL>(pos, &movelist.move[0]);
 
     // We do capture resolution, letting best_cap keep track of the best
     // capture without ep rights and letting best_ep keep track of still
@@ -523,7 +523,7 @@ int probe_dtz(int *success, chessposition *pos)
         // Generate at least all legal non-capturing pawn moves
         // including non-capturing promotions.
         pos->prepareStack();
-        movelist.length = pos->getMoves(&movelist.move[0]);
+        movelist.length = CreateMovelist<ALL>(pos, &movelist.move[0]);
 
         for (int i = 0; i < movelist.length; i++)
         {
@@ -567,7 +567,7 @@ int probe_dtz(int *success, chessposition *pos)
         // In case of mate, this will cause -1 to be returned.
         best = wdl_to_dtz[wdl + 2];
         pos->prepareStack();
-        movelist.length = pos->getMoves(&movelist.move[0]);
+        movelist.length = CreateMovelist<ALL>(pos, &movelist.move[0]);
     }
     for (int i = 0; i < movelist.length; i++)
     {
@@ -634,7 +634,7 @@ int root_probe_dtz(chessposition *pos)
         if (pos->isCheckbb && dtz > 0) {
             chessmovelist nextmovelist;
             pos->prepareStack();
-            nextmovelist.length = pos->getMoves(&nextmovelist.move[0]);
+            nextmovelist.length = CreateMovelist<ALL>(pos, &nextmovelist.move[0]);
             bool foundevasion = false;
             for (int j = 0; j < nextmovelist.length; j++)
             {
