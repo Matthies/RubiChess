@@ -207,7 +207,7 @@ string AlgebraicFromShort(string s, chessposition *pos)
     PieceType promotion = BLANKTYPE;
     chessmovelist ml;
     pos->prepareStack();
-    ml.length = pos->getMoves(&ml.move[0]);
+    ml.length = CreateMovelist<ALL>(pos, &ml.move[0]);
     PieceType pt = PAWN;
     int to = 0xc0, from = 0xc0;
     int i = (int)s.size() - 1;

@@ -209,9 +209,9 @@ long long engine::perft(int depth, bool dotests)
 
     chessmovelist movelist;
     if (rootpos->isCheckbb)
-        movelist.length = rootpos->getMoves(&movelist.move[0], EVASION);
+        movelist.length = CreateEvasionMovelist(rootpos, &movelist.move[0]);
     else
-        movelist.length = rootpos->getMoves(&movelist.move[0]);
+        movelist.length = CreateMovelist<ALL>(rootpos, &movelist.move[0]);
 
     rootpos->prepareStack();
 
