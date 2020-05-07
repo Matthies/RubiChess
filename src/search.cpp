@@ -1252,7 +1252,7 @@ static void search_gen1(searchthread *thr)
             if (lastiterationscore > pos->bestmovescore[0] + 10)
             {
                 // Score decreases; use more thinking time
-                constantRootMoves--;
+                constantRootMoves /= 2;
 #ifdef TDEBUG
                 printf("info string Score descreases... more thinking time at depth %d...\n", thr->depth);
 #endif
@@ -1315,7 +1315,7 @@ static void search_gen1(searchthread *thr)
 #ifdef TDEBUG
         if (!en.bStopCount)
             en.t1stop++;
-        printf("info string stop info full iteration / immediate:  %4d /%4d\n", en.t1stop, en.t2stop);
+        printf("info string stop info last movetime: %4.3f    full-it. / immediate:  %4d /%4d\n", (nowtime - en.starttime) / (double)en.frequency, en.t1stop, en.t2stop);
 #endif
         // Output of best move
         searchthread *bestthr = thr;
