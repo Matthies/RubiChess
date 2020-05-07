@@ -1367,19 +1367,20 @@ static void search_gen1(searchthread *thr)
 
         strBestmove = pos->bestmove.toString();
 
-        if (true)
+        if (!pos->pondermove.code)
         {
-            if (!pos->pondermove.code)
-            {
-                // Get the ponder move from TT
-                pos->playMove(&pos->bestmove);
-                uint16_t pondershort = tp.getMoveCode(pos->hash);
-                pos->pondermove.code = pos->shortMove2FullMove(pondershort);
-                pos->unplayMove(&pos->bestmove);
-            }
-            if (pos->pondermove.code)
-                strPonder = " ponder " + pos->pondermove.toString();
+            // Get the ponder move from TT
+            pos->playMove(&pos->bestmove);
+            uint16_t pondershort = tp.getMoveCode(pos->hash);
+            pos->pondermove.code = pos->shortMove2FullMove(pondershort);
+            pos->unplayMove(&pos->bestmove);
         }
+
+        // Save pondermove in rootposition for time management of following search
+        en.rootposition.pondermove = pos->pondermove;
+
+        if (pos->pondermove.code)
+            strPonder = " ponder " + pos->pondermove.toString();
 
         cout << "bestmove " + strBestmove + strPonder + "\n";
 
@@ -1401,14 +1402,15 @@ void resetEndTime(int constantRootMoves, bool complete)
     int timetouse = (en.isWhite ? en.wtime : en.btime);
     int timeinc = (en.isWhite ? en.winc : en.binc);
     int overhead = en.moveOverhead + 8 * en.Threads;
+    int variation = constantRootMoves * 2 + en.ponderhit * 4;
 
     if (en.movestogo)
     {
         // should garantee timetouse > 0
-        // stop soon at 0.9...1.9 x average movetime
-        // stop immediately at 1.5...2.5 x average movetime
-        int f1 = max(9, 19 - constantRootMoves * 2);
-        int f2 = max(15, 25 - constantRootMoves * 2);
+        // stop soon at 0.9...2.1 x average movetime
+        // stop immediately at 1.5...2.7 x average movetime
+        int f1 = max(9, 21 - variation);
+        int f2 = max(15, 27 - variation);
         if (complete)
             en.endtime1 = en.starttime + timetouse * en.frequency * f1 / (en.movestogo + 1) / 10000;
         en.endtime2 = en.starttime + min(max(0, timetouse - overhead * en.movestogo), f2 * timetouse / (en.movestogo + 1) / 10) * en.frequency / 1000;
@@ -1418,20 +1420,20 @@ void resetEndTime(int constantRootMoves, bool complete)
         if (timeinc)
         {
             // sudden death with increment; split the remaining time in (256-phase) timeslots
-            // stop soon after 5..15 timeslot
-            // stop immediately after 15..25 timeslots
-            int f1 = max(5, 15 - constantRootMoves * 2);
-            int f2 = max(15, 25 - constantRootMoves * 2);
+            // stop soon after 5..17 timeslot
+            // stop immediately after 15..27 timeslots
+            int f1 = max(5, 17 - variation);
+            int f2 = max(15, 27 - variation);
             if (complete)
                 en.endtime1 = en.starttime + max(timeinc, f1 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
             en.endtime2 = en.starttime + min(max(0, timetouse - overhead), max(timeinc, f2 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
         }
         else {
             // sudden death without increment; play for another x;y moves
-            // stop soon at 1/32...1/42 time slot
-            // stop immediately at 1/12...1/22 time slot
-            int f1 = min(42, 32 + constantRootMoves * 2);
-            int f2 = min(22, 12 + constantRootMoves * 2);
+            // stop soon at 1/30...1/42 time slot
+            // stop immediately at 1/10...1/22 time slot
+            int f1 = min(42, 30 + variation);
+            int f2 = min(22, 10 + variation);
             if (complete)
                 en.endtime1 = en.starttime + timetouse / f1 * en.frequency / 1000;
             en.endtime2 = en.starttime + min(max(0, timetouse - overhead), timetouse / f2) * en.frequency / 1000;

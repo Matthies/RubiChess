@@ -1123,7 +1123,7 @@ public:
     void BitboardPrint(U64 b);
     int getFromFen(const char* sFen);
     string toFen();
-    bool applyMove(string s);
+    uint32_t applyMove(string s);
     void print(ostream* os = &cout);
     int phase();
     U64 movesTo(PieceCode pc, int from);
@@ -1269,6 +1269,7 @@ public:
     int Threads;
     searchthread *sthread;
     ponderstate_t pondersearch;
+    bool ponderhit;
     int terminationscore = SHRT_MAX;
     int lastReport;
     int benchdepth;

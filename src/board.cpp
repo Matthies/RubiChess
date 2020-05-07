@@ -458,7 +458,7 @@ int chessposition::getFromFen(const char* sFen)
 
 
 
-bool chessposition::applyMove(string s)
+uint32_t chessposition::applyMove(string s)
 {
     int from, to;
     PieceType promtype;
@@ -488,9 +488,9 @@ bool chessposition::applyMove(string s)
             // Keep the list short, we have to keep below MAXMOVELISTLENGTH
             mstop = 0;
         }
-        return true;
+        return m.code;
     }
-    return false;
+    return 0;
 }
 
 
@@ -2546,11 +2546,13 @@ void engine::communicate(string inputstring)
                     searchWaitStop();
                 }
                 rootposition.getFromFen(fen.c_str());
+                uint32_t lastopponentsmove = 0;
                 for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
                 {
-                    if (!rootposition.applyMove(*it))
+                    if (!(lastopponentsmove = rootposition.applyMove(*it)))
                         printf("info string Alarm! Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
                 }
+                ponderhit = (lastopponentsmove && lastopponentsmove == rootposition.pondermove.code);
                 rootposition.rootheight = rootposition.mstop;
                 rootposition.ply = 0;
                 rootposition.getRootMoves();
