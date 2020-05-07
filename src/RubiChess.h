@@ -1009,7 +1009,7 @@ extern U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 
 enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7 };
-enum RootsearchType { SinglePVSearch, MultiPVSearch, PonderSearch };
+enum RootsearchType { SinglePVSearch, MultiPVSearch };
 
 int CreateEvasionMovelist(chessposition *pos, chessmove* mstart);
 template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart);
@@ -1234,6 +1234,7 @@ typedef map<string, ucioption_t>::iterator optionmapiterator;
 #define ENGINETERMINATEDSEARCH 3
 
 #define NODESPERCHECK 0xfff
+enum ponderstate_t { NO, PONDERING, HITPONDER };
 
 class engine
 {
@@ -1267,7 +1268,7 @@ public:
     chessposition rootposition;
     int Threads;
     searchthread *sthread;
-    enum { NO, PONDERING, HITPONDER } pondersearch;
+    ponderstate_t pondersearch;
     int terminationscore = SHRT_MAX;
     int lastReport;
     int benchdepth;
@@ -1287,10 +1288,6 @@ public:
     void allocThreads();
     void allocPawnhash();
     U64 getTotalNodes();
-    bool isPondering() { return (pondersearch == PONDERING); }
-    void HitPonder() { pondersearch = HITPONDER; }
-    bool testPonderHit() { return (pondersearch == HITPONDER); }
-    void resetPonder() { pondersearch = NO; }
     long long perft(int depth, bool dotests);
     void prepareThreads();
     void resetStats();

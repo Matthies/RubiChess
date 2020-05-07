@@ -2696,7 +2696,7 @@ void engine::communicate(string inputstring)
                 pendingposition = (fen != "");
                 break;
             case GO:
-                resetPonder();
+                pondersearch = NO;
                 searchmoves.clear();
                 wtime = btime = winc = binc = movestogo = mate = maxdepth = 0;
                 maxnodes = 0ULL;
@@ -2778,7 +2778,7 @@ void engine::communicate(string inputstring)
                 }
                 break;
             case PONDERHIT:
-                HitPonder();
+                pondersearch = HITPONDER;
                 break;
             case STOP:
             case QUIT:

@@ -784,7 +784,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
     int maxmoveindex;
 
     const bool isMultiPV = (RT == MultiPVSearch);
-    const bool doPonder = (RT == PonderSearch);
 
     nodes++;
     CheckForImmediateStop();
@@ -820,7 +819,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         {
             if (bestmove.code != fullhashmove) {
                 bestmove.code = fullhashmove;
-                if (doPonder) pondermove.code = 0;
+                pondermove.code = 0;
             }
             updatePvTable(fullhashmove, false);
             if (score > alpha) bestmovescore[0] = score;
@@ -878,7 +877,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         playMove(m);
 
 #ifndef SDEBUG
-        if (en.moveoutput && !threadindex && (!doPonder || depth < MAXDEPTH - 1))
+        if (en.moveoutput && !threadindex && (en.pondersearch != PONDERING || depth < MAXDEPTH - 1))
         {
             char s[256];
             sprintf_s(s, "info depth %d currmove %s currmovenumber %d\n", depth, m->toString().c_str(), i + 1);
@@ -980,9 +979,9 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                 if (bestmove.code != pvtable[0][0])
                 {
                     bestmove.code = pvtable[0][0];
-                    if (doPonder) pondermove.code = pvtable[0][1];
+                    pondermove.code = pvtable[0][1];
                 }
-                else if (doPonder && pvtable[0][1]) {
+                else if (pvtable[0][1]) {
                     // use new ponder move
                     pondermove.code = pvtable[0][1];
                 }
@@ -1085,7 +1084,6 @@ static void search_gen1(searchthread *thr)
 #endif
 
     const bool isMultiPV = (RT == MultiPVSearch);
-    const bool doPonder = (RT == PonderSearch);
     const bool isMainThread = (thr->index == 0);
 
     chessposition *pos = &thr->pos;
@@ -1109,6 +1107,7 @@ static void search_gen1(searchthread *thr)
 
     uint32_t lastBestMove = 0;
     int constantRootMoves = 0;
+    int lastiterationscore = NOSCORE;
     en.lastReport = 0;
     U64 nowtime;
     pos->lastpv[0] = 0;
@@ -1127,7 +1126,7 @@ static void search_gen1(searchthread *thr)
         {
             // remis via repetition or 50 moves rule
             pos->bestmove.code = 0;
-            if (doPonder) pos->pondermove.code = 0;
+            pos->pondermove.code = 0;
             score = pos->bestmovescore[0] = SCOREDRAW;
         }
         else
@@ -1229,14 +1228,14 @@ static void search_gen1(searchthread *thr)
                     int dummystaticeval;
                     tp.probeHash(pos->hash, &score, &dummystaticeval, &mc, MAXDEPTH, alpha, beta, 0);
                     pos->bestmove.code = pos->shortMove2FullMove(mc);
-                    if (doPonder) pos->pondermove.code = 0;
+                    pos->pondermove.code = 0;
                 }
                     
                 // still no bestmove...
                 if (!pos->bestmove.code && pos->rootmovelist.length > 0 && !isDraw)
                     pos->bestmove.code = pos->rootmovelist.move[0].code;
 
-                if (pos->rootmovelist.length == 1 && !pos->tbPosition && en.endtime1 && !en.isPondering() && pos->lastbestmovescore != NOSCORE)
+                if (pos->rootmovelist.length == 1 && !pos->tbPosition && en.endtime1 && !en.pondersearch == PONDERING && pos->lastbestmovescore != NOSCORE)
                     // Don't report score of instamove; use the score of last position instead
                     pos->bestmovescore[0] = pos->lastbestmovescore;
 
@@ -1244,7 +1243,7 @@ static void search_gen1(searchthread *thr)
                     // We have a tablebase score so report this
                     pos->bestmovescore[0] = pos->rootmovelist.move[0].value;
 
-                if (!doPonder || thr->depth < maxdepth)
+                if (en.pondersearch != PONDERING || thr->depth < maxdepth)
                     uciScore(thr, inWindow, nowtime, inWindow == 1 ? pos->bestmovescore[0] : score);
             }
         }
@@ -1266,7 +1265,7 @@ static void search_gen1(searchthread *thr)
                 thr->depth += SkipSize[cycle];
 
             thr->depth++;
-            if (doPonder && en.isPondering() && thr->depth > maxdepth) thr->depth--;  // stay on maxdepth when pondering
+            if (en.pondersearch == PONDERING && thr->depth > maxdepth) thr->depth--;  // stay on maxdepth when pondering
             reportedThisDepth = true;
             constantRootMoves++;
         }
@@ -1290,7 +1289,7 @@ static void search_gen1(searchthread *thr)
             break;
 
         // Pondering; just continue next iteration
-        if (doPonder && en.isPondering())
+        if (en.pondersearch == PONDERING)
             continue;
 
         // early exit in playing mode as there is exactly one possible move
@@ -1344,7 +1343,7 @@ static void search_gen1(searchthread *thr)
             }
             pos->lastpv[i] = 0;
             pos->bestmove = bestthr->pos.bestmove;
-            if (doPonder) pos->pondermove = bestthr->pos.pondermove;
+            pos->pondermove = bestthr->pos.pondermove;
             pos->bestmovescore[0] = bestthr->pos.bestmovescore[0];
             inWindow = 1;
             //printf("info string different bestmove from helper  lastpv:%x\n", bestthr->pos.lastpv[0]);
@@ -1363,12 +1362,12 @@ static void search_gen1(searchthread *thr)
         {
             // Not enough time to get any bestmove? Fall back to default move
             pos->bestmove = pos->defaultmove;
-            if (doPonder) pos->pondermove.code = 0;
+            pos->pondermove.code = 0;
         }
 
         strBestmove = pos->bestmove.toString();
 
-        if (doPonder)
+        if (true)
         {
             if (!pos->pondermove.code)
             {
@@ -1470,12 +1469,9 @@ void searchStart()
     // increment generation counter for tt aging
     tp.nextSearch();
 
-    if (en.MultiPV == 1 && !en.ponder)
+    if (en.MultiPV == 1)
         for (int tnum = 0; tnum < en.Threads; tnum++)
             en.sthread[tnum].thr = thread(&search_gen1<SinglePVSearch>, &en.sthread[tnum]);
-    else if (en.ponder)
-        for (int tnum = 0; tnum < en.Threads; tnum++)
-            en.sthread[tnum].thr = thread(&search_gen1<PonderSearch>, &en.sthread[tnum]);
     else
         for (int tnum = 0; tnum < en.Threads; tnum++)
             en.sthread[tnum].thr = thread(&search_gen1<MultiPVSearch>, &en.sthread[tnum]);
@@ -1502,15 +1498,15 @@ inline void chessposition::CheckForImmediateStop()
     if (threadindex || (nodes & NODESPERCHECK))
         return;
 
-    if (en.isPondering())
+    if (en.pondersearch == PONDERING)
         // pondering... just continue searching
         return;
 
-    if (en.testPonderHit())
+    if (en.pondersearch == HITPONDER)
     {
         // ponderhit
         startSearchTime(false);
-        en.resetPonder();
+        en.pondersearch = NO;
         return;
     }
 
