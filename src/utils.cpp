@@ -18,6 +18,63 @@
 
 #include "RubiChess.h"
 
+// Produce a 64-bit material key corresponding to the material combination
+// defined by pcs[16], where pcs[1], ..., pcs[6] is the number of white
+// pawns, ..., kings and pcs[9], ..., pcs[14] is the number of black
+// pawns, ..., kings.
+// Again no need to be efficient here.
+U64 calc_key_from_pcs(int *pcs, int mirror)
+{
+    int color;
+    PieceType pt;
+    int i;
+    U64 key = 0;
+
+    color = !mirror ? 0 : 8;
+    for (pt = PAWN; pt <= KING; pt++)
+        for (i = 0; i < pcs[color + pt]; i++)
+            key ^= zb.boardtable[(i << 4) | (pt << 1)];
+    color ^= 8;
+    for (pt = PAWN; pt <= KING; pt++)
+        for (i = 0; i < pcs[color + pt]; i++)
+            key ^= zb.boardtable[(i << 4) | (pt << 1) | 1];
+
+    return key;
+}
+
+
+// Order of pieces taken from tbcore!
+void getPcsFromStr(const char* str, int *pcs)
+{
+    for (int i = 0; i < 16; i++)
+        pcs[i] = 0;
+    int color = 0;
+    for (const char *s = str; *s; s++)
+        switch (*s) {
+        case 'P':
+            pcs[PAWN | color]++;
+            break;
+        case 'N':
+            pcs[KNIGHT | color]++;
+            break;
+        case 'B':
+            pcs[BISHOP | color]++;
+            break;
+        case 'R':
+            pcs[ROOK | color]++;
+            break;
+        case 'Q':
+            pcs[QUEEN | color]++;
+            break;
+        case 'K':
+            pcs[KING | color]++;
+            break;
+        case 'v':
+            color = 0x08;
+            break;
+        }
+}
+
 
 void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am)
 {
@@ -74,9 +131,9 @@ void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am)
 }
 
 
-vector<string> SplitString(const char* s)
+vector<string> SplitString(const char* c)
 {
-    string ss(s);
+    string ss(c);
     vector<string> result;
     istringstream iss(ss);
     bool quotes = false;
@@ -150,7 +207,7 @@ string AlgebraicFromShort(string s, chessposition *pos)
     PieceType promotion = BLANKTYPE;
     chessmovelist ml;
     pos->prepareStack();
-    ml.length = pos->getMoves(&ml.move[0]);
+    ml.length = CreateMovelist<ALL>(pos, &ml.move[0]);
     PieceType pt = PAWN;
     int to = 0xc0, from = 0xc0;
     int i = (int)s.size() - 1;
@@ -166,8 +223,8 @@ string AlgebraicFromShort(string s, chessposition *pos)
     if (castle0 >= 2)
     {
         pt = KING;
-        from = (from & 0x80) | ('e' - 'a');
-        to = (to & 0x80) | (castle0 == 2 ? 'g' - 'a' : 'c' - 'a');
+        from = pos->kingpos[pos->state & S2MMASK];
+        to = (from & 0x38) | castlerookfrom[castle0 == 2];
     }
     if (i >= 0 && s[i] >= 'A')
     {
@@ -198,7 +255,7 @@ string AlgebraicFromShort(string s, chessposition *pos)
 
     // i < 0 hopefully
     // get the correct move
-    for (int i = 0; i < ml.length; i++)
+    for (i = 0; i < ml.length; i++)
     {
         if (pt == (GETPIECE(ml.move[i].code) >> 1)
             && promotion == (GETPROMOTION(ml.move[i].code) >> 1)
@@ -250,7 +307,7 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
     pos.tps.count = 0;
     int gamescount = 0;
     fenWritten = 0ULL;
-    bool mateFound;
+    bool mateFound = false;
     string line, newline;
     string line1, line2;
     string rest_of_last_line = "";
@@ -259,7 +316,7 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
 
     // The following is Windows-only; FIXME: C++--17 offers portable filesystem handling
     WIN32_FIND_DATA fd;
-    HANDLE pgnhandle;
+    HANDLE pgnhandle = INVALID_HANDLE_VALUE;
     bool folderMode = (GetFileAttributes(pgnfilename.c_str()) & FILE_ATTRIBUTE_DIRECTORY);
     if (folderMode)
     {
@@ -305,7 +362,7 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
         string newfen;
         string moves;
         string lastmove;
-        bool valueChecked;
+        bool valueChecked = true;;
         int gamepositions = 0;
         string fenlines[2048];
         string scoreBracket;
@@ -363,18 +420,21 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
                 valueChecked = true;
             }
 
+            if (regex_search(line, match, regex("^\\[.*\\]$")))
+                line = "";
+
             // search for the moves
             if (newgamestarts == 2 && !regex_search(line, match, regex("^\\[.*\\]$")))
             {
                 bool foundInLine;
                 do
                 {
-                    if (foundInLine = regex_search(line, match, regex("^(\\s*\\d+\\.\\s*)")))
+                    if ((foundInLine = regex_search(line, match, regex("^(\\s*\\d+\\.\\s*)"))))
                     {
                         // skip move number
                         line = match.suffix();
                     }
-                    else if (foundInLine = regex_search(line, match, regex("^\\s*(([O\\-]{3,5})\\+?|([KQRBN]?[a-h]*[1-8]*x?[a-h]+[1-8]+(=[QRBN])?)\\+?)")))
+                    else if ((foundInLine = regex_search(line, match, regex("^\\s*(([O\\-]{3,5})\\+?|([KQRBN]?[a-h]*[1-8]*x?[a-h]+[1-8]+(=[QRBN])?)\\+?)"))))
                     {
                         // Found move
                         if (!valueChecked)
@@ -386,6 +446,7 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
                         }
                         valueChecked = false;
                         lastmove = AlgebraicFromShort(match.str(1), &pos);
+                        //printf("%5s  %5s\n", match.str(1).c_str(), lastmove.c_str());
                         if (lastmove == "" || !pos.applyMove(lastmove))
                         {
                             printf("Alarm (game %d): %s\n", gamescount, match.str(1).c_str());
@@ -401,7 +462,7 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
                             fen = "";
                         line = match.suffix();
                     }
-                    else if (foundInLine = regex_search(line, match, regex("\\s*(\\{[^\\}]*\\})")))
+                    else if ((foundInLine = regex_search(line, match, regex("\\s*(\\{[^\\}]*\\})"))))
                     {
                         scoreBracket = match.str(1);
                         line = match.suffix();
@@ -505,28 +566,28 @@ static string getValueStringValue(eval *e)
 }
 
 
-static string nameTunedParameter(chessposition *pos, int i)
+static string nameTunedParameter(chessposition *p, int i)
 {
-    string name = pos->tps.name[i];
-    if (pos->tps.bound2[i] > 0)
+    string name = p->tps.name[i];
+    if (p->tps.bound2[i] > 0)
     {
-        name += "[" + to_string(pos->tps.index2[i]) + "][" + to_string(pos->tps.index1[i]) + "]";
+        name += "[" + to_string(p->tps.index2[i]) + "][" + to_string(p->tps.index1[i]) + "]";
     }
-    else if (pos->tps.bound1[i] > 0)
+    else if (p->tps.bound1[i] > 0)
     {
-        name += "[" + to_string(pos->tps.index1[i]) + "] = { ";
+        name += "[" + to_string(p->tps.index1[i]) + "] = { ";
     }
     return name;
 }
 
 
-static void printTunedParameters(chessposition *pos)
+static void printTunedParameters(chessposition *p)
 {
     string lastname = "";
     string output = "";
-    for (int i = 0; i < pos->tps.count; i++)
+    for (int i = 0; i < p->tps.count; i++)
     {
-        if (lastname != pos->tps.name[i])
+        if (lastname != p->tps.name[i])
         {
             if (output != "")
             {
@@ -534,35 +595,35 @@ static void printTunedParameters(chessposition *pos)
                 printf("%s", output.c_str());
                 output = "";
             }
-            lastname = pos->tps.name[i];
+            lastname = p->tps.name[i];
             output = "    eval " + lastname;
-            if (pos->tps.bound2[i] > 0)
+            if (p->tps.bound2[i] > 0)
             {
-                output += "[" + to_string(pos->tps.bound2[i]) + "][" + to_string(pos->tps.bound1[i]) + "] = {\n        { ";
+                output += "[" + to_string(p->tps.bound2[i]) + "][" + to_string(p->tps.bound1[i]) + "] = {\n        { ";
             }
-            else if (pos->tps.bound1[i] > 0)
+            else if (p->tps.bound1[i] > 0)
             {
-                output += "[" + to_string(pos->tps.bound1[i]) + "] = { ";
+                output += "[" + to_string(p->tps.bound1[i]) + "] = { ";
             }
             else {
                 output += " = ";
             }
         }
 
-        output = output + " " + getValueStringValue(pos->tps.ev[i]);
+        output = output + " " + getValueStringValue(p->tps.ev[i]);
 
-        if (pos->tps.index1[i] < pos->tps.bound1[i] - 1)
+        if (p->tps.index1[i] < p->tps.bound1[i] - 1)
         {
             output += ",";
-            if (!((pos->tps.index1[i] + 1) & (pos->tps.bound2[i] ? 0x7 : 0x7)))
+            if (!((p->tps.index1[i] + 1) & (p->tps.bound2[i] ? 0x7 : 0x7)))
                 output += "\n          ";
         }
-        else if (pos->tps.index1[i] == pos->tps.bound1[i] - 1)
+        else if (p->tps.index1[i] == p->tps.bound1[i] - 1)
         {
             output += "  }";
-            if (pos->tps.index2[i] < pos->tps.bound2[i] - 1)
+            if (p->tps.index2[i] < p->tps.bound2[i] - 1)
                 output += ",\n        { ";
-            else if (pos->tps.index2[i] == pos->tps.bound2[i] - 1)
+            else if (p->tps.index2[i] == p->tps.bound2[i] - 1)
                 output += "\n    }";
         }
     }
@@ -577,46 +638,63 @@ char *texelpts = NULL;
 U64 texelptsnum;
 
 
-static int getGradientValue(struct tuner *tn, positiontuneset *p, evalparam *e)
+static int getGradientValue(eval *ev, positiontuneset *p, evalparam *e, bool debug = false, int corParam = -1)
 {
     int v = 0;
     int complexity = 0;
     int sqsum[4][2] = { { 0 } };
-    for (int i = 0; i < p->num; i++)
+    for (int i = 0; i < p->num; i++, e++)
     {
-        int type = tn->ev[e->index].type;
+        if (corParam >= 0 && corParam != e->index)
+            continue;
+        int type = ev[e->index].type;
+        if (debug)
+            printf("%30s ", nameTunedParameter(&pos, e->index).c_str());
         if (type <= 1)
         {
-            v += tn->ev[e->index] * e->g[0];
+            v += ev[e->index] * e->g[0];
+            if (debug)
+                printf(" %08x * %3d = %08x \n", ev[e->index].v, e->g[0], ev[e->index] * e->g[0]);
         }
         else if (type == 2)
         {
-            int sqindex = tn->ev[e->index].groupindex;
-            sqsum[sqindex][0] += tn->ev[e->index] * e->g[0];
-            sqsum[sqindex][1] += tn->ev[e->index] * e->g[1];
+            int sqindex = ev[e->index].groupindex;
+            sqsum[sqindex][0] += ev[e->index] * e->g[0];
+            sqsum[sqindex][1] += ev[e->index] * e->g[1];
+            if (debug) {
+                printf(" sq0: %d * %d = %d \n", ev[e->index].v, e->g[0], ev[e->index] * e->g[0]);
+                printf(" sq1: %d * %d = %d \n", ev[e->index].v, e->g[1], ev[e->index] * e->g[1]);
+            }
         }
         else {
-            complexity += tn->ev[e->index] * e->g[0];
+            complexity += ev[e->index] * e->g[0];
+            if (debug)
+                printf(" Compl: %08x * %3d = %08x \n", ev[e->index].v, e->g[0], ev[e->index] * e->g[0]);
         }
-        e++;
     }
+    if (debug)
+        printf("linear gesamt: %08x\n", v);
     for (int i = 0; i < 4; i++)
     {
         if (sqsum[i][0] == 0 && sqsum[i][1] == 0) continue;
         v += SQRESULT(sqsum[i][0], 0) + SQRESULT(sqsum[i][1], 1);
+        if (debug)
+            printf("sq-gesamt: %3d + %3d = %3d\n", SQRESULT(sqsum[i][0], 0), SQRESULT(sqsum[i][1], 1), SQRESULT(sqsum[i][0], 0) + SQRESULT(sqsum[i][1], 1));
     }
 
     // compelexity
     int evaleg = GETEGVAL(v);
     int sign = (evaleg > 0) - (evaleg < 0);
     v += sign * max(complexity, -abs(evaleg));
+    if (debug)
+        printf("gesamt: %08x\n", v);
 
     return v;
 }
 
-const double texel_k = 1.121574;
+double texel_k = 1.121574;
 
-static double TexelEvalError(struct tuner *tn)
+static double TexelEvalError(struct tuner *tn, double k = texel_k)
 {
     double Ri, Qi;
     double E = 0.0;
@@ -630,8 +708,8 @@ static double TexelEvalError(struct tuner *tn)
         if (p->sc == SCALE_DRAW)
             Qi = SCOREDRAW;
         else
-            Qi = TAPEREDANDSCALEDEVAL(getGradientValue(tn, p, e), p->ph, p->sc);
-        double sigmoid = 1 / (1 + pow(10.0, - texel_k * Qi / 400.0));
+            Qi = TAPEREDANDSCALEDEVAL(getGradientValue(tn->ev, p, e), p->ph, p->sc);
+        double sigmoid = 1 / (1 + pow(10.0, - k * Qi / 400.0));
         E += (Ri - sigmoid) * (Ri - sigmoid);
         p = (positiontuneset*)((char*)p + sizeof(positiontuneset) + p->num * sizeof(evalparam));
     }
@@ -639,14 +717,14 @@ static double TexelEvalError(struct tuner *tn)
     return E / texelptsnum;
 }
 
-static void getGradsFromFen(chessposition *pos, string fenfilenames)
+static void getGradsFromFen(string fenfilenames)
 {
     int n = 0;
     while (fenfilenames != "")
     {
-        size_t i = fenfilenames.find('*');
-        string filename = (i == string::npos) ? fenfilenames : fenfilenames.substr(0, i);
-        fenfilenames = (i == string::npos) ? "" : fenfilenames.substr(i + 1, string::npos);
+        size_t spi = fenfilenames.find('*');
+        string filename = (spi == string::npos) ? fenfilenames : fenfilenames.substr(0, spi);
+        fenfilenames = (spi == string::npos) ? "" : fenfilenames.substr(spi + 1, string::npos);
 
         int fentype = -1;
         int gamescount = 0;
@@ -692,6 +770,7 @@ static void getGradsFromFen(chessposition *pos, string fenfilenames)
             {
                 // "(.*)\\s+(c9\\s+)?\"?((1\\-0)|(0\\-1)|(1/2))\"?"
                 fen = "";
+                R = 1; // draw as default
                 if ((fentype < 0 || fentype == 1) && regex_search(line, match, regex("(.*)#(.*)#(.*)")))
                 {
                     // my own fen format
@@ -756,34 +835,32 @@ static void getGradsFromFen(chessposition *pos, string fenfilenames)
                         c = 1;
                     if (c == tuningratio)
                     {
-                        pos->getFromFen(fen.c_str());
-                        pos->ply = 0;
-                        Qi = pos->getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
-                        if (!pos->w2m())
+                        pos.getFromFen(fen.c_str());
+                        pos.ply = 0;
+                        Qi = pos.getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
+                        if (!pos.w2m())
                             Qi = -Qi;
                         positiontuneset *nextpts = (positiontuneset*)pnext;
-                        *nextpts = pos->pts;
+                        *nextpts = pos.pts;
                         nextpts->R = R;
                         Q[0] = Q[1] = Q[2] = Q[3] = 0;
                         evalparam *e = (evalparam *)(pnext + sizeof(positiontuneset));
                         int sqsum[4][2] = { { 0 } };
-                        for (int i = 0; i < pos->pts.num; i++)
+                        for (int i = 0; i < pos.pts.num; i++)
                         {
-                            *e = pos->ev[i];
-                            //printf("%20s: %08x  %3d\n", pos->tps.name[e->index].c_str(), *pos->tps.ev[i], e->g);
-                            int ty = pos->tps.ev[e->index]->type;
+                            *e = pos.ev[i];
+                            int ty = pos.tps.ev[e->index]->type;
                             if (ty != 2)
                             {
-                                Q[ty] += e->g[0] * *pos->tps.ev[e->index];
-                                //printf("l %3d: %3d * %08x         = %08x\n", e->index, e->g[0], (int)*pos->tps.ev[e->index], Qa);
+                                Q[ty] += e->g[0] * *pos.tps.ev[e->index];
                             }
                             else
                             {
-                                int sqindex = pos->tps.ev[e->index]->groupindex;
-                                sqsum[sqindex][0] += e->g[0] * *pos->tps.ev[e->index];
-                                sqsum[sqindex][1] += e->g[1] * *pos->tps.ev[e->index];
+                                int sqindex = pos.tps.ev[e->index]->groupindex;
+                                sqsum[sqindex][0] += e->g[0] * *pos.tps.ev[e->index];
+                                sqsum[sqindex][1] += e->g[1] * *pos.tps.ev[e->index];
                             }
-                            pos->tps.used[e->index]++;
+                            pos.tps.used[e->index]++;
                             e++;
                         }
                         for (int i = 0; i < 4; i++)
@@ -798,7 +875,10 @@ static void getGradsFromFen(chessposition *pos, string fenfilenames)
                         if (MATEDETECTED(Qi))
                             n--;
                         else if (Qi != (nextpts->sc == SCALE_DRAW ? SCOREDRAW : Qr))
-                            printf("%d  Alarm. Gradient evaluation differs from qsearch value: %d != %d.\n", n, Qr, Qi);
+                        {
+                            printf("\n%d  Alarm. Gradient evaluation differs from qsearch value: %d != %d.\nFEN: %s\n", n, Qr, Qi, fen.c_str());
+                            getGradientValue(*pos.tps.ev, nextpts, (evalparam *)(pnext + sizeof(positiontuneset)), true);
+                        }
                         else
                         {
                             //printf("%d  gesamt: %08x\n", n, Q);
@@ -815,8 +895,8 @@ static void getGradsFromFen(chessposition *pos, string fenfilenames)
                 {
                     gamescount++;
                     R = (stoi(match.str(1)) + 1);
-                    pos->getFromFen(match.str(2).c_str());
-                    pos->ply = 0;
+                    pos.getFromFen(match.str(2).c_str());
+                    pos.ply = 0;
                     vector<string> movelist = SplitString(match.str(3).c_str());
                     vector<string>::iterator move = movelist.begin();
                     bool gameend;
@@ -829,32 +909,32 @@ static void getGradsFromFen(chessposition *pos, string fenfilenames)
                             c = 1;
                         if (c == tuningratio)
                         {
-                            Qi = pos->getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
-                            if (!pos->w2m())
+                            Qi = pos.getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
+                            if (!pos.w2m())
                                 Qi = -Qi;
                             positiontuneset *nextpts = (positiontuneset*)pnext;
-                            *nextpts = pos->pts;
+                            *nextpts = pos.pts;
                             nextpts->R = R;
                             Q[0] = Q[1] = Q[2] = Q[3] = 0;
                             evalparam *e = (evalparam *)(pnext + sizeof(positiontuneset));
                             int sqsum[4][2] = { { 0 } };
-                            for (int i = 0; i < pos->pts.num; i++)
+                            for (int i = 0; i < pos.pts.num; i++)
                             {
-                                *e = pos->ev[i];
-                                int ty = pos->tps.ev[e->index]->type;
-                                //printf("%20s: %08x  %3d\n", pos->tps.name[e->index].c_str(), *pos->tps.ev[i], e->g);
+                                *e = pos.ev[i];
+                                int ty = pos.tps.ev[e->index]->type;
+                                //printf("%20s: %08x  %3d\n", pos->tps.name[e->index].c_str(), *pos.tps.ev[i], e->g);
                                 if (ty != 2)
                                 {
-                                    Q[ty] += e->g[0] * *pos->tps.ev[e->index];
-                                    //printf("l %3d: %3d * %08x         = %08x\n", e->index, e->g, (int)*pos->tps.ev[e->index], Qa);
+                                    Q[ty] += e->g[0] * *pos.tps.ev[e->index];
+                                    //printf("l %3d: %3d * %08x         = %08x\n", e->index, e->g, (int)*pos.tps.ev[e->index], Qa);
                                 }
                                 else
                                 {
-                                    int sqindex = pos->tps.ev[e->index]->groupindex;
-                                    sqsum[sqindex][0] += e->g[0] * *pos->tps.ev[e->index];
-                                    sqsum[sqindex][1] += e->g[1] * *pos->tps.ev[e->index];
+                                    int sqindex = pos.tps.ev[e->index]->groupindex;
+                                    sqsum[sqindex][0] += e->g[0] * *pos.tps.ev[e->index];
+                                    sqsum[sqindex][1] += e->g[1] * *pos.tps.ev[e->index];
                                 }
-                                pos->tps.used[e->index]++;
+                                pos.tps.used[e->index]++;
                                 e++;
                             }
                             for (int i = 0; i < 4; i++)
@@ -879,10 +959,10 @@ static void getGradsFromFen(chessposition *pos, string fenfilenames)
                         gameend = (move == movelist.end());
                         if (!gameend)
                         {
-                            if (!pos->applyMove(*move))
+                            if (!pos.applyMove(*move))
                             {
                                 printf("Alarm (game %d)! Move %s seems illegal.\nLine: %s\n", gamescount, move->c_str(), line.c_str());
-                                pos->print();
+                                pos.print();
                             }
                             move++;
                         }
@@ -900,11 +980,11 @@ static void getGradsFromFen(chessposition *pos, string fenfilenames)
 
 
 
-static void copyParams(chessposition *pos, struct tuner *tn)
+static void copyParams(chessposition *p, struct tuner *tn)
 {
-    for (int i = 0; i < pos->tps.count; i++)
-        tn->ev[i] = *pos->tps.ev[i];
-    tn->paramcount = pos->tps.count;
+    for (int i = 0; i < p->tps.count; i++)
+        tn->ev[i] = *p->tps.ev[i];
+    tn->paramcount = p->tps.count;
 }
 
 
@@ -993,9 +1073,9 @@ static void tuneParameter(struct tuner *tn)
 }
 
 
-static void updateTunerPointer(chessposition *pos, tunerpool *pool)
+static void updateTunerPointer(chessposition *p, tunerpool *pool)
 {
-    int num = pos->tps.count;
+    int num = p->tps.count;
     int newLowRunning = pool->highRunning;
 
     for (int i = 0; i < en.Threads; i++)
@@ -1014,7 +1094,7 @@ static void updateTunerPointer(chessposition *pos, tunerpool *pool)
 }
 
 // Collects params of finished tuners, updates 'low' and 'improved' mark and returns free tuner
-static void collectTuners(chessposition *pos, tunerpool *pool, tuner **freeTuner)
+static void collectTuners(chessposition *p, tunerpool *pool, tuner **freeTuner)
 {
     if (freeTuner) *freeTuner = nullptr;
     for (int i = 0; i < en.Threads; i++)
@@ -1034,16 +1114,16 @@ static void collectTuners(chessposition *pos, tunerpool *pool, tuner **freeTuner
 
             if (pi >= 0)
             {
-                if (tn->ev[pi] != *pos->tps.ev[pi])
+                if (tn->ev[pi] != *p->tps.ev[pi])
                 {
-                    printf("%2d %4d  %9lld   %40s  %0.10f -> %0.10f  %s  -> %s\n", i, pi, pos->tps.used[pi], nameTunedParameter(pos, pi).c_str(), tn->starterror, tn->error,
-                        getValueStringValue(pos->tps.ev[pi]).c_str(),
+                    printf("%2d %4d  %9lld   %40s  %0.10f -> %0.10f  %s  -> %s\n", i, pi, p->tps.used[pi], nameTunedParameter(p, pi).c_str(), tn->starterror, tn->error,
+                        getValueStringValue(p->tps.ev[pi]).c_str(),
                         getValueStringValue(&(tn->ev[pi])).c_str());
                     pool->lastImproved = pi;
-                    *pos->tps.ev[pi] = tn->ev[pi];
+                    *p->tps.ev[pi] = tn->ev[pi];
                 }
                 else {
-                    printf("%2d %4d  %9lld   %40s  %0.10f  %s  constant\n", i, pi, pos->tps.used[pi], nameTunedParameter(pos, pi).c_str(), tn->error,
+                    printf("%2d %4d  %9lld   %40s  %0.10f  %s  constant\n", i, pi, p->tps.used[pi], nameTunedParameter(p, pi).c_str(), tn->error,
                         getValueStringValue(&(tn->ev[pi])).c_str());
                 }
             }
@@ -1053,69 +1133,182 @@ static void collectTuners(chessposition *pos, tunerpool *pool, tuner **freeTuner
 }
 
 
-void TexelTune(string fenfilenames, bool noqs)
+static double getAvgParamVal(int iParam)
 {
-#if 0 // enable to calculate constant k 
-    // FIXME: Needs to be rewritten after eval rewrite
-    double E[2];
-    double bound[2] = { 0.0, 2.0 };
-    double x, lastx;
-    //double delta;
-    lastx = (bound[0] + bound[1]) / 2;
-
-    E[0] = TexelEvalError(fenfilename, bound[0]);
-    E[1] = TexelEvalError(fenfilename, bound[1]);
-    Emin = TexelEvalError(fenfilename, lastx);
-    if (Emin > E[0] || Emin > E[1])
+    // Get average
+    positiontuneset *p = (positiontuneset*)texelpts;
+    int pSum = 0;
+    for (U64 i = 0; i < texelptsnum; i++)
     {
-        printf("Tuning Error! Wrong bounds.\n");
-        return;
+        evalparam *e = (evalparam *)((char*)p + sizeof(positiontuneset));
+        if (p->sc != SCALE_DRAW)
+            pSum += TAPEREDANDSCALEDEVAL(getGradientValue(*pos.tps.ev, p, e, false, iParam), p->ph, p->sc);
+        p = (positiontuneset*)((char*)p + sizeof(positiontuneset) + p->num * sizeof(evalparam));
     }
+    double pAvg = pSum / (double)texelptsnum;
+    return pAvg;
+}
 
-    while (bound[1] - bound[0] > 0.001)
+static double getCorrelationCoeff(int ix, int iy, double ax, double ay)
+{
+    // Get correlation
+    double counter = 0.0;
+    double denominatorfactorx = 0.0;
+    double denominatorfactory = 0.0;
+    positiontuneset *p = (positiontuneset*)texelpts;
+    for (U64 i = 0; i < texelptsnum; i++)
     {
-        x = (lastx + bound[direction]) / 2;
-        Error = TexelEvalError(fenfilename, x);
-        if (Error > Emin)
+        int px = 0, py = 0;
+        evalparam *e = (evalparam *)((char*)p + sizeof(positiontuneset));
+        if (p->sc != SCALE_DRAW)
         {
-            bound[direction] = x;
-            E[direction] = Error;
+            px = TAPEREDANDSCALEDEVAL(getGradientValue(*pos.tps.ev, p, e, false, ix), p->ph, p->sc);
+            py = TAPEREDANDSCALEDEVAL(getGradientValue(*pos.tps.ev, p, e, false, iy), p->ph, p->sc);
         }
-        else {
-            E[1 - direction] = Emin;
-            bound[1 - direction] = lastx;
-            lastx = x;
-            Emin = Error;
-        }
-        direction = 1 - direction;
+        counter += (px - ax) * (py - ay);
+        denominatorfactorx += (px - ax) * (px - ax);
+        denominatorfactory += (py - ay) * (py - ay);
+
+        p = (positiontuneset*)((char*)p + sizeof(positiontuneset) + p->num * sizeof(evalparam));
     }
-    printf("Tuningscore b0=%0.10f (%0.10f) b1=%0.10f (%0.10f)", bound[0], E[0], bound[1], E[1]);
-    k = (bound[0] + bound[1]) / 2;
-#endif
+
+    double cor = counter / sqrt(denominatorfactorx * denominatorfactory);
+    return cor;
+}
+
+
+void getCorrelation(string correlationParams)
+{
+    while (correlationParams != "")
+    {
+        size_t spi = correlationParams.find('*');
+        string correlationparam = (spi == string::npos) ? correlationParams : correlationParams.substr(0, spi);
+        correlationParams = (spi == string::npos) ? "" : correlationParams.substr(spi + 1, string::npos);
+        int x;
+        try {
+            x = stoi(correlationparam);
+        }
+        catch (...) {}
+
+        // skip (almost) unused parameters
+        if (pos.tps.used[x] * 100000 / texelptsnum < 1)
+            continue;
+
+        // Get average of this param
+        double xAvg = getAvgParamVal(x);
+        struct {
+            double avg;
+            double coeff;
+            int index;
+        } correlation[NUMOFEVALPARAMS];
+        // loop all parameters and get correlation
+        for (int y = 0; y < pos.tps.count; y++)
+        {
+            correlation[y].index = -1;
+            if (pos.tps.ev[y]->type != pos.tps.ev[x]->type)
+                continue;
+            if (pos.tps.used[y] * 100000 / texelptsnum < 1)
+                continue;
+            correlation[y].avg = getAvgParamVal(y);
+            correlation[y].coeff = getCorrelationCoeff(x, y, xAvg, correlation[y].avg);
+            correlation[y].index = y;
+        }
+
+        // sort them by absolute correlation
+        for (int i = 0; i < pos.tps.count; i++)
+        {
+            if (correlation[i].index < 0) continue;
+            for (int j = i + 1; j < pos.tps.count; j++)
+            {
+                if (correlation[j].index < 0) continue;
+                if (abs(correlation[j].coeff) > abs(correlation[i].coeff))
+                    swap(correlation[i], correlation[j]);
+            }
+            int y = correlation[i].index;
+            printf("%3d\t%30s\tavg=\t%.4f\t%3d\t%30s\tavg=\t%.4f\tcor=\t%.4f\n", x, nameTunedParameter(&pos, x).c_str(), xAvg, y, nameTunedParameter(&pos, y).c_str(), correlation[i].avg, correlation[i].coeff);
+        }
+    }
+
+}
+
+void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK, string correlation)
+{
     pos.pwnhsh = new Pawnhash(0);
     registeralltuners(&pos);
     pos.noQs = noqs;
-    en.setOption("hash", "4"); // we don't need tt; save all the memory for game data
-    getGradsFromFen(&pos, fenfilenames);
+    getGradsFromFen(fenfilenames);
+    if (!texelptsnum) return;
 
-    printf("Tuning starts now.\nPress 'P' to output current parameters.\nPress 'B' to break after current tuning loop.\nPress 'S' for immediate break.\n\n");
+    if (correlation != "")
+    {
+        getCorrelation(correlation);
+        return;
+    }
 
-    tunerpool tp;
-    tp.tn = new struct tuner[en.Threads];
-    tp.lowRunning = -1;
-    tp.highRunning = -1;
-    tp.lastImproved = -1;
+    tunerpool tpool;
+    tpool.tn = new struct tuner[en.Threads];
+    tpool.lowRunning = -1;
+    tpool.highRunning = -1;
+    tpool.lastImproved = -1;
+    tuner *tn;
 
     for (int i = 0; i < en.Threads; i++)
     {
-        tp.tn[i].busy = false;
-        tp.tn[i].index = i;
-        tp.tn[i].paramindex = -1;
+        tpool.tn[i].busy = false;
+        tpool.tn[i].index = i;
+        tpool.tn[i].paramindex = -1;
+    }
+
+    if (bOptimizeK)
+    {
+        printf("Finding optimal tuning constant k for this position set first...\n");
+
+        tn = &tpool.tn[0];
+        copyParams(&pos, tn);
+        double E[2];
+        double Emin, Error;
+        double bound[2] = { 0.0, 10.0 };
+        double x, lastx;
+        int direction = 0;
+        //double delta;
+        lastx = (bound[0] + bound[1]) / 2;
+
+        E[0] = TexelEvalError(tn, bound[0]);
+        E[1] = TexelEvalError(tn, bound[1]);
+        Emin = TexelEvalError(tn, lastx);
+        if (Emin > E[0] || Emin > E[1])
+        {
+            printf("Tuning Error! Wrong bounds. E0=%0.10f  E1=%0.10f  Ed=%0.10f\n", E[0], E[1], Emin);
+            return;
+        }
+
+        while (bound[1] - bound[0] > 0.001)
+        {
+            x = (lastx + bound[direction]) / 2;
+            Error = TexelEvalError(tn, x);
+            printf("Tuningscore b0=%0.10f (%0.10f) b1=%0.10f (%0.10f)\n", bound[0], E[0], bound[1], E[1]);
+            if (Error > Emin)
+            {
+                bound[direction] = x;
+                E[direction] = Error;
+            }
+            else {
+                E[1 - direction] = Emin;
+                bound[1 - direction] = lastx;
+                lastx = x;
+                Emin = Error;
+            }
+            direction = 1 - direction;
+        }
+        texel_k = (bound[0] + bound[1]) / 2.0;
+        printf("Best k for this tuning set: %0.10f\n", texel_k);
     }
 
     bool improved = true;
     bool leaveSoon = false;
     bool leaveNow = false;
+
+    printf("Tuning starts now.\nPress 'P' to output current parameters.\nPress 'B' to break after current tuning loop.\nPress 'S' for immediate break.\n\n");
 
     while (improved && !leaveSoon && !leaveNow)
     {
@@ -1132,14 +1325,10 @@ void TexelTune(string fenfilenames, bool noqs)
                     getValueStringValue(pos.tps.ev[i]).c_str());
                 continue;
             }
-
-            tuner *tn;
-
-            tp.highRunning = i;
-
+            tpool.highRunning = i;
             do
             {
-                collectTuners(&pos, &tp, &tn);
+                collectTuners(&pos, &tpool, &tn);
                 if (!tn)
                 {
                     Sleep(100);
@@ -1167,15 +1356,15 @@ void TexelTune(string fenfilenames, bool noqs)
 
             tn->thr = thread(&tuneParameter, tn);
 
-            updateTunerPointer(&pos, &tp);
-            if (tp.highRunning == tp.lastImproved)
+            updateTunerPointer(&pos, &tpool);
+            if (tpool.highRunning == tpool.lastImproved)
             {
                 while (tn->busy)
                     // Complete loop without improvement... wait for last tuning finish
                     Sleep(100);
-                collectTuners(&pos, &tp, &tn);
+                collectTuners(&pos, &tpool, &tn);
 
-                if (tp.highRunning == tp.lastImproved)
+                if (tpool.highRunning == tpool.lastImproved)
                 {
                     // still no improvement after last finished thread => exit
                     improved = false;
@@ -1184,8 +1373,8 @@ void TexelTune(string fenfilenames, bool noqs)
             }
         }
     }
-    collectTuners(&pos, &tp, nullptr);
-    delete[] tp.tn;
+    collectTuners(&pos, &tpool, nullptr);
+    delete[] tpool.tn;
     free(texelpts);
     delete pos.pwnhsh;
     printTunedParameters(&pos);

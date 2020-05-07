@@ -91,6 +91,75 @@ string GetSystemInfo()
 #endif
 
 
+void generateEpd(string egn)
+{
+    chessposition *pos = &en.sthread[0].pos;
+    int pcs[16];
+
+    int n = 1000;
+    string eg = egn;
+    size_t si = egn.find('/');
+    if (si != string::npos)
+    {
+        try { n = stoi(egn.substr(si + 1)); }
+        catch (const invalid_argument&) {}
+        eg = egn.substr(0, si);
+    }
+
+    pos->halfmovescounter = pos->ept = 0;
+    pos->fullmovescounter = 1;
+    int i = 0;
+    srand((unsigned)time(NULL));
+    while (i < n)
+    {
+        getPcsFromStr(eg.c_str(), pcs);
+        memset(pos->mailbox, 0, sizeof(pos->mailbox));
+        memset(pos->piece00, 0, sizeof(pos->piece00));
+        pos->psqval = 0;
+        pos->state = rand() % 2;
+        for (int p = PAWN; p <= KING; p++)
+            for (int c = WHITE; c <= BLACK; c++)
+            {
+                int pi = p + c * 8;
+                while (pcs[pi])
+                {
+                    int sq = rand() % 64;
+                    // Avoid pawns on rank 7
+                    if (!pos->mailbox[sq] && (p != PAWN || (RRANK(sq, c) > 0 && RRANK(sq, c) < 6)))
+                    {
+                        pos->mailbox[sq] = p * 2 + c;
+                        pos->BitboardSet(sq, p * 2 + c);
+                        if (p == KING)
+                            pos->kingpos[c] = sq;
+                        pcs[pi]--;
+                    }
+                }
+            }
+        // Check if position is legal
+        bool isLegal = !pos->isAttackedBy<OCCUPIED>(pos->kingpos[pos->state ^ S2MMASK], pos->state)
+            && squareDistance[pos->kingpos[0]][pos->kingpos[1]] > 0;
+        if (isLegal)
+        {
+            pos->hash = zb.getHash(pos);
+            pos->pawnhash = zb.getPawnHash(pos);
+            pos->materialhash = zb.getMaterialHash(pos);
+            pos->mstop = 1;
+            pos->movestack[0].movecode = -1;  // Avoid fast eval after null move
+            pos->rootheight = 0;
+            pos->lastnullmove = -1;
+            int staticeval = S2MSIGN(pos->state & S2MMASK) * pos->getEval<NOTRACE>();
+            int quietval = pos->getQuiescence(SCOREBLACKWINS, SCOREWHITEWINS, 0);
+            bool isQuiet = (abs(staticeval - quietval) < 100);
+            if (isQuiet)
+            {
+                i++;
+                cout << pos->toFen() << "\n";
+            }
+        }
+    }
+}
+
+
 long long engine::perft(int depth, bool dotests)
 {
     long long retval = 0;
@@ -114,6 +183,12 @@ long long engine::perft(int depth, bool dotests)
             rootpos->print();
         }
         int val1 = rootpos->getEval<NOTRACE>();
+        int psq1 = rootpos->getpsqval();
+        if (rootpos->psqval != psq1)
+        {
+            printf("PSQ-Test  :error  incremental:%d  recalculated:%d\n", rootpos->psqval, psq1);
+            rootpos->print();
+        }
         rootpos->mirror();
         int val2 = rootpos->getEval<NOTRACE>();
         rootpos->mirror();
@@ -122,53 +197,32 @@ long long engine::perft(int depth, bool dotests)
         {
             printf("Mirrortest  :error  (%d / %d / %d)\n", val1, val2, val3);
             rootpos->print();
-            //printf("Position value: %d\n", pos.getPositionValue<NOTRACE>());
             rootpos->mirror();
             rootpos->print();
-            //printf("Position value: %d\n", pos.getPositionValue<NOTRACE>());
             rootpos->mirror();
             rootpos->print();
-            //printf("Position value: %d\n", pos.getPositionValue<NOTRACE>());
         }
     }
+
+    if (depth == 0)
+        return 1;
+
     chessmovelist movelist;
     if (rootpos->isCheckbb)
-        movelist.length = rootpos->getMoves(&movelist.move[0], EVASION);
+        movelist.length = CreateEvasionMovelist(rootpos, &movelist.move[0]);
     else
-        movelist.length = rootpos->getMoves(&movelist.move[0]);
+        movelist.length = CreateMovelist<ALL>(rootpos, &movelist.move[0]);
 
     rootpos->prepareStack();
 
-    //printf("Path: %s \nMovelist : %s\n", p->actualpath.toString().c_str(), movelist->toString().c_str());
-
-    if (depth == 0)
-        retval = 1;
-    else if (depth == 1)
+    for (int i = 0; i < movelist.length; i++)
     {
-        for (int i = 0; i < movelist.length; i++)
+        if (rootpos->playMove(&movelist.move[i]))
         {
-            if (rootpos->playMove(&movelist.move[i]))
-            {
-                //printf("%s ok ", movelist->move[i].toString().c_str());
-                retval++;
-                rootpos->unplayMove(&movelist.move[i]);
-            }
+            retval += perft(depth - 1, dotests);
+            rootpos->unplayMove(&movelist.move[i]);
         }
     }
-
-    else
-    {
-        for (int i = 0; i < movelist.length; i++)
-        {
-            if (rootpos->playMove(&movelist.move[i]))
-            {
-                //printf("\nMove: %s  ", movelist->move[i].toString().c_str());
-                retval += perft(depth - 1, dotests);
-                rootpos->unplayMove(&movelist.move[i]);
-            }
-        }
-    }
-    //printf("\nAnzahl: %d\n", retval);
     return retval;
 }
 
@@ -178,7 +232,8 @@ static void perftest(bool dotests, int maxdepth)
     {
         string fen;
         unsigned long long nodes[10];
-    } perftestresults[] =
+    };
+    perftestresultstruct perftestresults[] =
     {
         {
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
@@ -210,10 +265,38 @@ static void perftest(bool dotests, int maxdepth)
         }
     };
 
+    perftestresultstruct perftestresults960[] =
+    {
+        {
+            "8/8/8/4B2b/6nN/8/5P2/2R1K2k w Q - 0 1",
+            { 1, 34, 318, 9002, 118388, 3223406, 44554839, 1205627532 }
+        },
+        {
+            "2r5/8/8/8/8/8/6PP/k2KR3 w K - 0 1",
+            { 1, 17, 242, 3931, 57700, 985298, 14751778, 259604208, 3914405614 }
+        },
+        {
+            "4r3/3k4/8/8/8/8/6PP/qR1K1R2 w KQ - 0 1",
+            { 1, 19, 628, 12858, 405636, 8992652, 281330710, 6447669114 }
+        },
+        {
+            "r1k1r2q/p1ppp1pp/8/8/8/8/P1PPP1PP/R1K1R2Q w KQkq - 0 1",
+            { 1, 23, 522, 12333, 285754, 7096972, 172843489, 4557457200 }
+        },
+        {
+            "r1k2r1q/p1ppp1pp/8/8/8/8/P1PPP1PP/R1K2R1Q w KQkq - 0 1",
+            { 1, 28, 738, 20218, 541480, 15194841, 418430598, 12094237108 }
+        },
+        {
+            "",
+            {}
+        }
+    };
+
     int i = 0;
     printf("\n\nPerft results for %s (Build %s)\n", en.name, BUILD);
     printf("System: %s\n", GetSystemInfo().c_str());
-    printf("Depth = %d      Hash-/Mirror-Tests %s\n", maxdepth, (dotests ? "enabled" : "disabled"));
+    printf("Depth = %d    %8s  Hash-/Mirror-Tests %s\n", maxdepth, en.chess960 ? "Chess960" : "", dotests ? "enabled" : "disabled");
     printf("========================================================================\n");
 
     float df;
@@ -222,11 +305,17 @@ static void perftest(bool dotests, int maxdepth)
     long long perftstarttime = getTime();
     long long perftlasttime = perftstarttime;
 
-    while (perftestresults[i].fen != "")
+    perftestresultstruct *ptr;
+    if (en.chess960)
+        ptr = perftestresults960;
+    else
+        ptr = perftestresults;
+
+    while (ptr[i].fen != "")
     {
-        en.sthread[0].pos.getFromFen(perftestresults[i].fen.c_str());
+        en.sthread[0].pos.getFromFen(ptr[i].fen.c_str());
         int j = 0;
-        while (perftestresults[i].nodes[j] > 0 && j <= maxdepth)
+        while (ptr[i].nodes[j] > 0 && j <= maxdepth)
         {
             long long starttime = getTime();
 
@@ -236,13 +325,13 @@ static void perftest(bool dotests, int maxdepth)
             perftlasttime = getTime();
             df = float(perftlasttime - starttime) / (float) en.frequency;
             printf("Perft %d depth %d  : %*llu  %*f sec.  %*d nps ", i + 1, j, 10, result, 10, df, 8, (int)(df > 0.0 ? (double)result / df : 0));
-            if (result == perftestresults[i].nodes[j])
+            if (result == ptr[i].nodes[j])
                 printf("  OK\n");
             else
-                printf("  wrong (should be %llu)\n", perftestresults[i].nodes[j]);
+                printf("  wrong (should be %llu)\n", ptr[i].nodes[j]);
             j++;
         }
-        if (perftestresults[++i].fen != "")
+        if (ptr[++i].fen != "")
             printf("\n");
     }
     df = float(perftlasttime - perftstarttime) / (float)en.frequency;
@@ -265,7 +354,7 @@ struct benchmarkstruct
     int solved;
 };
 
-const string solvedstr[] = { "-", "o", "+" };
+const string solvedstr[] = { "-", "+", "o" };
 
 
 static void benchTableHeader(FILE* out)
@@ -280,10 +369,13 @@ static void benchTableItem(FILE* out, int i, benchmarkstruct *bm)
     fprintf(out, "Bench # %3d (%14s / %2d): %s  %5s %6d cp %3d ply %10f sec. %10lld nodes %10lld nps\n", i, bm->name.c_str(), bm->depth, solvedstr[bm->solved].c_str(), bm->move.c_str(), bm->score, bm->depthAtExit, (float)bm->time / (float)en.frequency, bm->nodes, bm->nodes * en.frequency / bm->time);
 }
 
-static void benchTableFooder(FILE *out, long long totaltime, long long totalnodes)
+static void benchTableFooder(FILE *out, long long totaltime, long long totalnodes, int totalsolved[2])
 {
+    int totaltests = totalsolved[0] + totalsolved[1];
+    double fSolved = totaltests ? 100.0 * totalsolved[1] / (double)totaltests : 0.0;
     fprintf(out, "=============================================================================================================\n");
-    fprintf(out, "Overall:                                                      %10f sec. %10lld nodes %*lld nps\n", ((float)totaltime / (float)en.frequency), totalnodes, 10, totalnodes * en.frequency / totaltime);
+    fprintf(out, "Overall:                  %4d/%3d = %4.1f%%                    %10f sec. %10lld nodes %*lld nps\n",
+        totalsolved[1], totaltests, fSolved, ((float)totaltime / (float)en.frequency), totalnodes, 10, totalnodes * en.frequency / totaltime);
 }
 
 static void doBenchmark(int constdepth, string epdfilename, int consttime, int startnum, bool openbench)
@@ -294,83 +386,97 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, int s
             "Startposition",
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             14,
-            0
+            0,
+            0, 0, 0, 0, "", 0
         },
         {
             "Lasker Test",
             "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1",
             28,
-            0
+            0,
+            0, 0, 0, 0, "", 0
         },
         {
             "IQ4 63",
             "2R5/r3b1k1/p2p4/P1pPp2p/6q1/2P2N1r/4Q1P1/5RK1 w - - 0 1 ",
             14,
-            300
+            300,
+            0, 0, 0, 0, "", 0
         },
         {
             "Wacnew 167",
             "7Q/ppp2q2/3p2k1/P2Ppr1N/1PP5/7R/5rP1/6K1 b - - 0 1",
             14,
-            1000
+            1000,
+            0, 0, 0, 0, "", 0
         },
         { 
             "Wacnew 212",
             "rn1qr2Q/pbppk1p1/1p2pb2/4N3/3P4/2N5/PPP3PP/R4RK1 w - - 0 1",
             14,
-            500
+            500,
+            0, 0, 0, 0, "", 0
         },
         {
             "Carlos 6",
             "rn1q1r2/1bp1bpk1/p3p2p/1p2N1pn/3P4/1BN1P1B1/PPQ2PPP/2R2RK1 w - - 0 1",
             13,
-            300
+            300,
+            0, 0, 0, 0, "", 0
         },
          
         {
             "Arasan19 83",
             "6k1/p4qp1/1p3r1p/2pPp1p1/1PP1PnP1/2P1KR1P/1B6/7Q b - - 0 1 ",
             14,
-            200
+            200,
+            0, 0, 0, 0, "", 0
         },
         {
             "Arasan19 192",
             "r2qk2r/1b1nbp1p/p1n1p1p1/1pp1P3/6Q1/2NPB1PN/PPP3BP/R4RK1 w kq - 0 1",
             13,
-            150
+            150,
+            0, 0, 0, 0, "", 0
         },
         {
             "BT2630 12",
             "8/pp3k2/2p1qp2/2P5/5P2/1R2p1rp/PP2R3/4K2Q b - - 0 1",
             15,
-            300
+            300,
+            0, 0, 0, 0, "", 0
         },
         {
             "IQ4 116",
             "4r1k1/1p2qrpb/p1p4p/2Pp1p2/1Q1Rn3/PNN1P1P1/1P3PP1/3R2K1 b - - 0 1",
             14,
-            300
+            300,
+            0, 0, 0, 0, "", 0
         },
         {
             "Arasan12 114",
             "br4k1/1qrnbppp/pp1ppn2/8/NPPBP3/PN3P2/5QPP/2RR1B1K w - - 0 1",
             15,
-            150
+            150,
+            0, 0, 0, 0, "", 0
         },
         {
             "Arasan12 140",
             "r1b1rk2/p1pq2p1/1p1b1p1p/n2P4/2P1NP2/P2B1R2/1BQ3PP/R6K w - - 0 1",
             15,
-            300
+            300,
+            0, 0, 0, 0, "", 0
         },
         {
             "Arasan12 137",
             "r4k2/1b3ppp/p2n1P2/q1p3PQ/Np1rp3/1P1B4/P1P4P/2K1R2R w - - 0 1",
             14,
-            200
+            200,
+            0, 0, 0, 0, "", 0
         },
         {
-            "", "", 0
+            "", "", 0, 0,
+            0, 0, 0, 0, "", 0
         }
     };
 
@@ -388,6 +494,7 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, int s
     }
 
     int i = 0;
+    int totalSolved[2] = { 0 };
     struct benchmarkstruct epdbm;
     FILE *tableout = openbench ? stdout : stderr;
 
@@ -416,7 +523,7 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, int s
 
         if (++i < startnum) continue;
 
-        en.communicate("ucinewgame" + bm->fen);
+        en.communicate("ucinewgame");
         en.communicate("position fen " + bm->fen);
         starttime = getTime();
         int dp = 0;
@@ -442,12 +549,14 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, int s
         bm->score = en.rootposition.lastbestmovescore;
         bm->depthAtExit = en.benchdepth;
         bm->move = en.benchmove;
-        bm->solved = 1;
+        bm->solved = 2;
 
         if (bestmoves != "")
-            bm->solved = (bestmoves.find(bm->move) != string::npos) ? 2 : 0;
+            bm->solved = (bestmoves.find(bm->move) != string::npos) ? 1 : 0;
         if (avoidmoves != "")
-            bm->solved = (bestmoves.find(bm->move) != string::npos) ? 0 : 2;
+            bm->solved = (bestmoves.find(bm->move) != string::npos) ? 0 : 1;
+        if (bm->solved < 2)
+            totalSolved[bm->solved]++;
 
         if (bGetFromEpd)
             benchTableItem(tableout, i, bm);
@@ -469,7 +578,7 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, int s
     }
     if (totaltime)
     {
-        benchTableFooder(tableout, totaltime, totalnodes);
+        benchTableFooder(tableout, totaltime, totalnodes, totalSolved);
         if (openbench)
             printf("Time  : %lld\nNodes : %lld\nNPS   : %lld\n", totaltime * 1000 / en.frequency, totalnodes, totalnodes * en.frequency / totaltime);
     }
@@ -849,20 +958,14 @@ static void testengine(string epdfilename, int startnum, string engineprgs, stri
     }
 }
 
+#endif // _WIN32
 
-#else // _WIN32
-
-static void testengine(string epdfilename, int startnum, string engineprg, string logfilename, string comparefilename, int maxtime, int flags)
-{
-    // not yet implemented
-}
-
-#endif
 
 int main(int argc, char* argv[])
 {
     int startnum;
     int perfmaxdepth;
+    bool verbose;
     bool benchmark;
     bool openbench;
     int depth;
@@ -872,10 +975,13 @@ int main(int argc, char* argv[])
     string engineprg;
     string logfile;
     string comparefile;
+    string genepd;
 #ifdef EVALTUNE
     string pgnconvertfile;
     string fentuningfiles;
     bool quietonly;
+    bool optk;
+    string correlation;
     int ppg;
 #endif
     int maxtime;
@@ -888,6 +994,7 @@ int main(int argc, char* argv[])
         char type;
         const char *defaultval;
     } allowedargs[] = {
+        { "-verbose", "Show the parameterlist and actuel values.", &verbose, 0, NULL },
         { "-bench", "Do benchmark test for some positions.", &benchmark, 0, NULL },
         { "bench", "Do benchmark with OpenBench compatible output.", &openbench, 0, NULL },
         { "-depth", "Depth for benchmark (0 for per-position-default)", &depth, 1, "0" },
@@ -902,6 +1009,7 @@ int main(int argc, char* argv[])
         { "-compare", "for fast comparision against logfile from other engine (use with -enginetest)", &comparefile, 2, "" },
         { "-flags", "1=skip easy (0 sec.) compares; 2=break 5 seconds after first find; 4=break after compare time is over; 8=eval only (use with -enginetest)", &flags, 1, "0" },
         { "-option", "Set UCI option by commandline", NULL, 3, NULL },
+        { "-generate", "Generates epd file with n (default 1000) random endgame positions of the given type; format: egstr/n ", &genepd, 2, "" },
 #ifdef STACKDEBUG
         { "-assertfile", "output assert info to file", &en.assertfile, 2, "" },
 #endif
@@ -910,6 +1018,8 @@ int main(int argc, char* argv[])
         { "-quietonly", "convert only quiet positions (when used with -pgnfile); don't do qsearch (when used with -fentuning)", &quietonly, 0, NULL },
         { "-ppg", "use only <n> positions per game (0 = every position, use with -pgnfile)", &ppg, 1, "0" },
         { "-fentuning", "reads FENs from files (filenames separated by *) and tunes eval parameters against it", &fentuningfiles, 2, "" },
+        { "-optk", "optimize constant k before tuning, use with -fentuning)", &optk, 0, NULL },
+        { "-correlation", "calculate correlation of parameters to the give list (seperated by *), use with -fentuning)", &correlation, 2, "" },
         { "-tuningratio", "use only every <n>th double move from the FEN to speed up the analysis", &tuningratio, 1, "1" },
 #endif
         { NULL, NULL, NULL, 0, NULL }
@@ -934,8 +1044,6 @@ int main(int argc, char* argv[])
 
     cout.setf(ios_base::unitbuf);
 
-    printf("%s (Build %s)\n UCI compatible chess engine by %s\nParameterlist:\n", en.name, BUILD, en.author);
-
     int paramindex = 0;
     for (int j = 0; allowedargs[j].cmd; j++)
     {
@@ -953,18 +1061,18 @@ int main(int argc, char* argv[])
         {
         case 0:
             *(bool*)(allowedargs[j].variable) = (val > 0);
-            printf(" %s: %s  (%s)\n", allowedargs[j].cmd, *(bool*)(allowedargs[j].variable) ? "yes" : "no", allowedargs[j].info);
+            if (verbose) printf(" %s: %s  (%s)\n", allowedargs[j].cmd, *(bool*)(allowedargs[j].variable) ? "yes" : "no", allowedargs[j].info);
             paramindex = 0;
             break;
         case 1:
             try { *(int*)(allowedargs[j].variable) = stoi((val > 0 && val < argc - 1 ? argv[val + 1] : allowedargs[j].defaultval)); }
             catch (const invalid_argument&) {}
-            printf(" %s: %d  (%s)\n", allowedargs[j].cmd, *(int*)(allowedargs[j].variable), allowedargs[j].info);
+            if (verbose) printf(" %s: %d  (%s)\n", allowedargs[j].cmd, *(int*)(allowedargs[j].variable), allowedargs[j].info);
             paramindex = 0;
             break;
         case 2:
             *(string*)(allowedargs[j].variable) = (val > 0 && val < argc - 1 ? argv[val + 1] : allowedargs[j].defaultval);
-            printf(" %s: %s  (%s)\n", allowedargs[j].cmd, (*(string*)(allowedargs[j].variable)).c_str(), allowedargs[j].info);
+            if (verbose) printf(" %s: %s  (%s)\n", allowedargs[j].cmd, (*(string*)(allowedargs[j].variable)).c_str(), allowedargs[j].info);
             paramindex = 0;
             break;
         case 3:
@@ -972,8 +1080,8 @@ int main(int argc, char* argv[])
             {
                 string optionName(argv[val + 1]);
                 string optionValue(val < argc - 2 ? argv[val + 2] : "");
-                en.setOption(optionName, optionValue);
-                printf(" %s (%s) %s: %s\n", allowedargs[j].cmd, allowedargs[j].info, optionName.c_str(), optionValue.c_str());
+                en.ucioptions.Set(optionName, optionValue);
+                if (verbose) printf(" %s (%s) %s: %s\n", allowedargs[j].cmd, allowedargs[j].info, optionName.c_str(), optionValue.c_str());
                 // search for more -option parameters starting after current (ugly hack)
                 paramindex++;
                 j--;
@@ -984,7 +1092,7 @@ int main(int argc, char* argv[])
         }
     }
 
-    printf("Here we go...\n\n");
+    if (verbose) printf("%s (Build %s)\n UCI compatible chess engine by %s\n", en.name, BUILD, en.author);
 
     if (perfmaxdepth)
     {
@@ -996,8 +1104,14 @@ int main(int argc, char* argv[])
         doBenchmark(depth, epdfile, maxtime, startnum, openbench);
     } else if (enginetest)
     {
+#ifdef _WIN32
         //engine test mode
         testengine(epdfile, startnum, engineprg, logfile, comparefile, maxtime, flags);
+#endif
+    }
+    else if (genepd != "")
+    {
+        generateEpd(genepd);
     }
 #ifdef EVALTUNE
     else if (pgnconvertfile != "")
@@ -1006,7 +1120,7 @@ int main(int argc, char* argv[])
     }
     else if (fentuningfiles != "")
     {
-        TexelTune(fentuningfiles, quietonly);
+        TexelTune(fentuningfiles, quietonly, optk, correlation);
     }
 #endif
     else {

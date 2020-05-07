@@ -17,7 +17,7 @@
 
 #pragma once
 
-#define VERNUM "1.7"
+#define VERNUM "1.8"
 //#define VERSTABLE
 
 #if 0
@@ -98,12 +98,21 @@
 #include <crtdbg.h>
 #endif
 
+#define allocalign64(x) _aligned_malloc(x, 64)
+#define freealigned64(x) _aligned_free(x)
+
 #else //_WIN32
 
 #define myassert(expression, pos, num, ...) (void)(0)
 #define sprintf_s sprintf
 void Sleep(long x);
-
+#ifdef __ANDROID__
+#define allocalign64(x) malloc(x)
+#define freealigned64(x) free(x)
+#else
+#define allocalign64(x) aligned_alloc(64, x)
+#define freealigned64(x) free(x)
+#endif
 #endif
 
 using namespace std;
@@ -122,14 +131,17 @@ using namespace std;
 #endif
 #endif
 
+#ifndef PROCDESC
+#define PROCDESC "general"
+#endif
 #ifndef VERSTABLE
 #ifdef GITVER
-#define VERSION VERNUM "-dev " GITVER
+#define VERSION VERNUM "-dev " PROCDESC " " GITVER
 #else
-#define VERSION VERNUM "-dev"
+#define VERSION VERNUM "-dev " PROCDESC
 #endif
 #else
-#define VERSION VERNUM
+#define VERSION VERNUM " " PROCDESC
 #endif
 #define ENGINEVER "RubiChess " VERSION
 #ifdef GITID
@@ -139,7 +151,8 @@ using namespace std;
 #endif
 
 #define BITSET(x) (1ULL << (x))
-#define ONEORZERO(x) (!((x) & ((x) - 1)))
+#define MORETHANONE(x) ((x) & ((x) - 1)) 
+#define ONEORZERO(x) (!MORETHANONE(x))
 #ifdef _MSC_VER
 #define GETLSB(i,x) _BitScanForward64((DWORD*)&(i), (x))
 inline int pullLsb(unsigned long long *x) {
@@ -177,6 +190,7 @@ enum { WHITE, BLACK };
 #define BLACKBB 0xaa55aa55aa55aa55
 #define FLANKLEFT  0x0f0f0f0f0f0f0f0f
 #define FLANKRIGHT 0xf0f0f0f0f0f0f0f0
+#define CENTER 0x0000001818000000
 #define OUTPOSTAREA(s) ((s) ? 0x000000ffffff0000 : 0x0000ffffff000000)
 #define RANK(x) ((x) >> 3)
 #define RRANK(x,s) ((s) ? ((x) >> 3) ^ 7 : ((x) >> 3))
@@ -185,6 +199,7 @@ enum { WHITE, BLACK };
 #define BORDERDIST(f) ((f) > 3 ? 7 - (f) : (f))
 #define PROMOTERANK(x) (RANK(x) == 0 || RANK(x) == 7)
 #define PROMOTERANKBB 0xff000000000000ff
+#define RANK1(s) ((s) ? 0xff00000000000000 : 0x00000000000000ff)
 #define RANK2(s) ((s) ? 0x00ff000000000000 : 0x000000000000ff00)
 #define RANK3(s) ((s) ? 0x0000ff0000000000 : 0x0000000000ff0000)
 #define RANK7(s) ((s) ? 0x000000000000ff00 : 0x00ff000000000000)
@@ -326,31 +341,35 @@ struct evalparamset {
         {  VALUE(   0,   0), VALUE( -17,  -5), VALUE( -15,  15), VALUE(  -7,  31), VALUE(  13,  73), VALUE(   7, 143), VALUE(  34, 138), VALUE(   0,   0)  },
         {  VALUE(   0,   0), VALUE( -33,  -3), VALUE( -29,  18), VALUE( -11,  31), VALUE(   0,  70), VALUE(   6, 125), VALUE(  83,  77), VALUE(   0,   0)  }
     };
-    eval ePotentialpassedpawnbonus[2][8] = {
-        {  VALUE(   0,   0), VALUE(  28, -15), VALUE(  -3,  14), VALUE(  17,   5), VALUE(  37,  60), VALUE(  75,  81), VALUE(  44, 108), VALUE(   0,   0)  },
-        {  VALUE(   0,   0), VALUE(  -2,   0), VALUE(   1,   2), VALUE(   6,   6), VALUE(  20,  25), VALUE(  53,   7), VALUE( -14,  10), VALUE(   0,   0)  }
+    eval ePotentialpassedpawnbonus[4][8] = {
+        {  VALUE(   0,   0), VALUE(  35,  10), VALUE(   3,   3), VALUE(  14,   7), VALUE(  34,   7), VALUE(  92,  48), VALUE(   0,   0), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE(  -2,   1), VALUE(  -2,   3), VALUE(   3,   0), VALUE(   3, -20), VALUE(  53,   6), VALUE(   0,   0), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE( -12,  16), VALUE( -21,  -6), VALUE(   5,  34), VALUE(  45,  15), VALUE( 101,  80), VALUE(   0,   0), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE( -43,   9), VALUE( -15,  17), VALUE(   0,  31), VALUE(  33,  31), VALUE(  71,  95), VALUE(   0,   0), VALUE(   0,   0)  }
     };
-    eval eAttackingpawnbonus[8] = {  VALUE(   0,   0), VALUE( -48,  12), VALUE( -14,   4), VALUE( -14,  -6), VALUE( -14,  -6), VALUE( -15,   1), VALUE(   0,   0), VALUE(   0,   0)  };
+    eval eAttackingpawnbonus[8] = {  VALUE(   0,   0), VALUE( -32,  12), VALUE( -22, -12), VALUE(  -6,  -6), VALUE( -12,  -6), VALUE( -13,  -2), VALUE(   0,   0), VALUE(   0,   0)  };
     eval eIsolatedpawnpenalty =  VALUE( -13, -12);
     eval eDoublepawnpenalty =  VALUE(  -9, -21);
     eval eConnectedbonus[6][6] = {
-        {  VALUE(   0,   0), VALUE(   9,  -2), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
-        {  VALUE(   0,   0), VALUE(   2,   3), VALUE(  11,  12), VALUE(  23,  18), VALUE(  32,  22), VALUE(  51,  21)  },
-        {  VALUE(   0,   0), VALUE(  11,   4), VALUE(  14,   8), VALUE(  22,  13), VALUE(  22,   9), VALUE( -11,  11)  },
-        {  VALUE(   0,   0), VALUE(  15,  22), VALUE(  21,  16), VALUE(  35,  19), VALUE(  33,  16), VALUE( 113, -70)  },
-        {  VALUE(   0,   0), VALUE(  57,  97), VALUE(  50,  54), VALUE(  70,  71), VALUE(  33,  85), VALUE( -57, 253)  },
-        {  VALUE(   0,   0), VALUE(  38, 213), VALUE( 133,  99), VALUE(   7, 400), VALUE(   0, 578), VALUE(   0,   0)  }
+        {  VALUE(   0,   0), VALUE(  10,  -2), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
+        {  VALUE(   0,   0), VALUE(   4,   3), VALUE(  12,  12), VALUE(  28,  17), VALUE(  36,  20), VALUE(  56,  22)  },
+        {  VALUE(   0,   0), VALUE(  15,   4), VALUE(  16,   8), VALUE(  26,  16), VALUE(  26,   9), VALUE( -10,  14)  },
+        {  VALUE(   0,   0), VALUE(  21,  29), VALUE(  21,  16), VALUE(  44,  34), VALUE(  33,  17), VALUE( 117, -57)  },
+        {  VALUE(   0,   0), VALUE(  72,  98), VALUE(  53,  54), VALUE(  72,  80), VALUE(  35,  86), VALUE( -57, 253)  },
+        {  VALUE(   0,   0), VALUE(  38, 241), VALUE( 130, 110), VALUE(   7, 400), VALUE(   0, 641), VALUE(   0,   0)  }
     };
     eval eBackwardpawnpenalty =  VALUE( -16, -11);
     eval eDoublebishopbonus =  VALUE(  56,  38);
-    eval ePawnblocksbishoppenalty =  VALUE(  -2,  -4);
+    eval ePawnblocksbishoppenalty =  VALUE( -10, -18);
+    eval eBishopcentercontrolbonus =  VALUE(  25,  13);
+    eval eKnightOutpost =  VALUE(   15,  15);
     eval eMobilitybonus[4][28] = {
         {  VALUE(  16, -90), VALUE(  38, -26), VALUE(  51,   1), VALUE(  57,  13), VALUE(  64,  27), VALUE(  71,  37), VALUE(  77,  36), VALUE(  84,  36),
            VALUE(  86,  30), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
-        {  VALUE(  21, -25), VALUE(  34,  -6), VALUE(  51,  13), VALUE(  59,  23), VALUE(  69,  34), VALUE(  75,  40), VALUE(  81,  43), VALUE(  81,  50),
-           VALUE(  84,  51), VALUE(  83,  55), VALUE(  85,  52), VALUE(  81,  47), VALUE(  72,  59), VALUE(  72,  31), VALUE(   0,   0), VALUE(   0,   0),
+        {  VALUE(  -8, -25), VALUE(  23,  -7), VALUE(  45,   2), VALUE(  55,  21), VALUE(  65,  31), VALUE(  74,  35), VALUE(  80,  43), VALUE(  81,  50),
+           VALUE(  86,  51), VALUE(  85,  58), VALUE(  86,  52), VALUE(  95,  55), VALUE( 100,  54), VALUE(  89,  60), VALUE(   0,   0), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
            VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
         {  VALUE( -57,  11), VALUE(  14,  17), VALUE(  31,  57), VALUE(  34,  70), VALUE(  36,  82), VALUE(  38,  90), VALUE(  40,  92), VALUE(  46,  96),
@@ -397,14 +416,14 @@ struct evalparamset {
            VALUE( -27,  39), VALUE(  -1,  35), VALUE(  20,  35), VALUE(  17,  56), VALUE(  30,  50), VALUE(  30,  34), VALUE(  33,  30), VALUE(   6,  39),
            VALUE( -32,  54), VALUE( -19,  27), VALUE( -11,  40), VALUE(  15,  38), VALUE(  18,  33), VALUE(  15,  29), VALUE(   7,  43), VALUE(   1,  59),
            VALUE( -64,  50), VALUE(  -7,  41), VALUE( -24,  45), VALUE(   4,  48), VALUE(  12,  41), VALUE(  11,  28), VALUE(  -5,  42), VALUE( -32,  42)  },
-        {  VALUE(   4,  70), VALUE( -51,  92), VALUE(  31,  73), VALUE( -29,  82), VALUE( -42,  85), VALUE( -17,  75), VALUE( -19,  52), VALUE( -21,  59),
-           VALUE(  -4,  60), VALUE(  -1,  69), VALUE(   7,  78), VALUE(  33,  64), VALUE(  24,  64), VALUE(   1,  67), VALUE(  -6,  59), VALUE( -19,  60),
-           VALUE(  29,  70), VALUE(  45,  73), VALUE(  45,  70), VALUE(  67,  49), VALUE(  40,  60), VALUE(  87,  72), VALUE(  46,  70), VALUE(  68,  55),
-           VALUE(  21,  74), VALUE(  46,  77), VALUE(  54,  69), VALUE(  64,  79), VALUE(  74,  69), VALUE(  48,  75), VALUE(  65,  64), VALUE(  15,  73),
-           VALUE(  26,  70), VALUE(  23,  74), VALUE(  44,  77), VALUE(  61,  72), VALUE(  52,  77), VALUE(  51,  71), VALUE(  41,  65), VALUE(  64,  41),
-           VALUE(  25,  41), VALUE(  45,  69), VALUE(  31,  70), VALUE(  34,  64), VALUE(  39,  74), VALUE(  38,  70), VALUE(  51,  53), VALUE(  38,  56),
-           VALUE(  32,  48), VALUE(  30,  42), VALUE(  37,  39), VALUE(  16,  63), VALUE(  26,  58), VALUE(  46,  40), VALUE(  50,  42), VALUE(  42,  31),
-           VALUE(  25,  44), VALUE(  47,  37), VALUE(  34,  51), VALUE(  16,  50), VALUE(  32,  59), VALUE(  11,  67), VALUE(  27,  50), VALUE(  36,  26)  },
+        {  VALUE(  -8,  56), VALUE( -49,  95), VALUE(  32,  75), VALUE( -29,  93), VALUE( -42,  83), VALUE( -13,  79), VALUE( -21,  54), VALUE( -37,  52),
+           VALUE(  -5,  61), VALUE( -18,  53), VALUE(   6,  74), VALUE(  31,  68), VALUE(  22,  64), VALUE(   3,  66), VALUE( -28,  43), VALUE( -21,  60),
+           VALUE(  29,  67), VALUE(  36,  76), VALUE(  24,  55), VALUE(  64,  50), VALUE(  40,  57), VALUE(  72,  53), VALUE(  40,  67), VALUE(  67,  55),
+           VALUE(  16,  80), VALUE(  44,  77), VALUE(  53,  68), VALUE(  62,  75), VALUE(  74,  66), VALUE(  44,  75), VALUE(  64,  65), VALUE(  14,  72),
+           VALUE(  26,  72), VALUE(  24,  75), VALUE(  44,  75), VALUE(  60,  72), VALUE(  53,  73), VALUE(  50,  69), VALUE(  42,  59), VALUE(  68,  46),
+           VALUE(  26,  46), VALUE(  49,  72), VALUE(  14,  57), VALUE(  32,  68), VALUE(  38,  75), VALUE(  22,  53), VALUE(  54,  54), VALUE(  40,  56),
+           VALUE(  36,  52), VALUE(  17,  33), VALUE(  36,  42), VALUE(  17,  62), VALUE(  26,  60), VALUE(  45,  45), VALUE(  36,  37), VALUE(  44,  40),
+           VALUE(  21,  31), VALUE(  48,  36), VALUE(  37,  53), VALUE(  15,  57), VALUE(  33,  63), VALUE(  16,  68), VALUE(  34,  55), VALUE(  31,  24)  },
         {  VALUE(  36, 113), VALUE( -12, 136), VALUE(  12, 131), VALUE(  12, 136), VALUE(   2, 123), VALUE(  20, 128), VALUE(  22, 121), VALUE(  54, 109),
            VALUE(   5, 114), VALUE(  -8, 125), VALUE(  10, 129), VALUE(  23, 120), VALUE(  15, 113), VALUE(  14, 114), VALUE(   9, 114), VALUE(  37, 102),
            VALUE(  -7, 141), VALUE(  21, 133), VALUE(  17, 138), VALUE(  21, 120), VALUE(  64, 103), VALUE(  64, 105), VALUE(  83, 106), VALUE(  47, 108),
@@ -496,6 +515,8 @@ enum EvalType { NOTRACE, TRACE};
 //
 // utils stuff
 //
+U64 calc_key_from_pcs(int *pcs, int mirror);
+void getPcsFromStr(const char* str, int *pcs);
 void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am);
 vector<string> SplitString(const char* s);
 unsigned char AlgebraicToIndex(string s);
@@ -509,7 +530,7 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
 #ifdef EVALTUNE
 typedef void(*initevalfunc)(void);
 bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg);
-void TexelTune(string fenfilename, bool noqs);
+void TexelTune(string fenfilename, bool noqs, bool bOptimizeK, string correlation);
 
 extern int tuningratio;
 
@@ -537,14 +558,15 @@ public:
     u8 getHash(chessposition *pos);
     u8 getPawnHash(chessposition *pos);
     u8 getMaterialHash(chessposition *pos);
-    u8 modHash(int i);
 };
 
 #define TTBUCKETNUM 3
 
+typedef uint16_t hashupper_t;
+#define GETHASHUPPER(x) (hashupper_t)((x) >> (64 - sizeof(hashupper_t) * 8))
 
 struct transpositionentry {
-    uint32_t hashupper;
+    hashupper_t hashupper;
     uint16_t movecode;
     int16_t value;
     int16_t staticeval;
@@ -554,7 +576,7 @@ struct transpositionentry {
 
 struct transpositioncluster {
     transpositionentry entry[TTBUCKETNUM];
-    //char padding[2];
+    uint8_t padding[(64 - sizeof(transpositionentry) * TTBUCKETNUM) % 16];
 };
 
 
@@ -614,20 +636,22 @@ struct Materialhashentry {
     int scale[2];
     bool onlyPawns;
     int numOfPawns;
+    int(*endgame)(chessposition*);
 };
 
 
 class Materialhash
 {
 public:
-    Materialhashentry table[MATERIALHASHSIZE];
+    Materialhashentry *table;
+    Materialhash();
+    ~Materialhash();
     bool probeHash(U64 hash, Materialhashentry **entry);
 };
 
 
 extern zobrist zb;
 extern transposition tp;
-extern Materialhash mh;
 
 
 //
@@ -665,13 +689,15 @@ extern Materialhash mh;
 #define WKING 12
 #define BKING 13
 
-// My son wants this in binary :-)
-#define S2MMASK     0b00001
-#define WQCMASK     0b00010
-#define WKCMASK     0b00100
-#define BQCMASK     0b01000
-#define BKCMASK     0b10000
-#define CASTLEMASK  0b11110
+// My son wants this in binary :-) but -pendantic claims that it's not C11 standard :-(
+#define S2MMASK     0x01
+#define WQCMASK     0x02
+#define WKCMASK     0x04
+#define BQCMASK     0x08
+#define BKCMASK     0x10
+#define CASTLEMASK  0x1e
+#define GETCASTLEFILE(s,i) (((s) >> (i * 4 + 8)) & 0x7)
+#define SETCASTLEFILE(f,i) (((f) << (i * 4 + 8)) | (WQCMASK << i))
 
 #define WQC 1
 #define WKC 2
@@ -679,10 +705,8 @@ extern Materialhash mh;
 #define BKC 4
 const int QCMASK[2] = { WQCMASK, BQCMASK };
 const int KCMASK[2] = { WKCMASK, BKCMASK };
-const int castlerookfrom[] = {0, 0, 7, 56, 63 };
-const int castlerookto[] = {0, 3, 5, 59, 61 };
-
-const int EPTSIDEMASK[2] = { 0x8, 0x10 };
+const int castlerookto[4] = { 3, 5, 59, 61 };
+const int castlekingto[4] = { 2, 6, 58, 62 };
 
 #define BOUNDMASK 0x03 
 #define HASHALPHA 0x01
@@ -695,6 +719,7 @@ const int EPTSIDEMASK[2] = { 0x8, 0x10 };
 #define SCOREWHITEWINS (-SCOREBLACKWINS)
 #define SCOREDRAW 0
 #define SCORETBWIN 29900
+#define SCOREWONENDGAME 10000
 
 #define MATEFORME(s) ((s) > SCOREWHITEWINS - MAXDEPTH)
 #define MATEFOROPPONENT(s) ((s) < SCOREBLACKWINS + MAXDEPTH)
@@ -720,11 +745,28 @@ const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 2
 #define NMREFUTEVAL (1 << 25)
 #define BADTACTICALFLAG (1 << 31)
 
-#define ISEPCAPTURE 0x40
+
+// 32bit move code has the following format
+// 10987654321098765432109876543210 Bit#
+// xxxx                             Piece code
+//     x                            Castle flag
+//      x                           EP capture flag
+//       xxxxxx                     EP capture target square
+//           xx                     castle index (00=white queen 01=white king 10=black queen 11=black king)
+//             xxxx                 captured piece code
+//                 xxxx             promotion piece code
+//                     xxxxxx       from square
+//                           xxxxxx to square
+#define EPCAPTUREFLAG 0x4000000
+#define CASTLEFLAG    0x8000000
 #define GETFROM(x) (((x) & 0x0fc0) >> 6)
 #define GETTO(x) ((x) & 0x003f)
+#define GETCORRECTTO(x) (ISCASTLE(x) ? castlekingto[GETCASTLEINDEX(x)] : GETTO(x))
 #define GETEPT(x) (((x) & 0x03f00000) >> 20)
-#define GETEPCAPTURE(x) (((x) >> 20) & ISEPCAPTURE)
+#define ISEPCAPTURE(x) ((x) & EPCAPTUREFLAG)
+#define ISCASTLE(x) ((x) & CASTLEFLAG)
+#define GETCASTLEINDEX(x) (((x) & 0x00300000) >> 20)
+#define ISEPCAPTUREORCASTLE(x) ((x) & (EPCAPTUREFLAG | CASTLEFLAG))
 
 #define GETPROMOTION(x) (((x) & 0xf000) >> 12)
 #define GETCAPTURE(x) (((x) & 0xf0000) >> 16)
@@ -733,13 +775,11 @@ const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 2
 #define ISCAPTURE(x) ((x) & 0xf0000)
 #define GETPIECE(x) (((x) & 0xf0000000) >> 28)
 #define GETTACTICALVALUE(x) (materialvalue[GETCAPTURE(x) >> 1] + (ISPROMOTION(x) ? materialvalue[GETPROMOTION(x) >> 1] - materialvalue[PAWN] : 0))
-#define ISCASTLE(c) (((c) & 0xe0000249) == 0xc0000000)
-#define GIVECHECKFLAG 0x08000000
-#define GIVESCHECK(x) ((x) & GIVECHECKFLAG)
 
 #define PAWNATTACK(s, p) ((s) ? (((p) & ~FILEHBB) >> 7) | (((p) & ~FILEABB) >> 9) : (((p) & ~FILEABB) << 7) | (((p) & ~FILEHBB) << 9))
 #define PAWNPUSH(s, p) ((s) ? ((p) >> 8) : ((p) << 8))
 #define PAWNPUSHINDEX(s, i) ((s) ? (i) - 8 : (i) + 8)
+#define PAWNPUSHDOUBLEINDEX(s, i) ((s) ? (i) - 16 : (i) + 16)
 
 // passedPawnMask[18][WHITE]:
 // 01110000
@@ -841,7 +881,7 @@ extern U64 rankMask[64];
 extern U64 betweenMask[64][64];
 
 extern int squareDistance[64][64];
-
+extern int castlerookfrom[4];
 struct chessmovestack
 {
     int state;
@@ -891,9 +931,9 @@ public:
 };
 
 #define MAXMULTIPV 64
-#define MAXTHREADS 256
+#define MAXTHREADS  256
+#define MAXHASH     0x100000  // 1TB ... never tested
 #define DEFAULTHASH 16
-#define CMPLIES 2
 
 
 // FIXME: This is ugly! Almost the same classes with doubled code.
@@ -920,6 +960,7 @@ public:
     chessmove* getNextMove(int minval);
 };
 
+#define CMPLIES 2
 
 enum MoveSelector_State { INITSTATE, HASHMOVESTATE, TACTICALINITSTATE, TACTICALSTATE, KILLERMOVE1STATE, KILLERMOVE2STATE,
     COUNTERMOVESTATE, QUIETINITSTATE, QUIETSTATE, BADTACTICALSTATE, BADTACTICALEND, EVASIONINITSTATE, EVASIONSTATE };
@@ -967,10 +1008,14 @@ extern SMagic mRookTbl[64];
 extern U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 
-enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7, EVASION = 8, QUIETWITHCHECK = 9 };
+enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7 };
 enum RootsearchType { SinglePVSearch, MultiPVSearch, PonderSearch };
 
-template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* m);
+int CreateEvasionMovelist(chessposition *pos, chessmove* mstart);
+template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart);
+template <PieceType Pt> inline int CreateMovelistPiece(chessposition *pos, chessmove* mstart, U64 occ, U64 targets, int me);
+template <MoveType Mt> inline int CreateMovelistPawn(chessposition *pos, chessmove* mstart, int me);
+inline int CreateMovelistCastle(chessposition *pos, chessmove* mstart, int me);
 template <MoveType Mt> void evaluateMoves(chessmovelist *ml, chessposition *pos, int16_t **cmptr);
 
 enum AttackType { FREE, OCCUPIED, OCCUPIEDANDKING };
@@ -983,6 +1028,11 @@ struct positioneval {
     int kingattackers[2];
 };
 
+#ifdef SDEBUG
+enum PvAbortType {
+    PVA_UNKNOWN = 0, PVA_FROMTT, PVA_DIFFERENTFROMTT, PVA_RAZORPRUNED, PVA_REVFUTILITYPRUNED, PVA_NMPRUNED, PVA_PROBCUTPRUNED, PVA_LMPRUNED,
+    PVA_FUTILITYPRUNED, PVA_SEEPRUNED, PVA_BADHISTORYPRUNED, PVA_MULTICUT, PVA_BESTMOVE, PVA_NOTBESTMOVE, PVA_OMITTED, PVA_BETACUT, PVA_BELOWALPHA }; 
+#endif
 
 class chessposition
 {
@@ -1024,9 +1074,6 @@ public:
     chessmove pondermove;
     int LegalMoves[MAXDEPTH];
     uint32_t killer[MAXDEPTH][2];
-    uint32_t countermove[14][64];
-    int16_t history[2][64][64];
-    int16_t counterhistory[14][64][14*64];
     uint32_t bestFailingLow;
     Pawnhash *pwnhsh;
     int threadindex;
@@ -1034,8 +1081,10 @@ public:
 #ifdef SDEBUG
     unsigned long long debughash = 0;
     uint16_t pvdebug[MAXMOVESEQUENCELENGTH];
-    bool debugRecursive;
-    bool debugOnlySubtree;
+    int pvdepth[MAXMOVESEQUENCELENGTH];
+    int pvmovenum[MAXMOVESEQUENCELENGTH];
+    PvAbortType pvaborttype[MAXMOVESEQUENCELENGTH];
+    int pvabortval[MAXMOVESEQUENCELENGTH];
 #endif
     uint32_t pvtable[MAXDEPTH][MAXDEPTH];
     uint32_t multipvtable[MAXMULTIPV][MAXDEPTH];
@@ -1061,6 +1110,12 @@ public:
     void copyPositionTuneSet(positiontuneset *from, evalparam *efrom, positiontuneset *to, evalparam *eto);
     string getGradientString();
 #endif
+    // ...
+    int16_t history[2][64][64];
+    int16_t counterhistory[14][64][14 * 64];
+    uint32_t countermove[14][64];
+    Materialhash mtrlhsh;
+
     bool w2m();
     void BitboardSet(int index, PieceCode p);
     void BitboardClear(int index, PieceCode p);
@@ -1073,13 +1128,12 @@ public:
     int phase();
     U64 movesTo(PieceCode pc, int from);
     template <PieceType Pt> U64 pieceMovesTo(int from);
-    bool isAttacked(int index);
+    bool isAttacked(int index, int me);
     U64 isAttackedByMySlider(int index, U64 occ, int me);  // special simple version to detect giving check by removing blocker
     U64 attackedByBB(int index, U64 occ);  // returns bitboard of all pieces of both colors attacking index square 
     template <AttackType At> U64 isAttackedBy(int index, int col);    // returns the bitboard of cols pieces attacking the index square; At controls if pawns are moved to block or capture
     bool see(uint32_t move, int threshold);
     int getBestPossibleCapture();
-    int getMoves(chessmove *m, MoveType t = ALL);
     void getRootMoves();
     void tbFilterRootMoves();
     void prepareStack();
@@ -1092,13 +1146,13 @@ public:
     bool moveGivesCheck(uint32_t c);  // simple and imperfect as it doesn't handle special moves and cases (mainly to avoid pruning of important moves)
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
     uint32_t shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal
-    void getpsqval();  // only for eval trace
+    int getpsqval();  // only for eval trace and mirror test
     template <EvalType Et, int Me> int getGeneralEval(positioneval *pe);
     template <EvalType Et, PieceType Pt, int Me> int getPieceEval(positioneval *pe);
     template <EvalType Et, int Me> int getLateEval(positioneval *pe);
     template <EvalType Et, int Me> void getPawnAndKingEval(pawnhashentry *entry);
     template <EvalType Et> int getEval();
-    int getScaling(int col, Materialhashentry** mhentry);
+    void getScaling(Materialhashentry *mhentry);
     int getComplexity(int eval, pawnhashentry *phentry, Materialhashentry *mhentry);
 
     template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth);
@@ -1106,14 +1160,15 @@ public:
     int getQuiescence(int alpha, int beta, int depth);
     void updateHistory(uint32_t code, int16_t **cmptr, int value);
     void getCmptr(int16_t **cmptr);
-    void updatePvTable(uint32_t movecode, bool recursive);
-    void updateMultiPvTable(int pvindex, uint32_t movecode, bool recursive);
+    void updatePvTable(uint32_t mc, bool recursive);
+    void updateMultiPvTable(int pvindex, uint32_t mc);
     string getPv(uint32_t *table);
     int getHistory(uint32_t code, int16_t **cmptr);
+    inline void CheckForImmediateStop();
 
 #ifdef SDEBUG
     bool triggerDebug(chessmove* nextmove);
-    void sdebug(int indent, const char* format, ...);
+    void pvdebugout();
 #endif
     int testRepetiton();
     void mirror();
@@ -1123,7 +1178,8 @@ public:
 // uci stuff
 //
 
-enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL };
+enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL, PERFT
+};
 
 const map<string, GuiToken> GuiCommandMap = {
     { "uci", UCI },
@@ -1137,19 +1193,47 @@ const map<string, GuiToken> GuiCommandMap = {
     { "stop", STOP },
     { "ponderhit", PONDERHIT },
     { "quit", QUIT },
-    { "eval", EVAL }
+    { "eval", EVAL },
+    { "perft", PERFT }
 };
 
 //
 // engine stuff
 //
+class engine;   //forward definition
+
+enum ucioptiontype { ucicheck, ucispin, ucicombo, ucibutton, ucistring };
+
+struct ucioption_t
+{
+    string name;
+    ucioptiontype type;
+    string def;
+    int min;
+    int max;
+    string varlist;
+    void *enginevar;
+    void (*setoption)();
+};
+
+class ucioptions_t
+{
+    map<string, ucioption_t> optionmap;
+public:
+    void Register(void *e, string n, ucioptiontype t, string d, int mi = 0, int ma = 0, void(*setop)() = nullptr, string v = ""); //engine*, ucioption_t*
+    void Set(string n, string v, bool force = false);
+    void Print();
+};
+
+typedef map<string, ucioption_t>::iterator optionmapiterator;
+
 
 #define ENGINERUN 0
 #define ENGINEWANTSTOP 1
-#define ENGINESTOPSOON 2
-#define ENGINESTOPIMMEDIATELY 3
-#define ENGINESTOPPED 4
-#define ENGINETERMINATEDSEARCH 5
+#define ENGINESTOPIMMEDIATELY 2
+#define ENGINETERMINATEDSEARCH 3
+
+#define NODESPERCHECK 0xfff
 
 class engine
 {
@@ -1161,20 +1245,22 @@ public:
     bool isWhite;
     U64 tbhits;
     U64 starttime;
-    U64 endtime1; // time to send STOPSOON signal
-    U64 endtime2; // time to send STOPPIMMEDIATELY signal
+    U64 endtime1; // time to stop before starting next iteration
+    U64 endtime2; // time to stop immediately
     U64 frequency;
     int wtime, btime, winc, binc, movestogo, mate, movetime, maxdepth;
     U64 maxnodes;
     bool infinite;
     bool debug = false;
     bool moveoutput;
-    int sizeOfTp = 0;
+    int stopLevel = ENGINETERMINATEDSEARCH;
+    int Hash;
     int restSizeOfTp = 0;
     int sizeOfPh;
     int moveOverhead;
     int MultiPV;
     bool ponder;
+    bool chess960;
     string SyzygyPath;
     bool Syzygy50MoveRule = true;
     int SyzygyProbeLimit;
@@ -1186,7 +1272,7 @@ public:
     int lastReport;
     int benchdepth;
     string benchmove;
-    int stopLevel = ENGINESTOPPED;
+    ucioptions_t ucioptions;
 #ifdef STACKDEBUG
     string assertfile = "";
 #endif
@@ -1198,7 +1284,6 @@ public:
     GuiToken parse(vector<string>*, string ss);
     void send(const char* format, ...);
     void communicate(string inputstring);
-    void setOption(string sName, string sValue);
     void allocThreads();
     void allocPawnhash();
     U64 getTotalNodes();
@@ -1208,6 +1293,7 @@ public:
     void resetPonder() { pondersearch = NO; }
     long long perft(int depth, bool dotests);
     void prepareThreads();
+    void resetStats();
 };
 
 PieceType GetPieceType(char c);
@@ -1234,9 +1320,9 @@ public:
 extern engine en;
 
 #ifdef SDEBUG
-#define SDEBUGPRINT(b, d, f, ...) if (b) sdebug(d, f, ##__VA_ARGS__)
+#define SDEBUGDO(c, s) if (c) {s}
 #else
-#define SDEBUGPRINT(b, d, f, ...)
+#define SDEBUGDO(c, s)
 #endif
 
 
@@ -1258,7 +1344,8 @@ public:
     ~searchthread();
 };
 
-void searchguide();
+void searchStart();
+void searchWaitStop(bool forceStop = true);
 void searchinit();
 void resetEndTime(int constantRootMoves, bool complete = true);
 
@@ -1308,6 +1395,7 @@ struct statistic {
     U64 moves_pruned_badsee;    // moves pruned by bad see
     U64 moves_played[2];        // moves that are played split into quites ans tactical
     U64 moves_fail_high;        // moves that cause a fail high;
+    U64 moves_bad_hash;         // hash moves that are repicked in the bad tactical stage
 
     U64 red_total;              // total reductions
     U64 red_lmr[2];             // total late-move-reductions for (not) improved moves

@@ -18,6 +18,10 @@
 
 #include "RubiChess.h"
 
+#if defined(__linux__) && !defined(__ANDROID__)
+static const size_t HashAlignBytes = 2ull << 20;
+#include <sys/mman.h> // madvise
+#endif
 
 /* A small noncryptographic PRNG */
 /* http://www.burtleburtle.net/bob/rand/smallprng.html */
@@ -80,12 +84,6 @@ zobrist::zobrist()
 unsigned long long zobrist::getRnd()
 {
     return ranval(&rnd);
-}
-
-
-u8 zobrist::modHash(int i)
-{
-    return 0;
 }
 
 
@@ -152,7 +150,7 @@ u8 zobrist::getMaterialHash(chessposition *pos)
 transposition::~transposition()
 {
     if (size > 0)
-        delete table;
+        freealigned64(table);
 }
 
 int transposition::setSize(int sizeMb)
@@ -160,15 +158,29 @@ int transposition::setSize(int sizeMb)
     int restMb = 0;
     int msb = 0;
     if (size > 0)
-        delete table;
+        freealigned64(table);
     U64 maxsize = ((U64)sizeMb << 20) / sizeof(transpositioncluster);
     if (!maxsize) return 0;
     GETMSB(msb, maxsize);
     size = (1ULL << msb);
     restMb = (int)(((maxsize ^ size) >> 20) * sizeof(transpositioncluster));  // return rest for pawnhash
- 
     sizemask = size - 1;
-    table = (transpositioncluster*)malloc((size_t)(size * sizeof(transpositioncluster)));
+    size_t allocsize = (size_t)(size * sizeof(transpositioncluster));
+
+#if defined(__linux__) && !defined(__ANDROID__) // Many thanks to Sami Kiminki for advise on the huge page theory and for this patch
+    // Round up hashSize to the next 2M for alignment
+    allocsize = ((allocsize + HashAlignBytes - 1u) / HashAlignBytes) * HashAlignBytes;
+
+    table = (transpositioncluster*)aligned_alloc(HashAlignBytes, allocsize);
+
+    // Linux-specific call to request huge pages, in case the aligned_alloc()
+    // call above doesn't already trigger them (depends on transparent huge page
+    // settings)
+    madvise(table, allocsize, MADV_HUGEPAGE);
+#else
+    table = (transpositioncluster*)allocalign64(allocsize);
+#endif
+
     clean();
     return restMb;
 }
@@ -218,7 +230,7 @@ void transposition::addHash(U64 hash, int val, int16_t staticeval, int bound, in
     {
         // First try to find a free or matching entry
         e = &(cluster->entry[i]);
-        if (cluster->entry[i].hashupper == (uint32_t)(hash >> 32) || !cluster->entry[i].hashupper)
+        if (cluster->entry[i].hashupper == GETHASHUPPER(hash) || !cluster->entry[i].hashupper)
         {
             leastValuableEntry = e;
             break;
@@ -242,11 +254,11 @@ void transposition::addHash(U64 hash, int val, int16_t staticeval, int bound, in
     // Don't overwrite an entry from the same position, unless we have
     // an exact bound or depth that is nearly as good as the old one
     if (bound != HASHEXACT
-        &&  leastValuableEntry->hashupper == (uint32_t)(hash >> 32)
+        &&  leastValuableEntry->hashupper == GETHASHUPPER(hash)
         &&  depth < leastValuableEntry->depth - 3)
         return;
 
-    leastValuableEntry->hashupper = (uint32_t)(hash >> 32);
+    leastValuableEntry->hashupper = GETHASHUPPER(hash);
     leastValuableEntry->depth = (uint8_t)depth;
     leastValuableEntry->value = (short)val;
     leastValuableEntry->boundAndAge = (uint8_t)(bound | numOfSearchShiftTwo);
@@ -262,7 +274,7 @@ void transposition::printHashentry(U64 hash)
     printf("Hashentry for %llx\n", hash);
     for (int i = 0; i < TTBUCKETNUM; i++)
     {
-        if ((data->entry[i].hashupper) == (hash >> 32))
+        if ((data->entry[i].hashupper) == GETHASHUPPER(hash))
         {
             printf("Match in upper part: %x / %x\n", (unsigned int)data->entry[i].hashupper, (unsigned int)(hash >> 32));
             printf("Move code: %x\n", (unsigned int)data->entry[i].movecode);
@@ -288,7 +300,7 @@ bool transposition::probeHash(U64 hash, int *val, int *staticeval, uint16_t *mov
     for (int i = 0; i < TTBUCKETNUM; i++)
     {
         transpositionentry *e = &(data->entry[i]);
-        if (e->hashupper == (hash >> 32))
+        if (e->hashupper == GETHASHUPPER(hash))
         {
             *movecode = e->movecode;
             *staticeval = e->staticeval;
@@ -324,7 +336,7 @@ uint16_t transposition::getMoveCode(U64 hash)
     transpositioncluster *data = &table[index];
     for (int i = 0; i < TTBUCKETNUM; i++)
     {
-        if ((data->entry[i].hashupper) == (hash >> 32))
+        if ((data->entry[i].hashupper) == GETHASHUPPER(hash))
             return data->entry[i].movecode;
     }
     return 0;
@@ -364,6 +376,10 @@ bool Pawnhash::probeHash(U64 hash, pawnhashentry **entry)
     }
     (*entry)->hashupper = (uint32_t)(hash >> 32);
     (*entry)->value = 0;
+    (*entry)->semiopen[0] = (*entry)->semiopen[1] = 0xff;
+    (*entry)->passedpawnbb[0] = (*entry)->passedpawnbb[1] = 0ULL;
+    (*entry)->isolatedpawnbb[0] = (*entry)->isolatedpawnbb[1] = 0ULL;
+    (*entry)->backwardpawnbb[0] = (*entry)->backwardpawnbb[1] = 0ULL;
     (*entry)->attacked[0] = (*entry)->attacked[1] = 0ULL;
     (*entry)->attackedBy2[0] = (*entry)->attackedBy2[1] = 0ULL;
 
@@ -371,18 +387,26 @@ bool Pawnhash::probeHash(U64 hash, pawnhashentry **entry)
 }
 
 
+Materialhash::Materialhash()
+{
+    table = (Materialhashentry*)allocalign64(MATERIALHASHSIZE * sizeof(Materialhashentry));
+}
+
+Materialhash::~Materialhash()
+{
+    freealigned64(table);
+}
+
 bool  Materialhash::probeHash(U64 hash, Materialhashentry **entry)
 {
     *entry = &table[hash & MATERIALHASHMASK];
     if ((*entry)->hash == hash)
         return true;
 
+    (*entry)->endgame = nullptr;
     (*entry)->hash = hash;
-    (*entry)->scale[WHITE] = (*entry)->scale[BLACK] = SCALE_NORMAL;
-
     return false;
 }
 
 
 transposition tp;
-Materialhash mh;
