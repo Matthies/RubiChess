@@ -1407,10 +1407,11 @@ void resetEndTime(int constantRootMoves, bool complete)
     if (en.movestogo)
     {
         // should garantee timetouse > 0
-        // stop soon at 0.9...2.1 x average movetime
-        // stop immediately at 1.5...2.7 x average movetime
-        int f1 = max(9, 21 - variation);
-        int f2 = max(15, 27 - variation);
+        // stop soon at 0.7...1.9 x average movetime
+        // stop immediately at 1.9...3.1 x average movetime
+        int movevariation = min(32, en.movestogo) * 3 / 32;
+        int f1 = max(10 - movevariation, 22 - movevariation - variation);
+        int f2 = max(19, 31 - variation);
         if (complete)
             en.endtime1 = en.starttime + timetouse * en.frequency * f1 / (en.movestogo + 1) / 10000;
         en.endtime2 = en.starttime + min(max(0, timetouse - overhead * en.movestogo), f2 * timetouse / (en.movestogo + 1) / 10) * en.frequency / 1000;
