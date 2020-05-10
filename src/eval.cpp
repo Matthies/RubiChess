@@ -141,23 +141,26 @@ void registeralltuners(chessposition *pos)
     tuneIt = false;
     for (i = 0; i < 8; i++)
         registertuner(pos, &eps.eAttackingpawnbonus[i], "eAttackingpawnbonus", i, 8, 0, 0, tuneIt && (i > 0 && i < 7));
+    tuneIt = true;
+    for (i = 0; i < 8; i++)
+        registertuner(pos, &eps.eIsolatedpawnpenalty[i], "eIsolatedpawnpenalty", i, 8, 0, 0, tuneIt);
     tuneIt = false;
-    registertuner(pos, &eps.eIsolatedpawnpenalty, "eIsolatedpawnpenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eDoublepawnpenalty, "eDoublepawnpenalty", 0, 0, 0, 0, tuneIt);
-
     tuneIt = false;
     for (i = 0; i < 6; i++)
         for (j = 0; j < 6; j++)
             registertuner(pos, &eps.eConnectedbonus[i][j], "eConnectedbonus", j, 6, i, 6, tuneIt);
     tuneIt = false;
 
-    registertuner(pos, &eps.eBackwardpawnpenalty, "eBackwardpawnpenalty", 0, 0, 0, 0, tuneIt);
+    tuneIt = true;
+    for (i = 0; i < 8; i++)
+        registertuner(pos, &eps.eBackwardpawnpenalty[i], "eBackwardpawnpenalty", i, 8, 0, 0, tuneIt);
     tuneIt = false;
     registertuner(pos, &eps.eDoublebishopbonus, "eDoublebishopbonus", 0, 0, 0, 0, tuneIt);
     tuneIt = false;
     registertuner(pos, &eps.ePawnblocksbishoppenalty, "ePawnblocksbishoppenalty", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eBishopcentercontrolbonus, "eBishopcentercontrolbonus", 0, 0, 0, 0, tuneIt);
-    tuneIt = true;
+    tuneIt = false;
     registertuner(pos, &eps.eKnightOutpost, "eKnightOutpost", 0, 0, 0, 0, tuneIt);
 
     tuneIt = false;
@@ -191,7 +194,7 @@ void registeralltuners(chessposition *pos)
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eKingringattack[i], "eKingringattack", i, 6, 0, 0, tuneIt);
     
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
             registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
@@ -368,8 +371,10 @@ void chessposition::getPawnAndKingEval(pawnhashentry *entryptr)
 
         if (!(myPawns & neighbourfilesMask[index]))
         {
-            // isolated pawn
-            entryptr->isolatedpawnbb[Me] |= BITSET(index);
+            // isolated pawn penalty per file
+            int f = FILE(index);
+            entryptr->value += EVAL(eps.eIsolatedpawnpenalty[f], S2MSIGN(Me));
+            if (bTrace) te.pawns[Me] += EVAL(eps.eIsolatedpawnpenalty[f], S2MSIGN(Me));
         }
         else
         {
@@ -397,25 +402,19 @@ void chessposition::getPawnAndKingEval(pawnhashentry *entryptr)
                     U64 shiftneigbours = (Me ? nextpawnrank >> 8 : nextpawnrank << 8);
                     if ((nextpawnrank | (shiftneigbours & neighbourfilesMask[index])) & yourStoppers)
                     {
-                        // backward pawn detected
-                        entryptr->backwardpawnbb[Me] |= BITSET(index);
+                        // backward pawn penalty per file
+                        int f = FILE(index);
+                        entryptr->value += EVAL(eps.eBackwardpawnpenalty[f], S2MSIGN(Me));
+                        if (bTrace) te.pawns[Me] += EVAL(eps.eBackwardpawnpenalty[f], S2MSIGN(Me));
                     }
                 }
             }
         }
     }
 
-    // isolated pawns
-    entryptr->value += EVAL(eps.eIsolatedpawnpenalty, S2MSIGN(Me) * POPCOUNT(entryptr->isolatedpawnbb[Me]));
-    if (bTrace) te.pawns[Me] += EVAL(eps.eIsolatedpawnpenalty, S2MSIGN(Me) * POPCOUNT(entryptr->isolatedpawnbb[Me]));
-
     // doubled pawns
     entryptr->value += EVAL(eps.eDoublepawnpenalty, S2MSIGN(Me) * POPCOUNT(piece00[WPAWN | Me] & (Me ? piece00[WPAWN | Me] >> 8 : piece00[WPAWN | Me] << 8)));
     if (bTrace) te.pawns[Me] += EVAL(eps.eDoublepawnpenalty, S2MSIGN(Me) * POPCOUNT(piece00[WPAWN | Me] & (Me ? piece00[WPAWN | Me] >> 8 : piece00[WPAWN | Me] << 8)));
-
-    // backward pawns
-    entryptr->value += EVAL(eps.eBackwardpawnpenalty, S2MSIGN(Me) * POPCOUNT(entryptr->backwardpawnbb[Me]));
-    if (bTrace) te.pawns[Me] += EVAL(eps.eBackwardpawnpenalty, S2MSIGN(Me) * POPCOUNT(entryptr->backwardpawnbb[Me]));
 
     // Pawn storm evaluation
     int ki = kingpos[Me];

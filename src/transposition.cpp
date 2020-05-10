@@ -378,8 +378,6 @@ bool Pawnhash::probeHash(U64 hash, pawnhashentry **entry)
     (*entry)->value = 0;
     (*entry)->semiopen[0] = (*entry)->semiopen[1] = 0xff;
     (*entry)->passedpawnbb[0] = (*entry)->passedpawnbb[1] = 0ULL;
-    (*entry)->isolatedpawnbb[0] = (*entry)->isolatedpawnbb[1] = 0ULL;
-    (*entry)->backwardpawnbb[0] = (*entry)->backwardpawnbb[1] = 0ULL;
     (*entry)->attacked[0] = (*entry)->attacked[1] = 0ULL;
     (*entry)->attackedBy2[0] = (*entry)->attackedBy2[1] = 0ULL;
 
