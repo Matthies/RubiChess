@@ -354,12 +354,14 @@ Pawnhash::Pawnhash(int sizeMb)
 
     sizemask = size - 1;
     table = new S_PAWNHASHENTRY[size];
-    memset(table, 0, (size_t)(size * sizeof(S_PAWNHASHENTRY)));
+    size_t tablesize = (size_t)size * sizeof(S_PAWNHASHENTRY);
+    table = (S_PAWNHASHENTRY*)allocalign64(tablesize);
+    memset(table, 0, tablesize);
 }
 
 Pawnhash::~Pawnhash()
 {
-    delete table;
+    freealigned64(table);
 }
 
 
