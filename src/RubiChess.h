@@ -606,8 +606,6 @@ typedef struct pawnhashentry {
     uint32_t hashupper;
     int32_t value;
     U64 passedpawnbb[2];
-    //U64 isolatedpawnbb[2];
-    //U64 backwardpawnbb[2];
     U64 attacked[2];
     U64 attackedBy2[2];
     bool bothFlanks;

@@ -371,8 +371,7 @@ void chessposition::getPawnAndKingEval(pawnhashentry *entryptr)
 
         if (!(myPawns & neighbourfilesMask[index]))
         {
-            // isolated pawn
-            //entryptr->isolatedpawnbb[Me] |= BITSET(index);
+            // isolated pawn penalty per file
             int f = FILE(index);
             entryptr->value += EVAL(eps.eIsolatedpawnpenalty[f], S2MSIGN(Me));
             if (bTrace) te.pawns[Me] += EVAL(eps.eIsolatedpawnpenalty[f], S2MSIGN(Me));
@@ -403,8 +402,7 @@ void chessposition::getPawnAndKingEval(pawnhashentry *entryptr)
                     U64 shiftneigbours = (Me ? nextpawnrank >> 8 : nextpawnrank << 8);
                     if ((nextpawnrank | (shiftneigbours & neighbourfilesMask[index])) & yourStoppers)
                     {
-                        // backward pawn detected
-                        //entryptr->backwardpawnbb[Me] |= BITSET(index);
+                        // backward pawn penalty per file
                         int f = FILE(index);
                         entryptr->value += EVAL(eps.eBackwardpawnpenalty[f], S2MSIGN(Me));
                         if (bTrace) te.pawns[Me] += EVAL(eps.eBackwardpawnpenalty[f], S2MSIGN(Me));
@@ -413,19 +411,11 @@ void chessposition::getPawnAndKingEval(pawnhashentry *entryptr)
             }
         }
     }
-#if 0
-    // isolated pawns
-    entryptr->value += EVAL(eps.eIsolatedpawnpenalty, S2MSIGN(Me) * POPCOUNT(entryptr->isolatedpawnbb[Me]));
-    if (bTrace) te.pawns[Me] += EVAL(eps.eIsolatedpawnpenalty, S2MSIGN(Me) * POPCOUNT(entryptr->isolatedpawnbb[Me]));
-#endif
+
     // doubled pawns
     entryptr->value += EVAL(eps.eDoublepawnpenalty, S2MSIGN(Me) * POPCOUNT(piece00[WPAWN | Me] & (Me ? piece00[WPAWN | Me] >> 8 : piece00[WPAWN | Me] << 8)));
     if (bTrace) te.pawns[Me] += EVAL(eps.eDoublepawnpenalty, S2MSIGN(Me) * POPCOUNT(piece00[WPAWN | Me] & (Me ? piece00[WPAWN | Me] >> 8 : piece00[WPAWN | Me] << 8)));
-#if 0
-    // backward pawns
-    entryptr->value += EVAL(eps.eBackwardpawnpenalty, S2MSIGN(Me) * POPCOUNT(entryptr->backwardpawnbb[Me]));
-    if (bTrace) te.pawns[Me] += EVAL(eps.eBackwardpawnpenalty, S2MSIGN(Me) * POPCOUNT(entryptr->backwardpawnbb[Me]));
-#endif
+
     // Pawn storm evaluation
     int ki = kingpos[Me];
     int kf = FILE(ki);
