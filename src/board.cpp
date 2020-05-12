@@ -912,8 +912,8 @@ void chessposition::updatePins()
         int k = kingpos[me];
         kingPinned[me] = 0ULL;
         U64 occ = occupied00[you];
-        U64 attackers = mRookAttacks[k][MAGICROOKINDEX(occ, k)] & (piece00[WROOK | you] | piece00[WQUEEN | you]);
-        attackers |= mBishopAttacks[k][MAGICBISHOPINDEX(occ, k)] & (piece00[WBISHOP | you] | piece00[WQUEEN | you]);
+        U64 attackers = MAGICROOKATTACKS(occ, k) & (piece00[WROOK | you] | piece00[WQUEEN | you]);
+        attackers |= MAGICBISHOPATTACKS(occ, k) & (piece00[WBISHOP | you] | piece00[WQUEEN | you]);
         
         while (attackers)
         {
