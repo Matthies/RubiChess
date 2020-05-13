@@ -380,7 +380,7 @@ static void benchTableFooder(FILE *out, long long totaltime, long long totalnode
 
 static void doBenchmark(int constdepth, string epdfilename, int consttime, int startnum, bool openbench)
 {
-    struct benchmarkstruct benchmark[] =
+    benchmarkstruct benchmark[] =
     {
         {   
             "Startposition",
@@ -481,7 +481,7 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, int s
     };
 
     long long starttime, endtime;
-    list<struct benchmarkstruct> bmlist;
+    list<benchmarkstruct> bmlist;
 
     ifstream epdfile;
     bool bGetFromEpd = false;
@@ -495,14 +495,14 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, int s
 
     int i = 0;
     int totalSolved[2] = { 0 };
-    struct benchmarkstruct epdbm;
+    benchmarkstruct epdbm;
     FILE *tableout = openbench ? stdout : stderr;
 
     while (true)
     {
         string avoidmoves = "";
         string bestmoves = "";
-        struct benchmarkstruct *bm;
+        benchmarkstruct *bm;
         if (!bGetFromEpd)
         {
             // standard bench with included positions
@@ -570,7 +570,7 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, int s
     long long totalnodes = 0;
     benchTableHeader(tableout);
 
-    for (list<struct benchmarkstruct>::iterator bm = bmlist.begin(); bm != bmlist.end(); bm++)
+    for (list<benchmarkstruct>::iterator bm = bmlist.begin(); bm != bmlist.end(); bm++)
     {
         totaltime += bm->time;
         totalnodes += bm->nodes;
@@ -713,8 +713,8 @@ static BOOL writetoengine(HANDLE pipe, const char *s)
 
 static void testengine(string epdfilename, int startnum, string engineprgs, string logfilename, string comparefilename, int maxtime, int flags)
 {
-    struct enginestate es[4];
-    struct enginestate ges;
+    enginestate es[4];
+    enginestate ges;
     string engineprg[4];
     int numEngines = 0;
     string line;
