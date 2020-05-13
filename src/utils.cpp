@@ -694,7 +694,7 @@ static int getGradientValue(eval *ev, positiontuneset *p, evalparam *e, bool deb
 
 double texel_k = 1.121574;
 
-static double TexelEvalError(struct tuner *tn, double k = texel_k)
+static double TexelEvalError(tuner *tn, double k = texel_k)
 {
     double Ri, Qi;
     double E = 0.0;
@@ -980,7 +980,7 @@ static void getGradsFromFen(string fenfilenames)
 
 
 
-static void copyParams(chessposition *p, struct tuner *tn)
+static void copyParams(chessposition *p, tuner *tn)
 {
     for (int i = 0; i < p->tps.count; i++)
         tn->ev[i] = *p->tps.ev[i];
@@ -988,7 +988,7 @@ static void copyParams(chessposition *p, struct tuner *tn)
 }
 
 
-static void tuneParameter(struct tuner *tn)
+static void tuneParameter(tuner *tn)
 {
     tn->busy = true;
 
@@ -1246,7 +1246,7 @@ void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK, string correlati
     }
 
     tunerpool tpool;
-    tpool.tn = new struct tuner[en.Threads];
+    tpool.tn = new tuner[en.Threads];
     tpool.lowRunning = -1;
     tpool.highRunning = -1;
     tpool.lastImproved = -1;
@@ -1395,14 +1395,14 @@ U64 getTime()
 
 U64 getTime()
 {
-    struct timespec now;
+    timespec now;
     clock_gettime(CLOCK_REALTIME, &now);
     return (U64)(1000000000LL * now.tv_sec + now.tv_nsec);
 }
 
 void Sleep(long x)
 {
-    struct timespec now;
+    timespec now;
     now.tv_sec = 0;
     now.tv_nsec = x * 1000000;
     nanosleep(&now, NULL);

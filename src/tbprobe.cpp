@@ -85,7 +85,7 @@ static uint64 calc_key(int mirror, chessposition *pos)
 // probe_wdl_table and probe_dtz_table require similar adaptations.
 static int probe_wdl_table(int *success, chessposition *pos)
 {
-    struct TBEntry *ptr;
+    TBEntry *ptr;
     uint64 idx;
     uint64 key;
     int i;
@@ -152,7 +152,7 @@ static int probe_wdl_table(int *success, chessposition *pos)
     // pc[i] ^ cmirror, where 1 = white pawn, ..., 14 = black king.
     // Pieces of the same type are guaranteed to be consecutive.
     if (!ptr->has_pawns) {
-        struct TBEntry_piece *entry = (struct TBEntry_piece *)ptr;
+        TBEntry_piece *entry = (TBEntry_piece *)ptr;
         ubyte *pc = entry->pieces[bside];
         for (i = 0; i < entry->num;) {
             U64 bb = pos->piece00[SYZYGY2RUBI_PT(pc[i] ^ cmirror)];
@@ -167,7 +167,7 @@ static int probe_wdl_table(int *success, chessposition *pos)
         res = decompress_pairs(entry->precomp[bside], idx);
     }
     else {
-        struct TBEntry_pawn *entry = (struct TBEntry_pawn *)ptr;
+        TBEntry_pawn *entry = (TBEntry_pawn *)ptr;
         int k = entry->file[0].pieces[0][0] ^ cmirror;
         U64 bb = pos->piece00[SYZYGY2RUBI_PT(k)];
         i = 0;
@@ -198,7 +198,7 @@ static int probe_wdl_table(int *success, chessposition *pos)
 // en passant rights.
 static int probe_dtz_table(int wdl, int *success, chessposition *pos)
 {
-    struct TBEntry *ptr;
+    TBEntry *ptr;
     uint64 idx;
     int i, res;
     int p[TBPIECES];
@@ -210,7 +210,7 @@ static int probe_dtz_table(int wdl, int *success, chessposition *pos)
         for (i = 1; i < DTZ_ENTRIES; i++)
             if (DTZ_table[i].key1 == key || DTZ_table[i].key2 == key) break;
         if (i < DTZ_ENTRIES) {
-            struct DTZTableEntry table_entry = DTZ_table[i];
+            DTZTableEntry table_entry = DTZ_table[i];
             for (; i > 0; i--)
                 DTZ_table[i] = DTZ_table[i - 1];
             DTZ_table[0] = table_entry;
@@ -260,7 +260,7 @@ static int probe_dtz_table(int wdl, int *success, chessposition *pos)
     }
 
     if (!ptr->has_pawns) {
-        struct DTZEntry_piece *entry = (struct DTZEntry_piece *)ptr;
+        DTZEntry_piece *entry = (DTZEntry_piece *)ptr;
         if ((entry->flags & 1) != bside && !entry->symmetric) {
             *success = -1;
             return 0;
@@ -275,7 +275,7 @@ static int probe_dtz_table(int wdl, int *success, chessposition *pos)
                 p[i++] = index;
             }
         }
-        idx = encode_piece((struct TBEntry_piece *)entry, entry->norm, p, entry->factor);
+        idx = encode_piece((TBEntry_piece *)entry, entry->norm, p, entry->factor);
         res = decompress_pairs(entry->precomp, idx);
 
         if (entry->flags & 2)
@@ -285,7 +285,7 @@ static int probe_dtz_table(int wdl, int *success, chessposition *pos)
             res *= 2;
     }
     else {
-        struct DTZEntry_pawn *entry = (struct DTZEntry_pawn *)ptr;
+        DTZEntry_pawn *entry = (DTZEntry_pawn *)ptr;
         int k = entry->file[0].pieces[0] ^ cmirror;
         U64 bb = pos->piece00[SYZYGY2RUBI_PT(k)];
         i = 0;
@@ -295,7 +295,7 @@ static int probe_dtz_table(int wdl, int *success, chessposition *pos)
             index = pullLsb(&bb);
             p[i++] = index ^ mirror;
         }
-        int f = pawn_file((struct TBEntry_pawn *)entry, p);
+        int f = pawn_file((TBEntry_pawn *)entry, p);
         if ((entry->flags[f] & 1) != bside) {
             *success = -1;
             return 0;
@@ -309,7 +309,7 @@ static int probe_dtz_table(int wdl, int *success, chessposition *pos)
                 p[i++] = index ^ mirror;
             }
         }
-        idx = encode_pawn((struct TBEntry_pawn *)entry, entry->file[f].norm, p, entry->file[f].factor);
+        idx = encode_pawn((TBEntry_pawn *)entry, entry->file[f].norm, p, entry->file[f].factor);
         res = decompress_pairs(entry->file[f].precomp, idx);
 
         if (entry->flags[f] & 2)
