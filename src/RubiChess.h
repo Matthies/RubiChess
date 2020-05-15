@@ -37,6 +37,10 @@
 #endif
 
 #if 0
+#define EVALOPTIONS
+#endif
+
+#if 0
 #define FINDMEMORYLEAKS
 #endif
 
@@ -287,7 +291,13 @@ public:
 #define CEVAL(e, f) ((e) * (f))
 #define EVALUE(e) VALUE(0, e)
 #define EEVAL(e, f) ((e) * (f))
+
+#ifdef EVALOPTIONS
+typedef int32_t eval;
+#else
 typedef const int32_t eval;
+#endif
+
 #endif
 
 #define PSQTINDEX(i,s) ((s) ? (i) : (i) ^ 0x38)
@@ -499,10 +509,10 @@ struct tunerpool {
     tuner *tn;
 };
 
-
-void registeralltuners(chessposition *pos);
-
 #endif
+
+void registerallevals(chessposition *pos = nullptr);
+void initPsqtable();
 
 #define SCALE_NORMAL 128
 #define SCALE_DRAW 0
@@ -1200,7 +1210,8 @@ const map<string, GuiToken> GuiCommandMap = {
 //
 class engine;   //forward definition
 
-enum ucioptiontype { ucicheck, ucispin, ucicombo, ucibutton, ucistring };
+// order of ucioptiontypes is important for (not) setting default at registration
+enum ucioptiontype { ucicheck, ucispin, ucicombo, ucistring, ucibutton, ucieval };
 
 struct ucioption_t
 {

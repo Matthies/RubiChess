@@ -23,9 +23,23 @@
 // static values for the search/pruning/material stuff
 const int materialvalue[7] = { 0,  100,  314,  314,  483,  913, 32509 };  // some evaluation depends on bishop value >= knight value!!!
 
+void initPsqtable()
+{
+    // initialize psqtable for faster evaluation
+    for (int from = 0; from < 64; from++)
+    {
+        for (int pc = 0; pc <= BKING; pc++)
+        {
+            int p = pc >> 1;
+            int s2m = pc & S2MMASK;
+            psqtable[pc][from] = S2MSIGN(s2m) * (eps.eMaterialvalue[p] + eps.ePsqt[p][PSQTINDEX(from, s2m)]);
+        }
+    }
+}
+
+
 #ifdef EVALTUNE
 
-const int maxmobility[4] = { 9, 14, 15, 28 }; // indexed by piece - 2
 sqevallist sqglobal;
 
 void chessposition::resetTuner()
@@ -91,13 +105,38 @@ static void registertuner(chessposition *pos, eval *e, string name, int index1, 
     pos->tps.used[i] = 0;
     pos->tps.count++;
 }
+#endif
 
-void registeralltuners(chessposition *pos)
+#ifdef EVALOPTIONS
+
+static void registertuner(chessposition *pos, eval *e, string name, int index1, int bound1, int index2, int bound2, bool tune)
+{
+    ostringstream osName, osDef;
+    size_t maxdig1 = bound1 > 0 ? to_string(bound1 - 1).length() : 0;
+    size_t maxdig2 = bound2 > 0 ? to_string(bound2 - 1).length() : 0;
+    osName << name;
+    if (bound2 > 0)
+    {
+        osName << "_" << setw(maxdig2) << setfill('0') << to_string(index2) << "_" << setw(maxdig1) << setfill('0') << to_string(index1);
+    }
+    else if (bound1 > 0)
+    {
+        osName << "_" << setw(maxdig1) << setfill('0') << to_string(index1);
+    }
+    osDef << "Value( " << setw(4) << GETMGVAL(*e) << "/" << setw(4) << GETEGVAL(*e) << ")";
+    en.ucioptions.Register((void*)e, osName.str(), ucieval, osDef.str(), 0, 0, initPsqtable);
+}
+#endif
+
+#if defined(EVALTUNE) || defined(EVALOPTIONS)
+
+const int maxmobility[4] = { 9, 14, 15, 28 }; // indexed by piece - 2
+
+void registerallevals(chessposition *pos)
 {
     int i, j;
     bool tuneIt;
 
-    pos->tps.count = 0;
 
     tuneIt = false;  // the complex parameters needed to be tuned manually
     registertuner(pos, &eps.eComplexpawnsbonus, "eComplexpawnsbonus", 0, 0, 0, 0, tuneIt);

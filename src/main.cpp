@@ -1040,6 +1040,10 @@ int main(int argc, char* argv[])
     myassert(1 == 0, nullptr, 0); // test stacktrace
 #endif
 
+#ifdef EVALOPTIONS
+    registerallevals();
+#endif
+
     searchinit();
 
     cout.setf(ios_base::unitbuf);

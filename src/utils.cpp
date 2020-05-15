@@ -1234,7 +1234,8 @@ void getCorrelation(string correlationParams)
 void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK, string correlation)
 {
     pos.pwnhsh = new Pawnhash(0);
-    registeralltuners(&pos);
+    pos.tps.count = 0;
+    registerallevals(&pos);
     pos.noQs = noqs;
     getGradsFromFen(fenfilenames);
     if (!texelptsnum) return;

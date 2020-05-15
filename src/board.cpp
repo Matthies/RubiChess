@@ -1276,19 +1276,13 @@ const U64 rookmagics[] = {
     0x2000804026001102, 0x2000804026001102, 0x800040a010040901, 0x80001802002c0422, 0x0010b018200c0122, 0x200204802a080401, 0x8880604201100844, 0x80000cc281092402
 };
 
+
 void initBitmaphelper()
 {
     int to;
+    initPsqtable();
     for (int from = 0; from < 64; from++)
     {
-        // initialize psqtable for faster evaluation
-        for (int pc = 0; pc <= BKING; pc++)
-        {
-            int p = pc >> 1;
-            int s2m = pc & S2MMASK;
-            psqtable[pc][from] = S2MSIGN(s2m) * (eps.eMaterialvalue[p] + eps.ePsqt[p][PSQTINDEX(from, s2m)]);
-        }
-
         king_attacks[from] = knight_attacks[from] = 0ULL;
         pawn_moves_to[from][0] = pawn_attacks_to[from][0] = pawn_moves_to_double[from][0] = 0ULL;
         pawn_moves_to[from][1] = pawn_attacks_to[from][1] = pawn_moves_to_double[from][1] = 0ULL;
@@ -2826,7 +2820,8 @@ void ucioptions_t::Register(void *e, string n, ucioptiontype t, string d, int mi
 
     it = optionmap.insert(optionmap.end(), pair<string, ucioption_t>(ln , u));
 
-    if (t != ucibutton)
+    if (t < ucibutton)
+        // Set default value
         Set(n, d, true);
 }
 
@@ -2841,6 +2836,7 @@ void ucioptions_t::Set(string n, string v, bool force)
 
     ucioption_t *op = &(it->second);
     bool bChanged = false;
+    smatch m;
     switch (op->type)
     {
     case ucispin:
@@ -2868,6 +2864,22 @@ void ucioptions_t::Set(string n, string v, bool force)
     case ucibutton:
         bChanged = true;
         break;
+#ifdef EVALOPTIONS
+    case ucieval:
+        eval eVal;
+        if (regex_search(v, m, regex("Value\\(\\s*(\\-?\\d+)\\s*(,|\\/)\\s*(\\-?\\d+).*\\)")))
+        {
+            string sMg = m.str(1);
+            string sEg = m.str(3);
+            try {
+                eVal = VALUE(stoi(sMg), stoi(sEg));
+                if ((bChanged = (force || eVal != *(eval*)(op->enginevar))))
+                    *(eval*)(op->enginevar) = eVal;
+            }
+            catch (...) {}
+        }
+        break;
+#endif
     default:
         break;
     }
@@ -2896,6 +2908,11 @@ void ucioptions_t::Print()
         case ucibutton:
             cout << "button\n";
             break;
+#ifdef EVALOPTIONS
+        case ucieval:
+            cout << "string default " << op->def << "\n";
+            break;
+#endif
         case ucicombo:
             break; // FIXME: to be implemented...
         default:
