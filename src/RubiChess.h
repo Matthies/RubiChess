@@ -348,8 +348,8 @@ struct evalparamset {
         {  VALUE(   0,   0), VALUE( -43,   9), VALUE( -15,  17), VALUE(   0,  31), VALUE(  33,  31), VALUE(  71,  95), VALUE(   0,   0), VALUE(   0,   0)  }
     };
     eval eAttackingpawnbonus[8] = {  VALUE(   0,   0), VALUE( -32,  12), VALUE( -22, -12), VALUE(  -6,  -6), VALUE( -12,  -6), VALUE( -13,  -2), VALUE(   0,   0), VALUE(   0,   0)  };
-    eval eIsolatedpawnpenalty =  VALUE( -13, -12);
-    eval eDoublepawnpenalty =  VALUE(  -9, -21);
+    eval eIsolatedpawnpenalty[8] = {  VALUE( -10,  -5), VALUE( -10,  -6), VALUE( -16, -12), VALUE( -22, -12), VALUE( -26, -12), VALUE( -13, -11), VALUE(  -8, -10), VALUE( -15,  -3)  };
+    eval eDoublepawnpenalty =  VALUE( -11, -23);
     eval eConnectedbonus[6][6] = {
         {  VALUE(   0,   0), VALUE(  10,  -2), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
         {  VALUE(   0,   0), VALUE(   4,   3), VALUE(  12,  12), VALUE(  28,  17), VALUE(  36,  20), VALUE(  56,  22)  },
@@ -358,7 +358,7 @@ struct evalparamset {
         {  VALUE(   0,   0), VALUE(  72,  98), VALUE(  53,  54), VALUE(  72,  80), VALUE(  35,  86), VALUE( -57, 253)  },
         {  VALUE(   0,   0), VALUE(  38, 241), VALUE( 130, 110), VALUE(   7, 400), VALUE(   0, 641), VALUE(   0,   0)  }
     };
-    eval eBackwardpawnpenalty =  VALUE( -16, -11);
+    eval eBackwardpawnpenalty[8] = {  VALUE(  -2, -12), VALUE(  -6, -11), VALUE( -16, -11), VALUE( -15, -11), VALUE( -20, -11), VALUE( -18,  -8), VALUE( -16,  -7), VALUE( -15,  -3)  };
     eval eDoublebishopbonus =  VALUE(  56,  38);
     eval ePawnblocksbishoppenalty =  VALUE( -10, -18);
     eval eBishopcentercontrolbonus =  VALUE(  25,  13);
@@ -606,8 +606,6 @@ typedef struct pawnhashentry {
     uint32_t hashupper;
     int32_t value;
     U64 passedpawnbb[2];
-    U64 isolatedpawnbb[2];
-    U64 backwardpawnbb[2];
     U64 attacked[2];
     U64 attackedBy2[2];
     bool bothFlanks;
@@ -779,6 +777,7 @@ const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 2
 #define PAWNATTACK(s, p) ((s) ? (((p) & ~FILEHBB) >> 7) | (((p) & ~FILEABB) >> 9) : (((p) & ~FILEABB) << 7) | (((p) & ~FILEHBB) << 9))
 #define PAWNPUSH(s, p) ((s) ? ((p) >> 8) : ((p) << 8))
 #define PAWNPUSHINDEX(s, i) ((s) ? (i) - 8 : (i) + 8)
+#define PAWNPUSHDOUBLEINDEX(s, i) ((s) ? (i) - 16 : (i) + 16)
 
 // passedPawnMask[18][WHITE]:
 // 01110000
@@ -1007,10 +1006,14 @@ extern SMagic mRookTbl[64];
 extern U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 
-enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7, EVASION = 8, QUIETWITHCHECK = 9 };
+enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7 };
 enum RootsearchType { SinglePVSearch, MultiPVSearch, PonderSearch };
 
-template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* m);
+int CreateEvasionMovelist(chessposition *pos, chessmove* mstart);
+template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart);
+template <PieceType Pt> inline int CreateMovelistPiece(chessposition *pos, chessmove* mstart, U64 occ, U64 targets, int me);
+template <MoveType Mt> inline int CreateMovelistPawn(chessposition *pos, chessmove* mstart, int me);
+inline int CreateMovelistCastle(chessposition *pos, chessmove* mstart, int me);
 template <MoveType Mt> void evaluateMoves(chessmovelist *ml, chessposition *pos, int16_t **cmptr);
 
 enum AttackType { FREE, OCCUPIED, OCCUPIEDANDKING };
@@ -1129,7 +1132,6 @@ public:
     template <AttackType At> U64 isAttackedBy(int index, int col);    // returns the bitboard of cols pieces attacking the index square; At controls if pawns are moved to block or capture
     bool see(uint32_t move, int threshold);
     int getBestPossibleCapture();
-    int getMoves(chessmove *m, MoveType t = ALL);
     void getRootMoves();
     void tbFilterRootMoves();
     void prepareStack();

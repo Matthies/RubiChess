@@ -1,7 +1,10 @@
 ChangeLog
 =========
-1.8 (release 20xx-xx-xx) :
-    - ...
+1.7.3 (no-release 2020-05-11 for TCEC S18) :
+    - Added FRC/Chess960 (playing quite bad for now)
+    - Faster move generation esp. pawn moves
+    - Evaluate backward and isolated pawns woth respect to their file (idea by Ed Schröder)
+    - Make pawn hash aligned to cache line
 
 1.7.2 (release 2020-04-27) :
     - Fixed a bug in the test for ep capture moves being legal
