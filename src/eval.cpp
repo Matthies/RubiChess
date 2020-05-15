@@ -106,7 +106,9 @@ static void registertuner(chessposition *pos, eval *e, string name, int index1, 
     pos->tps.used[i] = 0;
     pos->tps.count++;
 }
-#else
+#endif
+
+#ifdef EVALOPTIONS
 
 static void registertuner(chessposition *pos, eval *e, string name, int index1, int bound1, int index2, int bound2, bool tune)
 {
@@ -122,11 +124,12 @@ static void registertuner(chessposition *pos, eval *e, string name, int index1, 
     {
         osName << "_" << setw(maxdig1) << setfill('0') << to_string(index1);
     }
-    osDef << "Value( " << setw(4) << GETMGVAL(*e) << "," << setw(4) << GETEGVAL(*e) << ")";
+    osDef << "Value( " << setw(4) << GETMGVAL(*e) << "/" << setw(4) << GETEGVAL(*e) << ")";
     en.ucioptions.Register((void*)e, osName.str(), ucieval, osDef.str(), 0, 0, initPsqtable);
 }
 #endif
 
+#if defined(EVALTUNE) || defined(EVALOPTIONS)
 void registerallevals(chessposition *pos)
 {
     int i, j;
@@ -233,7 +236,7 @@ void registerallevals(chessposition *pos)
         for (j = 0; j < 64; j++)
             registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
 }
-
+#endif
 
 struct traceeval {
     int rooks[2];

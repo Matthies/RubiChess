@@ -966,7 +966,6 @@ int main(int argc, char* argv[])
     int startnum;
     int perfmaxdepth;
     bool verbose;
-    bool evaloptions = false;
     bool benchmark;
     bool openbench;
     int depth;
@@ -996,7 +995,6 @@ int main(int argc, char* argv[])
         const char *defaultval;
     } allowedargs[] = {
         { "-verbose", "Show the parameterlist and actuel values.", &verbose, 0, NULL },
-        { "-evaloptions", "Let the evaluation parameters be exposed by UCI options.", &evaloptions, 0, NULL },
         { "-bench", "Do benchmark test for some positions.", &benchmark, 0, NULL },
         { "bench", "Do benchmark with OpenBench compatible output.", &openbench, 0, NULL },
         { "-depth", "Depth for benchmark (0 for per-position-default)", &depth, 1, "0" },
@@ -1042,6 +1040,10 @@ int main(int argc, char* argv[])
     myassert(1 == 0, nullptr, 0); // test stacktrace
 #endif
 
+#ifdef EVALOPTIONS
+    registerallevals();
+#endif
+
     searchinit();
 
     cout.setf(ios_base::unitbuf);
@@ -1065,11 +1067,6 @@ int main(int argc, char* argv[])
             *(bool*)(allowedargs[j].variable) = (val > 0);
             if (verbose) printf(" %s: %s  (%s)\n", allowedargs[j].cmd, *(bool*)(allowedargs[j].variable) ? "yes" : "no", allowedargs[j].info);
             paramindex = 0;
-            // shortcut for evaloptions
-            if (evaloptions) {
-                evaloptions = false;
-                registerallevals();
-            }
             break;
         case 1:
             try { *(int*)(allowedargs[j].variable) = stoi((val > 0 && val < argc - 1 ? argv[val + 1] : allowedargs[j].defaultval)); }

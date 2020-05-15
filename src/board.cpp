@@ -2864,6 +2864,7 @@ void ucioptions_t::Set(string n, string v, bool force)
     case ucibutton:
         bChanged = true;
         break;
+#ifdef EVALOPTIONS
     case ucieval:
         eval eVal;
         if (regex_search(v, m, regex("Value\\(\\s*(\\-?\\d+)\\s*(,|\\/)\\s*(\\-?\\d+).*\\)")))
@@ -2878,6 +2879,7 @@ void ucioptions_t::Set(string n, string v, bool force)
             catch (...) {}
         }
         break;
+#endif
     default:
         break;
     }

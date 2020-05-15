@@ -37,6 +37,10 @@
 #endif
 
 #if 0
+#define EVALOPTIONS
+#endif
+
+#if 0
 #define FINDMEMORYLEAKS
 #endif
 
@@ -287,7 +291,13 @@ public:
 #define CEVAL(e, f) ((e) * (f))
 #define EVALUE(e) VALUE(0, e)
 #define EEVAL(e, f) ((e) * (f))
+
+#ifdef EVALOPTIONS
 typedef int32_t eval;
+#else
+typedef const int32_t eval;
+#endif
+
 #endif
 
 #define PSQTINDEX(i,s) ((s) ? (i) : (i) ^ 0x38)
