@@ -2908,8 +2908,11 @@ void ucioptions_t::Print()
         case ucibutton:
             cout << "button\n";
             break;
+#ifdef EVALOPTIONS
         case ucieval:
             cout << "string default " << op->def << "\n";
+            break;
+#endif
         case ucicombo:
             break; // FIXME: to be implemented...
         default:
