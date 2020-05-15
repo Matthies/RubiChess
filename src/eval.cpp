@@ -22,7 +22,6 @@
 
 // static values for the search/pruning/material stuff
 const int materialvalue[7] = { 0,  100,  314,  314,  483,  913, 32509 };  // some evaluation depends on bishop value >= knight value!!!
-const int maxmobility[4] = { 9, 14, 15, 28 }; // indexed by piece - 2
 
 void initPsqtable()
 {
@@ -130,6 +129,9 @@ static void registertuner(chessposition *pos, eval *e, string name, int index1, 
 #endif
 
 #if defined(EVALTUNE) || defined(EVALOPTIONS)
+
+const int maxmobility[4] = { 9, 14, 15, 28 }; // indexed by piece - 2
+
 void registerallevals(chessposition *pos)
 {
     int i, j;
