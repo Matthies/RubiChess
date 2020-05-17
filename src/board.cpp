@@ -2780,6 +2780,7 @@ void engine::communicate(string inputstring)
                     stopLevel = ENGINESTOPIMMEDIATELY;
                 break;
             case EVAL:
+                en.evaldetails = (ci < cs && commandargs[ci] == "detail");
                 sthread[0].pos.getEval<TRACE>();
                 break;
             case PERFT:

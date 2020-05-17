@@ -520,7 +520,7 @@ void initPsqtable();
 #define SCALE_HARDTOWIN 10
 #define SCALE_OCB 32
 
-enum EvalType { NOTRACE, TRACE};
+enum EvalType { NOTRACE, TRACE };
 
 //
 // utils stuff
@@ -1154,7 +1154,7 @@ public:
     bool moveGivesCheck(uint32_t c);  // simple and imperfect as it doesn't handle special moves and cases (mainly to avoid pruning of important moves)
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
     uint32_t shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal
-    int getpsqval();  // only for eval trace and mirror test
+    int getpsqval(bool showDetails = false);  // only for eval trace and mirror test
     template <EvalType Et, int Me> int getGeneralEval(positioneval *pe);
     template <EvalType Et, PieceType Pt, int Me> int getPieceEval(positioneval *pe);
     template <EvalType Et, int Me> int getLateEval(positioneval *pe);
@@ -1261,6 +1261,7 @@ public:
     U64 maxnodes;
     bool infinite;
     bool debug = false;
+    bool evaldetails = false;
     bool moveoutput;
     int stopLevel = ENGINETERMINATEDSEARCH;
     int Hash;

@@ -338,20 +338,31 @@ static int KBNvK(chessposition *p)
 
 
 // get psqt for eval tracing and tuning
-int chessposition::getpsqval()
+int chessposition::getpsqval(bool showDetails)
 {
+    if (showDetails) printf("psq:\n====");
     te.material[0] = te.material[1] = 0;
-    for (int i = 0; i < 64; i++)
+    for (int j = 0; j < 64; j++)
     {
+        // Use the index from whites position for better display
+        int i = PSQTINDEX(j, 0);
+        if (showDetails && (i & 7) == 0) printf("\n");
         PieceCode pc = mailbox[i];
         if (pc)
         {
             PieceType p = pc >> 1;
             int s2m = pc & S2MMASK;
-            int score = EVAL(eps.eMaterialvalue[p], S2MSIGN(s2m)) + EVAL(eps.ePsqt[p][PSQTINDEX(i, s2m)], S2MSIGN(s2m));
-            te.material[s2m] += score;
+            int mv = EVAL(eps.eMaterialvalue[p], S2MSIGN(s2m));
+            int pv = EVAL(eps.ePsqt[p][PSQTINDEX(i, s2m)], S2MSIGN(s2m));
+            te.material[s2m] += mv + pv;
+            if (showDetails) printf("%4d ", TAPEREDANDSCALEDEVAL(pv, ph, SCALE_NORMAL));
+        }
+        else
+        {
+            if (showDetails) printf("____ ");
         }
     }
+    if (showDetails) printf("\n\n");
     return te.material[0] + te.material[1];
 }
 
@@ -798,7 +809,7 @@ int chessposition::getEval()
 
     if (bTrace)
     {
-        getpsqval();
+        getpsqval(en.evaldetails);
         te.sc = sc;
         te.ph = ph;
         te.total = totalEval;
