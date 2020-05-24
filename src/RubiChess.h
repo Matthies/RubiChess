@@ -903,7 +903,7 @@ struct chessmovestack
     U64 isCheckbb;
     int lastnullmove;
     uint32_t movecode;
-    U64 kingPinned[2];
+    U64 kingPinned;
 };
 
 #define MAXMOVELISTLENGTH 256	// for lists of possible pseudo-legal moves
@@ -1063,7 +1063,7 @@ public:
     U64 isCheckbb;
     int lastnullmove;
     uint32_t movecode;
-    U64 kingPinned[2];
+    U64 kingPinned;
 
     uint8_t mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
     chessmovestack movestack[MAXMOVESEQUENCELENGTH];

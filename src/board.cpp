@@ -906,11 +906,11 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
 
 void chessposition::updatePins()
 {
+    kingPinned = 0ULL;
     for (int me = WHITE; me <= BLACK; me++)
     {
         int you = me ^ S2MMASK;
         int k = kingpos[me];
-        kingPinned[me] = 0ULL;
         U64 occ = occupied00[you];
         U64 attackers = MAGICROOKATTACKS(occ, k) & (piece00[WROOK | you] | piece00[WQUEEN | you]);
         attackers |= MAGICBISHOPATTACKS(occ, k) & (piece00[WBISHOP | you] | piece00[WQUEEN | you]);
@@ -920,7 +920,7 @@ void chessposition::updatePins()
             int index = pullLsb(&attackers);
             U64 potentialPinners = betweenMask[index][k] & occupied00[me];
             if (ONEORZERO(potentialPinners))
-                kingPinned[me] |= potentialPinners;
+                kingPinned |= potentialPinners;
         }
     }
 }
@@ -1965,7 +1965,7 @@ int CreateEvasionMovelist(chessposition *pos, chessmove* mstart)
         targetbits = betweenMask[king][attacker];
         while (true)
         {
-            frombits = frombits & ~pos->kingPinned[me];
+            frombits = frombits & ~pos->kingPinned;
             while (frombits)
             {
                 from = pullLsb(&frombits);

@@ -589,7 +589,7 @@ int chessposition::getPieceEval(positioneval *pe)
         U64 mobility = attack & goodMobility;
 
         // Penalty for a piece pinned in front of the king
-        if (kingPinned[Me] & (BITSET(index)))
+        if (kingPinned & (BITSET(index)))
         {
             result += EVAL(eps.eKingpinpenalty[Pt], S2MSIGN(Me));
             if (bTrace) te.mobility[Me] += EVAL(eps.eKingpinpenalty[Pt], S2MSIGN(Me));
