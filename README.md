@@ -17,4 +17,4 @@ Not mentioned all the other documentation and tools freely available.
 May 2020: I will most probably stop development of RubiChess, so 1.7.3 will be the last version.
 There is no progress to expect without massive copy-and-paste from better engines which is not my intention.
 Also competing with other engines that are just translations of Stockfish to other programming languages
-is also no motivation. So better stop here. It was fun but better search for something new now.
+is no motivation. So better stop here. It was fun but better search for something new now.
