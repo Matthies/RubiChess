@@ -1423,7 +1423,7 @@ void initBitmaphelper()
             U64 occ = getOccupiedFromMBIndex(j, mBishopTbl[from].mask);
             // Now get the attack bitmap for this subset and store to attack table
             U64 attack = (getAttacks(from, occ, -7) | getAttacks(from, occ, 7) | getAttacks(from, occ, -9) | getAttacks(from, occ, 9));
-            int hashindex = MAGICBISHOPINDEX(occ, from);
+            int hashindex = BISHOPINDEX(occ, from);
             mBishopAttacks[from][hashindex] = attack;
         }
 
@@ -1435,7 +1435,7 @@ void initBitmaphelper()
             U64 occ = getOccupiedFromMBIndex(j, mRookTbl[from].mask);
             // Now get the attack bitmap for this subset and store to attack table
             U64 attack = (getAttacks(from, occ, -1) | getAttacks(from, occ, 1) | getAttacks(from, occ, -8) | getAttacks(from, occ, 8));
-            int hashindex = MAGICROOKINDEX(occ, from);
+            int hashindex = ROOKINDEX(occ, from);
             mRookAttacks[from][hashindex] = attack;
         }
 
@@ -2601,7 +2601,7 @@ void engine::communicate(string inputstring)
                 }
                 break;
             case UCI:
-                send("id name %s\n", name);
+                send("id name %s\n", name().c_str());
                 send("id author %s\n", author);
                 ucioptions.Print();
                 send("uciok\n", author);

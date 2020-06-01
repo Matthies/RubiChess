@@ -553,7 +553,7 @@ int chessposition::getPieceEval(positioneval *pe)
                 result += EVAL(eps.ePawnblocksbishoppenalty, S2MSIGN(Me) * POPCOUNT(blockingpawns));
                 if (bTrace) te.minors[Me] += EVAL(eps.ePawnblocksbishoppenalty, S2MSIGN(Me) * POPCOUNT(blockingpawns));
 
-                if (MORETHANONE(mBishopAttacks[index][MAGICBISHOPINDEX(piece00[WPAWN] | piece00[BPAWN], index)] & CENTER))
+                if (MORETHANONE(MAGICBISHOPATTACKS(piece00[WPAWN] | piece00[BPAWN], index) & CENTER))
                 {
                     result += EVAL(eps.eBishopcentercontrolbonus, S2MSIGN(Me));
                     if (bTrace) te.minors[Me] += EVAL(eps.eBishopcentercontrolbonus, S2MSIGN(Me));

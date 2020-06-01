@@ -135,17 +135,28 @@ using namespace std;
 #endif
 #endif
 
-#ifndef PROCDESC
-#define PROCDESC "general"
+#define CPULEGACY   0
+#define CPUPOPCOUNT 1
+#define CPUBMI2     2
+
+const string cpufeature[] = { "Legacy", "Popcount", "BMI2" };
+
+#ifndef CPUFEATURE
+#ifdef _MSC_VER
+#define CPUFEATURE CPUBMI2
+#else
+#define CPUFEATURE CPULEGACY
 #endif
+#endif
+
 #ifndef VERSTABLE
 #ifdef GITVER
-#define VERSION VERNUM "-dev " PROCDESC " " GITVER
+#define VERSION VERNUM "-dev " GITVER
 #else
-#define VERSION VERNUM "-dev " PROCDESC
+#define VERSION VERNUM "-dev"
 #endif
 #else
-#define VERSION VERNUM " " PROCDESC
+#define VERSION VERNUM " "
 #endif
 #define ENGINEVER "RubiChess " VERSION
 #ifdef GITID
@@ -1008,10 +1019,16 @@ extern SMagic mRookTbl[64];
 
 #define BISHOPINDEXBITS 9
 #define ROOKINDEXBITS 12
-#define MAGICBISHOPINDEX(m,x) (int)((((m) & mBishopTbl[x].mask) * mBishopTbl[x].magic) >> (64 - BISHOPINDEXBITS))
-#define MAGICROOKINDEX(m,x) (int)((((m) & mRookTbl[x].mask) * mRookTbl[x].magic) >> (64 - ROOKINDEXBITS))
-#define MAGICBISHOPATTACKS(m,x) (mBishopAttacks[x][MAGICBISHOPINDEX(m,x)])
-#define MAGICROOKATTACKS(m,x) (mRookAttacks[x][MAGICROOKINDEX(m,x)])
+
+#if CPUFEATURE == CPUBMI2
+#define BISHOPINDEX(occ,i) (int)(_pext_u64(occ, mBishopTbl[i].mask))
+#define ROOKINDEX(occ,i) (int)(_pext_u64(occ, mRookTbl[i].mask))
+#else
+#define BISHOPINDEX(occ,i) (int)((((occ) & mBishopTbl[i].mask) * mBishopTbl[i].magic) >> (64 - BISHOPINDEXBITS))
+#define ROOKINDEX(occ,i) (int)((((occ) & mRookTbl[i].mask) * mRookTbl[i].magic) >> (64 - ROOKINDEXBITS))
+#endif
+#define MAGICBISHOPATTACKS(m,x) (mBishopAttacks[x][BISHOPINDEX(m,x)])
+#define MAGICROOKATTACKS(m,x) (mRookAttacks[x][ROOKINDEX(m,x)])
 
 extern U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
@@ -1249,7 +1266,6 @@ class engine
 public:
     engine();
     ~engine();
-    const char* name = ENGINEVER;
     const char* author = "Andreas Matthies";
     bool isWhite;
     U64 tbhits;
@@ -1291,6 +1307,9 @@ public:
     int t2stop = 0;     // immediate stop
     bool bStopCount;
 #endif
+    string name() {
+        return string(ENGINEVER) + " (" + cpufeature[CPUFEATURE] +")";
+    };
     GuiToken parse(vector<string>*, string ss);
     void send(const char* format, ...);
     void communicate(string inputstring);

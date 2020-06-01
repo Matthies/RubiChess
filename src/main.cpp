@@ -294,7 +294,7 @@ static void perftest(bool dotests, int maxdepth)
     };
 
     int i = 0;
-    printf("\n\nPerft results for %s (Build %s)\n", en.name, BUILD);
+    printf("\n\nPerft results for %s (Build %s)\n", en.name().c_str(), BUILD);
     printf("System: %s\n", GetSystemInfo().c_str());
     printf("Depth = %d    %8s  Hash-/Mirror-Tests %s\n", maxdepth, en.chess960 ? "Chess960" : "", dotests ? "enabled" : "disabled");
     printf("========================================================================\n");
@@ -359,7 +359,7 @@ const string solvedstr[] = { "-", "+", "o" };
 
 static void benchTableHeader(FILE* out)
 {
-        fprintf(out, "\n\nBenchmark results for %s (Build %s):\n", en.name, BUILD);
+        fprintf(out, "\n\nBenchmark results for %s (Build %s):\n", en.name().c_str(), BUILD);
         fprintf(out, "System: %s\n", GetSystemInfo().c_str());
         fprintf(out, "=============================================================================================================\n");
 }
@@ -1096,7 +1096,7 @@ int main(int argc, char* argv[])
         }
     }
 
-    if (verbose) printf("%s (Build %s)\n UCI compatible chess engine by %s\n", en.name, BUILD, en.author);
+    if (verbose) printf("%s (Build %s)\n UCI compatible chess engine by %s\n", en.name().c_str(), BUILD, en.author);
 
     if (perfmaxdepth)
     {
