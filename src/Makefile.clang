@@ -1,7 +1,7 @@
 #
 # Start MSVC Command prompt for x64 native tools and
-# for fastest build: nmake /f Makefile.clang build
-# for a quick build: nmake /f Makefile.clang all
+# for fast binaries build:	nmake /f Makefile.clang release
+# for a quick build:		nmake /f Makefile.clang all
 # llvm-profdata.exe and .dll from Tools folder need to be copied into the LLVM bin folder or any other folder in PATH
 
 
@@ -72,7 +72,7 @@ profile-build-one:
 !ENDIF
 
 profile-build:
-	@nmake -c -f Makefile.clang profile-build-one PR=RubiChess-bmi2
+	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-bmi2
 	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-popcount
 	@nmake -c -f Makefile.clang profile-build-one PR=rubiChess-legacy
 

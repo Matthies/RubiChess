@@ -1,16 +1,32 @@
 
 
+# BMI2-build
+BMI2EXE=RubiChess-BMI2
+BMI2CPUFEATURE=-D CPUFEATURE=CPUBMI2
+BMI2ARCHFLAGS=-msse3 -mpopcnt -mbmi2
+
+# Popcount-build
+POPCOUNTEXE=RubiChess-Popcount
+POPCOUNTCPUFEATURE=-D CPUFEATURE=CPUPOPCOUNT
+POPCOUNTARCHFLAGS=-msse3 -mpopcnt
+
+# Legacy-build
+LEGACYEXE=RubiChess-Legacy
+LEGACYCPUFEATURE=-D CPUFEATURE=CPULEGACY
+LEGACYARCHFLAGS=
+
+
 ifeq ($(COMP),)
 	COMP=gcc
 endif
 
-CXXFLAGS=-std=c++11 -Wall -O3 $(EXTRACXXFLAGS)
+CXXFLAGS=-std=c++11 -Wall -O3 $(EXTRACXXFLAGS) -flto
 
 ifeq ($(COMP),gcc)
 	CXX=g++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
 	ifeq ($(shell uname -m),x86_64)
-		ARCHFLAGS=-msse3 -mpopcnt
+		#ARCHFLAGS=-msse3 -mpopcnt
 	endif
 	ifeq ($(shell uname -m),armv7l)
 		ARCHFLAGS=-march=armv7-a
@@ -37,14 +53,9 @@ ifeq ($(COMP),clang)
 endif
 
 DEPS = RubiChess.h
-EXE = RubiChess
-EXE2 = RubiChess-oldcpu
-EXEDESC = -D PROCDESC=\"Popcnt\"
-EXE2DESC = -D PROCDESC=\"Oldcpu\"
 PGOBENCH1 = ./$(EXE) -bench
 PGOBENCH2 = ./$(EXE2) -bench
-PROFDIR1 = OPT
-PROFDIR2 = NOPOCNT
+PROFDIR = OPT
 
 GITVER = $(shell 2>/dev/null git show --name-only --abbrev-commit --date=format:%Y%m%d%H%M%S | grep -i "date" | grep -o -E '[0-9]+')
 GITID = $(shell 2>/dev/null git show --name-only --abbrev-commit | grep -i -o -E "ommit[[:blank:]]+[0-9a-f]+" | grep -o -E '[0-9a-f]+')
@@ -57,36 +68,46 @@ endif
 
 .PHONY: clean profile-build gcc-profile-make gcc-profile-use all
 
-all: RubiChess
-old: RubiChess-oldcpu
+all: RubiChess-BMI2 RubiChess-Popcount RubiChess-Legacy
 
-RubiChess:
-	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(LDFLAGS) $(EXTRALDFLAGS) $(GITDEFINE) $(EXEDESC) -o $(EXE)
+compile:
+	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(LDFLAGS) $(EXTRALDFLAGS) $(GITDEFINE) $(CPUFEATURE) -o $(EXE)
 
-RubiChess-oldcpu:
-	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) *.cpp $(LDFLAGS) $(EXTRALDFLAGS) $(GITDEFINE) $(EXE2DESC) -o $(EXE2)
+RubiChess-BMI2:
+	$(MAKE) compile ARCHFLAGS="$(BMI2ARCHFLAGS)" EXE=$(BMI2EXE) CPUFEATURE="$(BMI2CPUFEATURE)"
+
+RubiChess-Popcount:
+	$(MAKE) compile ARCHFLAGS="$(POPCOUNTARCHFLAGS)" EXE=$(POPCOUNTEXE) CPUFEATURE="$(POPCOUNTCPUFEATURE)"
+
+RubiChess-Legacy:
+	$(MAKE) compile ARCHFLAGS="$(LEGACYARCHFLAGS)" EXE=$(LEGACYEXE) CPUFEATURE="$(LEGACYCPUFEATURE)"
 
 objclean:
-	$(RM) $(EXE) $(EXE2) *.o
+	$(RM) $(BMI2EXE) $(POPCOUNTEXE) $(LEGACYEXE) *.o
 
 profileclean:
-	$(RM) -rf $(PROFDIR1)
-	$(RM) -rf $(PROFDIR2)
+	$(RM) -rf $(PROFDIR)
 	$(RM) *.clangprof-raw *.profdata
 
 clean: objclean profileclean
 
 gcc-profile-make:
-	$(MAKE) EXTRACXXFLAGS='-fprofile-generate=$(PROFDIR1) -flto' EXTRALDFLAGS='-lgcov' $(EXE)
-	$(MAKE) EXTRACXXFLAGS='-fprofile-generate=$(PROFDIR2) -flto' EXTRALDFLAGS='-lgcov' $(EXE2)
+	@echo Creating profile build for $(PROFEXE)...
+	$(MAKE) $(PROFEXE) EXTRACXXFLAGS='-fprofile-generate=$(PROFDIR)' EXTRALDFLAGS='-lgcov'
+	@echo Bench to generate profiling data...
+	./$(PROFEXE) -bench > /dev/null
+	$(RM) ./$(PROFEXE)
+	@echo Creating optimized build for $(PROFEXE)...
+	$(MAKE) $(PROFEXE) EXTRACXXFLAGS='-fprofile-use=$(PROFDIR) -fno-peel-loops -fno-tracer' EXTRALDFLAGS='-lgcov'
+	$(MAKE) profileclean
 
 gcc-profile-use:
+    
 	$(MAKE) EXTRACXXFLAGS='-fprofile-use=$(PROFDIR1) -fno-peel-loops -fno-tracer -flto' EXTRALDFLAGS='-lgcov' $(EXE)
 	$(MAKE) EXTRACXXFLAGS='-fprofile-use=$(PROFDIR2) -fno-peel-loops -fno-tracer -flto' EXTRALDFLAGS='-lgcov' $(EXE2)
 
 clang-profile-make:
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS='-fprofile-instr-generate=$(EXE).clangprof-raw -flto' EXTRALDFLAGS=' -fprofile-instr-generate=$(EXE).clangprof-raw' $(EXE)
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS='-fprofile-instr-generate=$(EXE2).clangprof-raw -flto' EXTRALDFLAGS=' -fprofile-instr-generate=$(EXE2).clangprof-raw' $(EXE2)
+	$(MAKE) all EXTRACXXFLAGS='-fprofile-instr-generate=$(EXE).clangprof-raw -flto' EXTRALDFLAGS=' -fprofile-instr-generate=$(EXE).clangprof-raw'
 
 clang-profile-use:
 	llvm-profdata merge -output=$(EXE).profdata $(EXE).clangprof-raw
@@ -94,14 +115,11 @@ clang-profile-use:
 	llvm-profdata merge -output=$(EXE2).profdata $(EXE).clangprof-raw
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS='-fprofile-instr-use=$(EXE2).profdata -flto' EXTRALDFLAGS='-fprofile-instr-use=$(EXE2).profdata' $(EXE2)
 
+profile-gen:
+	$(EXE) > /dev/null
+
+
 profile-build: clean
-	@echo "Building instrumented executable ..."
-	$(MAKE) $(profile_make)
-	@echo "Running benchmark for pgo-build ..."
-	$(PGOBENCH1) > /dev/null
-	$(PGOBENCH2) > /dev/null
-	@echo "Building optimized executable ..."
-	$(MAKE) objclean
-	$(MAKE) $(profile_use)
-	@echo "Deleting profile data ..."
-	$(MAKE) profileclean
+	$(MAKE) $(profile_make) PROFEXE=$(BMI2EXE)
+	$(MAKE) $(profile_make) PROFEXE=$(POPCOUNTEXE)
+	$(MAKE) $(profile_make) PROFEXE=$(LEGACYEXE)
