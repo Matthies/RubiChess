@@ -68,6 +68,8 @@ endif
 
 .PHONY: clean profile-build gcc-profile-make gcc-profile-use all
 
+default: clean RubiChess-Popcount
+
 all: RubiChess-BMI2 RubiChess-Popcount RubiChess-Legacy
 
 compile:
