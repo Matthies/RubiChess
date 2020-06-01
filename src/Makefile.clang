@@ -20,7 +20,7 @@ PROFEXE=RubiChess-Prof
 # BMI2-build
 BMI2EXE=RubiChess-BMI2
 BMI2CPUFEATURE=-D CPUFEATURE=CPUBMI2
-BMI2ARCHFLAGS=-msse3 -mpopcnt
+BMI2ARCHFLAGS=-msse3 -mpopcnt -mbmi2
 
 # Popcount-build
 POPCOUNTEXE=RubiChess-Popcount
