@@ -143,7 +143,7 @@ const string cpufeature[] = { "Legacy", "Popcount", "BMI2" };
 
 #ifndef CPUFEATURE
 #ifdef _MSC_VER
-#define CPUFEATURE CPUBMI2
+#define CPUFEATURE CPUPOPCOUNT
 #else
 #define CPUFEATURE CPULEGACY
 #endif

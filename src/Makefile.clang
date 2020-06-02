@@ -23,7 +23,7 @@ BMI2CPUFEATURE=-D CPUFEATURE=CPUBMI2
 BMI2ARCHFLAGS=-msse3 -mpopcnt -mbmi2
 
 # Popcount-build
-POPCOUNTEXE=RubiChess-Popcount
+POPCOUNTEXE=RubiChess
 POPCOUNTCPUFEATURE=-D CPUFEATURE=CPUPOPCOUNT
 POPCOUNTARCHFLAGS=-msse3 -mpopcnt
 
@@ -83,7 +83,6 @@ profile-clean:
 	@del *.obj
 
 clean: profile-clean
-	@del $(RELDIR)\RubiChess.exe
 	@del $(RELDIR)\RubiChess-oldcpu.exe
 	@del $(RELDIR)\$(BMI2EXE).exe
 	@del $(RELDIR)\$(POPCOUNTEXE).exe

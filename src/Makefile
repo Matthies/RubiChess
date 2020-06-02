@@ -6,7 +6,7 @@ BMI2CPUFEATURE=-D CPUFEATURE=CPUBMI2
 BMI2ARCHFLAGS=-msse3 -mpopcnt -mbmi2
 
 # Popcount-build
-POPCOUNTEXE=RubiChess-Popcount
+POPCOUNTEXE=RubiChess
 POPCOUNTCPUFEATURE=-D CPUFEATURE=CPUPOPCOUNT
 POPCOUNTARCHFLAGS=-msse3 -mpopcnt
 
@@ -52,6 +52,13 @@ ifeq ($(COMP),clang)
 	profile_use = clang-profile-use
 endif
 
+ifeq ($(COMP),mingw)
+	CXX=g++
+	CXXFLAGS += -Wextra -Wshadow
+	LDFLAGS += -static
+	profile_make = gcc-profile-make
+endif
+
 DEPS = RubiChess.h
 PGOBENCH1 = ./$(EXE) -bench
 PGOBENCH2 = ./$(EXE2) -bench
@@ -68,9 +75,9 @@ endif
 
 .PHONY: clean profile-build gcc-profile-make gcc-profile-use all
 
-default: clean RubiChess-Popcount
+default: clean RubiChess
 
-all: RubiChess-BMI2 RubiChess-Popcount RubiChess-Legacy
+all: RubiChess-BMI2 RubiChess RubiChess-Legacy
 
 compile:
 	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(LDFLAGS) $(EXTRALDFLAGS) $(GITDEFINE) $(CPUFEATURE) -o $(EXE)
@@ -78,7 +85,7 @@ compile:
 RubiChess-BMI2:
 	$(MAKE) compile ARCHFLAGS="$(BMI2ARCHFLAGS)" EXE=$(BMI2EXE) CPUFEATURE="$(BMI2CPUFEATURE)"
 
-RubiChess-Popcount:
+RubiChess:
 	$(MAKE) compile ARCHFLAGS="$(POPCOUNTARCHFLAGS)" EXE=$(POPCOUNTEXE) CPUFEATURE="$(POPCOUNTCPUFEATURE)"
 
 RubiChess-Legacy:
