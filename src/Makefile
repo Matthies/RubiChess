@@ -1,4 +1,8 @@
+#
+# Makefile to compile RubiChess in a standard GNU/Makefile environment
+#
 
+MAKEFLAGS += --no-print-directory
 
 # BMI2-build
 BMI2EXE=RubiChess-BMI2
@@ -78,33 +82,34 @@ endif
 .PHONY: clean profile-build gcc-profile-make gcc-profile-use all
 
 default: clean
-	$(MAKE) compile ARCHFLAGS="$(POPCOUNTARCHFLAGS)" CPUFEATURE="$(POPCOUNTCPUFEATURE)"
+	@$(MAKE) compile ARCHFLAGS="$(POPCOUNTARCHFLAGS)" CPUFEATURE="$(POPCOUNTCPUFEATURE)"
 
 all: RubiChess-BMI2 RubiChess RubiChess-Legacy
 
 compile:
-	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(LDFLAGS) $(EXTRALDFLAGS) $(GITDEFINE) $(CPUFEATURE) -o $(EXE)
+	@echo   \  Compiling $(EXE) with $(CXX)...
+	@$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(LDFLAGS) $(EXTRALDFLAGS) $(GITDEFINE) $(CPUFEATURE) -o $(EXE)
 
 RubiChess-BMI2:
-	$(MAKE) compile ARCHFLAGS="$(BMI2ARCHFLAGS)" EXE=$(BMI2EXE) CPUFEATURE="$(BMI2CPUFEATURE)"
+	@$(MAKE) compile ARCHFLAGS="$(BMI2ARCHFLAGS)" EXE=$(BMI2EXE) CPUFEATURE="$(BMI2CPUFEATURE)"
 
 RubiChess:
-	$(MAKE) compile ARCHFLAGS="$(POPCOUNTARCHFLAGS)" EXE=$(POPCOUNTEXE) CPUFEATURE="$(POPCOUNTCPUFEATURE)"
+	@$(MAKE) compile ARCHFLAGS="$(POPCOUNTARCHFLAGS)" EXE=$(POPCOUNTEXE) CPUFEATURE="$(POPCOUNTCPUFEATURE)"
 
 RubiChess-Legacy:
-	$(MAKE) compile ARCHFLAGS="$(LEGACYARCHFLAGS)" EXE=$(LEGACYEXE) CPUFEATURE="$(LEGACYCPUFEATURE)"
+	@$(MAKE) compile ARCHFLAGS="$(LEGACYARCHFLAGS)" EXE=$(LEGACYEXE) CPUFEATURE="$(LEGACYCPUFEATURE)"
 
 objclean:
-	$(RM) $(BMI2EXE) $(POPCOUNTEXE) $(LEGACYEXE) *.o
+	@$(RM) $(BMI2EXE) $(POPCOUNTEXE) $(LEGACYEXE) *.o
 
 profileclean:
-	$(RM) -rf $(PROFDIR)
-	$(RM) *.clangprof-raw *.profdata
+	@$(RM) -rf $(PROFDIR)
+	@$(RM) *.clangprof-raw *.profdata
 
 clean: objclean profileclean
 
 gcc-profile-make:
-	@echo Creating profile build for $(PROFEXE) using gcc ...
+	@echo Creating profile build for $(PROFEXE)...
 	@$(MAKE) $(PROFEXE) EXTRACXXFLAGS='-fprofile-generate=$(PROFDIR)' EXTRALDFLAGS='-lgcov'
 	@echo Bench to generate profiling data...
 	@./$(PROFEXE) -bench > /dev/null
@@ -114,7 +119,7 @@ gcc-profile-make:
 	@$(MAKE) profileclean
 
 clang-profile-make:
-	@echo Creating profile build for $(PROFEXE) using clang ...
+	@echo Creating profile build for $(PROFEXE)...
 	$(MAKE) $(PROFEXE) EXTRACXXFLAGS='-fprofile-instr-generate=$(PROFEXE).clangprof-raw'
 	@echo Bench to generate profiling data...
 	./$(PROFEXE) -bench > /dev/null
@@ -126,6 +131,6 @@ clang-profile-make:
 
 
 profile-build: clean
-	$(MAKE) $(profile_make) PROFEXE=$(BMI2EXE)
-	$(MAKE) $(profile_make) PROFEXE=$(POPCOUNTEXE)
-	$(MAKE) $(profile_make) PROFEXE=$(LEGACYEXE)
+	@$(MAKE) $(profile_make) PROFEXE=$(BMI2EXE)
+	@$(MAKE) $(profile_make) PROFEXE=$(POPCOUNTEXE)
+	@$(MAKE) $(profile_make) PROFEXE=$(LEGACYEXE)

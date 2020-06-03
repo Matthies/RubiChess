@@ -360,17 +360,23 @@ void engine::GetSystemInfo()
     if (CPUFEATURE > maxHWSupport)
     {
         cout << "info string Error! Binary was compiled for " << cpufeature[CPUFEATURE] << ". CPU only supports " << cpufeature[maxHWSupport] << ". Please use correct binary.\n";
-        exit(-1);
+        exit(0);
     }
+    
+    if (cpuVendor == CPUVENDORAMD && maxHWSupport == CPUBMI2)
+    	// No BMI2 build on AMD cpu
+    	maxHWSupport--;
 
     if (CPUFEATURE == CPUBMI2 && cpuVendor == CPUVENDORAMD)
     {
         cout << "info string Error! You are running the BMI2 binary on an AMD cpu which is known for bad performance. Please use the default (Popcount) binary for best performance.\n";
-        exit(-1);
+        exit(0);
     }
     
     if (CPUFEATURE < maxHWSupport)
+    {
         cout << "info string Warning! Binary was compiled for " << cpufeature[CPUFEATURE] << ". CPU supports even " << cpufeature[maxHWSupport] << ". Please use correct binary for best performance.\n";
+    }
 }
 
 #else
