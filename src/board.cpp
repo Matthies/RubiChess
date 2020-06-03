@@ -2417,6 +2417,7 @@ searchthread::~searchthread()
 
 engine::engine()
 {
+    GetSystemInfo();
     initBitmaphelper();
     rootposition.pwnhsh = new Pawnhash(1);  // some dummy pawnhash just to make the prefetch in playMove happy
     

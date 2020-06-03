@@ -18,78 +18,6 @@
 
 #include "RubiChess.h"
 
-#ifdef _WIN32
-
-string GetSystemInfo()
-{
-    // shameless copy from MSDN example explaining __cpuid
-    char CPUString[0x20];
-    char CPUBrandString[0x40];
-    int CPUInfo[4] = { -1 };
-    //int nCacheLineSize = 0; // Maybe usefull for TT sizing
-
-    unsigned    nIds, nExIds, i;
-    //bool    bPOPCNT = false;
-    //bool    bBMI2 = false;
-
-
-    __cpuid(CPUInfo, 0);
-    nIds = CPUInfo[0];
-    memset(CPUString, 0, sizeof(CPUString));
-    *((int*)CPUString) = CPUInfo[1];
-    *((int*)(CPUString + 4)) = CPUInfo[3];
-    *((int*)(CPUString + 8)) = CPUInfo[2];
-
-    // Get the information associated with each valid Id
-    for (i = 0; i <= nIds; ++i)
-    {
-        __cpuid(CPUInfo, i);
-        // Interpret CPU feature information.
-        if (i == 1)
-        {
-            //bPOPCNT = (CPUInfo[2] & 0x800000) || false;
-        }
-
-        if (i == 7)
-        {
-            // this is not in the MSVC2012 example but may be useful later
-            //bBMI2 = (CPUInfo[1] & 0x100) || false;
-        }
-    }
-
-
-    // Calling __cpuid with 0x80000000 as the InfoType argument
-    // gets the number of valid extended IDs.
-    __cpuid(CPUInfo, 0x80000000);
-    nExIds = CPUInfo[0];
-    memset(CPUBrandString, 0, sizeof(CPUBrandString));
-
-    // Get the information associated with each extended ID.
-    for (i = 0x80000000; i <= nExIds; ++i)
-    {
-        __cpuid(CPUInfo, i);
-
-        // Interpret CPU brand string and cache information.
-        if (i == 0x80000002)
-            memcpy(CPUBrandString, CPUInfo, sizeof(CPUInfo));
-        else if (i == 0x80000003)
-            memcpy(CPUBrandString + 16, CPUInfo, sizeof(CPUInfo));
-        else if (i == 0x80000004)
-            memcpy(CPUBrandString + 32, CPUInfo, sizeof(CPUInfo));
-    }
-
-    return CPUBrandString;
-}
-
-#else
-
-string GetSystemInfo()
-{
-    return "some Linux box";
-}
-
-#endif
-
 
 void generateEpd(string egn)
 {
@@ -295,7 +223,7 @@ static void perftest(bool dotests, int maxdepth)
 
     int i = 0;
     printf("\n\nPerft results for %s (Build %s)\n", en.name().c_str(), BUILD);
-    printf("System: %s\n", GetSystemInfo().c_str());
+    printf("System: %s\n", en.system.c_str());
     printf("Depth = %d    %8s  Hash-/Mirror-Tests %s\n", maxdepth, en.chess960 ? "Chess960" : "", dotests ? "enabled" : "disabled");
     printf("========================================================================\n");
 
@@ -360,7 +288,7 @@ const string solvedstr[] = { "-", "+", "o" };
 static void benchTableHeader(FILE* out)
 {
         fprintf(out, "\n\nBenchmark results for %s (Build %s):\n", en.name().c_str(), BUILD);
-        fprintf(out, "System: %s\n", GetSystemInfo().c_str());
+        fprintf(out, "System: %s\n", en.system.c_str());
         fprintf(out, "=============================================================================================================\n");
 }
 

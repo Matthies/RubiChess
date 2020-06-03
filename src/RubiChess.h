@@ -139,7 +139,9 @@ using namespace std;
 #define CPUPOPCOUNT 1
 #define CPUBMI2     2
 
-const string cpufeature[] = { "Legacy", "Popcount", "BMI2" };
+#define CPUVENDORUNKNOWN    0
+#define CPUVENDORINTEL      1
+#define CPUVENDORAMD        2
 
 #ifndef CPUFEATURE
 #ifdef _MSC_VER
@@ -1267,6 +1269,7 @@ class engine
 public:
     engine();
     ~engine();
+    const string cpufeature[3] = { "Legacy", "Popcount", "BMI2" };
     const char* author = "Andreas Matthies";
     bool isWhite;
     U64 tbhits;
@@ -1300,6 +1303,11 @@ public:
     int benchdepth;
     string benchmove;
     ucioptions_t ucioptions;
+    string system;
+    int maxHWSupport;
+    int cpuVendor;
+    bool badPEXT;
+
 #ifdef STACKDEBUG
     string assertfile = "";
 #endif
@@ -1324,6 +1332,7 @@ public:
     long long perft(int depth, bool dotests);
     void prepareThreads();
     void resetStats();
+    void GetSystemInfo();
 };
 
 PieceType GetPieceType(char c);
