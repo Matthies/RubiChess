@@ -363,11 +363,10 @@ void engine::GetSystemInfo()
         exit(-1);
     }
 
-    if (CPUFEATURE < maxHWSupport)
-        cout << "info string Warning! Binary was compiled for " << cpufeature[CPUFEATURE] << ". CPU supports even " << cpufeature[maxHWSupport] << ". Please use correct binary for best performance.\n";
-
     if (CPUFEATURE == CPUBMI2 && cpuVendor == CPUVENDORAMD)
         cout << "info string Warning! You are running the BMI2 binary on an AMD cpu which is known for bad performance. Please use the default (Popcount) binary for best performance.";
+    else if (CPUFEATURE < maxHWSupport)
+        cout << "info string Warning! Binary was compiled for " << cpufeature[CPUFEATURE] << ". CPU supports even " << cpufeature[maxHWSupport] << ". Please use correct binary for best performance.\n";
 }
 
 #else
