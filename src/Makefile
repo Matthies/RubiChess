@@ -121,6 +121,6 @@ clang-profile-make:
 
 
 profile-build: clean
-	@$(MAKE) $(profile_make) PROFEXE=$(BMI2EXE)
-	@$(MAKE) $(profile_make) PROFEXE=$(POPCOUNTEXE)
-	@$(MAKE) $(profile_make) PROFEXE=$(LEGACYEXE)
+	@if [ "$(BMI2EXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(BMI2EXE); fi
+	@if [ "$(POPCOUNTEXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(POPCOUNTEXE); fi
+	@if [ "$(LEGACYEXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(LEGACYEXE); fi
