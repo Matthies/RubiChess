@@ -1021,6 +1021,7 @@ extern SMagic mRookTbl[64];
 #define ROOKINDEXBITS 12
 
 #if CPUFEATURE == CPUBMI2
+#include <immintrin.h>
 #define BISHOPINDEX(occ,i) (int)(_pext_u64(occ, mBishopTbl[i].mask))
 #define ROOKINDEX(occ,i) (int)(_pext_u64(occ, mRookTbl[i].mask))
 #else

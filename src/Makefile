@@ -20,7 +20,11 @@ ifeq ($(COMP),)
 	COMP=gcc
 endif
 
-CXXFLAGS=-std=c++11 -Wall -O3 $(EXTRACXXFLAGS) -flto
+ifeq ($(EXE),)
+	EXE=$(POPCOUNTEXE)
+endif
+
+CXXFLAGS=-std=c++11 -Wall -O3 -flto
 
 ifeq ($(COMP),gcc)
 	CXX=g++
@@ -31,10 +35,9 @@ ifeq ($(COMP),gcc)
 	ifeq ($(shell uname -m),armv7l)
 		ARCHFLAGS=-march=armv7-a
 	endif
-	LDFLAGS=-pthread  $(EXTRALDFLAGS)
+	LDFLAGS=-pthread
 
 	profile_make = gcc-profile-make
-	profile_use = gcc-profile-use
 endif
 
 ifeq ($(COMP),clang)
@@ -46,10 +49,9 @@ ifeq ($(COMP),clang)
 	ifeq ($(shell uname -m),armv7l)
 		ARCHFLAGS=-march=armv7-a
 	endif
-	LDFLAGS=-lpthread  -fuse-ld=lld $(EXTRALDFLAGS)
+	LDFLAGS=-lpthread -fuse-ld=lld
 
 	profile_make = clang-profile-make
-	profile_use = clang-profile-use
 endif
 
 ifeq ($(COMP),mingw)
@@ -75,7 +77,8 @@ endif
 
 .PHONY: clean profile-build gcc-profile-make gcc-profile-use all
 
-default: clean RubiChess
+default: clean
+	$(MAKE) compile ARCHFLAGS="$(POPCOUNTARCHFLAGS)" CPUFEATURE="$(POPCOUNTCPUFEATURE)"
 
 all: RubiChess-BMI2 RubiChess RubiChess-Legacy
 
@@ -101,31 +104,25 @@ profileclean:
 clean: objclean profileclean
 
 gcc-profile-make:
-	@echo Creating profile build for $(PROFEXE)...
-	$(MAKE) $(PROFEXE) EXTRACXXFLAGS='-fprofile-generate=$(PROFDIR)' EXTRALDFLAGS='-lgcov'
+	@echo Creating profile build for $(PROFEXE) using gcc ...
+	@$(MAKE) $(PROFEXE) EXTRACXXFLAGS='-fprofile-generate=$(PROFDIR)' EXTRALDFLAGS='-lgcov'
 	@echo Bench to generate profiling data...
-	./$(PROFEXE) -bench > /dev/null
-	$(RM) ./$(PROFEXE)
+	@./$(PROFEXE) -bench > /dev/null
+	@$(RM) ./$(PROFEXE)
 	@echo Creating optimized build for $(PROFEXE)...
-	$(MAKE) $(PROFEXE) EXTRACXXFLAGS='-fprofile-use=$(PROFDIR) -fno-peel-loops -fno-tracer' EXTRALDFLAGS='-lgcov'
-	$(MAKE) profileclean
-
-gcc-profile-use:
-    
-	$(MAKE) EXTRACXXFLAGS='-fprofile-use=$(PROFDIR1) -fno-peel-loops -fno-tracer -flto' EXTRALDFLAGS='-lgcov' $(EXE)
-	$(MAKE) EXTRACXXFLAGS='-fprofile-use=$(PROFDIR2) -fno-peel-loops -fno-tracer -flto' EXTRALDFLAGS='-lgcov' $(EXE2)
+	@$(MAKE) $(PROFEXE) EXTRACXXFLAGS='-fprofile-use=$(PROFDIR) -fno-peel-loops -fno-tracer' EXTRALDFLAGS='-lgcov'
+	@$(MAKE) profileclean
 
 clang-profile-make:
-	$(MAKE) all EXTRACXXFLAGS='-fprofile-instr-generate=$(EXE).clangprof-raw -flto' EXTRALDFLAGS=' -fprofile-instr-generate=$(EXE).clangprof-raw'
-
-clang-profile-use:
-	llvm-profdata merge -output=$(EXE).profdata $(EXE).clangprof-raw
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS='-fprofile-instr-use=$(EXE).profdata -flto' EXTRALDFLAGS='-fprofile-instr-use=$(EXE).profdata' $(EXE)
-	llvm-profdata merge -output=$(EXE2).profdata $(EXE).clangprof-raw
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS='-fprofile-instr-use=$(EXE2).profdata -flto' EXTRALDFLAGS='-fprofile-instr-use=$(EXE2).profdata' $(EXE2)
-
-profile-gen:
-	$(EXE) > /dev/null
+	@echo Creating profile build for $(PROFEXE) using clang ...
+	$(MAKE) $(PROFEXE) EXTRACXXFLAGS='-fprofile-instr-generate=$(PROFEXE).clangprof-raw'
+	@echo Bench to generate profiling data...
+	./$(PROFEXE) -bench > /dev/null
+	llvm-profdata merge -output=$(PROFEXE).profdata $(PROFEXE).clangprof-raw
+	$(RM) ./$(PROFEXE)
+	@echo Creating optimized build for $(PROFEXE)...
+	$(MAKE) $(PROFEXE) EXTRACXXFLAGS='-fprofile-instr-use=$(PROFEXE).profdata'
+	@$(MAKE) profileclean
 
 
 profile-build: clean
