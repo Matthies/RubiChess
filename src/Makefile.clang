@@ -1,66 +1,89 @@
 #
 # Start MSVC Command prompt for x64 native tools and
-# for fastest build: nmake /f Makefile.clang build
-# for a quick build: nmake /f Makefile.clang all
+# for fast binaries build:	nmake /f Makefile.clang release
+# for a quick build:		nmake /f Makefile.clang all
 # llvm-profdata.exe and .dll from Tools folder need to be copied into the LLVM bin folder or any other folder in PATH
 
-LLVMInstallDir="C:\Program Files\LLVM""
 
+# General settings
 CXX=$(LLVMInstallDir)\bin\clang-cl.exe
 LD=$(LLVMInstallDir)\bin\lld-link.exe
-
-#SOURCE=board.cpp eval.cpp main.cpp search.cpp tbprobe.cpp transposition.cpp uci.cpp utils.cpp
+PROFDATATOOLEXE=llvm-profdata
+LLVMInstallDir="C:\Program Files\LLVM""
 SOURCE=*.cpp
 OBJ=*.obj
 RELDIR=Release-clang
-EXE1=RubiChess
-EXE2=RubiChess-oldcpu
-EXEDESC=-D PROCDESC=\"Popcnt\"
-EXE2DESC=-D PROCDESC=\"Oldcpu\"
-PROFEXE1=$(EXE1)-Prof
-PROFEXE2=$(EXE2)-Prof
-PROFDATATOOLEXE=llvm-profdata
-
 CXXFLAGS=/GX /O2 /Oi /Ot /c -flto -fuse-ld=lld
-ARCHFLAGS=-msse3 -mpopcnt
 LDFLAGS=/OPT:REF /OPT:ICF
-PROFLIB=$(LLVMInstallDir)\lib\clang\8.0.0\lib\windows\clang_rt.profile-x86_64.lib
+PROFEXE=RubiChess-Prof
 
-all: RubiChess RubiChess-oldcpu
+# BMI2-build
+BMI2EXE=RubiChess-BMI2
+BMI2CPUFEATURE=-D CPUFEATURE=CPUBMI2
+BMI2ARCHFLAGS=-msse3 -mpopcnt -mbmi2
+
+# Popcount-build
+POPCOUNTEXE=RubiChess
+POPCOUNTCPUFEATURE=-D CPUFEATURE=CPUPOPCOUNT
+POPCOUNTARCHFLAGS=-msse3 -mpopcnt
+
+# Legacy-build
+LEGACYEXE=RubiChess-Legacy
+LEGACYCPUFEATURE=-D CPUFEATURE=CPULEGACY
+LEGACYARCHFLAGS=
+
+all: RubiChess-bmi2 RubiChess-popcount RubiChess-Legacy
 
 $(RELDIR):
 	mkdir $(RELDIR)
 
-RubiChess: $(RELDIR)
-	$(CXX) $(CXXFLAGS) $(ARCHFLAGS) $(SOURCE) $(EXEDESC)
-	$(LD) $(LDFLAGS) /OUT:$(RELDIR)\$(EXE1).exe $(OBJ)
+build:
+!IFDEF EXE
+	@echo Compiling $(EXE) ...
+	@$(CXX) $(CXXFLAGS) $(ARCHFLAGS) $(SOURCE) $(PROFILEFLAGS) $(CPUFEATURE)
+!IFDEF PROFLIB
+	@echo Linking $(EXE) (profiling build)...
+	@$(LD) $(LDFLAGS) /OUT:$(PROFEXE).exe $(OBJ) "$(PROFLIB)"
+!ELSE
+	@echo Linking $(EXE) ...
+	@$(LD) $(LDFLAGS) /OUT:$(RELDIR)\$(EXE).exe $(OBJ) "$(PROFLIB)"
+!ENDIF
+!ELSE
+	@echo EXE is not defined.
+!ENDIF
 
-RubiChess-oldcpu: $(RELDIR)
-	$(CXX) $(CXXFLAGS) $(SOURCE) $(EXE2DESC)
-	$(LD) $(LDFLAGS) /OUT:$(RELDIR)\$(EXE2).exe $(OBJ)
+rubichess-bmi2: $(RELDIR)
+	@nmake -c -f Makefile.clang build EXE=$(BMI2EXE) CPUFEATURE="$(BMI2CPUFEATURE)" ARCHFLAGS="$(BMI2ARCHFLAGS)"
 
-profile-build: $(RELDIR)
-	$(CXX) $(CXXFLAGS) $(ARCHFLAGS) $(SOURCE) -fprofile-instr-generate=$(PROFEXE1).clangprof-raw $(EXEDESC)
-	$(LD) $(LDFLAGS) /OUT:$(PROFEXE1).exe $(OBJ) $(PROFLIB)
-	$(PROFEXE1) -bench > nul
-	$(PROFDATATOOLEXE) merge -output=$(PROFEXE1).clangprof $(PROFEXE1).clangprof-raw
-	$(CXX) $(CXXFLAGS) $(ARCHFLAGS) $(SOURCE) -fprofile-instr-use=$(PROFEXE1).clangprof $(EXEDESC)
-	$(LD) $(LDFLAGS) /OUT:$(RELDIR)\$(EXE1).exe $(OBJ)
+rubichess-popcount: $(RELDIR)
+	@nmake -c -f Makefile.clang build EXE=$(POPCOUNTEXE) CPUFEATURE="$(POPCOUNTCPUFEATURE)" ARCHFLAGS="$(POPCOUNTARCHFLAGS)"
 
-	$(CXX) $(CXXFLAGS) $(SOURCE) -fprofile-instr-generate=$(PROFEXE2).clangprof-raw $(EXE2DESC)
-	$(LD) $(LDFLAGS) /OUT:$(PROFEXE2).exe $(OBJ) $(PROFLIB)
-	$(PROFEXE2) -bench > nul
-	$(PROFDATATOOLEXE) merge -output=$(PROFEXE2).clangprof $(PROFEXE2).clangprof-raw
-	$(CXX) $(CXXFLAGS) $(SOURCE) -fprofile-instr-use=$(PROFEXE2).clangprof $(EXE2DESC)
-	$(LD) $(LDFLAGS) /OUT:$(RELDIR)\$(EXE2).exe $(OBJ)
+rubichess-legacy: $(RELDIR)
+	@nmake -c -f Makefile.clang build EXE=$(LEGACYEXE) CPUFEATURE="$(LEGACYCPUFEATURE)" ARCHFLAGS="$(LEGACYARCHFLAGS)"
 
-build: profile-build profile-clean
+profile-build-one:
+!IFDEF PR
+	@echo Creating profile build for $(PR)...
+	@nmake -c -f Makefile.clang $(PR) PROFILEFLAGS=-fprofile-instr-generate=$(PROFEXE).clangprof-raw PROFLIB=$(LLVMInstallDir)\lib\clang\8.0.0\lib\windows\clang_rt.profile-x86_64.lib
+	@echo Bench to generate profiling data...
+	@$(PROFEXE) -bench > nul
+	@$(PROFDATATOOLEXE) merge -output=$(PROFEXE).clangprof $(PROFEXE).clangprof-raw
+	@nmake -c -f Makefile.clang $(PR) PROFILEFLAGS=-fprofile-instr-use=$(PROFEXE).clangprof
+!ENDIF
+
+profile-build:
+	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-bmi2
+	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-popcount
+	@nmake -c -f Makefile.clang profile-build-one PR=rubiChess-legacy
+
+release: profile-build profile-clean
 
 profile-clean:
-	del $(PROFEXE1)*
-	del $(PROFEXE2)*
-	del *.obj
+	@del $(PROFEXE)*
+	@del *.obj
 
 clean: profile-clean
-	del $(RELDIR)\$(EXE1).exe
-	del $(RELDIR)\$(EXE2).exe
+	@del $(RELDIR)\RubiChess-oldcpu.exe
+	@del $(RELDIR)\$(BMI2EXE).exe
+	@del $(RELDIR)\$(POPCOUNTEXE).exe
+	@del $(RELDIR)\$(LEGACYEXE).exe

@@ -532,7 +532,7 @@ int chessposition::getPieceEval(positioneval *pe)
         {
             U64 occupied = occupied00[0] | occupied00[1];
             U64 xrayrookoccupied = occupied ^ (piece00[WROOK + Me] | piece00[WQUEEN + Me]);
-            attack = MAGICROOKATTACKS(xrayrookoccupied, index);
+            attack = ROOKATTACKS(xrayrookoccupied, index);
 
             // extrabonus for rook on (semi-)open file  
             if (Pt == ROOK && (pe->phentry->semiopen[Me] & BITSET(FILE(index)))) {
@@ -545,7 +545,7 @@ int chessposition::getPieceEval(positioneval *pe)
         {
             U64 occupied = occupied00[0] | occupied00[1];
             U64 xraybishopoccupied = occupied ^ (piece00[WBISHOP + Me] | piece00[WQUEEN + Me]);
-            attack |= MAGICBISHOPATTACKS(xraybishopoccupied, index);
+            attack |= BISHOPATTACKS(xraybishopoccupied, index);
 
             if (Pt == BISHOP)
             {
@@ -553,7 +553,7 @@ int chessposition::getPieceEval(positioneval *pe)
                 result += EVAL(eps.ePawnblocksbishoppenalty, S2MSIGN(Me) * POPCOUNT(blockingpawns));
                 if (bTrace) te.minors[Me] += EVAL(eps.ePawnblocksbishoppenalty, S2MSIGN(Me) * POPCOUNT(blockingpawns));
 
-                if (MORETHANONE(mBishopAttacks[index][MAGICBISHOPINDEX(piece00[WPAWN] | piece00[BPAWN], index)] & CENTER))
+                if (MORETHANONE(BISHOPATTACKS(piece00[WPAWN] | piece00[BPAWN], index) & CENTER))
                 {
                     result += EVAL(eps.eBishopcentercontrolbonus, S2MSIGN(Me));
                     if (bTrace) te.minors[Me] += EVAL(eps.eBishopcentercontrolbonus, S2MSIGN(Me));
