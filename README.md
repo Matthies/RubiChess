@@ -18,3 +18,4 @@ May 2020: I will most probably stop development of RubiChess, so 1.7.3 will be t
 There is no progress to expect without massive copy-and-paste from better engines which is not my intention.
 Also competing with other engines that are just translations of Stockfish to other programming languages
 is no motivation. So better stop here. It was fun but better search for something new now.
+Well, at least there is some cleanup in the making, not easy to get awy from this stuff :-)
