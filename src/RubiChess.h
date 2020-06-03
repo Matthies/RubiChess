@@ -1030,8 +1030,8 @@ extern SMagic mRookTbl[64];
 #define BISHOPINDEX(occ,i) (int)((((occ) & mBishopTbl[i].mask) * mBishopTbl[i].magic) >> (64 - BISHOPINDEXBITS))
 #define ROOKINDEX(occ,i) (int)((((occ) & mRookTbl[i].mask) * mRookTbl[i].magic) >> (64 - ROOKINDEXBITS))
 #endif
-#define MAGICBISHOPATTACKS(m,x) (mBishopAttacks[x][BISHOPINDEX(m,x)])
-#define MAGICROOKATTACKS(m,x) (mRookAttacks[x][ROOKINDEX(m,x)])
+#define BISHOPATTACKS(m,x) (mBishopAttacks[x][BISHOPINDEX(m,x)])
+#define ROOKATTACKS(m,x) (mRookAttacks[x][ROOKINDEX(m,x)])
 
 extern U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
