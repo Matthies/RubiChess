@@ -2926,17 +2926,17 @@ void ucioptions_t::Print()
 
 // Explicit template instantiation
 // This avoids putting these definitions in header file
-template U64 chessposition::pieceMovesTo<KNIGHT>(int);
-template U64 chessposition::pieceMovesTo<BISHOP>(int);
-template U64 chessposition::pieceMovesTo<ROOK>(int);
-template U64 chessposition::pieceMovesTo<QUEEN>(int);
 
 
 // Some global objects
+engine en;
 evalparamset eps;
 zobrist zb;
-engine en;
 
 // Explicit template instantiation
 // This avoids putting these definitions in header file
 template U64 chessposition::isAttackedBy<OCCUPIED>(int index, int col);
+template U64 chessposition::pieceMovesTo<KNIGHT>(int);
+template U64 chessposition::pieceMovesTo<BISHOP>(int);
+template U64 chessposition::pieceMovesTo<ROOK>(int);
+template U64 chessposition::pieceMovesTo<QUEEN>(int);
