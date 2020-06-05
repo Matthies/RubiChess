@@ -34,6 +34,9 @@ ifeq ($(COMP),)
 	COMP=gcc
 endif
 
+ifeq ($(EXE),)
+	EXE=RubiChess
+endif
 
 CXXFLAGS=-std=c++11 -Wall -O3 -flto
 
@@ -72,7 +75,8 @@ endif
 
 .PHONY: clean profile-build gcc-profile-make clang-profile-make all
 
-default: clean RubiChess
+default: clean
+	@$(MAKE) compile ARCHFLAGS="$(POPCOUNTARCHFLAGS)" CPUFEATURE="$(POPCOUNTCPUFEATURE)"
 
 all: RubiChess-BMI2 RubiChess RubiChess-Legacy
 
