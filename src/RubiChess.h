@@ -37,6 +37,10 @@
 #endif
 
 #if 0
+#define EVALOPTIONS
+#endif
+
+#if 0
 #define FINDMEMORYLEAKS
 #endif
 
@@ -131,17 +135,30 @@ using namespace std;
 #endif
 #endif
 
-#ifndef PROCDESC
-#define PROCDESC "general"
+#define CPULEGACY   0
+#define CPUPOPCOUNT 1
+#define CPUBMI2     2
+
+#define CPUVENDORUNKNOWN    0
+#define CPUVENDORINTEL      1
+#define CPUVENDORAMD        2
+
+#ifndef CPUFEATURE
+#ifdef _MSC_VER
+#define CPUFEATURE CPUPOPCOUNT
+#else
+#define CPUFEATURE CPULEGACY
 #endif
+#endif
+
 #ifndef VERSTABLE
 #ifdef GITVER
-#define VERSION VERNUM "-dev " PROCDESC " " GITVER
+#define VERSION VERNUM "-dev " GITVER
 #else
-#define VERSION VERNUM "-dev " PROCDESC
+#define VERSION VERNUM "-dev"
 #endif
 #else
-#define VERSION VERNUM " " PROCDESC
+#define VERSION VERNUM " "
 #endif
 #define ENGINEVER "RubiChess " VERSION
 #ifdef GITID
@@ -287,7 +304,13 @@ public:
 #define CEVAL(e, f) ((e) * (f))
 #define EVALUE(e) VALUE(0, e)
 #define EEVAL(e, f) ((e) * (f))
+
+#ifdef EVALOPTIONS
+typedef int32_t eval;
+#else
 typedef const int32_t eval;
+#endif
+
 #endif
 
 #define PSQTINDEX(i,s) ((s) ? (i) : (i) ^ 0x38)
@@ -348,8 +371,8 @@ struct evalparamset {
         {  VALUE(   0,   0), VALUE( -43,   9), VALUE( -15,  17), VALUE(   0,  31), VALUE(  33,  31), VALUE(  71,  95), VALUE(   0,   0), VALUE(   0,   0)  }
     };
     eval eAttackingpawnbonus[8] = {  VALUE(   0,   0), VALUE( -32,  12), VALUE( -22, -12), VALUE(  -6,  -6), VALUE( -12,  -6), VALUE( -13,  -2), VALUE(   0,   0), VALUE(   0,   0)  };
-    eval eIsolatedpawnpenalty =  VALUE( -13, -12);
-    eval eDoublepawnpenalty =  VALUE(  -9, -21);
+    eval eIsolatedpawnpenalty[8] = {  VALUE( -10,  -5), VALUE( -10,  -6), VALUE( -16, -12), VALUE( -22, -12), VALUE( -26, -12), VALUE( -13, -11), VALUE(  -8, -10), VALUE( -15,  -3)  };
+    eval eDoublepawnpenalty =  VALUE( -11, -23);
     eval eConnectedbonus[6][6] = {
         {  VALUE(   0,   0), VALUE(  10,  -2), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
         {  VALUE(   0,   0), VALUE(   4,   3), VALUE(  12,  12), VALUE(  28,  17), VALUE(  36,  20), VALUE(  56,  22)  },
@@ -358,7 +381,7 @@ struct evalparamset {
         {  VALUE(   0,   0), VALUE(  72,  98), VALUE(  53,  54), VALUE(  72,  80), VALUE(  35,  86), VALUE( -57, 253)  },
         {  VALUE(   0,   0), VALUE(  38, 241), VALUE( 130, 110), VALUE(   7, 400), VALUE(   0, 641), VALUE(   0,   0)  }
     };
-    eval eBackwardpawnpenalty =  VALUE( -16, -11);
+    eval eBackwardpawnpenalty[8] = {  VALUE(  -2, -12), VALUE(  -6, -11), VALUE( -16, -11), VALUE( -15, -11), VALUE( -20, -11), VALUE( -18,  -8), VALUE( -16,  -7), VALUE( -15,  -3)  };
     eval eDoublebishopbonus =  VALUE(  56,  38);
     eval ePawnblocksbishoppenalty =  VALUE( -10, -18);
     eval eBishopcentercontrolbonus =  VALUE(  25,  13);
@@ -499,10 +522,10 @@ struct tunerpool {
     tuner *tn;
 };
 
-
-void registeralltuners(chessposition *pos);
-
 #endif
+
+void registerallevals(chessposition *pos = nullptr);
+void initPsqtable();
 
 #define SCALE_NORMAL 128
 #define SCALE_DRAW 0
@@ -510,7 +533,7 @@ void registeralltuners(chessposition *pos);
 #define SCALE_HARDTOWIN 10
 #define SCALE_OCB 32
 
-enum EvalType { NOTRACE, TRACE};
+enum EvalType { NOTRACE, TRACE };
 
 //
 // utils stuff
@@ -606,8 +629,6 @@ typedef struct pawnhashentry {
     uint32_t hashupper;
     int32_t value;
     U64 passedpawnbb[2];
-    U64 isolatedpawnbb[2];
-    U64 backwardpawnbb[2];
     U64 attacked[2];
     U64 attackedBy2[2];
     bool bothFlanks;
@@ -895,7 +916,7 @@ struct chessmovestack
     U64 isCheckbb;
     int lastnullmove;
     uint32_t movecode;
-    U64 kingPinned[2];
+    U64 kingPinned;
 };
 
 #define MAXMOVELISTLENGTH 256	// for lists of possible pseudo-legal moves
@@ -1000,10 +1021,17 @@ extern SMagic mRookTbl[64];
 
 #define BISHOPINDEXBITS 9
 #define ROOKINDEXBITS 12
-#define MAGICBISHOPINDEX(m,x) (int)((((m) & mBishopTbl[x].mask) * mBishopTbl[x].magic) >> (64 - BISHOPINDEXBITS))
-#define MAGICROOKINDEX(m,x) (int)((((m) & mRookTbl[x].mask) * mRookTbl[x].magic) >> (64 - ROOKINDEXBITS))
-#define MAGICBISHOPATTACKS(m,x) (mBishopAttacks[x][MAGICBISHOPINDEX(m,x)])
-#define MAGICROOKATTACKS(m,x) (mRookAttacks[x][MAGICROOKINDEX(m,x)])
+
+#if CPUFEATURE == CPUBMI2
+#include <immintrin.h>
+#define BISHOPINDEX(occ,i) (int)(_pext_u64(occ, mBishopTbl[i].mask))
+#define ROOKINDEX(occ,i) (int)(_pext_u64(occ, mRookTbl[i].mask))
+#else
+#define BISHOPINDEX(occ,i) (int)((((occ) & mBishopTbl[i].mask) * mBishopTbl[i].magic) >> (64 - BISHOPINDEXBITS))
+#define ROOKINDEX(occ,i) (int)((((occ) & mRookTbl[i].mask) * mRookTbl[i].magic) >> (64 - ROOKINDEXBITS))
+#endif
+#define BISHOPATTACKS(m,x) (mBishopAttacks[x][BISHOPINDEX(m,x)])
+#define ROOKATTACKS(m,x) (mRookAttacks[x][ROOKINDEX(m,x)])
 
 extern U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
@@ -1055,7 +1083,7 @@ public:
     U64 isCheckbb;
     int lastnullmove;
     uint32_t movecode;
-    U64 kingPinned[2];
+    U64 kingPinned;
 
     uint8_t mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
     chessmovestack movestack[MAXMOVESEQUENCELENGTH];
@@ -1146,7 +1174,7 @@ public:
     bool moveGivesCheck(uint32_t c);  // simple and imperfect as it doesn't handle special moves and cases (mainly to avoid pruning of important moves)
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
     uint32_t shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal
-    int getpsqval();  // only for eval trace and mirror test
+    int getpsqval(bool showDetails = false);  // only for eval trace and mirror test
     template <EvalType Et, int Me> int getGeneralEval(positioneval *pe);
     template <EvalType Et, PieceType Pt, int Me> int getPieceEval(positioneval *pe);
     template <EvalType Et, int Me> int getLateEval(positioneval *pe);
@@ -1202,7 +1230,8 @@ const map<string, GuiToken> GuiCommandMap = {
 //
 class engine;   //forward definition
 
-enum ucioptiontype { ucicheck, ucispin, ucicombo, ucibutton, ucistring };
+// order of ucioptiontypes is important for (not) setting default at registration
+enum ucioptiontype { ucicheck, ucispin, ucicombo, ucistring, ucibutton, ucieval };
 
 struct ucioption_t
 {
@@ -1241,7 +1270,7 @@ class engine
 public:
     engine();
     ~engine();
-    const char* name = ENGINEVER;
+    const string cpufeature[3] = { "Legacy", "Popcount", "BMI2" };
     const char* author = "Andreas Matthies";
     bool isWhite;
     U64 tbhits;
@@ -1253,6 +1282,7 @@ public:
     U64 maxnodes;
     bool infinite;
     bool debug = false;
+    bool evaldetails = false;
     bool moveoutput;
     int stopLevel = ENGINETERMINATEDSEARCH;
     int Hash;
@@ -1275,6 +1305,11 @@ public:
     int benchdepth;
     string benchmove;
     ucioptions_t ucioptions;
+    string system;
+    int maxHWSupport;
+    int cpuVendor;
+    bool badPEXT;
+
 #ifdef STACKDEBUG
     string assertfile = "";
 #endif
@@ -1283,6 +1318,9 @@ public:
     int t2stop = 0;     // immediate stop
     bool bStopCount;
 #endif
+    string name() {
+        return string(ENGINEVER) + " (" + cpufeature[CPUFEATURE] +")";
+    };
     GuiToken parse(vector<string>*, string ss);
     void send(const char* format, ...);
     void communicate(string inputstring);
@@ -1292,6 +1330,7 @@ public:
     long long perft(int depth, bool dotests);
     void prepareThreads();
     void resetStats();
+    void GetSystemInfo();
 };
 
 PieceType GetPieceType(char c);

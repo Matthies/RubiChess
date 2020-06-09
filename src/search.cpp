@@ -19,7 +19,7 @@
 #include "RubiChess.h"
 
 #ifdef STATISTICS
-struct statistic statistics;
+statistic statistics;
 #endif
 
 const int deltapruningmargin = 100;

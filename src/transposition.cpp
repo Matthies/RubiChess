@@ -353,13 +353,14 @@ Pawnhash::Pawnhash(int sizeMb)
     size = (1ULL << msb);
 
     sizemask = size - 1;
-    table = new S_PAWNHASHENTRY[size];
-    memset(table, 0, (size_t)(size * sizeof(S_PAWNHASHENTRY)));
+    size_t tablesize = (size_t)size * sizeof(S_PAWNHASHENTRY);
+    table = (S_PAWNHASHENTRY*)allocalign64(tablesize);
+    memset(table, 0, tablesize);
 }
 
 Pawnhash::~Pawnhash()
 {
-    delete table;
+    freealigned64(table);
 }
 
 
@@ -378,8 +379,6 @@ bool Pawnhash::probeHash(U64 hash, pawnhashentry **entry)
     (*entry)->value = 0;
     (*entry)->semiopen[0] = (*entry)->semiopen[1] = 0xff;
     (*entry)->passedpawnbb[0] = (*entry)->passedpawnbb[1] = 0ULL;
-    (*entry)->isolatedpawnbb[0] = (*entry)->isolatedpawnbb[1] = 0ULL;
-    (*entry)->backwardpawnbb[0] = (*entry)->backwardpawnbb[1] = 0ULL;
     (*entry)->attacked[0] = (*entry)->attacked[1] = 0ULL;
     (*entry)->attackedBy2[0] = (*entry)->attackedBy2[1] = 0ULL;
 
