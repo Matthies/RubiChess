@@ -72,8 +72,8 @@ profile-build-one:
 !ENDIF
 
 profile-build:
-	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-bmi2
 	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-popcount
+	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-bmi2
 	@nmake -c -f Makefile.clang profile-build-one PR=rubiChess-legacy
 
 release: profile-build profile-clean
