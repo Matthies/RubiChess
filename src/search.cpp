@@ -1402,16 +1402,19 @@ void resetEndTime(int constantRootMoves, bool complete)
     int timetouse = (en.isWhite ? en.wtime : en.btime);
     int timeinc = (en.isWhite ? en.winc : en.binc);
     int overhead = en.moveOverhead + 8 * en.Threads;
-    int variation = constantRootMoves * 2 + en.ponderhit * 4;
+    int constance = constantRootMoves * 2 + en.ponderhit * 4;
 
+    // main goal is to let the search stop at endtime1 (full iterations) most times and get only few stops at endtime2 (interrupted iteration)
+    // constance: ponder hit and/or onstance of best move in the last iteration lower the time within a given interval
     if (en.movestogo)
     {
         // should garantee timetouse > 0
-        // stop soon at 0.7...1.9 x average movetime
-        // stop immediately at 1.9...3.1 x average movetime
+        // f1: stop soon after current iteration at 1.0...2.2 x average movetime
+        // f2: stop immediately at 1.9...3.1 x average movetime
+        // movevariation: many moves to go decrease f1 (stop soon)
         int movevariation = min(32, en.movestogo) * 3 / 32;
-        int f1 = max(10 - movevariation, 22 - movevariation - variation);
-        int f2 = max(19, 31 - variation);
+        int f1 = max(10 - movevariation, 22 - movevariation - constance);
+        int f2 = max(19, 31 - constance);
         if (complete)
             en.endtime1 = en.starttime + timetouse * en.frequency * f1 / (en.movestogo + 1) / 10000;
         en.endtime2 = en.starttime + min(max(0, timetouse - overhead * en.movestogo), f2 * timetouse / (en.movestogo + 1) / 10) * en.frequency / 1000;
@@ -1421,20 +1424,20 @@ void resetEndTime(int constantRootMoves, bool complete)
         if (timeinc)
         {
             // sudden death with increment; split the remaining time in (256-phase) timeslots
-            // stop soon after 5..17 timeslot
-            // stop immediately after 15..27 timeslots
-            int f1 = max(5, 17 - variation);
-            int f2 = max(15, 27 - variation);
+            // f1: stop soon after 5..17 timeslot
+            // f2: stop immediately after 15..27 timeslots
+            int f1 = max(5, 17 - constance);
+            int f2 = max(15, 27 - constance);
             if (complete)
                 en.endtime1 = en.starttime + max(timeinc, f1 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
             en.endtime2 = en.starttime + min(max(0, timetouse - overhead), max(timeinc, f2 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
         }
         else {
             // sudden death without increment; play for another x;y moves
-            // stop soon at 1/30...1/42 time slot
-            // stop immediately at 1/10...1/22 time slot
-            int f1 = min(42, 30 + variation);
-            int f2 = min(22, 10 + variation);
+            // f1: stop soon at 1/30...1/42 time slot
+            // f2: stop immediately at 1/10...1/22 time slot
+            int f1 = min(42, 30 + constance);
+            int f2 = min(22, 10 + constance);
             if (complete)
                 en.endtime1 = en.starttime + timetouse / f1 * en.frequency / 1000;
             en.endtime2 = en.starttime + min(max(0, timetouse - overhead), timetouse / f2) * en.frequency / 1000;
