@@ -1442,6 +1442,9 @@ struct statistic {
     S64 red_correction;         // total reduction correction by over-/underflow
 
     U64 extend_singular;        // total extended moves
+
+    int16_t hist_iv[2];         // interval of the history
+    int16_t cmh_iv[2];           // interval of the counterhistory   
 };
 
 extern struct statistic statistics;

@@ -2498,6 +2498,7 @@ void engine::resetStats()
         memset(sthread[i].pos.counterhistory, 0, sizeof(chessposition::counterhistory));
         memset(sthread[i].pos.countermove, 0, sizeof(chessposition::countermove));
     }
+    STATISTICSDO(statistics.hist_iv[0] = statistics.hist_iv[1] = statistics.cmh_iv[0] = statistics.cmh_iv[1] = 0;)
 }
 
 
