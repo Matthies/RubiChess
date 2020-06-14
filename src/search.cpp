@@ -633,7 +633,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             reduction = reductiontable[positionImproved][depth][min(63, legalMoves + 1)];
 
             // adjust reduction by stats value
-            reduction -= stats / 6000;
+            reduction -= stats / 5000;
 
             // adjust reduction at PV nodes
             reduction -= PVNode;
@@ -643,7 +643,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
             STATISTICSINC(red_pi[positionImproved]);
             STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, legalMoves + 1)]);
-            STATISTICSADD(red_history, -stats / 6000);
+            STATISTICSADD(red_history, -stats / 5000);
             STATISTICSADD(red_pv, -(int)PVNode);
             STATISTICSDO(int red0 = reduction);
 
