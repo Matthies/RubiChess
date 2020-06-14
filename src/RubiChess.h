@@ -20,7 +20,7 @@
 #define VERNUM "1.8"
 //#define VERSTABLE
 
-#if 0
+#if 1
 #define STATISTICS
 #endif
 
