@@ -640,7 +640,6 @@ class Pawnhash
 {
 public:
     S_PAWNHASHENTRY *table;
-    U64 size;
     U64 sizemask;
     Pawnhash(int sizeMb);
     ~Pawnhash();

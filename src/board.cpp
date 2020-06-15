@@ -1183,11 +1183,11 @@ void chessposition::pvdebugout()
 #endif
 
 // shameless copy from http://chessprogramming.wikispaces.com/Magic+Bitboards#Plain
-U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
-U64 mRookAttacks[64][1 << ROOKINDEXBITS];
+alignas(64) U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
+alignas(64) U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 
-SMagic mBishopTbl[64];
-SMagic mRookTbl[64];
+alignas(64) SMagic mBishopTbl[64];
+alignas(64) SMagic mRookTbl[64];
 
 
 
@@ -2931,9 +2931,9 @@ void ucioptions_t::Print()
 
 
 // Some global objects
-engine en;
-evalparamset eps;
-zobrist zb;
+alignas(64) engine en;
+alignas(64) evalparamset eps;
+alignas(64) zobrist zb;
 
 // Explicit template instantiation
 // This avoids putting these definitions in header file
