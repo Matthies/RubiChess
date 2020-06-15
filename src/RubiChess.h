@@ -904,9 +904,9 @@ extern int squareDistance[64][64];
 extern int castlerookfrom[4];
 struct chessmovestack
 {
-    int state;
-    int ept;
-    int kingpos[2];
+    uint32_t state;
+    uint8_t ept;
+    uint8_t kingpos[2];
     unsigned long long hash;
     unsigned long long pawnhash;
     unsigned long long materialhash;
@@ -1064,16 +1064,10 @@ enum PvAbortType {
 class chessposition
 {
 public:
-    U64 nodes;
-    U64 piece00[14];
-    U64 occupied00[2];
-    U64 attackedBy2[2];
-    U64 attackedBy[2][7];
-
     // The following block is mapped/copied to the movestack, so its important to keep the order
-    int state;
-    int ept;
-    int kingpos[2];
+    uint32_t state;
+    uint8_t ept;
+    uint8_t kingpos[2];
     unsigned long long hash;
     unsigned long long pawnhash;
     unsigned long long materialhash;
@@ -1084,10 +1078,16 @@ public:
     uint32_t movecode;
     U64 kingPinned;
 
-    uint8_t mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
     chessmovestack movestack[MAXMOVESEQUENCELENGTH];
     uint16_t excludemovestack[MAXMOVESEQUENCELENGTH];
     int16_t staticevalstack[MAXMOVESEQUENCELENGTH];
+
+    U64 nodes;
+    U64 piece00[14];
+    U64 occupied00[2];
+    U64 attackedBy2[2];
+    U64 attackedBy[2][7];
+    uint8_t mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
     int mstop;      // 0 at last non-reversible move before root, rootheight at root position
     int ply;        // 0 at root position
     int rootheight; // fixed stack offset in root position 
