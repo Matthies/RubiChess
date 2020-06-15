@@ -386,12 +386,12 @@ bool Pawnhash::probeHash(U64 hash, pawnhashentry **entry)
 }
 
 
-Materialhash::Materialhash()
+void Materialhash::init()
 {
     table = (Materialhashentry*)allocalign64(MATERIALHASHSIZE * sizeof(Materialhashentry));
 }
 
-Materialhash::~Materialhash()
+void Materialhash::remove()
 {
     freealigned64(table);
 }

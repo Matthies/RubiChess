@@ -2404,17 +2404,6 @@ static void uciSetSyzygyPath()
 }
 
 
-searchthread::searchthread()
-{
-    pwnhsh = NULL;
-}
-
-searchthread::~searchthread()
-{
-    delete pwnhsh;
-}
-
-
 engine::engine()
 {
     GetSystemInfo();
@@ -2444,31 +2433,55 @@ engine::engine()
 engine::~engine()
 {
     ucioptions.Set("SyzygyPath", "<empty>");
-    delete[] sthread;
+    Threads = 0;
+    allocThreads();
     delete rootposition.pwnhsh;
+    rootposition.mtrlhsh.remove();
 }
 
+#if 0
 void engine::allocPawnhash()
 {
     for (int i = 0; i < Threads; i++)
     {
-        delete sthread[i].pwnhsh;
-        sthread[i].pos.pwnhsh = sthread[i].pwnhsh = new Pawnhash(sizeOfPh);
+        if (sthread[i].pwnhsh) freealigned64(sthread[i].pwnhsh);
+        sthread[i].pos.pwnhsh = sthread[i].pwnhsh = (Pawnhash*) allocalign64(sizeOfPh * sizeof(Pawnhash));//new Pawnhash(sizeOfPh);
     }
 }
-
+#endif
 
 void engine::allocThreads()
 {
-    delete[] sthread;
-    sthread = new searchthread[Threads];
+    //delete[] sthread;
+    //sthread = new searchthread[Threads];
+
+    // first cleanup the old searchthreads memory
+    for (int i = 0; i < oldThreads; i++)
+    {
+        sthread[i].pos.mtrlhsh.remove();
+        freealigned64(sthread[i].pwnhsh);
+    }
+
+    freealigned64(sthread);
+
+    oldThreads = Threads;
+
+    if (!Threads)
+        return;
+
+    size_t size = Threads * sizeof(searchthread);
+
+    sthread = (searchthread*) allocalign64(size);
+    memset(sthread, 0, size);
     for (int i = 0; i < Threads; i++)
     {
         sthread[i].index = i;
         sthread[i].searchthreads = sthread;
         sthread[i].numofthreads = Threads;
+        sthread[i].pos.pwnhsh = sthread[i].pwnhsh = (Pawnhash*)allocalign64(sizeOfPh * sizeof(Pawnhash));//new Pawnhash(sizeOfPh);
+        sthread[i].pos.mtrlhsh.init();
     }
-    allocPawnhash();
+    //allocPawnhash();
     prepareThreads();
     resetStats();
 }

@@ -664,8 +664,8 @@ class Materialhash
 {
 public:
     Materialhashentry *table;
-    Materialhash();
-    ~Materialhash();
+    void init();
+    void remove();
     bool probeHash(U64 hash, Materialhashentry **entry);
 };
 
@@ -1296,6 +1296,7 @@ public:
     int SyzygyProbeLimit;
     chessposition rootposition;
     int Threads;
+    int oldThreads;
     searchthread *sthread;
     ponderstate_t pondersearch;
     bool ponderhit;
