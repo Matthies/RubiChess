@@ -571,11 +571,11 @@ typedef struct ranctx { u8 a; u8 b; u8 c; u8 d; } ranctx;
 class zobrist
 {
 public:
-    ranctx rnd;
     unsigned long long boardtable[64 * 16];
     unsigned long long cstl[32];
     unsigned long long ept[64];
     unsigned long long s2m;
+    ranctx rnd;
     zobrist();
     unsigned long long getRnd();
     u8 getHash(chessposition *pos);
