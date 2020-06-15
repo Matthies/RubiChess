@@ -905,17 +905,17 @@ extern int castlerookfrom[4];
 struct chessmovestack
 {
     uint32_t state;
-    uint8_t ept;
-    uint8_t kingpos[2];
-    unsigned long long hash;
-    unsigned long long pawnhash;
-    unsigned long long materialhash;
+    U64 hash;
+    U64 pawnhash;
+    U64 materialhash;
     int halfmovescounter;
     int fullmovescounter;
     U64 isCheckbb;
     int lastnullmove;
     uint32_t movecode;
     U64 kingPinned;
+    uint8_t ept;
+    uint8_t kingpos[2];
 };
 
 #define MAXMOVELISTLENGTH 256	// for lists of possible pseudo-legal moves
@@ -1071,17 +1071,17 @@ public:
 
     // The following block is mapped/copied to the movestack, so its important to keep the order
     uint32_t state;
-    uint8_t ept;
-    uint8_t kingpos[2];
-    unsigned long long hash;
-    unsigned long long pawnhash;
-    unsigned long long materialhash;
+    U64 hash;
+    U64 pawnhash;
+    U64 materialhash;
     int halfmovescounter;
     int fullmovescounter;
     U64 isCheckbb;
     int lastnullmove;
     uint32_t movecode;
     U64 kingPinned;
+    uint8_t ept;
+    uint8_t kingpos[2];
 
     chessmovestack movestack[MAXMOVESEQUENCELENGTH];
     uint16_t excludemovestack[MAXMOVESEQUENCELENGTH];

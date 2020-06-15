@@ -18,9 +18,8 @@
 
 #include "RubiChess.h"
 
-alignas(64) U64 knight_attacks[64];
-alignas(64) U64 king_attacks[64];
-alignas(64) int psqtable[14][64];
+U64 knight_attacks[64];
+U64 king_attacks[64];
 U64 pawn_moves_to[64][2];          // bitboard of target square a pawn on index squares moves to
 U64 pawn_moves_to_double[64][2];   // bitboard of target square a pawn on index squares moves to with a double push
 U64 pawn_attacks_to[64][2];        // bitboard of (occupied) target squares a pawn on index square is attacking/capturing to
@@ -43,6 +42,7 @@ int castlerookfrom[4];
 U64 castleblockers[4];
 U64 castlekingwalk[4];
 int squareDistance[64][64];  // decreased by 1 for directly indexing evaluation arrays
+alignas(64) int psqtable[14][64];
 
 
 PieceType GetPieceType(char c)
