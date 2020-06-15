@@ -1064,6 +1064,11 @@ enum PvAbortType {
 class chessposition
 {
 public:
+    U64 piece00[14];
+    U64 occupied00[2];
+    U64 attackedBy2[2];
+    U64 attackedBy[2][7];
+
     // The following block is mapped/copied to the movestack, so its important to keep the order
     uint32_t state;
     uint8_t ept;
@@ -1083,10 +1088,6 @@ public:
     int16_t staticevalstack[MAXMOVESEQUENCELENGTH];
 
     U64 nodes;
-    U64 piece00[14];
-    U64 occupied00[2];
-    U64 attackedBy2[2];
-    U64 attackedBy[2][7];
     uint8_t mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
     int mstop;      // 0 at last non-reversible move before root, rootheight at root position
     int ply;        // 0 at root position
