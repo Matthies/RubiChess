@@ -2452,9 +2452,6 @@ void engine::allocPawnhash()
 
 void engine::allocThreads()
 {
-    //delete[] sthread;
-    //sthread = new searchthread[Threads];
-
     // first cleanup the old searchthreads memory
     for (int i = 0; i < oldThreads; i++)
     {
@@ -2472,7 +2469,7 @@ void engine::allocThreads()
     size_t size = Threads * sizeof(searchthread);
 
     sthread = (searchthread*) allocalign64(size);
-    memset(sthread, 0, size);
+    memset((void*)sthread, 0, size);
     for (int i = 0; i < Threads; i++)
     {
         sthread[i].index = i;
@@ -2481,7 +2478,6 @@ void engine::allocThreads()
         sthread[i].pos.pwnhsh = sthread[i].pwnhsh = (Pawnhash*)allocalign64(sizeOfPh * sizeof(Pawnhash));//new Pawnhash(sizeOfPh);
         sthread[i].pos.mtrlhsh.init();
     }
-    //allocPawnhash();
     prepareThreads();
     resetStats();
 }
@@ -2491,13 +2487,14 @@ void engine::prepareThreads()
 {
     for (int i = 0; i < Threads; i++)
     {
+        chessposition *pos = &sthread[i].pos;
         // copy new position to the threads copy but keep old history data
-        memcpy((void*)&sthread[i].pos, &rootposition, offsetof(chessposition, history));
-        sthread[i].pos.threadindex = i;
+        memcpy((void*)pos, &rootposition, offsetof(chessposition, history));
+        pos->threadindex = i;
         // early reset of variables that are important for bestmove selection
-        sthread[i].pos.bestmovescore[0] = NOSCORE;
-        sthread[i].pos.bestmove.code = 0;
-        sthread[i].pos.nodes = 0;
+        pos->bestmovescore[0] = NOSCORE;
+        pos->bestmove.code = 0;
+        pos->nodes = 0;
         sthread[i].pos.nullmoveply = 0;
         sthread[i].pos.nullmoveside = 0;
     }
