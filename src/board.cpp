@@ -2439,16 +2439,6 @@ engine::~engine()
     rootposition.mtrlhsh.remove();
 }
 
-#if 0
-void engine::allocPawnhash()
-{
-    for (int i = 0; i < Threads; i++)
-    {
-        if (sthread[i].pwnhsh) freealigned64(sthread[i].pwnhsh);
-        sthread[i].pos.pwnhsh = sthread[i].pwnhsh = (Pawnhash*) allocalign64(sizeOfPh * sizeof(Pawnhash));//new Pawnhash(sizeOfPh);
-    }
-}
-#endif
 
 void engine::allocThreads()
 {
