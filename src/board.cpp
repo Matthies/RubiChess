@@ -42,7 +42,7 @@ int castlerookfrom[4];
 U64 castleblockers[4];
 U64 castlekingwalk[4];
 int squareDistance[64][64];  // decreased by 1 for directly indexing evaluation arrays
-int psqtable[14][64];
+alignas(64) int psqtable[14][64];
 
 
 PieceType GetPieceType(char c)
@@ -1183,11 +1183,11 @@ void chessposition::pvdebugout()
 #endif
 
 // shameless copy from http://chessprogramming.wikispaces.com/Magic+Bitboards#Plain
-U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
-U64 mRookAttacks[64][1 << ROOKINDEXBITS];
+alignas(64) U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
+alignas(64) U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 
-SMagic mBishopTbl[64];
-SMagic mRookTbl[64];
+alignas(64) SMagic mBishopTbl[64];
+alignas(64) SMagic mRookTbl[64];
 
 
 
@@ -2404,17 +2404,6 @@ static void uciSetSyzygyPath()
 }
 
 
-searchthread::searchthread()
-{
-    pwnhsh = NULL;
-}
-
-searchthread::~searchthread()
-{
-    delete pwnhsh;
-}
-
-
 engine::engine()
 {
     GetSystemInfo();
@@ -2444,31 +2433,41 @@ engine::engine()
 engine::~engine()
 {
     ucioptions.Set("SyzygyPath", "<empty>");
-    delete[] sthread;
+    Threads = 0;
+    allocThreads();
     delete rootposition.pwnhsh;
-}
-
-void engine::allocPawnhash()
-{
-    for (int i = 0; i < Threads; i++)
-    {
-        delete sthread[i].pwnhsh;
-        sthread[i].pos.pwnhsh = sthread[i].pwnhsh = new Pawnhash(sizeOfPh);
-    }
+    rootposition.mtrlhsh.remove();
 }
 
 
 void engine::allocThreads()
 {
-    delete[] sthread;
-    sthread = new searchthread[Threads];
+    // first cleanup the old searchthreads memory
+    for (int i = 0; i < oldThreads; i++)
+    {
+        sthread[i].pos.mtrlhsh.remove();
+        freealigned64(sthread[i].pwnhsh);
+    }
+
+    freealigned64(sthread);
+
+    oldThreads = Threads;
+
+    if (!Threads)
+        return;
+
+    size_t size = Threads * sizeof(searchthread);
+
+    sthread = (searchthread*) allocalign64(size);
+    memset((void*)sthread, 0, size);
     for (int i = 0; i < Threads; i++)
     {
         sthread[i].index = i;
         sthread[i].searchthreads = sthread;
         sthread[i].numofthreads = Threads;
+        sthread[i].pos.pwnhsh = sthread[i].pwnhsh = (Pawnhash*)allocalign64(sizeOfPh * sizeof(Pawnhash));//new Pawnhash(sizeOfPh);
+        sthread[i].pos.mtrlhsh.init();
     }
-    allocPawnhash();
     prepareThreads();
     resetStats();
 }
@@ -2478,13 +2477,14 @@ void engine::prepareThreads()
 {
     for (int i = 0; i < Threads; i++)
     {
+        chessposition *pos = &sthread[i].pos;
         // copy new position to the threads copy but keep old history data
-        memcpy((void*)&sthread[i].pos, &rootposition, offsetof(chessposition, history));
-        sthread[i].pos.threadindex = i;
+        memcpy((void*)pos, &rootposition, offsetof(chessposition, history));
+        pos->threadindex = i;
         // early reset of variables that are important for bestmove selection
-        sthread[i].pos.bestmovescore[0] = NOSCORE;
-        sthread[i].pos.bestmove.code = 0;
-        sthread[i].pos.nodes = 0;
+        pos->bestmovescore[0] = NOSCORE;
+        pos->bestmove.code = 0;
+        pos->nodes = 0;
         sthread[i].pos.nullmoveply = 0;
         sthread[i].pos.nullmoveside = 0;
     }
@@ -2931,9 +2931,9 @@ void ucioptions_t::Print()
 
 
 // Some global objects
-engine en;
-evalparamset eps;
-zobrist zb;
+alignas(64) engine en;
+alignas(64) evalparamset eps;
+alignas(64) zobrist zb;
 
 // Explicit template instantiation
 // This avoids putting these definitions in header file

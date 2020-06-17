@@ -347,7 +347,7 @@ Pawnhash::Pawnhash(int sizeMb)
 {
     int msb = 0;
     sizeMb = max(sizeMb, 16);
-    size = ((U64)sizeMb << 20) / sizeof(S_PAWNHASHENTRY);
+    U64 size = ((U64)sizeMb << 20) / sizeof(S_PAWNHASHENTRY);
     if (!size) return;
     GETMSB(msb, size);
     size = (1ULL << msb);
@@ -386,12 +386,12 @@ bool Pawnhash::probeHash(U64 hash, pawnhashentry **entry)
 }
 
 
-Materialhash::Materialhash()
+void Materialhash::init()
 {
     table = (Materialhashentry*)allocalign64(MATERIALHASHSIZE * sizeof(Materialhashentry));
 }
 
-Materialhash::~Materialhash()
+void Materialhash::remove()
 {
     freealigned64(table);
 }

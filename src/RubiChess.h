@@ -571,11 +571,11 @@ typedef struct ranctx { u8 a; u8 b; u8 c; u8 d; } ranctx;
 class zobrist
 {
 public:
-    ranctx rnd;
     unsigned long long boardtable[64 * 16];
     unsigned long long cstl[32];
     unsigned long long ept[64];
     unsigned long long s2m;
+    ranctx rnd;
     zobrist();
     unsigned long long getRnd();
     u8 getHash(chessposition *pos);
@@ -640,7 +640,6 @@ class Pawnhash
 {
 public:
     S_PAWNHASHENTRY *table;
-    U64 size;
     U64 sizemask;
     Pawnhash(int sizeMb);
     ~Pawnhash();
@@ -665,8 +664,8 @@ class Materialhash
 {
 public:
     Materialhashentry *table;
-    Materialhash();
-    ~Materialhash();
+    void init();
+    void remove();
     bool probeHash(U64 hash, Materialhashentry **entry);
 };
 
@@ -1062,12 +1061,17 @@ enum PvAbortType {
     PVA_FUTILITYPRUNED, PVA_SEEPRUNED, PVA_BADHISTORYPRUNED, PVA_MULTICUT, PVA_BESTMOVE, PVA_NOTBESTMOVE, PVA_OMITTED, PVA_BETACUT, PVA_BELOWALPHA }; 
 #endif
 
+// Replace the occupied bitboards with the first two so far unused piece bitboards
+#define occupied00 piece00
+
 class chessposition
 {
 public:
     U64 nodes;
+    int mstop;      // 0 at last non-reversible move before root, rootheight at root position
+    int ply;        // 0 at root position
+
     U64 piece00[14];
-    U64 occupied00[2];
     U64 attackedBy2[2];
     U64 attackedBy[2][7];
 
@@ -1089,8 +1093,7 @@ public:
     chessmovestack movestack[MAXMOVESEQUENCELENGTH];
     uint16_t excludemovestack[MAXMOVESEQUENCELENGTH];
     int16_t staticevalstack[MAXMOVESEQUENCELENGTH];
-    int mstop;      // 0 at last non-reversible move before root, rootheight at root position
-    int ply;        // 0 at root position
+
     int rootheight; // fixed stack offset in root position 
     int seldepth;
     int nullmoveside;
@@ -1297,6 +1300,7 @@ public:
     int SyzygyProbeLimit;
     chessposition rootposition;
     int Threads;
+    int oldThreads;
     searchthread *sthread;
     ponderstate_t pondersearch;
     bool ponderhit;
@@ -1376,6 +1380,9 @@ public:
     int depth;
     int numofthreads;
     int lastCompleteDepth;
+
+    uint8_t padding[40];
+
     searchthread *searchthreads;
     searchthread();
     ~searchthread();
