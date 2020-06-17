@@ -79,18 +79,26 @@ inline int chessposition::getHistory(uint32_t code, int16_t **cmptr)
 }
 
 
+#define HISTORYMAXDEPTH 20
+#define HISTORYAGESHIFT 8
+#define HISTORYNEWSHIFT 5
+
 inline void chessposition::updateHistory(uint32_t code, int16_t **cmptr, int value)
 {
     int pc = GETPIECE(code);
     int s2m = pc & S2MMASK;
     int from = GETFROM(code);
     int to = GETCORRECTTO(code);
-    value = max(-256, min(256, value));
-    int delta = 32 * value - history[s2m][from][to] * abs(value) / 256;
+    value = max(-HISTORYMAXDEPTH * HISTORYMAXDEPTH, min(HISTORYMAXDEPTH * HISTORYMAXDEPTH, value));
+
+    int delta = value * (1 << HISTORYNEWSHIFT) - history[s2m][from][to] * abs(value) / (1 << HISTORYAGESHIFT);
+    myassert(history[s2m][from][to] + delta < MAXINT16 && history[s2m][from][to] + delta > MININT16, this, 2, history[s2m][from][to], delta);
+
     history[s2m][from][to] += delta;
+
     for (int i = 0; i < CMPLIES; i++)
         if (cmptr[i]) {
-            delta = 32 * value - cmptr[i][pc * 64 + to] * abs(value) / 256;
+            delta = value * (1 << HISTORYNEWSHIFT) - cmptr[i][pc * 64 + to] * abs(value) / (1 << HISTORYAGESHIFT);
             cmptr[i][pc * 64 + to] += delta;
         }
 }
@@ -613,7 +621,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             reduction = reductiontable[positionImproved][depth][min(63, legalMoves + 1)];
 
             // adjust reduction by stats value
-            reduction -= stats / 4096;
+            reduction -= stats / 5000;
 
             // adjust reduction at PV nodes
             reduction -= PVNode;
@@ -623,7 +631,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
             STATISTICSINC(red_pi[positionImproved]);
             STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, legalMoves + 1)]);
-            STATISTICSADD(red_history, -stats / 4096);
+            STATISTICSADD(red_history, -stats / 5000);
             STATISTICSADD(red_pv, -(int)PVNode);
             STATISTICSDO(int red0 = reduction);
 
@@ -1600,7 +1608,6 @@ void search_statistics()
 
     f0 = 100.0 * statistics.extend_singular / (double)n;
     printf("(ST) Extensions: %%singular: %7.4f\n", f0);
-
     printf("(ST)==================================================================================================================================================\n");
 }
 #endif
