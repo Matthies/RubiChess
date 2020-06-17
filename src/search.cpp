@@ -79,17 +79,9 @@ inline int chessposition::getHistory(uint32_t code, int16_t **cmptr)
 }
 
 
-#if 0
-// master:
-#define HISTORYMAXDEPTH 16
-#define HISTORYAGESHIFT 8
-#define HISTORYNEWSHIFT 5
-#else
-// test
 #define HISTORYMAXDEPTH 20
 #define HISTORYAGESHIFT 8
 #define HISTORYNEWSHIFT 5
-#endif
 
 inline void chessposition::updateHistory(uint32_t code, int16_t **cmptr, int value)
 {
@@ -103,15 +95,11 @@ inline void chessposition::updateHistory(uint32_t code, int16_t **cmptr, int val
     myassert(history[s2m][from][to] + delta < MAXINT16 && history[s2m][from][to] + delta > MININT16, this, 2, history[s2m][from][to], delta);
 
     history[s2m][from][to] += delta;
-    STATISTICSDO(if (!statistics.hist_iv[0] || statistics.hist_iv[0] > history[s2m][from][to]) statistics.hist_iv[0] = history[s2m][from][to]);
-    STATISTICSDO(if (!statistics.hist_iv[1] || statistics.hist_iv[1] < history[s2m][from][to]) statistics.hist_iv[1] = history[s2m][from][to]);
 
     for (int i = 0; i < CMPLIES; i++)
         if (cmptr[i]) {
             delta = value * (1 << HISTORYNEWSHIFT) - cmptr[i][pc * 64 + to] * abs(value) / (1 << HISTORYAGESHIFT);
             cmptr[i][pc * 64 + to] += delta;
-            STATISTICSDO(if (!statistics.cmh_iv[0] || statistics.cmh_iv[0] > cmptr[i][pc * 64 + to]) statistics.cmh_iv[0] = cmptr[i][pc * 64 + to]);
-            STATISTICSDO(if (!statistics.cmh_iv[1] || statistics.cmh_iv[1] < cmptr[i][pc * 64 + to]) statistics.cmh_iv[1] = cmptr[i][pc * 64 + to]);
         }
 }
 
@@ -1620,7 +1608,6 @@ void search_statistics()
 
     f0 = 100.0 * statistics.extend_singular / (double)n;
     printf("(ST) Extensions: %%singular: %7.4f\n", f0);
-    printf("(ST) History-Interval: [%6d /%6d]  CMHistory-Interval: [%6d /%6d]\n", statistics.hist_iv[0], statistics.hist_iv[1], statistics.cmh_iv[0], statistics.cmh_iv[1]);
     printf("(ST)==================================================================================================================================================\n");
 }
 #endif
