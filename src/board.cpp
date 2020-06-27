@@ -906,6 +906,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
 
 void chessposition::updatePins()
 {
+#if 1
     kingPinned = 0ULL;
     for (int me = WHITE; me <= BLACK; me++)
     {
@@ -923,6 +924,28 @@ void chessposition::updatePins()
                 kingPinned |= potentialPinners;
         }
     }
+#endif
+#if 1
+    U64 occ = occupied00[0] | occupied00[1];
+    U64 newkingPinned = 0ULL;
+    for (int me = WHITE; me <= BLACK; me++)
+    {
+        int you = 1 - me;
+        int k = kingpos[me];
+        U64 pp = ROOKATTACKS(occ, k);
+        U64 pd = ~pp & ROOKATTACKS(occ & ~pp, k) & (piece00[WROOK | you] | piece00[WQUEEN | you]);
+        pp = BISHOPATTACKS(occ, k);
+        pd |= BISHOPATTACKS(occ & ~pp, k) & (piece00[WBISHOP | you] | piece00[WQUEEN | you]);
+        while (pd)
+        {
+            int i = pullLsb(&pd);
+            newkingPinned |= (betweenMask[i][k] & occupied00[me]);
+        }
+    }
+
+    if (newkingPinned != kingPinned)
+        print();
+#endif
 }
 
 
