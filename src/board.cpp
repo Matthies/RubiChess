@@ -910,26 +910,23 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
 
 template <int Me> void chessposition::updatePins()
 {
-#if 0
-    kingPinned = 0ULL;
-    for (int me = WHITE; me <= BLACK; me++)
+#if 1
+    //kingPinned = 0ULL;
+    const int You = Me ^ S2MMASK;
+    int k = kingpos[Me];
+    U64 occ = occupied00[You];
+    U64 attackers = ROOKATTACKS(occ, k) & (piece00[WROOK | You] | piece00[WQUEEN | You]);
+    attackers |= BISHOPATTACKS(occ, k) & (piece00[WBISHOP | You] | piece00[WQUEEN | You]);
+
+    while (attackers)
     {
-        int you = me ^ S2MMASK;
-        int k = kingpos[me];
-        U64 occ = occupied00[you];
-        U64 attackers = ROOKATTACKS(occ, k) & (piece00[WROOK | you] | piece00[WQUEEN | you]);
-        attackers |= BISHOPATTACKS(occ, k) & (piece00[WBISHOP | you] | piece00[WQUEEN | you]);
-        
-        while (attackers)
-        {
-            int index = pullLsb(&attackers);
-            U64 potentialPinners = betweenMask[index][k] & occupied00[me];
-            if (ONEORZERO(potentialPinners))
-                kingPinned |= potentialPinners;
-        }
+        int index = pullLsb(&attackers);
+        U64 potentialPinners = betweenMask[index][k] & occupied00[Me];
+        if (ONEORZERO(potentialPinners))
+            kingPinned |= potentialPinners;
     }
 #endif
-#if 1
+#if 0
     U64 occ = occupied00[0] | occupied00[1];
     //kingPinned = 0ULL;
     const int You = 1 - Me;
