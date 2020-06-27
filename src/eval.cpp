@@ -770,7 +770,7 @@ int chessposition::getEval()
         return score;
     }
 
-    hashexist = pwnhsh->probeHash(pawnhash, &pe.phentry);
+    hashexist = pwnhsh.probeHash(pawnhash, &pe.phentry);
     if (bTrace || !hashexist)
     {
         if (bTrace) pe.phentry->value = 0;

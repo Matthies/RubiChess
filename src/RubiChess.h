@@ -641,8 +641,8 @@ class Pawnhash
 public:
     S_PAWNHASHENTRY *table;
     U64 sizemask;
-    Pawnhash(int sizeMb);
-    ~Pawnhash();
+    void setSize(int sizeMb);
+    void remove();
     bool probeHash(U64 hash, pawnhashentry **entry);
 };
 
@@ -1106,7 +1106,6 @@ public:
     int LegalMoves[MAXDEPTH];
     uint32_t killer[MAXDEPTH][2];
     uint32_t bestFailingLow;
-    Pawnhash *pwnhsh;
     int threadindex;
     int psqval;
 #ifdef SDEBUG
@@ -1146,6 +1145,7 @@ public:
     int16_t counterhistory[14][64][14 * 64];
     uint32_t countermove[14][64];
     Materialhash mtrlhsh;
+    Pawnhash pwnhsh;
 
     bool w2m();
     void BitboardSet(int index, PieceCode p);
@@ -1374,7 +1374,6 @@ class searchthread
 {
 public:
     chessposition pos;
-    Pawnhash *pwnhsh;
     thread thr;
     int index;
     int depth;
@@ -1384,8 +1383,6 @@ public:
     uint8_t padding[40];
 
     searchthread *searchthreads;
-    searchthread();
-    ~searchthread();
 };
 
 void searchStart();
