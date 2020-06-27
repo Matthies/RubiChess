@@ -445,7 +445,9 @@ int chessposition::getFromFen(const char* sFen)
     }
 
     isCheckbb = isAttackedBy<OCCUPIED>(kingpos[state & S2MMASK], (state & S2MMASK) ^ S2MMASK);
-    updatePins();
+    kingPinned = 0ULL;
+    updatePins<WHITE>();
+    updatePins<BLACK>();
 
     hash = zb.getHash(this);
     pawnhash = zb.getPawnHash(this);
@@ -705,7 +707,9 @@ void chessposition::mirror()
     kingpos[0] = kingpos[1] ^ RANKMASK;
     kingpos[1] = kingpostemp ^ RANKMASK;
     materialhash = zb.getMaterialHash(this);
-    updatePins();
+    kingPinned = 0ULL;
+    updatePins<WHITE>();
+    updatePins<BLACK>();
 }
 
 
@@ -904,9 +908,9 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
 }
 
 
-void chessposition::updatePins()
+template <int Me> void chessposition::updatePins()
 {
-#if 1
+#if 0
     kingPinned = 0ULL;
     for (int me = WHITE; me <= BLACK; me++)
     {
@@ -927,24 +931,25 @@ void chessposition::updatePins()
 #endif
 #if 1
     U64 occ = occupied00[0] | occupied00[1];
-    U64 newkingPinned = 0ULL;
-    for (int me = WHITE; me <= BLACK; me++)
+    //kingPinned = 0ULL;
+    const int You = 1 - Me;
+    const int k = kingpos[Me];
+    U64 pp = ROOKATTACKS(occ, k);
+    U64 pd = ~pp & ROOKATTACKS(occ & ~pp, k) & (piece00[WROOK | You] | piece00[WQUEEN | You]);
+    while (pd)
     {
-        int you = 1 - me;
-        int k = kingpos[me];
-        U64 pp = ROOKATTACKS(occ, k);
-        U64 pd = ~pp & ROOKATTACKS(occ & ~pp, k) & (piece00[WROOK | you] | piece00[WQUEEN | you]);
-        pp = BISHOPATTACKS(occ, k);
-        pd |= BISHOPATTACKS(occ & ~pp, k) & (piece00[WBISHOP | you] | piece00[WQUEEN | you]);
-        while (pd)
-        {
-            int i = pullLsb(&pd);
-            newkingPinned |= (betweenMask[i][k] & occupied00[me]);
-        }
+        int i = pullLsb(&pd);
+        kingPinned |= (betweenMask[i][k] & occupied00[Me]);
+    }
+    pp = BISHOPATTACKS(occ, k);
+    pd = BISHOPATTACKS(occ & ~pp, k) & (piece00[WBISHOP | You] | piece00[WQUEEN | You]);
+    while (pd)
+    {
+        int i = pullLsb(&pd);
+        kingPinned |= (betweenMask[i][k] & occupied00[Me]);
     }
 
-    if (newkingPinned != kingPinned)
-        print();
+
 #endif
 }
 
@@ -1701,7 +1706,9 @@ bool chessposition::playMove(chessmove *cm)
     ply++;
     movestack[mstop++].movecode = cm->code;
     myassert(mstop < MAXMOVESEQUENCELENGTH, this, 1, mstop);
-    updatePins();
+    kingPinned = 0ULL;
+    updatePins<WHITE>();
+    updatePins<BLACK>();
 
     return true;
 }
