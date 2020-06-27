@@ -2931,8 +2931,8 @@ void ucioptions_t::Print()
 
 
 // Some global objects
-alignas(64) engine en;
 alignas(64) evalparamset eps;
+alignas(64) engine en;
 alignas(64) zobrist zb;
 
 // Explicit template instantiation
