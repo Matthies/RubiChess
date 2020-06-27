@@ -1654,7 +1654,7 @@ bool chessposition::playMove(chessmove *cm)
     }
 
     PREFETCH(&mtrlhsh.table[materialhash & MATERIALHASHMASK]);
-    PREFETCH(&pwnhsh->table[pawnhash & pwnhsh->sizemask]);
+    PREFETCH(&pwnhsh.table[pawnhash & pwnhsh.sizemask]);
 
     state ^= S2MMASK;
     isCheckbb = isAttackedBy<OCCUPIED>(kingpos[s2m ^ S2MMASK], s2m);
@@ -2408,7 +2408,7 @@ engine::engine()
 {
     GetSystemInfo();
     initBitmaphelper();
-    rootposition.pwnhsh = new Pawnhash(1);  // some dummy pawnhash just to make the prefetch in playMove happy
+    rootposition.pwnhsh.setSize(1);  // some dummy pawnhash just to make the prefetch in playMove happy
     
     ucioptions.Register(&Threads, "Threads", ucispin, "1", 1, MAXTHREADS, uciSetThreads);  // order is important as the pawnhash depends on Threads > 0
     ucioptions.Register(&Hash, "Hash", ucispin, to_string(DEFAULTHASH), 1, MAXHASH, uciSetHash);
@@ -2435,7 +2435,7 @@ engine::~engine()
     ucioptions.Set("SyzygyPath", "<empty>");
     Threads = 0;
     allocThreads();
-    delete rootposition.pwnhsh;
+    rootposition.pwnhsh.remove();
     rootposition.mtrlhsh.remove();
 }
 
@@ -2446,7 +2446,7 @@ void engine::allocThreads()
     for (int i = 0; i < oldThreads; i++)
     {
         sthread[i].pos.mtrlhsh.remove();
-        freealigned64(sthread[i].pwnhsh);
+        sthread[i].pos.pwnhsh.remove();
     }
 
     freealigned64(sthread);
@@ -2465,7 +2465,7 @@ void engine::allocThreads()
         sthread[i].index = i;
         sthread[i].searchthreads = sthread;
         sthread[i].numofthreads = Threads;
-        sthread[i].pos.pwnhsh = sthread[i].pwnhsh = (Pawnhash*)allocalign64(sizeOfPh * sizeof(Pawnhash));//new Pawnhash(sizeOfPh);
+        sthread[i].pos.pwnhsh.setSize(sizeOfPh);
         sthread[i].pos.mtrlhsh.init();
     }
     prepareThreads();

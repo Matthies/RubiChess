@@ -343,7 +343,7 @@ uint16_t transposition::getMoveCode(U64 hash)
 }
 
 
-Pawnhash::Pawnhash(int sizeMb)
+void Pawnhash::setSize(int sizeMb)
 {
     int msb = 0;
     sizeMb = max(sizeMb, 16);
@@ -358,7 +358,8 @@ Pawnhash::Pawnhash(int sizeMb)
     memset(table, 0, tablesize);
 }
 
-Pawnhash::~Pawnhash()
+
+void Pawnhash::remove()
 {
     freealigned64(table);
 }
@@ -388,7 +389,9 @@ bool Pawnhash::probeHash(U64 hash, pawnhashentry **entry)
 
 void Materialhash::init()
 {
-    table = (Materialhashentry*)allocalign64(MATERIALHASHSIZE * sizeof(Materialhashentry));
+    size_t tablesize = (size_t)MATERIALHASHSIZE * sizeof(Materialhashentry);
+    table = (Materialhashentry*)allocalign64(tablesize);
+    memset(table, 0, tablesize);
 }
 
 void Materialhash::remove()
