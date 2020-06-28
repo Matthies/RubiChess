@@ -908,6 +908,19 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
 }
 
 
+// This is mainly for detecting discovered attacks on the queen so we exclude enemy queen from the test
+template <int Me> inline bool chessposition::discoveredAttacked(int index, U64 occ)
+{
+    const int You = Me ^ S2MMASK;
+    U64 ppr = ROOKATTACKS(occ, index);
+    U64 pdr = ~ppr & ROOKATTACKS(occ & ~ppr, index) & piece00[WROOK | You];
+    U64 ppb = BISHOPATTACKS(occ, index);
+    U64 pdb = ~ppb & BISHOPATTACKS(occ & ~ppb, index) & piece00[WBISHOP | You];
+
+    return pdr || pdb;
+}
+
+
 template <int Me> void chessposition::updatePins()
 {
 #if 1
@@ -2969,3 +2982,6 @@ template U64 chessposition::pieceMovesTo<KNIGHT>(int);
 template U64 chessposition::pieceMovesTo<BISHOP>(int);
 template U64 chessposition::pieceMovesTo<ROOK>(int);
 template U64 chessposition::pieceMovesTo<QUEEN>(int);
+template bool chessposition::discoveredAttacked<WHITE>(int index, U64 occ);
+template bool chessposition::discoveredAttacked<BLACK>(int index, U64 occ);
+
