@@ -32,7 +32,7 @@
 #define TDEBUG
 #endif
 
-#if 1
+#if 0
 #define EVALTUNE
 #endif
 
@@ -1175,7 +1175,7 @@ public:
     void playNullMove();
     void unplayNullMove();
     template <int Me> void updatePins();
-    template <int Me> inline bool discoveredAttacked(int index, U64 occ);
+    template <int Me> bool discoveredAttacked(int index, U64 occ);
     bool moveGivesCheck(uint32_t c);  // simple and imperfect as it doesn't handle special moves and cases (mainly to avoid pruning of important moves)
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
     uint32_t shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal

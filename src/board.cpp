@@ -909,7 +909,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
 
 
 // This is mainly for detecting discovered attacks on the queen so we exclude enemy queen from the test
-template <int Me> inline bool chessposition::discoveredAttacked(int index, U64 occ)
+template <int Me> bool chessposition::discoveredAttacked(int index, U64 occ)
 {
     const int You = Me ^ S2MMASK;
     U64 ppr = ROOKATTACKS(occ, index);
