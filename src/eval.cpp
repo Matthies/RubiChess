@@ -211,7 +211,7 @@ void registerallevals(chessposition *pos)
     registertuner(pos, &eps.eRookon7thbonus, "eRookon7thbonus", 0, 0, 0, 0, tuneIt);
 
     tuneIt = true;
-    registertuner(pos, &eps.eQueenpinnedpenalty, "eQueenpinnedpenalty", 0, 0, 0, 0, tuneIt);
+    registertuner(pos, &eps.eQueenattackedbysliderpenalty, "eQueenattackedbysliderpenalty", 0, 0, 0, 0, tuneIt);
 
     tuneIt = false;
     for (i = 0; i < 6; i++)
@@ -563,10 +563,10 @@ int chessposition::getPieceEval(positioneval *pe)
             }
         }
 
-        if (Pt == QUEEN && discoveredAttacked<Me>(index, occupied))
+        if (Pt == QUEEN && sliderAttacked<Me>(index, occupied))
         {
-            result += EVAL(eps.eQueenpinnedpenalty, S2MSIGN(Me));
-            if (bTrace) te.mobility[Me] += EVAL(eps.eQueenpinnedpenalty, S2MSIGN(Me));
+            result += EVAL(eps.eQueenattackedbysliderpenalty, S2MSIGN(Me));
+            if (bTrace) te.mobility[Me] += EVAL(eps.eQueenattackedbysliderpenalty, S2MSIGN(Me));
         }
 
         if (Pt == KNIGHT)
