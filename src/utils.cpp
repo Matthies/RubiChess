@@ -415,7 +415,6 @@ static void writeFenToFile(ofstream *fenfile, string fenlines[], int gamepositio
 
 bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
 {
-    //pos.pwnhsh = new Pawnhash(0);
     pos.tps.count = 0;
     int gamescount = 0;
     fenWritten = 0ULL;
@@ -633,7 +632,6 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
 
     } while (folderMode && FindNextFile(pgnhandle, &fd));
 
-    //delete pos.pwnhsh;
     return true;
 }
 
@@ -1345,7 +1343,6 @@ void getCorrelation(string correlationParams)
 
 void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK, string correlation)
 {
-    //pos.pwnhsh = new Pawnhash(0);
     pos.mtrlhsh.init();
     pos.pwnhsh.setSize(0);
     pos.tps.count = 0;
@@ -1493,7 +1490,6 @@ void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK, string correlati
     free(texelpts);
     pos.mtrlhsh.remove();
     pos.pwnhsh.remove();
-    //delete pos.pwnhsh;
     printTunedParameters(&pos);
 }
 

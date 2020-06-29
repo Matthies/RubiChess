@@ -923,8 +923,6 @@ template <int Me> bool chessposition::sliderAttacked(int index, U64 occ)
 
 template <int Me> void chessposition::updatePins()
 {
-#if 1
-    //kingPinned = 0ULL;
     const int You = Me ^ S2MMASK;
     int k = kingpos[Me];
     U64 occ = occupied00[You];
@@ -938,29 +936,6 @@ template <int Me> void chessposition::updatePins()
         if (ONEORZERO(potentialPinners))
             kingPinned |= potentialPinners;
     }
-#endif
-#if 0
-    U64 occ = occupied00[0] | occupied00[1];
-    //kingPinned = 0ULL;
-    const int You = 1 - Me;
-    const int k = kingpos[Me];
-    U64 pp = ROOKATTACKS(occ, k);
-    U64 pd = ~pp & ROOKATTACKS(occ & ~pp, k) & (piece00[WROOK | You] | piece00[WQUEEN | You]);
-    while (pd)
-    {
-        int i = pullLsb(&pd);
-        kingPinned |= (betweenMask[i][k] & occupied00[Me]);
-    }
-    pp = BISHOPATTACKS(occ, k);
-    pd = BISHOPATTACKS(occ & ~pp, k) & (piece00[WBISHOP | You] | piece00[WQUEEN | You]);
-    while (pd)
-    {
-        int i = pullLsb(&pd);
-        kingPinned |= (betweenMask[i][k] & occupied00[Me]);
-    }
-
-
-#endif
 }
 
 
