@@ -405,6 +405,7 @@ struct evalparamset {
            VALUE(  69, 264), VALUE( 108, 231), VALUE( 107, 230), VALUE( 114, 198)  }
     };
     eval eRookon7thbonus =  VALUE(  -1,  22);
+    eval eQueenattackedbysliderpenalty =  VALUE( -30,  17);
     eval eMinorbehindpawn[6] = {  VALUE(   1,  14), VALUE(  12,  10), VALUE(  15,  11), VALUE(  24,   9), VALUE(  37,  11), VALUE(  89, 110)  };
     eval eSlideronfreefilebonus[2] = {  VALUE(  21,   7), VALUE(  43,   1)  };
     eval eMaterialvalue[7] = {  VALUE(   0,   0), VALUE( 100, 100), VALUE( 314, 314), VALUE( 314, 314), VALUE( 483, 483), VALUE( 913, 913), VALUE(   0,   0)  };
@@ -1173,7 +1174,8 @@ public:
     void unplayMove(chessmove *cm);
     void playNullMove();
     void unplayNullMove();
-    void updatePins();
+    template <int Me> void updatePins();
+    template <int Me> bool sliderAttacked(int index, U64 occ);
     bool moveGivesCheck(uint32_t c);  // simple and imperfect as it doesn't handle special moves and cases (mainly to avoid pruning of important moves)
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
     uint32_t shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal

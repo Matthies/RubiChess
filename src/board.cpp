@@ -445,7 +445,9 @@ int chessposition::getFromFen(const char* sFen)
     }
 
     isCheckbb = isAttackedBy<OCCUPIED>(kingpos[state & S2MMASK], (state & S2MMASK) ^ S2MMASK);
-    updatePins();
+    kingPinned = 0ULL;
+    updatePins<WHITE>();
+    updatePins<BLACK>();
 
     hash = zb.getHash(this);
     pawnhash = zb.getPawnHash(this);
@@ -705,7 +707,9 @@ void chessposition::mirror()
     kingpos[0] = kingpos[1] ^ RANKMASK;
     kingpos[1] = kingpostemp ^ RANKMASK;
     materialhash = zb.getMaterialHash(this);
-    updatePins();
+    kingPinned = 0ULL;
+    updatePins<WHITE>();
+    updatePins<BLACK>();
 }
 
 
@@ -904,24 +908,33 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
 }
 
 
-void chessposition::updatePins()
+// This is mainly for detecting discovered attacks on the queen so we exclude enemy queen from the test
+template <int Me> bool chessposition::sliderAttacked(int index, U64 occ)
 {
-    kingPinned = 0ULL;
-    for (int me = WHITE; me <= BLACK; me++)
+    const int You = Me ^ S2MMASK;
+    U64 ppr = ROOKATTACKS(occ, index);
+    U64 pdr = ROOKATTACKS(occ & ~ppr, index) & piece00[WROOK | You];
+    U64 ppb = BISHOPATTACKS(occ, index);
+    U64 pdb = BISHOPATTACKS(occ & ~ppb, index) & piece00[WBISHOP | You];
+
+    return pdr || pdb;
+}
+
+
+template <int Me> void chessposition::updatePins()
+{
+    const int You = Me ^ S2MMASK;
+    int k = kingpos[Me];
+    U64 occ = occupied00[You];
+    U64 attackers = ROOKATTACKS(occ, k) & (piece00[WROOK | You] | piece00[WQUEEN | You]);
+    attackers |= BISHOPATTACKS(occ, k) & (piece00[WBISHOP | You] | piece00[WQUEEN | You]);
+
+    while (attackers)
     {
-        int you = me ^ S2MMASK;
-        int k = kingpos[me];
-        U64 occ = occupied00[you];
-        U64 attackers = ROOKATTACKS(occ, k) & (piece00[WROOK | you] | piece00[WQUEEN | you]);
-        attackers |= BISHOPATTACKS(occ, k) & (piece00[WBISHOP | you] | piece00[WQUEEN | you]);
-        
-        while (attackers)
-        {
-            int index = pullLsb(&attackers);
-            U64 potentialPinners = betweenMask[index][k] & occupied00[me];
-            if (ONEORZERO(potentialPinners))
-                kingPinned |= potentialPinners;
-        }
+        int index = pullLsb(&attackers);
+        U64 potentialPinners = betweenMask[index][k] & occupied00[Me];
+        if (ONEORZERO(potentialPinners))
+            kingPinned |= potentialPinners;
     }
 }
 
@@ -1678,7 +1691,9 @@ bool chessposition::playMove(chessmove *cm)
     ply++;
     movestack[mstop++].movecode = cm->code;
     myassert(mstop < MAXMOVESEQUENCELENGTH, this, 1, mstop);
-    updatePins();
+    kingPinned = 0ULL;
+    updatePins<WHITE>();
+    updatePins<BLACK>();
 
     return true;
 }
@@ -2942,3 +2957,6 @@ template U64 chessposition::pieceMovesTo<KNIGHT>(int);
 template U64 chessposition::pieceMovesTo<BISHOP>(int);
 template U64 chessposition::pieceMovesTo<ROOK>(int);
 template U64 chessposition::pieceMovesTo<QUEEN>(int);
+template bool chessposition::sliderAttacked<WHITE>(int index, U64 occ);
+template bool chessposition::sliderAttacked<BLACK>(int index, U64 occ);
+

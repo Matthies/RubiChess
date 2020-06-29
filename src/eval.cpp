@@ -180,7 +180,7 @@ void registerallevals(chessposition *pos)
     tuneIt = false;
     for (i = 0; i < 8; i++)
         registertuner(pos, &eps.eAttackingpawnbonus[i], "eAttackingpawnbonus", i, 8, 0, 0, tuneIt && (i > 0 && i < 7));
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 8; i++)
         registertuner(pos, &eps.eIsolatedpawnpenalty[i], "eIsolatedpawnpenalty", i, 8, 0, 0, tuneIt);
     tuneIt = false;
@@ -191,7 +191,7 @@ void registerallevals(chessposition *pos)
             registertuner(pos, &eps.eConnectedbonus[i][j], "eConnectedbonus", j, 6, i, 6, tuneIt);
     tuneIt = false;
 
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 8; i++)
         registertuner(pos, &eps.eBackwardpawnpenalty[i], "eBackwardpawnpenalty", i, 8, 0, 0, tuneIt);
     tuneIt = false;
@@ -209,6 +209,9 @@ void registerallevals(chessposition *pos)
 
     tuneIt = false;
     registertuner(pos, &eps.eRookon7thbonus, "eRookon7thbonus", 0, 0, 0, 0, tuneIt);
+
+    tuneIt = true;
+    registertuner(pos, &eps.eQueenattackedbysliderpenalty, "eQueenattackedbysliderpenalty", 0, 0, 0, 0, tuneIt);
 
     tuneIt = false;
     for (i = 0; i < 6; i++)
@@ -523,6 +526,7 @@ int chessposition::getPieceEval(positioneval *pe)
     U64 pb = piece00[pc];
     int index;
     const U64 myRammedPawns = piece00[WPAWN | Me] & PAWNPUSH(You, piece00[WPAWN | You]);
+    U64 occupied = occupied00[0] | occupied00[1];
 
     while (pb)
     {
@@ -530,7 +534,6 @@ int chessposition::getPieceEval(positioneval *pe)
         U64 attack = 0ULL;
         if (Pt == ROOK || Pt == QUEEN)
         {
-            U64 occupied = occupied00[0] | occupied00[1];
             U64 xrayrookoccupied = occupied ^ (piece00[WROOK + Me] | piece00[WQUEEN + Me]);
             attack = ROOKATTACKS(xrayrookoccupied, index);
 
@@ -543,7 +546,6 @@ int chessposition::getPieceEval(positioneval *pe)
 
         if (Pt == BISHOP || Pt == QUEEN)
         {
-            U64 occupied = occupied00[0] | occupied00[1];
             U64 xraybishopoccupied = occupied ^ (piece00[WBISHOP + Me] | piece00[WQUEEN + Me]);
             attack |= BISHOPATTACKS(xraybishopoccupied, index);
 
@@ -559,6 +561,12 @@ int chessposition::getPieceEval(positioneval *pe)
                     if (bTrace) te.minors[Me] += EVAL(eps.eBishopcentercontrolbonus, S2MSIGN(Me));
                 }
             }
+        }
+
+        if (Pt == QUEEN && sliderAttacked<Me>(index, occupied))
+        {
+            result += EVAL(eps.eQueenattackedbysliderpenalty, S2MSIGN(Me));
+            if (bTrace) te.mobility[Me] += EVAL(eps.eQueenattackedbysliderpenalty, S2MSIGN(Me));
         }
 
         if (Pt == KNIGHT)
