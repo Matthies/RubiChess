@@ -1194,7 +1194,7 @@ public:
     void BitboardPrint(U64 b);
     int getFromFen(const char* sFen);
     string toFen();
-    uint32_t applyMove(string s);
+    uint32_t applyMove(string s, bool resetMstop = true);
     void print(ostream* os = &cout);
     int phase();
     U64 movesTo(PieceCode pc, int from);

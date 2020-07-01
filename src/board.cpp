@@ -460,7 +460,7 @@ int chessposition::getFromFen(const char* sFen)
 
 
 
-uint32_t chessposition::applyMove(string s)
+uint32_t chessposition::applyMove(string s, bool resetMstop)
 {
     int from, to;
     PieceType promtype;
