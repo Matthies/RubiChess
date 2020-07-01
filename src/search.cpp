@@ -19,7 +19,7 @@
 #include "RubiChess.h"
 
 #ifdef STATISTICS
-struct statistic statistics;
+statistic statistics;
 #endif
 
 const int deltapruningmargin = 100;
@@ -58,7 +58,7 @@ void chessposition::getCmptr(int16_t **cmptr)
     {
         uint32_t c;
         if (j >= 0 && (c = movestack[j].movecode))
-            cmptr[i] = (int16_t*)counterhistory[GETPIECE(c)][GETTO(c)];
+            cmptr[i] = (int16_t*)counterhistory[GETPIECE(c)][GETCORRECTTO(c)];
         else
             cmptr[i] = NULL;
     }
@@ -69,7 +69,7 @@ inline int chessposition::getHistory(uint32_t code, int16_t **cmptr)
     int pc = GETPIECE(code);
     int s2m = pc & S2MMASK;
     int from = GETFROM(code);
-    int to = GETTO(code);
+    int to = GETCORRECTTO(code);
     int value = history[s2m][from][to];
     for (int i = 0; i < CMPLIES; i++)
         if (cmptr[i])
@@ -79,18 +79,26 @@ inline int chessposition::getHistory(uint32_t code, int16_t **cmptr)
 }
 
 
+#define HISTORYMAXDEPTH 20
+#define HISTORYAGESHIFT 8
+#define HISTORYNEWSHIFT 5
+
 inline void chessposition::updateHistory(uint32_t code, int16_t **cmptr, int value)
 {
     int pc = GETPIECE(code);
     int s2m = pc & S2MMASK;
     int from = GETFROM(code);
-    int to = GETTO(code);
-    value = max(-256, min(256, value));
-    int delta = 32 * value - history[s2m][from][to] * abs(value) / 256;
+    int to = GETCORRECTTO(code);
+    value = max(-HISTORYMAXDEPTH * HISTORYMAXDEPTH, min(HISTORYMAXDEPTH * HISTORYMAXDEPTH, value));
+
+    int delta = value * (1 << HISTORYNEWSHIFT) - history[s2m][from][to] * abs(value) / (1 << HISTORYAGESHIFT);
+    myassert(history[s2m][from][to] + delta < MAXINT16 && history[s2m][from][to] + delta > MININT16, this, 2, history[s2m][from][to], delta);
+
     history[s2m][from][to] += delta;
+
     for (int i = 0; i < CMPLIES; i++)
         if (cmptr[i]) {
-            delta = 32 * value - cmptr[i][pc * 64 + to] * abs(value) / 256;
+            delta = value * (1 << HISTORYNEWSHIFT) - cmptr[i][pc * 64 + to] * abs(value) / (1 << HISTORYAGESHIFT);
             cmptr[i][pc * 64 + to] += delta;
         }
 }
@@ -160,6 +168,8 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         if (staticeval >= beta)
         {
             STATISTICSINC(qs_pat);
+            tp.addHash(hash, staticeval, staticeval, HASHBETA, 0, 0);
+
             return staticeval;
         }
         if (staticeval > alpha)
@@ -172,10 +182,11 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         }
 
         // Delta pruning
-        int bestCapture = getBestPossibleCapture();
-        if (staticeval + deltapruningmargin + bestCapture < alpha)
+        int bestExpectableScore = staticeval + deltapruningmargin + getBestPossibleCapture();
+        if (bestExpectableScore < alpha)
         {
             STATISTICSINC(qs_delta);
+            tp.addHash(hash, bestExpectableScore, staticeval, HASHALPHA, 0, 0);
             return staticeval;
         }
     }
@@ -186,6 +197,8 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     ms.SetPreferredMoves(this);
     STATISTICSINC(qs_loop_n);
 
+    uint32_t bestcode = 0;
+    int eval_type = HASHALPHA;
     chessmove *m;
 
     while ((m = ms.next()))
@@ -207,14 +220,17 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         if (score > bestscore)
         {
             bestscore = score;
+            bestcode = m->code;
             if (score >= beta)
             {
                 STATISTICSINC(qs_moves_fh);
+                tp.addHash(hash, score, staticeval, HASHBETA, 0, (uint16_t)bestcode);
                 return score;
             }
             if (score > alpha)
             {
                 updatePvTable(m->code, true);
+                eval_type = HASHEXACT;
                 alpha = score;
 #ifdef EVALTUNE
                 foundpts = true;
@@ -232,6 +248,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         // It's a mate
         return SCOREBLACKWINS + ply;
 
+    tp.addHash(hash, alpha, staticeval, eval_type, 0, (uint16_t)bestcode);
     return bestscore;
 }
 
@@ -278,7 +295,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         } else {
             // special case: test for checkmate
             chessmovelist evasions;
-            if (CreateMovelist<EVASION>(this, &evasions.move[0]) > 0)
+            if (CreateEvasionMovelist(this, &evasions.move[0]) > 0)
                 return SCOREDRAW;
             else
                 return SCOREBLACKWINS + ply;
@@ -429,7 +446,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     // Nullmove pruning with verification like SF does it
     int bestknownscore = (hashscore != NOSCORE ? hashscore : staticeval);
-    if (!isCheckbb && depth >= 2 && bestknownscore >= beta && (ply  >= nullmoveply || ply % 2 != nullmoveside))
+    if (!isCheckbb && depth >= 2 && bestknownscore >= beta && (ply  >= nullmoveply || ply % 2 != nullmoveside) && ph < 255)
     {
         playNullMove();
         int R = 4 + (depth / 6) + (bestknownscore - beta) / 150 + !PVNode * 2;
@@ -465,7 +482,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     {
         int rbeta = min(SCOREWHITEWINS, beta + 100);
         chessmovelist *movelist = new chessmovelist;
-        movelist->length = getMoves(&movelist->move[0], TACTICAL);
+        movelist->length = CreateMovelist<TACTICAL>(this, &movelist->move[0]);
 
         for (int i = 0; i < movelist->length; i++)
         {
@@ -505,7 +522,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     uint32_t lastmove = movestack[mstop - 1].movecode;
     uint32_t counter = 0;
     if (lastmove)
-        counter = countermove[GETPIECE(lastmove)][GETTO(lastmove)];
+        counter = countermove[GETPIECE(lastmove)][GETCORRECTTO(lastmove)];
 
     // Reset killers for child ply
     killer[ply + 1][0] = killer[ply + 1][1] = 0;
@@ -594,16 +611,20 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 return sBeta;
             }
         }
-
-        int reduction = 0;
+        // Extend captures that lead into endgame
+        else if (ph > 200 && GETCAPTURE(m->code) >= WKNIGHT)
+        {
+            extendMove = 1;
+        }
 
         // Late move reduction
+        int reduction = 0;
         if (depth > 2 && !ISTACTICAL(m->code))
         {
             reduction = reductiontable[positionImproved][depth][min(63, legalMoves + 1)];
 
             // adjust reduction by stats value
-            reduction -= stats / 4096;
+            reduction -= stats / 5000;
 
             // adjust reduction at PV nodes
             reduction -= PVNode;
@@ -613,7 +634,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
             STATISTICSINC(red_pi[positionImproved]);
             STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, legalMoves + 1)]);
-            STATISTICSADD(red_history, -stats / 4096);
+            STATISTICSADD(red_history, -stats / 5000);
             STATISTICSADD(red_pv, -(int)PVNode);
             STATISTICSDO(int red0 = reduction);
 
@@ -625,7 +646,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         }
 
         int pc = GETPIECE(m->code);
-        int to = GETTO(m->code);
+        int to = GETCORRECTTO(m->code);
         effectiveDepth = depth + extendall - reduction + extendMove;
 
         // Prune moves with bad counter move history
@@ -716,7 +737,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
                     // save countermove
                     if (lastmove)
-                        countermove[GETPIECE(lastmove)][GETTO(lastmove)] = m->code;
+                        countermove[GETPIECE(lastmove)][GETCORRECTTO(lastmove)] = m->code;
                 }
 
                 STATISTICSINC(moves_fail_high);
@@ -782,7 +803,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
     int maxmoveindex;
 
     const bool isMultiPV = (RT == MultiPVSearch);
-    const bool doPonder = (RT == PonderSearch);
 
     nodes++;
     CheckForImmediateStop();
@@ -818,13 +838,16 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         {
             if (bestmove.code != fullhashmove) {
                 bestmove.code = fullhashmove;
-                if (doPonder) pondermove.code = 0;
+                pondermove.code = 0;
             }
             updatePvTable(fullhashmove, false);
             if (score > alpha) bestmovescore[0] = score;
-            SDEBUGDO(isDebugPv, pvabortval[ply] = score; if (debugMove.code == fullhashmove) pvaborttype[ply] = PVA_FROMTT; else pvaborttype[ply] = PVA_DIFFERENTFROMTT; );
-            SDEBUGDO(isDebugPv, pvadditionalinfo[ply] = "PV = " + getPv(pvtable[ply]) + "  " + tp.debugGetPv(hash); );
-            return score;
+            if (score > SHRT_MIN + 1)
+            {
+                SDEBUGDO(isDebugPv, pvabortval[ply] = score; if (debugMove.code == fullhashmove) pvaborttype[ply] = PVA_FROMTT; else pvaborttype[ply] = PVA_DIFFERENTFROMTT; );
+                SDEBUGDO(isDebugPv, pvadditionalinfo[ply] = "PV = " + getPv(pvtable[ply]) + "  " + tp.debugGetPv(hash); );
+                return score;
+            }
         }
     }
 
@@ -848,7 +871,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
             else if (GETCAPTURE(m->code) != BLANK)
                 m->value = (mvv[GETCAPTURE(m->code) >> 1] | lva[GETPIECE(m->code) >> 1]);
             else 
-                m->value = history[state & S2MMASK][GETFROM(m->code)][GETTO(m->code)];
+                m->value = history[state & S2MMASK][GETFROM(m->code)][GETCORRECTTO(m->code)];
         }
     }
 
@@ -878,7 +901,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         playMove(m);
 
 #ifndef SDEBUG
-        if (en.moveoutput && !threadindex && (!doPonder || depth < MAXDEPTH - 1))
+        if (en.moveoutput && !threadindex && (en.pondersearch != PONDERING || depth < MAXDEPTH - 1))
         {
             char s[256];
             sprintf_s(s, "info depth %d currmove %s currmovenumber %d\n", depth, m->toString().c_str(), i + 1);
@@ -986,9 +1009,9 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
                 if (bestmove.code != pvtable[0][0])
                 {
                     bestmove.code = pvtable[0][0];
-                    if (doPonder) pondermove.code = pvtable[0][1];
+                    pondermove.code = pvtable[0][1];
                 }
-                else if (doPonder && pvtable[0][1]) {
+                else if (pvtable[0][1]) {
                     // use new ponder move
                     pondermove.code = pvtable[0][1];
                 }
@@ -1094,7 +1117,6 @@ static void search_gen1(searchthread *thr)
 #endif
 
     const bool isMultiPV = (RT == MultiPVSearch);
-    const bool doPonder = (RT == PonderSearch);
     const bool isMainThread = (thr->index == 0);
 
     chessposition *pos = &thr->pos;
@@ -1118,6 +1140,7 @@ static void search_gen1(searchthread *thr)
 
     uint32_t lastBestMove = 0;
     int constantRootMoves = 0;
+    int lastiterationscore = NOSCORE;
     en.lastReport = 0;
     U64 nowtime;
     pos->lastpv[0] = 0;
@@ -1136,7 +1159,7 @@ static void search_gen1(searchthread *thr)
         {
             // remis via repetition or 50 moves rule
             pos->bestmove.code = 0;
-            if (doPonder) pos->pondermove.code = 0;
+            pos->pondermove.code = 0;
             score = pos->bestmovescore[0] = SCOREDRAW;
         }
         else
@@ -1238,14 +1261,14 @@ static void search_gen1(searchthread *thr)
                     int dummystaticeval;
                     tp.probeHash(pos->hash, &score, &dummystaticeval, &mc, MAXDEPTH, alpha, beta, 0);
                     pos->bestmove.code = pos->shortMove2FullMove(mc);
-                    if (doPonder) pos->pondermove.code = 0;
+                    pos->pondermove.code = 0;
                 }
                     
                 // still no bestmove...
                 if (!pos->bestmove.code && pos->rootmovelist.length > 0 && !isDraw)
                     pos->bestmove.code = pos->rootmovelist.move[0].code;
 
-                if (pos->rootmovelist.length == 1 && !pos->tbPosition && en.endtime1 && !en.isPondering() && pos->lastbestmovescore != NOSCORE)
+                if (pos->rootmovelist.length == 1 && !pos->tbPosition && en.endtime1 && en.pondersearch != PONDERING && pos->lastbestmovescore != NOSCORE)
                     // Don't report score of instamove; use the score of last position instead
                     pos->bestmovescore[0] = pos->lastbestmovescore;
 
@@ -1253,19 +1276,29 @@ static void search_gen1(searchthread *thr)
                     // We have a tablebase score so report this
                     pos->bestmovescore[0] = pos->rootmovelist.move[0].value;
 
-                if (!doPonder || thr->depth < maxdepth)
+                if (en.pondersearch != PONDERING || thr->depth < maxdepth)
                     uciScore(thr, inWindow, nowtime, inWindow == 1 ? pos->bestmovescore[0] : score);
             }
         }
         if (inWindow == 1)
         {
+            if (lastiterationscore > pos->bestmovescore[0] + 10)
+            {
+                // Score decreases; use more thinking time
+                constantRootMoves /= 2;
+#ifdef TDEBUG
+                printf("info string Score descreases... more thinking time at depth %d...\n", thr->depth);
+#endif
+            }
+            lastiterationscore = pos->bestmovescore[0];
+
             // Skip some depths depending on current depth and thread number using Laser's method
             int cycle = thr->index % 16;
             if (thr->index && (thr->depth + cycle) % SkipDepths[cycle] == 0)
                 thr->depth += SkipSize[cycle];
 
             thr->depth++;
-            if (doPonder && en.isPondering() && thr->depth > maxdepth) thr->depth--;  // stay on maxdepth when pondering
+            if (en.pondersearch == PONDERING && thr->depth > maxdepth) thr->depth--;  // stay on maxdepth when pondering
             reportedThisDepth = true;
             constantRootMoves++;
         }
@@ -1289,7 +1322,7 @@ static void search_gen1(searchthread *thr)
             break;
 
         // Pondering; just continue next iteration
-        if (doPonder && en.isPondering())
+        if (en.pondersearch == PONDERING)
             continue;
 
         // early exit in playing mode as there is exactly one possible move
@@ -1315,7 +1348,7 @@ static void search_gen1(searchthread *thr)
 #ifdef TDEBUG
         if (!en.bStopCount)
             en.t1stop++;
-        printf("info string stop info full iteration / immediate:  %4d /%4d\n", en.t1stop, en.t2stop);
+        printf("info string stop info last movetime: %4.3f    full-it. / immediate:  %4d /%4d\n", (nowtime - en.starttime) / (double)en.frequency, en.t1stop, en.t2stop);
 #endif
         // Output of best move
         searchthread *bestthr = thr;
@@ -1343,7 +1376,7 @@ static void search_gen1(searchthread *thr)
             }
             pos->lastpv[i] = 0;
             pos->bestmove = bestthr->pos.bestmove;
-            if (doPonder) pos->pondermove = bestthr->pos.pondermove;
+            pos->pondermove = bestthr->pos.pondermove;
             pos->bestmovescore[0] = bestthr->pos.bestmovescore[0];
             inWindow = 1;
             //printf("info string different bestmove from helper  lastpv:%x\n", bestthr->pos.lastpv[0]);
@@ -1362,24 +1395,25 @@ static void search_gen1(searchthread *thr)
         {
             // Not enough time to get any bestmove? Fall back to default move
             pos->bestmove = pos->defaultmove;
-            if (doPonder) pos->pondermove.code = 0;
+            pos->pondermove.code = 0;
         }
 
         strBestmove = pos->bestmove.toString();
 
-        if (doPonder)
+        if (!pos->pondermove.code)
         {
-            if (!pos->pondermove.code)
-            {
-                // Get the ponder move from TT
-                pos->playMove(&pos->bestmove);
-                uint16_t pondershort = tp.getMoveCode(pos->hash);
-                pos->pondermove.code = pos->shortMove2FullMove(pondershort);
-                pos->unplayMove(&pos->bestmove);
-            }
-            if (pos->pondermove.code)
-                strPonder = " ponder " + pos->pondermove.toString();
+            // Get the ponder move from TT
+            pos->playMove(&pos->bestmove);
+            uint16_t pondershort = tp.getMoveCode(pos->hash);
+            pos->pondermove.code = pos->shortMove2FullMove(pondershort);
+            pos->unplayMove(&pos->bestmove);
         }
+
+        // Save pondermove in rootposition for time management of following search
+        en.rootposition.pondermove = pos->pondermove;
+
+        if (pos->pondermove.code)
+            strPonder = " ponder " + pos->pondermove.toString();
 
         cout << "bestmove " + strBestmove + strPonder + "\n";
 
@@ -1401,14 +1435,19 @@ void resetEndTime(int constantRootMoves, bool complete)
     int timetouse = (en.isWhite ? en.wtime : en.btime);
     int timeinc = (en.isWhite ? en.winc : en.binc);
     int overhead = en.moveOverhead + 8 * en.Threads;
+    int constance = constantRootMoves * 2 + en.ponderhit * 4;
 
+    // main goal is to let the search stop at endtime1 (full iterations) most times and get only few stops at endtime2 (interrupted iteration)
+    // constance: ponder hit and/or onstance of best move in the last iteration lower the time within a given interval
     if (en.movestogo)
     {
         // should garantee timetouse > 0
-        // stop soon at 0.9...1.9 x average movetime
-        // stop immediately at 1.5...2.5 x average movetime
-        int f1 = max(9, 19 - constantRootMoves * 2);
-        int f2 = max(15, 25 - constantRootMoves * 2);
+        // f1: stop soon after current iteration at 1.0...2.2 x average movetime
+        // f2: stop immediately at 1.9...3.1 x average movetime
+        // movevariation: many moves to go decrease f1 (stop soon)
+        int movevariation = min(32, en.movestogo) * 3 / 32;
+        int f1 = max(10 - movevariation, 22 - movevariation - constance);
+        int f2 = max(19, 31 - constance);
         if (complete)
             en.endtime1 = en.starttime + timetouse * en.frequency * f1 / (en.movestogo + 1) / 10000;
         en.endtime2 = en.starttime + min(max(0, timetouse - overhead * en.movestogo), f2 * timetouse / (en.movestogo + 1) / 10) * en.frequency / 1000;
@@ -1418,20 +1457,20 @@ void resetEndTime(int constantRootMoves, bool complete)
         if (timeinc)
         {
             // sudden death with increment; split the remaining time in (256-phase) timeslots
-            // stop soon after 5..15 timeslot
-            // stop immediately after 15..25 timeslots
-            int f1 = max(5, 15 - constantRootMoves * 2);
-            int f2 = max(15, 25 - constantRootMoves * 2);
+            // f1: stop soon after 5..17 timeslot
+            // f2: stop immediately after 15..27 timeslots
+            int f1 = max(5, 17 - constance);
+            int f2 = max(15, 27 - constance);
             if (complete)
                 en.endtime1 = en.starttime + max(timeinc, f1 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
             en.endtime2 = en.starttime + min(max(0, timetouse - overhead), max(timeinc, f2 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
         }
         else {
             // sudden death without increment; play for another x;y moves
-            // stop soon at 1/32...1/42 time slot
-            // stop immediately at 1/12...1/22 time slot
-            int f1 = min(42, 32 + constantRootMoves * 2);
-            int f2 = min(22, 12 + constantRootMoves * 2);
+            // f1: stop soon at 1/30...1/42 time slot
+            // f2: stop immediately at 1/10...1/22 time slot
+            int f1 = min(42, 30 + constance);
+            int f2 = min(22, 10 + constance);
             if (complete)
                 en.endtime1 = en.starttime + timetouse / f1 * en.frequency / 1000;
             en.endtime2 = en.starttime + min(max(0, timetouse - overhead), timetouse / f2) * en.frequency / 1000;
@@ -1469,12 +1508,9 @@ void searchStart()
     // increment generation counter for tt aging
     tp.nextSearch();
 
-    if (en.MultiPV == 1 && !en.ponder)
+    if (en.MultiPV == 1)
         for (int tnum = 0; tnum < en.Threads; tnum++)
             en.sthread[tnum].thr = thread(&search_gen1<SinglePVSearch>, &en.sthread[tnum]);
-    else if (en.ponder)
-        for (int tnum = 0; tnum < en.Threads; tnum++)
-            en.sthread[tnum].thr = thread(&search_gen1<PonderSearch>, &en.sthread[tnum]);
     else
         for (int tnum = 0; tnum < en.Threads; tnum++)
             en.sthread[tnum].thr = thread(&search_gen1<MultiPVSearch>, &en.sthread[tnum]);
@@ -1501,15 +1537,15 @@ inline void chessposition::CheckForImmediateStop()
     if (threadindex || (nodes & NODESPERCHECK))
         return;
 
-    if (en.isPondering())
+    if (en.pondersearch == PONDERING)
         // pondering... just continue searching
         return;
 
-    if (en.testPonderHit())
+    if (en.pondersearch == HITPONDER)
     {
         // ponderhit
         startSearchTime(false);
-        en.resetPonder();
+        en.pondersearch = NO;
         return;
     }
 
@@ -1597,7 +1633,6 @@ void search_statistics()
 
     f0 = 100.0 * statistics.extend_singular / (double)n;
     printf("(ST) Extensions: %%singular: %7.4f\n", f0);
-
     printf("(ST)==================================================================================================================================================\n");
 }
 #endif

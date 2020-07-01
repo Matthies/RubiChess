@@ -18,78 +18,6 @@
 
 #include "RubiChess.h"
 
-#ifdef _WIN32
-
-string GetSystemInfo()
-{
-    // shameless copy from MSDN example explaining __cpuid
-    char CPUString[0x20];
-    char CPUBrandString[0x40];
-    int CPUInfo[4] = { -1 };
-    //int nCacheLineSize = 0; // Maybe usefull for TT sizing
-
-    unsigned    nIds, nExIds, i;
-    //bool    bPOPCNT = false;
-    //bool    bBMI2 = false;
-
-
-    __cpuid(CPUInfo, 0);
-    nIds = CPUInfo[0];
-    memset(CPUString, 0, sizeof(CPUString));
-    *((int*)CPUString) = CPUInfo[1];
-    *((int*)(CPUString + 4)) = CPUInfo[3];
-    *((int*)(CPUString + 8)) = CPUInfo[2];
-
-    // Get the information associated with each valid Id
-    for (i = 0; i <= nIds; ++i)
-    {
-        __cpuid(CPUInfo, i);
-        // Interpret CPU feature information.
-        if (i == 1)
-        {
-            //bPOPCNT = (CPUInfo[2] & 0x800000) || false;
-        }
-
-        if (i == 7)
-        {
-            // this is not in the MSVC2012 example but may be useful later
-            //bBMI2 = (CPUInfo[1] & 0x100) || false;
-        }
-    }
-
-
-    // Calling __cpuid with 0x80000000 as the InfoType argument
-    // gets the number of valid extended IDs.
-    __cpuid(CPUInfo, 0x80000000);
-    nExIds = CPUInfo[0];
-    memset(CPUBrandString, 0, sizeof(CPUBrandString));
-
-    // Get the information associated with each extended ID.
-    for (i = 0x80000000; i <= nExIds; ++i)
-    {
-        __cpuid(CPUInfo, i);
-
-        // Interpret CPU brand string and cache information.
-        if (i == 0x80000002)
-            memcpy(CPUBrandString, CPUInfo, sizeof(CPUInfo));
-        else if (i == 0x80000003)
-            memcpy(CPUBrandString + 16, CPUInfo, sizeof(CPUInfo));
-        else if (i == 0x80000004)
-            memcpy(CPUBrandString + 32, CPUInfo, sizeof(CPUInfo));
-    }
-
-    return CPUBrandString;
-}
-
-#else
-
-string GetSystemInfo()
-{
-    return "some Linux box";
-}
-
-#endif
-
 
 void generateEpd(string egn)
 {
@@ -115,7 +43,8 @@ void generateEpd(string egn)
         getPcsFromStr(eg.c_str(), pcs);
         memset(pos->mailbox, 0, sizeof(pos->mailbox));
         memset(pos->piece00, 0, sizeof(pos->piece00));
-        pos->state = rand() % 1;
+        pos->psqval = 0;
+        pos->state = rand() % 2;
         for (int p = PAWN; p <= KING; p++)
             for (int c = WHITE; c <= BLACK; c++)
             {
@@ -123,10 +52,11 @@ void generateEpd(string egn)
                 while (pcs[pi])
                 {
                     int sq = rand() % 64;
-                    if (!pos->mailbox[sq] && (p != PAWN || (sq >= 8 && sq < 56)))
+                    // Avoid pawns on rank 7
+                    if (!pos->mailbox[sq] && (p != PAWN || (RRANK(sq, c) > 0 && RRANK(sq, c) < 6)))
                     {
                         pos->mailbox[sq] = p * 2 + c;
-                        pos->piece00[p * 2 + c] = BITSET(sq);
+                        pos->BitboardSet(sq, p * 2 + c);
                         if (p == KING)
                             pos->kingpos[c] = sq;
                         pcs[pi]--;
@@ -138,8 +68,21 @@ void generateEpd(string egn)
             && squareDistance[pos->kingpos[0]][pos->kingpos[1]] > 0;
         if (isLegal)
         {
-            i++;
-            cout << pos->toFen() << "\n";
+            pos->hash = zb.getHash(pos);
+            pos->pawnhash = zb.getPawnHash(pos);
+            pos->materialhash = zb.getMaterialHash(pos);
+            pos->mstop = 1;
+            pos->movestack[0].movecode = -1;  // Avoid fast eval after null move
+            pos->rootheight = 0;
+            pos->lastnullmove = -1;
+            int staticeval = S2MSIGN(pos->state & S2MMASK) * pos->getEval<NOTRACE>();
+            int quietval = pos->getQuiescence(SCOREBLACKWINS, SCOREWHITEWINS, 0);
+            bool isQuiet = (abs(staticeval - quietval) < 100);
+            if (isQuiet)
+            {
+                i++;
+                cout << pos->toFen() << "\n";
+            }
         }
     }
 }
@@ -168,6 +111,12 @@ long long engine::perft(int depth, bool dotests)
             rootpos->print();
         }
         int val1 = rootpos->getEval<NOTRACE>();
+        int psq1 = rootpos->getpsqval();
+        if (rootpos->psqval != psq1)
+        {
+            printf("PSQ-Test  :error  incremental:%d  recalculated:%d\n", rootpos->psqval, psq1);
+            rootpos->print();
+        }
         rootpos->mirror();
         int val2 = rootpos->getEval<NOTRACE>();
         rootpos->mirror();
@@ -176,53 +125,32 @@ long long engine::perft(int depth, bool dotests)
         {
             printf("Mirrortest  :error  (%d / %d / %d)\n", val1, val2, val3);
             rootpos->print();
-            //printf("Position value: %d\n", pos.getPositionValue<NOTRACE>());
             rootpos->mirror();
             rootpos->print();
-            //printf("Position value: %d\n", pos.getPositionValue<NOTRACE>());
             rootpos->mirror();
             rootpos->print();
-            //printf("Position value: %d\n", pos.getPositionValue<NOTRACE>());
         }
     }
+
+    if (depth == 0)
+        return 1;
+
     chessmovelist movelist;
     if (rootpos->isCheckbb)
-        movelist.length = rootpos->getMoves(&movelist.move[0], EVASION);
+        movelist.length = CreateEvasionMovelist(rootpos, &movelist.move[0]);
     else
-        movelist.length = rootpos->getMoves(&movelist.move[0]);
+        movelist.length = CreateMovelist<ALL>(rootpos, &movelist.move[0]);
 
     rootpos->prepareStack();
 
-    //printf("Path: %s \nMovelist : %s\n", p->actualpath.toString().c_str(), movelist->toString().c_str());
-
-    if (depth == 0)
-        retval = 1;
-    else if (depth == 1)
+    for (int i = 0; i < movelist.length; i++)
     {
-        for (int i = 0; i < movelist.length; i++)
+        if (rootpos->playMove(&movelist.move[i]))
         {
-            if (rootpos->playMove(&movelist.move[i]))
-            {
-                //printf("%s ok ", movelist->move[i].toString().c_str());
-                retval++;
-                rootpos->unplayMove(&movelist.move[i]);
-            }
+            retval += perft(depth - 1, dotests);
+            rootpos->unplayMove(&movelist.move[i]);
         }
     }
-
-    else
-    {
-        for (int i = 0; i < movelist.length; i++)
-        {
-            if (rootpos->playMove(&movelist.move[i]))
-            {
-                //printf("\nMove: %s  ", movelist->move[i].toString().c_str());
-                retval += perft(depth - 1, dotests);
-                rootpos->unplayMove(&movelist.move[i]);
-            }
-        }
-    }
-    //printf("\nAnzahl: %d\n", retval);
     return retval;
 }
 
@@ -232,7 +160,8 @@ static void perftest(bool dotests, int maxdepth)
     {
         string fen;
         unsigned long long nodes[10];
-    } perftestresults[] =
+    };
+    perftestresultstruct perftestresults[] =
     {
         {
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
@@ -264,10 +193,38 @@ static void perftest(bool dotests, int maxdepth)
         }
     };
 
+    perftestresultstruct perftestresults960[] =
+    {
+        {
+            "8/8/8/4B2b/6nN/8/5P2/2R1K2k w Q - 0 1",
+            { 1, 34, 318, 9002, 118388, 3223406, 44554839, 1205627532 }
+        },
+        {
+            "2r5/8/8/8/8/8/6PP/k2KR3 w K - 0 1",
+            { 1, 17, 242, 3931, 57700, 985298, 14751778, 259604208, 3914405614 }
+        },
+        {
+            "4r3/3k4/8/8/8/8/6PP/qR1K1R2 w KQ - 0 1",
+            { 1, 19, 628, 12858, 405636, 8992652, 281330710, 6447669114 }
+        },
+        {
+            "r1k1r2q/p1ppp1pp/8/8/8/8/P1PPP1PP/R1K1R2Q w KQkq - 0 1",
+            { 1, 23, 522, 12333, 285754, 7096972, 172843489, 4557457200 }
+        },
+        {
+            "r1k2r1q/p1ppp1pp/8/8/8/8/P1PPP1PP/R1K2R1Q w KQkq - 0 1",
+            { 1, 28, 738, 20218, 541480, 15194841, 418430598, 12094237108 }
+        },
+        {
+            "",
+            {}
+        }
+    };
+
     int i = 0;
-    printf("\n\nPerft results for %s (Build %s)\n", en.name, BUILD);
-    printf("System: %s\n", GetSystemInfo().c_str());
-    printf("Depth = %d      Hash-/Mirror-Tests %s\n", maxdepth, (dotests ? "enabled" : "disabled"));
+    printf("\n\nPerft results for %s (Build %s)\n", en.name().c_str(), BUILD);
+    printf("System: %s\n", en.system.c_str());
+    printf("Depth = %d    %8s  Hash-/Mirror-Tests %s\n", maxdepth, en.chess960 ? "Chess960" : "", dotests ? "enabled" : "disabled");
     printf("========================================================================\n");
 
     float df;
@@ -276,11 +233,17 @@ static void perftest(bool dotests, int maxdepth)
     long long perftstarttime = getTime();
     long long perftlasttime = perftstarttime;
 
-    while (perftestresults[i].fen != "")
+    perftestresultstruct *ptr;
+    if (en.chess960)
+        ptr = perftestresults960;
+    else
+        ptr = perftestresults;
+
+    while (ptr[i].fen != "")
     {
-        en.sthread[0].pos.getFromFen(perftestresults[i].fen.c_str());
+        en.sthread[0].pos.getFromFen(ptr[i].fen.c_str());
         int j = 0;
-        while (perftestresults[i].nodes[j] > 0 && j <= maxdepth)
+        while (ptr[i].nodes[j] > 0 && j <= maxdepth)
         {
             long long starttime = getTime();
 
@@ -290,13 +253,13 @@ static void perftest(bool dotests, int maxdepth)
             perftlasttime = getTime();
             df = float(perftlasttime - starttime) / (float) en.frequency;
             printf("Perft %d depth %d  : %*llu  %*f sec.  %*d nps ", i + 1, j, 10, result, 10, df, 8, (int)(df > 0.0 ? (double)result / df : 0));
-            if (result == perftestresults[i].nodes[j])
+            if (result == ptr[i].nodes[j])
                 printf("  OK\n");
             else
-                printf("  wrong (should be %llu)\n", perftestresults[i].nodes[j]);
+                printf("  wrong (should be %llu)\n", ptr[i].nodes[j]);
             j++;
         }
-        if (perftestresults[++i].fen != "")
+        if (ptr[++i].fen != "")
             printf("\n");
     }
     df = float(perftlasttime - perftstarttime) / (float)en.frequency;
@@ -324,8 +287,8 @@ const string solvedstr[] = { "-", "+", "o" };
 
 static void benchTableHeader(FILE* out)
 {
-        fprintf(out, "\n\nBenchmark results for %s (Build %s):\n", en.name, BUILD);
-        fprintf(out, "System: %s\n", GetSystemInfo().c_str());
+        fprintf(out, "\n\nBenchmark results for %s (Build %s):\n", en.name().c_str(), BUILD);
+        fprintf(out, "System: %s\n", en.system.c_str());
         fprintf(out, "=============================================================================================================\n");
 }
 
@@ -345,7 +308,7 @@ static void benchTableFooder(FILE *out, long long totaltime, long long totalnode
 
 static void doBenchmark(int constdepth, string epdfilename, int consttime, int startnum, bool openbench)
 {
-    struct benchmarkstruct benchmark[] =
+    benchmarkstruct benchmark[] =
     {
         {   
             "Startposition",
@@ -446,7 +409,7 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, int s
     };
 
     long long starttime, endtime;
-    list<struct benchmarkstruct> bmlist;
+    list<benchmarkstruct> bmlist;
 
     ifstream epdfile;
     bool bGetFromEpd = false;
@@ -460,14 +423,14 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, int s
 
     int i = 0;
     int totalSolved[2] = { 0 };
-    struct benchmarkstruct epdbm;
+    benchmarkstruct epdbm;
     FILE *tableout = openbench ? stdout : stderr;
 
     while (true)
     {
         string avoidmoves = "";
         string bestmoves = "";
-        struct benchmarkstruct *bm;
+        benchmarkstruct *bm;
         if (!bGetFromEpd)
         {
             // standard bench with included positions
@@ -535,7 +498,7 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, int s
     long long totalnodes = 0;
     benchTableHeader(tableout);
 
-    for (list<struct benchmarkstruct>::iterator bm = bmlist.begin(); bm != bmlist.end(); bm++)
+    for (list<benchmarkstruct>::iterator bm = bmlist.begin(); bm != bmlist.end(); bm++)
     {
         totaltime += bm->time;
         totalnodes += bm->nodes;
@@ -678,8 +641,8 @@ static BOOL writetoengine(HANDLE pipe, const char *s)
 
 static void testengine(string epdfilename, int startnum, string engineprgs, string logfilename, string comparefilename, int maxtime, int flags)
 {
-    struct enginestate es[4];
-    struct enginestate ges;
+    enginestate es[4];
+    enginestate ges;
     string engineprg[4];
     int numEngines = 0;
     string line;
@@ -930,6 +893,7 @@ int main(int argc, char* argv[])
 {
     int startnum;
     int perfmaxdepth;
+    bool verbose;
     bool benchmark;
     bool openbench;
     int depth;
@@ -958,6 +922,7 @@ int main(int argc, char* argv[])
         char type;
         const char *defaultval;
     } allowedargs[] = {
+        { "-verbose", "Show the parameterlist and actuel values.", &verbose, 0, NULL },
         { "-bench", "Do benchmark test for some positions.", &benchmark, 0, NULL },
         { "bench", "Do benchmark with OpenBench compatible output.", &openbench, 0, NULL },
         { "-depth", "Depth for benchmark (0 for per-position-default)", &depth, 1, "0" },
@@ -1003,11 +968,13 @@ int main(int argc, char* argv[])
     myassert(1 == 0, nullptr, 0); // test stacktrace
 #endif
 
+#ifdef EVALOPTIONS
+    registerallevals();
+#endif
+
     searchinit();
 
     cout.setf(ios_base::unitbuf);
-
-    printf("%s (Build %s)\n UCI compatible chess engine by %s\nParameterlist:\n", en.name, BUILD, en.author);
 
     int paramindex = 0;
     for (int j = 0; allowedargs[j].cmd; j++)
@@ -1026,18 +993,18 @@ int main(int argc, char* argv[])
         {
         case 0:
             *(bool*)(allowedargs[j].variable) = (val > 0);
-            printf(" %s: %s  (%s)\n", allowedargs[j].cmd, *(bool*)(allowedargs[j].variable) ? "yes" : "no", allowedargs[j].info);
+            if (verbose) printf(" %s: %s  (%s)\n", allowedargs[j].cmd, *(bool*)(allowedargs[j].variable) ? "yes" : "no", allowedargs[j].info);
             paramindex = 0;
             break;
         case 1:
             try { *(int*)(allowedargs[j].variable) = stoi((val > 0 && val < argc - 1 ? argv[val + 1] : allowedargs[j].defaultval)); }
             catch (const invalid_argument&) {}
-            printf(" %s: %d  (%s)\n", allowedargs[j].cmd, *(int*)(allowedargs[j].variable), allowedargs[j].info);
+            if (verbose) printf(" %s: %d  (%s)\n", allowedargs[j].cmd, *(int*)(allowedargs[j].variable), allowedargs[j].info);
             paramindex = 0;
             break;
         case 2:
             *(string*)(allowedargs[j].variable) = (val > 0 && val < argc - 1 ? argv[val + 1] : allowedargs[j].defaultval);
-            printf(" %s: %s  (%s)\n", allowedargs[j].cmd, (*(string*)(allowedargs[j].variable)).c_str(), allowedargs[j].info);
+            if (verbose) printf(" %s: %s  (%s)\n", allowedargs[j].cmd, (*(string*)(allowedargs[j].variable)).c_str(), allowedargs[j].info);
             paramindex = 0;
             break;
         case 3:
@@ -1045,8 +1012,8 @@ int main(int argc, char* argv[])
             {
                 string optionName(argv[val + 1]);
                 string optionValue(val < argc - 2 ? argv[val + 2] : "");
-                en.setOption(optionName, optionValue);
-                printf(" %s (%s) %s: %s\n", allowedargs[j].cmd, allowedargs[j].info, optionName.c_str(), optionValue.c_str());
+                en.ucioptions.Set(optionName, optionValue);
+                if (verbose) printf(" %s (%s) %s: %s\n", allowedargs[j].cmd, allowedargs[j].info, optionName.c_str(), optionValue.c_str());
                 // search for more -option parameters starting after current (ugly hack)
                 paramindex++;
                 j--;
@@ -1057,7 +1024,7 @@ int main(int argc, char* argv[])
         }
     }
 
-    printf("Here we go...\n\n");
+    if (verbose) printf("%s (Build %s)\n UCI compatible chess engine by %s\n", en.name().c_str(), BUILD, en.author);
 
     if (perfmaxdepth)
     {

@@ -1,10 +1,38 @@
 ChangeLog
 =========
-1.7 (release 2020-xx-xx) :
-    - ...
+1.7.3 (no-release 2020-05-11 for TCEC S18) :
+    - Added FRC/Chess960 (playing quite bad for now)
+    - Faster move generation esp. pawn moves
+    - Evaluate backward and isolated pawns woth respect to their file (idea by Ed Schröder)
+    - Make pawn hash aligned to cache line
+
+1.7.2 (release 2020-04-27) :
+    - Fixed a bug in the test for ep capture moves being legal
+    - Fix for Android compilation
+
+1.7.1 (release 2020-04-20) :
+    - Fixes a bug that in some rare cases lets the root search get stuck at depth 1 with a failing low move from the tt
+
+1.7 (release 2020-04-19) :
+    - moveGivesCheck handles discovered checks now
+    - Several fixes in the PVS logic (was unchanged since 0.4 release and quite buggy)
+    - Added evaluation for minors prtected behind pawns, bishop center control and knight outposts
+    - Fix for the (rare) bug regarding undetected 3-fold in or following root move
+    - Introduce some basic endgame evaluation interface; so far only used for the KBNvK endgame
+    - Support for Clang compiler now in the general Makefile
+    - Several fixes regarding the UCI interface (nps overflow, wrong scores at fail high/low)
+    - Several improvements in the tuner (e.g. correlation of parameters)
+    - Some improvements for transposition table (save in qsearch, aligned allocation, support for Linux huge pages, 16bit hash signature)
+    - New search debugging code (enabled via SDEBUG)
+    - Gerate epd with special endgame positions via new parameter '-generate'
+    - Moved time management to main search thread and removed the time management thread
+    - Fixed a bug in the evaluation of potential passed pawns
+    - Do not reset history stats at every search but only at ucinewgame
+    - Don't return tt value at PV node
+    - Avoid null moves in pawn endgames, extend capture moves that lead to pawn endgames (solves some bad endgames played by 1.6)
 
 1.6.1.1 (release 2020-01-11 for TCEC S17) :
-	- King danger eval tuned
+    - King danger eval tuned
 
 1.6.1 (release 2020-01-11) :
     - Statistic for several search features enabled via STATISTICS

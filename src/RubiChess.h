@@ -17,7 +17,7 @@
 
 #pragma once
 
-#define VERNUM "1.7"
+#define VERNUM "1.8"
 //#define VERSTABLE
 
 #if 0
@@ -34,6 +34,10 @@
 
 #if 0
 #define EVALTUNE
+#endif
+
+#if 0
+#define EVALOPTIONS
 #endif
 
 #if 0
@@ -98,12 +102,21 @@
 #include <crtdbg.h>
 #endif
 
+#define allocalign64(x) _aligned_malloc(x, 64)
+#define freealigned64(x) _aligned_free(x)
+
 #else //_WIN32
 
 #define myassert(expression, pos, num, ...) (void)(0)
 #define sprintf_s sprintf
 void Sleep(long x);
-
+#ifdef __ANDROID__
+#define allocalign64(x) malloc(x)
+#define freealigned64(x) free(x)
+#else
+#define allocalign64(x) aligned_alloc(64, x)
+#define freealigned64(x) free(x)
+#endif
 #endif
 
 using namespace std;
@@ -122,6 +135,22 @@ using namespace std;
 #endif
 #endif
 
+#define CPULEGACY   0
+#define CPUPOPCOUNT 1
+#define CPUBMI2     2
+
+#define CPUVENDORUNKNOWN    0
+#define CPUVENDORINTEL      1
+#define CPUVENDORAMD        2
+
+#ifndef CPUFEATURE
+#ifdef _MSC_VER
+#define CPUFEATURE CPUPOPCOUNT
+#else
+#define CPUFEATURE CPULEGACY
+#endif
+#endif
+
 #ifndef VERSTABLE
 #ifdef GITVER
 #define VERSION VERNUM "-dev " GITVER
@@ -129,7 +158,7 @@ using namespace std;
 #define VERSION VERNUM "-dev"
 #endif
 #else
-#define VERSION VERNUM
+#define VERSION VERNUM " "
 #endif
 #define ENGINEVER "RubiChess " VERSION
 #ifdef GITID
@@ -187,6 +216,7 @@ enum { WHITE, BLACK };
 #define BORDERDIST(f) ((f) > 3 ? 7 - (f) : (f))
 #define PROMOTERANK(x) (RANK(x) == 0 || RANK(x) == 7)
 #define PROMOTERANKBB 0xff000000000000ff
+#define RANK1(s) ((s) ? 0xff00000000000000 : 0x00000000000000ff)
 #define RANK2(s) ((s) ? 0x00ff000000000000 : 0x000000000000ff00)
 #define RANK3(s) ((s) ? 0x0000ff0000000000 : 0x0000000000ff0000)
 #define RANK7(s) ((s) ? 0x000000000000ff00 : 0x00ff000000000000)
@@ -274,7 +304,13 @@ public:
 #define CEVAL(e, f) ((e) * (f))
 #define EVALUE(e) VALUE(0, e)
 #define EEVAL(e, f) ((e) * (f))
+
+#ifdef EVALOPTIONS
+typedef int32_t eval;
+#else
 typedef const int32_t eval;
+#endif
+
 #endif
 
 #define PSQTINDEX(i,s) ((s) ? (i) : (i) ^ 0x38)
@@ -335,8 +371,8 @@ struct evalparamset {
         {  VALUE(   0,   0), VALUE( -43,   9), VALUE( -15,  17), VALUE(   0,  31), VALUE(  33,  31), VALUE(  71,  95), VALUE(   0,   0), VALUE(   0,   0)  }
     };
     eval eAttackingpawnbonus[8] = {  VALUE(   0,   0), VALUE( -32,  12), VALUE( -22, -12), VALUE(  -6,  -6), VALUE( -12,  -6), VALUE( -13,  -2), VALUE(   0,   0), VALUE(   0,   0)  };
-    eval eIsolatedpawnpenalty =  VALUE( -13, -12);
-    eval eDoublepawnpenalty =  VALUE(  -9, -21);
+    eval eIsolatedpawnpenalty[8] = {  VALUE( -10,  -5), VALUE( -10,  -6), VALUE( -16, -12), VALUE( -22, -12), VALUE( -26, -12), VALUE( -13, -11), VALUE(  -8, -10), VALUE( -15,  -3)  };
+    eval eDoublepawnpenalty =  VALUE( -11, -23);
     eval eConnectedbonus[6][6] = {
         {  VALUE(   0,   0), VALUE(  10,  -2), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0)  },
         {  VALUE(   0,   0), VALUE(   4,   3), VALUE(  12,  12), VALUE(  28,  17), VALUE(  36,  20), VALUE(  56,  22)  },
@@ -345,10 +381,11 @@ struct evalparamset {
         {  VALUE(   0,   0), VALUE(  72,  98), VALUE(  53,  54), VALUE(  72,  80), VALUE(  35,  86), VALUE( -57, 253)  },
         {  VALUE(   0,   0), VALUE(  38, 241), VALUE( 130, 110), VALUE(   7, 400), VALUE(   0, 641), VALUE(   0,   0)  }
     };
-    eval eBackwardpawnpenalty =  VALUE( -16, -11);
+    eval eBackwardpawnpenalty[8] = {  VALUE(  -2, -12), VALUE(  -6, -11), VALUE( -16, -11), VALUE( -15, -11), VALUE( -20, -11), VALUE( -18,  -8), VALUE( -16,  -7), VALUE( -15,  -3)  };
     eval eDoublebishopbonus =  VALUE(  56,  38);
     eval ePawnblocksbishoppenalty =  VALUE( -10, -18);
     eval eBishopcentercontrolbonus =  VALUE(  25,  13);
+    eval eKnightOutpost =  VALUE(   15,  15);
     eval eMobilitybonus[4][28] = {
         {  VALUE(  16, -90), VALUE(  38, -26), VALUE(  51,   1), VALUE(  57,  13), VALUE(  64,  27), VALUE(  71,  37), VALUE(  77,  36), VALUE(  84,  36),
            VALUE(  86,  30), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0), VALUE(   0,   0),
@@ -368,6 +405,7 @@ struct evalparamset {
            VALUE(  69, 264), VALUE( 108, 231), VALUE( 107, 230), VALUE( 114, 198)  }
     };
     eval eRookon7thbonus =  VALUE(  -1,  22);
+    eval eQueenattackedbysliderpenalty =  VALUE( -30,  17);
     eval eMinorbehindpawn[6] = {  VALUE(   1,  14), VALUE(  12,  10), VALUE(  15,  11), VALUE(  24,   9), VALUE(  37,  11), VALUE(  89, 110)  };
     eval eSlideronfreefilebonus[2] = {  VALUE(  21,   7), VALUE(  43,   1)  };
     eval eMaterialvalue[7] = {  VALUE(   0,   0), VALUE( 100, 100), VALUE( 314, 314), VALUE( 314, 314), VALUE( 483, 483), VALUE( 913, 913), VALUE(   0,   0)  };
@@ -485,10 +523,10 @@ struct tunerpool {
     tuner *tn;
 };
 
-
-void registeralltuners(chessposition *pos);
-
 #endif
+
+void registerallevals(chessposition *pos = nullptr);
+void initPsqtable();
 
 #define SCALE_NORMAL 128
 #define SCALE_DRAW 0
@@ -496,7 +534,7 @@ void registeralltuners(chessposition *pos);
 #define SCALE_HARDTOWIN 10
 #define SCALE_OCB 32
 
-enum EvalType { NOTRACE, TRACE};
+enum EvalType { NOTRACE, TRACE };
 
 //
 // utils stuff
@@ -539,11 +577,11 @@ typedef struct ranctx { u8 a; u8 b; u8 c; u8 d; } ranctx;
 class zobrist
 {
 public:
-    ranctx rnd;
     unsigned long long boardtable[64 * 16];
     unsigned long long cstl[32];
     unsigned long long ept[64];
     unsigned long long s2m;
+    ranctx rnd;
     zobrist();
     unsigned long long getRnd();
     u8 getHash(chessposition *pos);
@@ -553,9 +591,11 @@ public:
 
 #define TTBUCKETNUM 3
 
+typedef uint16_t hashupper_t;
+#define GETHASHUPPER(x) (hashupper_t)((x) >> (64 - sizeof(hashupper_t) * 8))
 
 struct transpositionentry {
-    uint32_t hashupper;
+    hashupper_t hashupper;
     uint16_t movecode;
     int16_t value;
     int16_t staticeval;
@@ -565,6 +605,7 @@ struct transpositionentry {
 
 struct transpositioncluster {
     transpositionentry entry[TTBUCKETNUM];
+    uint8_t padding[(64 - sizeof(transpositionentry) * TTBUCKETNUM) % 16];
 #ifdef SDEBUG
     U64 debugHash;
     int debugIndex;
@@ -622,8 +663,6 @@ typedef struct pawnhashentry {
     uint32_t hashupper;
     int32_t value;
     U64 passedpawnbb[2];
-    U64 isolatedpawnbb[2];
-    U64 backwardpawnbb[2];
     U64 attacked[2];
     U64 attackedBy2[2];
     bool bothFlanks;
@@ -635,10 +674,9 @@ class Pawnhash
 {
 public:
     S_PAWNHASHENTRY *table;
-    U64 size;
     U64 sizemask;
-    Pawnhash(int sizeMb);
-    ~Pawnhash();
+    void setSize(int sizeMb);
+    void remove();
     bool probeHash(U64 hash, pawnhashentry **entry);
 };
 
@@ -652,20 +690,22 @@ struct Materialhashentry {
     int scale[2];
     bool onlyPawns;
     int numOfPawns;
+    int(*endgame)(chessposition*);
 };
 
 
 class Materialhash
 {
 public:
-    Materialhashentry table[MATERIALHASHSIZE];
+    Materialhashentry *table;
+    void init();
+    void remove();
     bool probeHash(U64 hash, Materialhashentry **entry);
 };
 
 
 extern zobrist zb;
 extern transposition tp;
-extern Materialhash mh;
 
 
 //
@@ -710,6 +750,8 @@ extern Materialhash mh;
 #define BQCMASK     0x08
 #define BKCMASK     0x10
 #define CASTLEMASK  0x1e
+#define GETCASTLEFILE(s,i) (((s) >> (i * 4 + 8)) & 0x7)
+#define SETCASTLEFILE(f,i) (((f) << (i * 4 + 8)) | (WQCMASK << i))
 
 #define WQC 1
 #define WKC 2
@@ -717,10 +759,13 @@ extern Materialhash mh;
 #define BKC 4
 const int QCMASK[2] = { WQCMASK, BQCMASK };
 const int KCMASK[2] = { WKCMASK, BKCMASK };
-const int castlerookfrom[] = {0, 0, 7, 56, 63 };
-const int castlerookto[] = {0, 3, 5, 59, 61 };
+const int castlerookto[4] = { 3, 5, 59, 61 };
+const int castlekingto[4] = { 2, 6, 58, 62 };
 
-const int EPTSIDEMASK[2] = { 0x8, 0x10 };
+#define BOUNDMASK 0x03 
+#define HASHALPHA 0x01
+#define HASHBETA 0x02
+#define HASHEXACT 0x00
 
 #define MAXDEPTH 256
 #define NOSCORE SHRT_MIN
@@ -728,6 +773,7 @@ const int EPTSIDEMASK[2] = { 0x8, 0x10 };
 #define SCOREWHITEWINS (-SCOREBLACKWINS)
 #define SCOREDRAW 0
 #define SCORETBWIN 29900
+#define SCOREWONENDGAME 10000
 
 #define MATEFORME(s) ((s) > SCOREWHITEWINS - MAXDEPTH)
 #define MATEFOROPPONENT(s) ((s) < SCOREBLACKWINS + MAXDEPTH)
@@ -753,11 +799,28 @@ const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 2
 #define NMREFUTEVAL (1 << 25)
 #define BADTACTICALFLAG (1 << 31)
 
-#define ISEPCAPTURE 0x40
+
+// 32bit move code has the following format
+// 10987654321098765432109876543210 Bit#
+// xxxx                             Piece code
+//     x                            Castle flag
+//      x                           EP capture flag
+//       xxxxxx                     EP capture target square
+//           xx                     castle index (00=white queen 01=white king 10=black queen 11=black king)
+//             xxxx                 captured piece code
+//                 xxxx             promotion piece code
+//                     xxxxxx       from square
+//                           xxxxxx to square
+#define EPCAPTUREFLAG 0x4000000
+#define CASTLEFLAG    0x8000000
 #define GETFROM(x) (((x) & 0x0fc0) >> 6)
 #define GETTO(x) ((x) & 0x003f)
+#define GETCORRECTTO(x) (ISCASTLE(x) ? castlekingto[GETCASTLEINDEX(x)] : GETTO(x))
 #define GETEPT(x) (((x) & 0x03f00000) >> 20)
-#define GETEPCAPTURE(x) (((x) >> 20) & ISEPCAPTURE)
+#define ISEPCAPTURE(x) ((x) & EPCAPTUREFLAG)
+#define ISCASTLE(x) ((x) & CASTLEFLAG)
+#define GETCASTLEINDEX(x) (((x) & 0x00300000) >> 20)
+#define ISEPCAPTUREORCASTLE(x) ((x) & (EPCAPTUREFLAG | CASTLEFLAG))
 
 #define GETPROMOTION(x) (((x) & 0xf000) >> 12)
 #define GETCAPTURE(x) (((x) & 0xf0000) >> 16)
@@ -766,13 +829,11 @@ const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 2
 #define ISCAPTURE(x) ((x) & 0xf0000)
 #define GETPIECE(x) (((x) & 0xf0000000) >> 28)
 #define GETTACTICALVALUE(x) (materialvalue[GETCAPTURE(x) >> 1] + (ISPROMOTION(x) ? materialvalue[GETPROMOTION(x) >> 1] - materialvalue[PAWN] : 0))
-#define ISCASTLE(c) (((c) & 0xe0000249) == 0xc0000000)
-#define GIVECHECKFLAG 0x08000000
-#define GIVESCHECK(x) ((x) & GIVECHECKFLAG)
 
 #define PAWNATTACK(s, p) ((s) ? (((p) & ~FILEHBB) >> 7) | (((p) & ~FILEABB) >> 9) : (((p) & ~FILEABB) << 7) | (((p) & ~FILEHBB) << 9))
 #define PAWNPUSH(s, p) ((s) ? ((p) >> 8) : ((p) << 8))
 #define PAWNPUSHINDEX(s, i) ((s) ? (i) - 8 : (i) + 8)
+#define PAWNPUSHDOUBLEINDEX(s, i) ((s) ? (i) - 16 : (i) + 16)
 
 // passedPawnMask[18][WHITE]:
 // 01110000
@@ -874,7 +935,7 @@ extern U64 rankMask[64];
 extern U64 betweenMask[64][64];
 
 extern int squareDistance[64][64];
-
+extern int castlerookfrom[4];
 struct chessmovestack
 {
     int state;
@@ -888,7 +949,7 @@ struct chessmovestack
     U64 isCheckbb;
     int lastnullmove;
     uint32_t movecode;
-    U64 kingPinned[2];
+    U64 kingPinned;
 };
 
 #define MAXMOVELISTLENGTH 256	// for lists of possible pseudo-legal moves
@@ -924,9 +985,9 @@ public:
 };
 
 #define MAXMULTIPV 64
-#define MAXTHREADS 256
+#define MAXTHREADS  256
+#define MAXHASH     0x100000  // 1TB ... never tested
 #define DEFAULTHASH 16
-#define CMPLIES 2
 
 
 // FIXME: This is ugly! Almost the same classes with doubled code.
@@ -953,6 +1014,7 @@ public:
     chessmove* getNextMove(int minval);
 };
 
+#define CMPLIES 2
 
 enum MoveSelector_State { INITSTATE, HASHMOVESTATE, TACTICALINITSTATE, TACTICALSTATE, KILLERMOVE1STATE, KILLERMOVE2STATE,
     COUNTERMOVESTATE, QUIETINITSTATE, QUIETSTATE, BADTACTICALSTATE, BADTACTICALEND, EVASIONINITSTATE, EVASIONSTATE };
@@ -992,18 +1054,29 @@ extern SMagic mRookTbl[64];
 
 #define BISHOPINDEXBITS 9
 #define ROOKINDEXBITS 12
-#define MAGICBISHOPINDEX(m,x) (int)((((m) & mBishopTbl[x].mask) * mBishopTbl[x].magic) >> (64 - BISHOPINDEXBITS))
-#define MAGICROOKINDEX(m,x) (int)((((m) & mRookTbl[x].mask) * mRookTbl[x].magic) >> (64 - ROOKINDEXBITS))
-#define MAGICBISHOPATTACKS(m,x) (mBishopAttacks[x][MAGICBISHOPINDEX(m,x)])
-#define MAGICROOKATTACKS(m,x) (mRookAttacks[x][MAGICROOKINDEX(m,x)])
+
+#if CPUFEATURE == CPUBMI2
+#include <immintrin.h>
+#define BISHOPINDEX(occ,i) (int)(_pext_u64(occ, mBishopTbl[i].mask))
+#define ROOKINDEX(occ,i) (int)(_pext_u64(occ, mRookTbl[i].mask))
+#else
+#define BISHOPINDEX(occ,i) (int)((((occ) & mBishopTbl[i].mask) * mBishopTbl[i].magic) >> (64 - BISHOPINDEXBITS))
+#define ROOKINDEX(occ,i) (int)((((occ) & mRookTbl[i].mask) * mRookTbl[i].magic) >> (64 - ROOKINDEXBITS))
+#endif
+#define BISHOPATTACKS(m,x) (mBishopAttacks[x][BISHOPINDEX(m,x)])
+#define ROOKATTACKS(m,x) (mRookAttacks[x][ROOKINDEX(m,x)])
 
 extern U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 
-enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7, EVASION = 8, QUIETWITHCHECK = 9 };
-enum RootsearchType { SinglePVSearch, MultiPVSearch, PonderSearch };
+enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7 };
+enum RootsearchType { SinglePVSearch, MultiPVSearch };
 
-template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* m);
+int CreateEvasionMovelist(chessposition *pos, chessmove* mstart);
+template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart);
+template <PieceType Pt> inline int CreateMovelistPiece(chessposition *pos, chessmove* mstart, U64 occ, U64 targets, int me);
+template <MoveType Mt> inline int CreateMovelistPawn(chessposition *pos, chessmove* mstart, int me);
+inline int CreateMovelistCastle(chessposition *pos, chessmove* mstart, int me);
 template <MoveType Mt> void evaluateMoves(chessmovelist *ml, chessposition *pos, int16_t **cmptr);
 
 enum AttackType { FREE, OCCUPIED, OCCUPIEDANDKING };
@@ -1022,12 +1095,17 @@ enum PvAbortType {
     PVA_FUTILITYPRUNED, PVA_SEEPRUNED, PVA_BADHISTORYPRUNED, PVA_MULTICUT, PVA_BESTMOVE, PVA_NOTBESTMOVE, PVA_OMITTED, PVA_BETACUT, PVA_BELOWALPHA }; 
 #endif
 
+// Replace the occupied bitboards with the first two so far unused piece bitboards
+#define occupied00 piece00
+
 class chessposition
 {
 public:
     U64 nodes;
+    int mstop;      // 0 at last non-reversible move before root, rootheight at root position
+    int ply;        // 0 at root position
+
     U64 piece00[14];
-    U64 occupied00[2];
     U64 attackedBy2[2];
     U64 attackedBy[2][7];
 
@@ -1043,14 +1121,13 @@ public:
     U64 isCheckbb;
     int lastnullmove;
     uint32_t movecode;
-    U64 kingPinned[2];
+    U64 kingPinned;
 
     uint8_t mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
     chessmovestack movestack[MAXMOVESEQUENCELENGTH];
     uint16_t excludemovestack[MAXMOVESEQUENCELENGTH];
     int16_t staticevalstack[MAXMOVESEQUENCELENGTH];
-    int mstop;      // 0 at last non-reversible move before root, rootheight at root position
-    int ply;        // 0 at root position
+
     int rootheight; // fixed stack offset in root position 
     int seldepth;
     int nullmoveside;
@@ -1063,7 +1140,6 @@ public:
     int LegalMoves[MAXDEPTH];
     uint32_t killer[MAXDEPTH][2];
     uint32_t bestFailingLow;
-    Pawnhash *pwnhsh;
     int threadindex;
     int psqval;
 #ifdef SDEBUG
@@ -1108,6 +1184,8 @@ public:
     int16_t history[2][64][64];
     int16_t counterhistory[14][64][14 * 64];
     uint32_t countermove[14][64];
+    Materialhash mtrlhsh;
+    Pawnhash pwnhsh;
 
     bool w2m();
     void BitboardSet(int index, PieceCode p);
@@ -1116,18 +1194,17 @@ public:
     void BitboardPrint(U64 b);
     int getFromFen(const char* sFen);
     string toFen();
-    bool applyMove(string s, bool resetMstop = true);
+    uint32_t applyMove(string s);
     void print(ostream* os = &cout);
     int phase();
     U64 movesTo(PieceCode pc, int from);
     template <PieceType Pt> U64 pieceMovesTo(int from);
-    bool isAttacked(int index);
+    bool isAttacked(int index, int me);
     U64 isAttackedByMySlider(int index, U64 occ, int me);  // special simple version to detect giving check by removing blocker
     U64 attackedByBB(int index, U64 occ);  // returns bitboard of all pieces of both colors attacking index square 
     template <AttackType At> U64 isAttackedBy(int index, int col);    // returns the bitboard of cols pieces attacking the index square; At controls if pawns are moved to block or capture
     bool see(uint32_t move, int threshold);
     int getBestPossibleCapture();
-    int getMoves(chessmove *m, MoveType t = ALL);
     void getRootMoves();
     void tbFilterRootMoves();
     void prepareStack();
@@ -1136,17 +1213,18 @@ public:
     void unplayMove(chessmove *cm);
     void playNullMove();
     void unplayNullMove();
-    void updatePins();
+    template <int Me> void updatePins();
+    template <int Me> bool sliderAttacked(int index, U64 occ);
     bool moveGivesCheck(uint32_t c);  // simple and imperfect as it doesn't handle special moves and cases (mainly to avoid pruning of important moves)
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
     uint32_t shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal
-    void getpsqval();  // only for eval trace
+    int getpsqval(bool showDetails = false);  // only for eval trace and mirror test
     template <EvalType Et, int Me> int getGeneralEval(positioneval *pe);
     template <EvalType Et, PieceType Pt, int Me> int getPieceEval(positioneval *pe);
     template <EvalType Et, int Me> int getLateEval(positioneval *pe);
     template <EvalType Et, int Me> void getPawnAndKingEval(pawnhashentry *entry);
     template <EvalType Et> int getEval();
-    int getScaling(int col, Materialhashentry** mhentry);
+    void getScaling(Materialhashentry *mhentry);
     int getComplexity(int eval, pawnhashentry *phentry, Materialhashentry *mhentry);
 
     template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth);
@@ -1172,7 +1250,8 @@ public:
 // uci stuff
 //
 
-enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL };
+enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL, PERFT
+};
 
 const map<string, GuiToken> GuiCommandMap = {
     { "uci", UCI },
@@ -1186,12 +1265,41 @@ const map<string, GuiToken> GuiCommandMap = {
     { "stop", STOP },
     { "ponderhit", PONDERHIT },
     { "quit", QUIT },
-    { "eval", EVAL }
+    { "eval", EVAL },
+    { "perft", PERFT }
 };
 
 //
 // engine stuff
 //
+class engine;   //forward definition
+
+// order of ucioptiontypes is important for (not) setting default at registration
+enum ucioptiontype { ucicheck, ucispin, ucicombo, ucistring, ucibutton, ucieval };
+
+struct ucioption_t
+{
+    string name;
+    ucioptiontype type;
+    string def;
+    int min;
+    int max;
+    string varlist;
+    void *enginevar;
+    void (*setoption)();
+};
+
+class ucioptions_t
+{
+    map<string, ucioption_t> optionmap;
+public:
+    void Register(void *e, string n, ucioptiontype t, string d, int mi = 0, int ma = 0, void(*setop)() = nullptr, string v = ""); //engine*, ucioption_t*
+    void Set(string n, string v, bool force = false);
+    void Print();
+};
+
+typedef map<string, ucioption_t>::iterator optionmapiterator;
+
 
 #define ENGINERUN 0
 #define ENGINEWANTSTOP 1
@@ -1199,13 +1307,14 @@ const map<string, GuiToken> GuiCommandMap = {
 #define ENGINETERMINATEDSEARCH 3
 
 #define NODESPERCHECK 0xfff
+enum ponderstate_t { NO, PONDERING, HITPONDER };
 
 class engine
 {
 public:
     engine();
     ~engine();
-    const char* name = ENGINEVER;
+    const string cpufeature[3] = { "Legacy", "Popcount", "BMI2" };
     const char* author = "Andreas Matthies";
     bool isWhite;
     U64 tbhits;
@@ -1217,25 +1326,35 @@ public:
     U64 maxnodes;
     bool infinite;
     bool debug = false;
+    bool evaldetails = false;
     bool moveoutput;
-    int sizeOfTp = 0;
+    int stopLevel = ENGINETERMINATEDSEARCH;
+    int Hash;
     int restSizeOfTp = 0;
     int sizeOfPh;
     int moveOverhead;
     int MultiPV;
     bool ponder;
+    bool chess960;
     string SyzygyPath;
     bool Syzygy50MoveRule = true;
     int SyzygyProbeLimit;
     chessposition rootposition;
     int Threads;
+    int oldThreads;
     searchthread *sthread;
-    enum { NO, PONDERING, HITPONDER } pondersearch;
+    ponderstate_t pondersearch;
+    bool ponderhit;
     int terminationscore = SHRT_MAX;
     int lastReport;
     int benchdepth;
     string benchmove;
-    int stopLevel = ENGINETERMINATEDSEARCH;
+    ucioptions_t ucioptions;
+    string system;
+    int maxHWSupport;
+    int cpuVendor;
+    bool badPEXT;
+
 #ifdef STACKDEBUG
     string assertfile = "";
 #endif
@@ -1244,20 +1363,19 @@ public:
     int t2stop = 0;     // immediate stop
     bool bStopCount;
 #endif
+    string name() {
+        return string(ENGINEVER) + " (" + cpufeature[CPUFEATURE] +")";
+    };
     GuiToken parse(vector<string>*, string ss);
     void send(const char* format, ...);
     void communicate(string inputstring);
-    void setOption(string sName, string sValue);
     void allocThreads();
     void allocPawnhash();
     U64 getTotalNodes();
-    bool isPondering() { return (pondersearch == PONDERING); }
-    void HitPonder() { pondersearch = HITPONDER; }
-    bool testPonderHit() { return (pondersearch == HITPONDER); }
-    void resetPonder() { pondersearch = NO; }
     long long perft(int depth, bool dotests);
     void prepareThreads();
     void resetStats();
+    void GetSystemInfo();
 };
 
 PieceType GetPieceType(char c);
@@ -1297,15 +1415,15 @@ class searchthread
 {
 public:
     chessposition pos;
-    Pawnhash *pwnhsh;
     thread thr;
     int index;
     int depth;
     int numofthreads;
     int lastCompleteDepth;
+
+    uint8_t padding[40];
+
     searchthread *searchthreads;
-    searchthread();
-    ~searchthread();
 };
 
 void searchStart();

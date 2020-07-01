@@ -6,8 +6,8 @@ to earlier releases. I try to avoid simple copy and paste code from other engine
 my brain" before it gets implemented...
 Well, now two years later and while competing at Grahams tournaments I got a little ambitious to compete with some of the best engines :-)
 
-Many thanks to the excellent documentation at https://chessprogramming.wikispaces.com/.
-Also many thanks to Bluefever and his video tutorial http://bluefever.net/Downloads/ViceReadMe.html
+Many thanks to the excellent documentation at https://chessprogramming.org.
+Also many thanks to Bluefever and his video tutorial https://www.youtube.com/user/BlueFeverSoft/videos
 A special thank you goes to open source engine Olithink. I had a look at its source code or even two.
 And while improving RubiChess more and more I looked at several open source engines like
 Ethereal, Stockfish, Pirarucu, Laser, ...
