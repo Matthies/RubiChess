@@ -611,7 +611,6 @@ struct transpositioncluster {
     int debugIndex;
     string debugStoredBy;
 #endif
-    //char padding[2];
 };
 
 
@@ -645,7 +644,7 @@ public:
         for (int i = 0; i < TTBUCKETNUM; i++)
         {
             transpositionentry *e = &(data->entry[i]);
-            if (e->hashupper == (h >> 32))
+            if (e->hashupper == GETHASHUPPER(h))
                 return "Depth=" + to_string(e->depth) + " Value=" + to_string(e->value) + "(" + to_string(e->boundAndAge & BOUNDMASK) + ")  pv=" + data->debugStoredBy;
         }
         return "";
