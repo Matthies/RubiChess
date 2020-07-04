@@ -500,7 +500,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                     // ProbCut off
                     delete movelist;
                     STATISTICSINC(prune_probcut);
-                    SDEBUGDO(isDebugPv, pvabortval[ply] = probcutscore; pvaborttype[ply] = PVA_PROBCUTPRUNED;);
+                    SDEBUGDO(isDebugPv, pvabortval[ply] = probcutscore; pvaborttype[ply] = PVA_PROBCUTPRUNED; pvadditionalinfo[ply] = "pruned by " + movelist->move[i].toString(););
                     return probcutscore;
                 }
             }

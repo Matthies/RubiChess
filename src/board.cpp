@@ -1181,19 +1181,19 @@ const char* PvAbortStr[] = {
 
 void chessposition::pvdebugout()
 {
-    printf("======================================================\n  Window       Move  Num Dep    Val          Reason\n------------------------------------------------------\n");
+    printf("===========================================================\n  Window       Move  Num Dep    Val          Reason\n-----------------------------------------------------------\n");
     for (int i = 0; pvdebug[i].code; i++)
     {
         chessmove m;
         m.code = pvdebug[i].code;
 
-        printf("%6d/%6d  %s %s%2d  %2d  %5d %18s  %s\n",
+        printf("%6d/%6d  %s %s%2d  %2d  %5d %23s  %s\n",
             pvalpha[i], pvbeta[i], m.toString().c_str(), pvmovenum[i] < 0 ? ">" : " ",
             abs(pvmovenum[i]), pvdepth[i], pvabortval[i], PvAbortStr[pvaborttype[i]], pvadditionalinfo[i].c_str());
         if (pvaborttype[i + 1] == PVA_UNKNOWN || pvaborttype[i] == PVA_OMITTED)
             break;
     }
-    printf("======================================================\n\n");
+    printf("===========================================================\n\n");
 }
 
 #endif
