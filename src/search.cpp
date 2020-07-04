@@ -477,7 +477,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     // ProbCut
     if (!PVNode && depth >= 5 && abs(beta) < SCOREWHITEWINS)
     {
-        int rbeta = min(SCOREWHITEWINS, beta + 100  - 20 * positionImproved);
+        int rbeta = min(SCOREWHITEWINS, beta + 120);
         chessmovelist *movelist = new chessmovelist;
         movelist->length = CreateMovelist<TACTICAL>(this, &movelist->move[0]);
 
