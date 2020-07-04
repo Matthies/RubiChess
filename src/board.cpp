@@ -936,6 +936,8 @@ template <int Me> void chessposition::updatePins()
         if (ONEORZERO(potentialPinners))
             kingPinned |= potentialPinners;
     }
+    // 'Reset' attack vector to make getBestPossibleCapture work even if evaluation was skipped
+    attackedBy[Me][0] = 0xffffffffffffffff;
 }
 
 
@@ -2214,13 +2216,13 @@ int chessposition::getBestPossibleCapture()
     int you = me ^ S2MMASK;
     int captureval = 0;
 
-    if (piece00[WQUEEN | you])
+    if (piece00[WQUEEN | you] & attackedBy[me][0])
         captureval += materialvalue[QUEEN];
-    else if (piece00[WROOK | you])
+    else if (piece00[WROOK | you] & attackedBy[me][0])
         captureval += materialvalue[ROOK];
-    else if (piece00[WKNIGHT | you] || piece00[WBISHOP | you])
+    else if ((piece00[WKNIGHT | you] | piece00[WBISHOP | you]) & attackedBy[me][0])
         captureval += materialvalue[KNIGHT];
-    else if (piece00[WPAWN | you])
+    else if (piece00[WPAWN | you] & attackedBy[me][0])
         captureval += materialvalue[PAWN];
 
     // promotion
