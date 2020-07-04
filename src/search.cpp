@@ -483,14 +483,18 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
         for (int i = 0; i < movelist->length; i++)
         {
-            if (!see(movelist->move[i].code, rbeta - staticeval))
+            chessmove* m = &movelist->move[i];
+            if ((m->code & 0xffff) == excludeMove)
                 continue;
 
-            if (playMove(&movelist->move[i]))
+            if (!see(m->code, rbeta - staticeval))
+                continue;
+
+            if (playMove(m))
             {
                 int probcutscore = -alphabeta(-rbeta, -rbeta + 1, depth - 4);
 
-                unplayMove(&movelist->move[i]);
+                unplayMove(m);
 
                 if (probcutscore >= rbeta)
                 {
