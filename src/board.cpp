@@ -2244,8 +2244,7 @@ void MoveSelector::SetPreferredMoves(chessposition *p)
     if (!p->isCheckbb)
     {
         onlyGoodCaptures = true;
-        if (!ISTACTICAL(hashmove.code))
-            state = TACTICALINITSTATE;
+        state = TACTICALINITSTATE;
     }
     else
     {
