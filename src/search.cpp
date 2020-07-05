@@ -476,7 +476,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     // ProbCut
     const int probcutmargin = 100;
-    if (!PVNode && depth >= 5 && abs(beta) < SCOREWHITEWINS && staticeval + getBestPossibleCapture() >= beta + probcutmargin)
+    if (!PVNode && depth >= 5 && abs(beta) < SCOREWHITEWINS)
     {
         int rbeta = min(SCOREWHITEWINS, beta + probcutmargin);
         chessmovelist *movelist = new chessmovelist;
