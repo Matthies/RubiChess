@@ -159,11 +159,16 @@ int transposition::setSize(int sizeMb)
     int msb = 0;
     if (size > 0)
         freealigned64(table);
-    U64 maxsize = ((U64)sizeMb << 20) / sizeof(transpositioncluster);
+    size_t clustersize = sizeof(transpositioncluster);
+#ifdef SDEBUG
+    // Don't use the debugging part of the cluster for calculation of size to get consistent search with non SDEBUG
+    clustersize = offsetof(transpositioncluster, debugHash);
+#endif
+    U64 maxsize = ((U64)sizeMb << 20) / clustersize;
     if (!maxsize) return 0;
     GETMSB(msb, maxsize);
     size = (1ULL << msb);
-    restMb = (int)(((maxsize ^ size) >> 20) * sizeof(transpositioncluster));  // return rest for pawnhash
+    restMb = (int)(((maxsize ^ size) >> 20) * clustersize);  // return rest for pawnhash
     sizemask = size - 1;
     size_t allocsize = (size_t)(size * sizeof(transpositioncluster));
 
@@ -259,6 +264,11 @@ void transposition::addHash(U64 hash, int val, int16_t staticeval, int bound, in
         return;
 
     leastValuableEntry->hashupper = GETHASHUPPER(hash);
+#ifdef SDEBUG
+    if (cluster->debugHash && (uint32_t)(cluster->debugHash >> 32) == leastValuableEntry->hashupper)
+        cluster->debugStoredBy = "";
+
+#endif
     leastValuableEntry->depth = (uint8_t)depth;
     leastValuableEntry->value = (short)val;
     leastValuableEntry->boundAndAge = (uint8_t)(bound | numOfSearchShiftTwo);

@@ -460,7 +460,7 @@ int chessposition::getFromFen(const char* sFen)
 
 
 
-uint32_t chessposition::applyMove(string s)
+uint32_t chessposition::applyMove(string s, bool resetMstop)
 {
     int from, to;
     PieceType promtype;
@@ -485,7 +485,7 @@ uint32_t chessposition::applyMove(string s)
 
     if (playMove(&m))
     {
-        if (halfmovescounter == 0)
+        if (resetMstop && halfmovescounter == 0)
         {
             // Keep the list short, we have to keep below MAXMOVELISTLENGTH
             mstop = 0;
@@ -1016,7 +1016,7 @@ void chessposition::print(ostream* os)
 string chessposition::movesOnStack()
 {
     string s = "";
-    for (int i = 0; i < mstop; i++)
+    for (int i = rootheight; i < mstop; i++)
     {
         chessmove cm;
         cm.code = movestack[i].movecode;
@@ -1158,18 +1158,18 @@ string chessposition::getPv(uint32_t *table)
 #ifdef SDEBUG
 bool chessposition::triggerDebug(chessmove* nextmove)
 {
-    if (pvdebug[0] == 0)
+    if (pvdebug[0].code == 0)
         return false;
 
     int j = 0;
 
-    while (j + rootheight < mstop && pvdebug[j])
+    while (j + rootheight < mstop && pvdebug[j].code)
     {
-        if ((movestack[j + rootheight].movecode & 0xefff) != pvdebug[j])
+        if ((movestack[j + rootheight].movecode) != pvdebug[j].code)
             return false;
         j++;
     }
-    nextmove->code = pvdebug[j];
+    nextmove->code = pvdebug[j].code;
  
     return true;
 }
@@ -1183,16 +1183,19 @@ const char* PvAbortStr[] = {
 
 void chessposition::pvdebugout()
 {
-    printf("====================================\nMove  Num Dep   Val  Reason\n------------------------------------\n");
-    for (int i = 0; pvdebug[i]; i++)
+    printf("===========================================================\n  Window       Move  Num Dep    Val          Reason\n-----------------------------------------------------------\n");
+    for (int i = 0; pvdebug[i].code; i++)
     {
         chessmove m;
-        m.code = pvdebug[i];
-        printf("%s %s%2d  %2d  %4d  %s\n", m.toString().c_str(), pvmovenum[i] < 0 ? ">" : " ", abs(pvmovenum[i]), pvdepth[i], pvabortval[i], PvAbortStr[pvaborttype[i]]);
+        m.code = pvdebug[i].code;
+
+        printf("%6d/%6d  %s %s%2d  %2d  %5d %23s  %s\n",
+            pvalpha[i], pvbeta[i], m.toString().c_str(), pvmovenum[i] < 0 ? ">" : " ",
+            abs(pvmovenum[i]), pvdepth[i], pvabortval[i], PvAbortStr[pvaborttype[i]], pvadditionalinfo[i].c_str());
         if (pvaborttype[i + 1] == PVA_UNKNOWN || pvaborttype[i] == PVA_OMITTED)
             break;
     }
-    printf("====================================\n\n");
+    printf("===========================================================\n\n");
 }
 
 #endif
@@ -2604,18 +2607,29 @@ void engine::communicate(string inputstring)
                     else if (commandargs[ci] == "pv")
                     {
                         int i = 0;
+                        moves.clear();
                         while (++ci < cs)
+                                moves.push_back(commandargs[ci]);
+
+                        for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
                         {
-                            string s = commandargs[ci];
-                            if (s.size() < 4)
+                            if (!rootposition.applyMove(*it, false))
+                            {
+                                printf("info string Alarm! Debug PV Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
                                 continue;
-                            int from = AlgebraicToIndex(s);
-                            int to = AlgebraicToIndex(&s[2]);
-                            int promotion = (s.size() <= 4) ? BLANK : (GetPieceType(s[4]) << 1); // Remember: S2m is missing here
-                            rootposition.pvdebug[i++] = to | (from << 6) | (promotion << 12);
+                            }
+                            U64 h = rootposition.movestack[rootposition.mstop - 1].hash;
+                            tp.markDebugSlot(h, i);
+                            rootposition.pvdebug[i].code = rootposition.movestack[rootposition.mstop - 1].movecode;
+                            rootposition.pvdebug[i++].hash = h;
                         }
-                        rootposition.pvdebug[i] = 0;
-                        prepareThreads();
+                        rootposition.pvdebug[i].code = 0;
+                        while (i--) {
+                            chessmove m;
+                            m.code = rootposition.pvdebug[i].code;
+                            rootposition.unplayMove(&m);
+                        }
+                        prepareThreads();   // To copy the debug information to the threads position object
                     }
 #endif
                 }
