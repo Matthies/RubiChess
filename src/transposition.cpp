@@ -161,6 +161,7 @@ int transposition::setSize(int sizeMb)
         freealigned64(table);
     size_t clustersize = sizeof(transpositioncluster);
 #ifdef SDEBUG
+    // Don't use the debugging part of the cluster for calculation of size to get consistent search with non SDEBUG
     clustersize = offsetof(transpositioncluster, debugHash);
 #endif
     U64 maxsize = ((U64)sizeMb << 20) / clustersize;
