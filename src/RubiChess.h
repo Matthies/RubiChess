@@ -569,10 +569,10 @@ typedef struct ranctx { u8 a; u8 b; u8 c; u8 d; } ranctx;
 
 #define rot(x,k) (((x)<<(k))|((x)>>(64-(k))))
 
-#define BOUNDMASK 0x03 
-#define HASHALPHA 0x01
-#define HASHBETA 0x02
-#define HASHEXACT 0x00
+#define BOUNDMASK   0x03 
+#define HASHALPHA   0x01
+#define HASHBETA    0x02
+#define HASHEXACT   0x00
 
 class zobrist
 {
@@ -639,8 +639,7 @@ public:
     }
     int isDebugPosition(U64 h) { return (h != table[h & sizemask].debugHash) ? -1 : table[h & sizemask].debugIndex; }
     string debugGetPv(U64 h) {
-        unsigned long long i = h & sizemask;
-        transpositioncluster* data = &table[i];
+        transpositioncluster* data = &table[h & sizemask];
         for (int i = 0; i < TTBUCKETNUM; i++)
         {
             transpositionentry *e = &(data->entry[i]);
@@ -760,11 +759,6 @@ const int QCMASK[2] = { WQCMASK, BQCMASK };
 const int KCMASK[2] = { WKCMASK, BKCMASK };
 const int castlerookto[4] = { 3, 5, 59, 61 };
 const int castlekingto[4] = { 2, 6, 58, 62 };
-
-#define BOUNDMASK 0x03 
-#define HASHALPHA 0x01
-#define HASHBETA 0x02
-#define HASHEXACT 0x00
 
 #define MAXDEPTH 256
 #define NOSCORE SHRT_MIN
