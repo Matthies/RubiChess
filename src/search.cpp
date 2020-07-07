@@ -478,22 +478,25 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     }
 
     // ProbCut
+    const int probcutmargin = 100;
     if (!PVNode && depth >= 5 && abs(beta) < SCOREWHITEWINS)
     {
-        int rbeta = min(SCOREWHITEWINS, beta + 100);
+        int rbeta = min(SCOREWHITEWINS, beta + probcutmargin);
         chessmovelist *movelist = new chessmovelist;
         movelist->length = CreateMovelist<TACTICAL>(this, &movelist->move[0]);
 
         for (int i = 0; i < movelist->length; i++)
         {
-            if (!see(movelist->move[i].code, rbeta - staticeval))
+            chessmove* m = &movelist->move[i];
+
+            if (!see(m->code, rbeta - staticeval))
                 continue;
 
-            if (playMove(&movelist->move[i]))
+            if (playMove(m))
             {
                 int probcutscore = -alphabeta(-rbeta, -rbeta + 1, depth - 4);
 
-                unplayMove(&movelist->move[i]);
+                unplayMove(m);
 
                 if (probcutscore >= rbeta)
                 {
