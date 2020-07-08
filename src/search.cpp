@@ -1076,7 +1076,7 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, in
     if (inWindow != 1 && (msRun - en.lastReport) < 200)
         return;
 #endif
-    const char* boundscore[] = { "upperbound", "", "lowerbound" };
+    const char* boundscore[] = { "upperbound ", " ", "lowerbound " };
     char s[4096];
     chessposition *pos = &thr->pos;
     en.lastReport = msRun;
@@ -1086,15 +1086,15 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, in
 
     if (!MATEDETECTED(score))
     {
-        sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score cp %d %s nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
+        sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score cp %d %snodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
             thr->depth, pos->seldepth, mpvIndex + 1, msRun, score, boundscore[inWindow], nodes, nps,
             en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
     }
     else
     {
         int matein = (score > 0 ? (SCOREWHITEWINS - score + 1) / 2 : (SCOREBLACKWINS - score) / 2);
-        sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score mate %d nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
-            thr->depth, pos->seldepth, mpvIndex + 1, msRun, matein, nodes, nps,
+        sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score mate %d %snodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
+            thr->depth, pos->seldepth, mpvIndex + 1, msRun, matein, boundscore[inWindow], nodes, nps,
             en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
     }
     cout << s;
