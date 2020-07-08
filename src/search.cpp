@@ -107,7 +107,7 @@ inline void chessposition::updateHistory(uint32_t code, int16_t **cmptr, int val
 int chessposition::getQuiescence(int alpha, int beta, int depth)
 {
     int score;
-    int bestscore = SHRT_MIN;
+    int bestscore = NOSCORE;
     bool myIsCheck = (bool)isCheckbb;
 #ifdef EVALTUNE
     if (depth < 0) isQuiet = false;
@@ -820,7 +820,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         for (int i = 0; i < maxmoveindex; i++)
         {
             multipvtable[i][0] = 0;
-            bestmovescore[i] = SHRT_MIN + 1;
+            bestmovescore[i] = NOSCORE;
         }
     }
 
@@ -845,7 +845,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
             }
             updatePvTable(fullhashmove, false);
             if (score > alpha) bestmovescore[0] = score;
-            if (score > SHRT_MIN + 1)
+            if (score > NOSCORE)
             {
                 SDEBUGDO(isDebugPv, pvabortval[ply] = score; if (debugMove.code == fullhashmove) pvaborttype[ply] = PVA_FROMTT; else pvaborttype[ply] = PVA_DIFFERENTFROMTT; );
                 SDEBUGDO(isDebugPv, pvadditionalinfo[ply] = "PV = " + getPv(pvtable[ply]) + "  " + tp.debugGetPv(hash); );
@@ -1076,7 +1076,7 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, in
     if (inWindow != 1 && (msRun - en.lastReport) < 200)
         return;
 #endif
-    const char* boundscore[] = { "upperbound", "", "lowerbound" };
+    const char* boundscore[] = { "upperbound ", " ", "lowerbound " };
     char s[4096];
     chessposition *pos = &thr->pos;
     en.lastReport = msRun;
@@ -1086,15 +1086,15 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, in
 
     if (!MATEDETECTED(score))
     {
-        sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score cp %d %s nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
+        sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score cp %d %snodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
             thr->depth, pos->seldepth, mpvIndex + 1, msRun, score, boundscore[inWindow], nodes, nps,
             en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
     }
     else
     {
         int matein = (score > 0 ? (SCOREWHITEWINS - score + 1) / 2 : (SCOREBLACKWINS - score) / 2);
-        sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score mate %d nodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
-            thr->depth, pos->seldepth, mpvIndex + 1, msRun, matein, nodes, nps,
+        sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score mate %d %snodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
+            thr->depth, pos->seldepth, mpvIndex + 1, msRun, matein, boundscore[inWindow], nodes, nps,
             en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
     }
     cout << s;
@@ -1138,8 +1138,8 @@ static void search_gen1(searchthread *thr)
             maxdepth = MAXDEPTH - 1;
     }
 
-    alpha = SHRT_MIN + 1;
-    beta = SHRT_MAX;
+    alpha = SCOREBLACKWINS;
+    beta = SCOREWHITEWINS;
 
     uint32_t lastBestMove = 0;
     int constantRootMoves = 0;
@@ -1181,20 +1181,16 @@ static void search_gen1(searchthread *thr)
             {
                 // research with lower alpha and reduced beta
                 beta = (alpha + beta) / 2;
-                alpha = max(SHRT_MIN + 1, alpha - deltaalpha);
+                alpha = max(SCOREBLACKWINS, alpha - deltaalpha);
                 deltaalpha += deltaalpha / 4 + 2;
-                if (abs(alpha) > 1000)
-                    deltaalpha = SHRT_MAX << 1;
                 inWindow = 0;
                 reportedThisDepth = false;
             }
             else if (score == beta)
             {
                 // research with higher beta
-                beta = min(SHRT_MAX, beta + deltabeta);
+                beta = min(SCOREWHITEWINS, beta + deltabeta);
                 deltabeta += deltabeta / 4 + 2;
-                if (abs(beta) > 1000)
-                    deltabeta = SHRT_MAX << 1;
                 inWindow = 2;
                 reportedThisDepth = false;
             }
