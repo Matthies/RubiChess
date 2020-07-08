@@ -762,7 +762,7 @@ const int castlekingto[4] = { 2, 6, 58, 62 };
 
 #define MAXDEPTH 256
 #define NOSCORE SHRT_MIN
-#define SCOREBLACKWINS (SHRT_MIN + 3 + MAXDEPTH)
+#define SCOREBLACKWINS (SHRT_MIN + 3 + 2 * MAXDEPTH)
 #define SCOREWHITEWINS (-SCOREBLACKWINS)
 #define SCOREDRAW 0
 #define SCORETBWIN 29900

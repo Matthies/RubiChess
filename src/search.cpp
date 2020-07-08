@@ -107,7 +107,7 @@ inline void chessposition::updateHistory(uint32_t code, int16_t **cmptr, int val
 int chessposition::getQuiescence(int alpha, int beta, int depth)
 {
     int score;
-    int bestscore = SHRT_MIN;
+    int bestscore = NOSCORE;
     bool myIsCheck = (bool)isCheckbb;
 #ifdef EVALTUNE
     if (depth < 0) isQuiet = false;
@@ -820,7 +820,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         for (int i = 0; i < maxmoveindex; i++)
         {
             multipvtable[i][0] = 0;
-            bestmovescore[i] = SHRT_MIN + 1;
+            bestmovescore[i] = NOSCORE;
         }
     }
 
@@ -845,7 +845,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
             }
             updatePvTable(fullhashmove, false);
             if (score > alpha) bestmovescore[0] = score;
-            if (score > SHRT_MIN + 1)
+            if (score > NOSCORE)
             {
                 SDEBUGDO(isDebugPv, pvabortval[ply] = score; if (debugMove.code == fullhashmove) pvaborttype[ply] = PVA_FROMTT; else pvaborttype[ply] = PVA_DIFFERENTFROMTT; );
                 SDEBUGDO(isDebugPv, pvadditionalinfo[ply] = "PV = " + getPv(pvtable[ply]) + "  " + tp.debugGetPv(hash); );
@@ -1138,8 +1138,8 @@ static void search_gen1(searchthread *thr)
             maxdepth = MAXDEPTH - 1;
     }
 
-    alpha = SHRT_MIN + 1;
-    beta = SHRT_MAX;
+    alpha = SCOREBLACKWINS;
+    beta = SCOREWHITEWINS;
 
     uint32_t lastBestMove = 0;
     int constantRootMoves = 0;
@@ -1181,20 +1181,16 @@ static void search_gen1(searchthread *thr)
             {
                 // research with lower alpha and reduced beta
                 beta = (alpha + beta) / 2;
-                alpha = max(SHRT_MIN + 1, alpha - deltaalpha);
+                alpha = max(SCOREBLACKWINS, alpha - deltaalpha);
                 deltaalpha += deltaalpha / 4 + 2;
-                if (abs(alpha) > 1000)
-                    deltaalpha = SHRT_MAX << 1;
                 inWindow = 0;
                 reportedThisDepth = false;
             }
             else if (score == beta)
             {
                 // research with higher beta
-                beta = min(SHRT_MAX, beta + deltabeta);
+                beta = min(SCOREWHITEWINS, beta + deltabeta);
                 deltabeta += deltabeta / 4 + 2;
-                if (abs(beta) > 1000)
-                    deltabeta = SHRT_MAX << 1;
                 inWindow = 2;
                 reportedThisDepth = false;
             }
