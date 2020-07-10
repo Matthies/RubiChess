@@ -587,6 +587,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
         int stats = getHistory(m->code, ms.cmptr);
         int extendMove = 0;
+        int pc = GETPIECE(m->code);
+        int to = GETCORRECTTO(m->code);
 
         // Singular extension
         if ((m->code & 0xffff) == hashmovecode
@@ -619,6 +621,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         {
             extendMove = 1;
         }
+        else if(!ISTACTICAL(m->code) && ms.cmptr[0] && ms.cmptr[1] && ms.cmptr[0][pc * 64 + to] > 10000 && ms.cmptr[1][pc * 64 + to] > 10000)
+        {
+            extendMove = 1;
+        }
 
         // Late move reduction
         int reduction = 0;
@@ -648,8 +654,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             STATISTICSADD(red_total, reduction);
         }
 
-        int pc = GETPIECE(m->code);
-        int to = GETCORRECTTO(m->code);
         effectiveDepth = depth + extendall - reduction + extendMove;
 
         // Prune moves with bad counter move history
