@@ -590,6 +590,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         int pc = GETPIECE(m->code);
         int to = GETCORRECTTO(m->code);
 
+        const int goodContinuationHistory = 8100;
+
         // Singular extension
         if ((m->code & 0xffff) == hashmovecode
             && depth > 7
@@ -619,10 +621,12 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         // Extend captures that lead into endgame
         else if (ph > 200 && GETCAPTURE(m->code) >= WKNIGHT)
         {
+            STATISTICSINC(extend_endgame);
             extendMove = 1;
         }
-        else if(!ISTACTICAL(m->code) && ms.cmptr[0] && ms.cmptr[1] && ms.cmptr[0][pc * 64 + to] > 10000 && ms.cmptr[1][pc * 64 + to] > 10000)
+        else if(!ISTACTICAL(m->code) && ms.cmptr[0] && ms.cmptr[1] && ms.cmptr[0][pc * 64 + to] > goodContinuationHistory && ms.cmptr[1][pc * 64 + to] > goodContinuationHistory)
         {
+            STATISTICSINC(extend_history);
             extendMove = 1;
         }
 
@@ -1635,7 +1639,9 @@ void search_statistics()
     printf("(ST) Reduct.  %12lld   lmr[0]: %4.2f   lmr[1]: %4.2f   lmr: %4.2f   hist: %4.2f   pv: %4.2f   corr: %4.2f   total: %4.2f\n", red_n, f10, f11, f1, f2, f3, f4, f5);
 
     f0 = 100.0 * statistics.extend_singular / (double)n;
-    printf("(ST) Extensions: %%singular: %7.4f\n", f0);
+    f1 = 100.0 * statistics.extend_endgame / (double)n;
+    f2 = 100.0 * statistics.extend_history / (double)n;
+    printf("(ST) Extensions: %%singular: %7.4f   %%endgame: %7.4f   %%history: %7.4f\n", f0, f1, f2);
     printf("(ST)==================================================================================================================================================\n");
 }
 #endif

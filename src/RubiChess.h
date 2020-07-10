@@ -1479,7 +1479,9 @@ struct statistic {
     S64 red_pv;                 // total reduction by pv nodes
     S64 red_correction;         // total reduction correction by over-/underflow
 
-    U64 extend_singular;        // total extended moves
+    U64 extend_singular;        // total singular extensions
+    U64 extend_endgame;        // total endgame extensions
+    U64 extend_history;        // total history extensions
 };
 
 extern struct statistic statistics;
