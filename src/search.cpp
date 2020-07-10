@@ -1180,7 +1180,7 @@ static void search_gen1(searchthread *thr)
             if (score == alpha)
             {
                 // research with lower alpha and reduced beta
-                //beta = (alpha + beta) / 2;
+                beta = (alpha + beta) / 2;
                 alpha = max(SCOREBLACKWINS, alpha - deltaalpha);
                 deltaalpha += deltaalpha / 4 + 2;
                 inWindow = 0;
@@ -1189,6 +1189,7 @@ static void search_gen1(searchthread *thr)
             else if (score == beta)
             {
                 // research with higher beta
+                alpha = (alpha + beta) / 2;
                 beta = min(SCOREWHITEWINS, beta + deltabeta);
                 deltabeta += deltabeta / 4 + 2;
                 inWindow = 2;
