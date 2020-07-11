@@ -1177,6 +1177,9 @@ public:
     int16_t history[2][64][64];
     int16_t counterhistory[14][64][14 * 64];
     uint32_t countermove[14][64];
+    int he_threshold;
+    U64 he_yes;
+    U64 he_all;
     Materialhash mtrlhsh;
     Pawnhash pwnhsh;
 
@@ -1414,7 +1417,7 @@ public:
     int numofthreads;
     int lastCompleteDepth;
 
-    uint8_t padding[40];
+    uint8_t padding[16];
 
     searchthread *searchthreads;
 };

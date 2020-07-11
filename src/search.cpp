@@ -590,7 +590,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         int pc = GETPIECE(m->code);
         int to = GETCORRECTTO(m->code);
 
-        const int goodContinuationHistory = 8100;
+        //int goodContinuationHistory = 8100;
 
         // Singular extension
         if ((m->code & 0xffff) == hashmovecode
@@ -624,10 +624,34 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             STATISTICSINC(extend_endgame);
             extendMove = 1;
         }
-        else if(!ISTACTICAL(m->code) && ms.cmptr[0] && ms.cmptr[1] && ms.cmptr[0][pc * 64 + to] > goodContinuationHistory && ms.cmptr[1][pc * 64 + to] > goodContinuationHistory)
+        else if(!ISTACTICAL(m->code) && ms.cmptr[0] && ms.cmptr[1])
         {
-            STATISTICSINC(extend_history);
-            extendMove = 1;
+            if (ms.cmptr[0][pc * 64 + to] > he_threshold && ms.cmptr[1][pc * 64 + to] > he_threshold)
+            {
+                STATISTICSINC(extend_history);
+                extendMove = 1;
+                he_yes++;
+            }
+            if ((++he_all & 0x3fffff) == 0)
+            {
+                //printf("info string he-ration: %7.4f%%  ", 100.0 * he_yes / (double)he_all);
+                if (he_all / 512 < he_yes)
+                {
+                    // > 0.1953% ==> increase threshold
+                    he_threshold = he_threshold * 257 / 256;
+                    he_all = he_yes = 0ULL;
+                    //printf(" too many he; new he_threshold: %d\n", he_threshold);
+                } else if (he_all / 32768 > he_yes)
+                {
+                    // > 0.0030% ==> decrease threshold
+                    he_threshold = he_threshold * 255 / 256;
+                    he_all = he_yes = 0ULL;
+                    //printf(" too few he; new he_threshold: %d\n", he_threshold);
+                }
+                else {
+                    //printf(" he okay; he_threshold: %d\n", he_threshold);
+                }
+            }
         }
 
         // Late move reduction
