@@ -2477,12 +2477,12 @@ void engine::allocThreads()
         return;
 
     size_t size = Threads * sizeof(searchthread);
+    myassert(size % 64 == 0, nullptr, 1, size % 64);
 
     sthread = (searchthread*) allocalign64(size);
     memset((void*)sthread, 0, size);
     for (int i = 0; i < Threads; i++)
     {
-        //printf("%d\n", (U64)&sthread[i] % 64);
         sthread[i].index = i;
         sthread[i].searchthreads = sthread;
         sthread[i].numofthreads = Threads;

@@ -590,8 +590,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         int pc = GETPIECE(m->code);
         int to = GETCORRECTTO(m->code);
 
-        //int goodContinuationHistory = 8100;
-
         // Singular extension
         if ((m->code & 0xffff) == hashmovecode
             && depth > 7
@@ -634,22 +632,17 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             }
             if ((++he_all & 0x3fffff) == 0)
             {
-                //printf("info string he-ration: %7.4f%%  ", 100.0 * he_yes / (double)he_all);
+                // adjust history extension threshold
                 if (he_all / 512 < he_yes)
                 {
-                    // > 0.1953% ==> increase threshold
+                    // 1/512 ~ extension ratio > 0.1953% ==> increase threshold
                     he_threshold = he_threshold * 257 / 256;
                     he_all = he_yes = 0ULL;
-                    //printf(" too many he; new he_threshold: %d\n", he_threshold);
                 } else if (he_all / 32768 > he_yes)
                 {
-                    // > 0.0030% ==> decrease threshold
+                    // 1/32768 ~ extension ratio < 0.0030% ==> decrease threshold
                     he_threshold = he_threshold * 255 / 256;
                     he_all = he_yes = 0ULL;
-                    //printf(" too few he; new he_threshold: %d\n", he_threshold);
-                }
-                else {
-                    //printf(" he okay; he_threshold: %d\n", he_threshold);
                 }
             }
         }

@@ -1416,7 +1416,7 @@ public:
     int depth;
     int numofthreads;
     int lastCompleteDepth;
-
+    // adjust padding to align searchthread at 64 bytes
     uint8_t padding[16];
 
     searchthread *searchthreads;
