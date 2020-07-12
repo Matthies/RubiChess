@@ -2477,6 +2477,7 @@ void engine::allocThreads()
         return;
 
     size_t size = Threads * sizeof(searchthread);
+    myassert(size % 64 == 0, nullptr, 1, size % 64);
 
     sthread = (searchthread*) allocalign64(size);
     memset((void*)sthread, 0, size);
@@ -2505,8 +2506,8 @@ void engine::prepareThreads()
         pos->bestmovescore[0] = NOSCORE;
         pos->bestmove.code = 0;
         pos->nodes = 0;
-        sthread[i].pos.nullmoveply = 0;
-        sthread[i].pos.nullmoveside = 0;
+        pos->nullmoveply = 0;
+        pos->nullmoveside = 0;
     }
 }
 
@@ -2514,9 +2515,13 @@ void engine::resetStats()
 {
     for (int i = 0; i < Threads; i++)
     {
-        memset(sthread[i].pos.history, 0, sizeof(chessposition::history));
-        memset(sthread[i].pos.counterhistory, 0, sizeof(chessposition::counterhistory));
-        memset(sthread[i].pos.countermove, 0, sizeof(chessposition::countermove));
+        chessposition* pos = &sthread[i].pos;
+        memset(pos->history, 0, sizeof(chessposition::history));
+        memset(pos->counterhistory, 0, sizeof(chessposition::counterhistory));
+        memset(pos->countermove, 0, sizeof(chessposition::countermove));
+        pos->he_yes = 0ULL;
+        pos->he_all = 0ULL;
+        pos->he_threshold = 8100;
     }
 }
 

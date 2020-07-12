@@ -1177,6 +1177,9 @@ public:
     int16_t history[2][64][64];
     int16_t counterhistory[14][64][14 * 64];
     uint32_t countermove[14][64];
+    int he_threshold;
+    U64 he_yes;
+    U64 he_all;
     Materialhash mtrlhsh;
     Pawnhash pwnhsh;
 
@@ -1413,8 +1416,8 @@ public:
     int depth;
     int numofthreads;
     int lastCompleteDepth;
-
-    uint8_t padding[40];
+    // adjust padding to align searchthread at 64 bytes
+    uint8_t padding[16];
 
     searchthread *searchthreads;
 };
@@ -1479,7 +1482,9 @@ struct statistic {
     S64 red_pv;                 // total reduction by pv nodes
     S64 red_correction;         // total reduction correction by over-/underflow
 
-    U64 extend_singular;        // total extended moves
+    U64 extend_singular;        // total singular extensions
+    U64 extend_endgame;        // total endgame extensions
+    U64 extend_history;        // total history extensions
 };
 
 extern struct statistic statistics;

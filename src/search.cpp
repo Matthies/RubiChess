@@ -587,6 +587,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
         int stats = getHistory(m->code, ms.cmptr);
         int extendMove = 0;
+        int pc = GETPIECE(m->code);
+        int to = GETCORRECTTO(m->code);
 
         // Singular extension
         if ((m->code & 0xffff) == hashmovecode
@@ -617,7 +619,32 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         // Extend captures that lead into endgame
         else if (ph > 200 && GETCAPTURE(m->code) >= WKNIGHT)
         {
+            STATISTICSINC(extend_endgame);
             extendMove = 1;
+        }
+        else if(!ISTACTICAL(m->code) && ms.cmptr[0] && ms.cmptr[1])
+        {
+            if (ms.cmptr[0][pc * 64 + to] > he_threshold && ms.cmptr[1][pc * 64 + to] > he_threshold)
+            {
+                STATISTICSINC(extend_history);
+                extendMove = 1;
+                he_yes++;
+            }
+            if ((++he_all & 0x3fffff) == 0)
+            {
+                // adjust history extension threshold
+                if (he_all / 512 < he_yes)
+                {
+                    // 1/512 ~ extension ratio > 0.1953% ==> increase threshold
+                    he_threshold = he_threshold * 257 / 256;
+                    he_all = he_yes = 0ULL;
+                } else if (he_all / 32768 > he_yes)
+                {
+                    // 1/32768 ~ extension ratio < 0.0030% ==> decrease threshold
+                    he_threshold = he_threshold * 255 / 256;
+                    he_all = he_yes = 0ULL;
+                }
+            }
         }
 
         // Late move reduction
@@ -648,8 +675,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             STATISTICSADD(red_total, reduction);
         }
 
-        int pc = GETPIECE(m->code);
-        int to = GETCORRECTTO(m->code);
         effectiveDepth = depth + extendall - reduction + extendMove;
 
         // Prune moves with bad counter move history
@@ -1632,7 +1657,9 @@ void search_statistics()
     printf("(ST) Reduct.  %12lld   lmr[0]: %4.2f   lmr[1]: %4.2f   lmr: %4.2f   hist: %4.2f   pv: %4.2f   corr: %4.2f   total: %4.2f\n", red_n, f10, f11, f1, f2, f3, f4, f5);
 
     f0 = 100.0 * statistics.extend_singular / (double)n;
-    printf("(ST) Extensions: %%singular: %7.4f\n", f0);
+    f1 = 100.0 * statistics.extend_endgame / (double)n;
+    f2 = 100.0 * statistics.extend_history / (double)n;
+    printf("(ST) Extensions: %%singular: %7.4f   %%endgame: %7.4f   %%history: %7.4f\n", f0, f1, f2);
     printf("(ST)==================================================================================================================================================\n");
 }
 #endif
