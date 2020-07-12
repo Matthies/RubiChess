@@ -1134,8 +1134,7 @@ static void search_gen1(searchthread *thr)
 {
     int score;
     int alpha, beta;
-    int deltaalpha = 8;
-    int deltabeta = 8;
+    int delta = 8;
     int maxdepth;
     int inWindow;
     bool reportedThisDepth;
@@ -1206,17 +1205,22 @@ static void search_gen1(searchthread *thr)
             {
                 // research with lower alpha and reduced beta
                 beta = (alpha + beta) / 2;
-                alpha = max(SCOREBLACKWINS, alpha - deltaalpha);
-                deltaalpha += deltaalpha / 4 + 2;
+                alpha = max(SCOREBLACKWINS, alpha - delta);
+                if (abs(alpha) > 5000)
+                    delta = SCOREWHITEWINS;
+                else
+                    delta += delta / 4 + 2;
                 inWindow = 0;
                 reportedThisDepth = false;
             }
             else if (score == beta)
             {
                 // research with higher beta
-                alpha = (alpha + beta) / 2;
-                beta = min(SCOREWHITEWINS, beta + deltabeta);
-                deltabeta += deltabeta / 4 + 2;
+                beta = min(SCOREWHITEWINS, beta + delta);
+                if (abs(beta) > 5000)
+                    delta = SCOREWHITEWINS;
+                else
+                    delta += delta / 4 + 2;
                 inWindow = 2;
                 reportedThisDepth = false;
             }
@@ -1230,13 +1234,12 @@ static void search_gen1(searchthread *thr)
                 }
                 else if (thr->depth > 4) {
                     // next depth with new aspiration window
-                    deltaalpha = 8;
-                    deltabeta = 8;
+                    delta = 8;
                     if (isMultiPV)
-                        alpha = pos->bestmovescore[en.MultiPV - 1] - deltaalpha;
+                        alpha = pos->bestmovescore[en.MultiPV - 1] - delta;
                     else
-                        alpha = score - deltaalpha;
-                    beta = score + deltabeta;
+                        alpha = score - delta;
+                    beta = score + delta;
                 }
             }
         }
