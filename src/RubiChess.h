@@ -945,8 +945,8 @@ struct chessmovestack
     U64 kingPinned;
 };
 
-#define MAXMOVELISTLENGTH 256	// for lists of possible pseudo-legal moves
-#define MAXMOVESEQUENCELENGTH 512	// for move sequences in a game
+#define MAXMOVELISTLENGTH 256   // for lists of possible pseudo-legal moves
+#define MOVESTACKRESERVE 48     // to avoid checking for max ply in probe_wds and quiescensesearch
 
 
 class chessmove
@@ -981,19 +981,6 @@ public:
 #define MAXTHREADS  256
 #define MAXHASH     0x100000  // 1TB ... never tested
 #define DEFAULTHASH 16
-
-
-// FIXME: This is ugly! Almost the same classes with doubled code.
-class chessmovesequencelist
-{
-public:
-	int length;
-	chessmove move[MAXMOVESEQUENCELENGTH];
-	chessmovesequencelist();
-	string toString();
-	void print();
-};
-
 
 class chessmovelist
 {
@@ -1117,9 +1104,9 @@ public:
     U64 kingPinned;
 
     uint8_t mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
-    chessmovestack movestack[MAXMOVESEQUENCELENGTH];
-    uint16_t excludemovestack[MAXMOVESEQUENCELENGTH];
-    int16_t staticevalstack[MAXMOVESEQUENCELENGTH];
+    chessmovestack movestack[MAXMOVELISTLENGTH];
+    uint16_t excludemovestack[MAXMOVELISTLENGTH];
+    int16_t staticevalstack[MAXMOVELISTLENGTH];
 
     int rootheight; // fixed stack offset in root position 
     int seldepth;
@@ -1140,14 +1127,14 @@ public:
     struct {
         uint32_t code;
         U64 hash;
-    } pvdebug[MAXMOVESEQUENCELENGTH];
-    int pvalpha[MAXMOVESEQUENCELENGTH];
-    int pvbeta[MAXMOVESEQUENCELENGTH];
-    int pvdepth[MAXMOVESEQUENCELENGTH];
-    int pvmovenum[MAXMOVESEQUENCELENGTH];
-    PvAbortType pvaborttype[MAXMOVESEQUENCELENGTH];
-    int pvabortval[MAXMOVESEQUENCELENGTH];
-    string pvadditionalinfo[MAXMOVESEQUENCELENGTH];
+    } pvdebug[MAXMOVELISTLENGTH];
+    int pvalpha[MAXMOVELISTLENGTH];
+    int pvbeta[MAXMOVELISTLENGTH];
+    int pvdepth[MAXMOVELISTLENGTH];
+    int pvmovenum[MAXMOVELISTLENGTH];
+    PvAbortType pvaborttype[MAXMOVELISTLENGTH];
+    int pvabortval[MAXMOVELISTLENGTH];
+    string pvadditionalinfo[MAXMOVELISTLENGTH];
 #endif
     uint32_t pvtable[MAXDEPTH][MAXDEPTH];
     uint32_t multipvtable[MAXMULTIPV][MAXDEPTH];
@@ -1366,7 +1353,6 @@ public:
     void send(const char* format, ...);
     void communicate(string inputstring);
     void allocThreads();
-    void allocPawnhash();
     U64 getTotalNodes();
     long long perft(int depth, bool dotests);
     void prepareThreads();
