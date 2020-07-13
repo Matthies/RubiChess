@@ -209,27 +209,6 @@ chessmove* chessmovelist::getNextMove(int minval = INT_MIN)
 }
 
 
-chessmovesequencelist::chessmovesequencelist()
-{
-    length = 0;
-}
-
-string chessmovesequencelist::toString()
-{
-    string s = "";
-    for (int i = 0; i < length; i++)
-    {
-        s = s + move[i].toString() + " ";
-    }
-    return s;
-}
-
-void chessmovesequencelist::print()
-{
-    printf("%s", toString().c_str());
-}
-
-
 bool chessposition::w2m()
 {
     return !(state & S2MMASK);
@@ -715,7 +694,7 @@ void chessposition::mirror()
 
 void chessposition::prepareStack()
 {
-    myassert(mstop >= 0 && mstop < MAXMOVESEQUENCELENGTH, this, 1, mstop);
+    myassert(mstop >= 0 && mstop < MAXDEPTH, this, 1, mstop);
     // copy stack related data directly to stack
     memcpy(&movestack[mstop], &state, sizeof(chessmovestack));
 }
@@ -729,7 +708,7 @@ void chessposition::playNullMove()
     hash ^= zb.s2m ^ zb.ept[ept];
     ept = 0;
     ply++;
-    myassert(mstop < MAXMOVESEQUENCELENGTH, this, 1, mstop);
+    myassert(mstop <= MAXDEPTH, this, 1, mstop);
 }
 
 
@@ -1695,7 +1674,7 @@ bool chessposition::playMove(chessmove *cm)
 
     ply++;
     movestack[mstop++].movecode = cm->code;
-    myassert(mstop < MAXMOVESEQUENCELENGTH, this, 1, mstop);
+    myassert(mstop <= MAXDEPTH, this, 1, mstop);
     kingPinned = 0ULL;
     updatePins<WHITE>();
     updatePins<BLACK>();

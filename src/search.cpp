@@ -319,6 +319,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         return getQuiescence(alpha, beta, depth);
     }
 
+    // Maximum depth
+    if (mstop >= MAXDEPTH - MOVESTACKRESERVE)
+        return getQuiescence(alpha, beta, depth);
+
 
     // Get move for singularity check and change hash to seperate partial searches from full searches
     uint16_t excludeMove = excludemovestack[mstop - 1];

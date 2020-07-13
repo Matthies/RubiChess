@@ -761,6 +761,8 @@ const int castlerookto[4] = { 3, 5, 59, 61 };
 const int castlekingto[4] = { 2, 6, 58, 62 };
 
 #define MAXDEPTH 256
+#define MOVESTACKRESERVE 48     // to avoid checking for height reaching MAXDEPTH in probe_wds and getQuiescence
+
 #define NOSCORE SHRT_MIN
 #define SCOREBLACKWINS (SHRT_MIN + 3 + 2 * MAXDEPTH)
 #define SCOREWHITEWINS (-SCOREBLACKWINS)
@@ -945,8 +947,7 @@ struct chessmovestack
     U64 kingPinned;
 };
 
-#define MAXMOVELISTLENGTH 256	// for lists of possible pseudo-legal moves
-#define MAXMOVESEQUENCELENGTH 512	// for move sequences in a game
+#define MAXMOVELISTLENGTH 256   // for lists of possible pseudo-legal moves
 
 
 class chessmove
@@ -981,19 +982,6 @@ public:
 #define MAXTHREADS  256
 #define MAXHASH     0x100000  // 1TB ... never tested
 #define DEFAULTHASH 16
-
-
-// FIXME: This is ugly! Almost the same classes with doubled code.
-class chessmovesequencelist
-{
-public:
-	int length;
-	chessmove move[MAXMOVESEQUENCELENGTH];
-	chessmovesequencelist();
-	string toString();
-	void print();
-};
-
 
 class chessmovelist
 {
@@ -1117,9 +1105,9 @@ public:
     U64 kingPinned;
 
     uint8_t mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
-    chessmovestack movestack[MAXMOVESEQUENCELENGTH];
-    uint16_t excludemovestack[MAXMOVESEQUENCELENGTH];
-    int16_t staticevalstack[MAXMOVESEQUENCELENGTH];
+    chessmovestack movestack[MAXDEPTH];
+    uint16_t excludemovestack[MAXDEPTH];
+    int16_t staticevalstack[MAXDEPTH];
 
     int rootheight; // fixed stack offset in root position 
     int seldepth;
@@ -1140,14 +1128,14 @@ public:
     struct {
         uint32_t code;
         U64 hash;
-    } pvdebug[MAXMOVESEQUENCELENGTH];
-    int pvalpha[MAXMOVESEQUENCELENGTH];
-    int pvbeta[MAXMOVESEQUENCELENGTH];
-    int pvdepth[MAXMOVESEQUENCELENGTH];
-    int pvmovenum[MAXMOVESEQUENCELENGTH];
-    PvAbortType pvaborttype[MAXMOVESEQUENCELENGTH];
-    int pvabortval[MAXMOVESEQUENCELENGTH];
-    string pvadditionalinfo[MAXMOVESEQUENCELENGTH];
+    } pvdebug[MAXDEPTH];
+    int pvalpha[MAXDEPTH];
+    int pvbeta[MAXDEPTH];
+    int pvdepth[MAXDEPTH];
+    int pvmovenum[MAXDEPTH];
+    PvAbortType pvaborttype[MAXDEPTH];
+    int pvabortval[MAXDEPTH];
+    string pvadditionalinfo[MAXDEPTH];
 #endif
     uint32_t pvtable[MAXDEPTH][MAXDEPTH];
     uint32_t multipvtable[MAXMULTIPV][MAXDEPTH];
@@ -1366,7 +1354,6 @@ public:
     void send(const char* format, ...);
     void communicate(string inputstring);
     void allocThreads();
-    void allocPawnhash();
     U64 getTotalNodes();
     long long perft(int depth, bool dotests);
     void prepareThreads();
