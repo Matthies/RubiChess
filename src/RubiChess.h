@@ -761,6 +761,8 @@ const int castlerookto[4] = { 3, 5, 59, 61 };
 const int castlekingto[4] = { 2, 6, 58, 62 };
 
 #define MAXDEPTH 256
+#define MOVESTACKRESERVE 48     // to avoid checking for height reaching MAXDEPTH in probe_wds and getQuiescence
+
 #define NOSCORE SHRT_MIN
 #define SCOREBLACKWINS (SHRT_MIN + 3 + 2 * MAXDEPTH)
 #define SCOREWHITEWINS (-SCOREBLACKWINS)
@@ -946,7 +948,6 @@ struct chessmovestack
 };
 
 #define MAXMOVELISTLENGTH 256   // for lists of possible pseudo-legal moves
-#define MOVESTACKRESERVE 48     // to avoid checking for max ply in probe_wds and quiescensesearch
 
 
 class chessmove
@@ -1104,9 +1105,9 @@ public:
     U64 kingPinned;
 
     uint8_t mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
-    chessmovestack movestack[MAXMOVELISTLENGTH];
-    uint16_t excludemovestack[MAXMOVELISTLENGTH];
-    int16_t staticevalstack[MAXMOVELISTLENGTH];
+    chessmovestack movestack[MAXDEPTH];
+    uint16_t excludemovestack[MAXDEPTH];
+    int16_t staticevalstack[MAXDEPTH];
 
     int rootheight; // fixed stack offset in root position 
     int seldepth;
@@ -1127,14 +1128,14 @@ public:
     struct {
         uint32_t code;
         U64 hash;
-    } pvdebug[MAXMOVELISTLENGTH];
-    int pvalpha[MAXMOVELISTLENGTH];
-    int pvbeta[MAXMOVELISTLENGTH];
-    int pvdepth[MAXMOVELISTLENGTH];
-    int pvmovenum[MAXMOVELISTLENGTH];
-    PvAbortType pvaborttype[MAXMOVELISTLENGTH];
-    int pvabortval[MAXMOVELISTLENGTH];
-    string pvadditionalinfo[MAXMOVELISTLENGTH];
+    } pvdebug[MAXDEPTH];
+    int pvalpha[MAXDEPTH];
+    int pvbeta[MAXDEPTH];
+    int pvdepth[MAXDEPTH];
+    int pvmovenum[MAXDEPTH];
+    PvAbortType pvaborttype[MAXDEPTH];
+    int pvabortval[MAXDEPTH];
+    string pvadditionalinfo[MAXDEPTH];
 #endif
     uint32_t pvtable[MAXDEPTH][MAXDEPTH];
     uint32_t multipvtable[MAXMULTIPV][MAXDEPTH];

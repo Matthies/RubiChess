@@ -694,7 +694,7 @@ void chessposition::mirror()
 
 void chessposition::prepareStack()
 {
-    myassert(mstop >= 0 && mstop < MAXMOVELISTLENGTH, this, 1, mstop);
+    myassert(mstop >= 0 && mstop < MAXDEPTH, this, 1, mstop);
     // copy stack related data directly to stack
     memcpy(&movestack[mstop], &state, sizeof(chessmovestack));
 }
@@ -708,7 +708,7 @@ void chessposition::playNullMove()
     hash ^= zb.s2m ^ zb.ept[ept];
     ept = 0;
     ply++;
-    myassert(mstop <= MAXMOVELISTLENGTH, this, 1, mstop);
+    myassert(mstop <= MAXDEPTH, this, 1, mstop);
 }
 
 
@@ -1674,7 +1674,7 @@ bool chessposition::playMove(chessmove *cm)
 
     ply++;
     movestack[mstop++].movecode = cm->code;
-    myassert(mstop <= MAXMOVELISTLENGTH, this, 1, mstop);
+    myassert(mstop <= MAXDEPTH, this, 1, mstop);
     kingPinned = 0ULL;
     updatePins<WHITE>();
     updatePins<BLACK>();
