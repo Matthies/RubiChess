@@ -580,9 +580,9 @@ int probe_dtz(int *success, chessposition *pos)
 
         if (pos->playMove(m))
         {
-            //printf("probe_dtz (ply=%d) testing non-pawn non-capture %s... \n", pos.ply, pos.actualpath.toString().c_str());
+            //printf("probe_dtz (ply=%d) testing non-pawn non-capture %s... \n", pos->ply, m->toString().c_str());
             int v = -probe_dtz(success, pos);
-            //printf("probe_dtz (ply=%d) tested  non-pawn non-capture %s... v=%d\n", pos.ply, pos.actualpath.toString().c_str(), v);
+            //printf("probe_dtz (ply=%d) tested  non-pawn non-capture %s... v=%d\n", pos->ply, m->toString().c_str(), v);
             pos->unplayMove(m);
             if (*success == 0)
                 return 0;

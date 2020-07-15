@@ -1138,8 +1138,7 @@ static void search_gen1(searchthread *thr)
 {
     int score;
     int alpha, beta;
-    int deltaalpha = 8;
-    int deltabeta = 8;
+    int delta = 8;
     int maxdepth;
     int inWindow;
     bool reportedThisDepth;
@@ -1210,16 +1209,22 @@ static void search_gen1(searchthread *thr)
             {
                 // research with lower alpha and reduced beta
                 beta = (alpha + beta) / 2;
-                alpha = max(SCOREBLACKWINS, alpha - deltaalpha);
-                deltaalpha += deltaalpha / 4 + 2;
+                alpha = max(SCOREBLACKWINS, alpha - delta);
+                if (abs(alpha) > 5000)
+                    delta = SCOREWHITEWINS;
+                else
+                    delta += delta / 4 + 2;
                 inWindow = 0;
                 reportedThisDepth = false;
             }
             else if (score == beta)
             {
                 // research with higher beta
-                beta = min(SCOREWHITEWINS, beta + deltabeta);
-                deltabeta += deltabeta / 4 + 2;
+                beta = min(SCOREWHITEWINS, beta + delta);
+                if (abs(beta) > 5000)
+                    delta = SCOREWHITEWINS;
+                else
+                    delta += delta / 4 + 2;
                 inWindow = 2;
                 reportedThisDepth = false;
             }
@@ -1233,13 +1238,12 @@ static void search_gen1(searchthread *thr)
                 }
                 else if (thr->depth > 4) {
                     // next depth with new aspiration window
-                    deltaalpha = 8;
-                    deltabeta = 8;
+                    delta = 8;
                     if (isMultiPV)
-                        alpha = pos->bestmovescore[en.MultiPV - 1] - deltaalpha;
+                        alpha = pos->bestmovescore[en.MultiPV - 1] - delta;
                     else
-                        alpha = score - deltaalpha;
-                    beta = score + deltabeta;
+                        alpha = score - delta;
+                    beta = score + delta;
                 }
             }
         }
@@ -1301,8 +1305,22 @@ static void search_gen1(searchthread *thr)
                     pos->bestmovescore[0] = pos->lastbestmovescore;
 
                 if (pos->useRootmoveScore)
-                    // We have a tablebase score so report this
-                    pos->bestmovescore[0] = pos->rootmovelist.move[0].value;
+                {
+                    // We have a tablebase score so report this and adjust the search window
+                    int tbScore = pos->rootmovelist.move[0].value;
+                    if (tbScore >= 0)
+                    {
+                        score = pos->bestmovescore[0] = max(score, tbScore);
+                        beta = max(beta, tbScore);
+                        alpha = min(beta - 1, alpha);
+                    }
+                    else
+                    {
+                        score = pos->bestmovescore[0] = min(score, tbScore);
+                        alpha = min(tbScore, alpha);
+                        beta = max(beta, alpha + 1);
+                    }
+                }
 
                 if (en.pondersearch != PONDERING || thr->depth < maxdepth)
                     uciScore(thr, inWindow, nowtime, inWindow == 1 ? pos->bestmovescore[0] : score);
@@ -1355,10 +1373,6 @@ static void search_gen1(searchthread *thr)
 
         // early exit in playing mode as there is exactly one possible move
         if (pos->rootmovelist.length == 1 && en.endtime1)
-            break;
-
-        // early exit in TB win/lose position
-        if (pos->tbPosition && abs(score) >= SCORETBWIN - 100)
             break;
 
         // exit if STOPSOON is requested and we're in aspiration window
