@@ -1320,10 +1320,6 @@ static void search_gen1(searchthread *thr)
                         alpha = min(tbScore, alpha);
                         beta = max(beta, alpha + 1);
                     }
-
-                    pos->bestmovescore[0] = pos->rootmovelist.move[0].value;
-                    beta = max(beta, pos->rootmovelist.move[0].value);
-                    alpha = min(beta - 1, alpha);
                 }
 
                 if (en.pondersearch != PONDERING || thr->depth < maxdepth)
@@ -1378,11 +1374,7 @@ static void search_gen1(searchthread *thr)
         // early exit in playing mode as there is exactly one possible move
         if (pos->rootmovelist.length == 1 && en.endtime1)
             break;
-#if 0
-        // early exit in TB win/lose position
-        if (pos->tbPosition && abs(score) >= SCORETBWIN - 100)
-            break;
-#endif
+
         // exit if STOPSOON is requested and we're in aspiration window
         if (en.endtime1 && nowtime >= en.endtime1 && inWindow == 1 && constantRootMoves && isMainThread)
             break;
