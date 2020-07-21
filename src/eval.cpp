@@ -672,6 +672,7 @@ int chessposition::getLateEval(positioneval *pe)
         kingdanger += SQEVAL(eps.eSafecheckbonus[QUEEN], 1, You);
 
     kingdanger += SQEVAL(eps.eKingdangerbyqueen, !piece00[WQUEEN | You], You);
+    kingdanger = max(4096, kingdanger);
     result += SQRESULT(kingdanger, You);
     if (bTrace) te.kingattackpower[You] += SQRESULT(kingdanger, You);
 
