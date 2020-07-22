@@ -288,7 +288,7 @@ public:
 #define EVAL(e, f) ((e).addGrad(f), (e) * (f))
 #define SQVALUE(i, v) eval(2, i, v)
 #define SQEVAL(e, f, s) ((e).addGrad(f, s), (e) * (f))
-#define SQRESULT(v,s) ( v > 0 ? ((int32_t)((uint32_t)(((v) * (v) & 0xffffff) * S2MSIGN(s) / 2048) << 16) + ((v) * S2MSIGN(s) / 16)) : 0 )
+#define SQRESULT(v,s) ( v > 0 ? ((int32_t)((uint32_t)((((v) * (v)) & 0xffffff) * S2MSIGN(s) / 2048) << 16) + ((v) * S2MSIGN(s) / 16)) : 0 )
 #define CVALUE(v) eval(v)
 #define CEVAL(e, f) ((e).addGrad(f), (e) * (f))
 #define EVALUE(v) eval(3, 0, v)
