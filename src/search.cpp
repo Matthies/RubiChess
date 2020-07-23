@@ -823,7 +823,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
 
 template <RootsearchType RT>
-int chessposition::rootsearch(int alpha, int beta, int depth)
+int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast)
 {
     int score;
     uint16_t hashmovecode = 0;
@@ -943,17 +943,17 @@ int chessposition::rootsearch(int alpha, int beta, int depth)
         int reduction = 0;
 
         // Late move reduction
-        if (depth > 2 && !ISTACTICAL(m->code))
+        if (!ISTACTICAL(m->code))
         {
-            reduction = reductiontable[1][depth][min(63, i + 1)];
+            reduction = reductiontable[1][depth][min(63, i + 1)] + inWindowLast - 1;
             STATISTICSINC(red_pi[1]);
-            STATISTICSADD(red_lmr[1], reductiontable[1][depth][min(63, i + 1)]);
+            STATISTICSADD(red_lmr[1], reductiontable[1][depth][min(63, i + 1)] + inWindowLast - 1);
         }
 
         int effectiveDepth = depth - reduction;
         SDEBUGDO(isDebugMove, pvadditionalinfo[ply - 1] = ""; );
 
-        if (reduction)
+        if (reduction && i > 0)
         {
             // LMR search; test against alpha
             score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
@@ -1140,7 +1140,7 @@ static void search_gen1(searchthread *thr)
     int alpha, beta;
     int delta = 8;
     int maxdepth;
-    int inWindow;
+    int inWindow = 1;
     bool reportedThisDepth;
 
 #ifdef TDEBUG
@@ -1178,7 +1178,6 @@ static void search_gen1(searchthread *thr)
     bool isDraw = (pos->testRepetiton() >= 2) || (pos->halfmovescounter >= 100);
     do
     {
-        inWindow = 1;
         pos->seldepth = thr->depth;
         if (pos->rootmovelist.length == 0)
         {
@@ -1195,7 +1194,7 @@ static void search_gen1(searchthread *thr)
         }
         else
         {
-            score = pos->rootsearch<RT>(alpha, beta, thr->depth);
+            score = pos->rootsearch<RT>(alpha, beta, thr->depth, inWindow);
 #ifdef TDEBUG
             if (en.stopLevel == ENGINESTOPIMMEDIATELY && isMainThread)
             {
@@ -1230,6 +1229,7 @@ static void search_gen1(searchthread *thr)
             }
             else
             {
+                inWindow = 1;
                 thr->lastCompleteDepth = thr->depth;
                 if (score >= en.terminationscore)
                 {
