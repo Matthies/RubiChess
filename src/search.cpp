@@ -953,24 +953,18 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast)
         int effectiveDepth = depth - reduction;
         SDEBUGDO(isDebugMove, pvadditionalinfo[ply - 1] = ""; );
 
-        if (reduction && i > 0)
+        if (i > 0)
         {
             // LMR search; test against alpha
             score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
             SDEBUGDO(isDebugMove, pvadditionalinfo[ply - 1] += "PVS(alpha=" + to_string(alpha) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
-            if (score > alpha)
+            if (reduction && score > alpha)
             {
                 // research without reduction
                 effectiveDepth += reduction;
                 score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
                 SDEBUGDO(isDebugMove, pvadditionalinfo[ply - 1] += "PVS(alpha=" + to_string(alpha) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
             }
-        }
-        else if (i > 0)
-        {
-            // Not the first move; test against alpha
-            score = -alphabeta(-alpha - 1, -alpha, effectiveDepth - 1);
-            SDEBUGDO(isDebugMove, pvadditionalinfo[ply - 1] += "PVS(alpha=" + to_string(alpha) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
         }
         // (re)search with full window if necessary
         if (i == 0 || score > alpha) {
