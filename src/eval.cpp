@@ -180,9 +180,10 @@ void registerallevals(chessposition *pos)
     tuneIt = false;
     for (i = 0; i < 8; i++)
         registertuner(pos, &eps.eAttackingpawnbonus[i], "eAttackingpawnbonus", i, 8, 0, 0, tuneIt && (i > 0 && i < 7));
-    tuneIt = false;
-    for (i = 0; i < 8; i++)
-        registertuner(pos, &eps.eIsolatedpawnpenalty[i], "eIsolatedpawnpenalty", i, 8, 0, 0, tuneIt);
+    tuneIt = true;
+    for (i = 0; i < 2; i++)
+        for (j = 0; j < 8; j++)
+            registertuner(pos, &eps.eIsolatedpawnpenalty[i][j], "eIsolatedpawnpenalty", j, 8, i, 2, tuneIt);
     tuneIt = false;
     registertuner(pos, &eps.eDoublepawnpenalty, "eDoublepawnpenalty", 0, 0, 0, 0, tuneIt);
     tuneIt = false;
@@ -210,7 +211,7 @@ void registerallevals(chessposition *pos)
     tuneIt = false;
     registertuner(pos, &eps.eRookon7thbonus, "eRookon7thbonus", 0, 0, 0, 0, tuneIt);
 
-    tuneIt = true;
+    tuneIt = false;
     registertuner(pos, &eps.eQueenattackedbysliderpenalty, "eQueenattackedbysliderpenalty", 0, 0, 0, 0, tuneIt);
 
     tuneIt = false;
@@ -392,6 +393,7 @@ void chessposition::getPawnAndKingEval(pawnhashentry *entryptr)
         entryptr->semiopen[Me] &= (int)(~BITSET(FILE(index)));
 
         U64 yourStoppers = passedPawnMask[index][Me] & yourPawns;
+        U64 yourOpponents = yourStoppers & fileMask[index];
         if (!yourStoppers)
         {
             // passed pawn
@@ -426,8 +428,9 @@ void chessposition::getPawnAndKingEval(pawnhashentry *entryptr)
         {
             // isolated pawn penalty per file
             int f = FILE(index);
-            entryptr->value += EVAL(eps.eIsolatedpawnpenalty[f], S2MSIGN(Me));
-            if (bTrace) te.pawns[Me] += EVAL(eps.eIsolatedpawnpenalty[f], S2MSIGN(Me));
+            bool opposed = (bool)yourOpponents;
+            entryptr->value += EVAL(eps.eIsolatedpawnpenalty[opposed][f], S2MSIGN(Me));
+            if (bTrace) te.pawns[Me] += EVAL(eps.eIsolatedpawnpenalty[opposed][f], S2MSIGN(Me));
         }
         else
         {
