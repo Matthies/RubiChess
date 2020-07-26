@@ -384,7 +384,10 @@ struct evalparamset {
         {  VALUE(   0,   0), VALUE(  72,  98), VALUE(  53,  54), VALUE(  72,  80), VALUE(  35,  86), VALUE( -57, 253)  },
         {  VALUE(   0,   0), VALUE(  38, 241), VALUE( 130, 110), VALUE(   7, 400), VALUE(   0, 641), VALUE(   0,   0)  }
     };
-    eval eBackwardpawnpenalty[8] = {  VALUE(  -2, -12), VALUE(  -6, -11), VALUE( -16, -11), VALUE( -15, -11), VALUE( -20, -11), VALUE( -18,  -8), VALUE( -16,  -7), VALUE( -15,  -3)  };
+    eval eBackwardpawnpenalty[2][8] = {
+        {  VALUE(   1, -19), VALUE( -18, -15), VALUE( -27, -11), VALUE( -39, -11), VALUE( -45, -10), VALUE( -38,  -6), VALUE( -30,  -7), VALUE(  -9,  -2)  },
+        {  VALUE(  -2,  -5), VALUE(  -3,  -5), VALUE( -12,  -5), VALUE(  -2,  -9), VALUE(  -4,  -6), VALUE(  -9,  -8), VALUE( -11,  -7), VALUE( -14,  -4)  }
+    };
     eval eDoublebishopbonus =  VALUE(  56,  38);
     eval ePawnblocksbishoppenalty =  VALUE( -10, -18);
     eval eBishopcentercontrolbonus =  VALUE(  25,  13);

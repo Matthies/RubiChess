@@ -180,7 +180,7 @@ void registerallevals(chessposition *pos)
     tuneIt = false;
     for (i = 0; i < 8; i++)
         registertuner(pos, &eps.eAttackingpawnbonus[i], "eAttackingpawnbonus", i, 8, 0, 0, tuneIt && (i > 0 && i < 7));
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 2; i++)
         for (j = 0; j < 8; j++)
             registertuner(pos, &eps.eIsolatedpawnpenalty[i][j], "eIsolatedpawnpenalty", j, 8, i, 2, tuneIt);
@@ -190,11 +190,11 @@ void registerallevals(chessposition *pos)
     for (i = 0; i < 6; i++)
         for (j = 0; j < 6; j++)
             registertuner(pos, &eps.eConnectedbonus[i][j], "eConnectedbonus", j, 6, i, 6, tuneIt);
-    tuneIt = false;
 
-    tuneIt = false;
-    for (i = 0; i < 8; i++)
-        registertuner(pos, &eps.eBackwardpawnpenalty[i], "eBackwardpawnpenalty", i, 8, 0, 0, tuneIt);
+    tuneIt = true;
+    for (i = 0; i < 2; i++)
+        for (j = 0; j < 8; j++)
+            registertuner(pos, &eps.eBackwardpawnpenalty[i][j], "eBackwardpawnpenalty", j, 8, i, 2, tuneIt);
     tuneIt = false;
     registertuner(pos, &eps.eDoublebishopbonus, "eDoublebishopbonus", 0, 0, 0, 0, tuneIt);
     tuneIt = false;
@@ -459,9 +459,10 @@ void chessposition::getPawnAndKingEval(pawnhashentry *entryptr)
                     if ((nextpawnrank | (shiftneigbours & neighbourfilesMask[index])) & yourStoppers)
                     {
                         // backward pawn penalty per file
+                        bool opposed = (bool)yourOpponents;
                         int f = FILE(index);
-                        entryptr->value += EVAL(eps.eBackwardpawnpenalty[f], S2MSIGN(Me));
-                        if (bTrace) te.pawns[Me] += EVAL(eps.eBackwardpawnpenalty[f], S2MSIGN(Me));
+                        entryptr->value += EVAL(eps.eBackwardpawnpenalty[opposed][f], S2MSIGN(Me));
+                        if (bTrace) te.pawns[Me] += EVAL(eps.eBackwardpawnpenalty[opposed][f], S2MSIGN(Me));
                     }
                 }
             }
