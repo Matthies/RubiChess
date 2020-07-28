@@ -507,7 +507,7 @@ void chessposition::getPawnAndKingEval(pawnhashentry *entryptr)
             myDist = abs(RANK(nextPawn) - kr);
         }
 
-        bool isBlocked = (myDist != 7 && (myDist == yourDist - 1));
+        bool isBlocked = (myDist == yourDist - 1);
         if (isBlocked) {
             entryptr->value += EVAL(eps.ePawnstormblocked[BORDERDIST(f)][yourDist], S2MSIGN(Me));
             if (bTrace) te.kingattackpower[Me] += EVAL(eps.ePawnstormblocked[BORDERDIST(f)][yourDist], S2MSIGN(Me));
