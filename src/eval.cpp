@@ -191,7 +191,7 @@ void registerallevals(chessposition *pos)
         for (j = 0; j < 6; j++)
             registertuner(pos, &eps.eConnectedbonus[i][j], "eConnectedbonus", j, 6, i, 6, tuneIt);
 
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 2; i++)
         for (j = 0; j < 8; j++)
             registertuner(pos, &eps.eBackwardpawnpenalty[i][j], "eBackwardpawnpenalty", j, 8, i, 2, tuneIt);
@@ -211,6 +211,10 @@ void registerallevals(chessposition *pos)
     tuneIt = false;
     registertuner(pos, &eps.eRookon7thbonus, "eRookon7thbonus", 0, 0, 0, 0, tuneIt);
 
+    tuneIt = true;
+    registertuner(pos, &eps.eRookonkingarea, "eRookonkingarea", 0, 0, 0, 0, tuneIt);
+    registertuner(pos, &eps.eBishoponkingarea, "eBishoponkingarea", 0, 0, 0, 0, tuneIt);
+
     tuneIt = false;
     registertuner(pos, &eps.eQueenattackedbysliderpenalty, "eQueenattackedbysliderpenalty", 0, 0, 0, 0, tuneIt);
 
@@ -218,9 +222,10 @@ void registerallevals(chessposition *pos)
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eMinorbehindpawn[i], "eMinorbehindpawn", i, 6, 0, 0, tuneIt);
 
-    tuneIt = false;
+    tuneIt = true;
     for (i = 0; i < 2; i++)
         registertuner(pos, &eps.eSlideronfreefilebonus[i], "eSlideronfreefilebonus", i, 2, 0, 0, tuneIt);
+    tuneIt = false;
     for (i = 0; i < 7; i++)
         registertuner(pos, &eps.eMaterialvalue[i], "eMaterialvalue", i, 7, 0, 0, false);
     registertuner(pos, &eps.eKingshieldbonus, "eKingshieldbonus", 0, 0, 0, 0, tuneIt);
@@ -531,6 +536,7 @@ int chessposition::getPieceEval(positioneval *pe)
     int index;
     const U64 myRammedPawns = piece00[WPAWN | Me] & PAWNPUSH(You, piece00[WPAWN | You]);
     U64 occupied = occupied00[0] | occupied00[1];
+    U64 kingdangerarea = kingdangerMask[kingpos[You]][You];
 
     while (pb)
     {
@@ -545,6 +551,12 @@ int chessposition::getPieceEval(positioneval *pe)
             if (Pt == ROOK && (pe->phentry->semiopen[Me] & BITSET(FILE(index)))) {
                 result += EVAL(eps.eSlideronfreefilebonus[bool(pe->phentry->semiopen[You] & BITSET(FILE(index)))], S2MSIGN(Me));
                 if (bTrace) te.rooks[Me] += EVAL(eps.eSlideronfreefilebonus[bool(pe->phentry->semiopen[You] & BITSET(FILE(index)))], S2MSIGN(Me));
+            }
+
+            // extrabonus for rook targeting the kingdanger area
+            if (Pt == ROOK && (fileMask[index] & kingdangerarea)) {
+                result += EVAL(eps.eRookonkingarea, S2MSIGN(Me));
+                if (bTrace) te.rooks[Me] += EVAL(eps.eRookonkingarea, S2MSIGN(Me));
             }
         }
 
@@ -563,6 +575,11 @@ int chessposition::getPieceEval(positioneval *pe)
                 {
                     result += EVAL(eps.eBishopcentercontrolbonus, S2MSIGN(Me));
                     if (bTrace) te.minors[Me] += EVAL(eps.eBishopcentercontrolbonus, S2MSIGN(Me));
+                }
+                // extrabonus for rook targeting the kingdanger area
+                if ((BISHOPATTACKS(piece00[WPAWN] | piece00[BPAWN], index) & kingdangerarea)) {
+                    result += EVAL(eps.eBishoponkingarea, S2MSIGN(Me));
+                    if (bTrace) te.minors[Me] += EVAL(eps.eBishoponkingarea, S2MSIGN(Me));
                 }
             }
         }
@@ -613,7 +630,6 @@ int chessposition::getPieceEval(positioneval *pe)
         }
 
         // king danger
-        U64 kingdangerarea = kingdangerMask[kingpos[You]][You];
         if (mobility & kingdangerarea)
         {
             pe->kingringattacks[Me] += POPCOUNT(mobility & kingdangerarea);
