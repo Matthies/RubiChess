@@ -1302,7 +1302,6 @@ static void search_gen1(searchthread *thr)
                 {
                     // We have a tablebase score so report this and adjust the search window
                     int tbScore = pos->rootmovelist.move[0].value;
-                    //printf("info string before: alpha=%d  beta=%d  tbscore=%d  score=%d\n", alpha, beta, tbScore, score);
                     if ((tbScore > 0 && score > tbScore) || (tbScore < 0 && score < tbScore))
                         // TB win/loss but we even found a mate; use the correct score
                         pos->bestmovescore[0] = score;
@@ -1410,7 +1409,6 @@ static void search_gen1(searchthread *thr)
             pos->pondermove = bestthr->pos.pondermove;
             pos->bestmovescore[0] = bestthr->pos.bestmovescore[0];
             inWindow = 1;
-            //printf("info string different bestmove from helper  lastpv:%x\n", bestthr->pos.lastpv[0]);
         }
 
         // remember score for next search in case of an instamove
