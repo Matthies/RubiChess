@@ -1,5 +1,8 @@
 ChangeLog
 =========
+1.8 (release 2020-xx-xx) :
+    - ...
+
 1.7.3 (no-release 2020-05-11 for TCEC S18) :
     - Added FRC/Chess960 (playing quite bad for now)
     - Faster move generation esp. pawn moves
