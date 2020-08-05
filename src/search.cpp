@@ -498,7 +498,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
             if (playMove(cm))
             {
-                int probcutscore = -alphabeta(-rbeta, -rbeta + 1, depth - 4);
+                int probcutscore = -getQuiescence(-rbeta, -rbeta + 1, 0);
+                if (probcutscore >= rbeta)
+                    probcutscore = -alphabeta(-rbeta, -rbeta + 1, depth - 4);
 
                 unplayMove(cm);
 
