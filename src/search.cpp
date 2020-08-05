@@ -1214,7 +1214,7 @@ static void search_gen1(searchthread *thr)
             {
                 // research with higher beta
                 beta = min(SCOREWHITEWINS, beta + delta);
-                if (abs(beta) > 5000)
+                if (abs(beta) > 2000)
                     delta = SCOREWHITEWINS;
                 else
                     delta += delta / 4 + 2;
@@ -1302,18 +1302,12 @@ static void search_gen1(searchthread *thr)
                 {
                     // We have a tablebase score so report this and adjust the search window
                     int tbScore = pos->rootmovelist.move[0].value;
-                    if (tbScore >= 0)
-                    {
-                        score = pos->bestmovescore[0] = max(score, tbScore);
-                        beta = max(beta, tbScore);
-                        alpha = min(beta - 1, alpha);
-                    }
+                    if ((tbScore > 0 && score > tbScore) || (tbScore < 0 && score < tbScore))
+                        // TB win/loss but we even found a mate; use the correct score
+                        pos->bestmovescore[0] = score;
                     else
-                    {
-                        score = pos->bestmovescore[0] = min(score, tbScore);
-                        alpha = min(tbScore, alpha);
-                        beta = max(beta, alpha + 1);
-                    }
+                        // otherwise use and report the tablebase score
+                        score = pos->bestmovescore[0] = tbScore;
                 }
 
                 if (en.pondersearch != PONDERING || thr->depth < maxdepth)
@@ -1366,7 +1360,7 @@ static void search_gen1(searchthread *thr)
             continue;
 
         // early exit in playing mode as there is exactly one possible move
-        if (pos->rootmovelist.length == 1 && en.endtime1)
+        if (pos->rootmovelist.length == 1 && en.endtime1 && !pos->useRootmoveScore)
             break;
 
         // exit if STOPSOON is requested and we're in aspiration window
@@ -1415,7 +1409,6 @@ static void search_gen1(searchthread *thr)
             pos->pondermove = bestthr->pos.pondermove;
             pos->bestmovescore[0] = bestthr->pos.bestmovescore[0];
             inWindow = 1;
-            //printf("info string different bestmove from helper  lastpv:%x\n", bestthr->pos.lastpv[0]);
         }
 
         // remember score for next search in case of an instamove
