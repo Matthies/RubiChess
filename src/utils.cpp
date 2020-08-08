@@ -746,6 +746,7 @@ int tuningratio = 1;
 
 char *texelpts = NULL;
 U64 texelptsnum;
+int iThreads;
 
 
 static int getGradientValue(eval *ev, positiontuneset *p, evalparam *e, bool debug = false, int corParam = -1)
@@ -1220,7 +1221,7 @@ static void collectTuners(chessposition *p, tunerpool *pool, tuner **freeTuner)
             if (tn->thr.joinable())
                 tn->thr.join();
 
-            if (freeTuner) *freeTuner = tn;
+            if (freeTuner && i < iThreads) *freeTuner = tn;
 
             if (pi >= 0)
             {
@@ -1358,6 +1359,7 @@ void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK, string correlati
     }
 
     tunerpool tpool;
+    iThreads = en.Threads;
     tpool.tn = new tuner[en.Threads];
     tpool.lowRunning = -1;
     tpool.highRunning = -1;
@@ -1420,7 +1422,7 @@ void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK, string correlati
     bool leaveSoon = false;
     bool leaveNow = false;
 
-    printf("Tuning starts now.\nPress 'P' to output current parameters.\nPress 'B' to break after current tuning loop.\nPress 'S' for immediate break.\n\n");
+    printf("Tuning starts now.\nPress 'P' to output current parameters.\nPress 'B' to break after current tuning loop.\nPress 'S' for immediate break.\nPress '+', '-' to increase/decrease threads to use.\n\n");
 
     while (improved && !leaveSoon && !leaveNow)
     {
@@ -1458,6 +1460,16 @@ void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK, string correlati
                         {
                             printf("Stopping now!\n");
                             leaveNow = true;
+                        }
+                        if (c == '-')
+                        {
+                            iThreads = max(1, iThreads - 1);
+                            printf("Now using %d threads...\n", iThreads);
+                        }
+                        if (c == '+')
+                        {
+                            iThreads = min(en.Threads, iThreads + 1);
+                            printf("Now using %d threads...\n", iThreads);
                         }
                     }
                 }
