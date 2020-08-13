@@ -537,6 +537,9 @@ int chessposition::getPieceEval(positioneval *pe)
     const U64 myRammedPawns = piece00[WPAWN | Me] & PAWNPUSH(You, piece00[WPAWN | You]);
     U64 occupied = occupied00[0] | occupied00[1];
     U64 kingdangerarea = kingdangerMask[kingpos[You]][You];
+    U64 xrayrookoccupied = occupied ^ (piece00[WROOK + Me] | piece00[WQUEEN + Me]);
+    U64 xraybishopoccupied = occupied ^ (piece00[WBISHOP + Me] | piece00[WQUEEN + Me]);
+    U64 goodMobility = ~((piece00[WPAWN + Me] & (RANK2(Me) | RANK3(Me))) | attackedBy[You][PAWN] | piece00[WKING + Me]);
 
     while (pb)
     {
@@ -544,7 +547,6 @@ int chessposition::getPieceEval(positioneval *pe)
         U64 attack = 0ULL;
         if (Pt == ROOK || Pt == QUEEN)
         {
-            U64 xrayrookoccupied = occupied ^ (piece00[WROOK + Me] | piece00[WQUEEN + Me]);
             attack = ROOKATTACKS(xrayrookoccupied, index);
 
             // extrabonus for rook on (semi-)open file  
@@ -562,7 +564,6 @@ int chessposition::getPieceEval(positioneval *pe)
 
         if (Pt == BISHOP || Pt == QUEEN)
         {
-            U64 xraybishopoccupied = occupied ^ (piece00[WBISHOP + Me] | piece00[WQUEEN + Me]);
             attack |= BISHOPATTACKS(xraybishopoccupied, index);
 
             if (Pt == BISHOP)
@@ -614,7 +615,6 @@ int chessposition::getPieceEval(positioneval *pe)
         attackedBy[Me][0] |= attack;
 
         // mobility bonus
-        U64 goodMobility = ~((piece00[WPAWN + Me] & (RANK2(Me) | RANK3(Me))) | attackedBy[You][PAWN] | piece00[WKING + Me]);
         U64 mobility = attack & goodMobility;
 
         // Penalty for a piece pinned in front of the king
