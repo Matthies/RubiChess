@@ -2,14 +2,15 @@
 # Start MSVC Command prompt for x64 native tools and
 # for fast binaries build:	nmake /f Makefile.clang release
 # for a quick build:		nmake /f Makefile.clang all
-# llvm-profdata.exe and .dll from Tools folder need to be copied into the LLVM bin folder or any other folder in PATH
+
 
 
 # General settings
+CLANGVER=9
+LLVMInstallDir="C:\Program Files\LLVM$(CLANGVER)""
 CXX=$(LLVMInstallDir)\bin\clang-cl.exe
 LD=$(LLVMInstallDir)\bin\lld-link.exe
-PROFDATATOOLEXE=llvm-profdata
-LLVMInstallDir="C:\Program Files\LLVM""
+PROFDATATOOLEXE=$(LLVMInstallDir)\bin\llvm-profdata
 SOURCE=*.cpp
 OBJ=*.obj
 RELDIR=Release-clang
@@ -64,7 +65,7 @@ rubichess-legacy: $(RELDIR)
 profile-build-one:
 !IFDEF PR
 	@echo Creating profile build for $(PR)...
-	@nmake -c -f Makefile.clang $(PR) PROFILEFLAGS=-fprofile-instr-generate=$(PROFEXE).clangprof-raw PROFLIB=$(LLVMInstallDir)\lib\clang\8.0.0\lib\windows\clang_rt.profile-x86_64.lib
+	@nmake -c -f Makefile.clang $(PR) PROFILEFLAGS=-fprofile-instr-generate=$(PROFEXE).clangprof-raw PROFLIB=$(LLVMInstallDir)\lib\clang\$(CLANGVER).0.0\lib\windows\clang_rt.profile-x86_64.lib
 	@echo Bench to generate profiling data...
 	@$(PROFEXE) -bench > nul
 	@$(PROFDATATOOLEXE) merge -output=$(PROFEXE).clangprof $(PROFEXE).clangprof-raw

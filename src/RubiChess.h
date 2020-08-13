@@ -135,6 +135,9 @@ using namespace std;
 #endif
 #endif
 
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+
 #define CPULEGACY   0
 #define CPUPOPCOUNT 1
 #define CPUBMI2     2
@@ -151,6 +154,16 @@ using namespace std;
 #endif
 #endif
 
+#if defined(__clang_major__)
+#define COMPILER "Clang " TOSTRING(__clang_major__)
+#elif defined(__GNUC__)
+#define COMPILER "GCC " TOSTRING(__GNUC__)
+#elif defined(_MSC_VER)
+#define COMPILER "MSVC " TOSTRING(_MSC_VER)
+#else
+#define COMPILER "unknown compiler"
+#endif
+
 #ifndef VERSTABLE
 #ifdef GITVER
 #define VERSION VERNUM "-dev " GITVER
@@ -162,9 +175,9 @@ using namespace std;
 #endif
 #define ENGINEVER "RubiChess " VERSION
 #ifdef GITID
-#define BUILD __DATE__ " " __TIME__ " commit " GITID
+#define BUILD __DATE__ " " __TIME__ " commit " GITID " " COMPILER
 #else
-#define BUILD __DATE__ " " __TIME__
+#define BUILD __DATE__ " " __TIME__ " " COMPILER
 #endif
 
 #define BITSET(x) (1ULL << (x))
