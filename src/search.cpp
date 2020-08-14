@@ -460,10 +460,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
         if (score >= beta)
         {
-#if 0
-            if (MATEFORME(score))
-                score = beta;
-#endif
             if (abs(beta) < 5000 && (depth < 12 || nullmoveply)) {
                 STATISTICSINC(prune_nm);
                 SDEBUGDO(isDebugPv, pvabortval[ply] = score; pvaborttype[ply] = PVA_NMPRUNED;);
