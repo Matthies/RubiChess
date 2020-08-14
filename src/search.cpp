@@ -519,18 +519,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     }
 
 
-    // Internal iterative deepening 
-    const int iidmin = 3;
-    const int iiddelta = 2;
-    if (PVNode && !hashmovecode && depth >= iidmin)
-    {
-#if 0
-        alphabeta(alpha, beta, depth - iiddelta);
-        hashmovecode = tp.getMoveCode(newhash);
-#else
+    if (PVNode && !hashmovecode && depth >= 3)
+        // PV node and no best move from hash
+        // Instead of iid the idea of Ed Schroeder to just decrease depth works well
         depth--;
-#endif
-    }
 
     // Get possible countermove from table
     uint32_t lastmove = movestack[mstop - 1].movecode;
