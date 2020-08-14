@@ -460,13 +460,14 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
         if (score >= beta)
         {
+#if 0
             if (MATEFORME(score))
                 score = beta;
-
+#endif
             if (abs(beta) < 5000 && (depth < 12 || nullmoveply)) {
                 STATISTICSINC(prune_nm);
                 SDEBUGDO(isDebugPv, pvabortval[ply] = score; pvaborttype[ply] = PVA_NMPRUNED;);
-                return score;
+                return beta;
             }
             // Verification search
             nullmoveply = ply + 3 * (depth - R) / 4;
@@ -476,7 +477,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             if (verificationscore >= beta) {
                 STATISTICSINC(prune_nm);
                 SDEBUGDO(isDebugPv, pvabortval[ply] = score; pvaborttype[ply] = PVA_NMPRUNED;);
-                return score;
+                return beta;
             }
         }
     }
@@ -518,14 +519,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     }
 
 
-    // Internal iterative deepening 
-    const int iidmin = 3;
-    const int iiddelta = 2;
-    if (PVNode && !hashmovecode && depth >= iidmin)
-    {
-        alphabeta(alpha, beta, depth - iiddelta);
-        hashmovecode = tp.getMoveCode(newhash);
-    }
+    if (PVNode && !hashmovecode && depth >= 3)
+        // PV node and no best move from hash
+        // Instead of iid the idea of Ed Schroeder to just decrease depth works well
+        depth--;
 
     // Get possible countermove from table
     uint32_t lastmove = movestack[mstop - 1].movecode;
