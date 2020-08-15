@@ -367,6 +367,8 @@ void engine::GetSystemInfo()
     	// No BMI2 build on AMD cpu
     	maxHWSupport--;
 
+    cout << "info string Running " << name() << " Build " << BUILD <<  ". CPU supports  " << cpufeature[maxHWSupport] << "\n";
+
     if (CPUFEATURE == CPUBMI2 && cpuVendor == CPUVENDORAMD)
     {
         cout << "info string Error! You are running the BMI2 binary on an AMD cpu which is known for bad performance. Please use the default (Popcount) binary for best performance.\n";
@@ -1295,7 +1297,7 @@ void getCorrelation(string correlationParams)
         size_t spi = correlationParams.find('*');
         string correlationparam = (spi == string::npos) ? correlationParams : correlationParams.substr(0, spi);
         correlationParams = (spi == string::npos) ? "" : correlationParams.substr(spi + 1, string::npos);
-        int x;
+        int x = 0;
         try {
             x = stoi(correlationparam);
         }

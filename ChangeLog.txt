@@ -1,7 +1,23 @@
 ChangeLog
 =========
-1.8 (release 2020-xx-xx) :
-    - ...
+1.8 (release 2020-08-15) :
+    - New BMI2 binary using the pext instruction for slider attacks
+    - Some tests and warnings if the hardware matches the binary to avoid bad performance and crashed by not supported cpu instructions
+    - Evaluation of discovered attacks against queen
+    - Evaluation of discovered slider attacks against king area
+    - Improved evaluation of (un-)opposed isolated/backward pawns
+    - Small evaluation fix for FRC
+    - History extension with dynamic update of threshold to avoid depth explosion
+    - Tweak on the probcut pruning
+    - Small tweak on the time management using different time depending on ponder git
+    - Small tweak/simplifiction in the aspiration window handling
+    - Small tweak on history aging
+    - Tweak on null move pruning returning beta instead of score of null move search
+    - Speed optimizations by better memory alignment
+    - Compiler flag to expose eval parameters as UCI options usefull for MEA/NICE testing
+    - Improved search debug
+    - Fix for extreme positions like the "9-queens"
+    - Finally fixed the "stuck at depth 1" problem that should have been fixed in 1.7.1 but wasn't
 
 1.7.3 (no-release 2020-05-11 for TCEC S18) :
     - Added FRC/Chess960 (playing quite bad for now)
