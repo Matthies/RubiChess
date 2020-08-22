@@ -44,6 +44,10 @@
 #define FINDMEMORYLEAKS
 #endif
 
+#if 1
+#define NNUE
+#endif
+
 #ifdef FINDMEMORYLEAKS
 #ifdef _DEBUG  
 #define DEBUG_CLIENTBLOCK   new( _CLIENT_BLOCK, __FILE__, __LINE__)  
@@ -1368,6 +1372,9 @@ public:
     int t2stop = 0;     // immediate stop
     bool bStopCount;
 #endif
+#ifdef NNUE
+    string NnueNetpath;
+#endif    
     string name() {
         return string(ENGINEVER) + " (" + cpufeature[CPUFEATURE] +")";
     };
@@ -1510,3 +1517,11 @@ void search_statistics();
 #define STATISTICSDO(x)
 #endif
 
+
+//
+// NNUE stuff
+//
+
+#define NNUEFILEVERSION 0x7AF32F16u
+
+void NnueReadNet(string path);

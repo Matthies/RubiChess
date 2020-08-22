@@ -38,8 +38,7 @@ ifeq ($(EXE),)
 	EXE=RubiChess
 endif
 
-CXXFLAGS=-std=c++11 -Wall -O3 -flto
-
+CXXFLAGS=-std=c++11 -Wall -O3 
 ifeq ($(COMP),gcc)
 	CXX=g++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
@@ -49,8 +48,11 @@ endif
 
 ifeq ($(COMP),clang)
 	CXX=clang++
-	CXXFLAGS += -pedantic -Wextra -Wshadow
-	LDFLAGS=-lpthread -fuse-ld=lld
+	LD=ld
+	CXXFLAGS += -pedantic -Wextra -Wshadow -v
+	LDFLAGS=-lpthread -static -Wl,--allow-multiple-definition
+	#LDFLAGS=-lpthread -fuse-ld=gold -fuse-ld=lld 
+	#LDFLAGS=
 	profile_make = clang-profile-make
 endif
 
@@ -82,7 +84,8 @@ all: RubiChess-BMI2 RubiChess RubiChess-Legacy
 
 compile:
 	@echo   \  Compiling $(EXE)...
-	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(LDFLAGS) $(EXTRALDFLAGS) $(GITDEFINE) $(CPUFEATURE) -o $(EXE)
+	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(GITDEFINE) $(CPUFEATURE) $(LDFLAGS) $(EXTRALDFLAGS) -o $(EXE)
+	#$(LD) *.o 
 
 RubiChess-BMI2:
 	@$(MAKE) compile ARCHFLAGS="$(BMI2ARCHFLAGS)" EXE=$(BMI2EXE) CPUFEATURE="$(BMI2CPUFEATURE)"
@@ -116,7 +119,7 @@ clang-profile-make:
 	@echo Creating profile build for $(PROFEXE)...
 	@$(MAKE) $(PROFEXE) EXTRACXXFLAGS='-fprofile-instr-generate=$(PROFEXE).clangprof-raw'
 	@echo Bench to generate profiling data...
-	./$(PROFEXE) -bench > /dev/null
+	-./$(PROFEXE) -bench > /dev/null
 	llvm-profdata merge -output=$(PROFEXE).profdata $(PROFEXE).clangprof-raw
 	$(RM) ./$(PROFEXE)
 	@echo Creating optimized build for $(PROFEXE)...

@@ -2402,6 +2402,13 @@ static void uciSetSyzygyPath()
     init_tablebases((char*)en.SyzygyPath.c_str());
 }
 
+#ifdef NNUE
+static void uciSetNnuePath()
+{
+    NnueReadNet(en.NnueNetpath);
+}
+#endif
+
 
 engine::engine()
 {
@@ -2419,7 +2426,9 @@ engine::engine()
     ucioptions.Register(&SyzygyProbeLimit, "SyzygyProbeLimit", ucispin, "7", 0, 7, nullptr);
     ucioptions.Register(&chess960, "UCI_Chess960", ucicheck, "false");
     ucioptions.Register(nullptr, "Clear Hash", ucibutton, "", 0, 0, uciClearHash);
-
+#ifdef NNUE
+    ucioptions.Register(&NnueNetpath, "NNUENetpath", ucistring, "./default.nnue", 0, 0, uciSetNnuePath);
+#endif
 #ifdef _WIN32
     LARGE_INTEGER f;
     QueryPerformanceFrequency(&f);
