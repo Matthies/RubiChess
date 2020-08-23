@@ -1522,6 +1522,76 @@ void search_statistics();
 // NNUE stuff
 //
 
-#define NNUEFILEVERSION 0x7AF32F16u
+#define NNUEFILEVERSION     0x7AF32F16u
+#define NNUENETLAYERHASH    0xCC03DAE4u
+#define NNUECLIPPEDRELUHASH 0x538D24C7u
+#define NNUEFEATUREHASH     (0x5D69D5B9u ^ true)
+#define NNUEINPUTSLICEHASH  0xEC42E90Du
 
+extern bool NnueReady;
+
+
+class NnueLayer
+{
+public:
+    NnueLayer* previous;
+
+    NnueLayer(NnueLayer* prev) { previous = prev; }
+    virtual bool ReadWeights(ifstream* is) = 0;
+    virtual uint32_t GetHash() = 0;
+};
+
+class NnueFeatureTransformer : public NnueLayer
+{
+public:
+    const int halfdims = 256;
+    const int outputdims = halfdims * 2;
+    const int inputdims = 64 * 641;
+
+    int16_t* bias;
+    int16_t* weight;
+
+    NnueFeatureTransformer();
+    ~NnueFeatureTransformer();
+    bool ReadWeights(ifstream *is);
+    uint32_t GetHash();
+};
+
+class NnueClippedRelu : public NnueLayer
+{
+public:
+    NnueClippedRelu(NnueLayer* prev);
+    bool ReadWeights(ifstream* is);
+    uint32_t GetHash();
+};
+
+class NnueInputSlice : public NnueLayer
+{
+public:
+    const int outputdims = 512;
+
+    NnueInputSlice();
+    bool ReadWeights(ifstream* is);
+    uint32_t GetHash();
+};
+
+class NnueNetworkLayer : public NnueLayer
+{
+public:
+    int inputdims;
+    int outputdims;
+
+    int32_t* bias;
+    int8_t* weight;
+
+    NnueNetworkLayer(NnueLayer* prev, int id, int od);
+    ~NnueNetworkLayer();
+    bool ReadWeights(ifstream* is);
+    uint32_t GetHash();
+};
+
+void NnueInit();
+void NnueRemove();
 void NnueReadNet(string path);
+
+

@@ -2405,7 +2405,9 @@ static void uciSetSyzygyPath()
 #ifdef NNUE
 static void uciSetNnuePath()
 {
+    cout << "Loading net " << en.NnueNetpath << " ...";
     NnueReadNet(en.NnueNetpath);
+    cout << (NnueReady ? " successful" : " failed") << "\n";
 }
 #endif
 
@@ -2414,6 +2416,7 @@ engine::engine()
 {
     GetSystemInfo();
     initBitmaphelper();
+    NnueInit();
     rootposition.pwnhsh.setSize(1);  // some dummy pawnhash just to make the prefetch in playMove happy
     
     ucioptions.Register(&Threads, "Threads", ucispin, "1", 1, MAXTHREADS, uciSetThreads);  // order is important as the pawnhash depends on Threads > 0
@@ -2445,6 +2448,7 @@ engine::~engine()
     allocThreads();
     rootposition.pwnhsh.remove();
     rootposition.mtrlhsh.remove();
+    NnueRemove();
 }
 
 
