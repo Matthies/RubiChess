@@ -2416,7 +2416,9 @@ engine::engine()
 {
     GetSystemInfo();
     initBitmaphelper();
+#ifdef NNUE
     NnueInit();
+#endif
     rootposition.pwnhsh.setSize(1);  // some dummy pawnhash just to make the prefetch in playMove happy
     
     ucioptions.Register(&Threads, "Threads", ucispin, "1", 1, MAXTHREADS, uciSetThreads);  // order is important as the pawnhash depends on Threads > 0
@@ -2448,7 +2450,9 @@ engine::~engine()
     allocThreads();
     rootposition.pwnhsh.remove();
     rootposition.mtrlhsh.remove();
+#ifdef NNUE
     NnueRemove();
+#endif
 }
 
 

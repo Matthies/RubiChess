@@ -21,6 +21,41 @@
 #ifdef NNUE
 
 //
+// Some NNUE related constants and types
+//
+
+// PieceSquare indices
+enum {
+    PS_WPAWN    = 1,
+    PS_BPAWN    = 1 * 64 + 1,
+    PS_WKNIGHT  = 2 * 64 + 1,
+    PS_BKNIGHT  = 3 * 64 + 1,
+    PS_WBISHOP  = 4 * 64 + 1,
+    PS_BBISHOP  = 5 * 64 + 1,
+    PS_WROOK    = 6 * 64 + 1,
+    PS_BROOK    = 7 * 64 + 1,
+    PS_WQUEEN   = 8 * 64 + 1,
+    PS_BQUEEN   = 9 * 64 + 1,
+    PS_END      = 10 * 64 + 1
+};
+
+// table to translate PieceCode to PieceSquare index for both POVs
+#if 0 // original SF piece numeration
+uint32_t PieceToIndex[2][16] = {
+  { 0, PS_WPAWN, PS_WKNIGHT, PS_WBISHOP, PS_WROOK, PS_WQUEEN, 0, 0,
+    0, PS_BPAWN, PS_BKNIGHT, PS_BBISHOP, PS_BROOK, PS_BQUEEN, 0, 0 },
+  { 0, PS_BPAWN, PS_BKNIGHT, PS_BBISHOP, PS_BROOK, PS_BQUEEN, 0, 0,
+    0, PS_WPAWN, PS_WKNIGHT, PS_WBISHOP, PS_WROOK, PS_WQUEEN, 0, 0 }
+};
+#else
+uint32_t PieceToIndex[2][16] = {
+  { 0, 0, PS_WPAWN, PS_BPAWN, PS_WKNIGHT, PS_BKNIGHT, PS_WBISHOP, PS_BBISHOP, PS_WROOK, PS_BROOK, PS_WQUEEN, PS_BQUEEN, 0, 0, 0, 0 },
+  { 0, 0, PS_BPAWN, PS_WPAWN, PS_BKNIGHT, PS_WKNIGHT, PS_BBISHOP, PS_WBISHOP, PS_BROOK, PS_WROOK, PS_BQUEEN, PS_WQUEEN, 0, 0, 0, 0 }
+};
+#endif
+
+
+//
 // Global objects
 //
 bool NnueReady = false;
@@ -31,13 +66,120 @@ NnueFeatureTransformer *NnueFt;
 
 
 //
+// NNUE interface in chessposition
+//
+void chessposition::HalfkpAppendActiveIndices(int c, NnueIndexList *active)
+{
+    //Square ksq = orient(c, square_of(c, KING));
+    int k = ORIENT(c, kingpos[c]);
+    U64 nonkingsbb = (occupied00[0] | occupied00[1]) & ~(piece00[WKING] | piece00[BKING]);
+    //Bitboard bb = pieces() & ~pieces_p(KING);
+    while (nonkingsbb)
+    {
+        int index = pullLsb(&nonkingsbb);
+        //Square s = pop_lsb(&bb);
+        //printf("%d %d %d %d  ->  %d\n", c, index, mailbox[index], k, MAKEINDEX(c, index, mailbox[index], k));
+        active->values[active->size++] = MAKEINDEX(c, index, mailbox[index], k);
+    }
+}
+
+void chessposition::AppendActiveIndices(NnueIndexList active[2])
+{
+    for (int c = 0; c < 2; c++)
+        HalfkpAppendActiveIndices(c, &active[c]);
+}
+
+void chessposition::HalfkpAppendChangedIndices(int c, NnueIndexList* add, NnueIndexList* remove)
+{
+    //Square ksq = orient(c, square_of(c, KING));
+    int k = ORIENT(c, kingpos[c]);
+    DirtyPiece* dp = &dirtypiece[mstop];
+    for (int i = 0; i < dp->dirtyNum; i++) {
+        PieceCode pc = dp->pc[i];
+        if ((pc >> 1) == KING) continue;
+        if (dp->from[i] >= 0)
+            remove->values[remove->size++] = MAKEINDEX(c, dp->from[i], pc, k);
+        if (dp->to[i] >= 0)
+            add->values[add->size++] = MAKEINDEX(c, dp->to[i], pc, k);
+    }
+}
+
+void chessposition::AppendChangedIndices(NnueIndexList add[2], NnueIndexList remove[2])
+{
+
+}
+
+#define TILE_HEIGHT NnueFtHalfdims
+
+void chessposition::RefreshAccumulator()
+{
+    NnueAccumulator* ac = &accumulator[mstop];
+    NnueIndexList activeIndices[2];
+    activeIndices[0].size = activeIndices[1].size = 0;
+    AppendActiveIndices(activeIndices);
+
+    for (int c = 0; c < 2; c++) {
+        for (unsigned i = 0; i < NnueFtHalfdims / TILE_HEIGHT; i++) {
+            memcpy(&(ac->accumulation[c][i * TILE_HEIGHT]), &NnueFt->bias[i * TILE_HEIGHT], TILE_HEIGHT * sizeof(int16_t));
+            for (size_t k = 0; k < activeIndices[c].size; k++) {
+                unsigned index = activeIndices[c].values[k];
+                unsigned offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
+                for (unsigned j = 0; j < NnueFtHalfdims; j++)
+                    accumulator->accumulation[c][i * TILE_HEIGHT + j] += NnueFt->weight[offset + j];
+            }
+        }
+    }
+    accumulator->computationState = 1;
+}
+
+void chessposition::Transform(clipped_t *output)
+{
+    if (1)//!update_accumulator_if_possible(pos))
+        RefreshAccumulator();
+
+    int16_t(*acc)[2][256] = &accumulator[mstop].accumulation;
+    //printf("Transform:\n");
+    const int perspectives[2] = { state & S2MMASK, !(state & S2MMASK) };
+    for (int p = 0; p < 2; p++)
+    {
+        const unsigned int offset = NnueFtHalfdims * p;
+        for (int i = 0; i < NnueFtHalfdims; i++)
+        {
+            int16_t sum = (*acc)[perspectives[p]][i];
+            output[offset + i] = max(0, min(127, sum));
+            //printf("index: %d   sum=%d\n", offset + i, sum);
+        }
+    }
+}
+
+int chessposition::NnueGetEval()
+{
+    alignas(64) clipped_t input[NnueFtOutputdims];
+    int32_t hidden1_values[32];
+    int32_t hidden2_values[32];
+    clipped_t hidden1_clipped[32];
+    clipped_t hidden2_clipped[32];
+    int32_t out_value;
+
+    Transform(input);
+    NnueHd1->Propagate(input, hidden1_values);
+    NnueCl1->Propagate(hidden1_values, hidden1_clipped);
+    NnueHd2->Propagate(hidden1_clipped, hidden2_values);
+    NnueCl1->Propagate(hidden2_values, hidden2_clipped);
+    NnueOut->Propagate(hidden2_clipped, &out_value);
+
+    return out_value / NnueValueScale;
+}
+
+
+//
 // FeatureTransformer
 //
 NnueFeatureTransformer::NnueFeatureTransformer() : NnueLayer(NULL)
 {
-    size_t allocsize = halfdims * sizeof(int16_t);
+    size_t allocsize = NnueFtHalfdims * sizeof(int16_t);
     bias = (int16_t*)allocalign64(allocsize);
-    allocsize = (size_t)halfdims * (size_t)inputdims * sizeof(int16_t);
+    allocsize = (size_t)NnueFtHalfdims * (size_t)NnueFtInputdims * sizeof(int16_t);
     weight = (int16_t*)allocalign64(allocsize);
 }
 
@@ -50,9 +192,9 @@ NnueFeatureTransformer::~NnueFeatureTransformer()
 bool NnueFeatureTransformer::ReadWeights(ifstream *is)
 {
     int i;
-    for (i = 0; i < halfdims; ++i)
+    for (i = 0; i < NnueFtHalfdims; ++i)
         is->read((char*)&bias[i], sizeof(int16_t));
-    for (i = 0; i < halfdims * inputdims; ++i)
+    for (i = 0; i < NnueFtHalfdims * NnueFtInputdims; ++i)
         is->read((char*)&weight[i], sizeof(int16_t));
 
     return !is->fail();
@@ -62,7 +204,7 @@ bool NnueFeatureTransformer::ReadWeights(ifstream *is)
 
 uint32_t NnueFeatureTransformer::GetHash()
 {
-    return NNUEFEATUREHASH ^ outputdims;
+    return NNUEFEATUREHASH ^ NnueFtOutputdims;
 }
 
 
@@ -106,12 +248,25 @@ uint32_t NnueNetworkLayer::GetHash()
     return (NNUENETLAYERHASH + outputdims) ^ (previous->GetHash() >> 1) ^ (previous->GetHash() << 31);
 }
 
+void NnueNetworkLayer::Propagate(clipped_t* input, int32_t* output)
+{
+    //printf("Affine propagate...\n");
+    for (int i = 0; i < outputdims; ++i) {
+        unsigned int offset = i * inputdims;
+        int32_t sum = bias[i];
+        for (int j = 0; j < inputdims; j++)
+            sum += weight[offset + j] * input[j];
+        //printf("%d  %d\n", i, sum);
+        output[i] = sum;
+    }
+}
 
 //
 // ClippedRelu
 //
-NnueClippedRelu::NnueClippedRelu(NnueLayer* prev) : NnueLayer(prev)
+NnueClippedRelu::NnueClippedRelu(NnueLayer* prev, int d) : NnueLayer(prev)
 {
+    dims = d;
 }
 
 bool NnueClippedRelu::ReadWeights(ifstream* is)
@@ -123,6 +278,12 @@ bool NnueClippedRelu::ReadWeights(ifstream* is)
 uint32_t NnueClippedRelu::GetHash()
 {
     return NNUECLIPPEDRELUHASH + previous->GetHash();
+}
+
+void NnueClippedRelu::Propagate(int32_t *input, clipped_t *output)
+{
+    for (int i = 0; i < dims; i++)
+        output[i] = max(0, min(127, input[i] >> NnueClippingShift));
 }
 
 
@@ -153,9 +314,9 @@ void NnueInit()
     NnueFt = new NnueFeatureTransformer();
     NnueIn = new NnueInputSlice();
     NnueHd1 = new NnueNetworkLayer(NnueIn, 512, 32);
-    NnueCl1 = new NnueClippedRelu(NnueHd1);
+    NnueCl1 = new NnueClippedRelu(NnueHd1, 32);
     NnueHd2 = new NnueNetworkLayer(NnueCl1, 32, 32);
-    NnueCl2 = new NnueClippedRelu(NnueHd2);
+    NnueCl2 = new NnueClippedRelu(NnueHd2, 32);
     NnueOut = new NnueNetworkLayer(NnueCl2, 32, 1);
 }
 
@@ -197,9 +358,11 @@ void NnueReadNet(string path)
 
     is.read((char*)&hash, sizeof(uint32_t));
     if (hash != fthash) return;
+    // Read the weights of the feature transformer
     if (!NnueFt->ReadWeights(&is)) return;
     is.read((char*)&hash, sizeof(uint32_t));
     if (hash != nethash) return;
+    // Read the weights of the network layers recursively
     if (!NnueOut->ReadWeights(&is)) return;
     if (is.peek() != ios::traits_type::eof())
         return;

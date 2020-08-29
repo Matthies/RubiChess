@@ -249,6 +249,9 @@ enum { WHITE, BLACK };
 typedef unsigned long long U64;
 typedef signed long long S64;
 
+typedef unsigned int PieceCode;
+typedef unsigned int PieceType;
+
 // Forward definitions
 class transposition;
 class chessposition;
@@ -585,6 +588,119 @@ extern int tuningratio;
 
 #endif
 
+//
+// NNUE stuff
+//
+
+#define NNUEFILEVERSION     0x7AF32F16u
+#define NNUENETLAYERHASH    0xCC03DAE4u
+#define NNUECLIPPEDRELUHASH 0x538D24C7u
+#define NNUEFEATUREHASH     (0x5D69D5B9u ^ true)
+#define NNUEINPUTSLICEHASH  0xEC42E90Du
+
+#define ORIENT(c,i) ((c) ? (i) ^ 0x3f : (i))
+#define MAKEINDEX(c,s,p,k) (ORIENT(c, s) + PieceToIndex[c][p] + PS_END * (k))
+
+
+const int NnueFtHalfdims = 256;
+const int NnueFtOutputdims = NnueFtHalfdims * 2;
+const int NnueFtInputdims = 64 * 641;
+const int NnueClippingShift = 6;
+const int NnueValueScale = 16;
+
+typedef int8_t clipped_t;
+
+// All pieces besides kings are inputs => 30 dimensions
+typedef struct {
+    size_t size;
+    unsigned values[30];
+} NnueIndexList;
+
+typedef struct {
+    int dirtyNum;
+    PieceCode pc[3];
+    int from[3];
+    int to[3];
+} DirtyPiece;
+
+
+extern bool NnueReady;
+
+
+class NnueLayer
+{
+public:
+    NnueLayer* previous;
+
+    NnueLayer(NnueLayer* prev) { previous = prev; }
+    virtual bool ReadWeights(ifstream* is) = 0;
+    virtual uint32_t GetHash() = 0;
+};
+
+class NnueFeatureTransformer : public NnueLayer
+{
+public:
+    int16_t* bias;
+    int16_t* weight;
+
+    NnueFeatureTransformer();
+    ~NnueFeatureTransformer();
+    bool ReadWeights(ifstream* is);
+    uint32_t GetHash();
+};
+
+class NnueClippedRelu : public NnueLayer
+{
+public:
+    int dims;
+    NnueClippedRelu(NnueLayer* prev, int d);
+    bool ReadWeights(ifstream* is);
+    uint32_t GetHash();
+    void Propagate(int32_t *input, clipped_t *output);
+};
+
+class NnueInputSlice : public NnueLayer
+{
+public:
+    const int outputdims = 512;
+
+    NnueInputSlice();
+    bool ReadWeights(ifstream* is);
+    uint32_t GetHash();
+};
+
+class NnueNetworkLayer : public NnueLayer
+{
+public:
+    int inputdims;
+    int outputdims;
+
+    int32_t* bias;
+    int8_t* weight;
+
+    NnueNetworkLayer(NnueLayer* prev, int id, int od);
+    ~NnueNetworkLayer();
+    bool ReadWeights(ifstream* is);
+    uint32_t GetHash();
+    void Propagate(clipped_t *input, int32_t *output);
+};
+
+class NnueAccumulator
+{
+public:
+    alignas(64) int16_t accumulation[2][256];
+    int score;
+    int computationState;
+    //bool computed_accumulation;
+    // bool computed_score;
+};
+
+
+void NnueInit();
+void NnueRemove();
+void NnueReadNet(string path);
+
+
 
 //
 // transposition stuff
@@ -742,7 +858,6 @@ extern transposition tp;
 
 #define BUFSIZE 4096
 
-#define PieceType unsigned int
 #define BLANKTYPE 0
 #define PAWN 1
 #define KNIGHT 2
@@ -751,7 +866,6 @@ extern transposition tp;
 #define QUEEN 5
 #define KING 6
 
-#define PieceCode unsigned int
 #define BLANK 0
 #define WPAWN 2
 #define BPAWN 3
@@ -1195,7 +1309,10 @@ public:
     U64 he_all;
     Materialhash mtrlhsh;
     Pawnhash pwnhsh;
-
+#ifdef NNUE
+    NnueAccumulator accumulator[MAXDEPTH];
+    DirtyPiece dirtypiece[MAXDEPTH];
+#endif
     bool w2m();
     void BitboardSet(int index, PieceCode p);
     void BitboardClear(int index, PieceCode p);
@@ -1253,6 +1370,15 @@ public:
 #endif
     int testRepetiton();
     void mirror();
+#ifdef NNUE
+    void HalfkpAppendActiveIndices(int c, NnueIndexList *active);
+    void AppendActiveIndices(NnueIndexList active[2]);
+    void HalfkpAppendChangedIndices(int c, NnueIndexList *add, NnueIndexList *remove);
+    void AppendChangedIndices(NnueIndexList add[2], NnueIndexList remove[2]);
+    void RefreshAccumulator();
+    void Transform(clipped_t *output);
+    int NnueGetEval();
+#endif
 };
 
 //
@@ -1516,82 +1642,5 @@ void search_statistics();
 #define STATISTICSADD(x, v)
 #define STATISTICSDO(x)
 #endif
-
-
-//
-// NNUE stuff
-//
-
-#define NNUEFILEVERSION     0x7AF32F16u
-#define NNUENETLAYERHASH    0xCC03DAE4u
-#define NNUECLIPPEDRELUHASH 0x538D24C7u
-#define NNUEFEATUREHASH     (0x5D69D5B9u ^ true)
-#define NNUEINPUTSLICEHASH  0xEC42E90Du
-
-extern bool NnueReady;
-
-
-class NnueLayer
-{
-public:
-    NnueLayer* previous;
-
-    NnueLayer(NnueLayer* prev) { previous = prev; }
-    virtual bool ReadWeights(ifstream* is) = 0;
-    virtual uint32_t GetHash() = 0;
-};
-
-class NnueFeatureTransformer : public NnueLayer
-{
-public:
-    const int halfdims = 256;
-    const int outputdims = halfdims * 2;
-    const int inputdims = 64 * 641;
-
-    int16_t* bias;
-    int16_t* weight;
-
-    NnueFeatureTransformer();
-    ~NnueFeatureTransformer();
-    bool ReadWeights(ifstream *is);
-    uint32_t GetHash();
-};
-
-class NnueClippedRelu : public NnueLayer
-{
-public:
-    NnueClippedRelu(NnueLayer* prev);
-    bool ReadWeights(ifstream* is);
-    uint32_t GetHash();
-};
-
-class NnueInputSlice : public NnueLayer
-{
-public:
-    const int outputdims = 512;
-
-    NnueInputSlice();
-    bool ReadWeights(ifstream* is);
-    uint32_t GetHash();
-};
-
-class NnueNetworkLayer : public NnueLayer
-{
-public:
-    int inputdims;
-    int outputdims;
-
-    int32_t* bias;
-    int8_t* weight;
-
-    NnueNetworkLayer(NnueLayer* prev, int id, int od);
-    ~NnueNetworkLayer();
-    bool ReadWeights(ifstream* is);
-    uint32_t GetHash();
-};
-
-void NnueInit();
-void NnueRemove();
-void NnueReadNet(string path);
 
 

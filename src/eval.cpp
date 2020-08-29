@@ -777,6 +777,7 @@ int chessposition::getEval()
     getpsqval();
 #endif
     ph = phase();
+
     positioneval pe;
     int score;
 
@@ -844,6 +845,10 @@ int chessposition::getEval()
         te.score = score;
         traceEvalOut();
     }
+#ifdef NNUE
+    score = NnueGetEval();
+    printf("score: %d\n", score);
+#endif
 
     return score;
 }
