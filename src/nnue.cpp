@@ -104,22 +104,32 @@ void chessposition::HalfkpAppendChangedIndices(int c, NnueIndexList* add, NnueIn
     }
 }
 
-void chessposition::AppendChangedIndices(NnueIndexList add[2], NnueIndexList remove[2])
+void chessposition::AppendChangedIndices(NnueIndexList add[2], NnueIndexList remove[2], bool reset[2])
 {
+    DirtyPiece* dp = &dirtypiece[mstop];
+    if (dp->dirtyNum == 0)
+        return;  // FIXME: When will this happen? reset is uninitialized in this case.
 
+    for (int c = 0; c < 2; c++) {
+        reset[c] = ((dp->pc[0] >> 1) == KING);
+        if (reset[c])
+            HalfkpAppendActiveIndices(c, &add[c]);
+        else
+            HalfkpAppendChangedIndices(c, &remove[c], &add[c]);
+    }
 }
 
 #define TILE_HEIGHT NnueFtHalfdims
 
 void chessposition::RefreshAccumulator()
 {
-    NnueAccumulator* ac = &accumulator[mstop];
+    NnueAccumulator *ac = &accumulator[mstop];
     NnueIndexList activeIndices[2];
     activeIndices[0].size = activeIndices[1].size = 0;
     AppendActiveIndices(activeIndices);
 
     for (int c = 0; c < 2; c++) {
-        for (unsigned i = 0; i < NnueFtHalfdims / TILE_HEIGHT; i++) {
+        for (int i = 0; i < NnueFtHalfdims / TILE_HEIGHT; i++) {
             memcpy(&(ac->accumulation[c][i * TILE_HEIGHT]), &NnueFt->bias[i * TILE_HEIGHT], TILE_HEIGHT * sizeof(int16_t));
             for (size_t k = 0; k < activeIndices[c].size; k++) {
                 unsigned index = activeIndices[c].values[k];
@@ -132,9 +142,60 @@ void chessposition::RefreshAccumulator()
     ac->computationState = 1;
 }
 
+// Test if we can update the accumulator from the previous position
+bool chessposition::UpdateAccumulator()
+{
+    NnueAccumulator *ac = &accumulator[mstop];
+    if (ac->computationState)
+        return true;
+
+    if (mstop == 0)
+        return false;
+
+    NnueAccumulator* prevac = &accumulator[mstop - 1];
+    if (!prevac->computationState)
+        return false;
+
+    NnueIndexList removedIndices[2], addedIndices[2];
+    removedIndices[0].size = removedIndices[1].size = 0;
+    addedIndices[0].size = addedIndices[1].size = 0;
+
+    bool reset[2];
+    AppendChangedIndices(addedIndices, removedIndices, reset);
+
+    for (int i = 0; i < NnueFtHalfdims / TILE_HEIGHT; i++) {
+        for (int c = 0; c < 2; c++) {
+            if (reset[c]) {
+                memcpy(&ac->accumulation[c][i * TILE_HEIGHT], &NnueFt->bias[i * TILE_HEIGHT], TILE_HEIGHT * sizeof(int16_t));
+            }
+            else {
+                memcpy(&ac->accumulation[c][i * TILE_HEIGHT], &prevac->accumulation[c][i * TILE_HEIGHT], TILE_HEIGHT * sizeof(int16_t));
+                // Difference calculation for the deactivated features
+                for (int k = 0; k < removedIndices[c].size; k++) {
+                    int index = removedIndices[c].values[k];
+                    const int offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
+                    for (int j = 0; j < NnueFtHalfdims; j++)
+                        ac->accumulation[c][i * TILE_HEIGHT + j] -= NnueFt->weight[offset + j];
+                }
+            }
+            // Difference calculation for the activated features
+            for (int k = 0; k < addedIndices[c].size; k++) {
+                int index = addedIndices[c].values[k];
+                const int offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
+                for (int j = 0; j < TILE_HEIGHT; j++)
+                    ac->accumulation[c][i * TILE_HEIGHT + j] += NnueFt->weight[offset + j];
+            }
+
+
+        }
+    }
+    ac->computationState = 1;
+    return true;
+}
+
 void chessposition::Transform(clipped_t *output)
 {
-    if (1)//!update_accumulator_if_possible(pos))
+    if (0)//!UpdateAccumulator())
         RefreshAccumulator();
 
     int16_t(*acc)[2][256] = &accumulator[mstop].accumulation;

@@ -777,13 +777,14 @@ int chessposition::getEval()
     getpsqval();
 #endif
     ph = phase();
-#ifdef NNUE
-    return NnueGetEval();
-    //printf("score: %d\n", score);
-#endif
 
     positioneval pe;
     int score;
+#ifdef NNUE
+    score = NnueGetEval();
+    printf("score: %3d\n", score);
+    return score * 5 / 4 + 28;
+#endif
 
     // reset the attackedBy information
     memset(attackedBy, 0, sizeof(attackedBy));

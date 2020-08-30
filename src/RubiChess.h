@@ -1374,8 +1374,9 @@ public:
     void HalfkpAppendActiveIndices(int c, NnueIndexList *active);
     void AppendActiveIndices(NnueIndexList active[2]);
     void HalfkpAppendChangedIndices(int c, NnueIndexList *add, NnueIndexList *remove);
-    void AppendChangedIndices(NnueIndexList add[2], NnueIndexList remove[2]);
+    void AppendChangedIndices(NnueIndexList add[2], NnueIndexList remove[2], bool reset[2]);
     void RefreshAccumulator();
+    bool UpdateAccumulator();
     void Transform(clipped_t *output);
     int NnueGetEval();
 #endif
