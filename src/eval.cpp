@@ -781,9 +781,9 @@ int chessposition::getEval()
     positioneval pe;
     int score;
 #ifdef NNUE
-    score = NnueGetEval();
-    printf("score: %3d\n", score);
-    return score * 5 / 4 + 28;
+    score = NnueGetEval() * 5 / 4 + 28;
+    //printf("v= %3d\n", score);
+    return score;
 #endif
 
     // reset the attackedBy information
@@ -851,7 +851,7 @@ int chessposition::getEval()
         traceEvalOut();
     }
 
-    return score;
+    return S2MSIGN(state & S2MMASK) * score;
 }
 
 

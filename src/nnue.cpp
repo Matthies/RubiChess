@@ -97,10 +97,14 @@ void chessposition::HalfkpAppendChangedIndices(int c, NnueIndexList* add, NnueIn
     for (int i = 0; i < dp->dirtyNum; i++) {
         PieceCode pc = dp->pc[i];
         if ((pc >> 1) == KING) continue;
-        if (dp->from[i] >= 0)
+        if (dp->from[i] >= 0) {
             remove->values[remove->size++] = MAKEINDEX(c, dp->from[i], pc, k);
-        if (dp->to[i] >= 0)
+            //printf("remove from: %d %d %d %d  ->  %d\n", c, dp->from[i], pc, k, MAKEINDEX(c, dp->from[i], pc, k));
+        }
+        if (dp->to[i] >= 0) {
             add->values[add->size++] = MAKEINDEX(c, dp->to[i], pc, k);
+            //printf("add to: %d %d %d %d  ->  %d\n", c, dp->to[i], pc, k, MAKEINDEX(c, dp->to[i], pc, k));
+        }
     }
 }
 
@@ -111,11 +115,11 @@ void chessposition::AppendChangedIndices(NnueIndexList add[2], NnueIndexList rem
         return;  // FIXME: When will this happen? reset is uninitialized in this case.
 
     for (int c = 0; c < 2; c++) {
-        reset[c] = ((dp->pc[0] >> 1) == KING);
+        reset[c] = (dp->pc[0] == WKING + c);
         if (reset[c])
             HalfkpAppendActiveIndices(c, &add[c]);
         else
-            HalfkpAppendChangedIndices(c, &remove[c], &add[c]);
+            HalfkpAppendChangedIndices(c, &add[c], &remove[c]);
     }
 }
 
@@ -195,7 +199,7 @@ bool chessposition::UpdateAccumulator()
 
 void chessposition::Transform(clipped_t *output)
 {
-    if (0)//!UpdateAccumulator())
+    if (!UpdateAccumulator())
         RefreshAccumulator();
 
     int16_t(*acc)[2][256] = &accumulator[mstop].accumulation;
@@ -229,6 +233,8 @@ int chessposition::NnueGetEval()
     NnueHd2->Propagate(hidden1_clipped, hidden2_values);
     NnueCl1->Propagate(hidden2_values, hidden2_clipped);
     NnueOut->Propagate(hidden2_clipped, &out_value);
+
+    //printf("Value: %d  %d\n", out_value, out_value / NnueValueScale);
 
     return out_value / NnueValueScale;
 }
