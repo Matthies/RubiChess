@@ -18,6 +18,13 @@
 
 #include "RubiChess.h"
 
+
+#define USE_AVX2
+#include <immintrin.h>
+
+#define USE_SSE2
+#include <emmintrin.h>
+
 #ifdef NNUE
 
 //
@@ -123,7 +130,29 @@ void chessposition::AppendChangedIndices(NnueIndexList add[2], NnueIndexList rem
     }
 }
 
+#ifdef USE_AVX2
+#define SIMD_WIDTH 256
+typedef __m256i vec_t;
+#define vec_add_16(a,b) _mm256_add_epi16(a,b)
+#define vec_sub_16(a,b) _mm256_sub_epi16(a,b)
+#elif USE_SSE2
+#define SIMD_WIDTH 128
+typedef __m128i vec_t;
+#define vec_add_16(a,b) _mm_add_epi16(a,b)
+#define vec_sub_16(a,b) _mm_sub_epi16(a,b)
+#endif
+
+#if defined(USE_SSE2)
+#define NUM_REGS 16
+#endif
+
+
+#if defined(USE_SSE2) || defined(USE_MMX)
+#define TILE_HEIGHT (NUM_REGS * SIMD_WIDTH / 16)
+#else
 #define TILE_HEIGHT NnueFtHalfdims
+#endif
+
 
 void chessposition::RefreshAccumulator()
 {
@@ -134,13 +163,39 @@ void chessposition::RefreshAccumulator()
 
     for (int c = 0; c < 2; c++) {
         for (int i = 0; i < NnueFtHalfdims / TILE_HEIGHT; i++) {
+
+#if defined(USE_SSE2) || defined(USE_MMX)
+            vec_t* ft_biases_tile = (vec_t*)&NnueFt->bias[i * TILE_HEIGHT];
+            vec_t* accTile = (vec_t*)&ac->accumulation[c][i * TILE_HEIGHT];
+            vec_t acc[NUM_REGS];
+            for (unsigned j = 0; j < NUM_REGS; j++)
+                acc[j] = ft_biases_tile[j];
+
+#else
+
             memcpy(&(ac->accumulation[c][i * TILE_HEIGHT]), &NnueFt->bias[i * TILE_HEIGHT], TILE_HEIGHT * sizeof(int16_t));
+#endif
             for (size_t k = 0; k < activeIndices[c].size; k++) {
                 unsigned index = activeIndices[c].values[k];
                 unsigned offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
+
+#if defined(USE_SSE2) || defined(USE_MMX)
+                vec_t* column = (vec_t*)&NnueFt->weight[offset];
+                for (unsigned j = 0; j < NUM_REGS; j++)
+                    acc[j] = vec_add_16(acc[j], column[j]);
+
+#else
+
                 for (unsigned j = 0; j < NnueFtHalfdims; j++)
                     ac->accumulation[c][i * TILE_HEIGHT + j] += NnueFt->weight[offset + j];
+#endif
             }
+
+#if defined(USE_SSE2) || defined(USE_MMX)
+            for (unsigned j = 0; j < NUM_REGS; j++)
+                accTile[j] = acc[j];
+
+#endif
         }
     }
     ac->computationState = 1;
@@ -204,16 +259,33 @@ void chessposition::Transform(clipped_t *output)
 
     int16_t(*acc)[2][256] = &accumulator[mstop].accumulation;
     //printf("Transform:\n");
+
+#if defined(USE_AVX2)
+    const unsigned numChunks = NnueFtHalfdims / 32;
+    const __m256i kZero = _mm256_setzero_si256();
+#endif
+
     const int perspectives[2] = { state & S2MMASK, !(state & S2MMASK) };
     for (int p = 0; p < 2; p++)
     {
         const unsigned int offset = NnueFtHalfdims * p;
+
+#if defined(USE_AVX2)
+        __m256i* out = (__m256i*) & output[offset];
+        for (unsigned i = 0; i < numChunks; i++) {
+            __m256i sum0 = ((__m256i*)(*acc)[perspectives[p]])[i * 2 + 0];
+            __m256i sum1 = ((__m256i*)(*acc)[perspectives[p]])[i * 2 + 1];
+            out[i] = _mm256_permute4x64_epi64(_mm256_max_epi8(
+                _mm256_packs_epi16(sum0, sum1), kZero), 0xd8);
+        }
+#else
         for (int i = 0; i < NnueFtHalfdims; i++)
         {
             int16_t sum = (*acc)[perspectives[p]][i];
             output[offset + i] = max(0, min(127, sum));
             //printf("index: %d   sum=%d\n", offset + i, sum);
         }
+#endif
     }
 }
 
@@ -319,13 +391,45 @@ uint32_t NnueNetworkLayer::GetHash()
 void NnueNetworkLayer::Propagate(clipped_t* input, int32_t* output)
 {
     //printf("Affine propagate...\n");
+
+#if defined(USE_AVX2)
+const unsigned numChunks = inputdims / 32;
+__m256i* inVec = (__m256i*)input;
+#if !defined(USE_VNNI)
+const __m256i kOnes = _mm256_set1_epi16(1);
+#endif
+#endif
     for (int i = 0; i < outputdims; ++i) {
         unsigned int offset = i * inputdims;
+
+#if defined(USE_AVX2)
+    __m256i sum = _mm256_setzero_si256();
+    __m256i* row = (__m256i*) & weight[offset];
+    for (unsigned j = 0; j < numChunks; j++) {
+#if defined(USE_VNNI)
+        sum = _mm256_dpbusd_epi32(sum, inVec[j], row[j]);
+#else
+        __m256i product = _mm256_maddubs_epi16(inVec[j], row[j]);
+        product = _mm256_madd_epi16(product, kOnes);
+        sum = _mm256_add_epi32(sum, product);
+#endif
+    }
+    __m128i sum128 = _mm_add_epi32(_mm256_castsi256_si128(sum), _mm256_extracti128_si256(sum, 1));
+    sum128 = _mm_add_epi32(sum128, _mm_shuffle_epi32(sum128, _MM_PERM_BADC));
+    sum128 = _mm_add_epi32(sum128, _mm_shuffle_epi32(sum128, _MM_PERM_CDAB));
+    output[i] = _mm_cvtsi128_si32(sum128) + bias[i];
+
+#else
         int32_t sum = bias[i];
         for (int j = 0; j < inputdims; j++)
             sum += weight[offset + j] * input[j];
         //printf("%d  %d\n", i, sum);
         output[i] = sum;
+
+#endif
+
+
+
     }
 }
 
@@ -350,8 +454,24 @@ uint32_t NnueClippedRelu::GetHash()
 
 void NnueClippedRelu::Propagate(int32_t *input, clipped_t *output)
 {
+#if defined(USE_AVX2)
+    const unsigned numChunks = dims / 32;
+    const __m256i kZero = _mm256_setzero_si256();
+    const __m256i kOffsets = _mm256_set_epi32(7, 3, 6, 2, 5, 1, 4, 0);
+    __m256i* in = (__m256i*)input;
+    __m256i* out = (__m256i*)output;
+    for (unsigned i = 0; i < numChunks; i++) {
+        __m256i words0 = _mm256_srai_epi16(_mm256_packs_epi32(
+            in[i * 4 + 0], in[i * 4 + 1]), NnueClippingShift);
+        __m256i words1 = _mm256_srai_epi16(_mm256_packs_epi32(
+            in[i * 4 + 2], in[i * 4 + 3]), NnueClippingShift);
+        out[i] = _mm256_permutevar8x32_epi32(_mm256_max_epi8(
+            _mm256_packs_epi16(words0, words1), kZero), kOffsets);
+    }
+#else
     for (int i = 0; i < dims; i++)
         output[i] = max(0, min(127, input[i] >> NnueClippingShift));
+#endif
 }
 
 

@@ -303,6 +303,7 @@ void engine::GetSystemInfo()
     unsigned    nIds, nExIds, i;
     bool    bPOPCNT = false;
     bool    bBMI2 = false;
+    bool    bAVX2 = false;
 
 
     CPUID(CPUInfo, 0);
@@ -331,7 +332,10 @@ void engine::GetSystemInfo()
             bPOPCNT = (CPUInfo[2] & 0x800000) || false;
 
         if (i == 7)
+        {
             bBMI2 = (CPUInfo[1] & 0x100) || false;
+            bAVX2 = (CPUInfo[1] & 0x020) || false;
+        }
     }
 
     // Calling __cpuid with 0x80000000 as the InfoType argument
