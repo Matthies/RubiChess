@@ -125,11 +125,11 @@ void chessposition::RefreshAccumulator()
                 unsigned index = activeIndices[c].values[k];
                 unsigned offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
                 for (unsigned j = 0; j < NnueFtHalfdims; j++)
-                    accumulator->accumulation[c][i * TILE_HEIGHT + j] += NnueFt->weight[offset + j];
+                    ac->accumulation[c][i * TILE_HEIGHT + j] += NnueFt->weight[offset + j];
             }
         }
     }
-    accumulator->computationState = 1;
+    ac->computationState = 1;
 }
 
 void chessposition::Transform(clipped_t *output)
@@ -154,6 +154,7 @@ void chessposition::Transform(clipped_t *output)
 
 int chessposition::NnueGetEval()
 {
+    //printf("%s\n", toFen().c_str());
     alignas(64) clipped_t input[NnueFtOutputdims];
     int32_t hidden1_values[32];
     int32_t hidden2_values[32];
