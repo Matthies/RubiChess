@@ -75,7 +75,7 @@ void generateEpd(string egn)
             pos->movestack[0].movecode = -1;  // Avoid fast eval after null move
             pos->rootheight = 0;
             pos->lastnullmove = -1;
-            int staticeval = S2MSIGN(pos->state & S2MMASK) * pos->getEval<NOTRACE>();
+            int staticeval = pos->getEval<NOTRACE>();
             int quietval = pos->getQuiescence(SCOREBLACKWINS, SCOREWHITEWINS, 0);
             bool isQuiet = (abs(staticeval - quietval) < 100);
             if (isQuiet)
