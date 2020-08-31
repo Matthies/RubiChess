@@ -20,7 +20,7 @@ PROFEXE=RubiChess-Prof
 
 # AVX2-build
 AVX2EXE=RubiChess-AVX2
-AVX2CPUFEATURE=-D CPUFEATURE=CPUPOPCOUNT
+AVX2CPUFEATURE=-D CPUFEATURE=CPUBMI2
 AVX2ARCHFLAGS=-msse3 -mpopcnt -mbmi2 -mavx2
 
 # BMI2-build
@@ -81,6 +81,7 @@ profile-build-one:
 !ENDIF
 
 profile-build:
+	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-avx2
 	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-popcount
 	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-bmi2
 	@nmake -c -f Makefile.clang profile-build-one PR=rubiChess-legacy
@@ -93,6 +94,7 @@ profile-clean:
 
 clean: profile-clean
 	@del $(RELDIR)\RubiChess-oldcpu.exe
+	@del $(RELDIR)\$(AVX2EXE).exe
 	@del $(RELDIR)\$(BMI2EXE).exe
 	@del $(RELDIR)\$(POPCOUNTEXE).exe
 	@del $(RELDIR)\$(LEGACYEXE).exe

@@ -294,7 +294,7 @@ static void cpuid(int32_t out[4], int32_t x) {
 void engine::GetSystemInfo()
 {
     en.maxHWSupport = CPULEGACY;
-
+    return;
     // shameless copy from MSDN example explaining __cpuid
     char CPUBrandString[0x40];
     char CPUString[0x10];
