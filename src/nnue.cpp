@@ -135,7 +135,7 @@ void chessposition::AppendChangedIndices(NnueIndexList add[2], NnueIndexList rem
 typedef __m256i vec_t;
 #define vec_add_16(a,b) _mm256_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm256_sub_epi16(a,b)
-#elif USE_SSE2
+#elif defined(USE_SSE2)
 #define SIMD_WIDTH 128
 typedef __m128i vec_t;
 #define vec_add_16(a,b) _mm_add_epi16(a,b)
@@ -421,8 +421,8 @@ const __m256i kOnes = _mm256_set1_epi16(1);
 #endif
     }
     __m128i sum128 = _mm_add_epi32(_mm256_castsi256_si128(sum), _mm256_extracti128_si256(sum, 1));
-    sum128 = _mm_add_epi32(sum128, _mm_shuffle_epi32(sum128, _MM_PERM_BADC));
-    sum128 = _mm_add_epi32(sum128, _mm_shuffle_epi32(sum128, _MM_PERM_CDAB));
+    sum128 = _mm_add_epi32(sum128, _mm_shuffle_epi32(sum128, 0x4E /*_MM_PERM_BADC*/));
+    sum128 = _mm_add_epi32(sum128, _mm_shuffle_epi32(sum128, 0xB1 /*_MM_PERM_CDAB*/));
     output[i] = _mm_cvtsi128_si32(sum128) + bias[i];
 
 #else

@@ -6,7 +6,7 @@
 
 
 # General settings
-CLANGVER=9
+CLANGVER=10
 LLVMInstallDir="C:\Program Files\LLVM$(CLANGVER)""
 CXX=$(LLVMInstallDir)\bin\clang-cl.exe
 LD=$(LLVMInstallDir)\bin\lld-link.exe
@@ -17,6 +17,11 @@ RELDIR=Release-clang
 CXXFLAGS=/GX /O2 /Oi /Ot /c -flto -fuse-ld=lld
 LDFLAGS=/OPT:REF /OPT:ICF
 PROFEXE=RubiChess-Prof
+
+# AVX2-build
+AVX2EXE=RubiChess-AVX2
+AVX2CPUFEATURE=-D CPUFEATURE=CPUPOPCOUNT
+AVX2ARCHFLAGS=-msse3 -mpopcnt -mbmi2 -mavx2
 
 # BMI2-build
 BMI2EXE=RubiChess-BMI2
@@ -52,6 +57,9 @@ build:
 !ELSE
 	@echo EXE is not defined.
 !ENDIF
+
+rubichess-avx2: $(RELDIR)
+	@nmake -c -f Makefile.clang build EXE=$(AVX2EXE) CPUFEATURE="$(AVX2CPUFEATURE)" ARCHFLAGS="$(AVX2ARCHFLAGS)"
 
 rubichess-bmi2: $(RELDIR)
 	@nmake -c -f Makefile.clang build EXE=$(BMI2EXE) CPUFEATURE="$(BMI2CPUFEATURE)" ARCHFLAGS="$(BMI2ARCHFLAGS)"
