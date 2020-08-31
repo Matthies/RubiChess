@@ -289,26 +289,32 @@ void chessposition::Transform(clipped_t *output)
     }
 }
 
-int chessposition::NnueGetEval()
-{
-    //printf("%s\n", toFen().c_str());
+
+struct NnueNetwork {
     alignas(64) clipped_t input[NnueFtOutputdims];
     int32_t hidden1_values[32];
     int32_t hidden2_values[32];
     clipped_t hidden1_clipped[32];
     clipped_t hidden2_clipped[32];
     int32_t out_value;
+};
 
-    Transform(input);
-    NnueHd1->Propagate(input, hidden1_values);
-    NnueCl1->Propagate(hidden1_values, hidden1_clipped);
-    NnueHd2->Propagate(hidden1_clipped, hidden2_values);
-    NnueCl1->Propagate(hidden2_values, hidden2_clipped);
-    NnueOut->Propagate(hidden2_clipped, &out_value);
+int chessposition::NnueGetEval()
+{
+    //printf("%s\n", toFen().c_str());
+
+    NnueNetwork network;
+
+    Transform(network.input);
+    NnueHd1->Propagate(network.input, network.hidden1_values);
+    NnueCl1->Propagate(network.hidden1_values, network.hidden1_clipped);
+    NnueHd2->Propagate(network.hidden1_clipped, network.hidden2_values);
+    NnueCl1->Propagate(network.hidden2_values, network.hidden2_clipped);
+    NnueOut->Propagate(network.hidden2_clipped, &network.out_value);
 
     //printf("Value: %d  %d\n", out_value, out_value / NnueValueScale);
 
-    return out_value / NnueValueScale;
+    return network.out_value / NnueValueScale;
 }
 
 
