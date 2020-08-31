@@ -6,6 +6,11 @@ MAKEFLAGS += --no-print-directory
 
 
 ifeq ($(shell uname -m),x86_64)
+	# AVX2-build
+	AVX2EXE=RubiChess-AVX2
+	AVX2CPUFEATURE=-D CPUFEATURE=CPUBMI2
+	AVX2ARCHFLAGS=-msse3 -mpopcnt -mbmi2 -mavx2
+
 	# BMI2-build
 	BMI2EXE=RubiChess-BMI2
 	BMI2CPUFEATURE=-D CPUFEATURE=CPUBMI2
@@ -80,12 +85,15 @@ endif
 default: clean
 	@$(MAKE) compile ARCHFLAGS="$(POPCOUNTARCHFLAGS)" CPUFEATURE="$(POPCOUNTCPUFEATURE)"
 
-all: RubiChess-BMI2 RubiChess RubiChess-Legacy
+all: RubiChess-AVX2 RubiChess-BMI2 RubiChess RubiChess-Legacy
 
 compile:
 	@echo   \  Compiling $(EXE)...
 	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(GITDEFINE) $(CPUFEATURE) $(LDFLAGS) $(EXTRALDFLAGS) -o $(EXE)
 	#$(LD) *.o 
+
+RubiChess-AVX2:
+	@$(MAKE) compile ARCHFLAGS="$(AVX2ARCHFLAGS)" EXE=$(AVX2EXE) CPUFEATURE="$(AVX2CPUFEATURE)"
 
 RubiChess-BMI2:
 	@$(MAKE) compile ARCHFLAGS="$(BMI2ARCHFLAGS)" EXE=$(BMI2EXE) CPUFEATURE="$(BMI2CPUFEATURE)"
@@ -97,7 +105,7 @@ RubiChess-Legacy:
 	@$(MAKE) compile ARCHFLAGS="$(LEGACYARCHFLAGS)" EXE=$(LEGACYEXE) CPUFEATURE="$(LEGACYCPUFEATURE)"
 
 objclean:
-	$(RM) $(BMI2EXE) $(POPCOUNTEXE) $(LEGACYEXE) *.o
+	$(RM) $(AVX2EXE) $(BMI2EXE) $(POPCOUNTEXE) $(LEGACYEXE) *.o
 
 profileclean:
 	$(RM) -rf $(PROFDIR)
@@ -128,6 +136,7 @@ clang-profile-make:
 
 
 profile-build: clean
+	@if [ "$(AVX2EXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(AVX2EXE); fi
 	@if [ "$(POPCOUNTEXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(POPCOUNTEXE); fi
 	@if [ "$(BMI2EXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(BMI2EXE); fi
 	@if [ "$(LEGACYEXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(LEGACYEXE); fi
