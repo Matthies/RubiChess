@@ -279,11 +279,11 @@ string AlgebraicFromShort(string s, chessposition *pos)
 
 #if defined(_M_X64) || defined(__amd64)
 
-#ifdef _MSC_VER
+#if defined _MSC_VER && !defined(__clang_major__)
 #define CPUID(x,i) __cpuid(x, i)
 #endif
 
-#if defined(__MINGW64__) || defined(__gnu_linux__)
+#if defined(__MINGW64__) || defined(__gnu_linux__) || defined(__clang_major__)
 #include <cpuid.h>
 #define CPUID(x,i) cpuid(x, i)
 static void cpuid(int32_t out[4], int32_t x) {
@@ -294,7 +294,7 @@ static void cpuid(int32_t out[4], int32_t x) {
 void engine::GetSystemInfo()
 {
     en.maxHWSupport = CPULEGACY;
-    return;
+
     // shameless copy from MSDN example explaining __cpuid
     char CPUBrandString[0x40];
     char CPUString[0x10];
@@ -305,8 +305,8 @@ void engine::GetSystemInfo()
     bool    bBMI2 = false;
     bool    bAVX2 = false;
 
-
     CPUID(CPUInfo, 0);
+
     memset(CPUString, 0, sizeof(CPUString));
     memcpy(CPUString, &CPUInfo[1], 4);
     memcpy(CPUString + 4, &CPUInfo[3], 4);
