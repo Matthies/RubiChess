@@ -781,9 +781,12 @@ int chessposition::getEval()
     positioneval pe;
     int score;
 #ifdef NNUE
-    score = NnueGetEval() + eps.eTempo;
-    //printf("v= %3d\n", score);
-    return score;
+    if (NnueReady)
+    {
+        score = NnueGetEval() + eps.eTempo;
+        //printf("v= %3d\n", score);
+        return score;
+    }
 #endif
 
     // reset the attackedBy information

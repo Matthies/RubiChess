@@ -2250,11 +2250,13 @@ int chessposition::getBestPossibleCapture()
     int me = state & S2MMASK;
     int you = me ^ S2MMASK;
     int captureval = 0;
+    U64 msk;
 #ifdef NNUE
     // attack bitboard not set in NNUE mode
-    const U64 msk = 0xffffffffffffffff;
-#else
-    const U64 msk = attackedBy[me][0];
+    if (NnueReady)
+        msk = 0xffffffffffffffff;
+    else
+        msk = attackedBy[me][0];
 #endif
     if (piece00[WQUEEN | you] & msk)
         captureval += materialvalue[QUEEN];

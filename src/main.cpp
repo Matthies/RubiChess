@@ -1033,7 +1033,16 @@ int main(int argc, char* argv[])
     } else if (benchmark || openbench)
     {
         // benchmark mode
+#ifdef NNUE
+        int oldNnueReady = NnueReady;
+        NnueReady = false;
         doBenchmark(depth, epdfile, maxtime, startnum, openbench);
+        if (oldNnueReady)
+        {
+            NnueReady = true;
+            doBenchmark(depth, epdfile, maxtime, startnum, openbench);
+        }
+#endif
     } else if (enginetest)
     {
 #ifdef _WIN32

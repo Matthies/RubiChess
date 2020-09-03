@@ -19,8 +19,9 @@
 #include "RubiChess.h"
 
 
-#define USE_AVX2
+#ifdef USE_AVX2
 #include <immintrin.h>
+#endif
 
 #define USE_SSE2
 #include <emmintrin.h>
@@ -527,6 +528,8 @@ void NnueRemove()
 
 void NnueReadNet(string path)
 {
+    NnueReady = false;
+
     uint32_t fthash = NnueFt->GetHash();
     uint32_t nethash = NnueOut->GetHash();
     uint32_t filehash = (fthash ^ nethash);
