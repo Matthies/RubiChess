@@ -19,12 +19,15 @@
 #include "RubiChess.h"
 
 
-#ifdef USE_AVX2
+#if defined(USE_AVX2)
 #include <immintrin.h>
-#endif
 
-#define USE_SSE2
+#elif defined(USE_SSSE3)
+#include <tmmintrin.h>
+
+#elif defined(USE_SSE2)
 #include <emmintrin.h>
+#endif
 
 #ifdef NNUE
 
@@ -48,19 +51,10 @@ enum {
 };
 
 // table to translate PieceCode to PieceSquare index for both POVs
-#if 0 // original SF piece numeration
-uint32_t PieceToIndex[2][16] = {
-  { 0, PS_WPAWN, PS_WKNIGHT, PS_WBISHOP, PS_WROOK, PS_WQUEEN, 0, 0,
-    0, PS_BPAWN, PS_BKNIGHT, PS_BBISHOP, PS_BROOK, PS_BQUEEN, 0, 0 },
-  { 0, PS_BPAWN, PS_BKNIGHT, PS_BBISHOP, PS_BROOK, PS_BQUEEN, 0, 0,
-    0, PS_WPAWN, PS_WKNIGHT, PS_WBISHOP, PS_WROOK, PS_WQUEEN, 0, 0 }
-};
-#else
 uint32_t PieceToIndex[2][16] = {
   { 0, 0, PS_WPAWN, PS_BPAWN, PS_WKNIGHT, PS_BKNIGHT, PS_WBISHOP, PS_BBISHOP, PS_WROOK, PS_BROOK, PS_WQUEEN, PS_BQUEEN, 0, 0, 0, 0 },
   { 0, 0, PS_BPAWN, PS_WPAWN, PS_BKNIGHT, PS_WKNIGHT, PS_BBISHOP, PS_WBISHOP, PS_BROOK, PS_WROOK, PS_BQUEEN, PS_WQUEEN, 0, 0, 0, 0 }
 };
-#endif
 
 
 //
@@ -123,7 +117,7 @@ void chessposition::AppendChangedIndices(NnueIndexList add[2], NnueIndexList rem
         return;  // FIXME: When will this happen? reset is uninitialized in this case.
 
     for (int c = 0; c < 2; c++) {
-        reset[c] = (dp->pc[0] == WKING + c);
+        reset[c] = (dp->pc[0] == (PieceCode)(WKING | c));
         if (reset[c])
             HalfkpAppendActiveIndices(c, &add[c]);
         else
@@ -136,11 +130,13 @@ void chessposition::AppendChangedIndices(NnueIndexList add[2], NnueIndexList rem
 typedef __m256i vec_t;
 #define vec_add_16(a,b) _mm256_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm256_sub_epi16(a,b)
+
 #elif defined(USE_SSE2)
 #define SIMD_WIDTH 128
 typedef __m128i vec_t;
 #define vec_add_16(a,b) _mm_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm_sub_epi16(a,b)
+
 #endif
 
 #if defined(USE_SSE2)
@@ -163,6 +159,7 @@ void chessposition::RefreshAccumulator()
     AppendActiveIndices(activeIndices);
 
     for (int c = 0; c < 2; c++) {
+
         for (int i = 0; i < NnueFtHalfdims / TILE_HEIGHT; i++) {
 
 #if defined(USE_SSE2) || defined(USE_MMX)
@@ -176,6 +173,7 @@ void chessposition::RefreshAccumulator()
 
             memcpy(&(ac->accumulation[c][i * TILE_HEIGHT]), &NnueFt->bias[i * TILE_HEIGHT], TILE_HEIGHT * sizeof(int16_t));
 #endif
+
             for (size_t k = 0; k < activeIndices[c].size; k++) {
                 unsigned index = activeIndices[c].values[k];
                 unsigned offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
@@ -199,6 +197,7 @@ void chessposition::RefreshAccumulator()
 #endif
         }
     }
+
     ac->computationState = 1;
 }
 
@@ -225,30 +224,68 @@ bool chessposition::UpdateAccumulator()
 
     for (int i = 0; i < NnueFtHalfdims / TILE_HEIGHT; i++) {
         for (int c = 0; c < 2; c++) {
+#if defined(USE_SSE2) || defined(USE_MMX)
+            vec_t* accTile = (vec_t*)&ac->accumulation[c][i * TILE_HEIGHT];
+            vec_t acc[NUM_REGS];
+
+#endif
+
             if (reset[c]) {
+#if defined(USE_SSE2) || defined(USE_MMX)
+                vec_t* ft_b_tile = (vec_t*)&NnueFt->bias[i * TILE_HEIGHT];
+                for (unsigned j = 0; j < NUM_REGS; j++)
+                    acc[j] = ft_b_tile[j];
+#else
+
                 memcpy(&ac->accumulation[c][i * TILE_HEIGHT], &NnueFt->bias[i * TILE_HEIGHT], TILE_HEIGHT * sizeof(int16_t));
+#endif
             }
             else {
+#if defined(USE_SSE2) || defined(USE_MMX)
+                vec_t* prevAccTile = (vec_t*)&prevac->accumulation[c][i * TILE_HEIGHT];
+                for (unsigned j = 0; j < NUM_REGS; j++)
+                    acc[j] = prevAccTile[j];
+#else
                 memcpy(&ac->accumulation[c][i * TILE_HEIGHT], &prevac->accumulation[c][i * TILE_HEIGHT], TILE_HEIGHT * sizeof(int16_t));
+#endif
                 // Difference calculation for the deactivated features
-                for (int k = 0; k < removedIndices[c].size; k++) {
+                for (size_t k = 0; k < removedIndices[c].size; k++) {
                     int index = removedIndices[c].values[k];
                     const int offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
+#if defined(USE_SSE2) || defined(USE_MMX)
+                    vec_t* column = (vec_t*)&NnueFt->weight[offset];
+                    for (unsigned j = 0; j < NUM_REGS; j++)
+                        acc[j] = vec_sub_16(acc[j], column[j]);
+
+#else
                     for (int j = 0; j < NnueFtHalfdims; j++)
                         ac->accumulation[c][i * TILE_HEIGHT + j] -= NnueFt->weight[offset + j];
+#endif
                 }
             }
             // Difference calculation for the activated features
-            for (int k = 0; k < addedIndices[c].size; k++) {
+            for (size_t k = 0; k < addedIndices[c].size; k++) {
                 int index = addedIndices[c].values[k];
                 const int offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
+#if defined(USE_SSE2) || defined(USE_MMX)
+                vec_t* column = (vec_t*)&NnueFt->weight[offset];
+                for (unsigned j = 0; j < NUM_REGS; j++)
+                    acc[j] = vec_add_16(acc[j], column[j]);
+
+#else
                 for (int j = 0; j < TILE_HEIGHT; j++)
                     ac->accumulation[c][i * TILE_HEIGHT + j] += NnueFt->weight[offset + j];
+#endif
             }
 
+#if defined(USE_SSE2) || defined(USE_MMX)
+            for (unsigned j = 0; j < NUM_REGS; j++)
+                accTile[j] = acc[j];
 
+#endif
         }
     }
+
     ac->computationState = 1;
     return true;
 }
@@ -264,6 +301,11 @@ void chessposition::Transform(clipped_t *output)
 #if defined(USE_AVX2)
     const unsigned numChunks = NnueFtHalfdims / 32;
     const __m256i kZero = _mm256_setzero_si256();
+
+#elif defined(USE_SSSE3)
+    const unsigned numChunks = NnueFtHalfdims / 16;
+    const __m128i k0x80s = _mm_set1_epi8(-128);
+
 #endif
 
     const int perspectives[2] = { state & S2MMASK, !(state & S2MMASK) };
@@ -279,11 +321,21 @@ void chessposition::Transform(clipped_t *output)
             out[i] = _mm256_permute4x64_epi64(_mm256_max_epi8(
                 _mm256_packs_epi16(sum0, sum1), kZero), 0xd8);
         }
+
+#elif defined(USE_SSSE3)
+        __m128i* out = (__m128i*) & output[offset];
+        for (unsigned i = 0; i < numChunks; i++) {
+            __m128i sum0 = ((__m128i*)(*acc)[perspectives[p]])[i * 2 + 0];
+            __m128i sum1 = ((__m128i*)(*acc)[perspectives[p]])[i * 2 + 1];
+            __m128i packedbytes = _mm_packs_epi16(sum0, sum1);
+            out[i] = _mm_subs_epi8(_mm_adds_epi8(packedbytes, k0x80s), k0x80s);
+        }
+
 #else
         for (int i = 0; i < NnueFtHalfdims; i++)
         {
             int16_t sum = (*acc)[perspectives[p]][i];
-            output[offset + i] = max(0, min(127, sum));
+            output[offset + i] = max<int16_t>(0, min<int16_t>(127, sum));
             //printf("index: %d   sum=%d\n", offset + i, sum);
         }
 #endif
@@ -402,29 +454,48 @@ void NnueNetworkLayer::Propagate(clipped_t* input, int32_t* output)
 #if defined(USE_AVX2)
 const unsigned numChunks = inputdims / 32;
 __m256i* inVec = (__m256i*)input;
-#if !defined(USE_VNNI)
 const __m256i kOnes = _mm256_set1_epi16(1);
+
+#elif defined(USE_SSSE3)
+const unsigned numChunks = inputdims / 16;
+const __m128i kOnes = _mm_set1_epi16(1);
+__m128i* inVec = (__m128i*)input;
+
 #endif
-#endif
+
     for (int i = 0; i < outputdims; ++i) {
         unsigned int offset = i * inputdims;
 
 #if defined(USE_AVX2)
-    __m256i sum = _mm256_setzero_si256();
-    __m256i* row = (__m256i*) & weight[offset];
-    for (unsigned j = 0; j < numChunks; j++) {
-#if defined(USE_VNNI)
-        sum = _mm256_dpbusd_epi32(sum, inVec[j], row[j]);
-#else
-        __m256i product = _mm256_maddubs_epi16(inVec[j], row[j]);
-        product = _mm256_madd_epi16(product, kOnes);
-        sum = _mm256_add_epi32(sum, product);
-#endif
-    }
-    __m128i sum128 = _mm_add_epi32(_mm256_castsi256_si128(sum), _mm256_extracti128_si256(sum, 1));
-    sum128 = _mm_add_epi32(sum128, _mm_shuffle_epi32(sum128, 0x4E /*_MM_PERM_BADC*/));
-    sum128 = _mm_add_epi32(sum128, _mm_shuffle_epi32(sum128, 0xB1 /*_MM_PERM_CDAB*/));
-    output[i] = _mm_cvtsi128_si32(sum128) + bias[i];
+
+        __m256i sum = _mm256_setzero_si256();
+        __m256i* row = (__m256i*) &weight[offset];
+
+        for (unsigned j = 0; j < numChunks; j++) {
+            __m256i product = _mm256_maddubs_epi16(inVec[j], row[j]);
+            product = _mm256_madd_epi16(product, kOnes);
+            sum = _mm256_add_epi32(sum, product);
+        }
+
+        __m128i sum128 = _mm_add_epi32(_mm256_castsi256_si128(sum), _mm256_extracti128_si256(sum, 1));
+        sum128 = _mm_add_epi32(sum128, _mm_shuffle_epi32(sum128, 0x4E)); //_MM_PERM_BADC
+        sum128 = _mm_add_epi32(sum128, _mm_shuffle_epi32(sum128, 0xB1)); //_MM_PERM_CDAB
+        output[i] = _mm_cvtsi128_si32(sum128) + bias[i];
+
+#elif defined(USE_SSSE3)
+        __m128i sum = _mm_setzero_si128();
+        __m128i* row = (__m128i*) &weight[offset];
+        for (unsigned j = 0; j < numChunks - 1; j += 2) {
+            __m128i product0 = _mm_maddubs_epi16(inVec[j], row[j]);
+            product0 = _mm_madd_epi16(product0, kOnes);
+            sum = _mm_add_epi32(sum, product0);
+            __m128i product1 = _mm_maddubs_epi16(inVec[j + 1], row[j + 1]);
+            product1 = _mm_madd_epi16(product1, kOnes);
+            sum = _mm_add_epi32(sum, product1);
+        }
+        sum = _mm_add_epi32(sum, _mm_shuffle_epi32(sum, 0x4E)); //_MM_PERM_BADC
+        sum = _mm_add_epi32(sum, _mm_shuffle_epi32(sum, 0xB1)); //_MM_PERM_CDAB
+        output[i] = _mm_cvtsi128_si32(sum) + bias[i];
 
 #else
         int32_t sum = bias[i];
@@ -434,9 +505,6 @@ const __m256i kOnes = _mm256_set1_epi16(1);
         output[i] = sum;
 
 #endif
-
-
-
     }
 }
 
@@ -475,10 +543,26 @@ void NnueClippedRelu::Propagate(int32_t *input, clipped_t *output)
         out[i] = _mm256_permutevar8x32_epi32(_mm256_max_epi8(
             _mm256_packs_epi16(words0, words1), kZero), kOffsets);
     }
+
+#elif defined(USE_SSSE3)
+    const unsigned numChunks = dims / 16;
+    const __m128i k0x80s = _mm_set1_epi8(-128);
+    __m128i* in = (__m128i*)input;
+    __m128i* out = (__m128i*)output;
+    for (unsigned i = 0; i < numChunks; i++) {
+        __m128i words0 = _mm_srai_epi16(
+            _mm_packs_epi32(in[i * 4 + 0], in[i * 4 + 1]), NnueClippingShift);
+        __m128i words1 = _mm_srai_epi16(
+            _mm_packs_epi32(in[i * 4 + 2], in[i * 4 + 3]), NnueClippingShift);
+        __m128i packedbytes = _mm_packs_epi16(words0, words1);
+        out[i] = _mm_subs_epi8(_mm_adds_epi8(packedbytes, k0x80s), k0x80s);
+    }
+
 #else
     for (int i = 0; i < dims; i++)
         output[i] = max(0, min(127, input[i] >> NnueClippingShift));
 #endif
+
 }
 
 
@@ -517,6 +601,7 @@ void NnueInit()
 
 void NnueRemove()
 {
+#if 0  // FIXME: Disabled because gcc complains Wdelete-non-virtual-dtor
     delete NnueFt;
     delete NnueIn;
     delete NnueHd1;
@@ -524,6 +609,7 @@ void NnueRemove()
     delete NnueHd2;
     delete NnueCl2;
     delete NnueOut;
+#endif
 }
 
 void NnueReadNet(string path)

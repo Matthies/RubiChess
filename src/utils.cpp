@@ -304,6 +304,7 @@ void engine::GetSystemInfo()
     bool    bPOPCNT = false;
     bool    bBMI2 = false;
     bool    bAVX2 = false;
+    bool    bSSSE3 = false;
 
     CPUID(CPUInfo, 0);
 
@@ -329,12 +330,15 @@ void engine::GetSystemInfo()
         CPUID(CPUInfo, i);
         // Interpret CPU feature information.
         if (i == 1)
+        {
             bPOPCNT = (CPUInfo[2] & 0x800000) || false;
+            bSSSE3 = (CPUInfo[2] & 0x000001) || false;
+        }
 
         if (i == 7)
         {
-            bBMI2 = (CPUInfo[1] & 0x100) || false;
-            bAVX2 = (CPUInfo[1] & 0x020) || false;
+            bBMI2   = (CPUInfo[1] & 0x00000100) || false;
+            bAVX2   = (CPUInfo[1] & 0x00000020) || false;
         }
     }
 
@@ -360,6 +364,9 @@ void engine::GetSystemInfo()
 
     maxHWSupport = bPOPCNT ? (bBMI2 ? CPUBMI2 : CPUPOPCOUNT) : CPULEGACY;
     system = CPUBrandString;
+
+    cout << "SSSE3 supported: " << (bSSSE3 ? "yes" : "no") << "\n";
+    cout << "AVX2 supported : " << (bAVX2 ? "yes" : "no") << "\n";
 
     if (CPUFEATURE > maxHWSupport)
     {

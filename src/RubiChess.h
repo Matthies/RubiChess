@@ -592,6 +592,10 @@ extern int tuningratio;
 // NNUE stuff
 //
 
+//#define USE_AVX2
+//#define USE_SSSE3
+//#define USE_SSE2
+
 #define NNUEFILEVERSION     0x7AF32F16u
 #define NNUENETLAYERHASH    0xCC03DAE4u
 #define NNUECLIPPEDRELUHASH 0x538D24C7u
@@ -608,7 +612,14 @@ const int NnueFtInputdims = 64 * 641;
 const int NnueClippingShift = 6;
 const int NnueValueScale = 16;
 
+#if (defined(USE_SSE2) || defined(USE_MMX)) && !defined(USE_SSSE3)
+// FIXME: This is not implemented yet
+typedef int16_t clipped_t;
+typedef int16_t weight_t;
+#else
+typedef int8_t weight_t;
 typedef int8_t clipped_t;
+#endif
 
 // All pieces besides kings are inputs => 30 dimensions
 typedef struct {
