@@ -291,6 +291,16 @@ static void cpuid(int32_t out[4], int32_t x) {
 }
 #endif
 
+
+string compilerinfo::PrintCpuFeatures(U64 f)
+{
+    string s = "";
+    for (int i = 0; f; i++, f = f >> 1)
+        if (f & 1) s += " " + strCpuFeatures[i];
+
+    return s;
+}
+
 void compilerinfo::GetSystemInfo()
 {
     machineSupports = 0ULL;
@@ -368,9 +378,7 @@ void compilerinfo::GetSystemInfo()
     if (notSupported)
     {
         cout << "info string Error! Binary is not compatible with this machine. Missing cpu features:";
-        for (i = 0; notSupported; i++, notSupported = notSupported >> 1)
-            if (notSupported & 1) cout << " " << strCpuFeatures[i];
-        cout << ". Please use correct binary.\n";
+        cout << PrintCpuFeatures(notSupported) << ". Please use correct binary.\n";
         exit(0);
     }
     
@@ -392,11 +400,7 @@ void compilerinfo::GetSystemInfo()
     if (supportedButunused)
     {
         cout << "info string Warning! Binary not optimal for this machine. Unused cpu features:";
-        for (i = 0; supportedButunused; i++, supportedButunused = supportedButunused >> 1)
-            if (supportedButunused & 1)
-                cout << " " << strCpuFeatures[i];
-
-        cout << ". Please use correct binary for best performance.\n";
+        cout << PrintCpuFeatures(supportedButunused) << ". Please use correct binary for best performance.\n";
     }
 }
 
@@ -404,7 +408,6 @@ void compilerinfo::GetSystemInfo()
 void compilerinfo::GetSystemInfo()
 {
     system = "Some non-x86-64 platform.";
-    maxHWSupport = CPUPOPCOUNT;
 }
 
 #endif

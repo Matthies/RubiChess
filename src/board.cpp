@@ -2473,7 +2473,7 @@ static void uciSetSyzygyPath()
 #ifdef NNUE
 static void uciSetNnuePath()
 {
-    cout << "Loading net " << en.NnueNetpath << " ...";
+    cout << "info string Loading net " << en.NnueNetpath << " ...";
     NnueReadNet(en.NnueNetpath);
     cout << (NnueReady ? " successful" : " failed") << "\n";
 }
@@ -2486,7 +2486,7 @@ compilerinfo::compilerinfo()
 
 string compilerinfo::SystemName()
 {
-    return "Some System";
+    return system;
 }
 
 

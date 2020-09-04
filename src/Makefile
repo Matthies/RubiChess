@@ -83,7 +83,7 @@ endif
 default: clean
 	@$(MAKE) compile ARCHFLAGS="$(MODERNARCHFLAGS)" CPUFEATURE="$(MODERNCPUFEATURE)"
 
-all: RubiChess-BMI2 RubiChess-AVX2 RubiChess-Modern RubiChess-Legacy
+all: RubiChess-BMI2 RubiChess-AVX2 RubiChess RubiChess-Legacy
 
 compile:
 	@echo   \  Compiling $(EXE)...

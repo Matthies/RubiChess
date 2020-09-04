@@ -224,6 +224,7 @@ static void perftest(bool dotests, int maxdepth)
     int i = 0;
     printf("\n\nPerft results for %s (Build %s)\n", en.name().c_str(), BUILD);
     printf("System: %s\n", cinfo.SystemName().c_str());
+    printf("CPU-Features of system: %s\nCPU-Features of binary: %s\n", cinfo.PrintCpuFeatures(cinfo.machineSupports).c_str(), cinfo.PrintCpuFeatures(cinfo.binarySupports).c_str());
     printf("Depth = %d    %8s  Hash-/Mirror-Tests %s\n", maxdepth, en.chess960 ? "Chess960" : "", dotests ? "enabled" : "disabled");
     printf("========================================================================\n");
 
@@ -289,6 +290,7 @@ static void benchTableHeader(FILE* out)
 {
         fprintf(out, "\n\nBenchmark results for %s (Build %s):\n", en.name().c_str(), BUILD);
         fprintf(out, "System: %s\n", cinfo.SystemName().c_str());
+        fprintf(out, "CPU-Features of system: %s\nCPU-Features of binary: %s\n", cinfo.PrintCpuFeatures(cinfo.machineSupports).c_str(), cinfo.PrintCpuFeatures(cinfo.binarySupports).c_str());
         fprintf(out, "=============================================================================================================\n");
 }
 

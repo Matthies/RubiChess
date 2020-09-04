@@ -142,21 +142,10 @@ using namespace std;
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 
-//#define CPULEGACY   0
-//#define CPUPOPCOUNT 1
-//#define CPUBMI2     2
-
 #define CPUVENDORUNKNOWN    0
 #define CPUVENDORINTEL      1
 #define CPUVENDORAMD        2
 
-#ifndef CPUFEATURE
-#ifdef _MSC_VER
-#define CPUFEATURE CPUPOPCOUNT
-#else
-#define CPUFEATURE CPULEGACY
-#endif
-#endif
 
 #if defined(__clang_major__)
 #define COMPILER "Clang " TOSTRING(__clang_major__)
@@ -187,7 +176,7 @@ using namespace std;
 #define BITSET(x) (1ULL << (x))
 #define MORETHANONE(x) ((x) & ((x) - 1)) 
 #define ONEORZERO(x) (!MORETHANONE(x))
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
 #define GETLSB(i,x) _BitScanForward64((DWORD*)&(i), (x))
 inline int pullLsb(unsigned long long *x) {
     DWORD i;
@@ -1492,13 +1481,11 @@ public:
 
     U64 machineSupports;
     string system;
-    //int maxHWSupport;
     int cpuVendor;
-    //bool badPEXT;
-    //const string cpufeature[3] = { "Legacy", "Popcount", "BMI2" };
     compilerinfo();
     void GetSystemInfo();
     string SystemName();
+    string PrintCpuFeatures(U64 features);
 };
 
 

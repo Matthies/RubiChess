@@ -84,7 +84,7 @@ profile-build:
 	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-bmi2
 	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-avx2
 	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-modern
-	@nmake -c -f Makefile.clang profile-build-one PR=rubiChess-legacy
+	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-legacy
 
 release: profile-build profile-clean
 
