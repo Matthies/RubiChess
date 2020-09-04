@@ -291,9 +291,10 @@ static void cpuid(int32_t out[4], int32_t x) {
 }
 #endif
 
-void engine::GetSystemInfo()
+void compilerinfo::GetSystemInfo()
 {
-    en.maxHWSupport = CPULEGACY;
+    //en.maxHWSupport = CPULEGACY;
+    machineSupports = 0ULL;
 
     // shameless copy from MSDN example explaining __cpuid
     char CPUBrandString[0x40];
@@ -301,10 +302,6 @@ void engine::GetSystemInfo()
     int CPUInfo[4] = { -1 };
 
     unsigned    nIds, nExIds, i;
-    bool    bPOPCNT = false;
-    bool    bBMI2 = false;
-    bool    bAVX2 = false;
-    bool    bSSSE3 = false;
 
     CPUID(CPUInfo, 0);
 
@@ -331,14 +328,16 @@ void engine::GetSystemInfo()
         // Interpret CPU feature information.
         if (i == 1)
         {
-            bPOPCNT = (CPUInfo[2] & 0x800000) || false;
-            bSSSE3 = (CPUInfo[2] & 0x000001) || false;
+            if (CPUInfo[3] & (1 << 23)) machineSupports |= CPUMMX;
+            if (CPUInfo[3] & (1 << 26)) machineSupports |= CPUSSE2;
+            if (CPUInfo[2] & (1 << 23)) machineSupports |= CPUPOPCNT;
+            if (CPUInfo[2] & (1 <<  0)) machineSupports |= CPUSSSE3;
         }
 
         if (i == 7)
         {
-            bBMI2   = (CPUInfo[1] & 0x00000100) || false;
-            bAVX2   = (CPUInfo[1] & 0x00000020) || false;
+            if (CPUInfo[1] & (1 <<  8)) machineSupports |= CPUBMI2;
+            if (CPUInfo[1] & (1 <<  5)) machineSupports |= CPUAVX2;
         }
     }
 
@@ -362,38 +361,48 @@ void engine::GetSystemInfo()
             memcpy(CPUBrandString + 32, CPUInfo, sizeof(CPUInfo));
     }
 
-    maxHWSupport = bPOPCNT ? (bBMI2 ? CPUBMI2 : CPUPOPCOUNT) : CPULEGACY;
+    //maxHWSupport = bPOPCNT ? (bBMI2 ? CPUBMI2 : CPUPOPCOUNT) : CPULEGACY;
     system = CPUBrandString;
 
-    cout << "SSSE3 supported: " << (bSSSE3 ? "yes" : "no") << "\n";
-    cout << "AVX2 supported : " << (bAVX2 ? "yes" : "no") << "\n";
+    U64 notSupported = binarySupports & ~machineSupports;
 
-    if (CPUFEATURE > maxHWSupport)
+    if (notSupported)
     {
-        cout << "info string Error! Binary was compiled for " << cpufeature[CPUFEATURE] << ". CPU only supports " << cpufeature[maxHWSupport] << ". Please use correct binary.\n";
+        cout << "info string Error! Binary is not compatible with this machine. Missing cpu features:";
+        for (int i = 0; notSupported; i++, notSupported = notSupported >> 1)
+            if (notSupported & 1) cout << " " << strCpuFeatures[i];
+        cout << ". Please use correct binary.\n";
         exit(0);
     }
     
-    if (cpuVendor == CPUVENDORAMD && maxHWSupport == CPUBMI2)
-    	// No BMI2 build on AMD cpu
-    	maxHWSupport--;
+    if (cpuVendor == CPUVENDORAMD && (machineSupports & CPUBMI2))
+        // No BMI2 build on AMD cpu
+        ;// maxHWSupport--;
 
-    cout << "info string Running " << name() << " Build " << BUILD <<  ". CPU supports  " << cpufeature[maxHWSupport] << "\n";
+    //cout << "info string Running " << name() << " Build " << BUILD <<  ". CPU supports  " << cpufeature[maxHWSupport] << "\n";
 
+#if 0
     if (CPUFEATURE == CPUBMI2 && cpuVendor == CPUVENDORAMD)
     {
         cout << "info string Error! You are running the BMI2 binary on an AMD cpu which is known for bad performance. Please use the default (Popcount) binary for best performance.\n";
         exit(0);
     }
-    
-    if (CPUFEATURE < maxHWSupport)
+#endif
+
+    U64 supportedButunused = machineSupports & ~binarySupports;
+    if (supportedButunused)
     {
-        cout << "info string Warning! Binary was compiled for " << cpufeature[CPUFEATURE] << ". CPU supports even " << cpufeature[maxHWSupport] << ". Please use correct binary for best performance.\n";
+        cout << "info string Warning! Binary not optimal for this machine. Unused cpu features:";
+        for (int i = 0; supportedButunused; i++, supportedButunused = supportedButunused >> 1)
+            if (supportedButunused & 1)
+                cout << " " << strCpuFeatures[i];
+
+        cout << ". Please use correct binary for best performance.\n";
     }
 }
 
 #else
-void engine::GetSystemInfo()
+void compilerinfo::GetSystemInfo()
 {
     system = "Some non-x86-64 platform.";
     maxHWSupport = CPUPOPCOUNT;

@@ -142,9 +142,9 @@ using namespace std;
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 
-#define CPULEGACY   0
-#define CPUPOPCOUNT 1
-#define CPUBMI2     2
+//#define CPULEGACY   0
+//#define CPUPOPCOUNT 1
+//#define CPUBMI2     2
 
 #define CPUVENDORUNKNOWN    0
 #define CPUVENDORINTEL      1
@@ -1186,7 +1186,7 @@ extern SMagic mRookTbl[64];
 #define BISHOPINDEXBITS 9
 #define ROOKINDEXBITS 12
 
-#if CPUFEATURE == CPUBMI2
+#ifdef USE_BMI2
 #include <immintrin.h>
 #define BISHOPINDEX(occ,i) (int)(_pext_u64(occ, mBishopTbl[i].mask))
 #define ROOKINDEX(occ,i) (int)(_pext_u64(occ, mRookTbl[i].mask))
@@ -1456,12 +1456,37 @@ typedef map<string, ucioption_t>::iterator optionmapiterator;
 #define NODESPERCHECK 0xfff
 enum ponderstate_t { NO, PONDERING, HITPONDER };
 
+
+#define CPUPOPCNT   (1 << 0)
+#define CPUMMX      (1 << 1)
+#define CPUSSE2     (1 << 2)
+#define CPUSSSE3    (1 << 3)
+#define CPUBMI2     (1 << 4)
+#define CPUAVX2     (1 << 5)
+
+extern const string strCpuFeatures[];
+
+class compilerinfo
+{
+public:
+    U64 binarySupports;
+    U64 machineSupports;
+    string system;
+    //int maxHWSupport;
+    int cpuVendor;
+    //bool badPEXT;
+    //const string cpufeature[3] = { "Legacy", "Popcount", "BMI2" };
+    compilerinfo();
+    void GetSystemInfo();
+    string SystemName();
+};
+
+
 class engine
 {
 public:
     engine();
     ~engine();
-    const string cpufeature[3] = { "Legacy", "Popcount", "BMI2" };
     const char* author = "Andreas Matthies";
     bool isWhite;
     U64 tbhits;
@@ -1497,10 +1522,6 @@ public:
     int benchdepth;
     string benchmove;
     ucioptions_t ucioptions;
-    string system;
-    int maxHWSupport;
-    int cpuVendor;
-    bool badPEXT;
 
 #ifdef STACKDEBUG
     string assertfile = "";
@@ -1514,7 +1535,7 @@ public:
     string NnueNetpath;
 #endif    
     string name() {
-        return string(ENGINEVER) + " (" + cpufeature[CPUFEATURE] +")";
+        return string(ENGINEVER);
     };
     GuiToken parse(vector<string>*, string ss);
     void send(const char* format, ...);
@@ -1524,7 +1545,6 @@ public:
     long long perft(int depth, bool dotests);
     void prepareThreads();
     void resetStats();
-    void GetSystemInfo();
 };
 
 PieceType GetPieceType(char c);
@@ -1549,6 +1569,7 @@ public:
 };
 
 extern engine en;
+extern compilerinfo cinfo;
 
 #ifdef SDEBUG
 #define SDEBUGDO(c, s) if (c) {s}

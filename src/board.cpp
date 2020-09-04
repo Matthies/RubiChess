@@ -44,6 +44,15 @@ U64 castlekingwalk[4];
 int squareDistance[64][64];  // decreased by 1 for directly indexing evaluation arrays
 alignas(64) int psqtable[14][64];
 
+const string strCpuFeatures[] = {
+    "popcnt",
+    "mmx",
+    "sse2",
+    "ssse3",
+    "bmi2",
+    "avx2"
+};
+
 
 PieceType GetPieceType(char c)
 {
@@ -2470,10 +2479,19 @@ static void uciSetNnuePath()
 }
 #endif
 
+compilerinfo::compilerinfo()
+{
+    GetSystemInfo();
+}
+
+string compilerinfo::SystemName()
+{
+    return "Some System";
+}
+
 
 engine::engine()
 {
-    GetSystemInfo();
     initBitmaphelper();
 #ifdef NNUE
     NnueInit();
@@ -3022,6 +3040,7 @@ void ucioptions_t::Print()
 
 
 // Some global objects
+alignas(64) compilerinfo cinfo;
 alignas(64) evalparamset eps;
 alignas(64) zobrist zb;
 alignas(64) engine en;
