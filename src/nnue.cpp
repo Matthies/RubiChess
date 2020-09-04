@@ -520,7 +520,7 @@ bool NnueClippedRelu::ReadWeights(ifstream* is)
 {
     if (previous) return previous->ReadWeights(is);
     return true;
-};
+}
 
 uint32_t NnueClippedRelu::GetHash()
 {
@@ -577,7 +577,7 @@ bool NnueInputSlice::ReadWeights(ifstream* is)
 {
     if (previous) return previous->ReadWeights(is);
     return true;
-};
+}
 
 uint32_t NnueInputSlice::GetHash()
 {

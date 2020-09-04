@@ -3035,15 +3035,13 @@ void ucioptions_t::Print()
 }
 
 
-// Explicit template instantiation
-// This avoids putting these definitions in header file
-
 
 // Some global objects
 alignas(64) compilerinfo cinfo;
 alignas(64) evalparamset eps;
 alignas(64) zobrist zb;
 alignas(64) engine en;
+
 
 // Explicit template instantiation
 // This avoids putting these definitions in header file

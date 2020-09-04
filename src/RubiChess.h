@@ -1469,7 +1469,27 @@ extern const string strCpuFeatures[];
 class compilerinfo
 {
 public:
-    U64 binarySupports;
+    const U64 binarySupports = 0ULL
+#ifdef USE_POPCNT
+        | CPUPOPCNT
+#endif
+#ifdef USE_MMX
+        | CPUMMX
+#endif
+#ifdef USE_SSE2
+        | CPUSSE2
+#endif
+#ifdef USE_SSSE3
+        | CPUSSSE3
+#endif
+#ifdef USE_AVX2
+        | CPUAVX2
+#endif
+#ifdef USE_BMI2
+        | CPUBMI2
+#endif
+        ;
+
     U64 machineSupports;
     string system;
     //int maxHWSupport;
