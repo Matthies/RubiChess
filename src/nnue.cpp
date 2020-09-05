@@ -76,15 +76,11 @@ NnueFeatureTransformer *NnueFt;
 //
 void chessposition::HalfkpAppendActiveIndices(int c, NnueIndexList *active)
 {
-    //Square ksq = orient(c, square_of(c, KING));
     int k = ORIENT(c, kingpos[c]);
     U64 nonkingsbb = (occupied00[0] | occupied00[1]) & ~(piece00[WKING] | piece00[BKING]);
-    //Bitboard bb = pieces() & ~pieces_p(KING);
     while (nonkingsbb)
     {
         int index = pullLsb(&nonkingsbb);
-        //Square s = pop_lsb(&bb);
-        //printf("%d %d %d %d  ->  %d\n", c, index, mailbox[index], k, MAKEINDEX(c, index, mailbox[index], k));
         active->values[active->size++] = MAKEINDEX(c, index, mailbox[index], k);
     }
 }
@@ -97,7 +93,6 @@ void chessposition::AppendActiveIndices(NnueIndexList active[2])
 
 void chessposition::HalfkpAppendChangedIndices(int c, NnueIndexList* add, NnueIndexList* remove)
 {
-    //Square ksq = orient(c, square_of(c, KING));
     int k = ORIENT(c, kingpos[c]);
     DirtyPiece* dp = &dirtypiece[mstop];
     for (int i = 0; i < dp->dirtyNum; i++) {
@@ -105,11 +100,9 @@ void chessposition::HalfkpAppendChangedIndices(int c, NnueIndexList* add, NnueIn
         if ((pc >> 1) == KING) continue;
         if (dp->from[i] >= 0) {
             remove->values[remove->size++] = MAKEINDEX(c, dp->from[i], pc, k);
-            //printf("remove from: %d %d %d %d  ->  %d\n", c, dp->from[i], pc, k, MAKEINDEX(c, dp->from[i], pc, k));
         }
         if (dp->to[i] >= 0) {
             add->values[add->size++] = MAKEINDEX(c, dp->to[i], pc, k);
-            //printf("add to: %d %d %d %d  ->  %d\n", c, dp->to[i], pc, k, MAKEINDEX(c, dp->to[i], pc, k));
         }
     }
 }
@@ -321,7 +314,6 @@ void chessposition::Transform(clipped_t *output)
         RefreshAccumulator();
 
     int16_t(*acc)[2][256] = &accumulator[mstop].accumulation;
-    //printf("Transform:\n");
 
 #if defined(USE_AVX2)
     const unsigned numChunks = NnueFtHalfdims / 32;
@@ -372,7 +364,6 @@ void chessposition::Transform(clipped_t *output)
         {
             int16_t sum = (*acc)[perspectives[p]][i];
             output[offset + i] = max<int16_t>(0, min<int16_t>(127, sum));
-            //printf("index: %d   sum=%d\n", offset + i, sum);
         }
 #endif
     }
@@ -390,8 +381,6 @@ struct NnueNetwork {
 
 int chessposition::NnueGetEval()
 {
-    //printf("%s\n", toFen().c_str());
-
     NnueNetwork network;
 
     Transform(network.input);
@@ -400,8 +389,6 @@ int chessposition::NnueGetEval()
     NnueHd2->Propagate(network.hidden1_clipped, network.hidden2_values);
     NnueCl1->Propagate(network.hidden2_values, network.hidden2_clipped);
     NnueOut->Propagate(network.hidden2_clipped, &network.out_value);
-
-    //printf("Value: %d  %d\n", out_value, out_value / NnueValueScale);
 
     return network.out_value / NnueValueScale;
 }
@@ -485,8 +472,6 @@ uint32_t NnueNetworkLayer::GetHash()
 
 void NnueNetworkLayer::Propagate(clipped_t* input, int32_t* output)
 {
-    //printf("Affine propagate...\n");
-
 #if defined(USE_AVX2)
 const unsigned numChunks = inputdims / 32;
 __m256i* inVec = (__m256i*)input;
@@ -551,7 +536,6 @@ __m128i* inVec = (__m128i*)input;
         int32_t sum = bias[i];
         for (int j = 0; j < inputdims; j++)
             sum += weight[offset + j] * input[j];
-        //printf("%d  %d\n", i, sum);
         output[i] = sum;
 
 #endif
@@ -664,7 +648,6 @@ void NnueInit()
 
 void NnueRemove()
 {
-#if 0  // FIXME: Disabled because gcc complains Wdelete-non-virtual-dtor
     delete NnueFt;
     delete NnueIn;
     delete NnueHd1;
@@ -672,7 +655,6 @@ void NnueRemove()
     delete NnueHd2;
     delete NnueCl2;
     delete NnueOut;
-#endif
 }
 
 void NnueReadNet(string path)

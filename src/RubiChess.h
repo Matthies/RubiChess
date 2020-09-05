@@ -40,7 +40,7 @@
 #define EVALOPTIONS
 #endif
 
-#if 0
+#if 1
 #define FINDMEMORYLEAKS
 #endif
 
@@ -581,10 +581,6 @@ extern int tuningratio;
 // NNUE stuff
 //
 
-//#define USE_AVX2
-//#define USE_SSSE3
-//#define USE_SSE2
-
 #define NNUEFILEVERSION     0x7AF32F16u
 #define NNUENETLAYERHASH    0xCC03DAE4u
 #define NNUECLIPPEDRELUHASH 0x538D24C7u
@@ -644,7 +640,7 @@ public:
     int16_t* weight;
 
     NnueFeatureTransformer();
-    ~NnueFeatureTransformer();
+    virtual ~NnueFeatureTransformer();
     bool ReadWeights(ifstream* is);
     uint32_t GetHash();
 };
@@ -654,6 +650,7 @@ class NnueClippedRelu : public NnueLayer
 public:
     int dims;
     NnueClippedRelu(NnueLayer* prev, int d);
+    virtual ~NnueClippedRelu() {};
     bool ReadWeights(ifstream* is);
     uint32_t GetHash();
     void Propagate(int32_t *input, clipped_t *output);
@@ -665,6 +662,7 @@ public:
     const int outputdims = 512;
 
     NnueInputSlice();
+    virtual ~NnueInputSlice() {};
     bool ReadWeights(ifstream* is);
     uint32_t GetHash();
 };
@@ -679,7 +677,7 @@ public:
     int8_t* weight;
 
     NnueNetworkLayer(NnueLayer* prev, int id, int od);
-    ~NnueNetworkLayer();
+    virtual ~NnueNetworkLayer();
     bool ReadWeights(ifstream* is);
     uint32_t GetHash();
     void Propagate(clipped_t *input, int32_t *output);
@@ -691,8 +689,6 @@ public:
     alignas(64) int16_t accumulation[2][256];
     int score;
     int computationState;
-    //bool computed_accumulation;
-    // bool computed_score;
 };
 
 
