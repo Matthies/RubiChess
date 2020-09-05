@@ -783,8 +783,7 @@ int chessposition::getEval()
 #ifdef NNUE
     if (NnueReady)
     {
-        score = NnueGetEval() * 5 / 8 + eps.eTempo;
-        //printf("v= %3d\n", score);
+        score = NnueGetEval() + eps.eTempo;
         return score;
     }
 #endif
