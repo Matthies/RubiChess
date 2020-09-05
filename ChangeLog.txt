@@ -1,5 +1,8 @@
 ChangeLog
 =========
+1.9 (release 202x-xx-xx) :
+    - ...
+
 1.8 (release 2020-08-15) :
     - New BMI2 binary using the pext instruction for slider attacks
     - Some tests and warnings if the hardware matches the binary to avoid bad performance and crashed by not supported cpu instructions

@@ -17,8 +17,8 @@
 
 #pragma once
 
-#define VERNUM "1.8"
-#define VERSTABLE
+#define VERNUM "1.9"
+//#define VERSTABLE
 
 #if 0
 #define STATISTICS
