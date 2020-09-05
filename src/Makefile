@@ -23,15 +23,15 @@ ifeq ($(shell uname -m),x86_64)
 
 	# Legacy-build
 	LEGACYEXE=RubiChess-Legacy
-	LEGACYCPUFEATURE=-D CPUFEATURE=CPULEGACY
+	LEGACYCPUFEATURE=
 	LEGACYARCHFLAGS=
 endif
 
 ifeq ($(shell uname -m),armv7l)
 	# Popcount-build
 	MODERNEXE=RubiChess
-	MODERNCPUFEATURE=
-	MODERNARCHFLAGS=-march=armv7-a
+	MODERNCPUFEATURE=-DUSE_NEON
+	MODERNARCHFLAGS=-mthumb -march=armv7-a -mfpu=neon
 endif
 
 

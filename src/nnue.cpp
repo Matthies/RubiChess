@@ -18,6 +18,7 @@
 
 #include "RubiChess.h"
 
+#ifdef NNUE
 
 #if defined(USE_AVX2)
 #include <immintrin.h>
@@ -27,9 +28,12 @@
 
 #elif defined(USE_SSE2)
 #include <emmintrin.h>
+
+#elif defined(USE_NEON)
+#include <arm_neon.h>
+
 #endif
 
-#ifdef NNUE
 
 //
 // Some NNUE related constants and types
@@ -183,6 +187,13 @@ void chessposition::RefreshAccumulator()
                 for (unsigned j = 0; j < NUM_REGS; j++)
                     acc[j] = vec_add_16(acc[j], column[j]);
 
+#elif defined(USE_NEON)
+                int16x8_t* accumulation = (int16x8_t*)&ac->accumulation[c][i * TILE_HEIGHT];
+                int16x8_t* column = (int16x8_t*)&NnueFt->weight[offset];
+                const unsigned numChunks = NnueFtHalfdims / 8;
+                for (unsigned j = 0; j < numChunks; j++)
+                    accumulation[j] = vaddq_s16(accumulation[j], column[j]);
+
 #else
 
                 for (unsigned j = 0; j < NnueFtHalfdims; j++)
@@ -228,6 +239,10 @@ bool chessposition::UpdateAccumulator()
             vec_t* accTile = (vec_t*)&ac->accumulation[c][i * TILE_HEIGHT];
             vec_t acc[NUM_REGS];
 
+#elif defined(USE_NEON)
+            const unsigned numChunks = NnueFtHalfdims / 8;
+            int16x8_t* accTile = (int16x8_t*)&ac->accumulation[c][i * TILE_HEIGHT];
+
 #endif
 
             if (reset[c]) {
@@ -257,6 +272,11 @@ bool chessposition::UpdateAccumulator()
                     for (unsigned j = 0; j < NUM_REGS; j++)
                         acc[j] = vec_sub_16(acc[j], column[j]);
 
+#elif defined(USE_NEON)
+                    int16x8_t* column = (int16x8_t*)&NnueFt->weight[offset];
+                    for (unsigned j = 0; j < numChunks; j++)
+                        accTile[j] = vsubq_s16(accTile[j], column[j]);
+
 #else
                     for (int j = 0; j < NnueFtHalfdims; j++)
                         ac->accumulation[c][i * TILE_HEIGHT + j] -= NnueFt->weight[offset + j];
@@ -271,6 +291,11 @@ bool chessposition::UpdateAccumulator()
                 vec_t* column = (vec_t*)&NnueFt->weight[offset];
                 for (unsigned j = 0; j < NUM_REGS; j++)
                     acc[j] = vec_add_16(acc[j], column[j]);
+
+#elif defined(USE_NEON)
+                int16x8_t* column = (int16x8_t*)&NnueFt->weight[offset];
+                for (unsigned j = 0; j < numChunks; j++)
+                    accTile[j] = vaddq_s16(accTile[j], column[j]);
 
 #else
                 for (int j = 0; j < TILE_HEIGHT; j++)
@@ -306,6 +331,10 @@ void chessposition::Transform(clipped_t *output)
     const unsigned numChunks = NnueFtHalfdims / 16;
     const __m128i k0x80s = _mm_set1_epi8(-128);
 
+#elif defined(USE_NEON)
+    const unsigned numChunks = NnueFtHalfdims / 8;
+    const int8x8_t kZero = { 0 };
+
 #endif
 
     const int perspectives[2] = { state & S2MMASK, !(state & S2MMASK) };
@@ -329,6 +358,13 @@ void chessposition::Transform(clipped_t *output)
             __m128i sum1 = ((__m128i*)(*acc)[perspectives[p]])[i * 2 + 1];
             __m128i packedbytes = _mm_packs_epi16(sum0, sum1);
             out[i] = _mm_subs_epi8(_mm_adds_epi8(packedbytes, k0x80s), k0x80s);
+        }
+
+#elif defined(USE_NEON)
+        int8x8_t* out = (int8x8_t*)&output[offset];
+        for (unsigned i = 0; i < numChunks; i++) {
+            int16x8_t sum = ((int16x8_t*)(*acc)[perspectives[p]])[i];
+            out[i] = vmax_s8(vqmovn_s16(sum), kZero);
         }
 
 #else
@@ -461,6 +497,10 @@ const unsigned numChunks = inputdims / 16;
 const __m128i kOnes = _mm_set1_epi16(1);
 __m128i* inVec = (__m128i*)input;
 
+#elif defined(USE_NEON)
+    const unsigned numChunks = inputdims / 16;
+    int8x8_t* inVec = (int8x8_t*)input;
+
 #endif
 
     for (int i = 0; i < outputdims; ++i) {
@@ -496,6 +536,16 @@ __m128i* inVec = (__m128i*)input;
         sum = _mm_add_epi32(sum, _mm_shuffle_epi32(sum, 0x4E)); //_MM_PERM_BADC
         sum = _mm_add_epi32(sum, _mm_shuffle_epi32(sum, 0xB1)); //_MM_PERM_CDAB
         output[i] = _mm_cvtsi128_si32(sum) + bias[i];
+
+#elif defined(USE_NEON)
+        int32x4_t sum = { bias[i] };
+        int8x8_t* row = (int8x8_t*)&weight[offset];
+        for (unsigned j = 0; j < numChunks; j++) {
+            int16x8_t product = vmull_s8(inVec[j * 2], row[j * 2]);
+            product = vmlal_s8(product, inVec[j * 2 + 1], row[j * 2 + 1]);
+            sum = vpadalq_s16(sum, product);
+    }
+        output[i] = sum[0] + sum[1] + sum[2] + sum[3];
 
 #else
         int32_t sum = bias[i];
@@ -556,6 +606,19 @@ void NnueClippedRelu::Propagate(int32_t *input, clipped_t *output)
             _mm_packs_epi32(in[i * 4 + 2], in[i * 4 + 3]), NnueClippingShift);
         __m128i packedbytes = _mm_packs_epi16(words0, words1);
         out[i] = _mm_subs_epi8(_mm_adds_epi8(packedbytes, k0x80s), k0x80s);
+    }
+
+#elif defined(USE_NEON)
+    const unsigned numChunks = dims / 8;
+    const int8x8_t kZero = { 0 };
+    int32x4_t* in = (int32x4_t*)input;
+    int8x8_t* out = (int8x8_t*)output;
+    for (unsigned i = 0; i < numChunks; i++) {
+        int16x8_t shifted;
+        int16x4_t* pack = (int16x4_t*)&shifted;
+        pack[0] = vqshrn_n_s32(in[i * 2 + 0], NnueClippingShift);
+        pack[1] = vqshrn_n_s32(in[i * 2 + 1], NnueClippingShift);
+        out[i] = vmax_s8(vqmovn_s16(shifted), kZero);
     }
 
 #else
