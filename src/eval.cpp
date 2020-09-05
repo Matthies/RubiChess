@@ -778,7 +778,6 @@ int chessposition::getEval()
 #endif
     ph = phase();
 
-    positioneval pe;
     int score;
 #ifdef NNUE
     if (NnueReady)
@@ -791,6 +790,7 @@ int chessposition::getEval()
     // reset the attackedBy information
     memset(attackedBy, 0, sizeof(attackedBy));
 
+    positioneval pe;
     bool hashexist = mtrlhsh.probeHash(materialhash, &pe.mhentry);
     if (!hashexist)
         getScaling(pe.mhentry);

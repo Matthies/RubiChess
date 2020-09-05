@@ -410,6 +410,10 @@ void compilerinfo::GetSystemInfo()
     system = "Some non-x86-64 platform.";
 }
 
+string compilerinfo::PrintCpuFeatures(U64 f)
+{
+    return "unknown";
+}
 #endif
 
 

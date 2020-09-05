@@ -2266,6 +2266,8 @@ int chessposition::getBestPossibleCapture()
         msk = 0xffffffffffffffff;
     else
         msk = attackedBy[me][0];
+#else
+    msk = attackedBy[me][0];
 #endif
     if (piece00[WQUEEN | you] & msk)
         captureval += materialvalue[QUEEN];
