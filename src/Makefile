@@ -53,9 +53,8 @@ endif
 
 ifeq ($(COMP),clang)
 	CXX=clang++
-	LD=ld
 	CXXFLAGS += -pedantic -Wextra -Wshadow
-	LDFLAGS=-lpthread -fuse-ld=lld 
+	LDFLAGS=-lpthread -fuse-ld=lld
 	profile_make = clang-profile-make
 endif
 

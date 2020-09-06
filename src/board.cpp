@@ -2477,7 +2477,7 @@ static void uciSetNnuePath()
 {
     cout << "info string Loading net " << en.NnueNetpath << " ...";
     NnueReadNet(en.NnueNetpath);
-    cout << (NnueReady ? " successful" : " failed") << "\n";
+    cout << (NnueReady ? " successful. Using NNUE evaluation." : " failed. Using handcrafted evaluation.") << "\n";
 }
 #endif
 
