@@ -1449,6 +1449,9 @@ enum ponderstate_t { NO, PONDERING, HITPONDER };
 #define CPUAVX2     (1 << 4)
 #define CPUBMI2     (1 << 5)
 
+#define STRCPUFEATURELIST  { "mmx","sse2","ssse3","popcnt","avx2","bmi2" }
+
+
 extern const string strCpuFeatures[];
 
 class compilerinfo

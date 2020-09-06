@@ -296,7 +296,7 @@ string compilerinfo::PrintCpuFeatures(U64 f, bool onlyHighest)
 {
     string s = "";
     for (int i = 0; f; i++, f = f >> 1)
-        if (f & 1) s = (onlyHighest ? "" : (s != " " ? " " + s : "")) + strCpuFeatures[i];
+        if (f & 1) s = (onlyHighest ? "" : ((s != "") ? s + " " : "")) + strCpuFeatures[i];
 
     return s;
 }

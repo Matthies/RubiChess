@@ -44,14 +44,7 @@ U64 castlekingwalk[4];
 int squareDistance[64][64];  // decreased by 1 for directly indexing evaluation arrays
 alignas(64) int psqtable[14][64];
 
-const string strCpuFeatures[] = {
-    "popcnt",
-    "mmx",
-    "sse2",
-    "ssse3",
-    "bmi2",
-    "avx2"
-};
+const string strCpuFeatures[] = STRCPUFEATURELIST;
 
 
 PieceType GetPieceType(char c)
