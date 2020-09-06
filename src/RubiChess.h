@@ -1543,7 +1543,8 @@ public:
 #endif
 
     string name() {
-        return string(ENGINEVER) + compinfo->PrintCpuFeatures(compinfo->binarySupports, true);
+        string sbinary = compinfo->PrintCpuFeatures(compinfo->binarySupports, true);
+        return string(ENGINEVER) + (sbinary != "" ? " (" + sbinary + ")" : "");
     };
     GuiToken parse(vector<string>*, string ss);
     void send(const char* format, ...);
