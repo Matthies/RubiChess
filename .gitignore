@@ -265,3 +265,6 @@ __pycache__/
 
 # Executables
 *.exe
+
+# Network weight files
+*.nnue

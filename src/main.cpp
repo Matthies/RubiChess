@@ -75,7 +75,7 @@ void generateEpd(string egn)
             pos->movestack[0].movecode = -1;  // Avoid fast eval after null move
             pos->rootheight = 0;
             pos->lastnullmove = -1;
-            int staticeval = S2MSIGN(pos->state & S2MMASK) * pos->getEval<NOTRACE>();
+            int staticeval = pos->getEval<NOTRACE>();
             int quietval = pos->getQuiescence(SCOREBLACKWINS, SCOREWHITEWINS, 0);
             bool isQuiet = (abs(staticeval - quietval) < 100);
             if (isQuiet)
@@ -223,7 +223,8 @@ static void perftest(bool dotests, int maxdepth)
 
     int i = 0;
     printf("\n\nPerft results for %s (Build %s)\n", en.name().c_str(), BUILD);
-    printf("System: %s\n", en.system.c_str());
+    printf("System: %s\n", cinfo.SystemName().c_str());
+    printf("CPU-Features of system: %s\nCPU-Features of binary: %s\n", cinfo.PrintCpuFeatures(cinfo.machineSupports).c_str(), cinfo.PrintCpuFeatures(cinfo.binarySupports).c_str());
     printf("Depth = %d    %8s  Hash-/Mirror-Tests %s\n", maxdepth, en.chess960 ? "Chess960" : "", dotests ? "enabled" : "disabled");
     printf("========================================================================\n");
 
@@ -288,7 +289,8 @@ const string solvedstr[] = { "-", "+", "o" };
 static void benchTableHeader(FILE* out)
 {
         fprintf(out, "\n\nBenchmark results for %s (Build %s):\n", en.name().c_str(), BUILD);
-        fprintf(out, "System: %s\n", en.system.c_str());
+        fprintf(out, "System: %s\n", cinfo.SystemName().c_str());
+        fprintf(out, "CPU-Features of system: %s\nCPU-Features of binary: %s\n", cinfo.PrintCpuFeatures(cinfo.machineSupports).c_str(), cinfo.PrintCpuFeatures(cinfo.binarySupports).c_str());
         fprintf(out, "=============================================================================================================\n");
 }
 
@@ -1033,7 +1035,16 @@ int main(int argc, char* argv[])
     } else if (benchmark || openbench)
     {
         // benchmark mode
+#ifdef NNUE
+        int oldNnueReady = NnueReady;
+        NnueReady = false;
         doBenchmark(depth, epdfile, maxtime, startnum, openbench);
+        if (oldNnueReady)
+        {
+            NnueReady = true;
+            doBenchmark(depth, epdfile, maxtime, startnum, openbench);
+        }
+#endif
     } else if (enginetest)
     {
 #ifdef _WIN32

@@ -44,6 +44,8 @@ U64 castlekingwalk[4];
 int squareDistance[64][64];  // decreased by 1 for directly indexing evaluation arrays
 alignas(64) int psqtable[14][64];
 
+const string strCpuFeatures[] = STRCPUFEATURELIST;
+
 
 PieceType GetPieceType(char c)
 {
@@ -709,6 +711,13 @@ void chessposition::playNullMove()
     ept = 0;
     ply++;
     myassert(mstop <= MAXDEPTH, this, 1, mstop);
+#ifdef NNUE
+    if (accumulator[mstop - 1].computationState)
+        accumulator[mstop] = accumulator[mstop - 1];
+    else
+        accumulator[mstop].computationState = 0;
+
+#endif
 }
 
 
@@ -1501,6 +1510,12 @@ bool chessposition::playMove(chessmove *cm)
     int eptnew = 0;
     int oldcastle = (state & CASTLEMASK);
 
+#ifdef NNUE
+    DirtyPiece* dp = &dirtypiece[mstop + 1];
+    dp->dirtyNum = 0;
+    accumulator[mstop + 1].computationState = 0;
+#endif
+
     halfmovescounter++;
 
     // Castle has special play
@@ -1526,11 +1541,24 @@ bool chessposition::playMove(chessmove *cm)
             BitboardMove(kingfrom, kingto, kingpc);
             hash ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
             pawnhash ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
+#ifdef NNUE
+            dp->pc[0] = kingpc;
+            dp->from[0] = kingfrom;
+            dp->to[0] = kingto;
+            dp->dirtyNum = 1;
+#endif
         }
         if (rookfrom != rookto)
         {
             BitboardMove(rookfrom, rookto, rookpc);
             hash ^= zb.boardtable[(rookfrom << 4) | rookpc] ^ zb.boardtable[(rookto << 4) | rookpc];
+#ifdef NNUE
+            int di = dp->dirtyNum;
+            dp->pc[di] = rookpc;
+            dp->from[di] = rookfrom;
+            dp->to[di] = rookto;
+            dp->dirtyNum++;
+#endif
         }
         state &= (s2m ? ~(BQCMASK | BKCMASK) : ~(WQCMASK | WKCMASK));
     }
@@ -1542,6 +1570,13 @@ bool chessposition::playMove(chessmove *cm)
         PieceType ptype = (pfrom >> 1);
         PieceCode promote = GETPROMOTION(cm->code);
         PieceCode capture = GETCAPTURE(cm->code);
+
+#ifdef NNUE
+        dp->pc[0] = pfrom;
+        dp->from[0] = from;
+        dp->to[0] = to;
+        dp->dirtyNum = 1;
+#endif
 
         myassert(!promote || (ptype == PAWN && RRANK(to, s2m) == 7), this, 4, promote, ptype, to, s2m);
         myassert(pfrom == mailbox[from], this, 3, pfrom, from, mailbox[from]);
@@ -1556,6 +1591,12 @@ bool chessposition::playMove(chessmove *cm)
             BitboardClear(to, capture);
             materialhash ^= zb.boardtable[(POPCOUNT(piece00[capture]) << 4) | capture];
             halfmovescounter = 0;
+#ifdef NNUE
+            dp->pc[1] = capture;
+            dp->from[1] = to;
+            dp->to[1] = -1;
+            dp->dirtyNum = 2;
+#endif
         }
 
         if (promote == BLANK)
@@ -1571,6 +1612,14 @@ bool chessposition::playMove(chessmove *cm)
             BitboardSet(to, promote);
             // just double the hash-switch for target to make the pawn vanish
             pawnhash ^= zb.boardtable[(to << 4) | mailbox[to]];
+#ifdef NNUE
+            int di = dp->dirtyNum;
+            dp->to[0] = -1; // remove promoting pawn;
+            dp->from[di] = -1;
+            dp->to[di] = to;
+            dp->pc[di] = promote;
+            dp->dirtyNum++;
+#endif
         }
 
         hash ^= zb.boardtable[(to << 4) | mailbox[to]];
@@ -1594,6 +1643,12 @@ bool chessposition::playMove(chessmove *cm)
                 hash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
                 pawnhash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
                 materialhash ^= zb.boardtable[(POPCOUNT(piece00[(pfrom ^ S2MMASK)]) << 4) | (pfrom ^ S2MMASK)];
+#ifdef NNUE
+                dp->pc[1] = (pfrom ^ S2MMASK);
+                dp->from[1] = epfield;
+                dp->to[1] = -1;
+                dp->dirtyNum++;
+#endif
             }
         }
 
@@ -2197,8 +2252,16 @@ int chessposition::getBestPossibleCapture()
     int me = state & S2MMASK;
     int you = me ^ S2MMASK;
     int captureval = 0;
-    const U64 msk = attackedBy[me][0];
-
+    U64 msk;
+#ifdef NNUE
+    // attack bitboard not set in NNUE mode
+    if (NnueReady)
+        msk = 0xffffffffffffffff;
+    else
+        msk = attackedBy[me][0];
+#else
+    msk = attackedBy[me][0];
+#endif
     if (piece00[WQUEEN | you] & msk)
         captureval += materialvalue[QUEEN];
     else if (piece00[WROOK | you] & msk)
@@ -2402,11 +2465,33 @@ static void uciSetSyzygyPath()
     init_tablebases((char*)en.SyzygyPath.c_str());
 }
 
+#ifdef NNUE
+static void uciSetNnuePath()
+{
+    cout << "info string Loading net " << en.NnueNetpath << " ...";
+    NnueReadNet(en.NnueNetpath);
+    cout << (NnueReady ? " successful. Using NNUE evaluation." : " failed. Using handcrafted evaluation.") << "\n";
+}
+#endif
 
-engine::engine()
+compilerinfo::compilerinfo()
 {
     GetSystemInfo();
+}
+
+string compilerinfo::SystemName()
+{
+    return system;
+}
+
+
+engine::engine(compilerinfo *c)
+{
+    compinfo = c;
     initBitmaphelper();
+#ifdef NNUE
+    NnueInit();
+#endif
     rootposition.pwnhsh.setSize(1);  // some dummy pawnhash just to make the prefetch in playMove happy
     
     ucioptions.Register(&Threads, "Threads", ucispin, "1", 1, MAXTHREADS, uciSetThreads);  // order is important as the pawnhash depends on Threads > 0
@@ -2419,7 +2504,9 @@ engine::engine()
     ucioptions.Register(&SyzygyProbeLimit, "SyzygyProbeLimit", ucispin, "7", 0, 7, nullptr);
     ucioptions.Register(&chess960, "UCI_Chess960", ucicheck, "false");
     ucioptions.Register(nullptr, "Clear Hash", ucibutton, "", 0, 0, uciClearHash);
-
+#ifdef NNUE
+    ucioptions.Register(&NnueNetpath, "NNUENetpath", ucistring, "./default.nnue", 0, 0, uciSetNnuePath);
+#endif
 #ifdef _WIN32
     LARGE_INTEGER f;
     QueryPerformanceFrequency(&f);
@@ -2436,6 +2523,9 @@ engine::~engine()
     allocThreads();
     rootposition.pwnhsh.remove();
     rootposition.mtrlhsh.remove();
+#ifdef NNUE
+    NnueRemove();
+#endif
 }
 
 
@@ -2941,14 +3031,13 @@ void ucioptions_t::Print()
 }
 
 
-// Explicit template instantiation
-// This avoids putting these definitions in header file
-
 
 // Some global objects
+alignas(64) compilerinfo cinfo;
 alignas(64) evalparamset eps;
 alignas(64) zobrist zb;
-alignas(64) engine en;
+alignas(64) engine en(&cinfo);
+
 
 // Explicit template instantiation
 // This avoids putting these definitions in header file

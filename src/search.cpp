@@ -160,7 +160,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
             if (movestack[mstop - 1].movecode == 0)
                 staticeval = -staticevalstack[mstop - 1] + CEVAL(eps.eTempo, 2);
             else
-                staticeval = S2MSIGN(state & S2MMASK) * getEval<NOTRACE>();
+                staticeval = getEval<NOTRACE>();
         }
 #endif
 
@@ -405,7 +405,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             // just reverse the staticeval before the null move respecting the tempo
             staticeval = -staticevalstack[mstop - 1] + CEVAL(eps.eTempo, 2);
         else
-            staticeval = S2MSIGN(state & S2MMASK) * getEval<NOTRACE>();
+            staticeval = getEval<NOTRACE>();
     }
     staticevalstack[mstop] = staticeval;
 
@@ -904,7 +904,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast)
 
     // get static evaluation of the position
     if (staticeval == NOSCORE)
-        staticeval = S2MSIGN(state & S2MMASK) * getEval<NOTRACE>();
+        staticeval = getEval<NOTRACE>();
     staticevalstack[mstop] = staticeval;
 
     int quietsPlayed = 0;

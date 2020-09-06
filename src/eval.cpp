@@ -777,12 +777,20 @@ int chessposition::getEval()
     getpsqval();
 #endif
     ph = phase();
-    positioneval pe;
+
     int score;
+#ifdef NNUE
+    if (NnueReady)
+    {
+        score = NnueGetEval() + eps.eTempo;
+        return score;
+    }
+#endif
 
     // reset the attackedBy information
     memset(attackedBy, 0, sizeof(attackedBy));
 
+    positioneval pe;
     bool hashexist = mtrlhsh.probeHash(materialhash, &pe.mhentry);
     if (!hashexist)
         getScaling(pe.mhentry);
@@ -845,7 +853,7 @@ int chessposition::getEval()
         traceEvalOut();
     }
 
-    return score;
+    return S2MSIGN(state & S2MMASK) * score;
 }
 
 
