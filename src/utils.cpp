@@ -383,18 +383,12 @@ void compilerinfo::GetSystemInfo()
     }
     
     if (cpuVendor == CPUVENDORAMD && (machineSupports & CPUBMI2))
+    {
         // No BMI2 build on AMD cpu
         machineSupports ^= CPUBMI2;
-
-    //cout << "info string Running " << name() << " Build " << BUILD <<  ". CPU supports  " << cpufeature[maxHWSupport] << "\n";
-
-#if 0
-    if (CPUFEATURE == CPUBMI2 && cpuVendor == CPUVENDORAMD)
-    {
-        cout << "info string Error! You are running the BMI2 binary on an AMD cpu which is known for bad performance. Please use the default (Popcount) binary for best performance.\n";
-        exit(0);
+        if (binarySupports & CPUBMI2)
+            cout << "info string Warning! You are running the BMI2 binary on an AMD cpu which is known for bad performance. Please use the different binary for best performance.\n";
     }
-#endif
 
     U64 supportedButunused = machineSupports & ~binarySupports;
     if (supportedButunused)

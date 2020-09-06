@@ -15,6 +15,12 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+//
+// This implements NNUE based evaluation compatible with halfKP-256-32-32-1 nets.
+// NNUE based evaluation was invented by Yu Nasu for Shogi engine and ported to
+// Stockfish by Hisayori Noda (nodchip).
+// Intrinsic cpu code for better performance is taken from cfish port by Ronald de Man.
+//
 
 #include "RubiChess.h"
 
@@ -54,7 +60,7 @@ enum {
     PS_END      = 10 * 64 + 1
 };
 
-// table to translate PieceCode to PieceSquare index for both POVs
+// table to translate PieceCode to PieceSquare index for both POVs respecting the piece order special to RubiChess
 uint32_t PieceToIndex[2][16] = {
   { 0, 0, PS_WPAWN, PS_BPAWN, PS_WKNIGHT, PS_BKNIGHT, PS_WBISHOP, PS_BBISHOP, PS_WROOK, PS_BROOK, PS_WQUEEN, PS_BQUEEN, 0, 0, 0, 0 },
   { 0, 0, PS_BPAWN, PS_WPAWN, PS_BKNIGHT, PS_WKNIGHT, PS_BBISHOP, PS_WBISHOP, PS_BROOK, PS_WROOK, PS_BQUEEN, PS_WQUEEN, 0, 0, 0, 0 }
@@ -65,6 +71,7 @@ uint32_t PieceToIndex[2][16] = {
 // Global objects
 //
 bool NnueReady = false;
+
 NnueInputSlice* NnueIn;
 NnueClippedRelu *NnueCl1, *NnueCl2;
 NnueNetworkLayer *NnueOut, *NnueHd1, *NnueHd2;
