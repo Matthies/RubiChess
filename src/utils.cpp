@@ -292,11 +292,11 @@ static void cpuid(int32_t out[4], int32_t x) {
 #endif
 
 
-string compilerinfo::PrintCpuFeatures(U64 f)
+string compilerinfo::PrintCpuFeatures(U64 f, bool onlyHighest)
 {
     string s = "";
     for (int i = 0; f; i++, f = f >> 1)
-        if (f & 1) s += " " + strCpuFeatures[i];
+        if (f & 1) s = (onlyHighest ? "" : (s != " " ? " " + s : "")) + strCpuFeatures[i];
 
     return s;
 }
@@ -404,9 +404,9 @@ void compilerinfo::GetSystemInfo()
     system = "Some non-x86-64 platform.";
 }
 
-string compilerinfo::PrintCpuFeatures(U64 f)
+string compilerinfo::PrintCpuFeatures(U64 f, bool onlyHighest)
 {
-    return "unknown";
+    return onlyHighest ? "" : "unknown";
 }
 #endif
 

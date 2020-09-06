@@ -2492,8 +2492,9 @@ string compilerinfo::SystemName()
 }
 
 
-engine::engine()
+engine::engine(compilerinfo *c)
 {
+    compinfo = c;
     initBitmaphelper();
 #ifdef NNUE
     NnueInit();
@@ -3042,7 +3043,7 @@ void ucioptions_t::Print()
 alignas(64) compilerinfo cinfo;
 alignas(64) evalparamset eps;
 alignas(64) zobrist zb;
-alignas(64) engine en;
+alignas(64) engine en(&cinfo);
 
 
 // Explicit template instantiation

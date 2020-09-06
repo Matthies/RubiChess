@@ -1442,12 +1442,12 @@ typedef map<string, ucioption_t>::iterator optionmapiterator;
 enum ponderstate_t { NO, PONDERING, HITPONDER };
 
 
-#define CPUPOPCNT   (1 << 0)
-#define CPUMMX      (1 << 1)
-#define CPUSSE2     (1 << 2)
-#define CPUSSSE3    (1 << 3)
-#define CPUBMI2     (1 << 4)
-#define CPUAVX2     (1 << 5)
+#define CPUMMX      (1 << 0)
+#define CPUSSE2     (1 << 1)
+#define CPUSSSE3    (1 << 2)
+#define CPUPOPCNT   (1 << 3)
+#define CPUAVX2     (1 << 4)
+#define CPUBMI2     (1 << 5)
 
 extern const string strCpuFeatures[];
 
@@ -1481,14 +1481,14 @@ public:
     compilerinfo();
     void GetSystemInfo();
     string SystemName();
-    string PrintCpuFeatures(U64 features);
+    string PrintCpuFeatures(U64 features, bool onlyHighest = false);
 };
 
 
 class engine
 {
 public:
-    engine();
+    engine(compilerinfo *c);
     ~engine();
     const char* author = "Andreas Matthies";
     bool isWhite;
@@ -1525,6 +1525,7 @@ public:
     int benchdepth;
     string benchmove;
     ucioptions_t ucioptions;
+    compilerinfo* compinfo;
 
 #ifdef STACKDEBUG
     string assertfile = "";
@@ -1536,9 +1537,10 @@ public:
 #endif
 #ifdef NNUE
     string NnueNetpath;
-#endif    
+#endif
+
     string name() {
-        return string(ENGINEVER);
+        return string(ENGINEVER) + compinfo->PrintCpuFeatures(compinfo->binarySupports, true);
     };
     GuiToken parse(vector<string>*, string ss);
     void send(const char* format, ...);
