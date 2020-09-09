@@ -121,7 +121,7 @@ long long engine::perft(int depth, bool dotests)
         int val2 = rootpos->getEval<NOTRACE>();
         rootpos->mirror();
         int val3 = rootpos->getEval<NOTRACE>();
-        if (!(val1 == val3 && val1 == -val2))
+        if (!(val1 == val3 && val1 == val2))
         {
             printf("Mirrortest  :error  (%d / %d / %d)\n", val1, val2, val3);
             rootpos->print();
