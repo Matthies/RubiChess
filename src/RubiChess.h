@@ -1258,20 +1258,6 @@ public:
     uint32_t bestFailingLow;
     int threadindex;
     int psqval;
-#ifdef SDEBUG
-    unsigned long long debughash = 0;
-    struct {
-        uint32_t code;
-        U64 hash;
-    } pvdebug[MAXDEPTH];
-    int pvalpha[MAXDEPTH];
-    int pvbeta[MAXDEPTH];
-    int pvdepth[MAXDEPTH];
-    int pvmovenum[MAXDEPTH];
-    PvAbortType pvaborttype[MAXDEPTH];
-    int pvabortval[MAXDEPTH];
-    string pvadditionalinfo[MAXDEPTH];
-#endif
     uint32_t pvtable[MAXDEPTH][MAXDEPTH];
     uint32_t multipvtable[MAXMULTIPV][MAXDEPTH];
     uint32_t lastpv[MAXDEPTH];
@@ -1305,6 +1291,20 @@ public:
     U64 he_all;
     Materialhash mtrlhsh;
     Pawnhash pwnhsh;
+#ifdef SDEBUG
+    unsigned long long debughash = 0;
+    struct {
+        uint32_t code;
+        U64 hash;
+    } pvdebug[MAXDEPTH];
+    int pvalpha[MAXDEPTH];
+    int pvbeta[MAXDEPTH];
+    int pvdepth[MAXDEPTH];
+    int pvmovenum[MAXDEPTH];
+    PvAbortType pvaborttype[MAXDEPTH];
+    int pvabortval[MAXDEPTH];
+    string pvadditionalinfo[MAXDEPTH];
+#endif
 #ifdef NNUE
     NnueAccumulator accumulator[MAXDEPTH];
     DirtyPiece dirtypiece[MAXDEPTH];
