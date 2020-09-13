@@ -1282,7 +1282,13 @@ public:
     void copyPositionTuneSet(positiontuneset *from, evalparam *efrom, positiontuneset *to, evalparam *eto);
     string getGradientString();
 #endif
-    // ...
+#ifdef SDEBUG
+    struct {
+        uint32_t code;
+        U64 hash;
+    } pvdebug[MAXDEPTH];
+#endif
+    // The following part of the chessposition object isn't copied from rootposition object to the threads positions
     int16_t history[2][64][64];
     int16_t counterhistory[14][64][14 * 64];
     uint32_t countermove[14][64];
@@ -1293,10 +1299,6 @@ public:
     Pawnhash pwnhsh;
 #ifdef SDEBUG
     unsigned long long debughash = 0;
-    struct {
-        uint32_t code;
-        U64 hash;
-    } pvdebug[MAXDEPTH];
     int pvalpha[MAXDEPTH];
     int pvbeta[MAXDEPTH];
     int pvdepth[MAXDEPTH];
