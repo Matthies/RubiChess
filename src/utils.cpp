@@ -18,6 +18,27 @@
 
 #include "RubiChess.h"
 
+/* A small noncryptographic PRNG */
+/* http://www.burtleburtle.net/bob/rand/smallprng.html */
+
+U64 ranval(ranctx* x, U64 modulo) {
+    U64 e = x->a - rot(x->b, 7);
+    x->a = x->b ^ rot(x->c, 13);
+    x->b = x->c + rot(x->d, 37);
+    x->c = x->d + e;
+    x->d = e + x->a;
+    return (modulo ? x->d % modulo : x->d);
+}
+
+void raninit(ranctx* x, U64 seed) {
+    U64 i;
+    x->a = 0xf1ea5eed, x->b = x->c = x->d = seed;
+    for (i = 0; i < 20; ++i) {
+        (void)ranval(x);
+    }
+}
+
+
 // Produce a 64-bit material key corresponding to the material combination
 // defined by pcs[16], where pcs[1], ..., pcs[6] is the number of white
 // pawns, ..., kings and pcs[9], ..., pcs[14] is the number of black

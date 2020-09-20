@@ -46,6 +46,11 @@
 
 #if 1
 #define NNUE
+
+#if 1
+#define NNUELEARN
+#endif
+
 #endif
 
 #ifdef FINDMEMORYLEAKS
@@ -556,6 +561,12 @@ enum EvalType { NOTRACE, TRACE };
 //
 // utils stuff
 //
+typedef struct ranctx { U64 a; U64 b; U64 c; U64 d; } ranctx;
+
+#define rot(x,k) (((x)<<(k))|((x)>>(64-(k))))
+
+U64 ranval(ranctx* x, U64 modulo = 0);
+void raninit(ranctx* x, U64 seed);
 U64 calc_key_from_pcs(int *pcs, int mirror);
 void getPcsFromStr(const char* str, int *pcs);
 void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am);
@@ -696,15 +707,24 @@ void NnueInit();
 void NnueRemove();
 void NnueReadNet(string path);
 
+struct PackedSfen { uint8_t data[32]; };
 
+struct PackedSfenValue
+{
+    PackedSfen sfen;
+    int16_t score;
+    uint16_t move;
+    uint16_t gamePly;
+    int8_t game_result;
+    uint8_t padding;
+};
+
+void gensfen(U64 fensnum);
+void learn();
 
 //
 // transposition stuff
 //
-typedef unsigned long long u8;
-typedef struct ranctx { u8 a; u8 b; u8 c; u8 d; } ranctx;
-
-#define rot(x,k) (((x)<<(k))|((x)>>(64-(k))))
 
 #define BOUNDMASK   0x03 
 #define HASHALPHA   0x01
@@ -721,9 +741,9 @@ public:
     ranctx rnd;
     zobrist();
     unsigned long long getRnd();
-    u8 getHash(chessposition *pos);
-    u8 getPawnHash(chessposition *pos);
-    u8 getMaterialHash(chessposition *pos);
+    U64 getHash(chessposition *pos);
+    U64 getPawnHash(chessposition *pos);
+    U64 getMaterialHash(chessposition *pos);
 };
 
 #define TTBUCKETNUM 3
@@ -1377,6 +1397,10 @@ public:
     bool UpdateAccumulator();
     void Transform(clipped_t *output);
     int NnueGetEval();
+#ifdef NNUELEARN
+    void toSfen(PackedSfen *sfen);
+    int getFromSfen(PackedSfen* sfen);
+#endif
 #endif
 };
 
@@ -1384,10 +1408,19 @@ public:
 // uci stuff
 //
 
-enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL, PERFT
+enum GuiToken {
+    UNKNOWN,
+#ifdef NNUELEARN
+    GENSFEN, LEARN,
+#endif
+    UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL, PERFT
 };
 
 const map<string, GuiToken> GuiCommandMap = {
+#ifdef NNUELEARN
+    { "gensfen", GENSFEN },
+    { "learn", LEARN },
+#endif
     { "uci", UCI },
     { "debug", UCIDEBUG },
     { "isready", ISREADY },
@@ -1601,6 +1634,11 @@ public:
     int depth;
     int numofthreads;
     int lastCompleteDepth;
+#ifdef NNUELEARN
+    PackedSfenValue* psvbuffer;
+    PackedSfenValue* psv;
+    int chunkstate[2];
+#endif
     // adjust padding to align searchthread at 64 bytes
     uint8_t padding[16];
 

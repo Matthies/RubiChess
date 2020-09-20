@@ -1286,6 +1286,9 @@ const U64 rookmagics[] = {
 void initBitmaphelper()
 {
     int to;
+    // default castle rights
+    int rf[] = { 0, 7 };
+    initCastleRights(rf, 4);
     initPsqtable();
     for (int from = 0; from < 64; from++)
     {
@@ -2897,7 +2900,17 @@ void engine::communicate(string inputstring)
                     cout << perft(maxdepth, false) << "\n";
                 }
                 break;
+#ifdef NNUELEARN
+            case GENSFEN:
+                if (ci < cs) {
+                    U64 fensnum = stoi(commandargs[ci++]);
+                    gensfen(fensnum);
+                }
                 break;
+            case LEARN:
+                learn();
+                break;
+#endif
             default:
                 break;
             }
