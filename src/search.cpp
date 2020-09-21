@@ -90,8 +90,8 @@ struct searchparamset {
     searchparam SP(singularmindepth, 8);
     searchparam SP(singularmarginperdepth, 2);
     // History extension
-    searchparam SP(histextminthreshold, 8);
-    searchparam SP(histextmaxthreshold, 14);
+    searchparam SP(histextminthreshold, 9);
+    searchparam SP(histextmaxthreshold, 15);
 
 
 
@@ -725,7 +725,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                     // 1/512 ~ extension ratio > 0.1953% ==> increase threshold
                     he_threshold = he_threshold * 257 / 256;
                     he_all = he_yes = 0ULL;
-                } else if (he_all / (1ULL << sps.histextminthreshold) > he_yes)
+                } else if (he_all / (1ULL << sps.histextmaxthreshold) > he_yes)
                 {
                     // 1/32768 ~ extension ratio < 0.0030% ==> decrease threshold
                     he_threshold = he_threshold * 255 / 256;
