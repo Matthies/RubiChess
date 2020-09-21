@@ -53,12 +53,53 @@ struct searchparamset {
     searchparam SP(lmrf0, 60);
     searchparam SP(lmrlogf1, 150);
     searchparam SP(lmrf1, 43);
+    searchparam SP(lmrmindepth, 3);
+    searchparam SP(lmrstatsratio, 625);
+    searchparam SP(lmropponentmovecount, 16);
     // LMP table
     searchparam SP(lmpf0, 70);
     searchparam SP(lmppow0, 185);
     searchparam SP(lmpf1, 130);
     searchparam SP(lmppow1, 185);
-    //
+    // Razoring
+    searchparam SP(razormargin, 250);
+    searchparam SP(razordepthfactor, 50);
+    //futility pruning
+    searchparam SP(futilitymindepth, 8);
+    searchparam SP(futilityreversedepthfactor, 70);
+    searchparam SP(futilityreverseimproved, 20);
+    searchparam SP(futilitymargin, 100);
+    searchparam SP(futilitymarginperdepth, 80);
+    // null move
+    searchparam SP(nmmindepth, 2);
+    searchparam SP(nmmredbase, 4);
+    searchparam SP(nmmreddepthratio, 6);
+    searchparam SP(nmmredevalratio, 150);
+    searchparam SP(nmmredpvfactor, 2);
+    searchparam SP(nmverificationdepth, 12);
+    //Probcut
+    searchparam SP(probcutmindepth, 5);
+    searchparam SP(probcutmargin, 100);
+    // No hashmovereduction
+    searchparam SP(nohashreductionmindepth, 3);
+    // SEE prune
+    searchparam SP(seeprunemaxdepth, 8);
+    searchparam SP(seeprunemarginperdepth, -20);
+    searchparam SP(seeprunequietfactor, 4);
+    // Singular extension
+    searchparam SP(singularmindepth, 8);
+    searchparam SP(singularmarginperdepth, 2);
+    // History extension
+    searchparam SP(histextminthreshold, 8);
+    searchparam SP(histextmaxthreshold, 14);
+
+
+
+
+
+
+
+
 
 } sps;
 
@@ -463,7 +504,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     // Razoring
     if (!PVNode && !isCheckbb && depth <= 2)
     {
-        const int ralpha = alpha - 250 - depth * 50;
+        const int ralpha = alpha - sps.razormargin - depth * sps.razordepthfactor;
         if (staticeval < ralpha)
         {
             int qscore;
@@ -484,39 +525,39 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     // futility pruning
     bool futility = false;
-    if (depth <= 8)
+    if (depth <= sps.futilitymindepth)
     {
         // reverse futility pruning
-        if (!isCheckbb && staticeval - depth * (70 - 20 * positionImproved) > beta)
+        if (!isCheckbb && staticeval - depth * (sps.futilityreversedepthfactor - sps.futilityreverseimproved * positionImproved) > beta)
         {
             STATISTICSINC(prune_futility);
             SDEBUGDO(isDebugPv, pvabortval[ply] = staticeval; pvaborttype[ply] = PVA_REVFUTILITYPRUNED;);
             return staticeval;
         }
-        futility = (staticeval < alpha - (100 + 80 * depth));
+        futility = (staticeval < alpha - (sps.futilitymargin + sps.futilitymarginperdepth * depth));
     }
 
     // Nullmove pruning with verification like SF does it
     int bestknownscore = (hashscore != NOSCORE ? hashscore : staticeval);
-    if (!isCheckbb && depth >= 2 && bestknownscore >= beta && (ply  >= nullmoveply || ply % 2 != nullmoveside) && ph < 255)
+    if (!isCheckbb && depth >= sps.nmmindepth && bestknownscore >= beta && (ply  >= nullmoveply || ply % 2 != nullmoveside) && ph < 255)
     {
         playNullMove();
-        int R = 4 + (depth / 6) + (bestknownscore - beta) / 150 + !PVNode * 2;
+        int nmreduction = sps.nmmredbase + (depth / sps.nmmreddepthratio) + (bestknownscore - beta) / sps.nmmredevalratio + !PVNode * sps.nmmredpvfactor;
 
-        score = -alphabeta(-beta, -beta + 1, depth - R);
+        score = -alphabeta(-beta, -beta + 1, depth - nmreduction);
         unplayNullMove();
 
         if (score >= beta)
         {
-            if (abs(beta) < 5000 && (depth < 12 || nullmoveply)) {
+            if (abs(beta) < 5000 && (depth < sps.nmverificationdepth || nullmoveply)) {
                 STATISTICSINC(prune_nm);
                 SDEBUGDO(isDebugPv, pvabortval[ply] = score; pvaborttype[ply] = PVA_NMPRUNED;);
                 return beta;
             }
             // Verification search
-            nullmoveply = ply + 3 * (depth - R) / 4;
+            nullmoveply = ply + 3 * (depth - nmreduction) / 4;
             nullmoveside = ply % 2;
-            int verificationscore = alphabeta(beta - 1, beta, depth - R);
+            int verificationscore = alphabeta(beta - 1, beta, depth - nmreduction);
             nullmoveside = nullmoveply = 0;
             if (verificationscore >= beta) {
                 STATISTICSINC(prune_nm);
@@ -527,10 +568,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     }
 
     // ProbCut
-    const int probcutmargin = 100;
-    if (!PVNode && depth >= 5 && abs(beta) < SCOREWHITEWINS)
+    if (!PVNode && depth >= sps.probcutmindepth && abs(beta) < SCOREWHITEWINS)
     {
-        int rbeta = min(SCOREWHITEWINS, beta + probcutmargin);
+        int rbeta = min(SCOREWHITEWINS, beta + sps.probcutmargin);
         chessmovelist *movelist = new chessmovelist;
         movelist->length = CreateMovelist<TACTICAL>(this, &movelist->move[0]);
 
@@ -562,8 +602,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         delete movelist;
     }
 
-
-    if (PVNode && !hashmovecode && depth >= 3)
+    // No hashmove reduction
+    if (PVNode && !hashmovecode && depth >= sps.nohashreductionmindepth)
         // PV node and no best move from hash
         // Instead of iid the idea of Ed Schroeder to just decrease depth works well
         depth--;
@@ -625,7 +665,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         }
 
         // Prune moves with bad SEE
-        if (!isCheckbb && depth < 9 && bestscore > NOSCORE && ms.state >= QUIETSTATE && !see(m->code, -20 * depth * (ISTACTICAL(m->code) ? depth : 4)))
+        if (!isCheckbb && depth <= sps.seeprunemaxdepth && bestscore > NOSCORE && ms.state >= QUIETSTATE && !see(m->code, sps.seeprunemarginperdepth * depth * (ISTACTICAL(m->code) ? depth : sps.seeprunequietfactor)))
         {
             STATISTICSINC(moves_pruned_badsee);
             SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_SEEPRUNED;);
@@ -639,13 +679,13 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
         // Singular extension
         if ((m->code & 0xffff) == hashmovecode
-            && depth > 7
+            && depth >= sps.singularmindepth
             && !excludeMove
             && tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth - 3, alpha, beta, ply)  // FIXME: maybe needs hashscore = FIXMATESCOREPROBE(hashscore, ply);
             && hashscore > alpha)
         {
             excludemovestack[mstop - 1] = hashmovecode;
-            int sBeta = max(hashscore - 2 * depth, SCOREBLACKWINS);
+            int sBeta = max(hashscore - sps.singularmarginperdepth * depth, SCOREBLACKWINS);
             int redScore = alphabeta(sBeta - 1, sBeta, depth / 2);
             excludemovestack[mstop - 1] = 0;
 
@@ -680,12 +720,12 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             if ((++he_all & 0x3fffff) == 0)
             {
                 // adjust history extension threshold
-                if (he_all / 512 < he_yes)
+                if (he_all / (1ULL << sps.histextminthreshold) < he_yes)
                 {
                     // 1/512 ~ extension ratio > 0.1953% ==> increase threshold
                     he_threshold = he_threshold * 257 / 256;
                     he_all = he_yes = 0ULL;
-                } else if (he_all / 32768 > he_yes)
+                } else if (he_all / (1ULL << sps.histextminthreshold) > he_yes)
                 {
                     // 1/32768 ~ extension ratio < 0.0030% ==> decrease threshold
                     he_threshold = he_threshold * 255 / 256;
@@ -696,22 +736,22 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
         // Late move reduction
         int reduction = 0;
-        if (depth > 2 && !ISTACTICAL(m->code))
+        if (depth >= sps.lmrmindepth && !ISTACTICAL(m->code))
         {
             reduction = reductiontable[positionImproved][depth][min(63, legalMoves + 1)];
 
             // adjust reduction by stats value
-            reduction -= stats / 5000;
+            reduction -= stats / (sps.lmrstatsratio * 8);
 
             // adjust reduction at PV nodes
             reduction -= PVNode;
 
             // adjust reduction with opponents move number
-            reduction -= (LegalMoves[ply] > 15);
+            reduction -= (LegalMoves[ply] >= sps.lmropponentmovecount);
 
             STATISTICSINC(red_pi[positionImproved]);
             STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, legalMoves + 1)]);
-            STATISTICSADD(red_history, -stats / 5000);
+            STATISTICSADD(red_history, -stats / (sps.lmrstatsratio * 8));
             STATISTICSADD(red_pv, -(int)PVNode);
             STATISTICSDO(int red0 = reduction);
 
@@ -1027,8 +1067,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast)
 
         if (!ISTACTICAL(m->code))
             quietMoves[quietsPlayed++] = m->code;
-
-        printf("%d  %s  v=%8d  s=%5d\n", i, m->toString().c_str(), m->value, score);
 
         if ((isMultiPV && score <= bestmovescore[lastmoveindex])
             || (!isMultiPV && score <= bestscore))

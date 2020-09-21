@@ -40,7 +40,7 @@
 #define EVALOPTIONS
 #endif
 
-#if 1
+#if 0
 #define SEARCHOPTIONS
 #endif
 
