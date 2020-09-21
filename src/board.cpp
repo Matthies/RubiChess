@@ -2994,7 +2994,7 @@ void ucioptions_t::Set(string n, string v, bool force)
         int sVal;
         try {
             sVal = stoi(v);
-            if ((bChanged = (sVal >= op->min && sVal <= op->max && (force || sVal != *(int*)(op->enginevar)))))
+            if ((bChanged = (force || sVal != *(int*)(op->enginevar))))
                 *(int*)(op->enginevar) = sVal;
         }
         catch (...) {}

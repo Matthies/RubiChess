@@ -23,23 +23,40 @@ statistic statistics;
 #endif
 
 #ifdef SEARCHOPTIONS
-typedef int searchparam;
-#else
+void searchtableinit();
+class searchparam {
+public:
+    int val;
+    string name;
+
+    searchparam(string s) {
+        size_t i = s.find('/');
+        val = stoi(s.substr(i + 1));
+        name = "S_" + s.substr(0, i);
+        en.ucioptions.Register((void*)&val, name, ucisearch, to_string(val), 0, 0, searchtableinit);
+    }
+    operator int() const { return val; }
+};
+
+#define SP(x,y) x = #x"/"#y
+
+#else // SEARCHOPTIONS
 typedef const int searchparam;
+#define SP(x,y) x = y
 #endif
 
 struct searchparamset {
-    searchparam deltapruningmargin = 100;
+    searchparam SP(deltapruningmargin, 100);
     // LMR table
-    searchparam lmrlogf0 = 150;
-    searchparam lmrf0 = 60;
-    searchparam lmrlogf1 = 150;
-    searchparam lmrf1 = 43;
+    searchparam SP(lmrlogf0, 150);
+    searchparam SP(lmrf0, 60);
+    searchparam SP(lmrlogf1, 150);
+    searchparam SP(lmrf1, 43);
     // LMP table
-    searchparam lmpf0 = 70;
-    searchparam lmppow0 = 185;
-    searchparam lmpf1 = 130;
-    searchparam lmppow1 = 185;
+    searchparam SP(lmpf0, 70);
+    searchparam SP(lmppow0, 185);
+    searchparam SP(lmpf1, 130);
+    searchparam SP(lmppow1, 185);
     //
 
 } sps;
@@ -74,32 +91,11 @@ void searchtableinit()
 }
 
 
-void registerallsearchoptions()
-{
-#ifdef SEARCHOPTIONS
-    en.ucioptions.Register((void*)&sps.deltapruningmargin, "sDeltapruningmargin", ucisearch, to_string(sps.deltapruningmargin), 0, 300, nullptr);
-    // LMR
-    en.ucioptions.Register((void*)&sps.lmrlogf0, "sLmrlogf0", ucisearch, to_string(sps.lmrlogf0), 0, 300, searchtableinit);
-    en.ucioptions.Register((void*)&sps.lmrf0, "sLmrf0", ucisearch, to_string(sps.lmrf0), 0, 150, searchtableinit);
-    en.ucioptions.Register((void*)&sps.lmrlogf1, "sLmrlogf1", ucisearch, to_string(sps.lmrlogf1), 0, 300, searchtableinit);
-    en.ucioptions.Register((void*)&sps.lmrf1, "sLmrf1", ucisearch, to_string(sps.lmrf1), 0, 150, searchtableinit);
-    // LMP
-    en.ucioptions.Register((void*)&sps.lmpf0, "sLmpf0", ucisearch, to_string(sps.lmpf0), 0, 300, searchtableinit);
-    en.ucioptions.Register((void*)&sps.lmppow0, "sLmppow0", ucisearch, to_string(sps.lmppow0), 0, 300, searchtableinit);
-    en.ucioptions.Register((void*)&sps.lmpf1, "sLmpf1", ucisearch, to_string(sps.lmpf1), 0, 300, searchtableinit);
-    en.ucioptions.Register((void*)&sps.lmppow1, "sLmppow1", ucisearch, to_string(sps.lmppow1), 0, 300, searchtableinit);
-
-
-
-#endif
-}
 
 
 void searchinit()
 {
-    registerallsearchoptions();
     searchtableinit();
-    registerallsearchoptions();
 }
 
 
