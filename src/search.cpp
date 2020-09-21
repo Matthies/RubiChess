@@ -92,20 +92,13 @@ struct searchparamset {
     // History extension
     searchparam SP(histextminthreshold, 9);
     searchparam SP(histextmaxthreshold, 15);
-
-
-
-
-
-
-
-
-
+    searchparam SP(aspincratio, 4);
+    searchparam SP(aspincbase, 2);
+    searchparam SP(aspinitialdelta, 8);
 } sps;
 
-int reductiontable[2][MAXDEPTH][64];
-
 #define MAXLMPDEPTH 9
+int reductiontable[2][MAXDEPTH][64];
 int lmptable[2][MAXLMPDEPTH];
 
 // Shameless copy of Ethereal/Laser for now; may be improved/changed in the future
@@ -131,8 +124,6 @@ void searchtableinit()
         lmptable[1][d] = (int)(4.0 + (sps.lmpf1 / 100.0) * round(pow(d, sps.lmppow1 / 100.0)));
     }
 }
-
-
 
 
 void searchinit()
@@ -1289,7 +1280,7 @@ static void search_gen1(searchthread *thr)
                 if (abs(alpha) > 5000)
                     delta = SCOREWHITEWINS;
                 else
-                    delta += delta / 4 + 2;
+                    delta += delta / sps.aspincratio + sps.aspincbase;
                 inWindow = 0;
                 reportedThisDepth = false;
             }
@@ -1300,7 +1291,7 @@ static void search_gen1(searchthread *thr)
                 if (abs(beta) > 2000)
                     delta = SCOREWHITEWINS;
                 else
-                    delta += delta / 4 + 2;
+                    delta += delta / sps.aspincratio + sps.aspincbase;
                 inWindow = 2;
                 reportedThisDepth = false;
             }
@@ -1315,7 +1306,7 @@ static void search_gen1(searchthread *thr)
                 }
                 else if (thr->depth > 4) {
                     // next depth with new aspiration window
-                    delta = 8;
+                    delta = sps.aspinitialdelta;
                     if (isMultiPV)
                         alpha = pos->bestmovescore[en.MultiPV - 1] - delta;
                     else
