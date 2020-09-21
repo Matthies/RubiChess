@@ -29,7 +29,8 @@ public:
     int val;
     string name;
 
-    searchparam(string s) {
+    searchparam(const char* c) {
+        string s(c);
         size_t i = s.find('/');
         val = stoi(s.substr(i + 1));
         name = "S_" + s.substr(0, i);
@@ -38,7 +39,7 @@ public:
     operator int() const { return val; }
 };
 
-#define SP(x,y) x = #x"/"#y
+#define SP(x,y) x = #x "/" #y
 
 #else // SEARCHOPTIONS
 typedef const int searchparam;
