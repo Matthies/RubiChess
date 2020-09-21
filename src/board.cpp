@@ -2989,6 +2989,17 @@ void ucioptions_t::Set(string n, string v, bool force)
         }
         break;
 #endif
+#ifdef SEARCHOPTIONS
+    case ucisearch:
+        int sVal;
+        try {
+            sVal = stoi(v);
+            if ((bChanged = (sVal >= op->min && sVal <= op->max && (force || sVal != *(int*)(op->enginevar)))))
+                *(int*)(op->enginevar) = sVal;
+        }
+        catch (...) {}
+        break;
+#endif
     default:
         break;
     }
@@ -3019,6 +3030,11 @@ void ucioptions_t::Print()
             break;
 #ifdef EVALOPTIONS
         case ucieval:
+            cout << "string default " << op->def << "\n";
+            break;
+#endif
+#ifdef SEARCHOPTIONS
+        case ucisearch:
             cout << "string default " << op->def << "\n";
             break;
 #endif

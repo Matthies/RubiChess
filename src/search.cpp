@@ -22,7 +22,27 @@
 statistic statistics;
 #endif
 
-const int deltapruningmargin = 100;
+#ifdef SEARCHOPTIONS
+typedef int searchparam;
+#else
+typedef const int searchparam;
+#endif
+
+struct searchparamset {
+    searchparam deltapruningmargin = 100;
+    // LMR table
+    searchparam lmrlogf0 = 150;
+    searchparam lmrf0 = 60;
+    searchparam lmrlogf1 = 150;
+    searchparam lmrf1 = 43;
+    // LMP table
+    searchparam lmpf0 = 70;
+    searchparam lmppow0 = 185;
+    searchparam lmpf1 = 130;
+    searchparam lmppow1 = 185;
+    //
+
+} sps;
 
 int reductiontable[2][MAXDEPTH][64];
 
@@ -33,24 +53,55 @@ int lmptable[2][MAXLMPDEPTH];
 static const int SkipSize[16] = { 1, 1, 1, 2, 2, 2, 1, 3, 2, 2, 1, 3, 3, 2, 2, 1 };
 static const int SkipDepths[16] = { 1, 2, 2, 4, 4, 3, 2, 5, 4, 3, 2, 6, 5, 4, 3, 2 };
 
-void searchinit()
+
+void searchtableinit()
 {
     for (int d = 0; d < MAXDEPTH; d++)
         for (int m = 0; m < 64; m++)
         {
             // reduction for not improving positions
-            reductiontable[0][d][m] = 1 + (int)round(log(d * 1.5) * log(m) * 0.60);
+            reductiontable[0][d][m] = 1 + (int)round(log(d * (sps.lmrlogf0 / 100.0)) * log(m) * (sps.lmrf0 / 100.0));
             // reduction for improving positions
-            reductiontable[1][d][m] = (int)round(log(d * 1.5) * log(m * 2) * 0.43);
+            reductiontable[1][d][m] = (int)round(log(d * (sps.lmrlogf1 / 100.0)) * log(m * 2) * (sps.lmrf1 / 100.0));
         }
     for (int d = 0; d < MAXLMPDEPTH; d++)
     {
         // lmp for not improving positions
-        lmptable[0][d] = (int)(2.5 + 0.7 * round(pow(d, 1.85)));
+        lmptable[0][d] = (int)(2.5 + (sps.lmpf0 / 100.0) * round(pow(d, sps.lmppow0 / 100.0)));
         // lmp for improving positions
-        lmptable[1][d] = (int)(4.0 + 1.3 * round(pow(d, 1.85)));
+        lmptable[1][d] = (int)(4.0 + (sps.lmpf1 / 100.0) * round(pow(d, sps.lmppow1 / 100.0)));
     }
 }
+
+
+void registerallsearchoptions()
+{
+#ifdef SEARCHOPTIONS
+    en.ucioptions.Register((void*)&sps.deltapruningmargin, "sDeltapruningmargin", ucisearch, to_string(sps.deltapruningmargin), 0, 300, nullptr);
+    // LMR
+    en.ucioptions.Register((void*)&sps.lmrlogf0, "sLmrlogf0", ucisearch, to_string(sps.lmrlogf0), 0, 300, searchtableinit);
+    en.ucioptions.Register((void*)&sps.lmrf0, "sLmrf0", ucisearch, to_string(sps.lmrf0), 0, 150, searchtableinit);
+    en.ucioptions.Register((void*)&sps.lmrlogf1, "sLmrlogf1", ucisearch, to_string(sps.lmrlogf1), 0, 300, searchtableinit);
+    en.ucioptions.Register((void*)&sps.lmrf1, "sLmrf1", ucisearch, to_string(sps.lmrf1), 0, 150, searchtableinit);
+    // LMP
+    en.ucioptions.Register((void*)&sps.lmpf0, "sLmpf0", ucisearch, to_string(sps.lmpf0), 0, 300, searchtableinit);
+    en.ucioptions.Register((void*)&sps.lmppow0, "sLmppow0", ucisearch, to_string(sps.lmppow0), 0, 300, searchtableinit);
+    en.ucioptions.Register((void*)&sps.lmpf1, "sLmpf1", ucisearch, to_string(sps.lmpf1), 0, 300, searchtableinit);
+    en.ucioptions.Register((void*)&sps.lmppow1, "sLmppow1", ucisearch, to_string(sps.lmppow1), 0, 300, searchtableinit);
+
+
+
+#endif
+}
+
+
+void searchinit()
+{
+    registerallsearchoptions();
+    searchtableinit();
+    registerallsearchoptions();
+}
+
 
 void chessposition::getCmptr(int16_t **cmptr)
 {
@@ -182,7 +233,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         }
 
         // Delta pruning
-        int bestExpectableScore = staticeval + deltapruningmargin + getBestPossibleCapture();
+        int bestExpectableScore = staticeval + sps.deltapruningmargin + getBestPossibleCapture();
         if (bestExpectableScore < alpha)
         {
             STATISTICSINC(qs_delta);
@@ -203,7 +254,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 
     while ((m = ms.next()))
     {
-        if (!myIsCheck && staticeval + materialvalue[GETCAPTURE(m->code) >> 1] + deltapruningmargin <= alpha)
+        if (!myIsCheck && staticeval + materialvalue[GETCAPTURE(m->code) >> 1] + sps.deltapruningmargin <= alpha)
         {
             // Leave out capture that is delta-pruned
             STATISTICSINC(qs_move_delta);
@@ -979,6 +1030,8 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast)
 
         if (!ISTACTICAL(m->code))
             quietMoves[quietsPlayed++] = m->code;
+
+        printf("%d  %s  v=%8d  s=%5d\n", i, m->toString().c_str(), m->value, score);
 
         if ((isMultiPV && score <= bestmovescore[lastmoveindex])
             || (!isMultiPV && score <= bestscore))
