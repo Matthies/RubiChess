@@ -22,35 +22,115 @@
 statistic statistics;
 #endif
 
-const int deltapruningmargin = 100;
+#ifdef SEARCHOPTIONS
+void searchtableinit();
+class searchparam {
+public:
+    int val;
+    string name;
 
-int reductiontable[2][MAXDEPTH][64];
+    searchparam(const char* c) {
+        string s(c);
+        size_t i = s.find('/');
+        val = stoi(s.substr(i + 1));
+        name = "S_" + s.substr(0, i);
+        en.ucioptions.Register((void*)&val, name, ucisearch, to_string(val), 0, 0, searchtableinit);
+    }
+    operator int() const { return val; }
+};
+
+#define SP(x,y) x = #x "/" #y
+
+#else // SEARCHOPTIONS
+typedef const int searchparam;
+#define SP(x,y) x = y
+#endif
+
+struct searchparamset {
+    searchparam SP(deltapruningmargin, 100);
+    // LMR table
+    searchparam SP(lmrlogf0, 150);
+    searchparam SP(lmrf0, 60);
+    searchparam SP(lmrlogf1, 150);
+    searchparam SP(lmrf1, 43);
+    searchparam SP(lmrmindepth, 3);
+    searchparam SP(lmrstatsratio, 625);
+    searchparam SP(lmropponentmovecount, 16);
+    // LMP table
+    searchparam SP(lmpf0, 70);
+    searchparam SP(lmppow0, 185);
+    searchparam SP(lmpf1, 130);
+    searchparam SP(lmppow1, 185);
+    // Razoring
+    searchparam SP(razormargin, 250);
+    searchparam SP(razordepthfactor, 50);
+    //futility pruning
+    searchparam SP(futilitymindepth, 8);
+    searchparam SP(futilityreversedepthfactor, 70);
+    searchparam SP(futilityreverseimproved, 20);
+    searchparam SP(futilitymargin, 100);
+    searchparam SP(futilitymarginperdepth, 80);
+    // null move
+    searchparam SP(nmmindepth, 2);
+    searchparam SP(nmmredbase, 4);
+    searchparam SP(nmmreddepthratio, 6);
+    searchparam SP(nmmredevalratio, 150);
+    searchparam SP(nmmredpvfactor, 2);
+    searchparam SP(nmverificationdepth, 12);
+    //Probcut
+    searchparam SP(probcutmindepth, 5);
+    searchparam SP(probcutmargin, 100);
+    // No hashmovereduction
+    searchparam SP(nohashreductionmindepth, 3);
+    // SEE prune
+    searchparam SP(seeprunemaxdepth, 8);
+    searchparam SP(seeprunemarginperdepth, -20);
+    searchparam SP(seeprunequietfactor, 4);
+    // Singular extension
+    searchparam SP(singularmindepth, 8);
+    searchparam SP(singularmarginperdepth, 2);
+    // History extension
+    searchparam SP(histextminthreshold, 9);
+    searchparam SP(histextmaxthreshold, 15);
+    searchparam SP(aspincratio, 4);
+    searchparam SP(aspincbase, 2);
+    searchparam SP(aspinitialdelta, 8);
+} sps;
 
 #define MAXLMPDEPTH 9
+int reductiontable[2][MAXDEPTH][64];
 int lmptable[2][MAXLMPDEPTH];
 
 // Shameless copy of Ethereal/Laser for now; may be improved/changed in the future
 static const int SkipSize[16] = { 1, 1, 1, 2, 2, 2, 1, 3, 2, 2, 1, 3, 3, 2, 2, 1 };
 static const int SkipDepths[16] = { 1, 2, 2, 4, 4, 3, 2, 5, 4, 3, 2, 6, 5, 4, 3, 2 };
 
-void searchinit()
+
+void searchtableinit()
 {
     for (int d = 0; d < MAXDEPTH; d++)
         for (int m = 0; m < 64; m++)
         {
             // reduction for not improving positions
-            reductiontable[0][d][m] = 1 + (int)round(log(d * 1.5) * log(m) * 0.60);
+            reductiontable[0][d][m] = 1 + (int)round(log(d * (sps.lmrlogf0 / 100.0)) * log(m) * (sps.lmrf0 / 100.0));
             // reduction for improving positions
-            reductiontable[1][d][m] = (int)round(log(d * 1.5) * log(m * 2) * 0.43);
+            reductiontable[1][d][m] = (int)round(log(d * (sps.lmrlogf1 / 100.0)) * log(m * 2) * (sps.lmrf1 / 100.0));
         }
     for (int d = 0; d < MAXLMPDEPTH; d++)
     {
         // lmp for not improving positions
-        lmptable[0][d] = (int)(2.5 + 0.7 * round(pow(d, 1.85)));
+        lmptable[0][d] = (int)(2.5 + (sps.lmpf0 / 100.0) * round(pow(d, sps.lmppow0 / 100.0)));
         // lmp for improving positions
-        lmptable[1][d] = (int)(4.0 + 1.3 * round(pow(d, 1.85)));
+        lmptable[1][d] = (int)(4.0 + (sps.lmpf1 / 100.0) * round(pow(d, sps.lmppow1 / 100.0)));
     }
 }
+
+
+void searchinit()
+{
+    searchtableinit();
+}
+
 
 void chessposition::getCmptr(int16_t **cmptr)
 {
@@ -182,7 +262,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         }
 
         // Delta pruning
-        int bestExpectableScore = staticeval + deltapruningmargin + getBestPossibleCapture();
+        int bestExpectableScore = staticeval + sps.deltapruningmargin + getBestPossibleCapture();
         if (bestExpectableScore < alpha)
         {
             STATISTICSINC(qs_delta);
@@ -203,7 +283,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 
     while ((m = ms.next()))
     {
-        if (!myIsCheck && staticeval + materialvalue[GETCAPTURE(m->code) >> 1] + deltapruningmargin <= alpha)
+        if (!myIsCheck && staticeval + materialvalue[GETCAPTURE(m->code) >> 1] + sps.deltapruningmargin <= alpha)
         {
             // Leave out capture that is delta-pruned
             STATISTICSINC(qs_move_delta);
@@ -415,7 +495,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     // Razoring
     if (!PVNode && !isCheckbb && depth <= 2)
     {
-        const int ralpha = alpha - 250 - depth * 50;
+        const int ralpha = alpha - sps.razormargin - depth * sps.razordepthfactor;
         if (staticeval < ralpha)
         {
             int qscore;
@@ -436,39 +516,39 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     // futility pruning
     bool futility = false;
-    if (depth <= 8)
+    if (depth <= sps.futilitymindepth)
     {
         // reverse futility pruning
-        if (!isCheckbb && staticeval - depth * (70 - 20 * positionImproved) > beta)
+        if (!isCheckbb && staticeval - depth * (sps.futilityreversedepthfactor - sps.futilityreverseimproved * positionImproved) > beta)
         {
             STATISTICSINC(prune_futility);
             SDEBUGDO(isDebugPv, pvabortval[ply] = staticeval; pvaborttype[ply] = PVA_REVFUTILITYPRUNED;);
             return staticeval;
         }
-        futility = (staticeval < alpha - (100 + 80 * depth));
+        futility = (staticeval < alpha - (sps.futilitymargin + sps.futilitymarginperdepth * depth));
     }
 
     // Nullmove pruning with verification like SF does it
     int bestknownscore = (hashscore != NOSCORE ? hashscore : staticeval);
-    if (!isCheckbb && depth >= 2 && bestknownscore >= beta && (ply  >= nullmoveply || ply % 2 != nullmoveside) && ph < 255)
+    if (!isCheckbb && depth >= sps.nmmindepth && bestknownscore >= beta && (ply  >= nullmoveply || ply % 2 != nullmoveside) && ph < 255)
     {
         playNullMove();
-        int R = 4 + (depth / 6) + (bestknownscore - beta) / 150 + !PVNode * 2;
+        int nmreduction = sps.nmmredbase + (depth / sps.nmmreddepthratio) + (bestknownscore - beta) / sps.nmmredevalratio + !PVNode * sps.nmmredpvfactor;
 
-        score = -alphabeta(-beta, -beta + 1, depth - R);
+        score = -alphabeta(-beta, -beta + 1, depth - nmreduction);
         unplayNullMove();
 
         if (score >= beta)
         {
-            if (abs(beta) < 5000 && (depth < 12 || nullmoveply)) {
+            if (abs(beta) < 5000 && (depth < sps.nmverificationdepth || nullmoveply)) {
                 STATISTICSINC(prune_nm);
                 SDEBUGDO(isDebugPv, pvabortval[ply] = score; pvaborttype[ply] = PVA_NMPRUNED;);
                 return beta;
             }
             // Verification search
-            nullmoveply = ply + 3 * (depth - R) / 4;
+            nullmoveply = ply + 3 * (depth - nmreduction) / 4;
             nullmoveside = ply % 2;
-            int verificationscore = alphabeta(beta - 1, beta, depth - R);
+            int verificationscore = alphabeta(beta - 1, beta, depth - nmreduction);
             nullmoveside = nullmoveply = 0;
             if (verificationscore >= beta) {
                 STATISTICSINC(prune_nm);
@@ -479,10 +559,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     }
 
     // ProbCut
-    const int probcutmargin = 100;
-    if (!PVNode && depth >= 5 && abs(beta) < SCOREWHITEWINS)
+    if (!PVNode && depth >= sps.probcutmindepth && abs(beta) < SCOREWHITEWINS)
     {
-        int rbeta = min(SCOREWHITEWINS, beta + probcutmargin);
+        int rbeta = min(SCOREWHITEWINS, beta + sps.probcutmargin);
         chessmovelist *movelist = new chessmovelist;
         movelist->length = CreateMovelist<TACTICAL>(this, &movelist->move[0]);
 
@@ -514,8 +593,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         delete movelist;
     }
 
-
-    if (PVNode && !hashmovecode && depth >= 3)
+    // No hashmove reduction
+    if (PVNode && !hashmovecode && depth >= sps.nohashreductionmindepth)
         // PV node and no best move from hash
         // Instead of iid the idea of Ed Schroeder to just decrease depth works well
         depth--;
@@ -577,7 +656,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         }
 
         // Prune moves with bad SEE
-        if (!isCheckbb && depth < 9 && bestscore > NOSCORE && ms.state >= QUIETSTATE && !see(m->code, -20 * depth * (ISTACTICAL(m->code) ? depth : 4)))
+        if (!isCheckbb && depth <= sps.seeprunemaxdepth && bestscore > NOSCORE && ms.state >= QUIETSTATE && !see(m->code, sps.seeprunemarginperdepth * depth * (ISTACTICAL(m->code) ? depth : sps.seeprunequietfactor)))
         {
             STATISTICSINC(moves_pruned_badsee);
             SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_SEEPRUNED;);
@@ -591,13 +670,13 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
         // Singular extension
         if ((m->code & 0xffff) == hashmovecode
-            && depth > 7
+            && depth >= sps.singularmindepth
             && !excludeMove
             && tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth - 3, alpha, beta, ply)  // FIXME: maybe needs hashscore = FIXMATESCOREPROBE(hashscore, ply);
             && hashscore > alpha)
         {
             excludemovestack[mstop - 1] = hashmovecode;
-            int sBeta = max(hashscore - 2 * depth, SCOREBLACKWINS);
+            int sBeta = max(hashscore - sps.singularmarginperdepth * depth, SCOREBLACKWINS);
             int redScore = alphabeta(sBeta - 1, sBeta, depth / 2);
             excludemovestack[mstop - 1] = 0;
 
@@ -632,12 +711,12 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             if ((++he_all & 0x3fffff) == 0)
             {
                 // adjust history extension threshold
-                if (he_all / 512 < he_yes)
+                if (he_all / (1ULL << sps.histextminthreshold) < he_yes)
                 {
                     // 1/512 ~ extension ratio > 0.1953% ==> increase threshold
                     he_threshold = he_threshold * 257 / 256;
                     he_all = he_yes = 0ULL;
-                } else if (he_all / 32768 > he_yes)
+                } else if (he_all / (1ULL << sps.histextmaxthreshold) > he_yes)
                 {
                     // 1/32768 ~ extension ratio < 0.0030% ==> decrease threshold
                     he_threshold = he_threshold * 255 / 256;
@@ -648,22 +727,22 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
         // Late move reduction
         int reduction = 0;
-        if (depth > 2 && !ISTACTICAL(m->code))
+        if (depth >= sps.lmrmindepth && !ISTACTICAL(m->code))
         {
             reduction = reductiontable[positionImproved][depth][min(63, legalMoves + 1)];
 
             // adjust reduction by stats value
-            reduction -= stats / 5000;
+            reduction -= stats / (sps.lmrstatsratio * 8);
 
             // adjust reduction at PV nodes
             reduction -= PVNode;
 
             // adjust reduction with opponents move number
-            reduction -= (LegalMoves[ply] > 15);
+            reduction -= (LegalMoves[ply] >= sps.lmropponentmovecount);
 
             STATISTICSINC(red_pi[positionImproved]);
             STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, legalMoves + 1)]);
-            STATISTICSADD(red_history, -stats / 5000);
+            STATISTICSADD(red_history, -stats / (sps.lmrstatsratio * 8));
             STATISTICSADD(red_pv, -(int)PVNode);
             STATISTICSDO(int red0 = reduction);
 
@@ -1201,7 +1280,7 @@ static void search_gen1(searchthread *thr)
                 if (abs(alpha) > 5000)
                     delta = SCOREWHITEWINS;
                 else
-                    delta += delta / 4 + 2;
+                    delta += delta / sps.aspincratio + sps.aspincbase;
                 inWindow = 0;
                 reportedThisDepth = false;
             }
@@ -1212,7 +1291,7 @@ static void search_gen1(searchthread *thr)
                 if (abs(beta) > 2000)
                     delta = SCOREWHITEWINS;
                 else
-                    delta += delta / 4 + 2;
+                    delta += delta / sps.aspincratio + sps.aspincbase;
                 inWindow = 2;
                 reportedThisDepth = false;
             }
@@ -1227,7 +1306,7 @@ static void search_gen1(searchthread *thr)
                 }
                 else if (thr->depth > 4) {
                     // next depth with new aspiration window
-                    delta = 8;
+                    delta = sps.aspinitialdelta;
                     if (isMultiPV)
                         alpha = pos->bestmovescore[en.MultiPV - 1] - delta;
                     else
