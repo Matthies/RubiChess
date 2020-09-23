@@ -57,10 +57,10 @@ struct searchparamset {
     searchparam SP(lmrstatsratio, 625);
     searchparam SP(lmropponentmovecount, 16);
     // LMP table
-    searchparam SP(lmpf0, 70);
-    searchparam SP(lmppow0, 185);
-    searchparam SP(lmpf1, 130);
-    searchparam SP(lmppow1, 185);
+    searchparam SP(lmpf0, 59);
+    searchparam SP(lmppow0, 48);
+    searchparam SP(lmpf1, 74);
+    searchparam SP(lmppow1, 170);
     // Razoring
     searchparam SP(razormargin, 250);
     searchparam SP(razordepthfactor, 50);
