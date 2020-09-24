@@ -111,7 +111,7 @@ static void registertuner(chessposition *pos, eval *e, string name, int index1, 
 
 static void registertuner(chessposition *pos, eval *e, string name, int index1, int bound1, int index2, int bound2, bool tune)
 {
-    ostringstream osName, osDef;
+    ostringstream osName;
     size_t maxdig1 = bound1 > 0 ? to_string(bound1 - 1).length() : 0;
     size_t maxdig2 = bound2 > 0 ? to_string(bound2 - 1).length() : 0;
     osName << name;
@@ -123,8 +123,11 @@ static void registertuner(chessposition *pos, eval *e, string name, int index1, 
     {
         osName << "_" << setw(maxdig1) << setfill('0') << to_string(index1);
     }
-    osDef << "Value( " << setw(4) << GETMGVAL(*e) << "/" << setw(4) << GETEGVAL(*e) << ")";
-    en.ucioptions.Register((void*)e, osName.str(), ucieval, osDef.str(), 0, 0, initPsqtable);
+    
+    string sDef =  to_string(GETMGVAL(*e));
+    en.ucioptions.Register((void*)e, osName.str() + "_mg", ucieval, sDef, 0, 0, initPsqtable);
+    sDef = to_string(GETEGVAL(*e));
+    en.ucioptions.Register((void*)e, osName.str() + "_eg", ucieval, sDef, 0, 0, initPsqtable);
 }
 #endif
 
