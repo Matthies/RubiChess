@@ -648,11 +648,13 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_FUTILITYPRUNED;);
                 continue;
             }
+#if 0
             else if (staticeval > bestscore)
             {
                 // Use the static score from futility test as a bestscore start value
                 bestscore = staticeval;
             }
+#endif
         }
 
         // Prune moves with bad SEE
