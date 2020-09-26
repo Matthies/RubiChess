@@ -117,7 +117,7 @@ int evaluate_leaf(chessposition *pos , movelist pv)
 #define GENSFEN_HASH_SIZE 0x1000000
 U64 sfenhash[GENSFEN_HASH_SIZE];
 
-const U64 sfenchunksize = 1024;
+const U64 sfenchunksize = 0x10000;
 const int sfenchunknums = 2;
 
 enum { CHUNKFREE, CHUNKINUSE, CHUNKFULL, CHUNKSTOP };
@@ -127,8 +127,10 @@ void flush_psv(int result, searchthread *thr)
     PackedSfenValue* p;
     int fullchunk = -1;
     U64 offset = thr->psv - thr->psvbuffer;
+    cerr << "flush called with result " << result << "\n";
     while (true)
     {
+        //cout << "flush: offset=" << offset << "\n";
         p = thr->psvbuffer + offset;
         if (p->game_result != -2)
             break;
@@ -142,7 +144,10 @@ void flush_psv(int result, searchthread *thr)
         offset--;
     }
     if (fullchunk >= 0 && thr->chunkstate[fullchunk] == CHUNKINUSE)
+    {
         thr->chunkstate[fullchunk] = CHUNKFULL;
+        cerr << "flush: marked chunk " << fullchunk << " as full.\n";
+    }
 
 }
         
@@ -230,9 +235,11 @@ int chessposition::getFromSfen(PackedSfen* sfen)
     //  king positions
     read_n_bit(buffer, &b, 6, &bitnum);
     kingpos[WHITE] = b;
+    mailbox[b] = WKING;
     BitboardSet(b, WKING);
     read_n_bit(buffer, &b, 6, &bitnum);
     kingpos[BLACK] = b;
+    mailbox[b] = BKING;
     BitboardSet(b, BKING);
     U64 kingbb = piece00[WKING] | piece00[BKING];
 
@@ -258,6 +265,8 @@ int chessposition::getFromSfen(PackedSfen* sfen)
     read_n_bit(buffer, &b, 1, &bitnum);
     if (b)
         read_n_bit(buffer, (uint8_t*)&ept, 6, &bitnum);
+    else
+        ept = 0;
 
     // halfmove counter; FIXME: This is compatible with SF but buggy as the upper bit is missing and counter is cut at 64
     read_n_bit(buffer, (uint8_t*)&halfmovescounter, 6, &bitnum);
@@ -326,7 +335,6 @@ static void gensfenthread(searchthread* thr)
     U64 rndseed = time(NULL);
     raninit(&rnd, rndseed);
     chessmovelist movelist;
-    //PackedSfenValue* psv = thr->psv;
     U64 psvnums = 0;
     chessmove nextmove;
     chessposition* pos = &thr->pos;
@@ -340,9 +348,9 @@ static void gensfenthread(searchthread* thr)
         int random_move_minply = 1;
         int random_move_maxply = 24;
         int random_move_count = 5;
-        int maxply = 400;
+        int maxply = 200;
         int generate_draw = 1;
-        int depth = 8;
+        int depth = 10;
         U64 nodes = 0;
         int eval_limit = 32000;
         int write_minply = 16;
@@ -362,7 +370,7 @@ static void gensfenthread(searchthread* thr)
 
         for (int ply = 0; ; ++ply)
         {
-            if (ply > maxply) // default: 400
+            if (ply > maxply) // default: 200; SF: 400
             {
                 if (generate_draw) flush_psv(0, thr);
                 break;
@@ -385,7 +393,6 @@ static void gensfenthread(searchthread* thr)
             //value1 = pv_value1.first;
             //pv1 = pv_value1.second;
             int value1 = pos->alphabeta(SCOREBLACKWINS, SCOREWHITEWINS, depth);
-            cout << pos->toFen() << "   value: " << value1 << "\n";
 
             if (abs(value1) >= eval_limit) // win adjudication; default: 32000
             {
@@ -417,6 +424,8 @@ static void gensfenthread(searchthread* thr)
             }
             sfenhash[hash_index] = key; // Replace with the current key.
             
+            //cout << pos->toFen() << "   value: " << value1 << "\n";
+
             // sfen packen
             thr->psv = thr->psvbuffer + psvnums;
             pos->toSfen(&thr->psv->sfen);
@@ -440,12 +449,15 @@ static void gensfenthread(searchthread* thr)
                 while (thr->chunkstate[nextchunk] != CHUNKFREE)
                     Sleep(10);
                 thr->chunkstate[nextchunk] = CHUNKINUSE;
+                cerr << "gensfen switches to chunk " << nextchunk << "\n";
                 psvnums = psvnums % (sfenchunknums * sfenchunksize);
             }
             
 SKIP_SAVE:;
             // preset move for next ply with the pv move
             nextmove.code = pos->pvtable[pos->ply][0];
+            if (!nextmove.code) cout << value1 << "\n";
+
 #if 0
             if (
                 // 1. Random move of random_move_count times from random_move_minply to random_move_maxply
@@ -457,19 +469,27 @@ SKIP_SAVE:;
             }
 #endif
             pos->prepareStack();
-            bool legal = pos->playMove(&nextmove);
-            if (legal)
+            bool chooserandom = !nextmove.code || (ply >= random_move_minply && ply <= random_move_maxply && random_move_flag[ply]);
+
+            while (true)
             {
-                if (pos->halfmovescounter == 0)
-                    pos->mstop = 0;
+                if (chooserandom)
+                {
+                    int i = ranval(&rnd, (uint64_t)movelist.length);
+                    nextmove.code = movelist.move[i].code;
+                }
+                bool legal = pos->playMove(&nextmove);
+                if (legal)
+                {
+                    if (pos->halfmovescounter == 0)
+                        pos->mstop = 0;
+                    break;
+                }
             }
-            
-
-
-        
         }
     }
 }
+
 
 void gensfen(U64 fensnum)
 {
@@ -497,7 +517,8 @@ void gensfen(U64 fensnum)
         {
             if (thr->chunkstate[i] == CHUNKFULL)
             {
-                os.write((char*)thr->psvbuffer + i * sfenchunksize, sfenchunksize * sizeof(PackedSfenValue));
+                cerr << "gensfen: writing chunk " << i << "\n";
+                os.write((char*)(thr->psvbuffer + i * sfenchunksize), sfenchunksize * sizeof(PackedSfenValue));
                 chunkswritten++;
                 if (chunkswritten >= chunksneeded)
                     thr->chunkstate[i] = CHUNKSTOP;
@@ -512,6 +533,7 @@ void gensfen(U64 fensnum)
         if (en.sthread[tnum].thr.joinable())
             en.sthread[tnum].thr.join();
     }
+    cout << "gensfen finished.\n";
 
 }
 
