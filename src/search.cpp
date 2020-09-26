@@ -352,7 +352,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     CheckForImmediateStop();
 
     // Reset pv
-    pvtable[ply][0] = 0;
+    if (PVNode)
+        pvtable[ply][0] = 0;
 
     STATISTICSINC(ab_n);
     STATISTICSADD(ab_pv, PVNode);
@@ -425,9 +426,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         {
             // not a single repetition; we can (almost) safely trust the hash value
             uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
-            if (fullhashmove)
-                updatePvTable(fullhashmove, false);
-
             if (!PVNode)
             {
                 STATISTICSINC(ab_tt);
@@ -435,6 +433,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 SDEBUGDO(isDebugPv, pvadditionalinfo[ply] = "PV = " + getPv(pvtable[ply]) + "  " + tp.debugGetPv(newhash); );
                 return hashscore;
             }
+
+            if (fullhashmove)
+                updatePvTable(fullhashmove, false);
         }
     }
 
