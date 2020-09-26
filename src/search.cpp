@@ -640,21 +640,11 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
         // Check for futility pruning condition for this move and skip move if at least one legal move is already found
         bool futilityPrune = futility && !ISTACTICAL(m->code) && !isCheckbb && alpha <= 900 && !moveGivesCheck(m->code);
-        if (futilityPrune)
+        if (futilityPrune && legalMoves)
         {
-            if (legalMoves)
-            {
-                STATISTICSINC(moves_pruned_futility);
-                SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_FUTILITYPRUNED;);
-                continue;
-            }
-#if 0
-            else if (staticeval > bestscore)
-            {
-                // Use the static score from futility test as a bestscore start value
-                bestscore = staticeval;
-            }
-#endif
+            STATISTICSINC(moves_pruned_futility);
+            SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_FUTILITYPRUNED;);
+            continue;
         }
 
         // Prune moves with bad SEE
