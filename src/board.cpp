@@ -2988,18 +2988,34 @@ void ucioptions_t::Set(string n, string v, bool force)
         break;
 #ifdef EVALOPTIONS
     case ucieval:
-        eval eVal;
-        if (regex_search(v, m, regex("Value\\(\\s*(\\-?\\d+)\\s*(,|\\/)\\s*(\\-?\\d+).*\\)")))
-        {
-            string sMg = m.str(1);
-            string sEg = m.str(3);
-            try {
-                eVal = VALUE(stoi(sMg), stoi(sEg));
-                if ((bChanged = (force || eVal != *(eval*)(op->enginevar))))
-                    *(eval*)(op->enginevar) = eVal;
+        int newval;
+        try {
+            eval oldeval = *(eval*)(op->enginevar);
+            eval eVal = oldeval;
+            newval = stoi(v);
+            if (n.find("_mg") != string::npos)
+            {
+                eVal = VALUE(newval, GETEGVAL(oldeval));
             }
-            catch (...) {}
+            if (n.find("_eg") != string::npos)
+            {
+                eVal = VALUE(GETMGVAL(oldeval), newval);
+            }
+            if ((bChanged = (force || eVal != oldeval)))
+                *(eval*)(op->enginevar) = eVal;
         }
+        catch (...) {}
+        break;
+#endif
+#ifdef SEARCHOPTIONS
+    case ucisearch:
+        int sVal;
+        try {
+            sVal = stoi(v);
+            if ((bChanged = (force || sVal != *(int*)(op->enginevar))))
+                *(int*)(op->enginevar) = sVal;
+        }
+        catch (...) {}
         break;
 #endif
     default:
@@ -3032,6 +3048,11 @@ void ucioptions_t::Print()
             break;
 #ifdef EVALOPTIONS
         case ucieval:
+            cout << "string default " << op->def << "\n";
+            break;
+#endif
+#ifdef SEARCHOPTIONS
+        case ucisearch:
             cout << "string default " << op->def << "\n";
             break;
 #endif

@@ -41,6 +41,10 @@
 #endif
 
 #if 0
+#define SEARCHOPTIONS
+#endif
+
+#if 0
 #define FINDMEMORYLEAKS
 #endif
 
@@ -1442,7 +1446,7 @@ const map<string, GuiToken> GuiCommandMap = {
 class engine;   //forward definition
 
 // order of ucioptiontypes is important for (not) setting default at registration
-enum ucioptiontype { ucicheck, ucispin, ucicombo, ucistring, ucibutton, ucieval };
+enum ucioptiontype { ucicheck, ucispin, ucicombo, ucistring, ucibutton, ucieval, ucisearch };
 
 struct ucioption_t
 {
