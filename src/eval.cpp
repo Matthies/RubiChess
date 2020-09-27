@@ -77,7 +77,7 @@ void chessposition::copyPositionTuneSet(positiontuneset *from, evalparam *efrom,
     }
 }
 
-string chessposition::getGradientString()
+string chessposition::getCoeffString()
 {
     string s = "";
     for (int i = 0; i < pts.num; i++)

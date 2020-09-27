@@ -32,7 +32,7 @@
 #define TDEBUG
 #endif
 
-#if 0
+#if 1
 #define EVALTUNE
 #endif
 
@@ -496,6 +496,21 @@ struct evalparamset {
     };
 };
 
+void registerallevals(chessposition* pos = nullptr);
+void initPsqtable();
+
+#define SCALE_NORMAL 128
+#define SCALE_DRAW 0
+#define SCALE_ONEPAWN 48
+#define SCALE_HARDTOWIN 10
+#define SCALE_OCB 32
+
+enum EvalType { NOTRACE, TRACE };
+
+
+//
+// Texel tuning related stuff
+//
 #ifdef EVALTUNE
 
 #define NUMOFEVALPARAMS (sizeof(evalparamset) / sizeof(eval))
@@ -544,18 +559,12 @@ struct tunerpool {
     tuner *tn;
 };
 
+extern int tuningratio;
+
+bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg);
+void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK, string correlation);
+
 #endif
-
-void registerallevals(chessposition *pos = nullptr);
-void initPsqtable();
-
-#define SCALE_NORMAL 128
-#define SCALE_DRAW 0
-#define SCALE_ONEPAWN 48
-#define SCALE_HARDTOWIN 10
-#define SCALE_OCB 32
-
-enum EvalType { NOTRACE, TRACE };
 
 //
 // utils stuff
@@ -1284,7 +1293,7 @@ public:
     void resetTuner();
     void getPositionTuneSet(positiontuneset *p, evalparam *e);
     void copyPositionTuneSet(positiontuneset *from, evalparam *efrom, positiontuneset *to, evalparam *eto);
-    string getGradientString();
+    string getCoeffString();
 #endif
 #ifdef SDEBUG
     struct {
