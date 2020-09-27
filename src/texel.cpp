@@ -28,7 +28,7 @@ U64 fenWritten;
 string fenlines[2048];
 
 
-static void writeFenToFile(ofstream* fenfile, string fenlines[], int gamepositions, int ppg)
+static void writeFenToFile(ofstream* fenfile, int gamepositions, int ppg)
 {
     int fentowrite = (ppg ? ppg : gamepositions);
 
@@ -123,7 +123,7 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
             {
                 gamescount++;
                 if (gamepositions)
-                    writeFenToFile(&fenfile, fenlines, gamepositions, ppg);
+                    writeFenToFile(&fenfile, gamepositions, ppg);
                 gamepositions = 0;
                 // Write last game
                 if (!quietonly && !ppg && newgamestarts >= 2)
@@ -258,7 +258,7 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
                 line = "";
         }
         if (gamepositions)
-            writeFenToFile(&fenfile, fenlines, gamepositions, ppg);
+            writeFenToFile(&fenfile, gamepositions, ppg);
 
         printf("Position so far:  %9lld\n", fenWritten);
 
@@ -819,31 +819,12 @@ static void tuneParameter(tuner* tn)
 }
 
 
-static void updateTunerPointer(chessposition* p, tunerpool* pool)
-{
-    int num = p->tps.count;
-    int newLowRunning = pool->highRunning;
-
-    for (int i = 0; i < en.Threads; i++)
-    {
-        tuner* tn = &pool->tn[i];
-        int pi = tn->paramindex;
-
-        if (tn->busy)
-        {
-            // remember for possible lowest runner
-            if ((pool->highRunning - pi) % num > (pool->highRunning - newLowRunning) % num)
-                newLowRunning = pi;
-        }
-    }
-    pool->lowRunning = newLowRunning;
-}
-
 // Collects params of finished tuners, updates 'low' and 'improved' mark and returns free tuner
 static void collectTuners(chessposition* p, tunerpool* pool, tuner** freeTuner)
 {
     if (freeTuner) *freeTuner = nullptr;
-    for (int i = 0; i < en.Threads; i++)
+
+    for (int i = 0; i < MAXTHREADS; i++)
     {
         tuner* tn = &pool->tn[i];
         int pi = tn->paramindex;
@@ -851,29 +832,38 @@ static void collectTuners(chessposition* p, tunerpool* pool, tuner** freeTuner)
         while (!freeTuner && tn->busy)
             Sleep(10);
 
-        if (!tn->busy)
+        if (tn->inUse)
         {
-            if (tn->thr.joinable())
-                tn->thr.join();
-
-            if (freeTuner && i < iThreads) *freeTuner = tn;
-
-            if (pi >= 0)
+            if (!tn->busy)
             {
-                if (tn->ev[pi] != *p->tps.ev[pi])
+                if (tn->thr.joinable())
                 {
-                    printf("%2d %4d  %9lld   %40s  %0.10f -> %0.10f  %s  -> %s\n", i, pi, p->tps.used[pi], nameTunedParameter(p, pi).c_str(), tn->starterror, tn->error,
-                        getValueStringValue(p->tps.ev[pi]).c_str(),
-                        getValueStringValue(&(tn->ev[pi])).c_str());
-                    pool->lastImproved = pi;
-                    *p->tps.ev[pi] = tn->ev[pi];
+                    pool->tuninginprogress[pi] = false;
+                    tn->thr.join();
                 }
-                else {
-                    printf("%2d %4d  %9lld   %40s  %0.10f  %s  constant\n", i, pi, p->tps.used[pi], nameTunedParameter(p, pi).c_str(), tn->error,
-                        getValueStringValue(&(tn->ev[pi])).c_str());
+
+                if (i >= iThreads)
+                    tn->inUse = false;
+                else if (freeTuner)
+                    *freeTuner = tn;
+
+                if (pi >= 0)
+                {
+                    if (tn->ev[pi] != *p->tps.ev[pi])
+                    {
+                        printf("%2d %4d  %9lld   %40s  %0.10f -> %0.10f  %s  -> %s\n", i, pi, p->tps.used[pi], nameTunedParameter(p, pi).c_str(), tn->starterror, tn->error,
+                            getValueStringValue(p->tps.ev[pi]).c_str(),
+                            getValueStringValue(&(tn->ev[pi])).c_str());
+                        pool->lastImprovedIteration = max(pool->lastImprovedIteration, tn->iteration);
+                        *p->tps.ev[pi] = tn->ev[pi];
+                    }
+                    else {
+                        printf("%2d %4d  %9lld   %40s  %0.10f  %s  constant\n", i, pi, p->tps.used[pi], nameTunedParameter(p, pi).c_str(), tn->error,
+                            getValueStringValue(&(tn->ev[pi])).c_str());
+                    }
                 }
+                tn->paramindex = -1;
             }
-            tn->paramindex = -1;
         }
     }
 }
@@ -977,8 +967,10 @@ void getCorrelation(string correlationParams)
 
 }
 
+tunerpool tpool;
+
 // main fucntion for texel tuning
-void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK, string correlation)
+void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK, string correlationParams)
 {
     pos.mtrlhsh.init();
     pos.pwnhsh.setSize(0);
@@ -988,26 +980,25 @@ void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK, string correlati
     getCoeffsFromFen(fenfilenames);
     if (!texelptsnum) return;
 
-    if (correlation != "")
+    if (correlationParams != "")
     {
-        getCorrelation(correlation);
+        getCorrelation(correlationParams);
         return;
     }
 
-    tunerpool tpool;
-    iThreads = en.Threads;
-    tpool.tn = new tuner[en.Threads];
-    tpool.lowRunning = -1;
-    tpool.highRunning = -1;
-    tpool.lastImproved = -1;
+    tpool.lastImprovedIteration = 0;
     tuner* tn;
 
-    for (int i = 0; i < en.Threads; i++)
+    for (int i = 0; i < MAXTHREADS; i++)
     {
         tpool.tn[i].busy = false;
-        tpool.tn[i].index = i;
+        tpool.tn[i].inUse = false;
         tpool.tn[i].paramindex = -1;
     }
+
+    iThreads = 1;
+    for (int i = 0; i < iThreads; i++)
+        tpool.tn[i].inUse = true;
 
     if (bOptimizeK)
     {
@@ -1058,24 +1049,63 @@ void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK, string correlati
     bool leaveSoon = false;
     bool leaveNow = false;
 
+    ranctx rnd;
+    raninit(&rnd, time(NULL));
+
+    vector<int> tpindex;
+    for (int i = 0; i < pos.tps.count; i++)
+    {
+        if (!pos.tps.tune[i])
+            continue;
+        if (pos.tps.used[i] * 100000 / texelptsnum < 1)
+        {
+            printf("   %4d  %9lld   %40s   %s  canceled, too few positions in testset\n", i, pos.tps.used[i],
+                nameTunedParameter(&pos, i).c_str(),
+                getValueStringValue(pos.tps.ev[i]).c_str());
+            continue;
+        }
+        tpindex.insert(tpindex.end(), i); 
+    }
+
+    int tpcount = (int)tpindex.size();
+
+    tpool.tuninginprogress.resize(pos.tps.count);
+    fill(tpool.tuninginprogress.begin(), tpool.tuninginprogress.end(), false);
+
     printf("Tuning starts now.\nPress 'P' to output current parameters.\nPress 'B' to break after current tuning loop.\nPress 'S' for immediate break.\nPress '+', '-' to increase/decrease threads to use.\n\n");
 
+    int iteration = 0;
+    // loop over iterations until no parameter improves
     while (improved && !leaveSoon && !leaveNow)
     {
-        for (int i = 0; i < pos.tps.count; i++)
+        iteration++;
+
+        printf("Starting iteration %d...\n", iteration);
+
+        vector<int> tpinloop = tpindex;
+        int tpcountinloop = tpcount;
+
+        // loop over all parameters in this iteration
+        while (tpcountinloop)
         {
             if (leaveNow)
                 break;
-            if (!pos.tps.tune[i])
-                continue;
-            if (pos.tps.used[i] * 100000 / texelptsnum < 1)
+
+            int nextindex;
+
+            while (true)
             {
-                printf("   %4d  %9lld   %40s   %s  canceled, too few positions in testset\n", i, pos.tps.used[i],
-                    nameTunedParameter(&pos, i).c_str(),
-                    getValueStringValue(pos.tps.ev[i]).c_str());
-                continue;
+                int i = ranval(&rnd) % tpcountinloop;
+                nextindex = tpinloop[i];
+                if (!tpool.tuninginprogress[nextindex])
+                {
+                    tpool.tuninginprogress[nextindex] = true;
+                    tpinloop[i] = tpinloop[tpcountinloop - 1];
+                    tpcountinloop--;
+                    break;
+                }
             }
-            tpool.highRunning = i;
+
             do
             {
                 collectTuners(&pos, &tpool, &tn);
@@ -1097,44 +1127,31 @@ void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK, string correlati
                             printf("Stopping now!\n");
                             leaveNow = true;
                         }
-                        if (c == '-')
+                        if (c == '-' && iThreads > 1)
                         {
-                            iThreads = max(1, iThreads - 1);
+                            iThreads--;
+                            // inUse will be reset by the collector
                             printf("Now using %d threads...\n", iThreads);
                         }
-                        if (c == '+')
+                        if (c == '+' && iThreads < min(MAXTHREADS, tpcount / 3))
                         {
-                            iThreads = min(en.Threads, iThreads + 1);
+                            tpool.tn[iThreads++].inUse = true;
                             printf("Now using %d threads...\n", iThreads);
                         }
                     }
                 }
             } while (!tn);
             tn->busy = true;
-            tn->paramindex = i;
+            tn->paramindex = nextindex;
+            tn->iteration = iteration;
             copyParams(&pos, tn);
 
             tn->thr = thread(&tuneParameter, tn);
 
-            updateTunerPointer(&pos, &tpool);
-            if (tpool.highRunning == tpool.lastImproved)
-            {
-                while (tn->busy)
-                    // Complete loop without improvement... wait for last tuning finish
-                    Sleep(100);
-                collectTuners(&pos, &tpool, &tn);
-
-                if (tpool.highRunning == tpool.lastImproved)
-                {
-                    // still no improvement after last finished thread => exit
-                    improved = false;
-                    break;
-                }
-            }
         }
+        improved = (tpool.lastImprovedIteration >= iteration - 1);
     }
     collectTuners(&pos, &tpool, nullptr);
-    delete[] tpool.tn;
     free(texelpts);
     pos.mtrlhsh.remove();
     pos.pwnhsh.remove();

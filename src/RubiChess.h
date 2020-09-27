@@ -251,6 +251,12 @@ class chessposition;
 class searchthread;
 struct pawnhashentry;
 
+// some general constants
+#define MAXMULTIPV 64
+#define MAXTHREADS  256
+#define MAXHASH     0x100000  // 1TB ... never tested
+#define DEFAULTHASH 16
+
 
 //
 // eval stuff
@@ -543,8 +549,9 @@ struct tuneparamselection {
 
 struct tuner {
     thread thr;
-    int index;
+    bool inUse;
     int paramindex;
+    int iteration;
     eval ev[NUMOFEVALPARAMS];
     int paramcount;
     double starterror;
@@ -553,10 +560,10 @@ struct tuner {
 };
 
 struct tunerpool {
-    int lowRunning;
-    int highRunning;
-    int lastImproved;
-    tuner *tn;
+    int lastImprovedIteration;
+    int iThreads;
+    tuner tn[MAXTHREADS];
+    vector<bool> tuninginprogress;
 };
 
 extern int tuningratio;
@@ -569,6 +576,10 @@ void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK, string correlati
 //
 // utils stuff
 //
+typedef struct ranctx { U64 a; U64 b; U64 c; U64 d; } ranctx;
+
+void raninit(ranctx* x, U64 seed);
+U64 ranval(ranctx* x);
 U64 calc_key_from_pcs(int *pcs, int mirror);
 void getPcsFromStr(const char* str, int *pcs);
 void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am);
@@ -714,11 +725,6 @@ void NnueReadNet(string path);
 //
 // transposition stuff
 //
-typedef unsigned long long u8;
-typedef struct ranctx { u8 a; u8 b; u8 c; u8 d; } ranctx;
-
-#define rot(x,k) (((x)<<(k))|((x)>>(64-(k))))
-
 #define BOUNDMASK   0x03 
 #define HASHALPHA   0x01
 #define HASHBETA    0x02
@@ -734,9 +740,9 @@ public:
     ranctx rnd;
     zobrist();
     unsigned long long getRnd();
-    u8 getHash(chessposition *pos);
-    u8 getPawnHash(chessposition *pos);
-    u8 getMaterialHash(chessposition *pos);
+    U64 getHash(chessposition *pos);
+    U64 getPawnHash(chessposition *pos);
+    U64 getMaterialHash(chessposition *pos);
 };
 
 #define TTBUCKETNUM 3
@@ -1125,11 +1131,6 @@ public:
     string toString();
     void print();
 };
-
-#define MAXMULTIPV 64
-#define MAXTHREADS  256
-#define MAXHASH     0x100000  // 1TB ... never tested
-#define DEFAULTHASH 16
 
 class chessmovelist
 {
