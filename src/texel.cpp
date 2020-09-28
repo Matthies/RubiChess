@@ -47,6 +47,9 @@ static void writeFenToFile(ofstream* fenfile, int gamepositions, int ppg)
 }
 
 
+const int minMaterial = 7;
+const int maxPly = 200;
+
 bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
 {
     pos.tps.count = 0;
@@ -109,7 +112,7 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
         bool valueChecked = true;;
         int gamepositions = 0;
         string scoreBracket;
-        while (getline(pgnfile, newline))
+        while (gamescount <= 1000 && getline(pgnfile, newline))
         {
             line2 = line1;
             line1 = newline;
@@ -151,9 +154,8 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
                 cout << "Reading game " << gamescount << "\n";
                 pos.getFromFen(fen.c_str());
                 pos.ply = 0;
-                // Skip positions inside TB area
-                if (POPCOUNT(pos.occupied00[0] | pos.occupied00[1]) >= 7)
-                    fenlines[gamepositions++] = fen + " " + (result == 0 ? "1/2" : (result > 0 ? "1-0" : "0-1")) + "\n";
+
+                fenlines[gamepositions++] = fen + " " + (result == 0 ? "1/2" : (result > 0 ? "1-0" : "0-1")) + "\n";
             }
             // Don't export games that were lost on time or by stalled connection
             if (regex_search(line, match, regex("\\[Termination\\s+\".*(forfeit|stalled|unterminated).*\"")))
@@ -249,9 +251,18 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
                 } while (foundInLine);
             }
 
-            if (pos.ply > 500 && newgamestarts == 2)
-                // Too many plies; abort game
-                newgamestarts = 3;
+            if (newgamestarts == 2)
+            {
+                // Test for early exit of the game
+                if (pos.ply > maxPly)
+                    // Too many plies; abort game
+                    newgamestarts = 3;
+
+                int material = POPCOUNT(pos.piece00[0] | pos.piece00[1]);
+                if (material < minMaterial)
+                    newgamestarts = 3;
+            }
+
 
             if (newgamestarts != 2)
                 // not in moves section delete rest of line
