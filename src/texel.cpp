@@ -25,7 +25,59 @@
 
 chessposition pos;
 U64 fenWritten;
-string fenlines[2048];
+
+#define MAXFENS 256
+string fenlines[MAXFENS];
+U64 fenhash[MAXFENS];
+int8_t fenresult[MAXFENS];
+int fenscore[MAXFENS];
+
+// Variation of TT to detect non-unique positions in the pgn
+struct poshashentry {
+    U64 hash;
+    int num;
+};
+
+
+#define POSHASHSIZEMB  1024 // max size for poshash in MB
+U64 poshashsize;
+U64 poshashmask;
+poshashentry* poshash;
+
+static void allocPoshash()
+{
+    U64 maxsize = ((U64)POSHASHSIZEMB << 20) / sizeof(poshashentry);
+    int msb;
+    GETMSB(msb, maxsize);
+    poshashsize = (1ULL << msb);
+    poshashmask = poshashsize - 1;
+    size_t allocsize = (size_t)(poshashsize * sizeof(poshashentry));
+    poshash = (poshashentry*)allocalign64(allocsize);
+    if (!poshash)
+    {
+        printf("Error allocating poshash memory.\n");
+        return;
+    }
+    memset(poshash, 0, allocsize);
+}
+
+int addPos(U64 h)
+{
+    U64 index = h & poshashmask;
+    poshashentry* entry = poshash + index;
+    if (!entry->hash)
+    {
+        entry->hash = h;
+        entry->num = 1;
+        return 1;
+    }
+    if (entry->hash != h)
+    {
+        printf("conflict\n");
+        return -1;
+    }
+    return ++entry->num;
+}
 
 
 static void writeFenToFile(ofstream* fenfile, int gamepositions, int ppg)
@@ -82,6 +134,9 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
         printf("Cannot open %s for writing.\n", fenfilename.c_str());
         return false;
     }
+
+    allocPoshash();
+
     ofstream fenmovefile;
     if (!quietonly)
     {
@@ -155,7 +210,10 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
                 pos.getFromFen(fen.c_str());
                 pos.ply = 0;
 
-                fenlines[gamepositions++] = fen + " " + (result == 0 ? "1/2" : (result > 0 ? "1-0" : "0-1")) + "\n";
+                fenlines[gamepositions] = fen;// +" " + (result == 0 ? "1/2" : (result > 0 ? "1-0" : "0-1")) + "\n";
+                fenhash[gamepositions] = pos.hash;
+                fenscore[gamepositions] = 0;
+                fenresult[gamepositions++] = result;
             }
             // Don't export games that were lost on time or by stalled connection
             if (regex_search(line, match, regex("\\[Termination\\s+\".*(forfeit|stalled|unterminated).*\"")))
@@ -186,7 +244,12 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
                         {
                             // Score tag of last move missing; just output without score
                             if (fen != "")
-                                fenlines[gamepositions++] = fen + " " + (result == 0 ? "1/2" : (result > 0 ? "1-0" : "0-1")) + " 0\n";
+                            {
+                                fenlines[gamepositions] = fen + " ";// +(result == 0 ? "1/2" : (result > 0 ? "1-0" : "0-1")) + "\n";
+                                fenhash[gamepositions] = pos.hash;
+                                fenscore[gamepositions] = INT_MIN;
+                                fenresult[gamepositions++] = result;
+                            }
                             moves = moves + lastmove + " ";
                         }
                         valueChecked = false;
@@ -241,7 +304,10 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
                                 foundInLine = true;
                                 if (!mateFound && fen != "")
                                 {
-                                    fenlines[gamepositions++] = fen + " " + (result == 0 ? "1/2" : (result > 0 ? "1-0" : "0-1")) + " " + to_string(score) + "\n";
+                                    fenlines[gamepositions] = fen;// +" " + (result == 0 ? "1/2" : (result > 0 ? "1-0" : "0-1")) + " " + to_string(score) + "\n";
+                                    fenhash[gamepositions] = pos.hash;
+                                    fenscore[gamepositions] = score;
+                                    fenresult[gamepositions++] = result;
                                     moves = moves + lastmove + " ";
                                 }
                                 valueChecked = true;
