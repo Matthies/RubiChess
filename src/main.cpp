@@ -1059,7 +1059,7 @@ int main(int argc, char* argv[])
 #ifdef EVALTUNE
     else if (pgnconvertfile != "")
     {
-        PGNtoFEN(pgnconvertfile, quietonly, ppg);
+        PGNtoFEN(pgnconvertfile, depth, ppg);
     }
     else if (fentuningfiles != "")
     {
