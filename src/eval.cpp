@@ -101,7 +101,11 @@ static void registertuner(chessposition *pos, eval *e, string name, int index1, 
     pos->tps.bound1[i] = bound1;
     pos->tps.index2[i] = index2;
     pos->tps.bound2[i] = bound2;
-    pos->tps.tune[i] = tune;
+    if (e->type == 0)
+        pos->tps.tune[i] = true;
+    else
+        pos->tps.tune[i] = false;
+    //pos->tps.tune[i] = tune;
     pos->tps.used[i] = 0;
     pos->tps.count++;
 }

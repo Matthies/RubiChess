@@ -1127,7 +1127,7 @@ void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK, string correlati
         E[0] = TexelEvalError(tn, bound[0]);
         E[1] = TexelEvalError(tn, bound[1]);
         Emin = TexelEvalError(tn, lastx);
-        if (Emin > E[0] || Emin > E[1])
+        if (Emin > E[0] && Emin > E[1])
         {
             printf("Tuning Error! Wrong bounds. E0=%0.10f  E1=%0.10f  Ed=%0.10f\n", E[0], E[1], Emin);
             return;
