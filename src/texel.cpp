@@ -563,7 +563,7 @@ static double TexelEvalError(tuner* tn, double k = texel_k)
             Qi = SCOREDRAW;
         else
             Qi = TAPEREDANDSCALEDEVAL(getValueByCoeff(tn->ev, p, e), p->ph, p->sc);
-        double sigmoid = 1 / (1 + pow(10.0, -k * Qi / 400.0));
+        double sigmoid = 1 / (1 + exp(-k * Qi));
         E += (Ri - sigmoid) * (Ri - sigmoid);
         p = (positiontuneset*)((char*)p + sizeof(positiontuneset) + p->num * sizeof(evalparam));
     }
