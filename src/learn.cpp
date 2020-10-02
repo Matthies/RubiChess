@@ -115,42 +115,13 @@ int evaluate_leaf(chessposition *pos , movelist pv)
 #endif
 
 #define GENSFEN_HASH_SIZE 0x1000000
-U64 sfenhash[GENSFEN_HASH_SIZE];
+alignas(64) U64 sfenhash[GENSFEN_HASH_SIZE];
 
-const U64 sfenchunksize = 0x10000;
+const U64 sfenchunksize = 0x4000;
 const int sfenchunknums = 2;
+bool gensfenstop;
 
-enum { CHUNKFREE, CHUNKINUSE, CHUNKFULL, CHUNKSTOP };
-
-void flush_psv(int result, searchthread *thr)
-{
-    PackedSfenValue* p;
-    int fullchunk = -1;
-    U64 offset = thr->psv - thr->psvbuffer;
-    cerr << "flush called with result " << result << "\n";
-    while (true)
-    {
-        //cout << "flush: offset=" << offset << "\n";
-        p = thr->psvbuffer + offset;
-        if (p->game_result != -2)
-            break;
-        p->game_result = result;
-        if (offset % sfenchunksize == 0)
-        {
-            fullchunk = ((int)(offset / sfenchunksize) + sfenchunknums - 1) % sfenchunknums;
-            if (offset == 0)
-                offset = sfenchunknums * sfenchunksize;
-        }
-        offset--;
-    }
-    if (fullchunk >= 0 && thr->chunkstate[fullchunk] == CHUNKINUSE)
-    {
-        thr->chunkstate[fullchunk] = CHUNKFULL;
-        cerr << "flush: marked chunk " << fullchunk << " as full.\n";
-    }
-
-}
-        
+enum { CHUNKFREE, CHUNKINUSE, CHUNKFULL };
 
 struct HuffmanedPiece
 {
@@ -329,6 +300,36 @@ void chessposition::toSfen(PackedSfen *sfen)
 }
 
 
+void flush_psv(int result, searchthread* thr)
+{
+    PackedSfenValue* p;
+    int fullchunk = -1;
+    U64 offset = thr->psv - thr->psvbuffer;
+    //cerr << "flush thread " << thr->index << " called with result " << result << "\n";
+    while (true)
+    {
+        //cout << "flush: offset=" << offset << "\n";
+        p = thr->psvbuffer + offset;
+        if (p->game_result != -2)
+            break;
+        p->game_result = result;
+        if (offset % sfenchunksize == 0)
+        {
+            fullchunk = ((int)(offset / sfenchunksize) + sfenchunknums - 1) % sfenchunknums;
+            if (offset == 0)
+                offset = sfenchunknums * sfenchunksize;
+        }
+        offset--;
+    }
+    if (fullchunk >= 0 && thr->chunkstate[fullchunk] == CHUNKINUSE)
+    {
+        thr->chunkstate[fullchunk] = CHUNKFULL;
+        cerr << "flush: thread " << thr->index << " marked chunk " << fullchunk << " as full.\n";
+    }
+
+}
+
+
 static void gensfenthread(searchthread* thr)
 {
     ranctx rnd;
@@ -338,9 +339,18 @@ static void gensfenthread(searchthread* thr)
     U64 psvnums = 0;
     chessmove nextmove;
     chessposition* pos = &thr->pos;
+    pos->he_yes = 0ULL;
+    pos->he_all = 0ULL;
+    pos->he_threshold = 8100;
+    memset(pos->history, 0, sizeof(chessposition::history));
+    memset(pos->counterhistory, 0, sizeof(chessposition::counterhistory));
+    memset(pos->countermove, 0, sizeof(chessposition::countermove));
 
     while (true)
     {
+        if (gensfenstop)
+            return;
+
         pos->getFromFen(STARTFEN);
         
         // Initialisierung der random moves
@@ -444,19 +454,17 @@ static void gensfenthread(searchthread* thr)
             {
                 int thischunk = (int)(psvnums / sfenchunksize - 1);
                 int nextchunk = (thischunk + 1) % sfenchunknums;
-                if (thr->chunkstate[nextchunk] == CHUNKSTOP)
-                    return;
                 while (thr->chunkstate[nextchunk] != CHUNKFREE)
                     Sleep(10);
                 thr->chunkstate[nextchunk] = CHUNKINUSE;
-                cerr << "gensfen switches to chunk " << nextchunk << "\n";
+                cerr << "gensfen thread " << thr->index << " switches to chunk " << nextchunk << "\n";
                 psvnums = psvnums % (sfenchunknums * sfenchunksize);
             }
             
 SKIP_SAVE:;
             // preset move for next ply with the pv move
             nextmove.code = pos->pvtable[pos->ply][0];
-            if (!nextmove.code) cout << value1 << "\n";
+            //if (!nextmove.code) cout << value1 << "\n";
 
 #if 0
             if (
@@ -473,9 +481,10 @@ SKIP_SAVE:;
 
             while (true)
             {
+                int i;
                 if (chooserandom)
                 {
-                    int i = ranval(&rnd, (uint64_t)movelist.length);
+                    i = ranval(&rnd, (uint64_t)movelist.length);
                     nextmove.code = movelist.move[i].code;
                 }
                 bool legal = pos->playMove(&nextmove);
@@ -484,6 +493,17 @@ SKIP_SAVE:;
                     if (pos->halfmovescounter == 0)
                         pos->mstop = 0;
                     break;
+                }
+                else {
+                    movelist.move[i].code = movelist.move[--movelist.length].code;
+                    if (!movelist.length)
+                    {
+                        if (pos->isCheckbb) // Mate
+                            flush_psv(-1, thr);
+                        else if (generate_draw)
+                            flush_psv(0, thr); // Stalemate
+                        break;
+                    }
                 }
             }
         }
@@ -498,9 +518,11 @@ void gensfen(U64 fensnum)
     if (!os) return;
 
     int tnum;
+    gensfenstop = false;
 
     for (tnum = 0; tnum < en.Threads; tnum++)
     {
+        en.sthread[tnum].index = tnum;
         en.sthread[tnum].chunkstate[0] = CHUNKINUSE;
         en.sthread[tnum].chunkstate[1] = CHUNKFREE;
         en.sthread[tnum].psvbuffer = (PackedSfenValue*)allocalign64(sfenchunknums * sfenchunksize * sizeof(PackedSfenValue));
@@ -517,23 +539,22 @@ void gensfen(U64 fensnum)
         {
             if (thr->chunkstate[i] == CHUNKFULL)
             {
-                cerr << "gensfen: writing chunk " << i << "\n";
+                cerr << "gensfen: thread " << thr->index << " writing chunk " << i << "\n";
                 os.write((char*)(thr->psvbuffer + i * sfenchunksize), sfenchunksize * sizeof(PackedSfenValue));
                 chunkswritten++;
-                if (chunkswritten >= chunksneeded)
-                    thr->chunkstate[i] = CHUNKSTOP;
-                else
-                    thr->chunkstate[i] = CHUNKFREE;
+                thr->chunkstate[i] = CHUNKFREE;
             }
         }
         tnum = (tnum + 1) % en.Threads;
     }
+    gensfenstop = true;
     for (int tnum = 0; tnum < en.Threads; tnum++)
     {
+        cerr << "Waiting for thread " << tnum << "\n";
         if (en.sthread[tnum].thr.joinable())
             en.sthread[tnum].thr.join();
     }
-    cout << "gensfen finished.\n";
+    cerr << "gensfen finished.\n";
 
 }
 
