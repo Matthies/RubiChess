@@ -2897,7 +2897,12 @@ void engine::communicate(string inputstring)
                     cout << perft(maxdepth, false) << "\n";
                 }
                 break;
-                break;
+#ifdef EVALTUNE
+            case TUNE:
+                if (ci < cs) {
+
+                }
+#endif
             default:
                 break;
             }

@@ -1398,10 +1398,13 @@ public:
 // uci stuff
 //
 
-enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL, PERFT
+enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL, PERFT, TUNE
 };
 
 const map<string, GuiToken> GuiCommandMap = {
+#ifdef EVALTUNE
+    { "tune", TUNE },
+#endif
     { "uci", UCI },
     { "debug", UCIDEBUG },
     { "isready", ISREADY },
