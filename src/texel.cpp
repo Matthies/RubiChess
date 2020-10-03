@@ -65,17 +65,13 @@ int addPos(U64 h)
 {
     U64 index = h & poshashmask;
     poshashentry* entry = poshash + index;
-    if (!entry->hash)
+    if (!entry->hash || entry->hash != h)
     {
         entry->hash = h;
         entry->num = 1;
         return 1;
     }
-    if (entry->hash != h)
-    {
-        printf("conflict\n");
-        return -1;
-    }
+
     return ++entry->num;
 }
 
@@ -85,12 +81,22 @@ static void writeFenToFile(ofstream* fenfile, int gamepositions, int ppg)
     int fentowrite = (ppg ? ppg : gamepositions);
 
     int i = 0;
-    while (gamepositions && fentowrite--)
+    while (gamepositions && fentowrite)
     {
         if (ppg)
             i = rand() % gamepositions;
-        *fenfile << fenlines[i];
-        fenWritten++;
+
+        U64 h = fenhash[i];
+        int num = addPos(h);
+
+        if (num == 1)
+        {
+            int result = fenresult[i];
+            *fenfile << fenlines[i] << (result == 0 ? " 1/2" : (result > 0 ? " 1-0" : " 0-1")) << " " << fenscore[i] <<  "\n";
+            fentowrite--;
+            fenWritten++;
+        }
+
         if (ppg)
             fenlines[i] = fenlines[--gamepositions];
         else
@@ -102,9 +108,12 @@ static void writeFenToFile(ofstream* fenfile, int gamepositions, int ppg)
 const int minMaterial = 7;
 const int maxPly = 200;
 
-bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
+bool PGNtoFEN(string pgnfilename, int depth, int ppg)
 {
     pos.tps.count = 0;
+    pos.pwnhsh.setSize(1);
+    pos.mtrlhsh.init();
+
     int gamescount = 0;
     fenWritten = 0ULL;
     bool mateFound = false;
@@ -112,7 +121,7 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
     string line1, line2;
     string rest_of_last_line = "";
     string fenfilename = pgnfilename + ".fen";
-    string fenmovefilename = pgnfilename + ".fenmove";
+    //string fenmovefilename = pgnfilename + ".fenmove";
 
     // The following is Windows-only; FIXME: C++--17 offers portable filesystem handling
     WIN32_FIND_DATA fd;
@@ -137,6 +146,7 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
 
     allocPoshash();
 
+#if 0
     ofstream fenmovefile;
     if (!quietonly)
     {
@@ -147,6 +157,7 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
             return false;
         }
     }
+#endif
     do
     {
         string pgnfullname = (folderMode ? pgnfilename + fd.cFileName : pgnfilename);
@@ -162,12 +173,12 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
         int newgamestarts = 0;
         int result = 0;
         string newfen;
-        string moves;
+        //string moves;
         string lastmove;
         bool valueChecked = true;;
         int gamepositions = 0;
         string scoreBracket;
-        while (gamescount <= 1000 && getline(pgnfile, newline))
+        while (getline(pgnfile, newline))
         {
             line2 = line1;
             line1 = newline;
@@ -184,9 +195,10 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
                     writeFenToFile(&fenfile, gamepositions, ppg);
                 gamepositions = 0;
                 // Write last game
+#if 0
                 if (!quietonly && !ppg && newgamestarts >= 2)
                     fenmovefile << to_string(result) + "#" + newfen + " moves " + moves + "\n";
-
+#endif
                 if (match.str(1) == "0")
                     result = -1;
                 else if (match.str(1) == "1")
@@ -194,7 +206,7 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
                 else
                     result = 0;
                 newgamestarts = 1;
-                moves = "";
+                //moves = "";
                 mateFound = false;
             }
             bool fenFound;
@@ -208,6 +220,8 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
                 fen = newfen;
                 cout << "Reading game " << gamescount << "\n";
                 pos.getFromFen(fen.c_str());
+                pos.resetStats();
+                //pos.prepareStack();
                 pos.ply = 0;
 
                 fenlines[gamepositions] = fen;// +" " + (result == 0 ? "1/2" : (result > 0 ? "1-0" : "0-1")) + "\n";
@@ -245,12 +259,14 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
                             // Score tag of last move missing; just output without score
                             if (fen != "")
                             {
+#if 0
                                 fenlines[gamepositions] = fen + " ";// +(result == 0 ? "1/2" : (result > 0 ? "1-0" : "0-1")) + "\n";
                                 fenhash[gamepositions] = pos.hash;
                                 fenscore[gamepositions] = INT_MIN;
                                 fenresult[gamepositions++] = result;
+#endif
                             }
-                            moves = moves + lastmove + " ";
+                            //moves = moves + lastmove + " ";
                         }
                         valueChecked = false;
                         lastmove = AlgebraicFromShort(match.str(1), &pos);
@@ -261,6 +277,7 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
                             pos.print();
                             printf("last Lines:\n%s\n%s\n\n", line2.c_str(), line1.c_str());
                         }
+#if 0
                         pos.isQuiet = !pos.isCheckbb;
                         if (quietonly && pos.isQuiet)
                             pos.getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
@@ -268,6 +285,20 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
                             fen = pos.toFen();
                         else
                             fen = "";
+#endif
+                        score = pos.alphabeta(SCOREBLACKWINS, SCOREWHITEWINS, depth);
+                        uint32_t* pvt = pos.pvtable[pos.ply];
+                        //cout << pos.getPv(pvt) << "\n";
+                        int num = pos.applyPv(pvt);
+
+                        fen = pos.toFen();
+                        fenlines[gamepositions] = fen;
+                        fenhash[gamepositions] = pos.hash;
+                        fenscore[gamepositions] = score;
+                        fenresult[gamepositions++] = result;
+
+                        pos.reapplyPv(pvt, num);
+
                         line = match.suffix();
                     }
                     else if ((foundInLine = regex_search(line, match, regex("\\s*(\\{[^\\}]*\\})"))))
@@ -304,11 +335,13 @@ bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg)
                                 foundInLine = true;
                                 if (!mateFound && fen != "")
                                 {
+#if 0
                                     fenlines[gamepositions] = fen;// +" " + (result == 0 ? "1/2" : (result > 0 ? "1-0" : "0-1")) + " " + to_string(score) + "\n";
                                     fenhash[gamepositions] = pos.hash;
                                     fenscore[gamepositions] = score;
                                     fenresult[gamepositions++] = result;
-                                    moves = moves + lastmove + " ";
+                                    //moves = moves + lastmove + " ";
+#endif
                                 }
                                 valueChecked = true;
                             }
@@ -530,7 +563,7 @@ static double TexelEvalError(tuner* tn, double k = texel_k)
             Qi = SCOREDRAW;
         else
             Qi = TAPEREDANDSCALEDEVAL(getValueByCoeff(tn->ev, p, e), p->ph, p->sc);
-        double sigmoid = 1 / (1 + pow(10.0, -k * Qi / 400.0));
+        double sigmoid = 1 / (1 + exp(-k * Qi));
         E += (Ri - sigmoid) * (Ri - sigmoid);
         p = (positiontuneset*)((char*)p + sizeof(positiontuneset) + p->num * sizeof(evalparam));
     }
@@ -1094,7 +1127,7 @@ void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK, string correlati
         E[0] = TexelEvalError(tn, bound[0]);
         E[1] = TexelEvalError(tn, bound[1]);
         Emin = TexelEvalError(tn, lastx);
-        if (Emin > E[0] || Emin > E[1])
+        if (Emin > E[0] && Emin > E[1])
         {
             printf("Tuning Error! Wrong bounds. E0=%0.10f  E1=%0.10f  Ed=%0.10f\n", E[0], E[1], Emin);
             return;

@@ -32,7 +32,7 @@
 #define TDEBUG
 #endif
 
-#if 1
+#if 0
 #define EVALTUNE
 #endif
 
@@ -568,8 +568,9 @@ struct tunerpool {
 
 extern int tuningratio;
 
-bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg);
+bool PGNtoFEN(string pgnfilename, int depth, int ppg);
 void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK, string correlation);
+typedef void(*initevalfunc)(void);
 
 #endif
 
@@ -592,14 +593,7 @@ U64 getTime();
 #ifdef STACKDEBUG
 void GetStackWalk(chessposition *pos, const char* message, const char* _File, int Line, int num, ...);
 #endif
-#ifdef EVALTUNE
-typedef void(*initevalfunc)(void);
-bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg);
-void TexelTune(string fenfilename, bool noqs, bool bOptimizeK, string correlation);
 
-extern int tuningratio;
-
-#endif
 
 //
 // NNUE stuff
@@ -1373,7 +1367,10 @@ public:
     void updatePvTable(uint32_t mc, bool recursive);
     void updateMultiPvTable(int pvindex, uint32_t mc);
     string getPv(uint32_t *table);
+    int applyPv(uint32_t* table);
+    void reapplyPv(uint32_t* table, int num);
     int getHistory(uint32_t code, int16_t **cmptr);
+    void resetStats();
     inline void CheckForImmediateStop();
 
 #ifdef SDEBUG
