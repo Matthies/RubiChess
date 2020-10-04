@@ -26,6 +26,14 @@
 chessposition pos;
 U64 fenWritten;
 
+string pgnconvertfile;
+string fentuningfiles;
+bool quietonly;
+string correlationlist;
+int ppg;
+tunerpool tpool;
+
+
 #define MAXFENS 256
 string fenlines[MAXFENS];
 U64 fenhash[MAXFENS];
@@ -427,7 +435,7 @@ static string nameTunedParameter(chessposition* p, int i)
     }
     else if (p->tps.bound1[i] > 0)
     {
-        name += "[" + to_string(p->tps.index1[i]) + "] = { ";
+        name += "[" + to_string(p->tps.index1[i]) + "]";
     }
     return name;
 }
@@ -490,6 +498,13 @@ char* texelpts = NULL;
 U64 texelptsnum;
 int iThreads;
 
+static void copyParams(chessposition* p, tuner* tn)
+{
+    for (int i = 0; i < p->tps.count; i++)
+        tn->ev[i] = *p->tps.ev[i];
+    tn->paramcount = p->tps.count;
+}
+
 
 static int getValueByCoeff(eval* ev, positiontuneset* p, evalparam* e, bool debug = false, int corParam = -1)
 {
@@ -546,7 +561,7 @@ static int getValueByCoeff(eval* ev, positiontuneset* p, evalparam* e, bool debu
 }
 
 
-double texel_k = 1.121574;
+double texel_k = 1.121574 / 400;
 
 static double TexelEvalError(tuner* tn, double k = texel_k)
 {
@@ -571,6 +586,50 @@ static double TexelEvalError(tuner* tn, double k = texel_k)
     return E / texelptsnum;
 }
 
+static void optk()
+{
+    printf("Finding optimal tuning constant k for this position set...\n");
+    tuner* tn = &tpool.tn[0];
+    copyParams(&pos, tn);
+    double E[2];
+    double Emin, Error;
+    double bound[2] = { 0.0, 10.0 };
+    double x, lastx;
+    int direction = 0;
+    //double delta;
+    lastx = (bound[0] + bound[1]) / 2;
+
+    E[0] = TexelEvalError(tn, bound[0]);
+    E[1] = TexelEvalError(tn, bound[1]);
+    Emin = TexelEvalError(tn, lastx);
+    if (Emin > E[0] && Emin > E[1])
+    {
+        printf("Tuning Error! Wrong bounds. E0=%0.10f  E1=%0.10f  Ed=%0.10f\n", E[0], E[1], Emin);
+        return;
+    }
+
+    while (bound[1] - bound[0] > 0.00001)
+    {
+        x = (lastx + bound[direction]) / 2;
+        Error = TexelEvalError(tn, x);
+        printf("Tuningscore b0=%0.10f (%0.10f) b1=%0.10f (%0.10f)\n", bound[0], E[0], bound[1], E[1]);
+        if (Error > Emin)
+        {
+            bound[direction] = x;
+            E[direction] = Error;
+        }
+        else {
+            E[1 - direction] = Emin;
+            bound[1 - direction] = lastx;
+            lastx = x;
+            Emin = Error;
+        }
+        direction = 1 - direction;
+    }
+    printf("Best k for this tuning set changed from %0.10f to %0.10f\n", texel_k, (bound[0] + bound[1]) / 2.0);
+    texel_k = (bound[0] + bound[1]) / 2.0;
+}
+
 
 // parser for the most common fen files with tuning information
 static void getCoeffsFromFen(string fenfilenames)
@@ -584,7 +643,6 @@ static void getCoeffsFromFen(string fenfilenames)
 
         int fentype = -1;
         int gamescount = 0;
-        bool fenmovemode = (filename.find(".fenmove") != string::npos);
         string line;
         smatch match;
         int c;
@@ -622,208 +680,125 @@ static void getCoeffsFromFen(string fenfilenames)
                 texelpts = (char*)realloc(texelpts, buffersize);
                 pnext += (texelpts - oldtexelpts);
             }
-            if (!fenmovemode)
+            fen = "";
+            R = 1; // draw as default
+            if ((fentype < 0 || fentype == 1) && regex_search(line, match, regex("(.*)#(.*)#(.*)")))
             {
-                // "(.*)\\s+(c9\\s+)?\"?((1\\-0)|(0\\-1)|(1/2))\"?"
-                fen = "";
-                R = 1; // draw as default
-                if ((fentype < 0 || fentype == 1) && regex_search(line, match, regex("(.*)#(.*)#(.*)")))
+                // my own fen format
+                if (fentype < 0)
                 {
-                    // my own fen format
-                    if (fentype < 0)
-                    {
-                        printf("Format: score#fen#eval (from pgn2fen)\n");
-                        fentype = 1;
-                    }
-                    fen = match.str(2);
-                    R = (stoi(match.str(1)) + 1);
+                    printf("Format: score#fen#eval (from pgn2fen)\n");
+                    fentype = 1;
                 }
-                else if ((fentype < 0 || fentype == 2) && regex_search(line, match, regex("(.*)\\s+((1\\-0)|(0\\-1)|(1/2))")))
+                fen = match.str(2);
+                R = (stoi(match.str(1)) + 1);
+            }
+            else if ((fentype < 0 || fentype == 2) && regex_search(line, match, regex("(.*)\\s+((1\\-0)|(0\\-1)|(1/2))")))
+            {
+                // FENS_JEFFREY
+                if (fentype < 0)
                 {
-                    // FENS_JEFFREY
-                    if (fentype < 0)
-                    {
-                        printf("Format: fen 1-0|0-1|1/2 (from FENS_JEFFREY)\n");
-                        fentype = 2;
-                    }
-                    fen = match.str(1);
-                    R = (match.str(2) == "1-0" ? 2 : (match.str(2) == "0-1" ? 0 : 1));
+                    printf("Format: fen 1-0|0-1|1/2 (from FENS_JEFFREY)\n");
+                    fentype = 2;
                 }
-                else if ((fentype < 0 || fentype == 3) && regex_search(line, match, regex("(.*)\\s+c9\\s+\"((1\\-0)|(0\\-1)|(1/2))")))
+                fen = match.str(1);
+                R = (match.str(2) == "1-0" ? 2 : (match.str(2) == "0-1" ? 0 : 1));
+            }
+            else if ((fentype < 0 || fentype == 3) && regex_search(line, match, regex("(.*)\\s+c9\\s+\"((1\\-0)|(0\\-1)|(1/2))")))
+            {
+                // quiet-labled (zurichess)
+                if (fentype < 0)
                 {
-                    // quiet-labled (zurichess)
-                    if (fentype < 0)
-                    {
-                        printf("Format: fen c9 \"1-0|0-1|1/2\" (from quiet-labled)\n");
-                        fentype = 3;
-                    }
-                    fen = match.str(1);
-                    R = (match.str(2) == "1-0" ? 2 : (match.str(2) == "0-1" ? 0 : 1));
+                    printf("Format: fen c9 \"1-0|0-1|1/2\" (from quiet-labled)\n");
+                    fentype = 3;
                 }
-                else if ((fentype < 0 || fentype == 4) && regex_search(line, match, regex("(.*)\\s+c1(.*)c2\\s+\"((1.0)|(0.5)|(0.0))")))
+                fen = match.str(1);
+                R = (match.str(2) == "1-0" ? 2 : (match.str(2) == "0-1" ? 0 : 1));
+            }
+            else if ((fentype < 0 || fentype == 4) && regex_search(line, match, regex("(.*)\\s+c1(.*)c2\\s+\"((1.0)|(0.5)|(0.0))")))
+            {
+                // big3
+                if (fentype < 0)
                 {
-                    // big3
-                    if (fentype < 0)
-                    {
-                        printf("Format: fen c1 ... c2 \"1.0|0.5|0.0\" (from big3)\n");
-                        fentype = 4;
-                    }
-                    fen = match.str(1);
-                    R = (match.str(3) == "1.0" ? 2 : (match.str(3) == "0.0" ? 0 : 1));
+                    printf("Format: fen c1 ... c2 \"1.0|0.5|0.0\" (from big3)\n");
+                    fentype = 4;
                 }
-                else if ((fentype < 0 || fentype == 5) && regex_search(line, match, regex("(.*)\\|(.*)")))
+                fen = match.str(1);
+                R = (match.str(3) == "1.0" ? 2 : (match.str(3) == "0.0" ? 0 : 1));
+            }
+            else if ((fentype < 0 || fentype == 5) && regex_search(line, match, regex("(.*)\\|(.*)")))
+            {
+                // lichess
+                if (fentype < 0)
                 {
-                    // lichess
-                    if (fentype < 0)
-                    {
-                        printf("Format: fen |White|Black|Draw (from lichess-quiet)\n");
-                        fentype = 5;
-                    }
-                    fen = match.str(1);
-                    R = (match.str(2) == "White" ? 2 : (match.str(2) == "Black" ? 0 : 1));
+                    printf("Format: fen |White|Black|Draw (from lichess-quiet)\n");
+                    fentype = 5;
                 }
-                if (fen != "")
+                fen = match.str(1);
+                R = (match.str(2) == "White" ? 2 : (match.str(2) == "Black" ? 0 : 1));
+            }
+            if (fen != "")
+            {
+                bw = 1 - bw;
+                if (bw)
+                    c++;
+                if (c > tuningratio)
+                    c = 1;
+                if (c == tuningratio)
                 {
-                    bw = 1 - bw;
-                    if (bw)
-                        c++;
-                    if (c > tuningratio)
-                        c = 1;
-                    if (c == tuningratio)
+                    pos.getFromFen(fen.c_str());
+                    pos.ply = 0;
+                    Qi = pos.getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
+                    if (!pos.w2m())
+                        Qi = -Qi;
+                    positiontuneset* nextpts = (positiontuneset*)pnext;
+                    *nextpts = pos.pts;
+                    nextpts->R = R;
+                    Q[0] = Q[1] = Q[2] = Q[3] = 0;
+                    evalparam* e = (evalparam*)(pnext + sizeof(positiontuneset));
+                    int sqsum[4][2] = { { 0 } };
+                    for (int i = 0; i < pos.pts.num; i++)
                     {
-                        pos.getFromFen(fen.c_str());
-                        pos.ply = 0;
-                        Qi = pos.getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
-                        if (!pos.w2m())
-                            Qi = -Qi;
-                        positiontuneset* nextpts = (positiontuneset*)pnext;
-                        *nextpts = pos.pts;
-                        nextpts->R = R;
-                        Q[0] = Q[1] = Q[2] = Q[3] = 0;
-                        evalparam* e = (evalparam*)(pnext + sizeof(positiontuneset));
-                        int sqsum[4][2] = { { 0 } };
-                        for (int i = 0; i < pos.pts.num; i++)
+                        *e = pos.ev[i];
+                        int ty = pos.tps.ev[e->index]->type;
+                        if (ty != 2)
                         {
-                            *e = pos.ev[i];
-                            int ty = pos.tps.ev[e->index]->type;
-                            if (ty != 2)
-                            {
-                                Q[ty] += e->g[0] * *pos.tps.ev[e->index];
-                            }
-                            else
-                            {
-                                int sqindex = pos.tps.ev[e->index]->groupindex;
-                                sqsum[sqindex][0] += e->g[0] * *pos.tps.ev[e->index];
-                                sqsum[sqindex][1] += e->g[1] * *pos.tps.ev[e->index];
-                            }
-                            pos.tps.used[e->index]++;
-                            e++;
-                        }
-                        for (int i = 0; i < 4; i++)
-                        {
-                            if (sqsum[i][0] == 0 && sqsum[i][1] == 0) continue;
-                            Q[0] += SQRESULT(sqsum[i][0], 0) + SQRESULT(sqsum[i][1], 1);
-                        }
-                        int evaleg = GETEGVAL(Q[0]);
-                        int sign = (evaleg > 0) - (evaleg < 0);
-                        Q[3] = sign * max(Q[3], -abs(evaleg));
-                        Qr = TAPEREDANDSCALEDEVAL(Q[0] + Q[3], nextpts->ph, nextpts->sc) + Q[1];
-                        if (MATEDETECTED(Qi))
-                            n--;
-                        else if (Qi != (nextpts->sc == SCALE_DRAW ? SCOREDRAW : Qr))
-                        {
-                            printf("\n%d  Alarm. Evaluation by coeffs differs from qsearch value: %d != %d.\nFEN: %s\n", n, Qr, Qi, fen.c_str());
-                            getValueByCoeff(*pos.tps.ev, nextpts, (evalparam*)(pnext + sizeof(positiontuneset)), true);
+                            Q[ty] += e->g[0] * *pos.tps.ev[e->index];
                         }
                         else
                         {
-                            //printf("%d  gesamt: %08x\n", n, Q);
-                            pnext = (char*)e;
-                            n++;
-                            if (n % 0x2000 == 0) printf(".");
+                            int sqindex = pos.tps.ev[e->index]->groupindex;
+                            sqsum[sqindex][0] += e->g[0] * *pos.tps.ev[e->index];
+                            sqsum[sqindex][1] += e->g[1] * *pos.tps.ev[e->index];
                         }
+                        pos.tps.used[e->index]++;
+                        e++;
                     }
-                }
-            }
-            else
-            {
-                if (regex_search(line, match, regex("(.*)#(.*)moves(.*)")))
-                {
-                    gamescount++;
-                    R = (stoi(match.str(1)) + 1);
-                    pos.getFromFen(match.str(2).c_str());
-                    pos.ply = 0;
-                    vector<string> movelist = SplitString(match.str(3).c_str());
-                    vector<string>::iterator move = movelist.begin();
-                    bool gameend;
-                    do
+                    for (int i = 0; i < 4; i++)
                     {
-                        bw = 1 - bw;
-                        if (bw)
-                            c++;
-                        if (c > tuningratio)
-                            c = 1;
-                        if (c == tuningratio)
-                        {
-                            Qi = pos.getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
-                            if (!pos.w2m())
-                                Qi = -Qi;
-                            positiontuneset* nextpts = (positiontuneset*)pnext;
-                            *nextpts = pos.pts;
-                            nextpts->R = R;
-                            Q[0] = Q[1] = Q[2] = Q[3] = 0;
-                            evalparam* e = (evalparam*)(pnext + sizeof(positiontuneset));
-                            int sqsum[4][2] = { { 0 } };
-                            for (int i = 0; i < pos.pts.num; i++)
-                            {
-                                *e = pos.ev[i];
-                                int ty = pos.tps.ev[e->index]->type;
-                                //printf("%20s: %08x  %3d\n", pos->tps.name[e->index].c_str(), *pos.tps.ev[i], e->g);
-                                if (ty != 2)
-                                {
-                                    Q[ty] += e->g[0] * *pos.tps.ev[e->index];
-                                    //printf("l %3d: %3d * %08x         = %08x\n", e->index, e->g, (int)*pos.tps.ev[e->index], Qa);
-                                }
-                                else
-                                {
-                                    int sqindex = pos.tps.ev[e->index]->groupindex;
-                                    sqsum[sqindex][0] += e->g[0] * *pos.tps.ev[e->index];
-                                    sqsum[sqindex][1] += e->g[1] * *pos.tps.ev[e->index];
-                                }
-                                pos.tps.used[e->index]++;
-                                e++;
-                            }
-                            for (int i = 0; i < 4; i++)
-                            {
-                                if (sqsum[i][0] == 0 && sqsum[i][1] == 0) continue;
-                                Q[0] += SQRESULT(sqsum[i][0], 0) + SQRESULT(sqsum[i][1], 1);
-                            }
-                            int evaleg = GETEGVAL(Q[0]);
-                            int sign = (evaleg > 0) - (evaleg < 0);
-                            Q[3] = sign * max(Q[3], -abs(evaleg));
-                            Qr = TAPEREDANDSCALEDEVAL(Q[0] + Q[3], nextpts->ph, nextpts->sc) + Q[1];
-                            if (Qi != (nextpts->sc == SCALE_DRAW ? SCOREDRAW : Qr))
-                                printf("Alarm. Evaluation by coeffs differs from qsearch value.\n");
-                            else
-                            {
-                                //printf("gesamt: %d\n", Qa);
-                                pnext = (char*)e;
-                                n++;
-                                if (n % 0x2000 == 0) printf(".");
-                            }
-                        }
-                        gameend = (move == movelist.end());
-                        if (!gameend)
-                        {
-                            if (!pos.applyMove(*move))
-                            {
-                                printf("Alarm (game %d)! Move %s seems illegal.\nLine: %s\n", gamescount, move->c_str(), line.c_str());
-                                pos.print();
-                            }
-                            move++;
-                        }
+                        if (sqsum[i][0] == 0 && sqsum[i][1] == 0) continue;
+                        Q[0] += SQRESULT(sqsum[i][0], 0) + SQRESULT(sqsum[i][1], 1);
+                    }
+                    int evaleg = GETEGVAL(Q[0]);
+                    int sign = (evaleg > 0) - (evaleg < 0);
+                    Q[3] = sign * max(Q[3], -abs(evaleg));
+                    Qr = TAPEREDANDSCALEDEVAL(Q[0] + Q[3], nextpts->ph, nextpts->sc) + Q[1];
+                    
+                    if (MATEDETECTED(Qi))
+                        continue;
 
-                    } while (!gameend);
+                    if (Qi != (nextpts->sc == SCALE_DRAW ? SCOREDRAW : Qr))
+                    {
+                        printf("\n%d  Alarm. Evaluation by coeffs differs from qsearch value: %d != %d.\nFEN: %s\n", n, Qr, Qi, fen.c_str());
+                        getValueByCoeff(*pos.tps.ev, nextpts, (evalparam*)(pnext + sizeof(positiontuneset)), true);
+                    }
+                    else
+                    {
+                        //printf("%d  gesamt: %08x\n", n, Q);
+                        pnext = (char*)e;
+                        n++;
+                        if (n % 0x2000 == 0) printf(".");
+                    }
                 }
             }
         }
@@ -832,15 +807,6 @@ static void getCoeffsFromFen(string fenfilenames)
 
     texelptsnum = n;
     printf("  got %d positions\n", n);
-}
-
-
-
-static void copyParams(chessposition* p, tuner* tn)
-{
-    for (int i = 0; i < p->tps.count; i++)
-        tn->ev[i] = *p->tps.ev[i];
-    tn->paramcount = p->tps.count;
 }
 
 
@@ -1077,22 +1043,16 @@ void getCorrelation(string correlationParams)
 
 }
 
-tunerpool tpool;
 
 // main fucntion for texel tuning
-void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK, string correlationParams)
+void TexelTune()
 {
-    pos.mtrlhsh.init();
-    pos.pwnhsh.setSize(0);
-    pos.tps.count = 0;
-    registerallevals(&pos);
-    pos.noQs = noqs;
-    getCoeffsFromFen(fenfilenames);
+    pos.noQs = quietonly;  //FIXME: do we need it? Where to set?
     if (!texelptsnum) return;
 
-    if (correlationParams != "")
+    if (correlationlist != "")
     {
-        getCorrelation(correlationParams);
+        getCorrelation(correlationlist);
         return;
     }
 
@@ -1109,51 +1069,6 @@ void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK, string correlati
     iThreads = 1;
     for (int i = 0; i < iThreads; i++)
         tpool.tn[i].inUse = true;
-
-    if (bOptimizeK)
-    {
-        printf("Finding optimal tuning constant k for this position set first...\n");
-
-        tn = &tpool.tn[0];
-        copyParams(&pos, tn);
-        double E[2];
-        double Emin, Error;
-        double bound[2] = { 0.0, 10.0 };
-        double x, lastx;
-        int direction = 0;
-        //double delta;
-        lastx = (bound[0] + bound[1]) / 2;
-
-        E[0] = TexelEvalError(tn, bound[0]);
-        E[1] = TexelEvalError(tn, bound[1]);
-        Emin = TexelEvalError(tn, lastx);
-        if (Emin > E[0] && Emin > E[1])
-        {
-            printf("Tuning Error! Wrong bounds. E0=%0.10f  E1=%0.10f  Ed=%0.10f\n", E[0], E[1], Emin);
-            return;
-        }
-
-        while (bound[1] - bound[0] > 0.001)
-        {
-            x = (lastx + bound[direction]) / 2;
-            Error = TexelEvalError(tn, x);
-            printf("Tuningscore b0=%0.10f (%0.10f) b1=%0.10f (%0.10f)\n", bound[0], E[0], bound[1], E[1]);
-            if (Error > Emin)
-            {
-                bound[direction] = x;
-                E[direction] = Error;
-            }
-            else {
-                E[1 - direction] = Emin;
-                bound[1 - direction] = lastx;
-                lastx = x;
-                Emin = Error;
-            }
-            direction = 1 - direction;
-        }
-        texel_k = (bound[0] + bound[1]) / 2.0;
-        printf("Best k for this tuning set: %0.10f\n", texel_k);
-    }
 
     bool improved = true;
     bool leaveSoon = false;
@@ -1268,5 +1183,112 @@ void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK, string correlati
     printTunedParameters(&pos);
 }
 
+static void listParams(int start, int end, bool onlyActive)
+{
+    for (int i = max(0, start); i <= min(end, pos.tps.count - 1); i++)
+    {
+        if (onlyActive && !pos.tps.tune[i])
+            continue;
 
+        printf("%s %4d %9lld %32s   %s\n", pos.tps.tune[i] ? "*" : " ", i, pos.tps.used[i], nameTunedParameter(&pos, i).c_str(), getValueStringValue(pos.tps.ev[i]).c_str());
+    }
+}
+
+
+static void enableTune(int start, int end, bool enable)
+{
+    for (int i = max(0, start); i <= min(end, pos.tps.count - 1); i++)
+        pos.tps.tune[i] = enable;
+}
+
+void parseTune(vector<string> commandargs)
+{
+    size_t ci = 0;
+    size_t cs = commandargs.size();
+
+    while (ci < cs)
+    {
+        string s = commandargs[ci];
+        transform(s.begin(), s.end(), s.begin(), ::tolower);
+        ci++;
+        if (s == "help")
+            printf("tune list [active] [start] [end]\ntune reset\ntune enable [start] [end]\ntune fenfile file1 [file2] ...\ntune optk\ntune go\n");
+        if (s == "list")
+        {
+            bool onlyActive = false;
+            if (ci < cs && commandargs[ci] == "active")
+            {
+                onlyActive = true;
+                ci++;
+            }
+            int start = 0;
+            int end = pos.tps.count - 1;
+            if (ci < cs)
+            {
+                try {
+                    start = end = stoi(commandargs[ci++]);
+                }
+                catch (...) {}
+            }
+            if (ci < cs)
+            {
+                try {
+                    end = stoi(commandargs[ci++]);
+                }
+                catch (...) {}
+            }
+
+            listParams(start, end, onlyActive);
+
+        }
+        if (s == "reset")
+            enableTune(0, pos.tps.count - 1, false);
+        if (s == "enable")
+        {
+            int start = 0;
+            int end = pos.tps.count - 1;
+            if (ci < cs)
+            {
+                try {
+                    start = end = stoi(commandargs[ci++]);
+                }
+                catch (...) {}
+            }
+            if (ci < cs)
+            {
+                try {
+                    end = stoi(commandargs[ci++]);
+                }
+                catch (...) {}
+            }
+            enableTune(start, end, true);
+        }
+        if (s == "fenfile")
+        {
+            fentuningfiles = "";
+            while (ci < cs) {
+                string fn = commandargs[ci++];
+                fn.erase(remove(fn.begin(), fn.end(), '\"'), fn.end());
+                fentuningfiles = (fentuningfiles != "" ? fentuningfiles + "*" : "") + fn;
+
+            }
+            getCoeffsFromFen(fentuningfiles);
+        }
+        if (s == "optk")
+            optk();
+        if (s == "go")
+            TexelTune();
+    }
+
+}
+
+
+void tuneInit()
+{
+    pos.mtrlhsh.init();
+    pos.pwnhsh.setSize(0);
+    pos.tps.count = 0;
+    pos.resetStats();
+    registerallevals(&pos);
+}
 #endif

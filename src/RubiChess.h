@@ -32,7 +32,7 @@
 #define TDEBUG
 #endif
 
-#if 0
+#if 1
 #define EVALTUNE
 #endif
 
@@ -567,9 +567,16 @@ struct tunerpool {
 };
 
 extern int tuningratio;
+extern string pgnconvertfile;
+extern string fentuningfiles;
+extern bool quietonly;
+extern string correlationlist;
+extern int ppg;
 
 bool PGNtoFEN(string pgnfilename, int depth, int ppg);
-void TexelTune(string fenfilenames, bool noqs, bool bOptimizeK, string correlation);
+void TexelTune();
+void parseTune(vector<string> commandargs);
+void tuneInit();
 typedef void(*initevalfunc)(void);
 
 #endif

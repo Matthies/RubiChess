@@ -2933,9 +2933,8 @@ void engine::communicate(string inputstring)
                 break;
 #ifdef EVALTUNE
             case TUNE:
-                if (ci < cs) {
-
-                }
+                parseTune(commandargs);
+                break;
 #endif
             default:
                 break;

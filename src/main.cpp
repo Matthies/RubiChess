@@ -906,14 +906,6 @@ int main(int argc, char* argv[])
     string logfile;
     string comparefile;
     string genepd;
-#ifdef EVALTUNE
-    string pgnconvertfile;
-    string fentuningfiles;
-    bool quietonly;
-    bool optk;
-    string correlation;
-    int ppg;
-#endif
     int maxtime;
     int flags;
 
@@ -948,8 +940,7 @@ int main(int argc, char* argv[])
         { "-quietonly", "convert only quiet positions (when used with -pgnfile); don't do qsearch (when used with -fentuning)", &quietonly, 0, NULL },
         { "-ppg", "use only <n> positions per game (0 = every position, use with -pgnfile)", &ppg, 1, "0" },
         { "-fentuning", "reads FENs from files (filenames separated by *) and tunes eval parameters against it", &fentuningfiles, 2, "" },
-        { "-optk", "optimize constant k before tuning, use with -fentuning)", &optk, 0, NULL },
-        { "-correlation", "calculate correlation of parameters to the give list (seperated by *), use with -fentuning)", &correlation, 2, "" },
+        { "-correlation", "calculate correlation of parameters to the give list (seperated by *), use with -fentuning)", &correlationlist, 2, "" },
         { "-tuningratio", "use only every <n>th double move from the FEN to speed up the analysis", &tuningratio, 1, "1" },
 #endif
         { NULL, NULL, NULL, 0, NULL }
@@ -972,6 +963,10 @@ int main(int argc, char* argv[])
 
 #ifdef EVALOPTIONS
     registerallevals();
+#endif
+
+#ifdef EVALTUNE
+    tuneInit();
 #endif
 
     searchinit();
@@ -1063,7 +1058,7 @@ int main(int argc, char* argv[])
     }
     else if (fentuningfiles != "")
     {
-        TexelTune(fentuningfiles, quietonly, optk, correlation);
+        TexelTune();
     }
 #endif
     else {
