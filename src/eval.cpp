@@ -831,7 +831,7 @@ int chessposition::getEval()
 
     int totalEval = psqval + pawnEval + generalEval + piecesEval + lateEval;
 
-    int sideToScale = totalEval > SCOREDRAW ? WHITE : BLACK;
+    int sideToScale = GETEGVAL(totalEval) > SCOREDRAW ? WHITE : BLACK;
 
     sc = pe.mhentry->scale[sideToScale];
     if (!bTrace && sc == SCALE_DRAW)
