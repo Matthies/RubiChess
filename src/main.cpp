@@ -1054,10 +1054,11 @@ int main(int argc, char* argv[])
 #ifdef EVALTUNE
     else if (pgnconvertfile != "")
     {
-        PGNtoFEN(pgnconvertfile, depth, ppg);
+        PGNtoFEN(pgnconvertfile, depth);
     }
     else if (fentuningfiles != "")
     {
+        getCoeffsFromFen(fentuningfiles);
         TexelTune();
     }
 #endif
@@ -1066,5 +1067,8 @@ int main(int argc, char* argv[])
         en.communicate("");
     }
 
+#ifdef EVALTUNE
+    tuneCleanup();
+#endif
     return 0;
 }

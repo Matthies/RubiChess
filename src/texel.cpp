@@ -84,7 +84,7 @@ int addPos(U64 h)
 }
 
 
-static void writeFenToFile(ofstream* fenfile, int gamepositions, int ppg)
+static void writeFenToFile(ofstream* fenfile, int gamepositions)
 {
     int fentowrite = (ppg ? ppg : gamepositions);
 
@@ -106,9 +106,10 @@ static void writeFenToFile(ofstream* fenfile, int gamepositions, int ppg)
         }
 
         if (ppg)
-            fenlines[i] = fenlines[--gamepositions];
+            fenlines[i] = fenlines[gamepositions];
         else
             i++;
+        gamepositions--;
     }
 }
 
@@ -116,7 +117,7 @@ static void writeFenToFile(ofstream* fenfile, int gamepositions, int ppg)
 const int minMaterial = 7;
 const int maxPly = 200;
 
-bool PGNtoFEN(string pgnfilename, int depth, int ppg)
+bool PGNtoFEN(string pgnfilename, int depth)
 {
     pos.tps.count = 0;
     pos.pwnhsh.setSize(1);
@@ -128,8 +129,7 @@ bool PGNtoFEN(string pgnfilename, int depth, int ppg)
     string line, newline;
     string line1, line2;
     string rest_of_last_line = "";
-    string fenfilename = pgnfilename + ".fen";
-    //string fenmovefilename = pgnfilename + ".fenmove";
+    string fenfilename = pgnfilename + ".d" + to_string(depth) + ".fen";
 
     // The following is Windows-only; FIXME: C++--17 offers portable filesystem handling
     WIN32_FIND_DATA fd;
@@ -154,18 +154,6 @@ bool PGNtoFEN(string pgnfilename, int depth, int ppg)
 
     allocPoshash();
 
-#if 0
-    ofstream fenmovefile;
-    if (!quietonly)
-    {
-        fenmovefile.open(fenmovefilename);
-        if (!fenmovefile.is_open())
-        {
-            printf("Cannot open %s for writing.\n", fenmovefilename.c_str());
-            return false;
-        }
-    }
-#endif
     do
     {
         string pgnfullname = (folderMode ? pgnfilename + fd.cFileName : pgnfilename);
@@ -181,9 +169,8 @@ bool PGNtoFEN(string pgnfilename, int depth, int ppg)
         int newgamestarts = 0;
         int result = 0;
         string newfen;
-        //string moves;
         string lastmove;
-        bool valueChecked = true;;
+        //bool valueChecked = true;;
         int gamepositions = 0;
         string scoreBracket;
         while (getline(pgnfile, newline))
@@ -200,13 +187,9 @@ bool PGNtoFEN(string pgnfilename, int depth, int ppg)
             {
                 gamescount++;
                 if (gamepositions)
-                    writeFenToFile(&fenfile, gamepositions, ppg);
+                    writeFenToFile(&fenfile, gamepositions);
                 gamepositions = 0;
                 // Write last game
-#if 0
-                if (!quietonly && !ppg && newgamestarts >= 2)
-                    fenmovefile << to_string(result) + "#" + newfen + " moves " + moves + "\n";
-#endif
                 if (match.str(1) == "0")
                     result = -1;
                 else if (match.str(1) == "1")
@@ -214,7 +197,6 @@ bool PGNtoFEN(string pgnfilename, int depth, int ppg)
                 else
                     result = 0;
                 newgamestarts = 1;
-                //moves = "";
                 mateFound = false;
             }
             bool fenFound;
@@ -224,25 +206,17 @@ bool PGNtoFEN(string pgnfilename, int depth, int ppg)
             {
                 newfen = fenFound ? match.str(1) : STARTFEN;
                 newgamestarts++;
-                valueChecked = true;
                 fen = newfen;
                 cout << "Reading game " << gamescount << "\n";
                 pos.getFromFen(fen.c_str());
                 pos.resetStats();
-                //pos.prepareStack();
                 pos.ply = 0;
-
-                fenlines[gamepositions] = fen;// +" " + (result == 0 ? "1/2" : (result > 0 ? "1-0" : "0-1")) + "\n";
-                fenhash[gamepositions] = pos.hash;
-                fenscore[gamepositions] = 0;
-                fenresult[gamepositions++] = result;
             }
             // Don't export games that were lost on time or by stalled connection
             if (regex_search(line, match, regex("\\[Termination\\s+\".*(forfeit|stalled|unterminated).*\"")))
             {
                 printf("Skip this match: %s\n", line.c_str());
                 newgamestarts = 0;
-                valueChecked = true;
             }
 
             if (regex_search(line, match, regex("^\\[.*\\]$")))
@@ -262,62 +236,52 @@ bool PGNtoFEN(string pgnfilename, int depth, int ppg)
                     else if ((foundInLine = regex_search(line, match, regex("^\\s*(([O\\-]{3,5})\\+?|([KQRBN]?[a-h]*[1-8]*x?[a-h]+[1-8]+(=[QRBN])?)\\+?)"))))
                     {
                         // Found move
-                        if (!valueChecked)
+                        if (depth >= 0)
                         {
-                            // Score tag of last move missing; just output without score
-                            if (fen != "")
-                            {
-#if 0
-                                fenlines[gamepositions] = fen + " ";// +(result == 0 ? "1/2" : (result > 0 ? "1-0" : "0-1")) + "\n";
-                                fenhash[gamepositions] = pos.hash;
-                                fenscore[gamepositions] = INT_MIN;
-                                fenresult[gamepositions++] = result;
-#endif
-                            }
-                            //moves = moves + lastmove + " ";
+                            // AGE mode (search and apply the pv of this search)
+                            score = pos.alphabeta(SCOREBLACKWINS, SCOREWHITEWINS, depth);
+                            int s2m = pos.state & S2MMASK;
+                            uint32_t* pvt = pos.pvtable[pos.ply];
+                            int num = pos.applyPv(pvt);
+                            if ((pos.state & S2MMASK) != s2m)
+                                score = -score;
+                            fen = pos.toFen();
+                            fenlines[gamepositions] = fen;
+                            fenhash[gamepositions] = pos.hash;
+                            fenscore[gamepositions] = score;
+                            fenresult[gamepositions++] = result;
+                            pos.reapplyPv(pvt, num);
                         }
-                        valueChecked = false;
+                        else
+                        {
+                            // Just save current position with the score in the fen
+                            fen = pos.toFen();
+                            fenlines[gamepositions] = fen;
+                            fenhash[gamepositions] = pos.hash;
+                            fenscore[gamepositions] = NOSCORE;
+                            fenresult[gamepositions++] = result;
+
+                        }
                         lastmove = AlgebraicFromShort(match.str(1), &pos);
-                        //printf("%5s  %5s\n", match.str(1).c_str(), lastmove.c_str());
                         if (lastmove == "" || !pos.applyMove(lastmove))
                         {
                             printf("Alarm (game %d): %s\n", gamescount, match.str(1).c_str());
                             pos.print();
                             printf("last Lines:\n%s\n%s\n\n", line2.c_str(), line1.c_str());
                         }
-#if 0
-                        pos.isQuiet = !pos.isCheckbb;
-                        if (quietonly && pos.isQuiet)
-                            pos.getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
-                        if (!quietonly || pos.isQuiet)
-                            fen = pos.toFen();
-                        else
-                            fen = "";
-#endif
-                        score = pos.alphabeta(SCOREBLACKWINS, SCOREWHITEWINS, depth);
-                        uint32_t* pvt = pos.pvtable[pos.ply];
-                        //cout << pos.getPv(pvt) << "\n";
-                        int num = pos.applyPv(pvt);
-
-                        fen = pos.toFen();
-                        fenlines[gamepositions] = fen;
-                        fenhash[gamepositions] = pos.hash;
-                        fenscore[gamepositions] = score;
-                        fenresult[gamepositions++] = result;
-
-                        pos.reapplyPv(pvt, num);
-
                         line = match.suffix();
                     }
                     else if ((foundInLine = regex_search(line, match, regex("\\s*(\\{[^\\}]*\\})"))))
                     {
                         scoreBracket = match.str(1);
                         line = match.suffix();
-                        if (!valueChecked)
+
+                        if (depth < 0 )
                         {
+                            // Use the score from the fen file
                             string scorestr;
                             bool foundValue;
-                            if ((foundValue = regex_search(scoreBracket, match, regex("\\{(\\(.*\\))*(\\+|\\-)(M?)(\\d+(\\.?)\\d*)"))))
+                            if ((foundValue = regex_search(scoreBracket, match, regex("\\{(\\(.*\\))*(\\+|\\-)?(M?)(\\d+(\\.?)\\d*)"))))
                             {
                                 // cutechess pgn
                                 scorestr = match.str(2) + match.str(4);
@@ -343,15 +307,8 @@ bool PGNtoFEN(string pgnfilename, int depth, int ppg)
                                 foundInLine = true;
                                 if (!mateFound && fen != "")
                                 {
-#if 0
-                                    fenlines[gamepositions] = fen;// +" " + (result == 0 ? "1/2" : (result > 0 ? "1-0" : "0-1")) + " " + to_string(score) + "\n";
-                                    fenhash[gamepositions] = pos.hash;
-                                    fenscore[gamepositions] = score;
-                                    fenresult[gamepositions++] = result;
-                                    //moves = moves + lastmove + " ";
-#endif
+                                    fenscore[gamepositions - 1] = score;
                                 }
-                                valueChecked = true;
                             }
                         }
                     }
@@ -376,7 +333,7 @@ bool PGNtoFEN(string pgnfilename, int depth, int ppg)
                 line = "";
         }
         if (gamepositions)
-            writeFenToFile(&fenfile, gamepositions, ppg);
+            writeFenToFile(&fenfile, gamepositions);
 
         printf("Position so far:  %9lld\n", fenWritten);
 
@@ -632,7 +589,7 @@ static void optk()
 
 
 // parser for the most common fen files with tuning information
-static void getCoeffsFromFen(string fenfilenames)
+void getCoeffsFromFen(string fenfilenames)
 {
     int n = 0;
     while (fenfilenames != "")
@@ -642,7 +599,6 @@ static void getCoeffsFromFen(string fenfilenames)
         fenfilenames = (spi == string::npos) ? "" : fenfilenames.substr(spi + 1, string::npos);
 
         int fentype = -1;
-        int gamescount = 0;
         string line;
         smatch match;
         int c;
@@ -668,6 +624,8 @@ static void getCoeffsFromFen(string fenfilenames)
             continue;
         }
         buffersize = minfreebuffer;
+        if (texelpts)
+            free(texelpts);
         texelpts = (char*)malloc(buffersize);
         pnext = (char*)texelpts;
         printf("\nReading positions from %s\n", filename.c_str());
@@ -751,6 +709,15 @@ static void getCoeffsFromFen(string fenfilenames)
                     Qi = pos.getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
                     if (!pos.w2m())
                         Qi = -Qi;
+
+                    // Skip positions with mate score
+                    if (MATEDETECTED(Qi))
+                        continue;
+
+                    // Skip positions inside tablebase 6 pieces
+                    if (POPCOUNT(pos.occupied00[0] | pos.occupied00[1]) <= 6)
+                        continue;
+
                     positiontuneset* nextpts = (positiontuneset*)pnext;
                     *nextpts = pos.pts;
                     nextpts->R = R;
@@ -784,9 +751,6 @@ static void getCoeffsFromFen(string fenfilenames)
                     Q[3] = sign * max(Q[3], -abs(evaleg));
                     Qr = TAPEREDANDSCALEDEVAL(Q[0] + Q[3], nextpts->ph, nextpts->sc) + Q[1];
                     
-                    if (MATEDETECTED(Qi))
-                        continue;
-
                     if (Qi != (nextpts->sc == SCALE_DRAW ? SCOREDRAW : Qr))
                     {
                         printf("\n%d  Alarm. Evaluation by coeffs differs from qsearch value: %d != %d.\nFEN: %s\n", n, Qr, Qi, fen.c_str());
@@ -1177,9 +1141,6 @@ void TexelTune()
         improved = (tpool.lastImprovedIteration >= iteration - 1);
     }
     collectTuners(&pos, &tpool, nullptr);
-    free(texelpts);
-    pos.mtrlhsh.remove();
-    pos.pwnhsh.remove();
     printTunedParameters(&pos);
 }
 
@@ -1290,5 +1251,13 @@ void tuneInit()
     pos.tps.count = 0;
     pos.resetStats();
     registerallevals(&pos);
+}
+
+void tuneCleanup()
+{
+    if (texelpts)
+        free(texelpts);
+    pos.mtrlhsh.remove();
+    pos.pwnhsh.remove();
 }
 #endif

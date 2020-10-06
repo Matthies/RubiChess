@@ -1148,7 +1148,7 @@ int chessposition::applyPv(uint32_t* table)
     chessmove cm;
     int i = 0;
     
-    while (cm.code = table[i++])
+    while ((cm.code = table[i++]))
     {
         prepareStack();
         if (!playMove(&cm))

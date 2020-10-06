@@ -573,10 +573,12 @@ extern bool quietonly;
 extern string correlationlist;
 extern int ppg;
 
-bool PGNtoFEN(string pgnfilename, int depth, int ppg);
+bool PGNtoFEN(string pgnfilename, int depth);
+void getCoeffsFromFen(string fenfilenames);
 void TexelTune();
 void parseTune(vector<string> commandargs);
 void tuneInit();
+void tuneCleanup();
 typedef void(*initevalfunc)(void);
 
 #endif
