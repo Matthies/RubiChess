@@ -567,13 +567,13 @@ struct tunerpool {
 };
 
 extern int tuningratio;
-extern string pgnconvertfile;
+extern string pgnfilename;
 extern string fentuningfiles;
 extern bool quietonly;
 extern string correlationlist;
 extern int ppg;
 
-bool PGNtoFEN(string pgnfilename, int depth);
+bool PGNtoFEN(int depth);
 void getCoeffsFromFen(string fenfilenames);
 void TexelTune();
 void parseTune(vector<string> commandargs);

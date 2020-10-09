@@ -936,7 +936,7 @@ int main(int argc, char* argv[])
         { "-assertfile", "output assert info to file", &en.assertfile, 2, "" },
 #endif
 #ifdef EVALTUNE
-        { "-pgnfile", "converts games in a PGN file to fen for tuning them later", &pgnconvertfile, 2, "" },
+        { "-pgnfile", "converts games in a PGN file to fen for tuning them later", &pgnfilename, 2, "" },
         { "-quietonly", "convert only quiet positions (when used with -pgnfile); don't do qsearch (when used with -fentuning)", &quietonly, 0, NULL },
         { "-ppg", "use only <n> positions per game (0 = every position, use with -pgnfile)", &ppg, 1, "0" },
         { "-fentuning", "reads FENs from files (filenames separated by *) and tunes eval parameters against it", &fentuningfiles, 2, "" },
@@ -1052,9 +1052,9 @@ int main(int argc, char* argv[])
         generateEpd(genepd);
     }
 #ifdef EVALTUNE
-    else if (pgnconvertfile != "")
+    else if (pgnfilename != "")
     {
-        PGNtoFEN(pgnconvertfile, depth);
+        PGNtoFEN(depth);
     }
     else if (fentuningfiles != "")
     {

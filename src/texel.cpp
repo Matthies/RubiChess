@@ -26,7 +26,7 @@
 chessposition pos;
 U64 fenWritten;
 
-string pgnconvertfile;
+string pgnfilename;
 string fentuningfiles;
 bool quietonly;
 string correlationlist;
@@ -117,7 +117,7 @@ static void writeFenToFile(ofstream* fenfile, int gamepositions)
 const int minMaterial = 7;
 const int maxPly = 200;
 
-bool PGNtoFEN(string pgnfilename, int depth)
+bool PGNtoFEN(int depth)
 {
     pos.tps.count = 0;
     pos.pwnhsh.setSize(1);
