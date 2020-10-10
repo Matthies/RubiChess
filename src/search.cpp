@@ -47,7 +47,11 @@ typedef const int searchparam;
 #endif
 
 struct searchparamset {
+#ifdef EVALTUNE
+    searchparam SP(deltapruningmargin, 4000);
+#else
     searchparam SP(deltapruningmargin, 100);
+#endif
     // LMR table
     searchparam SP(lmrlogf0, 150);
     searchparam SP(lmrf0, 60);
