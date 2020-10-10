@@ -695,6 +695,17 @@ void getCoeffsFromFen(string fenfilenames)
                 fen = match.str(1);
                 R = (match.str(2) == "White" ? 2 : (match.str(2) == "Black" ? 0 : 1));
             }
+            else if ((fentype < 0 || fentype == 6) && regex_search(line, match, regex("(.*)\\s+\\[((1.0)|(0.5)|(0.0))\\]")))
+            {
+                // Ethereal book
+                if (fentype < 0)
+                {
+                    printf("Format: fen [0.0|0.5|1.0] (from Ethereal book)\n");
+                    fentype = 6;
+                }
+                fen = match.str(1);
+                R = (match.str(2) == "1.0" ? 2 : (match.str(2) == "0.0" ? 0 : 1));
+            }
             if (fen != "")
             {
                 bw = 1 - bw;
