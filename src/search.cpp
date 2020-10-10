@@ -352,8 +352,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     CheckForImmediateStop();
 
     // Reset pv
-    if (PVNode)
-        pvtable[ply][0] = 0;
+    pvtable[ply][0] = 0;
 
     STATISTICSINC(ab_n);
     STATISTICSADD(ab_pv, PVNode);
