@@ -518,7 +518,7 @@ static int getValueByCoeff(eval* ev, positiontuneset* p, evalparam* e, bool debu
 }
 
 
-double texel_k = 1.121574 / 400;
+double texel_k = 1.121574;
 
 static double TexelEvalError(tuner* tn, double k = texel_k)
 {
@@ -535,7 +535,7 @@ static double TexelEvalError(tuner* tn, double k = texel_k)
             Qi = SCOREDRAW;
         else
             Qi = TAPEREDANDSCALEDEVAL(getValueByCoeff(tn->ev, p, e), p->ph, p->sc);
-        double sigmoid = 1 / (1 + exp(-k * Qi));
+        double sigmoid = 1 / (1 + pow(10.0, -k * Qi / 400.0));
         E += (Ri - sigmoid) * (Ri - sigmoid);
         p = (positiontuneset*)((char*)p + sizeof(positiontuneset) + p->num * sizeof(evalparam));
     }
