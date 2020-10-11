@@ -29,6 +29,7 @@ U64 fenWritten;
 string pgnfilename;
 string fentuningfiles;
 bool quietonly;
+bool balancedonly;
 string correlationlist;
 int ppg;
 tunerpool tpool;
@@ -454,6 +455,57 @@ int tuningratio = 1;
 char* texelpts = NULL;
 U64 texelptsnum;
 int iThreads;
+sqevallist sqglobal;
+
+void chessposition::resetTuner()
+{
+    for (int i = 0; i < tps.count; i++)
+        tps.ev[i]->resetGrad();
+}
+
+void chessposition::getPositionTuneSet(positiontuneset* p, evalparam* e)
+{
+    p->ph = ph;
+    p->sc = sc;
+    p->num = 0;
+    for (int i = 0; i < tps.count; i++)
+        if (tps.ev[i]->getGrad() || (tps.ev[i]->type == 2 && tps.ev[i]->getGrad(1)))
+        {
+            e->index = i;
+            e->g[0] = tps.ev[i]->getGrad(0);
+            e->g[1] = tps.ev[i]->getGrad(1);
+            p->num++;
+            e++;
+        }
+}
+
+void chessposition::copyPositionTuneSet(positiontuneset* from, evalparam* efrom, positiontuneset* to, evalparam* eto)
+{
+    to->ph = from->ph;
+    to->sc = from->sc;
+    to->num = from->num;
+    for (int i = 0; i < from->num; i++)
+    {
+        *eto = *efrom;
+        eto++;
+        efrom++;
+    }
+}
+
+string chessposition::getCoeffString()
+{
+    string s = "";
+    for (int i = 0; i < pts.num; i++)
+    {
+        if (tps.ev[i]->type != 2)
+            s = s + tps.name[ev[i].index] + "(" + to_string(ev[i].g[0]) + ") ";
+        else
+            s = s + tps.name[ev[i].index] + "(" + to_string(ev[i].g[0]) + "/" + to_string(ev[i].g[1]) + ") ";
+    }
+
+    return s;
+}
+
 
 static void copyParams(chessposition* p, tuner* tn)
 {
@@ -463,11 +515,17 @@ static void copyParams(chessposition* p, tuner* tn)
 }
 
 
-static int getValueByCoeff(eval* ev, positiontuneset* p, evalparam* e, bool debug = false, int corParam = -1)
+static int getValueByCoeff(eval* ev, positiontuneset* p, evalparam* e, precalculated *precalc, bool debug = false, int corParam = -1)
 {
     int v = 0;
     int complexity = 0;
     int sqsum[4][2] = { { 0 } };
+    if (precalc)
+    {
+        precalc->v = 0;
+        precalc->vi = 0;
+        precalc->g = 0;
+    }
     for (int i = 0; i < p->num; i++, e++)
     {
         if (corParam >= 0 && corParam != e->index)
@@ -477,7 +535,14 @@ static int getValueByCoeff(eval* ev, positiontuneset* p, evalparam* e, bool debu
             printf("%30s ", nameTunedParameter(&pos, e->index).c_str());
         if (type <= 1)
         {
+            if (precalc && precalc->index == e->index)
+            {
+                precalc->g = e->g[0];
+                precalc->vi = ev[e->index];
+            }
+
             v += ev[e->index] * e->g[0];
+
             if (debug)
                 printf(" %08x * %3d = %08x \n", ev[e->index].v, e->g[0], ev[e->index] * e->g[0]);
         }
@@ -514,13 +579,18 @@ static int getValueByCoeff(eval* ev, positiontuneset* p, evalparam* e, bool debu
     if (debug)
         printf("total: %08x\n", v);
 
+    if (precalc) {
+        precalc->complexity = complexity;
+        precalc->v = v - precalc->g * precalc->vi;
+    }
+
     return v;
 }
 
 
 double texel_k = 1.121574;
 
-static double TexelEvalError(tuner* tn, double k = texel_k)
+static double TexelEvalError(tuner* tn, precalculated *precalc, double k = texel_k)
 {
     double Ri, Qi;
     double E = 0.0;
@@ -534,7 +604,7 @@ static double TexelEvalError(tuner* tn, double k = texel_k)
         if (p->sc == SCALE_DRAW)
             Qi = SCOREDRAW;
         else
-            Qi = TAPEREDANDSCALEDEVAL(getValueByCoeff(tn->ev, p, e), p->ph, p->sc);
+            Qi = TAPEREDANDSCALEDEVAL(getValueByCoeff(tn->ev, p, e, precalc), p->ph, p->sc);
         double sigmoid = 1 / (1 + pow(10.0, -k * Qi / 400.0));
         E += (Ri - sigmoid) * (Ri - sigmoid);
         p = (positiontuneset*)((char*)p + sizeof(positiontuneset) + p->num * sizeof(evalparam));
@@ -556,9 +626,9 @@ static void optk()
     //double delta;
     lastx = (bound[0] + bound[1]) / 2;
 
-    E[0] = TexelEvalError(tn, bound[0]);
-    E[1] = TexelEvalError(tn, bound[1]);
-    Emin = TexelEvalError(tn, lastx);
+    E[0] = TexelEvalError(tn, nullptr, bound[0]);
+    E[1] = TexelEvalError(tn, nullptr, bound[1]);
+    Emin = TexelEvalError(tn, nullptr, lastx);
     if (Emin > E[0] && Emin > E[1])
     {
         printf("Tuning Error! Wrong bounds. E0=%0.10f  E1=%0.10f  Ed=%0.10f\n", E[0], E[1], Emin);
@@ -568,7 +638,7 @@ static void optk()
     while (bound[1] - bound[0] > 0.00001)
     {
         x = (lastx + bound[direction]) / 2;
-        Error = TexelEvalError(tn, x);
+        Error = TexelEvalError(tn, nullptr, x);
         printf("Tuningscore b0=%0.10f (%0.10f) b1=%0.10f (%0.10f)\n", bound[0], E[0], bound[1], E[1]);
         if (Error > Emin)
         {
@@ -765,7 +835,7 @@ void getCoeffsFromFen(string fenfilenames)
                     if (Qi != (nextpts->sc == SCALE_DRAW ? SCOREDRAW : Qr))
                     {
                         printf("\n%d  Alarm. Evaluation by coeffs differs from qsearch value: %d != %d.\nFEN: %s\n", n, Qr, Qi, fen.c_str());
-                        getValueByCoeff(*pos.tps.ev, nextpts, (evalparam*)(pnext + sizeof(positiontuneset)), true);
+                        getValueByCoeff(*pos.tps.ev, nextpts, (evalparam*)(pnext + sizeof(positiontuneset)), nullptr, true);
                     }
                     else
                     {

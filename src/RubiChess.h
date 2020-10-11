@@ -32,7 +32,7 @@
 #define TDEBUG
 #endif
 
-#if 0
+#if 1
 #define EVALTUNE
 #endif
 
@@ -545,6 +545,14 @@ struct tuneparamselection {
     U64 used[NUMOFEVALPARAMS];
 
     int count;
+};
+
+struct precalculated {
+    int32_t v;
+    int complexity;
+    int32_t vi;
+    uint16_t index;
+    int16_t g;
 };
 
 struct tuner {
