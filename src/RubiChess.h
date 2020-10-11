@@ -565,6 +565,7 @@ struct tuner {
     double starterror;
     double error;
     bool busy = false;
+    precalculated* precalcptr;
 };
 
 struct tunerpool {

@@ -23,6 +23,8 @@
 
 #ifdef EVALTUNE
 
+alignas(64) evalparamset epsdefault;
+
 chessposition pos;
 U64 fenWritten;
 
@@ -572,6 +574,11 @@ static int getValueByCoeff(eval* ev, positiontuneset* p, evalparam* e, precalcul
             printf("sq total: %3d + %3d = %3d\n", SQRESULT(sqsum[i][0], 0), SQRESULT(sqsum[i][1], 1), SQRESULT(sqsum[i][0], 0) + SQRESULT(sqsum[i][1], 1));
     }
 
+    if (precalc) {
+        precalc->complexity = complexity;
+        precalc->v = v - precalc->g * precalc->vi;
+    }
+
     // compelexity
     int evaleg = GETEGVAL(v);
     int sign = (evaleg > 0) - (evaleg < 0);
@@ -579,32 +586,70 @@ static int getValueByCoeff(eval* ev, positiontuneset* p, evalparam* e, precalcul
     if (debug)
         printf("total: %08x\n", v);
 
-    if (precalc) {
-        precalc->complexity = complexity;
-        precalc->v = v - precalc->g * precalc->vi;
-    }
-
     return v;
 }
 
 
 double texel_k = 1.121574;
 
-static double TexelEvalError(tuner* tn, precalculated *precalc, double k = texel_k)
+static double TexelEvalErrorDiff(tuner* tn, precalculated* precalc)
 {
-    double Ri, Qi;
+    double Ri;
     double E = 0.0;
+    int Qi;
 
     positiontuneset* p = (positiontuneset*)texelpts;
     for (U64 i = 0; i < texelptsnum; i++)
     {
         evalparam* e = (evalparam*)((char*)p + sizeof(positiontuneset));
+        precalculated* prec = precalc + i;
+        int index = prec->index;
 
+        Ri = p->R / 2.0;
+        if (p->sc == SCALE_DRAW)
+        {
+            Qi = SCOREDRAW;
+        }
+        else
+        {
+            int v = prec->v + prec->g * (int)tn->ev[index];
+            int evaleg = GETEGVAL(v);
+            int sign = (evaleg > 0) - (evaleg < 0);
+            v += sign * max(prec->complexity, -abs(evaleg));
+            Qi = TAPEREDANDSCALEDEVAL(v, p->ph, p->sc);
+        }
+        double sigmoid = 1 / (1 + pow(10.0, -texel_k * Qi / 400.0));
+        E += (Ri - sigmoid) * (Ri - sigmoid);
+        p = (positiontuneset*)((char*)p + sizeof(positiontuneset) + p->num * sizeof(evalparam));
+    }
+
+    return E / texelptsnum;
+
+}
+
+
+static double TexelEvalError(tuner* tn, precalculated* precalc, int index = -1, double k = texel_k)
+{
+    double Ri;
+    double E = 0.0;
+    int Qi;
+
+    precalculated* prec = precalc;
+    positiontuneset* p = (positiontuneset*)texelpts;
+    for (U64 i = 0; i < texelptsnum; i++)
+    {
+        evalparam* e = (evalparam*)((char*)p + sizeof(positiontuneset));
+        if (precalc)
+        {
+            prec = precalc + i;
+            prec->index = index;
+        }
+ 
         Ri = p->R / 2.0;
         if (p->sc == SCALE_DRAW)
             Qi = SCOREDRAW;
         else
-            Qi = TAPEREDANDSCALEDEVAL(getValueByCoeff(tn->ev, p, e, precalc), p->ph, p->sc);
+            Qi = TAPEREDANDSCALEDEVAL(getValueByCoeff(tn->ev, p, e, prec), p->ph, p->sc);
         double sigmoid = 1 / (1 + pow(10.0, -k * Qi / 400.0));
         E += (Ri - sigmoid) * (Ri - sigmoid);
         p = (positiontuneset*)((char*)p + sizeof(positiontuneset) + p->num * sizeof(evalparam));
@@ -612,6 +657,8 @@ static double TexelEvalError(tuner* tn, precalculated *precalc, double k = texel
 
     return E / texelptsnum;
 }
+
+
 
 static void optk()
 {
@@ -626,9 +673,9 @@ static void optk()
     //double delta;
     lastx = (bound[0] + bound[1]) / 2;
 
-    E[0] = TexelEvalError(tn, nullptr, bound[0]);
-    E[1] = TexelEvalError(tn, nullptr, bound[1]);
-    Emin = TexelEvalError(tn, nullptr, lastx);
+    E[0] = TexelEvalError(tn, nullptr, -1, bound[0]);
+    E[1] = TexelEvalError(tn, nullptr, -1, bound[1]);
+    Emin = TexelEvalError(tn, nullptr, -1, lastx);
     if (Emin > E[0] && Emin > E[1])
     {
         printf("Tuning Error! Wrong bounds. E0=%0.10f  E1=%0.10f  Ed=%0.10f\n", E[0], E[1], Emin);
@@ -638,7 +685,7 @@ static void optk()
     while (bound[1] - bound[0] > 0.00001)
     {
         x = (lastx + bound[direction]) / 2;
-        Error = TexelEvalError(tn, nullptr, x);
+        Error = TexelEvalError(tn, nullptr, -1, x);
         printf("Tuningscore b0=%0.10f (%0.10f) b1=%0.10f (%0.10f)\n", bound[0], E[0], bound[1], E[1]);
         if (Error > Emin)
         {
@@ -866,6 +913,7 @@ static void tuneParameter(tuner* tn)
     int tuned = 0;
     int g = 0;
     int subParam = (tn->ev[tn->paramindex].type ? 1 : 2);
+    bool diffEval = tn->ev[tn->paramindex].type <= 1;
 
     while (true)     // loop over mg/eg parameter while notImproved <=2
     {
@@ -902,14 +950,15 @@ static void tuneParameter(tuner* tn)
             pmin = lastp;
         }
         if (Emin < 0)
-            tn->starterror = Emin = TexelEvalError(tn);
+            tn->starterror = Emin = TexelEvalError(tn, tn->precalcptr, tn->paramindex);
         do
         {
             if (subParam == 2)
                 tn->ev[tn->paramindex].replace(g, p);
             else
                 tn->ev[tn->paramindex].replace(p);
-            Error = TexelEvalError(tn);
+            Error = diffEval ? TexelEvalErrorDiff(tn, tn->precalcptr) : TexelEvalError(tn, nullptr, -1);
+
             if (Error >= Emin)
             {
                 direction = (p > pmin ? 1 : 0);
@@ -986,6 +1035,11 @@ static void collectTuners(chessposition* p, tunerpool* pool, tuner** freeTuner)
                 tn->paramindex = -1;
             }
         }
+        if (!freeTuner)
+        {
+            freealigned64(tn->precalcptr);
+            tn->precalcptr = nullptr;
+        }
     }
 }
 
@@ -1005,6 +1059,7 @@ static double getAvgParamVal(int iParam)
     double pAvg = pSum / (double)texelptsnum;
     return pAvg;
 }
+
 
 static double getCorrelationCoeff(int ix, int iy, double ax, double ay)
 {
@@ -1033,11 +1088,13 @@ static double getCorrelationCoeff(int ix, int iy, double ax, double ay)
     return cor;
 }
 
+
 struct {
     double avg;
     double coeff;
     int index;
 } correlation[NUMOFEVALPARAMS];
+
 
 void getCorrelation(string correlationParams)
 {
@@ -1109,11 +1166,15 @@ void TexelTune()
         tpool.tn[i].busy = false;
         tpool.tn[i].inUse = false;
         tpool.tn[i].paramindex = -1;
+        tpool.tn[i].precalcptr = nullptr;
     }
 
     iThreads = 1;
     for (int i = 0; i < iThreads; i++)
+    {
         tpool.tn[i].inUse = true;
+        tpool.tn[i].precalcptr = (precalculated*)allocalign64(texelptsnum * sizeof(precalculated));
+    }
 
     bool improved = true;
     bool leaveSoon = false;
@@ -1163,19 +1224,6 @@ void TexelTune()
 
             int nextindex;
 
-            while (true)
-            {
-                int i = ranval(&rnd) % tpcountinloop;
-                nextindex = tpinloop[i];
-                if (!tpool.tuninginprogress[nextindex])
-                {
-                    tpool.tuninginprogress[nextindex] = true;
-                    tpinloop[i] = tpinloop[tpcountinloop - 1];
-                    tpcountinloop--;
-                    break;
-                }
-            }
-
             do
             {
                 collectTuners(&pos, &tpool, &tn);
@@ -1205,12 +1253,28 @@ void TexelTune()
                         }
                         if (c == '+' && iThreads < min(MAXTHREADS, tpcount / 3))
                         {
+                            if (!tpool.tn[iThreads].precalcptr)
+                                tpool.tn[iThreads].precalcptr = (precalculated*)allocalign64(texelptsnum * sizeof(precalculated));
                             tpool.tn[iThreads++].inUse = true;
                             printf("Now using %d threads...\n", iThreads);
                         }
                     }
                 }
             } while (!tn);
+
+            while (true)
+            {
+                int i = ranval(&rnd) % tpcountinloop;
+                nextindex = tpinloop[i];
+                if (!tpool.tuninginprogress[nextindex])
+                {
+                    tpool.tuninginprogress[nextindex] = true;
+                    tpinloop[i] = tpinloop[tpcountinloop - 1];
+                    tpcountinloop--;
+                    break;
+                }
+            }
+
             tn->busy = true;
             tn->paramindex = nextindex;
             tn->iteration = iteration;
@@ -1224,6 +1288,7 @@ void TexelTune()
     collectTuners(&pos, &tpool, nullptr);
     printTunedParameters(&pos);
 }
+
 
 static void listParams(int start, int end, bool onlyActive)
 {
@@ -1243,6 +1308,7 @@ static void enableTune(int start, int end, bool enable)
         pos.tps.tune[i] = enable;
 }
 
+
 void parseTune(vector<string> commandargs)
 {
     size_t ci = 0;
@@ -1254,7 +1320,7 @@ void parseTune(vector<string> commandargs)
         transform(s.begin(), s.end(), s.begin(), ::tolower);
         ci++;
         if (s == "help")
-            printf("tune list [active] [start] [end]\ntune reset\ntune enable [start] [end]\ntune fenfile file1 [file2] ...\ntune optk\ntune go\n");
+            printf("tune list [active] [start] [end]\ntune reset active|values\ntune enable [start] [end]\ntune fenfile file1 [file2] ...\ntune optk\ntune go\n");
         if (s == "list")
         {
             bool onlyActive = false;
@@ -1284,7 +1350,26 @@ void parseTune(vector<string> commandargs)
 
         }
         if (s == "reset")
-            enableTune(0, pos.tps.count - 1, false);
+        {
+            bool resetvalues = false;
+            bool resetactive = false;
+            while (ci < cs)
+            {
+                string subcmd = commandargs[ci++];
+                if (subcmd == "values") resetvalues = true;
+                if (subcmd == "active") resetactive = true;
+            }
+            if (resetvalues)
+            {
+                eps = epsdefault;
+                printf("Values of all parameters reset.\n");
+            }
+            if (resetactive)
+            {
+                enableTune(0, pos.tps.count - 1, false);
+                printf("All parematers disabled for tuning. Use tune enable to select.\n");
+            }
+        }
         if (s == "enable")
         {
             int start = 0;
@@ -1333,6 +1418,7 @@ void tuneInit()
     pos.resetStats();
     registerallevals(&pos);
 }
+
 
 void tuneCleanup()
 {
