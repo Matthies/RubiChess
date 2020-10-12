@@ -251,6 +251,12 @@ class chessposition;
 class searchthread;
 struct pawnhashentry;
 
+// some general constants
+#define MAXMULTIPV 64
+#define MAXTHREADS  256
+#define MAXHASH     0x100000  // 1TB ... never tested
+#define DEFAULTHASH 16
+
 
 //
 // eval stuff
@@ -496,6 +502,21 @@ struct evalparamset {
     };
 };
 
+void registerallevals(chessposition* pos = nullptr);
+void initPsqtable();
+
+#define SCALE_NORMAL 128
+#define SCALE_DRAW 0
+#define SCALE_ONEPAWN 48
+#define SCALE_HARDTOWIN 10
+#define SCALE_OCB 32
+
+enum EvalType { NOTRACE, TRACE };
+
+
+//
+// Texel tuning related stuff
+//
 #ifdef EVALTUNE
 
 #define NUMOFEVALPARAMS (sizeof(evalparamset) / sizeof(eval))
@@ -526,40 +547,58 @@ struct tuneparamselection {
     int count;
 };
 
+struct precalculated {
+    int32_t v;
+    int complexity;
+    int32_t vi;
+    uint16_t index;
+    int16_t g;
+};
+
 struct tuner {
     thread thr;
-    int index;
+    bool inUse;
     int paramindex;
+    int iteration;
     eval ev[NUMOFEVALPARAMS];
     int paramcount;
     double starterror;
     double error;
     bool busy = false;
+    precalculated* precalcptr;
 };
 
 struct tunerpool {
-    int lowRunning;
-    int highRunning;
-    int lastImproved;
-    tuner *tn;
+    int lastImprovedIteration;
+    int iThreads;
+    tuner tn[MAXTHREADS];
+    vector<bool> tuninginprogress;
 };
 
+extern int tuningratio;
+extern string pgnfilename;
+extern string fentuningfiles;
+extern bool quietonly;
+extern string correlationlist;
+extern int ppg;
+
+bool PGNtoFEN(int depth);
+void getCoeffsFromFen(string fenfilenames);
+void TexelTune();
+void parseTune(vector<string> commandargs);
+void tuneInit();
+void tuneCleanup();
+typedef void(*initevalfunc)(void);
+
 #endif
-
-void registerallevals(chessposition *pos = nullptr);
-void initPsqtable();
-
-#define SCALE_NORMAL 128
-#define SCALE_DRAW 0
-#define SCALE_ONEPAWN 48
-#define SCALE_HARDTOWIN 10
-#define SCALE_OCB 32
-
-enum EvalType { NOTRACE, TRACE };
 
 //
 // utils stuff
 //
+typedef struct ranctx { U64 a; U64 b; U64 c; U64 d; } ranctx;
+
+void raninit(ranctx* x, U64 seed);
+U64 ranval(ranctx* x);
 U64 calc_key_from_pcs(int *pcs, int mirror);
 void getPcsFromStr(const char* str, int *pcs);
 void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am);
@@ -572,14 +611,7 @@ U64 getTime();
 #ifdef STACKDEBUG
 void GetStackWalk(chessposition *pos, const char* message, const char* _File, int Line, int num, ...);
 #endif
-#ifdef EVALTUNE
-typedef void(*initevalfunc)(void);
-bool PGNtoFEN(string pgnfilename, bool quietonly, int ppg);
-void TexelTune(string fenfilename, bool noqs, bool bOptimizeK, string correlation);
 
-extern int tuningratio;
-
-#endif
 
 //
 // NNUE stuff
@@ -705,11 +737,6 @@ void NnueReadNet(string path);
 //
 // transposition stuff
 //
-typedef unsigned long long u8;
-typedef struct ranctx { u8 a; u8 b; u8 c; u8 d; } ranctx;
-
-#define rot(x,k) (((x)<<(k))|((x)>>(64-(k))))
-
 #define BOUNDMASK   0x03 
 #define HASHALPHA   0x01
 #define HASHBETA    0x02
@@ -725,9 +752,9 @@ public:
     ranctx rnd;
     zobrist();
     unsigned long long getRnd();
-    u8 getHash(chessposition *pos);
-    u8 getPawnHash(chessposition *pos);
-    u8 getMaterialHash(chessposition *pos);
+    U64 getHash(chessposition *pos);
+    U64 getPawnHash(chessposition *pos);
+    U64 getMaterialHash(chessposition *pos);
 };
 
 #define TTBUCKETNUM 3
@@ -1117,11 +1144,6 @@ public:
     void print();
 };
 
-#define MAXMULTIPV 64
-#define MAXTHREADS  256
-#define MAXHASH     0x100000  // 1TB ... never tested
-#define DEFAULTHASH 16
-
 class chessmovelist
 {
 public:
@@ -1284,7 +1306,7 @@ public:
     void resetTuner();
     void getPositionTuneSet(positiontuneset *p, evalparam *e);
     void copyPositionTuneSet(positiontuneset *from, evalparam *efrom, positiontuneset *to, evalparam *eto);
-    string getGradientString();
+    string getCoeffString();
 #endif
 #ifdef SDEBUG
     struct {
@@ -1363,7 +1385,10 @@ public:
     void updatePvTable(uint32_t mc, bool recursive);
     void updateMultiPvTable(int pvindex, uint32_t mc);
     string getPv(uint32_t *table);
+    int applyPv(uint32_t* table);
+    void reapplyPv(uint32_t* table, int num);
     int getHistory(uint32_t code, int16_t **cmptr);
+    void resetStats();
     inline void CheckForImmediateStop();
 
 #ifdef SDEBUG
@@ -1388,10 +1413,13 @@ public:
 // uci stuff
 //
 
-enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL, PERFT
+enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL, PERFT, TUNE
 };
 
 const map<string, GuiToken> GuiCommandMap = {
+#ifdef EVALTUNE
+    { "tune", TUNE },
+#endif
     { "uci", UCI },
     { "debug", UCIDEBUG },
     { "isready", ISREADY },

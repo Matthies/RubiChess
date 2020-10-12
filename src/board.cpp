@@ -1143,6 +1143,33 @@ string chessposition::getPv(uint32_t *table)
     return s;
 }
 
+int chessposition::applyPv(uint32_t* table)
+{
+    chessmove cm;
+    int i = 0;
+    
+    while ((cm.code = table[i++]))
+    {
+        prepareStack();
+        if (!playMove(&cm))
+            printf("Alarm! Wrong move %s in PV.\n", cm.toString().c_str());
+    }
+
+    return i - 1;
+}
+
+void chessposition::reapplyPv(uint32_t* table, int num)
+{
+    chessmove cm;
+
+    while (num)
+    {
+        cm.code = table[--num];
+        unplayMove(&cm);
+    }
+}
+
+
 #ifdef SDEBUG
 bool chessposition::triggerDebug(chessmove* nextmove)
 {
@@ -2580,17 +2607,24 @@ void engine::prepareThreads()
     }
 }
 
+
+void chessposition::resetStats()
+{
+    memset(history, 0, sizeof(chessposition::history));
+    memset(counterhistory, 0, sizeof(chessposition::counterhistory));
+    memset(countermove, 0, sizeof(chessposition::countermove));
+    he_yes = 0ULL;
+    he_all = 0ULL;
+    he_threshold = 8100;
+}
+
+
 void engine::resetStats()
 {
     for (int i = 0; i < Threads; i++)
     {
         chessposition* pos = &sthread[i].pos;
-        memset(pos->history, 0, sizeof(chessposition::history));
-        memset(pos->counterhistory, 0, sizeof(chessposition::counterhistory));
-        memset(pos->countermove, 0, sizeof(chessposition::countermove));
-        pos->he_yes = 0ULL;
-        pos->he_all = 0ULL;
-        pos->he_threshold = 8100;
+        pos->resetStats();
     }
 }
 
@@ -2897,7 +2931,11 @@ void engine::communicate(string inputstring)
                     cout << perft(maxdepth, false) << "\n";
                 }
                 break;
+#ifdef EVALTUNE
+            case TUNE:
+                parseTune(commandargs);
                 break;
+#endif
             default:
                 break;
             }

@@ -40,57 +40,6 @@ void initPsqtable()
 
 #ifdef EVALTUNE
 
-sqevallist sqglobal;
-
-void chessposition::resetTuner()
-{
-    for (int i = 0; i < tps.count; i++)
-        tps.ev[i]->resetGrad();
-}
-
-void chessposition::getPositionTuneSet(positiontuneset *p, evalparam *e)
-{
-    p->ph = ph;
-    p->sc = sc;
-    p->num = 0;
-    for (int i = 0; i < tps.count; i++)
-        if (tps.ev[i]->getGrad() || (tps.ev[i]->type == 2 && tps.ev[i]->getGrad(1)))
-        {
-            e->index = i;
-            e->g[0] = tps.ev[i]->getGrad(0);
-            e->g[1] = tps.ev[i]->getGrad(1);
-            p->num++;
-            e++;
-        }
-}
-
-void chessposition::copyPositionTuneSet(positiontuneset *from, evalparam *efrom, positiontuneset *to, evalparam *eto)
-{
-    to->ph = from->ph;
-    to->sc = from->sc;
-    to->num = from->num;
-    for (int i = 0; i < from->num; i++)
-    {
-        *eto = *efrom;
-        eto++;
-        efrom++;
-    }
-}
-
-string chessposition::getGradientString()
-{
-    string s = "";
-    for (int i = 0; i < pts.num; i++)
-    {
-        if (tps.ev[i]->type != 2)
-            s = s + tps.name[ev[i].index] + "(" + to_string(ev[i].g[0]) + ") ";
-        else
-            s = s + tps.name[ev[i].index] + "(" + to_string(ev[i].g[0]) + "/" + to_string(ev[i].g[1]) + ") ";
-    }
-
-    return s;
-}
-
 
 static void registertuner(chessposition *pos, eval *e, string name, int index1, int bound1, int index2, int bound2, bool tune)
 {
@@ -228,9 +177,11 @@ void registerallevals(chessposition *pos)
     tuneIt = true;
     for (i = 0; i < 2; i++)
         registertuner(pos, &eps.eSlideronfreefilebonus[i], "eSlideronfreefilebonus", i, 2, 0, 0, tuneIt);
-    tuneIt = false;
+
     for (i = 0; i < 7; i++)
         registertuner(pos, &eps.eMaterialvalue[i], "eMaterialvalue", i, 7, 0, 0, false);
+
+    tuneIt = false;
     registertuner(pos, &eps.eKingshieldbonus, "eKingshieldbonus", 0, 0, 0, 0, tuneIt);
 
     // kingdanger evals

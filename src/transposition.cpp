@@ -23,25 +23,6 @@ static const size_t HashAlignBytes = 2ull << 20;
 #include <sys/mman.h> // madvise
 #endif
 
-/* A small noncryptographic PRNG */
-/* http://www.burtleburtle.net/bob/rand/smallprng.html */
-
-u8 ranval(ranctx *x) {
-    u8 e = x->a - rot(x->b, 7);
-    x->a = x->b ^ rot(x->c, 13);
-    x->b = x->c + rot(x->d, 37);
-    x->c = x->d + e;
-    x->d = e + x->a;
-    return x->d;
-}
-
-void raninit(ranctx *x, u8 seed) {
-    u8 i;
-    x->a = 0xf1ea5eed, x->b = x->c = x->d = seed;
-    for (i = 0; i<20; ++i) {
-        (void)ranval(x);
-    }
-}
 
 zobrist::zobrist()
 {
@@ -87,9 +68,9 @@ unsigned long long zobrist::getRnd()
 }
 
 
-u8 zobrist::getHash(chessposition *pos)
+U64 zobrist::getHash(chessposition *pos)
 {
-    u8 hash = 0;
+    U64 hash = 0;
     int i;
     int state = pos->state;
     for (i = WPAWN; i <= BKING; i++)
@@ -112,9 +93,9 @@ u8 zobrist::getHash(chessposition *pos)
     return hash;
 }
 
-u8 zobrist::getPawnHash(chessposition *pos)
+U64 zobrist::getPawnHash(chessposition *pos)
 {
-    u8 hash = 0;
+    U64 hash = 0;
     for (int i = WPAWN; i <= BPAWN; i++)
     {
         U64 pmask = pos->piece00[i];
@@ -131,9 +112,9 @@ u8 zobrist::getPawnHash(chessposition *pos)
 }
 
 
-u8 zobrist::getMaterialHash(chessposition *pos)
+U64 zobrist::getMaterialHash(chessposition *pos)
 {
-    u8 hash = 0;
+    U64 hash = 0;
     for (PieceCode pc = WPAWN; pc <= BKING; pc++)
     {
         int count = 0;
@@ -226,6 +207,10 @@ unsigned int transposition::getUsedinPermill()
 
 void transposition::addHash(U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode)
 {
+#ifdef EVALTUNE
+    // don't use transposition table when tuning evaluation
+    return;
+#endif
     unsigned long long index = hash & sizemask;
     transpositioncluster *cluster = &table[index];
     transpositionentry *e;
