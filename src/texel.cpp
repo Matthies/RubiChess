@@ -846,6 +846,14 @@ void getCoeffsFromFen(string fenfilenames)
                     if (POPCOUNT(pos.occupied00[0] | pos.occupied00[1]) <= 6)
                         continue;
 
+                    if (balancedonly &&
+                        (POPCOUNT(pos.piece00[WPAWN]) != POPCOUNT(pos.piece00[BPAWN])
+                            || POPCOUNT(pos.piece00[WKNIGHT]) != POPCOUNT(pos.piece00[BKNIGHT])
+                            || POPCOUNT(pos.piece00[WBISHOP]) != POPCOUNT(pos.piece00[BBISHOP])
+                            || POPCOUNT(pos.piece00[WROOK]) != POPCOUNT(pos.piece00[BROOK])
+                            || POPCOUNT(pos.piece00[WQUEEN]) != POPCOUNT(pos.piece00[BQUEEN])))
+                        continue;
+
                     positiontuneset* nextpts = (positiontuneset*)pnext;
                     *nextpts = pos.pts;
                     nextpts->R = R;
@@ -1320,7 +1328,7 @@ void parseTune(vector<string> commandargs)
         transform(s.begin(), s.end(), s.begin(), ::tolower);
         ci++;
         if (s == "help")
-            printf("tune list [active] [start] [end]\ntune reset active|values\ntune enable [start] [end]\ntune fenfile file1 [file2] ...\ntune optk\ntune go\n");
+            printf("tune list [active] [start] [end]\ntune reset active|values\ntune enable [start] [end]\ntune fenfile {balancedonly] file1 [file2] ...\ntune optk\ntune go\n");
         if (s == "list")
         {
             bool onlyActive = false;
@@ -1393,11 +1401,16 @@ void parseTune(vector<string> commandargs)
         if (s == "fenfile")
         {
             fentuningfiles = "";
+            balancedonly = false;
             while (ci < cs) {
                 string fn = commandargs[ci++];
+                if (fn == "balancedonly")
+                {
+                    balancedonly = true;
+                    continue;
+                }
                 fn.erase(remove(fn.begin(), fn.end(), '\"'), fn.end());
                 fentuningfiles = (fentuningfiles != "" ? fentuningfiles + "*" : "") + fn;
-
             }
             getCoeffsFromFen(fentuningfiles);
         }
