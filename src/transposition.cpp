@@ -23,6 +23,7 @@ static const size_t HashAlignBytes = 2ull << 20;
 #include <sys/mman.h> // madvise
 #endif
 
+
 zobrist::zobrist()
 {
     raninit(&rnd, 0);
@@ -206,6 +207,10 @@ unsigned int transposition::getUsedinPermill()
 
 void transposition::addHash(U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode)
 {
+#ifdef EVALTUNE
+    // don't use transposition table when tuning evaluation
+    return;
+#endif
     unsigned long long index = hash & sizemask;
     transpositioncluster *cluster = &table[index];
     transpositionentry *e;

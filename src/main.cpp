@@ -906,14 +906,6 @@ int main(int argc, char* argv[])
     string logfile;
     string comparefile;
     string genepd;
-#ifdef EVALTUNE
-    string pgnconvertfile;
-    string fentuningfiles;
-    bool quietonly;
-    bool optk;
-    string correlation;
-    int ppg;
-#endif
     int maxtime;
     int flags;
 
@@ -944,12 +936,11 @@ int main(int argc, char* argv[])
         { "-assertfile", "output assert info to file", &en.assertfile, 2, "" },
 #endif
 #ifdef EVALTUNE
-        { "-pgnfile", "converts games in a PGN file to fen for tuning them later", &pgnconvertfile, 2, "" },
-        { "-quietonly", "convert only quiet positions (when used with -pgnfile); don't do qsearch (when used with -fentuning)", &quietonly, 0, NULL },
+        { "-pgnfile", "converts games in a PGN file to fen; use with -depth parameter (-1: position from pgn, >=0: do a (q)search and apply pv", &pgnfilename, 2, "" },
         { "-ppg", "use only <n> positions per game (0 = every position, use with -pgnfile)", &ppg, 1, "0" },
         { "-fentuning", "reads FENs from files (filenames separated by *) and tunes eval parameters against it", &fentuningfiles, 2, "" },
-        { "-optk", "optimize constant k before tuning, use with -fentuning)", &optk, 0, NULL },
-        { "-correlation", "calculate correlation of parameters to the give list (seperated by *), use with -fentuning)", &correlation, 2, "" },
+        { "-quietonly", "don't do qsearch (when used with -fentuning)", &quietonly, 0, NULL },
+        { "-correlation", "calculate correlation of parameters to the give list (seperated by *), use with -fentuning)", &correlationlist, 2, "" },
         { "-tuningratio", "use only every <n>th double move from the FEN to speed up the analysis", &tuningratio, 1, "1" },
 #endif
         { NULL, NULL, NULL, 0, NULL }
@@ -972,6 +963,10 @@ int main(int argc, char* argv[])
 
 #ifdef EVALOPTIONS
     registerallevals();
+#endif
+
+#ifdef EVALTUNE
+    tuneInit();
 #endif
 
     searchinit();
@@ -1057,13 +1052,14 @@ int main(int argc, char* argv[])
         generateEpd(genepd);
     }
 #ifdef EVALTUNE
-    else if (pgnconvertfile != "")
+    else if (pgnfilename != "")
     {
-        PGNtoFEN(pgnconvertfile, quietonly, ppg);
+        PGNtoFEN(depth);
     }
     else if (fentuningfiles != "")
     {
-        TexelTune(fentuningfiles, quietonly, optk, correlation);
+        getCoeffsFromFen(fentuningfiles);
+        TexelTune();
     }
 #endif
     else {
@@ -1071,5 +1067,8 @@ int main(int argc, char* argv[])
         en.communicate("");
     }
 
+#ifdef EVALTUNE
+    tuneCleanup();
+#endif
     return 0;
 }

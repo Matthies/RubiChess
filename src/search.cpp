@@ -47,7 +47,11 @@ typedef const int searchparam;
 #endif
 
 struct searchparamset {
+#ifdef EVALTUNE
+    searchparam SP(deltapruningmargin, 4000);
+#else
     searchparam SP(deltapruningmargin, 100);
+#endif
     // LMR table
     searchparam SP(lmrlogf0, 150);
     searchparam SP(lmrf0, 60);
@@ -427,9 +431,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         {
             // not a single repetition; we can (almost) safely trust the hash value
             uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
-            if (fullhashmove)
-                updatePvTable(fullhashmove, false);
-
             if (!PVNode)
             {
                 STATISTICSINC(ab_tt);
@@ -438,6 +439,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 //if (!excludeMove && ply == 0 && pvtable[ply][0] == 0) printf("pv missed by tt without move\n");
                 return hashscore;
             }
+
+            if (fullhashmove)
+                updatePvTable(fullhashmove, false);
         }
     }
 
