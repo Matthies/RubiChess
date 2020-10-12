@@ -82,7 +82,6 @@ int addPos(U64 h)
         entry->num = 1;
         return 1;
     }
-
     return ++entry->num;
 }
 
@@ -263,7 +262,6 @@ bool PGNtoFEN(int depth)
                             fenhash[gamepositions] = pos.hash;
                             fenscore[gamepositions] = NOSCORE;
                             fenresult[gamepositions++] = result;
-
                         }
                         lastmove = AlgebraicFromShort(match.str(1), &pos);
                         if (lastmove == "" || !pos.applyMove(lastmove))
@@ -453,7 +451,6 @@ static void printTunedParameters(chessposition* p)
 
 
 int tuningratio = 1;
-
 char* texelpts = NULL;
 U64 texelptsnum;
 int iThreads;
@@ -624,7 +621,6 @@ static double TexelEvalErrorDiff(tuner* tn, precalculated* precalc)
     }
 
     return E / texelptsnum;
-
 }
 
 
@@ -1440,4 +1436,4 @@ void tuneCleanup()
     pos.mtrlhsh.remove();
     pos.pwnhsh.remove();
 }
-#endif
+#endif // EVALTUNE
