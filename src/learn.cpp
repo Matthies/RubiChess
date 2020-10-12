@@ -324,11 +324,13 @@ void flush_psv(int result, searchthread* thr)
     if (fullchunk >= 0 && thr->chunkstate[fullchunk] == CHUNKINUSE)
     {
         thr->chunkstate[fullchunk] = CHUNKFULL;
-        cerr << "flush: thread " << thr->index << " marked chunk " << fullchunk << " as full.\n";
+        //cerr << "flush: thread " << thr->index << " marked chunk " << fullchunk << " as full.\n";
     }
 
 }
 
+
+int depth = 4;
 
 static void gensfenthread(searchthread* thr)
 {
@@ -360,7 +362,6 @@ static void gensfenthread(searchthread* thr)
         int random_move_count = 5;
         int maxply = 200;
         int generate_draw = 1;
-        int depth = 10;
         U64 nodes = 0;
         int eval_limit = 32000;
         int write_minply = 16;
@@ -373,7 +374,7 @@ static void gensfenthread(searchthread* thr)
             a.push_back(i);
         for (int i = 0 ; i < min(random_move_count, (int)a.size()) ; ++i)
         {
-            swap(a[i], a[ranval(&rnd, (uint64_t)a.size() - i) + i]);
+            swap(a[i], a[ranval(&rnd) % (a.size() - i) + i]);
             random_move_flag[a[i]] = true;
         }
 
@@ -457,7 +458,7 @@ static void gensfenthread(searchthread* thr)
                 while (thr->chunkstate[nextchunk] != CHUNKFREE)
                     Sleep(10);
                 thr->chunkstate[nextchunk] = CHUNKINUSE;
-                cerr << "gensfen thread " << thr->index << " switches to chunk " << nextchunk << "\n";
+                //cerr << "gensfen thread " << thr->index << " switches to chunk " << nextchunk << "\n";
                 psvnums = psvnums % (sfenchunknums * sfenchunksize);
             }
             
@@ -484,7 +485,7 @@ SKIP_SAVE:;
                 int i;
                 if (chooserandom)
                 {
-                    i = ranval(&rnd, (uint64_t)movelist.length);
+                    i = ranval(&rnd) % movelist.length;
                     nextmove.code = movelist.move[i].code;
                 }
                 bool legal = pos->playMove(&nextmove);
@@ -511,11 +512,34 @@ SKIP_SAVE:;
 }
 
 
-void gensfen(U64 fensnum)
+void gensfen(vector<string> args)
 {
+    U64 fensnum = 10000;
+    string outputfile;
+    size_t cs = args.size();
+    size_t ci = 0;
+
+    while (ci < cs)
+    {
+        string cmd = args[ci++];
+        if (cmd == "depth")
+            if (ci < cs)
+                depth = stoi(args[ci++]);
+        if (cmd == "loop")
+            if (ci < cs)
+                fensnum = stoi(args[ci++]);
+        if (cmd == "output_file_name")
+            if (ci < cs)
+                outputfile = args[ci++];
+    }
+
     const U64 chunksneeded = fensnum / sfenchunksize + 1;
-    ofstream os("sfens", ios::binary);
-    if (!os) return;
+    ofstream os(outputfile, ios::binary);
+    if (!os)
+    {
+        cout << "Cannot open file " << outputfile << "\n";
+        return;
+    }
 
     int tnum;
     gensfenstop = false;
@@ -539,10 +563,11 @@ void gensfen(U64 fensnum)
         {
             if (thr->chunkstate[i] == CHUNKFULL)
             {
-                cerr << "gensfen: thread " << thr->index << " writing chunk " << i << "\n";
+                //cerr << "gensfen: thread " << thr->index << " writing chunk " << i << "\n";
                 os.write((char*)(thr->psvbuffer + i * sfenchunksize), sfenchunksize * sizeof(PackedSfenValue));
                 chunkswritten++;
                 thr->chunkstate[i] = CHUNKFREE;
+                cout << chunkswritten * sfenchunksize << " sfens written. (" << thr->index << ")\n";
             }
         }
         tnum = (tnum + 1) % en.Threads;
@@ -550,11 +575,11 @@ void gensfen(U64 fensnum)
     gensfenstop = true;
     for (int tnum = 0; tnum < en.Threads; tnum++)
     {
-        cerr << "Waiting for thread " << tnum << "\n";
+        //cerr << "Waiting for thread " << tnum << "\n";
         if (en.sthread[tnum].thr.joinable())
             en.sthread[tnum].thr.join();
     }
-    cerr << "gensfen finished.\n";
+    //cerr << "gensfen finished.\n";
 
 }
 

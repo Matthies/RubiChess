@@ -2937,12 +2937,13 @@ void engine::communicate(string inputstring)
 #ifdef NNUELEARN
             case GENSFEN:
                 if (ci < cs) {
-                    U64 fensnum = stoi(commandargs[ci++]);
-                    gensfen(fensnum);
+                    gensfen(commandargs);
                 }
                 break;
             case LEARN:
                 learn();
+                break;
+#endif
 #ifdef EVALTUNE
             case TUNE:
                 parseTune(commandargs);
