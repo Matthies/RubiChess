@@ -18,6 +18,8 @@
 
 #include "RubiChess.h"
 
+#ifdef NNUELEARN
+
 //
 // Generate fens for training
 //
@@ -389,7 +391,7 @@ static void gensfenthread(searchthread* thr)
                 break;
             }
             pos->ply = 0;
-            pos->prepareStack();
+            //pos->prepareStack();
             movelist.length = CreateMovelist<ALL>(pos, &movelist.move[0]);
                 
             if (movelist.length == 0)
@@ -401,19 +403,15 @@ static void gensfenthread(searchthread* thr)
                 break;
             }
             
-            // Diese Suche ist primär für die Ermittlung des PV; der Score (value1) wird "nur" zum Erkennen des Siegs verwendet
-            //pv_value1 = pos.learnersearch(depth, 1, nodes);
-            //value1 = pv_value1.first;
-            //pv1 = pv_value1.second;
-            int value1 = pos->alphabeta(SCOREBLACKWINS, SCOREWHITEWINS, depth);
+            int score = pos->alphabeta(SCOREBLACKWINS, SCOREWHITEWINS, depth);
 
-            if (abs(value1) >= eval_limit) // win adjudication; default: 32000
+            if (abs(score) >= eval_limit) // win adjudication; default: 32000
             {
-                flush_psv((value1 >= eval_limit) ? S2MSIGN(pos->state & S2MMASK) : -S2MSIGN(pos->state & S2MMASK), thr);
+                flush_psv((score >= eval_limit) ? S2MSIGN(pos->state & S2MMASK) : -S2MSIGN(pos->state & S2MMASK), thr);
                 break;
             }
 
-            if (value1 == SCOREDRAW && (pos->halfmovescounter>= 100 || pos->testRepetiton() >= 2))
+            if (score == SCOREDRAW && (pos->halfmovescounter>= 100 || pos->testRepetiton() >= 2))
             {
                 if (generate_draw) flush_psv(0, thr);
                 break;
@@ -447,7 +445,7 @@ static void gensfenthread(searchthread* thr)
             //leaf_value = evaluate_leaf(pos, pv1);
             //psv.score = leaf_value == VALUE_NONE ? search_value : leaf_value;
             // Ply speichern
-            thr->psv->score = value1;
+            thr->psv->score = score;
             thr->psv->gamePly = ply;
             thr->psv->move = (uint16_t)pos->pvtable[0][0];
             thr->psv->game_result = 2 * S2MSIGN(pos->state & S2MMASK); // not yet known
@@ -464,10 +462,19 @@ static void gensfenthread(searchthread* thr)
                 psvnums = psvnums % (sfenchunknums * sfenchunksize);
             }
             
-SKIP_SAVE:;
+SKIP_SAVE:
             // preset move for next ply with the pv move
             nextmove.code = pos->pvtable[pos->ply][0];
-            if (!nextmove.code) cout << value1 << " " << pos->testRepetiton() << "\n";
+            if (!nextmove.code)
+            {
+                // No move in pv => mate or stalemate
+                if (pos->isCheckbb) // Mate
+                    flush_psv(-S2MSIGN(pos->state & S2MMASK), thr);
+                else if (generate_draw)
+                    flush_psv(0, thr); // Stalemate
+                break;
+        }
+
 
 #if 0
             if (
@@ -487,10 +494,27 @@ SKIP_SAVE:;
                 int i;
                 if (chooserandom)
                 {
-                    i = ranval(&rnd) % movelist.length;
-                    nextmove.code = movelist.move[i].code;
+                    if (random_multi_pv == 0)
+                    {
+                        i = ranval(&rnd) % movelist.length;
+                        nextmove.code = movelist.move[i].code;
+                    }
+                    else
+                    {
+                        // random multi pv
+                        pos->getRootMoves();
+                        pos->rootsearch<MultiPVSearch>(SCOREBLACKWINS, SCOREWHITEWINS, random_multi_pv_depth, 1);
+                        int s = min(pos->rootmovelist.length, random_multi_pv);
+                        // Exclude moves with score outside of allowed margin
+                        while (random_multi_pv_diff && pos->bestmovescore[0] > pos->bestmovescore[s - 1] + random_multi_pv_diff)
+                            s--;
+
+                        nextmove.code = pos->multipvtable[ranval(&rnd) % s][0];
+                    }
                 }
+
                 bool legal = pos->playMove(&nextmove);
+
                 if (legal)
                 {
                     if (pos->halfmovescounter == 0)
@@ -521,18 +545,19 @@ void gensfen(vector<string> args)
     size_t cs = args.size();
     size_t ci = 0;
 
+    int old_multipv = en.MultiPV;
+
     while (ci < cs)
     {
         string cmd = args[ci++];
-        if (cmd == "depth")
-            if (ci < cs)
-                depth = stoi(args[ci++]);
-        if (cmd == "loop")
-            if (ci < cs)
-                fensnum = stoi(args[ci++]);
-        if (cmd == "output_file_name")
-            if (ci < cs)
-                outputfile = args[ci++];
+        if (cmd == "depth" && ci < cs)
+            depth = stoi(args[ci++]);
+        if (cmd == "loop" && ci < cs)
+            fensnum = stoi(args[ci++]);
+        if (cmd == "output_file_name" && ci < cs)
+            outputfile = args[ci++];
+        if (cmd == "random_multi_pv" && ci < cs)
+            random_multi_pv = en.MultiPV = stoi(args[ci++]);
     }
 
     const U64 chunksneeded = fensnum / sfenchunksize + 1;
@@ -581,8 +606,8 @@ void gensfen(vector<string> args)
         if (en.sthread[tnum].thr.joinable())
             en.sthread[tnum].thr.join();
     }
-    //cerr << "gensfen finished.\n";
-
+    cout << "gensfen finished.\n";
+    en.MultiPV = old_multipv;
 }
 
 
@@ -625,9 +650,6 @@ void learn(vector<string> args)
         }
 
     }
-
-
-
-
 }
 
+#endif

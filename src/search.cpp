@@ -676,7 +676,11 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             && depth >= sps.singularmindepth
             && !excludeMove
             && tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth - 3, alpha, beta, ply)  // FIXME: maybe needs hashscore = FIXMATESCOREPROBE(hashscore, ply);
-            && hashscore > alpha)
+            && hashscore > alpha
+#ifdef NNUELEARN
+            && ply > 0
+#endif
+            )
         {
             excludemovestack[mstop - 1] = hashmovecode;
             int sBeta = max(hashscore - sps.singularmarginperdepth * depth, SCOREBLACKWINS);
@@ -1085,7 +1089,14 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast)
                 {
                     bestmovescore[newindex] = bestmovescore[newindex - 1];
                     uint32_t *srctable = (newindex - 1 ? multipvtable[newindex - 1] : pvtable[0]);
-                    memcpy(multipvtable[newindex], srctable, sizeof(multipvtable[newindex]));
+                    int j = 0;
+                    while (true)
+                    {
+                        multipvtable[newindex][j] = srctable[j];
+                        if (!srctable[j])
+                            break;
+                        j++;
+                    }
                     newindex--;
                 }
                 updateMultiPvTable(newindex, m->code);
@@ -1311,13 +1322,10 @@ static void search_gen1(searchthread *thr)
                     // bench mode reached needed score
                     en.stopLevel = ENGINEWANTSTOP;
                 }
-                else if (thr->depth > 4) {
+                else if (thr->depth > 4 && !isMultiPV) {
                     // next depth with new aspiration window
                     delta = sps.aspinitialdelta;
-                    if (isMultiPV)
-                        alpha = pos->bestmovescore[en.MultiPV - 1] - delta;
-                    else
-                        alpha = score - delta;
+                    alpha = score - delta;
                     beta = score + delta;
                 }
             }
@@ -1347,17 +1355,13 @@ static void search_gen1(searchthread *thr)
             // search was successfull
             if (isMultiPV)
             {
-                if (inWindow == 1)
+                i = 0;
+                int maxmoveindex = min(en.MultiPV, pos->rootmovelist.length);
+                do
                 {
-                    // MultiPV output only if in aspiration window
-                    i = 0;
-                    int maxmoveindex = min(en.MultiPV, pos->rootmovelist.length);
-                    do
-                    {
-                        uciScore(thr, inWindow, nowtime, pos->bestmovescore[i], i);
-                        i++;
-                    } while (i < maxmoveindex);
-                }
+                    uciScore(thr, inWindow, nowtime, pos->bestmovescore[i], i);
+                    i++;
+                } while (i < maxmoveindex && pos->bestmovescore[i] != NOSCORE);
             }
             else {
                 // The only two cases that bestmove is not set can happen if alphabeta hit the TP table or we are in TB

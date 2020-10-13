@@ -1104,7 +1104,7 @@ string chessposition::toFen()
 
 void chessposition::updateMultiPvTable(int pvindex, uint32_t mc)
 {
-    uint32_t *table = (pvindex ? multipvtable[pvindex] : pvtable[0]);
+    uint32_t *table = multipvtable[pvindex];
     table[0] = mc;
     int i = 0;
     while (pvtable[1][i])
@@ -1112,7 +1112,11 @@ void chessposition::updateMultiPvTable(int pvindex, uint32_t mc)
         table[i + 1] = pvtable[1][i];
         i++;
     }
-    table[i + 1] = 0;
+    table[++i] = 0;
+
+    // replicate best multipv to pvtable
+    if (pvindex == 0)
+        memcpy(pvtable[0], table, (i + 1) * sizeof(uint32_t));
 }
 
 

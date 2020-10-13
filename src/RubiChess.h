@@ -51,7 +51,7 @@
 #if 1
 #define NNUE
 
-#if 1
+#if 0
 #define NNUELEARN
 #endif
 
