@@ -2941,7 +2941,7 @@ void engine::communicate(string inputstring)
                 }
                 break;
             case LEARN:
-                learn();
+                learn(commandargs);
                 break;
 #endif
 #ifdef EVALTUNE

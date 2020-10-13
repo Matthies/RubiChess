@@ -310,9 +310,9 @@ void flush_psv(int result, searchthread* thr)
     {
         //cout << "flush: offset=" << offset << "\n";
         p = thr->psvbuffer + offset;
-        if (p->game_result != -2)
+        if (abs(p->game_result) != 2)
             break;
-        p->game_result = result;
+        p->game_result = p->game_result / 2 * result;
         if (offset % sfenchunksize == 0)
         {
             fullchunk = ((int)(offset / sfenchunksize) + sfenchunknums - 1) % sfenchunknums;
@@ -330,7 +330,20 @@ void flush_psv(int result, searchthread* thr)
 }
 
 
+// global parameters for gensfen variation
 int depth = 4;
+int random_multi_pv = 0;
+int random_multi_pv_depth = 4;
+int random_multi_pv_diff = 32000;
+int random_move_count = 0;
+int random_move_minply = 1;
+int random_move_maxply = 24;
+int write_minply = 16;
+int maxply = 200;
+int generate_draw = 1;
+U64 nodes = 0;
+int eval_limit = 32000;
+
 
 static void gensfenthread(searchthread* thr)
 {
@@ -355,17 +368,6 @@ static void gensfenthread(searchthread* thr)
 
         pos->getFromFen(STARTFEN);
         
-        // Initialisierung der random moves
-        // minimum ply, maximum ply and number of random moves
-        int random_move_minply = 1;
-        int random_move_maxply = 24;
-        int random_move_count = 5;
-        int maxply = 200;
-        int generate_draw = 1;
-        U64 nodes = 0;
-        int eval_limit = 32000;
-        int write_minply = 16;
-
         vector<bool> random_move_flag;
         random_move_flag.resize((size_t)random_move_maxply + random_move_count);
         vector<int> a;
@@ -393,7 +395,7 @@ static void gensfenthread(searchthread* thr)
             if (movelist.length == 0)
             {
                 if (pos->isCheckbb) // Mate
-                    flush_psv(-1, thr);
+                    flush_psv(-S2MSIGN(pos->state & S2MMASK), thr);
                 else if (generate_draw)
                     flush_psv(0, thr); // Stalemate
                 break;
@@ -407,11 +409,11 @@ static void gensfenthread(searchthread* thr)
 
             if (abs(value1) >= eval_limit) // win adjudication; default: 32000
             {
-                flush_psv((value1 >= eval_limit) ? 1 : -1, thr);
+                flush_psv((value1 >= eval_limit) ? S2MSIGN(pos->state & S2MMASK) : -S2MSIGN(pos->state & S2MMASK), thr);
                 break;
             }
 
-            if (pos->halfmovescounter>= 100)//3-fold or 50-moves-draw)
+            if (value1 == SCOREDRAW && (pos->halfmovescounter>= 100 || pos->testRepetiton() >= 2))
             {
                 if (generate_draw) flush_psv(0, thr);
                 break;
@@ -421,7 +423,7 @@ static void gensfenthread(searchthread* thr)
             if (ply < write_minply - 1) // default: 16
             {
                 //a_psv.clear();
-                //goto SKIP_SAVE;
+                goto SKIP_SAVE;
             }
 
             // Position schon im Hash? Dann überspringen
@@ -448,7 +450,7 @@ static void gensfenthread(searchthread* thr)
             thr->psv->score = value1;
             thr->psv->gamePly = ply;
             thr->psv->move = (uint16_t)pos->pvtable[0][0];
-            thr->psv->game_result = -2; // not yet known
+            thr->psv->game_result = 2 * S2MSIGN(pos->state & S2MMASK); // not yet known
             psvnums++;
 
             if (psvnums % sfenchunksize == 0)
@@ -465,7 +467,7 @@ static void gensfenthread(searchthread* thr)
 SKIP_SAVE:;
             // preset move for next ply with the pv move
             nextmove.code = pos->pvtable[pos->ply][0];
-            //if (!nextmove.code) cout << value1 << "\n";
+            if (!nextmove.code) cout << value1 << " " << pos->testRepetiton() << "\n";
 
 #if 0
             if (
@@ -478,7 +480,7 @@ SKIP_SAVE:;
             }
 #endif
             pos->prepareStack();
-            bool chooserandom = !nextmove.code || (ply >= random_move_minply && ply <= random_move_maxply && random_move_flag[ply]);
+            bool chooserandom = !nextmove.code || (random_move_count && ply >= random_move_minply && ply <= random_move_maxply && random_move_flag[ply]);
 
             while (true)
             {
@@ -500,7 +502,7 @@ SKIP_SAVE:;
                     if (!movelist.length)
                     {
                         if (pos->isCheckbb) // Mate
-                            flush_psv(-1, thr);
+                            flush_psv(-S2MSIGN(pos->state & S2MMASK), thr);
                         else if (generate_draw)
                             flush_psv(0, thr); // Stalemate
                         break;
@@ -584,9 +586,27 @@ void gensfen(vector<string> args)
 }
 
 
-void learn()
+void learn(vector<string> args)
 {
-    ifstream is("sfens", ios::binary);
+    string inputfile;
+    size_t cs = args.size();
+    size_t ci = 0;
+
+    while (ci < cs)
+    {
+        string cmd = args[ci++];
+        if (cmd == "depth")
+            if (ci < cs)
+                depth = stoi(args[ci++]);
+        if (cmd == "input_file_name")
+            if (ci < cs)
+            {
+                inputfile = args[ci++];
+                inputfile.erase(remove(inputfile.begin(), inputfile.end(), '\"'), inputfile.end());
+            }
+    }
+
+    ifstream is(inputfile, ios::binary);
     if (!is) return;
 
     chessposition* pos = &en.sthread[0].pos;
@@ -600,7 +620,7 @@ void learn()
         for (PackedSfenValue* psv = psvbuffer; psv < psvbuffer + psvread; psv++)
         {
             pos->getFromSfen(&psv->sfen);
-            cout << pos->toFen() << "   value: " << psv->score << "\n";
+            cout << pos->toFen() << "   value: " << psv->score << "   result: " << to_string(psv->game_result) << "\n";
 
         }
 

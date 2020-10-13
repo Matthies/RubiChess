@@ -750,7 +750,7 @@ struct PackedSfenValue
 };
 
 void gensfen(vector<string> args);
-void learn();
+void learn(vector<string> args);
 
 //
 // transposition stuff
