@@ -546,7 +546,6 @@ void gensfen(vector<string> args)
     size_t ci = 0;
 
     int old_multipv = en.MultiPV;
-
     while (ci < cs)
     {
         string cmd = args[ci++];
@@ -558,6 +557,10 @@ void gensfen(vector<string> args)
             outputfile = args[ci++];
         if (cmd == "random_multi_pv" && ci < cs)
             random_multi_pv = en.MultiPV = stoi(args[ci++]);
+        if (cmd == "random_multi_pv_depth" && ci < cs)
+            random_multi_pv_depth = stoi(args[ci++]);
+        if (cmd == "random_multi_pv_diff" && ci < cs)
+            random_multi_pv_diff = stoi(args[ci++]);
     }
 
     const U64 chunksneeded = fensnum / sfenchunksize + 1;
@@ -570,6 +573,20 @@ void gensfen(vector<string> args)
 
     int tnum;
     gensfenstop = false;
+
+    cout << "Generating sfnes with these parameters:\n";
+    cout << "depth:                 " << depth << "\n";
+    cout << "maxply:                " << maxply << "\n";
+    cout << "write_minply:          " << write_minply << "\n";
+    cout << "generate_draw:         " << generate_draw << "\n";
+    cout << "nodes:                 " << nodes << "\n";
+    cout << "eval_limit:            " << eval_limit << "\n";
+    cout << "random_move_count:     " << random_move_count << "\n";
+    cout << "random_multi_pv_depth: " << random_multi_pv_depth << "\n";
+    cout << "random_move_maxply:    " << random_move_maxply << "\n";
+    cout << "random_multi_pv:       " << random_multi_pv << "\n";
+    cout << "random_multi_pv_depth: " << random_multi_pv_depth << "\n";
+    cout << "random_multi_pv_diff:  " << random_multi_pv_diff << "\n";
 
     for (tnum = 0; tnum < en.Threads; tnum++)
     {
