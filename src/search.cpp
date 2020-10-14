@@ -781,12 +781,14 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 STATISTICSADD(red_correction, red1 - red0);
                 STATISTICSADD(red_total, reduction);
             }
+#if 0
             else
             {
                 STATISTICSADD(red_tachistory, min(depth, max(0, -stats / (sps.lmrtacstatsratio * 8))));
                 reduction = min(depth, max(0, -stats / (sps.lmrtacstatsratio * 8)));
                 STATISTICSADD(red_total, reduction);
             }
+#endif
         }
         effectiveDepth = depth + extendall - reduction + extendMove;
 
