@@ -3124,4 +3124,5 @@ template U64 chessposition::pieceMovesTo<ROOK>(int);
 template U64 chessposition::pieceMovesTo<QUEEN>(int);
 template bool chessposition::sliderAttacked<WHITE>(int index, U64 occ);
 template bool chessposition::sliderAttacked<BLACK>(int index, U64 occ);
-
+template void chessposition::updatePins<WHITE>();
+template void chessposition::updatePins<BLACK>();
