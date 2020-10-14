@@ -1400,7 +1400,7 @@ public:
 #ifdef NNUE
     void HalfkpAppendActiveIndices(int c, NnueIndexList *active);
     void AppendActiveIndices(NnueIndexList active[2]);
-    void HalfkpAppendChangedIndices(int c, NnueIndexList *add, NnueIndexList *remove);
+    void HalfkpAppendChangedIndices(int c, DirtyPiece* dp, NnueIndexList *add, NnueIndexList *remove);
     void AppendChangedIndices(NnueIndexList add[2], NnueIndexList remove[2], bool reset[2]);
     void RefreshAccumulator();
     bool UpdateAccumulator();

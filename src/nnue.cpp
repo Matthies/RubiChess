@@ -98,10 +98,9 @@ void chessposition::AppendActiveIndices(NnueIndexList active[2])
         HalfkpAppendActiveIndices(c, &active[c]);
 }
 
-void chessposition::HalfkpAppendChangedIndices(int c, NnueIndexList* add, NnueIndexList* remove)
+void chessposition::HalfkpAppendChangedIndices(int c, DirtyPiece* dp, NnueIndexList* add, NnueIndexList* remove)
 {
     int k = ORIENT(c, kingpos[c]);
-    DirtyPiece* dp = &dirtypiece[mstop];
     for (int i = 0; i < dp->dirtyNum; i++) {
         PieceCode pc = dp->pc[i];
         if ((pc >> 1) == KING) continue;
@@ -117,15 +116,29 @@ void chessposition::HalfkpAppendChangedIndices(int c, NnueIndexList* add, NnueIn
 void chessposition::AppendChangedIndices(NnueIndexList add[2], NnueIndexList remove[2], bool reset[2])
 {
     DirtyPiece* dp = &dirtypiece[mstop];
-    if (dp->dirtyNum == 0)
-        return;  // FIXME: When will this happen? reset is uninitialized in this case.
 
-    for (int c = 0; c < 2; c++) {
-        reset[c] = (dp->pc[0] == (PieceCode)(WKING | c));
-        if (reset[c])
-            HalfkpAppendActiveIndices(c, &add[c]);
-        else
-            HalfkpAppendChangedIndices(c, &add[c], &remove[c]);
+    if (accumulator[mstop - 1].computationState)
+    {
+        for (int c = 0; c < 2; c++) {
+            reset[c] = (dp->pc[0] == (PieceCode)(WKING | c));
+            if (reset[c])
+                HalfkpAppendActiveIndices(c, &add[c]);
+            else
+                HalfkpAppendChangedIndices(c, dp, &add[c], &remove[c]);
+        }
+    }
+    else {
+        DirtyPiece* lastdp = &dirtypiece[mstop - 1];
+        for (unsigned c = 0; c < 2; c++) {
+            reset[c] = dp->pc[0] == (PieceCode)(WKING | c) || lastdp->pc[0] == (PieceCode)(WKING | c);
+            if (reset[c]) {
+                HalfkpAppendActiveIndices(c, &add[c]);
+            }
+            else {
+                HalfkpAppendChangedIndices(c, dp, &add[c], &remove[c]);
+                HalfkpAppendChangedIndices(c, lastdp, &add[c], &remove[c]);
+            }
+        }
     }
 }
 
@@ -215,7 +228,7 @@ void chessposition::RefreshAccumulator()
 // Test if we can update the accumulator from the previous position
 bool chessposition::UpdateAccumulator()
 {
-    NnueAccumulator *ac = &accumulator[mstop];
+    NnueAccumulator* ac = &accumulator[mstop];
     if (ac->computationState)
         return true;
 
@@ -224,7 +237,13 @@ bool chessposition::UpdateAccumulator()
 
     NnueAccumulator* prevac = &accumulator[mstop - 1];
     if (!prevac->computationState)
-        return false;
+    {
+        if (mstop == 1)
+            return false;
+        prevac = &accumulator[mstop - 2];
+        if (!prevac->computationState)
+            return false;
+    }
 
     NnueIndexList removedIndices[2], addedIndices[2];
     removedIndices[0].size = removedIndices[1].size = 0;

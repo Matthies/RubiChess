@@ -716,7 +716,6 @@ void chessposition::playNullMove()
         accumulator[mstop] = accumulator[mstop - 1];
     else
         accumulator[mstop].computationState = 0;
-
 #endif
 }
 
