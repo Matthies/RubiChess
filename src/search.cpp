@@ -59,6 +59,7 @@ struct searchparamset {
     searchparam SP(lmrf1, 43);
     searchparam SP(lmrmindepth, 3);
     searchparam SP(lmrstatsratio, 625);
+    searchparam SP(lmrtacstatsratio, 256);
     searchparam SP(lmropponentmovecount, 16);
     // LMP table
     searchparam SP(lmpf0, 59);
@@ -782,8 +783,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             }
             else
             {
-                STATISTICSADD(red_history, min(depth, max(0, -stats / (sps.lmrstatsratio * 8))));
-                reduction = min(depth, max(0, -stats / (sps.lmrstatsratio * 8)));
+                STATISTICSADD(red_tachistory, min(depth, max(0, -stats / (sps.lmrtacstatsratio * 8))));
+                reduction = min(depth, max(0, -stats / (sps.lmrtacstatsratio * 8)));
+                STATISTICSADD(red_total, reduction);
             }
         }
         effectiveDepth = depth + extendall - reduction + extendMove;
@@ -1775,10 +1777,11 @@ void search_statistics()
     f11 = statistics.red_lmr[1] / (double)statistics.red_pi[1];
     f1 = (statistics.red_lmr[0] + statistics.red_lmr[1]) / (double)red_n;
     f2 = statistics.red_history / (double)red_n;
-    f3 = statistics.red_pv / (double)red_n;
-    f4 = statistics.red_correction / (double)red_n;
-    f5 = statistics.red_total / (double)red_n;
-    printf("(ST) Reduct.  %12lld   lmr[0]: %4.2f   lmr[1]: %4.2f   lmr: %4.2f   hist: %4.2f   pv: %4.2f   corr: %4.2f   total: %4.2f\n", red_n, f10, f11, f1, f2, f3, f4, f5);
+    f3 = statistics.red_tachistory / (double)red_n;
+    f4 = statistics.red_pv / (double)red_n;
+    f5 = statistics.red_correction / (double)red_n;
+    f6 = statistics.red_total / (double)red_n;
+    printf("(ST) Reduct.  %12lld   lmr[0]: %4.2f   lmr[1]: %4.2f   lmr: %4.2f   hist: %4.2f   tctl: %4.2f   pv: %4.2f   corr: %4.2f   total: %4.2f\n", red_n, f10, f11, f1, f2, f3, f4, f5, f6);
 
     f0 = 100.0 * statistics.extend_singular / (double)n;
     f1 = 100.0 * statistics.extend_endgame / (double)n;
