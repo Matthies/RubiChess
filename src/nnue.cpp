@@ -222,7 +222,7 @@ void chessposition::RefreshAccumulator()
         }
     }
 
-    ac->computationState = 1;
+    ac->computationState = true;
 }
 
 // Test if we can update the accumulator from the previous position
@@ -243,6 +243,8 @@ bool chessposition::UpdateAccumulator()
         prevac = &accumulator[mstop - 2];
         if (!prevac->computationState)
             return false;
+        else
+            printf("");
     }
 
     NnueIndexList removedIndices[2], addedIndices[2];
@@ -330,7 +332,7 @@ bool chessposition::UpdateAccumulator()
         }
     }
 
-    ac->computationState = 1;
+    ac->computationState = true;
     return true;
 }
 

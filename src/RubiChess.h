@@ -723,8 +723,7 @@ class NnueAccumulator
 {
 public:
     alignas(64) int16_t accumulation[2][256];
-    int score;
-    int computationState;
+    bool computationState;
 };
 
 
