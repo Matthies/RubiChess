@@ -2611,6 +2611,7 @@ void engine::prepareThreads()
 void chessposition::resetStats()
 {
     memset(history, 0, sizeof(chessposition::history));
+    memset(tacticalhst, 0, sizeof(chessposition::tacticalhst));
     memset(counterhistory, 0, sizeof(chessposition::counterhistory));
     memset(countermove, 0, sizeof(chessposition::countermove));
     he_yes = 0ULL;
