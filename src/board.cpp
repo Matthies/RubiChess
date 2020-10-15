@@ -487,7 +487,7 @@ void evaluateMoves(chessmovelist *ml, chessposition *pos, int16_t **cmptr)
         if (Mt == CAPTURE || (Mt == ALL && GETCAPTURE(mc)))
         {
             PieceCode capture = GETCAPTURE(mc);
-            ml->move[i].value = (mvv[capture >> 1] | lva[piece >> 1]);
+            ml->move[i].value = (mvv[capture >> 1] | lva[piece >> 1]) + pos->tacticalhst[piece >> 1][GETTO(mc)][capture >> 1];
         }
         if (Mt == QUIET || (Mt == ALL && !GETCAPTURE(mc)))
         {
@@ -2610,6 +2610,7 @@ void engine::prepareThreads()
 void chessposition::resetStats()
 {
     memset(history, 0, sizeof(chessposition::history));
+    memset(tacticalhst, 0, sizeof(chessposition::tacticalhst));
     memset(counterhistory, 0, sizeof(chessposition::counterhistory));
     memset(countermove, 0, sizeof(chessposition::countermove));
     he_yes = 0ULL;
