@@ -243,8 +243,6 @@ bool chessposition::UpdateAccumulator()
         prevac = &accumulator[mstop - 2];
         if (!prevac->computationState)
             return false;
-        else
-            printf("");
     }
 
     NnueIndexList removedIndices[2], addedIndices[2];
