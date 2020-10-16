@@ -715,8 +715,7 @@ void chessposition::playNullMove()
     if (accumulator[mstop - 1].computationState)
         accumulator[mstop] = accumulator[mstop - 1];
     else
-        accumulator[mstop].computationState = 0;
-
+        accumulator[mstop].computationState = false;
 #endif
 }
 
@@ -1540,7 +1539,7 @@ bool chessposition::playMove(chessmove *cm)
 #ifdef NNUE
     DirtyPiece* dp = &dirtypiece[mstop + 1];
     dp->dirtyNum = 0;
-    accumulator[mstop + 1].computationState = 0;
+    accumulator[mstop + 1].computationState = false;
 #endif
 
     halfmovescounter++;
@@ -2604,6 +2603,7 @@ void engine::prepareThreads()
         pos->nodes = 0;
         pos->nullmoveply = 0;
         pos->nullmoveside = 0;
+        pos->accumulator->computationState = false;
     }
 }
 
