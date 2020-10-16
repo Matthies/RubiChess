@@ -12,7 +12,7 @@ ChangeLog
     - Small evaluation fix for FRC
     - History extension with dynamic update of threshold to avoid depth explosion
     - Tweak on the probcut pruning
-    - Small tweak on the time management using different time depending on ponder git
+    - Small tweak on the time management using different time depending on ponder hit
     - Small tweak/simplifiction in the aspiration window handling
     - Small tweak on history aging
     - Tweak on null move pruning returning beta instead of score of null move search
@@ -38,7 +38,7 @@ ChangeLog
 1.7 (release 2020-04-19) :
     - moveGivesCheck handles discovered checks now
     - Several fixes in the PVS logic (was unchanged since 0.4 release and quite buggy)
-    - Added evaluation for minors prtected behind pawns, bishop center control and knight outposts
+    - Added evaluation for minors protected behind pawns, bishop center control and knight outposts
     - Fix for the (rare) bug regarding undetected 3-fold in or following root move
     - Introduce some basic endgame evaluation interface; so far only used for the KBNvK endgame
     - Support for Clang compiler now in the general Makefile
