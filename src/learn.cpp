@@ -561,6 +561,14 @@ void gensfen(vector<string> args)
             random_multi_pv_depth = stoi(args[ci++]);
         if (cmd == "random_multi_pv_diff" && ci < cs)
             random_multi_pv_diff = stoi(args[ci++]);
+        if (cmd == "random_move_count" && ci < cs)
+            random_move_count = stoi(args[ci++]);
+        if (cmd == "random_move_maxply" && ci < cs)
+            random_move_maxply = stoi(args[ci++]);
+        if (cmd == "write_minply" && ci < cs)
+            write_minply = stoi(args[ci++]);
+        if (cmd == "eval_limit" && ci < cs)
+            eval_limit = stoi(args[ci++]);
     }
 
     const U64 chunksneeded = fensnum / sfenchunksize + 1;
