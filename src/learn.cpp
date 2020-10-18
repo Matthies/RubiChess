@@ -610,7 +610,7 @@ void gensfen(vector<string> args)
     while (chunkswritten < chunksneeded)
     {
         searchthread* thr = &en.sthread[tnum];
-        Sleep(100);
+        Sleep(10);
         for (int i = 0; i < sfenchunknums; i++)
         {
             if (thr->chunkstate[i] == CHUNKFULL)
