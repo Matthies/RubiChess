@@ -436,6 +436,7 @@ int chessposition::getFromFen(const char* sFen)
     mstop = 0;
     rootheight = 0;
     lastnullmove = -1;
+    useTb = min(TBlargest, en.SyzygyProbeLimit);
     return 0;
 }
 
@@ -576,7 +577,6 @@ void chessposition::getRootMoves()
 
 void chessposition::tbFilterRootMoves()
 {
-    useTb = min(TBlargest, en.SyzygyProbeLimit);
     tbPosition = 0;
     useRootmoveScore = 0;
     if (POPCOUNT(occupied00[0] | occupied00[1]) <= useTb)
