@@ -13,3 +13,6 @@ And while improving RubiChess more and more I looked at several open source engi
 Ethereal, Stockfish, Pirarucu, Laser, ...
 Thank you for the great list of engines at http://www.computerchess.org.uk/ccrl/4040/
 Not mentioned all the other documentation and tools freely available.
+
+For using NNUE evaluation you can download network files from my repository https://github.com/Matthies/NN
+and set the NNUENetpath option.
