@@ -76,7 +76,7 @@ void generateEpd(string egn)
             pos->rootheight = 0;
             pos->lastnullmove = -1;
             int staticeval = pos->getEval<NOTRACE>();
-            int quietval = pos->getQuiescence(SCOREBLACKWINS, SCOREWHITEWINS, 0);
+            int quietval = pos->getQuiescence<Prune>(SCOREBLACKWINS, SCOREWHITEWINS, 0);
             bool isQuiet = (abs(staticeval - quietval) < 100);
             if (isQuiet)
             {

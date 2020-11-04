@@ -241,7 +241,7 @@ bool PGNtoFEN(int depth)
                         if (depth >= 0)
                         {
                             // AGE mode (search and apply the pv of this search)
-                            score = pos.alphabeta(SCOREBLACKWINS, SCOREWHITEWINS, depth);
+                            score = pos.alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, depth);
                             int s2m = pos.state & S2MMASK;
                             uint32_t* pvt = pos.pvtable[pos.ply];
                             int num = pos.applyPv(pvt);
@@ -830,7 +830,7 @@ void getCoeffsFromFen(string fenfilenames)
                 {
                     pos.getFromFen(fen.c_str());
                     pos.ply = 0;
-                    Qi = pos.getQuiescence(SHRT_MIN + 1, SHRT_MAX, 0);
+                    Qi = pos.getQuiescence<Prune>(SHRT_MIN + 1, SHRT_MAX, 0);
                     if (!pos.w2m())
                         Qi = -Qi;
 

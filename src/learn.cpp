@@ -133,18 +133,18 @@ struct HuffmanedPiece
 
 constexpr HuffmanedPiece huffman_table[] =
 {
-  {0b00000,1}, // NO_PIECE
-  {0b00000,1}, // NO_PIECE
-  {0b00001,5}, // WPAWN
-  {0b10001,5}, // BPAWN
-  {0b00011,5}, // WKNIGHT
-  {0b10011,5}, // BKNIGHT
-  {0b00101,5}, // WBISHOP
-  {0b10101,5}, // BBISHOP
-  {0b00111,5}, // WROOK
-  {0b10111,5}, // BROOK
-  {0b01001,5}, // WQUEEN
-  {0b11001,5}, // BQUEEN
+  {0x00,1}, // NO_PIECE
+  {0x00,1}, // NO_PIECE
+  {0x01,5}, // WPAWN
+  {0x11,5}, // BPAWN
+  {0x03,5}, // WKNIGHT
+  {0x13,5}, // BKNIGHT
+  {0x05,5}, // WBISHOP
+  {0x15,5}, // BBISHOP
+  {0x07,5}, // WROOK
+  {0x17,5}, // BROOK
+  {0x09,5}, // WQUEEN
+  {0x19,5}, // BQUEEN
 };
 
 // FIXME: This is ugly but compatible with SF sfens
@@ -302,6 +302,21 @@ void chessposition::toSfen(PackedSfen *sfen)
 }
 
 
+// convert move encoding to SF one
+inline uint16_t sfMoveCode(uint32_t c)
+{
+    uint16_t sfc = (uint16_t)(c & 0xfff);
+    uint16_t p;
+    if (p = GETPROMOTION(c))
+        sfc += ((p >> 1) + 2) << 12;
+    else if (ISEPCAPTURE(c))
+        sfc += (2 << 14);
+    else if (ISCASTLE(c))
+        sfc += (3 << 14);
+
+    return sfc;
+}
+
 void flush_psv(int result, searchthread* thr)
 {
     PackedSfenValue* p;
@@ -350,6 +365,9 @@ int eval_limit = 32000;
 static void gensfenthread(searchthread* thr)
 {
     ranctx rnd;
+    U64 key;
+    U64 hash_index;
+    U64 key2;
     U64 rndseed = time(NULL);
     raninit(&rnd, rndseed);
     chessmovelist movelist;
@@ -403,7 +421,7 @@ static void gensfenthread(searchthread* thr)
                 break;
             }
             
-            int score = pos->alphabeta(SCOREBLACKWINS, SCOREWHITEWINS, depth);
+            int score = pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, depth);
 
             if (abs(score) >= eval_limit) // win adjudication; default: 32000
             {
@@ -425,9 +443,9 @@ static void gensfenthread(searchthread* thr)
             }
 
             // Position schon im Hash? Dann überspringen
-            U64 key = pos->hash;
-            U64 hash_index = key & (GENSFEN_HASH_SIZE - 1);
-            U64 key2 = sfenhash[hash_index];
+            key = pos->hash;
+            hash_index = key & (GENSFEN_HASH_SIZE - 1);
+            key2 = sfenhash[hash_index];
             if (key == key2)
             {
                 //a_psv.clear();
@@ -447,7 +465,7 @@ static void gensfenthread(searchthread* thr)
             // Ply speichern
             thr->psv->score = score;
             thr->psv->gamePly = ply;
-            thr->psv->move = (uint16_t)pos->pvtable[0][0];
+            thr->psv->move = (uint16_t)sfMoveCode(pos->pvtable[0][0]);
             thr->psv->game_result = 2 * S2MSIGN(pos->state & S2MMASK); // not yet known
             psvnums++;
 
@@ -491,7 +509,7 @@ SKIP_SAVE:
 
             while (true)
             {
-                int i;
+                int i = 0;
                 if (chooserandom)
                 {
                     if (random_multi_pv == 0)
@@ -625,7 +643,7 @@ void gensfen(vector<string> args)
         tnum = (tnum + 1) % en.Threads;
     }
     gensfenstop = true;
-    for (int tnum = 0; tnum < en.Threads; tnum++)
+    for (tnum = 0; tnum < en.Threads; tnum++)
     {
         //cerr << "Waiting for thread " << tnum << "\n";
         if (en.sthread[tnum].thr.joinable())
@@ -657,7 +675,11 @@ void learn(vector<string> args)
     }
 
     ifstream is(inputfile, ios::binary);
-    if (!is) return;
+    if (!is)
+    {
+        cout << "Cannot open input file.\n";
+        return;
+    }
 
     chessposition* pos = &en.sthread[0].pos;
     PackedSfenValue* psvbuffer = (PackedSfenValue*)allocalign64(sfenchunknums * sfenchunksize * sizeof(PackedSfenValue));
