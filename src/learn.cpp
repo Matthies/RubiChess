@@ -302,20 +302,40 @@ void chessposition::toSfen(PackedSfen *sfen)
 }
 
 
-// convert move encoding to SF one
+// convert rubi move code to SF/sfen code
 inline uint16_t sfMoveCode(uint32_t c)
 {
     uint16_t sfc = (uint16_t)(c & 0xfff);
     uint16_t p;
     if (p = GETPROMOTION(c))
-        sfc += ((p >> 1) + 2) << 12;
+        sfc |= ((p >> 1) + 2) << 12;
     else if (ISEPCAPTURE(c))
-        sfc += (2 << 14);
+        sfc |= (2 << 14);
     else if (ISCASTLE(c))
-        sfc += (3 << 14);
+    {
+        sfc |= (3 << 14);
+    }
 
     return sfc;
 }
+
+
+// convert sfen move code to Rubi short code
+inline uint16_t shortCode(uint16_t c)
+{
+    uint16_t rc = c & 0xfff;
+    if ((c & 0xc000) == 0x4000)
+    {
+        int p = (((c >> 12) - 2) << 1);
+        if (RANK(GETTO(c)) == 0)
+            // black promotion
+            p++;
+        rc |= (p << 12);
+    }
+
+    return rc;
+}
+
 
 void flush_psv(int result, searchthread* thr)
 {
@@ -692,10 +712,15 @@ void learn(vector<string> args)
         for (PackedSfenValue* psv = psvbuffer; psv < psvbuffer + psvread; psv++)
         {
             pos->getFromSfen(&psv->sfen);
-            cout << pos->toFen() << "   value: " << psv->score << "   result: " << to_string(psv->game_result) << "\n";
-
+            chessmove cm;
+            cm.code = pos->shortMove2FullMove(shortCode(psv->move));
+            cout << "fen " << pos->toFen() << "\n";
+            cout << "move " << cm.toString() << "\n";
+            cout << "score " << psv->score << "\n";
+            cout << "ply " << to_string((pos->fullmovescounter - 1) * 2 + (pos->state & S2MMASK)) << "\n";
+            cout << "result " << to_string(psv->game_result) << "\n";
+            cout << "e\n";
         }
-
     }
 }
 

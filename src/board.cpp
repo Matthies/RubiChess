@@ -137,7 +137,7 @@ chessmove::chessmove()
 
 string chessmove::toString()
 {
-    char s[100];
+    char s[8];
 
     if (code == 0)
         return "(none)";
@@ -151,7 +151,13 @@ string chessmove::toString()
         to = GETTO(code);
     promotion = GETPROMOTION(code);
 
-    sprintf_s(s, "%c%d%c%d%c", (from & 0x7) + 'a', ((from >> 3) & 0x7) + 1, (to & 0x7) + 'a', ((to >> 3) & 0x7) + 1, PieceChar(promotion, true));
+    sprintf_s(s, "%c%d%c%d", (from & 0x7) + 'a', ((from >> 3) & 0x7) + 1, (to & 0x7) + 'a', ((to >> 3) & 0x7) + 1);
+    if (promotion)
+    {
+        string ps(1, PieceChar(promotion, true));
+        return s + ps;
+    }
+    
     return s;
 }
 
