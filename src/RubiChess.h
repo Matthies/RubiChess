@@ -429,6 +429,7 @@ struct evalparamset {
            VALUE(  20, 253), VALUE(  21, 256), VALUE(  18, 263), VALUE(  13, 270), VALUE(  45, 244), VALUE(  67, 233), VALUE(  72, 241), VALUE(  80, 230),
            VALUE(  69, 264), VALUE( 108, 231), VALUE( 107, 230), VALUE( 114, 198)  }
     };
+    eval eNocastlepenalty = VALUE(-10, 0);
     eval eRookon7thbonus =  VALUE(  -1,  22);
     eval eRookonkingarea =  VALUE(   7,  -6);
     eval eBishoponkingarea =  VALUE(  10,   2);
@@ -915,6 +916,7 @@ extern transposition tp;
 #define CASTLEMASK  0x1e
 #define GETCASTLEFILE(s,i) (((s) >> (i * 4 + 8)) & 0x7)
 #define SETCASTLEFILE(f,i) (((f) << (i * 4 + 8)) | (WQCMASK << i))
+#define GETCASTLERIGHTS(c,s) ((c) ? (s) & (BQCMASK | BKCMASK) : (s) & (WQCMASK | WKCMASK)) 
 
 #define WQC 1
 #define WKC 2
