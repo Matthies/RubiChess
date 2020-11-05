@@ -1030,14 +1030,13 @@ int main(int argc, char* argv[])
     } else if (benchmark || openbench)
     {
         // benchmark mode
-#ifdef NNUE
-        int oldNnueReady = NnueReady;
-        NnueReady = false;
         doBenchmark(depth, epdfile, maxtime, startnum, openbench);
-        if (oldNnueReady)
+#ifdef NNUE
+        if (NnueReady && !openbench && epdfile == "")
         {
-            NnueReady = true;
+            NnueReady = false;
             doBenchmark(depth, epdfile, maxtime, startnum, openbench);
+            NnueReady = true;
         }
 #endif
     } else if (enginetest)

@@ -494,7 +494,7 @@ void evaluateMoves(chessmovelist *ml, chessposition *pos, int16_t **cmptr)
         if (Mt == CAPTURE || (Mt == ALL && GETCAPTURE(mc)))
         {
             PieceCode capture = GETCAPTURE(mc);
-            ml->move[i].value = (mvv[capture >> 1] | lva[piece >> 1]);
+            ml->move[i].value = (mvv[capture >> 1] | lva[piece >> 1]) + pos->tacticalhst[piece >> 1][GETTO(mc)][capture >> 1];
         }
         if (Mt == QUIET || (Mt == ALL && !GETCAPTURE(mc)))
         {
@@ -721,8 +721,7 @@ void chessposition::playNullMove()
     if (accumulator[mstop - 1].computationState)
         accumulator[mstop] = accumulator[mstop - 1];
     else
-        accumulator[mstop].computationState = 0;
-
+        accumulator[mstop].computationState = false;
 #endif
 }
 
@@ -1553,7 +1552,7 @@ bool chessposition::playMove(chessmove *cm)
 #ifdef NNUE
     DirtyPiece* dp = &dirtypiece[mstop + 1];
     dp->dirtyNum = 0;
-    accumulator[mstop + 1].computationState = 0;
+    accumulator[mstop + 1].computationState = false;
 #endif
 
     halfmovescounter++;
@@ -2617,6 +2616,7 @@ void engine::prepareThreads()
         pos->nodes = 0;
         pos->nullmoveply = 0;
         pos->nullmoveside = 0;
+        pos->accumulator->computationState = false;
     }
 }
 
@@ -2624,6 +2624,7 @@ void engine::prepareThreads()
 void chessposition::resetStats()
 {
     memset(history, 0, sizeof(chessposition::history));
+    memset(tacticalhst, 0, sizeof(chessposition::tacticalhst));
     memset(counterhistory, 0, sizeof(chessposition::counterhistory));
     memset(countermove, 0, sizeof(chessposition::countermove));
     he_yes = 0ULL;

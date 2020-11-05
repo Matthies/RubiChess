@@ -728,8 +728,7 @@ class NnueAccumulator
 {
 public:
     alignas(64) int16_t accumulation[2][256];
-    int score;
-    int computationState;
+    bool computationState;
 };
 
 
@@ -1336,6 +1335,7 @@ public:
     // The following part of the chessposition object isn't copied from rootposition object to the threads positions
     int16_t history[2][64][64];
     int16_t counterhistory[14][64][14 * 64];
+    int16_t tacticalhst[7][64][6];
     uint32_t countermove[14][64];
     int he_threshold;
     U64 he_yes;
@@ -1400,6 +1400,7 @@ public:
     template <PruneType Pt> int alphabeta(int alpha, int beta, int depth);
     template <PruneType Pt> int getQuiescence(int alpha, int beta, int depth);
     void updateHistory(uint32_t code, int16_t **cmptr, int value);
+    void updateTacticalHst(uint32_t code, int value);
     void getCmptr(int16_t **cmptr);
     void updatePvTable(uint32_t mc, bool recursive);
     void updateMultiPvTable(int pvindex, uint32_t mc);
@@ -1407,6 +1408,7 @@ public:
     int applyPv(uint32_t* table);
     void reapplyPv(uint32_t* table, int num);
     int getHistory(uint32_t code, int16_t **cmptr);
+    int getTacticalHst(uint32_t code);
     void resetStats();
     inline void CheckForImmediateStop();
 
@@ -1419,7 +1421,7 @@ public:
 #ifdef NNUE
     void HalfkpAppendActiveIndices(int c, NnueIndexList *active);
     void AppendActiveIndices(NnueIndexList active[2]);
-    void HalfkpAppendChangedIndices(int c, NnueIndexList *add, NnueIndexList *remove);
+    void HalfkpAppendChangedIndices(int c, DirtyPiece* dp, NnueIndexList *add, NnueIndexList *remove);
     void AppendChangedIndices(NnueIndexList add[2], NnueIndexList remove[2], bool reset[2]);
     void RefreshAccumulator();
     bool UpdateAccumulator();
