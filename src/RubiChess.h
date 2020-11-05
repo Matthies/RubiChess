@@ -429,7 +429,7 @@ struct evalparamset {
            VALUE(  20, 253), VALUE(  21, 256), VALUE(  18, 263), VALUE(  13, 270), VALUE(  45, 244), VALUE(  67, 233), VALUE(  72, 241), VALUE(  80, 230),
            VALUE(  69, 264), VALUE( 108, 231), VALUE( 107, 230), VALUE( 114, 198)  }
     };
-    eval eNocastlepenalty = VALUE(-10, 0);
+    eval eNocastlepenalty = VALUE(-5, 5);
     eval eRookon7thbonus =  VALUE(  -1,  22);
     eval eRookonkingarea =  VALUE(   7,  -6);
     eval eBishoponkingarea =  VALUE(  10,   2);
