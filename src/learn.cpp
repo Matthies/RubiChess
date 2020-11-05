@@ -313,7 +313,10 @@ inline uint16_t sfMoveCode(uint32_t c)
         sfc |= (2 << 14);
     else if (ISCASTLE(c))
     {
+        // sfen doesn't use king-captured-rook encoding
         sfc |= (3 << 14);
+        sfc &= 0xffc0;
+        sfc |= GETCORRECTTO(c);
     }
 
     return sfc;
@@ -331,6 +334,12 @@ inline uint16_t shortCode(uint16_t c)
             // black promotion
             p++;
         rc |= (p << 12);
+    }
+    if ((c & 0xc000) == 0xc000)
+    {
+        // fix castle encoding to king-captures-rook
+        //rc &= 0xffc0;
+        //rc |= 
     }
 
     return rc;
@@ -674,23 +683,38 @@ void gensfen(vector<string> args)
 }
 
 
-void learn(vector<string> args)
+
+enum SfenFormat { bin, plain };
+
+void convert(vector<string> args)
 {
     string inputfile;
+    string outputfile;
+    SfenFormat outformat = plain;
     size_t cs = args.size();
     size_t ci = 0;
 
     while (ci < cs)
     {
         string cmd = args[ci++];
-        if (cmd == "depth")
-            if (ci < cs)
-                depth = stoi(args[ci++]);
+
         if (cmd == "input_file_name")
             if (ci < cs)
             {
                 inputfile = args[ci++];
                 inputfile.erase(remove(inputfile.begin(), inputfile.end(), '\"'), inputfile.end());
+            }
+        if (cmd == "output_file_name")
+            if (ci < cs)
+            {
+                outputfile = args[ci++];
+                outputfile.erase(remove(outputfile.begin(), outputfile.end(), '\"'), outputfile.end());
+            }
+        if (cmd == "output_format")
+            if (ci < cs)
+            {
+                outformat = (args[ci] == "bin" ? bin : plain);
+                ci++;
             }
     }
 
@@ -699,6 +723,19 @@ void learn(vector<string> args)
     {
         cout << "Cannot open input file.\n";
         return;
+    }
+
+    ostream *os = &cout;
+    ofstream ofs;
+    if (outputfile != "")
+    {
+        ofs.open(outputfile, ios::binary);
+        if (!ofs)
+        {
+            cout << "Cannot open output file.\n";
+            return;
+        }
+        os = &ofs;
     }
 
     chessposition* pos = &en.sthread[0].pos;
@@ -714,14 +751,36 @@ void learn(vector<string> args)
             pos->getFromSfen(&psv->sfen);
             chessmove cm;
             cm.code = pos->shortMove2FullMove(shortCode(psv->move));
-            cout << "fen " << pos->toFen() << "\n";
-            cout << "move " << cm.toString() << "\n";
-            cout << "score " << psv->score << "\n";
-            cout << "ply " << to_string((pos->fullmovescounter - 1) * 2 + (pos->state & S2MMASK)) << "\n";
-            cout << "result " << to_string(psv->game_result) << "\n";
-            cout << "e\n";
+            if (!cm.code || ISCASTLE(cm.code))
+            {
+                // Fix the incompatible move coding
+                cm.code = pos->shortMove2FullMove(psv->move);
+                if (cm.code)
+                    psv->move = sfMoveCode(cm.code);
+            }
+            if (outformat == plain)
+            {
+                *os << "fen " << pos->toFen() << "\n";
+                *os << "move " << cm.toString() << "\n";
+                *os << "score " << psv->score << "\n";
+                *os << "ply " << to_string((pos->fullmovescounter - 1) * 2 + (pos->state & S2MMASK)) << "\n";
+                *os << "result " << to_string(psv->game_result) << "\n";
+                *os << "e\n";
+            }
+            else
+            {
+                os->write((char*)psv, sizeof(PackedSfenValue));
+            }
         }
+
+        cout << "Finished converting.\n";
     }
+}
+
+
+void learn(vector<string> args)
+{
+
 }
 
 #endif

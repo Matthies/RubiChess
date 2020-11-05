@@ -749,6 +749,7 @@ struct PackedSfenValue
 };
 
 void gensfen(vector<string> args);
+void convert(vector<string> args);
 void learn(vector<string> args);
 
 //
@@ -1438,7 +1439,7 @@ public:
 // uci stuff
 //
 
-enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL, PERFT, TUNE, GENSFEN, LEARN };
+enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL, PERFT, TUNE, GENSFEN, CONVERT, LEARN };
 
 const map<string, GuiToken> GuiCommandMap = {
 #ifdef EVALTUNE
@@ -1446,6 +1447,7 @@ const map<string, GuiToken> GuiCommandMap = {
 #endif
 #ifdef NNUELEARN
     { "gensfen", GENSFEN },
+    { "convert", CONVERT },
     { "learn", LEARN },
 #endif
     { "uci", UCI },

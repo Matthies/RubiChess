@@ -2951,6 +2951,9 @@ void engine::communicate(string inputstring)
                     gensfen(commandargs);
                 }
                 break;
+            case CONVERT:
+                convert(commandargs);
+                break;
             case LEARN:
                 learn(commandargs);
                 break;
