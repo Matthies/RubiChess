@@ -312,12 +312,7 @@ inline uint16_t sfMoveCode(uint32_t c)
     else if (ISEPCAPTURE(c))
         sfc |= (2 << 14);
     else if (ISCASTLE(c))
-    {
-        // sfen doesn't use king-captured-rook encoding
         sfc |= (3 << 14);
-        sfc &= 0xffc0;
-        sfc |= GETCORRECTTO(c);
-    }
 
     return sfc;
 }
@@ -334,12 +329,6 @@ inline uint16_t shortCode(uint16_t c)
             // black promotion
             p++;
         rc |= (p << 12);
-    }
-    if ((c & 0xc000) == 0xc000)
-    {
-        // fix castle encoding to king-captures-rook
-        //rc &= 0xffc0;
-        //rc |= 
     }
 
     return rc;
@@ -429,7 +418,6 @@ static void gensfenthread(searchthread* thr)
             random_move_flag[a[i]] = true;
         }
 
-
         for (int ply = 0; ; ++ply)
         {
             if (ply > maxply) // default: 200; SF: 400
@@ -451,6 +439,12 @@ static void gensfenthread(searchthread* thr)
             }
             
             int score = pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, depth);
+
+            if (POPCOUNT(pos->occupied00[0] | pos->occupied00[1]) <= pos->useTb) // TB adjudication
+            {
+                flush_psv((score > SCOREDRAW) ? S2MSIGN(pos->state & S2MMASK) : (score < SCOREDRAW ? -S2MSIGN(pos->state & S2MMASK) : 0), thr);
+                break;
+            }
 
             if (abs(score) >= eval_limit) // win adjudication; default: 32000
             {
@@ -520,19 +514,8 @@ SKIP_SAVE:
                 else if (generate_draw)
                     flush_psv(0, thr); // Stalemate
                 break;
-        }
-
-
-#if 0
-            if (
-                // 1. Random move of random_move_count times from random_move_minply to random_move_maxply
-                (random_move_minply != -1 && ply < (int)random_move_flag.size() && random_move_flag[ply]) ||
-                // 2. A mode to perform random move of random_move_count times after leaving the track
-                (random_move_minply == -1 && random_move_c < random_move_count))
-            {
-                ++random_move_c;
             }
-#endif
+
             pos->prepareStack();
             bool chooserandom = !nextmove.code || (random_move_count && ply >= random_move_minply && ply <= random_move_maxply && random_move_flag[ply]);
 
@@ -721,7 +704,7 @@ void convert(vector<string> args)
     ifstream is(inputfile, ios::binary);
     if (!is)
     {
-        cout << "Cannot open input file.\n";
+        cout << "Cannot open input file " << inputfile << ".\n";
         return;
     }
 
@@ -751,13 +734,17 @@ void convert(vector<string> args)
             pos->getFromSfen(&psv->sfen);
             chessmove cm;
             cm.code = pos->shortMove2FullMove(shortCode(psv->move));
-            if (!cm.code || ISCASTLE(cm.code))
+            if (!cm.code || ISEPCAPTUREORCASTLE(cm.code))
             {
                 // Fix the incompatible move coding
                 cm.code = pos->shortMove2FullMove(psv->move);
                 if (cm.code)
                     psv->move = sfMoveCode(cm.code);
             }
+
+            if (!cm.code)
+                continue;
+
             if (outformat == plain)
             {
                 *os << "fen " << pos->toFen() << "\n";
@@ -772,9 +759,10 @@ void convert(vector<string> args)
                 os->write((char*)psv, sizeof(PackedSfenValue));
             }
         }
-
-        cout << "Finished converting.\n";
+        cerr << ".";
     }
+
+    cerr << "Finished converting.\n";
 }
 
 
