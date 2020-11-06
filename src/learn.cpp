@@ -404,7 +404,8 @@ static void gensfenthread(searchthread* thr)
         if (gensfenstop)
             return;
 
-        pos->getFromFen(STARTFEN);
+        string startfen = en.chess960 ? frcStartFen() : STARTFEN;
+        pos->getFromFen(startfen.c_str());
         
         vector<bool> random_move_flag;
         random_move_flag.resize((size_t)random_move_maxply + random_move_count);
