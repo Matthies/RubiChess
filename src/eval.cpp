@@ -160,10 +160,13 @@ void registerallevals(chessposition *pos)
         for (j = 0; j < 28; j++)
             registertuner(pos, &eps.eMobilitybonus[i][j], "eMobilitybonus", j, 28, i, 4, tuneIt && (j < maxmobility[i]));
 
+    tuneIt = true;
+    registertuner(pos, &eps.eNocastlepenalty, "eNocastlepenalty", 0, 0, 0, 0, tuneIt);
+
     tuneIt = false;
     registertuner(pos, &eps.eRookon7thbonus, "eRookon7thbonus", 0, 0, 0, 0, tuneIt);
 
-    tuneIt = true;
+    tuneIt = false;
     registertuner(pos, &eps.eRookonkingarea, "eRookonkingarea", 0, 0, 0, 0, tuneIt);
     registertuner(pos, &eps.eBishoponkingarea, "eBishoponkingarea", 0, 0, 0, 0, tuneIt);
 
@@ -174,7 +177,7 @@ void registerallevals(chessposition *pos)
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eMinorbehindpawn[i], "eMinorbehindpawn", i, 6, 0, 0, tuneIt);
 
-    tuneIt = true;
+    tuneIt = false;
     for (i = 0; i < 2; i++)
         registertuner(pos, &eps.eSlideronfreefilebonus[i], "eSlideronfreefilebonus", i, 2, 0, 0, tuneIt);
 
@@ -504,9 +507,16 @@ int chessposition::getPieceEval(positioneval *pe)
             attack = ROOKATTACKS(xrayrookoccupied, index);
 
             // extrabonus for rook on (semi-)open file  
-            if (Pt == ROOK && (pe->phentry->semiopen[Me] & BITSET(FILE(index)))) {
-                result += EVAL(eps.eSlideronfreefilebonus[bool(pe->phentry->semiopen[You] & BITSET(FILE(index)))], S2MSIGN(Me));
-                if (bTrace) te.rooks[Me] += EVAL(eps.eSlideronfreefilebonus[bool(pe->phentry->semiopen[You] & BITSET(FILE(index)))], S2MSIGN(Me));
+            if (Pt == ROOK) {
+                if (pe->phentry->semiopen[Me] & BITSET(FILE(index))) {
+                    result += EVAL(eps.eSlideronfreefilebonus[bool(pe->phentry->semiopen[You] & BITSET(FILE(index)))], S2MSIGN(Me));
+                    if (bTrace) te.rooks[Me] += EVAL(eps.eSlideronfreefilebonus[bool(pe->phentry->semiopen[You] & BITSET(FILE(index)))], S2MSIGN(Me));
+                }
+                else if (!GETCASTLERIGHTS(Me, state))
+                {
+                    result += EVAL(eps.eNocastlepenalty, S2MSIGN(Me));
+                    if (bTrace) te.rooks[Me] += EVAL(eps.eNocastlepenalty, S2MSIGN(Me));
+                }
             }
 
             // extrabonus for rook targeting the kingdanger area
