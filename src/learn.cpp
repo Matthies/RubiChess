@@ -307,7 +307,7 @@ inline uint16_t sfMoveCode(uint32_t c)
 {
     uint16_t sfc = (uint16_t)(c & 0xfff);
     uint16_t p;
-    if (p = GETPROMOTION(c))
+    if ((p = GETPROMOTION(c)))
         sfc |= ((p >> 1) + 2) << 12;
     else if (ISEPCAPTURE(c))
         sfc |= (2 << 14);

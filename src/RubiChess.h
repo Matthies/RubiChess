@@ -1117,7 +1117,7 @@ extern U64 rankMask[64];
 extern U64 betweenMask[64][64];
 
 extern int squareDistance[64][64];
-extern int castlerookfrom[4];
+
 struct chessmovestack
 {
     int state;
@@ -1319,6 +1319,11 @@ public:
     chessmovelist quietslist[MAXDEPTH];
     chessmovelist singularcaptureslist[MAXDEPTH];   // extra move lists for singular testing
     chessmovelist singularquietslist[MAXDEPTH];
+    int castlerights[64];
+    int castlerookfrom[4];
+    U64 castleblockers[4];
+    U64 castlekingwalk[4];
+
 #ifdef EVALTUNE
     bool isQuiet;
     bool noQs;
@@ -1434,6 +1439,7 @@ public:
 #ifdef NNUELEARN
     void toSfen(PackedSfen *sfen);
     int getFromSfen(PackedSfen* sfen);
+    void initCastleRights(int rookfiles[], int kingfile);
 #endif
 #endif
 };

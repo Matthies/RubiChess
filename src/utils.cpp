@@ -297,7 +297,7 @@ string AlgebraicFromShort(string s, chessposition *pos)
     {
         pt = KING;
         from = pos->kingpos[pos->state & S2MMASK];
-        to = (from & 0x38) | castlerookfrom[castle0 == 2];
+        to = (from & 0x38) | pos->castlerookfrom[castle0 == 2];
     }
     if (i >= 0 && s[i] >= 'A')
     {

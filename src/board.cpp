@@ -37,10 +37,6 @@ U64 fileMask[64];
 U64 rankMask[64];
 U64 betweenMask[64][64];
 U64 lineMask[64][64];
-int castlerights[64];
-int castlerookfrom[4];
-U64 castleblockers[4];
-U64 castlekingwalk[4];
 int squareDistance[64][64];  // decreased by 1 for directly indexing evaluation arrays
 alignas(64) int psqtable[14][64];
 
@@ -223,7 +219,7 @@ bool chessposition::w2m()
 }
 
 
-void initCastleRights(int rookfiles[], int kingfile)
+void chessposition::initCastleRights(int rookfiles[], int kingfile)
 {
     for (int from = 0; from < 64; from++)
     {
@@ -1322,9 +1318,11 @@ const U64 rookmagics[] = {
 void initBitmaphelper()
 {
     int to;
+#if 0
     // default castle rights
     int rf[] = { 0, 7 };
     initCastleRights(rf, 4);
+#endif
     initPsqtable();
     for (int from = 0; from < 64; from++)
     {
@@ -1907,12 +1905,12 @@ inline int CreateMovelistCastle(chessposition *pos, chessmove* mstart, int me)
         if ((pos->state & (WQCMASK << cstli)) == 0)
             continue;
         int kingfrom = pos->kingpos[me];
-        int rookfrom = castlerookfrom[cstli];
-        if (castleblockers[cstli] & (occupiedbits ^ BITSET(rookfrom) ^ BITSET(kingfrom)))
+        int rookfrom = pos->castlerookfrom[cstli];
+        if (pos->castleblockers[cstli] & (occupiedbits ^ BITSET(rookfrom) ^ BITSET(kingfrom)))
             continue;
 
         pos->BitboardClear(rookfrom, (PieceType)(WROOK | me));
-        U64 kingwalkbb = castlekingwalk[cstli];
+        U64 kingwalkbb = pos->castlekingwalk[cstli];
         bool attacked = false;
         while (!attacked && kingwalkbb)
         {
