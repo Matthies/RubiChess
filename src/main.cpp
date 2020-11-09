@@ -1034,9 +1034,10 @@ int main(int argc, char* argv[])
 #ifdef NNUE
         if (NnueReady && !openbench && epdfile == "")
         {
-            NnueReady = false;
+            NnueType nt = NnueReady;
+            NnueReady = NnueDisabled;
             doBenchmark(depth, epdfile, maxtime, startnum, openbench);
-            NnueReady = true;
+            NnueReady = nt;
         }
 #endif
     } else if (enginetest)
