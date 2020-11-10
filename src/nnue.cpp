@@ -70,7 +70,7 @@ uint32_t PieceToIndex[2][16] = {
 //
 // Global objects
 //
-bool NnueReady = false;
+NnueType NnueReady = NnueDisabled;
 
 NnueInputSlice* NnueIn;
 NnueClippedRelu *NnueCl1, *NnueCl2;
@@ -81,39 +81,41 @@ NnueFeatureTransformer *NnueFt;
 //
 // NNUE interface in chessposition
 //
-void chessposition::HalfkpAppendActiveIndices(int c, NnueIndexList *active)
+template <NnueType Nt> void chessposition::HalfkpAppendActiveIndices(int c, NnueIndexList *active)
 {
-    int k = ORIENT(c, kingpos[c]);
+    const int r = (Nt == NnueRotate) ? 0x3f : 0x3c;
+    int k = ORIENT(c, kingpos[c], r);
     U64 nonkingsbb = (occupied00[0] | occupied00[1]) & ~(piece00[WKING] | piece00[BKING]);
     while (nonkingsbb)
     {
         int index = pullLsb(&nonkingsbb);
-        active->values[active->size++] = MAKEINDEX(c, index, mailbox[index], k);
+        active->values[active->size++] = ORIENT(c, index, r) + PieceToIndex[c][mailbox[index]] + PS_END * k;
     }
 }
 
-void chessposition::AppendActiveIndices(NnueIndexList active[2])
+template <NnueType Nt> void chessposition::AppendActiveIndices(NnueIndexList active[2])
 {
     for (int c = 0; c < 2; c++)
-        HalfkpAppendActiveIndices(c, &active[c]);
+        HalfkpAppendActiveIndices<Nt>(c, &active[c]);
 }
 
-void chessposition::HalfkpAppendChangedIndices(int c, DirtyPiece* dp, NnueIndexList* add, NnueIndexList* remove)
+template <NnueType Nt> void chessposition::HalfkpAppendChangedIndices(int c, DirtyPiece* dp, NnueIndexList* add, NnueIndexList* remove)
 {
-    int k = ORIENT(c, kingpos[c]);
+    const int r = (Nt == NnueRotate) ? 0x3f : 0x3c;
+    int k = ORIENT(c, kingpos[c], r);
     for (int i = 0; i < dp->dirtyNum; i++) {
         PieceCode pc = dp->pc[i];
         if ((pc >> 1) == KING) continue;
         if (dp->from[i] >= 0) {
-            remove->values[remove->size++] = MAKEINDEX(c, dp->from[i], pc, k);
+            remove->values[remove->size++] = ORIENT(c, dp->from[i], r) + PieceToIndex[c][pc] + PS_END * k;
         }
         if (dp->to[i] >= 0) {
-            add->values[add->size++] = MAKEINDEX(c, dp->to[i], pc, k);
+            add->values[add->size++] = ORIENT(c, dp->to[i], r) + PieceToIndex[c][pc] + PS_END * k;
         }
     }
 }
 
-void chessposition::AppendChangedIndices(NnueIndexList add[2], NnueIndexList remove[2], bool reset[2])
+template <NnueType Nt> void chessposition::AppendChangedIndices(NnueIndexList add[2], NnueIndexList remove[2], bool reset[2])
 {
     DirtyPiece* dp = &dirtypiece[mstop];
 
@@ -122,9 +124,9 @@ void chessposition::AppendChangedIndices(NnueIndexList add[2], NnueIndexList rem
         for (int c = 0; c < 2; c++) {
             reset[c] = (dp->pc[0] == (PieceCode)(WKING | c));
             if (reset[c])
-                HalfkpAppendActiveIndices(c, &add[c]);
+                HalfkpAppendActiveIndices<Nt>(c, &add[c]);
             else
-                HalfkpAppendChangedIndices(c, dp, &add[c], &remove[c]);
+                HalfkpAppendChangedIndices<Nt>(c, dp, &add[c], &remove[c]);
         }
     }
     else {
@@ -132,11 +134,11 @@ void chessposition::AppendChangedIndices(NnueIndexList add[2], NnueIndexList rem
         for (unsigned c = 0; c < 2; c++) {
             reset[c] = dp->pc[0] == (PieceCode)(WKING | c) || lastdp->pc[0] == (PieceCode)(WKING | c);
             if (reset[c]) {
-                HalfkpAppendActiveIndices(c, &add[c]);
+                HalfkpAppendActiveIndices<Nt>(c, &add[c]);
             }
             else {
-                HalfkpAppendChangedIndices(c, dp, &add[c], &remove[c]);
-                HalfkpAppendChangedIndices(c, lastdp, &add[c], &remove[c]);
+                HalfkpAppendChangedIndices<Nt>(c, dp, &add[c], &remove[c]);
+                HalfkpAppendChangedIndices<Nt>(c, lastdp, &add[c], &remove[c]);
             }
         }
     }
@@ -168,12 +170,12 @@ typedef __m128i vec_t;
 #endif
 
 
-void chessposition::RefreshAccumulator()
+template <NnueType Nt> void chessposition::RefreshAccumulator()
 {
     NnueAccumulator *ac = &accumulator[mstop];
     NnueIndexList activeIndices[2];
     activeIndices[0].size = activeIndices[1].size = 0;
-    AppendActiveIndices(activeIndices);
+    AppendActiveIndices<Nt>(activeIndices);
 
     for (int c = 0; c < 2; c++) {
 
@@ -226,7 +228,7 @@ void chessposition::RefreshAccumulator()
 }
 
 // Test if we can update the accumulator from the previous position
-bool chessposition::UpdateAccumulator()
+template <NnueType Nt> bool chessposition::UpdateAccumulator()
 {
     NnueAccumulator* ac = &accumulator[mstop];
     if (ac->computationState)
@@ -250,7 +252,7 @@ bool chessposition::UpdateAccumulator()
     addedIndices[0].size = addedIndices[1].size = 0;
 
     bool reset[2];
-    AppendChangedIndices(addedIndices, removedIndices, reset);
+    AppendChangedIndices<Nt>(addedIndices, removedIndices, reset);
 
     for (int i = 0; i < NnueFtHalfdims / TILE_HEIGHT; i++) {
         for (int c = 0; c < 2; c++) {
@@ -334,10 +336,10 @@ bool chessposition::UpdateAccumulator()
     return true;
 }
 
-void chessposition::Transform(clipped_t *output)
+template <NnueType Nt> void chessposition::Transform(clipped_t *output)
 {
-    if (!UpdateAccumulator())
-        RefreshAccumulator();
+    if (!UpdateAccumulator<Nt>())
+        RefreshAccumulator<Nt>();
 
     int16_t(*acc)[2][256] = &accumulator[mstop].accumulation;
 
@@ -405,11 +407,11 @@ struct NnueNetwork {
     int32_t out_value;
 };
 
-int chessposition::NnueGetEval()
+template <NnueType Nt> int chessposition::NnueGetEval()
 {
     NnueNetwork network;
 
-    Transform(network.input);
+    Transform<Nt>(network.input);
     NnueHd1->Propagate(network.input, network.hidden1_values);
     NnueCl1->Propagate(network.hidden1_values, network.hidden1_clipped);
     NnueHd2->Propagate(network.hidden1_clipped, network.hidden2_values);
@@ -685,7 +687,7 @@ void NnueRemove()
 
 void NnueReadNet(string path)
 {
-    NnueReady = false;
+    NnueReady = NnueDisabled;
 
     uint32_t fthash = NnueFt->GetHash();
     uint32_t nethash = NnueOut->GetHash();
@@ -706,7 +708,13 @@ void NnueReadNet(string path)
         is.read((char*)&sarchitecture[0], size);
     }
 
-    if (version != NNUEFILEVERSION) return;
+    NnueType nt;
+    if (version == NNUEFILEVERSIONROTATE)
+        nt = NnueRotate;
+    else if (version == NNUEFILEVERSIONFLIP)
+        nt = NnueFlip;
+    else
+        return;
 
     if (hash != filehash) return;
 
@@ -721,6 +729,13 @@ void NnueReadNet(string path)
     if (is.peek() != ios::traits_type::eof())
         return;
 
-    NnueReady = true;
+    NnueReady = nt;
 }
+
+// Explicit template instantiation
+// This avoids putting these definitions in header file
+template int chessposition::NnueGetEval<NnueRotate>();
+template int chessposition::NnueGetEval<NnueFlip>();
+
+
 #endif

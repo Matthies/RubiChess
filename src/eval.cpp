@@ -746,7 +746,10 @@ int chessposition::getEval()
 #ifdef NNUE
     if (NnueReady)
     {
-        score = NnueGetEval() + eps.eTempo;
+        if (NnueReady == NnueRotate)
+            score = NnueGetEval<NnueRotate>() + eps.eTempo;
+        else
+            score = NnueGetEval<NnueFlip>() + eps.eTempo;
         return score;
     }
 #endif
