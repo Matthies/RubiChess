@@ -2494,6 +2494,11 @@ static void uciSetSyzygyPath()
 #ifdef NNUE
 static void uciSetNnuePath()
 {
+    if (!en.usennue)
+    {
+        NnueReady = NnueDisabled;
+        return;
+    }
     cout << "info string Loading net " << en.NnueNetpath << " ...";
     NnueReadNet(en.NnueNetpath);
     cout << (NnueReady ? " successful. Using NNUE evaluation. (" + to_string(NnueReady) + ")" : " failed. Using handcrafted evaluation.") << "\n";
@@ -2531,7 +2536,8 @@ engine::engine(compilerinfo *c)
     ucioptions.Register(&chess960, "UCI_Chess960", ucicheck, "false");
     ucioptions.Register(nullptr, "Clear Hash", ucibutton, "", 0, 0, uciClearHash);
 #ifdef NNUE
-    ucioptions.Register(&NnueNetpath, "NNUENetpath", ucistring, "./default.nnue", 0, 0, uciSetNnuePath);
+    ucioptions.Register(&usennue, "Use NNUE", ucicheck, "false", 0, 0, uciSetNnuePath);
+    ucioptions.Register(&NnueNetpath, "NNUENetpath", ucistring, NNUEDEFAULTSTR, 0, 0, uciSetNnuePath);
 #endif
 #ifdef _WIN32
     LARGE_INTEGER f;

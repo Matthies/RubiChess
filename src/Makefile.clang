@@ -17,6 +17,9 @@ RELDIR=Release-clang
 CXXFLAGS=/GX /O2 /Oi /Ot /c -flto -fuse-ld=lld
 LDFLAGS=/OPT:REF /OPT:ICF
 PROFEXE=RubiChess-Prof
+NETURL=https://github.com/Matthies/NN/raw/main/
+TMPNN=_tmp.nnue
+
 
 # BMI2-build
 BMI2EXE=RubiChess-BMI2
@@ -43,6 +46,25 @@ all: RubiChess-bmi2 RubiChess-avx2 RubiChess-modern RubiChess-Legacy
 $(RELDIR):
 	mkdir $(RELDIR)
 
+net:
+!IFNDEF RUBINET
+!	IF [FOR /F "tokens=3" %A IN ('find "NNUEDEFAULT" RubiChess.h') DO @set RUBINET=%A && @nmake -c -f Makefile.clang net && exit /b] != 0
+		@echo Cannot get default net from header file.
+!	ENDIF
+!ELSE
+!	IF exists ($(RUBINET))
+		@echo Network file $(RUBINET) already there.
+!	ELSE
+		@echo Downloading network file $(RUBINET) ...
+!		IF [@curl -skL $(NETURL)$(RUBINET) > $(TMPNN)] != 0
+			@echo Cannot access $(NETURL)$(RUBINET)
+			@del $(TMPNN)
+!		ELSE
+			@move $(TMPNN) $(RUBINET)
+!		ENDIF
+!	ENDIF
+!ENDIF
+	
 build:
 !IFDEF EXE
 	@echo Compiling $(EXE) ...
@@ -98,3 +120,5 @@ clean: profile-clean
 	@del $(RELDIR)\$(AVX2EXE).exe
 	@del $(RELDIR)\$(MODERNEXE).exe
 	@del $(RELDIR)\$(LEGACYEXE).exe
+	@set RUBINET=
+

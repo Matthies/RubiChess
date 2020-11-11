@@ -1032,12 +1032,12 @@ int main(int argc, char* argv[])
         // benchmark mode
         doBenchmark(depth, epdfile, maxtime, startnum, openbench);
 #ifdef NNUE
-        if (NnueReady && !openbench && epdfile == "")
+        if (!openbench && epdfile == "")
         {
-            NnueType nt = NnueReady;
-            NnueReady = NnueDisabled;
-            doBenchmark(depth, epdfile, maxtime, startnum, openbench);
-            NnueReady = nt;
+            // Profile build; try some recording of NNUE evaluation
+            en.ucioptions.Set("Use NNUE", "true");
+            if (NnueReady)
+                doBenchmark(depth, epdfile, maxtime, startnum, openbench);
         }
 #endif
     } else if (enginetest)
