@@ -48,7 +48,7 @@ $(RELDIR):
 
 net:
 !IFNDEF RUBINET
-!	IF [FOR /F "tokens=3" %A IN ('find "NNUEDEFAULT" RubiChess.h') DO @set RUBINET=%A && @nmake -c -f Makefile.clang net && exit /b] != 0
+!	IF [FOR /F "tokens=3" %A IN ('find "NNUEDEFAULT " RubiChess.h') DO @set RUBINET=%A && @nmake -c -f Makefile.clang net && exit /b] != 0
 		@echo Cannot get default net from header file.
 !	ENDIF
 !ELSE
