@@ -80,7 +80,7 @@ endif
 RUBINET = $(shell grep "NNUEDEFAULT " RubiChess.h | awk '{print $$3}')
 RUBINETHASH = $(shell echo $(RUBINET) | awk -F'-' '{print $$2}')
 NETURL = https://github.com/Matthies/NN/raw/main/
-$(eval WGETCMD := $(shell if hash wget 2>/dev/null; then echo "wget -q0-"; elif hash curl 2>/dev/null; then echo "curl -skL"; fi))
+$(eval WGETCMD := $(shell if hash wget 2>/dev/null; then echo "wget -qO-"; elif hash curl 2>/dev/null; then echo "curl -skL"; fi))
 ifneq ($(PROXY),)
 	WGETCMD += -e https_proxy=$(PROXY)
 endif
