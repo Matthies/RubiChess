@@ -1577,7 +1577,6 @@ public:
 #ifdef NNUE
     bool usennue;
     string NnueNetpath;
-#endif
     string NnueSha256FromName() {
         size_t s2 = NnueNetpath.rfind('-');
         size_t s1 = NnueNetpath.rfind('-', s2 - 1) + 1;
@@ -1586,6 +1585,7 @@ public:
         else
             return "<unknown>";
     }
+#endif
     string name() {
         string sbinary = compinfo->PrintCpuFeatures(compinfo->binarySupports, true);
         string sNnue = "";

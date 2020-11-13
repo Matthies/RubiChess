@@ -2609,7 +2609,9 @@ void engine::prepareThreads()
         pos->nodes = 0;
         pos->nullmoveply = 0;
         pos->nullmoveside = 0;
+#ifdef NNUE
         pos->accumulator->computationState = false;
+#endif
     }
 }
 
