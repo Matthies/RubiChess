@@ -163,11 +163,7 @@ using namespace std;
 #endif
 
 #ifndef VERSTABLE
-#ifdef GITVER
-#define VERSION VERNUM "-dev " GITVER
-#else
 #define VERSION VERNUM "-dev"
-#endif
 #else
 #define VERSION VERNUM " "
 #endif
@@ -1600,7 +1596,7 @@ public:
     void communicate(string inputstring);
     void allocThreads();
     U64 getTotalNodes();
-    long long perft(int depth, bool dotests);
+    long long perft(int depth, bool dotests, bool printsysteminfo = false);
     void prepareThreads();
     void resetStats();
 };
