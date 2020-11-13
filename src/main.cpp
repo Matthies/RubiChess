@@ -88,10 +88,18 @@ void generateEpd(string egn)
 }
 
 
-long long engine::perft(int depth, bool dotests)
+long long engine::perft(int depth, bool dotests, bool printsysteminfo)
 {
     long long retval = 0;
     chessposition *rootpos = &en.sthread[0].pos;
+
+    if (printsysteminfo)
+    {
+        printf("\n\nPerft results for %s (Build %s)\n", en.name().c_str(), BUILD);
+        printf("System: %s\n", cinfo.SystemName().c_str());
+        printf("CPU-Features of system: %s\nCPU-Features of binary: %s\n", cinfo.PrintCpuFeatures(cinfo.machineSupports).c_str(), cinfo.PrintCpuFeatures(cinfo.binarySupports).c_str());
+        printf("Depth: %d    %8s\n", maxdepth, en.chess960 ? "Chess960" : "");
+    }
 
     if (dotests)
     {
@@ -1032,12 +1040,12 @@ int main(int argc, char* argv[])
         // benchmark mode
         doBenchmark(depth, epdfile, maxtime, startnum, openbench);
 #ifdef NNUE
-        if (NnueReady && !openbench && epdfile == "")
+        if (!openbench && epdfile == "")
         {
-            NnueType nt = NnueReady;
-            NnueReady = NnueDisabled;
-            doBenchmark(depth, epdfile, maxtime, startnum, openbench);
-            NnueReady = nt;
+            // Profile build; try some recording of NNUE evaluation
+            en.ucioptions.Set("Use NNUE", "true");
+            if (NnueReady)
+                doBenchmark(depth, epdfile, maxtime, startnum, openbench);
         }
 #endif
     } else if (enginetest)
