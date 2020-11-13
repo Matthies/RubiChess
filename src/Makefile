@@ -96,7 +96,7 @@ net:
 ifeq ($(RUBINET),)
 		echo "Network not found in header"
 else
-		@if test -f $(RUBINET); then echo "$(RUBINET) already exists."; else $(WGETCMD) $(NETURL)$(RUBINET) > $(RUBINET); fi;
+		@if test -f $(RUBINET); then echo "$(RUBINET) already exists."; else echo "Downloading $(RUBINET)..."; $(WGETCMD) $(NETURL)$(RUBINET) > $(RUBINET); fi;
 		$(eval shasum_command := $(shell if hash shasum 2>/dev/null; then echo "shasum -a 256 "; elif hash sha256sum 2>/dev/null; then echo "sha256sum "; fi))
 		@if [ "$(RUBINETHASH)" != `$(shasum_command) $(RUBINET) | cut -c1-10` ]; then echo "Failed download or $(RUBINET) corrupted, please delete!"; exit 1; fi
 endif
