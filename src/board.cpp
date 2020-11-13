@@ -2935,7 +2935,8 @@ void engine::communicate(string inputstring)
             case PERFT:
                 if (ci < cs) {
                     maxdepth = stoi(commandargs[ci++]);
-                    cout << "Nodes: " << perft(maxdepth, false, true) << "\n";
+                    U64 perftnodes = perft(maxdepth, false, true);
+                    cout << "Nodes: " << perftnodes << "\n";
                 }
                 break;
 #ifdef EVALTUNE
