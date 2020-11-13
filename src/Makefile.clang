@@ -46,25 +46,13 @@ all: RubiChess-bmi2 RubiChess-avx2 RubiChess-modern RubiChess-Legacy
 $(RELDIR):
 	mkdir $(RELDIR)
 
-net:
-!IFNDEF RUBINET
-!	IF [FOR /F "tokens=3" %A IN ('find "NNUEDEFAULT " RubiChess.h') DO @set RUBINET=%A && @nmake -c -f Makefile.clang net && exit /b] != 0
-		@echo Cannot get default net from header file.
-!	ENDIF
-!ELSE
-!	IF exists ($(RUBINET))
-		@echo Network file $(RUBINET) already there.
-!	ELSE
-		@echo Downloading network file $(RUBINET) ...
-!		IF [@curl -skL $(NETURL)$(RUBINET) > $(TMPNN)] != 0
-			@echo Cannot access $(NETURL)$(RUBINET)
-			@del $(TMPNN)
-!		ELSE
-			@move $(TMPNN) $(RUBINET)
-!		ENDIF
-!	ENDIF
+network:
+!IF !DEFINED(EXE) && !DEFINED(PR)
+!IF [@FOR /F "tokens=3" %A IN ('find "NNUEDEFAULT " RubiChess.h') DO @(if exist %A ( @echo Net already exists ) else ( curl -skL $(NETURL)%A > $(TMPNN) && move $(TMPNN) %A && echo Net %A was downloaded. )) && @if not exist $(RELDIR)\%A ( @copy  %A $(RELDIR)\%A )  ] != 0
+	@echo Cannot get default net from header file or download failed!
 !ENDIF
-	
+!ENDIF
+
 build:
 !IFDEF EXE
 	@echo Compiling $(EXE) ...
