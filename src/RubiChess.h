@@ -1581,7 +1581,10 @@ public:
     string NnueSha256FromName() {
         size_t s2 = NnueNetpath.rfind('-');
         size_t s1 = NnueNetpath.rfind('-', s2 - 1) + 1;
-        return NnueNetpath.substr(s1, s2 - s1);
+        if (s1 && s2 && s2 - s1 == 10)
+            return NnueNetpath.substr(s1, s2 - s1);
+        else
+            return "<unknown>";
     }
     string name() {
         string sbinary = compinfo->PrintCpuFeatures(compinfo->binarySupports, true);
