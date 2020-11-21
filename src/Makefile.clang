@@ -17,6 +17,9 @@ RELDIR=Release-clang
 CXXFLAGS=/GX /O2 /Oi /Ot /c -flto -fuse-ld=lld
 LDFLAGS=/OPT:REF /OPT:ICF
 PROFEXE=RubiChess-Prof
+NETURL=https://github.com/Matthies/NN/raw/main/
+TMPNN=_tmp.nnue
+
 
 # BMI2-build
 BMI2EXE=RubiChess-BMI2
@@ -42,6 +45,13 @@ all: RubiChess-bmi2 RubiChess-avx2 RubiChess-modern RubiChess-Legacy
 
 $(RELDIR):
 	mkdir $(RELDIR)
+
+network:
+!IF !DEFINED(EXE) && !DEFINED(PR)
+!IF [@FOR /F "tokens=3" %A IN ('find "NNUEDEFAULT " RubiChess.h') DO @(if exist %A ( @echo Net already exists ) else ( curl -skL $(NETURL)%A > $(TMPNN) && move $(TMPNN) %A && echo Net %A was downloaded. )) && @if not exist $(RELDIR)\%A ( @copy  %A $(RELDIR)\%A )  ] != 0
+	@echo Cannot get default net from header file or download failed!
+!ENDIF
+!ENDIF
 
 build:
 !IFDEF EXE
@@ -98,3 +108,5 @@ clean: profile-clean
 	@del $(RELDIR)\$(AVX2EXE).exe
 	@del $(RELDIR)\$(MODERNEXE).exe
 	@del $(RELDIR)\$(LEGACYEXE).exe
+	@set RUBINET=
+

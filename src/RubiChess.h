@@ -50,6 +50,7 @@
 
 #if 1
 #define NNUE
+#define NNUEDEFAULT nn-803c91ad5c-20201107.nnue
 
 #if 1
 #define NNUELEARN
@@ -123,7 +124,7 @@
 #define myassert(expression, pos, num, ...) (void)(0)
 #define sprintf_s sprintf
 void Sleep(long x);
-#ifdef __ANDROID__
+#if defined(__ANDROID__) or defined(__APPLE__) 
 #define allocalign64(x) malloc(x)
 #define freealigned64(x) free(x)
 #else
@@ -167,11 +168,7 @@ using namespace std;
 #endif
 
 #ifndef VERSTABLE
-#ifdef GITVER
-#define VERSION VERNUM "-dev " GITVER
-#else
 #define VERSION VERNUM "-dev"
-#endif
 #else
 #define VERSION VERNUM " "
 #endif
@@ -623,16 +620,17 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
 //
 // NNUE stuff
 //
+#define NNUEDEFAULTSTR TOSTRING(NNUEDEFAULT)
 
-#define NNUEFILEVERSION     0x7AF32F16u
+enum NnueType { NnueDisabled = 0, NnueRotate, NnueFlip };
+#define NNUEFILEVERSIONROTATE     0x7AF32F16u
+#define NNUEFILEVERSIONFLIP       0x7AF32F17u
 #define NNUENETLAYERHASH    0xCC03DAE4u
 #define NNUECLIPPEDRELUHASH 0x538D24C7u
 #define NNUEFEATUREHASH     (0x5D69D5B9u ^ true)
 #define NNUEINPUTSLICEHASH  0xEC42E90Du
 
-#define ORIENT(c,i) ((c) ? (i) ^ 0x3f : (i))
-#define MAKEINDEX(c,s,p,k) (ORIENT(c, s) + PieceToIndex[c][p] + PS_END * (k))
-
+#define ORIENT(c,i,r) ((c) ? (i) ^ (r) : (i))
 
 const int NnueFtHalfdims = 256;
 const int NnueFtOutputdims = NnueFtHalfdims * 2;
@@ -663,7 +661,7 @@ typedef struct {
 } DirtyPiece;
 
 
-extern bool NnueReady;
+extern NnueType NnueReady;
 
 
 class NnueLayer
@@ -1428,14 +1426,14 @@ public:
     int testRepetiton();
     void mirror();
 #ifdef NNUE
-    void HalfkpAppendActiveIndices(int c, NnueIndexList *active);
-    void AppendActiveIndices(NnueIndexList active[2]);
-    void HalfkpAppendChangedIndices(int c, DirtyPiece* dp, NnueIndexList *add, NnueIndexList *remove);
-    void AppendChangedIndices(NnueIndexList add[2], NnueIndexList remove[2], bool reset[2]);
-    void RefreshAccumulator();
-    bool UpdateAccumulator();
-    void Transform(clipped_t *output);
-    int NnueGetEval();
+    template <NnueType Nt> void HalfkpAppendActiveIndices(int c, NnueIndexList *active);
+    template <NnueType Nt> void AppendActiveIndices(NnueIndexList active[2]);
+    template <NnueType Nt> void HalfkpAppendChangedIndices(int c, DirtyPiece* dp, NnueIndexList *add, NnueIndexList *remove);
+    template <NnueType Nt> void AppendChangedIndices(NnueIndexList add[2], NnueIndexList remove[2], bool reset[2]);
+    template <NnueType Nt> void RefreshAccumulator();
+    template <NnueType Nt> bool UpdateAccumulator();
+    template <NnueType Nt> void Transform(clipped_t *output);
+    template <NnueType Nt> int NnueGetEval();
 #ifdef NNUELEARN
     void toSfen(PackedSfen *sfen);
     int getFromSfen(PackedSfen* sfen);
@@ -1612,19 +1610,31 @@ public:
     bool bStopCount;
 #endif
 #ifdef NNUE
+    bool usennue;
     string NnueNetpath;
+    string NnueSha256FromName() {
+        size_t s2 = NnueNetpath.rfind('-');
+        size_t s1 = NnueNetpath.rfind('-', s2 - 1) + 1;
+        if (s1 && s2 && s2 - s1 == 10)
+            return NnueNetpath.substr(s1, s2 - s1);
+        else
+            return "<unknown>";
+    }
 #endif
-
     string name() {
         string sbinary = compinfo->PrintCpuFeatures(compinfo->binarySupports, true);
-        return string(ENGINEVER) + (sbinary != "" ? " (" + sbinary + ")" : "");
+        string sNnue = "";
+#ifdef NNUE
+        if (NnueReady) sNnue = " NN-" + NnueSha256FromName();
+#endif
+        return string(ENGINEVER) + sNnue +  (sbinary != "" ? " (" + sbinary + ")" : "");
     };
     GuiToken parse(vector<string>*, string ss);
     void send(const char* format, ...);
     void communicate(string inputstring);
     void allocThreads();
     U64 getTotalNodes();
-    long long perft(int depth, bool dotests);
+    long long perft(int depth, bool dotests, bool printsysteminfo = false);
     void prepareThreads();
     void resetStats();
 };
