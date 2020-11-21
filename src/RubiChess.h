@@ -1369,6 +1369,7 @@ public:
     void BitboardMove(int from, int to, PieceCode p);
     void BitboardPrint(U64 b);
     int getFromFen(const char* sFen);
+    void initCastleRights(int rookfiles[], int kingfile);
     string toFen();
     uint32_t applyMove(string s, bool resetMstop = true);
     void print(ostream* os = &cout);
@@ -1437,7 +1438,6 @@ public:
 #ifdef NNUELEARN
     void toSfen(PackedSfen *sfen);
     int getFromSfen(PackedSfen* sfen);
-    void initCastleRights(int rookfiles[], int kingfile);
 #endif
 #endif
 };
