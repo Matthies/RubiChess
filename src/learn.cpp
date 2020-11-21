@@ -24,98 +24,6 @@
 // Generate fens for training
 //
 
-#if 0
-// this is what gensfen oofers in SF:
-    std::cout << "gensfen : " << endl
-        << "  search_depth = " << search_depth << " to " << search_depth2 << endl
-        << "  nodes = " << nodes << endl
-        << "  loop_max = " << loop_max << endl
-        << "  eval_limit = " << eval_limit << endl
-        << "  thread_num (set by USI setoption) = " << thread_num << endl
-        << "  book_moves (set by USI setoption) = " << Options["BookMoves"] << endl
-        << "  random_move_minply     = " << random_move_minply << endl
-        << "  random_move_maxply     = " << random_move_maxply << endl
-        << "  random_move_count      = " << random_move_count << endl
-        << "  random_move_like_apery = " << random_move_like_apery << endl
-        << "  random_multi_pv        = " << random_multi_pv << endl
-        << "  random_multi_pv_diff   = " << random_multi_pv_diff << endl
-        << "  random_multi_pv_depth  = " << random_multi_pv_depth << endl
-        << "  write_minply           = " << write_minply << endl
-        << "  write_maxply           = " << write_maxply << endl
-        << "  output_file_name       = " << output_file_name << endl
-        << "  use_eval_hash          = " << use_eval_hash << endl
-        << "  save_every             = " << save_every << endl
-        << "  random_file_name       = " << random_file_name << endl;
-
-
-    struct PackedSfen { uint8_t data[32]; };
-
-    struct PackedSfenValue
-    {
-        // phase
-        PackedSfen sfen;
-
-        // Evaluation value returned from Learner::search()
-        int16_t score;
-
-        // PV first move
-        // Used when finding the match rate with the teacher
-        uint16_t move;
-
-        // Trouble of the phase from the initial phase.
-        uint16_t gamePly;
-
-        // 1 if the player on this side ultimately wins the game. -1 if you are losing.
-        // 0 if a draw is reached.
-        // The draw is in the teacher position generation command gensfen,
-        // Only write if LEARN_GENSFEN_DRAW_RESULT is enabled.
-        int8_t game_result;
-
-        // When exchanging the file that wrote the teacher aspect with other people
-        //Because this structure size is not fixed, pad it so that it is 40 bytes in any environment.
-        uint8_t padding;
-
-        // 32 + 2 + 2 + 2 + 1 + 1 = 40bytes
-    };
-
-    // Folgendes ist in search.cpp ganz unten definiert
-    extern Learner::ValueAndPV  search(Position& pos, int depth , size_t multiPV = 1 , uint64_t NodesLimit = 0);
-    extern Learner::ValueAndPV qsearch(Position& pos);
-
-#endif
-
-
-// Play the pv, evaluate and go back to original position
-// assume that the pv is valid and has no null moves
-// questionable if this is worth the effort
-#if 0
-int evaluate_leaf(chessposition *pos , movelist pv)
-{
-    int rootcolor = pos->state & S2MMASK;
-    int ply2 = ply;
-    for (i = 0; i < pv.length; i++)
-    {
-        chessmove *m = &movelist[i];
-        pos->playMove(m);//, states[ply2++]);
-#if defined(EVAL_NNUE)  // Hmmmm. Zwischenbewertungen für Beschleunigung??
-        if (depth < 8)
-            Eval::evaluate_with_no_return(pos);
-#endif  // defined(EVAL_NNUE)
-    }
-    int v = pos->getEval();
-    if (rootColor != pos->state & S2MMASK)
-        v = -v;
-
-    for (i = pv.length; --i >= 0;)
-    {
-        chessmove *m = &movelist[i];
-        pos->unplayMove(m);//, states[ply2++]);
-    }
-
-    return v;
-}
-#endif
-
 #define GENSFEN_HASH_SIZE 0x1000000
 alignas(64) U64 sfenhash[GENSFEN_HASH_SIZE];
 
@@ -340,10 +248,8 @@ void flush_psv(int result, searchthread* thr)
     PackedSfenValue* p;
     int fullchunk = -1;
     U64 offset = thr->psv - thr->psvbuffer;
-    //cerr << "flush thread " << thr->index << " called with result " << result << "\n";
     while (true)
     {
-        //cout << "flush: offset=" << offset << "\n";
         p = thr->psvbuffer + offset;
         if (abs(p->game_result) != 2)
             break;
@@ -359,7 +265,6 @@ void flush_psv(int result, searchthread* thr)
     if (fullchunk >= 0 && thr->chunkstate[fullchunk] == CHUNKINUSE)
     {
         thr->chunkstate[fullchunk] = CHUNKFULL;
-        //cerr << "flush: thread " << thr->index << " marked chunk " << fullchunk << " as full.\n";
     }
 
 }
@@ -477,16 +382,9 @@ static void gensfenthread(searchthread* thr)
             }
             sfenhash[hash_index] = key; // Replace with the current key.
             
-            //cout << pos->toFen() << "   value: " << value1 << "\n";
-
-            // sfen packen
+            // generate sfen and values
             thr->psv = thr->psvbuffer + psvnums;
             pos->toSfen(&thr->psv->sfen);
-            // Stellung bewerten; Was macht evaluate_leaf anders als learnersearch/value1?
-            // Laut noob ist der Sinn und Zweck von evaluate_leaf tatsächlich zweifelhaft
-            //leaf_value = evaluate_leaf(pos, pv1);
-            //psv.score = leaf_value == VALUE_NONE ? search_value : leaf_value;
-            // Ply speichern
             thr->psv->score = score;
             thr->psv->gamePly = ply;
             thr->psv->move = (uint16_t)sfMoveCode(pos->pvtable[0][0]);
@@ -500,7 +398,6 @@ static void gensfenthread(searchthread* thr)
                 while (thr->chunkstate[nextchunk] != CHUNKFREE)
                     Sleep(10);
                 thr->chunkstate[nextchunk] = CHUNKINUSE;
-                //cerr << "gensfen thread " << thr->index << " switches to chunk " << nextchunk << "\n";
                 psvnums = psvnums % (sfenchunknums * sfenchunksize);
             }
             
@@ -602,18 +499,11 @@ void gensfen(vector<string> args)
             eval_limit = stoi(args[ci++]);
     }
 
-    const U64 chunksneeded = fensnum / sfenchunksize + 1;
-    ofstream os(outputfile, ios::binary);
-    if (!os)
-    {
-        cout << "Cannot open file " << outputfile << "\n";
-        return;
-    }
-
     int tnum;
     gensfenstop = false;
 
     cout << "Generating sfnes with these parameters:\n";
+    cout << "output_file_name:      " << outputfile << "\n";
     cout << "depth:                 " << depth << "\n";
     cout << "maxply:                " << maxply << "\n";
     cout << "write_minply:          " << write_minply << "\n";
@@ -626,6 +516,14 @@ void gensfen(vector<string> args)
     cout << "random_multi_pv:       " << random_multi_pv << "\n";
     cout << "random_multi_pv_depth: " << random_multi_pv_depth << "\n";
     cout << "random_multi_pv_diff:  " << random_multi_pv_diff << "\n";
+
+    const U64 chunksneeded = fensnum / sfenchunksize + 1;
+    ofstream os(outputfile, ios::binary);
+    if (!os)
+    {
+        cout << "Cannot open file " << outputfile << "\n";
+        return;
+    }
 
     for (tnum = 0; tnum < en.Threads; tnum++)
     {
@@ -646,8 +544,6 @@ void gensfen(vector<string> args)
         {
             if (thr->chunkstate[i] == CHUNKFULL)
             {
-                //cerr << "gensfen: thread " << thr->index << " writing chunk " << i << "\n";
-                os.write((char*)(thr->psvbuffer + i * sfenchunksize), sfenchunksize * sizeof(PackedSfenValue));
                 chunkswritten++;
                 thr->chunkstate[i] = CHUNKFREE;
                 cout << chunkswritten * sfenchunksize << " sfens written. (" << thr->index << ")\n";
@@ -658,7 +554,6 @@ void gensfen(vector<string> args)
     gensfenstop = true;
     for (tnum = 0; tnum < en.Threads; tnum++)
     {
-        //cerr << "Waiting for thread " << tnum << "\n";
         if (en.sthread[tnum].thr.joinable())
             en.sthread[tnum].thr.join();
     }
@@ -769,7 +664,15 @@ void convert(vector<string> args)
 
 void learn(vector<string> args)
 {
+    size_t cs = args.size();
+    size_t ci = 0;
 
+    while (ci < cs)
+    {
+        string cmd = args[ci++];
+
+        // ToDo...
+    }
 }
 
 #endif

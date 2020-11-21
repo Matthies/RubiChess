@@ -2954,9 +2954,7 @@ void engine::communicate(string inputstring)
                 break;
 #ifdef NNUELEARN
             case GENSFEN:
-                if (ci < cs) {
-                    gensfen(commandargs);
-                }
+                gensfen(commandargs);
                 break;
             case CONVERT:
                 convert(commandargs);
