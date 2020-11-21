@@ -75,13 +75,14 @@ void generateEpd(string egn)
             pos->movestack[0].movecode = -1;  // Avoid fast eval after null move
             pos->rootheight = 0;
             pos->lastnullmove = -1;
+            string sFen = pos->toFen();
             int staticeval = pos->getEval<NOTRACE>();
             int quietval = pos->getQuiescence<Prune>(SCOREBLACKWINS, SCOREWHITEWINS, 0);
             bool isQuiet = (abs(staticeval - quietval) < 100);
             if (isQuiet)
             {
                 i++;
-                cout << pos->toFen() << "\n";
+                cout << sFen << "\n";
             }
         }
     }

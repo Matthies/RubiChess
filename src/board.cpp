@@ -2531,7 +2531,10 @@ engine::engine(compilerinfo *c)
     NnueInit();
 #endif
     rootposition.pwnhsh.setSize(1);  // some dummy pawnhash just to make the prefetch in playMove happy
-    
+    // default castle rights
+    int rf[] = { 0, 7 };
+    rootposition.initCastleRights(rf, 4);
+
     ucioptions.Register(&Threads, "Threads", ucispin, "1", 1, MAXTHREADS, uciSetThreads);  // order is important as the pawnhash depends on Threads > 0
     ucioptions.Register(&Hash, "Hash", ucispin, to_string(DEFAULTHASH), 1, MAXHASH, uciSetHash);
     ucioptions.Register(&moveOverhead, "Move Overhead", ucispin, "50", 0, 5000, nullptr);
