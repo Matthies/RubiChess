@@ -1552,6 +1552,8 @@ public:
     U64 machineSupports;
     string system;
     int cpuVendor;
+    int cpuFamily;
+    int cpuModel;
     compilerinfo();
     void GetSystemInfo();
     string SystemName();

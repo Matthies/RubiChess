@@ -404,12 +404,17 @@ void compilerinfo::GetSystemInfo()
     nIds = CPUInfo[0];
 
     // Get the information associated with each valid Id
+    // https://www.sandpile.org/x86/cpuid.htm
+    // https://en.wikichip.org/wiki/amd/cpuid
+    // https://en.wikichip.org/wiki/intel/cpuid
     for (i = 0; i <= nIds; ++i)
     {
         CPUID(CPUInfo, i);
         // Interpret CPU feature information.
         if (i == 1)
         {
+            cpuFamily = ((CPUInfo[0] & (0xf << 8)) >> 8) + ((CPUInfo[0] & (0xff << 20)) >> 20);
+            cpuModel = ((CPUInfo[0] & (0xf << 16)) >> 12) + ((CPUInfo[0] & (0xf << 4)) >> 4);
             if (CPUInfo[3] & (1 << 23)) machineSupports |= CPUMMX;
             if (CPUInfo[3] & (1 << 26)) machineSupports |= CPUSSE2;
             if (CPUInfo[2] & (1 << 23)) machineSupports |= CPUPOPCNT;
@@ -445,6 +450,7 @@ void compilerinfo::GetSystemInfo()
 
     //maxHWSupport = bPOPCNT ? (bBMI2 ? CPUBMI2 : CPUPOPCOUNT) : CPULEGACY;
     system = CPUBrandString;
+    system += "  Family: " + to_string(cpuFamily) + "  Model: " + to_string(cpuModel);
 
     U64 notSupported = binarySupports & ~machineSupports;
 
@@ -455,9 +461,9 @@ void compilerinfo::GetSystemInfo()
         exit(0);
     }
     
-    if (cpuVendor == CPUVENDORAMD && (machineSupports & CPUBMI2))
+    if (cpuVendor == CPUVENDORAMD && cpuFamily < 25 && (machineSupports & CPUBMI2))
     {
-        // No BMI2 build on AMD cpu
+        // No BMI2 build on AMD cpu before Zen3
         machineSupports ^= CPUBMI2;
         if (binarySupports & CPUBMI2)
             cout << "info string Warning! You are running the BMI2 binary on an AMD cpu which is known for bad performance. Please use the different binary for best performance.\n";
