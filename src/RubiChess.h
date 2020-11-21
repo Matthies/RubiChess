@@ -52,7 +52,7 @@
 #define NNUE
 #define NNUEDEFAULT nn-803c91ad5c-20201107.nnue
 
-#if 1
+#if 0
 #define NNUELEARN
 #endif
 
