@@ -51,6 +51,11 @@
 #if 1
 #define NNUE
 #define NNUEDEFAULT nn-803c91ad5c-20201107.nnue
+
+#if 0
+#define NNUELEARN
+#endif
+
 #endif
 
 #ifdef FINDMEMORYLEAKS
@@ -597,6 +602,7 @@ typedef struct ranctx { U64 a; U64 b; U64 c; U64 d; } ranctx;
 
 void raninit(ranctx* x, U64 seed);
 U64 ranval(ranctx* x);
+string frcStartFen();
 U64 calc_key_from_pcs(int *pcs, int mirror);
 void getPcsFromStr(const char* str, int *pcs);
 void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am);
@@ -730,7 +736,21 @@ void NnueInit();
 void NnueRemove();
 void NnueReadNet(string path);
 
+struct PackedSfen { uint8_t data[32]; };
 
+struct PackedSfenValue
+{
+    PackedSfen sfen;
+    int16_t score;
+    uint16_t move;
+    uint16_t gamePly;
+    int8_t game_result;
+    uint8_t padding;
+};
+
+void gensfen(vector<string> args);
+void convert(vector<string> args);
+void learn(vector<string> args);
 
 //
 // transposition stuff
@@ -1095,7 +1115,7 @@ extern U64 rankMask[64];
 extern U64 betweenMask[64][64];
 
 extern int squareDistance[64][64];
-extern int castlerookfrom[4];
+
 struct chessmovestack
 {
     int state;
@@ -1212,6 +1232,7 @@ extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 
 enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7 };
 enum RootsearchType { SinglePVSearch, MultiPVSearch };
+enum PruneType { Prune, NoPrune };
 
 int CreateEvasionMovelist(chessposition *pos, chessmove* mstart);
 template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart);
@@ -1296,6 +1317,11 @@ public:
     chessmovelist quietslist[MAXDEPTH];
     chessmovelist singularcaptureslist[MAXDEPTH];   // extra move lists for singular testing
     chessmovelist singularquietslist[MAXDEPTH];
+    int castlerights[64];
+    int castlerookfrom[4];
+    U64 castleblockers[4];
+    U64 castlekingwalk[4];
+
 #ifdef EVALTUNE
     bool isQuiet;
     bool noQs;
@@ -1343,6 +1369,7 @@ public:
     void BitboardMove(int from, int to, PieceCode p);
     void BitboardPrint(U64 b);
     int getFromFen(const char* sFen);
+    void initCastleRights(int rookfiles[], int kingfile);
     string toFen();
     uint32_t applyMove(string s, bool resetMstop = true);
     void print(ostream* os = &cout);
@@ -1378,8 +1405,8 @@ public:
     int getComplexity(int eval, pawnhashentry *phentry, Materialhashentry *mhentry);
 
     template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth, int inWindowLast);
-    int alphabeta(int alpha, int beta, int depth);
-    int getQuiescence(int alpha, int beta, int depth);
+    template <PruneType Pt> int alphabeta(int alpha, int beta, int depth);
+    template <PruneType Pt> int getQuiescence(int alpha, int beta, int depth);
     void updateHistory(uint32_t code, int16_t **cmptr, int value);
     void updateTacticalHst(uint32_t code, int value);
     void getCmptr(int16_t **cmptr);
@@ -1408,6 +1435,10 @@ public:
     template <NnueType Nt> bool UpdateAccumulator();
     template <NnueType Nt> void Transform(clipped_t *output);
     template <NnueType Nt> int NnueGetEval();
+#ifdef NNUELEARN
+    void toSfen(PackedSfen *sfen);
+    int getFromSfen(PackedSfen* sfen);
+#endif
 #endif
 };
 
@@ -1415,12 +1446,16 @@ public:
 // uci stuff
 //
 
-enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL, PERFT, TUNE
-};
+enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL, PERFT, TUNE, GENSFEN, CONVERT, LEARN };
 
 const map<string, GuiToken> GuiCommandMap = {
 #ifdef EVALTUNE
     { "tune", TUNE },
+#endif
+#ifdef NNUELEARN
+    { "gensfen", GENSFEN },
+    { "convert", CONVERT },
+    { "learn", LEARN },
 #endif
     { "uci", UCI },
     { "debug", UCIDEBUG },
@@ -1647,6 +1682,11 @@ public:
     int depth;
     int numofthreads;
     int lastCompleteDepth;
+#ifdef NNUELEARN
+    PackedSfenValue* psvbuffer;
+    PackedSfenValue* psv;
+    int chunkstate[2];
+#endif
     // adjust padding to align searchthread at 64 bytes
     uint8_t padding[16];
 

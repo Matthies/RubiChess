@@ -19,7 +19,7 @@
 #include "RubiChess.h"
 
 
-/* A small noncryptographic PRNG */
+/* A small noncryptographic PRNG                       */
 /* http://www.burtleburtle.net/bob/rand/smallprng.html */
 
 #define rot(x,k) (((x)<<(k))|((x)>>(64-(k))))
@@ -42,6 +42,54 @@ void raninit(ranctx* x, U64 seed)
         (void)ranval(x);
     }
 }
+
+
+// A FRC startposition generator
+// Credits to rosettacode.org
+static void frcPlaceRandomly(char* p, char c)
+{
+    int loc = rand() % 8;
+    if (!p[loc])
+        p[loc] = c;
+    else
+        frcPlaceRandomly(p, c);    // try again
+}
+static int frcPlaceFirst(char* p, char c, int loc = 0)
+{
+    while (p[loc]) ++loc;
+    p[loc] = c;
+    return loc;
+}
+
+string frcStartFen()
+{
+    char p[8] = { 0 };
+
+    // bishops on opposite color
+    p[2 * (rand() % 4)] = 'B';
+    p[2 * (rand() % 4) + 1] = 'B';
+
+    // queen knight knight, anywhere
+    for (char c : "QNN")
+        frcPlaceRandomly(p, c);
+
+    // rook king rook, in that order
+
+    int l;
+    l = frcPlaceFirst(p, 'R');
+    l = frcPlaceFirst(p, 'K', l);
+
+    frcPlaceFirst(p, 'R', l);
+
+    string wPieceStr = string(p, 8);
+    string bPieceStr = wPieceStr;
+    transform(bPieceStr.begin(), bPieceStr.end(), bPieceStr.begin(), ::tolower);
+
+    return bPieceStr + "/pppppppp/8/8/8/8/PPPPPPPP/" + wPieceStr + " w KQkq - 0 1";
+}
+
+
+
 
 // Produce a 64-bit material key corresponding to the material combination
 // defined by pcs[16], where pcs[1], ..., pcs[6] is the number of white
@@ -249,7 +297,7 @@ string AlgebraicFromShort(string s, chessposition *pos)
     {
         pt = KING;
         from = pos->kingpos[pos->state & S2MMASK];
-        to = (from & 0x38) | castlerookfrom[castle0 == 2];
+        to = (from & 0x38) | pos->castlerookfrom[castle0 == 2];
     }
     if (i >= 0 && s[i] >= 'A')
     {

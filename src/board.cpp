@@ -37,10 +37,6 @@ U64 fileMask[64];
 U64 rankMask[64];
 U64 betweenMask[64][64];
 U64 lineMask[64][64];
-int castlerights[64];
-int castlerookfrom[4];
-U64 castleblockers[4];
-U64 castlekingwalk[4];
 int squareDistance[64][64];  // decreased by 1 for directly indexing evaluation arrays
 alignas(64) int psqtable[14][64];
 
@@ -137,7 +133,7 @@ chessmove::chessmove()
 
 string chessmove::toString()
 {
-    char s[100];
+    char s[8];
 
     if (code == 0)
         return "(none)";
@@ -151,7 +147,13 @@ string chessmove::toString()
         to = GETTO(code);
     promotion = GETPROMOTION(code);
 
-    sprintf_s(s, "%c%d%c%d%c", (from & 0x7) + 'a', ((from >> 3) & 0x7) + 1, (to & 0x7) + 'a', ((to >> 3) & 0x7) + 1, PieceChar(promotion, true));
+    sprintf_s(s, "%c%d%c%d", (from & 0x7) + 'a', ((from >> 3) & 0x7) + 1, (to & 0x7) + 'a', ((to >> 3) & 0x7) + 1);
+    if (promotion)
+    {
+        string ps(1, PieceChar(promotion, true));
+        return s + ps;
+    }
+    
     return s;
 }
 
@@ -217,7 +219,7 @@ bool chessposition::w2m()
 }
 
 
-void initCastleRights(int rookfiles[], int kingfile)
+void chessposition::initCastleRights(int rookfiles[], int kingfile)
 {
     for (int from = 0; from < 64; from++)
     {
@@ -436,6 +438,7 @@ int chessposition::getFromFen(const char* sFen)
     mstop = 0;
     rootheight = 0;
     lastnullmove = -1;
+    useTb = min(TBlargest, en.SyzygyProbeLimit);
     return 0;
 }
 
@@ -576,7 +579,6 @@ void chessposition::getRootMoves()
 
 void chessposition::tbFilterRootMoves()
 {
-    useTb = min(TBlargest, en.SyzygyProbeLimit);
     tbPosition = 0;
     useRootmoveScore = 0;
     if (POPCOUNT(occupied00[0] | occupied00[1]) <= useTb)
@@ -1103,7 +1105,7 @@ string chessposition::toFen()
 
 void chessposition::updateMultiPvTable(int pvindex, uint32_t mc)
 {
-    uint32_t *table = (pvindex ? multipvtable[pvindex] : pvtable[0]);
+    uint32_t *table = multipvtable[pvindex];
     table[0] = mc;
     int i = 0;
     while (pvtable[1][i])
@@ -1111,7 +1113,11 @@ void chessposition::updateMultiPvTable(int pvindex, uint32_t mc)
         table[i + 1] = pvtable[1][i];
         i++;
     }
-    table[i + 1] = 0;
+    table[++i] = 0;
+
+    // replicate best multipv to pvtable
+    if (pvindex == 0)
+        memcpy(pvtable[0], table, (i + 1) * sizeof(uint32_t));
 }
 
 
@@ -1312,6 +1318,7 @@ const U64 rookmagics[] = {
 void initBitmaphelper()
 {
     int to;
+
     initPsqtable();
     for (int from = 0; from < 64; from++)
     {
@@ -1894,12 +1901,12 @@ inline int CreateMovelistCastle(chessposition *pos, chessmove* mstart, int me)
         if ((pos->state & (WQCMASK << cstli)) == 0)
             continue;
         int kingfrom = pos->kingpos[me];
-        int rookfrom = castlerookfrom[cstli];
-        if (castleblockers[cstli] & (occupiedbits ^ BITSET(rookfrom) ^ BITSET(kingfrom)))
+        int rookfrom = pos->castlerookfrom[cstli];
+        if (pos->castleblockers[cstli] & (occupiedbits ^ BITSET(rookfrom) ^ BITSET(kingfrom)))
             continue;
 
         pos->BitboardClear(rookfrom, (PieceType)(WROOK | me));
-        U64 kingwalkbb = castlekingwalk[cstli];
+        U64 kingwalkbb = pos->castlekingwalk[cstli];
         bool attacked = false;
         while (!attacked && kingwalkbb)
         {
@@ -2524,7 +2531,10 @@ engine::engine(compilerinfo *c)
     NnueInit();
 #endif
     rootposition.pwnhsh.setSize(1);  // some dummy pawnhash just to make the prefetch in playMove happy
-    
+    // default castle rights
+    int rf[] = { 0, 7 };
+    rootposition.initCastleRights(rf, 4);
+
     ucioptions.Register(&Threads, "Threads", ucispin, "1", 1, MAXTHREADS, uciSetThreads);  // order is important as the pawnhash depends on Threads > 0
     ucioptions.Register(&Hash, "Hash", ucispin, to_string(DEFAULTHASH), 1, MAXHASH, uciSetHash);
     ucioptions.Register(&moveOverhead, "Move Overhead", ucispin, "50", 0, 5000, nullptr);
@@ -2941,6 +2951,17 @@ void engine::communicate(string inputstring)
                     cout << "Nodes: " << perftnodes << "\n";
                 }
                 break;
+#ifdef NNUELEARN
+            case GENSFEN:
+                gensfen(commandargs);
+                break;
+            case CONVERT:
+                convert(commandargs);
+                break;
+            case LEARN:
+                learn(commandargs);
+                break;
+#endif
 #ifdef EVALTUNE
             case TUNE:
                 parseTune(commandargs);
@@ -3117,4 +3138,5 @@ template U64 chessposition::pieceMovesTo<ROOK>(int);
 template U64 chessposition::pieceMovesTo<QUEEN>(int);
 template bool chessposition::sliderAttacked<WHITE>(int index, U64 occ);
 template bool chessposition::sliderAttacked<BLACK>(int index, U64 occ);
-
+template void chessposition::updatePins<WHITE>();
+template void chessposition::updatePins<BLACK>();

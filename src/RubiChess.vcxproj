@@ -131,6 +131,7 @@
   <ItemGroup>
     <ClCompile Include="board.cpp" />
     <ClCompile Include="eval.cpp" />
+    <ClCompile Include="learn.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="nnue.cpp" />
     <ClCompile Include="search.cpp" />

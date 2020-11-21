@@ -888,6 +888,7 @@ static void calc_symlen(struct PairsData *d, int s, char *tmp)
 
 static struct PairsData *setup_pairs(unsigned char *data, uint64 tb_size, uint64 *size, unsigned char **next, ubyte *flags, int wdl)
 {
+  const int maxnumsyms = 4096;
   struct PairsData *d;
   int i;
 
@@ -912,6 +913,7 @@ static struct PairsData *setup_pairs(unsigned char *data, uint64 tb_size, uint64
   int min_len = data[9];
   int h = max_len - min_len + 1;
   int num_syms = *(ushort *)(&data[10 + 2 * h]);
+  myassert(num_syms <= maxnumsyms, nullptr, 1, num_syms);
   d = (struct PairsData *)malloc(sizeof(struct PairsData) + (h - 1) * sizeof(base_t) + num_syms);
   d->blocksize = blocksize;
   d->idxbits = idxbits;
@@ -926,8 +928,7 @@ static struct PairsData *setup_pairs(unsigned char *data, uint64 tb_size, uint64
   size[1] = 2ULL * num_blocks;
   size[2] = (1ULL << blocksize) * real_num_blocks;
 
-  // char tmp[num_syms];
-  char tmp[4096];
+  char tmp[maxnumsyms];
   for (i = 0; i < num_syms; i++)
     tmp[i] = 0;
   for (i = 0; i < num_syms; i++)
