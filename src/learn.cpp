@@ -266,7 +266,6 @@ void flush_psv(int result, searchthread* thr)
     {
         thr->chunkstate[fullchunk] = CHUNKFULL;
     }
-
 }
 
 
@@ -366,20 +365,15 @@ static void gensfenthread(searchthread* thr)
             
             // Die ersten plies nicht schreiben, da sie "zu ähnlich" sind
             if (ply < write_minply - 1) // default: 16
-            {
-                //a_psv.clear();
                 goto SKIP_SAVE;
-            }
 
             // Position schon im Hash? Dann überspringen
             key = pos->hash;
             hash_index = key & (GENSFEN_HASH_SIZE - 1);
             key2 = sfenhash[hash_index];
             if (key == key2)
-            {
-                //a_psv.clear();
                 goto SKIP_SAVE;
-            }
+
             sfenhash[hash_index] = key; // Replace with the current key.
             
             // generate sfen and values
