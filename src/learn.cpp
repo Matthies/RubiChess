@@ -331,7 +331,6 @@ static void gensfenthread(searchthread* thr)
                 break;
             }
             pos->ply = 0;
-            //pos->prepareStack();
             movelist.length = CreateMovelist<ALL>(pos, &movelist.move[0]);
                 
             if (movelist.length == 0)
@@ -363,11 +362,11 @@ static void gensfenthread(searchthread* thr)
                 break;
             }
             
-            // Die ersten plies nicht schreiben, da sie "zu ähnlich" sind
+            // Skip first plies
             if (ply < write_minply - 1) // default: 16
                 goto SKIP_SAVE;
 
-            // Position schon im Hash? Dann überspringen
+            // Skip position already in hash table
             key = pos->hash;
             hash_index = key & (GENSFEN_HASH_SIZE - 1);
             key2 = sfenhash[hash_index];

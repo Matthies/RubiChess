@@ -928,8 +928,6 @@ static struct PairsData *setup_pairs(unsigned char *data, uint64 tb_size, uint64
   size[1] = 2ULL * num_blocks;
   size[2] = (1ULL << blocksize) * real_num_blocks;
 
-  // char tmp[num_syms];
-
   char tmp[maxnumsyms];
   for (i = 0; i < num_syms; i++)
     tmp[i] = 0;

@@ -1318,11 +1318,7 @@ const U64 rookmagics[] = {
 void initBitmaphelper()
 {
     int to;
-#if 0
-    // default castle rights
-    int rf[] = { 0, 7 };
-    initCastleRights(rf, 4);
-#endif
+
     initPsqtable();
     for (int from = 0; from < 64; from++)
     {

@@ -395,14 +395,12 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     if (rep >= 2)
     {
         STATISTICSINC(ab_draw_or_win);
-        //if (ply == 0 && pvtable[ply][0] == 0) printf("pv missed by repetetion\n");
         return SCOREDRAW;
     }
 
     // test for remis via 50 moves rule
     if (halfmovescounter >= 100)
     {
-        //if (ply == 0 && pvtable[ply][0] == 0) printf("pv missed by 50moves\n");
         STATISTICSINC(ab_draw_or_win);
         if (!isCheckbb)
         {
@@ -465,7 +463,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 STATISTICSINC(ab_tt);
                 SDEBUGDO(isDebugPv, pvabortval[ply] = hashscore; if (debugMove.code == fullhashmove) pvaborttype[ply] = PVA_FROMTT; else pvaborttype[ply] =  PVA_DIFFERENTFROMTT; );
                 SDEBUGDO(isDebugPv, pvadditionalinfo[ply] = "PV = " + getPv(pvtable[ply]) + "  " + tp.debugGetPv(newhash); );
-                //if (!excludeMove && ply == 0 && pvtable[ply][0] == 0) printf("pv missed by tt without move\n");
                 return hashscore;
             }
 
@@ -559,7 +556,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         {
             STATISTICSINC(prune_futility);
             SDEBUGDO(isDebugPv, pvabortval[ply] = staticeval; pvaborttype[ply] = PVA_REVFUTILITYPRUNED;);
-            //if (!excludeMove && ply == 0 && pvtable[ply][0] == 0) printf("pv missed by reverse futility\n");
             return staticeval;
         }
         futility = (staticeval < alpha - (sps.futilitymargin + sps.futilitymarginperdepth * depth));
@@ -580,7 +576,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             if (abs(beta) < 5000 && (depth < sps.nmverificationdepth || nullmoveply)) {
                 STATISTICSINC(prune_nm);
                 SDEBUGDO(isDebugPv, pvabortval[ply] = score; pvaborttype[ply] = PVA_NMPRUNED;);
-                //if (!excludeMove && ply == 0 && pvtable[ply][0] == 0) printf("pv missed by nm pruning\n");
                 return beta;
             }
             // Verification search
@@ -591,7 +586,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             if (verificationscore >= beta) {
                 STATISTICSINC(prune_nm);
                 SDEBUGDO(isDebugPv, pvabortval[ply] = score; pvaborttype[ply] = PVA_NMPRUNED;);
-                //if (!excludeMove && ply == 0 && pvtable[ply][0] == 0) printf("pv missed by nm pruning\n");
                 return beta;
             }
         }
@@ -625,7 +619,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                     delete movelist;
                     STATISTICSINC(prune_probcut);
                     SDEBUGDO(isDebugPv, pvabortval[ply] = probcutscore; pvaborttype[ply] = PVA_PROBCUTPRUNED; pvadditionalinfo[ply] = "pruned by " + movelist->move[i].toString(););
-                    //if (!excludeMove && ply == 0 && pvtable[ply][0] == 0) printf("pv missed by probcut pruning\n");
                     return probcutscore;
                 }
             }
@@ -709,6 +702,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             && tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth - 3, alpha, beta, ply)  // FIXME: maybe needs hashscore = FIXMATESCOREPROBE(hashscore, ply);
             && hashscore > alpha
 #ifdef NNUELEARN
+            // No singular extension in root of gensfen
             && ply > 0
 #endif
             )
@@ -729,7 +723,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 // Hashscore for lower depth and static eval cut and we have at least a second good move => lets cut here
                 STATISTICSINC(prune_multicut);
                 SDEBUGDO(isDebugPv, pvabortval[ply] = sBeta; pvaborttype[ply] = PVA_MULTICUT;);
-                //if (!excludeMove && ply == 0 && pvtable[ply][0] == 0) printf("pv missed by multicut pruning\n");
                 return sBeta;
             }
         }
@@ -897,7 +890,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
                 SDEBUGDO(isDebugPv, pvaborttype[ply] = isDebugMove ? PVA_BETACUT : debugMovePlayed ? PVA_NOTBESTMOVE : PVA_OMITTED;);
                 SDEBUGDO(isDebugPv || debugTransposition, tp.debugSetPv(newhash, movesOnStack() + " " + (debugTransposition ? "(transposition)" : "") + " effectiveDepth=" + to_string(effectiveDepth)););
-                //if (!excludeMove && ply == 0 && pvtable[ply][0] == 0) printf("pv missed by beta cut\n");
                 return score;   // fail soft beta-cutoff
             }
 
@@ -921,7 +913,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (excludeMove)
             return alpha;
 
-        //if (!excludeMove && ply == 0 && pvtable[ply][0] == 0) printf("pv missed by no legal move\n");
         STATISTICSINC(ab_draw_or_win);
         if (isCheckbb) {
             // It's a mate
@@ -939,7 +930,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         SDEBUGDO(isDebugPv || debugTransposition, tp.debugSetPv(newhash, movesOnStack() + " " + (debugTransposition ? "(transposition)" : "") + " depth=" + to_string(depth)););
     }
 
-    //if (!excludeMove && ply == 0 && pvtable[ply][0] == 0) printf("pv missed by ... hmmm .. no move\n");
     return bestscore;
 }
 
@@ -1802,6 +1792,3 @@ void search_statistics()
 // Explicit template instantiation
 // This avoids putting these definitions in header file
 template int chessposition::alphabeta<NoPrune>(int alpha, int beta, int depth);
-
-//template <PruneType Pt> int alphabeta(int alpha, int beta, int depth);
-//template <PruneType Pt> int getQuiescence(int alpha, int beta, int depth);
