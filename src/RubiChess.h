@@ -734,7 +734,7 @@ public:
 
 void NnueInit();
 void NnueRemove();
-void NnueReadNet(ifstream* is); // returns false if file not found; validation of network file is done via NnueReady
+void NnueReadNet(ifstream* is);
 
 struct PackedSfen { uint8_t data[32]; };
 
