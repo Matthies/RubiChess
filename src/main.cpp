@@ -902,6 +902,7 @@ static void testengine(string epdfilename, int startnum, string engineprgs, stri
 
 int main(int argc, char* argv[])
 {
+	cout << argv[0] << "\n";
     int startnum;
     int perfmaxdepth;
     bool verbose;
