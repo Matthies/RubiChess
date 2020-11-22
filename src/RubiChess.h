@@ -1619,7 +1619,8 @@ public:
         size_t s2 = NnueNetpath.rfind('-');
         size_t s1 = NnueNetpath.rfind('-', s2 - 1) + 1;
         if (s1 && s2 && s2 - s1 == 10)
-            return NnueNetpath.substr(s1, s2 - s1);
+            // Most probably a Rubi net; shorten name to 5 digits
+            return NnueNetpath.substr(s1, 5);
         else
             return "<unknown>";
     }
