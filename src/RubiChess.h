@@ -734,7 +734,7 @@ public:
 
 void NnueInit();
 void NnueRemove();
-void NnueReadNet(string path);
+void NnueReadNet(ifstream* is);
 
 struct PackedSfen { uint8_t data[32]; };
 
@@ -1602,6 +1602,7 @@ public:
     string benchmove;
     ucioptions_t ucioptions;
     compilerinfo* compinfo;
+    string ExecPath;
 
 #ifdef STACKDEBUG
     string assertfile = "";
@@ -1618,7 +1619,8 @@ public:
         size_t s2 = NnueNetpath.rfind('-');
         size_t s1 = NnueNetpath.rfind('-', s2 - 1) + 1;
         if (s1 && s2 && s2 - s1 == 10)
-            return NnueNetpath.substr(s1, s2 - s1);
+            // Most probably a Rubi net; shorten name to 5 digits
+            return NnueNetpath.substr(s1, 5);
         else
             return "<unknown>";
     }
@@ -1639,6 +1641,7 @@ public:
     long long perft(int depth, bool dotests, bool printsysteminfo = false);
     void prepareThreads();
     void resetStats();
+    void registerOptions();
 };
 
 PieceType GetPieceType(char c);
