@@ -734,7 +734,7 @@ public:
 
 void NnueInit();
 void NnueRemove();
-void NnueReadNet(string path);
+void NnueReadNet(ifstream* is); // returns false if file not found; validation of network file is done via NnueReady
 
 struct PackedSfen { uint8_t data[32]; };
 
@@ -1602,6 +1602,7 @@ public:
     string benchmove;
     ucioptions_t ucioptions;
     compilerinfo* compinfo;
+    string ExecPath;
 
 #ifdef STACKDEBUG
     string assertfile = "";
@@ -1639,6 +1640,7 @@ public:
     long long perft(int depth, bool dotests, bool printsysteminfo = false);
     void prepareThreads();
     void resetStats();
+    void registerOptions();
 };
 
 PieceType GetPieceType(char c);

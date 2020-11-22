@@ -685,7 +685,7 @@ void NnueRemove()
     delete NnueOut;
 }
 
-void NnueReadNet(string path)
+void NnueReadNet(ifstream* is)
 {
     NnueReady = NnueDisabled;
 
@@ -693,19 +693,16 @@ void NnueReadNet(string path)
     uint32_t nethash = NnueOut->GetHash();
     uint32_t filehash = (fthash ^ nethash);
 
-    ifstream is(path, ios::binary);
-    if (!is) return;
-    
     uint32_t version, hash, size;
     string sarchitecture;
     
-    is.read((char*)&version, sizeof(uint32_t));
-    is.read((char*)&hash, sizeof(uint32_t));
-    is.read((char*)&size, sizeof(uint32_t));
+    is->read((char*)&version, sizeof(uint32_t));
+    is->read((char*)&hash, sizeof(uint32_t));
+    is->read((char*)&size, sizeof(uint32_t));
     if (size)
     {
         sarchitecture.resize(size);
-        is.read((char*)&sarchitecture[0], size);
+        is->read((char*)&sarchitecture[0], size);
     }
 
     NnueType nt;
@@ -718,15 +715,15 @@ void NnueReadNet(string path)
 
     if (hash != filehash) return;
 
-    is.read((char*)&hash, sizeof(uint32_t));
+    is->read((char*)&hash, sizeof(uint32_t));
     if (hash != fthash) return;
     // Read the weights of the feature transformer
-    if (!NnueFt->ReadWeights(&is)) return;
-    is.read((char*)&hash, sizeof(uint32_t));
+    if (!NnueFt->ReadWeights(is)) return;
+    is->read((char*)&hash, sizeof(uint32_t));
     if (hash != nethash) return;
     // Read the weights of the network layers recursively
-    if (!NnueOut->ReadWeights(&is)) return;
-    if (is.peek() != ios::traits_type::eof())
+    if (!NnueOut->ReadWeights(is)) return;
+    if (is->peek() != ios::traits_type::eof())
         return;
 
     NnueReady = nt;

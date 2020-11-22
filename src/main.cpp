@@ -902,7 +902,6 @@ static void testengine(string epdfilename, int startnum, string engineprgs, stri
 
 int main(int argc, char* argv[])
 {
-	cout << argv[0] << "\n";
     int startnum;
     int perfmaxdepth;
     bool verbose;
@@ -971,6 +970,18 @@ int main(int argc, char* argv[])
     myassert(1 == 0, nullptr, 0); // test stacktrace
 #endif
 
+    en.ExecPath = "";
+    if (argc > 0)
+    {
+        // Get path of the executable
+        string execPath = argv[0];
+        size_t si;
+        if ((si = execPath.rfind('/')) != string::npos || (si = execPath.rfind('\\')) != string::npos)
+            en.ExecPath = execPath.substr(0, si + 1);
+    }
+
+    en.registerOptions();
+
 #ifdef EVALOPTIONS
     registerallevals();
 #endif
@@ -983,7 +994,7 @@ int main(int argc, char* argv[])
 
     cout.setf(ios_base::unitbuf);
 
-    int paramindex = 0;
+    int paramindex = 1;
     for (int j = 0; allowedargs[j].cmd; j++)
     {
         int val = 0;
@@ -1001,18 +1012,18 @@ int main(int argc, char* argv[])
         case 0:
             *(bool*)(allowedargs[j].variable) = (val > 0);
             if (verbose) printf(" %s: %s  (%s)\n", allowedargs[j].cmd, *(bool*)(allowedargs[j].variable) ? "yes" : "no", allowedargs[j].info);
-            paramindex = 0;
+            paramindex = 1;
             break;
         case 1:
             try { *(int*)(allowedargs[j].variable) = stoi((val > 0 && val < argc - 1 ? argv[val + 1] : allowedargs[j].defaultval)); }
             catch (const invalid_argument&) {}
             if (verbose) printf(" %s: %d  (%s)\n", allowedargs[j].cmd, *(int*)(allowedargs[j].variable), allowedargs[j].info);
-            paramindex = 0;
+            paramindex = 1;
             break;
         case 2:
             *(string*)(allowedargs[j].variable) = (val > 0 && val < argc - 1 ? argv[val + 1] : allowedargs[j].defaultval);
             if (verbose) printf(" %s: %s  (%s)\n", allowedargs[j].cmd, (*(string*)(allowedargs[j].variable)).c_str(), allowedargs[j].info);
-            paramindex = 0;
+            paramindex = 1;
             break;
         case 3:
             if (val > 0 && val < argc - 1)
@@ -1026,7 +1037,7 @@ int main(int argc, char* argv[])
                 j--;
             }
             else {
-                paramindex = 0;
+                paramindex = 1;
             }
         }
     }

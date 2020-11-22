@@ -2501,14 +2501,28 @@ static void uciSetSyzygyPath()
 #ifdef NNUE
 static void uciSetNnuePath()
 {
+    NnueReady = NnueDisabled;
+
     if (!en.usennue)
     {
         NnueReady = NnueDisabled;
         return;
     }
+
     cout << "info string Loading net " << en.NnueNetpath << " ...";
-    NnueReadNet(en.NnueNetpath);
-    cout << (NnueReady ? " successful. Using NNUE evaluation. (" + to_string(NnueReady) + ")" : " failed. Using handcrafted evaluation.") << "\n";
+
+    ifstream is;
+    is.open(en.NnueNetpath, ios::binary);
+    if (!is && en.ExecPath != "")
+        is.open(en.ExecPath + en.NnueNetpath, ios::binary);
+
+    if (is)
+        NnueReadNet(&is);
+
+    if (NnueReady)
+        cout << " successful. Using NNUE evaluation. (" + to_string(NnueReady) + ")\n";
+    else
+        cout << " failed. The network file seems corrupted doesn't exist. Set correct path to network file or disable 'Use NNUE' for handcrafted evaluation.\n";
 }
 #endif
 
@@ -2535,20 +2549,6 @@ engine::engine(compilerinfo *c)
     int rf[] = { 0, 7 };
     rootposition.initCastleRights(rf, 4);
 
-    ucioptions.Register(&Threads, "Threads", ucispin, "1", 1, MAXTHREADS, uciSetThreads);  // order is important as the pawnhash depends on Threads > 0
-    ucioptions.Register(&Hash, "Hash", ucispin, to_string(DEFAULTHASH), 1, MAXHASH, uciSetHash);
-    ucioptions.Register(&moveOverhead, "Move Overhead", ucispin, "50", 0, 5000, nullptr);
-    ucioptions.Register(&MultiPV, "MultiPV", ucispin, "1", 1, MAXMULTIPV, nullptr);
-    ucioptions.Register(&ponder, "Ponder", ucicheck, "false");
-    ucioptions.Register(&SyzygyPath, "SyzygyPath", ucistring, "<empty>", 0, 0, uciSetSyzygyPath);
-    ucioptions.Register(&Syzygy50MoveRule, "Syzygy50MoveRule", ucicheck, "true");
-    ucioptions.Register(&SyzygyProbeLimit, "SyzygyProbeLimit", ucispin, "7", 0, 7, nullptr);
-    ucioptions.Register(&chess960, "UCI_Chess960", ucicheck, "false");
-    ucioptions.Register(nullptr, "Clear Hash", ucibutton, "", 0, 0, uciClearHash);
-#ifdef NNUE
-    ucioptions.Register(&usennue, "Use NNUE", ucicheck, "false", 0, 0, uciSetNnuePath);
-    ucioptions.Register(&NnueNetpath, "NNUENetpath", ucistring, NNUEDEFAULTSTR, 0, 0, uciSetNnuePath);
-#endif
 #ifdef _WIN32
     LARGE_INTEGER f;
     QueryPerformanceFrequency(&f);
@@ -2567,6 +2567,25 @@ engine::~engine()
     rootposition.mtrlhsh.remove();
 #ifdef NNUE
     NnueRemove();
+#endif
+}
+
+
+void engine::registerOptions()
+{
+    ucioptions.Register(&Threads, "Threads", ucispin, "1", 1, MAXTHREADS, uciSetThreads);  // order is important as the pawnhash depends on Threads > 0
+    ucioptions.Register(&Hash, "Hash", ucispin, to_string(DEFAULTHASH), 1, MAXHASH, uciSetHash);
+    ucioptions.Register(&moveOverhead, "Move Overhead", ucispin, "50", 0, 5000, nullptr);
+    ucioptions.Register(&MultiPV, "MultiPV", ucispin, "1", 1, MAXMULTIPV, nullptr);
+    ucioptions.Register(&ponder, "Ponder", ucicheck, "false");
+    ucioptions.Register(&SyzygyPath, "SyzygyPath", ucistring, "<empty>", 0, 0, uciSetSyzygyPath);
+    ucioptions.Register(&Syzygy50MoveRule, "Syzygy50MoveRule", ucicheck, "true");
+    ucioptions.Register(&SyzygyProbeLimit, "SyzygyProbeLimit", ucispin, "7", 0, 7, nullptr);
+    ucioptions.Register(&chess960, "UCI_Chess960", ucicheck, "false");
+    ucioptions.Register(nullptr, "Clear Hash", ucibutton, "", 0, 0, uciClearHash);
+#ifdef NNUE
+    ucioptions.Register(&NnueNetpath, "NNUENetpath", ucistring, NNUEDEFAULTSTR, 0, 0, uciSetNnuePath);
+    ucioptions.Register(&usennue, "Use NNUE", ucicheck, "true", 0, 0, uciSetNnuePath);
 #endif
 }
 
@@ -2851,6 +2870,8 @@ void engine::communicate(string inputstring)
                 pendingposition = (fen != "");
                 break;
             case GO:
+                if (en.usennue && !NnueReady)
+                    break;
                 pondersearch = NO;
                 searchmoves.clear();
                 wtime = btime = winc = binc = movestogo = mate = maxdepth = 0;
