@@ -1,7 +1,15 @@
 ChangeLog
 =========
-1.9 (release 202x-xx-xx) :
-    - ...
+1.9 (release 2020-11-25) :
+    - Implement NNUE evaluation code (standard SF flip and mirror format are supported)
+    - Trained a net based on Rubi homecraft evaluation and some data based on first-iteration net
+    - Texel tuner has some more options now and an interactive interface
+    - Support for search parameters exposed to UCI options (#define SEARCHOPTIONS)
+    - Tuned LMP parameters using the kiudee tuning tools
+    - Don't initialize bestscore with the positions static evaluation
+    - Implemented history heuristic for tactical moves to support move ordering and reduction
+    - Evaluation: Penalty for bad rooks without castle right
+    - Small fix in the endgame scaling
 
 1.8 (release 2020-08-15) :
     - New BMI2 binary using the pext instruction for slider attacks

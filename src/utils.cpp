@@ -448,7 +448,6 @@ void compilerinfo::GetSystemInfo()
             memcpy(CPUBrandString + 32, CPUInfo, sizeof(CPUInfo));
     }
 
-    //maxHWSupport = bPOPCNT ? (bBMI2 ? CPUBMI2 : CPUPOPCOUNT) : CPULEGACY;
     system = CPUBrandString;
     system += "  Family: " + to_string(cpuFamily) + "  Model: " + to_string(cpuModel);
 
@@ -463,7 +462,7 @@ void compilerinfo::GetSystemInfo()
     
     if (cpuVendor == CPUVENDORAMD && cpuFamily < 25 && (machineSupports & CPUBMI2))
     {
-        // No BMI2 build on AMD cpu before Zen3
+        // No real BMI2 support on AMD cpu before Zen3
         machineSupports ^= CPUBMI2;
         if (binarySupports & CPUBMI2)
             cout << "info string Warning! You are running the BMI2 binary on an AMD cpu which is known for bad performance. Please use the different binary for best performance.\n";
