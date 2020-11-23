@@ -14,7 +14,7 @@ Ethereal, Stockfish, Pirarucu, Laser, ...
 Thank you for the great list of engines at http://www.computerchess.org.uk/ccrl/4040/
 Not mentioned all the other documentation and tools freely available.
 
-For using NNUE evaluation you have to
+Starting with version 1.9 RubiChess will support evaluation using NNUE weight files. For using NNUE evaluation you have to
 - enable 'Use NNUE' option
 - set 'NNUENetpath' option to a valid network weight file
 
