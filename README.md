@@ -19,4 +19,4 @@ Starting with version 1.9 RubiChess will support evaluation using NNUE weight fi
 - set 'NNUENetpath' option to a valid network weight file
 
 You can download network files from my repository https://github.com/Matthies/NN and put it in the same folder as the executable.
-Default net is nn-803c91ad5c-20201107.nnue which will be included in release packages.
+Default net (and default value of NNUENetpath) is nn-803c91ad5c-20201107.nnue which is also included in Windows release package.
