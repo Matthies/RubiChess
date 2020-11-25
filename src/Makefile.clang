@@ -31,17 +31,22 @@ AVX2EXE=RubiChess-AVX2
 AVX2CPUFEATURE=-DUSE_AVX2 -DUSE_SSSE3 -DUSE_SSE2 -DUSE_MMX -DUSE_POPCNT
 AVX2ARCHFLAGS=-mavx2 -mssse3 -msse2 -mmmx -mpopcnt
 
-# Modern-build
-MODERNEXE=RubiChess
-MODERNCPUFEATURE=-DUSE_SSSE3 -DUSE_SSE2 -DUSE_MMX -DUSE_POPCNT
-MODERNARCHFLAGS=-mssse3 -msse2 -mmmx -mpopcnt
+# Popcount-build
+POPCOUNTEXE=RubiChess
+POPCOUNTCPUFEATURE=-DUSE_SSSE3 -DUSE_SSE2 -DUSE_MMX -DUSE_POPCNT
+POPCOUNTARCHFLAGS=-mssse3 -msse2 -mmmx -mpopcnt
+
+# SSSE3-build
+SSSE3EXE=RubiChess-SSSE3
+SSSE3CPUFEATURE=-DUSE_SSSE3 -DUSE_SSE2 -DUSE_MMX
+SSSE3ARCHFLAGS=-mssse3 -msse2 -mmmx
 
 # Legacy-build
 LEGACYEXE=RubiChess-Legacy
 LEGACYCPUFEATURE=-D CPUFEATURE=CPULEGACY
 LEGACYARCHFLAGS=
 
-all: RubiChess-bmi2 RubiChess-avx2 RubiChess-modern RubiChess-Legacy
+all: RubiChess-bmi2 RubiChess-avx2 RubiChess-popcount RubiChess-ssse3 RubiChess-Legacy
 
 $(RELDIR):
 	mkdir $(RELDIR)
@@ -74,8 +79,11 @@ rubichess-bmi2: $(RELDIR)
 rubichess-avx2: $(RELDIR)
 	@nmake -c -f Makefile.clang build EXE=$(AVX2EXE) CPUFEATURE="$(AVX2CPUFEATURE)" ARCHFLAGS="$(AVX2ARCHFLAGS)"
 
-rubichess-modern: $(RELDIR)
-	@nmake -c -f Makefile.clang build EXE=$(MODERNEXE) CPUFEATURE="$(MODERNCPUFEATURE)" ARCHFLAGS="$(MODERNARCHFLAGS)"
+rubichess-popcount: $(RELDIR)
+	@nmake -c -f Makefile.clang build EXE=$(POPCOUNTEXE) CPUFEATURE="$(POPCOUNTCPUFEATURE)" ARCHFLAGS="$(POPCOUNTARCHFLAGS)"
+
+rubichess-ssse3: $(RELDIR)
+	@nmake -c -f Makefile.clang build EXE=$(SSSE3EXE) CPUFEATURE="$(SSSE3CPUFEATURE)" ARCHFLAGS="$(SSSE3ARCHFLAGS)"
 
 rubichess-legacy: $(RELDIR)
 	@nmake -c -f Makefile.clang build EXE=$(LEGACYEXE) CPUFEATURE="$(LEGACYCPUFEATURE)" ARCHFLAGS="$(LEGACYARCHFLAGS)"
@@ -93,7 +101,8 @@ profile-build-one:
 profile-build:
 	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-bmi2
 	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-avx2
-	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-modern
+	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-popcount
+	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-ssse3
 	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-legacy
 
 release: profile-build profile-clean
@@ -106,7 +115,7 @@ clean: profile-clean
 	@del $(RELDIR)\RubiChess-oldcpu.exe
 	@del $(RELDIR)\$(BMI2EXE).exe
 	@del $(RELDIR)\$(AVX2EXE).exe
-	@del $(RELDIR)\$(MODERNEXE).exe
+	@del $(RELDIR)\$(POPCOUNTEXE).exe
+	@del $(RELDIR)\$(SSSE3EXE).exe
 	@del $(RELDIR)\$(LEGACYEXE).exe
 	@set RUBINET=
-

@@ -16,10 +16,15 @@ ifeq ($(shell uname -m),x86_64)
 	AVX2CPUFEATURE=-DUSE_AVX2 -DUSE_SSSE3 -DUSE_SSE2 -DUSE_MMX -DUSE_POPCNT
 	AVX2ARCHFLAGS=-mavx2 -mssse3 -msse2 -mmmx -mpopcnt
 
-	# Modern-build
-	MODERNEXE=RubiChess
-	MODERNCPUFEATURE=-DUSE_SSSE3 -DUSE_SSE2 -DUSE_MMX -DUSE_POPCNT
-	MODERNARCHFLAGS=-mssse3 -msse2 -mmmx -mpopcnt
+	# Popcount-build
+	POPCOUNTEXE=RubiChess
+	POPCOUNTCPUFEATURE=-DUSE_SSSE3 -DUSE_SSE2 -DUSE_MMX -DUSE_POPCNT
+	POPCOUNTARCHFLAGS=-mssse3 -msse2 -mmmx -mpopcnt
+
+	# SSSE3-build
+	SSSE3EXE=RubiChess-SSSE3
+	SSSE3CPUFEATURE=-DUSE_SSSE3 -DUSE_SSE2 -DUSE_MMX
+	SSSE3ARCHFLAGS=-mssse3 -msse2 -mmmx
 
 	# Legacy-build
 	LEGACYEXE=RubiChess-Legacy
@@ -29,9 +34,9 @@ endif
 
 ifeq ($(shell uname -m),armv7l)
 	# Popcount-build
-	MODERNEXE=RubiChess
-	MODERNCPUFEATURE=-DUSE_NEON
-	MODERNARCHFLAGS=-mthumb -march=armv7-a -mfpu=neon
+	POPCOUNTEXE=RubiChess
+	POPCOUNTCPUFEATURE=-DUSE_NEON
+	POPCOUNTARCHFLAGS=-mthumb -march=armv7-a -mfpu=neon
 endif
 
 
@@ -88,9 +93,9 @@ endif
 .PHONY: clean profile-build gcc-profile-make clang-profile-make net all
 
 default: clean
-	@$(MAKE) compile ARCHFLAGS="$(MODERNARCHFLAGS)" CPUFEATURE="$(MODERNCPUFEATURE)"
+	@$(MAKE) compile ARCHFLAGS="$(POPCOUNTARCHFLAGS)" CPUFEATURE="$(POPCOUNTCPUFEATURE)"
 
-all: net RubiChess-BMI2 RubiChess-AVX2 RubiChess RubiChess-Legacy
+all: net RubiChess-BMI2 RubiChess-AVX2 RubiChess RubiChess-SSSE3 RubiChess-Legacy
 
 net:
 ifeq ($(RUBINET),)
@@ -113,13 +118,16 @@ RubiChess-BMI2:
 	@$(MAKE) compile ARCHFLAGS="$(BMI2ARCHFLAGS)" EXE=$(BMI2EXE) CPUFEATURE="$(BMI2CPUFEATURE)"
 
 RubiChess:
-	@$(MAKE) compile ARCHFLAGS="$(MODERNARCHFLAGS)" EXE=$(MODERNEXE) CPUFEATURE="$(MODERNCPUFEATURE)"
+	@$(MAKE) compile ARCHFLAGS="$(POPCOUNTARCHFLAGS)" EXE=$(POPCOUNTEXE) CPUFEATURE="$(POPCOUNTCPUFEATURE)"
+
+RubiChess-SSSE3:
+	@$(MAKE) compile ARCHFLAGS="$(SSSE3ARCHFLAGS)" EXE=$(SSSE3EXE) CPUFEATURE="$(SSSE3CPUFEATURE)"
 
 RubiChess-Legacy:
 	@$(MAKE) compile ARCHFLAGS="$(LEGACYARCHFLAGS)" EXE=$(LEGACYEXE) CPUFEATURE="$(LEGACYCPUFEATURE)"
 
 objclean:
-	$(RM) $(BMI2EXE) $(AVX2EXE) $(MODERNEXE) $(LEGACYEXE) *.o
+	$(RM) $(BMI2EXE) $(AVX2EXE) $(POPCOUNTEXE) $(SSSE3EXE) $(LEGACYEXE) *.o
 
 profileclean:
 	$(RM) -rf $(PROFDIR)
@@ -152,5 +160,6 @@ clang-profile-make:
 profile-build: clean net
 	@if [ "$(BMI2EXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(BMI2EXE); fi
 	@if [ "$(AVX2EXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(AVX2EXE); fi
-	@if [ "$(MODERNEXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(MODERNEXE); fi
+	@if [ "$(POPCOUNTEXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(POPCOUNTEXE); fi
+	@if [ "$(SSSE3EXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(SSSE3EXE); fi
 	@if [ "$(LEGACYEXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(LEGACYEXE); fi
