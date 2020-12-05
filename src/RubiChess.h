@@ -17,46 +17,37 @@
 
 #pragma once
 
-#define VERNUM "1.9"
-#define VERSTABLE
+#define VERNUM "2.0"
+//#define VERSTABLE
 
-#if 0
-#define STATISTICS
-#endif
-
-#if 0
-#define SDEBUG
-#endif
-
-#if 0
-#define TDEBUG
-#endif
-
-#if 0
-#define EVALTUNE
-#endif
-
-#if 0
-#define EVALOPTIONS
-#endif
-
-#if 0
-#define SEARCHOPTIONS
-#endif
-
-#if 0
-#define FINDMEMORYLEAKS
-#endif
-
-#if 1
+// Disable this to compile without NNUE evaluation
 #define NNUE
 #define NNUEDEFAULT nn-803c91ad5c-20201107.nnue
 
-#if 0
-#define NNUELEARN
-#endif
+// Enable to get statistical values about various search features
+//#define STATISTICS
 
-#endif
+// Enable to debug the search against a gives pv
+//#define SDEBUG
+
+// Enable to debug the time management
+//#define TDEBUG
+
+// Enable this for texel tuning
+//#define EVALTUNE
+
+// Enable this to expose the evaluation parameters as UCI options; either this or EVALTUNE can be enabled
+//#define EVALOPTIONS
+
+// Enable this to expose the search parameters as UCI options
+//#define SEARCHOPTIONS
+
+// Enable this to find memory leaks with the MSVC debug build
+//#define FINDMEMORYLEAKS
+
+// Enable this to enable NNUE training code
+//#define NNUELEARN
+
 
 #ifdef FINDMEMORYLEAKS
 #ifdef _DEBUG  
