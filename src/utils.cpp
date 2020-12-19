@@ -356,7 +356,7 @@ string AlgebraicFromShort(string s, chessposition *pos)
 #define CPUID(x,i) __cpuid(x, i)
 #endif
 
-#if defined(__MINGW64__) || defined(__gnu_linux__) || defined(__clang_major__)
+#if defined(__MINGW64__) || defined(__gnu_linux__) || defined(__clang_major__) || defined(__GNUC__)
 #include <cpuid.h>
 #define CPUID(x,i) cpuid(x, i)
 static void cpuid(int32_t out[4], int32_t x) {
