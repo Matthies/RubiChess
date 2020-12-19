@@ -108,6 +108,7 @@ int chessposition::getFromSfen(PackedSfen* sfen)
     uint8_t b;
     memset(piece00, 0, sizeof(piece00));
     memset(occupied00, 0, sizeof(occupied00));
+    psqval = 0;
     int bitnum = 0;
     uint8_t* buffer = &sfen->data[0];
     // side to move
@@ -166,6 +167,8 @@ int chessposition::getFromSfen(PackedSfen* sfen)
     mstop = 0;
     rootheight = 0;
     lastnullmove = -1;
+    accumulator->computationState = false;
+
     return 0;
 }
 
@@ -556,38 +559,44 @@ void gensfen(vector<string> args)
 
 
 
-enum SfenFormat { bin, plain };
+enum SfenFormat { no, bin, plain };
 
 void convert(vector<string> args)
 {
     string inputfile;
     string outputfile;
-    SfenFormat outformat = plain;
+    int evalstats = 0;
+    SfenFormat outformat = no;
     size_t cs = args.size();
     size_t ci = 0;
+    U64 evalsum[2][7] = { 0 };  // evalsum for hce and NNUE classified by at  0 / <0.5 / <1 / <3 / <20 / 1-4 / different prefer
+    U64 evaln[7] = { 0 };
 
     while (ci < cs)
     {
         string cmd = args[ci++];
 
-        if (cmd == "input_file_name")
-            if (ci < cs)
-            {
-                inputfile = args[ci++];
-                inputfile.erase(remove(inputfile.begin(), inputfile.end(), '\"'), inputfile.end());
-            }
-        if (cmd == "output_file_name")
-            if (ci < cs)
-            {
-                outputfile = args[ci++];
-                outputfile.erase(remove(outputfile.begin(), outputfile.end(), '\"'), outputfile.end());
-            }
-        if (cmd == "output_format")
-            if (ci < cs)
-            {
-                outformat = (args[ci] == "bin" ? bin : plain);
-                ci++;
-            }
+        if (cmd == "input_file_name" && ci < cs)
+        {
+            inputfile = args[ci++];
+            inputfile.erase(remove(inputfile.begin(), inputfile.end(), '\"'), inputfile.end());
+        }
+        if (cmd == "output_file_name" && ci < cs)
+        {
+            outputfile = args[ci++];
+            outputfile.erase(remove(outputfile.begin(), outputfile.end(), '\"'), outputfile.end());
+        }
+        if (cmd == "output_format" && ci < cs)
+        {
+            outformat = (args[ci] == "bin" ? bin : args[ci] == "plain" ? plain : no);
+            ci++;
+        }
+        if (cmd == "evalstats" && ci < cs)
+        {
+            evalstats = (NnueReady != NnueDisabled) * stoi(args[ci++]);
+            if (evalstats < 1 || evalstats > 2)
+                evalstats = 0;
+        }
     }
 
     ifstream is(inputfile, ios::binary);
@@ -613,6 +622,7 @@ void convert(vector<string> args)
     chessposition* pos = &en.sthread[0].pos;
     PackedSfenValue* psvbuffer = (PackedSfenValue*)allocalign64(sfenchunknums * sfenchunksize * sizeof(PackedSfenValue));
 
+    U64 n = 0;
     while (is.peek() != ios::traits_type::eof())
     {
         is.read((char*)psvbuffer, sfenchunknums * sfenchunksize * sizeof(PackedSfenValue));
@@ -634,6 +644,8 @@ void convert(vector<string> args)
             if (!cm.code)
                 continue;
 
+            n++;
+
             if (outformat == plain)
             {
                 *os << "fen " << pos->toFen() << "\n";
@@ -643,12 +655,52 @@ void convert(vector<string> args)
                 *os << "result " << to_string(psv->game_result) << "\n";
                 *os << "e\n";
             }
-            else
+            else if (outformat == bin)
             {
                 os->write((char*)psv, sizeof(PackedSfenValue));
             }
+
+            if (evalstats)
+            {
+                NnueType origNnue = NnueReady;
+                NnueReady = NnueDisabled;
+                int ev[2];
+                int absev[2];
+                ev[evalstats - 1] = pos->getEval<NOTRACE>();
+                absev[evalstats - 1] = abs(ev[evalstats - 1]);
+                NnueReady = origNnue;
+                ev[2 - evalstats] = pos->getEval<NOTRACE>();
+                absev[2 - evalstats] = abs(ev[2 - evalstats]);
+                int i = (ev[0] == 0 ? 0 : (absev[0] < 50 ? 1 : (absev[0] < 100 ? 2 : (absev[0] < 300 ? 3 : (absev[0] > 2000 ? -1 : 4)))));
+                if (ev[0] * ev[1] < 0)
+                    i = 6;
+
+                if (i < 0) break;
+
+                evalsum[0][i] += absev[0];
+                evalsum[1][i] += absev[1];
+                evaln[i]++;
+                if (i >= 1 && i <= 4)
+                {
+                    evalsum[0][5] += absev[0];
+                    evalsum[1][5] += absev[1];
+                    evaln[5]++;
+                }
+
+                if (n % 10000 == 0)
+                {
+                    cerr << "======================================================================\n";
+                    for (int i = 0; i < 7; i++)
+                    {
+                        double avh = evalsum[0][i] / (double)evaln[i];
+                        double avn = evalsum[1][i] / (double)evaln[i];
+                        cerr << setprecision(3) << fixed << i << setw(8) << evaln[i] << setw(14) << avh << setw(14) << avn << setw(14) << avh / avn << "\n";
+                    }
+                }
+
+            }
         }
-        cerr << ".";
+        if (!evalstats) cerr << ".";
     }
 
     cerr << "Finished converting.\n";

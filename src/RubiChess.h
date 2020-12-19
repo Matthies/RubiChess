@@ -46,7 +46,7 @@
 //#define FINDMEMORYLEAKS
 
 // Enable this to enable NNUE training code
-//#define NNUELEARN
+#define NNUELEARN
 
 
 #ifdef FINDMEMORYLEAKS
