@@ -744,7 +744,7 @@ int chessposition::getEval()
 
     int score;
 #ifdef NNUE
-    if (NnueReady)
+    if (NnueReady && abs(GETEGVAL(psqval)) < 400)
     {
         if (NnueReady == NnueRotate)
             score = NnueGetEval<NnueRotate>() + eps.eTempo;
