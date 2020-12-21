@@ -613,6 +613,8 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
 //
 #define NNUEDEFAULTSTR TOSTRING(NNUEDEFAULT)
 
+const int NnuePsqThreshold = 300;
+
 enum NnueType { NnueDisabled = 0, NnueRotate, NnueFlip };
 #define NNUEFILEVERSIONROTATE     0x7AF32F16u
 #define NNUEFILEVERSIONFLIP       0x7AF32F17u
