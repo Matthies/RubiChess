@@ -107,8 +107,8 @@
 #include <crtdbg.h>
 #endif
 
-#define allocalign64(x) _aligned_malloc(x, 64)
-#define freealigned64(x) _aligned_free(x)
+#define allocalign64(x) my_large_malloc(x)
+#define freealigned64(x) my_large_free(x)
 
 #else //_WIN32
 
@@ -603,8 +603,11 @@ string IndexToAlgebraic(int i);
 string AlgebraicFromShort(string s, chessposition *pos);
 void BitboardDraw(U64 b);
 U64 getTime();
+void* my_large_malloc(size_t s);
+void my_large_free(void *m);
 #ifdef STACKDEBUG
 void GetStackWalk(chessposition *pos, const char* message, const char* _File, int Line, int num, ...);
+
 #endif
 
 
