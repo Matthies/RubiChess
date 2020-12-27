@@ -131,7 +131,7 @@ U64 zobrist::getMaterialHash(chessposition *pos)
 transposition::~transposition()
 {
     if (size > 0)
-        freealigned64(table);
+        my_large_free(table);
 }
 
 int transposition::setSize(int sizeMb)
@@ -139,7 +139,7 @@ int transposition::setSize(int sizeMb)
     int restMb = 0;
     int msb = 0;
     if (size > 0)
-        freealigned64(table);
+        my_large_free(table);
     size_t clustersize = sizeof(transpositioncluster);
 #ifdef SDEBUG
     // Don't use the debugging part of the cluster for calculation of size to get consistent search with non SDEBUG
@@ -164,7 +164,7 @@ int transposition::setSize(int sizeMb)
     // settings)
     madvise(table, allocsize, MADV_HUGEPAGE);
 #else
-    table = (transpositioncluster*)allocalign64(allocsize);
+    table = (transpositioncluster*)my_large_malloc(allocsize);
 #endif
 
     clean();
