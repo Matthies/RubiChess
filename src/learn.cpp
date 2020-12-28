@@ -276,7 +276,7 @@ void flush_psv(int result, searchthread* thr)
 int depth = 4;
 int random_multi_pv = 0;
 int random_multi_pv_depth = 4;
-int random_multi_pv_diff = 32000;
+int random_multi_pv_diff = 50;
 int random_move_count = 5;
 int random_move_minply = 1;
 int random_move_maxply = 24;
@@ -285,6 +285,48 @@ int maxply = 400;
 int generate_draw = 1;
 U64 nodes = 0;
 int eval_limit = 32000;
+string book = "";
+
+size_t booklen;
+string** bookfen;
+
+
+static bool getBookPositions()
+{
+    ifstream is;
+    string epd;
+    booklen = 1;
+    if (book != "")
+    {
+        is.open(book);
+        if (!is)
+        {
+            cout << "Cannot open book file " << book << "\n";
+            return false;
+        }
+        while (getline(is, epd)) booklen++;
+    }
+    size_t allocsize = booklen * sizeof(string*);
+    bookfen = (string**)allocalign64(allocsize);
+    bookfen[0] = new string(STARTFEN);
+    if (book != "")
+    {
+        is.clear();
+        is.seekg(0);
+        booklen = 1;
+        while (getline(is, epd)) bookfen[booklen++] = new string(epd);
+    }
+    cout << " Book has " << booklen << " entries.\n";
+    return true;
+}
+
+static void freeBookPositions()
+{
+    while (booklen)
+        delete bookfen[--booklen];
+
+    freealigned64(bookfen);
+}
 
 
 static void gensfenthread(searchthread* thr)
@@ -311,7 +353,7 @@ static void gensfenthread(searchthread* thr)
         if (gensfenstop)
             return;
 
-        string startfen = en.chess960 ? frcStartFen() : STARTFEN;
+        string startfen = en.chess960 ? frcStartFen() : *bookfen[ranval(&rnd) % booklen];
         pos->getFromFen(startfen.c_str());
         
         vector<bool> random_move_flag;
@@ -465,7 +507,7 @@ SKIP_SAVE:
 void gensfen(vector<string> args)
 {
     U64 fensnum = 10000;
-    string outputfile;
+    string outputfile = "sfens.bin";
     size_t cs = args.size();
     size_t ci = 0;
 
@@ -493,6 +535,8 @@ void gensfen(vector<string> args)
             write_minply = stoi(args[ci++]);
         if (cmd == "eval_limit" && ci < cs)
             eval_limit = stoi(args[ci++]);
+        if (cmd == "book" && ci < cs)
+            book = args[ci++];
     }
 
     int tnum;
@@ -512,6 +556,7 @@ void gensfen(vector<string> args)
     cout << "random_multi_pv:       " << random_multi_pv << "\n";
     cout << "random_multi_pv_depth: " << random_multi_pv_depth << "\n";
     cout << "random_multi_pv_diff:  " << random_multi_pv_diff << "\n";
+    cout << "book:                  " << book << "\n";
 
     const U64 chunksneeded = fensnum / sfenchunksize + 1;
     ofstream os(outputfile, ios::binary);
@@ -520,6 +565,9 @@ void gensfen(vector<string> args)
         cout << "Cannot open file " << outputfile << "\n";
         return;
     }
+
+    if (!getBookPositions())
+        return;
 
     for (tnum = 0; tnum < en.Threads; tnum++)
     {
@@ -540,6 +588,7 @@ void gensfen(vector<string> args)
         {
             if (thr->chunkstate[i] == CHUNKFULL)
             {
+                os.write((char*)(thr->psvbuffer + i * sfenchunksize), sfenchunksize * sizeof(PackedSfenValue));
                 chunkswritten++;
                 thr->chunkstate[i] = CHUNKFREE;
                 cout << chunkswritten * sfenchunksize << " sfens written. (" << thr->index << ")\n";
@@ -555,6 +604,10 @@ void gensfen(vector<string> args)
     }
     cout << "gensfen finished.\n";
     en.MultiPV = old_multipv;
+
+    freeBookPositions();
+    for (tnum = 0; tnum < en.Threads; tnum++)
+        freealigned64(en.sthread[tnum].psvbuffer);
 }
 
 
