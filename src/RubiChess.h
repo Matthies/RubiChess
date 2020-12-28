@@ -603,6 +603,13 @@ string IndexToAlgebraic(int i);
 string AlgebraicFromShort(string s, chessposition *pos);
 void BitboardDraw(U64 b);
 U64 getTime();
+#ifdef _WIN32
+void* my_large_malloc(size_t s);
+void my_large_free(void *m);
+#else
+#define my_large_malloc(x) allocalign64(x)
+#define my_large_free(m) freealigned64(m)
+#endif
 #ifdef STACKDEBUG
 void GetStackWalk(chessposition *pos, const char* message, const char* _File, int Line, int num, ...);
 #endif
