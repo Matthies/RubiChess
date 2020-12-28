@@ -612,7 +612,6 @@ void my_large_free(void *m);
 #endif
 #ifdef STACKDEBUG
 void GetStackWalk(chessposition *pos, const char* message, const char* _File, int Line, int num, ...);
-
 #endif
 
 
