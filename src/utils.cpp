@@ -497,6 +497,80 @@ U64 getTime()
     return now.QuadPart;
 }
 
+static int UseLargePages = -1;
+size_t largePageSize = 0;
+
+void* my_large_malloc(size_t s)
+{
+    void* mem = nullptr;
+
+    if (UseLargePages < 0)
+    {
+        // Check and preparations for use of large pages... only once
+        HANDLE hProcessToken{ };
+        LUID luid{ };
+        largePageSize = GetLargePageMinimum();
+        UseLargePages = (bool)largePageSize;
+
+        // Activate SeLockMemoryPrivilege
+        UseLargePages = UseLargePages && OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hProcessToken);
+        UseLargePages = UseLargePages && LookupPrivilegeValue(NULL, SE_LOCK_MEMORY_NAME, &luid);
+        if (UseLargePages)
+        {
+            TOKEN_PRIVILEGES  tokenPriv{ };
+            TOKEN_PRIVILEGES prevTp{ };
+            DWORD prevTpLen = 0;
+
+            tokenPriv.PrivilegeCount = 1;
+            tokenPriv.Privileges[0].Luid = luid;
+            tokenPriv.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+            // Try to enable SeLockMemoryPrivilege. Note that even if AdjustTokenPrivileges() succeeds,
+            // we still need to query GetLastError() to ensure that the privileges were actually obtained.
+            UseLargePages = UseLargePages && AdjustTokenPrivileges(hProcessToken, FALSE, &tokenPriv, sizeof(TOKEN_PRIVILEGES), &prevTp, &prevTpLen);
+            UseLargePages = UseLargePages && (GetLastError() == ERROR_SUCCESS);
+            CloseHandle(hProcessToken);
+        }
+
+        cout << (UseLargePages ? "info string Allocation of memory uses large pages.\n" : "info string Allocation of memory: Large pages not available.\n");
+    }
+
+    if (UseLargePages)
+    {
+        // Round up size to full pages and allocate
+        s = (s + largePageSize - 1) & ~size_t(largePageSize - 1);
+        mem = VirtualAlloc(
+            NULL, s, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
+
+        if (!mem)
+            UseLargePages = 0;
+    }
+
+    if (!mem)
+        mem = _aligned_malloc(s, 64);
+
+    if (!mem)
+    {
+        cerr << "Cannot allocate memory (" << s << " bytes)\n";
+        exit(-1);
+    }
+
+    return mem;
+}
+
+
+void my_large_free(void* m)
+{
+    if (!m)
+        return;
+
+    if (UseLargePages)
+        VirtualFree(m, 0, MEM_RELEASE);
+    else
+        _aligned_free(m);
+}
+
+
 #else
 
 U64 getTime()

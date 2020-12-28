@@ -15,7 +15,7 @@ SOURCE=*.cpp
 OBJ=*.obj
 RELDIR=Release-clang
 CXXFLAGS=/GX /O2 /Oi /Ot /c -flto -fuse-ld=lld
-LDFLAGS=/OPT:REF /OPT:ICF
+LDFLAGS=/OPT:REF /OPT:ICF advapi32.lib
 PROFEXE=RubiChess-Prof
 NETURL=https://github.com/Matthies/NN/raw/main/
 TMPNN=_tmp.nnue
