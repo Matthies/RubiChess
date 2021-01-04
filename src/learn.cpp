@@ -559,7 +559,7 @@ void gensfen(vector<string> args)
     cout << "book:                  " << book << "\n";
 
     const U64 chunksneeded = fensnum / sfenchunksize + 1;
-    ofstream os(outputfile, ios::binary);
+    ofstream os(outputfile, ios::binary | fstream::app);
     if (!os)
     {
         cout << "Cannot open file " << outputfile << "\n";
