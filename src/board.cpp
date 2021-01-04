@@ -131,6 +131,11 @@ chessmove::chessmove()
     code = 0;
 }
 
+chessmove::chessmove(uint32_t c)
+{
+    code = c;
+}
+
 string chessmove::toString()
 {
     char s[8];

@@ -1152,6 +1152,7 @@ public:
     int value;
 
     chessmove();
+    chessmove(uint32_t c);
     chessmove(int from, int to, PieceCode piece);
     chessmove(int from, int to, PieceCode capture, PieceCode piece);
     chessmove(int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
