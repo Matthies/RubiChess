@@ -802,16 +802,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             continue;
 
         legalMoves++;
-        SDEBUGDO(isDebugMove, debugMovePlayed = true;)
-
-        // Check again for futility pruning now that we found a valid move
-        if (futilityPrune)
-        {
-            unplayMove(m);
-            SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_FUTILITYPRUNED;);
-            continue;
-        }
-
+        SDEBUGDO(isDebugMove, debugMovePlayed = true;);
         STATISTICSINC(moves_played[(bool)ISTACTICAL(m->code)]);
 
         LegalMoves[ply] = ms.legalmovenum;
