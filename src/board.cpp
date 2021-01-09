@@ -994,9 +994,7 @@ void chessposition::print(ostream* os)
     *os << "Repetitions: " + to_string(testRepetiton()) + "\n";
     *os << "Phase: " + to_string(phase()) + "\n";
     *os << "Pseudo-legal Moves: " + pseudolegalmoves.toStringWithValue() + "\n";
-#if defined(STACKDEBUG) || defined(SDEBUG)
     *os << "Moves in current search: " + movesOnStack() + "\n";
-#endif
     *os << "mstop: " + to_string(mstop) + "\n";
     *os << "Ply: " + to_string(ply) + "\n";
     *os << "rootheight: " + to_string(rootheight) + "\n";
@@ -1006,7 +1004,6 @@ void chessposition::print(ostream* os)
 }
 
 
-#if defined(STACKDEBUG) || defined(SDEBUG)
 string chessposition::movesOnStack()
 {
     string s = "";
@@ -1018,7 +1015,6 @@ string chessposition::movesOnStack()
     }
     return s;
 }
-#endif
 
 
 string chessposition::toFen()

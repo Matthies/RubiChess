@@ -566,7 +566,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     if (!isCheckbb && depth >= sps.nmmindepth && bestknownscore >= beta && (ply  >= nullmoveply || ply % 2 != nullmoveside) && ph < 255)
     {
         playNullMove();
-        int nmreduction = sps.nmmredbase + (depth / sps.nmmreddepthratio) + (bestknownscore - beta) / sps.nmmredevalratio + !PVNode * sps.nmmredpvfactor;
+        int nmreduction = min(depth, sps.nmmredbase + (depth / sps.nmmreddepthratio) + (bestknownscore - beta) / sps.nmmredevalratio + !PVNode * sps.nmmredpvfactor);
 
         score = -alphabeta<Pt>(-beta, -beta + 1, depth - nmreduction);
         unplayNullMove();
