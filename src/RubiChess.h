@@ -1722,6 +1722,7 @@ int root_probe_wdl(chessposition *pos);
 //
 #ifdef STATISTICS
 struct statistic {
+    int qs_mindepth;
     U64 qs_n[2];                // total calls to qs split into no check / check
     U64 qs_tt;                  // qs hits tt
     U64 qs_pat;                 // qs returns with pat score
