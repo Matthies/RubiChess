@@ -543,7 +543,10 @@ void* my_large_malloc(size_t s)
             NULL, s, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
 
         if (!mem)
-            UseLargePages = 0;
+        {
+            UseLargePages = -1;
+            cout << ("info string Allocation of memory: Large pages not available for this size. Disabled for now.\n");
+        }
     }
 
     if (!mem)
