@@ -567,7 +567,7 @@ void my_large_free(void* m)
     if (!m)
         return;
 
-    if (UseLargePages)
+    if (UseLargePages > 0)
         VirtualFree(m, 0, MEM_RELEASE);
     else
         _aligned_free(m);
