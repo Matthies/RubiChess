@@ -282,7 +282,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         if (staticeval >= beta)
         {
             STATISTICSINC(qs_pat);
-            tp.addHash(hash, staticeval, staticeval, HASHBETA, 0, 0);
+            tp.addHash(hash, staticeval, staticeval, HASHBETA, 0, hashmovecode);
 
             return staticeval;
         }
@@ -300,7 +300,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         if (Pt == Prune && bestExpectableScore < alpha)
         {
             STATISTICSINC(qs_delta);
-            tp.addHash(hash, bestExpectableScore, staticeval, HASHALPHA, 0, 0);
+            tp.addHash(hash, bestExpectableScore, staticeval, HASHALPHA, 0, hashmovecode);
             return staticeval;
         }
     }
