@@ -711,8 +711,8 @@ public:
 class NnueNetworkLayer : public NnueLayer
 {
 public:
-    int inputdims;
-    int outputdims;
+    unsigned int inputdims;
+    unsigned int outputdims;
 
     int32_t* bias;
     int8_t* weight;
@@ -722,6 +722,7 @@ public:
     bool ReadWeights(ifstream* is);
     uint32_t GetHash();
     void Propagate(clipped_t *input, int32_t *output);
+    void OutLayer(clipped_t* input, int32_t* output);
 };
 
 class NnueAccumulator

@@ -416,7 +416,7 @@ template <NnueType Nt> int chessposition::NnueGetEval()
     NnueCl1->Propagate(network.hidden1_values, network.hidden1_clipped);
     NnueHd2->Propagate(network.hidden1_clipped, network.hidden2_values);
     NnueCl1->Propagate(network.hidden2_values, network.hidden2_clipped);
-    NnueOut->Propagate(network.hidden2_clipped, &network.out_value);
+    NnueOut->OutLayer(network.hidden2_clipped, &network.out_value);
 
     return network.out_value / NnueValueScale;
 }
@@ -477,16 +477,72 @@ NnueNetworkLayer::~NnueNetworkLayer()
     freealigned64(weight);
 }
 
+
+#ifndef USE_NEON
+unsigned int bit_shuffle(unsigned v, int left, int right, unsigned mask)
+{
+    unsigned w = v & mask;
+    w = (w << left) | (w >> right);
+    return (v & ~mask) | (w & mask);
+}
+#endif
+
+unsigned int wt_idx(unsigned r, unsigned c, unsigned dims, bool outlayer)
+{
+    unsigned k = r * dims + c;
+
+#if defined(USE_AVX2)
+    if (dims > 32)
+        k = bit_shuffle(k, 1, 1, 0x18);
+    else if (dims == 32) {
+        k = bit_shuffle(k, 2, 1, 0x1c);
+        if (!outlayer)
+            k = bit_shuffle(k, 1, 3, 0xf0);
+    }
+#endif
+
+    return k;
+}
+
+#if 0
+static const char* read_hidden_weights(weight_t* w, unsigned dims, const char* d)
+{
+    for (unsigned r = 0; r < 32; r++)
+        for (unsigned c = 0; c < dims; c++)
+            w[wt_idx(r, c, dims)] = *d++;
+
+    return d;
+}
+
+static void read_output_weights(weight_t* w, const char* d)
+{
+    for (unsigned i = 0; i < 32; i++) {
+        unsigned c = i;
+#if defined(USE_AVX2)
+        c = bit_shuffle(c, 2, 1, 0x1c);
+#endif
+        w[c] = *d++;
+    }
+}
+#endif
+
 bool NnueNetworkLayer::ReadWeights(ifstream* is)
 {
-    int i;
-
     if (previous)
         previous->ReadWeights(is);
-    for (i = 0; i < outputdims; ++i)
+
+    for (unsigned int i = 0; i < outputdims; ++i)
         is->read((char*)&bias[i], sizeof(int32_t));
-    for (i = 0; i < outputdims * inputdims; ++i)
-        is->read((char*)&weight[i], sizeof(int8_t));
+
+    char* c = (char*)calloc(outputdims * inputdims, sizeof(char));
+    char* d = c;
+    is->read(c, outputdims * inputdims * sizeof(char));
+
+    for (unsigned int r = 0; r < outputdims; r++)
+        for (unsigned int c = 0; c < inputdims; c++)
+            weight[wt_idx(r, c, inputdims, outputdims == 1)] = *d++;
+
+    free(c);
 
     return !is->fail();
 
@@ -498,8 +554,265 @@ uint32_t NnueNetworkLayer::GetHash()
     return (NNUENETLAYERHASH + outputdims) ^ (previous->GetHash() >> 1) ^ (previous->GetHash() << 31);
 }
 
+
+// 32->1 propagation to output value
+void NnueNetworkLayer::OutLayer(clipped_t* input, int32_t* output)
+{
+#if defined(USE_AVX2)
+    __m256i* iv = (__m256i*)input;
+    __m256i* row = (__m256i*)weight;
+    __m256i prod = _mm256_maddubs_epi16(iv[0], row[0]);
+    prod = _mm256_madd_epi16(prod, _mm256_set1_epi16(1));
+    __m128i sum = _mm_add_epi32(
+        _mm256_castsi256_si128(prod), _mm256_extracti128_si256(prod, 1));
+    sum = _mm_add_epi32(sum, _mm_shuffle_epi32(sum, 0x1b));
+    *output = _mm_cvtsi128_si32(sum) + _mm_extract_epi32(sum, 1) + bias[0];
+
+#elif defined(USE_SSE2)
+    __m128i* iv = (__m128i*)input;
+    __m128i* row = (__m128i*)weights;
+#if defined(USE_SSSE3)
+    const __m128i kOnes = _mm_set1_epi16(1);
+    __m128i p0 = _mm_madd_epi16(_mm_maddubs_epi16(iv[0], row[0]), kOnes);
+    __m128i p1 = _mm_madd_epi16(_mm_maddubs_epi16(iv[1], row[1]), kOnes);
+    __m128i sum = _mm_add_epi32(p0, p1);
+#else
+    __m128i p0 = _mm_madd_epi16(iv[0], row[0]);
+    __m128i p1 = _mm_madd_epi16(iv[1], row[1]);
+    __m128i p2 = _mm_madd_epi16(iv[2], row[2]);
+    __m128i p3 = _mm_madd_epi16(iv[3], row[3]);
+    __m128i sum = _mm_add_epi32(_mm_add_epi32(p0, p1), _mm_add_epi32(p2, p3));
+#endif
+    sum = _mm_add_epi32(sum, _mm_shuffle_epi32(sum, 0xb));
+#if defined(USE_SSE41)
+    return _mm_cvtsi128_si32(sum) + _mm_extract_epi32(sum, 1) + biases[0];
+#else
+    sum = _mm_add_epi32(sum, _mm_shuffle_epi32(sum, 0x1));
+    return _mm_cvtsi128_si32(sum) + biases[0];
+#endif
+
+#elif defined(USE_MMX)
+    __m64* iv = (__m64*)input;
+    __m64* row = (__m64*)weights;
+    __m64 s0 = _mm_setzero_si64(), s1 = s0;
+    for (unsigned j = 0; j < 4; j++) {
+        s0 = _mm_add_pi32(s0, _mm_madd_pi16(row[2 * j], iv[2 * j]));
+        s1 = _mm_add_pi32(s1, _mm_madd_pi16(row[2 * j + 1], iv[2 * j + 1]));
+    }
+    __m64 sum = _mm_add_pi32(s0, s1);
+    sum = _mm_add_pi32(sum, _mm_unpackhi_pi32(sum, sum));
+    return _mm_cvtsi64_si32(sum) + biases[0];
+
+#elif defined(USE_NEON)
+    int8x8_t* iv = (int8x8_t*)input;
+    int8x8_t* row = (int8x8_t*)weights;
+    int32x4_t sum = { biases[0] };
+    for (unsigned j = 0; j < 2; j++) {
+        int16x8_t prod = vmull_s8(iv[2 * j], row[2 * j]);
+        prod = vmlal_s8(prod, iv[2 * j + 1], row[2 * j + 1]);
+        sum = vpadalq_s16(sum, prod);
+    }
+    return sum[0] + sum[1] + sum[2] + sum[3];
+
+#else
+    *output = bias[0];
+    for (unsigned j = 0; j < 32; j++)
+        *output += weight[j] * input[j];
+#endif
+
+}
+
+
 void NnueNetworkLayer::Propagate(clipped_t* input, int32_t* output)
 {
+    myassert(inputdims == 32 || inputdims % 128 == 0, nullptr, 1, inputdims);
+    myassert(outputdims % 8 == 0, nullptr, 1, outputdims);
+
+#if defined(USE_AVX2)
+    if (inputdims > 32) {
+        __m128i* outVec = (__m128i*)output;
+        __m128i* biasVec = (__m128i*)bias;
+        __m256i* inVec = (__m256i*)input;
+        for (unsigned i = 0; i < outputdims / 4; i++) {
+            __m256i* w = (__m256i*) & weight[4 * i * inputdims];
+            __m256i s0, s1, s2, s3;
+            s0 = s1 = s2 = s3 = _mm256_setzero_si256();
+            const __m256i kOnes = _mm256_set1_epi16(1);
+            __m256i p1, p2;
+            for (unsigned j = 0; j < inputdims / 64; j++) {
+                p1 = _mm256_maddubs_epi16(inVec[2 * j], w[0 * inputdims / 32 + 2 * j]);
+                p2 = _mm256_maddubs_epi16(inVec[2 * j + 1], w[0 * inputdims / 32 + 2 * j + 1]);
+                s0 = _mm256_add_epi32(s0, _mm256_madd_epi16(_mm256_add_epi16(p1, p2), kOnes));
+                p1 = _mm256_maddubs_epi16(inVec[2 * j], w[1 * inputdims / 32 + 2 * j]);
+                p2 = _mm256_maddubs_epi16(inVec[2 * j + 1], w[1 * inputdims / 32 + 2 * j + 1]);
+                s1 = _mm256_add_epi32(s1, _mm256_madd_epi16(_mm256_add_epi16(p1, p2), kOnes));
+                p1 = _mm256_maddubs_epi16(inVec[2 * j], w[2 * inputdims / 32 + 2 * j]);
+                p2 = _mm256_maddubs_epi16(inVec[2 * j + 1], w[2 * inputdims / 32 + 2 * j + 1]);
+                s2 = _mm256_add_epi32(s2, _mm256_madd_epi16(_mm256_add_epi16(p1, p2), kOnes));
+                p1 = _mm256_maddubs_epi16(inVec[2 * j], w[3 * inputdims / 32 + 2 * j]);
+                p2 = _mm256_maddubs_epi16(inVec[2 * j + 1], w[3 * inputdims / 32 + 2 * j + 1]);
+                s3 = _mm256_add_epi32(s3, _mm256_madd_epi16(_mm256_add_epi16(p1, p2), kOnes));
+            }
+            s0 = _mm256_hadd_epi32(s0, s1);
+            s2 = _mm256_hadd_epi32(s2, s3);
+            s0 = _mm256_hadd_epi32(s0, s2);
+            __m128i sum128 = _mm_add_epi32(_mm256_castsi256_si128(s0),
+                _mm256_extracti128_si256(s0, 1));
+            outVec[i] = _mm_add_epi32(sum128, biasVec[i]);
+        }
+    }
+    else { // 32x32 multiplication
+        __m256i* outVec = (__m256i*)output;
+        __m256i* biasVec = (__m256i*)bias;
+        __m128i* inVec = (__m128i*)input;
+        __m256i in0 = _mm256_broadcastsi128_si256(inVec[0]);
+        __m256i in1 = _mm256_broadcastsi128_si256(inVec[1]);
+        const __m256i kOnes = _mm256_set1_epi16(1);
+        __m256i s0, s1, s2, s3, p;
+        for (unsigned i = 0; i < outputdims / 8; i++) {
+            __m256i* w = (__m256i*) & weight[8 * i * 32];
+            s0 = _mm256_maddubs_epi16(in0, w[0]); // first half of rows 0,4
+            s0 = _mm256_madd_epi16(s0, kOnes);
+            p = _mm256_maddubs_epi16(in1, w[1]); // second half of rows 0,4
+            p = _mm256_madd_epi16(p, kOnes);
+            s0 = _mm256_add_epi32(s0, p);
+            s1 = _mm256_maddubs_epi16(in0, w[2]); // first half of rows 1,5
+            s1 = _mm256_madd_epi16(s1, kOnes);
+            p = _mm256_maddubs_epi16(in1, w[3]); // second half of rows 1,5
+            p = _mm256_madd_epi16(p, kOnes);
+            s1 = _mm256_add_epi32(s1, p);
+            s2 = _mm256_maddubs_epi16(in0, w[4]); // first half of rows 2,6
+            s2 = _mm256_madd_epi16(s2, kOnes);
+            p = _mm256_maddubs_epi16(in1, w[5]); // second half of rows 2,6
+            p = _mm256_madd_epi16(p, kOnes);
+            s2 = _mm256_add_epi32(s2, p);
+            s3 = _mm256_maddubs_epi16(in0, w[6]); // first half of rows 3,7
+            s3 = _mm256_madd_epi16(s3, kOnes);
+            p = _mm256_maddubs_epi16(in1, w[7]); // second half of rows 3,7
+            p = _mm256_madd_epi16(p, kOnes);
+            s3 = _mm256_add_epi32(s3, p);
+            s0 = _mm256_hadd_epi32(s0, s1);
+            s2 = _mm256_hadd_epi32(s2, s3);
+            s0 = _mm256_hadd_epi32(s0, s2);
+            outVec[i] = _mm256_add_epi32(s0, biasVec[i]);
+        }
+    }
+
+#elif defined(USE_SSSE3)
+    __m128i* outVec = (__m128i*)output;
+    __m128i* biasVec = (__m128i*)biases;
+    __m128i* inVec = (__m128i*)input;
+    const __m128i kOnes = _mm_set1_epi16(1);
+    for (unsigned i = 0; i < outDims / 4; i++) {
+        __m128i* w = (__m128i*) & weights[4 * i * inDims], p1, p2, s0, s1, s2, s3;
+        s0 = s1 = s2 = s3 = _mm_setzero_si128();
+        for (unsigned j = 0; j < inDims / 32; j++) {
+            p1 = _mm_maddubs_epi16(inVec[2 * j], w[0 * inDims / 16 + 2 * j]);
+            p2 = _mm_maddubs_epi16(inVec[2 * j + 1], w[0 * inDims / 16 + 2 * j + 1]);
+            s0 = _mm_add_epi32(s0, _mm_madd_epi16(_mm_add_epi16(p1, p2), kOnes));
+            p1 = _mm_maddubs_epi16(inVec[2 * j], w[1 * inDims / 16 + 2 * j]);
+            p2 = _mm_maddubs_epi16(inVec[2 * j + 1], w[1 * inDims / 16 + 2 * j + 1]);
+            s1 = _mm_add_epi32(s1, _mm_madd_epi16(_mm_add_epi16(p1, p2), kOnes));
+            p1 = _mm_maddubs_epi16(inVec[2 * j], w[2 * inDims / 16 + 2 * j]);
+            p2 = _mm_maddubs_epi16(inVec[2 * j + 1], w[2 * inDims / 16 + 2 * j + 1]);
+            s2 = _mm_add_epi32(s2, _mm_madd_epi16(_mm_add_epi16(p1, p2), kOnes));
+            p1 = _mm_maddubs_epi16(inVec[2 * j], w[3 * inDims / 16 + 2 * j]);
+            p2 = _mm_maddubs_epi16(inVec[2 * j + 1], w[3 * inDims / 16 + 2 * j + 1]);
+            s3 = _mm_add_epi32(s3, _mm_madd_epi16(_mm_add_epi16(p1, p2), kOnes));
+        }
+        s0 = _mm_hadd_epi32(s0, s1);
+        s2 = _mm_hadd_epi32(s2, s3);
+        s0 = _mm_hadd_epi32(s0, s2);
+        outVec[i] = _mm_add_epi32(s0, biasVec[i]);
+    }
+
+#elif defined(USE_SSE2)
+    __m128i* outVec = (__m128i*)output;
+    __m128i* biasVec = (__m128i*)biases;
+    __m128i* inVec = (__m128i*)input;
+    for (unsigned i = 0; i < outDims / 4; i++) {
+        __m128i* w = (__m128i*) & weights[4 * i * inDims], p, s0, s1, s2, s3;
+        s0 = s1 = s2 = s3 = _mm_setzero_si128();
+        for (unsigned j = 0; j < inDims / 8; j++) {
+            p = _mm_madd_epi16(inVec[j], w[0 * inDims / 8 + j]);
+            s0 = _mm_add_epi32(s0, p);
+            p = _mm_madd_epi16(inVec[j], w[1 * inDims / 8 + j]);
+            s1 = _mm_add_epi32(s1, p);
+            p = _mm_madd_epi16(inVec[j], w[2 * inDims / 8 + j]);
+            s2 = _mm_add_epi32(s2, p);
+            p = _mm_madd_epi16(inVec[j], w[3 * inDims / 8 + j]);
+            s3 = _mm_add_epi32(s3, p);
+        }
+        s0 = _mm_add_epi32(_mm_unpacklo_epi32(s0, s1), _mm_unpackhi_epi32(s0, s1));
+        s2 = _mm_add_epi32(_mm_unpacklo_epi32(s2, s3), _mm_unpackhi_epi32(s2, s3));
+        s0 = _mm_add_epi32(_mm_unpacklo_epi64(s0, s2), _mm_unpackhi_epi64(s0, s2));
+        outVec[i] = _mm_add_epi32(s0, biasVec[i]);
+    }
+
+#elif defined(USE_MMX)
+    __m64* outVec = (__m64*)output;
+    __m64* biasVec = (__m64*)biases;
+    __m64* inVec = (__m64*)input;
+    for (unsigned i = 0; i < outDims / 2; i++) {
+        __m64* w = (__m64*) & weights[2 * i * inDims], p, s0, s1, s2, s3;
+        s0 = s1 = s2 = s3 = _mm_setzero_si64();
+        for (unsigned j = 0; j < inDims / 8; j++) {
+            p = _mm_madd_pi16(inVec[2 * j + 0], w[0 * inDims / 4 + 2 * j + 0]);
+            s0 = _mm_add_pi32(s0, p);
+            p = _mm_madd_pi16(inVec[2 * j + 0], w[1 * inDims / 4 + 2 * j + 0]);
+            s1 = _mm_add_pi32(s1, p);
+            p = _mm_madd_pi16(inVec[2 * j + 1], w[0 * inDims / 4 + 2 * j + 1]);
+            s2 = _mm_add_pi32(s2, p);
+            p = _mm_madd_pi16(inVec[2 * j + 1], w[1 * inDims / 4 + 2 * j + 1]);
+            s3 = _mm_add_pi32(s3, p);
+        }
+        s0 = _mm_add_pi32(s0, s2);
+        s1 = _mm_add_pi32(s1, s3);
+        s0 = _mm_add_pi32(_mm_unpacklo_pi32(s0, s1), _mm_unpackhi_pi32(s0, s1));
+        outVec[i] = _mm_add_pi32(s0, biasVec[i]);
+    }
+
+#elif defined(USE_NEON)
+    int32x4_t* outVec = (int32x4_t*)output;
+    int32x4_t* biasVec = (int32x4_t*)biases;
+    int8x8_t* inVec = (int8x8_t*)input;
+    int16x8_t p;
+    for (unsigned i = 0; i < outDims / 4; i++) {
+        int8x8_t* w = (int8x8_t*)&weights[4 * i * inDims];
+        int32x4_t s0 = { 0 }, s1 = { 0 }, s2 = { 0 }, s3 = { 0 };
+        for (unsigned j = 0; j < inDims / 16; j++) {
+            p = vmull_s8(inVec[2 * j], w[0 * inDims / 8 + 2 * j]);
+            p = vmlal_s8(p, inVec[2 * j + 1], w[0 * inDims / 8 + 2 * j + 1]);
+            s0 = vpadalq_s16(s0, p);
+            p = vmull_s8(inVec[2 * j], w[1 * inDims / 8 + 2 * j]);
+            p = vmlal_s8(p, inVec[2 * j + 1], w[1 * inDims / 8 + 2 * j + 1]);
+            s1 = vpadalq_s16(s1, p);
+            p = vmull_s8(inVec[2 * j], w[2 * inDims / 8 + 2 * j]);
+            p = vmlal_s8(p, inVec[2 * j + 1], w[2 * inDims / 8 + 2 * j + 1]);
+            s2 = vpadalq_s16(s2, p);
+            p = vmull_s8(inVec[2 * j], w[3 * inDims / 8 + 2 * j]);
+            p = vmlal_s8(p, inVec[2 * j + 1], w[3 * inDims / 8 + 2 * j + 1]);
+            s3 = vpadalq_s16(s3, p);
+        }
+        s0 = vpaddq_s32(s0, s1);
+        s2 = vpaddq_s32(s2, s3);
+        s0 = vpaddq_s32(s0, s2);
+        outVec[i] = vaddq_s32(s0, biasVec[i]);
+    }
+
+#else
+    for (unsigned i = 0; i < outputdims; i++) {
+        unsigned int offset = i * inputdims;
+        int32_t sum = bias[i];
+        for (unsigned j = 0; j < inputdims; j++)
+            sum += weight[offset + j] * input[j];
+        output[i] = sum;
+    }
+
+#endif
+
+
+#if 0
 #if defined(USE_AVX2)
 const unsigned numChunks = inputdims / 32;
 __m256i* inVec = (__m256i*)input;
@@ -568,6 +881,7 @@ __m128i* inVec = (__m128i*)input;
 
 #endif
     }
+#endif
 }
 
 //
@@ -592,6 +906,7 @@ uint32_t NnueClippedRelu::GetHash()
 void NnueClippedRelu::Propagate(int32_t *input, clipped_t *output)
 {
 #if defined(USE_AVX2)
+#if 0
     const unsigned numChunks = dims / 32;
     const __m256i kZero = _mm256_setzero_si256();
     const __m256i kOffsets = _mm256_set_epi32(7, 3, 6, 2, 5, 1, 4, 0);
@@ -605,7 +920,18 @@ void NnueClippedRelu::Propagate(int32_t *input, clipped_t *output)
         out[i] = _mm256_permutevar8x32_epi32(_mm256_max_epi8(
             _mm256_packs_epi16(words0, words1), kZero), kOffsets);
     }
-
+#endif
+    const unsigned numChunks = dims / 32;
+    const __m256i kZero = _mm256_setzero_si256();
+    __m256i* in = (__m256i*)input;
+    __m256i* out = (__m256i*)output;
+    for (unsigned i = 0; i < numChunks; i++) {
+        __m256i words0 = _mm256_srai_epi16(_mm256_packs_epi32(
+            in[i * 4 + 0], in[i * 4 + 1]), NnueClippingShift);
+        __m256i words1 = _mm256_srai_epi16(_mm256_packs_epi32(
+            in[i * 4 + 2], in[i * 4 + 3]), NnueClippingShift);
+        out[i] = _mm256_max_epi8(_mm256_packs_epi16(words0, words1), kZero);
+    }
 #elif defined(USE_SSSE3)
     const unsigned numChunks = dims / 16;
     const __m128i k0x80s = _mm_set1_epi8(-128);
