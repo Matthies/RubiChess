@@ -584,7 +584,7 @@ void NnueNetworkLayer::OutLayer(clipped_t* input, int32_t* output)
 
 #elif defined(USE_MMX)
     __m64* iv = (__m64*)input;
-    __m64* row = (__m64*)weights;
+    __m64* row = (__m64*)weight;
     __m64 s0 = _mm_setzero_si64(), s1 = s0;
     for (unsigned j = 0; j < 4; j++) {
         s0 = _mm_add_pi32(s0, _mm_madd_pi16(row[2 * j], iv[2 * j]));
@@ -592,18 +592,18 @@ void NnueNetworkLayer::OutLayer(clipped_t* input, int32_t* output)
     }
     __m64 sum = _mm_add_pi32(s0, s1);
     sum = _mm_add_pi32(sum, _mm_unpackhi_pi32(sum, sum));
-    return _mm_cvtsi64_si32(sum) + biases[0];
+    *output = _mm_cvtsi64_si32(sum) + bias[0];
 
 #elif defined(USE_NEON)
     int8x8_t* iv = (int8x8_t*)input;
-    int8x8_t* row = (int8x8_t*)weights;
-    int32x4_t sum = { biases[0] };
+    int8x8_t* row = (int8x8_t*)weight;
+    int32x4_t sum = { bias[0] };
     for (unsigned j = 0; j < 2; j++) {
         int16x8_t prod = vmull_s8(iv[2 * j], row[2 * j]);
         prod = vmlal_s8(prod, iv[2 * j + 1], row[2 * j + 1]);
         sum = vpadalq_s16(sum, prod);
     }
-    return sum[0] + sum[1] + sum[2] + sum[3];
+    *output = sum[0] + sum[1] + sum[2] + sum[3];
 
 #else
     *output = bias[0];
