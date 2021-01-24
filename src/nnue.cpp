@@ -349,7 +349,6 @@ template <NnueType Nt> void chessposition::Transform(clipped_t *output)
 
 #if defined(USE_AVX2)
     const unsigned numChunks = NnueFtHalfdims / 32;
-    const __m256i kZero = _mm256_setzero_si256();
 
 #elif defined(USE_SSSE3)
     const unsigned numChunks = NnueFtHalfdims / 16;
@@ -371,12 +370,7 @@ template <NnueType Nt> void chessposition::Transform(clipped_t *output)
         for (unsigned i = 0; i < numChunks; i++) {
             __m256i sum0 = ((__m256i*)(*acc)[perspectives[p]])[i * 2 + 0];
             __m256i sum1 = ((__m256i*)(*acc)[perspectives[p]])[i * 2 + 1];
-#if 0
-            out[i] = _mm256_permute4x64_epi64(_mm256_max_epi8(
-                _mm256_packs_epi16(sum0, sum1), kZero), 0xd8);
-#else
             out[i] = _mm256_max_epi8(_mm256_packs_epi16(sum0, sum1), _mm256_setzero_si256());
-#endif
         }
 
 #elif defined(USE_SSSE3)
@@ -766,7 +760,7 @@ void NnueNetworkLayer::Propagate(clipped_t* input, int32_t* output)
 #elif defined(USE_NEON)
     const unsigned numChunks = inputdims / 16;
     int8x8_t* inVec = (int8x8_t*)input;
-    for (int i = 0; i < outputdims; ++i) {
+    for (unsigned i = 0; i < outputdims; ++i) {
         unsigned int offset = i * inputdims;
         int32x4_t sum = { bias[i] };
         int8x8_t* row = (int8x8_t*)&weight[offset];
