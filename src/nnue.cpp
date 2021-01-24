@@ -26,6 +26,8 @@
 
 #ifdef NNUE
 
+#define USE_SIMD
+
 #if defined(USE_AVX2)
 #include <immintrin.h>
 
@@ -37,6 +39,9 @@
 
 #elif defined(USE_NEON)
 #include <arm_neon.h>
+
+#else
+#undef USE_SIMD
 
 #endif
 
@@ -145,29 +150,30 @@ template <NnueType Nt> void chessposition::AppendChangedIndices(NnueIndexList ad
 }
 
 #ifdef USE_AVX2
+#define NUM_REGS 16
 #define SIMD_WIDTH 256
 typedef __m256i vec_t;
 #define vec_add_16(a,b) _mm256_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm256_sub_epi16(a,b)
-typedef __m256i vec8_t, vec16_t;
-typedef uint32_t mask_t;
-#define vec_clip_8(a,b) _mm256_max_epi8(vec_packs(a,b),_mm256_setzero_si256())
-#define NUM_REGS 16
 
 #elif defined(USE_SSE2)
+#define NUM_REGS 16
 #define SIMD_WIDTH 128
 typedef __m128i vec_t;
 #define vec_add_16(a,b) _mm_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm_sub_epi16(a,b)
 
-#endif
-
-#if defined(USE_SSE2)
+#elif defined(USE_NEON)
 #define NUM_REGS 16
+#define SIMD_WIDTH 128
+typedef int16x8_t vec_t;
+#define vec_add_16(a,b) vaddq_s16(a,b)
+#define vec_sub_16(a,b) vsubq_s16(a,b)
+
 #endif
 
 
-#if defined(USE_SSE2) || defined(USE_MMX)
+#ifdef USE_SIMD
 #define TILE_HEIGHT (NUM_REGS * SIMD_WIDTH / 16)
 #else
 #define TILE_HEIGHT NnueFtHalfdims
@@ -180,15 +186,17 @@ template <NnueType Nt> void chessposition::RefreshAccumulator()
     NnueIndexList activeIndices[2];
     activeIndices[0].size = activeIndices[1].size = 0;
     AppendActiveIndices<Nt>(activeIndices);
+#ifdef USE_SIMD
+    vec_t acc[NUM_REGS];
+#endif
 
     for (int c = 0; c < 2; c++) {
 
         for (int i = 0; i < NnueFtHalfdims / TILE_HEIGHT; i++) {
 
-#if defined(USE_SSE2) || defined(USE_MMX)
+#ifdef USE_SIMD
             vec_t* ft_biases_tile = (vec_t*)&NnueFt->bias[i * TILE_HEIGHT];
             vec_t* accTile = (vec_t*)&ac->accumulation[c][i * TILE_HEIGHT];
-            vec_t acc[NUM_REGS];
             for (unsigned j = 0; j < NUM_REGS; j++)
                 acc[j] = ft_biases_tile[j];
 
@@ -201,12 +209,12 @@ template <NnueType Nt> void chessposition::RefreshAccumulator()
                 unsigned index = activeIndices[c].values[k];
                 unsigned offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
 
-#if defined(USE_SSE2) || defined(USE_MMX)
+#ifdef USE_SIMD
                 vec_t* column = (vec_t*)&NnueFt->weight[offset];
                 for (unsigned j = 0; j < NUM_REGS; j++)
                     acc[j] = vec_add_16(acc[j], column[j]);
 
-#elif defined(USE_NEON)
+#elif defined(USE_NEONXX)
                 int16x8_t* accumulation = (int16x8_t*)&ac->accumulation[c][i * TILE_HEIGHT];
                 int16x8_t* column = (int16x8_t*)&NnueFt->weight[offset];
                 const unsigned numChunks = NnueFtHalfdims / 8;
@@ -220,7 +228,7 @@ template <NnueType Nt> void chessposition::RefreshAccumulator()
 #endif
             }
 
-#if defined(USE_SSE2) || defined(USE_MMX)
+#ifdef USE_SIMD
             for (unsigned j = 0; j < NUM_REGS; j++)
                 accTile[j] = acc[j];
 
@@ -257,21 +265,23 @@ template <NnueType Nt> bool chessposition::UpdateAccumulator()
 
     bool reset[2];
     AppendChangedIndices<Nt>(addedIndices, removedIndices, reset);
+#ifdef USE_SIMD
+    vec_t acc[NUM_REGS];
+#endif
 
     for (int i = 0; i < NnueFtHalfdims / TILE_HEIGHT; i++) {
         for (int c = 0; c < 2; c++) {
-#if defined(USE_SSE2) || defined(USE_MMX)
+#ifdef USE_SIMD
             vec_t* accTile = (vec_t*)&ac->accumulation[c][i * TILE_HEIGHT];
-            vec_t acc[NUM_REGS];
 
-#elif defined(USE_NEON)
+#elif defined(USE_NEONXX)
             const unsigned numChunks = NnueFtHalfdims / 8;
             int16x8_t* accTile = (int16x8_t*)&ac->accumulation[c][i * TILE_HEIGHT];
 
 #endif
 
             if (reset[c]) {
-#if defined(USE_SSE2) || defined(USE_MMX)
+#ifdef USE_SIMD
                 vec_t* ft_b_tile = (vec_t*)&NnueFt->bias[i * TILE_HEIGHT];
                 for (unsigned j = 0; j < NUM_REGS; j++)
                     acc[j] = ft_b_tile[j];
@@ -281,7 +291,7 @@ template <NnueType Nt> bool chessposition::UpdateAccumulator()
 #endif
             }
             else {
-#if defined(USE_SSE2) || defined(USE_MMX)
+#ifdef USE_SIMD
                 vec_t* prevAccTile = (vec_t*)&prevac->accumulation[c][i * TILE_HEIGHT];
                 for (unsigned j = 0; j < NUM_REGS; j++)
                     acc[j] = prevAccTile[j];
@@ -292,12 +302,12 @@ template <NnueType Nt> bool chessposition::UpdateAccumulator()
                 for (size_t k = 0; k < removedIndices[c].size; k++) {
                     int index = removedIndices[c].values[k];
                     const int offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
-#if defined(USE_SSE2) || defined(USE_MMX)
+#ifdef USE_SIMD
                     vec_t* column = (vec_t*)&NnueFt->weight[offset];
                     for (unsigned j = 0; j < NUM_REGS; j++)
                         acc[j] = vec_sub_16(acc[j], column[j]);
 
-#elif defined(USE_NEON)
+#elif defined(USE_NEONXX)
                     int16x8_t* column = (int16x8_t*)&NnueFt->weight[offset];
                     for (unsigned j = 0; j < numChunks; j++)
                         accTile[j] = vsubq_s16(accTile[j], column[j]);
@@ -312,12 +322,12 @@ template <NnueType Nt> bool chessposition::UpdateAccumulator()
             for (size_t k = 0; k < addedIndices[c].size; k++) {
                 int index = addedIndices[c].values[k];
                 const int offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
-#if defined(USE_SSE2) || defined(USE_MMX)
+#ifdef USE_SIMD
                 vec_t* column = (vec_t*)&NnueFt->weight[offset];
                 for (unsigned j = 0; j < NUM_REGS; j++)
                     acc[j] = vec_add_16(acc[j], column[j]);
 
-#elif defined(USE_NEON)
+#elif defined(USE_NEONXX)
                 int16x8_t* column = (int16x8_t*)&NnueFt->weight[offset];
                 for (unsigned j = 0; j < numChunks; j++)
                     accTile[j] = vaddq_s16(accTile[j], column[j]);
@@ -328,7 +338,7 @@ template <NnueType Nt> bool chessposition::UpdateAccumulator()
 #endif
             }
 
-#if defined(USE_SSE2) || defined(USE_MMX)
+#ifdef USE_SIMD
             for (unsigned j = 0; j < NUM_REGS; j++)
                 accTile[j] = acc[j];
 
