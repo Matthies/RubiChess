@@ -764,6 +764,8 @@ void NnueNetworkLayer::Propagate(clipped_t* input, int32_t* output)
     }
 
 #elif defined(USE_NEON)
+    const unsigned numChunks = inputdims / 16;
+    int8x8_t* inVec = (int8x8_t*)input;
     for (int i = 0; i < outputdims; ++i) {
         unsigned int offset = i * inputdims;
         int32x4_t sum = { bias[i] };
