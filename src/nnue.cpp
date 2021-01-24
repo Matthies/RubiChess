@@ -23,7 +23,7 @@
 //
 
 #include "RubiChess.h"
-
+#define NEWSIMD
 #ifdef NNUE
 
 #if defined(USE_AVX2)
@@ -149,6 +149,10 @@ template <NnueType Nt> void chessposition::AppendChangedIndices(NnueIndexList ad
 typedef __m256i vec_t;
 #define vec_add_16(a,b) _mm256_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm256_sub_epi16(a,b)
+typedef __m256i vec8_t, vec16_t;
+typedef uint32_t mask_t;
+#define vec_clip_8(a,b) _mm256_max_epi8(vec_packs(a,b),_mm256_setzero_si256())
+#define NUM_REGS 16
 
 #elif defined(USE_SSE2)
 #define SIMD_WIDTH 128
@@ -367,11 +371,16 @@ template <NnueType Nt> void chessposition::Transform(clipped_t *output)
         for (unsigned i = 0; i < numChunks; i++) {
             __m256i sum0 = ((__m256i*)(*acc)[perspectives[p]])[i * 2 + 0];
             __m256i sum1 = ((__m256i*)(*acc)[perspectives[p]])[i * 2 + 1];
+#if 0
             out[i] = _mm256_permute4x64_epi64(_mm256_max_epi8(
                 _mm256_packs_epi16(sum0, sum1), kZero), 0xd8);
+#else
+            out[i] = _mm256_max_epi8(_mm256_packs_epi16(sum0, sum1), _mm256_setzero_si256());
+#endif
         }
 
 #elif defined(USE_SSSE3)
+
         __m128i* out = (__m128i*) & output[offset];
         for (unsigned i = 0; i < numChunks; i++) {
             __m128i sum0 = ((__m128i*)(*acc)[perspectives[p]])[i * 2 + 0];
@@ -490,7 +499,7 @@ unsigned int bit_shuffle(unsigned v, int left, int right, unsigned mask)
 unsigned int wt_idx(unsigned r, unsigned c, unsigned dims, bool outlayer)
 {
     unsigned k = r * dims + c;
-
+#ifdef NEWSIMD
 #if defined(USE_AVX2)
     if (dims > 32)
         k = bit_shuffle(k, 1, 1, 0x18);
@@ -500,31 +509,10 @@ unsigned int wt_idx(unsigned r, unsigned c, unsigned dims, bool outlayer)
             k = bit_shuffle(k, 1, 3, 0xf0);
     }
 #endif
-
+#endif
     return k;
 }
 
-#if 0
-static const char* read_hidden_weights(weight_t* w, unsigned dims, const char* d)
-{
-    for (unsigned r = 0; r < 32; r++)
-        for (unsigned c = 0; c < dims; c++)
-            w[wt_idx(r, c, dims)] = *d++;
-
-    return d;
-}
-
-static void read_output_weights(weight_t* w, const char* d)
-{
-    for (unsigned i = 0; i < 32; i++) {
-        unsigned c = i;
-#if defined(USE_AVX2)
-        c = bit_shuffle(c, 2, 1, 0x1c);
-#endif
-        w[c] = *d++;
-    }
-}
-#endif
 
 bool NnueNetworkLayer::ReadWeights(ifstream* is)
 {
@@ -570,7 +558,7 @@ void NnueNetworkLayer::OutLayer(clipped_t* input, int32_t* output)
 
 #elif defined(USE_SSE2)
     __m128i* iv = (__m128i*)input;
-    __m128i* row = (__m128i*)weights;
+    __m128i* row = (__m128i*)weight;
 #if defined(USE_SSSE3)
     const __m128i kOnes = _mm_set1_epi16(1);
     __m128i p0 = _mm_madd_epi16(_mm_maddubs_epi16(iv[0], row[0]), kOnes);
@@ -588,7 +576,7 @@ void NnueNetworkLayer::OutLayer(clipped_t* input, int32_t* output)
     return _mm_cvtsi128_si32(sum) + _mm_extract_epi32(sum, 1) + biases[0];
 #else
     sum = _mm_add_epi32(sum, _mm_shuffle_epi32(sum, 0x1));
-    return _mm_cvtsi128_si32(sum) + biases[0];
+    *output = _mm_cvtsi128_si32(sum) + bias[0];
 #endif
 
 #elif defined(USE_MMX)
@@ -625,6 +613,7 @@ void NnueNetworkLayer::OutLayer(clipped_t* input, int32_t* output)
 
 void NnueNetworkLayer::Propagate(clipped_t* input, int32_t* output)
 {
+#ifdef NEWSIMD
     myassert(inputdims == 32 || inputdims % 128 == 0, nullptr, 1, inputdims);
     myassert(outputdims % 8 == 0, nullptr, 1, outputdims);
 
@@ -700,24 +689,24 @@ void NnueNetworkLayer::Propagate(clipped_t* input, int32_t* output)
 
 #elif defined(USE_SSSE3)
     __m128i* outVec = (__m128i*)output;
-    __m128i* biasVec = (__m128i*)biases;
+    __m128i* biasVec = (__m128i*)bias;
     __m128i* inVec = (__m128i*)input;
     const __m128i kOnes = _mm_set1_epi16(1);
-    for (unsigned i = 0; i < outDims / 4; i++) {
-        __m128i* w = (__m128i*) & weights[4 * i * inDims], p1, p2, s0, s1, s2, s3;
+    for (unsigned i = 0; i < outputdims / 4; i++) {
+        __m128i* w = (__m128i*) & weight[4 * i * inputdims], p1, p2, s0, s1, s2, s3;
         s0 = s1 = s2 = s3 = _mm_setzero_si128();
-        for (unsigned j = 0; j < inDims / 32; j++) {
-            p1 = _mm_maddubs_epi16(inVec[2 * j], w[0 * inDims / 16 + 2 * j]);
-            p2 = _mm_maddubs_epi16(inVec[2 * j + 1], w[0 * inDims / 16 + 2 * j + 1]);
+        for (unsigned j = 0; j < inputdims / 32; j++) {
+            p1 = _mm_maddubs_epi16(inVec[2 * j], w[0 * inputdims / 16 + 2 * j]);
+            p2 = _mm_maddubs_epi16(inVec[2 * j + 1], w[0 * inputdims / 16 + 2 * j + 1]);
             s0 = _mm_add_epi32(s0, _mm_madd_epi16(_mm_add_epi16(p1, p2), kOnes));
-            p1 = _mm_maddubs_epi16(inVec[2 * j], w[1 * inDims / 16 + 2 * j]);
-            p2 = _mm_maddubs_epi16(inVec[2 * j + 1], w[1 * inDims / 16 + 2 * j + 1]);
+            p1 = _mm_maddubs_epi16(inVec[2 * j], w[1 * inputdims / 16 + 2 * j]);
+            p2 = _mm_maddubs_epi16(inVec[2 * j + 1], w[1 * inputdims / 16 + 2 * j + 1]);
             s1 = _mm_add_epi32(s1, _mm_madd_epi16(_mm_add_epi16(p1, p2), kOnes));
-            p1 = _mm_maddubs_epi16(inVec[2 * j], w[2 * inDims / 16 + 2 * j]);
-            p2 = _mm_maddubs_epi16(inVec[2 * j + 1], w[2 * inDims / 16 + 2 * j + 1]);
+            p1 = _mm_maddubs_epi16(inVec[2 * j], w[2 * inputdims / 16 + 2 * j]);
+            p2 = _mm_maddubs_epi16(inVec[2 * j + 1], w[2 * inputdims / 16 + 2 * j + 1]);
             s2 = _mm_add_epi32(s2, _mm_madd_epi16(_mm_add_epi16(p1, p2), kOnes));
-            p1 = _mm_maddubs_epi16(inVec[2 * j], w[3 * inDims / 16 + 2 * j]);
-            p2 = _mm_maddubs_epi16(inVec[2 * j + 1], w[3 * inDims / 16 + 2 * j + 1]);
+            p1 = _mm_maddubs_epi16(inVec[2 * j], w[3 * inputdims / 16 + 2 * j]);
+            p2 = _mm_maddubs_epi16(inVec[2 * j + 1], w[3 * inputdims / 16 + 2 * j + 1]);
             s3 = _mm_add_epi32(s3, _mm_madd_epi16(_mm_add_epi16(p1, p2), kOnes));
         }
         s0 = _mm_hadd_epi32(s0, s1);
@@ -812,7 +801,7 @@ void NnueNetworkLayer::Propagate(clipped_t* input, int32_t* output)
 #endif
 
 
-#if 0
+#else
 #if defined(USE_AVX2)
 const unsigned numChunks = inputdims / 32;
 __m256i* inVec = (__m256i*)input;
@@ -906,7 +895,7 @@ uint32_t NnueClippedRelu::GetHash()
 void NnueClippedRelu::Propagate(int32_t *input, clipped_t *output)
 {
 #if defined(USE_AVX2)
-#if 0
+#ifndef NEWSIMD
     const unsigned numChunks = dims / 32;
     const __m256i kZero = _mm256_setzero_si256();
     const __m256i kOffsets = _mm256_set_epi32(7, 3, 6, 2, 5, 1, 4, 0);
@@ -920,7 +909,7 @@ void NnueClippedRelu::Propagate(int32_t *input, clipped_t *output)
         out[i] = _mm256_permutevar8x32_epi32(_mm256_max_epi8(
             _mm256_packs_epi16(words0, words1), kZero), kOffsets);
     }
-#endif
+#else
     const unsigned numChunks = dims / 32;
     const __m256i kZero = _mm256_setzero_si256();
     __m256i* in = (__m256i*)input;
@@ -932,6 +921,7 @@ void NnueClippedRelu::Propagate(int32_t *input, clipped_t *output)
             in[i * 4 + 2], in[i * 4 + 3]), NnueClippingShift);
         out[i] = _mm256_max_epi8(_mm256_packs_epi16(words0, words1), kZero);
     }
+#endif
 #elif defined(USE_SSSE3)
     const unsigned numChunks = dims / 16;
     const __m128i k0x80s = _mm_set1_epi8(-128);
