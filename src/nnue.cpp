@@ -214,13 +214,6 @@ template <NnueType Nt> void chessposition::RefreshAccumulator()
                 for (unsigned j = 0; j < NUM_REGS; j++)
                     acc[j] = vec_add_16(acc[j], column[j]);
 
-#elif defined(USE_NEONXX)
-                int16x8_t* accumulation = (int16x8_t*)&ac->accumulation[c][i * TILE_HEIGHT];
-                int16x8_t* column = (int16x8_t*)&NnueFt->weight[offset];
-                const unsigned numChunks = NnueFtHalfdims / 8;
-                for (unsigned j = 0; j < numChunks; j++)
-                    accumulation[j] = vaddq_s16(accumulation[j], column[j]);
-
 #else
 
                 for (unsigned j = 0; j < NnueFtHalfdims; j++)
@@ -273,11 +266,6 @@ template <NnueType Nt> bool chessposition::UpdateAccumulator()
         for (int c = 0; c < 2; c++) {
 #ifdef USE_SIMD
             vec_t* accTile = (vec_t*)&ac->accumulation[c][i * TILE_HEIGHT];
-
-#elif defined(USE_NEONXX)
-            const unsigned numChunks = NnueFtHalfdims / 8;
-            int16x8_t* accTile = (int16x8_t*)&ac->accumulation[c][i * TILE_HEIGHT];
-
 #endif
 
             if (reset[c]) {
@@ -307,11 +295,6 @@ template <NnueType Nt> bool chessposition::UpdateAccumulator()
                     for (unsigned j = 0; j < NUM_REGS; j++)
                         acc[j] = vec_sub_16(acc[j], column[j]);
 
-#elif defined(USE_NEONXX)
-                    int16x8_t* column = (int16x8_t*)&NnueFt->weight[offset];
-                    for (unsigned j = 0; j < numChunks; j++)
-                        accTile[j] = vsubq_s16(accTile[j], column[j]);
-
 #else
                     for (int j = 0; j < NnueFtHalfdims; j++)
                         ac->accumulation[c][i * TILE_HEIGHT + j] -= NnueFt->weight[offset + j];
@@ -326,11 +309,6 @@ template <NnueType Nt> bool chessposition::UpdateAccumulator()
                 vec_t* column = (vec_t*)&NnueFt->weight[offset];
                 for (unsigned j = 0; j < NUM_REGS; j++)
                     acc[j] = vec_add_16(acc[j], column[j]);
-
-#elif defined(USE_NEONXX)
-                int16x8_t* column = (int16x8_t*)&NnueFt->weight[offset];
-                for (unsigned j = 0; j < numChunks; j++)
-                    accTile[j] = vaddq_s16(accTile[j], column[j]);
 
 #else
                 for (int j = 0; j < TILE_HEIGHT; j++)
