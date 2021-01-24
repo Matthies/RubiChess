@@ -764,33 +764,17 @@ void NnueNetworkLayer::Propagate(clipped_t* input, int32_t* output)
     }
 
 #elif defined(USE_NEON)
-    int32x4_t* outVec = (int32x4_t*)output;
-    int32x4_t* biasVec = (int32x4_t*)bias;
-    int8x8_t* inVec = (int8x8_t*)input;
-    int16x8_t p;
-    for (unsigned i = 0; i < outputdims / 4; i++) {
-        int8x8_t* w = (int8x8_t*)&weight[4 * i * inputdims];
-        int32x4_t s0 = { 0 }, s1 = { 0 }, s2 = { 0 }, s3 = { 0 };
-        for (unsigned j = 0; j < inputdims / 16; j++) {
-            p = vmull_s8(inVec[2 * j], w[0 * inputdims / 8 + 2 * j]);
-            p = vmlal_s8(p, inVec[2 * j + 1], w[0 * inputdims / 8 + 2 * j + 1]);
-            s0 = vpadalq_s16(s0, p);
-            p = vmull_s8(inVec[2 * j], w[1 * inputdims / 8 + 2 * j]);
-            p = vmlal_s8(p, inVec[2 * j + 1], w[1 * inputdims / 8 + 2 * j + 1]);
-            s1 = vpadalq_s16(s1, p);
-            p = vmull_s8(inVec[2 * j], w[2 * inputdims / 8 + 2 * j]);
-            p = vmlal_s8(p, inVec[2 * j + 1], w[2 * inputdims / 8 + 2 * j + 1]);
-            s2 = vpadalq_s16(s2, p);
-            p = vmull_s8(inVec[2 * j], w[3 * inputdims / 8 + 2 * j]);
-            p = vmlal_s8(p, inVec[2 * j + 1], w[3 * inputdims / 8 + 2 * j + 1]);
-            s3 = vpadalq_s16(s3, p);
+    for (int i = 0; i < outputdims; ++i) {
+        unsigned int offset = i * inputdims;
+        int32x4_t sum = { bias[i] };
+        int8x8_t* row = (int8x8_t*)&weight[offset];
+        for (unsigned j = 0; j < numChunks; j++) {
+            int16x8_t product = vmull_s8(inVec[j * 2], row[j * 2]);
+            product = vmlal_s8(product, inVec[j * 2 + 1], row[j * 2 + 1]);
+            sum = vpadalq_s16(sum, product);
         }
-        s0 = vpaddq_s32(s0, s1);
-        s2 = vpaddq_s32(s2, s3);
-        s0 = vpaddq_s32(s0, s2);
-        outVec[i] = vaddq_s32(s0, biasVec[i]);
+        output[i] = sum[0] + sum[1] + sum[2] + sum[3];
     }
-
 #else
     for (unsigned i = 0; i < outputdims; i++) {
         unsigned int offset = i * inputdims;
