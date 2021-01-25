@@ -152,21 +152,29 @@ template <NnueType Nt> void chessposition::AppendChangedIndices(NnueIndexList ad
 #ifdef USE_AVX2
 #define NUM_REGS 16
 #define SIMD_WIDTH 256
-typedef __m256i vec_t;
+typedef __m256i vec8_t, vec16_t;
 #define vec_add_16(a,b) _mm256_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm256_sub_epi16(a,b)
+#define vec_packs(a,b) _mm256_packs_epi16(a,b)
+#define vec_clip_8(a,b) _mm256_max_epi8(vec_packs(a,b),_mm256_setzero_si256())
 
 #elif defined(USE_SSE2)
 #define NUM_REGS 16
 #define SIMD_WIDTH 128
-typedef __m128i vec_t;
+typedef __m128i vec8_t, vec16_t;
 #define vec_add_16(a,b) _mm_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm_sub_epi16(a,b)
+#define vec_packs(a,b) _mm_packs_epi16(a,b)
+#if defined(USE_SSSE3)
+#define vec_clip_8(a,b) vec_packs(_mm_max_epi16(a,_mm_setzero_si128()),_mm_max_epi16(b,_mm_setzero_si128()))
+#else
+#define vec_clip_16(a) _mm_min_epi16(_mm_max_epi16(a,_mm_setzero_si128()),_mm_set1_epi16(127))
+#endif
 
 #elif defined(USE_NEON)
 #define NUM_REGS 16
 #define SIMD_WIDTH 128
-typedef int16x8_t vec_t;
+typedef int16x8_t vec8_t, vec16_t;
 #define vec_add_16(a,b) vaddq_s16(a,b)
 #define vec_sub_16(a,b) vsubq_s16(a,b)
 
@@ -187,7 +195,7 @@ template <NnueType Nt> void chessposition::RefreshAccumulator()
     activeIndices[0].size = activeIndices[1].size = 0;
     AppendActiveIndices<Nt>(activeIndices);
 #ifdef USE_SIMD
-    vec_t acc[NUM_REGS];
+    vec16_t acc[NUM_REGS];
 #endif
 
     for (int c = 0; c < 2; c++) {
@@ -195,8 +203,8 @@ template <NnueType Nt> void chessposition::RefreshAccumulator()
         for (int i = 0; i < NnueFtHalfdims / TILE_HEIGHT; i++) {
 
 #ifdef USE_SIMD
-            vec_t* ft_biases_tile = (vec_t*)&NnueFt->bias[i * TILE_HEIGHT];
-            vec_t* accTile = (vec_t*)&ac->accumulation[c][i * TILE_HEIGHT];
+            vec16_t* ft_biases_tile = (vec16_t*)&NnueFt->bias[i * TILE_HEIGHT];
+            vec16_t* accTile = (vec16_t*)&ac->accumulation[c][i * TILE_HEIGHT];
             for (unsigned j = 0; j < NUM_REGS; j++)
                 acc[j] = ft_biases_tile[j];
 
@@ -210,7 +218,7 @@ template <NnueType Nt> void chessposition::RefreshAccumulator()
                 unsigned offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
 
 #ifdef USE_SIMD
-                vec_t* column = (vec_t*)&NnueFt->weight[offset];
+                vec16_t* column = (vec16_t*)&NnueFt->weight[offset];
                 for (unsigned j = 0; j < NUM_REGS; j++)
                     acc[j] = vec_add_16(acc[j], column[j]);
 
@@ -259,18 +267,18 @@ template <NnueType Nt> bool chessposition::UpdateAccumulator()
     bool reset[2];
     AppendChangedIndices<Nt>(addedIndices, removedIndices, reset);
 #ifdef USE_SIMD
-    vec_t acc[NUM_REGS];
+    vec16_t acc[NUM_REGS];
 #endif
 
     for (int i = 0; i < NnueFtHalfdims / TILE_HEIGHT; i++) {
         for (int c = 0; c < 2; c++) {
 #ifdef USE_SIMD
-            vec_t* accTile = (vec_t*)&ac->accumulation[c][i * TILE_HEIGHT];
+            vec16_t* accTile = (vec16_t*)&ac->accumulation[c][i * TILE_HEIGHT];
 #endif
 
             if (reset[c]) {
 #ifdef USE_SIMD
-                vec_t* ft_b_tile = (vec_t*)&NnueFt->bias[i * TILE_HEIGHT];
+                vec16_t* ft_b_tile = (vec16_t*)&NnueFt->bias[i * TILE_HEIGHT];
                 for (unsigned j = 0; j < NUM_REGS; j++)
                     acc[j] = ft_b_tile[j];
 #else
@@ -280,7 +288,7 @@ template <NnueType Nt> bool chessposition::UpdateAccumulator()
             }
             else {
 #ifdef USE_SIMD
-                vec_t* prevAccTile = (vec_t*)&prevac->accumulation[c][i * TILE_HEIGHT];
+                vec16_t* prevAccTile = (vec16_t*)&prevac->accumulation[c][i * TILE_HEIGHT];
                 for (unsigned j = 0; j < NUM_REGS; j++)
                     acc[j] = prevAccTile[j];
 #else
@@ -291,7 +299,7 @@ template <NnueType Nt> bool chessposition::UpdateAccumulator()
                     int index = removedIndices[c].values[k];
                     const int offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
 #ifdef USE_SIMD
-                    vec_t* column = (vec_t*)&NnueFt->weight[offset];
+                    vec16_t* column = (vec16_t*)&NnueFt->weight[offset];
                     for (unsigned j = 0; j < NUM_REGS; j++)
                         acc[j] = vec_sub_16(acc[j], column[j]);
 
@@ -306,7 +314,7 @@ template <NnueType Nt> bool chessposition::UpdateAccumulator()
                 int index = addedIndices[c].values[k];
                 const int offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
 #ifdef USE_SIMD
-                vec_t* column = (vec_t*)&NnueFt->weight[offset];
+                vec16_t* column = (vec16_t*)&NnueFt->weight[offset];
                 for (unsigned j = 0; j < NUM_REGS; j++)
                     acc[j] = vec_add_16(acc[j], column[j]);
 
@@ -335,55 +343,37 @@ template <NnueType Nt> void chessposition::Transform(clipped_t *output)
 
     int16_t(*acc)[2][256] = &accumulator[mstop].accumulation;
 
-#if defined(USE_AVX2)
-    const unsigned numChunks = NnueFtHalfdims / 32;
-
-#elif defined(USE_SSSE3)
-    const unsigned numChunks = NnueFtHalfdims / 16;
-    const __m128i k0x80s = _mm_set1_epi8(-128);
-
-#elif defined(USE_NEON)
-    const unsigned numChunks = NnueFtHalfdims / 8;
-    const int8x8_t kZero = { 0 };
-
-#endif
-
     const int perspectives[2] = { state & S2MMASK, !(state & S2MMASK) };
     for (int p = 0; p < 2; p++)
     {
         const unsigned int offset = NnueFtHalfdims * p;
 
-#if defined(USE_AVX2)
-        __m256i* out = (__m256i*) & output[offset];
-        for (unsigned i = 0; i < numChunks; i++) {
-            __m256i sum0 = ((__m256i*)(*acc)[perspectives[p]])[i * 2 + 0];
-            __m256i sum1 = ((__m256i*)(*acc)[perspectives[p]])[i * 2 + 1];
-            out[i] = _mm256_max_epi8(_mm256_packs_epi16(sum0, sum1), _mm256_setzero_si256());
-        }
+#ifdef USE_SIMD
+        const unsigned numChunks = (16 * NnueFtHalfdims) / SIMD_WIDTH;
 
-#elif defined(USE_SSSE3)
-
-        __m128i* out = (__m128i*) & output[offset];
-        for (unsigned i = 0; i < numChunks; i++) {
-            __m128i sum0 = ((__m128i*)(*acc)[perspectives[p]])[i * 2 + 0];
-            __m128i sum1 = ((__m128i*)(*acc)[perspectives[p]])[i * 2 + 1];
-            __m128i packedbytes = _mm_packs_epi16(sum0, sum1);
-            out[i] = _mm_subs_epi8(_mm_adds_epi8(packedbytes, k0x80s), k0x80s);
-        }
-
-#elif defined(USE_NEON)
-        int8x8_t* out = (int8x8_t*)&output[offset];
-        for (unsigned i = 0; i < numChunks; i++) {
-            int16x8_t sum = ((int16x8_t*)(*acc)[perspectives[p]])[i];
-            out[i] = vmax_s8(vqmovn_s16(sum), kZero);
+#if defined(USE_SSSE3) || defined(USE_NEON)
+        vec8_t* out = (vec8_t*)&output[offset];
+        for (unsigned i = 0; i < numChunks / 2; i++) {
+            vec16_t s0 = ((vec16_t*)(*acc)[perspectives[p]])[i * 2];
+            vec16_t s1 = ((vec16_t*)(*acc)[perspectives[p]])[i * 2 + 1];
+            out[i] = vec_clip_8(s0, s1);
         }
 
 #else
-        for (int i = 0; i < NnueFtHalfdims; i++)
-        {
+        vec16_t* out = (vec16_t*)&output[offset];
+        for (unsigned i = 0; i < numChunks; i++) {
+            vec16_t sum = ((vec16_t*)(*acc)[perspectives[p]])[i];
+            out[i] = vec_clip_16(sum);
+        }
+
+#endif
+#else
+        for (unsigned i = 0; i < NnueFtHalfdims; i++) {
             int16_t sum = (*acc)[perspectives[p]][i];
+            //output[offset + i] = clamp(sum, 0, 127);
             output[offset + i] = max<int16_t>(0, min<int16_t>(127, sum));
         }
+
 #endif
     }
 }
@@ -458,8 +448,8 @@ NnueNetworkLayer::NnueNetworkLayer(NnueLayer* prev, int id, int od) : NnueLayer(
     outputdims = od;
     size_t allocsize = od * sizeof(int32_t);
     bias = (int32_t*)allocalign64(allocsize);
-    allocsize = (size_t)id * (size_t)od * sizeof(int8_t);
-    weight = (int8_t*)allocalign64(allocsize);
+    allocsize = (size_t)id * (size_t)od * sizeof(weight_t);
+    weight = (weight_t*)allocalign64(allocsize);
 }
 
 NnueNetworkLayer::~NnueNetworkLayer()
@@ -563,18 +553,6 @@ void NnueNetworkLayer::OutLayer(clipped_t* input, int32_t* output)
     sum = _mm_add_epi32(sum, _mm_shuffle_epi32(sum, 0x1));
     *output = _mm_cvtsi128_si32(sum) + bias[0];
 #endif
-
-#elif defined(USE_MMX)
-    __m64* iv = (__m64*)input;
-    __m64* row = (__m64*)weight;
-    __m64 s0 = _mm_setzero_si64(), s1 = s0;
-    for (unsigned j = 0; j < 4; j++) {
-        s0 = _mm_add_pi32(s0, _mm_madd_pi16(row[2 * j], iv[2 * j]));
-        s1 = _mm_add_pi32(s1, _mm_madd_pi16(row[2 * j + 1], iv[2 * j + 1]));
-    }
-    __m64 sum = _mm_add_pi32(s0, s1);
-    sum = _mm_add_pi32(sum, _mm_unpackhi_pi32(sum, sum));
-    *output = _mm_cvtsi64_si32(sum) + bias[0];
 
 #elif defined(USE_NEON)
     int8x8_t* iv = (int8x8_t*)input;
@@ -701,48 +679,25 @@ void NnueNetworkLayer::Propagate(clipped_t* input, int32_t* output)
 
 #elif defined(USE_SSE2)
     __m128i* outVec = (__m128i*)output;
-    __m128i* biasVec = (__m128i*)biases;
+    __m128i* biasVec = (__m128i*)bias;
     __m128i* inVec = (__m128i*)input;
-    for (unsigned i = 0; i < outDims / 4; i++) {
-        __m128i* w = (__m128i*) & weights[4 * i * inDims], p, s0, s1, s2, s3;
+    for (unsigned i = 0; i < outputdims / 4; i++) {
+        __m128i* w = (__m128i*) & weight[4 * i * inputdims], p, s0, s1, s2, s3;
         s0 = s1 = s2 = s3 = _mm_setzero_si128();
-        for (unsigned j = 0; j < inDims / 8; j++) {
-            p = _mm_madd_epi16(inVec[j], w[0 * inDims / 8 + j]);
+        for (unsigned j = 0; j < inputdims / 8; j++) {
+            p = _mm_madd_epi16(inVec[j], w[0 * inputdims / 8 + j]);
             s0 = _mm_add_epi32(s0, p);
-            p = _mm_madd_epi16(inVec[j], w[1 * inDims / 8 + j]);
+            p = _mm_madd_epi16(inVec[j], w[1 * inputdims / 8 + j]);
             s1 = _mm_add_epi32(s1, p);
-            p = _mm_madd_epi16(inVec[j], w[2 * inDims / 8 + j]);
+            p = _mm_madd_epi16(inVec[j], w[2 * inputdims / 8 + j]);
             s2 = _mm_add_epi32(s2, p);
-            p = _mm_madd_epi16(inVec[j], w[3 * inDims / 8 + j]);
+            p = _mm_madd_epi16(inVec[j], w[3 * inputdims / 8 + j]);
             s3 = _mm_add_epi32(s3, p);
         }
         s0 = _mm_add_epi32(_mm_unpacklo_epi32(s0, s1), _mm_unpackhi_epi32(s0, s1));
         s2 = _mm_add_epi32(_mm_unpacklo_epi32(s2, s3), _mm_unpackhi_epi32(s2, s3));
         s0 = _mm_add_epi32(_mm_unpacklo_epi64(s0, s2), _mm_unpackhi_epi64(s0, s2));
         outVec[i] = _mm_add_epi32(s0, biasVec[i]);
-    }
-
-#elif defined(USE_MMX)
-    __m64* outVec = (__m64*)output;
-    __m64* biasVec = (__m64*)biases;
-    __m64* inVec = (__m64*)input;
-    for (unsigned i = 0; i < outDims / 2; i++) {
-        __m64* w = (__m64*) & weights[2 * i * inDims], p, s0, s1, s2, s3;
-        s0 = s1 = s2 = s3 = _mm_setzero_si64();
-        for (unsigned j = 0; j < inDims / 8; j++) {
-            p = _mm_madd_pi16(inVec[2 * j + 0], w[0 * inDims / 4 + 2 * j + 0]);
-            s0 = _mm_add_pi32(s0, p);
-            p = _mm_madd_pi16(inVec[2 * j + 0], w[1 * inDims / 4 + 2 * j + 0]);
-            s1 = _mm_add_pi32(s1, p);
-            p = _mm_madd_pi16(inVec[2 * j + 1], w[0 * inDims / 4 + 2 * j + 1]);
-            s2 = _mm_add_pi32(s2, p);
-            p = _mm_madd_pi16(inVec[2 * j + 1], w[1 * inDims / 4 + 2 * j + 1]);
-            s3 = _mm_add_pi32(s3, p);
-        }
-        s0 = _mm_add_pi32(s0, s2);
-        s1 = _mm_add_pi32(s1, s3);
-        s0 = _mm_add_pi32(_mm_unpacklo_pi32(s0, s1), _mm_unpackhi_pi32(s0, s1));
-        outVec[i] = _mm_add_pi32(s0, biasVec[i]);
     }
 
 #elif defined(USE_NEON)
@@ -818,6 +773,18 @@ void NnueClippedRelu::Propagate(int32_t *input, clipped_t *output)
             _mm_packs_epi32(in[i * 4 + 2], in[i * 4 + 3]), NnueClippingShift);
         __m128i packedbytes = _mm_packs_epi16(words0, words1);
         out[i] = _mm_subs_epi8(_mm_adds_epi8(packedbytes, k0x80s), k0x80s);
+    }
+
+#elif defined(USE_SSE2)
+    const unsigned numChunks = dims / 8;
+    const __m128i kZero = _mm_setzero_si128();
+    const __m128i k0x7f = _mm_set1_epi16(0x7f);
+    __m128i* in = (__m128i*)input;
+    __m128i* out = (__m128i*)output;
+    for (unsigned i = 0; i < numChunks; i++) {
+        __m128i words = _mm_srai_epi16(_mm_packs_epi32(in[i * 2], in[i * 2 + 1]),
+            NnueClippingShift);
+        out[i] = _mm_min_epi16(_mm_max_epi16(words, kZero), k0x7f);
     }
 
 #elif defined(USE_NEON)
