@@ -2472,6 +2472,22 @@ chessmove* MoveSelector::next()
 //
 // callbacks for ucioptions
 //
+#ifdef _WIN32
+static void uciAllowLargePages()
+{
+    if (!en.Hash)
+        return;
+    printf("info string Reallocating hash table %s large pages\n", en.allowlargepages ? "using" : "without");
+    // This gets a little tricky
+    // First reset to old value and free the TT
+    en.allowlargepages = !en.allowlargepages;
+    tp.setSize(0);
+
+    // Now back to new value and allocate TT
+    en.allowlargepages = !en.allowlargepages;
+    tp.setSize(en.Hash);
+}
+#endif
 
 static void uciSetThreads()
 {
@@ -2574,6 +2590,9 @@ engine::~engine()
 
 void engine::registerOptions()
 {
+#ifdef _WIN32
+    ucioptions.Register(&allowlargepages, "Allow Large Pages", ucicheck, "true", 0, 0, uciAllowLargePages);
+#endif
     ucioptions.Register(&Threads, "Threads", ucispin, "1", 1, MAXTHREADS, uciSetThreads);  // order is important as the pawnhash depends on Threads > 0
     ucioptions.Register(&Hash, "Hash", ucispin, to_string(DEFAULTHASH), 1, MAXHASH, uciSetHash);
     ucioptions.Register(&moveOverhead, "Move Overhead", ucispin, "50", 0, 5000, nullptr);
