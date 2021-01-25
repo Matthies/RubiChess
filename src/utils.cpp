@@ -503,8 +503,9 @@ size_t largePageSize = 0;
 void* my_large_malloc(size_t s)
 {
     void* mem = nullptr;
+    bool allowlp = en.allowlargepages;
 
-    if (UseLargePages < 0)
+    if (allowlp && UseLargePages < 0)
     {
         // Check and preparations for use of large pages... only once
         HANDLE hProcessToken{ };
@@ -535,7 +536,7 @@ void* my_large_malloc(size_t s)
         cout << (UseLargePages ? "info string Allocation of memory uses large pages.\n" : "info string Allocation of memory: Large pages not available.\n");
     }
 
-    if (UseLargePages)
+    if (allowlp && UseLargePages)
     {
         // Round up size to full pages and allocate
         s = (s + largePageSize - 1) & ~size_t(largePageSize - 1);
@@ -567,7 +568,7 @@ void my_large_free(void* m)
     if (!m)
         return;
 
-    if (UseLargePages > 0)
+    if (en.allowlargepages && UseLargePages > 0)
         VirtualFree(m, 0, MEM_RELEASE);
     else
         _aligned_free(m);

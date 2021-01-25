@@ -1626,6 +1626,9 @@ public:
             return "<unknown>";
     }
 #endif
+#ifdef _WIN32
+    bool allowlargepages;
+#endif
     string name() {
         string sbinary = compinfo->PrintCpuFeatures(compinfo->binarySupports, true);
         string sNnue = "";

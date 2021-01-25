@@ -146,7 +146,11 @@ int transposition::setSize(int sizeMb)
     clustersize = offsetof(transpositioncluster, debugHash);
 #endif
     U64 maxsize = ((U64)sizeMb << 20) / clustersize;
-    if (!maxsize) return 0;
+    if (!maxsize)
+    {
+        size = 0ULL;
+        return 0;
+    }
     GETMSB(msb, maxsize);
     size = (1ULL << msb);
     restMb = (int)(((maxsize ^ size) >> 20) * clustersize);  // return rest for pawnhash
