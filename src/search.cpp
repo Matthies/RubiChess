@@ -1041,11 +1041,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast)
 
 #ifndef SDEBUG
         if (en.moveoutput && !threadindex && (en.pondersearch != PONDERING || depth < MAXDEPTH - 1))
-        {
-            char s[256];
-            sprintf_s(s, "info depth %d currmove %s currmovenumber %d\n", depth, m->toString().c_str(), i + 1);
-            cout << s;
-        }
+            cout << "info depth " << depth << " currmove " << m->toString() << " currmovenumber " << i + 1 << "\n";
 #endif
         int reduction = 0;
 
@@ -1219,8 +1215,7 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, in
     if (inWindow != 1 && (msRun - en.lastReport) < 200)
         return;
 #endif
-    const char* boundscore[] = { "upperbound ", " ", "lowerbound " };
-    char s[4096];
+    const string boundscore[] = { "upperbound ", " ", "lowerbound " };
     chessposition *pos = &thr->pos;
     en.lastReport = msRun;
     string pvstring = pos->getPv(mpvIndex ? pos->multipvtable[mpvIndex] : pos->lastpv);
@@ -1229,18 +1224,18 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, in
 
     if (!MATEDETECTED(score))
     {
-        sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score cp %d %snodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
-            thr->depth, pos->seldepth, mpvIndex + 1, msRun, score, boundscore[inWindow], nodes, nps,
-            en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
+        cout << "info depth " << thr->depth << " seldepth " << pos->seldepth << " multipv " << mpvIndex + 1 << " time " << msRun
+            << " score cp " << score << " " << boundscore[inWindow] << "nodes " << nodes << " nps " << nps << " tbhits " << en.tbhits
+            << " hashfull " << tp.getUsedinPermill() << " pv " << pvstring << "\n";
     }
     else
     {
         int matein = (score > 0 ? (SCOREWHITEWINS - score + 1) / 2 : (SCOREBLACKWINS - score) / 2);
-        sprintf_s(s, "info depth %d seldepth %d multipv %d time %d score mate %d %snodes %llu nps %llu tbhits %llu hashfull %d pv %s\n",
-            thr->depth, pos->seldepth, mpvIndex + 1, msRun, matein, boundscore[inWindow], nodes, nps,
-            en.tbhits, tp.getUsedinPermill(), pvstring.c_str());
+        cout << "info depth " << thr->depth << " seldepth " << pos->seldepth << " multipv " << mpvIndex + 1 << " time " << msRun
+            << " score mate " << matein << " " << boundscore[inWindow] << "nodes " << nodes << " nps " << nps << " tbhits " << en.tbhits
+            << " hashfull " << tp.getUsedinPermill() << " pv " << pvstring << "\n";
+
     }
-    cout << s;
 #ifdef SDEBUG
     pos->pvdebugout();
 #endif
