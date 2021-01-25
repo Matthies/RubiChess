@@ -415,7 +415,6 @@ void compilerinfo::GetSystemInfo()
         {
             cpuFamily = ((CPUInfo[0] & (0xf << 8)) >> 8) + ((CPUInfo[0] & (0xff << 20)) >> 20);
             cpuModel = ((CPUInfo[0] & (0xf << 16)) >> 12) + ((CPUInfo[0] & (0xf << 4)) >> 4);
-            if (CPUInfo[3] & (1 << 23)) machineSupports |= CPUMMX;
             if (CPUInfo[3] & (1 << 26)) machineSupports |= CPUSSE2;
             if (CPUInfo[2] & (1 << 23)) machineSupports |= CPUPOPCNT;
             if (CPUInfo[2] & (1 <<  0)) machineSupports |= CPUSSSE3;
