@@ -174,9 +174,12 @@ typedef __m128i vec8_t, vec16_t;
 #elif defined(USE_NEON)
 #define NUM_REGS 16
 #define SIMD_WIDTH 128
-typedef int16x8_t vec8_t, vec16_t;
+typedef int16x8_t vec16_t;
+typedef int8x16_t vec8_t;
 #define vec_add_16(a,b) vaddq_s16(a,b)
 #define vec_sub_16(a,b) vsubq_s16(a,b)
+#define vec_packs(a,b) vcombine_s8(vqmovn_s16(a),vqmovn_s16(b))
+#define vec_clip_8(a,b) vmaxq_s8(vec_packs(a,b),vdupq_n_s8(0))
 
 #endif
 
