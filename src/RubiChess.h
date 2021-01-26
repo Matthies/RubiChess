@@ -22,7 +22,7 @@
 
 // Disable this to compile without NNUE evaluation
 #define NNUE
-#define NNUEDEFAULT nn-803c91ad5c-20201107.nnue
+#define NNUEDEFAULT nn-375bdd2d7f-20210112.nnue
 
 // Enable to get statistical values about various search features
 //#define STATISTICS
@@ -638,8 +638,7 @@ const int NnueFtInputdims = 64 * 641;
 const int NnueClippingShift = 6;
 const int NnueValueScale = 16;
 
-#if (defined(USE_SSE2) || defined(USE_MMX)) && !defined(USE_SSSE3)
-// FIXME: This is not implemented yet
+#if defined(USE_SSE2) && !defined(USE_SSSE3)
 typedef int16_t clipped_t;
 typedef int16_t weight_t;
 #else
@@ -711,17 +710,18 @@ public:
 class NnueNetworkLayer : public NnueLayer
 {
 public:
-    int inputdims;
-    int outputdims;
+    unsigned int inputdims;
+    unsigned int outputdims;
 
     int32_t* bias;
-    int8_t* weight;
+    weight_t* weight;
 
     NnueNetworkLayer(NnueLayer* prev, int id, int od);
     virtual ~NnueNetworkLayer();
     bool ReadWeights(ifstream* is);
     uint32_t GetHash();
     void Propagate(clipped_t *input, int32_t *output);
+    void OutLayer(clipped_t* input, int32_t* output);
 };
 
 class NnueAccumulator
@@ -1152,6 +1152,7 @@ public:
     int value;
 
     chessmove();
+    chessmove(uint32_t c);
     chessmove(int from, int to, PieceCode piece);
     chessmove(int from, int to, PieceCode capture, PieceCode piece);
     chessmove(int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
@@ -1513,14 +1514,13 @@ typedef map<string, ucioption_t>::iterator optionmapiterator;
 enum ponderstate_t { NO, PONDERING, HITPONDER };
 
 
-#define CPUMMX      (1 << 0)
-#define CPUSSE2     (1 << 1)
-#define CPUSSSE3    (1 << 2)
-#define CPUPOPCNT   (1 << 3)
-#define CPUAVX2     (1 << 4)
-#define CPUBMI2     (1 << 5)
+#define CPUSSE2     (1 << 0)
+#define CPUSSSE3    (1 << 1)
+#define CPUPOPCNT   (1 << 2)
+#define CPUAVX2     (1 << 3)
+#define CPUBMI2     (1 << 4)
 
-#define STRCPUFEATURELIST  { "mmx","sse2","ssse3","popcnt","avx2","bmi2" }
+#define STRCPUFEATURELIST  { "sse2","ssse3","popcnt","avx2","bmi2" }
 
 
 extern const string strCpuFeatures[];
@@ -1531,9 +1531,6 @@ public:
     const U64 binarySupports = 0ULL
 #ifdef USE_POPCNT
         | CPUPOPCNT
-#endif
-#ifdef USE_MMX
-        | CPUMMX
 #endif
 #ifdef USE_SSE2
         | CPUSSE2
@@ -1624,6 +1621,9 @@ public:
         else
             return "<unknown>";
     }
+#endif
+#ifdef _WIN32
+    bool allowlargepages;
 #endif
     string name() {
         string sbinary = compinfo->PrintCpuFeatures(compinfo->binarySupports, true);
@@ -1721,6 +1721,7 @@ int root_probe_wdl(chessposition *pos);
 //
 #ifdef STATISTICS
 struct statistic {
+    int qs_mindepth;
     U64 qs_n[2];                // total calls to qs split into no check / check
     U64 qs_tt;                  // qs hits tt
     U64 qs_pat;                 // qs returns with pat score

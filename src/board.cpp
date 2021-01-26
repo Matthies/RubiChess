@@ -131,6 +131,11 @@ chessmove::chessmove()
     code = 0;
 }
 
+chessmove::chessmove(uint32_t c)
+{
+    code = c;
+}
+
 string chessmove::toString()
 {
     char s[8];
@@ -991,9 +996,7 @@ void chessposition::print(ostream* os)
     *os << "Repetitions: " + to_string(testRepetiton()) + "\n";
     *os << "Phase: " + to_string(phase()) + "\n";
     *os << "Pseudo-legal Moves: " + pseudolegalmoves.toStringWithValue() + "\n";
-#if defined(STACKDEBUG) || defined(SDEBUG)
     *os << "Moves in current search: " + movesOnStack() + "\n";
-#endif
     *os << "mstop: " + to_string(mstop) + "\n";
     *os << "Ply: " + to_string(ply) + "\n";
     *os << "rootheight: " + to_string(rootheight) + "\n";
@@ -1003,7 +1006,6 @@ void chessposition::print(ostream* os)
 }
 
 
-#if defined(STACKDEBUG) || defined(SDEBUG)
 string chessposition::movesOnStack()
 {
     string s = "";
@@ -1015,7 +1017,6 @@ string chessposition::movesOnStack()
     }
     return s;
 }
-#endif
 
 
 string chessposition::toFen()
@@ -2473,6 +2474,22 @@ chessmove* MoveSelector::next()
 //
 // callbacks for ucioptions
 //
+#ifdef _WIN32
+static void uciAllowLargePages()
+{
+    if (!en.Hash)
+        return;
+    printf("info string Reallocating hash table %s large pages\n", en.allowlargepages ? "using" : "without");
+    // This gets a little tricky
+    // First reset to old value and free the TT
+    en.allowlargepages = !en.allowlargepages;
+    tp.setSize(0);
+
+    // Now back to new value and allocate TT
+    en.allowlargepages = !en.allowlargepages;
+    tp.setSize(en.Hash);
+}
+#endif
 
 static void uciSetThreads()
 {
@@ -2522,9 +2539,15 @@ static void uciSetNnuePath()
         NnueReadNet(&is);
 
     if (NnueReady)
+    {
         cout << " successful. Using NNUE evaluation. (" + to_string(NnueReady) + ")\n";
-    else
-        cout << " failed. The network file seems corrupted doesn't exist. Set correct path to network file or disable 'Use NNUE' for handcrafted evaluation.\n";
+        if (en.NnueNetpath != NNUEDEFAULTSTR)
+            cout << "info string Warning! You are not using the default network file. Playing strength of the engine highly depends on it.\n";
+
+        return;
+    }
+
+    cout << " failed. The network file seems corrupted doesn't exist. Set correct path to network file or disable 'Use NNUE' for handcrafted evaluation.\n";
 }
 #endif
 
@@ -2575,6 +2598,9 @@ engine::~engine()
 
 void engine::registerOptions()
 {
+#ifdef _WIN32
+    ucioptions.Register(&allowlargepages, "Allow Large Pages", ucicheck, "true", 0, 0, uciAllowLargePages);
+#endif
     ucioptions.Register(&Threads, "Threads", ucispin, "1", 1, MAXTHREADS, uciSetThreads);  // order is important as the pawnhash depends on Threads > 0
     ucioptions.Register(&Hash, "Hash", ucispin, to_string(DEFAULTHASH), 1, MAXHASH, uciSetHash);
     ucioptions.Register(&moveOverhead, "Move Overhead", ucispin, "50", 0, 5000, nullptr);
@@ -2587,7 +2613,7 @@ void engine::registerOptions()
     ucioptions.Register(nullptr, "Clear Hash", ucibutton, "", 0, 0, uciClearHash);
 #ifdef NNUE
     ucioptions.Register(&NnueNetpath, "NNUENetpath", ucistring, NNUEDEFAULTSTR, 0, 0, uciSetNnuePath);
-    ucioptions.Register(&usennue, "Use NNUE", ucicheck, "false", 0, 0, uciSetNnuePath);
+    ucioptions.Register(&usennue, "Use NNUE", ucicheck, "true", 0, 0, uciSetNnuePath);
 #endif
 }
 

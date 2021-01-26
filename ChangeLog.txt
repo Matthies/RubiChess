@@ -1,8 +1,15 @@
 ChangeLog
 =========
+2.0 (release 2021-01-27) :
+    - Improved / fixed futility pruning
+    - Added support for large pages in Windows
+    - Improved speed of NNUE evaluation	
+    - Switch to handcrafted evaluation for positions with onesided psq
+    - Trained a new net based on Rubi evaluation using last net
+
 1.9 (release 2020-11-25) :
     - Implement NNUE evaluation code (standard SF flip and mirror format are supported)
-    - Trained a net based on Rubi homecraft evaluation and some data based on first-iteration net
+    - Trained a net based on Rubi handcrafted evaluation and some data based on first-iteration net
     - Texel tuner has some more options now and an interactive interface
     - Support for search parameters exposed to UCI options (#define SEARCHOPTIONS)
     - Tuned LMP parameters using the kiudee tuning tools
@@ -34,7 +41,7 @@ ChangeLog
 1.7.3 (no-release 2020-05-11 for TCEC S18) :
     - Added FRC/Chess960 (playing quite bad for now)
     - Faster move generation esp. pawn moves
-    - Evaluate backward and isolated pawns woth respect to their file (idea by Ed Schröder)
+    - Evaluate backward and isolated pawns with respect to their file (idea by Ed Schröder)
     - Make pawn hash aligned to cache line
 
 1.7.2 (release 2020-04-27) :

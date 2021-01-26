@@ -415,7 +415,6 @@ void compilerinfo::GetSystemInfo()
         {
             cpuFamily = ((CPUInfo[0] & (0xf << 8)) >> 8) + ((CPUInfo[0] & (0xff << 20)) >> 20);
             cpuModel = ((CPUInfo[0] & (0xf << 16)) >> 12) + ((CPUInfo[0] & (0xf << 4)) >> 4);
-            if (CPUInfo[3] & (1 << 23)) machineSupports |= CPUMMX;
             if (CPUInfo[3] & (1 << 26)) machineSupports |= CPUSSE2;
             if (CPUInfo[2] & (1 << 23)) machineSupports |= CPUPOPCNT;
             if (CPUInfo[2] & (1 <<  0)) machineSupports |= CPUSSSE3;
@@ -503,8 +502,9 @@ size_t largePageSize = 0;
 void* my_large_malloc(size_t s)
 {
     void* mem = nullptr;
+    bool allowlp = en.allowlargepages;
 
-    if (UseLargePages < 0)
+    if (allowlp && UseLargePages < 0)
     {
         // Check and preparations for use of large pages... only once
         HANDLE hProcessToken{ };
@@ -535,7 +535,7 @@ void* my_large_malloc(size_t s)
         cout << (UseLargePages ? "info string Allocation of memory uses large pages.\n" : "info string Allocation of memory: Large pages not available.\n");
     }
 
-    if (UseLargePages)
+    if (allowlp && UseLargePages)
     {
         // Round up size to full pages and allocate
         s = (s + largePageSize - 1) & ~size_t(largePageSize - 1);
@@ -543,7 +543,10 @@ void* my_large_malloc(size_t s)
             NULL, s, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
 
         if (!mem)
-            UseLargePages = 0;
+        {
+            UseLargePages = -1;
+            cout << ("info string Allocation of memory: Large pages not available for this size. Disabled for now.\n");
+        }
     }
 
     if (!mem)
@@ -564,7 +567,7 @@ void my_large_free(void* m)
     if (!m)
         return;
 
-    if (UseLargePages)
+    if (en.allowlargepages && UseLargePages > 0)
         VirtualFree(m, 0, MEM_RELEASE);
     else
         _aligned_free(m);

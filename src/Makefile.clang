@@ -1,8 +1,8 @@
 #
 # Start MSVC Command prompt for x64 native tools and
-# for fast binaries build:	nmake /f Makefile.clang release
-# for a quick build:		nmake /f Makefile.clang all
-
+# for pgo binaries build:	nmake /f Makefile.clang release
+# for fast build of all:	nmake /f Makefile.clang all
+# for a pgo AVX2 binary:	nmake /f Makefile.clang pgo ARCH=avx2
 
 
 # General settings
@@ -23,23 +23,23 @@ TMPNN=_tmp.nnue
 
 # BMI2-build
 BMI2EXE=RubiChess-BMI2
-BMI2CPUFEATURE=-DUSE_BMI2 -DUSE_AVX2 -DUSE_SSSE3 -DUSE_SSE2 -DUSE_MMX -DUSE_POPCNT
-BMI2ARCHFLAGS=-mbmi2 -mavx2 -mssse3 -msse2 -mmmx -mpopcnt
+BMI2CPUFEATURE=-DUSE_BMI2 -DUSE_AVX2 -DUSE_SSSE3 -DUSE_SSE2 -DUSE_POPCNT
+BMI2ARCHFLAGS=-mbmi2 -mavx2 -mssse3 -msse2 -mpopcnt
 
 # AVX2-build
 AVX2EXE=RubiChess-AVX2
-AVX2CPUFEATURE=-DUSE_AVX2 -DUSE_SSSE3 -DUSE_SSE2 -DUSE_MMX -DUSE_POPCNT
-AVX2ARCHFLAGS=-mavx2 -mssse3 -msse2 -mmmx -mpopcnt
+AVX2CPUFEATURE=-DUSE_AVX2 -DUSE_SSSE3 -DUSE_SSE2 -DUSE_POPCNT
+AVX2ARCHFLAGS=-mavx2 -mssse3 -msse2 -mpopcnt
 
 # Popcount-build
 POPCOUNTEXE=RubiChess
-POPCOUNTCPUFEATURE=-DUSE_SSSE3 -DUSE_SSE2 -DUSE_MMX -DUSE_POPCNT
-POPCOUNTARCHFLAGS=-mssse3 -msse2 -mmmx -mpopcnt
+POPCOUNTCPUFEATURE=-DUSE_SSSE3 -DUSE_SSE2 -DUSE_POPCNT
+POPCOUNTARCHFLAGS=-mssse3 -msse2 -mpopcnt
 
 # SSSE3-build
 SSSE3EXE=RubiChess-SSSE3
-SSSE3CPUFEATURE=-DUSE_SSSE3 -DUSE_SSE2 -DUSE_MMX
-SSSE3ARCHFLAGS=-mssse3 -msse2 -mmmx
+SSSE3CPUFEATURE=-DUSE_SSSE3 -DUSE_SSE2
+SSSE3ARCHFLAGS=-mssse3 -msse2
 
 # Legacy-build
 LEGACYEXE=RubiChess-Legacy
@@ -52,7 +52,7 @@ $(RELDIR):
 	mkdir $(RELDIR)
 
 network:
-!IF !DEFINED(EXE) && !DEFINED(PR)
+!IF !DEFINED(EXE) && !DEFINED(ARCH)
 !IF [@FOR /F "tokens=3" %A IN ('find "NNUEDEFAULT " RubiChess.h') DO @(if exist %A ( @echo Net already exists ) else ( curl -skL $(NETURL)%A > $(TMPNN) && move $(TMPNN) %A && echo Net %A was downloaded. )) && @if not exist $(RELDIR)\%A ( @copy  %A $(RELDIR)\%A )  ] != 0
 	@echo Cannot get default net from header file or download failed!
 !ENDIF
@@ -88,22 +88,23 @@ rubichess-ssse3: $(RELDIR)
 rubichess-legacy: $(RELDIR)
 	@nmake -c -f Makefile.clang build EXE=$(LEGACYEXE) CPUFEATURE="$(LEGACYCPUFEATURE)" ARCHFLAGS="$(LEGACYARCHFLAGS)"
 
-profile-build-one:
-!IFDEF PR
-	@echo Creating profile build for $(PR)...
-	@nmake -c -f Makefile.clang $(PR) PROFILEFLAGS=-fprofile-instr-generate=$(PROFEXE).clangprof-raw PROFLIB=$(LLVMInstallDir)\lib\clang\$(CLANGVER).0.0\lib\windows\clang_rt.profile-x86_64.lib
+pgo:
+!IFDEF ARCH
+	@echo Creating profile build for RubiChess-$(ARCH)...
+	@nmake -c -f Makefile.clang RubiChess-$(ARCH) PROFILEFLAGS=-fprofile-instr-generate=$(PROFEXE).clangprof-raw PROFLIB=$(LLVMInstallDir)\lib\clang\$(CLANGVER).0.0\lib\windows\clang_rt.profile-x86_64.lib
 	@echo Bench to generate profiling data...
 	@$(PROFEXE) -bench > nul
 	@$(PROFDATATOOLEXE) merge -output=$(PROFEXE).clangprof $(PROFEXE).clangprof-raw
-	@nmake -c -f Makefile.clang $(PR) PROFILEFLAGS=-fprofile-instr-use=$(PROFEXE).clangprof
+	@nmake -c -f Makefile.clang RubiChess-$(ARCH) PROFILEFLAGS=-fprofile-instr-use=$(PROFEXE).clangprof
+!ELSE
+	@nmake -c -f Makefile.clang pgo ARCH=bmi2
+	@nmake -c -f Makefile.clang pgo ARCH=avx2
+	@nmake -c -f Makefile.clang pgo ARCH=popcount
+	@nmake -c -f Makefile.clang pgo ARCH=ssse3
+	@nmake -c -f Makefile.clang pgo ARCH=legacy
 !ENDIF
 
-profile-build:
-	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-bmi2
-	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-avx2
-	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-popcount
-	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-ssse3
-	@nmake -c -f Makefile.clang profile-build-one PR=rubichess-legacy
+profile-build: pgo
 
 release: profile-build profile-clean
 
