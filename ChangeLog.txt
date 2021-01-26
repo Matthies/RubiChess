@@ -6,6 +6,9 @@ ChangeLog
     - Improved speed of NNUE evaluation	
     - Switch to handcrafted evaluation for positions with onesided psq
     - Trained a new net based on Rubi evaluation using last net
+    - Improved gensfen: Book support, more parameters
+    - Fix for native msys2 compilation
+    - SDEBUG fixes
 
 1.9 (release 2020-11-25) :
     - Implement NNUE evaluation code (standard SF flip and mirror format are supported)
