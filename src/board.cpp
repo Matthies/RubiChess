@@ -415,6 +415,7 @@ int chessposition::getFromFen(const char* sFen)
     }
 
     /* half moves */
+    halfmovescounter = 0;
     if (numToken > 4)
     {
         try {
@@ -424,6 +425,7 @@ int chessposition::getFromFen(const char* sFen)
     }
 
     /* full moves */
+    fullmovescounter = 1;
     if (numToken > 5)
     {
         try {

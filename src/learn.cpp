@@ -108,6 +108,7 @@ int chessposition::getFromSfen(PackedSfen* sfen)
     uint8_t b;
     memset(piece00, 0, sizeof(piece00));
     memset(occupied00, 0, sizeof(occupied00));
+    psqval = 0;
     int bitnum = 0;
     uint8_t* buffer = &sfen->data[0];
     // side to move
@@ -166,6 +167,8 @@ int chessposition::getFromSfen(PackedSfen* sfen)
     mstop = 0;
     rootheight = 0;
     lastnullmove = -1;
+    accumulator->computationState = false;
+
     return 0;
 }
 
@@ -273,7 +276,7 @@ void flush_psv(int result, searchthread* thr)
 int depth = 4;
 int random_multi_pv = 0;
 int random_multi_pv_depth = 4;
-int random_multi_pv_diff = 32000;
+int random_multi_pv_diff = 50;
 int random_move_count = 5;
 int random_move_minply = 1;
 int random_move_maxply = 24;
@@ -282,6 +285,48 @@ int maxply = 400;
 int generate_draw = 1;
 U64 nodes = 0;
 int eval_limit = 32000;
+string book = "";
+
+size_t booklen;
+string** bookfen;
+
+
+static bool getBookPositions()
+{
+    ifstream is;
+    string epd;
+    booklen = 1;
+    if (book != "")
+    {
+        is.open(book);
+        if (!is)
+        {
+            cout << "Cannot open book file " << book << "\n";
+            return false;
+        }
+        while (getline(is, epd)) booklen++;
+    }
+    size_t allocsize = booklen * sizeof(string*);
+    bookfen = (string**)allocalign64(allocsize);
+    bookfen[0] = new string(STARTFEN);
+    if (book != "")
+    {
+        is.clear();
+        is.seekg(0);
+        booklen = 1;
+        while (getline(is, epd)) bookfen[booklen++] = new string(epd);
+    }
+    cout << " Book has " << booklen << " entries.\n";
+    return true;
+}
+
+static void freeBookPositions()
+{
+    while (booklen)
+        delete bookfen[--booklen];
+
+    freealigned64(bookfen);
+}
 
 
 static void gensfenthread(searchthread* thr)
@@ -308,7 +353,7 @@ static void gensfenthread(searchthread* thr)
         if (gensfenstop)
             return;
 
-        string startfen = en.chess960 ? frcStartFen() : STARTFEN;
+        string startfen = en.chess960 ? frcStartFen() : *bookfen[ranval(&rnd) % booklen];
         pos->getFromFen(startfen.c_str());
         
         vector<bool> random_move_flag;
@@ -462,7 +507,7 @@ SKIP_SAVE:
 void gensfen(vector<string> args)
 {
     U64 fensnum = 10000;
-    string outputfile;
+    string outputfile = "sfens.bin";
     size_t cs = args.size();
     size_t ci = 0;
 
@@ -490,6 +535,8 @@ void gensfen(vector<string> args)
             write_minply = stoi(args[ci++]);
         if (cmd == "eval_limit" && ci < cs)
             eval_limit = stoi(args[ci++]);
+        if (cmd == "book" && ci < cs)
+            book = args[ci++];
     }
 
     int tnum;
@@ -509,14 +556,18 @@ void gensfen(vector<string> args)
     cout << "random_multi_pv:       " << random_multi_pv << "\n";
     cout << "random_multi_pv_depth: " << random_multi_pv_depth << "\n";
     cout << "random_multi_pv_diff:  " << random_multi_pv_diff << "\n";
+    cout << "book:                  " << book << "\n";
 
     const U64 chunksneeded = fensnum / sfenchunksize + 1;
-    ofstream os(outputfile, ios::binary);
+    ofstream os(outputfile, ios::binary | fstream::app);
     if (!os)
     {
         cout << "Cannot open file " << outputfile << "\n";
         return;
     }
+
+    if (!getBookPositions())
+        return;
 
     for (tnum = 0; tnum < en.Threads; tnum++)
     {
@@ -537,6 +588,7 @@ void gensfen(vector<string> args)
         {
             if (thr->chunkstate[i] == CHUNKFULL)
             {
+                os.write((char*)(thr->psvbuffer + i * sfenchunksize), sfenchunksize * sizeof(PackedSfenValue));
                 chunkswritten++;
                 thr->chunkstate[i] = CHUNKFREE;
                 cout << chunkswritten * sfenchunksize << " sfens written. (" << thr->index << ")\n";
@@ -552,42 +604,52 @@ void gensfen(vector<string> args)
     }
     cout << "gensfen finished.\n";
     en.MultiPV = old_multipv;
+
+    freeBookPositions();
+    for (tnum = 0; tnum < en.Threads; tnum++)
+        freealigned64(en.sthread[tnum].psvbuffer);
 }
 
 
 
-enum SfenFormat { bin, plain };
+enum SfenFormat { no, bin, plain };
 
 void convert(vector<string> args)
 {
     string inputfile;
     string outputfile;
-    SfenFormat outformat = plain;
+    int evalstats = 0;
+    SfenFormat outformat = no;
     size_t cs = args.size();
     size_t ci = 0;
+    U64 evalsum[2][7] = { 0 };  // evalsum for hce and NNUE classified by at  0 / <0.5 / <1 / <3 / <20 / 1-4 / different prefer
+    U64 evaln[7] = { 0 };
 
     while (ci < cs)
     {
         string cmd = args[ci++];
 
-        if (cmd == "input_file_name")
-            if (ci < cs)
-            {
-                inputfile = args[ci++];
-                inputfile.erase(remove(inputfile.begin(), inputfile.end(), '\"'), inputfile.end());
-            }
-        if (cmd == "output_file_name")
-            if (ci < cs)
-            {
-                outputfile = args[ci++];
-                outputfile.erase(remove(outputfile.begin(), outputfile.end(), '\"'), outputfile.end());
-            }
-        if (cmd == "output_format")
-            if (ci < cs)
-            {
-                outformat = (args[ci] == "bin" ? bin : plain);
-                ci++;
-            }
+        if (cmd == "input_file_name" && ci < cs)
+        {
+            inputfile = args[ci++];
+            inputfile.erase(remove(inputfile.begin(), inputfile.end(), '\"'), inputfile.end());
+        }
+        if (cmd == "output_file_name" && ci < cs)
+        {
+            outputfile = args[ci++];
+            outputfile.erase(remove(outputfile.begin(), outputfile.end(), '\"'), outputfile.end());
+        }
+        if (cmd == "output_format" && ci < cs)
+        {
+            outformat = (args[ci] == "bin" ? bin : args[ci] == "plain" ? plain : no);
+            ci++;
+        }
+        if (cmd == "evalstats" && ci < cs)
+        {
+            evalstats = (NnueReady != NnueDisabled) * stoi(args[ci++]);
+            if (evalstats < 1 || evalstats > 2)
+                evalstats = 0;
+        }
     }
 
     ifstream is(inputfile, ios::binary);
@@ -613,6 +675,7 @@ void convert(vector<string> args)
     chessposition* pos = &en.sthread[0].pos;
     PackedSfenValue* psvbuffer = (PackedSfenValue*)allocalign64(sfenchunknums * sfenchunksize * sizeof(PackedSfenValue));
 
+    U64 n = 0;
     while (is.peek() != ios::traits_type::eof())
     {
         is.read((char*)psvbuffer, sfenchunknums * sfenchunksize * sizeof(PackedSfenValue));
@@ -634,6 +697,8 @@ void convert(vector<string> args)
             if (!cm.code)
                 continue;
 
+            n++;
+
             if (outformat == plain)
             {
                 *os << "fen " << pos->toFen() << "\n";
@@ -643,15 +708,55 @@ void convert(vector<string> args)
                 *os << "result " << to_string(psv->game_result) << "\n";
                 *os << "e\n";
             }
-            else
+            else if (outformat == bin)
             {
                 os->write((char*)psv, sizeof(PackedSfenValue));
             }
+
+            if (evalstats)
+            {
+                NnueType origNnue = NnueReady;
+                NnueReady = NnueDisabled;
+                int ev[2];
+                int absev[2];
+                ev[evalstats - 1] = pos->getEval<NOTRACE>();
+                absev[evalstats - 1] = abs(ev[evalstats - 1]);
+                NnueReady = origNnue;
+                ev[2 - evalstats] = pos->getEval<NOTRACE>();
+                absev[2 - evalstats] = abs(ev[2 - evalstats]);
+                int i = (ev[0] == 0 ? 0 : (absev[0] < 50 ? 1 : (absev[0] < 100 ? 2 : (absev[0] < 300 ? 3 : (absev[0] > 2000 ? -1 : 4)))));
+                if (ev[0] * ev[1] < 0)
+                    i = 6;
+
+                if (i < 0) break;
+
+                evalsum[0][i] += absev[0];
+                evalsum[1][i] += absev[1];
+                evaln[i]++;
+                if (i >= 1 && i <= 4)
+                {
+                    evalsum[0][5] += absev[0];
+                    evalsum[1][5] += absev[1];
+                    evaln[5]++;
+                }
+
+                if (n % 10000 == 0)
+                {
+                    cerr << "======================================================================\n";
+                    for (int i = 0; i < 7; i++)
+                    {
+                        double avh = evalsum[0][i] / (double)evaln[i];
+                        double avn = evalsum[1][i] / (double)evaln[i];
+                        cerr << setprecision(3) << fixed << i << setw(8) << evaln[i] << setw(14) << avh << setw(14) << avn << setw(14) << avh / avn << "\n";
+                    }
+                }
+
+            }
         }
-        cerr << ".";
+        if (!evalstats) cerr << ".";
     }
 
-    cerr << "Finished converting.\n";
+    cerr << "\nFinished converting.\n";
 }
 
 
