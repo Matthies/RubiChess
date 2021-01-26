@@ -2537,9 +2537,15 @@ static void uciSetNnuePath()
         NnueReadNet(&is);
 
     if (NnueReady)
+    {
         cout << " successful. Using NNUE evaluation. (" + to_string(NnueReady) + ")\n";
-    else
-        cout << " failed. The network file seems corrupted doesn't exist. Set correct path to network file or disable 'Use NNUE' for handcrafted evaluation.\n";
+        if (en.NnueNetpath != NNUEDEFAULTSTR)
+            cout << "info string Warning! You are not using the default network file. Playing strength of the engine highly depends on it.\n";
+
+        return;
+    }
+
+    cout << " failed. The network file seems corrupted doesn't exist. Set correct path to network file or disable 'Use NNUE' for handcrafted evaluation.\n";
 }
 #endif
 
@@ -2605,7 +2611,7 @@ void engine::registerOptions()
     ucioptions.Register(nullptr, "Clear Hash", ucibutton, "", 0, 0, uciClearHash);
 #ifdef NNUE
     ucioptions.Register(&NnueNetpath, "NNUENetpath", ucistring, NNUEDEFAULTSTR, 0, 0, uciSetNnuePath);
-    ucioptions.Register(&usennue, "Use NNUE", ucicheck, "false", 0, 0, uciSetNnuePath);
+    ucioptions.Register(&usennue, "Use NNUE", ucicheck, "true", 0, 0, uciSetNnuePath);
 #endif
 }
 
