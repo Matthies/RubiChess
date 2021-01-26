@@ -756,7 +756,7 @@ void convert(vector<string> args)
         if (!evalstats) cerr << ".";
     }
 
-    cerr << "Finished converting.\n";
+    cerr << "\nFinished converting.\n";
 }
 
 

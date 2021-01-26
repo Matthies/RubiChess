@@ -43,10 +43,10 @@
 //#define SEARCHOPTIONS
 
 // Enable this to find memory leaks with the MSVC debug build
-#define FINDMEMORYLEAKS
+//#define FINDMEMORYLEAKS
 
 // Enable this to enable NNUE training code
-#define NNUELEARN
+//#define NNUELEARN
 
 
 #ifdef FINDMEMORYLEAKS
