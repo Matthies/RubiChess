@@ -40,6 +40,6 @@ For fastest binaries you should use the Clang compiler and the following build c
 ```make profile-build COMP=clang```
 
 You may need to install some additional packages like Clang, lld linker and llvm profiling toolkit to make this work.
-You can also use the (default) gcc/g++ compiler ```make profile-build``` which probably works without additional packages but the binaries are probably a little bit slower.
+You can also use the (default) gcc/g++ compiler ```make profile-build``` which probably works without additional packages but the binaries will be a little bit slower.
 
     
