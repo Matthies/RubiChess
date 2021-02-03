@@ -2520,14 +2520,15 @@ static void uciSetSyzygyPath()
 #ifdef NNUE
 static void uciSetNnuePath()
 {
-    NnueReady = NnueDisabled;
-
     if (!en.usennue)
     {
+        if (NnueReady != NnueDisabled)
+            cout << "info string NNUE evaluation is disabled.\n";
         NnueReady = NnueDisabled;
         return;
     }
 
+    NnueReady = NnueDisabled;
     cout << "info string Loading net " << en.NnueNetpath << " ...";
 
     ifstream is;
