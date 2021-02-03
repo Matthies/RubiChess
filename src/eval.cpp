@@ -730,7 +730,10 @@ int chessposition::getGeneralEval(positioneval *pe)
     return result;
 }
 
-
+//
+// getEval() is the general evaluation interface for search
+// It returns the score of the position from the view of the side to move
+//
 template <EvalType Et>
 int chessposition::getEval()
 {
@@ -770,7 +773,7 @@ int chessposition::getEval()
             te.endgame = te.score = score;
             traceEvalOut();
         }
-        return score;
+        return S2MSIGN(state & S2MMASK) * score;
     }
 
     hashexist = pwnhsh.probeHash(pawnhash, &pe.phentry);

@@ -390,10 +390,10 @@ int chessposition::getFromFen(const char* sFen)
         {
             state |= SETCASTLEFILE(rookfile, castleindex);
             if (rookfiles[gCastle] >= 0 && rookfiles[gCastle] != rookfile)
-                printf("info string Alarm! Castlerights for both sides but rooks on different files.");
+                printf("info string Alarm! Castle rights for both sides but rooks on different files.\n");
             rookfiles[gCastle] = rookfile;
             if (kingfile >= 0 && kingfile != FILE(kingpos[col]))
-                printf("info string Alarm! Castlerights for both sides but kings on different files.");
+                printf("info string Alarm! Castle rights for both sides but kings on different files.\n");
             kingfile = FILE(kingpos[col]);
             // Set chess960 if non-standard rook/king setup is found
             if (kingfile != 4 || rookfiles[gCastle] != gCastle * 7)
