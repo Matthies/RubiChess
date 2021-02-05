@@ -1,5 +1,8 @@
 ChangeLog
 =========
+2.0.1 (release 2021-02-03) :
+    - Fixed KBNvK endgame.
+
 2.0 (release 2021-01-27) :
     - Improved / fixed futility pruning
     - Added support for large pages in Windows
