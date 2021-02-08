@@ -199,8 +199,9 @@ void chessmovelist::print()
 }
 
 // Sorting for MoveSelector
-chessmove* chessmovelist::getNextMove(int minval = INT_MIN)
+chessmove* chessmovelist::getNextMove(int threshold = INT_MIN)
 {
+    int minval = threshold;
     int current = -1;
     for (int i = 0; i < length; i++)
     {
@@ -215,6 +216,30 @@ chessmove* chessmovelist::getNextMove(int minval = INT_MIN)
         return &move[current];
 
     return nullptr;
+}
+
+// Sorting for MoveSelector
+uint32_t chessmovelist::getAndRemoveNextMove()
+{
+    int minval = INT_MIN;
+    int current = -1;
+    for (int i = 0; i < length; i++)
+    {
+        if (move[i].value > minval)
+        {
+            minval = move[i].value;
+            current = i;
+        }
+    }
+
+    if (current >= 0)
+    {
+        int mc = move[current].code;
+        move[current] = move[--length];
+        return mc;
+    }
+
+    return 0;
 }
 
 
@@ -2427,14 +2452,14 @@ uint32_t MoveSelector::next()
         evaluateMoves<QUIET>(quiets, pos, &cmptr[0]);
         // fall through
     case QUIETSTATE:
-        while ((m = quiets->getNextMove()))
+        uint32_t mc;
+        while ((mc = quiets->getAndRemoveNextMove()))
         {
-            m->value = INT_MIN;
-            if (m->code != hashmove.code
-                && m->code != killermove1.code
-                && m->code != killermove2.code
-                && m->code != countermove.code)
-                return m->code;
+            if (mc != hashmove.code
+                && mc != killermove1.code
+                && mc != killermove2.code
+                && mc != countermove.code)
+                return mc;
         }
         state++;
         // fall through
@@ -2458,10 +2483,9 @@ uint32_t MoveSelector::next()
         evaluateMoves<ALL>(captures, pos, &cmptr[0]);
         // fall through
     case EVASIONSTATE:
-        while ((m = captures->getNextMove()))
+        while ((mc = captures->getAndRemoveNextMove()))
         {
-            m->value = INT_MIN;
-            return m->code;
+            return mc;
         }
         state++;
         // fall through
