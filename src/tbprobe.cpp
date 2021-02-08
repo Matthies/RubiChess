@@ -334,15 +334,15 @@ static int probe_ab(int alpha, int beta, int *success, chessposition *pos)
     movelist.length = CreateMovelist<ALL>(pos, &movelist.move[0]);
     for (int i = 0; i < movelist.length; i++)
     {
-        chessmove *m = &movelist.move[i];
-        if (ISCAPTURE(m->code) || ISPROMOTION(m->code) || pos->isCheckbb)
+        uint32_t mc = movelist.move[i].code;
+        if (ISCAPTURE(mc) || ISPROMOTION(mc) || pos->isCheckbb)
         {
-            if (pos->playMove(m))
+            if (pos->playMove(mc))
             {
                 //printf("probe_ab (ply=%d) testing capture/promotion/evasion move %s...\n", pos.ply, pos.actualpath.toString().c_str());
                 v = -probe_ab(-beta, -alpha, success, pos);
                 //printf("probe_ab (ply=%d) tested  capture/promotion/evasion move %s... v=%d\n", pos.ply, pos.actualpath.toString().c_str(), v);
-                pos->unplayMove(m);
+                pos->unplayMove(mc);
                 if (*success == 0) return 0;
                 if (v > alpha) {
                     if (v >= beta)
@@ -391,22 +391,22 @@ int probe_wdl(int *success, chessposition *pos)
     // better ep captures if they exist.
     for (i = 0; i < movelist.length; i++)
     {
-        chessmove *m = &movelist.move[i];
-        if (ISCAPTURE(m->code))
+        uint32_t mc = movelist.move[i].code;
+        if (ISCAPTURE(mc))
         {
-            if (pos->playMove(m))
+            if (pos->playMove(mc))
             {
                 //printf("probe_wdl (ply=%d) testing capture/promotion/evasion move %s...\n", pos.ply, pos.actualpath.toString().c_str());
                 int v = -probe_ab(-2, -best_cap, success, pos);
                 //printf("probe_wdl (ply=%d) tested  capture/promotion/evasion move %s... v=%d\n", pos.ply, pos.actualpath.toString().c_str(), v);
-                pos->unplayMove(m);
+                pos->unplayMove(mc);
                 if (*success == 0) return 0;
                 if (v > best_cap) {
                     if (v == 2) {
                         *success = 2;
                         return 2;
                     }
-                    if (!ISEPCAPTURE(m->code))
+                    if (!ISEPCAPTURE(mc))
                         best_cap = v;
                     else if (v > best_ep)
                         best_ep = v;
@@ -449,13 +449,13 @@ int probe_wdl(int *success, chessposition *pos)
         // Check for stalemate in the position with ep captures.
         for (i = 0; i < movelist.length; i++)
         {
-            chessmove *m = &movelist.move[i];
-            if (ISEPCAPTURE(m->code))
+            uint32_t mc = movelist.move[i].code;
+            if (ISEPCAPTURE(mc))
                 continue;
 
-            if (pos->playMove(m))
+            if (pos->playMove(mc))
             {
-                pos->unplayMove(m);
+                pos->unplayMove(mc);
                 break;
             }
         }
@@ -527,16 +527,16 @@ int probe_dtz(int *success, chessposition *pos)
 
         for (int i = 0; i < movelist.length; i++)
         {
-            chessmove *m = &movelist.move[i];
-            if (ISCAPTURE(m->code) || (GETPIECE(m->code) >> 1) != PAWN)
+            uint32_t mc = movelist.move[i].code;
+            if (ISCAPTURE(mc) || (GETPIECE(mc) >> 1) != PAWN)
                 continue;
 
-            if (pos->playMove(m))
+            if (pos->playMove(mc))
             {
                 //printf("probe_dtz (ply=%d)testing non-capture pawn move %s...\n", pos->ply, m->toString().c_str());
                 int v = -probe_wdl(success, pos);
                 //printf("probe_dtz (ply=%d)tested  non-capture pawn move %s... v=%d\n", pos->ply, m->toString().c_str(), v);
-                pos->unplayMove(m);
+                pos->unplayMove(mc);
                 if (*success == 0)
                     return 0;
 
@@ -574,16 +574,16 @@ int probe_dtz(int *success, chessposition *pos)
         // We can skip pawn moves and captures.
         // If wdl > 0, we already caught them. If wdl < 0, the initial value
         // of best already takes account of them.
-        chessmove *m = &movelist.move[i];
-        if (ISCAPTURE(m->code) || (GETPIECE(m->code) >> 1) == PAWN)
+        uint32_t mc = movelist.move[i].code;
+        if (ISCAPTURE(mc) || (GETPIECE(mc) >> 1) == PAWN)
             continue;
 
-        if (pos->playMove(m))
+        if (pos->playMove(mc))
         {
             //printf("probe_dtz (ply=%d) testing non-pawn non-capture %s... \n", pos->ply, m->toString().c_str());
             int v = -probe_dtz(success, pos);
             //printf("probe_dtz (ply=%d) tested  non-pawn non-capture %s... v=%d\n", pos->ply, m->toString().c_str(), v);
-            pos->unplayMove(m);
+            pos->unplayMove(mc);
             if (*success == 0)
                 return 0;
 
@@ -628,7 +628,7 @@ int root_probe_dtz(chessposition *pos)
     for (int i = 0; i < pos->rootmovelist.length; i++)
     {
         chessmove *m = &pos->rootmovelist.move[i];
-        pos->playMove(m);
+        pos->playMove(m->code);
         //printf("info string root_probe_dtz (ply=%d) Testing move %s...\n", pos->ply, m->toString().c_str());
         int v = 0;
         if (pos->isCheckbb && dtz > 0) {
@@ -638,10 +638,11 @@ int root_probe_dtz(chessposition *pos)
             bool foundevasion = false;
             for (int j = 0; j < nextmovelist.length; j++)
             {
-                if (pos->playMove(&nextmovelist.move[j]))
+                uint32_t nmc = nextmovelist.move[j].code;
+                if (pos->playMove(nmc))
                 {
                     foundevasion = true;
-                    pos->unplayMove(&nextmovelist.move[j]);
+                    pos->unplayMove(nmc);
                     break;
                 }
             }
@@ -661,7 +662,7 @@ int root_probe_dtz(chessposition *pos)
         }
 
         //printf("info string root_probe_dtz (ply=%d) Tested  move %s... value=%d\n", pos->ply, m->toString().c_str(), v);
-        pos->unplayMove(m);
+        pos->unplayMove(m->code);
         if (!success)
             return 0;
 
@@ -771,11 +772,11 @@ int root_probe_wdl(chessposition *pos)
     for (int i = 0; i < pos->rootmovelist.length; i++)
     {
         chessmove *m = &pos->rootmovelist.move[i];
-        pos->playMove(m);
+        pos->playMove(m->code);
         //printf("info string root_probe_wdl (ply=%d) Testing move %s...\n", pos->ply, m->toString().c_str());
         int v = -probe_wdl(&success, pos);
         //printf("info string root_probe_wdl (ply=%d) Tested  move %s... value=%d\n", pos->ply, m->toString().c_str(), v);
-        pos->unplayMove(m);
+        pos->unplayMove(m->code);
         if (!success)
             return 0;
         if (!en.Syzygy50MoveRule)

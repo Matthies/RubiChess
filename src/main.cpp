@@ -154,10 +154,10 @@ long long engine::perft(int depth, bool dotests, bool printsysteminfo)
 
     for (int i = 0; i < movelist.length; i++)
     {
-        if (rootpos->playMove(&movelist.move[i]))
+        if (rootpos->playMove(movelist.move[i].code))
         {
             retval += perft(depth - 1, dotests);
-            rootpos->unplayMove(&movelist.move[i]);
+            rootpos->unplayMove(movelist.move[i].code);
         }
     }
     return retval;

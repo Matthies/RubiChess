@@ -474,7 +474,7 @@ uint32_t chessposition::applyMove(string s, bool resetMstop)
 
     prepareStack();
 
-    if (playMove(&m))
+    if (playMove(m.code))
     {
         if (resetMstop && halfmovescounter == 0)
         {
@@ -538,7 +538,7 @@ void chessposition::getRootMoves()
     excludemovestack[0] = 0; // FIXME: Not very nice; is it worth to do do singular testing in root search?
     for (int i = 0; i < movelist.length; i++)
     {
-        if (playMove(&movelist.move[i]))
+        if (playMove(movelist.move[i].code))
         {
             if (tthit)
             {
@@ -557,20 +557,20 @@ void chessposition::getRootMoves()
                     followupmovelist.length = CreateMovelist<ALL>(this, &followupmovelist.move[0]);
                     for (int j = 0; j < followupmovelist.length; j++)
                     {
-                        if (playMove(&followupmovelist.move[j]))
+                        if (playMove(followupmovelist.move[j].code))
                         {
                             if (testRepetiton() >= 2)
                                 // 3fold for opponent is possible
                                 moveTo3fold = movelist.move[i].code;
 
-                            unplayMove(&followupmovelist.move[j]);
+                            unplayMove(followupmovelist.move[j].code);
                         }
                     }
                 }
             }
 
             rootmovelist.move[rootmovelist.length++] = movelist.move[i];
-            unplayMove(&movelist.move[i]);
+            unplayMove(movelist.move[i].code);
             if (bestval < movelist.move[i].value)
             {
                 defaultmove = movelist.move[i];
@@ -1159,7 +1159,7 @@ int chessposition::applyPv(uint32_t* table)
     while ((cm.code = table[i++]))
     {
         prepareStack();
-        if (!playMove(&cm))
+        if (!playMove(cm.code))
             printf("Alarm! Wrong move %s in PV.\n", cm.toString().c_str());
     }
 
@@ -1173,7 +1173,7 @@ void chessposition::reapplyPv(uint32_t* table, int num)
     while (num)
     {
         cm.code = table[--num];
-        unplayMove(&cm);
+        unplayMove(cm.code);
     }
 }
 
@@ -1540,7 +1540,7 @@ void chessposition::BitboardPrint(U64 b)
 }
 
 
-bool chessposition::playMove(chessmove *cm)
+bool chessposition::playMove(uint32_t mc)
 {
     int s2m = state & S2MMASK;
     int eptnew = 0;
@@ -1555,12 +1555,12 @@ bool chessposition::playMove(chessmove *cm)
     halfmovescounter++;
 
     // Castle has special play
-    if (ISCASTLE(cm->code))
+    if (ISCASTLE(mc))
     {
         // Get castle squares and move king and rook
-        int kingfrom = GETFROM(cm->code);
-        int rookfrom = GETTO(cm->code);
-        int cstli = GETCASTLEINDEX(cm->code);
+        int kingfrom = GETFROM(mc);
+        int rookfrom = GETTO(mc);
+        int cstli = GETCASTLEINDEX(mc);
         int kingto = castlekingto[cstli];
         int rookto = castlerookto[cstli];
         PieceCode kingpc = (PieceCode)(WKING | s2m);
@@ -1600,12 +1600,12 @@ bool chessposition::playMove(chessmove *cm)
     }
     else
     {
-        int from = GETFROM(cm->code);
-        int to = GETTO(cm->code);
-        PieceCode pfrom = GETPIECE(cm->code);
+        int from = GETFROM(mc);
+        int to = GETTO(mc);
+        PieceCode pfrom = GETPIECE(mc);
         PieceType ptype = (pfrom >> 1);
-        PieceCode promote = GETPROMOTION(cm->code);
-        PieceCode capture = GETCAPTURE(cm->code);
+        PieceCode promote = GETPROMOTION(mc);
+        PieceCode capture = GETCAPTURE(mc);
 
 #ifdef NNUE
         dp->pc[0] = pfrom;
@@ -1619,7 +1619,7 @@ bool chessposition::playMove(chessmove *cm)
         myassert(ISEPCAPTURE(cm->code) || capture == mailbox[to], this, 2, capture, mailbox[to]);
 
         // Fix hash regarding capture
-        if (capture != BLANK && !ISEPCAPTURE(cm->code))
+        if (capture != BLANK && !ISEPCAPTURE(mc))
         {
             hash ^= zb.boardtable[(to << 4) | capture];
             if ((capture >> 1) == PAWN)
@@ -1666,7 +1666,7 @@ bool chessposition::playMove(chessmove *cm)
         /* PAWN specials */
         if (ptype == PAWN)
         {
-            eptnew = GETEPT(cm->code);
+            eptnew = GETEPT(mc);
             pawnhash ^= zb.boardtable[(to << 4) | mailbox[to]];
             pawnhash ^= zb.boardtable[(from << 4) | pfrom];
             halfmovescounter = 0;
@@ -1764,7 +1764,7 @@ bool chessposition::playMove(chessmove *cm)
     PREFETCH(&tp.table[hash & tp.sizemask]);
 
     ply++;
-    movestack[mstop++].movecode = cm->code;
+    movestack[mstop++].movecode = mc;
     myassert(mstop <= MAXDEPTH, this, 1, mstop);
     kingPinned = 0ULL;
     updatePins<WHITE>();
@@ -1774,7 +1774,7 @@ bool chessposition::playMove(chessmove *cm)
 }
 
 
-void chessposition::unplayMove(chessmove *cm)
+void chessposition::unplayMove(uint32_t mc)
 {
     ply--;
     mstop--;
@@ -1783,12 +1783,12 @@ void chessposition::unplayMove(chessmove *cm)
     memcpy(&state, &movestack[mstop], sizeof(chessmovestack));
 
     // Castle has special undo
-    if (ISCASTLE(cm->code))
+    if (ISCASTLE(mc))
     {
         // Get castle squares and undo king and rook move
-        int kingfrom = GETFROM(cm->code);
-        int rookfrom = GETTO(cm->code);
-        int cstli = GETCASTLEINDEX(cm->code);
+        int kingfrom = GETFROM(mc);
+        int rookfrom = GETTO(mc);
+        int cstli = GETCASTLEINDEX(mc);
         int kingto = castlekingto[cstli];
         int rookto = castlerookto[cstli];
         int s2m = cstli / 2;
@@ -1808,12 +1808,12 @@ void chessposition::unplayMove(chessmove *cm)
     }
     else
     {
-        int from = GETFROM(cm->code);
-        int to = GETTO(cm->code);
-        PieceCode pfrom = GETPIECE(cm->code);
+        int from = GETFROM(mc);
+        int to = GETTO(mc);
+        PieceCode pfrom = GETPIECE(mc);
 
-        PieceCode promote = GETPROMOTION(cm->code);
-        PieceCode capture = GETCAPTURE(cm->code);
+        PieceCode promote = GETPROMOTION(mc);
+        PieceCode capture = GETCAPTURE(mc);
 
         mailbox[from] = pfrom;
         if (promote != BLANK)
@@ -2363,7 +2363,7 @@ void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t k
 }
 
 
-chessmove* MoveSelector::next()
+uint32_t MoveSelector::next()
 {
     chessmove *m;
     switch (state)
@@ -2375,7 +2375,7 @@ chessmove* MoveSelector::next()
         state++;
         if (hashmove.code)
         {
-            return &hashmove;
+            return hashmove.code;
         }
         // fall through
     case TACTICALINITSTATE:
@@ -2393,32 +2393,32 @@ chessmove* MoveSelector::next()
             else {
                 m->value = INT_MIN;
                 if (m->code != hashmove.code)
-                    return m;
+                    return m->code;
             }
         }
         state++;
         if (onlyGoodCaptures)
-            return nullptr;
+            return 0;
         // fall through
     case KILLERMOVE1STATE:
         state++;
         if (pos->moveIsPseudoLegal(killermove1.code))
         {
-            return &killermove1;
+            return killermove1.code;
         }
         // fall through
     case KILLERMOVE2STATE:
         state++;
         if (pos->moveIsPseudoLegal(killermove2.code))
         {
-            return &killermove2;
+            return killermove2.code;
         }
         // fall through
     case COUNTERMOVESTATE:
         state++;
         if (pos->moveIsPseudoLegal(countermove.code))
         {
-            return &countermove;
+            return countermove.code;
         }
         // fall through
     case QUIETINITSTATE:
@@ -2434,7 +2434,7 @@ chessmove* MoveSelector::next()
                 && m->code != killermove1.code
                 && m->code != killermove2.code
                 && m->code != countermove.code)
-                return m;
+                return m->code;
         }
         state++;
         // fall through
@@ -2445,13 +2445,13 @@ chessmove* MoveSelector::next()
             m->value = INT_MIN;
             if (bBadTactical) {
                 STATISTICSDO(if (m->code == hashmove.code) STATISTICSINC(moves_bad_hash));
-                return m;
+                return m->code;
             }
         }
         state++;
         // fall through
     case BADTACTICALEND:
-        return nullptr;
+        return 0;
     case EVASIONINITSTATE:
         state++;
         captures->length = CreateEvasionMovelist(pos, &captures->move[0]);
@@ -2461,12 +2461,12 @@ chessmove* MoveSelector::next()
         while ((m = captures->getNextMove()))
         {
             m->value = INT_MIN;
-            return m;
+            return m->code;
         }
         state++;
         // fall through
     default:
-        return nullptr;
+        return 0;
     }
 }
 

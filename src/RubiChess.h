@@ -1199,7 +1199,7 @@ public:
 public:
     void SetPreferredMoves(chessposition *p);  // for quiescence move selector
     void SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, uint32_t counter, int excludemove);
-    chessmove* next();
+    uint32_t next();
 };
 
 extern U64 pawn_attacks_to[64][2];
@@ -1387,8 +1387,8 @@ public:
     void tbFilterRootMoves();
     void prepareStack();
     string movesOnStack();
-    bool playMove(chessmove *cm);
-    void unplayMove(chessmove *cm);
+    bool playMove(uint32_t mc);
+    void unplayMove(uint32_t mc);
     void playNullMove();
     void unplayNullMove();
     template <int Me> void updatePins();
