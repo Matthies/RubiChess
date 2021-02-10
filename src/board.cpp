@@ -102,7 +102,34 @@ char PieceChar(PieceCode c, bool lower = false)
         o = (char)(o + ('A' - 'a'));
     return o;
 }
- 
+
+
+inline string moveToString(uint32_t mc)
+{
+    char s[8];
+
+    if (mc == 0)
+        return "(none)";
+
+    int from, to;
+    PieceCode promotion;
+    from = GETFROM(mc);
+    if (!en.chess960)
+        to = GETCORRECTTO(mc);
+    else
+        to = GETTO(mc);
+    promotion = GETPROMOTION(mc);
+
+    sprintf_s(s, "%c%d%c%d", (from & 0x7) + 'a', ((from >> 3) & 0x7) + 1, (to & 0x7) + 'a', ((to >> 3) & 0x7) + 1);
+    if (promotion)
+    {
+        string ps(1, PieceChar(promotion, true));
+        return s + ps;
+    }
+
+    return s;
+}
+
 
 chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece)
 {
@@ -138,28 +165,7 @@ chessmove::chessmove(uint32_t c)
 
 string chessmove::toString()
 {
-    char s[8];
-
-    if (code == 0)
-        return "(none)";
-
-    int from, to;
-    PieceCode promotion;
-    from = GETFROM(code);
-    if (!en.chess960)
-        to = GETCORRECTTO(code);
-    else
-        to = GETTO(code);
-    promotion = GETPROMOTION(code);
-
-    sprintf_s(s, "%c%d%c%d", (from & 0x7) + 'a', ((from >> 3) & 0x7) + 1, (to & 0x7) + 'a', ((to >> 3) & 0x7) + 1);
-    if (promotion)
-    {
-        string ps(1, PieceChar(promotion, true));
-        return s + ps;
-    }
-    
-    return s;
+    return moveToString(code);
 }
 
 void chessmove::print()
@@ -198,7 +204,7 @@ void chessmovelist::print()
     printf("%s", toString().c_str());
 }
 
-// Sorting for MoveSelector
+// Sorting for MoveSelector; keep the move in the list
 chessmove* chessmovelist::getNextMove(int minval = INT_MIN)
 {
     int current = -1;
@@ -215,6 +221,30 @@ chessmove* chessmovelist::getNextMove(int minval = INT_MIN)
         return &move[current];
 
     return nullptr;
+}
+
+// Sorting for MoveSelector; remove it from the list
+uint32_t chessmovelist::getAndRemoveNextMove()
+{
+    int minval = INT_MIN;
+    int current = -1;
+    for (int i = 0; i < length; i++)
+    {
+        if (move[i].value > minval)
+        {
+            minval = move[i].value;
+            current = i;
+        }
+    }
+
+    if (current >= 0)
+    {
+        int mc = move[current].code;
+        move[current] = move[--length];
+        return mc;
+    }
+
+    return 0;
 }
 
 
@@ -474,7 +504,7 @@ uint32_t chessposition::applyMove(string s, bool resetMstop)
 
     prepareStack();
 
-    if (playMove(&m))
+    if (playMove(m.code))
     {
         if (resetMstop && halfmovescounter == 0)
         {
@@ -527,7 +557,7 @@ void chessposition::getRootMoves()
 
     int bestval = SCOREBLACKWINS;
     rootmovelist.length = 0;
-    defaultmove.code = 0;
+    defaultmove = 0;
 
     uint16_t moveTo3fold = 0;
     bool bImmediate3fold = false;
@@ -538,7 +568,7 @@ void chessposition::getRootMoves()
     excludemovestack[0] = 0; // FIXME: Not very nice; is it worth to do do singular testing in root search?
     for (int i = 0; i < movelist.length; i++)
     {
-        if (playMove(&movelist.move[i]))
+        if (playMove(movelist.move[i].code))
         {
             if (tthit)
             {
@@ -557,23 +587,23 @@ void chessposition::getRootMoves()
                     followupmovelist.length = CreateMovelist<ALL>(this, &followupmovelist.move[0]);
                     for (int j = 0; j < followupmovelist.length; j++)
                     {
-                        if (playMove(&followupmovelist.move[j]))
+                        if (playMove(followupmovelist.move[j].code))
                         {
                             if (testRepetiton() >= 2)
                                 // 3fold for opponent is possible
                                 moveTo3fold = movelist.move[i].code;
 
-                            unplayMove(&followupmovelist.move[j]);
+                            unplayMove(followupmovelist.move[j].code);
                         }
                     }
                 }
             }
 
             rootmovelist.move[rootmovelist.length++] = movelist.move[i];
-            unplayMove(&movelist.move[i]);
+            unplayMove(movelist.move[i].code);
             if (bestval < movelist.move[i].value)
             {
-                defaultmove = movelist.move[i];
+                defaultmove = movelist.move[i].code;
                 bestval = movelist.move[i].value;
             }
         }
@@ -617,7 +647,7 @@ void chessposition::tbFilterRootMoves()
                     }
                 }
             }
-            defaultmove = rootmovelist.move[0];
+            defaultmove = rootmovelist.move[0].code;
         }
     }
 }
@@ -1001,7 +1031,7 @@ void chessposition::print(ostream* os)
     *os << "Ply: " + to_string(ply) + "\n";
     *os << "rootheight: " + to_string(rootheight) + "\n";
     stringstream ss;
-    ss << hex << bestmove.code;
+    ss << hex << bestmove;
     *os << "bestmove[0].code: 0x" + ss.str() + "\n";
 }
 
@@ -1159,7 +1189,7 @@ int chessposition::applyPv(uint32_t* table)
     while ((cm.code = table[i++]))
     {
         prepareStack();
-        if (!playMove(&cm))
+        if (!playMove(cm.code))
             printf("Alarm! Wrong move %s in PV.\n", cm.toString().c_str());
     }
 
@@ -1173,7 +1203,7 @@ void chessposition::reapplyPv(uint32_t* table, int num)
     while (num)
     {
         cm.code = table[--num];
-        unplayMove(&cm);
+        unplayMove(cm.code);
     }
 }
 
@@ -1540,7 +1570,7 @@ void chessposition::BitboardPrint(U64 b)
 }
 
 
-bool chessposition::playMove(chessmove *cm)
+bool chessposition::playMove(uint32_t mc)
 {
     int s2m = state & S2MMASK;
     int eptnew = 0;
@@ -1555,12 +1585,12 @@ bool chessposition::playMove(chessmove *cm)
     halfmovescounter++;
 
     // Castle has special play
-    if (ISCASTLE(cm->code))
+    if (ISCASTLE(mc))
     {
         // Get castle squares and move king and rook
-        int kingfrom = GETFROM(cm->code);
-        int rookfrom = GETTO(cm->code);
-        int cstli = GETCASTLEINDEX(cm->code);
+        int kingfrom = GETFROM(mc);
+        int rookfrom = GETTO(mc);
+        int cstli = GETCASTLEINDEX(mc);
         int kingto = castlekingto[cstli];
         int rookto = castlerookto[cstli];
         PieceCode kingpc = (PieceCode)(WKING | s2m);
@@ -1600,12 +1630,12 @@ bool chessposition::playMove(chessmove *cm)
     }
     else
     {
-        int from = GETFROM(cm->code);
-        int to = GETTO(cm->code);
-        PieceCode pfrom = GETPIECE(cm->code);
+        int from = GETFROM(mc);
+        int to = GETTO(mc);
+        PieceCode pfrom = GETPIECE(mc);
         PieceType ptype = (pfrom >> 1);
-        PieceCode promote = GETPROMOTION(cm->code);
-        PieceCode capture = GETCAPTURE(cm->code);
+        PieceCode promote = GETPROMOTION(mc);
+        PieceCode capture = GETCAPTURE(mc);
 
 #ifdef NNUE
         dp->pc[0] = pfrom;
@@ -1616,10 +1646,10 @@ bool chessposition::playMove(chessmove *cm)
 
         myassert(!promote || (ptype == PAWN && RRANK(to, s2m) == 7), this, 4, promote, ptype, to, s2m);
         myassert(pfrom == mailbox[from], this, 3, pfrom, from, mailbox[from]);
-        myassert(ISEPCAPTURE(cm->code) || capture == mailbox[to], this, 2, capture, mailbox[to]);
+        myassert(ISEPCAPTURE(mc) || capture == mailbox[to], this, 2, capture, mailbox[to]);
 
         // Fix hash regarding capture
-        if (capture != BLANK && !ISEPCAPTURE(cm->code))
+        if (capture != BLANK && !ISEPCAPTURE(mc))
         {
             hash ^= zb.boardtable[(to << 4) | capture];
             if ((capture >> 1) == PAWN)
@@ -1666,7 +1696,7 @@ bool chessposition::playMove(chessmove *cm)
         /* PAWN specials */
         if (ptype == PAWN)
         {
-            eptnew = GETEPT(cm->code);
+            eptnew = GETEPT(mc);
             pawnhash ^= zb.boardtable[(to << 4) | mailbox[to]];
             pawnhash ^= zb.boardtable[(from << 4) | pfrom];
             halfmovescounter = 0;
@@ -1764,7 +1794,7 @@ bool chessposition::playMove(chessmove *cm)
     PREFETCH(&tp.table[hash & tp.sizemask]);
 
     ply++;
-    movestack[mstop++].movecode = cm->code;
+    movestack[mstop++].movecode = mc;
     myassert(mstop <= MAXDEPTH, this, 1, mstop);
     kingPinned = 0ULL;
     updatePins<WHITE>();
@@ -1774,7 +1804,7 @@ bool chessposition::playMove(chessmove *cm)
 }
 
 
-void chessposition::unplayMove(chessmove *cm)
+void chessposition::unplayMove(uint32_t mc)
 {
     ply--;
     mstop--;
@@ -1783,12 +1813,12 @@ void chessposition::unplayMove(chessmove *cm)
     memcpy(&state, &movestack[mstop], sizeof(chessmovestack));
 
     // Castle has special undo
-    if (ISCASTLE(cm->code))
+    if (ISCASTLE(mc))
     {
         // Get castle squares and undo king and rook move
-        int kingfrom = GETFROM(cm->code);
-        int rookfrom = GETTO(cm->code);
-        int cstli = GETCASTLEINDEX(cm->code);
+        int kingfrom = GETFROM(mc);
+        int rookfrom = GETTO(mc);
+        int cstli = GETCASTLEINDEX(mc);
         int kingto = castlekingto[cstli];
         int rookto = castlerookto[cstli];
         int s2m = cstli / 2;
@@ -1808,12 +1838,12 @@ void chessposition::unplayMove(chessmove *cm)
     }
     else
     {
-        int from = GETFROM(cm->code);
-        int to = GETTO(cm->code);
-        PieceCode pfrom = GETPIECE(cm->code);
+        int from = GETFROM(mc);
+        int to = GETTO(mc);
+        PieceCode pfrom = GETPIECE(mc);
 
-        PieceCode promote = GETPROMOTION(cm->code);
-        PieceCode capture = GETCAPTURE(cm->code);
+        PieceCode promote = GETPROMOTION(mc);
+        PieceCode capture = GETCAPTURE(mc);
 
         mailbox[from] = pfrom;
         if (promote != BLANK)
@@ -2320,8 +2350,8 @@ int chessposition::getBestPossibleCapture()
 void MoveSelector::SetPreferredMoves(chessposition *p)
 {
     pos = p;
-    hashmove.code = 0;
-    killermove1.code = killermove2.code = 0;
+    hashmove = 0;
+    killermove1 = killermove2 = 0;
     if (!p->isCheckbb)
     {
         onlyGoodCaptures = true;
@@ -2340,13 +2370,13 @@ void MoveSelector::SetPreferredMoves(chessposition *p)
 void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, uint32_t counter, int excludemove)
 {
     pos = p;
-    hashmove.code = p->shortMove2FullMove(hshm);
-    if (kllm1 != hashmove.code)
-        killermove1.code = kllm1;
-    if (kllm2 != hashmove.code)
-        killermove2.code = kllm2;
-    if (counter != hashmove.code && counter != kllm1 && counter != kllm2)
-        countermove.code = counter;
+    hashmove = p->shortMove2FullMove(hshm);
+    if (kllm1 != hashmove)
+        killermove1 = kllm1;
+    if (kllm2 != hashmove)
+        killermove2 = kllm2;
+    if (counter != hashmove && counter != kllm1 && counter != kllm2)
+        countermove = counter;
     pos->getCmptr(&cmptr[0]);
     if (!excludemove)
     {
@@ -2363,7 +2393,7 @@ void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t k
 }
 
 
-chessmove* MoveSelector::next()
+uint32_t MoveSelector::next()
 {
     chessmove *m;
     switch (state)
@@ -2373,9 +2403,9 @@ chessmove* MoveSelector::next()
         // fall through
     case HASHMOVESTATE:
         state++;
-        if (hashmove.code)
+        if (hashmove)
         {
-            return &hashmove;
+            return hashmove;
         }
         // fall through
     case TACTICALINITSTATE:
@@ -2392,33 +2422,33 @@ chessmove* MoveSelector::next()
             }
             else {
                 m->value = INT_MIN;
-                if (m->code != hashmove.code)
-                    return m;
+                if (m->code != hashmove)
+                    return m->code;
             }
         }
         state++;
         if (onlyGoodCaptures)
-            return nullptr;
+            return 0;
         // fall through
     case KILLERMOVE1STATE:
         state++;
-        if (pos->moveIsPseudoLegal(killermove1.code))
+        if (pos->moveIsPseudoLegal(killermove1))
         {
-            return &killermove1;
+            return killermove1;
         }
         // fall through
     case KILLERMOVE2STATE:
         state++;
-        if (pos->moveIsPseudoLegal(killermove2.code))
+        if (pos->moveIsPseudoLegal(killermove2))
         {
-            return &killermove2;
+            return killermove2;
         }
         // fall through
     case COUNTERMOVESTATE:
         state++;
-        if (pos->moveIsPseudoLegal(countermove.code))
+        if (pos->moveIsPseudoLegal(countermove))
         {
-            return &countermove;
+            return countermove;
         }
         // fall through
     case QUIETINITSTATE:
@@ -2427,14 +2457,14 @@ chessmove* MoveSelector::next()
         evaluateMoves<QUIET>(quiets, pos, &cmptr[0]);
         // fall through
     case QUIETSTATE:
-        while ((m = quiets->getNextMove()))
+        uint32_t mc;
+        while ((mc = quiets->getAndRemoveNextMove()))
         {
-            m->value = INT_MIN;
-            if (m->code != hashmove.code
-                && m->code != killermove1.code
-                && m->code != killermove2.code
-                && m->code != countermove.code)
-                return m;
+            if (mc != hashmove
+                && mc != killermove1
+                && mc != killermove2
+                && mc != countermove)
+                return mc;
         }
         state++;
         // fall through
@@ -2445,28 +2475,27 @@ chessmove* MoveSelector::next()
             m->value = INT_MIN;
             if (bBadTactical) {
                 STATISTICSDO(if (m->code == hashmove.code) STATISTICSINC(moves_bad_hash));
-                return m;
+                return m->code;
             }
         }
         state++;
         // fall through
     case BADTACTICALEND:
-        return nullptr;
+        return 0;
     case EVASIONINITSTATE:
         state++;
         captures->length = CreateEvasionMovelist(pos, &captures->move[0]);
         evaluateMoves<ALL>(captures, pos, &cmptr[0]);
         // fall through
     case EVASIONSTATE:
-        while ((m = captures->getNextMove()))
+        while ((mc = captures->getAndRemoveNextMove()))
         {
-            m->value = INT_MIN;
-            return m;
+            return mc;
         }
         state++;
         // fall through
     default:
-        return nullptr;
+        return 0;
     }
 }
 
@@ -2663,7 +2692,7 @@ void engine::prepareThreads()
         pos->threadindex = i;
         // early reset of variables that are important for bestmove selection
         pos->bestmovescore[0] = NOSCORE;
-        pos->bestmove.code = 0;
+        pos->bestmove = 0;
         pos->nodes = 0;
         pos->nullmoveply = 0;
         pos->nullmoveside = 0;
@@ -2742,7 +2771,7 @@ void engine::communicate(string inputstring)
                     if (!(lastopponentsmove = rootposition.applyMove(*it)))
                         printf("info string Alarm! Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
                 }
-                ponderhit = (lastopponentsmove && lastopponentsmove == rootposition.pondermove.code);
+                ponderhit = (lastopponentsmove && lastopponentsmove == rootposition.pondermove);
                 rootposition.rootheight = rootposition.mstop;
                 rootposition.ply = 0;
                 rootposition.getRootMoves();
@@ -2800,9 +2829,9 @@ void engine::communicate(string inputstring)
                         }
                         rootposition.pvdebug[i].code = 0;
                         while (i--) {
-                            chessmove m;
-                            m.code = rootposition.pvdebug[i].code;
-                            rootposition.unplayMove(&m);
+                            uint32_t mc;
+                            mc = rootposition.pvdebug[i].code;
+                            rootposition.unplayMove(mc);
                         }
                         prepareThreads();   // To copy the debug information to the threads position object
                     }

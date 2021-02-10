@@ -1134,6 +1134,7 @@ struct chessmovestack
 
 #define MAXMOVELISTLENGTH 256   // for lists of possible pseudo-legal moves
 
+string moveToString(uint32_t mc);
 
 class chessmove
 {
@@ -1174,6 +1175,7 @@ public:
 	string toStringWithValue();
 	void print();
     chessmove* getNextMove(int minval);
+    uint32_t getAndRemoveNextMove();
 };
 
 #define CMPLIES 2
@@ -1188,10 +1190,10 @@ public:
     int state;
     chessmovelist* captures;
     chessmovelist* quiets;
-    chessmove hashmove;
-    chessmove killermove1;
-    chessmove killermove2;
-    chessmove countermove;
+    uint32_t hashmove;
+    uint32_t killermove1;
+    uint32_t killermove2;
+    uint32_t countermove;
     int legalmovenum;
     bool onlyGoodCaptures;
     int16_t *cmptr[CMPLIES];
@@ -1199,7 +1201,7 @@ public:
 public:
     void SetPreferredMoves(chessposition *p);  // for quiescence move selector
     void SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, uint32_t counter, int excludemove);
-    chessmove* next();
+    uint32_t next();
 };
 
 extern U64 pawn_attacks_to[64][2];
@@ -1296,10 +1298,10 @@ public:
     int nullmoveside;
     int nullmoveply = 0;
     chessmovelist rootmovelist;
-    chessmove bestmove;
-    int bestmovescore[MAXMULTIPV];
+    uint32_t bestmove;
     int lastbestmovescore;
-    chessmove pondermove;
+    int bestmovescore[MAXMULTIPV];
+    uint32_t pondermove;
     int LegalMoves[MAXDEPTH];
     uint32_t killer[MAXDEPTH][2];
     uint32_t bestFailingLow;
@@ -1313,7 +1315,7 @@ public:
     int useTb;
     int useRootmoveScore;
     int tbPosition;
-    chessmove defaultmove; // fallback if search in time trouble didn't finish a single iteration
+    uint32_t defaultmove; // fallback if search in time trouble didn't finish a single iteration
     chessmovelist captureslist[MAXDEPTH];
     chessmovelist quietslist[MAXDEPTH];
     chessmovelist singularcaptureslist[MAXDEPTH];   // extra move lists for singular testing
@@ -1387,8 +1389,8 @@ public:
     void tbFilterRootMoves();
     void prepareStack();
     string movesOnStack();
-    bool playMove(chessmove *cm);
-    void unplayMove(chessmove *cm);
+    bool playMove(uint32_t mc);
+    void unplayMove(uint32_t mc);
     void playNullMove();
     void unplayNullMove();
     template <int Me> void updatePins();

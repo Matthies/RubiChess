@@ -339,7 +339,7 @@ static void gensfenthread(searchthread* thr)
     raninit(&rnd, rndseed);
     chessmovelist movelist;
     U64 psvnums = 0;
-    chessmove nextmove;
+    uint32_t nmc;
     chessposition* pos = &thr->pos;
     pos->he_yes = 0ULL;
     pos->he_all = 0ULL;
@@ -441,8 +441,8 @@ static void gensfenthread(searchthread* thr)
             
 SKIP_SAVE:
             // preset move for next ply with the pv move
-            nextmove.code = pos->pvtable[pos->ply][0];
-            if (!nextmove.code)
+            nmc = pos->pvtable[pos->ply][0];
+            if (!nmc)
             {
                 // No move in pv => mate or stalemate
                 if (pos->isCheckbb) // Mate
@@ -453,7 +453,7 @@ SKIP_SAVE:
             }
 
             pos->prepareStack();
-            bool chooserandom = !nextmove.code || (random_move_count && ply >= random_move_minply && ply <= random_move_maxply && random_move_flag[ply]);
+            bool chooserandom = !nmc || (random_move_count && ply >= random_move_minply && ply <= random_move_maxply && random_move_flag[ply]);
 
             while (true)
             {
@@ -463,7 +463,7 @@ SKIP_SAVE:
                     if (random_multi_pv == 0)
                     {
                         i = ranval(&rnd) % movelist.length;
-                        nextmove.code = movelist.move[i].code;
+                        nmc = movelist.move[i].code;
                     }
                     else
                     {
@@ -475,11 +475,11 @@ SKIP_SAVE:
                         while (random_multi_pv_diff && pos->bestmovescore[0] > pos->bestmovescore[s - 1] + random_multi_pv_diff)
                             s--;
 
-                        nextmove.code = pos->multipvtable[ranval(&rnd) % s][0];
+                        nmc = pos->multipvtable[ranval(&rnd) % s][0];
                     }
                 }
 
-                bool legal = pos->playMove(&nextmove);
+                bool legal = pos->playMove(nmc);
 
                 if (legal)
                 {
@@ -743,7 +743,7 @@ void convert(vector<string> args)
                 if (n % 10000 == 0)
                 {
                     cerr << "======================================================================\n";
-                    for (int i = 0; i < 7; i++)
+                    for (i = 0; i < 7; i++)
                     {
                         double avh = evalsum[0][i] / (double)evaln[i];
                         double avn = evalsum[1][i] / (double)evaln[i];
