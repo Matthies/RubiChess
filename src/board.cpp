@@ -2350,8 +2350,8 @@ int chessposition::getBestPossibleCapture()
 void MoveSelector::SetPreferredMoves(chessposition *p)
 {
     pos = p;
-    hashmove.code = 0;
-    killermove1.code = killermove2.code = 0;
+    hashmove = 0;
+    killermove1 = killermove2 = 0;
     if (!p->isCheckbb)
     {
         onlyGoodCaptures = true;
@@ -2370,13 +2370,13 @@ void MoveSelector::SetPreferredMoves(chessposition *p)
 void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, uint32_t counter, int excludemove)
 {
     pos = p;
-    hashmove.code = p->shortMove2FullMove(hshm);
-    if (kllm1 != hashmove.code)
-        killermove1.code = kllm1;
-    if (kllm2 != hashmove.code)
-        killermove2.code = kllm2;
-    if (counter != hashmove.code && counter != kllm1 && counter != kllm2)
-        countermove.code = counter;
+    hashmove = p->shortMove2FullMove(hshm);
+    if (kllm1 != hashmove)
+        killermove1 = kllm1;
+    if (kllm2 != hashmove)
+        killermove2 = kllm2;
+    if (counter != hashmove && counter != kllm1 && counter != kllm2)
+        countermove = counter;
     pos->getCmptr(&cmptr[0]);
     if (!excludemove)
     {
@@ -2403,9 +2403,9 @@ uint32_t MoveSelector::next()
         // fall through
     case HASHMOVESTATE:
         state++;
-        if (hashmove.code)
+        if (hashmove)
         {
-            return hashmove.code;
+            return hashmove;
         }
         // fall through
     case TACTICALINITSTATE:
@@ -2422,7 +2422,7 @@ uint32_t MoveSelector::next()
             }
             else {
                 m->value = INT_MIN;
-                if (m->code != hashmove.code)
+                if (m->code != hashmove)
                     return m->code;
             }
         }
@@ -2432,23 +2432,23 @@ uint32_t MoveSelector::next()
         // fall through
     case KILLERMOVE1STATE:
         state++;
-        if (pos->moveIsPseudoLegal(killermove1.code))
+        if (pos->moveIsPseudoLegal(killermove1))
         {
-            return killermove1.code;
+            return killermove1;
         }
         // fall through
     case KILLERMOVE2STATE:
         state++;
-        if (pos->moveIsPseudoLegal(killermove2.code))
+        if (pos->moveIsPseudoLegal(killermove2))
         {
-            return killermove2.code;
+            return killermove2;
         }
         // fall through
     case COUNTERMOVESTATE:
         state++;
-        if (pos->moveIsPseudoLegal(countermove.code))
+        if (pos->moveIsPseudoLegal(countermove))
         {
-            return countermove.code;
+            return countermove;
         }
         // fall through
     case QUIETINITSTATE:
@@ -2460,10 +2460,10 @@ uint32_t MoveSelector::next()
         uint32_t mc;
         while ((mc = quiets->getAndRemoveNextMove()))
         {
-            if (mc != hashmove.code
-                && mc != killermove1.code
-                && mc != killermove2.code
-                && mc != countermove.code)
+            if (mc != hashmove
+                && mc != killermove1
+                && mc != killermove2
+                && mc != countermove)
                 return mc;
         }
         state++;

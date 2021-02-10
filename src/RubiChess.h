@@ -1190,10 +1190,10 @@ public:
     int state;
     chessmovelist* captures;
     chessmovelist* quiets;
-    chessmove hashmove;
-    chessmove killermove1;
-    chessmove killermove2;
-    chessmove countermove;
+    uint32_t hashmove;
+    uint32_t killermove1;
+    uint32_t killermove2;
+    uint32_t countermove;
     int legalmovenum;
     bool onlyGoodCaptures;
     int16_t *cmptr[CMPLIES];
