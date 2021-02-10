@@ -1174,7 +1174,7 @@ public:
 	string toStringWithValue();
 	void print();
     chessmove* getNextMove(int minval);
-    uint32_t chessmovelist::getAndRemoveNextMove();
+    uint32_t getAndRemoveNextMove();
 };
 
 #define CMPLIES 2
