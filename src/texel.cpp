@@ -598,7 +598,6 @@ static double TexelEvalErrorDiff(tuner* tn, precalculated* precalc)
     positiontuneset* p = (positiontuneset*)texelpts;
     for (U64 i = 0; i < texelptsnum; i++)
     {
-        evalparam* e = (evalparam*)((char*)p + sizeof(positiontuneset));
         precalculated* prec = precalc + i;
         int index = prec->index;
 
@@ -1057,7 +1056,7 @@ static double getAvgParamVal(int iParam)
     {
         evalparam* e = (evalparam*)((char*)p + sizeof(positiontuneset));
         if (p->sc != SCALE_DRAW)
-            pSum += TAPEREDANDSCALEDEVAL(getValueByCoeff(*pos.tps.ev, p, e, false, iParam), p->ph, p->sc);
+            pSum += TAPEREDANDSCALEDEVAL(getValueByCoeff(*pos.tps.ev, p, e, nullptr, false, iParam), p->ph, p->sc);
         p = (positiontuneset*)((char*)p + sizeof(positiontuneset) + p->num * sizeof(evalparam));
     }
     double pAvg = pSum / (double)texelptsnum;
@@ -1078,8 +1077,8 @@ static double getCorrelationCoeff(int ix, int iy, double ax, double ay)
         evalparam* e = (evalparam*)((char*)p + sizeof(positiontuneset));
         if (p->sc != SCALE_DRAW)
         {
-            px = TAPEREDANDSCALEDEVAL(getValueByCoeff(*pos.tps.ev, p, e, false, ix), p->ph, p->sc);
-            py = TAPEREDANDSCALEDEVAL(getValueByCoeff(*pos.tps.ev, p, e, false, iy), p->ph, p->sc);
+            px = TAPEREDANDSCALEDEVAL(getValueByCoeff(*pos.tps.ev, p, e, nullptr, false, ix), p->ph, p->sc);
+            py = TAPEREDANDSCALEDEVAL(getValueByCoeff(*pos.tps.ev, p, e, nullptr, false, iy), p->ph, p->sc);
         }
         counter += (px - ax) * (py - ay);
         denominatorfactorx += (px - ax) * (px - ax);

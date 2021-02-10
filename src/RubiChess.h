@@ -1134,6 +1134,7 @@ struct chessmovestack
 
 #define MAXMOVELISTLENGTH 256   // for lists of possible pseudo-legal moves
 
+string moveToString(uint32_t mc);
 
 class chessmove
 {
@@ -1297,10 +1298,10 @@ public:
     int nullmoveside;
     int nullmoveply = 0;
     chessmovelist rootmovelist;
-    chessmove bestmove;
-    int bestmovescore[MAXMULTIPV];
+    uint32_t bestmove;
     int lastbestmovescore;
-    chessmove pondermove;
+    int bestmovescore[MAXMULTIPV];
+    uint32_t pondermove;
     int LegalMoves[MAXDEPTH];
     uint32_t killer[MAXDEPTH][2];
     uint32_t bestFailingLow;
@@ -1314,7 +1315,7 @@ public:
     int useTb;
     int useRootmoveScore;
     int tbPosition;
-    chessmove defaultmove; // fallback if search in time trouble didn't finish a single iteration
+    uint32_t defaultmove; // fallback if search in time trouble didn't finish a single iteration
     chessmovelist captureslist[MAXDEPTH];
     chessmovelist quietslist[MAXDEPTH];
     chessmovelist singularcaptureslist[MAXDEPTH];   // extra move lists for singular testing

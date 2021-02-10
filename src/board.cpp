@@ -102,7 +102,34 @@ char PieceChar(PieceCode c, bool lower = false)
         o = (char)(o + ('A' - 'a'));
     return o;
 }
- 
+
+
+inline string moveToString(uint32_t mc)
+{
+    char s[8];
+
+    if (mc == 0)
+        return "(none)";
+
+    int from, to;
+    PieceCode promotion;
+    from = GETFROM(mc);
+    if (!en.chess960)
+        to = GETCORRECTTO(mc);
+    else
+        to = GETTO(mc);
+    promotion = GETPROMOTION(mc);
+
+    sprintf_s(s, "%c%d%c%d", (from & 0x7) + 'a', ((from >> 3) & 0x7) + 1, (to & 0x7) + 'a', ((to >> 3) & 0x7) + 1);
+    if (promotion)
+    {
+        string ps(1, PieceChar(promotion, true));
+        return s + ps;
+    }
+
+    return s;
+}
+
 
 chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece)
 {
@@ -138,28 +165,7 @@ chessmove::chessmove(uint32_t c)
 
 string chessmove::toString()
 {
-    char s[8];
-
-    if (code == 0)
-        return "(none)";
-
-    int from, to;
-    PieceCode promotion;
-    from = GETFROM(code);
-    if (!en.chess960)
-        to = GETCORRECTTO(code);
-    else
-        to = GETTO(code);
-    promotion = GETPROMOTION(code);
-
-    sprintf_s(s, "%c%d%c%d", (from & 0x7) + 'a', ((from >> 3) & 0x7) + 1, (to & 0x7) + 'a', ((to >> 3) & 0x7) + 1);
-    if (promotion)
-    {
-        string ps(1, PieceChar(promotion, true));
-        return s + ps;
-    }
-    
-    return s;
+    return moveToString(code);
 }
 
 void chessmove::print()
@@ -198,10 +204,9 @@ void chessmovelist::print()
     printf("%s", toString().c_str());
 }
 
-// Sorting for MoveSelector
-chessmove* chessmovelist::getNextMove(int threshold = INT_MIN)
+// Sorting for MoveSelector; keep the move in the list
+chessmove* chessmovelist::getNextMove(int minval = INT_MIN)
 {
-    int minval = threshold;
     int current = -1;
     for (int i = 0; i < length; i++)
     {
@@ -218,7 +223,7 @@ chessmove* chessmovelist::getNextMove(int threshold = INT_MIN)
     return nullptr;
 }
 
-// Sorting for MoveSelector
+// Sorting for MoveSelector; remove it from the list
 uint32_t chessmovelist::getAndRemoveNextMove()
 {
     int minval = INT_MIN;
@@ -552,7 +557,7 @@ void chessposition::getRootMoves()
 
     int bestval = SCOREBLACKWINS;
     rootmovelist.length = 0;
-    defaultmove.code = 0;
+    defaultmove = 0;
 
     uint16_t moveTo3fold = 0;
     bool bImmediate3fold = false;
@@ -598,7 +603,7 @@ void chessposition::getRootMoves()
             unplayMove(movelist.move[i].code);
             if (bestval < movelist.move[i].value)
             {
-                defaultmove = movelist.move[i];
+                defaultmove = movelist.move[i].code;
                 bestval = movelist.move[i].value;
             }
         }
@@ -642,7 +647,7 @@ void chessposition::tbFilterRootMoves()
                     }
                 }
             }
-            defaultmove = rootmovelist.move[0];
+            defaultmove = rootmovelist.move[0].code;
         }
     }
 }
@@ -1026,7 +1031,7 @@ void chessposition::print(ostream* os)
     *os << "Ply: " + to_string(ply) + "\n";
     *os << "rootheight: " + to_string(rootheight) + "\n";
     stringstream ss;
-    ss << hex << bestmove.code;
+    ss << hex << bestmove;
     *os << "bestmove[0].code: 0x" + ss.str() + "\n";
 }
 
@@ -1641,7 +1646,7 @@ bool chessposition::playMove(uint32_t mc)
 
         myassert(!promote || (ptype == PAWN && RRANK(to, s2m) == 7), this, 4, promote, ptype, to, s2m);
         myassert(pfrom == mailbox[from], this, 3, pfrom, from, mailbox[from]);
-        myassert(ISEPCAPTURE(cm->code) || capture == mailbox[to], this, 2, capture, mailbox[to]);
+        myassert(ISEPCAPTURE(mc) || capture == mailbox[to], this, 2, capture, mailbox[to]);
 
         // Fix hash regarding capture
         if (capture != BLANK && !ISEPCAPTURE(mc))
@@ -2687,7 +2692,7 @@ void engine::prepareThreads()
         pos->threadindex = i;
         // early reset of variables that are important for bestmove selection
         pos->bestmovescore[0] = NOSCORE;
-        pos->bestmove.code = 0;
+        pos->bestmove = 0;
         pos->nodes = 0;
         pos->nullmoveply = 0;
         pos->nullmoveside = 0;
@@ -2766,7 +2771,7 @@ void engine::communicate(string inputstring)
                     if (!(lastopponentsmove = rootposition.applyMove(*it)))
                         printf("info string Alarm! Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
                 }
-                ponderhit = (lastopponentsmove && lastopponentsmove == rootposition.pondermove.code);
+                ponderhit = (lastopponentsmove && lastopponentsmove == rootposition.pondermove);
                 rootposition.rootheight = rootposition.mstop;
                 rootposition.ply = 0;
                 rootposition.getRootMoves();
@@ -2824,9 +2829,9 @@ void engine::communicate(string inputstring)
                         }
                         rootposition.pvdebug[i].code = 0;
                         while (i--) {
-                            chessmove m;
-                            m.code = rootposition.pvdebug[i].code;
-                            rootposition.unplayMove(&m);
+                            uint32_t mc;
+                            mc = rootposition.pvdebug[i].code;
+                            rootposition.unplayMove(mc);
                         }
                         prepareThreads();   // To copy the debug information to the threads position object
                     }
