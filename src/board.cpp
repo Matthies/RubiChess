@@ -3098,6 +3098,16 @@ void ucioptions_t::Set(string n, string v, bool force)
     smatch m;
     switch (op->type)
     {
+    case ucinnueweight:
+        int8_t iVal8;
+        try {
+            iVal8 = stoi(v);
+            if ((bChanged = (iVal8 >= op->min && iVal8 <= op->max && (force || iVal8 != *(int8_t*)(op->enginevar)))))
+                *(int8_t*)(op->enginevar) = iVal8;
+        }
+        catch (...) {}
+        break;
+    case ucinnuebias:
     case ucispin:
         int iVal;
         try {
@@ -3171,6 +3181,8 @@ void ucioptions_t::Print()
 
         switch (op->type)
         {
+        case ucinnuebias:
+        case ucinnueweight:
         case ucispin:
             cout << "spin default " << op->def << " min " << op->min << " max " << op->max << "\n";
             break;

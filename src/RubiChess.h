@@ -37,7 +37,7 @@
 //#define EVALTUNE
 
 // Enable this to expose the evaluation parameters as UCI options; either this or EVALTUNE can be enabled
-//#define EVALOPTIONS
+#define EVALOPTIONS
 
 // Enable this to expose the search parameters as UCI options
 //#define SEARCHOPTIONS
@@ -735,6 +735,9 @@ public:
 void NnueInit();
 void NnueRemove();
 void NnueReadNet(ifstream* is);
+#ifdef EVALOPTIONS
+void NnueRegisterEvals();
+#endif
 
 struct PackedSfen { uint8_t data[32]; };
 
@@ -1481,7 +1484,7 @@ const map<string, GuiToken> GuiCommandMap = {
 class engine;   //forward definition
 
 // order of ucioptiontypes is important for (not) setting default at registration
-enum ucioptiontype { ucicheck, ucispin, ucicombo, ucistring, ucibutton, ucieval, ucisearch };
+enum ucioptiontype { ucicheck, ucispin, ucicombo, ucistring, ucibutton, ucieval, ucisearch, ucinnuebias, ucinnueweight };
 
 struct ucioption_t
 {

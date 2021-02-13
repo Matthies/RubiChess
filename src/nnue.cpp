@@ -897,6 +897,25 @@ void NnueReadNet(ifstream* is)
     NnueReady = nt;
 }
 
+#ifdef EVALOPTIONS
+void NnueRegisterEvals()
+{
+    // Expose weights and bias of ouput layer as UCI options for tuning
+    //en.ucioptions.Register((void*)e, osName.str() + "_mg", ucieval, sDef, 0, 0, initPsqtable);
+    en.ucioptions.Register(&NnueOut->bias[0], "NnueOutBias", ucinnuebias, to_string(NnueOut->bias[0]), INT_MIN, INT_MAX, nullptr);
+    for (int i = 0; i < 32; i++)
+    {
+        ostringstream osName;
+        osName << "NnueOutWeight_" << setw(2) << setfill('0') << to_string(i);
+        int idx = i;
+#if defined(USE_AVX2)
+        idx = shuffleWeightIndex(idx, 32, true);
+#endif
+        en.ucioptions.Register(&NnueOut->weight[idx], osName.str(), ucinnueweight, to_string(NnueOut->weight[idx]), CHAR_MIN, CHAR_MAX, nullptr);
+    }
+}
+#endif
+
 // Explicit template instantiation
 // This avoids putting these definitions in header file
 template int chessposition::NnueGetEval<NnueRotate>();
