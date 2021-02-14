@@ -274,9 +274,11 @@ void flush_psv(int result, searchthread* thr)
 
 // global parameters for gensfen variation
 int depth = 4;
+int depth2 = depth;
 int random_multi_pv = 0;
 int random_multi_pv_depth = 4;
 int random_multi_pv_diff = 50;
+int random_opening_ply = 8;
 int random_move_count = 5;
 int random_move_minply = 1;
 int random_move_maxply = 24;
@@ -347,6 +349,7 @@ static void gensfenthread(searchthread* thr)
     memset(pos->history, 0, sizeof(chessposition::history));
     memset(pos->counterhistory, 0, sizeof(chessposition::counterhistory));
     memset(pos->countermove, 0, sizeof(chessposition::countermove));
+    const int depthvariance = max(1, depth2 - depth + 1);
 
     while (true)
     {
@@ -368,6 +371,11 @@ static void gensfenthread(searchthread* thr)
             random_move_flag[a[i]] = true;
         }
 
+        // Opening random
+        for (int i = 0; i < random_opening_ply; ++i)
+            random_move_flag[i] = true;
+
+
         for (int ply = 0; ; ++ply)
         {
             if (ply > maxply) // default: 200; SF: 400
@@ -387,7 +395,8 @@ static void gensfenthread(searchthread* thr)
                 break;
             }
             
-            int score = pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, depth);
+            int nextdepth = depth + ranval(&rnd) % depthvariance;
+            int score = pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, nextdepth);
 
             if (POPCOUNT(pos->occupied00[0] | pos->occupied00[1]) <= pos->useTb) // TB adjudication
             {
@@ -453,7 +462,7 @@ SKIP_SAVE:
             }
 
             pos->prepareStack();
-            bool chooserandom = !nmc || (random_move_count && ply >= random_move_minply && ply <= random_move_maxply && random_move_flag[ply]);
+            bool chooserandom = !nmc || (ply <= random_move_maxply && random_move_flag[ply]);
 
             while (true)
             {
@@ -517,6 +526,8 @@ void gensfen(vector<string> args)
         string cmd = args[ci++];
         if (cmd == "depth" && ci < cs)
             depth = stoi(args[ci++]);
+        if (cmd == "depth2" && ci < cs)
+            depth2 = stoi(args[ci++]);
         if (cmd == "loop" && ci < cs)
             fensnum = stoi(args[ci++]);
         if (cmd == "output_file_name" && ci < cs)
@@ -545,13 +556,15 @@ void gensfen(vector<string> args)
     cout << "Generating sfnes with these parameters:\n";
     cout << "output_file_name:      " << outputfile << "\n";
     cout << "depth:                 " << depth << "\n";
+    cout << "depth2:                " << depth2 << "\n";
     cout << "maxply:                " << maxply << "\n";
     cout << "write_minply:          " << write_minply << "\n";
     cout << "generate_draw:         " << generate_draw << "\n";
     cout << "nodes:                 " << nodes << "\n";
     cout << "eval_limit:            " << eval_limit << "\n";
+    cout << "random_opening_ply:    " << random_opening_ply << "\n";
     cout << "random_move_count:     " << random_move_count << "\n";
-    cout << "random_multi_pv_depth: " << random_multi_pv_depth << "\n";
+    cout << "random_move_minply:    " << random_move_minply << "\n";
     cout << "random_move_maxply:    " << random_move_maxply << "\n";
     cout << "random_multi_pv:       " << random_multi_pv << "\n";
     cout << "random_multi_pv_depth: " << random_multi_pv_depth << "\n";
