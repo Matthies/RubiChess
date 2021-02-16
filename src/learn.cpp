@@ -396,6 +396,8 @@ static void gensfenthread(searchthread* thr)
             }
             
             int nextdepth = depth + ranval(&rnd) % depthvariance;
+            cout << "ply=" << ply << "   depth=" << nextdepth << "  :  ";
+
             int score = pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, nextdepth);
 
             if (POPCOUNT(pos->occupied00[0] | pos->occupied00[1]) <= pos->useTb) // TB adjudication
@@ -471,11 +473,13 @@ SKIP_SAVE:
                 {
                     if (random_multi_pv == 0)
                     {
+                        cout << "normal random\n";
                         i = ranval(&rnd) % movelist.length;
                         nmc = movelist.move[i].code;
                     }
                     else
                     {
+                        cout << "multi-pv with num=" << random_multi_pv << " and diff=" << random_multi_pv_diff << "\n";
                         // random multi pv
                         pos->getRootMoves();
                         pos->rootsearch<MultiPVSearch>(SCOREBLACKWINS, SCOREWHITEWINS, random_multi_pv_depth, 1);
@@ -486,6 +490,9 @@ SKIP_SAVE:
 
                         nmc = pos->multipvtable[ranval(&rnd) % s][0];
                     }
+                }
+                else {
+                    cout << "best move\n";
                 }
 
                 bool legal = pos->playMove(nmc);

@@ -1,0 +1,57 @@
+mygen:
+
+setoption name Threads value 1
+setoption name Hash value 8192
+setoption name SyzygyPath value c:\schach\tb
+isready
+gensfen depth 12 depth2 14 loop 2000000 random_multi_pv 4 random_multi_pv_depth 10 random_multi_pv_diff 50 random_move_count 10 random_move_maxply 40 write_minply 11 use_draw_in_training_data_generation 1 eval_limit 1000 output_file_name ..\..\testdata.bin
+quit
+
+
+
+ply=0   depth=10  :  multi-pv with num=8 and diff=100
+ply=1   depth=10  :  multi-pv with num=8 and diff=100
+ply=2   depth=10  :  multi-pv with num=8 and diff=100
+ply=3   depth=10  :  multi-pv with num=8 and diff=100
+ply=4   depth=10  :  multi-pv with num=8 and diff=100
+ply=5   depth=10  :  multi-pv with num=8 and diff=100
+ply=6   depth=10  :  multi-pv with num=8 and diff=100
+ply=7   depth=10  :  multi-pv with num=8 and diff=100
+ply=8   depth=12  :  best move
+ply=9   depth=14  :  best move
+ply=10   depth=14  :  best move
+ply=11   depth=12  :  best move
+ply=12   depth=10  :  multi-pv with num=4 and diff=50
+ply=13   depth=10  :  multi-pv with num=4 and diff=50
+ply=14   depth=14  :  best move
+ply=15   depth=13  :  best move
+ply=16   depth=12  :  best move
+ply=17   depth=10  :  multi-pv with num=4 and diff=50
+ply=18   depth=14  :  best move
+ply=19   depth=12  :  best move
+ply=20   depth=12  :  best move
+ply=21   depth=10  :  multi-pv with num=4 and diff=50
+ply=22   depth=10  :  multi-pv with num=4 and diff=50
+ply=23   depth=13  :  best move
+ply=24   depth=14  :  best move
+ply=25   depth=13  :  best move
+ply=26   depth=13  :  best move
+ply=27   depth=14  :  best move
+ply=28   depth=12  :  best move
+ply=29   depth=13  :  best move
+ply=30   depth=14  :  best move
+ply=31   depth=14  :  best move
+ply=32   depth=10  :  multi-pv with num=4 and diff=50
+ply=33   depth=13  :  best move
+ply=34   depth=10  :  multi-pv with num=4 and diff=50
+ply=35   depth=10  :  multi-pv with num=4 and diff=50
+ply=36   depth=12  :  best move
+ply=37   depth=12  :  best move
+ply=38   depth=10  :  multi-pv with num=4 and diff=50
+ply=39   depth=10  :  multi-pv with num=4 and diff=50
+ply=40   depth=14  :  best move
+ply=41   depth=14  :  best move
+ply=42   depth=14  :  best move
+ply=43   depth=12  :  best move
+ply=44   depth=12  :  best move
+ply=45   depth=13  :  best move
