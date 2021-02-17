@@ -396,7 +396,7 @@ static void gensfenthread(searchthread* thr)
             }
             
             int nextdepth = depth + ranval(&rnd) % depthvariance;
-            cout << "ply=" << ply << "   depth=" << nextdepth << "  :  ";
+            //cout << "ply=" << ply << "   depth=" << nextdepth << "  :  ";
 
             int score = pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, nextdepth);
 
@@ -473,19 +473,21 @@ SKIP_SAVE:
                 {
                     if (random_multi_pv == 0)
                     {
-                        cout << "normal random\n";
+                        //cout << "normal random\n";
                         i = ranval(&rnd) % movelist.length;
                         nmc = movelist.move[i].code;
                     }
                     else
                     {
-                        cout << "multi-pv with num=" << random_multi_pv << " and diff=" << random_multi_pv_diff << "\n";
-                        // random multi pv
                         pos->getRootMoves();
-                        pos->rootsearch<MultiPVSearch>(SCOREBLACKWINS, SCOREWHITEWINS, random_multi_pv_depth, 1);
-                        int s = min(pos->rootmovelist.length, random_multi_pv);
+                        int cur_multi_pv = min(pos->rootmovelist.length, (ply < random_opening_ply ? 8 : random_multi_pv));
+                        int cur_multi_pv_diff = (ply < random_opening_ply ? 100 : random_multi_pv_diff);
+                        //cout << "multi-pv with depth=" << random_multi_pv_depth << " num=" << cur_multi_pv << " and diff=" << cur_multi_pv_diff << "\n";
+                        // random multi pv
+                        pos->rootsearch<MultiPVSearch>(SCOREBLACKWINS, SCOREWHITEWINS, random_multi_pv_depth, 1, cur_multi_pv);
+                        int s = min(pos->rootmovelist.length, cur_multi_pv);
                         // Exclude moves with score outside of allowed margin
-                        while (random_multi_pv_diff && pos->bestmovescore[0] > pos->bestmovescore[s - 1] + random_multi_pv_diff)
+                        while (cur_multi_pv_diff && pos->bestmovescore[0] > pos->bestmovescore[s - 1] + cur_multi_pv_diff)
                             s--;
 
                         nmc = pos->multipvtable[ranval(&rnd) % s][0];
@@ -540,7 +542,7 @@ void gensfen(vector<string> args)
         if (cmd == "output_file_name" && ci < cs)
             outputfile = args[ci++];
         if (cmd == "random_multi_pv" && ci < cs)
-            random_multi_pv = en.MultiPV = stoi(args[ci++]);
+            random_multi_pv = stoi(args[ci++]);
         if (cmd == "random_multi_pv_depth" && ci < cs)
             random_multi_pv_depth = stoi(args[ci++]);
         if (cmd == "random_multi_pv_diff" && ci < cs)

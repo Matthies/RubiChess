@@ -928,7 +928,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
 
 template <RootsearchType RT>
-int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast)
+int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, int maxmoveindex)
 {
     int score;
     uint16_t hashmovecode = 0;
@@ -937,7 +937,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast)
     int eval_type = HASHALPHA;
     chessmove *m;
     int lastmoveindex;
-    int maxmoveindex;
 
     const bool isMultiPV = (RT == MultiPVSearch);
 
@@ -950,7 +949,8 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast)
     if (isMultiPV)
     {
         lastmoveindex = 0;
-        maxmoveindex = min(en.MultiPV, rootmovelist.length);
+        if (!maxmoveindex)
+            maxmoveindex = min(en.MultiPV, rootmovelist.length);
         for (int i = 0; i < maxmoveindex; i++)
         {
             multipvtable[i][0] = 0;

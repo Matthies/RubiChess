@@ -1407,7 +1407,7 @@ public:
     void getScaling(Materialhashentry *mhentry);
     int getComplexity(int eval, pawnhashentry *phentry, Materialhashentry *mhentry);
 
-    template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth, int inWindowLast);
+    template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth, int inWindowLast, int maxmoveindex = 0);
     template <PruneType Pt> int alphabeta(int alpha, int beta, int depth);
     template <PruneType Pt> int getQuiescence(int alpha, int beta, int depth);
     void updateHistory(uint32_t code, int16_t **cmptr, int value);

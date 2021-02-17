@@ -1,6 +1,6 @@
 mygen:
 
-setoption name Threads value 1
+setoption name Threads value 8
 setoption name Hash value 8192
 setoption name SyzygyPath value c:\schach\tb
 isready
