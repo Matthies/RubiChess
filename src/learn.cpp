@@ -494,7 +494,7 @@ SKIP_SAVE:
                     }
                 }
                 else {
-                    cout << "best move\n";
+                    //cout << "best move\n";
                 }
 
                 bool legal = pos->playMove(nmc);
