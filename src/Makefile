@@ -39,6 +39,13 @@ ifeq ($(shell uname -m),armv7l)
 	DEFAULTARCHFLAGS=-mthumb -march=armv7-a -mfpu=neon
 endif
 
+ifeq ($(shell uname -m),arm64)
+	# Default build for apple-silicon
+	DEFAULTEXE=RubiChess
+	DEFAULTARCHFLAGS= -pedantic -Wextra -Wshadow -mfpu=neon
+	DEFAULTCPUFEATURE=-flto -DUSE_NEON
+	COMP=clang
+endif 
 
 ifeq ($(COMP),)
 	COMP=gcc
