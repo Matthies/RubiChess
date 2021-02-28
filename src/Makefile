@@ -39,6 +39,13 @@ ifeq ($(shell uname -m),armv7l)
 	DEFAULTARCHFLAGS=-mthumb -march=armv7-a -mfpu=neon
 endif
 
+ifeq ($(shell uname -m),arm64)
+	# Default build for apple-silicon
+	DEFAULTEXE=RubiChess
+	DEFAULTARCHFLAGS= -pedantic -Wextra -Wshadow -mfpu=neon
+	DEFAULTCPUFEATURE=-flto -DUSE_NEON
+	COMP=clang
+endif 
 
 ifeq ($(COMP),)
 	COMP=gcc
@@ -59,7 +66,7 @@ endif
 ifeq ($(COMP),clang)
 	CXX=clang++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
-	LDFLAGS=-lpthread -fuse-ld=lld
+	LDFLAGS=-lpthread $(shell type lld 1>/dev/null 2>/dev/null && echo "-fuse-ld=lld")
 	profile_make = clang-profile-make
 endif
 
@@ -139,7 +146,7 @@ gcc-profile-make:
 	@echo Creating profile build for $(PROFEXE)...
 	@$(MAKE) $(PROFEXE) EXTRACXXFLAGS='-fprofile-generate=$(PROFDIR)' EXTRALDFLAGS='-lgcov'
 	@echo Bench to generate profiling data...
-	./$(PROFEXE) -bench > /dev/null
+	-./$(PROFEXE) -bench > /dev/null
 	$(RM) ./$(PROFEXE)
 	@echo Creating optimized build for $(PROFEXE)...
 	@$(MAKE) $(PROFEXE) EXTRACXXFLAGS='-fprofile-use=$(PROFDIR) -fno-peel-loops -fno-tracer' EXTRALDFLAGS='-lgcov'
@@ -149,7 +156,7 @@ clang-profile-make:
 	@echo Creating profile build for $(PROFEXE)...
 	@$(MAKE) $(PROFEXE) EXTRACXXFLAGS='-fprofile-instr-generate=$(PROFEXE).clangprof-raw'
 	@echo Bench to generate profiling data...
-	./$(PROFEXE) -bench > /dev/null
+	-./$(PROFEXE) -bench > /dev/null
 	llvm-profdata merge -output=$(PROFEXE).profdata $(PROFEXE).clangprof-raw
 	$(RM) ./$(PROFEXE)
 	@echo Creating optimized build for $(PROFEXE)...
