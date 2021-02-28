@@ -478,7 +478,11 @@ void compilerinfo::GetSystemInfo()
 #else
 void compilerinfo::GetSystemInfo()
 {
+#ifdef __ARM_NEON__
+    system = "ARM platform supprting NEON";
+#else
     system = "Some non-x86-64 platform.";
+#endif
 }
 
 string compilerinfo::PrintCpuFeatures(U64 f, bool onlyHighest)
