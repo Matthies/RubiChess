@@ -44,8 +44,12 @@ ifeq ($(shell uname -m),arm64)
 	DEFAULTEXE=RubiChess
 	DEFAULTARCHFLAGS= -pedantic -Wextra -Wshadow -mfpu=neon
 	DEFAULTCPUFEATURE=-flto -DUSE_NEON
-	COMP=clang
 endif 
+
+ifeq ($(shell uname -s),Darwin)
+	# Use clang compiler for MacOS
+	COMP=clang
+endif
 
 ifeq ($(COMP),)
 	COMP=gcc
