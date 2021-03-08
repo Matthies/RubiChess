@@ -624,10 +624,13 @@ int root_probe_dtz(chessposition *pos)
     if (!success)
         return 0;
 
+    bool isBadMove;
+
     // Probe each move.
     for (int i = 0; i < pos->rootmovelist.length; i++)
     {
         chessmove *m = &pos->rootmovelist.move[i];
+        isBadMove = !pos->see(m->code, 0);
         pos->playMove(m->code);
         //printf("info string root_probe_dtz (ply=%d) Testing move %s...\n", pos->ply, m->toString().c_str());
         int v = 0;
@@ -659,6 +662,10 @@ int root_probe_dtz(chessposition *pos)
                 v = -probe_wdl(&success, pos);
                 v = wdl_to_dtz[v + 2];
             }
+
+            // Flag moves with good DTZ that sac a piece
+            if (isBadMove && v > 0)
+                v += 0x10000;
         }
 
         //printf("info string root_probe_dtz (ply=%d) Tested  move %s... value=%d\n", pos->ply, m->toString().c_str(), v);
@@ -677,7 +684,7 @@ int root_probe_dtz(chessposition *pos)
     // Now be a bit smart about filtering out moves.
     int mi = 0;
     if (dtz > 0) { // winning (or 50-move rule draw)
-        int best = 0xffff;
+        int best = 0x1ffff;
         for (int i = 0; i < pos->rootmovelist.length; i++)
         {
             chessmove *m = &pos->rootmovelist.move[i];
@@ -691,20 +698,24 @@ int root_probe_dtz(chessposition *pos)
         while (mi < pos->rootmovelist.length)
         {
             int v = pos->rootmovelist.move[mi].value;
-            if (v != best)
+
+            if (v <= 0)
             {
-                // delete moves that are known for not winning or have a worse dtz than best move
+                // delete moves that are known for not winning
                 pos->rootmovelist.length--;
                 swap(pos->rootmovelist.move[mi], pos->rootmovelist.move[pos->rootmovelist.length]);
             }
             else
             {
+                isBadMove = (v & 0x10000);
+                v = (v & 0xffff);
                 if (!en.Syzygy50MoveRule || v + cnt50 <= 100)
                     // win
-                    pos->rootmovelist.move[mi].value = SCORETBWIN - v - (rep ? cnt50 : 0);
+                    pos->rootmovelist.move[mi].value = SCORETBWIN - v - (rep ? cnt50 : 0) - isBadMove * 0x100;
                 else
                     // cursed win = draw
                     pos->rootmovelist.move[mi].value = SCOREDRAW;
+                //printf("info string root_probe_dtz (ply=%d) Final value for move %s... value=%d\n", pos->ply, pos->rootmovelist.move[mi].toString().c_str(), pos->rootmovelist.move[mi].value);
                 mi++;
             }
         }

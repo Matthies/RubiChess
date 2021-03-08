@@ -618,37 +618,37 @@ void chessposition::tbFilterRootMoves()
 {
     tbPosition = 0;
     useRootmoveScore = 0;
-    if (POPCOUNT(occupied00[0] | occupied00[1]) <= useTb)
+    if (POPCOUNT(occupied00[0] | occupied00[1]) > useTb)
+        return;
+
+    if ((tbPosition = root_probe_dtz(this))) {
+        // The current root position is in the tablebases.
+        // RootMoves now contains only moves that preserve the draw or win.
+
+        // Do not probe tablebases during the search.
+        useTb = 0;
+    }
+    else // If DTZ tables are missing, use WDL tables as a fallback
     {
-        if ((tbPosition = root_probe_dtz(this))) {
-            // The current root position is in the tablebases.
-            // RootMoves now contains only moves that preserve the draw or win.
+        // Filter out moves that do not preserve a draw or win
+        tbPosition = root_probe_wdl(this);
+        // useRootmoveScore is set within root_probe_wdl
+    }
 
-            // Do not probe tablebases during the search.
-            useTb = 0;
-        }
-        else // If DTZ tables are missing, use WDL tables as a fallback
+    if (tbPosition)
+    {
+        // Sort the moves
+        for (int i = 0; i < rootmovelist.length; i++)
         {
-            // Filter out moves that do not preserve a draw or win
-            tbPosition = root_probe_wdl(this);
-            // useRootmoveScore is set within root_probe_wdl
-        }
-
-        if (tbPosition)
-        {
-            // Sort the moves
-            for (int i = 0; i < rootmovelist.length; i++)
+            for (int j = i + 1; j < rootmovelist.length; j++)
             {
-                for (int j = i + 1; j < rootmovelist.length; j++)
+                if (rootmovelist.move[i] < rootmovelist.move[j])
                 {
-                    if (rootmovelist.move[i] < rootmovelist.move[j])
-                    {
-                        swap(rootmovelist.move[i], rootmovelist.move[j]);
-                    }
+                    swap(rootmovelist.move[i], rootmovelist.move[j]);
                 }
             }
-            defaultmove = rootmovelist.move[0].code;
         }
+        defaultmove = rootmovelist.move[0].code;
     }
 }
 
@@ -2474,7 +2474,7 @@ uint32_t MoveSelector::next()
             bool bBadTactical = (m->value & BADTACTICALFLAG);
             m->value = INT_MIN;
             if (bBadTactical) {
-                STATISTICSDO(if (m->code == hashmove.code) STATISTICSINC(moves_bad_hash));
+                STATISTICSDO(if (m->code == hashmove) STATISTICSINC(moves_bad_hash));
                 return m->code;
             }
         }
