@@ -37,7 +37,7 @@
 //#define EVALTUNE
 
 // Enable this to expose the evaluation parameters as UCI options; either this or EVALTUNE can be enabled
-#define EVALOPTIONS
+//#define EVALOPTIONS
 
 // Enable this to expose the search parameters as UCI options
 //#define SEARCHOPTIONS
@@ -636,7 +636,6 @@ const int NnueFtHalfdims = 256;
 const int NnueFtOutputdims = NnueFtHalfdims * 2;
 const int NnueFtInputdims = 64 * 641;
 const int NnueClippingShift = 6;
-const int NnueValueScale = 16;
 
 #if defined(USE_SSE2) && !defined(USE_SSSE3)
 typedef int16_t clipped_t;
