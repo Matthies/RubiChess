@@ -422,6 +422,16 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         return beta;
     }
 
+#if 0
+    // Mate distance pruning
+    if (alpha < SCOREBLACKWINS + ply)
+        alpha = SCOREBLACKWINS + ply;
+    if (beta > SCOREWHITEWINS - ply)
+        beta = SCOREWHITEWINS - ply;
+    if (alpha >= beta)
+        return alpha;
+#endif
+
     // Reached depth? Do a qsearch
     if (depth <= 0)
     {
@@ -436,7 +446,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     // Maximum depth
     if (mstop >= MAXDEPTH - MOVESTACKRESERVE)
         return getQuiescence<Pt>(alpha, beta, depth);
-
 
     // Get move for singularity check and change hash to seperate partial searches from full searches
     uint16_t excludeMove = excludemovestack[mstop - 1];
@@ -463,7 +472,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             {
                 STATISTICSINC(ab_tt);
                 SDEBUGDO(isDebugPv, pvabortval[ply] = hashscore; if (debugMove.code == fullhashmove) pvaborttype[ply] = PVA_FROMTT; else pvaborttype[ply] =  PVA_DIFFERENTFROMTT; );
-                SDEBUGDO(isDebugPv, pvadditionalinfo[ply] = "TT = " + chessmove(fullhashmove).toString() + "  " + tp.debugGetPv(newhash); );
+                SDEBUGDO(isDebugPv, pvadditionalinfo[ply] = "TT = " + chessmove(fullhashmove).toString() + "  " + tp.debugGetPv(newhash, ply); );
                 return hashscore;
             }
 
@@ -550,7 +559,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     // futility pruning
     bool futility = false;
-    if (Pt == Prune && depth <= sps.futilitymindepth)
+    if (Pt == Prune && depth <= sps.futilitymindepth/* && staticeval < SCOREWONENDGAME*/)
     {
         // reverse futility pruning
         if (!isCheckbb && staticeval - depth * (sps.futilityreversedepthfactor - sps.futilityreverseimproved * positionImproved) > beta)
@@ -564,7 +573,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     // Nullmove pruning with verification like SF does it
     int bestknownscore = (hashscore != NOSCORE ? hashscore : staticeval);
-    if (!isCheckbb && depth >= sps.nmmindepth && bestknownscore >= beta && (ply  >= nullmoveply || ply % 2 != nullmoveside) && ph < 255)
+    if (!isCheckbb && depth >= sps.nmmindepth && bestknownscore >= beta && beta > -SCORETBWININMAXPLY && (ply  >= nullmoveply || ply % 2 != nullmoveside) && ph < 255)
     {
         playNullMove();
         int nmreduction = min(depth, sps.nmmredbase + (depth / sps.nmmreddepthratio) + (bestknownscore - beta) / sps.nmmredevalratio + !PVNode * sps.nmmredpvfactor);
@@ -593,7 +602,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     }
 
     // ProbCut
-    if (!PVNode && depth >= sps.probcutmindepth && abs(beta) < SCOREWHITEWINS)
+    if (!PVNode && depth >= sps.probcutmindepth && abs(beta) < SCORETBWININMAXPLY)
     {
         int rbeta = min(SCOREWHITEWINS, beta + sps.probcutmargin);
         chessmovelist *movelist = new chessmovelist;
@@ -665,7 +674,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             continue;
 
         // Late move pruning
-        if (Pt == Prune && depth < MAXLMPDEPTH && !ISTACTICAL(mc) && bestscore > NOSCORE && quietsPlayed > lmptable[positionImproved][depth])
+        if (Pt == Prune && depth < MAXLMPDEPTH && !ISTACTICAL(mc) && !MATEFOROPPONENT(bestscore) && quietsPlayed > lmptable[positionImproved][depth])
         {
             // Proceed to next moveselector state manually to save some time
             ms.state++;
@@ -684,7 +693,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         }
 
         // Prune moves with bad SEE
-        if (Pt == Prune && !isCheckbb && depth <= sps.seeprunemaxdepth && bestscore > NOSCORE && ms.state >= QUIETSTATE && !see(mc, sps.seeprunemarginperdepth * depth * (ISTACTICAL(mc) ? depth : sps.seeprunequietfactor)))
+        if (Pt == Prune && !isCheckbb && depth <= sps.seeprunemaxdepth && !MATEFOROPPONENT(bestscore) && ms.state >= QUIETSTATE && !see(mc, sps.seeprunemarginperdepth * depth * (ISTACTICAL(mc) ? depth : sps.seeprunequietfactor)))
         {
             STATISTICSINC(moves_pruned_badsee);
             SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_SEEPRUNED;);
@@ -791,7 +800,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         effectiveDepth = depth + extendall - reduction + extendMove;
 
         // Prune moves with bad counter move history
-        if (!ISTACTICAL(mc) && effectiveDepth < 4
+        if (!ISTACTICAL(mc) && effectiveDepth < 4/* && !MATEFOROPPONENT(bestscore)*/
             && ms.cmptr[0] && ms.cmptr[0][pc * 64 + to] < 0
             && ms.cmptr[1] && ms.cmptr[1][pc * 64 + to] < 0)
         {
@@ -882,6 +891,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
                 SDEBUGDO(isDebugPv, pvaborttype[ply] = isDebugMove ? PVA_BETACUT : debugMovePlayed ? PVA_NOTBESTMOVE : PVA_OMITTED;);
                 SDEBUGDO(isDebugPv || debugTransposition, tp.debugSetPv(newhash, movesOnStack() + " " + (debugTransposition ? "(transposition)" : "") + " effectiveDepth=" + to_string(effectiveDepth)););
+                SDEBUGDO(isDebugPv && !isDebugMove, pvadditionalinfo[ply] += " Best move with betacutoff: " + moveToString(bestcode) + "(" + to_string(score) + ")";);
                 return score;   // fail soft beta-cutoff
             }
 
@@ -908,10 +918,12 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         STATISTICSINC(ab_draw_or_win);
         if (isCheckbb) {
             // It's a mate
+            SDEBUGDO(isDebugPv, pvaborttype[ply] = PVA_CHECHMATE;);
             return SCOREBLACKWINS + ply;
         }
         else {
             // It's a stalemate
+            SDEBUGDO(isDebugPv, pvaborttype[ply] = PVA_STALEMATE;);
             return SCOREDRAW;
         }
     }
@@ -982,7 +994,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast)
             if (score > NOSCORE)
             {
                 SDEBUGDO(isDebugPv, pvabortval[ply] = score; if (debugMove.code == fullhashmove) pvaborttype[ply] = PVA_FROMTT; else pvaborttype[ply] = PVA_DIFFERENTFROMTT; );
-                SDEBUGDO(isDebugPv, pvadditionalinfo[ply] = "PV = " + getPv(pvtable[ply]) + "  " + tp.debugGetPv(hash); );
+                SDEBUGDO(isDebugPv, pvadditionalinfo[ply] = "PV = " + getPv(pvtable[ply]) + "  " + tp.debugGetPv(hash, 0); );
                 return score;
             }
         }
@@ -1237,6 +1249,7 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, in
 
     }
 #ifdef SDEBUG
+    printf("Raw score: %d\n", score);
     pos->pvdebugout();
 #endif
 }
