@@ -569,7 +569,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     // futility pruning
     bool futility = false;
-    if (Pt != NoPrune && depth <= sps.futilitymindepth/* && staticeval < SCOREWONENDGAME*/)
+    if (Pt == Prune && depth <= sps.futilitymindepth/* && staticeval < SCOREWONENDGAME*/)
     {
         // reverse futility pruning
         if (!isCheckbb && staticeval - depth * (sps.futilityreversedepthfactor - sps.futilityreverseimproved * positionImproved) > beta)
@@ -598,15 +598,18 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 SDEBUGDO(isDebugPv, pvabortval[ply] = score; pvaborttype[ply] = PVA_NMPRUNED;);
                 return beta;
             }
-            // Verification search
-            nullmoveply = ply + 3 * (depth - nmreduction) / 4;
-            nullmoveside = ply % 2;
-            int verificationscore = alphabeta<Pt>(beta - 1, beta, depth - nmreduction);
-            nullmoveside = nullmoveply = 0;
-            if (verificationscore >= beta) {
-                STATISTICSINC(prune_nm);
-                SDEBUGDO(isDebugPv, pvabortval[ply] = score; pvaborttype[ply] = PVA_NMPRUNED;);
-                return beta;
+            if (Pt != MatePrune || beta < SCORETBWININMAXPLY)
+            {
+                // Verification search
+                nullmoveply = ply + 3 * (depth - nmreduction) / 4;
+                nullmoveside = ply % 2;
+                int verificationscore = alphabeta<Pt>(beta - 1, beta, depth - nmreduction);
+                nullmoveside = nullmoveply = 0;
+                if (verificationscore >= beta) {
+                    STATISTICSINC(prune_nm);
+                    SDEBUGDO(isDebugPv, pvabortval[ply] = score; pvaborttype[ply] = PVA_NMPRUNED;);
+                    return beta;
+                }
             }
         }
     }
@@ -684,7 +687,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             continue;
 
         // Late move pruning
-        if (Pt != NoPrune
+        if (Pt == Prune
             && depth < MAXLMPDEPTH
             && !ISTACTICAL(mc)
             && bestscore > NOSCORE
@@ -707,7 +710,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         }
 
         // Prune moves with bad SEE
-        if (Pt != NoPrune 
+        if (Pt == Prune 
             && !isCheckbb
             && depth <= sps.seeprunemaxdepth
             && bestscore > NOSCORE && ms.state >= QUIETSTATE
