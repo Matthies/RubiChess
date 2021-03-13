@@ -711,6 +711,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             && !excludeMove
             && tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth - 3, alpha, beta, ply)  // FIXME: maybe needs hashscore = FIXMATESCOREPROBE(hashscore, ply);
             && hashscore > alpha
+            && hashscore < SCOREWONENDGAME
 #ifdef NNUELEARN
             // No singular extension in root of gensfen
             && ply > 0
