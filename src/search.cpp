@@ -569,7 +569,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     // futility pruning
     bool futility = false;
-    if (Pt == Prune && depth <= sps.futilitymindepth/* && staticeval < SCOREWONENDGAME*/)
+    if (Pt != NoPrune && depth <= sps.futilitymindepth && staticeval < SCOREWONENDGAME)
     {
         // reverse futility pruning
         if (!isCheckbb && staticeval - depth * (sps.futilityreversedepthfactor - sps.futilityreverseimproved * positionImproved) > beta)
@@ -598,18 +598,15 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 SDEBUGDO(isDebugPv, pvabortval[ply] = score; pvaborttype[ply] = PVA_NMPRUNED;);
                 return beta;
             }
-            if (Pt != MatePrune || beta < SCORETBWININMAXPLY)
-            {
-                // Verification search
-                nullmoveply = ply + 3 * (depth - nmreduction) / 4;
-                nullmoveside = ply % 2;
-                int verificationscore = alphabeta<Pt>(beta - 1, beta, depth - nmreduction);
-                nullmoveside = nullmoveply = 0;
-                if (verificationscore >= beta) {
-                    STATISTICSINC(prune_nm);
-                    SDEBUGDO(isDebugPv, pvabortval[ply] = score; pvaborttype[ply] = PVA_NMPRUNED;);
-                    return beta;
-                }
+            // Verification search
+            nullmoveply = ply + 3 * (depth - nmreduction) / 4;
+            nullmoveside = ply % 2;
+            int verificationscore = alphabeta<Pt>(beta - 1, beta, depth - nmreduction);
+            nullmoveside = nullmoveply = 0;
+            if (verificationscore >= beta) {
+                STATISTICSINC(prune_nm);
+                SDEBUGDO(isDebugPv, pvabortval[ply] = score; pvaborttype[ply] = PVA_NMPRUNED;);
+                return beta;
             }
         }
     }
@@ -687,10 +684,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             continue;
 
         // Late move pruning
-        if (Pt == Prune
+        if (Pt != NoPrune
             && depth < MAXLMPDEPTH
             && !ISTACTICAL(mc)
-            && bestscore > NOSCORE
+            && bestscore >(Pt == Prune ? NOSCORE : -SCORETBWININMAXPLY)
             && quietsPlayed > lmptable[positionImproved][depth])
         {
             // Proceed to next moveselector state manually to save some time
@@ -710,10 +707,11 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         }
 
         // Prune moves with bad SEE
-        if (Pt == Prune 
+        if (Pt != NoPrune 
             && !isCheckbb
             && depth <= sps.seeprunemaxdepth
-            && bestscore > NOSCORE && ms.state >= QUIETSTATE
+            && bestscore > (Pt == Prune ? NOSCORE : -SCORETBWININMAXPLY)
+            && ms.state >= QUIETSTATE
             && !see(mc, sps.seeprunemarginperdepth * depth * (ISTACTICAL(mc) ? depth : sps.seeprunequietfactor)))
         {
             STATISTICSINC(moves_pruned_badsee);
@@ -1348,6 +1346,9 @@ static void search_gen1(searchthread *thr)
                 en.bStopCount = true;
             }
 #endif
+            // Open aspiration window for winning scores
+            if (abs(score) > 5000)
+                delta = SCOREWHITEWINS;
 
             // new aspiration window
             if (score == alpha)
@@ -1355,10 +1356,7 @@ static void search_gen1(searchthread *thr)
                 // research with lower alpha and reduced beta
                 beta = (alpha + beta) / 2;
                 alpha = max(SCOREBLACKWINS, alpha - delta);
-                if (abs(alpha) > 5000)
-                    delta = SCOREWHITEWINS;
-                else
-                    delta += delta / sps.aspincratio + sps.aspincbase;
+                delta = min(SCOREWHITEWINS, delta + delta / sps.aspincratio + sps.aspincbase);
                 inWindow = 0;
                 reportedThisDepth = false;
             }
@@ -1366,10 +1364,7 @@ static void search_gen1(searchthread *thr)
             {
                 // research with higher beta
                 beta = min(SCOREWHITEWINS, beta + delta);
-                if (abs(beta) > 2000)
-                    delta = SCOREWHITEWINS;
-                else
-                    delta += delta / sps.aspincratio + sps.aspincbase;
+                delta = min(SCOREWHITEWINS, delta + delta / sps.aspincratio + sps.aspincbase);
                 inWindow = 2;
                 reportedThisDepth = false;
             }
