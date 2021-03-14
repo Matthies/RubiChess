@@ -2865,7 +2865,8 @@ void engine::communicate(string inputstring)
 
                     if (sLower == "name")
                     {
-                        ucioptions.Set(sName, sValue);
+                        if (sName != "")
+                            ucioptions.Set(sName, sValue);
                         bGetName = true;
                         bGetValue = false;
                         sName = "";
@@ -3091,7 +3092,13 @@ void ucioptions_t::Set(string n, string v, bool force)
     optionmapiterator it = optionmap.find(n);
 
     if (it == optionmap.end())
-        return;
+    {
+        // Lets see if whitespace was replaced with _ in the setoption command
+        replace(n.begin(), n.end(), '_', ' ');
+        it = optionmap.find(n);
+        if (it == optionmap.end())
+            return;
+    }
 
     ucioption_t *op = &(it->second);
     bool bChanged = false;
