@@ -426,20 +426,11 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     {
         // Mate distance pruning
         if (alpha < SCOREBLACKWINS + ply + 1)
-        {
             alpha = SCOREBLACKWINS + ply + 1;
-            //printf("info string alpha md-pruned to %d\n", alpha);
-        }
         if (beta > SCOREWHITEWINS - ply)
-        {
             beta = SCOREWHITEWINS - ply;
-            //printf("info string beta md-pruned to %d\n", beta);
-        }
         if (alpha >= beta)
-        {
-            //printf("info string mdp cut\n");
             return alpha;
-        }
     }
 
     // Reached depth? Do a qsearch
@@ -569,7 +560,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     // futility pruning
     bool futility = false;
-    if (Pt != NoPrune && depth <= sps.futilitymindepth && staticeval < SCOREWONENDGAME)
+    if (Pt != NoPrune && depth <= sps.futilitymindepth)
     {
         // reverse futility pruning
         if (!isCheckbb && staticeval - depth * (sps.futilityreversedepthfactor - sps.futilityreverseimproved * positionImproved) > beta)
@@ -820,7 +811,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         effectiveDepth = depth + extendall - reduction + extendMove;
 
         // Prune moves with bad counter move history
-        if (!ISTACTICAL(mc) && effectiveDepth < 4/* && !MATEFOROPPONENT(bestscore)*/
+        if (Pt == Prune
+            && !ISTACTICAL(mc) && effectiveDepth < 4
             && ms.cmptr[0] && ms.cmptr[0][pc * 64 + to] < 0
             && ms.cmptr[1] && ms.cmptr[1][pc * 64 + to] < 0)
         {
@@ -973,7 +965,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast)
 
     const bool isMultiPV = (RT == MultiPVSearch);
     bool mateprune = (alpha > SCORETBWININMAXPLY || beta < -SCORETBWININMAXPLY);
-    //printf("info string rootsearch mateprune=%d  alpha=%6d  beta=%6d\n", mateprune, alpha, beta);
 
     nodes++;
     CheckForImmediateStop();
@@ -1270,10 +1261,9 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, in
             << " hashfull " << tp.getUsedinPermill() << " pv " << pvstring << "\n";
 
     }
-#ifdef SDEBUG
-    printf("Raw score: %d\n", score);
-    pos->pvdebugout();
-#endif
+
+    SDEBUGDO(true, printf("Raw score: %d\n", score););
+    SDEBUGDO(true, pos->pvdebugout(););
 }
 
 
