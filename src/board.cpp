@@ -2577,7 +2577,7 @@ static void uciSetNnuePath()
         return;
     }
 
-    cout << " failed. The network file seems corrupted doesn't exist. Set correct path to network file or disable 'Use NNUE' for handcrafted evaluation.\n";
+    cout << " failed. The network file seems corrupted doesn't exist. Set correct path to network file or disable 'Use_NNUE' for handcrafted evaluation.\n";
 }
 #endif
 
@@ -2643,7 +2643,7 @@ void engine::registerOptions()
     ucioptions.Register(nullptr, "Clear Hash", ucibutton, "", 0, 0, uciClearHash);
 #ifdef NNUE
     ucioptions.Register(&NnueNetpath, "NNUENetpath", ucistring, NNUEDEFAULTSTR, 0, 0, uciSetNnuePath);
-    ucioptions.Register(&usennue, "Use NNUE", ucicheck, "true", 0, 0, uciSetNnuePath);
+    ucioptions.Register(&usennue, "Use_NNUE", ucicheck, "true", 0, 0, uciSetNnuePath);
 #endif
 }
 
