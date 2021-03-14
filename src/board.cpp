@@ -1230,7 +1230,7 @@ bool chessposition::triggerDebug(chessmove* nextmove)
 
 const char* PvAbortStr[] = {
     "unknown", "pv from tt", "different move in tt", "razor-pruned", "reverse-futility-pruned", "nullmove-pruned", "probcut-pruned", "late-move-pruned",
-    "futility-pruned", "bad-see-pruned", "bad-history-pruned", "multicut-pruned", "bestmove", "not best move", "omitted", "betacut", "below alpha"
+    "futility-pruned", "bad-see-pruned", "bad-history-pruned", "multicut-pruned", "bestmove", "not best move", "omitted", "betacut", "below alpha", "checkmate", "stalemate"
 };
 
 
