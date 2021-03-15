@@ -1707,7 +1707,7 @@ public:
 void searchStart();
 void searchWaitStop(bool forceStop = true);
 void searchinit();
-void resetEndTime(int constantRootMoves, bool complete = true);
+void resetEndTime(U64 startTime, int constantRootMoves, bool complete = true);
 
 
 //
