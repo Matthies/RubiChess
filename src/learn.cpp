@@ -438,21 +438,25 @@ static void gensfenthread(searchthread* thr)
             thr->psv->gamePly = ply;
             thr->psv->move = (uint16_t)sfMoveCode(pos->pvtable[0][0]);
             thr->psv->game_result = 2 * S2MSIGN(pos->state & S2MMASK); // not yet known
-            psvnums++;
 
-            if (psvnums % sfenchunksize == 0)
+            if (thr->psv->move)
             {
-                int thischunk = (int)(psvnums / sfenchunksize - 1);
-                int nextchunk = (thischunk + 1) % sfenchunknums;
-                while (thr->chunkstate[nextchunk] != CHUNKFREE)
-                    Sleep(10);
-                thr->chunkstate[nextchunk] = CHUNKINUSE;
-                psvnums = psvnums % (sfenchunknums * sfenchunksize);
+                psvnums++;
+
+                if (psvnums % sfenchunksize == 0)
+                {
+                    int thischunk = (int)(psvnums / sfenchunksize - 1);
+                    int nextchunk = (thischunk + 1) % sfenchunknums;
+                    while (thr->chunkstate[nextchunk] != CHUNKFREE)
+                        Sleep(10);
+                    thr->chunkstate[nextchunk] = CHUNKINUSE;
+                    psvnums = psvnums % (sfenchunknums * sfenchunksize);
+                }
             }
             
 SKIP_SAVE:
             // preset move for next ply with the pv move
-            nmc = pos->pvtable[pos->ply][0];
+            nmc = pos->pvtable[0][0];
             if (!nmc)
             {
                 // No move in pv => mate or stalemate
@@ -588,7 +592,7 @@ void gensfen(vector<string> args)
         return;
     }
 
-    if (!getBookPositions())
+    if (!en.chess960 && !getBookPositions())
         return;
 
     for (tnum = 0; tnum < en.Threads; tnum++)
@@ -698,6 +702,10 @@ void convert(vector<string> args)
     PackedSfenValue* psvbuffer = (PackedSfenValue*)allocalign64(sfenchunknums * sfenchunksize * sizeof(PackedSfenValue));
 
     U64 n = 0;
+    int rookfiles[2] = { -1, -1 };
+    int kingfile = -1;
+    int lastfullmove = INT_MAX;
+
     while (is.peek() != ios::traits_type::eof())
     {
         is.read((char*)psvbuffer, sfenchunknums * sfenchunksize * sizeof(PackedSfenValue));
@@ -706,17 +714,59 @@ void convert(vector<string> args)
         for (PackedSfenValue* psv = psvbuffer; psv < psvbuffer + psvread; psv++)
         {
             pos->getFromSfen(&psv->sfen);
-            chessmove cm;
-            cm.code = pos->shortMove2FullMove(shortCode(psv->move));
-            if (!cm.code || ISEPCAPTUREORCASTLE(cm.code))
+            // Test and reset the castle related mebers in case of chess960
+            // FIXME: This is not bulletproof; a rook could have walked in the plies not recorded and lead to wrong castle rights
+            int castlestate = pos->state & CASTLEMASK;
+            if (castlestate && pos->fullmovescounter < lastfullmove)
             {
-                // Fix the incompatible move coding
-                cm.code = pos->shortMove2FullMove(psv->move);
-                if (cm.code)
-                    psv->move = sfMoveCode(cm.code);
+                int whiteCanCastle = castlestate & (WQCMASK | WKCMASK);
+                int castleQueenside = castlestate & (WQCMASK | BQCMASK);
+                int castleKingside = castlestate & (WKCMASK | BKCMASK);
+                kingfile = (whiteCanCastle ? FILE(pos->kingpos[WHITE]) : FILE(pos->kingpos[BLACK]));
+
+                rookfiles[0] = -1;
+                if (castleQueenside)
+                {
+                    U64 rooksbb;
+                    if (whiteCanCastle & castleQueenside)
+                        rooksbb = (pos->piece00[WROOK] & RANK1(WHITE));
+                    else
+                        rooksbb = (pos->piece00[BROOK] & RANK1(BLACK));
+                    rookfiles[0] = FILE(pullLsb(&rooksbb));
+                }
+
+                rookfiles[1] = -1;
+                if (castleKingside)
+                {
+                    U64 rooksbb;
+                    if (whiteCanCastle & castleKingside)
+                        rooksbb = (pos->piece00[WROOK] & RANK1(WHITE));
+                    else
+                        rooksbb = (pos->piece00[BROOK] & RANK1(BLACK));
+                    rookfiles[1] = FILE(pullMsb(&rooksbb));
+                }
+                pos->initCastleRights(rookfiles, kingfile);
             }
 
-            if (!cm.code)
+            lastfullmove = pos->fullmovescounter;
+
+            uint32_t rubimovecode = pos->shortMove2FullMove(shortCode(psv->move));
+            uint32_t sfmovecode = rubimovecode;
+            if (!rubimovecode || ISEPCAPTUREORCASTLE(rubimovecode))
+            {
+                // Fix the incompatible move coding
+                sfmovecode = pos->shortMove2FullMove(psv->move);
+                if (sfmovecode)
+                    psv->move = sfMoveCode(sfmovecode);
+                if (!rubimovecode)
+                {
+                    // FIXME: Can this still happen??
+                    printf("Alarm. Movecode: %04x: %s\n", psv->move, pos->toFen().c_str());
+                    rubimovecode = pos->shortMove2FullMove(psv->move);
+                }
+            }
+
+            if (!sfmovecode)
                 continue;
 
             n++;
@@ -724,7 +774,7 @@ void convert(vector<string> args)
             if (outformat == plain)
             {
                 *os << "fen " << pos->toFen() << "\n";
-                *os << "move " << cm.toString() << "\n";
+                *os << "move " << moveToString(rubimovecode) << "\n";
                 *os << "score " << psv->score << "\n";
                 *os << "ply " << to_string((pos->fullmovescounter - 1) * 2 + (pos->state & S2MMASK)) << "\n";
                 *os << "result " << to_string(psv->game_result) << "\n";
