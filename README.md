@@ -34,7 +34,8 @@ I provide release binary packages for Windows x64 only. Depending on your type o
 
 You will get a warning at startup if the selected binary doesn't match your CPU or it will just crash.
 
-RubiChess should also build on any x64 Linux on MacOS and on Raspbian (at least up to Raspi 3 which I own and tested) using make from the src subfolder.
+RubiChess should build successfully on any x64 Linux, on MacOS (x64 and ARM64/M1) and on Raspbian (at least up to Raspi 3 which I own and tested) using ```make``` from inside the src subfolder.
+
 For fastest binaries you should use the Clang compiler and the following build command
 
 ```make profile-build COMP=clang```
@@ -42,4 +43,5 @@ For fastest binaries you should use the Clang compiler and the following build c
 You may need to install some additional packages like Clang, lld linker and llvm profiling toolkit to make this work.
 You can also use the (default) gcc/g++ compiler ```make profile-build``` which probably works without additional packages but the binaries will be a little bit slower.
 
-    
+For a profile-build in MacOS (Darwin) you have to include the folder containing the llvm-profdata tool in your PATH:
+```export PATH=$PATH:/Library/Developer/CommandLineTools/usr/bin/```

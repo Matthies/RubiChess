@@ -618,37 +618,37 @@ void chessposition::tbFilterRootMoves()
 {
     tbPosition = 0;
     useRootmoveScore = 0;
-    if (POPCOUNT(occupied00[0] | occupied00[1]) <= useTb)
+    if (POPCOUNT(occupied00[0] | occupied00[1]) > useTb)
+        return;
+
+    if ((tbPosition = root_probe_dtz(this))) {
+        // The current root position is in the tablebases.
+        // RootMoves now contains only moves that preserve the draw or win.
+
+        // Do not probe tablebases during the search.
+        useTb = 0;
+    }
+    else // If DTZ tables are missing, use WDL tables as a fallback
     {
-        if ((tbPosition = root_probe_dtz(this))) {
-            // The current root position is in the tablebases.
-            // RootMoves now contains only moves that preserve the draw or win.
+        // Filter out moves that do not preserve a draw or win
+        tbPosition = root_probe_wdl(this);
+        // useRootmoveScore is set within root_probe_wdl
+    }
 
-            // Do not probe tablebases during the search.
-            useTb = 0;
-        }
-        else // If DTZ tables are missing, use WDL tables as a fallback
+    if (tbPosition)
+    {
+        // Sort the moves
+        for (int i = 0; i < rootmovelist.length; i++)
         {
-            // Filter out moves that do not preserve a draw or win
-            tbPosition = root_probe_wdl(this);
-            // useRootmoveScore is set within root_probe_wdl
-        }
-
-        if (tbPosition)
-        {
-            // Sort the moves
-            for (int i = 0; i < rootmovelist.length; i++)
+            for (int j = i + 1; j < rootmovelist.length; j++)
             {
-                for (int j = i + 1; j < rootmovelist.length; j++)
+                if (rootmovelist.move[i] < rootmovelist.move[j])
                 {
-                    if (rootmovelist.move[i] < rootmovelist.move[j])
-                    {
-                        swap(rootmovelist.move[i], rootmovelist.move[j]);
-                    }
+                    swap(rootmovelist.move[i], rootmovelist.move[j]);
                 }
             }
-            defaultmove = rootmovelist.move[0].code;
         }
+        defaultmove = rootmovelist.move[0].code;
     }
 }
 
@@ -1230,7 +1230,7 @@ bool chessposition::triggerDebug(chessmove* nextmove)
 
 const char* PvAbortStr[] = {
     "unknown", "pv from tt", "different move in tt", "razor-pruned", "reverse-futility-pruned", "nullmove-pruned", "probcut-pruned", "late-move-pruned",
-    "futility-pruned", "bad-see-pruned", "bad-history-pruned", "multicut-pruned", "bestmove", "not best move", "omitted", "betacut", "below alpha"
+    "futility-pruned", "bad-see-pruned", "bad-history-pruned", "multicut-pruned", "bestmove", "not best move", "omitted", "betacut", "below alpha", "checkmate", "stalemate"
 };
 
 
@@ -2577,7 +2577,7 @@ static void uciSetNnuePath()
         return;
     }
 
-    cout << " failed. The network file seems corrupted doesn't exist. Set correct path to network file or disable 'Use NNUE' for handcrafted evaluation.\n";
+    cout << " failed. The network file seems corrupted doesn't exist. Set correct path to network file or disable 'Use_NNUE' for handcrafted evaluation.\n";
 }
 #endif
 
@@ -2643,7 +2643,7 @@ void engine::registerOptions()
     ucioptions.Register(nullptr, "Clear Hash", ucibutton, "", 0, 0, uciClearHash);
 #ifdef NNUE
     ucioptions.Register(&NnueNetpath, "NNUENetpath", ucistring, NNUEDEFAULTSTR, 0, 0, uciSetNnuePath);
-    ucioptions.Register(&usennue, "Use NNUE", ucicheck, "true", 0, 0, uciSetNnuePath);
+    ucioptions.Register(&usennue, "Use_NNUE", ucicheck, "true", 0, 0, uciSetNnuePath);
 #endif
 }
 
@@ -2865,7 +2865,8 @@ void engine::communicate(string inputstring)
 
                     if (sLower == "name")
                     {
-                        ucioptions.Set(sName, sValue);
+                        if (sName != "")
+                            ucioptions.Set(sName, sValue);
                         bGetName = true;
                         bGetValue = false;
                         sName = "";
@@ -3091,7 +3092,13 @@ void ucioptions_t::Set(string n, string v, bool force)
     optionmapiterator it = optionmap.find(n);
 
     if (it == optionmap.end())
-        return;
+    {
+        // Lets see if whitespace was replaced with _ in the setoption command
+        replace(n.begin(), n.end(), '_', ' ');
+        it = optionmap.find(n);
+        if (it == optionmap.end())
+            return;
+    }
 
     ucioption_t *op = &(it->second);
     bool bChanged = false;

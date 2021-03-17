@@ -1051,13 +1051,15 @@ int main(int argc, char* argv[])
     } else if (benchmark || openbench)
     {
         // benchmark mode
+        if (openbench)
+            en.ucioptions.Set("Use_NNUE", "false");
         doBenchmark(depth, epdfile, maxtime, startnum, openbench);
 #ifdef NNUE
         if (!openbench && epdfile == "")
         {
             NnueType oldNnueReady = NnueReady;
             // Profile build; switch eval mode for more recording
-            en.ucioptions.Set("Use NNUE", NnueReady ? "false" : "true");
+            en.ucioptions.Set("Use_NNUE", NnueReady ? "false" : "true");
             if (NnueReady || oldNnueReady)
                 doBenchmark(depth, epdfile, maxtime, startnum, openbench);
         }
