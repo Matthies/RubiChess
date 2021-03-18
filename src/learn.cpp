@@ -27,7 +27,7 @@
 #define GENSFEN_HASH_SIZE 0x1000000
 alignas(64) U64 sfenhash[GENSFEN_HASH_SIZE];
 
-const U64 sfenchunksize = 0x4000;
+const U64 sfenchunksize = 0x1000;
 const int sfenchunknums = 2;
 bool gensfenstop;
 
@@ -287,6 +287,7 @@ int maxply = 400;
 int generate_draw = 1;
 U64 nodes = 0;
 int eval_limit = 32000;
+int disable_prune = 0;
 string book = "";
 
 size_t booklen;
@@ -350,6 +351,7 @@ static void gensfenthread(searchthread* thr)
     memset(pos->counterhistory, 0, sizeof(chessposition::counterhistory));
     memset(pos->countermove, 0, sizeof(chessposition::countermove));
     const int depthvariance = max(1, depth2 - depth + 1);
+    thr->totalchunks = 0;
 
     while (true)
     {
@@ -398,7 +400,9 @@ static void gensfenthread(searchthread* thr)
             int nextdepth = depth + ranval(&rnd) % depthvariance;
             //cout << "ply=" << ply << "   depth=" << nextdepth << "  :  ";
 
-            int score = pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, nextdepth);
+            int score = (disable_prune ?
+                pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, nextdepth)
+                : pos->alphabeta<Prune>(SCOREBLACKWINS, SCOREWHITEWINS, nextdepth));
 
             if (POPCOUNT(pos->occupied00[0] | pos->occupied00[1]) <= pos->useTb) // TB adjudication
             {
@@ -445,6 +449,7 @@ static void gensfenthread(searchthread* thr)
 
                 if (psvnums % sfenchunksize == 0)
                 {
+                    thr->totalchunks++;
                     int thischunk = (int)(psvnums / sfenchunksize - 1);
                     int nextchunk = (thischunk + 1) % sfenchunknums;
                     while (thr->chunkstate[nextchunk] != CHUNKFREE)
@@ -559,6 +564,8 @@ void gensfen(vector<string> args)
             write_minply = stoi(args[ci++]);
         if (cmd == "eval_limit" && ci < cs)
             eval_limit = stoi(args[ci++]);
+        if (cmd == "disable_prune" && ci < cs)
+            disable_prune = stoi(args[ci++]);
         if (cmd == "book" && ci < cs)
             book = args[ci++];
     }
@@ -582,6 +589,7 @@ void gensfen(vector<string> args)
     cout << "random_multi_pv:       " << random_multi_pv << "\n";
     cout << "random_multi_pv_depth: " << random_multi_pv_depth << "\n";
     cout << "random_multi_pv_diff:  " << random_multi_pv_diff << "\n";
+    cout << "disable_prune:         " << disable_prune << "\n";
     cout << "book:                  " << book << "\n";
 
     const U64 chunksneeded = fensnum / sfenchunksize + 1;

@@ -1696,6 +1696,7 @@ public:
 #ifdef NNUELEARN
     PackedSfenValue* psvbuffer;
     PackedSfenValue* psv;
+    int totalchunks;
     int chunkstate[2];
 #endif
     // adjust padding to align searchthread at 64 bytes
