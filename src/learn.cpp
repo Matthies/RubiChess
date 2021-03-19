@@ -613,12 +613,16 @@ void gensfen(vector<string> args)
 
     U64 chunkswritten = 0;
     tnum = 0;
+    const int charsperline = 100;
     U64 starttime = getTime();
-    string sProgress(100,'.');
-    cout << "\r  ?:??:??:?? |" << sProgress << "|";
-    const double dotsperthread = 100.0 / en.Threads;
+    string sProgress(charsperline,'.');
+    cout << "\r  ?h??m??s |" << sProgress << "|";
+    const double dotsperthread = (double)charsperline / en.Threads;
     const double chunksperthread = (double)chunksneeded / en.Threads;
     const char finedotchar[] = { '-', '\\', '|', '/', 'X'};
+    bool showPps = false;
+    U64 lastSwitch = starttime;
+    const int minShowSec = 30;
     while (chunkswritten < chunksneeded)
     {
         searchthread* thr = &en.sthread[tnum];
@@ -630,27 +634,37 @@ void gensfen(vector<string> args)
                 os.write((char*)(thr->psvbuffer + i * sfenchunksize), sfenchunksize * sizeof(PackedSfenValue));
                 chunkswritten++;
                 thr->chunkstate[i] = CHUNKFREE;
-                //cout << chunkswritten * sfenchunksize << " sfens written. (" << thr->index << ")\n";
                 // Update progress
                 U64 now = getTime();
-                U64 totaltime = max(now - starttime, (now - starttime) / chunkswritten * chunksneeded);
-                U64 remainingsecs = (totaltime + starttime - now) / en.frequency;
-                stringstream remainingss;
-                remainingss
-                    << setfill(' ') << setw(3) << (remainingsecs / (24 * 60 * 60)) << ":"
-                    << setfill('0') << setw(2) << (remainingsecs / (60 * 60)) % 24 << ":"
-                    << setfill('0') << setw(2) << (remainingsecs / 60) % 60 << ":"
-                    << setfill('0') << setw(2) << remainingsecs % 60 << "";
+                stringstream ss;
+                if (showPps)
+                {
+                    int pps = ((now - starttime) < en.frequency) ? 0 : (int)((chunkswritten * sfenchunksize) / (int)((now - starttime) / en.frequency));
+                    ss << setfill(' ') << setw(7) << pps << "pps";
+                }
+                else {
+                    U64 totaltime = max(now - starttime, (now - starttime) / chunkswritten * chunksneeded);
+                    U64 remainingsecs = (totaltime + starttime - now) / en.frequency;
+                    ss  << setfill(' ') << setw(3) << (remainingsecs / (60 * 60)) << "h"
+                        << setfill('0') << setw(2) << (remainingsecs / 60) % 60 << "m"
+                        << setfill('0') << setw(2) << remainingsecs % 60 << "s";
+                }
+                if ((now - lastSwitch) / en.frequency > minShowSec)
+                {
+                    // Switch display
+                    showPps = !showPps;
+                    lastSwitch = now;
+                }
+
                 int firstdot = (int)round((double)thr->index * dotsperthread);
                 int lastdot = (int)round((double)(thr->index + 1) * dotsperthread) - 1;
                 int numdots = lastdot - firstdot + 1;
-                int previousdot = min(99, firstdot + (int)round((double)(thr->totalchunks - 1) * numdots / chunksperthread));
+                int previousdot = min(charsperline - 1, firstdot + (int)round((double)(thr->totalchunks - 1) * numdots / chunksperthread));
                 int currentdot = firstdot + (int)round(thr->totalchunks * numdots / chunksperthread);
-                //int finedot = 4 * thr->totalchunks * dotsperthread / chunksperthread;
                 for (int ci = previousdot; ci < currentdot; ci++)
                     sProgress[ci] = finedotchar[4];
                 sProgress[currentdot] = finedotchar[thr->totalchunks % 4];
-                cout << "\r" << remainingss.str() << " |" << sProgress << "|";
+                cout << "\r" << ss.str() << " |" << sProgress << "|";
             }
         }
         tnum = (tnum + 1) % en.Threads;
