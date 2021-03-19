@@ -27,7 +27,7 @@
 #define GENSFEN_HASH_SIZE 0x1000000
 alignas(64) U64 sfenhash[GENSFEN_HASH_SIZE];
 
-const U64 sfenchunksize = 0x1000;
+const unsigned int sfenchunksize = 0x1000;
 const int sfenchunknums = 2;
 bool gensfenstop;
 
@@ -592,7 +592,7 @@ void gensfen(vector<string> args)
     cout << "disable_prune:         " << disable_prune << "\n";
     cout << "book:                  " << book << "\n";
 
-    const U64 chunksneeded = fensnum / sfenchunksize + 1;
+    const unsigned int chunksneeded = unsigned int(fensnum / sfenchunksize) + 1;
     ofstream os(outputfile, ios::binary | fstream::app);
     if (!os)
     {
@@ -614,6 +614,12 @@ void gensfen(vector<string> args)
 
     U64 chunkswritten = 0;
     tnum = 0;
+    U64 starttime = getTime();
+    string sProgress(100,'-');
+    cout << "\r  ?:??:??:?? |" << sProgress << "|";
+    const int dotsperthread = 100 / en.Threads;
+    const int chunksperthread = chunksneeded / en.Threads;
+    const char finedotchar[] = { '-', '\\', '|', '/', 'X'};
     while (chunkswritten < chunksneeded)
     {
         searchthread* thr = &en.sthread[tnum];
@@ -625,7 +631,26 @@ void gensfen(vector<string> args)
                 os.write((char*)(thr->psvbuffer + i * sfenchunksize), sfenchunksize * sizeof(PackedSfenValue));
                 chunkswritten++;
                 thr->chunkstate[i] = CHUNKFREE;
-                cout << chunkswritten * sfenchunksize << " sfens written. (" << thr->index << ")\n";
+                //cout << chunkswritten * sfenchunksize << " sfens written. (" << thr->index << ")\n";
+                // Update progress
+                U64 now = getTime();
+                U64 totaltime = max(now - starttime, (now - starttime) / chunkswritten * chunksneeded);
+                U64 remainingsecs = (totaltime + starttime - now) / en.frequency;
+                stringstream remainingss;
+                remainingss
+                    << setfill(' ') << setw(3) << (remainingsecs / (24 * 60 * 60)) << ":"
+                    << setfill('0') << setw(2) << (remainingsecs / (60 * 60)) % 24 << ":"
+                    << setfill('0') << setw(2) << (remainingsecs / 60) % 60 << ":"
+                    << setfill('0') << setw(2) << remainingsecs % 60 << "";
+                int firstdot = thr->index * dotsperthread;
+                int previousdot = min(99, firstdot + (thr->totalchunks - 1) * dotsperthread / chunksperthread);
+                int currentdot = firstdot + thr->totalchunks * dotsperthread / chunksperthread;
+                int finedot = 4 * thr->totalchunks * dotsperthread / chunksperthread;
+                for (int ci = previousdot; ci < currentdot; ci++)
+                    sProgress[ci] = finedotchar[4];
+                if (currentdot < (thr->index + 1) * dotsperthread - 1)
+                    sProgress[currentdot] = finedotchar[finedot % 4];
+                cout << "\r" << remainingss.str() << " |" << sProgress << "|";
             }
         }
         tnum = (tnum + 1) % en.Threads;
@@ -636,7 +661,7 @@ void gensfen(vector<string> args)
         if (en.sthread[tnum].thr.joinable())
             en.sthread[tnum].thr.join();
     }
-    cout << "gensfen finished.\n";
+    cout << "\n\ngensfen finished.\n";
     en.MultiPV = old_multipv;
 
     freeBookPositions();
