@@ -332,13 +332,12 @@ static void freeBookPositions()
 }
 
 
-static void gensfenthread(searchthread* thr)
+static void gensfenthread(searchthread* thr, U64 rndseed)
 {
     ranctx rnd;
     U64 key;
     U64 hash_index;
     U64 key2;
-    U64 rndseed = time(NULL);
     raninit(&rnd, rndseed);
     chessmovelist movelist;
     U64 psvnums = 0;
@@ -609,7 +608,7 @@ void gensfen(vector<string> args)
         en.sthread[tnum].chunkstate[0] = CHUNKINUSE;
         en.sthread[tnum].chunkstate[1] = CHUNKFREE;
         en.sthread[tnum].psvbuffer = (PackedSfenValue*)allocalign64(sfenchunknums * sfenchunksize * sizeof(PackedSfenValue));
-        en.sthread[tnum].thr = thread(&gensfenthread, &en.sthread[tnum]);
+        en.sthread[tnum].thr = thread(&gensfenthread, &en.sthread[tnum], getTime() ^ zb.getRnd() );
     }
 
     U64 chunkswritten = 0;
