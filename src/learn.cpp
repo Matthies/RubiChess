@@ -319,7 +319,7 @@ static bool getBookPositions()
         booklen = 1;
         while (getline(is, epd)) bookfen[booklen++] = new string(epd);
     }
-    cout << " Book has " << booklen << " entries.\n";
+    cout << " Number of book entries: " << booklen << "\n";
     return true;
 }
 
@@ -615,10 +615,10 @@ void gensfen(vector<string> args)
     U64 chunkswritten = 0;
     tnum = 0;
     U64 starttime = getTime();
-    string sProgress(100,'-');
+    string sProgress(100,'.');
     cout << "\r  ?:??:??:?? |" << sProgress << "|";
-    const int dotsperthread = 100 / en.Threads;
-    const int chunksperthread = chunksneeded / en.Threads;
+    const double dotsperthread = 100.0 / en.Threads;
+    const double chunksperthread = (double)chunksneeded / en.Threads;
     const char finedotchar[] = { '-', '\\', '|', '/', 'X'};
     while (chunkswritten < chunksneeded)
     {
@@ -642,14 +642,15 @@ void gensfen(vector<string> args)
                     << setfill('0') << setw(2) << (remainingsecs / (60 * 60)) % 24 << ":"
                     << setfill('0') << setw(2) << (remainingsecs / 60) % 60 << ":"
                     << setfill('0') << setw(2) << remainingsecs % 60 << "";
-                int firstdot = thr->index * dotsperthread;
-                int previousdot = min(99, firstdot + (thr->totalchunks - 1) * dotsperthread / chunksperthread);
-                int currentdot = firstdot + thr->totalchunks * dotsperthread / chunksperthread;
-                int finedot = 4 * thr->totalchunks * dotsperthread / chunksperthread;
+                int firstdot = (int)round((double)thr->index * dotsperthread);
+                int lastdot = (int)round((double)(thr->index + 1) * dotsperthread) - 1;
+                int numdots = lastdot - firstdot + 1;
+                int previousdot = min(99, firstdot + (int)round((double)(thr->totalchunks - 1) * numdots / chunksperthread));
+                int currentdot = firstdot + (int)round(thr->totalchunks * numdots / chunksperthread);
+                //int finedot = 4 * thr->totalchunks * dotsperthread / chunksperthread;
                 for (int ci = previousdot; ci < currentdot; ci++)
                     sProgress[ci] = finedotchar[4];
-                if (currentdot < (thr->index + 1) * dotsperthread - 1)
-                    sProgress[currentdot] = finedotchar[finedot % 4];
+                sProgress[currentdot] = finedotchar[thr->totalchunks % 4];
                 cout << "\r" << remainingss.str() << " |" << sProgress << "|";
             }
         }
