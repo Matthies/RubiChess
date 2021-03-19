@@ -592,7 +592,7 @@ void gensfen(vector<string> args)
     cout << "disable_prune:         " << disable_prune << "\n";
     cout << "book:                  " << book << "\n";
 
-    const unsigned int chunksneeded = unsigned int(fensnum / sfenchunksize) + 1;
+    const unsigned int chunksneeded = (unsigned int)(fensnum / sfenchunksize) + 1;
     ofstream os(outputfile, ios::binary | fstream::app);
     if (!os)
     {
