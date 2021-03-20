@@ -452,7 +452,10 @@ static void gensfenthread(searchthread* thr, U64 rndseed)
                     int thischunk = (int)(psvnums / sfenchunksize - 1);
                     int nextchunk = (thischunk + 1) % sfenchunknums;
                     while (thr->chunkstate[nextchunk] != CHUNKFREE)
-                        Sleep(10);
+                    {
+                        printf("\rThread %d waiting for main thread...", thr->index);
+                        Sleep(100);
+                    }
                     thr->chunkstate[nextchunk] = CHUNKINUSE;
                     psvnums = psvnums % (sfenchunknums * sfenchunksize);
                 }
@@ -626,7 +629,7 @@ void gensfen(vector<string> args)
     while (chunkswritten < chunksneeded)
     {
         searchthread* thr = &en.sthread[tnum];
-        Sleep(10);
+        Sleep(100);
         for (int i = 0; i < sfenchunknums; i++)
         {
             if (thr->chunkstate[i] == CHUNKFULL)
