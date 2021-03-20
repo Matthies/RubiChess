@@ -535,7 +535,7 @@ SKIP_SAVE:
 
 void gensfen(vector<string> args)
 {
-    U64 fensnum = 10000;
+    U64 loop = 10000;
     string outputfile = "sfens.bin";
     size_t cs = args.size();
     size_t ci = 0;
@@ -548,8 +548,8 @@ void gensfen(vector<string> args)
             depth = stoi(args[ci++]);
         if (cmd == "depth2" && ci < cs)
             depth2 = stoi(args[ci++]);
-        if (cmd == "loop" && ci < cs)
-            fensnum = stoi(args[ci++]);
+        if (cmd == "lpoop" && ci < cs)
+            loop = stoi(args[ci++]);
         if (cmd == "output_file_name" && ci < cs)
             outputfile = args[ci++];
         if (cmd == "random_multi_pv" && ci < cs)
@@ -577,6 +577,7 @@ void gensfen(vector<string> args)
 
     cout << "Generating sfnes with these parameters:\n";
     cout << "output_file_name:      " << outputfile << "\n";
+    cout << "loop:                  " << loop << "\n";
     cout << "depth:                 " << depth << "\n";
     cout << "depth2:                " << depth2 << "\n";
     cout << "maxply:                " << maxply << "\n";
@@ -594,7 +595,7 @@ void gensfen(vector<string> args)
     cout << "disable_prune:         " << disable_prune << "\n";
     cout << "book:                  " << book << "\n";
 
-    const unsigned int chunksneeded = (unsigned int)(fensnum / sfenchunksize) + 1;
+    const unsigned int chunksneeded = (unsigned int)(loop / sfenchunksize) + 1;
     ofstream os(outputfile, ios::binary | fstream::app);
     if (!os)
     {
