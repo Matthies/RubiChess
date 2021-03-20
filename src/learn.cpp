@@ -548,7 +548,7 @@ void gensfen(vector<string> args)
             depth = stoi(args[ci++]);
         if (cmd == "depth2" && ci < cs)
             depth2 = stoi(args[ci++]);
-        if (cmd == "lpoop" && ci < cs)
+        if (cmd == "loop" && ci < cs)
             loop = stoi(args[ci++]);
         if (cmd == "output_file_name" && ci < cs)
             outputfile = args[ci++];
