@@ -250,6 +250,11 @@ void flush_psv(int result, searchthread* thr)
 {
     PackedSfenValue* p;
     int fullchunk = -1;
+
+    if (!thr->psv)
+        // Not a single position of this game stored
+        return;
+
     U64 offset = thr->psv - thr->psvbuffer;
     while (true)
     {
@@ -376,6 +381,7 @@ static void gensfenthread(searchthread* thr, U64 rndseed)
         for (int i = 0; i < random_opening_ply; ++i)
             random_move_flag[i] = true;
 
+        thr->psv = nullptr;
 
         for (int ply = 0; ; ++ply)
         {
