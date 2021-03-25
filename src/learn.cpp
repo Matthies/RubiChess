@@ -175,7 +175,7 @@ int chessposition::getFromSfen(PackedSfen* sfen)
 
 void chessposition::toSfen(PackedSfen *sfen)
 {
-    // 1 + 6 + 6 + 32*1 + 32*5 + 4 + 7 + 7 + 8 = 
+    // 1 + 6 + 6 + 32*1 + 32*5 + 4 + 7 + 7 + 8 =
     memset(&sfen->data, 0, sizeof(sfen->data));
     int bitnum = 0;
     uint8_t* buffer = &sfen->data[0];
@@ -364,7 +364,7 @@ static void gensfenthread(searchthread* thr, U64 rndseed)
 
         string startfen = en.chess960 ? frcStartFen() : *bookfen[ranval(&rnd) % booklen];
         pos->getFromFen(startfen.c_str());
-        
+
         vector<bool> random_move_flag;
         random_move_flag.resize((size_t)random_move_maxply + random_move_count);
         vector<int> a;
@@ -392,7 +392,7 @@ static void gensfenthread(searchthread* thr, U64 rndseed)
             }
             pos->ply = 0;
             movelist.length = CreateMovelist<ALL>(pos, &movelist.move[0]);
-                
+
             if (movelist.length == 0)
             {
                 if (pos->isCheckbb) // Mate
@@ -401,7 +401,7 @@ static void gensfenthread(searchthread* thr, U64 rndseed)
                     flush_psv(0, thr); // Stalemate
                 break;
             }
-            
+
             int nextdepth = depth + ranval(&rnd) % depthvariance;
             //cout << "ply=" << ply << "   depth=" << nextdepth << "  :  ";
 
@@ -409,7 +409,7 @@ static void gensfenthread(searchthread* thr, U64 rndseed)
                 pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, nextdepth)
                 : pos->alphabeta<Prune>(SCOREBLACKWINS, SCOREWHITEWINS, nextdepth));
 
-            if (POPCOUNT(pos->occupied00[0] | pos->occupied00[1]) <= pos->useTb) // TB adjudication
+            if (POPCOUNT(pos->occupied00[0] | pos->occupied00[1]) <= pos->useTb && ) // TB adjudication; FIXME: bad with incomplete TB sets
             {
                 flush_psv((score > SCOREDRAW) ? S2MSIGN(pos->state & S2MMASK) : (score < SCOREDRAW ? -S2MSIGN(pos->state & S2MMASK) : 0), thr);
                 break;
@@ -426,7 +426,7 @@ static void gensfenthread(searchthread* thr, U64 rndseed)
                 if (generate_draw) flush_psv(0, thr);
                 break;
             }
-            
+
             // Skip first plies
             if (ply < write_minply - 1) // default: 16
                 goto SKIP_SAVE;
@@ -439,7 +439,7 @@ static void gensfenthread(searchthread* thr, U64 rndseed)
                 goto SKIP_SAVE;
 
             sfenhash[hash_index] = key; // Replace with the current key.
-            
+
             // generate sfen and values
             thr->psv = thr->psvbuffer + psvnums;
             pos->toSfen(&thr->psv->sfen);
@@ -466,7 +466,7 @@ static void gensfenthread(searchthread* thr, U64 rndseed)
                     psvnums = psvnums % (sfenchunknums * sfenchunksize);
                 }
             }
-            
+
 SKIP_SAVE:
             // preset move for next ply with the pv move
             nmc = pos->pvtable[0][0];
@@ -702,6 +702,7 @@ void convert(vector<string> args)
     string inputfile;
     string outputfile;
     int evalstats = 0;
+    int generalstats = 0;
     SfenFormat outformat = no;
     size_t cs = args.size();
     size_t ci = 0;
@@ -733,6 +734,10 @@ void convert(vector<string> args)
             if (evalstats < 1 || evalstats > 2)
                 evalstats = 0;
         }
+        if (cmd == "generalstats")
+        {
+            generalstats = (ci < cs ? stoi(args[ci++]) : 1);
+        }
     }
 
     ifstream is(inputfile, ios::binary);
@@ -762,6 +767,8 @@ void convert(vector<string> args)
     int rookfiles[2] = { -1, -1 };
     int kingfile = -1;
     int lastfullmove = INT_MAX;
+
+    U64 posWithPieces[32] = { 0ULL };
 
     while (is.peek() != ios::traits_type::eof())
     {
@@ -842,6 +849,11 @@ void convert(vector<string> args)
                 os->write((char*)psv, sizeof(PackedSfenValue));
             }
 
+            if (generalstats)
+            {
+                posWithPieces[POPCOUNT(pos->occupied00[WHITE] | pos->occupied00[BLACK])]++;
+            }
+
             if (evalstats)
             {
                 NnueType origNnue = NnueReady;
@@ -886,6 +898,13 @@ void convert(vector<string> args)
     }
 
     cerr << "\nFinished converting.\n";
+
+    if (generalstats)
+    {
+        cerr << "Distribution depending on number of pieces:\n";
+        for (int i = 2; i < 33; i++)
+            cerr << setw(2) << to_string(i) << " pieces: " << 100.0 * posWithPieces[i] / (double)n << "%\n";
+    }
 }
 
 
