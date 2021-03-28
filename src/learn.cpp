@@ -175,7 +175,6 @@ int chessposition::getFromSfen(PackedSfen* sfen)
 
 void chessposition::toSfen(PackedSfen *sfen)
 {
-    // 1 + 6 + 6 + 32*1 + 32*5 + 4 + 7 + 7 + 8 =
     memset(&sfen->data, 0, sizeof(sfen->data));
     int bitnum = 0;
     uint8_t* buffer = &sfen->data[0];
@@ -403,13 +402,12 @@ static void gensfenthread(searchthread* thr, U64 rndseed)
             }
 
             int nextdepth = depth + ranval(&rnd) % depthvariance;
-            //cout << "ply=" << ply << "   depth=" << nextdepth << "  :  ";
 
             int score = (disable_prune ?
                 pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, nextdepth)
                 : pos->alphabeta<Prune>(SCOREBLACKWINS, SCOREWHITEWINS, nextdepth));
 
-            if (POPCOUNT(pos->occupied00[0] | pos->occupied00[1]) <= pos->useTb && ) // TB adjudication; FIXME: bad with incomplete TB sets
+            if (POPCOUNT(pos->occupied00[0] | pos->occupied00[1]) <= pos->useTb) // TB adjudication; FIXME: bad with incomplete TB sets
             {
                 flush_psv((score > SCOREDRAW) ? S2MSIGN(pos->state & S2MMASK) : (score < SCOREDRAW ? -S2MSIGN(pos->state & S2MMASK) : 0), thr);
                 break;
@@ -490,17 +488,15 @@ SKIP_SAVE:
                 {
                     if (random_multi_pv == 0)
                     {
-                        //cout << "normal random\n";
                         i = ranval(&rnd) % movelist.length;
                         nmc = movelist.move[i].code;
                     }
                     else
                     {
+                        // random multi pv
                         pos->getRootMoves();
                         int cur_multi_pv = min(pos->rootmovelist.length, (ply < random_opening_ply ? 8 : random_multi_pv));
                         int cur_multi_pv_diff = (ply < random_opening_ply ? 100 : random_multi_pv_diff);
-                        //cout << "multi-pv with depth=" << random_multi_pv_depth << " num=" << cur_multi_pv << " and diff=" << cur_multi_pv_diff << "\n";
-                        // random multi pv
                         pos->rootsearch<MultiPVSearch>(SCOREBLACKWINS, SCOREWHITEWINS, random_multi_pv_depth, 1, cur_multi_pv);
                         int s = min(pos->rootmovelist.length, cur_multi_pv);
                         // Exclude moves with score outside of allowed margin
@@ -509,9 +505,6 @@ SKIP_SAVE:
 
                         nmc = pos->multipvtable[ranval(&rnd) % s][0];
                     }
-                }
-                else {
-                    //cout << "best move\n";
                 }
 
                 bool legal = pos->playMove(nmc);
@@ -671,8 +664,8 @@ void gensfen(vector<string> args)
                 int numdots = lastdot - firstdot + 1;
                 int previousdot = min(charsperline - 1, firstdot + (int)round((double)(thr->totalchunks - 1) * numdots / chunksperthread));
                 int currentdot = firstdot + (int)round(thr->totalchunks * numdots / chunksperthread);
-                for (int ci = previousdot; ci < currentdot; ci++)
-                    sProgress[ci] = finedotchar[4];
+                for (int c = previousdot; c < currentdot; c++)
+                    sProgress[c] = finedotchar[4];
                 sProgress[currentdot] = finedotchar[thr->totalchunks % 4];
                 cout << "\r" << ss.str() << " |" << sProgress << "|";
             }
