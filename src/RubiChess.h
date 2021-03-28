@@ -1617,13 +1617,21 @@ public:
 #endif
 #ifdef NNUE
     bool usennue;
-    string NnueNetpath;
+    string NnueNetpath; // UCI option, can be <Default>
+    string GetNnueNetPath() {
+        if (NnueNetpath == "<Default>")
+            return NNUEDEFAULTSTR;
+        else
+            return NnueNetpath;
+    }
+
     string NnueSha256FromName() {
-        size_t s2 = NnueNetpath.rfind('-');
-        size_t s1 = NnueNetpath.rfind('-', s2 - 1) + 1;
+        string path = GetNnueNetPath();
+        size_t s2 = path.rfind('-');
+        size_t s1 = path.rfind('-', s2 - 1) + 1;
         if (s1 && s2 && s2 - s1 == 10)
             // Most probably a Rubi net; shorten name to 5 digits
-            return NnueNetpath.substr(s1, 5);
+            return path.substr(s1, 5);
         else
             return "<unknown>";
     }

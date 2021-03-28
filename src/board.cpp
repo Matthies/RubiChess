@@ -2558,12 +2558,13 @@ static void uciSetNnuePath()
     }
 
     NnueReady = NnueDisabled;
-    cout << "info string Loading net " << en.NnueNetpath << " ...";
+    string NnueNetPath = en.GetNnueNetPath();
+    cout << "info string Loading net " << NnueNetPath << " ...";
 
     ifstream is;
-    is.open(en.NnueNetpath, ios::binary);
+    is.open(NnueNetPath, ios::binary);
     if (!is && en.ExecPath != "")
-        is.open(en.ExecPath + en.NnueNetpath, ios::binary);
+        is.open(en.ExecPath + NnueNetPath, ios::binary);
 
     if (is)
         NnueReadNet(&is);
@@ -2571,7 +2572,7 @@ static void uciSetNnuePath()
     if (NnueReady)
     {
         cout << " successful. Using NNUE evaluation. (" + to_string(NnueReady) + ")\n";
-        if (en.NnueNetpath != NNUEDEFAULTSTR)
+        if (NnueNetPath != NNUEDEFAULTSTR)
             cout << "info string Warning! You are not using the default network file. Playing strength of the engine highly depends on it.\n";
 
         return;
@@ -2642,7 +2643,7 @@ void engine::registerOptions()
     ucioptions.Register(&chess960, "UCI_Chess960", ucicheck, "false");
     ucioptions.Register(nullptr, "Clear Hash", ucibutton, "", 0, 0, uciClearHash);
 #ifdef NNUE
-    ucioptions.Register(&NnueNetpath, "NNUENetpath", ucistring, NNUEDEFAULTSTR, 0, 0, uciSetNnuePath);
+    ucioptions.Register(&NnueNetpath, "NNUENetpath", ucistring, "<Default>", 0, 0, uciSetNnuePath);
     ucioptions.Register(&usennue, "Use_NNUE", ucicheck, "true", 0, 0, uciSetNnuePath);
 #endif
 }
