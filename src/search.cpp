@@ -804,7 +804,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         effectiveDepth = depth + extendall - reduction + extendMove;
 
         // Prune moves with bad counter move history
-        if (Pt == Prune
+        if (Pt != MatePrune
             && !ISTACTICAL(mc) && effectiveDepth < 4
             && ms.cmptr[0] && ms.cmptr[0][pc * 64 + to] < 0
             && ms.cmptr[1] && ms.cmptr[1][pc * 64 + to] < 0)
@@ -946,7 +946,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
 
 template <RootsearchType RT>
-int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast)
+int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, int maxmoveindex)
 {
     int score;
     uint16_t hashmovecode = 0;
@@ -955,7 +955,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast)
     int eval_type = HASHALPHA;
     chessmove *m;
     int lastmoveindex;
-    int maxmoveindex;
 
     const bool isMultiPV = (RT == MultiPVSearch);
     bool mateprune = (alpha > SCORETBWININMAXPLY || beta < -SCORETBWININMAXPLY);
@@ -969,7 +968,8 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast)
     if (isMultiPV)
     {
         lastmoveindex = 0;
-        maxmoveindex = min(en.MultiPV, rootmovelist.length);
+        if (!maxmoveindex)
+            maxmoveindex = min(en.MultiPV, rootmovelist.length);
         for (int i = 0; i < maxmoveindex; i++)
         {
             multipvtable[i][0] = 0;

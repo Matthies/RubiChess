@@ -27,7 +27,7 @@
 #define GENSFEN_HASH_SIZE 0x1000000
 alignas(64) U64 sfenhash[GENSFEN_HASH_SIZE];
 
-const U64 sfenchunksize = 0x4000;
+const unsigned int sfenchunksize = 0x1000;
 const int sfenchunknums = 2;
 bool gensfenstop;
 
@@ -175,7 +175,6 @@ int chessposition::getFromSfen(PackedSfen* sfen)
 
 void chessposition::toSfen(PackedSfen *sfen)
 {
-    // 1 + 6 + 6 + 32*1 + 32*5 + 4 + 7 + 7 + 8 = 
     memset(&sfen->data, 0, sizeof(sfen->data));
     int bitnum = 0;
     uint8_t* buffer = &sfen->data[0];
@@ -250,6 +249,11 @@ void flush_psv(int result, searchthread* thr)
 {
     PackedSfenValue* p;
     int fullchunk = -1;
+
+    if (!thr->psv)
+        // Not a single position of this game stored
+        return;
+
     U64 offset = thr->psv - thr->psvbuffer;
     while (true)
     {
@@ -274,9 +278,11 @@ void flush_psv(int result, searchthread* thr)
 
 // global parameters for gensfen variation
 int depth = 4;
+int depth2 = depth;
 int random_multi_pv = 0;
 int random_multi_pv_depth = 4;
 int random_multi_pv_diff = 50;
+int random_opening_ply = 8;
 int random_move_count = 5;
 int random_move_minply = 1;
 int random_move_maxply = 24;
@@ -285,6 +291,7 @@ int maxply = 400;
 int generate_draw = 1;
 U64 nodes = 0;
 int eval_limit = 32000;
+int disable_prune = 0;
 string book = "";
 
 size_t booklen;
@@ -316,7 +323,7 @@ static bool getBookPositions()
         booklen = 1;
         while (getline(is, epd)) bookfen[booklen++] = new string(epd);
     }
-    cout << " Book has " << booklen << " entries.\n";
+    cout << " Number of book entries: " << booklen << "\n";
     return true;
 }
 
@@ -329,13 +336,12 @@ static void freeBookPositions()
 }
 
 
-static void gensfenthread(searchthread* thr)
+static void gensfenthread(searchthread* thr, U64 rndseed)
 {
     ranctx rnd;
     U64 key;
     U64 hash_index;
     U64 key2;
-    U64 rndseed = time(NULL);
     raninit(&rnd, rndseed);
     chessmovelist movelist;
     U64 psvnums = 0;
@@ -347,6 +353,8 @@ static void gensfenthread(searchthread* thr)
     memset(pos->history, 0, sizeof(chessposition::history));
     memset(pos->counterhistory, 0, sizeof(chessposition::counterhistory));
     memset(pos->countermove, 0, sizeof(chessposition::countermove));
+    const int depthvariance = max(1, depth2 - depth + 1);
+    thr->totalchunks = 0;
 
     while (true)
     {
@@ -355,7 +363,7 @@ static void gensfenthread(searchthread* thr)
 
         string startfen = en.chess960 ? frcStartFen() : *bookfen[ranval(&rnd) % booklen];
         pos->getFromFen(startfen.c_str());
-        
+
         vector<bool> random_move_flag;
         random_move_flag.resize((size_t)random_move_maxply + random_move_count);
         vector<int> a;
@@ -368,6 +376,12 @@ static void gensfenthread(searchthread* thr)
             random_move_flag[a[i]] = true;
         }
 
+        // Opening random
+        for (int i = 0; i < random_opening_ply; ++i)
+            random_move_flag[i] = true;
+
+        thr->psv = nullptr;
+
         for (int ply = 0; ; ++ply)
         {
             if (ply > maxply) // default: 200; SF: 400
@@ -377,7 +391,7 @@ static void gensfenthread(searchthread* thr)
             }
             pos->ply = 0;
             movelist.length = CreateMovelist<ALL>(pos, &movelist.move[0]);
-                
+
             if (movelist.length == 0)
             {
                 if (pos->isCheckbb) // Mate
@@ -386,10 +400,14 @@ static void gensfenthread(searchthread* thr)
                     flush_psv(0, thr); // Stalemate
                 break;
             }
-            
-            int score = pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, depth);
 
-            if (POPCOUNT(pos->occupied00[0] | pos->occupied00[1]) <= pos->useTb) // TB adjudication
+            int nextdepth = depth + ranval(&rnd) % depthvariance;
+
+            int score = (disable_prune ?
+                pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, nextdepth)
+                : pos->alphabeta<Prune>(SCOREBLACKWINS, SCOREWHITEWINS, nextdepth));
+
+            if (POPCOUNT(pos->occupied00[0] | pos->occupied00[1]) <= pos->useTb) // TB adjudication; FIXME: bad with incomplete TB sets
             {
                 flush_psv((score > SCOREDRAW) ? S2MSIGN(pos->state & S2MMASK) : (score < SCOREDRAW ? -S2MSIGN(pos->state & S2MMASK) : 0), thr);
                 break;
@@ -406,7 +424,7 @@ static void gensfenthread(searchthread* thr)
                 if (generate_draw) flush_psv(0, thr);
                 break;
             }
-            
+
             // Skip first plies
             if (ply < write_minply - 1) // default: 16
                 goto SKIP_SAVE;
@@ -419,7 +437,7 @@ static void gensfenthread(searchthread* thr)
                 goto SKIP_SAVE;
 
             sfenhash[hash_index] = key; // Replace with the current key.
-            
+
             // generate sfen and values
             thr->psv = thr->psvbuffer + psvnums;
             pos->toSfen(&thr->psv->sfen);
@@ -427,21 +445,29 @@ static void gensfenthread(searchthread* thr)
             thr->psv->gamePly = ply;
             thr->psv->move = (uint16_t)sfMoveCode(pos->pvtable[0][0]);
             thr->psv->game_result = 2 * S2MSIGN(pos->state & S2MMASK); // not yet known
-            psvnums++;
 
-            if (psvnums % sfenchunksize == 0)
+            if (thr->psv->move)
             {
-                int thischunk = (int)(psvnums / sfenchunksize - 1);
-                int nextchunk = (thischunk + 1) % sfenchunknums;
-                while (thr->chunkstate[nextchunk] != CHUNKFREE)
-                    Sleep(10);
-                thr->chunkstate[nextchunk] = CHUNKINUSE;
-                psvnums = psvnums % (sfenchunknums * sfenchunksize);
+                psvnums++;
+
+                if (psvnums % sfenchunksize == 0)
+                {
+                    thr->totalchunks++;
+                    int thischunk = (int)(psvnums / sfenchunksize - 1);
+                    int nextchunk = (thischunk + 1) % sfenchunknums;
+                    while (thr->chunkstate[nextchunk] != CHUNKFREE)
+                    {
+                        printf("\rThread %d waiting for main thread...", thr->index);
+                        Sleep(100);
+                    }
+                    thr->chunkstate[nextchunk] = CHUNKINUSE;
+                    psvnums = psvnums % (sfenchunknums * sfenchunksize);
+                }
             }
-            
+
 SKIP_SAVE:
             // preset move for next ply with the pv move
-            nmc = pos->pvtable[pos->ply][0];
+            nmc = pos->pvtable[0][0];
             if (!nmc)
             {
                 // No move in pv => mate or stalemate
@@ -453,7 +479,7 @@ SKIP_SAVE:
             }
 
             pos->prepareStack();
-            bool chooserandom = !nmc || (random_move_count && ply >= random_move_minply && ply <= random_move_maxply && random_move_flag[ply]);
+            bool chooserandom = !nmc || (ply <= random_move_maxply && random_move_flag[ply]);
 
             while (true)
             {
@@ -469,10 +495,12 @@ SKIP_SAVE:
                     {
                         // random multi pv
                         pos->getRootMoves();
-                        pos->rootsearch<MultiPVSearch>(SCOREBLACKWINS, SCOREWHITEWINS, random_multi_pv_depth, 1);
-                        int s = min(pos->rootmovelist.length, random_multi_pv);
+                        int cur_multi_pv = min(pos->rootmovelist.length, (ply < random_opening_ply ? 8 : random_multi_pv));
+                        int cur_multi_pv_diff = (ply < random_opening_ply ? 100 : random_multi_pv_diff);
+                        pos->rootsearch<MultiPVSearch>(SCOREBLACKWINS, SCOREWHITEWINS, random_multi_pv_depth, 1, cur_multi_pv);
+                        int s = min(pos->rootmovelist.length, cur_multi_pv);
                         // Exclude moves with score outside of allowed margin
-                        while (random_multi_pv_diff && pos->bestmovescore[0] > pos->bestmovescore[s - 1] + random_multi_pv_diff)
+                        while (cur_multi_pv_diff && pos->bestmovescore[0] > pos->bestmovescore[s - 1] + cur_multi_pv_diff)
                             s--;
 
                         nmc = pos->multipvtable[ranval(&rnd) % s][0];
@@ -506,7 +534,7 @@ SKIP_SAVE:
 
 void gensfen(vector<string> args)
 {
-    U64 fensnum = 10000;
+    U64 loop = 10000;
     string outputfile = "sfens.bin";
     size_t cs = args.size();
     size_t ci = 0;
@@ -517,12 +545,14 @@ void gensfen(vector<string> args)
         string cmd = args[ci++];
         if (cmd == "depth" && ci < cs)
             depth = stoi(args[ci++]);
+        if (cmd == "depth2" && ci < cs)
+            depth2 = stoi(args[ci++]);
         if (cmd == "loop" && ci < cs)
-            fensnum = stoi(args[ci++]);
+            loop = stoi(args[ci++]);
         if (cmd == "output_file_name" && ci < cs)
             outputfile = args[ci++];
         if (cmd == "random_multi_pv" && ci < cs)
-            random_multi_pv = en.MultiPV = stoi(args[ci++]);
+            random_multi_pv = stoi(args[ci++]);
         if (cmd == "random_multi_pv_depth" && ci < cs)
             random_multi_pv_depth = stoi(args[ci++]);
         if (cmd == "random_multi_pv_diff" && ci < cs)
@@ -535,6 +565,8 @@ void gensfen(vector<string> args)
             write_minply = stoi(args[ci++]);
         if (cmd == "eval_limit" && ci < cs)
             eval_limit = stoi(args[ci++]);
+        if (cmd == "disable_prune" && ci < cs)
+            disable_prune = stoi(args[ci++]);
         if (cmd == "book" && ci < cs)
             book = args[ci++];
     }
@@ -544,21 +576,25 @@ void gensfen(vector<string> args)
 
     cout << "Generating sfnes with these parameters:\n";
     cout << "output_file_name:      " << outputfile << "\n";
+    cout << "loop:                  " << loop << "\n";
     cout << "depth:                 " << depth << "\n";
+    cout << "depth2:                " << depth2 << "\n";
     cout << "maxply:                " << maxply << "\n";
     cout << "write_minply:          " << write_minply << "\n";
     cout << "generate_draw:         " << generate_draw << "\n";
     cout << "nodes:                 " << nodes << "\n";
     cout << "eval_limit:            " << eval_limit << "\n";
+    cout << "random_opening_ply:    " << random_opening_ply << "\n";
     cout << "random_move_count:     " << random_move_count << "\n";
-    cout << "random_multi_pv_depth: " << random_multi_pv_depth << "\n";
+    cout << "random_move_minply:    " << random_move_minply << "\n";
     cout << "random_move_maxply:    " << random_move_maxply << "\n";
     cout << "random_multi_pv:       " << random_multi_pv << "\n";
     cout << "random_multi_pv_depth: " << random_multi_pv_depth << "\n";
     cout << "random_multi_pv_diff:  " << random_multi_pv_diff << "\n";
+    cout << "disable_prune:         " << disable_prune << "\n";
     cout << "book:                  " << book << "\n";
 
-    const U64 chunksneeded = fensnum / sfenchunksize + 1;
+    const unsigned int chunksneeded = (unsigned int)(loop / sfenchunksize) + 1;
     ofstream os(outputfile, ios::binary | fstream::app);
     if (!os)
     {
@@ -566,7 +602,7 @@ void gensfen(vector<string> args)
         return;
     }
 
-    if (!getBookPositions())
+    if (!en.chess960 && !getBookPositions())
         return;
 
     for (tnum = 0; tnum < en.Threads; tnum++)
@@ -575,15 +611,25 @@ void gensfen(vector<string> args)
         en.sthread[tnum].chunkstate[0] = CHUNKINUSE;
         en.sthread[tnum].chunkstate[1] = CHUNKFREE;
         en.sthread[tnum].psvbuffer = (PackedSfenValue*)allocalign64(sfenchunknums * sfenchunksize * sizeof(PackedSfenValue));
-        en.sthread[tnum].thr = thread(&gensfenthread, &en.sthread[tnum]);
+        en.sthread[tnum].thr = thread(&gensfenthread, &en.sthread[tnum], getTime() ^ zb.getRnd() );
     }
 
     U64 chunkswritten = 0;
     tnum = 0;
+    const int charsperline = 100;
+    U64 starttime = getTime();
+    string sProgress(charsperline,'.');
+    cout << "\r  ?h??m??s |" << sProgress << "|";
+    const double dotsperthread = (double)charsperline / en.Threads;
+    const double chunksperthread = (double)chunksneeded / en.Threads;
+    const char finedotchar[] = { '-', '\\', '|', '/', 'X'};
+    bool showPps = false;
+    U64 lastSwitch = starttime;
+    const int minShowSec = 30;
     while (chunkswritten < chunksneeded)
     {
         searchthread* thr = &en.sthread[tnum];
-        Sleep(10);
+        Sleep(100);
         for (int i = 0; i < sfenchunknums; i++)
         {
             if (thr->chunkstate[i] == CHUNKFULL)
@@ -591,7 +637,37 @@ void gensfen(vector<string> args)
                 os.write((char*)(thr->psvbuffer + i * sfenchunksize), sfenchunksize * sizeof(PackedSfenValue));
                 chunkswritten++;
                 thr->chunkstate[i] = CHUNKFREE;
-                cout << chunkswritten * sfenchunksize << " sfens written. (" << thr->index << ")\n";
+                // Update progress
+                U64 now = getTime();
+                stringstream ss;
+                if (showPps)
+                {
+                    int pps = ((now - starttime) < en.frequency) ? 0 : (int)((chunkswritten * sfenchunksize) / (int)((now - starttime) / en.frequency));
+                    ss << setfill(' ') << setw(7) << pps << "pps";
+                }
+                else {
+                    U64 totaltime = max(now - starttime, (now - starttime) / chunkswritten * chunksneeded);
+                    U64 remainingsecs = (totaltime + starttime - now) / en.frequency;
+                    ss  << setfill(' ') << setw(3) << (remainingsecs / (60 * 60)) << "h"
+                        << setfill('0') << setw(2) << (remainingsecs / 60) % 60 << "m"
+                        << setfill('0') << setw(2) << remainingsecs % 60 << "s";
+                }
+                if ((now - lastSwitch) / en.frequency > minShowSec)
+                {
+                    // Switch display
+                    showPps = !showPps;
+                    lastSwitch = now;
+                }
+
+                int firstdot = (int)round((double)thr->index * dotsperthread);
+                int lastdot = (int)round((double)(thr->index + 1) * dotsperthread) - 1;
+                int numdots = lastdot - firstdot + 1;
+                int previousdot = min(charsperline - 1, firstdot + (int)round((double)(thr->totalchunks - 1) * numdots / chunksperthread));
+                int currentdot = firstdot + (int)round(thr->totalchunks * numdots / chunksperthread);
+                for (int c = previousdot; c < currentdot; c++)
+                    sProgress[c] = finedotchar[4];
+                sProgress[currentdot] = finedotchar[thr->totalchunks % 4];
+                cout << "\r" << ss.str() << " |" << sProgress << "|";
             }
         }
         tnum = (tnum + 1) % en.Threads;
@@ -602,7 +678,7 @@ void gensfen(vector<string> args)
         if (en.sthread[tnum].thr.joinable())
             en.sthread[tnum].thr.join();
     }
-    cout << "gensfen finished.\n";
+    cout << "\n\ngensfen finished.\n";
     en.MultiPV = old_multipv;
 
     freeBookPositions();
@@ -619,6 +695,7 @@ void convert(vector<string> args)
     string inputfile;
     string outputfile;
     int evalstats = 0;
+    int generalstats = 0;
     SfenFormat outformat = no;
     size_t cs = args.size();
     size_t ci = 0;
@@ -650,6 +727,10 @@ void convert(vector<string> args)
             if (evalstats < 1 || evalstats > 2)
                 evalstats = 0;
         }
+        if (cmd == "generalstats")
+        {
+            generalstats = (ci < cs ? stoi(args[ci++]) : 1);
+        }
     }
 
     ifstream is(inputfile, ios::binary);
@@ -676,6 +757,12 @@ void convert(vector<string> args)
     PackedSfenValue* psvbuffer = (PackedSfenValue*)allocalign64(sfenchunknums * sfenchunksize * sizeof(PackedSfenValue));
 
     U64 n = 0;
+    int rookfiles[2] = { -1, -1 };
+    int kingfile = -1;
+    int lastfullmove = INT_MAX;
+
+    U64 posWithPieces[32] = { 0ULL };
+
     while (is.peek() != ios::traits_type::eof())
     {
         is.read((char*)psvbuffer, sfenchunknums * sfenchunksize * sizeof(PackedSfenValue));
@@ -684,17 +771,59 @@ void convert(vector<string> args)
         for (PackedSfenValue* psv = psvbuffer; psv < psvbuffer + psvread; psv++)
         {
             pos->getFromSfen(&psv->sfen);
-            chessmove cm;
-            cm.code = pos->shortMove2FullMove(shortCode(psv->move));
-            if (!cm.code || ISEPCAPTUREORCASTLE(cm.code))
+            // Test and reset the castle related mebers in case of chess960
+            // FIXME: This is not bulletproof; a rook could have walked in the plies not recorded and lead to wrong castle rights
+            int castlestate = pos->state & CASTLEMASK;
+            if (castlestate && pos->fullmovescounter < lastfullmove)
             {
-                // Fix the incompatible move coding
-                cm.code = pos->shortMove2FullMove(psv->move);
-                if (cm.code)
-                    psv->move = sfMoveCode(cm.code);
+                int whiteCanCastle = castlestate & (WQCMASK | WKCMASK);
+                int castleQueenside = castlestate & (WQCMASK | BQCMASK);
+                int castleKingside = castlestate & (WKCMASK | BKCMASK);
+                kingfile = (whiteCanCastle ? FILE(pos->kingpos[WHITE]) : FILE(pos->kingpos[BLACK]));
+
+                rookfiles[0] = -1;
+                if (castleQueenside)
+                {
+                    U64 rooksbb;
+                    if (whiteCanCastle & castleQueenside)
+                        rooksbb = (pos->piece00[WROOK] & RANK1(WHITE));
+                    else
+                        rooksbb = (pos->piece00[BROOK] & RANK1(BLACK));
+                    rookfiles[0] = FILE(pullLsb(&rooksbb));
+                }
+
+                rookfiles[1] = -1;
+                if (castleKingside)
+                {
+                    U64 rooksbb;
+                    if (whiteCanCastle & castleKingside)
+                        rooksbb = (pos->piece00[WROOK] & RANK1(WHITE));
+                    else
+                        rooksbb = (pos->piece00[BROOK] & RANK1(BLACK));
+                    rookfiles[1] = FILE(pullMsb(&rooksbb));
+                }
+                pos->initCastleRights(rookfiles, kingfile);
             }
 
-            if (!cm.code)
+            lastfullmove = pos->fullmovescounter;
+
+            uint32_t rubimovecode = pos->shortMove2FullMove(shortCode(psv->move));
+            uint32_t sfmovecode = rubimovecode;
+            if (!rubimovecode || ISEPCAPTUREORCASTLE(rubimovecode))
+            {
+                // Fix the incompatible move coding
+                sfmovecode = pos->shortMove2FullMove(psv->move);
+                if (sfmovecode)
+                    psv->move = sfMoveCode(sfmovecode);
+                if (!rubimovecode)
+                {
+                    // FIXME: Can this still happen??
+                    printf("Alarm. Movecode: %04x: %s\n", psv->move, pos->toFen().c_str());
+                    rubimovecode = pos->shortMove2FullMove(psv->move);
+                }
+            }
+
+            if (!sfmovecode)
                 continue;
 
             n++;
@@ -702,7 +831,7 @@ void convert(vector<string> args)
             if (outformat == plain)
             {
                 *os << "fen " << pos->toFen() << "\n";
-                *os << "move " << cm.toString() << "\n";
+                *os << "move " << moveToString(rubimovecode) << "\n";
                 *os << "score " << psv->score << "\n";
                 *os << "ply " << to_string((pos->fullmovescounter - 1) * 2 + (pos->state & S2MMASK)) << "\n";
                 *os << "result " << to_string(psv->game_result) << "\n";
@@ -711,6 +840,11 @@ void convert(vector<string> args)
             else if (outformat == bin)
             {
                 os->write((char*)psv, sizeof(PackedSfenValue));
+            }
+
+            if (generalstats)
+            {
+                posWithPieces[POPCOUNT(pos->occupied00[WHITE] | pos->occupied00[BLACK])]++;
             }
 
             if (evalstats)
@@ -757,6 +891,13 @@ void convert(vector<string> args)
     }
 
     cerr << "\nFinished converting.\n";
+
+    if (generalstats)
+    {
+        cerr << "Distribution depending on number of pieces:\n";
+        for (int i = 2; i < 33; i++)
+            cerr << setw(2) << to_string(i) << " pieces: " << 100.0 * posWithPieces[i] / (double)n << "%\n";
+    }
 }
 
 
