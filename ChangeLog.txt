@@ -6,6 +6,7 @@ ChangeLog
     - Don't display full PV when this line is already refuted in a fail low or fail high
     - UCI option NnueNetPath uses "Default" for the current net to avoid GUIs reconfiguration with a network change
     - Faster sorting of quiet moves
+    - Some fixes in the Makefile e.g. for MacOS
 
 2.0.1 (release 2021-02-03) :
     - Fixed KBNvK endgame.
