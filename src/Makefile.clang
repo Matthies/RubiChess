@@ -103,10 +103,11 @@ pgo:
 	@nmake -c -f Makefile.clang pgo ARCH=ssse3
 	@nmake -c -f Makefile.clang pgo ARCH=legacy
 !ENDIF
+	@nmake -c -f Makefile.clang profile-clean
 
 profile-build: pgo
 
-release: profile-build profile-clean
+release: pgo
 
 profile-clean:
 	@del $(PROFEXE)*
