@@ -26,6 +26,11 @@ ifeq ($(shell uname -m),x86_64)
 	SSSE3CPUFEATURE=-DUSE_SSSE3 -DUSE_SSE2
 	SSSE3ARCHFLAGS=-mssse3 -msse2
 
+	# SSE2/Popcnt-build
+	SSE2POPCNTEXE=RubiChess-SSE2POPCNT
+	SSE2POPCNTCPUFEATURE=-DUSE_POPCNT -DUSE_SSE2
+	SSE2POPCNTARCHFLAGS=-mpopcnt -msse2
+
 	# Legacy-build
 	LEGACYEXE=RubiChess-Legacy
 	LEGACYCPUFEATURE=
@@ -106,7 +111,7 @@ endif
 default:
 	@$(MAKE) compile ARCHFLAGS="$(DEFAULTARCHFLAGS)" CPUFEATURE="$(DEFAULTCPUFEATURE)"
 
-all: net RubiChess-BMI2 RubiChess-AVX2 RubiChess RubiChess-SSSE3 RubiChess-Legacy
+all: net RubiChess-BMI2 RubiChess-AVX2 RubiChess RubiChess-SSSE3 RubiChess-SSE2POPCNT RubiChess-Legacy
 
 net:
 ifeq ($(RUBINET),)
@@ -134,11 +139,14 @@ RubiChess:
 RubiChess-SSSE3:
 	@$(MAKE) compile ARCHFLAGS="$(SSSE3ARCHFLAGS)" EXE=$(SSSE3EXE) CPUFEATURE="$(SSSE3CPUFEATURE)"
 
+RubiChess-SSE2POPCNT:
+	@$(MAKE) compile ARCHFLAGS="$(SSE2POPCNTARCHFLAGS)" EXE=$(SSE2POPCNTEXE) CPUFEATURE="$(SSE2POPCNTCPUFEATURE)"
+
 RubiChess-Legacy:
 	@$(MAKE) compile ARCHFLAGS="$(LEGACYARCHFLAGS)" EXE=$(LEGACYEXE) CPUFEATURE="$(LEGACYCPUFEATURE)"
 
 objclean:
-	@$(RM) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(LEGACYEXE) *.o || @echo $(RM) not available.
+	@$(RM) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) *.o || @echo $(RM) not available.
 
 profileclean:
 	@$(RM) -rf $(PROFDIR) || @echo $(RM) not available.
@@ -173,4 +181,5 @@ profile-build: clean net
 	@if [ "$(AVX2EXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(AVX2EXE); fi
 	@if [ "$(DEFAULTEXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(DEFAULTEXE); fi
 	@if [ "$(SSSE3EXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(SSSE3EXE); fi
+	@if [ "$(SSE2POPCNTEXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(SSE2POPCNTEXE); fi
 	@if [ "$(LEGACYEXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(LEGACYEXE); fi
