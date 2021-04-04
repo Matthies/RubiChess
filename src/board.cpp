@@ -2572,7 +2572,7 @@ static void uciSetNnuePath()
     if (NnueReady)
     {
         cout << " successful. Using NNUE evaluation. (" + to_string(NnueReady) + ")\n";
-        if (NnueNetPath != NNUEDEFAULTSTR)
+        if (NnueNetPath.find(NNUEDEFAULTSTR) == string::npos)
             cout << "info string Warning! You are not using the default network file. Playing strength of the engine highly depends on it.\n";
 
         return;
