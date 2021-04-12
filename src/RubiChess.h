@@ -1435,10 +1435,7 @@ public:
     void mirror();
 #ifdef NNUE
     template <NnueType Nt, Color c> void HalfkpAppendActiveIndices(NnueIndexList *active);
-    //template <NnueType Nt> void AppendActiveIndices(NnueIndexList active[2]);
     template <NnueType Nt, Color c> void HalfkpAppendChangedIndices(DirtyPiece* dp, NnueIndexList *add, NnueIndexList *remove);
-    //template <NnueType Nt> void AppendChangedIndices(NnueIndexList add[2], NnueIndexList remove[2], bool reset[2]);
-    //template <NnueType Nt> void RefreshAccumulator();
     template <NnueType Nt, Color c> void UpdateAccumulator();
     template <NnueType Nt> void Transform(clipped_t *output);
     template <NnueType Nt> int NnueGetEval();
