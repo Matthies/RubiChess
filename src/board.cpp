@@ -757,7 +757,9 @@ void chessposition::playNullMove()
     else
         accumulator[mstop].computationState = false;
 #else
-    dirtypiece->dirtyNum = 0;
+    DirtyPiece* dp = &dirtypiece[mstop];
+    dp->dirtyNum = 0;
+    dp->pc[0] = 0; // don't break search for last updatable stack position
     accumulator[mstop].computationState[WHITE] = false;
     accumulator[mstop].computationState[BLACK] = false;
 #endif

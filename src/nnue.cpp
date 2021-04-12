@@ -26,7 +26,7 @@
 
 #ifdef NNUE
 
-//#define USE_SIMD
+#define USE_SIMD
 
 #if defined(USE_AVX2)
 #include <immintrin.h>
@@ -112,13 +112,12 @@ template <NnueType Nt, Color c> void chessposition::HalfkpAppendChangedIndices(D
     int k = ORIENT(c, kingpos[c], r);
     for (int i = 0; i < dp->dirtyNum; i++) {
         PieceCode pc = dp->pc[i];
-        if ((pc >> 1) == KING) continue;
-        if (dp->from[i] >= 0) {
+        if ((pc >> 1) == KING)
+            continue;
+        if (dp->from[i] >= 0)
             remove->values[remove->size++] = ORIENT(c, dp->from[i], r) + PieceToIndex[c][pc] + PS_END * k;
-        }
-        if (dp->to[i] >= 0) {
+        if (dp->to[i] >= 0)
             add->values[add->size++] = ORIENT(c, dp->to[i], r) + PieceToIndex[c][pc] + PS_END * k;
-        }
     }
 }
 
@@ -266,11 +265,11 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
     }
 
     // Now mslast points to the earliest stack position whose successors can be computed efficiently
-    if (0 && mslast >= 0 && accumulator[mslast].computationState[c])
+    if (mslast >= 0 && accumulator[mslast].computationState[c])
     {
         if (mslast == mstop)
             return;
-        printf("stackdiff:%d\n", mstop - mslast);
+
         NnueIndexList removedIndices[2], addedIndices[2];
         removedIndices[0].size = removedIndices[1].size = 0;
         addedIndices[0].size = addedIndices[1].size = 0;
@@ -317,7 +316,7 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
         HalfkpAppendActiveIndices<Nt, c>(&activeIndices);
 #ifdef USE_SIMD
 #else
-        memcpy(&(ac->accumulation[c]), NnueFt->bias, NnueFtHalfdims * sizeof(int16_t));
+        memcpy(ac->accumulation[c], NnueFt->bias, NnueFtHalfdims * sizeof(int16_t));
 
         for (unsigned k = 0; k < activeIndices.size; k++) {
             unsigned index = activeIndices.values[k];
@@ -446,7 +445,6 @@ template <NnueType Nt> void chessposition::Transform(clipped_t *output)
 #else
         for (unsigned i = 0; i < NnueFtHalfdims; i++) {
             int16_t sum = (*acc)[perspectives[p]][i];
-            //output[offset + i] = clamp(sum, 0, 127);
             output[offset + i] = max<int16_t>(0, min<int16_t>(127, sum));
         }
 
