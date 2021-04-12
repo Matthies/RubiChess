@@ -1596,10 +1596,10 @@ public:
     searchthread *sthread;
     ponderstate_t pondersearch;
     bool ponderhit;
-    int terminationscore = SHRT_MAX;
     int lastReport;
     int benchdepth;
     string benchmove;
+    string benchpondermove;
     ucioptions_t ucioptions;
     compilerinfo* compinfo;
     string ExecPath;
