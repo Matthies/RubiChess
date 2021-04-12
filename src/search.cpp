@@ -1358,12 +1358,7 @@ static void search_gen1(searchthread *thr)
             {
                 inWindow = 1;
                 thr->lastCompleteDepth = thr->depth;
-                if (score >= en.terminationscore)
-                {
-                    // bench mode reached needed score
-                    en.stopLevel = ENGINEWANTSTOP;
-                }
-                else if (thr->depth > 4 && !isMultiPV) {
+                if (thr->depth > 4 && !isMultiPV) {
                     // next depth with new aspiration window
                     delta = sps.aspinitialdelta;
                     alpha = score - delta;
@@ -1551,6 +1546,7 @@ static void search_gen1(searchthread *thr)
         }
 
         strBestmove = moveToString(pos->bestmove);
+        cout << "bestmove " << strBestmove;
 
         if (!pos->pondermove)
         {
@@ -1561,19 +1557,21 @@ static void search_gen1(searchthread *thr)
             pos->unplayMove(pos->bestmove);
         }
 
+        if (pos->pondermove)
+        {
+            strPonder = moveToString(pos->pondermove);
+            cout << " ponder " << strPonder;
+        }
+        cout << "\n";
+        en.stopLevel = ENGINESTOPIMMEDIATELY;
+
         // Save pondermove in rootposition for time management of following search
         en.rootposition.pondermove = pos->pondermove;
 
-        if (pos->pondermove)
-            strPonder = " ponder " + moveToString(pos->pondermove);
-
-        cout << "bestmove " + strBestmove + strPonder + "\n";
-
-        en.stopLevel = ENGINESTOPIMMEDIATELY;
-        en.benchmove = strBestmove;
-
-        // Remember depth for benchmark output
+        // Remember moves and depth for benchmark output
         en.benchdepth = thr->depth - 1;
+        en.benchmove = strBestmove;
+        en.benchpondermove = strPonder;
 
 #ifdef STATISTICS
         search_statistics();
