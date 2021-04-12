@@ -751,10 +751,16 @@ void chessposition::playNullMove()
     ply++;
     myassert(mstop <= MAXDEPTH, this, 1, mstop);
 #ifdef NNUE
+#if 0
     if (accumulator[mstop - 1].computationState)
         accumulator[mstop] = accumulator[mstop - 1];
     else
         accumulator[mstop].computationState = false;
+#else
+    dirtypiece->dirtyNum = 0;
+    accumulator[mstop].computationState[WHITE] = false;
+    accumulator[mstop].computationState[BLACK] = false;
+#endif
 #endif
 }
 
@@ -1579,7 +1585,8 @@ bool chessposition::playMove(uint32_t mc)
 #ifdef NNUE
     DirtyPiece* dp = &dirtypiece[mstop + 1];
     dp->dirtyNum = 0;
-    accumulator[mstop + 1].computationState = false;
+    accumulator[mstop + 1].computationState[WHITE] = false;
+    accumulator[mstop + 1].computationState[BLACK] = false;
 #endif
 
     halfmovescounter++;
@@ -2698,7 +2705,8 @@ void engine::prepareThreads()
         pos->nullmoveply = 0;
         pos->nullmoveside = 0;
 #ifdef NNUE
-        pos->accumulator->computationState = false;
+        pos->accumulator->computationState[WHITE] = false;
+        pos->accumulator->computationState[BLACK] = false;
 #endif
     }
 }

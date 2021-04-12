@@ -26,7 +26,7 @@
 
 #ifdef NNUE
 
-#define USE_SIMD
+//#define USE_SIMD
 
 #if defined(USE_AVX2)
 #include <immintrin.h>
@@ -86,7 +86,7 @@ NnueFeatureTransformer *NnueFt;
 //
 // NNUE interface in chessposition
 //
-template <NnueType Nt> void chessposition::HalfkpAppendActiveIndices(int c, NnueIndexList *active)
+template <NnueType Nt, Color c> void chessposition::HalfkpAppendActiveIndices(NnueIndexList *active)
 {
     const int r = (Nt == NnueRotate) ? 0x3f : 0x3c;
     int k = ORIENT(c, kingpos[c], r);
@@ -98,13 +98,15 @@ template <NnueType Nt> void chessposition::HalfkpAppendActiveIndices(int c, Nnue
     }
 }
 
+#if 0
 template <NnueType Nt> void chessposition::AppendActiveIndices(NnueIndexList active[2])
 {
     for (int c = 0; c < 2; c++)
         HalfkpAppendActiveIndices<Nt>(c, &active[c]);
 }
+#endif
 
-template <NnueType Nt> void chessposition::HalfkpAppendChangedIndices(int c, DirtyPiece* dp, NnueIndexList* add, NnueIndexList* remove)
+template <NnueType Nt, Color c> void chessposition::HalfkpAppendChangedIndices(DirtyPiece* dp, NnueIndexList* add, NnueIndexList* remove)
 {
     const int r = (Nt == NnueRotate) ? 0x3f : 0x3c;
     int k = ORIENT(c, kingpos[c], r);
@@ -120,6 +122,8 @@ template <NnueType Nt> void chessposition::HalfkpAppendChangedIndices(int c, Dir
     }
 }
 
+
+#if 0
 template <NnueType Nt> void chessposition::AppendChangedIndices(NnueIndexList add[2], NnueIndexList remove[2], bool reset[2])
 {
     DirtyPiece* dp = &dirtypiece[mstop];
@@ -148,6 +152,8 @@ template <NnueType Nt> void chessposition::AppendChangedIndices(NnueIndexList ad
         }
     }
 }
+#endif
+
 
 #ifdef USE_AVX2
 #define NUM_REGS 16
@@ -190,7 +196,7 @@ typedef int8x16_t vec8_t;
 #define TILE_HEIGHT NnueFtHalfdims
 #endif
 
-
+#if 0
 template <NnueType Nt> void chessposition::RefreshAccumulator()
 {
     NnueAccumulator *ac = &accumulator[mstop];
@@ -242,31 +248,92 @@ template <NnueType Nt> void chessposition::RefreshAccumulator()
 
     ac->computationState = true;
 }
+#endif
 
 // Test if we can update the accumulator from the previous position
-template <NnueType Nt> bool chessposition::UpdateAccumulator()
+template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
 {
-    NnueAccumulator* ac = &accumulator[mstop];
-    if (ac->computationState)
-        return true;
 
-    if (mstop == 0)
-        return false;
+    int mslast = mstop;
+    int piecenum = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]) - 2;
 
-    NnueAccumulator* prevac = &accumulator[mstop - 1];
-    if (!prevac->computationState)
+    while (mslast >= 0 && !accumulator[mslast].computationState[c])
     {
-        if (mstop == 1)
-            return false;
-        prevac = &accumulator[mstop - 2];
-        if (!prevac->computationState)
-            return false;
+        DirtyPiece* dp = &dirtypiece[mslast];
+        if ((dp->pc[0] >> 1) == KING || (piecenum -= dp->dirtyNum + 1) < 0)
+            break;
+        mslast--;
     }
 
-    NnueIndexList removedIndices[2], addedIndices[2];
-    removedIndices[0].size = removedIndices[1].size = 0;
-    addedIndices[0].size = addedIndices[1].size = 0;
+    // Now mslast points to the earliest stack position whose successors can be computed efficiently
+    if (0 && mslast >= 0 && accumulator[mslast].computationState[c])
+    {
+        if (mslast == mstop)
+            return;
+        printf("stackdiff:%d\n", mstop - mslast);
+        NnueIndexList removedIndices[2], addedIndices[2];
+        removedIndices[0].size = removedIndices[1].size = 0;
+        addedIndices[0].size = addedIndices[1].size = 0;
+        HalfkpAppendChangedIndices<Nt, c>(&dirtypiece[mslast + 1], &addedIndices[0], &removedIndices[0]);
+        for (int ms = mslast + 2; ms <= mstop; ms++)
+            HalfkpAppendChangedIndices<Nt, c>(&dirtypiece[ms], &addedIndices[1], &removedIndices[1]);
 
+        accumulator[mslast + 1].computationState[c] = true;
+        accumulator[mstop].computationState[c] = true;
+
+        int pos2update[3] = { mslast + 1, mslast + 1 == mstop ? -1 : mstop, -1 };
+#ifdef USE_SIMD
+#else
+        for (unsigned int l = 0; pos2update[l] >= 0; l++)
+        {
+            memcpy(&accumulator[pos2update[l]].accumulation[c], &accumulator[mslast].accumulation[c], NnueFtHalfdims * sizeof(int16_t));
+            mslast = pos2update[l];
+
+            // Difference calculation for the deactivated features
+            for (unsigned k = 0; k < removedIndices[l].size; k++) {
+                unsigned index = removedIndices[l].values[k];
+                const unsigned offset = NnueFtHalfdims * index;
+
+                for (unsigned j = 0; j < NnueFtHalfdims; j++)
+                    accumulator[mslast].accumulation[c][j] -= NnueFt->weight[offset + j];
+            }
+
+            // Difference calculation for the activated features
+            for (unsigned k = 0; k < addedIndices[l].size; k++) {
+                unsigned index = addedIndices[l].values[k];
+                const unsigned offset = NnueFtHalfdims * index;
+
+                for (unsigned j = 0; j < NnueFtHalfdims; j++)
+                    accumulator[mslast].accumulation[c][j] += NnueFt->weight[offset + j];
+            }
+        }
+    }
+    else {
+        // Full update needed
+        NnueAccumulator* ac = &accumulator[mstop];
+        ac->computationState[c] = true;
+        NnueIndexList activeIndices;
+        activeIndices.size = 0;
+        HalfkpAppendActiveIndices<Nt, c>(&activeIndices);
+#ifdef USE_SIMD
+#else
+        memcpy(&(ac->accumulation[c]), NnueFt->bias, NnueFtHalfdims * sizeof(int16_t));
+
+        for (unsigned k = 0; k < activeIndices.size; k++) {
+            unsigned index = activeIndices.values[k];
+            unsigned offset = NnueFtHalfdims * index;
+
+            for (unsigned j = 0; j < NnueFtHalfdims; j++)
+                ac->accumulation[c][j] += NnueFt->weight[offset + j];
+        }
+#endif
+
+    }
+
+#endif
+
+
+#if 0
     bool reset[2];
     AppendChangedIndices<Nt>(addedIndices, removedIndices, reset);
 #ifdef USE_SIMD
@@ -335,14 +402,20 @@ template <NnueType Nt> bool chessposition::UpdateAccumulator()
         }
     }
 
-    ac->computationState = true;
+    ac->computationState[c] = true;
     return true;
+#endif
 }
 
 template <NnueType Nt> void chessposition::Transform(clipped_t *output)
 {
+#if 0
     if (!UpdateAccumulator<Nt>())
         RefreshAccumulator<Nt>();
+#else
+    UpdateAccumulator<Nt, WHITE>();
+    UpdateAccumulator<Nt, BLACK>();
+#endif
 
     int16_t(*acc)[2][256] = &accumulator[mstop].accumulation;
 

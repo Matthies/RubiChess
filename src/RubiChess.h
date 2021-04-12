@@ -205,7 +205,7 @@ inline int pullMsb(unsigned long long *x) {
 #define POPCOUNT(x) __builtin_popcountll(x)
 #endif
 
-enum { WHITE, BLACK };
+enum Color { WHITE, BLACK };
 #define WHITEBB 0x55aa55aa55aa55aa
 #define BLACKBB 0xaa55aa55aa55aa55
 #define FLANKLEFT  0x0f0f0f0f0f0f0f0f
@@ -743,7 +743,7 @@ class NnueAccumulator
 {
 public:
     alignas(64) int16_t accumulation[2][256];
-    bool computationState;
+    bool computationState[2];
 };
 
 
@@ -1434,12 +1434,12 @@ public:
     int testRepetiton();
     void mirror();
 #ifdef NNUE
-    template <NnueType Nt> void HalfkpAppendActiveIndices(int c, NnueIndexList *active);
-    template <NnueType Nt> void AppendActiveIndices(NnueIndexList active[2]);
-    template <NnueType Nt> void HalfkpAppendChangedIndices(int c, DirtyPiece* dp, NnueIndexList *add, NnueIndexList *remove);
-    template <NnueType Nt> void AppendChangedIndices(NnueIndexList add[2], NnueIndexList remove[2], bool reset[2]);
-    template <NnueType Nt> void RefreshAccumulator();
-    template <NnueType Nt> bool UpdateAccumulator();
+    template <NnueType Nt, Color c> void HalfkpAppendActiveIndices(NnueIndexList *active);
+    //template <NnueType Nt> void AppendActiveIndices(NnueIndexList active[2]);
+    template <NnueType Nt, Color c> void HalfkpAppendChangedIndices(DirtyPiece* dp, NnueIndexList *add, NnueIndexList *remove);
+    //template <NnueType Nt> void AppendChangedIndices(NnueIndexList add[2], NnueIndexList remove[2], bool reset[2]);
+    //template <NnueType Nt> void RefreshAccumulator();
+    template <NnueType Nt, Color c> void UpdateAccumulator();
     template <NnueType Nt> void Transform(clipped_t *output);
     template <NnueType Nt> int NnueGetEval();
 #ifdef NNUELEARN
