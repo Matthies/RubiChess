@@ -2707,8 +2707,8 @@ void engine::prepareThreads()
         pos->nullmoveply = 0;
         pos->nullmoveside = 0;
 #ifdef NNUE
-        pos->accumulator->computationState[WHITE] = false;
-        pos->accumulator->computationState[BLACK] = false;
+        pos->accumulator[pos->rootheight].computationState[WHITE] = false;
+        pos->accumulator[pos->rootheight].computationState[BLACK] = false;
 #endif
     }
 }

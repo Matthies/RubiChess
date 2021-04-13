@@ -174,7 +174,7 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
     int mslast = mstop;
     int piecenum = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]) - 2;
 
-    while (mslast >= 0 && !accumulator[mslast].computationState[c])
+    while (mslast > rootheight && !accumulator[mslast].computationState[c])
     {
         DirtyPiece* dp = &dirtypiece[mslast];
         if ((dp->pc[0] >> 1) == KING || (piecenum -= dp->dirtyNum + 1) < 0)
@@ -182,7 +182,7 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
         mslast--;
     }
 
-    if (mslast >= 0 && accumulator[mslast].computationState[c])
+    if (mslast >= rootheight && accumulator[mslast].computationState[c])
     {
         if (mslast == mstop)
             return;
@@ -199,13 +199,16 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
 
         int pos2update[3] = { mslast + 1, mslast + 1 == mstop ? -1 : mstop, -1 };
 #ifdef USE_SIMD
-        for (unsigned int i = 0; i < NnueFtHalfdims / TILE_HEIGHT; i++) {
+        for (unsigned int i = 0; i < NnueFtHalfdims / TILE_HEIGHT; i++)
+        {
             vec16_t* accTile = (vec16_t*)&accumulator[mslast].accumulation[c][i * TILE_HEIGHT];
             for (unsigned j = 0; j < NUM_REGS; j++)
                 acc[j] = accTile[j];
-            for (unsigned l = 0; pos2update[l] >= 0; l++) {
+            for (unsigned l = 0; pos2update[l] >= 0; l++)
+            {
                 // Difference calculation for the deactivated features
-                for (unsigned k = 0; k < removedIndices[l].size; k++) {
+                for (unsigned k = 0; k < removedIndices[l].size; k++)
+                {
                     unsigned int index = removedIndices[l].values[k];
                     const unsigned offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
                     vec16_t* column = (vec16_t*)&NnueFt->weight[offset];
@@ -214,7 +217,8 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
                 }
 
                 // Difference calculation for the activated features
-                for (unsigned k = 0; k < addedIndices[l].size; k++) {
+                for (unsigned k = 0; k < addedIndices[l].size; k++)
+                {
                     unsigned index = addedIndices[l].values[k];
                     const unsigned offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
                     vec16_t* column = (vec16_t*)&NnueFt->weight[offset];
@@ -225,8 +229,8 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
                 accTile = (vec16_t*)&accumulator[pos2update[l]].accumulation[c][i * TILE_HEIGHT];
                 for (unsigned j = 0; j < NUM_REGS; j++)
                     accTile[j] = acc[j];
-    }
-}
+            }
+        }
 #else
         for (unsigned int l = 0; pos2update[l] >= 0; l++)
         {
@@ -234,7 +238,8 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
             mslast = pos2update[l];
 
             // Difference calculation for the deactivated features
-            for (unsigned k = 0; k < removedIndices[l].size; k++) {
+            for (unsigned k = 0; k < removedIndices[l].size; k++)
+            {
                 unsigned index = removedIndices[l].values[k];
                 const unsigned offset = NnueFtHalfdims * index;
 
@@ -243,7 +248,8 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
             }
 
             // Difference calculation for the activated features
-            for (unsigned k = 0; k < addedIndices[l].size; k++) {
+            for (unsigned k = 0; k < addedIndices[l].size; k++)
+            {
                 unsigned index = addedIndices[l].values[k];
                 const unsigned offset = NnueFtHalfdims * index;
 
@@ -251,6 +257,29 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
                     accumulator[mslast].accumulation[c][j] += NnueFt->weight[offset + j];
             }
         }
+#endif
+#if 0
+        int16_t temp[256];
+        memcpy(temp, NnueFt->bias, NnueFtHalfdims * sizeof(int16_t));
+        NnueIndexList activeIndices;
+        activeIndices.size = 0;
+        HalfkpAppendActiveIndices<Nt, c>(&activeIndices);
+
+        for (unsigned k = 0; k < activeIndices.size; k++)
+        {
+            unsigned index = activeIndices.values[k];
+            unsigned offset = NnueFtHalfdims * index;
+
+            for (unsigned j = 0; j < NnueFtHalfdims; j++)
+                temp[j] += NnueFt->weight[offset + j];
+        }
+        bool bError = false;
+        for (unsigned j = 0; j < NnueFtHalfdims; j++)
+            if (temp[j] != accumulator[mstop].accumulation[c][j])
+                bError = true;
+
+        if (bError)
+            print();
 #endif
     }
     else {
@@ -261,28 +290,31 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
         activeIndices.size = 0;
         HalfkpAppendActiveIndices<Nt, c>(&activeIndices);
 #ifdef USE_SIMD
-        for (unsigned int i = 0; i < NnueFtHalfdims / TILE_HEIGHT; i++) {
+        for (unsigned int i = 0; i < NnueFtHalfdims / TILE_HEIGHT; i++)
+        {
             vec16_t* ft_biases_tile = (vec16_t*)&NnueFt->bias[i * TILE_HEIGHT];
             for (unsigned j = 0; j < NUM_REGS; j++)
                 acc[j] = ft_biases_tile[j];
 
-            for (unsigned k = 0; k < activeIndices.size; k++) {
+            for (unsigned k = 0; k < activeIndices.size; k++)
+            {
                 unsigned index = activeIndices.values[k];
                 unsigned offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
                 vec16_t* column = (vec16_t*)&NnueFt->weight[offset];
                 for (unsigned j = 0; j < NUM_REGS; j++)
                     acc[j] = vec_add_16(acc[j], column[j]);
-        }
+            }
 
             vec16_t* accTile = (vec16_t*)&ac->accumulation[c][i * TILE_HEIGHT];
             for (unsigned j = 0; j < NUM_REGS; j++)
                 accTile[j] = acc[j];
-    }
+        }
 
 #else
         memcpy(ac->accumulation[c], NnueFt->bias, NnueFtHalfdims * sizeof(int16_t));
 
-        for (unsigned k = 0; k < activeIndices.size; k++) {
+        for (unsigned k = 0; k < activeIndices.size; k++)
+        {
             unsigned index = activeIndices.values[k];
             unsigned offset = NnueFtHalfdims * index;
 
