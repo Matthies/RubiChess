@@ -172,12 +172,13 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
 #endif
 
     int mslast = mstop;
-    int piecenum = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]) - 2;
+    int fullupdatecost = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]) - 6;   // some mor overhead for complexity of differential updates
 
     while (mslast > rootheight && !accumulator[mslast].computationState[c])
     {
         DirtyPiece* dp = &dirtypiece[mslast];
-        if ((dp->pc[0] >> 1) == KING || (piecenum -= dp->dirtyNum + 1) < 0)
+        if ((dp->pc[0] >> 1) == KING || (fullupdatecost -= dp->dirtyNum + 1) < 0)
+            // break at king move or if the dirty piece updates get too expensive
             break;
         mslast--;
     }
