@@ -3,6 +3,7 @@ ChangeLog
 2.1 (release 2021-04-14) :
     - New default network created with trainingdata from 2.0.1 using better depth and fixed gensfen code.
     - Expose last NNUE layer and scaling factor to UCI options via EVALOPTIONS and tuned scaling with Kiudee tools
+    - NNUE updates slightly faster by using differential updates up to the costs of a full update if possible
     - Better / faster mating by avoiding stupid sacs in TB positions and disabling some pruning when mate was discovered
     - Don't display full PV when this line is already refuted in a fail low or fail high
     - UCI option NnueNetPath uses "Default" for the current net to avoid GUIs reconfiguration with a network change
