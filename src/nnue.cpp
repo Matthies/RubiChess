@@ -378,6 +378,9 @@ struct NnueNetwork {
     int32_t out_value;
 };
 
+eval NnueValueScale = 47;
+
+
 template <NnueType Nt> int chessposition::NnueGetEval()
 {
     NnueNetwork network;
@@ -389,7 +392,7 @@ template <NnueType Nt> int chessposition::NnueGetEval()
     NnueCl1->Propagate(network.hidden2_values, network.hidden2_clipped);
     NnueOut->OutLayer(network.hidden2_clipped, &network.out_value);
 
-    return network.out_value / NnueValueScale;
+    return network.out_value * NnueValueScale / 1024;
 }
 
 
@@ -883,6 +886,25 @@ void NnueReadNet(ifstream* is)
 
     NnueReady = nt;
 }
+
+#ifdef EVALOPTIONS
+void NnueRegisterEvals()
+{
+    // Expose weights and bias of ouput layer as UCI options for tuning
+    en.ucioptions.Register(&NnueValueScale, "NnueValueScale", ucinnuebias, to_string(NnueValueScale), INT_MIN, INT_MAX, nullptr);
+    en.ucioptions.Register(&NnueOut->bias[0], "NnueOutBias", ucinnuebias, to_string(NnueOut->bias[0]), INT_MIN, INT_MAX, nullptr);
+    for (int i = 0; i < 32; i++)
+    {
+        ostringstream osName;
+        osName << "NnueOutWeight_" << setw(2) << setfill('0') << to_string(i);
+        int idx = i;
+#if defined(USE_AVX2)
+        idx = shuffleWeightIndex(idx, 32, true);
+#endif
+        en.ucioptions.Register(&NnueOut->weight[idx], osName.str(), ucinnueweight, to_string(NnueOut->weight[idx]), CHAR_MIN, CHAR_MAX, nullptr);
+    }
+}
+#endif
 
 // Explicit template instantiation
 // This avoids putting these definitions in header file

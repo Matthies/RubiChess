@@ -36,7 +36,7 @@
 // Enable this for texel tuning
 //#define EVALTUNE
 
-// Enable this to expose the evaluation parameters as UCI options; either this or EVALTUNE can be enabled
+// Enable this to expose the evaluation and NNUE parameters as UCI options; either this or EVALTUNE can be enabled
 //#define EVALOPTIONS
 
 // Enable this to expose the search parameters as UCI options
@@ -651,7 +651,6 @@ const int NnueFtHalfdims = 256;
 const int NnueFtOutputdims = NnueFtHalfdims * 2;
 const int NnueFtInputdims = 64 * 641;
 const int NnueClippingShift = 6;
-const int NnueValueScale = 16;
 
 #if defined(USE_SSE2) && !defined(USE_SSSE3)
 typedef int16_t clipped_t;
@@ -750,6 +749,9 @@ public:
 void NnueInit();
 void NnueRemove();
 void NnueReadNet(ifstream* is);
+#ifdef EVALOPTIONS
+void NnueRegisterEvals();
+#endif
 
 struct PackedSfen { uint8_t data[32]; };
 
@@ -1482,7 +1484,7 @@ const map<string, GuiToken> GuiCommandMap = {
 class engine;   //forward definition
 
 // order of ucioptiontypes is important for (not) setting default at registration
-enum ucioptiontype { ucicheck, ucispin, ucicombo, ucistring, ucibutton, ucieval, ucisearch };
+enum ucioptiontype { ucicheck, ucispin, ucicombo, ucistring, ucibutton, ucieval, ucisearch, ucinnuebias, ucinnueweight };
 
 struct ucioption_t
 {
