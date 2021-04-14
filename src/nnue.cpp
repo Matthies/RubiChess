@@ -98,13 +98,6 @@ template <NnueType Nt, Color c> void chessposition::HalfkpAppendActiveIndices(Nn
     }
 }
 
-#if 0
-template <NnueType Nt> void chessposition::AppendActiveIndices(NnueIndexList active[2])
-{
-    for (int c = 0; c < 2; c++)
-        HalfkpAppendActiveIndices<Nt>(c, &active[c]);
-}
-#endif
 
 template <NnueType Nt, Color c> void chessposition::HalfkpAppendChangedIndices(DirtyPiece* dp, NnueIndexList* add, NnueIndexList* remove)
 {
@@ -172,13 +165,15 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
 #endif
 
     int mslast = mstop;
-    int fullupdatecost = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]) - 2;   // some mor overhead for complexity of differential updates
+    // A full update needs activation of all pieces excep kings
+    int fullupdatecost = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]) - 2;
 
     while (mslast > rootheight && !accumulator[mslast].computationState[c])
     {
+        // search for position with computed accu on stack that leads to current position by differential updates
+        // break at king move or if the dirty piece updates get too expensive
         DirtyPiece* dp = &dirtypiece[mslast];
         if ((dp->pc[0] >> 1) == KING || (fullupdatecost -= dp->dirtyNum + 1) < 0)
-            // break at king move or if the dirty piece updates get too expensive
             break;
         mslast--;
     }
@@ -258,29 +253,6 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
                     accumulator[mslast].accumulation[c][j] += NnueFt->weight[offset + j];
             }
         }
-#endif
-#if 0
-        int16_t temp[256];
-        memcpy(temp, NnueFt->bias, NnueFtHalfdims * sizeof(int16_t));
-        NnueIndexList activeIndices;
-        activeIndices.size = 0;
-        HalfkpAppendActiveIndices<Nt, c>(&activeIndices);
-
-        for (unsigned k = 0; k < activeIndices.size; k++)
-        {
-            unsigned index = activeIndices.values[k];
-            unsigned offset = NnueFtHalfdims * index;
-
-            for (unsigned j = 0; j < NnueFtHalfdims; j++)
-                temp[j] += NnueFt->weight[offset + j];
-        }
-        bool bError = false;
-        for (unsigned j = 0; j < NnueFtHalfdims; j++)
-            if (temp[j] != accumulator[mstop].accumulation[c][j])
-                bError = true;
-
-        if (bError)
-            print();
 #endif
     }
     else {

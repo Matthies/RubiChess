@@ -751,18 +751,11 @@ void chessposition::playNullMove()
     ply++;
     myassert(mstop <= MAXDEPTH, this, 1, mstop);
 #ifdef NNUE
-#if 0
-    if (accumulator[mstop - 1].computationState)
-        accumulator[mstop] = accumulator[mstop - 1];
-    else
-        accumulator[mstop].computationState = false;
-#else
     DirtyPiece* dp = &dirtypiece[mstop];
     dp->dirtyNum = 0;
-    dp->pc[0] = 0; // don't break search for last updatable stack position
+    dp->pc[0] = 0; // don't break search for updatable positions on stack
     accumulator[mstop].computationState[WHITE] = false;
     accumulator[mstop].computationState[BLACK] = false;
-#endif
 #endif
 }
 
