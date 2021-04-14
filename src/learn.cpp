@@ -167,7 +167,8 @@ int chessposition::getFromSfen(PackedSfen* sfen)
     mstop = 0;
     rootheight = 0;
     lastnullmove = -1;
-    accumulator->computationState = false;
+    accumulator[0].computationState[WHITE] = false;
+    accumulator[0].computationState[BLACK] = false;
 
     return 0;
 }
