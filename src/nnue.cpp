@@ -391,6 +391,9 @@ struct NnueNetwork {
     int32_t out_value;
 };
 
+eval NnueValueScale = 61;
+
+
 template <NnueType Nt> int chessposition::NnueGetEval()
 {
     NnueNetwork network;
@@ -402,7 +405,7 @@ template <NnueType Nt> int chessposition::NnueGetEval()
     NnueCl1->Propagate(network.hidden2_values, network.hidden2_clipped);
     NnueOut->OutLayer(network.hidden2_clipped, &network.out_value);
 
-    return network.out_value / NnueValueScale;
+    return network.out_value * NnueValueScale / 1024;
 }
 
 
@@ -902,6 +905,7 @@ void NnueRegisterEvals()
 {
     // Expose weights and bias of ouput layer as UCI options for tuning
     //en.ucioptions.Register((void*)e, osName.str() + "_mg", ucieval, sDef, 0, 0, initPsqtable);
+    en.ucioptions.Register(&NnueValueScale, "NnueValueScale", ucinnuebias, to_string(NnueValueScale), INT_MIN, INT_MAX, nullptr);
     en.ucioptions.Register(&NnueOut->bias[0], "NnueOutBias", ucinnuebias, to_string(NnueOut->bias[0]), INT_MIN, INT_MAX, nullptr);
     for (int i = 0; i < 32; i++)
     {
