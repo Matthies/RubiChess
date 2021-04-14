@@ -30,7 +30,8 @@ I provide release binary packages for Windows x64 only. Depending on your type o
 1. RubiChess-AVX2: For best performance on modern AMD Ryzen Zen/Zen2
 1. RubiChess: For older CPUs that support POPCNT but no AVX2
 1. RubiChess-SSSE3: For even older CPUs with SSSE3 but no POPCNT
-1. RubiChess-Legacy: For very old x86-64 CPU without SSSE3 support (are there any?)
+2. RubiChess-SSE2POPCNT: For old AMD CPUs supporting POPCNT but no SSSE3 like Phemon II
+3. RubiChess-Legacy: For very old x86-64 CPU without SSSE3 support (are there any?)
 
 You will get a warning at startup if the selected binary doesn't match your CPU or it will just crash.
 
