@@ -86,7 +86,7 @@ NnueFeatureTransformer *NnueFt;
 //
 // NNUE interface in chessposition
 //
-template <NnueType Nt> void chessposition::HalfkpAppendActiveIndices(int c, NnueIndexList *active)
+template <NnueType Nt, Color c> void chessposition::HalfkpAppendActiveIndices(NnueIndexList *active)
 {
     const int r = (Nt == NnueRotate) ? 0x3f : 0x3c;
     int k = ORIENT(c, kingpos[c], r);
@@ -98,56 +98,23 @@ template <NnueType Nt> void chessposition::HalfkpAppendActiveIndices(int c, Nnue
     }
 }
 
-template <NnueType Nt> void chessposition::AppendActiveIndices(NnueIndexList active[2])
-{
-    for (int c = 0; c < 2; c++)
-        HalfkpAppendActiveIndices<Nt>(c, &active[c]);
-}
 
-template <NnueType Nt> void chessposition::HalfkpAppendChangedIndices(int c, DirtyPiece* dp, NnueIndexList* add, NnueIndexList* remove)
+template <NnueType Nt, Color c> void chessposition::HalfkpAppendChangedIndices(DirtyPiece* dp, NnueIndexList* add, NnueIndexList* remove)
 {
     const int r = (Nt == NnueRotate) ? 0x3f : 0x3c;
     int k = ORIENT(c, kingpos[c], r);
     for (int i = 0; i < dp->dirtyNum; i++) {
         PieceCode pc = dp->pc[i];
-        if ((pc >> 1) == KING) continue;
-        if (dp->from[i] >= 0) {
+        if ((pc >> 1) == KING)
+            continue;
+        if (dp->from[i] >= 0)
             remove->values[remove->size++] = ORIENT(c, dp->from[i], r) + PieceToIndex[c][pc] + PS_END * k;
-        }
-        if (dp->to[i] >= 0) {
+        if (dp->to[i] >= 0)
             add->values[add->size++] = ORIENT(c, dp->to[i], r) + PieceToIndex[c][pc] + PS_END * k;
-        }
     }
 }
 
-template <NnueType Nt> void chessposition::AppendChangedIndices(NnueIndexList add[2], NnueIndexList remove[2], bool reset[2])
-{
-    DirtyPiece* dp = &dirtypiece[mstop];
 
-    if (accumulator[mstop - 1].computationState)
-    {
-        for (int c = 0; c < 2; c++) {
-            reset[c] = (dp->pc[0] == (PieceCode)(WKING | c));
-            if (reset[c])
-                HalfkpAppendActiveIndices<Nt>(c, &add[c]);
-            else
-                HalfkpAppendChangedIndices<Nt>(c, dp, &add[c], &remove[c]);
-        }
-    }
-    else {
-        DirtyPiece* lastdp = &dirtypiece[mstop - 1];
-        for (unsigned c = 0; c < 2; c++) {
-            reset[c] = dp->pc[0] == (PieceCode)(WKING | c) || lastdp->pc[0] == (PieceCode)(WKING | c);
-            if (reset[c]) {
-                HalfkpAppendActiveIndices<Nt>(c, &add[c]);
-            }
-            else {
-                HalfkpAppendChangedIndices<Nt>(c, dp, &add[c], &remove[c]);
-                HalfkpAppendChangedIndices<Nt>(c, lastdp, &add[c], &remove[c]);
-            }
-        }
-    }
-}
 
 #ifdef USE_AVX2
 #define NUM_REGS 16
@@ -191,158 +158,151 @@ typedef int8x16_t vec8_t;
 #endif
 
 
-template <NnueType Nt> void chessposition::RefreshAccumulator()
+template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
 {
-    NnueAccumulator *ac = &accumulator[mstop];
-    NnueIndexList activeIndices[2];
-    activeIndices[0].size = activeIndices[1].size = 0;
-    AppendActiveIndices<Nt>(activeIndices);
 #ifdef USE_SIMD
     vec16_t acc[NUM_REGS];
 #endif
 
-    for (int c = 0; c < 2; c++) {
+    int mslast = mstop;
+    // A full update needs activation of all pieces excep kings
+    int fullupdatecost = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]) - 2;
 
-        for (int i = 0; i < NnueFtHalfdims / TILE_HEIGHT; i++) {
-
-#ifdef USE_SIMD
-            vec16_t* ft_biases_tile = (vec16_t*)&NnueFt->bias[i * TILE_HEIGHT];
-            vec16_t* accTile = (vec16_t*)&ac->accumulation[c][i * TILE_HEIGHT];
-            for (unsigned j = 0; j < NUM_REGS; j++)
-                acc[j] = ft_biases_tile[j];
-
-#else
-
-            memcpy(&(ac->accumulation[c][i * TILE_HEIGHT]), &NnueFt->bias[i * TILE_HEIGHT], TILE_HEIGHT * sizeof(int16_t));
-#endif
-
-            for (size_t k = 0; k < activeIndices[c].size; k++) {
-                unsigned index = activeIndices[c].values[k];
-                unsigned offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
-
-#ifdef USE_SIMD
-                vec16_t* column = (vec16_t*)&NnueFt->weight[offset];
-                for (unsigned j = 0; j < NUM_REGS; j++)
-                    acc[j] = vec_add_16(acc[j], column[j]);
-
-#else
-
-                for (unsigned j = 0; j < NnueFtHalfdims; j++)
-                    ac->accumulation[c][i * TILE_HEIGHT + j] += NnueFt->weight[offset + j];
-#endif
-            }
-
-#ifdef USE_SIMD
-            for (unsigned j = 0; j < NUM_REGS; j++)
-                accTile[j] = acc[j];
-
-#endif
-        }
-    }
-
-    ac->computationState = true;
-}
-
-// Test if we can update the accumulator from the previous position
-template <NnueType Nt> bool chessposition::UpdateAccumulator()
-{
-    NnueAccumulator* ac = &accumulator[mstop];
-    if (ac->computationState)
-        return true;
-
-    if (mstop == 0)
-        return false;
-
-    NnueAccumulator* prevac = &accumulator[mstop - 1];
-    if (!prevac->computationState)
+    while (mslast > rootheight && !accumulator[mslast].computationState[c])
     {
-        if (mstop == 1)
-            return false;
-        prevac = &accumulator[mstop - 2];
-        if (!prevac->computationState)
-            return false;
+        // search for position with computed accu on stack that leads to current position by differential updates
+        // break at king move or if the dirty piece updates get too expensive
+        DirtyPiece* dp = &dirtypiece[mslast];
+        if ((dp->pc[0] >> 1) == KING || (fullupdatecost -= dp->dirtyNum + 1) < 0)
+            break;
+        mslast--;
     }
 
-    NnueIndexList removedIndices[2], addedIndices[2];
-    removedIndices[0].size = removedIndices[1].size = 0;
-    addedIndices[0].size = addedIndices[1].size = 0;
+    if (mslast >= rootheight && accumulator[mslast].computationState[c])
+    {
+        if (mslast == mstop)
+            return;
 
-    bool reset[2];
-    AppendChangedIndices<Nt>(addedIndices, removedIndices, reset);
-#ifdef USE_SIMD
-    vec16_t acc[NUM_REGS];
-#endif
+        NnueIndexList removedIndices[2], addedIndices[2];
+        removedIndices[0].size = removedIndices[1].size = 0;
+        addedIndices[0].size = addedIndices[1].size = 0;
+        HalfkpAppendChangedIndices<Nt, c>(&dirtypiece[mslast + 1], &addedIndices[0], &removedIndices[0]);
+        for (int ms = mslast + 2; ms <= mstop; ms++)
+            HalfkpAppendChangedIndices<Nt, c>(&dirtypiece[ms], &addedIndices[1], &removedIndices[1]);
 
-    for (int i = 0; i < NnueFtHalfdims / TILE_HEIGHT; i++) {
-        for (int c = 0; c < 2; c++) {
-#ifdef USE_SIMD
-            vec16_t* accTile = (vec16_t*)&ac->accumulation[c][i * TILE_HEIGHT];
-#endif
+        accumulator[mslast + 1].computationState[c] = true;
+        accumulator[mstop].computationState[c] = true;
 
-            if (reset[c]) {
+        int pos2update[3] = { mslast + 1, mslast + 1 == mstop ? -1 : mstop, -1 };
 #ifdef USE_SIMD
-                vec16_t* ft_b_tile = (vec16_t*)&NnueFt->bias[i * TILE_HEIGHT];
-                for (unsigned j = 0; j < NUM_REGS; j++)
-                    acc[j] = ft_b_tile[j];
-#else
-
-                memcpy(&ac->accumulation[c][i * TILE_HEIGHT], &NnueFt->bias[i * TILE_HEIGHT], TILE_HEIGHT * sizeof(int16_t));
-#endif
-            }
-            else {
-#ifdef USE_SIMD
-                vec16_t* prevAccTile = (vec16_t*)&prevac->accumulation[c][i * TILE_HEIGHT];
-                for (unsigned j = 0; j < NUM_REGS; j++)
-                    acc[j] = prevAccTile[j];
-#else
-                memcpy(&ac->accumulation[c][i * TILE_HEIGHT], &prevac->accumulation[c][i * TILE_HEIGHT], TILE_HEIGHT * sizeof(int16_t));
-#endif
+        for (unsigned int i = 0; i < NnueFtHalfdims / TILE_HEIGHT; i++)
+        {
+            vec16_t* accTile = (vec16_t*)&accumulator[mslast].accumulation[c][i * TILE_HEIGHT];
+            for (unsigned j = 0; j < NUM_REGS; j++)
+                acc[j] = accTile[j];
+            for (unsigned l = 0; pos2update[l] >= 0; l++)
+            {
                 // Difference calculation for the deactivated features
-                for (size_t k = 0; k < removedIndices[c].size; k++) {
-                    int index = removedIndices[c].values[k];
-                    const int offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
-#ifdef USE_SIMD
+                for (unsigned k = 0; k < removedIndices[l].size; k++)
+                {
+                    unsigned int index = removedIndices[l].values[k];
+                    const unsigned offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
                     vec16_t* column = (vec16_t*)&NnueFt->weight[offset];
                     for (unsigned j = 0; j < NUM_REGS; j++)
                         acc[j] = vec_sub_16(acc[j], column[j]);
-
-#else
-                    for (int j = 0; j < NnueFtHalfdims; j++)
-                        ac->accumulation[c][i * TILE_HEIGHT + j] -= NnueFt->weight[offset + j];
-#endif
                 }
+
+                // Difference calculation for the activated features
+                for (unsigned k = 0; k < addedIndices[l].size; k++)
+                {
+                    unsigned index = addedIndices[l].values[k];
+                    const unsigned offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
+                    vec16_t* column = (vec16_t*)&NnueFt->weight[offset];
+                    for (unsigned j = 0; j < NUM_REGS; j++)
+                        acc[j] = vec_add_16(acc[j], column[j]);
+                }
+
+                accTile = (vec16_t*)&accumulator[pos2update[l]].accumulation[c][i * TILE_HEIGHT];
+                for (unsigned j = 0; j < NUM_REGS; j++)
+                    accTile[j] = acc[j];
             }
+        }
+#else
+        for (unsigned int l = 0; pos2update[l] >= 0; l++)
+        {
+            memcpy(&accumulator[pos2update[l]].accumulation[c], &accumulator[mslast].accumulation[c], NnueFtHalfdims * sizeof(int16_t));
+            mslast = pos2update[l];
+
+            // Difference calculation for the deactivated features
+            for (unsigned k = 0; k < removedIndices[l].size; k++)
+            {
+                unsigned index = removedIndices[l].values[k];
+                const unsigned offset = NnueFtHalfdims * index;
+
+                for (unsigned j = 0; j < NnueFtHalfdims; j++)
+                    accumulator[mslast].accumulation[c][j] -= NnueFt->weight[offset + j];
+            }
+
             // Difference calculation for the activated features
-            for (size_t k = 0; k < addedIndices[c].size; k++) {
-                int index = addedIndices[c].values[k];
-                const int offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
+            for (unsigned k = 0; k < addedIndices[l].size; k++)
+            {
+                unsigned index = addedIndices[l].values[k];
+                const unsigned offset = NnueFtHalfdims * index;
+
+                for (unsigned j = 0; j < NnueFtHalfdims; j++)
+                    accumulator[mslast].accumulation[c][j] += NnueFt->weight[offset + j];
+            }
+        }
+#endif
+    }
+    else {
+        // Full update needed
+        NnueAccumulator* ac = &accumulator[mstop];
+        ac->computationState[c] = true;
+        NnueIndexList activeIndices;
+        activeIndices.size = 0;
+        HalfkpAppendActiveIndices<Nt, c>(&activeIndices);
 #ifdef USE_SIMD
+        for (unsigned int i = 0; i < NnueFtHalfdims / TILE_HEIGHT; i++)
+        {
+            vec16_t* ft_biases_tile = (vec16_t*)&NnueFt->bias[i * TILE_HEIGHT];
+            for (unsigned j = 0; j < NUM_REGS; j++)
+                acc[j] = ft_biases_tile[j];
+
+            for (unsigned k = 0; k < activeIndices.size; k++)
+            {
+                unsigned index = activeIndices.values[k];
+                unsigned offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
                 vec16_t* column = (vec16_t*)&NnueFt->weight[offset];
                 for (unsigned j = 0; j < NUM_REGS; j++)
                     acc[j] = vec_add_16(acc[j], column[j]);
-
-#else
-                for (int j = 0; j < TILE_HEIGHT; j++)
-                    ac->accumulation[c][i * TILE_HEIGHT + j] += NnueFt->weight[offset + j];
-#endif
             }
 
-#ifdef USE_SIMD
+            vec16_t* accTile = (vec16_t*)&ac->accumulation[c][i * TILE_HEIGHT];
             for (unsigned j = 0; j < NUM_REGS; j++)
                 accTile[j] = acc[j];
-
-#endif
         }
-    }
 
-    ac->computationState = true;
-    return true;
+#else
+        memcpy(ac->accumulation[c], NnueFt->bias, NnueFtHalfdims * sizeof(int16_t));
+
+        for (unsigned k = 0; k < activeIndices.size; k++)
+        {
+            unsigned index = activeIndices.values[k];
+            unsigned offset = NnueFtHalfdims * index;
+
+            for (unsigned j = 0; j < NnueFtHalfdims; j++)
+                ac->accumulation[c][j] += NnueFt->weight[offset + j];
+        }
+#endif
+    }
 }
+
 
 template <NnueType Nt> void chessposition::Transform(clipped_t *output)
 {
-    if (!UpdateAccumulator<Nt>())
-        RefreshAccumulator<Nt>();
+    UpdateAccumulator<Nt, WHITE>();
+    UpdateAccumulator<Nt, BLACK>();
 
     int16_t(*acc)[2][256] = &accumulator[mstop].accumulation;
 
@@ -373,7 +333,6 @@ template <NnueType Nt> void chessposition::Transform(clipped_t *output)
 #else
         for (unsigned i = 0; i < NnueFtHalfdims; i++) {
             int16_t sum = (*acc)[perspectives[p]][i];
-            //output[offset + i] = clamp(sum, 0, 127);
             output[offset + i] = max<int16_t>(0, min<int16_t>(127, sum));
         }
 
