@@ -36,7 +36,7 @@
 // Enable this for texel tuning
 //#define EVALTUNE
 
-// Enable this to expose the evaluation parameters as UCI options; either this or EVALTUNE can be enabled
+// Enable this to expose the evaluation and NNUE parameters as UCI options; either this or EVALTUNE can be enabled
 //#define EVALOPTIONS
 
 // Enable this to expose the search parameters as UCI options
