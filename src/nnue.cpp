@@ -172,7 +172,7 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
 #endif
 
     int mslast = mstop;
-    int fullupdatecost = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]) - 6;   // some mor overhead for complexity of differential updates
+    int fullupdatecost = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]) - 2;   // some mor overhead for complexity of differential updates
 
     while (mslast > rootheight && !accumulator[mslast].computationState[c])
     {
