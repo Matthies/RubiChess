@@ -17,12 +17,12 @@
 
 #pragma once
 
-#define VERNUM "2.0.1"
-#define VERSTABLE
+#define VERNUM "2.1"
+//#define VERSTABLE
 
 // Disable this to compile without NNUE evaluation
 #define NNUE
-#define NNUEDEFAULT nn-375bdd2d7f-20210112.nnue
+#define NNUEDEFAULT nn-cf8c56d366-20210326.nnue
 
 // Enable to get statistical values about various search features
 //#define STATISTICS
@@ -249,6 +249,21 @@ struct pawnhashentry;
 #define MAXTHREADS  256
 #define MAXHASH     0x100000  // 1TB ... never tested
 #define DEFAULTHASH 16
+
+#define MAXDEPTH 256
+#define MOVESTACKRESERVE 48     // to avoid checking for height reaching MAXDEPTH in probe_wds and getQuiescence
+
+#define NOSCORE SHRT_MIN
+#define SCOREBLACKWINS (SHRT_MIN + 3 + 2 * MAXDEPTH)
+#define SCOREWHITEWINS (-SCOREBLACKWINS)
+#define SCOREDRAW 0
+#define SCORETBWIN 29900
+#define SCORETBWININMAXPLY (SCORETBWIN - MAXDEPTH)
+#define SCOREWONENDGAME 10000
+
+#define MATEFORME(s) ((s) > SCOREWHITEWINS - MAXDEPTH)
+#define MATEFOROPPONENT(s) ((s) < SCOREBLACKWINS + MAXDEPTH)
+#define MATEDETECTED(s) (MATEFORME(s) || MATEFOROPPONENT(s))
 
 
 //
@@ -827,13 +842,13 @@ public:
         table[h & sizemask].debugHash = h; table[h & sizemask].debugIndex = i;
     }
     int isDebugPosition(U64 h) { return (h != table[h & sizemask].debugHash) ? -1 : table[h & sizemask].debugIndex; }
-    string debugGetPv(U64 h) {
+    string debugGetPv(U64 h, int p) {
         transpositioncluster* data = &table[h & sizemask];
         for (int i = 0; i < TTBUCKETNUM; i++)
         {
             transpositionentry *e = &(data->entry[i]);
             if (e->hashupper == GETHASHUPPER(h))
-                return "Depth=" + to_string(e->depth) + " Value=" + to_string(e->value) + "(" + to_string(e->boundAndAge & BOUNDMASK) + ")  pv=" + data->debugStoredBy;
+                return "Depth=" + to_string(e->depth) + " Value=" + to_string(FIXMATESCOREPROBE(e->value, p)) + "(" + to_string(e->boundAndAge & BOUNDMASK) + ")  pv=" + data->debugStoredBy;
         }
         return "";
     }
@@ -948,19 +963,6 @@ const int KCMASK[2] = { WKCMASK, BKCMASK };
 const int castlerookto[4] = { 3, 5, 59, 61 };
 const int castlekingto[4] = { 2, 6, 58, 62 };
 
-#define MAXDEPTH 256
-#define MOVESTACKRESERVE 48     // to avoid checking for height reaching MAXDEPTH in probe_wds and getQuiescence
-
-#define NOSCORE SHRT_MIN
-#define SCOREBLACKWINS (SHRT_MIN + 3 + 2 * MAXDEPTH)
-#define SCOREWHITEWINS (-SCOREBLACKWINS)
-#define SCOREDRAW 0
-#define SCORETBWIN 29900
-#define SCOREWONENDGAME 10000
-
-#define MATEFORME(s) ((s) > SCOREWHITEWINS - MAXDEPTH)
-#define MATEFOROPPONENT(s) ((s) < SCOREBLACKWINS + MAXDEPTH)
-#define MATEDETECTED(s) (MATEFORME(s) || MATEFOROPPONENT(s))
 
 /* Offsets for 64Bit  board*/
 const int knightoffset[] = { -6, -10, -15, -17, 6, 10, 15, 17 };
@@ -1238,7 +1240,7 @@ extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 
 enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7 };
 enum RootsearchType { SinglePVSearch, MultiPVSearch };
-enum PruneType { Prune, NoPrune };
+enum PruneType { Prune, MatePrune, NoPrune };
 
 int CreateEvasionMovelist(chessposition *pos, chessmove* mstart);
 template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart);
@@ -1260,7 +1262,9 @@ struct positioneval {
 #ifdef SDEBUG
 enum PvAbortType {
     PVA_UNKNOWN = 0, PVA_FROMTT, PVA_DIFFERENTFROMTT, PVA_RAZORPRUNED, PVA_REVFUTILITYPRUNED, PVA_NMPRUNED, PVA_PROBCUTPRUNED, PVA_LMPRUNED,
-    PVA_FUTILITYPRUNED, PVA_SEEPRUNED, PVA_BADHISTORYPRUNED, PVA_MULTICUT, PVA_BESTMOVE, PVA_NOTBESTMOVE, PVA_OMITTED, PVA_BETACUT, PVA_BELOWALPHA }; 
+    PVA_FUTILITYPRUNED, PVA_SEEPRUNED, PVA_BADHISTORYPRUNED, PVA_MULTICUT, PVA_BESTMOVE, PVA_NOTBESTMOVE, PVA_OMITTED, PVA_BETACUT, PVA_BELOWALPHA,
+    PVA_CHECHMATE, PVA_STALEMATE
+}; 
 #endif
 
 // Replace the occupied bitboards with the first two so far unused piece bitboards
@@ -1410,7 +1414,7 @@ public:
     void getScaling(Materialhashentry *mhentry);
     int getComplexity(int eval, pawnhashentry *phentry, Materialhashentry *mhentry);
 
-    template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth, int inWindowLast);
+    template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth, int inWindowLast, int maxmoveindex = 0);
     template <PruneType Pt> int alphabeta(int alpha, int beta, int depth);
     template <PruneType Pt> int getQuiescence(int alpha, int beta, int depth);
     void updateHistory(uint32_t code, int16_t **cmptr, int value);
@@ -1598,10 +1602,10 @@ public:
     searchthread *sthread;
     ponderstate_t pondersearch;
     bool ponderhit;
-    int terminationscore = SHRT_MAX;
     int lastReport;
     int benchdepth;
     string benchmove;
+    string benchpondermove;
     ucioptions_t ucioptions;
     compilerinfo* compinfo;
     string ExecPath;
@@ -1616,13 +1620,21 @@ public:
 #endif
 #ifdef NNUE
     bool usennue;
-    string NnueNetpath;
+    string NnueNetpath; // UCI option, can be <Default>
+    string GetNnueNetPath() {
+        if (NnueNetpath == "<Default>")
+            return NNUEDEFAULTSTR;
+        else
+            return NnueNetpath;
+    }
+
     string NnueSha256FromName() {
-        size_t s2 = NnueNetpath.rfind('-');
-        size_t s1 = NnueNetpath.rfind('-', s2 - 1) + 1;
+        string path = GetNnueNetPath();
+        size_t s2 = path.rfind('-');
+        size_t s1 = path.rfind('-', s2 - 1) + 1;
         if (s1 && s2 && s2 - s1 == 10)
             // Most probably a Rubi net; shorten name to 5 digits
-            return NnueNetpath.substr(s1, 5);
+            return path.substr(s1, 5);
         else
             return "<unknown>";
     }
@@ -1695,6 +1707,7 @@ public:
 #ifdef NNUELEARN
     PackedSfenValue* psvbuffer;
     PackedSfenValue* psv;
+    int totalchunks;
     int chunkstate[2];
 #endif
     // adjust padding to align searchthread at 64 bytes
@@ -1706,7 +1719,7 @@ public:
 void searchStart();
 void searchWaitStop(bool forceStop = true);
 void searchinit();
-void resetEndTime(int constantRootMoves, bool complete = true);
+void resetEndTime(U64 startTime, int constantRootMoves, bool complete = true);
 
 
 //

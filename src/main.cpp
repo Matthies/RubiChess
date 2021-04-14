@@ -283,7 +283,6 @@ struct benchmarkstruct
     string name;
     string fen;
     int depth;
-    int terminationscore;
     long long time;
     long long nodes;
     int score;
@@ -325,42 +324,36 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, int s
             "Startposition",
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             14,
-            0,
             0, 0, 0, 0, "", 0
         },
         {
             "Lasker Test",
             "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1",
-            28,
-            0,
+            20,
             0, 0, 0, 0, "", 0
         },
         {
             "IQ4 63",
             "2R5/r3b1k1/p2p4/P1pPp2p/6q1/2P2N1r/4Q1P1/5RK1 w - - 0 1 ",
             14,
-            300,
             0, 0, 0, 0, "", 0
         },
         {
             "Wacnew 167",
             "7Q/ppp2q2/3p2k1/P2Ppr1N/1PP5/7R/5rP1/6K1 b - - 0 1",
             14,
-            1000,
             0, 0, 0, 0, "", 0
         },
         { 
             "Wacnew 212",
             "rn1qr2Q/pbppk1p1/1p2pb2/4N3/3P4/2N5/PPP3PP/R4RK1 w - - 0 1",
             14,
-            500,
             0, 0, 0, 0, "", 0
         },
         {
             "Carlos 6",
             "rn1q1r2/1bp1bpk1/p3p2p/1p2N1pn/3P4/1BN1P1B1/PPQ2PPP/2R2RK1 w - - 0 1",
-            13,
-            300,
+            14,
             0, 0, 0, 0, "", 0
         },
          
@@ -368,53 +361,46 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, int s
             "Arasan19 83",
             "6k1/p4qp1/1p3r1p/2pPp1p1/1PP1PnP1/2P1KR1P/1B6/7Q b - - 0 1 ",
             14,
-            200,
             0, 0, 0, 0, "", 0
         },
         {
             "Arasan19 192",
             "r2qk2r/1b1nbp1p/p1n1p1p1/1pp1P3/6Q1/2NPB1PN/PPP3BP/R4RK1 w kq - 0 1",
-            13,
-            150,
+            14,
             0, 0, 0, 0, "", 0
         },
         {
             "BT2630 12",
             "8/pp3k2/2p1qp2/2P5/5P2/1R2p1rp/PP2R3/4K2Q b - - 0 1",
-            15,
-            300,
+            14,
             0, 0, 0, 0, "", 0
         },
         {
             "IQ4 116",
             "4r1k1/1p2qrpb/p1p4p/2Pp1p2/1Q1Rn3/PNN1P1P1/1P3PP1/3R2K1 b - - 0 1",
             14,
-            300,
             0, 0, 0, 0, "", 0
         },
         {
             "Arasan12 114",
             "br4k1/1qrnbppp/pp1ppn2/8/NPPBP3/PN3P2/5QPP/2RR1B1K w - - 0 1",
-            15,
-            150,
+            14,
             0, 0, 0, 0, "", 0
         },
         {
             "Arasan12 140",
             "r1b1rk2/p1pq2p1/1p1b1p1p/n2P4/2P1NP2/P2B1R2/1BQ3PP/R6K w - - 0 1",
-            15,
-            300,
+            14,
             0, 0, 0, 0, "", 0
         },
         {
             "Arasan12 137",
             "r4k2/1b3ppp/p2n1P2/q1p3PQ/Np1rp3/1P1B4/P1P4P/2K1R2R w - - 0 1",
             14,
-            200,
             0, 0, 0, 0, "", 0
         },
         {
-            "", "", 0, 0,
+            "", "", 0,
             0, 0, 0, 0, "", 0
         }
     };
@@ -436,6 +422,7 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, int s
     int totalSolved[2] = { 0 };
     benchmarkstruct epdbm;
     FILE *tableout = openbench ? stdout : stderr;
+    bool bFollowup = false;
 
     while (true)
     {
@@ -456,14 +443,21 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, int s
             getFenAndBmFromEpd(line, &bm->fen, &bestmoves, &avoidmoves);
 
             bm->depth = 10;  // default depth for epd bench
-            bm->terminationscore = 0;
         }
         if (bm->fen == "") break;
 
         if (++i < startnum) continue;
 
-        en.communicate("ucinewgame");
-        en.communicate("position fen " + bm->fen);
+        if (!bFollowup)
+            en.communicate("ucinewgame");
+        string strPosition = "position fen " + bm->fen;
+        if (bFollowup)
+        {
+            strPosition += " moves " + en.benchmove + " " + en.benchpondermove;
+            bm->name = " ... " + en.benchmove + " " + en.benchpondermove;
+        }
+        cout << strPosition << "\n";
+        en.communicate(strPosition);
         starttime = getTime();
         int dp = 0;
         int tm = consttime;
@@ -471,10 +465,11 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, int s
             dp = constdepth;
         else
             dp = bm->depth;
-        if (bm->terminationscore)
-            en.terminationscore = bm->terminationscore;
-        else
-            en.terminationscore = SHRT_MAX;
+        if (bFollowup)
+            dp += 2;
+
+        bm->depth = dp;
+
         if (tm)
             en.communicate("go movetime " + to_string(tm * 1000));
         else if (dp)
@@ -500,10 +495,14 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, int s
         if (bGetFromEpd)
             benchTableItem(tableout, i, bm);
 
+        if (!bGetFromEpd)
+            bFollowup = !bFollowup;
+        if (bFollowup)
+            i--;
+        
         bmlist.push_back(*bm);
     }
 
-    en.terminationscore = SHRT_MAX;
     i = 0;
     long long totaltime = 0;
     long long totalnodes = 0;
@@ -1054,13 +1053,15 @@ int main(int argc, char* argv[])
     } else if (benchmark || openbench)
     {
         // benchmark mode
+        if (openbench)
+            en.ucioptions.Set("Use_NNUE", "false");
         doBenchmark(depth, epdfile, maxtime, startnum, openbench);
 #ifdef NNUE
         if (!openbench && epdfile == "")
         {
             NnueType oldNnueReady = NnueReady;
             // Profile build; switch eval mode for more recording
-            en.ucioptions.Set("Use NNUE", NnueReady ? "false" : "true");
+            en.ucioptions.Set("Use_NNUE", NnueReady ? "false" : "true");
             if (NnueReady || oldNnueReady)
                 doBenchmark(depth, epdfile, maxtime, startnum, openbench);
         }

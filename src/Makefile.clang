@@ -41,6 +41,11 @@ SSSE3EXE=RubiChess-SSSE3
 SSSE3CPUFEATURE=-DUSE_SSSE3 -DUSE_SSE2
 SSSE3ARCHFLAGS=-mssse3 -msse2
 
+# SSE2/Popcnt-build
+SSE2POPCNTEXE=RubiChess-SSE2POPCNT
+SSE2POPCNTCPUFEATURE=-DUSE_POPCNT -DUSE_SSE2
+SSE2POPCNTARCHFLAGS=-mpopcnt -msse2
+
 # Legacy-build
 LEGACYEXE=RubiChess-Legacy
 LEGACYCPUFEATURE=-D CPUFEATURE=CPULEGACY
@@ -85,6 +90,9 @@ rubichess-popcount: $(RELDIR)
 rubichess-ssse3: $(RELDIR)
 	@nmake -c -f Makefile.clang build EXE=$(SSSE3EXE) CPUFEATURE="$(SSSE3CPUFEATURE)" ARCHFLAGS="$(SSSE3ARCHFLAGS)"
 
+rubichess-sse2popcnt: $(RELDIR)
+	@nmake -c -f Makefile.clang build EXE=$(SSE2POPCNTEXE) CPUFEATURE="$(SSE2POPCNTCPUFEATURE)" ARCHFLAGS="$(SSE2POPCNTARCHFLAGS)"
+
 rubichess-legacy: $(RELDIR)
 	@nmake -c -f Makefile.clang build EXE=$(LEGACYEXE) CPUFEATURE="$(LEGACYCPUFEATURE)" ARCHFLAGS="$(LEGACYARCHFLAGS)"
 
@@ -101,12 +109,14 @@ pgo:
 	@nmake -c -f Makefile.clang pgo ARCH=avx2
 	@nmake -c -f Makefile.clang pgo ARCH=popcount
 	@nmake -c -f Makefile.clang pgo ARCH=ssse3
+	@nmake -c -f Makefile.clang pgo ARCH=sse2popcnt
 	@nmake -c -f Makefile.clang pgo ARCH=legacy
 !ENDIF
+	@nmake -c -f Makefile.clang profile-clean
 
 profile-build: pgo
 
-release: profile-build profile-clean
+release: pgo
 
 profile-clean:
 	@del $(PROFEXE)*
@@ -118,5 +128,6 @@ clean: profile-clean
 	@del $(RELDIR)\$(AVX2EXE).exe
 	@del $(RELDIR)\$(POPCOUNTEXE).exe
 	@del $(RELDIR)\$(SSSE3EXE).exe
+	@del $(RELDIR)\$(SSE2POPCNTEXE).exe
 	@del $(RELDIR)\$(LEGACYEXE).exe
 	@set RUBINET=

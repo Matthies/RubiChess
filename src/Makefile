@@ -26,6 +26,11 @@ ifeq ($(shell uname -m),x86_64)
 	SSSE3CPUFEATURE=-DUSE_SSSE3 -DUSE_SSE2
 	SSSE3ARCHFLAGS=-mssse3 -msse2
 
+	# SSE2/Popcnt-build
+	SSE2POPCNTEXE=RubiChess-SSE2POPCNT
+	SSE2POPCNTCPUFEATURE=-DUSE_POPCNT -DUSE_SSE2
+	SSE2POPCNTARCHFLAGS=-mpopcnt -msse2
+
 	# Legacy-build
 	LEGACYEXE=RubiChess-Legacy
 	LEGACYCPUFEATURE=
@@ -39,6 +44,17 @@ ifeq ($(shell uname -m),armv7l)
 	DEFAULTARCHFLAGS=-mthumb -march=armv7-a -mfpu=neon
 endif
 
+ifeq ($(shell uname -m),arm64)
+	# Default build for apple-silicon
+	DEFAULTEXE=RubiChess
+	DEFAULTARCHFLAGS= -pedantic -Wextra -Wshadow -mfpu=neon
+	DEFAULTCPUFEATURE=-flto -DUSE_NEON
+endif 
+
+ifeq ($(shell uname -s),Darwin)
+	# Use clang compiler for MacOS
+	COMP=clang
+endif
 
 ifeq ($(COMP),)
 	COMP=gcc
@@ -59,7 +75,7 @@ endif
 ifeq ($(COMP),clang)
 	CXX=clang++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
-	LDFLAGS=-lpthread -fuse-ld=lld
+	LDFLAGS=-lpthread $(shell type lld 1>/dev/null 2>/dev/null && echo "-fuse-ld=lld")
 	profile_make = clang-profile-make
 endif
 
@@ -95,7 +111,7 @@ endif
 default:
 	@$(MAKE) compile ARCHFLAGS="$(DEFAULTARCHFLAGS)" CPUFEATURE="$(DEFAULTCPUFEATURE)"
 
-all: net RubiChess-BMI2 RubiChess-AVX2 RubiChess RubiChess-SSSE3 RubiChess-Legacy
+all: net RubiChess-BMI2 RubiChess-AVX2 RubiChess RubiChess-SSSE3 RubiChess-SSE2POPCNT RubiChess-Legacy
 
 net:
 ifeq ($(RUBINET),)
@@ -123,11 +139,14 @@ RubiChess:
 RubiChess-SSSE3:
 	@$(MAKE) compile ARCHFLAGS="$(SSSE3ARCHFLAGS)" EXE=$(SSSE3EXE) CPUFEATURE="$(SSSE3CPUFEATURE)"
 
+RubiChess-SSE2POPCNT:
+	@$(MAKE) compile ARCHFLAGS="$(SSE2POPCNTARCHFLAGS)" EXE=$(SSE2POPCNTEXE) CPUFEATURE="$(SSE2POPCNTCPUFEATURE)"
+
 RubiChess-Legacy:
 	@$(MAKE) compile ARCHFLAGS="$(LEGACYARCHFLAGS)" EXE=$(LEGACYEXE) CPUFEATURE="$(LEGACYCPUFEATURE)"
 
 objclean:
-	@$(RM) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(LEGACYEXE) *.o || @echo $(RM) not available.
+	@$(RM) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) *.o || @echo $(RM) not available.
 
 profileclean:
 	@$(RM) -rf $(PROFDIR) || @echo $(RM) not available.
@@ -139,7 +158,7 @@ gcc-profile-make:
 	@echo Creating profile build for $(PROFEXE)...
 	@$(MAKE) $(PROFEXE) EXTRACXXFLAGS='-fprofile-generate=$(PROFDIR)' EXTRALDFLAGS='-lgcov'
 	@echo Bench to generate profiling data...
-	./$(PROFEXE) -bench > /dev/null
+	-./$(PROFEXE) -bench > /dev/null
 	$(RM) ./$(PROFEXE)
 	@echo Creating optimized build for $(PROFEXE)...
 	@$(MAKE) $(PROFEXE) EXTRACXXFLAGS='-fprofile-use=$(PROFDIR) -fno-peel-loops -fno-tracer' EXTRALDFLAGS='-lgcov'
@@ -149,7 +168,7 @@ clang-profile-make:
 	@echo Creating profile build for $(PROFEXE)...
 	@$(MAKE) $(PROFEXE) EXTRACXXFLAGS='-fprofile-instr-generate=$(PROFEXE).clangprof-raw'
 	@echo Bench to generate profiling data...
-	./$(PROFEXE) -bench > /dev/null
+	-./$(PROFEXE) -bench > /dev/null
 	llvm-profdata merge -output=$(PROFEXE).profdata $(PROFEXE).clangprof-raw
 	$(RM) ./$(PROFEXE)
 	@echo Creating optimized build for $(PROFEXE)...
@@ -162,4 +181,5 @@ profile-build: clean net
 	@if [ "$(AVX2EXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(AVX2EXE); fi
 	@if [ "$(DEFAULTEXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(DEFAULTEXE); fi
 	@if [ "$(SSSE3EXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(SSSE3EXE); fi
+	@if [ "$(SSE2POPCNTEXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(SSE2POPCNTEXE); fi
 	@if [ "$(LEGACYEXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(LEGACYEXE); fi

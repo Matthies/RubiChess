@@ -1,5 +1,13 @@
 ChangeLog
 =========
+2.1 (release 2021-xx-xx) :
+    - New default network created with trainingdata from 2.0.1 using better depth and fixed gensfen code
+    - Better / faster mating by avoiding stupid sacs in TB positions and disabling some pruning when mate was discovered
+    - Don't display full PV when this line is already refuted in a fail low or fail high
+    - UCI option NnueNetPath uses "Default" for the current net to avoid GUIs reconfiguration with a network change
+    - Faster sorting of quiet moves
+    - Some fixes in the Makefile e.g. for MacOS
+
 2.0.1 (release 2021-02-03) :
     - Fixed KBNvK endgame.
 
