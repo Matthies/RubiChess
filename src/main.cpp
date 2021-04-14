@@ -89,7 +89,7 @@ void generateEpd(string egn)
 }
 
 
-long long engine::perft(int depth, bool dotests, bool printsysteminfo)
+long long engine::perft(int depth, bool printsysteminfo)
 {
     long long retval = 0;
     chessposition *rootpos = &en.sthread[0].pos;
@@ -100,45 +100,6 @@ long long engine::perft(int depth, bool dotests, bool printsysteminfo)
         printf("System: %s\n", cinfo.SystemName().c_str());
         printf("CPU-Features of system: %s\nCPU-Features of binary: %s\n", cinfo.PrintCpuFeatures(cinfo.machineSupports).c_str(), cinfo.PrintCpuFeatures(cinfo.binarySupports).c_str());
         printf("Depth: %d    %8s\n", maxdepth, en.chess960 ? "Chess960" : "");
-    }
-
-    if (dotests)
-    {
-        if (rootpos->hash != zb.getHash(rootpos))
-        {
-            printf("Alarm! Wrong Hash! %llu\n", zb.getHash(rootpos));
-            rootpos->print();
-        }
-        if (rootpos->pawnhash && rootpos->pawnhash != zb.getPawnHash(rootpos))
-        {
-            printf("Alarm! Wrong Pawn Hash! %llu\n", zb.getPawnHash(rootpos));
-            rootpos->print();
-        }
-        if (rootpos->materialhash != zb.getMaterialHash(rootpos))
-        {
-            printf("Alarm! Wrong Material Hash! %llu\n", zb.getMaterialHash(rootpos));
-            rootpos->print();
-        }
-        int val1 = rootpos->getEval<NOTRACE>();
-        int psq1 = rootpos->getpsqval();
-        if (rootpos->psqval != psq1)
-        {
-            printf("PSQ-Test  :error  incremental:%d  recalculated:%d\n", rootpos->psqval, psq1);
-            rootpos->print();
-        }
-        rootpos->mirror();
-        int val2 = rootpos->getEval<NOTRACE>();
-        rootpos->mirror();
-        int val3 = rootpos->getEval<NOTRACE>();
-        if (!(val1 == val3 && val1 == val2))
-        {
-            printf("Mirrortest  :error  (%d / %d / %d)\n", val1, val2, val3);
-            rootpos->print();
-            rootpos->mirror();
-            rootpos->print();
-            rootpos->mirror();
-            rootpos->print();
-        }
     }
 
     if (depth == 0)
@@ -156,14 +117,21 @@ long long engine::perft(int depth, bool dotests, bool printsysteminfo)
     {
         if (rootpos->playMove(movelist.move[i].code))
         {
-            retval += perft(depth - 1, dotests);
+            long long moveperft = perft(depth - 1);
             rootpos->unplayMove(movelist.move[i].code);
+            retval += moveperft;
+            if (printsysteminfo)
+                cout << setw(5) << left << moveToString(movelist.move[i].code) << ": " << moveperft << "\n";
         }
     }
+
+    if (printsysteminfo)
+        cout << "Total nodes: " << retval << "\n";
+
     return retval;
 }
 
-static void perftest(bool dotests, int maxdepth)
+static void perftest(int maxdepth)
 {
     struct perftestresultstruct
     {
@@ -234,7 +202,7 @@ static void perftest(bool dotests, int maxdepth)
     printf("\n\nPerft results for %s (Build %s)\n", en.name().c_str(), BUILD);
     printf("System: %s\n", cinfo.SystemName().c_str());
     printf("CPU-Features of system: %s\nCPU-Features of binary: %s\n", cinfo.PrintCpuFeatures(cinfo.machineSupports).c_str(), cinfo.PrintCpuFeatures(cinfo.binarySupports).c_str());
-    printf("Depth = %d    %8s  Hash-/Mirror-Tests %s\n", maxdepth, en.chess960 ? "Chess960" : "", dotests ? "enabled" : "disabled");
+    printf("Depth = %d    %8s\n", maxdepth, en.chess960 ? "Chess960" : "");
     printf("========================================================================\n");
 
     float df;
@@ -257,7 +225,7 @@ static void perftest(bool dotests, int maxdepth)
         {
             long long starttime = getTime();
 
-            U64 result = en.perft(j, dotests);
+            U64 result = en.perft(j);
             totalresult += result;
 
             perftlasttime = getTime();
@@ -907,7 +875,6 @@ int main(int argc, char* argv[])
     bool benchmark;
     bool openbench;
     int depth;
-    bool dotests;
     bool enginetest;
     string epdfile;
     string engineprg;
@@ -929,7 +896,6 @@ int main(int argc, char* argv[])
         { "bench", "Do benchmark with OpenBench compatible output.", &openbench, 0, NULL },
         { "-depth", "Depth for benchmark (0 for per-position-default)", &depth, 1, "0" },
         { "-perft", "Do performance and move generator testing.", &perfmaxdepth, 1, "0" },
-        { "-dotests","test the hash function and value for positions and mirror (use with -perft)", &dotests, 0, NULL },
         { "-enginetest", "bulk testing of epd files", &enginetest, 0, NULL },
         { "-epdfile", "the epd file to test (use with -enginetest or -bench)", &epdfile, 2, "" },
         { "-logfile", "output file (use with -enginetest)", &logfile, 2, "enginetest.log" },
@@ -1049,7 +1015,7 @@ int main(int argc, char* argv[])
     if (perfmaxdepth)
     {
         // do a perft test
-        perftest(dotests, perfmaxdepth);
+        perftest(perfmaxdepth);
     } else if (benchmark || openbench)
     {
         // benchmark mode

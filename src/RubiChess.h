@@ -1404,7 +1404,7 @@ public:
     bool moveGivesCheck(uint32_t c);  // simple and imperfect as it doesn't handle special moves and cases (mainly to avoid pruning of important moves)
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
     uint32_t shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal
-    int getpsqval(bool showDetails = false);  // only for eval trace and mirror test
+    int getpsqval(bool showDetails = false);  // only for eval trace
     template <EvalType Et, int Me> int getGeneralEval(positioneval *pe);
     template <EvalType Et, PieceType Pt, int Me> int getPieceEval(positioneval *pe);
     template <EvalType Et, int Me> int getLateEval(positioneval *pe);
@@ -1434,7 +1434,6 @@ public:
     void pvdebugout();
 #endif
     int testRepetiton();
-    void mirror();
 #ifdef NNUE
     template <NnueType Nt, Color c> void HalfkpAppendActiveIndices(NnueIndexList *active);
     template <NnueType Nt, Color c> void HalfkpAppendChangedIndices(DirtyPiece* dp, NnueIndexList *add, NnueIndexList *remove);
@@ -1651,7 +1650,7 @@ public:
     void communicate(string inputstring);
     void allocThreads();
     U64 getTotalNodes();
-    long long perft(int depth, bool dotests, bool printsysteminfo = false);
+    long long perft(int depth, bool printsysteminfo = false);
     void prepareThreads();
     void resetStats();
     void registerOptions();

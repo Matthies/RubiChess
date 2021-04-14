@@ -676,63 +676,6 @@ int chessposition::testRepetiton()
 }
 
 
-
-void chessposition::mirror()
-{
-    int newmailbox[BOARDSIZE] = { 0 };
-    for (int r = 0; r < 8; r++)
-    {
-        for (int f = 0; f < 8; f++)
-        {
-            int index = INDEX(r, f);
-            int mirrorindex = INDEX(7 - r, f);
-            if (mailbox[index] != BLANK)
-            {
-                newmailbox[mirrorindex] = mailbox[index] ^ S2MMASK;
-                BitboardClear(index, mailbox[index]);
-                if ((mailbox[index] >> 1) == PAWN)
-                    pawnhash ^= zb.boardtable[(index << 4) | mailbox[index]];
-            }
-            else {
-                newmailbox[mirrorindex] = BLANK;
-            }
-        }
-    }
-
-    for (int i = 0; i < BOARDSIZE; i++)
-    {
-        mailbox[i] = newmailbox[i];
-        if (mailbox[i] != BLANK)
-        {
-            BitboardSet(i, mailbox[i]);
-            if ((mailbox[i] >> 1) == PAWN)
-                pawnhash ^= zb.boardtable[(i << 4) | mailbox[i]];
-        }
-    }
-
-    int newstate = state;
-    newstate ^= S2MMASK;
-    newstate &= ~CASTLEMASK;
-    if (state & WQCMASK) newstate |= BQCMASK;
-    if (state & WKCMASK) newstate |= BKCMASK;
-    if (state & BQCMASK) newstate |= WQCMASK;
-    if (state & BKCMASK) newstate |= WKCMASK;
-    state = newstate;
-    if (ept)
-        ept ^= RANKMASK;
-
-    pawnhash ^= zb.boardtable[(kingpos[0] << 4) | WKING] ^ zb.boardtable[((kingpos[1] ^ RANKMASK) << 4) | WKING];
-    pawnhash ^= zb.boardtable[(kingpos[1] << 4) | BKING] ^ zb.boardtable[((kingpos[0] ^ RANKMASK) << 4) | BKING];
-    int kingpostemp = kingpos[0];
-    kingpos[0] = kingpos[1] ^ RANKMASK;
-    kingpos[1] = kingpostemp ^ RANKMASK;
-    materialhash = zb.getMaterialHash(this);
-    kingPinned = 0ULL;
-    updatePins<WHITE>();
-    updatePins<BLACK>();
-}
-
-
 void chessposition::prepareStack()
 {
     myassert(mstop >= 0 && mstop < MAXDEPTH, this, 1, mstop);
@@ -3033,8 +2976,7 @@ void engine::communicate(string inputstring)
             case PERFT:
                 if (ci < cs) {
                     maxdepth = stoi(commandargs[ci++]);
-                    U64 perftnodes = perft(maxdepth, false, true);
-                    cout << "Nodes: " << perftnodes << "\n";
+                    perft(maxdepth, true);
                 }
                 break;
 #ifdef NNUELEARN
