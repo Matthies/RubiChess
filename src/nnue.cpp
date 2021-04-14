@@ -391,7 +391,7 @@ struct NnueNetwork {
     int32_t out_value;
 };
 
-eval NnueValueScale = 61;
+eval NnueValueScale = 47;
 
 
 template <NnueType Nt> int chessposition::NnueGetEval()
