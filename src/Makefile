@@ -11,6 +11,11 @@ DEFAULTARCHFLAGS=-mssse3 -msse2 -mpopcnt
 
 
 ifeq ($(shell uname -m),x86_64)
+	# AVX512-build
+	AVX512EXE=RubiChess-AVX512
+	AVX512CPUFEATURE=-DUSE_AVX512 -DUSE_BMI2 -DUSE_AVX2 -DUSE_SSSE3 -DUSE_SSE2 -DUSE_POPCNT
+	AVX512ARCHFLAGS= -mavx512f -mavx512bw -mbmi2 -mavx2 -mssse3 -msse2 -mpopcnt
+
 	# BMI2-build
 	BMI2EXE=RubiChess-BMI2
 	BMI2CPUFEATURE=-DUSE_BMI2 -DUSE_AVX2 -DUSE_SSSE3 -DUSE_SSE2 -DUSE_POPCNT
@@ -127,6 +132,9 @@ compile:
 	@echo   \  Compiling $(EXE)...
 	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(LDFLAGS) $(EXTRALDFLAGS) $(GITDEFINE) $(CPUFEATURE) -o $(EXE)
 
+RubiChess-AVX512:
+	@$(MAKE) compile ARCHFLAGS="$(AVX512ARCHFLAGS)" EXE=$(AVX512EXE) CPUFEATURE="$(AVX512CPUFEATURE)"
+
 RubiChess-AVX2:
 	@$(MAKE) compile ARCHFLAGS="$(AVX2ARCHFLAGS)" EXE=$(AVX2EXE) CPUFEATURE="$(AVX2CPUFEATURE)"
 
@@ -146,7 +154,7 @@ RubiChess-Legacy:
 	@$(MAKE) compile ARCHFLAGS="$(LEGACYARCHFLAGS)" EXE=$(LEGACYEXE) CPUFEATURE="$(LEGACYCPUFEATURE)"
 
 objclean:
-	@$(RM) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) *.o || @echo $(RM) not available.
+	@$(RM) $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) *.o || @echo $(RM) not available.
 
 profileclean:
 	@$(RM) -rf $(PROFDIR) || @echo $(RM) not available.
@@ -177,6 +185,7 @@ clang-profile-make:
 
 
 profile-build: clean net
+	@if [ "$(AVX512EXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(AVX512EXE); fi
 	@if [ "$(BMI2EXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(BMI2EXE); fi
 	@if [ "$(AVX2EXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(AVX2EXE); fi
 	@if [ "$(DEFAULTEXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(DEFAULTEXE); fi
