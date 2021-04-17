@@ -114,9 +114,17 @@ template <NnueType Nt, Color c> void chessposition::HalfkpAppendChangedIndices(D
     }
 }
 
+#ifdef USE_AVX512
+#define NUM_REGS 8
+#define SIMD_WIDTH 512
+typedef __m512i vec8_t, vec16_t;
+typedef __mmask64 mask_t;
+#define vec_add_16(a,b) _mm512_add_epi16(a,b)
+#define vec_sub_16(a,b) _mm512_sub_epi16(a,b)
+#define vec_packs(a,b) _mm512_packs_epi16(a,b)
+#define vec_clip_8(a,b) _mm512_max_epi8(vec_packs(a,b),_mm512_setzero_si512())
 
-
-#ifdef USE_AVX2
+#elif defined(USE_AVX2)
 #define NUM_REGS 16
 #define SIMD_WIDTH 256
 typedef __m256i vec8_t, vec16_t;
@@ -432,6 +440,19 @@ unsigned int bit_shuffle(unsigned v, int left, int right, unsigned mask)
 }
 
 
+#if defined(USE_AVX512)
+inline unsigned int shuffleWeightIndex(unsigned int idx, unsigned dims, bool outlayer)
+{
+    if (dims > 32)
+        idx = bit_shuffle(idx, 1, 2, 0x38);
+    else if (dims == 32) {
+        idx = bit_shuffle(idx, 2, 2, 0x14);
+        if (!outlayer)
+            idx = bit_shuffle(idx, 2, 3, 0x1f0);
+    }
+    return idx;
+}
+#else   //AVX2 version
 inline unsigned int shuffleWeightIndex(unsigned int idx, unsigned dims, bool outlayer)
 {
     if (dims > 32)
@@ -443,7 +464,7 @@ inline unsigned int shuffleWeightIndex(unsigned int idx, unsigned dims, bool out
     }
     return idx;
 }
-
+#endif
 
 bool NnueNetworkLayer::ReadWeights(ifstream* is)
 {
@@ -544,7 +565,85 @@ void NnueNetworkLayer::Propagate(clipped_t* input, int32_t* output)
     myassert(inputdims == 32 || inputdims % 128 == 0, nullptr, 1, inputdims);
     myassert(outputdims % 8 == 0, nullptr, 1, outputdims);
 
-#if defined(USE_AVX2)
+#if defined(USE_AVX512)
+    if (inputdims >= 64) {
+        __m128i* outVec = (__m128i*)output;
+        __m128i* biasVec = (__m128i*)bias;
+        for (unsigned i = 0; i < outputdims / 4; i++) {
+            __m512i* inVec = (__m512i*)input;
+            __m512i* w = (__m512i*)&weight[4 * i * inputdims];
+            __m512i s0, s1, s2, s3;
+            s0 = s1 = s2 = s3 = _mm512_setzero_si512();
+            const __m512i kOnes = _mm512_set1_epi16(1);
+            __m512i p1, p2;
+            for (unsigned j = 0; j < inputdims / 128; j++) {
+                p1 = _mm512_maddubs_epi16(inVec[2 * j], w[0 * inputdims / 64 + 2 * j]);
+                p2 = _mm512_maddubs_epi16(inVec[2 * j + 1], w[0 * inputdims / 64 + 2 * j + 1]);
+                s0 = _mm512_add_epi32(s0, _mm512_madd_epi16(_mm512_add_epi16(p1, p2), kOnes));
+                p1 = _mm512_maddubs_epi16(inVec[2 * j], w[1 * inputdims / 64 + 2 * j]);
+                p2 = _mm512_maddubs_epi16(inVec[2 * j + 1], w[1 * inputdims / 64 + 2 * j + 1]);
+                s1 = _mm512_add_epi32(s1, _mm512_madd_epi16(_mm512_add_epi16(p1, p2), kOnes));
+                p1 = _mm512_maddubs_epi16(inVec[2 * j], w[2 * inputdims / 64 + 2 * j]);
+                p2 = _mm512_maddubs_epi16(inVec[2 * j + 1], w[2 * inputdims / 64 + 2 * j + 1]);
+                s2 = _mm512_add_epi32(s2, _mm512_madd_epi16(_mm512_add_epi16(p1, p2), kOnes));
+                p1 = _mm512_maddubs_epi16(inVec[2 * j], w[3 * inputdims / 64 + 2 * j]);
+                p2 = _mm512_maddubs_epi16(inVec[2 * j + 1], w[3 * inputdims / 64 + 2 * j + 1]);
+                s3 = _mm512_add_epi32(s3, _mm512_madd_epi16(_mm512_add_epi16(p1, p2), kOnes));
+            }
+            s0 = _mm512_add_epi32(_mm512_unpacklo_epi32(s0, s1),
+                _mm512_unpackhi_epi32(s0, s1));
+            s2 = _mm512_add_epi32(_mm512_unpacklo_epi32(s2, s3),
+                _mm512_unpackhi_epi32(s2, s3));
+            s0 = _mm512_add_epi32(_mm512_unpacklo_epi64(s0, s2),
+                _mm512_unpackhi_epi64(s0, s2));
+            __m256i sum256 = _mm256_add_epi32(_mm512_castsi512_si256(s0),
+                _mm512_extracti64x4_epi64(s0, 1));
+            __m128i sum128 = _mm_add_epi32(_mm256_castsi256_si128(sum256),
+                _mm256_extracti128_si256(sum256, 1));
+            outVec[i] = _mm_add_epi32(sum128, biasVec[i]);
+        }
+    }
+    else { // 32 x 32 multiplication
+        __m512i* outVec = (__m512i*)output;
+        __m512i* biasVec = (__m512i*)bias;
+        __m128i* inVec = (__m128i*)input;
+        __m512i in0 = _mm512_broadcast_i32x4(inVec[0]);
+        __m512i in1 = _mm512_broadcast_i32x4(inVec[1]);
+        const __m512i kOnes = _mm512_set1_epi16(1);
+        __m512i s0, s1, s2, s3, p;
+        for (unsigned i = 0; i < outputdims / 16; i++) {
+            __m512i* w = (__m512i*)&weight[16 * i * 32];
+            s0 = _mm512_maddubs_epi16(in0, w[0]); // first half of rows 0,4,8,12
+            s0 = _mm512_madd_epi16(s0, kOnes);
+            p = _mm512_maddubs_epi16(in1, w[1]); // second half of rows 0,4,8,12
+            p = _mm512_madd_epi16(p, kOnes);
+            s0 = _mm512_add_epi32(s0, p);
+            s1 = _mm512_maddubs_epi16(in0, w[2]); // first half of rows 1,5,9,13
+            s1 = _mm512_madd_epi16(s1, kOnes);
+            p = _mm512_maddubs_epi16(in1, w[3]);
+            p = _mm512_madd_epi16(p, kOnes);
+            s1 = _mm512_add_epi32(s1, p);
+            s2 = _mm512_maddubs_epi16(in0, w[4]);
+            s2 = _mm512_madd_epi16(s2, kOnes);
+            p = _mm512_maddubs_epi16(in1, w[5]);
+            p = _mm512_madd_epi16(p, kOnes);
+            s2 = _mm512_add_epi32(s2, p);
+            s3 = _mm512_maddubs_epi16(in0, w[6]);
+            s3 = _mm512_madd_epi16(s3, kOnes);
+            p = _mm512_maddubs_epi16(in1, w[7]);
+            p = _mm512_madd_epi16(p, kOnes);
+            s3 = _mm512_add_epi32(s3, p);
+            s0 = _mm512_add_epi32(
+                _mm512_unpacklo_epi32(s0, s1), _mm512_unpackhi_epi32(s0, s1));
+            s2 = _mm512_add_epi32(
+                _mm512_unpacklo_epi32(s2, s3), _mm512_unpackhi_epi32(s2, s3));
+            s0 = _mm512_add_epi32(
+                _mm512_unpacklo_epi64(s0, s2), _mm512_unpackhi_epi64(s0, s2));
+            outVec[i] = _mm512_add_epi32(s0, biasVec[i]);
+        }
+    }
+
+#elif defined(USE_AVX2)
     if (inputdims > 32) {
         __m128i* outVec = (__m128i*)output;
         __m128i* biasVec = (__m128i*)bias;
@@ -714,7 +813,14 @@ uint32_t NnueClippedRelu::GetHash()
 
 void NnueClippedRelu::Propagate(int32_t *input, clipped_t *output)
 {
-#if defined(USE_AVX2)
+#if defined(USE_AVX512)
+    __m512i* in = (__m512i*)input;
+    __m256i* out = (__m256i*)output;
+    __m512i words = _mm512_srai_epi16(_mm512_packs_epi32(in[0], in[1]), NnueClippingShift);
+    __m256i packed = _mm256_packs_epi16(
+        _mm512_castsi512_si256(words), _mm512_extracti64x4_epi64(words, 1));
+    out[0] = _mm256_max_epi8(packed, _mm256_setzero_si256());
+#elif defined(USE_AVX2)
     const unsigned numChunks = dims / 32;
     const __m256i kZero = _mm256_setzero_si256();
     __m256i* in = (__m256i*)input;

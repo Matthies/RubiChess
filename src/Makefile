@@ -14,7 +14,7 @@ ifeq ($(shell uname -m),x86_64)
 	# AVX512-build
 	AVX512EXE=RubiChess-AVX512
 	AVX512CPUFEATURE=-DUSE_AVX512 -DUSE_BMI2 -DUSE_AVX2 -DUSE_SSSE3 -DUSE_SSE2 -DUSE_POPCNT
-	AVX512ARCHFLAGS= -mavx512f -mavx512bw -mbmi2 -mavx2 -mssse3 -msse2 -mpopcnt
+	AVX512ARCHFLAGS=-mavx512f -mavx512bw -mbmi2 -mavx2 -mssse3 -msse2 -mpopcnt
 
 	# BMI2-build
 	BMI2EXE=RubiChess-BMI2
