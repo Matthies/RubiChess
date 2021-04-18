@@ -50,15 +50,15 @@
 
 
 #ifdef FINDMEMORYLEAKS
-#ifdef _DEBUG  
-#define DEBUG_CLIENTBLOCK   new( _CLIENT_BLOCK, __FILE__, __LINE__)  
-#else  
-#define DEBUG_CLIENTBLOCK  
-#endif // _DEBUG  
+#ifdef _DEBUG
+#define DEBUG_CLIENTBLOCK   new( _CLIENT_BLOCK, __FILE__, __LINE__)
+#else
+#define DEBUG_CLIENTBLOCK
+#endif // _DEBUG
 
-#ifdef _DEBUG  
-#define new DEBUG_CLIENTBLOCK  
-#endif  
+#ifdef _DEBUG
+#define new DEBUG_CLIENTBLOCK
+#endif
 
 #define _CRTDBG_MAP_ALLOC
 #endif
@@ -115,7 +115,7 @@
 #define myassert(expression, pos, num, ...) (void)(0)
 #define sprintf_s sprintf
 void Sleep(long x);
-#if defined(__ANDROID__) or defined(__APPLE__) 
+#if defined(__ANDROID__) or defined(__APPLE__)
 #define allocalign64(x) malloc(x)
 #define freealigned64(x) free(x)
 #else
@@ -171,7 +171,7 @@ using namespace std;
 #endif
 
 #define BITSET(x) (1ULL << (x))
-#define MORETHANONE(x) ((x) & ((x) - 1)) 
+#define MORETHANONE(x) ((x) & ((x) - 1))
 #define ONEORZERO(x) (!MORETHANONE(x))
 #if defined(_MSC_VER)
 #define GETLSB(i,x) _BitScanForward64((DWORD*)&(i), (x))
@@ -772,7 +772,7 @@ void learn(vector<string> args);
 //
 // transposition stuff
 //
-#define BOUNDMASK   0x03 
+#define BOUNDMASK   0x03
 #define HASHALPHA   0x01
 #define HASHBETA    0x02
 #define HASHEXACT   0x00
@@ -951,7 +951,7 @@ extern transposition tp;
 #define CASTLEMASK  0x1e
 #define GETCASTLEFILE(s,i) (((s) >> (i * 4 + 8)) & 0x7)
 #define SETCASTLEFILE(f,i) (((f) << (i * 4 + 8)) | (WQCMASK << i))
-#define GETCASTLERIGHTS(c,s) ((c) ? (s) & (BQCMASK | BKCMASK) : (s) & (WQCMASK | WKCMASK)) 
+#define GETCASTLERIGHTS(c,s) ((c) ? (s) & (BQCMASK | BKCMASK) : (s) & (WQCMASK | WKCMASK))
 
 #define WQC 1
 #define WKC 2
@@ -1263,7 +1263,7 @@ enum PvAbortType {
     PVA_UNKNOWN = 0, PVA_FROMTT, PVA_DIFFERENTFROMTT, PVA_RAZORPRUNED, PVA_REVFUTILITYPRUNED, PVA_NMPRUNED, PVA_PROBCUTPRUNED, PVA_LMPRUNED,
     PVA_FUTILITYPRUNED, PVA_SEEPRUNED, PVA_BADHISTORYPRUNED, PVA_MULTICUT, PVA_BESTMOVE, PVA_NOTBESTMOVE, PVA_OMITTED, PVA_BETACUT, PVA_BELOWALPHA,
     PVA_CHECHMATE, PVA_STALEMATE
-}; 
+};
 #endif
 
 // Replace the occupied bitboards with the first two so far unused piece bitboards
@@ -1299,7 +1299,7 @@ public:
     uint16_t excludemovestack[MAXDEPTH];
     int16_t staticevalstack[MAXDEPTH];
 
-    int rootheight; // fixed stack offset in root position 
+    int rootheight; // fixed stack offset in root position
     int seldepth;
     int nullmoveside;
     int nullmoveply = 0;
@@ -1387,7 +1387,7 @@ public:
     template <PieceType Pt> U64 pieceMovesTo(int from);
     bool isAttacked(int index, int me);
     U64 isAttackedByMySlider(int index, U64 occ, int me);  // special simple version to detect giving check by removing blocker
-    U64 attackedByBB(int index, U64 occ);  // returns bitboard of all pieces of both colors attacking index square 
+    U64 attackedByBB(int index, U64 occ);  // returns bitboard of all pieces of both colors attacking index square
     template <AttackType At> U64 isAttackedBy(int index, int col);    // returns the bitboard of cols pieces attacking the index square; At controls if pawns are moved to block or capture
     bool see(uint32_t move, int threshold);
     int getBestPossibleCapture();
@@ -1523,8 +1523,9 @@ enum ponderstate_t { NO, PONDERING, HITPONDER };
 #define CPUPOPCNT   (1 << 2)
 #define CPUAVX2     (1 << 3)
 #define CPUBMI2     (1 << 4)
+#define CPUAVX512   (1 << 5)
 
-#define STRCPUFEATURELIST  { "sse2","ssse3","popcnt","avx2","bmi2" }
+#define STRCPUFEATURELIST  { "sse2","ssse3","popcnt","avx2","bmi2", "avx512" }
 
 
 extern const string strCpuFeatures[];
@@ -1547,6 +1548,9 @@ public:
 #endif
 #ifdef USE_BMI2
         | CPUBMI2
+#endif
+#ifdef USE_AVX512
+        | CPUAVX512
 #endif
         ;
 
@@ -1782,7 +1786,7 @@ extern struct statistic statistics;
 void search_statistics();
 
 // some macros to limit the ifdef STATISTICS inside the code
-#define STATISTICSINC(x)        statistics.x++ 
+#define STATISTICSINC(x)        statistics.x++
 #define STATISTICSADD(x, v)     statistics.x += (v)
 #define STATISTICSDO(x)         x
 

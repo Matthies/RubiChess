@@ -20,6 +20,10 @@ PROFEXE=RubiChess-Prof
 NETURL=https://github.com/Matthies/NN/raw/main/
 TMPNN=_tmp.nnue
 
+# AVX512-build
+AVX512EXE=RubiChess-AVX512
+AVX512CPUFEATURE=-DUSE_AVX512 -DUSE_BMI2 -DUSE_AVX2 -DUSE_SSSE3 -DUSE_SSE2 -DUSE_POPCNT
+AVX512ARCHFLAGS=-mavx512f -mavx512bw -mbmi2 -mavx2 -mssse3 -msse2 -mpopcnt
 
 # BMI2-build
 BMI2EXE=RubiChess-BMI2
@@ -51,7 +55,7 @@ LEGACYEXE=RubiChess-Legacy
 LEGACYCPUFEATURE=-D CPUFEATURE=CPULEGACY
 LEGACYARCHFLAGS=
 
-all: RubiChess-bmi2 RubiChess-avx2 RubiChess-popcount RubiChess-ssse3 RubiChess-Legacy
+all: RubiChess-avx512 RubiChess-bmi2 RubiChess-avx2 RubiChess-popcount RubiChess-ssse3 RubiChess-Legacy
 
 $(RELDIR):
 	mkdir $(RELDIR)
@@ -77,6 +81,9 @@ build:
 !ELSE
 	@echo EXE is not defined.
 !ENDIF
+
+rubichess-avx512: $(RELDIR)
+	@nmake -c -f Makefile.clang build EXE=$(AVX512EXE) CPUFEATURE="$(AVX512CPUFEATURE)" ARCHFLAGS="$(AVX512ARCHFLAGS)"
 
 rubichess-bmi2: $(RELDIR)
 	@nmake -c -f Makefile.clang build EXE=$(BMI2EXE) CPUFEATURE="$(BMI2CPUFEATURE)" ARCHFLAGS="$(BMI2ARCHFLAGS)"
@@ -105,6 +112,7 @@ pgo:
 	@$(PROFDATATOOLEXE) merge -output=$(PROFEXE).clangprof $(PROFEXE).clangprof-raw
 	@nmake -c -f Makefile.clang RubiChess-$(ARCH) PROFILEFLAGS=-fprofile-instr-use=$(PROFEXE).clangprof
 !ELSE
+	@nmake -c -f Makefile.clang pgo ARCH=avx512
 	@nmake -c -f Makefile.clang pgo ARCH=bmi2
 	@nmake -c -f Makefile.clang pgo ARCH=avx2
 	@nmake -c -f Makefile.clang pgo ARCH=popcount
@@ -123,7 +131,7 @@ profile-clean:
 	@del *.obj
 
 clean: profile-clean
-	@del $(RELDIR)\RubiChess-oldcpu.exe
+	@del $(RELDIR)\$(AVX512EXE).exe
 	@del $(RELDIR)\$(BMI2EXE).exe
 	@del $(RELDIR)\$(AVX2EXE).exe
 	@del $(RELDIR)\$(POPCOUNTEXE).exe
