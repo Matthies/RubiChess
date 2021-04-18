@@ -22,16 +22,17 @@ Disable the 'Use NNUE' option for so called handcrafted evaluation.
 Use the 'NNUENetpath' option to switch to a different network weight file.
 
 You can download network files from my repository https://github.com/Matthies/NN and put it in the same folder as the executable.
-Default net (and default value of NNUENetpath) is now nn-375bdd2d7f-20210112.nnue which is also included in Windows release package.
+Default net (and default value of NNUENetpath) is now nn-cf8c56d366-20210326.nnue which is also included in Windows release package.
 
 ## Binaries and hints to build some
 I provide release binary packages for Windows x64 only. Depending on your type of CPU you can choose from
 1. RubiChess-BMI2: For best performance on modern intel CPUs and probably also new AMD Ryzen Zen3 / 5?00X CPU
-1. RubiChess-AVX2: For best performance on modern AMD Ryzen Zen/Zen2
-1. RubiChess: For older CPUs that support POPCNT but no AVX2
-1. RubiChess-SSSE3: For even older CPUs with SSSE3 but no POPCNT
-2. RubiChess-SSE2POPCNT: For old AMD CPUs supporting POPCNT but no SSSE3 like Phemon II
-3. RubiChess-Legacy: For very old x86-64 CPU without SSSE3 support (are there any?)
+2. RubiChess-AVX2: For best performance on modern AMD Ryzen Zen/Zen2
+3. RubiChess: For older CPUs that support POPCNT but no AVX2
+4. RubiChess-SSSE3: For even older CPUs with SSSE3 but no POPCNT
+5. RubiChess-SSE2POPCNT: For old AMD CPUs supporting POPCNT but no SSSE3 like Phemon II
+6. RubiChess-Legacy: For very old x86-64 CPU without SSSE3 support (are there any?)
+7. New: RubiChess-AVX512: For best performance on new Intel CPUs supporting the AVX512 extensions. Thanks Ipman for kicking me to implement it.
 
 You will get a warning at startup if the selected binary doesn't match your CPU or it will just crash.
 
