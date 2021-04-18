@@ -116,7 +116,7 @@ endif
 default:
 	@$(MAKE) compile ARCHFLAGS="$(DEFAULTARCHFLAGS)" CPUFEATURE="$(DEFAULTCPUFEATURE)"
 
-all: net RubiChess-BMI2 RubiChess-AVX2 RubiChess RubiChess-SSSE3 RubiChess-SSE2POPCNT RubiChess-Legacy
+all: net RubiChess-AVX512 RubiChess-BMI2 RubiChess-AVX2 RubiChess RubiChess-SSSE3 RubiChess-SSE2POPCNT RubiChess-Legacy
 
 net:
 ifeq ($(RUBINET),)
