@@ -1,5 +1,8 @@
 ChangeLog
 =========
+2.2 (release 202x-xx-xx) :
+    - ...
+
 2.1 (release 2021-04-14) :
     - New default network created with trainingdata from 2.0.1 using better depth and fixed gensfen code
     - Expose last NNUE layer and scaling factor to UCI options via EVALOPTIONS and tuned scaling with Kiudee tools
