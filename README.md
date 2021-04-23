@@ -25,7 +25,7 @@ You can download network files from my repository https://github.com/Matthies/NN
 Default net (and default value of NNUENetpath) is now nn-cf8c56d366-20210326.nnue which is also included in Windows release package.
 
 ## Binaries and hints to build some
-I provide release binary packages for Windows x64 only. Depending on your type of CPU you can choose from
+I provide release binary packages for Windows x64 only. Depending on the type of your x86-64 CPU you can choose from
 1. RubiChess-BMI2: For best performance on modern intel CPUs and probably also new AMD Ryzen Zen3 / 5?00X CPU
 2. RubiChess-AVX2: For best performance on modern AMD Ryzen Zen/Zen2
 3. RubiChess: For older CPUs that support POPCNT but no AVX2
@@ -36,14 +36,16 @@ I provide release binary packages for Windows x64 only. Depending on your type o
 
 You will get a warning at startup if the selected binary doesn't match your CPU or it will just crash.
 
-RubiChess should build successfully on any x64 Linux, on MacOS (x64 and ARM64/M1) and on Raspbian (at least up to Raspi 3 which I own and tested) using ```make``` from inside the src subfolder.
+RubiChess should build successfully on any x64 Linux, on MacOS (x64 and ARM64/M1) and on Raspbian (at least up to Raspi 3 and 4 which I own and tested) using ```make``` from inside the src subfolder.
 
 For fastest binaries you should use the Clang compiler and the following build command
 
 ```make profile-build COMP=clang```
 
-You may need to install some additional packages like Clang, lld linker and llvm profiling toolkit to make this work.
+You may need to install some additional packages like clang, lld and llvm to make this work.
 You can also use the (default) gcc/g++ compiler ```make profile-build``` which probably works without additional packages but the binaries will be a little bit slower.
 
-For a profile-build in MacOS (Darwin) you have to include the folder containing the llvm-profdata tool in your PATH:
+Note 1: For a profile-build in MacOS (Darwin) you have to include the folder containing the llvm-profdata tool in your PATH:
 ```export PATH=$PATH:/Library/Developer/CommandLineTools/usr/bin/```
+
+Note 2: With current Makefile a profile-build always builds all the different binaries for the x86-64 plattform. Selecting a special one with the ARCH variable is not supported. Maybe later...
