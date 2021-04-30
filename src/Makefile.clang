@@ -40,7 +40,7 @@ network:
 
 nativeflags:
 !IF "$(ARCH)"=="native"
-	@$(CXX) /GX -DCPUTEST utils.cpp $(CPUTEST).cpp -o $(CPUTEST)
+	@$(CXX) /GX -DCPUTEST $(CPUTEST).cpp -o $(CPUTEST)
 	-@$(CPUTEST) > $(NATIVEFLAGS)
 !ELSE
 	-@del $(NATIVEFLAGS) 2>nul

@@ -69,7 +69,7 @@ endif
 ifeq (,$(CPUFLAGS))
 ifeq ($(ARCH),native)
 ifeq ($(wildcard ./$(CPUTEST)),)
-$(shell $(CXX) $(CXXFLAGS) $(LDFLAGS) -DCPUTEST utils.cpp $(CPUTEST).cpp -o $(CPUTEST))
+$(shell $(CXX) $(CXXFLAGS) $(LDFLAGS) -DCPUTEST $(CPUTEST).cpp -o $(CPUTEST))
 endif
 CPUFLAGS = "$(shell ./$(CPUTEST))"
 endif
