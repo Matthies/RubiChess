@@ -4,57 +4,23 @@
 
 MAKEFLAGS += --no-print-directory
 
-# Default build (Popcount)
-DEFAULTEXE=RubiChess
-DEFAULTCPUFEATURE=-DUSE_SSSE3 -DUSE_SSE2 -DUSE_POPCNT
-DEFAULTARCHFLAGS=-mssse3 -msse2 -mpopcnt
-
-
-ifeq ($(shell uname -m),x86_64)
-	# AVX512-build
-	AVX512EXE=RubiChess-AVX512
-	AVX512CPUFEATURE=-DUSE_AVX512 -DUSE_BMI2 -DUSE_AVX2 -DUSE_SSSE3 -DUSE_SSE2 -DUSE_POPCNT
-	AVX512ARCHFLAGS=-mavx512f -mavx512bw -mbmi2 -mavx2 -mssse3 -msse2 -mpopcnt
-
-	# BMI2-build
-	BMI2EXE=RubiChess-BMI2
-	BMI2CPUFEATURE=-DUSE_BMI2 -DUSE_AVX2 -DUSE_SSSE3 -DUSE_SSE2 -DUSE_POPCNT
-	BMI2ARCHFLAGS=-mbmi2 -mavx2 -mssse3 -msse2 -mpopcnt
-
-	# AVX2-build
-	AVX2EXE=RubiChess-AVX2
-	AVX2CPUFEATURE=-DUSE_AVX2 -DUSE_SSSE3 -DUSE_SSE2 -DUSE_POPCNT
-	AVX2ARCHFLAGS=-mavx2 -mssse3 -msse2 -mpopcnt
-
-	# SSSE3-build
-	SSSE3EXE=RubiChess-SSSE3
-	SSSE3CPUFEATURE=-DUSE_SSSE3 -DUSE_SSE2
-	SSSE3ARCHFLAGS=-mssse3 -msse2
-
-	# SSE2/Popcnt-build
-	SSE2POPCNTEXE=RubiChess-SSE2POPCNT
-	SSE2POPCNTCPUFEATURE=-DUSE_POPCNT -DUSE_SSE2
-	SSE2POPCNTARCHFLAGS=-mpopcnt -msse2
-
-	# Legacy-build
-	LEGACYEXE=RubiChess-Legacy
-	LEGACYCPUFEATURE=
-	LEGACYARCHFLAGS=
+ifeq ($(OS), Windows_NT)
+	EXEEXT=.exe
+else
+	EXEEXT=
 endif
 
-ifeq ($(shell uname -m),armv7l)
-	# Default build for Raspi
-	DEFAULTEXE=RubiChess
-	DEFAULTCPUFEATURE=-DUSE_NEON
-	DEFAULTARCHFLAGS=-mthumb -march=armv7-a -mfpu=neon
-endif
+CPUTEST=cputest
+ARCH=native
+PROFDIR = OPT
 
-ifeq ($(shell uname -m),arm64)
-	# Default build for apple-silicon
-	DEFAULTEXE=RubiChess
-	DEFAULTARCHFLAGS= -pedantic -Wextra -Wshadow -mfpu=neon
-	DEFAULTCPUFEATURE=-flto -DUSE_NEON
-endif 
+sse2 = no
+ssse3 = no
+popcnt = no
+avx2 = no
+bmi2 = no
+avx512 = no
+neon = no
 
 ifeq ($(shell uname -s),Darwin)
 	# Use clang compiler for MacOS
@@ -70,29 +36,114 @@ ifeq ($(EXE),)
 endif
 
 CXXFLAGS=-std=c++11 -Wall -O3 -flto
-ifeq ($(COMP),gcc)
+ifeq ($(COMP),$(filter $(COMP),gcc mingw))
 	CXX=g++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
 	LDFLAGS=-pthread
-	profile_make = gcc-profile-make
+ifeq ($(COMP),mingw)
+	LDFLAGS += -static
+endif
+	INSTRUMENTEDEXTRACXXFLAGS='-fprofile-generate=$(PROFDIR)'
+	INSTRUMENTEDEXTRALDFLAGS='-lgcov'
+	PGOEXTRACXXFLAGS='-fprofile-use=$(PROFDIR) -fno-peel-loops -fno-tracer'
+	PGOEXTRALDFLAGS='-lgcov'
+	PROFMERGE=
 endif
 
 ifeq ($(COMP),clang)
 	CXX=clang++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
 	LDFLAGS=-lpthread $(shell type lld 1>/dev/null 2>/dev/null && echo "-fuse-ld=lld")
-	profile_make = clang-profile-make
+	INSTRUMENTEDEXTRACXXFLAGS='-fprofile-instr-generate=$(EXE).clangprof-raw'
+	INSTRUMENTEDEXTRALDFLAGS=
+	PGOEXTRACXXFLAGS='-fprofile-instr-use=$(EXE).profdata'
+	PGOEXTRALDFLAGS=
+	PROFMERGE=llvm-profdata merge -output=$(EXE).profdata $(EXE).clangprof-raw
 endif
 
-ifeq ($(COMP),mingw)
-	CXX=g++
-	CXXFLAGS += -Wextra -Wshadow
-	LDFLAGS += -static
-	profile_make = gcc-profile-make
+ifeq ($(shell uname -m),armv7l)
+	# FIXME: Hardcoded -mfpu=neon for Neon support
+	CXXFLAGS += -mthumb -march=armv7-a -mfpu=neon
+endif
+
+ifeq (,$(CPUFLAGS))
+ifeq ($(ARCH),native)
+ifeq ($(wildcard ./$(CPUTEST)),)
+$(shell $(CXX) $(CXXFLAGS) $(LDFLAGS) -DCPUTEST $(CPUTEST).cpp -o $(CPUTEST))
+endif
+CPUFLAGS = "$(shell ./$(CPUTEST))"
+endif
+
+# Common supported x64 architectures
+ifneq (,$(findstring x86-64,$(ARCH)))
+CPUFLAGS = "sse2"
+endif
+ifneq (,$(findstring x86-64-avx512,$(ARCH)))
+CPUFLAGS = "avx512 bmi2 avx2 popcnt ssse3 sse2"
+endif
+ifneq (,$(findstring x86-64-bmi2,$(ARCH)))
+CPUFLAGS = "bmi2 avx2 popcnt ssse3 sse2"
+endif
+ifneq (,$(findstring x86-64-avx2,$(ARCH)))
+CPUFLAGS = "avx2 popcnt ssse3 sse2"
+endif
+ifneq (,$(findstring x86-64-modern,$(ARCH)))
+CPUFLAGS = "popcnt ssse3 sse2"
+endif
+ifneq (,$(findstring x86-64-ssse3,$(ARCH)))
+CPUFLAGS = "ssse3 sse2"
+endif
+ifneq (,$(findstring x86-64-sse3-popcnt,$(ARCH)))
+CPUFLAGS = "popcnt sse2"
+endif
+endif
+
+
+ifneq (,$(findstring avx512,$(CPUFLAGS)))
+	avx512 = yes
+endif
+ifneq (,$(findstring bmi2,$(CPUFLAGS)))
+	bmi2 = yes
+endif
+ifneq (,$(findstring avx2,$(CPUFLAGS)))
+	avx2 = yes
+endif
+ifneq (,$(findstring popcnt,$(CPUFLAGS)))
+	popcnt = yes
+endif
+ifneq (,$(findstring ssse3,$(CPUFLAGS)))
+	ssse3 = yes
+endif
+ifneq (,$(findstring sse2,$(CPUFLAGS)))
+	sse2 = yes
+endif
+ifneq (,$(findstring neon,$(CPUFLAGS)))
+	neon = yes
+endif
+
+ifeq ($(avx512),yes)
+	CXXFLAGS += -DUSE_AVX512 -mavx512f -mavx512bw
+endif
+ifeq ($(bmi2),yes)
+	CXXFLAGS += -DUSE_BMI2 -mbmi2
+endif
+ifeq ($(avx2),yes)
+	CXXFLAGS += -DUSE_AVX2 -mavx2
+endif
+ifeq ($(popcnt),yes)
+	CXXFLAGS += -DUSE_POPCNT -mpopcnt -msse3
+endif
+ifeq ($(ssse3),yes)
+	CXXFLAGS += -DUSE_SSSE3 -mssse3
+endif
+ifeq ($(sse2),yes)
+	CXXFLAGS += -DUSE_SSE2 -msse2
+endif
+ifeq ($(neon),yes)
+	CXXFLAGS += -DUSE_NEON
 endif
 
 DEPS = RubiChess.h
-PROFDIR = OPT
 
 GITVER = $(shell 2>/dev/null git show --name-only --abbrev-commit --date=format:%Y%m%d%H%M%S | grep -i "date:" | grep -o -E '[0-9]+')
 GITID = $(shell 2>/dev/null git show --name-only --abbrev-commit | grep -i -o -E "ommit[[:blank:]]+[0-9a-f]+" | grep -o -E '[0-9a-f]+')
@@ -111,12 +162,25 @@ ifneq ($(PROXY),)
 	WGETCMD += -e https_proxy=$(PROXY)
 endif
 
-.PHONY: clean profile-build gcc-profile-make clang-profile-make net all
+.PHONY: clean profile-build gcc-profile-make clang-profile-make net arch compile pgo profile-build pgo-rename release
 
-default:
-	@$(MAKE) compile ARCHFLAGS="$(DEFAULTARCHFLAGS)" CPUFEATURE="$(DEFAULTCPUFEATURE)"
+default: arch
+	@$(MAKE) compile MESSAGE='Creating standard build ...'
 
-all: net RubiChess-AVX512 RubiChess-BMI2 RubiChess-AVX2 RubiChess RubiChess-SSSE3 RubiChess-SSE2POPCNT RubiChess-Legacy
+build: net default
+
+arch:
+	@echo
+	@echo "Compiler: $(COMP)"
+	@echo "CPU features:"
+	@echo "============="
+	@echo "avx512: $(avx512)"
+	@echo "bmi2  : $(bmi2)"
+	@echo "avx2  : $(avx2)"
+	@echo "popcnt: $(popcnt)"
+	@echo "ssse3 : $(ssse3)"
+	@echo "sse2  : $(sse2)"
+	@echo "neon  : $(neon)"
 
 net:
 ifeq ($(RUBINET),)
@@ -124,37 +188,15 @@ ifeq ($(RUBINET),)
 else
 		@if test -f $(RUBINET); then echo "$(RUBINET) already exists."; else echo "Downloading $(RUBINET)..."; $(WGETCMD) $(NETURL)$(RUBINET) > $(RUBINET); fi;
 		$(eval shasum_command := $(shell if hash shasum 2>/dev/null; then echo "shasum -a 256 "; elif hash sha256sum 2>/dev/null; then echo "sha256sum "; fi))
-		@if [ "$(RUBINETHASH)" != `$(shasum_command) $(RUBINET) | cut -c1-10` ]; then echo "Failed download or $(RUBINET) corrupted, please delete!"; exit 1; fi
+		@if [ "$(RUBINETHASH)" != `$(shasum_command) $(RUBINET) | cut -c1-10` ]; then echo "Failed download or $(RUBINET) corrupted, please delete!"; exit 1; else echo "$(RUBINET) has correct hash."; fi
 endif
 
-
 compile:
-	@echo   \  Compiling $(EXE)...
-	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(LDFLAGS) $(EXTRALDFLAGS) $(GITDEFINE) $(CPUFEATURE) -o $(EXE)
-
-RubiChess-AVX512:
-	@$(MAKE) compile ARCHFLAGS="$(AVX512ARCHFLAGS)" EXE=$(AVX512EXE) CPUFEATURE="$(AVX512CPUFEATURE)"
-
-RubiChess-AVX2:
-	@$(MAKE) compile ARCHFLAGS="$(AVX2ARCHFLAGS)" EXE=$(AVX2EXE) CPUFEATURE="$(AVX2CPUFEATURE)"
-
-RubiChess-BMI2:
-	@$(MAKE) compile ARCHFLAGS="$(BMI2ARCHFLAGS)" EXE=$(BMI2EXE) CPUFEATURE="$(BMI2CPUFEATURE)"
-
-RubiChess:
-	@$(MAKE) compile ARCHFLAGS="$(DEFAULTARCHFLAGS)" EXE=$(DEFAULTEXE) CPUFEATURE="$(DEFAULTCPUFEATURE)"
-
-RubiChess-SSSE3:
-	@$(MAKE) compile ARCHFLAGS="$(SSSE3ARCHFLAGS)" EXE=$(SSSE3EXE) CPUFEATURE="$(SSSE3CPUFEATURE)"
-
-RubiChess-SSE2POPCNT:
-	@$(MAKE) compile ARCHFLAGS="$(SSE2POPCNTARCHFLAGS)" EXE=$(SSE2POPCNTEXE) CPUFEATURE="$(SSE2POPCNTCPUFEATURE)"
-
-RubiChess-Legacy:
-	@$(MAKE) compile ARCHFLAGS="$(LEGACYARCHFLAGS)" EXE=$(LEGACYEXE) CPUFEATURE="$(LEGACYCPUFEATURE)"
+	@echo $(MESSAGE)
+	@$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) *.cpp $(LDFLAGS) $(EXTRALDFLAGS) $(GITDEFINE) -o $(EXE)
 
 objclean:
-	@$(RM) $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) *.o || @echo $(RM) not available.
+	@$(RM) $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) *.o $(CPUTEST) || @echo $(RM) not available.
 
 profileclean:
 	@$(RM) -rf $(PROFDIR) || @echo $(RM) not available.
@@ -162,33 +204,27 @@ profileclean:
 
 clean: objclean profileclean
 
-gcc-profile-make:
-	@echo Creating profile build for $(PROFEXE)...
-	@$(MAKE) $(PROFEXE) EXTRACXXFLAGS='-fprofile-generate=$(PROFDIR)' EXTRALDFLAGS='-lgcov'
-	@echo Bench to generate profiling data...
-	-./$(PROFEXE) -bench > /dev/null
-	$(RM) ./$(PROFEXE)
-	@echo Creating optimized build for $(PROFEXE)...
-	@$(MAKE) $(PROFEXE) EXTRACXXFLAGS='-fprofile-use=$(PROFDIR) -fno-peel-loops -fno-tracer' EXTRALDFLAGS='-lgcov'
+pgo: arch
+	@$(MAKE) compile EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) MESSAGE='Creating instrumented build ...'
+	@./$(EXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo "Running bench to generate profiling data... successful!") || echo "Running bench to generate profiling data... failed!"  
+	@$(PROFMERGE)
+	@$(RM) ./$(EXE)
+	@$(MAKE) compile EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS=$(PGOEXTRALDFLAGS) MESSAGE='Creating optimized build ...'
 	@$(MAKE) profileclean
+	@strip $(EXE)$(EXEEXT)
+	@echo Binary $(EXE) created successfully.
 
-clang-profile-make:
-	@echo Creating profile build for $(PROFEXE)...
-	@$(MAKE) $(PROFEXE) EXTRACXXFLAGS='-fprofile-instr-generate=$(PROFEXE).clangprof-raw'
-	@echo Bench to generate profiling data...
-	-./$(PROFEXE) -bench > /dev/null
-	llvm-profdata merge -output=$(PROFEXE).profdata $(PROFEXE).clangprof-raw
-	$(RM) ./$(PROFEXE)
-	@echo Creating optimized build for $(PROFEXE)...
-	@$(MAKE) $(PROFEXE) EXTRACXXFLAGS='-fprofile-instr-use=$(PROFEXE).profdata'
-	@$(MAKE) profileclean
+profile-build: net pgo
 
+pgo-rename: pgo
+	@mv $(EXE) $(EXE)_$(ARCH)
+	@echo Successfully created $(EXE)_$(ARCH)
 
-profile-build: clean net
-	@if [ "$(AVX512EXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(AVX512EXE); fi
-	@if [ "$(BMI2EXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(BMI2EXE); fi
-	@if [ "$(AVX2EXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(AVX2EXE); fi
-	@if [ "$(DEFAULTEXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(DEFAULTEXE); fi
-	@if [ "$(SSSE3EXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(SSSE3EXE); fi
-	@if [ "$(SSE2POPCNTEXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(SSE2POPCNTEXE); fi
-	@if [ "$(LEGACYEXE)" != "" ]; then $(MAKE) $(profile_make) PROFEXE=$(LEGACYEXE); fi
+release: net
+	@$(MAKE) pgo-rename  ARCH=x86-64-avx512
+	@$(MAKE) pgo-rename  ARCH=x86-64-bmi2
+	@$(MAKE) pgo-rename  ARCH=x86-64-avx2
+	@$(MAKE) pgo-rename  ARCH=x86-64-modern
+	@$(MAKE) pgo-rename  ARCH=x86-64-ssse3
+	@$(MAKE) pgo-rename  ARCH=x86-64-sse2-popcnt
+	@$(MAKE) pgo-rename  ARCH=x86-64

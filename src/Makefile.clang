@@ -1,9 +1,11 @@
 #
 # Start MSVC Command prompt for x64 native tools and
-# for pgo binaries build:	nmake /f Makefile.clang release
-# for fast build of all:	nmake /f Makefile.clang all
-# for a pgo AVX2 binary:	nmake /f Makefile.clang pgo ARCH=avx2
-
+# nmake /f Makefile.clang release					to build all binaries for release package in subfolder Release-clang
+# nmake /f Makefile.clang build [ARCH=...]			to build fast binary
+# nmake /f Makefile.clang profile-build [ARCH=...]	to build even faster binary
+# ARCH can be one of x86-64-avx512, x86-64-bmi2, x86-64-avx2, x86-64-modern, x86-64-ssse3, x86-64-sse3-popcnt, x86-64
+# If ARCH is omitted the CPU features are auto-detected
+#
 
 # General settings
 CLANGVER=9
@@ -14,48 +16,16 @@ PROFDATATOOLEXE=$(LLVMInstallDir)\bin\llvm-profdata
 SOURCE=*.cpp
 OBJ=*.obj
 RELDIR=Release-clang
-CXXFLAGS=/GX /O2 /Oi /Ot /c -flto -fuse-ld=lld
+CXXFLAGS=/EHsc /O2 /Oi /Ot /c -flto -fuse-ld=lld
 LDFLAGS=/OPT:REF /OPT:ICF advapi32.lib
 PROFEXE=RubiChess-Prof
 NETURL=https://github.com/Matthies/NN/raw/main/
 TMPNN=_tmp.nnue
+CPUTEST=cputest
+EXE=RubiChess
+NATIVEFLAGS=_nativeflags.txt
+ARCH=native
 
-# AVX512-build
-AVX512EXE=RubiChess-AVX512
-AVX512CPUFEATURE=-DUSE_AVX512 -DUSE_BMI2 -DUSE_AVX2 -DUSE_SSSE3 -DUSE_SSE2 -DUSE_POPCNT
-AVX512ARCHFLAGS=-mavx512f -mavx512bw -mbmi2 -mavx2 -mssse3 -msse2 -mpopcnt
-
-# BMI2-build
-BMI2EXE=RubiChess-BMI2
-BMI2CPUFEATURE=-DUSE_BMI2 -DUSE_AVX2 -DUSE_SSSE3 -DUSE_SSE2 -DUSE_POPCNT
-BMI2ARCHFLAGS=-mbmi2 -mavx2 -mssse3 -msse2 -mpopcnt
-
-# AVX2-build
-AVX2EXE=RubiChess-AVX2
-AVX2CPUFEATURE=-DUSE_AVX2 -DUSE_SSSE3 -DUSE_SSE2 -DUSE_POPCNT
-AVX2ARCHFLAGS=-mavx2 -mssse3 -msse2 -mpopcnt
-
-# Popcount-build
-POPCOUNTEXE=RubiChess
-POPCOUNTCPUFEATURE=-DUSE_SSSE3 -DUSE_SSE2 -DUSE_POPCNT
-POPCOUNTARCHFLAGS=-mssse3 -msse2 -mpopcnt
-
-# SSSE3-build
-SSSE3EXE=RubiChess-SSSE3
-SSSE3CPUFEATURE=-DUSE_SSSE3 -DUSE_SSE2
-SSSE3ARCHFLAGS=-mssse3 -msse2
-
-# SSE2/Popcnt-build
-SSE2POPCNTEXE=RubiChess-SSE2POPCNT
-SSE2POPCNTCPUFEATURE=-DUSE_POPCNT -DUSE_SSE2
-SSE2POPCNTARCHFLAGS=-mpopcnt -msse2
-
-# Legacy-build
-LEGACYEXE=RubiChess-Legacy
-LEGACYCPUFEATURE=-D CPUFEATURE=CPULEGACY
-LEGACYARCHFLAGS=
-
-all: RubiChess-avx512 RubiChess-bmi2 RubiChess-avx2 RubiChess-popcount RubiChess-ssse3 RubiChess-Legacy
 
 $(RELDIR):
 	mkdir $(RELDIR)
@@ -67,75 +37,128 @@ network:
 !ENDIF
 !ENDIF
 
-build:
-!IFDEF EXE
-	@echo Compiling $(EXE) ...
-	@$(CXX) $(CXXFLAGS) $(ARCHFLAGS) $(SOURCE) $(PROFILEFLAGS) $(CPUFEATURE)
+
+nativeflags:
+!IF "$(ARCH)"=="native"
+	@$(CXX) /GX -DCPUTEST $(CPUTEST).cpp -o $(CPUTEST)
+	-@$(CPUTEST) > $(NATIVEFLAGS)
+!ELSE
+	-@del $(NATIVEFLAGS) 2>nul
+!ENDIF
+
+cpuflags: nativeflags
+!IF "$(ARCH)" == "x86-64-avx512"
+CPUFLAGS=avx512 bmi2 avx2 popcnt ssse3 sse2
+!ELSEIF "$(ARCH)" == "x86-64-bmi2"
+CPUFLAGS=bmi2 avx2 popcnt ssse3 sse2
+!ELSEIF "$(ARCH)" == "x86-64-avx2"
+CPUFLAGS=avx2 popcnt ssse3 sse2
+!ELSEIF "$(ARCH)" == "x86-64-modern"
+CPUFLAGS=popcnt ssse3 sse2
+!ELSEIF "$(ARCH)" == "x86-64-ssse3"
+CPUFLAGS=ssse3 sse2
+!ELSEIF "$(ARCH)" == "x86-64-sse3-popcnt"
+CPUFLAGS=popcnt sse2
+!ELSEIF "$(ARCH)" == "x86-64"
+CPUFLAGS=sse2
+!ENDIF
+
+!IF [@echo $(CPUFLAGS) | find "avx512" > nul] == 0 || [type $(NATIVEFLAGS) 2>nul | find "avx512" > nul] == 0
+AVX512=yes
+ARCHFLAGS=$(ARCHFLAGS) -DUSE_AVX512 -mavx512f -mavx512bw
+!ELSE
+AVX512=no
+!ENDIF
+!IF [@echo $(CPUFLAGS) | find "bmi2" > nul] == 0 || [type $(NATIVEFLAGS) 2>nul | find "bmi2" > nul] == 0
+BMI2=yes
+ARCHFLAGS=$(ARCHFLAGS) -DUSE_BMI2 -mbmi2
+!ELSE
+BMI2=no
+!ENDIF
+!IF [@echo $(CPUFLAGS) | find "avx2" > nul] == 0 || [type $(NATIVEFLAGS) 2>nul | find "avx2" > nul] == 0
+AVX2=yes
+ARCHFLAGS=$(ARCHFLAGS) -DUSE_AVX2 -mavx2
+!ELSE
+AVX2=no
+!ENDIF
+!IF [@echo $(CPUFLAGS) | find "popcnt" > nul] == 0 || [type $(NATIVEFLAGS) 2>nul | find "popcnt" > nul] == 0
+POPCNT=yes
+ARCHFLAGS=$(ARCHFLAGS) -DUSE_POPCNT -mpopcnt -msse3
+!ELSE
+POPCNT=no
+!ENDIF
+!IF [@echo $(CPUFLAGS) | find "ssse3" > nul] == 0 || [type $(NATIVEFLAGS) 2>nul | find "ssse3" > nul] == 0
+SSSE3=yes
+ARCHFLAGS=$(ARCHFLAGS) -DUSE_SSSE3 -mssse3
+!ELSE
+SSSE3=no
+!ENDIF
+!IF [@echo $(CPUFLAGS) | find "sse2" > nul] == 0 || [type $(NATIVEFLAGS) 2>nul | find "sse2" > nul] == 0
+SSE2=yes
+ARCHFLAGS=$(ARCHFLAGS) -DUSE_SSE2 -msse2
+!ELSE
+SSE2=no
+!ENDIF
+
+printarch: cpuflags
+	@echo.
+	@echo CPU features:
+	@echo =============
+	@echo avx512: $(AVX512)
+	@echo bmi2__: $(BMI2)
+	@echo avx2__: $(AVX2)
+	@echo popcnt: $(POPCNT)
+	@echo ssse3_: $(SSSE3)
+	@echo sse2__: $(SSE2)
+
+buildandarch: printarch compile
+
+build: cpuflags
+	@echo Building binary for $(ARCH)
+	@nmake -c -f Makefile.clang buildandarch ARCH=$(ARCH)
+
+compile:
+	@$(CXX) $(CXXFLAGS) $(ARCHFLAGS) $(SOURCE) $(PROFILEFLAGS)
 !IFDEF PROFLIB
-	@echo Linking $(EXE) (profiling build)...
 	@$(LD) $(LDFLAGS) /OUT:$(PROFEXE).exe $(OBJ) "$(PROFLIB)"
 !ELSE
-	@echo Linking $(EXE) ...
-	@$(LD) $(LDFLAGS) /OUT:$(RELDIR)\$(EXE).exe $(OBJ) "$(PROFLIB)"
-!ENDIF
-!ELSE
-	@echo EXE is not defined.
+	@$(LD) $(LDFLAGS) /OUT:$(EXE).exe $(OBJ) "$(PROFLIB)"
 !ENDIF
 
-rubichess-avx512: $(RELDIR)
-	@nmake -c -f Makefile.clang build EXE=$(AVX512EXE) CPUFEATURE="$(AVX512CPUFEATURE)" ARCHFLAGS="$(AVX512ARCHFLAGS)"
-
-rubichess-bmi2: $(RELDIR)
-	@nmake -c -f Makefile.clang build EXE=$(BMI2EXE) CPUFEATURE="$(BMI2CPUFEATURE)" ARCHFLAGS="$(BMI2ARCHFLAGS)"
-
-rubichess-avx2: $(RELDIR)
-	@nmake -c -f Makefile.clang build EXE=$(AVX2EXE) CPUFEATURE="$(AVX2CPUFEATURE)" ARCHFLAGS="$(AVX2ARCHFLAGS)"
-
-rubichess-popcount: $(RELDIR)
-	@nmake -c -f Makefile.clang build EXE=$(POPCOUNTEXE) CPUFEATURE="$(POPCOUNTCPUFEATURE)" ARCHFLAGS="$(POPCOUNTARCHFLAGS)"
-
-rubichess-ssse3: $(RELDIR)
-	@nmake -c -f Makefile.clang build EXE=$(SSSE3EXE) CPUFEATURE="$(SSSE3CPUFEATURE)" ARCHFLAGS="$(SSSE3ARCHFLAGS)"
-
-rubichess-sse2popcnt: $(RELDIR)
-	@nmake -c -f Makefile.clang build EXE=$(SSE2POPCNTEXE) CPUFEATURE="$(SSE2POPCNTCPUFEATURE)" ARCHFLAGS="$(SSE2POPCNTARCHFLAGS)"
-
-rubichess-legacy: $(RELDIR)
-	@nmake -c -f Makefile.clang build EXE=$(LEGACYEXE) CPUFEATURE="$(LEGACYCPUFEATURE)" ARCHFLAGS="$(LEGACYARCHFLAGS)"
-
-pgo:
-!IFDEF ARCH
-	@echo Creating profile build for RubiChess-$(ARCH)...
-	@nmake -c -f Makefile.clang RubiChess-$(ARCH) PROFILEFLAGS=-fprofile-instr-generate=$(PROFEXE).clangprof-raw PROFLIB=$(LLVMInstallDir)\lib\clang\$(CLANGVER).0.0\lib\windows\clang_rt.profile-x86_64.lib
+pgo: printarch
+	@echo Creating instrumented binary...
+	@nmake -c -f Makefile.clang compile ARCH=$(ARCH) PROFILEFLAGS=-fprofile-instr-generate=$(PROFEXE).clangprof-raw PROFLIB=$(LLVMInstallDir)\lib\clang\$(CLANGVER).0.0\lib\windows\clang_rt.profile-x86_64.lib
 	@echo Bench to generate profiling data...
-	@$(PROFEXE) -bench > nul
+	-@$(PROFEXE) -bench >nul
 	@$(PROFDATATOOLEXE) merge -output=$(PROFEXE).clangprof $(PROFEXE).clangprof-raw
-	@nmake -c -f Makefile.clang RubiChess-$(ARCH) PROFILEFLAGS=-fprofile-instr-use=$(PROFEXE).clangprof
-!ELSE
-	@nmake -c -f Makefile.clang pgo ARCH=avx512
-	@nmake -c -f Makefile.clang pgo ARCH=bmi2
-	@nmake -c -f Makefile.clang pgo ARCH=avx2
-	@nmake -c -f Makefile.clang pgo ARCH=popcount
-	@nmake -c -f Makefile.clang pgo ARCH=ssse3
-	@nmake -c -f Makefile.clang pgo ARCH=sse2popcnt
-	@nmake -c -f Makefile.clang pgo ARCH=legacy
-!ENDIF
+	@echo.
+	@echo Creating optimized binary...
+	@nmake -c -f Makefile.clang compile ARCH=$(ARCH) PROFILEFLAGS=-fprofile-instr-use=$(PROFEXE).clangprof
 	@nmake -c -f Makefile.clang profile-clean
 
-profile-build: pgo
+profile-build: cpuflags
+	@nmake -c -f Makefile.clang pgo ARCH=$(ARCH)
 
-release: pgo
+pgo-rename: printarch pgo
+	@move $(EXE).exe $(RELDIR)\$(EXE)_$(ARCH).exe
+	@echo Successfully created $(EXE)_$(ARCH)
+
+release:
+	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-avx512
+	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-bmi2
+	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-avx2
+	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-modern
+	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-ssse3
+	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-sse3-popcnt
+	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64
 
 profile-clean:
-	@del $(PROFEXE)*
-	@del *.obj
+	@del $(PROFEXE)* 2>nul
+	@del *.obj 2>nul
 
 clean: profile-clean
-	@del $(RELDIR)\$(AVX512EXE).exe
-	@del $(RELDIR)\$(BMI2EXE).exe
-	@del $(RELDIR)\$(AVX2EXE).exe
-	@del $(RELDIR)\$(POPCOUNTEXE).exe
-	@del $(RELDIR)\$(SSSE3EXE).exe
-	@del $(RELDIR)\$(SSE2POPCNTEXE).exe
-	@del $(RELDIR)\$(LEGACYEXE).exe
+	@del $(EXE).exe 2>nul
+	@del $(CPUTEST).exe 2>nul
+	@del $(NATIVEFLAGS) 2>nul
 	@set RUBINET=
+
