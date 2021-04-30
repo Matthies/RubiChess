@@ -1524,8 +1524,9 @@ enum ponderstate_t { NO, PONDERING, HITPONDER };
 #define CPUAVX2     (1 << 3)
 #define CPUBMI2     (1 << 4)
 #define CPUAVX512   (1 << 5)
+#define CPUNEON     (1 << 6)
 
-#define STRCPUFEATURELIST  { "sse2","ssse3","popcnt","avx2","bmi2", "avx512" }
+#define STRCPUFEATURELIST  { "sse2","ssse3","popcnt","avx2","bmi2", "avx512", "neon" }
 
 
 extern const string strCpuFeatures[];
@@ -1551,6 +1552,9 @@ public:
 #endif
 #ifdef USE_AVX512
         | CPUAVX512
+#endif
+#ifdef USE_NEON
+        | CPUNEON
 #endif
         ;
 

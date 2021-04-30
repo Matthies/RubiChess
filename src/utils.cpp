@@ -18,6 +18,7 @@
 
 #include "RubiChess.h"
 
+#ifndef CPUTEST
 
 /* A small noncryptographic PRNG                       */
 /* http://www.burtleburtle.net/bob/rand/smallprng.html */
@@ -349,6 +350,19 @@ string AlgebraicFromShort(string s, chessposition *pos)
     return retval;
 }
 
+#endif
+
+
+compilerinfo::compilerinfo()
+{
+    GetSystemInfo();
+}
+
+string compilerinfo::SystemName()
+{
+    return system;
+}
+
 
 #if defined(_M_X64) || defined(__amd64)
 
@@ -481,8 +495,10 @@ void compilerinfo::GetSystemInfo()
 {
 #ifdef __ARM_NEON__
     system = "ARM platform supprting NEON";
+    machineSupports = CPUNEON;
 #else
     system = "Some non-x86-64 platform.";
+    machineSupports = 0ULL;
 #endif
 }
 
@@ -492,6 +508,8 @@ string compilerinfo::PrintCpuFeatures(U64 f, bool onlyHighest)
 }
 #endif
 
+
+#ifndef CPUTEST
 
 #ifdef _WIN32
 U64 getTime()
@@ -693,4 +711,5 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
     }
 
 }
+#endif
 #endif

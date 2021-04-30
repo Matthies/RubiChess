@@ -2527,17 +2527,6 @@ static void uciSetNnuePath()
 }
 #endif
 
-compilerinfo::compilerinfo()
-{
-    GetSystemInfo();
-}
-
-string compilerinfo::SystemName()
-{
-    return system;
-}
-
-
 engine::engine(compilerinfo *c)
 {
     compinfo = c;
