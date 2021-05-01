@@ -122,7 +122,7 @@ compile:
 !IFDEF PROFLIB
 	@$(LD) $(LDFLAGS) /OUT:$(PROFEXE).exe $(OBJ) "$(PROFLIB)"
 !ELSE
-	@$(LD) $(LDFLAGS) /OUT:$(EXE).exe $(OBJ) "$(PROFLIB)"
+	@$(LD) $(LDFLAGS) /OUT:$(RELDIR)\$(EXE).exe $(OBJ) "$(PROFLIB)"
 !ENDIF
 
 pgo: printarch
@@ -140,7 +140,7 @@ profile-build: cpuflags
 	@nmake -c -f Makefile.clang pgo ARCH=$(ARCH)
 
 pgo-rename: printarch pgo
-	@move $(EXE).exe $(RELDIR)\$(EXE)_$(ARCH).exe
+	@move $(RELDIR)\$(EXE).exe $(RELDIR)\$(EXE)_$(ARCH).exe
 	@echo Successfully created $(EXE)_$(ARCH)
 
 release:
@@ -157,7 +157,7 @@ profile-clean:
 	@del *.obj 2>nul
 
 clean: profile-clean
-	@del $(EXE).exe 2>nul
+	@del $(RELDIR)\$(EXE).exe 2>nul
 	@del $(CPUTEST).exe 2>nul
 	@del $(NATIVEFLAGS) 2>nul
 	@set RUBINET=
