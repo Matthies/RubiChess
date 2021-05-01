@@ -902,6 +902,32 @@ void convert(vector<string> args)
 }
 
 
+// global parameters for training
+//learn targetdir C : \Entwicklung\nnue\training loop 100 batchsize 1000000 use_draw_in_training 1 use_draw_in_validation 1
+//   eta 1.0 lambda 0.5 eval_limit 32000 nn_batch_size 1000 newbob_decay 0.5 newbob_num_trials 6
+//   eval_save_interval 10000000 loss_output_interval 10000000 mirror_percentage 0 validation_set_file_name C : \Entwicklung\nnue\gensfen - 12 - 26.03.2021 - 5.bin
+string trainingdir;
+int loop = 1;
+int mini_batch_size = 1000000;
+bool use_draw_in_training = false;
+bool use_draw_in_validation = false;
+double eta1 = 0.0;
+double eta2 = 0.0;
+double eta3 = 0.0;
+uint64_t eta1_epoch = 0; // eta2 is not applied by default
+uint64_t eta2_epoch = 0; // eta3 is not applied by default
+double ELMO_LAMBDA = 0.33;
+double ELMO_LAMBDA2 = 0.33;
+double ELMO_LAMBDA_LIMIT = 32000;
+int eval_limit = 32000;
+uint64_t nn_batch_size = 1000;
+double newbob_decay = 1.0;
+int newbob_num_trials = 2;
+string nn_options;
+uint64_t eval_save_interval = 1000000000ULL;
+uint64_t loss_output_interval = 0;
+uint64_t mirror_percentage = 0;
+
 void learn(vector<string> args)
 {
     size_t cs = args.size();
@@ -915,4 +941,9 @@ void learn(vector<string> args)
     }
 }
 
+
+void readTrainingData()
+{
+
+}
 #endif
