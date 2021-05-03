@@ -906,27 +906,32 @@ void convert(vector<string> args)
 //learn targetdir C : \Entwicklung\nnue\training loop 100 batchsize 1000000 use_draw_in_training 1 use_draw_in_validation 1
 //   eta 1.0 lambda 0.5 eval_limit 32000 nn_batch_size 1000 newbob_decay 0.5 newbob_num_trials 6
 //   eval_save_interval 10000000 loss_output_interval 10000000 mirror_percentage 0 validation_set_file_name C : \Entwicklung\nnue\gensfen - 12 - 26.03.2021 - 5.bin
-string trainingdir;
+string training_dir;
+string validation_set_file_name;
 int loop = 1;
+const bool save_only_once = false;
+const bool no_shuffle = false;
 int mini_batch_size = 1000000;
+uint64_t nn_batch_size = 1000;
+const string nn_options = "";
 bool use_draw_in_training = false;
 bool use_draw_in_validation = false;
 double eta1 = 0.0;
-double eta2 = 0.0;
-double eta3 = 0.0;
-uint64_t eta1_epoch = 0; // eta2 is not applied by default
-uint64_t eta2_epoch = 0; // eta3 is not applied by default
-double ELMO_LAMBDA = 0.33;
-double ELMO_LAMBDA2 = 0.33;
-double ELMO_LAMBDA_LIMIT = 32000;
-int eval_limit = 32000;
-uint64_t nn_batch_size = 1000;
+const double eta2 = 0.0;
+const double eta3 = 0.0;
+const uint64_t eta1_epoch = 0; // eta2 is not applied by default
+const uint64_t eta2_epoch = 0; // eta3 is not applied by default
 double newbob_decay = 1.0;
 int newbob_num_trials = 2;
-string nn_options;
+const double discount_rate = 0.0;
+const int reduction_gameply = 1;
+double elmo_lambda = 0.33;
+const double elmo_lambda2 = 0.33;
+const int elmo_lambda_limit = 32000;
+uint64_t mirror_percentage = 0;
+
 uint64_t eval_save_interval = 1000000000ULL;
 uint64_t loss_output_interval = 0;
-uint64_t mirror_percentage = 0;
 
 void learn(vector<string> args)
 {
@@ -937,8 +942,67 @@ void learn(vector<string> args)
     {
         string cmd = args[ci++];
 
-        // ToDo...
+        if (cmd == "training_dir" && ci < cs)
+            training_dir = args[ci++];
+        if (cmd == "validation_set_file_name" && ci < cs)
+            validation_set_file_name = args[ci++];
+        if (cmd == "loop" && ci < cs)
+            loop = stoi(args[ci++]);
+        if (cmd == "eval_limit" && ci < cs)
+            eval_limit = stoi(args[ci++]);
+        if (cmd == "mini_batch_size" && ci < cs)
+            mini_batch_size = stoi(args[ci++]);
+        if (cmd == "nn_batch_size" && ci < cs)
+            nn_batch_size = stoi(args[ci++]);
+        if (cmd == "use_draw_in_training" && ci < cs)
+            use_draw_in_training = stoi(args[ci++]);
+        if (cmd == "use_draw_in_validation" && ci < cs)
+            use_draw_in_validation = stoi(args[ci++]);
+        if (cmd == "eta" && ci < cs)
+            eta1 = stof(args[ci++]);
+        if (cmd == "newbob_decay" && ci < cs)
+            newbob_decay = stof(args[ci++]);
+        if (cmd == "newbob_num_trials" && ci < cs)
+            newbob_num_trials = stoi(args[ci++]);
+        if (cmd == "lambda" && ci < cs)
+            elmo_lambda = stof(args[ci++]);
+        if (cmd == "mirror_percentage" && ci < cs)
+            mirror_percentage = stoi(args[ci++]);
+        if (cmd == "eval_save_interval" && ci < cs)
+            eval_save_interval = stoi(args[ci++]);
+        if (cmd == "loss_output_interval" && ci < cs)
+            loss_output_interval = stoi(args[ci++]);
+
+
+
     }
+
+    cout << "Learning with these parameters:\n";
+    cout << "training_dir:              " << training_dir << "\n";
+    cout << "validation_set_file_name:  " << validation_set_file_name << "\n";
+    cout << "loop:                      " << loop << "\n";
+    cout << "eval_limit:                " << eval_limit << "\n";
+    cout << "save_only_once:            " << (save_only_once ? "true" : "false") << "\n";
+    cout << "no_shuffle:                " << (no_shuffle ? "true" : "false") << "\n";
+    cout << "Loss Function:             " << "ELMO_METHOD(WCSC27)\n";
+    cout << "mini_batch_size:           " << mini_batch_size << "\n";
+    cout << "nn_batch_size:             " << nn_batch_size << "\n";
+    cout << "nn_options:                " << nn_options << "\n";
+    cout << "learning rate:             " << showpoint << fixed << setprecision(1) << eta1 << " , " << eta2 << " , " << eta3 << "\n";
+    cout << "eta_epoch:                 " << eta1_epoch << " , " << eta2_epoch << "\n";
+    cout << "newbob_decay:              " << newbob_decay << " with " << newbob_num_trials << " trials\n";
+    cout << "discount_rate:             " << showpoint << fixed << setprecision(1) << discount_rate << "\n";
+    cout << "reduction_gameply:         " << reduction_gameply << "\n";
+    cout << "lambda:                    " << showpoint << fixed << setprecision(1) << elmo_lambda << "\n";
+    cout << "lambda2:                   " << showpoint << fixed << setprecision(1) << elmo_lambda2 << "\n";
+    cout << "lambda_limit:              " << elmo_lambda_limit << "\n";
+    cout << "mirror_percentage:         " << mirror_percentage << "\n";
+    cout << "eval_save_interval:        " << eval_save_interval << "\n";
+    cout << "loss_output_interval:      " << loss_output_interval << "\n";
+
+    cout << "  use_draw_in_training:    " << use_draw_in_training << "\n";
+    cout << "  use_draw_in_validation:  " << use_draw_in_validation << "\n";
+
 }
 
 
