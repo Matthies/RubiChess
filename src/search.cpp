@@ -914,7 +914,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             quietMoves[mstop][quietsPlayed++] = mc;
         else
             tacticalMoves[mstop][tacticalPlayed++] = mc;
-
     }
 
     if (legalMoves == 0)
