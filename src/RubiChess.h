@@ -1198,8 +1198,8 @@ enum MoveSelector_State { INITSTATE, HASHMOVESTATE, TACTICALINITSTATE, TACTICALS
 
 class MoveSelector
 {
-    chessposition *pos;
 public:
+    chessposition *pos;
     int state;
     chessmovelist* captures;
     chessmovelist* quiets;
