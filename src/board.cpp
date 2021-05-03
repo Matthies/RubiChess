@@ -2295,8 +2295,6 @@ int chessposition::getBestPossibleCapture()
 void MoveSelector::SetPreferredMoves(chessposition *p)
 {
     pos = p;
-    hashmove = 0;
-    killermove1 = killermove2 = 0;
     if (!p->isCheckbb)
     {
         onlyGoodCaptures = true;
@@ -2304,6 +2302,7 @@ void MoveSelector::SetPreferredMoves(chessposition *p)
     }
     else
     {
+        onlyGoodCaptures = false;
         state = EVASIONINITSTATE;
         pos->getCmptr(&cmptr[0]);
     }

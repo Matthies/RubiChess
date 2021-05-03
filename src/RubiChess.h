@@ -677,6 +677,15 @@ typedef struct {
 extern NnueType NnueReady;
 
 
+struct NnueNetwork {
+    alignas(64) clipped_t input[NnueFtOutputdims];
+    int32_t hidden1_values[32];
+    int32_t hidden2_values[32];
+    clipped_t hidden1_clipped[32];
+    clipped_t hidden2_clipped[32];
+    int32_t out_value;
+};
+
 class NnueLayer
 {
 public:
@@ -1371,7 +1380,12 @@ public:
 #ifdef NNUE
     NnueAccumulator accumulator[MAXDEPTH];
     DirtyPiece dirtypiece[MAXDEPTH];
+    NnueNetwork network;
 #endif
+    uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];
+    uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];
+    MoveSelector moveSelector[MAXDEPTH];
+    MoveSelector extensionMoveSelector[MAXDEPTH];
     bool w2m();
     void BitboardSet(int index, PieceCode p);
     void BitboardClear(int index, PieceCode p);
