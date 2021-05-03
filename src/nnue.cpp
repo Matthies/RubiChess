@@ -349,22 +349,11 @@ template <NnueType Nt> void chessposition::Transform(clipped_t *output)
 }
 
 
-struct NnueNetwork {
-    alignas(64) clipped_t input[NnueFtOutputdims];
-    int32_t hidden1_values[32];
-    int32_t hidden2_values[32];
-    clipped_t hidden1_clipped[32];
-    clipped_t hidden2_clipped[32];
-    int32_t out_value;
-};
-
 eval NnueValueScale = 47;
 
 
 template <NnueType Nt> int chessposition::NnueGetEval()
 {
-    NnueNetwork network;
-
     Transform<Nt>(network.input);
     NnueHd1->Propagate(network.input, network.hidden1_values);
     NnueCl1->Propagate(network.hidden1_values, network.hidden1_clipped);

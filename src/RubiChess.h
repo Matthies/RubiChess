@@ -677,6 +677,15 @@ typedef struct {
 extern NnueType NnueReady;
 
 
+struct NnueNetwork {
+    alignas(64) clipped_t input[NnueFtOutputdims];
+    int32_t hidden1_values[32];
+    int32_t hidden2_values[32];
+    clipped_t hidden1_clipped[32];
+    clipped_t hidden2_clipped[32];
+    int32_t out_value;
+};
+
 class NnueLayer
 {
 public:
@@ -1189,8 +1198,8 @@ enum MoveSelector_State { INITSTATE, HASHMOVESTATE, TACTICALINITSTATE, TACTICALS
 
 class MoveSelector
 {
-    chessposition *pos;
 public:
+    chessposition *pos;
     int state;
     chessmovelist* captures;
     chessmovelist* quiets;
@@ -1201,8 +1210,6 @@ public:
     int legalmovenum;
     bool onlyGoodCaptures;
     int16_t *cmptr[CMPLIES];
-
-public:
     void SetPreferredMoves(chessposition *p);  // for quiescence move selector
     void SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, uint32_t counter, int excludemove);
     uint32_t next();
@@ -1371,7 +1378,12 @@ public:
 #ifdef NNUE
     NnueAccumulator accumulator[MAXDEPTH];
     DirtyPiece dirtypiece[MAXDEPTH];
+    NnueNetwork network;
 #endif
+    uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];
+    uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];
+    MoveSelector moveSelector[MAXDEPTH];
+    MoveSelector extensionMoveSelector[MAXDEPTH];
     bool w2m();
     void BitboardSet(int index, PieceCode p);
     void BitboardClear(int index, PieceCode p);
