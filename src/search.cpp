@@ -1496,20 +1496,69 @@ static void search_gen1(searchthread *thr)
             en.t1stop++;
         printf("info string stop info last movetime: %4.3f    full-it. / immediate:  %4d /%4d\n", (nowtime - en.starttime) / (double)en.frequency, en.t1stop, en.t2stop);
 #endif
-        // Output of best move
-        searchthread *bestthr = thr;
-        int bestscore = bestthr->pos.bestmovescore[0];
+        // Stop all workers
+        en.stopLevel = ENGINESTOPIMMEDIATELY;
+
+		int base = pos->bestmovescore[0];
         for (int i = 1; i < en.Threads; i++)
-        {
-            // search for a better score in the other threads
-            searchthread *hthr = &en.sthread[i];
-            if (hthr->lastCompleteDepth >= bestthr->lastCompleteDepth
-                && hthr->pos.bestmovescore[0] > bestscore)
-            {
-                bestscore = hthr->pos.bestmovescore[0];
-                bestthr = hthr;
-            }
-        }
+			base = min(base, en.sthread[i].pos.bestmovescore[0]);
+		
+		uint32_t contenderMove[MAXMOVELISTLENGTH];
+		int64_t contenderScore[MAXMOVELISTLENGTH];
+		int lastContender = 0;
+		
+		for (int i = 0; i < en.Threads; i++)
+		{
+			searchthread *hthr = &en.sthread[i];
+			uint32_t m = hthr->pos.bestmove;
+			int j;
+			for (j = 0; j < lastContender; j++)
+				if (m == contenderMove[j])
+					break;
+			if (j == lastContender)
+			{
+				//cout << "info string new contender " << j << "  " << moveToString(m) << "\n";
+				contenderScore[lastContender] = 0;
+				contenderMove[lastContender++] = m;
+			}
+			
+			//cout << "info string conscore vorher: " << contenderScore[j] << "  nachher: ";
+			contenderScore[j] += (hthr->pos.bestmovescore[0] - base + 10) * hthr->lastCompleteDepth;
+			//cout << contenderScore[j] << "\n";
+		}
+		
+#if 0
+		for (int j = 0; j < lastContender; j++)
+			cout << "info string " << moveToString(contenderMove[j]) << "  " << contenderScore[j] << "\n";
+#endif		
+		// Get best move considering all workers
+		searchthread *bestthr = thr;
+		if (lastContender > 1)
+		{
+			int64_t bestScore = contenderScore[0];
+			for (int i = 1; i < en.Threads; i++)
+			{
+				searchthread *hthr = &en.sthread[i];
+				uint32_t m = hthr->pos.bestmove;
+				int j;
+				for (j = 0; m != contenderMove[j]; j++);
+				int64_t sc = hthr->pos.bestmovescore[0];
+				if (abs(bestthr->pos.bestmovescore[0] >= SCORETBWININMAXPLY))
+				{
+					// We are in TBWin area; just use the move with best score
+					if (sc > bestthr->pos.bestmovescore[0])
+						bestthr = hthr;
+				} else {
+					if (sc >= SCORETBWININMAXPLY || (contenderScore[j] > bestScore && sc > -SCORETBWININMAXPLY))
+					{
+						// The move secures TB win or has best contender score and doesn't lead into TB loss
+						bestScore = contenderScore[j];
+						bestthr = hthr;						
+					}
+				}
+			}
+		}
+
         if (pos->bestmove != bestthr->pos.bestmove)
         {
             // copy best moves and score from best thread to thread 0
@@ -1561,7 +1610,6 @@ static void search_gen1(searchthread *thr)
             cout << " ponder " << strPonder;
         }
         cout << "\n";
-        en.stopLevel = ENGINESTOPIMMEDIATELY;
 
         // Save pondermove in rootposition for time management of following search
         en.rootposition.pondermove = pos->pondermove;
