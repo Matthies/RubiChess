@@ -1541,7 +1541,7 @@ static void search_gen1(searchthread *thr)
 				int j;
 				for (j = 0; m != contenderMove[j]; j++);
 				int64_t sc = hthr->pos.bestmovescore[0];
-				if (abs(bestthr->pos.bestmovescore[0] >= SCORETBWININMAXPLY))
+				if (abs(bestthr->pos.bestmovescore[0]) >= SCORETBWININMAXPLY)
 				{
 					// We are in TBWin area; just use the move with best score
 					if (sc > bestthr->pos.bestmovescore[0])
