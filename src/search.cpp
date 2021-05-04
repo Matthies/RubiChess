@@ -1496,8 +1496,6 @@ static void search_gen1(searchthread *thr)
             en.t1stop++;
         printf("info string stop info last movetime: %4.3f    full-it. / immediate:  %4d /%4d\n", (nowtime - en.starttime) / (double)en.frequency, en.t1stop, en.t2stop);
 #endif
-        // Stop all workers
-        en.stopLevel = ENGINESTOPIMMEDIATELY;
 
 		int base = pos->bestmovescore[0];
         for (int i = 1; i < en.Threads; i++)
@@ -1610,6 +1608,9 @@ static void search_gen1(searchthread *thr)
             cout << " ponder " << strPonder;
         }
         cout << "\n";
+
+        // Stop all workers
+        en.stopLevel = ENGINESTOPIMMEDIATELY;
 
         // Save pondermove in rootposition for time management of following search
         en.rootposition.pondermove = pos->pondermove;
