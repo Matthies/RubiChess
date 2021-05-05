@@ -329,12 +329,12 @@ static int probe_ab(int alpha, int beta, int *success, chessposition *pos)
 
     // Generate (at least) all legal captures including (under)promotions.
     // It is OK to generate more, as long as they are filtered out below.
-    chessmovelist *movelist = &pos->captureslist[pos->ply];
+    chessmovelist movelist;
     pos->prepareStack();
-    movelist->length = CreateMovelist<ALL>(pos, &movelist->move[0]);
-    for (int i = 0; i < movelist->length; i++)
+    movelist.length = CreateMovelist<ALL>(pos, &movelist.move[0]);
+    for (int i = 0; i < movelist.length; i++)
     {
-        uint32_t mc = movelist->move[i].code;
+        uint32_t mc = movelist.move[i].code;
         if (ISCAPTURE(mc) || ISPROMOTION(mc) || pos->isCheckbb)
         {
             if (pos->playMove(mc))
@@ -382,16 +382,16 @@ int probe_wdl(int *success, chessposition *pos)
     int i;
 
     // Generate (at least) all legal captures including (under)promotions.
-    chessmovelist *movelist = &pos->captureslist[pos->ply];
+    chessmovelist movelist;
     pos->prepareStack();
-    movelist->length = CreateMovelist<ALL>(pos, &movelist->move[0]);
+    movelist.length = CreateMovelist<ALL>(pos, &movelist.move[0]);
 
     // We do capture resolution, letting best_cap keep track of the best
     // capture without ep rights and letting best_ep keep track of still
     // better ep captures if they exist.
-    for (i = 0; i < movelist->length; i++)
+    for (i = 0; i < movelist.length; i++)
     {
-        uint32_t mc = movelist->move[i].code;
+        uint32_t mc = movelist.move[i].code;
         if (ISCAPTURE(mc))
         {
             if (pos->playMove(mc))
@@ -447,9 +447,9 @@ int probe_wdl(int *success, chessposition *pos)
     // Now handle the stalemate case.
     if (best_ep > -3 && v == 0) {
         // Check for stalemate in the position with ep captures.
-        for (i = 0; i < movelist->length; i++)
+        for (i = 0; i < movelist.length; i++)
         {
-            uint32_t mc = movelist->move[i].code;
+            uint32_t mc = movelist.move[i].code;
             if (ISEPCAPTURE(mc))
                 continue;
 
@@ -460,7 +460,7 @@ int probe_wdl(int *success, chessposition *pos)
             }
         }
 
-        if (i == movelist->length) { // Stalemate detected.
+        if (i == movelist.length) { // Stalemate detected.
             *success = 2;
             return best_ep;
         }
@@ -504,8 +504,6 @@ static int wdl_to_dtz[] = {
 //
 int probe_dtz(int *success, chessposition *pos)
 {
-    chessmovelist *movelist = &pos->captureslist[pos->ply];
-
     int wdl = probe_wdl(success, pos);
     if (*success == 0)
         return 0;
@@ -518,16 +516,18 @@ int probe_dtz(int *success, chessposition *pos)
     if (*success == 2)
         return wdl_to_dtz[wdl + 2];
 
+    chessmovelist movelist;
+
     // If winning, check for a winning pawn move.
     if (wdl > 0) {
         // Generate at least all legal non-capturing pawn moves
         // including non-capturing promotions.
         pos->prepareStack();
-        movelist->length = CreateMovelist<ALL>(pos, &movelist->move[0]);
+        movelist.length = CreateMovelist<ALL>(pos, &movelist.move[0]);
 
-        for (int i = 0; i < movelist->length; i++)
+        for (int i = 0; i < movelist.length; i++)
         {
-            uint32_t mc = movelist->move[i].code;
+            uint32_t mc = movelist.move[i].code;
             if (ISCAPTURE(mc) || (GETPIECE(mc) >> 1) != PAWN)
                 continue;
 
@@ -567,14 +567,14 @@ int probe_dtz(int *success, chessposition *pos)
         // In case of mate, this will cause -1 to be returned.
         best = wdl_to_dtz[wdl + 2];
         pos->prepareStack();
-        movelist->length = CreateMovelist<ALL>(pos, &movelist->move[0]);
+        movelist.length = CreateMovelist<ALL>(pos, &movelist.move[0]);
     }
-    for (int i = 0; i < movelist->length; i++)
+    for (int i = 0; i < movelist.length; i++)
     {
         // We can skip pawn moves and captures.
         // If wdl > 0, we already caught them. If wdl < 0, the initial value
         // of best already takes account of them.
-        uint32_t mc = movelist->move[i].code;
+        uint32_t mc = movelist.move[i].code;
         if (ISCAPTURE(mc) || (GETPIECE(mc) >> 1) == PAWN)
             continue;
 
