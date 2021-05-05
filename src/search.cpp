@@ -1521,7 +1521,7 @@ static void search_gen1(searchthread *thr)
 			}
 			
 			//cout << "info string conscore vorher: " << contenderScore[j] << "  nachher: ";
-			contenderScore[j] += (hthr->pos.bestmovescore[0] - base + 10) * hthr->lastCompleteDepth;
+			contenderScore[j] += (hthr->pos.bestmovescore[0] - base + 20) * hthr->lastCompleteDepth;
 			//cout << contenderScore[j] << "\n";
 		}
 		
