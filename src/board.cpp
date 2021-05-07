@@ -2618,8 +2618,8 @@ void engine::allocThreads()
     for (int i = 0; i < Threads; i++)
     {
         sthread[i].index = i;
-        sthread[i].searchthreads = sthread;
-        sthread[i].numofthreads = Threads;
+        //sthread[i].searchthreads = sthread;
+        //sthread[i].numofthreads = Threads;
         sthread[i].pos.pwnhsh.setSize(sizeOfPh);
         sthread[i].pos.mtrlhsh.init();
     }

@@ -1711,11 +1711,12 @@ extern compilerinfo cinfo;
 class searchthread
 {
 public:
+    uint64_t padding1[8];
     chessposition pos;
     thread thr;
     int index;
     int depth;
-    int numofthreads;
+    //int numofthreads;
     int lastCompleteDepth;
 #ifdef NNUELEARN
     PackedSfenValue* psvbuffer;
@@ -1723,10 +1724,10 @@ public:
     int totalchunks;
     int chunkstate[2];
 #endif
+    uint64_t padding2[8];
+    //searchthread* searchthreads;
     // adjust padding to align searchthread at 64 bytes
-    uint8_t padding[16];
-
-    searchthread *searchthreads;
+    //uint8_t padding[1];
 };
 
 void searchStart();
