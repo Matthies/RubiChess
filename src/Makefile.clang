@@ -116,6 +116,7 @@ buildandarch: printarch compile
 build: cpuflags
 	@echo Building binary for $(ARCH)
 	@nmake -c -f Makefile.clang buildandarch ARCH=$(ARCH)
+	@nmake -c -f Makefile.clang profile-clean
 
 compile:
 	@$(CXX) $(CXXFLAGS) $(ARCHFLAGS) $(SOURCE) $(PROFILEFLAGS)
@@ -155,10 +156,10 @@ release:
 profile-clean:
 	@del $(PROFEXE)* 2>nul
 	@del *.obj 2>nul
+	@del $(NATIVEFLAGS) 2>nul
 
 clean: profile-clean
 	@del $(RELDIR)\$(EXE).exe 2>nul
 	@del $(CPUTEST).exe 2>nul
-	@del $(NATIVEFLAGS) 2>nul
 	@set RUBINET=
 
