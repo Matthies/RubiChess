@@ -1744,6 +1744,7 @@ bool chessposition::playMove(uint32_t mc)
     kingPinned = 0ULL;
     updatePins<WHITE>();
     updatePins<BLACK>();
+    nodes++;
 
     return true;
 }

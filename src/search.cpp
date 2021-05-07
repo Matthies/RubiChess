@@ -238,9 +238,6 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     bool foundpts = false;
 #endif
 
-    // FIXME: Should quiescience nodes count for the statistics?
-    //en.nodes++;
-
     // Reset pv
     pvtable[ply][0] = 0;
 
@@ -383,7 +380,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     int effectiveDepth;
     const bool PVNode = (alpha != beta - 1);
 
-    nodes++;
     CheckForImmediateStop();
 
     // Reset pv
@@ -959,7 +955,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
     const bool isMultiPV = (RT == MultiPVSearch);
     bool mateprune = (alpha > SCORETBWININMAXPLY || beta < -SCORETBWININMAXPLY);
 
-    nodes++;
     CheckForImmediateStop();
 
     // reset pv
