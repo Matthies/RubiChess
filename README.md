@@ -17,12 +17,14 @@ Not mentioned all the other documentation and tools freely available.
 ## NNUE
 Starting with version 1.9 RubiChess supports evaluation using NNUE weight files. With version 2.0 NNUE evaluation becomes the default.
 
-Disable the 'Use NNUE' option for so called handcrafted evaluation.
+Disable the 'Use_NNUE' option for so called handcrafted evaluation.
 
 Use the 'NNUENetpath' option to switch to a different network weight file.
 
 You can download network files from my repository https://github.com/Matthies/NN and put it in the same folder as the executable.
-Default net (and default value of NNUENetpath) is now nn-cf8c56d366-20210326.nnue which is also included in Windows release package.
+
+Default net for last official release is nn-cf8c56d366-20210326.nnue which is also included in Windows release package,
+default net for current master (and strongest one for now) is nn-673bf01913-20210421.nnue.
 
 ## Binaries and hints to build some
 I provide release binary packages for Windows x64 only. Depending on the type of your x86-64 CPU you can choose from
