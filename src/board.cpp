@@ -2897,6 +2897,7 @@ void engine::communicate(string inputstring)
                     {
                         while (++ci < cs && AlgebraicToIndex(commandargs[ci]) < 64 && AlgebraicToIndex(&commandargs[ci][2]) < 64)
                             searchmoves.insert(commandargs[ci]);
+                        // Filter root moves again
                         rootposition.getRootMoves();
                         rootposition.tbFilterRootMoves();
                         prepareThreads();
