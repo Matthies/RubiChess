@@ -22,6 +22,7 @@
 
 // static values for the search/pruning/material stuff
 const int materialvalue[7] = { 0,  100,  314,  314,  483,  913, 32509 };  // some evaluation depends on bishop value >= knight value!!!
+eval NnuePsqThreshold = 760;
 
 void initPsqtable()
 {
@@ -77,6 +78,9 @@ static void registertuner(chessposition *pos, eval *e, string name, int index1, 
     en.ucioptions.Register((void*)e, osName.str() + "_mg", ucieval, sDef, 0, 0, initPsqtable);
     sDef = to_string(GETEGVAL(*e));
     en.ucioptions.Register((void*)e, osName.str() + "_eg", ucieval, sDef, 0, 0, initPsqtable);
+#ifdef NNUE
+    en.ucioptions.Register(&NnuePsqThreshold, "NnuePsqThreshold", ucinnuebias, to_string(NnuePsqThreshold), 0, SCOREWHITEWINS, nullptr);
+#endif
 }
 #endif
 
