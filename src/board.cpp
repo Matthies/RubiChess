@@ -564,10 +564,17 @@ void chessposition::getRootMoves()
     int ttscore, tteval;
     uint16_t tthashmovecode;
     bool tthit = tp.probeHash(hash, &ttscore, &tteval, &tthashmovecode, 0, SHRT_MIN + 1, SHRT_MAX, 0);
+    bool bSearchmoves = (en.searchmoves.size() > 0);
 
     excludemovestack[0] = 0; // FIXME: Not very nice; is it worth to do do singular testing in root search?
     for (int i = 0; i < movelist.length; i++)
     {
+        if (bSearchmoves)
+        {
+            string strMove = moveToString(movelist.move[i].code);
+            if (en.searchmoves.find(strMove) == en.searchmoves.end())
+                continue;
+        }
         if (playMove(movelist.move[i].code))
         {
             if (tthit)
@@ -2684,7 +2691,6 @@ void engine::communicate(string inputstring)
 {
     string fen = STARTFEN;
     vector<string> moves;
-    vector<string> searchmoves;
     vector<string> commandargs;
     GuiToken command = UNKNOWN;
     size_t ci, cs;
@@ -2888,7 +2894,11 @@ void engine::communicate(string inputstring)
                     if (commandargs[ci] == "searchmoves")
                     {
                         while (++ci < cs && AlgebraicToIndex(commandargs[ci]) < 64 && AlgebraicToIndex(&commandargs[ci][2]) < 64)
-                            searchmoves.push_back(commandargs[ci]);
+                            searchmoves.insert(commandargs[ci]);
+                        // Filter root moves again
+                        rootposition.getRootMoves();
+                        rootposition.tbFilterRootMoves();
+                        prepareThreads();
                     }
 
                     else if (commandargs[ci] == "wtime")

@@ -88,6 +88,7 @@
 #include <limits.h>
 #include <math.h>
 #include <regex>
+#include <set>
 
 #ifdef _WIN32
 
@@ -1622,6 +1623,7 @@ public:
     ucioptions_t ucioptions;
     compilerinfo* compinfo;
     string ExecPath;
+    set<string> searchmoves;
 
 #ifdef STACKDEBUG
     string assertfile = "";
