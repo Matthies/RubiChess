@@ -22,7 +22,7 @@
 
 // Disable this to compile without NNUE evaluation
 #define NNUE
-#define NNUEDEFAULT nn-673bf01913-20210421.nnue
+#define NNUEDEFAULT nn-72b4488f79-20210510.nnue
 
 // Enable to get statistical values about various search features
 //#define STATISTICS
@@ -88,6 +88,7 @@
 #include <limits.h>
 #include <math.h>
 #include <regex>
+#include <set>
 
 #ifdef _WIN32
 
@@ -635,8 +636,6 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
 //
 #define NNUEDEFAULTSTR TOSTRING(NNUEDEFAULT)
 
-const int NnuePsqThreshold = 300;
-
 enum NnueType { NnueDisabled = 0, NnueRotate, NnueFlip };
 #define NNUEFILEVERSIONROTATE     0x7AF32F16u
 #define NNUEFILEVERSIONFLIP       0x7AF32F17u
@@ -676,6 +675,15 @@ typedef struct {
 
 extern NnueType NnueReady;
 
+
+struct NnueNetwork {
+    alignas(64) clipped_t input[NnueFtOutputdims];
+    int32_t hidden1_values[32];
+    int32_t hidden2_values[32];
+    clipped_t hidden1_clipped[32];
+    clipped_t hidden2_clipped[32];
+    int32_t out_value;
+};
 
 class NnueLayer
 {
@@ -1189,8 +1197,8 @@ enum MoveSelector_State { INITSTATE, HASHMOVESTATE, TACTICALINITSTATE, TACTICALS
 
 class MoveSelector
 {
-    chessposition *pos;
 public:
+    chessposition *pos;
     int state;
     chessmovelist* captures;
     chessmovelist* quiets;
@@ -1201,8 +1209,6 @@ public:
     int legalmovenum;
     bool onlyGoodCaptures;
     int16_t *cmptr[CMPLIES];
-
-public:
     void SetPreferredMoves(chessposition *p);  // for quiescence move selector
     void SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, uint32_t counter, int excludemove);
     uint32_t next();
@@ -1371,7 +1377,12 @@ public:
 #ifdef NNUE
     NnueAccumulator accumulator[MAXDEPTH];
     DirtyPiece dirtypiece[MAXDEPTH];
+    NnueNetwork network;
 #endif
+    uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];
+    uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];
+    MoveSelector moveSelector[MAXDEPTH];
+    MoveSelector extensionMoveSelector[MAXDEPTH];
     bool w2m();
     void BitboardSet(int index, PieceCode p);
     void BitboardClear(int index, PieceCode p);
@@ -1612,6 +1623,7 @@ public:
     ucioptions_t ucioptions;
     compilerinfo* compinfo;
     string ExecPath;
+    set<string> searchmoves;
 
 #ifdef STACKDEBUG
     string assertfile = "";
@@ -1701,11 +1713,11 @@ extern compilerinfo cinfo;
 class searchthread
 {
 public:
+    uint64_t toppadding[8];
     chessposition pos;
     thread thr;
     int index;
     int depth;
-    int numofthreads;
     int lastCompleteDepth;
 #ifdef NNUELEARN
     PackedSfenValue* psvbuffer;
@@ -1713,10 +1725,7 @@ public:
     int totalchunks;
     int chunkstate[2];
 #endif
-    // adjust padding to align searchthread at 64 bytes
-    uint8_t padding[16];
-
-    searchthread *searchthreads;
+    uint64_t bottompadding[8];
 };
 
 void searchStart();

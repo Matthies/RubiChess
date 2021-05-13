@@ -504,8 +504,6 @@ static int wdl_to_dtz[] = {
 //
 int probe_dtz(int *success, chessposition *pos)
 {
-    chessmovelist movelist;
-
     int wdl = probe_wdl(success, pos);
     if (*success == 0)
         return 0;
@@ -517,6 +515,8 @@ int probe_dtz(int *success, chessposition *pos)
     // Check for winning (cursed) capture or ep capture as only best move.
     if (*success == 2)
         return wdl_to_dtz[wdl + 2];
+
+    chessmovelist movelist;
 
     // If winning, check for a winning pawn move.
     if (wdl > 0) {

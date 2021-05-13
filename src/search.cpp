@@ -238,9 +238,6 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     bool foundpts = false;
 #endif
 
-    // FIXME: Should quiescience nodes count for the statistics?
-    //en.nodes++;
-
     // Reset pv
     pvtable[ply][0] = 0;
 
@@ -307,15 +304,16 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 
     prepareStack();
 
-    MoveSelector ms = {};
-    ms.SetPreferredMoves(this);
+    MoveSelector* ms = &moveSelector[ply];
+    memset(ms, 0, sizeof(MoveSelector));
+    ms->SetPreferredMoves(this);
     STATISTICSINC(qs_loop_n);
 
     uint32_t bestcode = 0;
     int eval_type = HASHALPHA;
     uint32_t mc;
 
-    while ((mc = ms.next()))
+    while ((mc = ms->next()))
     {
         if (Pt != NoPrune && !myIsCheck && staticeval + materialvalue[GETCAPTURE(mc) >> 1] + sps.deltapruningmargin <= alpha)
         {
@@ -328,7 +326,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
             continue;
 
         STATISTICSINC(qs_moves);
-        ms.legalmovenum++;
+        ms->legalmovenum++;
         score = -getQuiescence<Pt>(-beta, -alpha, depth - 1);
         unplayMove(mc);
         if (score > bestscore)
@@ -358,7 +356,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         copyPositionTuneSet(&targetpts, &myev[0], &this->pts, &this->ev[0]);
 #endif
 
-    if (myIsCheck && !ms.legalmovenum)
+    if (myIsCheck && !ms->legalmovenum)
         // It's a mate
         return SCOREBLACKWINS + ply;
 
@@ -382,7 +380,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     int effectiveDepth;
     const bool PVNode = (alpha != beta - 1);
 
-    nodes++;
     CheckForImmediateStop();
 
     // Reset pv
@@ -645,18 +642,17 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     // Reset killers for child ply
     killer[ply + 1][0] = killer[ply + 1][1] = 0;
 
-    MoveSelector ms = {};
-    ms.SetPreferredMoves(this, hashmovecode, killer[ply][0], killer[ply][1], counter, excludeMove);
+    MoveSelector* ms = (excludeMove ? &extensionMoveSelector[ply] : &moveSelector[ply]);
+    memset(ms, 0, sizeof(MoveSelector));
+    ms->SetPreferredMoves(this, hashmovecode, killer[ply][0], killer[ply][1], counter, excludeMove);
     STATISTICSINC(moves_loop_n);
 
     int legalMoves = 0;
     int quietsPlayed = 0;
-    uint32_t quietMoves[MAXMOVELISTLENGTH];
     int tacticalPlayed = 0;
-    uint32_t tacticalMoves[MAXMOVELISTLENGTH];
-    while ((mc = ms.next()))
+    while ((mc = ms->next()))
     {
-        ms.legalmovenum++;
+        ms->legalmovenum++;
 #ifdef SDEBUG
         bool isDebugMove = (debugMove.code == mc);
         SDEBUGDO(isDebugMove, pvmovenum[ply] = legalMoves + 1;);
@@ -675,7 +671,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             && quietsPlayed > lmptable[positionImproved][depth])
         {
             // Proceed to next moveselector state manually to save some time
-            ms.state++;
+            ms->state++;
             STATISTICSINC(moves_pruned_lmp);
             SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_LMPRUNED;);
             continue;
@@ -695,7 +691,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             && !isCheckbb
             && depth <= sps.seeprunemaxdepth
             && bestscore > (Pt == Prune ? NOSCORE : -SCORETBWININMAXPLY)
-            && ms.state >= QUIETSTATE
+            && ms->state >= QUIETSTATE
             && !see(mc, sps.seeprunemarginperdepth * depth * (ISTACTICAL(mc) ? depth : sps.seeprunequietfactor)))
         {
             STATISTICSINC(moves_pruned_badsee);
@@ -703,7 +699,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             continue;
         }
 
-        int stats = !ISTACTICAL(mc) ? getHistory(mc, ms.cmptr) : getTacticalHst(mc);
+        int stats = !ISTACTICAL(mc) ? getHistory(mc, ms->cmptr) : getTacticalHst(mc);
         int extendMove = 0;
         int pc = GETPIECE(mc);
         int to = GETCORRECTTO(mc);
@@ -746,9 +742,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             STATISTICSINC(extend_endgame);
             extendMove = 1;
         }
-        else if(!ISTACTICAL(mc) && ms.cmptr[0] && ms.cmptr[1])
+        else if(!ISTACTICAL(mc) && ms->cmptr[0] && ms->cmptr[1])
         {
-            if (ms.cmptr[0][pc * 64 + to] > he_threshold && ms.cmptr[1][pc * 64 + to] > he_threshold)
+            if (ms->cmptr[0][pc * 64 + to] > he_threshold && ms->cmptr[1][pc * 64 + to] > he_threshold)
             {
                 STATISTICSINC(extend_history);
                 extendMove = 1;
@@ -806,8 +802,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         // Prune moves with bad counter move history
         if (Pt != MatePrune
             && !ISTACTICAL(mc) && effectiveDepth < 4
-            && ms.cmptr[0] && ms.cmptr[0][pc * 64 + to] < 0
-            && ms.cmptr[1] && ms.cmptr[1][pc * 64 + to] < 0)
+            && ms->cmptr[0] && ms->cmptr[0][pc * 64 + to] < 0
+            && ms->cmptr[1] && ms->cmptr[1][pc * 64 + to] < 0)
         {
             SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_BADHISTORYPRUNED;);
             continue;
@@ -820,7 +816,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         SDEBUGDO(isDebugMove, debugMovePlayed = true;);
         STATISTICSINC(moves_played[(bool)ISTACTICAL(mc)]);
 
-        LegalMoves[ply] = ms.legalmovenum;
+        LegalMoves[ply] = ms->legalmovenum;
         SDEBUGDO(isDebugMove, pvadditionalinfo[ply-1] = ""; );
 
         if (reduction)
@@ -872,9 +868,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 {
                     if (!ISTACTICAL(mc))
                     {
-                        updateHistory(mc, ms.cmptr, depth * depth);
+                        updateHistory(mc, ms->cmptr, depth * depth);
                         for (int i = 0; i < quietsPlayed; i++)
-                            updateHistory(quietMoves[i], ms.cmptr, -(depth * depth));
+                            updateHistory(quietMoves[mstop][i], ms->cmptr, -(depth * depth));
 
                         // Killermove
                         if (killer[ply][0] != mc)
@@ -891,7 +887,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                     {
                         updateTacticalHst(mc, depth * depth);
                         for (int i = 0; i < tacticalPlayed; i++)
-                            updateTacticalHst(tacticalMoves[i], -(depth * depth));
+                            updateTacticalHst(tacticalMoves[mstop][i], -(depth * depth));
                     }
 
                     STATISTICSINC(moves_fail_high);
@@ -911,9 +907,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         }
 
         if (!ISTACTICAL(mc))
-            quietMoves[quietsPlayed++] = mc;
+            quietMoves[mstop][quietsPlayed++] = mc;
         else
-            tacticalMoves[tacticalPlayed++] = mc;
+            tacticalMoves[mstop][tacticalPlayed++] = mc;
     }
 
     if (legalMoves == 0)
@@ -959,7 +955,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
     const bool isMultiPV = (RT == MultiPVSearch);
     bool mateprune = (alpha > SCORETBWININMAXPLY || beta < -SCORETBWININMAXPLY);
 
-    nodes++;
     CheckForImmediateStop();
 
     // reset pv
@@ -1037,12 +1032,10 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
     staticevalstack[mstop] = staticeval;
 
     int quietsPlayed = 0;
-    uint32_t quietMoves[MAXMOVELISTLENGTH];
     int tacticalPlayed = 0;
-    uint32_t tacticalMoves[MAXMOVELISTLENGTH];
 
     // FIXME: Dummy move selector for now; only used to pass null cmptr to updateHistory
-    MoveSelector ms = {};
+    MoveSelector *ms = &moveSelector[0];
 
     for (int i = 0; i < rootmovelist.length; i++)
     {
@@ -1105,9 +1098,9 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
         }
 
         if (!ISTACTICAL(m->code))
-            quietMoves[quietsPlayed++] = m->code;
+            quietMoves[0][quietsPlayed++] = m->code;
         else
-            tacticalMoves[tacticalPlayed++] = m->code;
+            tacticalMoves[0][tacticalPlayed++] = m->code;
 
         if ((isMultiPV && score <= bestmovescore[lastmoveindex])
             || (!isMultiPV && score <= bestscore))
@@ -1183,9 +1176,9 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
                 // Killermove
                 if (!ISTACTICAL(m->code))
                 {
-                    updateHistory(m->code, ms.cmptr, depth * depth);
+                    updateHistory(m->code, ms->cmptr, depth * depth);
                     for (int q = 0; q < quietsPlayed - 1; q++)
-                        updateHistory(quietMoves[q], ms.cmptr, -(depth * depth));
+                        updateHistory(quietMoves[0][q], ms->cmptr, -(depth * depth));
 
                     if (killer[0][0] != m->code)
                     {
@@ -1197,7 +1190,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
                 {
                     updateTacticalHst(m->code, depth * depth);
                     for (int t = 0; t < tacticalPlayed - 1; t++)
-                        updateTacticalHst(tacticalMoves[t], -(depth * depth));
+                        updateTacticalHst(tacticalMoves[0][t], -(depth * depth));
 
                 }
                 tp.addHash(hash, beta, staticeval, HASHBETA, effectiveDepth, (uint16_t)m->code);
