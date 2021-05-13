@@ -96,7 +96,7 @@
 #include <AclAPI.h>
 #include <intrin.h>
 #include <Windows.h>
-
+#undef max
 #ifdef STACKDEBUG
 #include <DbgHelp.h>
 #define myassert(expression, pos, num, ...) (void)((!!(expression)) ||   (GetStackWalk(pos, (const char*)(#expression), (const char*)(__FILE__), (int)(__LINE__), (num), ##__VA_ARGS__), 0))

@@ -21,6 +21,28 @@
 #ifdef NNUELEARN
 
 //
+// Get files in folder
+//
+static size_t getBinFilesInFolder(vector<string> *filenames, string sFolder)
+{
+#ifdef _WIN32
+
+    vector<string> names;
+    string search_path = sFolder + "/*.bin";
+    WIN32_FIND_DATA fd;
+    HANDLE hFind = FindFirstFile(search_path.c_str(), &fd);
+    if (hFind == INVALID_HANDLE_VALUE)
+        return 0;
+    do {
+        if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+            filenames->push_back(sFolder + "\\" + fd.cFileName);
+    } while (FindNextFile(hFind, &fd));
+    FindClose(hFind);
+    return filenames->size();
+#endif
+}
+
+//
 // Generate fens for training
 //
 
@@ -902,6 +924,191 @@ void convert(vector<string> args)
 }
 
 
+
+
+//
+// Here starts the difficult part: The trainer
+// 
+
+// Interface to the Network in nnue.cpp
+extern NnueInputSlice *NnueIn;
+extern NnueClippedRelu *NnueCl1, *NnueCl2;
+extern NnueNetworkLayer *NnueOut, *NnueHd1, *NnueHd2;
+extern NnueFeatureTransformer *NnueFt;
+
+const int weightScaleBits = 6;
+const float ponanzaConstant = 600.0; //WTF??
+const float FV_SCALE = 16;          // FIXME: This is the SF scaling factor; needs to be merged with NnueValueScale
+
+// Classes for the different parts of the trainer network
+class TrainerLayer
+{
+public:
+    TrainerLayer* previous;
+    NnueLayer* target;
+    float activationScale;
+    float biasScale;
+    float weightScale;
+
+    TrainerLayer(TrainerLayer* prev, NnueLayer* tar) { previous = prev; target = tar; }
+};
+
+// Trainer network using floats
+class TrainerNetworkLayer : public TrainerLayer
+{
+public:
+    unsigned int inputdims;
+    unsigned int outputdims;
+
+    float* bias;
+    float* bias_diff;
+    float* weight;
+    float* weight_diff;
+    TrainerNetworkLayer(TrainerLayer* prev, NnueLayer* tar, int id, int od);
+    ~TrainerNetworkLayer();
+};
+
+TrainerNetworkLayer::TrainerNetworkLayer(TrainerLayer* prev, NnueLayer* tar, int id, int od) : TrainerLayer(prev, tar)
+{
+    inputdims = id;
+    outputdims = od;
+    size_t allocsize = od * sizeof(float);
+    bias = (float*)allocalign64(allocsize);
+    bias_diff = (float*)allocalign64(allocsize);
+    allocsize = (size_t)id * (size_t)od * sizeof(float);
+    weight = (float*)allocalign64(allocsize);
+    weight_diff = (float*)allocalign64(allocsize);
+
+    activationScale = std::numeric_limits<std::int8_t>::max();
+    biasScale = (outputdims > 1 ? (1 << weightScaleBits) * activationScale : ponanzaConstant * FV_SCALE);
+    weightScale = biasScale / activationScale;
+
+    NnueNetworkLayer* Nl = (NnueNetworkLayer*)target;
+    for (int i = 0; i < od; i++)
+    {
+        bias[i] = Nl->bias[i] / biasScale;
+        bias_diff[i] = 0.0;
+        int offset = i * Nl->outputdims;
+        for (int j = 0; j < id; j++)
+        {
+            weight[offset + j] = Nl->weight[i] / weightScale;
+            weight_diff[offset + j] = 0.0;
+        }
+    }
+}
+
+TrainerNetworkLayer::~TrainerNetworkLayer()
+{
+    freealigned64(bias);
+    freealigned64(bias_diff);
+    freealigned64(weight);
+    freealigned64(weight_diff);
+}
+
+
+class TrainerInputSlice : public TrainerLayer
+{
+public:
+    const int outputdims = 512;
+
+    TrainerInputSlice();
+};
+
+TrainerInputSlice::TrainerInputSlice() : TrainerLayer(NULL, NULL)
+{
+
+}
+
+class TrainerClippedRelu : public TrainerLayer
+{
+public:
+    int dims;
+    float* min_activations;
+    float* max_activations;
+    TrainerClippedRelu(TrainerLayer* prev, NnueLayer* tar, int d);
+    ~TrainerClippedRelu();
+};
+
+TrainerClippedRelu::TrainerClippedRelu(TrainerLayer* prev, NnueLayer *tar, int d) : TrainerLayer(prev, tar)
+{
+    dims = d;
+    size_t allocsize = d * sizeof(float);
+    min_activations = (float*)allocalign64(allocsize);
+    max_activations = (float*)allocalign64(allocsize);
+    for (int i = 0; i < d; i++)
+    {
+        min_activations[i] = std::numeric_limits<float>::max();
+        max_activations[i] = std::numeric_limits<float>::lowest();
+    }
+}
+
+TrainerClippedRelu::~TrainerClippedRelu()
+{
+    freealigned64(min_activations);
+    freealigned64(max_activations);
+}
+
+
+// Trainer FeatureTransformer
+class TrainerFeatureTransformer : public TrainerLayer
+{
+public:
+    float* bias;
+    float* bias_diff;
+    float* weight;
+    TrainerFeatureTransformer(NnueLayer *tar);
+    ~TrainerFeatureTransformer();
+};
+
+
+TrainerFeatureTransformer::TrainerFeatureTransformer(NnueLayer* tar) : TrainerLayer(NULL, tar)
+{
+    size_t allocsize = NnueFtHalfdims * sizeof(float);
+    bias = (float*)allocalign64(allocsize);
+    bias_diff = (float*)allocalign64(allocsize);
+    allocsize = (size_t)NnueFtHalfdims * (size_t)NnueFtInputdims * sizeof(float);
+    weight = (float*)allocalign64(allocsize);
+
+    activationScale = std::numeric_limits<std::int8_t>::max();
+    biasScale = activationScale;
+    weightScale = activationScale;
+
+    NnueFeatureTransformer* Ft = (NnueFeatureTransformer*)target;
+    for (int i = 0; i < NnueFtHalfdims; i++)
+    {
+        bias[i] = Ft->bias[i] / biasScale;
+        bias_diff[i] = 0.0;
+    }
+    for (int i = 0; i < NnueFtHalfdims * NnueFtInputdims; i++)
+        weight[i] = Ft->weight[i] / weightScale;
+}
+
+TrainerFeatureTransformer::~TrainerFeatureTransformer()
+{
+    freealigned64(bias);
+    freealigned64(bias_diff);
+    freealigned64(weight);
+}
+
+
+TrainerInputSlice *TrainerIn;
+TrainerClippedRelu *TrainerCl1, *TrainerCl2;
+TrainerNetworkLayer *TrainerOut, *TrainerHd1, *TrainerHd2;
+TrainerFeatureTransformer *TrainerFt;
+
+void TrainerInit()
+{
+    TrainerFt = new TrainerFeatureTransformer(NnueFt);
+    TrainerIn = new TrainerInputSlice();
+    TrainerHd1 = new TrainerNetworkLayer(TrainerIn, NnueHd1, 512, 32);
+    TrainerCl1 = new TrainerClippedRelu(TrainerHd1, NnueCl1, 32);
+    TrainerHd2 = new TrainerNetworkLayer(TrainerCl1, NnueHd2, 32, 32);
+    TrainerCl2 = new TrainerClippedRelu(TrainerHd2, NnueCl2, 32);
+    TrainerOut = new TrainerNetworkLayer(TrainerCl2, NnueOut, 32, 1);
+}
+
+
+
 // global parameters for training
 //learn targetdir C : \Entwicklung\nnue\training loop 100 batchsize 1000000 use_draw_in_training 1 use_draw_in_validation 1
 //   eta 1.0 lambda 0.5 eval_limit 32000 nn_batch_size 1000 newbob_decay 0.5 newbob_num_trials 6
@@ -922,6 +1129,7 @@ const double eta3 = 0.0;
 const uint64_t eta1_epoch = 0; // eta2 is not applied by default
 const uint64_t eta2_epoch = 0; // eta3 is not applied by default
 double newbob_decay = 1.0;
+double newbob_scale = 1.0;
 int newbob_num_trials = 2;
 const double discount_rate = 0.0;
 const int reduction_gameply = 1;
@@ -932,6 +1140,88 @@ uint64_t mirror_percentage = 0;
 
 uint64_t eval_save_interval = 1000000000ULL;
 uint64_t loss_output_interval = 0;
+
+vector<string> filenames;
+thread thrFilereader;
+
+
+
+struct SfenReader
+{
+    static const uint64_t READ_SFEN_HASH_SIZE = 64 * 1024 * 1024;
+    static const int SFEN_CHUNKS = 1000;
+    static const size_t SFEN_READ_SIZE = 10 * 1000 * 1000;
+    static const size_t SFEN_THREAD_SIZE = SFEN_READ_SIZE / SFEN_CHUNKS;
+    vector<U64> hash;
+    ifstream fd;
+    PackedSfenValue* buffer;
+    int nextFree;
+    int nextAvail;
+
+
+};
+
+SfenReader sr;
+
+
+void readSfens()
+{
+    ranctx rnd;
+    raninit(&rnd, getTime());
+
+    vector<string>myFilenames;
+    sr.buffer =  (PackedSfenValue*)allocalign64(sr.SFEN_READ_SIZE * sizeof(PackedSfenValue));
+    sr.nextFree = 0;
+    sr.nextAvail = sr.SFEN_CHUNKS - 1;
+
+    while (1)
+    {
+        // Test if we can read SFEN_CHUNKS / 2 chunks to the buffer
+        if ((sr.nextFree > sr.nextAvail && sr.nextFree + sr.SFEN_CHUNKS / 2 > sr.nextAvail)
+            || (sr.nextFree <= sr.nextAvail && sr.nextFree + sr.SFEN_CHUNKS / 2 <= sr.nextAvail))
+        {
+            // We can read SFEN_CHUNKS / 2 chunks to the buffer
+            PackedSfenValue* psfptr = sr.buffer + sr.nextFree;
+            PackedSfenValue* endptr = sr.buffer + sr.nextFree + sr.SFEN_CHUNKS / 2 * sr.SFEN_THREAD_SIZE;
+            while (psfptr < endptr)
+            {
+                if (!myFilenames.size())
+                    myFilenames = filenames;
+
+                if (sr.fd.peek() == ios::traits_type::eof())
+                    sr.fd.close();
+
+                if (!sr.fd.is_open())
+                {
+                    string fs = *myFilenames.rbegin();
+                    myFilenames.pop_back();
+                    sr.fd.open(fs, ios::binary);
+                    if (!sr.fd.is_open())
+                    {
+                        cout << "Error opening file " << fs << ". Exiting...\n";
+                        return;
+                    }
+                }
+
+                streamsize bytestoread = (endptr - psfptr) * sizeof(PackedSfenValue);
+                sr.fd.read((char*)psfptr, bytestoread);
+                streamsize count = sr.fd.gcount();
+                psfptr += count / sizeof(PackedSfenValue);
+            }
+
+            U64 size = sr.SFEN_CHUNKS / 2 * sr.SFEN_THREAD_SIZE;
+            for (size_t i = 0; i < size; ++i)
+                swap(sr.buffer[sr.nextFree + i], sr.buffer[sr.nextFree + ranval(&rnd) % (size - i) + i]);
+
+            sr.nextFree = (sr.nextFree + sr.SFEN_CHUNKS / 2) % sr.SFEN_CHUNKS;
+
+        }
+
+
+    }
+}
+
+
 
 void learn(vector<string> args)
 {
@@ -977,7 +1267,16 @@ void learn(vector<string> args)
 
     }
 
-    cout << "Learning with these parameters:\n";
+    if (!getBinFilesInFolder(&filenames, training_dir))
+    {
+        cout << "No bin file found in training dir. Exiting...\n";
+        return;
+    }
+    cout << "Found " << filenames.size() << " bin files in traing dir: ";
+    for (auto fi = filenames.begin(); fi != filenames.end(); fi++)
+        cout << *fi << " ";
+
+    cout << "\nLearning with these parameters:\n";
     cout << "training_dir:              " << training_dir << "\n";
     cout << "validation_set_file_name:  " << validation_set_file_name << "\n";
     cout << "loop:                      " << loop << "\n";
@@ -1003,11 +1302,13 @@ void learn(vector<string> args)
     cout << "  use_draw_in_training:    " << use_draw_in_training << "\n";
     cout << "  use_draw_in_validation:  " << use_draw_in_validation << "\n";
 
+    TrainerInit();
+    //Eval::NNUE::InitializeTraining(eta1, eta1_epoch, eta2, eta2_epoch, eta3);
+    //Eval::NNUE::SetBatchSize(nn_batch_size);
+    //Eval::NNUE::SetOptions(nn_options);
+
+    thrFilereader = thread(&readSfens);
+ 
 }
 
-
-void readTrainingData()
-{
-
-}
 #endif
