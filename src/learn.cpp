@@ -187,6 +187,7 @@ int chessposition::getFromSfen(PackedSfen* sfen)
     pawnhash = zb.getPawnHash(this);
     materialhash = zb.getMaterialHash(this);
     mstop = 0;
+    ply = 0;
     rootheight = 0;
     lastnullmove = -1;
     accumulator[0].computationState[WHITE] = false;
@@ -1145,7 +1146,6 @@ vector<string> filenames;
 thread thrFilereader;
 
 
-
 struct SfenReader
 {
     static const uint64_t READ_SFEN_HASH_SIZE = 64 * 1024 * 1024;
@@ -1155,13 +1155,20 @@ struct SfenReader
     vector<U64> hash;
     ifstream fd;
     PackedSfenValue* buffer;
+    vector<PackedSfenValue> sfen_for_mse;
     int nextFree;
     int nextAvail;
+    mutex requestmutex;
+    int chunkRequestByThread;
+    atomic<int> chunkNumForThread;
+
+
 
 
 };
 
 SfenReader sr;
+float global_LR;
 
 
 void readSfens()
@@ -1173,6 +1180,7 @@ void readSfens()
     sr.buffer =  (PackedSfenValue*)allocalign64(sr.SFEN_READ_SIZE * sizeof(PackedSfenValue));
     sr.nextFree = 0;
     sr.nextAvail = sr.SFEN_CHUNKS - 1;
+    sr.chunkRequestByThread = -1;
 
     while (1)
     {
@@ -1217,10 +1225,99 @@ void readSfens()
 
         }
 
-
+        if (sr.chunkRequestByThread >= 0)
+        {
+            // A thread wants the next avail chunk of sfens
+            int nextAvail = (sr.nextAvail + 1) % sr.SFEN_CHUNKS;
+            cout << "Reader: Next avail = " << nextAvail << "\n";
+            if (nextAvail != sr.nextFree)
+            {
+                sr.nextAvail = nextAvail;
+                sr.chunkNumForThread = nextAvail;
+                // Wait for the requesting thread to clear
+                while (sr.chunkNumForThread >= 0) Sleep(100);
+            }
+        }
+        Sleep(100);
     }
 }
 
+
+bool readValidationSfens()
+{
+    sr.sfen_for_mse.clear();
+    ifstream ifval;
+    ifval.open(validation_set_file_name, ios::binary);
+    if (!ifval.is_open())
+    {
+        cout << "Failed to read validation data from " << validation_set_file_name << "\n";
+        return false;
+    }
+
+    while (ifval.peek() != ios::traits_type::eof())
+    {
+        PackedSfenValue p;
+        ifval.read((char*)&p, sizeof(PackedSfenValue));
+        sr.sfen_for_mse.push_back(p);
+    }
+    cout << "Found " << sr.sfen_for_mse.size() << " positions in validation set.\n";
+    return true;
+}
+
+
+void calcLoss(searchthread* thr)
+{
+    chessposition* pos = &thr->pos;
+    for (auto p = sr.sfen_for_mse.begin(); p != sr.sfen_for_mse.end(); p++)
+    {
+        //PackedSfenValue *p = (PackedSfenValue*)it;
+        //p->score = 0;
+        pos->getFromSfen(&p->sfen);
+        if (pos->toFen() == "r1b1k2r/1q2bppp/p1np1n2/1p1Np3/4P3/5N2/PPP1BPPP/1RBQK2R w Kkq - 4 13")
+            cout << "debug qsearch\n";
+        int roots2m = pos->state & S2MMASK;
+        int score = pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, 0);
+        int pvi = 0;
+        uint32_t mc;
+        string spv = "";
+        while (mc = pos->pvtable[0][pvi++])
+        {
+            pos->prepareStack();
+            pos->playMove(mc);
+            spv = spv + moveToString(mc) + " ";
+        }
+        pvi--;
+        int rempvi = pvi;
+        int shallow_value = pos->getEval<NOTRACE>();
+        if (roots2m != (pos->state & S2MMASK))
+            shallow_value = -shallow_value;
+        while (pvi > 0)
+            pos->unplayMove(pos->pvtable[0][--pvi]);
+        cout << "pv has " << rempvi << " moves   " << pos->toFen() << "  PV: " << spv << "\n";
+
+    }
+
+}
+
+
+void learnWorker(searchthread* thr)
+{
+    // Some sfen sync testing testing
+    int i = thr->index;
+    for (int j = 0; j < 100; j++)
+    {
+        sr.requestmutex.lock();
+        sr.chunkRequestByThread = i % 16;
+        while (sr.chunkNumForThread < 0) Sleep(10);
+        int myChunk = sr.chunkNumForThread;
+        cout << "thread#" << i << ":  Got chunk " << myChunk << "\n";
+        sr.chunkNumForThread = -1;
+        sr.chunkRequestByThread = -1;
+        sr.requestmutex.unlock();
+        Sleep(2000 + 100 * i);
+    }
+    cout << "Thread#" << i << " terminated.\n";
+}
 
 
 void learn(vector<string> args)
@@ -1307,8 +1404,29 @@ void learn(vector<string> args)
     //Eval::NNUE::SetBatchSize(nn_batch_size);
     //Eval::NNUE::SetOptions(nn_options);
 
+    if (!readValidationSfens())
+        return;
     thrFilereader = thread(&readSfens);
- 
+
+    // Initial loss
+    en.sthread[0].thr = thread(&calcLoss, &en.sthread[0]);
+    en.sthread[0].thr.join();
+    return;
+
+    // Start workers
+    for (int tnum = 0; tnum < en.Threads; tnum++)
+    {
+        en.sthread[tnum].index = tnum;
+        en.sthread[tnum].thr = thread(&learnWorker, &en.sthread[tnum]);
+    }
+
+    for (int tnum = 0; tnum < en.Threads; tnum++)
+    {
+        if (en.sthread[tnum].thr.joinable())
+            en.sthread[tnum].thr.join();
+    }
+
+    cout << "All threads joined.\n";
 }
 
 #endif

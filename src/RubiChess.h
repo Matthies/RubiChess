@@ -89,6 +89,7 @@
 #include <math.h>
 #include <regex>
 #include <set>
+#include <mutex>
 
 #ifdef _WIN32
 

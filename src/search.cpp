@@ -335,6 +335,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
             bestcode = mc;
             if (score >= beta)
             {
+                updatePvTable(mc, true);
                 STATISTICSINC(qs_moves_fh);
                 tp.addHash(hash, score, staticeval, HASHBETA, 0, (uint16_t)bestcode);
                 return score;
