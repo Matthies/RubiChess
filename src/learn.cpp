@@ -128,6 +128,7 @@ inline void read_piece(uint8_t* buffer, uint8_t* piece, int* totalbits)
 int chessposition::getFromSfen(PackedSfen* sfen)
 {
     uint8_t b;
+    psqval = 0;
     memset(piece00, 0, sizeof(piece00));
     memset(occupied00, 0, sizeof(occupied00));
     psqval = 0;
@@ -1273,7 +1274,7 @@ void calcLoss(searchthread* thr)
         //PackedSfenValue *p = (PackedSfenValue*)it;
         //p->score = 0;
         pos->getFromSfen(&p->sfen);
-        if (pos->toFen() == "r1b1k2r/1q2bppp/p1np1n2/1p1Np3/4P3/5N2/PPP1BPPP/1RBQK2R w Kkq - 4 13")
+        if (pos->toFen() == "b2r1r1k/2p3bp/p2q4/2p1pp1n/2P5/PN1P1PP1/1BQ2RNP/2R3K1 b - - 4 24")
             cout << "debug qsearch\n";
         int roots2m = pos->state & S2MMASK;
         int score = pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, 0);
