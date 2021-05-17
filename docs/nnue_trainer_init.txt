@@ -1,0 +1,47 @@
+1. Feature Transformer:
+kActivationScale = numeric_limits<std::int8_t>::max() = 127.0000000
+kBiasScale  = kActivationScale = 127.0000000
+kWeightScale = kActivationScale = 127.0000000
+For i = 0 to 255: bias[i] = target_layer->bias[i] / kBiasScale			{ 0xfff4,0x003b,0x0018,0x005a,...
+alle weights[] = 0.000000	(256 * 41024 = 10502144)	(Warum??)
+For i = 0 to 256 * 41024: weight[i] = target_layer->weight[i] / kWeightScale	{ 0xffff,0xfff9,0xfffd,0x000a,...
+alle bias_diff[0..255] = 0.000000
+
+2. Affine Transform (512 -> 32)
+kActivationScale = numeric_limits<std::int8_t>::max() = 127.0000000
+kBiasScale  = (1 << kWeightScaleBits(6)) * kActivationScale = 8192.000000
+kWeightScale = kBiasScale / kActivationScale = 64.000000
+for i = 0 to 31: bias[i] = target_layer->bias[i] / kBiasScale			{ 0x00000f7e,0x0000340b,0x00001a21,...
+for i = 0 to 31: offset = i*512
+  for j = 0 to 511: weight[offset + j] = target_layer->weight[i] / kWeightScale	{ 0x00,0x00,0xfc,0x00,...
+alle bias_diff[0..31] = 0.00000
+alle weight_diff[0..32*512-1] = 0.00000
+
+2b. Clipped Relu
+min_activations[0..31] = std::numeric_limits<float>::max()) (3.4e+38)
+max_activations[0..31] = std::numeric_limits<float>::lowest()) (-3.4e+38)
+
+3. Affine Transform (32 -> 32)
+kActivationScale = numeric_limits<std::int8_t>::max() = 127.0000000
+kBiasScale  = (1 << kWeightScaleBits(6)) * kActivationScale = 8192.000000
+kWeightScale = kBiasScale / kActivationScale = 64.000000
+for i = 0 to 31: bias[i] = target_layer->bias[i] / kBiasScale			{ 0x000011c3,0x00000221,0x00001cb8,...
+for i = 0 to 31: offset = i*32
+  for j = 0 to 31: weight[offset + j] = target_layer->weight[i] / kWeightScale	{ 0xe9,0xf5,0x00,0xf5,...
+alle bias_diff[0..31] = 0.00000
+alle weight_diff[0..32*32-1] = 0.00000
+
+3b. Clipped Relu
+min_activations[0..31] = std::numeric_limits<float>::max()) (3.4e+38)
+max_activations[0..31] = std::numeric_limits<float>::lowest()) (-3.4e+38)
+
+4. Affine Transform (32 -> 1)
+kActivationScale = numeric_limits<std::int8_t>::max() = 127.0000000
+kBiasScale = (OutputLayer) kPonanzaConstant * FV_SCALE = 600.00000 * 16 = 9600.000000
+kWeightScale = kBiasScale / kActivationScale = 75.5905533
+for i = 0 to 0: bias[i] = target_layer->bias[i] / kBiasScale			{ 0xfffff944 }
+for i = 0 to 0: offset = i*32
+  for j = 0 to 31: weight[offset + j] = target_layer->weight[i] / kWeightScale	{ 0xf5,0xfa,0x11,0xc3,...
+alle bias_diff[0..0] = 0.00000
+alle weight_diff[0..32*1-1] = 0.00000
+

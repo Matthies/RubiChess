@@ -1,0 +1,116 @@
+SF-Sergio:
+
+setoption name Threads value 4
+setoption name EvalFile value C:\Entwicklung\RubiChess\src\nn-cf8c56d366-20210326.nnue
+learn targetdir C:\Entwicklung\nnue\training loop 100 batchsize 1000000 use_draw_in_training 1 use_draw_in_validation 1 eta 1.0 lambda 0.5 eval_limit 32000 nn_batch_size 1000 newbob_decay 0.5 newbob_num_trials 6 eval_save_interval 10000000 loss_output_interval 10000000 mirror_percentage 0 validation_set_file_name C:\Entwicklung\nnue\gensfen-10-ASUS-NB.bin
+
+
+Rubi:
+setoption name Threads value 4
+setoption name Nnuenetpath value C:\Entwicklung\RubiChess\src\nn-cf8c56d366-20210326.nnue
+learn training_dir C:\Entwicklung\nnue\training loop 100 batchsize 1000000 use_draw_in_training 1 use_draw_in_validation 1 eta 1.0 lambda 0.5 eval_limit 32000 nn_batch_size 1000 newbob_decay 0.5 newbob_num_trials 6 eval_save_interval 10000000 loss_output_interval 10000000 mirror_percentage 0 validation_set_file_name C:\Entwicklung\nnue\gensfen-10-ASUS-NB.bin
+
+
+
+C:\Entwicklung\sergio\Stockfish\src\SF-Sergio\x64\Release>SF-Sergio.exe
+Stockfish+NNUE 300421 64 by T. Romstad, M. Costalba, J. Kiiski, G. Linscott, H. Noda, Y. Nasu, M. Isozaki
+setoption name Threads value 8
+info string Hash table allocation: Windows large pages used.
+setoption name EvalFile value C:\Entwicklung\RubiChess\src\nn-cf8c56d366-20210326.nnue
+info string NNUE C:\Entwicklung\RubiChess\src\nn-cf8c56d366-20210326.nnue found & loaded
+info string NNUE C:\Entwicklung\RubiChess\src\nn-cf8c56d366-20210326.nnue found & loaded
+Unknown command: info string NNUE C:\Entwicklung\RubiChess\src\nn-cf8c56d366-20210326.nnue found & loaded
+learn targetdir C:\Entwicklung\nnue\training loop 100 batchsize 1000000 use_draw_in_training 1 use_draw_in_validation 1 eta 1.0 lambda 0.5 eval_limit 32000 nn_batch_size 1000 newbob_decay 0.5 newbob_num_trials 6 eval_save_interval 10000000 loss_output_interval 10000000 mirror_percentage 0 validation_set_file_name C:\Entwicklung\nnue\gensfen-12-26.03.2021-5.bin
+learn command , learn from C:\Entwicklung\nnue\training/shuffled_sfen-HV01-26.03.2021.bin ,
+validation set  : C:\Entwicklung\nnue\gensfen-12-26.03.2021-5.bin
+base dir        :
+target dir      : C:\Entwicklung\nnue\training
+loop              : 100
+eval_limit        : 32000
+save_only_once    : false
+no_shuffle        : false
+Loss Function     : ELMO_METHOD(WCSC27)
+mini-batch size   : 1000000
+nn_batch_size     : 1000
+nn_options        :
+learning rate     : 1 , 0 , 0
+eta_epoch         : 0 , 0
+scheduling        : newbob with decay = 0.5, 6 trials
+discount rate     : 0
+reduction_gameply : 1
+LAMBDA            : 0.5
+LAMBDA2           : 0.33
+LAMBDA_LIMIT      : 32000
+mirror_percentage : 0
+eval_save_interval  : 10000000 sfens
+loss_output_interval: 10000000 sfens
+init..
+init_training..
+Initializing NN training for Features=HalfKP(Friend)[41024->256x2],Network=AffineTransform[1<-32](ClippedReLU[32](AffineTransform[32<-32](ClippedReLU[32](AffineTransform[32<-512](InputSlice[512(0:512)])))))
+init done.
+open filename = C:\Entwicklung\nnue\training/shuffled_sfen-HV01-26.03.2021.bin
+PROGRESS: Fri Apr 30 22:36:19 2021, 0 sfens, iteration 0, eta = 0, hirate eval = 62 , test_cross_entropy_eval = 0.657586 , test_cross_entropy_win = 0.570274 , test_entropy_eval = 0.634546 , test_entropy_win = 0.345842 , test_cross_entropy = 0.61393 , test_entropy = 0.561417 , norm = 2.61971e+08 , move accuracy = 31.6247%
+initial loss: 0.0525132
+(Inflated to 0.0551388)
+Check Sum = 0
+save_eval() start. folder = evalsave/0
+save_eval() finished. folder = evalsave/0
+PROGRESS: Fri Apr 30 22:56:45 2021, 10000007 sfens, iteration 10, eta = 1, hirate eval = 21 , test_cross_entropy_eval = 0.657957 , test_cross_entropy_win = 0.568379 , test_entropy_eval = 0.634546 , test_entropy_win = 0.345842 , test_cross_entropy = 0.613168 , test_entropy = 0.561417 , norm = 2.76968e+08 , move accuracy = 32.6696% , learn_cross_entropy_eval = 0.638481 , learn_cross_entropy_win = 0.52293 , learn_entropy_eval = 0.619781 , learn_entropy_win = 0.271083 , learn_cross_entropy = 0.580705 , learn_entropy = 0.531042
+INFO: observed 39759 (out of 43979) features
+INFO: (min, max) of pre-activations = -9.18982, 3.00897 (limit = 258.008)
+INFO: largest min activation = 0, smallest max activation = 0.655323
+INFO: largest min activation = 0.777211, smallest max activation = 0.074426
+INFO: largest min activation = 0, smallest max activation = 0.166285
+Check Sum = 0
+save_eval() start. folder = evalsave/1
+save_eval() finished. folder = evalsave/1
+loss: 0.0517511 < best (0.0551388), accepted
+PROGRESS: Fri Apr 30 23:11:20 2021, 20000007 sfens, iteration 20, eta = 1, hirate eval = 41 , test_cross_entropy_eval = 0.658982 , test_cross_entropy_win = 0.56906 , test_entropy_eval = 0.634546 , test_entropy_win = 0.345842 , test_cross_entropy = 0.614021 , test_entropy = 0.561417 , norm = 2.7788e+08 , move accuracy = 31.8242% , learn_cross_entropy_eval = 0.638143 , learn_cross_entropy_win = 0.522452 , learn_entropy_eval = 0.619791 , learn_entropy_win = 0.271208 , learn_cross_entropy = 0.580298 , learn_entropy = 0.531077
+INFO: observed 39844 (out of 43979) features
+INFO: (min, max) of pre-activations = -9.31701, 3.01467 (limit = 258.008)
+INFO: largest min activation = 0, smallest max activation = 0.692993
+INFO: largest min activation = 0.70866, smallest max activation = 0.14538
+INFO: largest min activation = 0, smallest max activation = 0.133589
+Check Sum = 0
+save_eval() start. folder = evalsave/2
+save_eval() finished. folder = evalsave/2
+loss: 0.052604 == best (0.0517511), OK
+4 ok_trials left
+PROGRESS: Fri Apr 30 23:25:31 2021, 30000007 sfens, iteration 30, eta = 1, hirate eval = 44 , test_cross_entropy_eval = 0.6559 , test_cross_entropy_win = 0.569204 , test_entropy_eval = 0.634546 , test_entropy_win = 0.345842 , test_cross_entropy = 0.612552 , test_entropy = 0.561417 , norm = 2.64236e+08 , move accuracy = 34.4752% , learn_cross_entropy_eval = 0.638645 , learn_cross_entropy_win = 0.521009 , learn_entropy_eval = 0.619702 , learn_entropy_win = 0.270917 , learn_cross_entropy = 0.579827 , learn_entropy = 0.530914
+INFO: observed 39866 (out of 43979) features
+INFO: (min, max) of pre-activations = -9.31701, 3.02105 (limit = 258.008)
+INFO: largest min activation = 0, smallest max activation = 0.679298
+INFO: largest min activation = 0.772031, smallest max activation = 0.122929
+INFO: largest min activation = 0, smallest max activation = 0.156411
+
+
+Debug qsearch of r1b1k2r/1q2bppp/p1np1n2/1p1Np3/4P3/5N2/PPP1BPPP/1RBQK2R w Kkq - 4 13
+
+SF:
+	static-eval: outputlayer: -273	score = output / FV_SCALE(16) = -17
+	alpha = -17, futilityBase = 124
+	Move1:	0x8f4 = Nd5xe7 wird gespielt
+		-> static-eval: outputlayer: -7893  score = output / FV_SCALE(16) = -493
+		alpha = -493, futilityBase = -352
+		Move1: 0xc74 = Qb7xe7 wird gespielt
+			-> static-eval: outputlayer: -1101  score = output / FV_SCALE(16) = -68
+			alpha = -17, futilityBase = 73
+			Move1: 0x0eb = Qd1xd6 ... skip(negativer SEE)
+			Move2: 0x321 = Be2xb5 ... skip(negativer SEE)
+			Move3: 0x564 = Nf3xe5 ... skip(negativer SEE)
+			return -68
+		... und dann passiert "update pv even in fail-high case"!
+
+Rubi:
+	static-eval: outputlayer: -273	score = output * 41 / 1024 + Tempo = -10 + 20 = 10
+	alpha = 10
+	Move1:  0x8ed = Nd5xf6 ... skip(negativer SEE)
+	Move1:	0x8f4 = Nd5xe7 ... skip(negativer SEE)
+	
+
+
+Debug 6k1/5Rp1/8/5p1P/5B2/1r6/5PK1/8 b - - 0 57
+=> hier liefert qsearch ein anderes Score als evaluate nach pv
+	stativ-eval: outputlayer: -11311	score = output / FV_SCALE(16) = -706
+	alpha = -706, futilityBase = -565
+	Move1:	0xfb5 = Kg8xf7 wird gespielt

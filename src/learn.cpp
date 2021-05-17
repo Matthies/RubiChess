@@ -187,7 +187,8 @@ int chessposition::getFromSfen(PackedSfen* sfen)
     hash = zb.getHash(this);
     pawnhash = zb.getPawnHash(this);
     materialhash = zb.getMaterialHash(this);
-    mstop = 0;
+    mstop = 1;
+    movestack[0].movecode = 0xfff;
     ply = 0;
     rootheight = 0;
     lastnullmove = -1;
@@ -1266,18 +1267,73 @@ bool readValidationSfens()
 }
 
 
+// ordinary sigmoid function
+double sigmoid(double x)
+{
+    return 1.0 / (1.0 + std::exp(-x));
+}
+
+// A function that converts the evaluation value to the winning rate [0,1]
+double winning_percentage(double value)
+{
+    // 1/(1+10^(-Eval/4))
+    // = 1/(1+e^(-Eval/4*ln(10))
+    // = sigmoid(Eval/4*ln(10))
+    const int PawnValue = 200;
+    return sigmoid(value / PawnValue / 4.0 * log(10.0));
+}
+
+
+
+
+void calc_cross_entropy(int shallow, int deep, int result, double* ce_eval, double* ce_win, double* ce, double* e_eval, double* e_win, double* entropy)
+{
+    const double p /* teacher_winrate */ = winning_percentage(deep);
+    const double q /* eval_winrate    */ = winning_percentage(shallow);
+    const double t = double(result + 1) / 2;
+
+    constexpr double epsilon = 0.000001;
+
+    // If the evaluation value in deep search exceeds ELMO_LAMBDA_LIMIT, apply ELMO_LAMBDA2 instead of ELMO_LAMBDA.
+    const double lambda = elmo_lambda;
+
+    const double m = (1.0 - lambda) * t + lambda * p;
+
+    *ce_eval = (-p * std::log(q + epsilon) - (1.0 - p) * std::log(1.0 - q + epsilon));
+    *ce_win =  (-t * std::log(q + epsilon) - (1.0 - t) * std::log(1.0 - q + epsilon));
+    *e_eval =  (-p * std::log(p + epsilon) - (1.0 - p) * std::log(1.0 - p + epsilon));
+    *e_win =  (-t * std::log(t + epsilon) - (1.0 - t) * std::log(1.0 - t + epsilon));
+
+    *ce = (-m * std::log(q + epsilon) - (1.0 - m) * std::log(1.0 - q + epsilon));
+    *entropy = (-m * std::log(m + epsilon) - (1.0 - m) * std::log(1.0 - m + epsilon));
+}
+
+
 void calcLoss(searchthread* thr)
 {
+    atomic<double> sum_tce_eval, sum_tce_win, sum_tce;
+    atomic<double> sum_te_eval, sum_te_win, sum_t_entropy;
+    atomic<double> sum_norm;
+    sum_tce_eval = 0;
+    sum_tce_win = 0;
+    sum_tce = 0;
+    sum_te_eval = 0;
+    sum_te_win = 0;
+    sum_t_entropy = 0;
+    sum_norm = 0;
+
     chessposition* pos = &thr->pos;
     for (auto p = sr.sfen_for_mse.begin(); p != sr.sfen_for_mse.end(); p++)
     {
         //PackedSfenValue *p = (PackedSfenValue*)it;
         //p->score = 0;
         pos->getFromSfen(&p->sfen);
-        if (pos->toFen() == "b2r1r1k/2p3bp/p2q4/2p1pp1n/2P5/PN1P1PP1/1BQ2RNP/2R3K1 b - - 4 24")
+#if 1
+        if (pos->toFen() == "r1b1k2r/1q2bppp/p1np3n/1p2p1N1/4P3/2N5/PPP1BPPP/1RBQK2R w Kkq - 0 11")
             cout << "debug qsearch\n";
+#endif
         int roots2m = pos->state & S2MMASK;
-        int score = pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, 0);
+        int shallow_value = pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, 0);
         int pvi = 0;
         uint32_t mc;
         string spv = "";
@@ -1289,12 +1345,28 @@ void calcLoss(searchthread* thr)
         }
         pvi--;
         int rempvi = pvi;
-        int shallow_value = pos->getEval<NOTRACE>();
+#if 0  // Erneute Bewertung sollte nach movestack[mstop -1] != nullmove und TT-Deaktivierung nicht mehr nötig sein!!
+        shallow_value = pos->getEval<NOTRACE>();  
         if (roots2m != (pos->state & S2MMASK))
             shallow_value = -shallow_value;
+#endif
         while (pvi > 0)
             pos->unplayMove(pos->pvtable[0][--pvi]);
-        cout << "pv has " << rempvi << " moves   " << pos->toFen() << "  PV: " << spv << "\n";
+        //cout << "pv has " << rempvi << " moves   " << pos->toFen() << "  PV: " << spv << "\n";
+
+        int deep_value = p->score;
+        double tce_eval, tce_win, tce, te_eval, te_win, t_entropy;
+        calc_cross_entropy(shallow_value, p->score, p->game_result, &tce_eval, &tce_win, &tce, &te_eval, &te_win, &t_entropy);
+
+        sum_tce_eval = sum_tce_eval + tce_eval;
+        sum_tce_win = sum_tce_win + tce_win;
+        sum_tce = sum_tce + tce;
+        sum_te_eval = sum_te_eval + te_eval;
+        sum_te_win = sum_te_win + te_win;
+        sum_t_entropy = sum_t_entropy + t_entropy;
+        sum_norm = sum_norm + (double)abs(shallow_value);
+
+
 
     }
 

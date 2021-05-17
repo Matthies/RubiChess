@@ -1,0 +1,27 @@
+
+
+|xxxxx++++++++++++++++++++-------------------------|
+      n                   n
+      A                   F
+
+|xxxxx+++++++++++++++++++++++++++++++++++++++++++++|
+ n    n                   
+ F    A                   
+
+
+200.000.000
+
+t1:	lock(request-mutex)
+	chunkRequestByThread = 1
+	wait for chunkNumForThread >= 0
+	myChunk = chunkNumForThread
+	chunkNumForThread = -1 
+	chunkRequestByThread = -1
+	unlock(request-mutex)
+	 
+
+	
+mt:	chunkRequestByThread >= 0?
+		nextAvail++;
+		chunkNumForThread = nextAvail;
+		wait while chunkNumForThread >= 0

@@ -253,7 +253,11 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     int hashscore = NOSCORE;
     uint16_t hashmovecode = 0;
     int staticeval = NOSCORE;
+#ifdef NNUELEARN
+    bool tpHit = false;
+#else
     bool tpHit = tp.probeHash(hash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
+#endif
     if (tpHit)
     {
         STATISTICSINC(qs_tt);
