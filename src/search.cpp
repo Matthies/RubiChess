@@ -465,7 +465,11 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 #endif
 
     // TT lookup
+#ifdef NNUELEARN
+    bool tpHit = false;
+#else
     bool tpHit = tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
+#endif
     if (tpHit && !rep && !PVNode)
     {
         // not a single repetition; we can (almost) safely trust the hash value
