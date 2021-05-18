@@ -188,13 +188,13 @@ int chessposition::getFromSfen(PackedSfen* sfen)
     pawnhash = zb.getPawnHash(this);
     materialhash = zb.getMaterialHash(this);
     mstop = 1;
-    movestack[0].movecode = 0xfff;
+    movestack[0].movecode = 0x10000000;
     excludemovestack[0] = 0;
     ply = 0;
-    rootheight = 0;
+    rootheight = 1;
     lastnullmove = -1;
-    accumulator[0].computationState[WHITE] = false;
-    accumulator[0].computationState[BLACK] = false;
+    accumulator[1].computationState[WHITE] = false;
+    accumulator[1].computationState[BLACK] = false;
 
     return 0;
 }
@@ -1336,6 +1336,7 @@ void calcLoss(searchthread* thr)
         //p--;
         //PackedSfenValue *p = (PackedSfenValue*)it;
         //p->score = 0;
+        pos->resetStats();
         pos->getFromSfen(&p->sfen);
 #if 1
         if (pos->toFen() == "rnb1k1nr/1pqpbppp/p1p5/4p3/2B1P3/2N2N2/PPPP1PPP/1RBQK2R w Kkq - 4 6")
@@ -1377,7 +1378,7 @@ void calcLoss(searchthread* thr)
         pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, 1);
         if (p->move == sfMoveCode(pos->pvtable[0][0]))
             move_accord_count.fetch_add(1, memory_order_relaxed);
-        cout << pos->toFen() << "  PV: " << spv << "  Move: " << moveToString(pos->pvtable[0][0]) << "\n";
+        cout << pos->toFen() << "  PV: " << spv << "  Move: " << moveToString(pos->pvtable[0][0]) << "  shallow: " << shallow_value << "\n";
         p++;
     //} while (p != sr.sfen_for_mse.begin());
     } while (p != sr.sfen_for_mse.end());
