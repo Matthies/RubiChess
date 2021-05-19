@@ -2,13 +2,13 @@ SF-Sergio:
 
 setoption name Threads value 4
 setoption name EvalFile value C:\Entwicklung\RubiChess\src\nn-cf8c56d366-20210326.nnue
-learn targetdir C:\Entwicklung\nnue\training loop 100 batchsize 1000000 use_draw_in_training 1 use_draw_in_validation 1 eta 1.0 lambda 0.5 eval_limit 32000 nn_batch_size 1000 newbob_decay 0.5 newbob_num_trials 6 eval_save_interval 10000000 loss_output_interval 10000000 mirror_percentage 0 validation_set_file_name C:\Entwicklung\nnue\gensfen-10-ASUS-NB.bin
+learn targetdir C:\Entwicklung\nnue\training loop 100 batchsize 1000000 use_draw_in_training 1 use_draw_in_validation 1 eta 1.0 lambda 0.5 eval_limit 32000 nn_batch_size 1000 newbob_decay 0.5 newbob_num_trials 6 eval_save_interval 10000000 loss_output_interval 10000000 mirror_percentage 0 validation_set_file_name C:\Entwicklung\nnue\gensfen-13.bin
 
 
 Rubi:
 setoption name Threads value 4
 setoption name Nnuenetpath value C:\Entwicklung\RubiChess\src\nn-cf8c56d366-20210326.nnue
-learn training_dir C:\Entwicklung\nnue\training loop 100 batchsize 1000000 use_draw_in_training 1 use_draw_in_validation 1 eta 1.0 lambda 0.5 eval_limit 32000 nn_batch_size 1000 newbob_decay 0.5 newbob_num_trials 6 eval_save_interval 10000000 loss_output_interval 10000000 mirror_percentage 0 validation_set_file_name C:\Entwicklung\nnue\gensfen-10-ASUS-NB.bin
+learn training_dir C:\Entwicklung\nnue\training loop 100 batchsize 1000000 use_draw_in_training 1 use_draw_in_validation 1 eta 1.0 lambda 0.5 eval_limit 32000 nn_batch_size 1000 newbob_decay 0.5 newbob_num_trials 6 eval_save_interval 10000000 loss_output_interval 10000000 mirror_percentage 0 validation_set_file_name C:\Entwicklung\nnue\gensfen-13.bin
 
 
 

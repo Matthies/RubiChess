@@ -28,14 +28,18 @@ static size_t getBinFilesInFolder(vector<string> *filenames, string sFolder)
 #ifdef _WIN32
 
     vector<string> names;
-    string search_path = sFolder + "/*.bin";
+    string search_path = sFolder + "/*bin";
     WIN32_FIND_DATA fd;
     HANDLE hFind = FindFirstFile(search_path.c_str(), &fd);
     if (hFind == INVALID_HANDLE_VALUE)
         return 0;
     do {
         if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
-            filenames->push_back(sFolder + "\\" + fd.cFileName);
+        {
+            string s = fd.cFileName;
+            if (s.find(".bin") == s.length() - 4)
+                filenames->push_back(sFolder + "\\" + fd.cFileName);
+        }
     } while (FindNextFile(hFind, &fd));
     FindClose(hFind);
     return filenames->size();
