@@ -192,12 +192,13 @@ int chessposition::getFromSfen(PackedSfen* sfen)
     pawnhash = zb.getPawnHash(this);
     materialhash = zb.getMaterialHash(this);
     mstop = 1;
-    movestack[0].movecode = 0xfff;
+    movestack[0].movecode = 0x10000000;
+    excludemovestack[0] = 0;
     ply = 0;
-    rootheight = 0;
+    rootheight = 1;
     lastnullmove = -1;
-    accumulator[0].computationState[WHITE] = false;
-    accumulator[0].computationState[BLACK] = false;
+    accumulator[1].computationState[WHITE] = false;
+    accumulator[1].computationState[BLACK] = false;
 
     return 0;
 }
@@ -473,7 +474,7 @@ static void gensfenthread(searchthread* thr, U64 rndseed)
             pos->toSfen(&thr->psv->sfen);
             thr->psv->score = score;
             thr->psv->gamePly = ply;
-            thr->psv->move = (uint16_t)sfMoveCode(pos->pvtable[0][0]);
+            thr->psv->move = sfMoveCode(pos->pvtable[0][0]);
             thr->psv->game_result = 2 * S2MSIGN(pos->state & S2MMASK); // not yet known
 
             if (thr->psv->move)
@@ -1151,6 +1152,9 @@ uint64_t loss_output_interval = 0;
 vector<string> filenames;
 thread thrFilereader;
 
+double latest_loss_sum = 0.0;
+double latest_loss_count = 0;
+
 
 struct SfenReader
 {
@@ -1318,6 +1322,7 @@ void calcLoss(searchthread* thr)
     atomic<double> sum_tce_eval, sum_tce_win, sum_tce;
     atomic<double> sum_te_eval, sum_te_win, sum_t_entropy;
     atomic<double> sum_norm;
+    atomic<int> move_accord_count;
     sum_tce_eval = 0;
     sum_tce_win = 0;
     sum_tce = 0;
@@ -1325,15 +1330,20 @@ void calcLoss(searchthread* thr)
     sum_te_win = 0;
     sum_t_entropy = 0;
     sum_norm = 0;
+    move_accord_count = 0;
+    size_t num_mse = sr.sfen_for_mse.size();
 
     chessposition* pos = &thr->pos;
-    for (auto p = sr.sfen_for_mse.begin(); p != sr.sfen_for_mse.end(); p++)
-    {
+    //auto p = sr.sfen_for_mse.end();
+    auto p = sr.sfen_for_mse.begin();
+    do {
+        //p--;
         //PackedSfenValue *p = (PackedSfenValue*)it;
         //p->score = 0;
+        pos->resetStats();
         pos->getFromSfen(&p->sfen);
 #if 1
-        if (pos->toFen() == "r1b1k2r/1q2bppp/p1np3n/1p2p1N1/4P3/2N5/PPP1BPPP/1RBQK2R w Kkq - 0 11")
+        if (pos->toFen() == "rnb1k1nr/1pqpbppp/p1p5/4p3/2B1P3/2N2N2/PPPP1PPP/1RBQK2R w Kkq - 4 6")
             cout << "debug qsearch\n";
 #endif
         int roots2m = pos->state & S2MMASK;
@@ -1356,7 +1366,6 @@ void calcLoss(searchthread* thr)
 #endif
         while (pvi > 0)
             pos->unplayMove(pos->pvtable[0][--pvi]);
-        //cout << "pv has " << rempvi << " moves   " << pos->toFen() << "  PV: " << spv << "\n";
 
         int deep_value = p->score;
         double tce_eval, tce_win, tce, te_eval, te_win, t_entropy;
@@ -1370,9 +1379,45 @@ void calcLoss(searchthread* thr)
         sum_t_entropy = sum_t_entropy + t_entropy;
         sum_norm = sum_norm + (double)abs(shallow_value);
 
+        pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, 1);
+        if (p->move == sfMoveCode(pos->pvtable[0][0]))
+            move_accord_count.fetch_add(1, memory_order_relaxed);
+        cout << pos->toFen() << "  PV: " << spv << "  Move: " << moveToString(pos->pvtable[0][0]) << "  shallow: " << shallow_value << "\n";
+        p++;
+    //} while (p != sr.sfen_for_mse.begin());
+    } while (p != sr.sfen_for_mse.end());
 
+    latest_loss_sum += sum_tce - sum_t_entropy;
+    latest_loss_count += sr.sfen_for_mse.size();
+
+    if (num_mse)
+    {
 
     }
+    cout << setprecision(5)
+        << " , test_cross_entropy_eval = " << sum_tce_eval / num_mse
+        << " , test_cross_entropy_win = " << sum_tce_win / num_mse
+        << " , test_entropy_eval = " << sum_te_eval / num_mse
+        << " , test_entropy_win = " << sum_te_win / num_mse
+        << " , test_cross_entropy = " << sum_tce / num_mse
+        << " , test_entropy = " << sum_t_entropy / num_mse
+        << " , norm = " << sum_norm
+        << " , move accuracy = " << (move_accord_count * 100.0 / num_mse) << "%";
+#if 0
+    if (done != static_cast<uint64_t>(-1))
+    {
+        cout
+            << " , learn_cross_entropy_eval = " << learn_sum_cross_entropy_eval / done
+            << " , learn_cross_entropy_win = " << learn_sum_cross_entropy_win / done
+            << " , learn_entropy_eval = " << learn_sum_entropy_eval / done
+            << " , learn_entropy_win = " << learn_sum_entropy_win / done
+            << " , learn_cross_entropy = " << learn_sum_cross_entropy / done
+            << " , learn_entropy = " << learn_sum_entropy / done;
+    }
+#endif
+    cout << endl;
+
+
 
 }
 
@@ -1450,6 +1495,7 @@ void learn(vector<string> args)
     for (auto fi = filenames.begin(); fi != filenames.end(); fi++)
         cout << *fi << " ";
 
+    cout << setprecision(1);
     cout << "\nLearning with these parameters:\n";
     cout << "training_dir:              " << training_dir << "\n";
     cout << "validation_set_file_name:  " << validation_set_file_name << "\n";
@@ -1461,13 +1507,13 @@ void learn(vector<string> args)
     cout << "mini_batch_size:           " << mini_batch_size << "\n";
     cout << "nn_batch_size:             " << nn_batch_size << "\n";
     cout << "nn_options:                " << nn_options << "\n";
-    cout << "learning rate:             " << showpoint << fixed << setprecision(1) << eta1 << " , " << eta2 << " , " << eta3 << "\n";
+    cout << "learning rate:             " << eta1 << " , " << eta2 << " , " << eta3 << "\n";
     cout << "eta_epoch:                 " << eta1_epoch << " , " << eta2_epoch << "\n";
     cout << "newbob_decay:              " << newbob_decay << " with " << newbob_num_trials << " trials\n";
-    cout << "discount_rate:             " << showpoint << fixed << setprecision(1) << discount_rate << "\n";
+    cout << "discount_rate:             " << discount_rate << "\n";
     cout << "reduction_gameply:         " << reduction_gameply << "\n";
-    cout << "lambda:                    " << showpoint << fixed << setprecision(1) << elmo_lambda << "\n";
-    cout << "lambda2:                   " << showpoint << fixed << setprecision(1) << elmo_lambda2 << "\n";
+    cout << "lambda:                    " << elmo_lambda << "\n";
+    cout << "lambda2:                   " << elmo_lambda2 << "\n";
     cout << "lambda_limit:              " << elmo_lambda_limit << "\n";
     cout << "mirror_percentage:         " << mirror_percentage << "\n";
     cout << "eval_save_interval:        " << eval_save_interval << "\n";
