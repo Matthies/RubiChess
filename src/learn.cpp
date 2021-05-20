@@ -727,6 +727,8 @@ void convert(vector<string> args)
     string outputfile;
     int evalstats = 0;
     int generalstats = 0;
+    int fix_tempo = 0;
+    bool fix_movecode = false;
     SfenFormat outformat = no;
     size_t cs = args.size();
     size_t ci = 0;
@@ -761,6 +763,15 @@ void convert(vector<string> args)
         if (cmd == "generalstats")
         {
             generalstats = (ci < cs ? stoi(args[ci++]) : 1);
+        }
+        if (cmd == "fix_tempo" && ci < cs)
+        {
+            fix_tempo = stoi(args[ci++]);
+        }
+        if (cmd == "fix_movecode")
+        {
+            fix_movecode = true;
+            ci++;
         }
     }
 
@@ -802,61 +813,70 @@ void convert(vector<string> args)
         for (PackedSfenValue* psv = psvbuffer; psv < psvbuffer + psvread; psv++)
         {
             pos->getFromSfen(&psv->sfen);
-            // Test and reset the castle related mebers in case of chess960
-            // FIXME: This is not bulletproof; a rook could have walked in the plies not recorded and lead to wrong castle rights
-            int castlestate = pos->state & CASTLEMASK;
-            if (castlestate && pos->fullmovescounter < lastfullmove)
+
+            // Fix the tempo score
+            if (psv->score)
+                psv->score -= fix_tempo;
+
+            uint32_t rubimovecode = psv->move;
+
+            if (fix_movecode)
             {
-                int whiteCanCastle = castlestate & (WQCMASK | WKCMASK);
-                int castleQueenside = castlestate & (WQCMASK | BQCMASK);
-                int castleKingside = castlestate & (WKCMASK | BKCMASK);
-                kingfile = (whiteCanCastle ? FILE(pos->kingpos[WHITE]) : FILE(pos->kingpos[BLACK]));
-
-                rookfiles[0] = -1;
-                if (castleQueenside)
+                // Test and reset the castle related mebers in case of chess960
+                // FIXME: This is not bulletproof; a rook could have walked in the plies not recorded and lead to wrong castle rights
+                int castlestate = pos->state & CASTLEMASK;
+                if (castlestate && pos->fullmovescounter < lastfullmove)
                 {
-                    U64 rooksbb;
-                    if (whiteCanCastle & castleQueenside)
-                        rooksbb = (pos->piece00[WROOK] & RANK1(WHITE));
-                    else
-                        rooksbb = (pos->piece00[BROOK] & RANK1(BLACK));
-                    rookfiles[0] = FILE(pullLsb(&rooksbb));
+                    int whiteCanCastle = castlestate & (WQCMASK | WKCMASK);
+                    int castleQueenside = castlestate & (WQCMASK | BQCMASK);
+                    int castleKingside = castlestate & (WKCMASK | BKCMASK);
+                    kingfile = (whiteCanCastle ? FILE(pos->kingpos[WHITE]) : FILE(pos->kingpos[BLACK]));
+
+                    rookfiles[0] = -1;
+                    if (castleQueenside)
+                    {
+                        U64 rooksbb;
+                        if (whiteCanCastle & castleQueenside)
+                            rooksbb = (pos->piece00[WROOK] & RANK1(WHITE));
+                        else
+                            rooksbb = (pos->piece00[BROOK] & RANK1(BLACK));
+                        rookfiles[0] = FILE(pullLsb(&rooksbb));
+                    }
+
+                    rookfiles[1] = -1;
+                    if (castleKingside)
+                    {
+                        U64 rooksbb;
+                        if (whiteCanCastle & castleKingside)
+                            rooksbb = (pos->piece00[WROOK] & RANK1(WHITE));
+                        else
+                            rooksbb = (pos->piece00[BROOK] & RANK1(BLACK));
+                        rookfiles[1] = FILE(pullMsb(&rooksbb));
+                    }
+                    pos->initCastleRights(rookfiles, kingfile);
                 }
 
-                rookfiles[1] = -1;
-                if (castleKingside)
+                lastfullmove = pos->fullmovescounter;
+
+                rubimovecode = pos->shortMove2FullMove(shortCode(psv->move));
+                uint32_t sfmovecode = rubimovecode;
+                if (!rubimovecode || ISEPCAPTUREORCASTLE(rubimovecode))
                 {
-                    U64 rooksbb;
-                    if (whiteCanCastle & castleKingside)
-                        rooksbb = (pos->piece00[WROOK] & RANK1(WHITE));
-                    else
-                        rooksbb = (pos->piece00[BROOK] & RANK1(BLACK));
-                    rookfiles[1] = FILE(pullMsb(&rooksbb));
+                    // Fix the incompatible move coding
+                    sfmovecode = pos->shortMove2FullMove(psv->move);
+                    if (sfmovecode)
+                        psv->move = sfMoveCode(sfmovecode);
+                    if (!rubimovecode)
+                    {
+                        // FIXME: Can this still happen??
+                        printf("Alarm. Movecode: %04x: %s\n", psv->move, pos->toFen().c_str());
+                        rubimovecode = pos->shortMove2FullMove(psv->move);
+                    }
                 }
-                pos->initCastleRights(rookfiles, kingfile);
+
+                if (!sfmovecode)
+                    continue;
             }
-
-            lastfullmove = pos->fullmovescounter;
-
-            uint32_t rubimovecode = pos->shortMove2FullMove(shortCode(psv->move));
-            uint32_t sfmovecode = rubimovecode;
-            if (!rubimovecode || ISEPCAPTUREORCASTLE(rubimovecode))
-            {
-                // Fix the incompatible move coding
-                sfmovecode = pos->shortMove2FullMove(psv->move);
-                if (sfmovecode)
-                    psv->move = sfMoveCode(sfmovecode);
-                if (!rubimovecode)
-                {
-                    // FIXME: Can this still happen??
-                    printf("Alarm. Movecode: %04x: %s\n", psv->move, pos->toFen().c_str());
-                    rubimovecode = pos->shortMove2FullMove(psv->move);
-                }
-            }
-
-            if (!sfmovecode)
-                continue;
-
             n++;
 
             if (outformat == plain)
@@ -1334,10 +1354,10 @@ void calcLoss(searchthread* thr)
     size_t num_mse = sr.sfen_for_mse.size();
 
     chessposition* pos = &thr->pos;
-    //auto p = sr.sfen_for_mse.end();
-    auto p = sr.sfen_for_mse.begin();
+    auto p = sr.sfen_for_mse.end();
+    //auto p = sr.sfen_for_mse.begin();
     do {
-        //p--;
+        p--;
         //PackedSfenValue *p = (PackedSfenValue*)it;
         //p->score = 0;
         pos->resetStats();
@@ -1382,10 +1402,10 @@ void calcLoss(searchthread* thr)
         pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, 1);
         if (p->move == sfMoveCode(pos->pvtable[0][0]))
             move_accord_count.fetch_add(1, memory_order_relaxed);
-        cout << pos->toFen() << "  PV: " << spv << "  Move: " << moveToString(pos->pvtable[0][0]) << "  shallow: " << shallow_value << "\n";
-        p++;
-    //} while (p != sr.sfen_for_mse.begin());
-    } while (p != sr.sfen_for_mse.end());
+        cout << pos->toFen() << "  PV: " << spv << "  Move: " << moveToString(pos->pvtable[0][0]) << "  shallow: " << shallow_value << "  deep: " << p->score << "\n";
+        //p++;
+    } while (p != sr.sfen_for_mse.begin());
+    //} while (p != sr.sfen_for_mse.end());
 
     latest_loss_sum += sum_tce - sum_t_entropy;
     latest_loss_count += sr.sfen_for_mse.size();
