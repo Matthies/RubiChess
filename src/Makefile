@@ -22,9 +22,12 @@ bmi2 = no
 avx512 = no
 neon = no
 
+# Use workaround for weak symbols problem in pthreads; https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58909
+LDFLAGS=-Wl,--whole-archive -lpthread -Wl,--no-whole-archive
 ifeq ($(shell uname -s),Darwin)
 	# Use clang compiler for MacOS
 	COMP=clang
+	LDFLAGS=-lpthread
 endif
 
 ifeq ($(COMP),)
@@ -39,7 +42,7 @@ CXXFLAGS=-std=c++11 -Wall -O3 -flto
 ifeq ($(COMP),$(filter $(COMP),gcc mingw))
 	CXX=g++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
-	LDFLAGS=-Wl,--whole-archive -lpthread -Wl,--no-whole-archive
+	
 ifeq ($(COMP),mingw)
 	LDFLAGS += -static
 endif
@@ -53,7 +56,7 @@ endif
 ifeq ($(COMP),clang)
 	CXX=clang++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
-	LDFLAGS=-Wl,--whole-archive -lpthread -Wl,--no-whole-archive $(shell type lld 1>/dev/null 2>/dev/null && echo "-fuse-ld=lld")
+	LDFLAGS += $(shell type lld 1>/dev/null 2>/dev/null && echo "-fuse-ld=lld")
 	INSTRUMENTEDEXTRACXXFLAGS='-fprofile-instr-generate=$(EXE).clangprof-raw'
 	INSTRUMENTEDEXTRALDFLAGS=
 	PGOEXTRACXXFLAGS='-fprofile-instr-use=$(EXE).profdata'
@@ -221,7 +224,7 @@ clean: objclean profileclean
 
 pgo: arch
 	@$(MAKE) compile EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) MESSAGE='Creating instrumented build ...'
-	@./$(EXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo "Running bench to generate profiling data... successful!") || echo "Running bench to generate profiling data... failed!"  
+	@./$(EXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo "Running bench to generate profiling data... successful!") || (echo "Running bench to generate profiling data... failed! Profiling with native build..." && $(MAKE) compile ARCH=native EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) MESSAGE='Creating instrumented build ...' && ./$(EXE) -bench 1>/dev/null)   
 	@$(PROFMERGE)
 	@$(RM) ./$(EXE)
 	@$(MAKE) compile EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS+=$(PGOEXTRALDFLAGS) MESSAGE='Creating optimized build ...'
