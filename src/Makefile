@@ -64,13 +64,13 @@ endif
 ifeq ($(shell uname -m),armv7l)
 	# FIXME: Hardcoded -mfpu=neon for Neon support
 	CXXFLAGS += -mthumb -march=armv7-a -mfpu=neon
-	ARCHFAMILY=arm
+	ARCHFAMILY=arm32
 endif
 
 ifeq ($(shell uname -m),aarch64)
 	# ARM64... any better flags that work with gcc and clang??
 	CXXFLAGS += -mcpu=native
-	ARCHFAMILY=arm
+	ARCHFAMILY=arm64
 endif
 
 ifeq ($(shell uname -m),x86_64)
@@ -176,7 +176,7 @@ ifneq ($(PROXY),)
 	WGETCMD += -e https_proxy=$(PROXY)
 endif
 
-.PHONY: clean profile-build gcc-profile-make clang-profile-make net arch compile pgo profile-build pgo-rename release
+.PHONY: clean profile-build gcc-profile-make clang-profile-make net arch compile pgo profile-build pgo-rename release_x86 release_arm32 release_arm64 release
 
 default: arch
 	@$(MAKE) compile MESSAGE='Creating standard build ...'
@@ -234,7 +234,7 @@ pgo-rename: pgo
 	@mv $(EXE) $(EXE)_$(ARCH)
 	@echo Successfully created $(EXE)_$(ARCH)
 
-releasex86: net
+release_x86: net
 	@$(MAKE) pgo-rename  ARCH=x86-64-avx512 EXTRALDFLAGS=-static
 	@$(MAKE) pgo-rename  ARCH=x86-64-bmi2 EXTRALDFLAGS=-static
 	@$(MAKE) pgo-rename  ARCH=x86-64-avx2 EXTRALDFLAGS=-static
@@ -243,8 +243,11 @@ releasex86: net
 	@$(MAKE) pgo-rename  ARCH=x86-64-sse3-popcnt EXTRALDFLAGS=-static
 	@$(MAKE) pgo-rename  ARCH=x86-64 EXTRALDFLAGS=-static
 	
-releasearm: net
-	@$(MAKE) pgo-rename  ARCH=neon EXTRALDFLAGS=-static
+release_arm64: net
+	@$(MAKE) pgo-rename  ARCH=arm64_neon EXTRALDFLAGS=-static
+
+release_arm32: net
+	@$(MAKE) pgo-rename  ARCH=arm32_neon EXTRALDFLAGS=-static
 
 release:
-	@$(MAKE) release$(ARCHFAMILY)
+	@$(MAKE) release_$(ARCHFAMILY)
