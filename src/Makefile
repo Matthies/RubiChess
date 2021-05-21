@@ -39,7 +39,7 @@ CXXFLAGS=-std=c++11 -Wall -O3 -flto
 ifeq ($(COMP),$(filter $(COMP),gcc mingw))
 	CXX=g++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
-	LDFLAGS=-pthread
+	LDFLAGS=-Wl,--whole-archive -lpthread -Wl,--no-whole-archive
 ifeq ($(COMP),mingw)
 	LDFLAGS += -static
 endif
@@ -53,7 +53,7 @@ endif
 ifeq ($(COMP),clang)
 	CXX=clang++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
-	LDFLAGS=-lpthread $(shell type lld 1>/dev/null 2>/dev/null && echo "-fuse-ld=lld")
+	LDFLAGS=-Wl,--whole-archive -lpthread -Wl,--no-whole-archive $(shell type lld 1>/dev/null 2>/dev/null && echo "-fuse-ld=lld")
 	INSTRUMENTEDEXTRACXXFLAGS='-fprofile-instr-generate=$(EXE).clangprof-raw'
 	INSTRUMENTEDEXTRALDFLAGS=
 	PGOEXTRACXXFLAGS='-fprofile-instr-use=$(EXE).profdata'
@@ -64,11 +64,17 @@ endif
 ifeq ($(shell uname -m),armv7l)
 	# FIXME: Hardcoded -mfpu=neon for Neon support
 	CXXFLAGS += -mthumb -march=armv7-a -mfpu=neon
+	ARCHFAMILY=arm
 endif
 
 ifeq ($(shell uname -m),aarch64)
 	# ARM64... any better flags that work with gcc and clang??
 	CXXFLAGS += -mcpu=native
+	ARCHFAMILY=arm
+endif
+
+ifeq ($(shell uname -m),x86_64)
+	ARCHFAMILY=x86
 endif
 
 ifeq (,$(CPUFLAGS))
@@ -79,7 +85,7 @@ endif
 CPUFLAGS = "$(shell ./$(CPUTEST))"
 endif
 
-# Common supported x64 architectures
+# Common supported x64 and ARM architectures
 ifneq (,$(findstring x86-64,$(ARCH)))
 CPUFLAGS = "sse2"
 endif
@@ -100,6 +106,9 @@ CPUFLAGS = "ssse3 sse2"
 endif
 ifneq (,$(findstring x86-64-sse3-popcnt,$(ARCH)))
 CPUFLAGS = "popcnt sse2"
+endif
+ifneq (,$(findstring neon,$(ARCH)))
+CPUFLAGS = "neon"
 endif
 endif
 
@@ -214,7 +223,7 @@ pgo: arch
 	@./$(EXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo "Running bench to generate profiling data... successful!") || echo "Running bench to generate profiling data... failed!"  
 	@$(PROFMERGE)
 	@$(RM) ./$(EXE)
-	@$(MAKE) compile EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS=$(PGOEXTRALDFLAGS) MESSAGE='Creating optimized build ...'
+	@$(MAKE) compile EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS+=$(PGOEXTRALDFLAGS) MESSAGE='Creating optimized build ...'
 	@$(MAKE) profileclean
 	@strip $(EXE)$(EXEEXT)
 	@echo Binary $(EXE) created successfully.
@@ -225,11 +234,17 @@ pgo-rename: pgo
 	@mv $(EXE) $(EXE)_$(ARCH)
 	@echo Successfully created $(EXE)_$(ARCH)
 
-release: net
-	@$(MAKE) pgo-rename  ARCH=x86-64-avx512
-	@$(MAKE) pgo-rename  ARCH=x86-64-bmi2
-	@$(MAKE) pgo-rename  ARCH=x86-64-avx2
-	@$(MAKE) pgo-rename  ARCH=x86-64-modern
-	@$(MAKE) pgo-rename  ARCH=x86-64-ssse3
-	@$(MAKE) pgo-rename  ARCH=x86-64-sse2-popcnt
-	@$(MAKE) pgo-rename  ARCH=x86-64
+releasex86: net
+	@$(MAKE) pgo-rename  ARCH=x86-64-avx512 EXTRALDFLAGS=-static
+	@$(MAKE) pgo-rename  ARCH=x86-64-bmi2 EXTRALDFLAGS=-static
+	@$(MAKE) pgo-rename  ARCH=x86-64-avx2 EXTRALDFLAGS=-static
+	@$(MAKE) pgo-rename  ARCH=x86-64-modern EXTRALDFLAGS=-static
+	@$(MAKE) pgo-rename  ARCH=x86-64-ssse3 EXTRALDFLAGS=-static
+	@$(MAKE) pgo-rename  ARCH=x86-64-sse3-popcnt EXTRALDFLAGS=-static
+	@$(MAKE) pgo-rename  ARCH=x86-64 EXTRALDFLAGS=-static
+	
+releasearm: net
+	@$(MAKE) pgo-rename  ARCH=neon EXTRALDFLAGS=-static
+
+release:
+	@$(MAKE) release$(ARCHFAMILY)
