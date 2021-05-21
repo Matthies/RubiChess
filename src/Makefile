@@ -66,6 +66,11 @@ ifeq ($(shell uname -m),armv7l)
 	CXXFLAGS += -mthumb -march=armv7-a -mfpu=neon
 endif
 
+ifeq ($(shell uname -m),aarch64)
+	# ARM64... any better flags that work with gcc and clang??
+	CXXFLAGS += -mcpu=native
+endif
+
 ifeq (,$(CPUFLAGS))
 ifeq ($(ARCH),native)
 ifeq ($(wildcard ./$(CPUTEST)),)
