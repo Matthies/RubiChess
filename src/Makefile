@@ -186,6 +186,7 @@ build: net default
 arch:
 	@echo
 	@echo "Compiler: $(COMP)"
+	@echo "Arch: $(ARCH)"
 	@echo "CPU features:"
 	@echo "============="
 	@echo "avx512: $(avx512)"
