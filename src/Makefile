@@ -13,6 +13,7 @@ endif
 CPUTEST=cputest
 ARCH=native
 PROFDIR = OPT
+PROFEXE = RubiChess-Prof
 
 sse2 = no
 ssse3 = no
@@ -22,12 +23,12 @@ bmi2 = no
 avx512 = no
 neon = no
 
+PTHREADLIB=-pthread
 # Use workaround for weak symbols problem in pthreads; https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58909
-LDSTATICFLAGS=-static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive
+PTHREADSTATICLIB=-static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive
 ifeq ($(shell uname -s),Darwin)
 	# Use clang compiler for MacOS
 	COMP=clang
-	LDFLAGS=-lpthread
 endif
 
 ifeq ($(COMP),)
@@ -212,10 +213,10 @@ endif
 
 compile:
 	@echo $(MESSAGE)
-	@$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) *.cpp $(LDFLAGS) $(EXTRALDFLAGS) $(GITDEFINE) -o $(EXE)
+	@$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) *.cpp $(LDFLAGS) $(PTHREADLIB) $(EXTRALDFLAGS) $(GITDEFINE) -o $(EXE)
 
 objclean:
-	@$(RM) $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) *.o $(CPUTEST) || @echo $(RM) not available.
+	@$(RM) $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(PROFEXE) *.o $(CPUTEST) || @echo $(RM) not available.
 
 profileclean:
 	@$(RM) -rf $(PROFDIR) || @echo $(RM) not available.
@@ -224,10 +225,10 @@ profileclean:
 clean: objclean profileclean
 
 pgo: arch
-	@$(MAKE) compile EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) MESSAGE='Creating instrumented build ...'
-	@./$(EXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo "Running bench to generate profiling data... successful!") || (echo "Running bench to generate profiling data... failed! Profiling with native build..." && $(MAKE) compile ARCH=native EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) MESSAGE='Creating instrumented build ...' && ./$(EXE) -bench 1>/dev/null)   
+	@$(MAKE) compile EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Creating instrumented build ...'
+	@./$(PROFEXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo "Running bench to generate profiling data... successful!") || (echo "Running bench to generate profiling data... failed! Profiling with native build..." && $(MAKE) compile ARCH=native EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) MESSAGE='Creating instrumented build ...' && ./$(PROFEXE) -bench 1>/dev/null)   
 	@$(PROFMERGE)
-	@$(RM) ./$(EXE)
+	@$(RM) ./$(PROFEXE)
 	@$(MAKE) compile EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS+=$(PGOEXTRALDFLAGS) MESSAGE='Creating optimized build ...'
 	@$(MAKE) profileclean
 	@strip $(EXE)$(EXEEXT)
@@ -240,13 +241,13 @@ pgo-rename: pgo
 	@echo Successfully created $(EXE)_$(ARCH)
 
 release_x86: net
-	@$(MAKE) pgo-rename  ARCH=x86-64-avx512 EXTRALDFLAGS=$(LDSTATICFLAGS)
-	@$(MAKE) pgo-rename  ARCH=x86-64-bmi2 EXTRALDFLAGS=$(LDSTATICFLAGS)
-	@$(MAKE) pgo-rename  ARCH=x86-64-avx2 EXTRALDFLAGS=$(LDSTATICFLAGS)
-	@$(MAKE) pgo-rename  ARCH=x86-64-modern EXTRALDFLAGS=$(LDSTATICFLAGS)
-	@$(MAKE) pgo-rename  ARCH=x86-64-ssse3 EXTRALDFLAGS=$(LDSTATICFLAGS)
-	@$(MAKE) pgo-rename  ARCH=x86-64-sse3-popcnt EXTRALDFLAGS=$(LDSTATICFLAGS)
-	@$(MAKE) pgo-rename  ARCH=x86-64 EXTRALDFLAGS=$(LDSTATICFLAGS)
+	@$(MAKE) pgo-rename  ARCH=x86-64-avx512 LDFLAGS=-static PTHREADLIB=$(PTHREADSTATICLIB)
+	@$(MAKE) pgo-rename  ARCH=x86-64-bmi2 LDFLAGS=-static PTHREADLIB=$(PTHREADSTATICLIB)
+	@$(MAKE) pgo-rename  ARCH=x86-64-avx2 LDFLAGS=-static PTHREADLIB=$(PTHREADSTATICLIB)
+	@$(MAKE) pgo-rename  ARCH=x86-64-modern LDFLAGS=-static PTHREADLIB=$(PTHREADSTATICLIB)
+	@$(MAKE) pgo-rename  ARCH=x86-64-ssse3 LDFLAGS=-static PTHREADLIB=$(PTHREADSTATICLIB)
+	@$(MAKE) pgo-rename  ARCH=x86-64-sse3-popcnt LDFLAGS=-static PTHREADLIB=$(PTHREADSTATICLIB)
+	@$(MAKE) pgo-rename  ARCH=x86-64 LDFLAGS=-static PTHREADLIB=$(PTHREADSTATICLIB)
 	
 release_arm64: net
 	@$(MAKE) pgo-rename  ARCH=arm64_neon EXTRALDFLAGS=$(LDSTATICFLAGS)
