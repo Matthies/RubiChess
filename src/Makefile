@@ -25,7 +25,7 @@ neon = no
 
 PTHREADLIB=-pthread
 # Use workaround for weak symbols problem in pthreads; https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58909
-PTHREADSTATICLIB=-static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive
+PTHREADSTATICLIB="-Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
 ifeq ($(shell uname -s),Darwin)
 	# Use clang compiler for MacOS
 	COMP=clang
