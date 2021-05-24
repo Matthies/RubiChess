@@ -21,6 +21,16 @@
 
 void generateEpd(string egn)
 {
+
+    if (egn == "chess960")
+    {
+        for (int i = 0; i < 960; i++)
+        {
+            cout << frcStartFen(i) << "\n";
+        }
+
+        return;
+    }
     chessposition *pos = &en.sthread[0].pos;
     int pcs[16];
 

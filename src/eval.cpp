@@ -23,6 +23,7 @@
 // static values for the search/pruning/material stuff
 const int materialvalue[7] = { 0,  100,  314,  314,  483,  913, 32509 };  // some evaluation depends on bishop value >= knight value!!!
 eval NnuePsqThreshold = 760;
+eval FrcCorneredBishopPenalty = 25;
 
 void initPsqtable()
 {
@@ -78,6 +79,7 @@ static void registertuner(chessposition *pos, eval *e, string name, int index1, 
     en.ucioptions.Register((void*)e, osName.str() + "_mg", ucieval, sDef, 0, 0, initPsqtable);
     sDef = to_string(GETEGVAL(*e));
     en.ucioptions.Register((void*)e, osName.str() + "_eg", ucieval, sDef, 0, 0, initPsqtable);
+    en.ucioptions.Register(&FrcCorneredBishopPenalty, "FrcCorneredBishopPenalty", ucispin, to_string(FrcCorneredBishopPenalty), 0, SCOREWHITEWINS, nullptr);
 #ifdef NNUE
     en.ucioptions.Register(&NnuePsqThreshold, "NnuePsqThreshold", ucinnuebias, to_string(NnuePsqThreshold), 0, SCOREWHITEWINS, nullptr);
 #endif
@@ -734,6 +736,28 @@ int chessposition::getGeneralEval(positioneval *pe)
     return result;
 }
 
+
+
+int chessposition::getFrcCorrection()
+{
+    if (!((piece00[WBISHOP] | piece00[BBISHOP]) & CORNERS))
+        return 0;
+
+    int correction = 0;
+
+    if (mailbox[0]  == WBISHOP && mailbox[9] == WPAWN)
+        correction += mailbox[17] ? -FrcCorneredBishopPenalty * 4 : -FrcCorneredBishopPenalty * 3;
+    if (mailbox[7] == WBISHOP && mailbox[14] == WPAWN)
+        correction += mailbox[22] ? -FrcCorneredBishopPenalty * 4 : -FrcCorneredBishopPenalty * 3;
+    if (mailbox[56] == BBISHOP && mailbox[49] == BPAWN)
+        correction += mailbox[41] ? FrcCorneredBishopPenalty * 4 : FrcCorneredBishopPenalty * 3;
+    if (mailbox[63] == BBISHOP && mailbox[54] == BPAWN)
+        correction += mailbox[46] ? FrcCorneredBishopPenalty * 4 : FrcCorneredBishopPenalty * 3;
+
+    return S2MSIGN(state & S2MMASK) * correction;
+}
+
+
 //
 // getEval() is the general evaluation interface for search
 // It returns the score of the position from the view of the side to move
@@ -750,14 +774,15 @@ int chessposition::getEval()
     ph = phase();
 
     int score;
+    int frcCorrection = (en.chess960 ? getFrcCorrection() : 0);
 #ifdef NNUE
     if (NnueReady && abs(GETEGVAL(psqval)) < NnuePsqThreshold)
     {
         if (NnueReady == NnueRotate)
-            score = NnueGetEval<NnueRotate>() + eps.eTempo;
+            score = NnueGetEval<NnueRotate>();
         else
-            score = NnueGetEval<NnueFlip>() + eps.eTempo;
-        return score;
+            score = NnueGetEval<NnueFlip>();
+        return score + frcCorrection + eps.eTempo;
     }
 #endif
 
@@ -827,7 +852,7 @@ int chessposition::getEval()
         traceEvalOut();
     }
 
-    return S2MSIGN(state & S2MMASK) * score;
+    return S2MSIGN(state & S2MMASK) * score + frcCorrection;
 }
 
 
