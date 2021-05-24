@@ -23,7 +23,7 @@
 // static values for the search/pruning/material stuff
 const int materialvalue[7] = { 0,  100,  314,  314,  483,  913, 32509 };  // some evaluation depends on bishop value >= knight value!!!
 eval NnuePsqThreshold = 760;
-eval FrcCorneredBishopPenalty = 25;
+eval FrcCorneredBishopPenalty = 20;
 
 void initPsqtable()
 {

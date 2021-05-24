@@ -26,6 +26,10 @@ void generateEpd(string egn)
     {
         for (int i = 0; i < 960; i++)
         {
+#if 0   // Filter for corner bishop
+            if (!(i % 4 == 3 || (i / 4) % 4 == 0))
+                continue;
+#endif
             cout << frcStartFen(i) << "\n";
         }
 
