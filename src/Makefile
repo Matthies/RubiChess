@@ -25,7 +25,7 @@ neon = no
 
 PTHREADLIB=-pthread
 # Use workaround for weak symbols problem in pthreads; https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58909
-PTHREADSTATICLIB="-Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
+PTHREADSTATICLIB="-static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
 ifeq ($(shell uname -s),Darwin)
 	# Use clang compiler for MacOS
 	COMP=clang
@@ -229,7 +229,7 @@ pgo: arch
 	@./$(PROFEXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo "Running bench to generate profiling data... successful!") || (echo "Running bench to generate profiling data... failed! Profiling with native build..." && $(MAKE) compile ARCH=native EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Creating instrumented build ...' && ./$(PROFEXE) -bench 1>/dev/null)   
 	@$(PROFMERGE)
 	@$(RM) ./$(PROFEXE)
-	@$(MAKE) compile EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS+=$(PGOEXTRALDFLAGS) MESSAGE='Creating optimized build ...'
+	@$(MAKE) compile EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS=$(PGOEXTRALDFLAGS) MESSAGE='Creating optimized build ...'
 	@$(MAKE) profileclean
 	@strip $(EXE)$(EXEEXT)
 	@echo Binary $(EXE) created successfully.
@@ -241,19 +241,19 @@ pgo-rename: pgo
 	@echo Successfully created $(EXE)_$(ARCH)
 
 release_x86: net
-	@$(MAKE) pgo-rename  ARCH=x86-64-avx512 LDFLAGS=-static PTHREADLIB=$(PTHREADSTATICLIB)
-	@$(MAKE) pgo-rename  ARCH=x86-64-bmi2 LDFLAGS=-static PTHREADLIB=$(PTHREADSTATICLIB)
-	@$(MAKE) pgo-rename  ARCH=x86-64-avx2 LDFLAGS=-static PTHREADLIB=$(PTHREADSTATICLIB)
-	@$(MAKE) pgo-rename  ARCH=x86-64-modern LDFLAGS=-static PTHREADLIB=$(PTHREADSTATICLIB)
-	@$(MAKE) pgo-rename  ARCH=x86-64-ssse3 LDFLAGS=-static PTHREADLIB=$(PTHREADSTATICLIB)
-	@$(MAKE) pgo-rename  ARCH=x86-64-sse3-popcnt LDFLAGS=-static PTHREADLIB=$(PTHREADSTATICLIB)
-	@$(MAKE) pgo-rename  ARCH=x86-64 LDFLAGS=-static PTHREADLIB=$(PTHREADSTATICLIB)
+	@$(MAKE) pgo-rename  ARCH=x86-64-avx512 PTHREADLIB=$(PTHREADSTATICLIB)
+	@$(MAKE) pgo-rename  ARCH=x86-64-bmi2 PTHREADLIB=$(PTHREADSTATICLIB)
+	@$(MAKE) pgo-rename  ARCH=x86-64-avx2 PTHREADLIB=$(PTHREADSTATICLIB)
+	@$(MAKE) pgo-rename  ARCH=x86-64-modern PTHREADLIB=$(PTHREADSTATICLIB)
+	@$(MAKE) pgo-rename  ARCH=x86-64-ssse3 PTHREADLIB=$(PTHREADSTATICLIB)
+	@$(MAKE) pgo-rename  ARCH=x86-64-sse3-popcnt PTHREADLIB=$(PTHREADSTATICLIB)
+	@$(MAKE) pgo-rename  ARCH=x86-64 PTHREADLIB=$(PTHREADSTATICLIB)
 	
 release_arm64: net
-	@$(MAKE) pgo-rename  ARCH=arm64_neon LDFLAGS=-static PTHREADLIB=$(PTHREADSTATICLIB)
+	@$(MAKE) pgo-rename  ARCH=arm64_neon PTHREADLIB=$(PTHREADSTATICLIB)
 
 release_arm32: net
-	@$(MAKE) pgo-rename  ARCH=arm32_neon LDFLAGS=-static PTHREADLIB=$(PTHREADSTATICLIB)
+	@$(MAKE) pgo-rename  ARCH=arm32_neon PTHREADLIB=$(PTHREADSTATICLIB)
 
 release:
 	@$(MAKE) release_$(ARCHFAMILY)
