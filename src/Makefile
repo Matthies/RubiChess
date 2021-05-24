@@ -250,10 +250,10 @@ release_x86: net
 	@$(MAKE) pgo-rename  ARCH=x86-64 LDFLAGS=-static PTHREADLIB=$(PTHREADSTATICLIB)
 	
 release_arm64: net
-	@$(MAKE) pgo-rename  ARCH=arm64_neon EXTRALDFLAGS=$(LDSTATICFLAGS)
+	@$(MAKE) pgo-rename  ARCH=arm64_neon LDFLAGS=-static PTHREADLIB=$(PTHREADSTATICLIB)
 
 release_arm32: net
-	@$(MAKE) pgo-rename  ARCH=arm32_neon EXTRALDFLAGS=$(LDSTATICFLAGS)
+	@$(MAKE) pgo-rename  ARCH=arm32_neon LDFLAGS=-static PTHREADLIB=$(PTHREADSTATICLIB)
 
 release:
 	@$(MAKE) release_$(ARCHFAMILY)
