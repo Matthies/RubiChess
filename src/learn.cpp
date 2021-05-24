@@ -1174,6 +1174,13 @@ thread thrFilereader;
 
 double latest_loss_sum = 0.0;
 double latest_loss_count = 0;
+double best_loss;
+
+atomic<uint64_t> total_done;
+atomic<uint64_t> loop_count;
+atomic<uint64_t> done_count;
+uint64_t epoch;
+double eta = 0.0;
 
 
 struct SfenReader
@@ -1189,7 +1196,7 @@ struct SfenReader
     int nextFree;
     int nextAvail;
     mutex requestmutex;
-    int chunkRequestByThread;
+    atomic<int> chunkRequestByThread;
     atomic<int> chunkNumForThread;
 
 
@@ -1259,9 +1266,9 @@ void readSfens()
         {
             // A thread wants the next avail chunk of sfens
             int nextAvail = (sr.nextAvail + 1) % sr.SFEN_CHUNKS;
-            cout << "Reader: Next avail = " << nextAvail << "\n";
             if (nextAvail != sr.nextFree)
             {
+                cout << "Reader: Next avail = " << nextAvail << "\n";
                 sr.nextAvail = nextAvail;
                 sr.chunkNumForThread = nextAvail;
                 // Wait for the requesting thread to clear
@@ -1354,15 +1361,27 @@ void calcLoss(searchthread* thr)
     size_t num_mse = sr.sfen_for_mse.size();
 
     chessposition* pos = &thr->pos;
+
+    auto now = chrono::system_clock::now();
+    auto tp = chrono::system_clock::to_time_t(now);
+    string sNow = string(ctime(&tp));
+    while (*sNow.rbegin() == '\n' || (*sNow.rbegin() == '\r'))
+        sNow.pop_back();
+
+    cout << "PROGRESS: " << sNow << ", ";
+    cout << total_done << " sfens";
+    cout << ", iteration " << epoch;
+    cout << ", eta = " << eta << ", ";
+
+    pos->getFromFen(STARTFEN);
+    std::cout << "hirate eval = " << pos->getEval<NOTRACE>();
+
     auto p = sr.sfen_for_mse.end();
-    //auto p = sr.sfen_for_mse.begin();
     do {
         p--;
-        //PackedSfenValue *p = (PackedSfenValue*)it;
-        //p->score = 0;
         pos->resetStats();
         pos->getFromSfen(&p->sfen);
-#if 1
+#if 0
         if (pos->toFen() == "rnb1k1nr/1pqpbppp/p1p5/4p3/2B1P3/2N2N2/PPPP1PPP/1RBQK2R w Kkq - 4 6")
             cout << "debug qsearch\n";
 #endif
@@ -1402,10 +1421,8 @@ void calcLoss(searchthread* thr)
         pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, 1);
         if (p->move == sfMoveCode(pos->pvtable[0][0]))
             move_accord_count.fetch_add(1, memory_order_relaxed);
-        cout << pos->toFen() << "  PV: " << spv << "  Move: " << moveToString(pos->pvtable[0][0]) << "  shallow: " << shallow_value << "  deep: " << p->score << "\n";
-        //p++;
+        //cout << pos->toFen() << "  PV: " << spv << "  Move: " << moveToString(pos->pvtable[0][0]) << "  shallow: " << shallow_value << "  deep: " << p->score << "\n";
     } while (p != sr.sfen_for_mse.begin());
-    //} while (p != sr.sfen_for_mse.end());
 
     latest_loss_sum += sum_tce - sum_t_entropy;
     latest_loss_count += sr.sfen_for_mse.size();
@@ -1421,7 +1438,7 @@ void calcLoss(searchthread* thr)
         << " , test_entropy_win = " << sum_te_win / num_mse
         << " , test_cross_entropy = " << sum_tce / num_mse
         << " , test_entropy = " << sum_t_entropy / num_mse
-        << " , norm = " << sum_norm
+        << " , norm = " << (int)sum_norm
         << " , move accuracy = " << (move_accord_count * 100.0 / num_mse) << "%";
 #if 0
     if (done != static_cast<uint64_t>(-1))
@@ -1444,21 +1461,60 @@ void calcLoss(searchthread* thr)
 
 void learnWorker(searchthread* thr)
 {
+    int index = thr->index;
+    chessposition* pos = &thr->pos;
+#if 0
     // Some sfen sync testing testing
-    int i = thr->index;
     for (int j = 0; j < 100; j++)
     {
         sr.requestmutex.lock();
-        sr.chunkRequestByThread = i % 16;
+        sr.chunkRequestByThread = index % 16;
         while (sr.chunkNumForThread < 0) Sleep(10);
         int myChunk = sr.chunkNumForThread;
-        cout << "thread#" << i << ":  Got chunk " << myChunk << "\n";
+        cout << "thread#" << index << ":  Got chunk " << myChunk << "\n";
         sr.chunkNumForThread = -1;
         sr.chunkRequestByThread = -1;
         sr.requestmutex.unlock();
         Sleep(2000 + 100 * i);
     }
     cout << "Thread#" << i << " terminated.\n";
+#endif
+
+    int myChunk = -1;
+    PackedSfenValue* p;
+    uint64_t sfen_remain;
+
+    while (true)
+    {
+        if (myChunk < 0)
+        {
+            // Request for new sfen chunk
+            sr.requestmutex.lock();
+            sr.chunkRequestByThread = index;
+            while (sr.chunkNumForThread < 0) Sleep(10);
+            myChunk = sr.chunkNumForThread;
+            //cout << "thread#" << index << ":  Got chunk " << myChunk << "\n";
+            sr.chunkNumForThread = -1;
+            sr.chunkRequestByThread = -1;
+            sr.requestmutex.unlock();
+            p = sr.buffer + myChunk * sr.SFEN_THREAD_SIZE;
+            sfen_remain = sr.SFEN_THREAD_SIZE;
+            cout << "thread#" << index << " got chunk# " << myChunk << "\n";
+        }
+
+        if (!sfen_remain)
+        {
+            cout << "thread#" << index << " is out of sfens\n";
+            myChunk = -1;
+            continue;
+        }
+
+        pos->getFromSfen(&p->sfen);
+        //cout << "thread#" << index << " consumes " << sfen_remain << "\n";
+
+        p++;
+        sfen_remain--;
+    }
 }
 
 
@@ -1549,12 +1605,24 @@ void learn(vector<string> args)
 
     if (!readValidationSfens())
         return;
+
+    sr.chunkNumForThread = -1;
     thrFilereader = thread(&readSfens);
 
     // Initial loss
     en.sthread[0].thr = thread(&calcLoss, &en.sthread[0]);
     en.sthread[0].thr.join();
-    return;
+
+    best_loss = latest_loss_sum / latest_loss_count;
+    latest_loss_sum = 0.0;
+    latest_loss_count = 0;
+    cout << "initial loss: " << best_loss << endl;
+    best_loss *= 1.05;
+    cout << "(Inflated to " << best_loss << ")" << endl;
+
+    loop_count = 0;
+    done_count = 0;
+
 
     // Start workers
     for (int tnum = 0; tnum < en.Threads; tnum++)
