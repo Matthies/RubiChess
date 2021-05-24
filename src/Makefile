@@ -23,7 +23,7 @@ avx512 = no
 neon = no
 
 # Use workaround for weak symbols problem in pthreads; https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58909
-LDFLAGS=-Wl,--whole-archive -lpthread -Wl,--no-whole-archive
+LDSTATICFLAGS=-static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive
 ifeq ($(shell uname -s),Darwin)
 	# Use clang compiler for MacOS
 	COMP=clang
@@ -44,6 +44,7 @@ ifeq ($(COMP),$(filter $(COMP),gcc mingw))
 	CXXFLAGS += -pedantic -Wextra -Wshadow
 	
 ifeq ($(COMP),mingw)
+	# Always do a static built with Mingw
 	LDFLAGS += -static
 endif
 	INSTRUMENTEDEXTRACXXFLAGS='-fprofile-generate=$(PROFDIR)'
@@ -239,19 +240,19 @@ pgo-rename: pgo
 	@echo Successfully created $(EXE)_$(ARCH)
 
 release_x86: net
-	@$(MAKE) pgo-rename  ARCH=x86-64-avx512 EXTRALDFLAGS=-static
-	@$(MAKE) pgo-rename  ARCH=x86-64-bmi2 EXTRALDFLAGS=-static
-	@$(MAKE) pgo-rename  ARCH=x86-64-avx2 EXTRALDFLAGS=-static
-	@$(MAKE) pgo-rename  ARCH=x86-64-modern EXTRALDFLAGS=-static
-	@$(MAKE) pgo-rename  ARCH=x86-64-ssse3 EXTRALDFLAGS=-static
-	@$(MAKE) pgo-rename  ARCH=x86-64-sse3-popcnt EXTRALDFLAGS=-static
-	@$(MAKE) pgo-rename  ARCH=x86-64 EXTRALDFLAGS=-static
+	@$(MAKE) pgo-rename  ARCH=x86-64-avx512 EXTRALDFLAGS=$(LDSTATICFLAGS)
+	@$(MAKE) pgo-rename  ARCH=x86-64-bmi2 EXTRALDFLAGS=$(LDSTATICFLAGS)
+	@$(MAKE) pgo-rename  ARCH=x86-64-avx2 EXTRALDFLAGS=$(LDSTATICFLAGS)
+	@$(MAKE) pgo-rename  ARCH=x86-64-modern EXTRALDFLAGS=$(LDSTATICFLAGS)
+	@$(MAKE) pgo-rename  ARCH=x86-64-ssse3 EXTRALDFLAGS=$(LDSTATICFLAGS)
+	@$(MAKE) pgo-rename  ARCH=x86-64-sse3-popcnt EXTRALDFLAGS=$(LDSTATICFLAGS)
+	@$(MAKE) pgo-rename  ARCH=x86-64 EXTRALDFLAGS=$(LDSTATICFLAGS)
 	
 release_arm64: net
-	@$(MAKE) pgo-rename  ARCH=arm64_neon EXTRALDFLAGS=-static
+	@$(MAKE) pgo-rename  ARCH=arm64_neon EXTRALDFLAGS=$(LDSTATICFLAGS)
 
 release_arm32: net
-	@$(MAKE) pgo-rename  ARCH=arm32_neon EXTRALDFLAGS=-static
+	@$(MAKE) pgo-rename  ARCH=arm32_neon EXTRALDFLAGS=$(LDSTATICFLAGS)
 
 release:
 	@$(MAKE) release_$(ARCHFAMILY)
