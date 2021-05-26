@@ -774,10 +774,10 @@ int chessposition::getEval()
     ph = phase();
 
     int score;
-    int frcCorrection = (en.chess960 ? getFrcCorrection() : 0);
 #ifdef NNUE
     if (NnueReady && abs(GETEGVAL(psqval)) < NnuePsqThreshold)
     {
+        int frcCorrection = (en.chess960 ? getFrcCorrection() : 0);
         if (NnueReady == NnueRotate)
             score = NnueGetEval<NnueRotate>();
         else
@@ -852,7 +852,7 @@ int chessposition::getEval()
         traceEvalOut();
     }
 
-    return S2MSIGN(state & S2MMASK) * score + frcCorrection;
+    return S2MSIGN(state & S2MMASK) * score;
 }
 
 
