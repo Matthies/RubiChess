@@ -181,6 +181,12 @@ ifneq ($(PROXY),)
 	WGETCMD += -e https_proxy=$(PROXY)
 endif
 
+MAJORVERSION = $(shell grep "\#define VERNUM " RubiChess.h | awk -F'"' '{print $$2}')
+ifeq ($(shell grep "^\#define VERSTABLE" RubiChess.h),)
+	MINORVERSION=-dev
+endif
+VERSION=$(MAJORVERSION)$(MINORVERSION)
+
 .PHONY: clean profile-build gcc-profile-make clang-profile-make net arch compile pgo profile-build pgo-rename release_x86 release_arm32 release_arm64 release
 
 default: arch
@@ -237,8 +243,8 @@ pgo: arch
 profile-build: net pgo
 
 pgo-rename: pgo
-	@mv $(EXE) $(EXE)_$(ARCH)
-	@echo Successfully created $(EXE)_$(ARCH)
+	@mv $(EXE) $(EXE)-$(VERSION)_$(ARCH)
+	@echo Successfully created $(EXE)-$(VERSION)_$(ARCH)
 
 release_x86: net
 	@$(MAKE) pgo-rename  ARCH=x86-64-avx512 PTHREADLIB=$(PTHREADSTATICLIB)
