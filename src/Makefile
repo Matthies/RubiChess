@@ -183,7 +183,7 @@ endif
 
 MAJORVERSION = $(shell grep "\#define VERNUM " RubiChess.h | awk -F'"' '{print $$2}')
 ifeq ($(shell grep "^\#define VERSTABLE" RubiChess.h),)
-	MINORVERSION=-dev
+	MINORVERSION=-dev-$(GITID)
 endif
 VERSION=$(MAJORVERSION)$(MINORVERSION)
 
