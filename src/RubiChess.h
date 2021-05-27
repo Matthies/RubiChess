@@ -212,6 +212,7 @@ enum Color { WHITE, BLACK };
 #define FLANKLEFT  0x0f0f0f0f0f0f0f0f
 #define FLANKRIGHT 0xf0f0f0f0f0f0f0f0
 #define CENTER 0x0000001818000000
+#define CORNERS 0x8100000000000081
 #define OUTPOSTAREA(s) ((s) ? 0x000000ffffff0000 : 0x0000ffffff000000)
 #define RANK(x) ((x) >> 3)
 #define RRANK(x,s) ((s) ? ((x) >> 3) ^ 7 : ((x) >> 3))
@@ -609,7 +610,7 @@ typedef struct ranctx { U64 a; U64 b; U64 c; U64 d; } ranctx;
 
 void raninit(ranctx* x, U64 seed);
 U64 ranval(ranctx* x);
-string frcStartFen();
+string frcStartFen(int num = -1);
 U64 calc_key_from_pcs(int *pcs, int mirror);
 void getPcsFromStr(const char* str, int *pcs);
 void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am);
@@ -1417,6 +1418,7 @@ public:
     uint32_t shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal
     int getpsqval(bool showDetails = false);  // only for eval trace
     template <EvalType Et, int Me> int getGeneralEval(positioneval *pe);
+    int getFrcCorrection();
     template <EvalType Et, PieceType Pt, int Me> int getPieceEval(positioneval *pe);
     template <EvalType Et, int Me> int getLateEval(positioneval *pe);
     template <EvalType Et, int Me> void getPawnAndKingEval(pawnhashentry *entry);

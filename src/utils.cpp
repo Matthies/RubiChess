@@ -54,6 +54,7 @@ static void frcPlaceRandomly(char* p, char c)
     else
         frcPlaceRandomly(p, c);    // try again
 }
+
 static int frcPlaceFirst(char* p, char c, int loc = 0)
 {
     while (p[loc]) ++loc;
@@ -61,18 +62,57 @@ static int frcPlaceFirst(char* p, char c, int loc = 0)
     return loc;
 }
 
-string frcStartFen()
+static int frcPlaceAtX(char* p, char c, int x, int loc = 0)
+{
+    while (true) {
+        while (p[loc]) ++loc;
+        if (x == 0)
+            break;
+        x--;
+        loc++;
+    }
+    p[loc] = c;
+    return loc;
+}
+
+//  https://en.wikipedia.org/wiki/Fischer_random_chess_numbering_scheme
+string frcStartFen(int num)
 {
     char p[8] = { 0 };
+    int b1, b2, n1, n2;
 
     // bishops on opposite color
-    p[2 * (rand() % 4)] = 'B';
-    p[2 * (rand() % 4) + 1] = 'B';
+    if (num < 0)
+    {
+        b1 = 2 * (rand() % 4) + 1;
+        b2 = 2 * (rand() % 4);
+    }
+    else {
+        b1 = 2 * (num % 4) + 1;
+        num /= 4;
+        b2 = 2 * (num % 4);
+        num /= 4;
+    }
+
+    p[b1] = 'B';
+    p[b2] = 'B';
 
     // queen knight knight, anywhere
-    for (char c : "QNN")
-        frcPlaceRandomly(p, c);
-
+    if (num < 0)
+    {
+        for (char c : "QNN")
+            frcPlaceRandomly(p, c);
+    }
+    else
+    {
+        frcPlaceAtX(p, 'Q', num % 6);
+        num /= 6;
+        // num = 0..9
+        int f1 = num < 4 ? 0 : num < 7 ? 1 : num < 9 ? 2 : 3;
+        n1 = frcPlaceAtX(p, 'N', f1);
+        int f2 = num < 7 ? num % 4 : (num - 1) % 2;
+        n2 = frcPlaceAtX(p, 'N', f2, n1);
+    }
     // rook king rook, in that order
 
     int l;
