@@ -79,7 +79,7 @@ static int frcPlaceAtX(char* p, char c, int x, int loc = 0)
 string frcStartFen(int num)
 {
     char p[8] = { 0 };
-    int b1, b2, n1, n2;
+    int b1, b2, n1;
 
     // bishops on opposite color
     if (num < 0)
@@ -111,7 +111,7 @@ string frcStartFen(int num)
         int f1 = num < 4 ? 0 : num < 7 ? 1 : num < 9 ? 2 : 3;
         n1 = frcPlaceAtX(p, 'N', f1);
         int f2 = num < 7 ? num % 4 : (num - 1) % 2;
-        n2 = frcPlaceAtX(p, 'N', f2, n1);
+        frcPlaceAtX(p, 'N', f2, n1);
     }
     // rook king rook, in that order
 
