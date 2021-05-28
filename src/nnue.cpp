@@ -382,17 +382,15 @@ NnueFeatureTransformer::~NnueFeatureTransformer()
     freealigned64(weight);
 }
 
-bool NnueFeatureTransformer::ReadWeights(ifstream *is)
+bool NnueFeatureTransformer::ReadWeights(NnueNetsource_t is)
 {
     int i;
     for (i = 0; i < NnueFtHalfdims; ++i)
-        is->read((char*)&bias[i], sizeof(int16_t));
+        NNUEREAD(is, (char*)&bias[i], sizeof(int16_t));
     for (i = 0; i < NnueFtHalfdims * NnueFtInputdims; ++i)
-        is->read((char*)&weight[i], sizeof(int16_t));
+        NNUEREAD(is, (char*)&weight[i], sizeof(int16_t));
 
-    return !is->fail();
-
-    return true;
+    return !NNUEREADFAIL(is);
 }
 
 uint32_t NnueFeatureTransformer::GetHash()
@@ -455,13 +453,13 @@ inline unsigned int shuffleWeightIndex(unsigned int idx, unsigned int dims, bool
 }
 #endif
 
-bool NnueNetworkLayer::ReadWeights(ifstream* is)
+bool NnueNetworkLayer::ReadWeights(NnueNetsource_t is)
 {
     if (previous)
         previous->ReadWeights(is);
 
     for (unsigned int i = 0; i < outputdims; ++i)
-        is->read((char*)&bias[i], sizeof(int32_t));
+        NNUEREAD(is, (char*)&bias[i], sizeof(int32_t));
 
     size_t buffersize = outputdims * inputdims;
     char* weightbuffer = (char*)calloc(buffersize, sizeof(char));
@@ -470,7 +468,7 @@ bool NnueNetworkLayer::ReadWeights(ifstream* is)
         return false;
 
     char* w = weightbuffer;
-    is->read(weightbuffer, buffersize * sizeof(char));
+    NNUEREAD(is, weightbuffer, buffersize);
 
     for (unsigned int r = 0; r < outputdims; r++)
         for (unsigned int c = 0; c < inputdims; c++)
@@ -484,7 +482,7 @@ bool NnueNetworkLayer::ReadWeights(ifstream* is)
 
     free(weightbuffer);
 
-    return !is->fail();
+    return !NNUEREADFAIL(is);
 }
 
 uint32_t NnueNetworkLayer::GetHash()
@@ -789,7 +787,7 @@ NnueClippedRelu::NnueClippedRelu(NnueLayer* prev, int d) : NnueLayer(prev)
     dims = d;
 }
 
-bool NnueClippedRelu::ReadWeights(ifstream* is)
+bool NnueClippedRelu::ReadWeights(NnueNetsource_t is)
 {
     if (previous) return previous->ReadWeights(is);
     return true;
@@ -873,7 +871,7 @@ NnueInputSlice::NnueInputSlice() : NnueLayer(NULL)
 {
 }
 
-bool NnueInputSlice::ReadWeights(ifstream* is)
+bool NnueInputSlice::ReadWeights(NnueNetsource_t is)
 {
     if (previous) return previous->ReadWeights(is);
     return true;
@@ -910,7 +908,7 @@ void NnueRemove()
     delete NnueOut;
 }
 
-void NnueReadNet(ifstream* is)
+bool NnueReadNet(NnueNetsource_t is)
 {
     NnueReady = NnueDisabled;
 
@@ -921,14 +919,12 @@ void NnueReadNet(ifstream* is)
     uint32_t version, hash, size;
     string sarchitecture;
     
-    is->read((char*)&version, sizeof(uint32_t));
-    is->read((char*)&hash, sizeof(uint32_t));
-    is->read((char*)&size, sizeof(uint32_t));
-    if (size)
-    {
-        sarchitecture.resize(size);
-        is->read((char*)&sarchitecture[0], size);
-    }
+    NNUEREAD(is, (char*)&version, sizeof(uint32_t));
+    NNUEREAD(is, (char*)&hash, sizeof(uint32_t));
+    NNUEREAD(is, (char*)&size, sizeof(uint32_t));
+
+    sarchitecture.resize(size);
+    NNUEREAD(is, (char*)&sarchitecture[0], size);
 
     NnueType nt;
     if (version == NNUEFILEVERSIONROTATE)
@@ -936,22 +932,28 @@ void NnueReadNet(ifstream* is)
     else if (version == NNUEFILEVERSIONFLIP)
         nt = NnueFlip;
     else
-        return;
+        return false;
 
-    if (hash != filehash) return;
 
-    is->read((char*)&hash, sizeof(uint32_t));
-    if (hash != fthash) return;
+    if (hash != filehash)
+        return false;
+
+    NNUEREAD(is, (char*)&hash, sizeof(uint32_t));
+    if (hash != fthash) return false;
+
     // Read the weights of the feature transformer
-    if (!NnueFt->ReadWeights(is)) return;
-    is->read((char*)&hash, sizeof(uint32_t));
-    if (hash != nethash) return;
+    if (!NnueFt->ReadWeights(is)) return false;
+    NNUEREAD(is, (char*)&hash, sizeof(uint32_t));
+    if (hash != nethash) return false;
+
     // Read the weights of the network layers recursively
-    if (!NnueOut->ReadWeights(is)) return;
-    if (is->peek() != ios::traits_type::eof())
-        return;
+    if (!NnueOut->ReadWeights(is)) return false;
+    if (!NNUEEOF(is))
+        return false;
 
     NnueReady = nt;
+
+    return true;
 }
 
 #ifdef EVALOPTIONS

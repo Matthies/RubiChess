@@ -181,6 +181,12 @@ ifneq ($(PROXY),)
 	WGETCMD += -e https_proxy=$(PROXY)
 endif
 
+ifneq ($(EVALFILE),)
+	NETBIN = net.nnue
+	NETDEF = -DNNUEINCLUDED=$(EVALFILE)
+	NETOBJ = net.o
+endif
+
 MAJORVERSION = $(shell grep "\#define VERNUM " RubiChess.h | awk -F'"' '{print $$2}')
 ifeq ($(shell grep "^\#define VERSTABLE" RubiChess.h),)
 	MINORVERSION=-dev-$(GITID)
@@ -217,9 +223,16 @@ else
 		@if [ "$(RUBINETHASH)" != `$(shasum_command) $(RUBINET) | cut -c1-10` ]; then echo "Failed download or $(RUBINET) corrupted, please delete!"; exit 1; else echo "$(RUBINET) has correct hash."; fi
 endif
 
-compile:
+netobject:
+ifneq ($(EVALFILE),)
+		@echo Embedding networkfile $(EVALFILE)
+		@cp $(EVALFILE) $(NETBIN)
+		@ld -r -b binary $(NETBIN) -o $(NETOBJ)
+endif
+
+compile: netobject
 	@echo $(MESSAGE)
-	@$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) *.cpp $(LDFLAGS) $(PTHREADLIB) $(EXTRALDFLAGS) $(GITDEFINE) -o $(EXE)
+	@$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) *.cpp $(LDFLAGS) $(PTHREADLIB) $(EXTRALDFLAGS) $(GITDEFINE) $(NETDEF) $(NETOBJ) -o $(EXE)
 
 objclean:
 	@$(RM) $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(PROFEXE) *.o $(CPUTEST) || @echo $(RM) not available.

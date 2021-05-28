@@ -2510,6 +2510,15 @@ static void uciSetNnuePath()
     }
 
     NnueReady = NnueDisabled;
+#ifdef NNUEINCLUDED
+    cout << "info string Initializing net included in binary...";
+    char* p = (char*)&_binary_net_nnue_start;
+    if (!NnueReadNet(&p))
+        cout << " failed. The embedded network seems corrupted.\n";
+    else
+        cout << " successful. Using NNUE evaluation. (" + to_string(NnueReady) + ")\n";
+    return;
+#else
     string NnueNetPath = en.GetNnueNetPath();
     cout << "info string Loading net " << NnueNetPath << " ...";
 
@@ -2518,10 +2527,7 @@ static void uciSetNnuePath()
     if (!is && en.ExecPath != "")
         is.open(en.ExecPath + NnueNetPath, ios::binary);
 
-    if (is)
-        NnueReadNet(&is);
-
-    if (NnueReady)
+    if (is && NnueReadNet(&is))
     {
         cout << " successful. Using NNUE evaluation. (" + to_string(NnueReady) + ")\n";
         if (NnueNetPath.find(NNUEDEFAULTSTR) == string::npos)
@@ -2530,7 +2536,8 @@ static void uciSetNnuePath()
         return;
     }
 
-    cout << " failed. The network file seems corrupted doesn't exist. Set correct path to network file or disable 'Use_NNUE' for handcrafted evaluation.\n";
+    cout << " failed. The network file seems corrupted or doesn't exist. Set correct path to network file or disable 'Use_NNUE' for handcrafted evaluation.\n";
+#endif
 }
 #endif
 
@@ -2595,7 +2602,9 @@ void engine::registerOptions()
     ucioptions.Register(&chess960, "UCI_Chess960", ucicheck, "false");
     ucioptions.Register(nullptr, "Clear Hash", ucibutton, "", 0, 0, uciClearHash);
 #ifdef NNUE
+#ifndef NNUEINCLUDED
     ucioptions.Register(&NnueNetpath, "NNUENetpath", ucistring, "<Default>", 0, 0, uciSetNnuePath);
+#endif
     ucioptions.Register(&usennue, "Use_NNUE", ucicheck, "true", 0, 0, uciSetNnuePath);
 #endif
 }
