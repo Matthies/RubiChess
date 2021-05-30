@@ -1032,9 +1032,6 @@ int main(int argc, char* argv[])
         perftest(perfmaxdepth);
     } else if (benchmark || openbench)
     {
-        // benchmark mode
-        if (openbench)
-            en.ucioptions.Set("Use_NNUE", "false");
         doBenchmark(depth, epdfile, maxtime, startnum, openbench);
 #ifdef NNUE
         if (!openbench && epdfile == "")

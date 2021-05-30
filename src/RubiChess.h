@@ -676,6 +676,19 @@ typedef struct {
 
 extern NnueType NnueReady;
 
+#ifdef NNUEINCLUDED
+extern const char  _binary_net_nnue_start;
+extern const char  _binary_net_nnue_end;
+typedef char** NnueNetsource_t;
+#define NNUEREAD(s, t, l) (memcpy(t, (*s), l), (*s) = (*s) + (l))
+#define NNUEREADFAIL(s) ((*s) > (char*)&_binary_net_nnue_end)
+#define NNUEEOF(s) ((*s) == (char*)&_binary_net_nnue_end)
+#else
+typedef ifstream* NnueNetsource_t;
+#define NNUEREAD(s, t, l) s->read(t, l)
+#define NNUEREADFAIL(s) s->fail()
+#define NNUEEOF(s) (s->peek() == ios::traits_type::eof())
+#endif
 
 struct NnueNetwork {
     alignas(64) clipped_t input[NnueFtOutputdims];
@@ -692,7 +705,7 @@ public:
     NnueLayer* previous;
 
     NnueLayer(NnueLayer* prev) { previous = prev; }
-    virtual bool ReadWeights(ifstream* is) = 0;
+    virtual bool ReadWeights(NnueNetsource_t is) = 0;
     virtual uint32_t GetHash() = 0;
 };
 
@@ -704,7 +717,7 @@ public:
 
     NnueFeatureTransformer();
     virtual ~NnueFeatureTransformer();
-    bool ReadWeights(ifstream* is);
+    bool ReadWeights(NnueNetsource_t is);
     uint32_t GetHash();
 };
 
@@ -714,7 +727,7 @@ public:
     int dims;
     NnueClippedRelu(NnueLayer* prev, int d);
     virtual ~NnueClippedRelu() {};
-    bool ReadWeights(ifstream* is);
+    bool ReadWeights(NnueNetsource_t is);
     uint32_t GetHash();
     void Propagate(int32_t *input, clipped_t *output);
 };
@@ -726,7 +739,7 @@ public:
 
     NnueInputSlice();
     virtual ~NnueInputSlice() {};
-    bool ReadWeights(ifstream* is);
+    bool ReadWeights(NnueNetsource_t is);
     uint32_t GetHash();
 };
 
@@ -741,7 +754,7 @@ public:
 
     NnueNetworkLayer(NnueLayer* prev, int id, int od);
     virtual ~NnueNetworkLayer();
-    bool ReadWeights(ifstream* is);
+    bool ReadWeights(NnueNetsource_t is);
     uint32_t GetHash();
     void Propagate(clipped_t *input, int32_t *output);
     void OutLayer(clipped_t* input, int32_t* output);
@@ -757,7 +770,7 @@ public:
 
 void NnueInit();
 void NnueRemove();
-void NnueReadNet(ifstream* is);
+bool NnueReadNet(NnueNetsource_t is);
 #ifdef EVALOPTIONS
 void NnueRegisterEvals();
 #endif
@@ -1639,10 +1652,14 @@ public:
     bool usennue;
     string NnueNetpath; // UCI option, can be <Default>
     string GetNnueNetPath() {
+#ifdef NNUEINCLUDED
+        return TOSTRING(NNUEINCLUDED);
+#else
         if (NnueNetpath == "<Default>")
             return NNUEDEFAULTSTR;
         else
             return NnueNetpath;
+#endif
     }
 
     string NnueSha256FromName() {
