@@ -1723,9 +1723,6 @@ bool chessposition::playMove(uint32_t mc)
         }
     }
 
-    PREFETCH(&mtrlhsh.table[materialhash & MATERIALHASHMASK]);
-    PREFETCH(&pwnhsh.table[pawnhash & pwnhsh.sizemask]);
-
     state ^= S2MMASK;
     isCheckbb = isAttackedBy<OCCUPIED>(kingpos[s2m ^ S2MMASK], s2m);
 
@@ -1831,6 +1828,25 @@ void chessposition::unplayMove(uint32_t mc)
 }
 
 
+U64 chessposition::nextHash(uint32_t mc)
+{
+    U64 newhash = hash;
+    int from = GETFROM(mc);
+    int to = GETTO(mc);
+    int pc = GETPIECE(mc);
+    int capture = GETCAPTURE(mc);
+
+    newhash ^= zb.s2m;
+    newhash ^= zb.boardtable[(to << 4) | pc];
+    newhash ^= zb.boardtable[(from << 4) | pc];
+
+    if (capture)
+        newhash ^= zb.boardtable[(to << 4) | capture];
+
+    return newhash;
+}
+
+
 inline void appendMoveToList(chessmove **m, int from, int to, PieceCode piece, PieceCode capture)
 {
     **m = chessmove(from, to, capture, piece);
@@ -1845,7 +1861,7 @@ inline void appendPromotionMove(chessposition *pos, chessmove **m, int from, int
 }
 
 
-template <PieceType Pt> int CreateMovelistPiece(chessposition *pos, chessmove* mstart, U64 occ, U64 targets, int me)
+template <PieceType Pt, Color me> int CreateMovelistPiece(chessposition *pos, chessmove* mstart, U64 occ, U64 targets)
 {
     const PieceCode pc = (PieceCode)((Pt << 1) | me);
     U64 frombits = pos->piece00[pc];
@@ -1874,7 +1890,7 @@ template <PieceType Pt> int CreateMovelistPiece(chessposition *pos, chessmove* m
 }
 
 
-inline int CreateMovelistCastle(chessposition *pos, chessmove* mstart, int me)
+template <Color me> inline int CreateMovelistCastle(chessposition *pos, chessmove* mstart)
 {
     if (pos->isCheckbb)
         return 0;
@@ -1886,8 +1902,8 @@ inline int CreateMovelistCastle(chessposition *pos, chessmove* mstart, int me)
     {
         if ((pos->state & (WQCMASK << cstli)) == 0)
             continue;
-        int kingfrom = pos->kingpos[me];
-        int rookfrom = pos->castlerookfrom[cstli];
+        const int kingfrom = pos->kingpos[me];
+        const int rookfrom = pos->castlerookfrom[cstli];
         if (pos->castleblockers[cstli] & (occupiedbits ^ BITSET(rookfrom) ^ BITSET(kingfrom)))
             continue;
 
@@ -1913,10 +1929,10 @@ inline int CreateMovelistCastle(chessposition *pos, chessmove* mstart, int me)
 }
 
 
-template <MoveType Mt> inline int CreateMovelistPawn(chessposition *pos, chessmove* mstart, int me)
+template <MoveType Mt, Color me> inline int CreateMovelistPawn(chessposition *pos, chessmove* mstart)
 {
     chessmove *m = mstart;
-    int you = 1 - me;
+    const int you = 1 - me;
     const PieceCode pc = (PieceCode)(WPAWN | me);
     const U64 occ = pos->occupied00[0] | pos->occupied00[1];
     U64 frombits, tobits;
@@ -2085,15 +2101,27 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
         targetbits |= emptybits;
     if (Mt & CAPTURE)
         targetbits |= pos->occupied00[me ^ S2MMASK];
-
-    m += CreateMovelistPawn<Mt>(pos, m, me);
-    m += CreateMovelistPiece<KNIGHT>(pos, m, occupiedbits, targetbits, me);
-    m += CreateMovelistPiece<BISHOP>(pos, m, occupiedbits, targetbits, me);
-    m += CreateMovelistPiece<ROOK>(pos, m, occupiedbits, targetbits, me);
-    m += CreateMovelistPiece<QUEEN>(pos, m, occupiedbits, targetbits, me);
-    m += CreateMovelistPiece<KING>(pos, m, occupiedbits, targetbits, me);
-    if (Mt & QUIET)
-        m += CreateMovelistCastle(pos, m, me);
+    if (me)
+    {
+        m += CreateMovelistPawn<Mt, BLACK>(pos, m);
+        m += CreateMovelistPiece<KNIGHT, BLACK>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<BISHOP, BLACK>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<ROOK, BLACK>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<QUEEN, BLACK>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<KING, BLACK>(pos, m, occupiedbits, targetbits);
+        if (Mt & QUIET)
+            m += CreateMovelistCastle<BLACK>(pos, m);
+    }
+    else {
+        m += CreateMovelistPawn<Mt, WHITE>(pos, m);
+        m += CreateMovelistPiece<KNIGHT, WHITE>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<BISHOP, WHITE>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<ROOK, WHITE>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<QUEEN, WHITE>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<KING, WHITE>(pos, m, occupiedbits, targetbits);
+        if (Mt & QUIET)
+            m += CreateMovelistCastle<WHITE>(pos, m);
+    }
 
     return (int)(m - mstart);
 }
