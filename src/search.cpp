@@ -767,6 +767,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             }
         }
 
+        PREFETCH(&tp.table[nextHash(mc) & tp.sizemask]);
+
         // Late move reduction
         int reduction = 0;
         if (depth >= sps.lmrmindepth)

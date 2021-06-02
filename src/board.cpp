@@ -1743,7 +1743,7 @@ bool chessposition::playMove(uint32_t mc)
     oldcastle ^= (state & CASTLEMASK);
     hash ^= zb.cstl[oldcastle];
 
-    PREFETCH(&tp.table[hash & tp.sizemask]);
+    //PREFETCH(&tp.table[hash & tp.sizemask]);
 
     ply++;
     movestack[mstop++].movecode = mc;
@@ -1828,6 +1828,25 @@ void chessposition::unplayMove(uint32_t mc)
             mailbox[to] = BLANK;
         }
     }
+}
+
+
+U64 chessposition::nextHash(uint32_t mc)
+{
+    U64 newhash = hash;
+    int from = GETFROM(mc);
+    int to = GETTO(mc);
+    int pc = GETPIECE(mc);
+    int capture = GETCAPTURE(mc);
+
+    newhash ^= zb.s2m;
+    newhash ^= zb.boardtable[(to << 4) | pc];
+    newhash ^= zb.boardtable[(from << 4) | pc];
+
+    if (capture)
+        newhash ^= zb.boardtable[(to << 4) | capture];
+
+    return newhash;
 }
 
 
