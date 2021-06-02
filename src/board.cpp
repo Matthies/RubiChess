@@ -1723,9 +1723,6 @@ bool chessposition::playMove(uint32_t mc)
         }
     }
 
-    //PREFETCH(&mtrlhsh.table[materialhash & MATERIALHASHMASK]);
-    //PREFETCH(&pwnhsh.table[pawnhash & pwnhsh.sizemask]);
-
     state ^= S2MMASK;
     isCheckbb = isAttackedBy<OCCUPIED>(kingpos[s2m ^ S2MMASK], s2m);
 
