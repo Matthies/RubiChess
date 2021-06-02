@@ -1723,8 +1723,8 @@ bool chessposition::playMove(uint32_t mc)
         }
     }
 
-    PREFETCH(&mtrlhsh.table[materialhash & MATERIALHASHMASK]);
-    PREFETCH(&pwnhsh.table[pawnhash & pwnhsh.sizemask]);
+    //PREFETCH(&mtrlhsh.table[materialhash & MATERIALHASHMASK]);
+    //PREFETCH(&pwnhsh.table[pawnhash & pwnhsh.sizemask]);
 
     state ^= S2MMASK;
     isCheckbb = isAttackedBy<OCCUPIED>(kingpos[s2m ^ S2MMASK], s2m);
@@ -1743,7 +1743,7 @@ bool chessposition::playMove(uint32_t mc)
     oldcastle ^= (state & CASTLEMASK);
     hash ^= zb.cstl[oldcastle];
 
-    //PREFETCH(&tp.table[hash & tp.sizemask]);
+    PREFETCH(&tp.table[hash & tp.sizemask]);
 
     ply++;
     movestack[mstop++].movecode = mc;
