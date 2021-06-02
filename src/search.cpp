@@ -50,7 +50,7 @@ struct searchparamset {
 #ifdef EVALTUNE
     searchparam SP(deltapruningmargin, 4000);
 #else
-    searchparam SP(deltapruningmargin, 100);
+    searchparam SP(deltapruningmargin, 160);
 #endif
     // LMR table
     searchparam SP(lmrlogf0, 150);
