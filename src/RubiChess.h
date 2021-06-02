@@ -1263,9 +1263,9 @@ enum PruneType { Prune, MatePrune, NoPrune };
 
 int CreateEvasionMovelist(chessposition *pos, chessmove* mstart);
 template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart);
-template <PieceType Pt> inline int CreateMovelistPiece(chessposition *pos, chessmove* mstart, U64 occ, U64 targets, int me);
-template <MoveType Mt> inline int CreateMovelistPawn(chessposition *pos, chessmove* mstart, int me);
-inline int CreateMovelistCastle(chessposition *pos, chessmove* mstart, int me);
+template <PieceType Pt, Color me> inline int CreateMovelistPiece(chessposition *pos, chessmove* mstart, U64 occ, U64 targets);
+template <MoveType Mt, Color me> inline int CreateMovelistPawn(chessposition *pos, chessmove* mstart);
+template <Color me> inline int CreateMovelistCastle(chessposition *pos, chessmove* mstart);
 template <MoveType Mt> void evaluateMoves(chessmovelist *ml, chessposition *pos, int16_t **cmptr);
 
 enum AttackType { FREE, OCCUPIED, OCCUPIEDANDKING };
