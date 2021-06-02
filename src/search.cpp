@@ -699,6 +699,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             continue;
         }
 
+        // early prefetch of the next tt entry; valid for normal moves
+        PREFETCH(&tp.table[nextHash(mc) & tp.sizemask]);
+
         int stats = !ISTACTICAL(mc) ? getHistory(mc, ms->cmptr) : getTacticalHst(mc);
         int extendMove = 0;
         int pc = GETPIECE(mc);

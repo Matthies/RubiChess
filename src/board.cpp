@@ -1723,9 +1723,6 @@ bool chessposition::playMove(uint32_t mc)
         }
     }
 
-    PREFETCH(&mtrlhsh.table[materialhash & MATERIALHASHMASK]);
-    PREFETCH(&pwnhsh.table[pawnhash & pwnhsh.sizemask]);
-
     state ^= S2MMASK;
     isCheckbb = isAttackedBy<OCCUPIED>(kingpos[s2m ^ S2MMASK], s2m);
 
@@ -1828,6 +1825,25 @@ void chessposition::unplayMove(uint32_t mc)
             mailbox[to] = BLANK;
         }
     }
+}
+
+
+U64 chessposition::nextHash(uint32_t mc)
+{
+    U64 newhash = hash;
+    int from = GETFROM(mc);
+    int to = GETTO(mc);
+    int pc = GETPIECE(mc);
+    int capture = GETCAPTURE(mc);
+
+    newhash ^= zb.s2m;
+    newhash ^= zb.boardtable[(to << 4) | pc];
+    newhash ^= zb.boardtable[(from << 4) | pc];
+
+    if (capture)
+        newhash ^= zb.boardtable[(to << 4) | capture];
+
+    return newhash;
 }
 
 

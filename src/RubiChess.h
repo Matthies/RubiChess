@@ -1424,6 +1424,7 @@ public:
     void unplayMove(uint32_t mc);
     void playNullMove();
     void unplayNullMove();
+    U64 nextHash(uint32_t mc);
     template <int Me> void updatePins();
     template <int Me> bool sliderAttacked(int index, U64 occ);
     bool moveGivesCheck(uint32_t c);  // simple and imperfect as it doesn't handle special moves and cases (mainly to avoid pruning of important moves)
