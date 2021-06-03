@@ -37,7 +37,7 @@ GuiToken engine::parse(vector<string>* args, string ss)
         getline(cin, ss);
 
     if (cin.eof())
-        exit(EXIT_SUCCESS);
+        return QUIT;
 
     GuiToken result = UNKNOWN;
     istringstream iss(ss);
