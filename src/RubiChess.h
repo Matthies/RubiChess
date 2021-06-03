@@ -160,7 +160,7 @@ using namespace std;
 #endif
 
 #ifndef VERSTABLE
-#define VERSION VERNUM "-dev"
+#define VERSION VERNUM "-RC"
 #else
 #define VERSION VERNUM " "
 #endif
