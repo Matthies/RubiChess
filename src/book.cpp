@@ -449,6 +449,10 @@ uint32_t polybook::GetMove(chessposition* p)
 
     currentDepth++;
 
+    if (start > end)
+        // No move found
+        return 0;
+
     size_t bi = (en.BookBestMove ? iBest : start + ranval(&rnd) % (end - start + 1));
     uint16_t shortmove = table[bi].move;
     int pp;
