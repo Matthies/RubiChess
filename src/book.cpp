@@ -392,7 +392,7 @@ bool polybook::Open(string filename)
     for (size_t i = 0; i < entrynum; i++)
     {
         ifs.read((char*)currentry, sizeof(bookentry));
-        // Keep the big endian key which is orderen but translate the others to little endian
+        // Keep the big endian key which is important for order but translate the others to little endian
         currentry->move = swap_be_16(currentry->move);
         currentry->weight = swap_be_16(currentry->weight);
         currentry->learn = swap_be_32(currentry->learn);
@@ -447,18 +447,6 @@ uint32_t polybook::GetMove(chessposition* p)
         }
     }
 
-#if 0
-    cout << dec << "info string Start: " << start << "  End: " << end << "  Best: " << iBest << "\n";
-    for (size_t i = start; i <= end; i++)
-    {
-        uint16_t shortmove = table[i].move;
-        int pp;
-        if ((pp = ((shortmove & 0x7000) >> 24)))
-            // Fix promotion info
-            shortmove = (shortmove & 0xfff) | (((pp + 1) * 2 + p->state & S2MMASK) << 24);
-        cout << "info string " << hex << moveToString(p->shortMove2FullMove(shortmove)) << "  Weight: " << table[i].weight << "  Learn: " << table[i].learn << "\n";
-    }
-#endif
     currentDepth++;
 
     size_t bi = (en.BookBestMove ? iBest : start + ranval(&rnd) % (end - start + 1));
@@ -467,7 +455,6 @@ uint32_t polybook::GetMove(chessposition* p)
     if ((pp = ((shortmove & 0x7000) >> 24)))
         // Fix promotion info
         shortmove = (shortmove & 0xfff) | (((pp + 1) * 2 + (p->state & S2MMASK)) << 24);
-    //cout << "info string " << hex << moveToString(p->shortMove2FullMove(shortmove)) << "  Weight: " << table[i].weight << "  Learn: " << table[i].learn << "\n";
     return p->shortMove2FullMove(shortmove);
 }
 
