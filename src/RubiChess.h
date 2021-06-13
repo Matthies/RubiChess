@@ -1626,6 +1626,9 @@ public:
     string SyzygyPath;
     bool Syzygy50MoveRule = true;
     int SyzygyProbeLimit;
+    string BookFile;
+    bool BookBestMove;
+    int BookDepth;
     chessposition rootposition;
     int Threads;
     int oldThreads;
@@ -1829,4 +1832,30 @@ void search_statistics();
 #define STATISTICSDO(x)
 #endif
 
+//
+// book stuff
+//
 
+struct bookentry {
+    uint64_t key;
+    uint16_t move;
+    uint16_t weight;
+    uint32_t learn;
+};
+
+
+class polybook
+{
+public:
+    bookentry* table = nullptr;
+    size_t entrynum;
+    size_t iBest;
+    int currentDepth;
+    ranctx rnd;
+    ~polybook();
+    U64 GetHash(chessposition* p);
+    bool Open(string filename);
+    uint32_t GetMove(chessposition* p);
+};
+
+extern polybook pbook;

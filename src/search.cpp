@@ -1648,6 +1648,14 @@ void startSearchTime(bool complete = true)
 
 void searchStart()
 {
+    uint32_t bm = pbook.GetMove(&en.sthread[0].pos);
+    if (bm)
+    {
+        cout << "bestmove " << moveToString(bm) << "\n";
+        return;
+    }
+
+    en.stopLevel = ENGINERUN;
     startSearchTime();
 
     en.moveoutput = false;
