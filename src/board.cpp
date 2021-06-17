@@ -2641,7 +2641,7 @@ void engine::registerOptions()
     ucioptions.Register(&ponder, "Ponder", ucicheck, "false");
     ucioptions.Register(&SyzygyPath, "SyzygyPath", ucistring, "<empty>", 0, 0, uciSetSyzygyPath);
     ucioptions.Register(&Syzygy50MoveRule, "Syzygy50MoveRule", ucicheck, "true");
-    ucioptions.Register(&SyzygyProbeLimit, "SyzygyProbeLimit", ucispin, "255", 0, 255, nullptr);
+    ucioptions.Register(&SyzygyProbeLimit, "SyzygyProbeLimit", ucispin, "7", 0, 7, nullptr);
     ucioptions.Register(&BookFile, "BookFile", ucistring, "<empty>", 0, 0, uciSetBookFile);
     ucioptions.Register(&BookBestMove, "BookBestMove", ucicheck, "true");
     ucioptions.Register(&BookDepth, "BookDepth", ucispin, "255", 0, 255);
