@@ -487,6 +487,9 @@ uint32_t chessposition::applyMove(string s, bool resetMstop)
     PieceType promtype;
     PieceCode promotion;
 
+    if (s.size() < 4)
+        return 0;
+
     from = AlgebraicToIndex(s);
     to = AlgebraicToIndex(&s[2]);
 
@@ -2526,6 +2529,18 @@ static void uciSetSyzygyPath()
     init_tablebases((char*)en.SyzygyPath.c_str());
 }
 
+static void uciSetBookFile()
+{
+    if (en.BookFile == "<empty>")
+    {
+        pbook.Open("");
+        return;
+    }
+    if (!pbook.Open(en.BookFile))
+        en.BookFile = "<empty>";
+}
+
+
 #ifdef NNUE
 static void uciSetNnuePath()
 {
@@ -2627,6 +2642,9 @@ void engine::registerOptions()
     ucioptions.Register(&SyzygyPath, "SyzygyPath", ucistring, "<empty>", 0, 0, uciSetSyzygyPath);
     ucioptions.Register(&Syzygy50MoveRule, "Syzygy50MoveRule", ucicheck, "true");
     ucioptions.Register(&SyzygyProbeLimit, "SyzygyProbeLimit", ucispin, "7", 0, 7, nullptr);
+    ucioptions.Register(&BookFile, "BookFile", ucistring, "<empty>", 0, 0, uciSetBookFile);
+    ucioptions.Register(&BookBestMove, "BookBestMove", ucicheck, "true");
+    ucioptions.Register(&BookDepth, "BookDepth", ucispin, "255", 0, 255);
     ucioptions.Register(&chess960, "UCI_Chess960", ucicheck, "false");
     ucioptions.Register(nullptr, "Clear Hash", ucibutton, "", 0, 0, uciClearHash);
 #ifdef NNUE
@@ -2837,6 +2855,7 @@ void engine::communicate(string inputstring)
                 tp.clean();
                 resetStats();
                 sthread[0].pos.lastbestmovescore = NOSCORE;
+                pbook.currentDepth = 0;
                 break;
             case SETOPTION:
                 if (en.stopLevel != ENGINETERMINATEDSEARCH)
@@ -2998,7 +3017,6 @@ void engine::communicate(string inputstring)
                         ci++;
                 }
                 isWhite = (sthread[0].pos.w2m());
-                stopLevel = ENGINERUN;
                 searchStart();
                 if (inputstring != "")
                 {
