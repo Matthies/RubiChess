@@ -665,6 +665,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
         // Late move pruning
         if (Pt != NoPrune
+            && !isCheckbb
             && depth < MAXLMPDEPTH
             && !ISTACTICAL(mc)
             && bestscore >(Pt == Prune ? NOSCORE : -SCORETBWININMAXPLY)
