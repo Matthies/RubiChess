@@ -2104,6 +2104,8 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
         targetbits |= emptybits;
     if (Mt & CAPTURE)
         targetbits |= pos->occupied00[me ^ S2MMASK];
+    if (Mt == TACTICALSQUARE)
+        targetbits = BITSET(GETTO(pos->movestack[pos->mstop - 1].movecode));
     if (me)
     {
         m += CreateMovelistPawn<Mt, BLACK>(pos, m);
@@ -2331,13 +2333,13 @@ int chessposition::getBestPossibleCapture()
 
 
 // MoveSelector for quiescence search
-void MoveSelector::SetPreferredMoves(chessposition *p)
+void MoveSelector::SetPreferredMoves(chessposition *p, bool lastMoveTarget)
 {
     pos = p;
     if (!p->isCheckbb)
     {
         onlyGoodCaptures = true;
-        state = TACTICALINITSTATE;
+        state = (lastMoveTarget ? TACTICALSQUAREINIT : TACTICALINITSTATE);
     }
     else
     {
@@ -2475,10 +2477,12 @@ uint32_t MoveSelector::next()
         {
             return mc;
         }
-        state++;
-        // fall through
-    default:
         return 0;
+    default:
+        state = TACTICALSTATE;
+        captures->length = CreateMovelist<TACTICALSQUARE>(pos, &captures->move[0]);
+        evaluateMoves<CAPTURE>(captures, pos, &cmptr[0]);
+        return next();
     }
 }
 
