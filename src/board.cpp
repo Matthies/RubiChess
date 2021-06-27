@@ -2106,22 +2106,22 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
         targetbits |= pos->occupied00[me ^ S2MMASK];
     if (me)
     {
-        m += CreateMovelistPawn<Mt, BLACK>(pos, m);
-        m += CreateMovelistPiece<KNIGHT, BLACK>(pos, m, occupiedbits, targetbits);
-        m += CreateMovelistPiece<BISHOP, BLACK>(pos, m, occupiedbits, targetbits);
         m += CreateMovelistPiece<ROOK, BLACK>(pos, m, occupiedbits, targetbits);
         m += CreateMovelistPiece<QUEEN, BLACK>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPawn<Mt, BLACK>(pos, m);
         m += CreateMovelistPiece<KING, BLACK>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<KNIGHT, BLACK>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<BISHOP, BLACK>(pos, m, occupiedbits, targetbits);
         if (Mt & QUIET)
             m += CreateMovelistCastle<BLACK>(pos, m);
     }
     else {
-        m += CreateMovelistPawn<Mt, WHITE>(pos, m);
-        m += CreateMovelistPiece<KNIGHT, WHITE>(pos, m, occupiedbits, targetbits);
-        m += CreateMovelistPiece<BISHOP, WHITE>(pos, m, occupiedbits, targetbits);
         m += CreateMovelistPiece<ROOK, WHITE>(pos, m, occupiedbits, targetbits);
         m += CreateMovelistPiece<QUEEN, WHITE>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPawn<Mt, WHITE>(pos, m);
         m += CreateMovelistPiece<KING, WHITE>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<KNIGHT, WHITE>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<BISHOP, WHITE>(pos, m, occupiedbits, targetbits);
         if (Mt & QUIET)
             m += CreateMovelistCastle<WHITE>(pos, m);
     }
