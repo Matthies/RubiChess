@@ -592,20 +592,17 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         }
     }
 
+    MoveSelector* ms = (excludeMove ? &extensionMoveSelector[ply] : &moveSelector[ply]);
+
     // ProbCut
     if (!PVNode && depth >= sps.probcutmindepth && abs(beta) < SCOREWHITEWINS)
     {
         int rbeta = min(SCOREWHITEWINS, beta + sps.probcutmargin);
-        chessmovelist *movelist = new chessmovelist;
-        movelist->length = CreateMovelist<TACTICAL>(this, &movelist->move[0]);
+        memset(ms, 0, sizeof(MoveSelector));
+        ms->SetPreferredMoves(this, rbeta - staticeval, excludeMove);
 
-        for (int i = 0; i < movelist->length; i++)
+        while ((mc = ms->next()))
         {
-            mc = movelist->move[i].code;
-
-            if (!see(mc, rbeta - staticeval))
-                continue;
-
             if (playMove(mc))
             {
                 int probcutscore = -getQuiescence<Pt>(-rbeta, -rbeta + 1, 0);
@@ -617,14 +614,12 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 if (probcutscore >= rbeta)
                 {
                     // ProbCut off
-                    delete movelist;
                     STATISTICSINC(prune_probcut);
                     SDEBUGDO(isDebugPv, pvabortval[ply] = probcutscore; pvaborttype[ply] = PVA_PROBCUTPRUNED; pvadditionalinfo[ply] = "pruned by " + movelist->move[i].toString(););
                     return probcutscore;
                 }
             }
         }
-        delete movelist;
     }
 
     // No hashmove reduction
@@ -642,7 +637,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     // Reset killers for child ply
     killer[ply + 1][0] = killer[ply + 1][1] = 0;
 
-    MoveSelector* ms = (excludeMove ? &extensionMoveSelector[ply] : &moveSelector[ply]);
     memset(ms, 0, sizeof(MoveSelector));
     ms->SetPreferredMoves(this, hashmovecode, killer[ply][0], killer[ply][1], counter, excludeMove);
     STATISTICSINC(moves_loop_n);

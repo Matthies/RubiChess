@@ -1222,8 +1222,10 @@ public:
     uint32_t countermove;
     int legalmovenum;
     bool onlyGoodCaptures;
+    int margin;
     int16_t *cmptr[CMPLIES];
     void SetPreferredMoves(chessposition *p);  // for quiescence move selector
+    void SetPreferredMoves(chessposition* p, int m, int excludemove);  // for probcut move selector
     void SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, uint32_t counter, int excludemove);
     uint32_t next();
 };

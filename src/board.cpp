@@ -2338,6 +2338,7 @@ void MoveSelector::SetPreferredMoves(chessposition *p)
     {
         onlyGoodCaptures = true;
         state = TACTICALINITSTATE;
+        margin = 1;
     }
     else
     {
@@ -2347,6 +2348,19 @@ void MoveSelector::SetPreferredMoves(chessposition *p)
     }
     captures = &pos->captureslist[pos->ply];
     quiets = &pos->quietslist[pos->ply];
+}
+
+// MoveSelector for probcut
+void MoveSelector::SetPreferredMoves(chessposition* p, int m, int excludemove)
+{
+    pos = p;
+    margin = m;
+    onlyGoodCaptures = true;
+    state = TACTICALINITSTATE;
+    if (!excludemove)
+        captures = &pos->captureslist[pos->ply];
+    else
+        captures = &pos->singularcaptureslist[pos->ply];
 }
 
 // MoveSelector for alphabeta search
@@ -2399,7 +2413,7 @@ uint32_t MoveSelector::next()
     case TACTICALSTATE:
         while ((m = captures->getNextMove(0)))
         {
-            if (!pos->see(m->code, onlyGoodCaptures))
+            if (!pos->see(m->code, margin))
             {
                 m->value |= BADTACTICALFLAG;
             }
