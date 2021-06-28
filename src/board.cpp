@@ -1864,7 +1864,7 @@ inline void appendPromotionMove(chessposition *pos, chessmove **m, int from, int
 }
 
 
-template <PieceType Pt, Color me> int CreateMovelistPiece(chessposition *pos, chessmove* mstart, U64 occ, U64 targets)
+template <PieceType Pt, Color me, bool GiveCheck> int CreateMovelistPiece(chessposition *pos, chessmove* mstart, U64 occ, U64 targets)
 {
     const PieceCode pc = (PieceCode)((Pt << 1) | me);
     U64 frombits = pos->piece00[pc];
@@ -1873,6 +1873,18 @@ template <PieceType Pt, Color me> int CreateMovelistPiece(chessposition *pos, ch
 
     while (frombits)
     {
+        if (GiveCheck)
+        {
+            int k = pos->kingpos[1 - me];
+            U64 limitTargets = 0ULL;
+            if (Pt == KNIGHT)
+                limitTargets = knight_attacks[k];
+            if (Pt == BISHOP || Pt == QUEEN)
+                limitTargets = BISHOPATTACKS(occ, k);
+            if (Pt == ROOK || Pt == QUEEN)
+                limitTargets |= ROOKATTACKS(occ, k);
+            targets &= limitTargets;
+        }
         int from = pullLsb(&frombits);
         if (Pt == KNIGHT)
             tobits = (knight_attacks[from] & targets);
@@ -2094,34 +2106,35 @@ int CreateEvasionMovelist(chessposition *pos, chessmove* mstart)
 
 template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
 {
+    const bool GiveCheck = (Mt == GIVECHECK);
     int me = pos->state & S2MMASK;
     U64 occupiedbits = (pos->occupied00[0] | pos->occupied00[1]);
     U64 emptybits = ~occupiedbits;
     U64 targetbits = 0ULL;
     chessmove* m = mstart;
 
-    if (Mt & QUIET)
+    if ((Mt & QUIET) || GiveCheck)
         targetbits |= emptybits;
     if (Mt & CAPTURE)
         targetbits |= pos->occupied00[me ^ S2MMASK];
     if (me)
     {
         m += CreateMovelistPawn<Mt, BLACK>(pos, m);
-        m += CreateMovelistPiece<KNIGHT, BLACK>(pos, m, occupiedbits, targetbits);
-        m += CreateMovelistPiece<BISHOP, BLACK>(pos, m, occupiedbits, targetbits);
-        m += CreateMovelistPiece<ROOK, BLACK>(pos, m, occupiedbits, targetbits);
-        m += CreateMovelistPiece<QUEEN, BLACK>(pos, m, occupiedbits, targetbits);
-        m += CreateMovelistPiece<KING, BLACK>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<KNIGHT, BLACK, GiveCheck>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<BISHOP, BLACK, GiveCheck>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<ROOK, BLACK, GiveCheck>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<QUEEN, BLACK, GiveCheck>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<KING, BLACK, GiveCheck>(pos, m, occupiedbits, targetbits);
         if (Mt & QUIET)
             m += CreateMovelistCastle<BLACK>(pos, m);
     }
     else {
         m += CreateMovelistPawn<Mt, WHITE>(pos, m);
-        m += CreateMovelistPiece<KNIGHT, WHITE>(pos, m, occupiedbits, targetbits);
-        m += CreateMovelistPiece<BISHOP, WHITE>(pos, m, occupiedbits, targetbits);
-        m += CreateMovelistPiece<ROOK, WHITE>(pos, m, occupiedbits, targetbits);
-        m += CreateMovelistPiece<QUEEN, WHITE>(pos, m, occupiedbits, targetbits);
-        m += CreateMovelistPiece<KING, WHITE>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<KNIGHT, WHITE, GiveCheck>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<BISHOP, WHITE, GiveCheck>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<ROOK, WHITE, GiveCheck>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<QUEEN, WHITE, GiveCheck>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<KING, WHITE, GiveCheck>(pos, m, occupiedbits, targetbits);
         if (Mt & QUIET)
             m += CreateMovelistCastle<WHITE>(pos, m);
     }
@@ -2331,17 +2344,17 @@ int chessposition::getBestPossibleCapture()
 
 
 // MoveSelector for quiescence search
-void MoveSelector::SetPreferredMoves(chessposition *p)
+void MoveSelector::SetPreferredMoves(chessposition *p, int qsearchdepth)
 {
     pos = p;
     if (!p->isCheckbb)
     {
-        onlyGoodCaptures = true;
+        qsearchDepth = qsearchdepth;
         state = TACTICALINITSTATE;
     }
     else
     {
-        onlyGoodCaptures = false;
+        qsearchdepth = 0;
         state = EVASIONINITSTATE;
         pos->getCmptr(&cmptr[0]);
     }
@@ -2353,6 +2366,7 @@ void MoveSelector::SetPreferredMoves(chessposition *p)
 void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, uint32_t counter, int excludemove)
 {
     pos = p;
+    qsearchDepth = 0;
     hashmove = p->shortMove2FullMove(hshm);
     if (kllm1 != hashmove)
         killermove1 = kllm1;
@@ -2399,7 +2413,7 @@ uint32_t MoveSelector::next()
     case TACTICALSTATE:
         while ((m = captures->getNextMove(0)))
         {
-            if (!pos->see(m->code, onlyGoodCaptures))
+            if (!pos->see(m->code, (bool)qsearchDepth))
             {
                 m->value |= BADTACTICALFLAG;
             }
@@ -2409,9 +2423,12 @@ uint32_t MoveSelector::next()
                     return m->code;
             }
         }
+        if (qsearchDepth)
+        {
+            state = QUIETINITSTATE;
+            return next();
+        }
         state++;
-        if (onlyGoodCaptures)
-            return 0;
         // fall through
     case KILLERMOVE1STATE:
         state++;
@@ -2436,7 +2453,17 @@ uint32_t MoveSelector::next()
         // fall through
     case QUIETINITSTATE:
         state++;
-        quiets->length = CreateMovelist<QUIET>(pos, &quiets->move[0]);
+        if (qsearchDepth)
+        {
+            // Qsearch; lets do some moves giving check if we are not already too deep...
+            if (qsearchDepth > 2)
+                return 0;
+
+            quiets->length = CreateMovelist<GIVECHECK>(pos, &quiets->move[0]);
+        }
+        else {
+            quiets->length = CreateMovelist<QUIET>(pos, &quiets->move[0]);
+        }
         evaluateMoves<QUIET>(quiets, pos, &cmptr[0]);
         // fall through
     case QUIETSTATE:
@@ -2450,6 +2477,8 @@ uint32_t MoveSelector::next()
                 return mc;
         }
         state++;
+        if (qsearchDepth)
+            return 0;
         // fall through
     case BADTACTICALSTATE:
         while ((m = captures->getNextMove()))
