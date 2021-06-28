@@ -2456,7 +2456,7 @@ uint32_t MoveSelector::next()
         if (qsearchDepth)
         {
             // Qsearch; lets do some moves giving check if we are not already too deep...
-            if (qsearchDepth > 2)
+            if (qsearchDepth > 3)
                 return 0;
 
             quiets->length = CreateMovelist<GIVECHECK>(pos, &quiets->move[0]);
