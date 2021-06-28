@@ -521,7 +521,7 @@ uint32_t chessposition::applyMove(string s, bool resetMstop)
 
 
 template <MoveType Mt>
-void evaluateMoves(chessmovelist *ml, chessposition *pos, int16_t **cmptr)
+void evaluateMoves(chessmovelist *ml, chessposition *pos)
 {
     for (int i = 0; i < ml->length; i++)
     {
@@ -536,6 +536,7 @@ void evaluateMoves(chessmovelist *ml, chessposition *pos, int16_t **cmptr)
         {
             int to = GETCORRECTTO(mc);
             ml->move[i].value = pos->history[piece & S2MMASK][GETFROM(mc)][to];
+            int16_t** cmptr = pos->cmptr[pos->ply];
             if (cmptr)
             {
                 for (int j = 0; j < CMPLIES && cmptr[j]; j++)
@@ -556,7 +557,7 @@ void chessposition::getRootMoves()
     chessmovelist movelist;
     prepareStack();
     movelist.length = CreateMovelist<ALL>(this, &movelist.move[0]);
-    evaluateMoves<ALL>(&movelist, this, NULL);
+    evaluateMoves<ALL>(&movelist, this);
 
     int bestval = SCOREBLACKWINS;
     rootmovelist.length = 0;
@@ -2344,7 +2345,6 @@ void MoveSelector::SetPreferredMoves(chessposition *p)
     {
         onlyGoodCaptures = false;
         state = EVASIONINITSTATE;
-        pos->getCmptr(&cmptr[0]);
     }
     captures = &pos->captureslist[pos->ply];
     quiets = &pos->quietslist[pos->ply];
@@ -2374,7 +2374,6 @@ void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t k
         killermove2 = kllm2;
     if (counter != hashmove && counter != kllm1 && counter != kllm2)
         countermove = counter;
-    pos->getCmptr(&cmptr[0]);
     if (!excludemove)
     {
         captures = &pos->captureslist[pos->ply];
@@ -2408,7 +2407,7 @@ uint32_t MoveSelector::next()
     case TACTICALINITSTATE:
         state++;
         captures->length = CreateMovelist<TACTICAL>(pos, &captures->move[0]);
-        evaluateMoves<CAPTURE>(captures, pos, &cmptr[0]);
+        evaluateMoves<CAPTURE>(captures, pos);
         // fall through
     case TACTICALSTATE:
         while ((m = captures->getNextMove(0)))
@@ -2451,7 +2450,7 @@ uint32_t MoveSelector::next()
     case QUIETINITSTATE:
         state++;
         quiets->length = CreateMovelist<QUIET>(pos, &quiets->move[0]);
-        evaluateMoves<QUIET>(quiets, pos, &cmptr[0]);
+        evaluateMoves<QUIET>(quiets, pos);
         // fall through
     case QUIETSTATE:
         uint32_t mc;
@@ -2482,7 +2481,7 @@ uint32_t MoveSelector::next()
     case EVASIONINITSTATE:
         state++;
         captures->length = CreateEvasionMovelist(pos, &captures->move[0]);
-        evaluateMoves<ALL>(captures, pos, &cmptr[0]);
+        evaluateMoves<ALL>(captures, pos);
         // fall through
     case EVASIONSTATE:
         while ((mc = captures->getAndRemoveNextMove()))
