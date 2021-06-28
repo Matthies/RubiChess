@@ -306,7 +306,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 
     MoveSelector* ms = &moveSelector[ply];
     memset(ms, 0, sizeof(MoveSelector));
-    ms->SetPreferredMoves(this, depth < -5);
+    ms->SetPreferredMoves(this, depth < -3);
     STATISTICSINC(qs_loop_n);
 
     uint32_t bestcode = 0;
