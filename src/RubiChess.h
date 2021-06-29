@@ -1222,8 +1222,9 @@ public:
     uint32_t countermove;
     int legalmovenum;
     bool onlyGoodCaptures;
-    int16_t *cmptr[CMPLIES];
+    int margin;
     void SetPreferredMoves(chessposition *p);  // for quiescence move selector
+    void SetPreferredMoves(chessposition* p, int m, int excludemove);  // for probcut move selector
     void SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, uint32_t counter, int excludemove);
     uint32_t next();
 };
@@ -1266,7 +1267,7 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
 template <PieceType Pt, Color me> inline int CreateMovelistPiece(chessposition *pos, chessmove* mstart, U64 occ, U64 targets);
 template <MoveType Mt, Color me> inline int CreateMovelistPawn(chessposition *pos, chessmove* mstart);
 template <Color me> inline int CreateMovelistCastle(chessposition *pos, chessmove* mstart);
-template <MoveType Mt> void evaluateMoves(chessmovelist *ml, chessposition *pos, int16_t **cmptr);
+template <MoveType Mt> void evaluateMoves(chessmovelist *ml, chessposition *pos);
 
 enum AttackType { FREE, OCCUPIED, OCCUPIEDANDKING };
 
@@ -1395,8 +1396,9 @@ public:
 #endif
     uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];
-    MoveSelector moveSelector[MAXDEPTH];
+    alignas(64) MoveSelector moveSelector[MAXDEPTH];
     MoveSelector extensionMoveSelector[MAXDEPTH];
+    int16_t* cmptr[MAXDEPTH][CMPLIES];
     bool w2m();
     void BitboardSet(int index, PieceCode p);
     void BitboardClear(int index, PieceCode p);
@@ -1443,15 +1445,15 @@ public:
     template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth, int inWindowLast, int maxmoveindex = 0);
     template <PruneType Pt> int alphabeta(int alpha, int beta, int depth);
     template <PruneType Pt> int getQuiescence(int alpha, int beta, int depth);
-    void updateHistory(uint32_t code, int16_t **cmptr, int value);
+    void updateHistory(uint32_t code, int value);
     void updateTacticalHst(uint32_t code, int value);
-    void getCmptr(int16_t **cmptr);
+    void getCmptr();
     void updatePvTable(uint32_t mc, bool recursive);
     void updateMultiPvTable(int pvindex, uint32_t mc);
     string getPv(uint32_t *table);
     int applyPv(uint32_t* table);
     void reapplyPv(uint32_t* table, int num);
-    int getHistory(uint32_t code, int16_t **cmptr);
+    int getHistory(uint32_t code);
     int getTacticalHst(uint32_t code);
     void resetStats();
     inline void CheckForImmediateStop();
