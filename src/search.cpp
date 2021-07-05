@@ -93,6 +93,7 @@ struct searchparamset {
     // Singular extension
     searchparam SP(singularmindepth, 8);
     searchparam SP(singularmarginperdepth, 2);
+    searchparam SP(singulardepthreductionratio, 5);
     // History extension
     searchparam SP(histextminthreshold, 9);
     searchparam SP(histextmaxthreshold, 15);
@@ -719,7 +720,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         {
             excludemovestack[mstop - 1] = hashmovecode;
             int sBeta = max(hashscore - sps.singularmarginperdepth * depth, SCOREBLACKWINS);
-            int redScore = alphabeta<Pt>(sBeta - 1, sBeta, depth / 2);
+            int redScore = alphabeta<Pt>(sBeta - 1, sBeta, depth * sps.singulardepthreductionratio / 16);
             excludemovestack[mstop - 1] = 0;
 
             if (redScore < sBeta)
