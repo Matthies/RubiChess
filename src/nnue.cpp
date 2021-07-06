@@ -349,7 +349,7 @@ template <NnueType Nt> void chessposition::Transform(clipped_t *output)
 }
 
 
-eval NnueValueScale = 41;
+eval NnueValueScale = 64;
 
 
 template <NnueType Nt> int chessposition::NnueGetEval()
