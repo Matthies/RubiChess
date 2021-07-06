@@ -7,6 +7,7 @@ ChangeLog
     - Makefile supports more platforms now including x86-64-AVX512 and ARM64
     - Implemented penalty for FRC "cornered blocked bishop"
     - 'go searchmoves' is supported now
+    - Supports polyglot opening books via UCI options BookFile, BookDepth, BookBestMove
 
 2.1 (release 2021-04-14) :
     - New default network created with trainingdata from 2.0.1 using better depth and fixed gensfen code

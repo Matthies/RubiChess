@@ -24,18 +24,19 @@ TMPNN=_tmp.nnue
 CPUTEST=cputest
 EXE=RubiChess
 NATIVEFLAGS=_nativeflags.txt
-ARCH=native
 
 
 $(RELDIR):
 	mkdir $(RELDIR)
 
 network:
-!IF !DEFINED(EXE) && !DEFINED(ARCH)
+!IF !DEFINED(ARCH)
 !IF [@FOR /F "tokens=3" %A IN ('find "NNUEDEFAULT " RubiChess.h') DO @(if exist %A ( @echo Net already exists ) else ( curl -skL $(NETURL)%A > $(TMPNN) && move $(TMPNN) %A && echo Net %A was downloaded. )) && @if not exist $(RELDIR)\%A ( @copy  %A $(RELDIR)\%A )  ] != 0
 	@echo Cannot get default net from header file or download failed!
 !ENDIF
 !ENDIF
+
+ARCH=native
 
 
 nativeflags:
@@ -102,6 +103,7 @@ SSE2=no
 
 printarch: cpuflags
 	@echo.
+	@echo Arch: $(ARCH)
 	@echo CPU features:
 	@echo =============
 	@echo avx512: $(AVX512)
@@ -116,7 +118,7 @@ buildandarch: printarch compile
 build: cpuflags
 	@echo Building binary for $(ARCH)
 	@nmake -c -f Makefile.clang buildandarch ARCH=$(ARCH)
-	@nmake -c -f Makefile.clang profile-clean
+	@nmake -c -f Makefile.clang profile-clean ARCH=$(ARCH)
 
 compile:
 	@$(CXX) $(CXXFLAGS) $(ARCHFLAGS) $(SOURCE) $(PROFILEFLAGS)
@@ -135,23 +137,24 @@ pgo: printarch
 	@echo.
 	@echo Creating optimized binary...
 	@nmake -c -f Makefile.clang compile ARCH=$(ARCH) PROFILEFLAGS=-fprofile-instr-use=$(PROFEXE).clangprof
-	@nmake -c -f Makefile.clang profile-clean
 
 profile-build: cpuflags
 	@nmake -c -f Makefile.clang pgo ARCH=$(ARCH)
+	@nmake -c -f Makefile.clang profile-clean ARCH=$(ARCH)
 
 pgo-rename: printarch pgo
 	@move $(RELDIR)\$(EXE).exe $(RELDIR)\$(EXE)_$(ARCH).exe
 	@echo Successfully created $(EXE)_$(ARCH)
 
 release:
-	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-avx512
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-bmi2
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-avx2
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-modern
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-ssse3
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-sse3-popcnt
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64
+	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-avx512
+	@nmake -c -f Makefile.clang profile-clean ARCH=$(ARCH)
 
 profile-clean:
 	@del $(PROFEXE)* 2>nul
