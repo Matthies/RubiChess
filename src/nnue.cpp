@@ -349,7 +349,7 @@ template <NnueType Nt> void chessposition::Transform(clipped_t *output)
 }
 
 
-eval NnueValueScale = 41;
+eval NnueValueScale = 64;
 
 
 template <NnueType Nt> int chessposition::NnueGetEval()
@@ -361,7 +361,7 @@ template <NnueType Nt> int chessposition::NnueGetEval()
     NnueCl1->Propagate(network.hidden2_values, network.hidden2_clipped);
     NnueOut->OutLayer(network.hidden2_clipped, &network.out_value);
 
-    return network.out_value * 64 / 1024;
+    return network.out_value * NnueValueScale / 1024;
 }
 
 
@@ -481,19 +481,6 @@ bool NnueNetworkLayer::ReadWeights(NnueNetsource_t is)
         }
 
     free(weightbuffer);
-
-    if (outputdims == 1)
-    {
-        //cout << (int)bias[0] << " ... ";
-        bias[0] = bias[0] * NnueValueScale / 64;
-        //cout << (int)bias[0] << "\n";
-        for (unsigned int c = 0; c < inputdims; c++)
-        {
-            //cout << (int)weight[c] << " ... ";
-            weight[c] = weight[c] * NnueValueScale / 64;
-            //cout << (int)weight[c] << "\n";
-        }
-    }
 
     return !NNUEREADFAIL(is);
 }
