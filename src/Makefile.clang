@@ -5,9 +5,13 @@
 # nmake /f Makefile.clang profile-build [ARCH=...]	to build even faster binary
 # ARCH can be one of x86-64-avx512, x86-64-bmi2, x86-64-avx2, x86-64-modern, x86-64-ssse3, x86-64-sse3-popcnt, x86-64
 # If ARCH is omitted the CPU features are auto-detected
-#
+# nmake /f Makefile.clang release-arm64				to cross-compile for ARCH arm64-neon (needs shell with cross-plattform settings)
 
 # General settings
+# For best Windows x64 builds install LLVM version 9 from https://releases.llvm.org/9.0.0/LLVM-9.0.0-win64.exe
+# in folder C:\Program Files\LLVM9
+# For profiling a not supported platform (like avx512 in my case) set SDE to the Intel Software Development Emulator https://software.intel.com/content/www/us/en/develop/articles/intel-software-development-emulator.html
+# and define EMU when calling pgo-rename
 CLANGVER=9
 LLVMInstallDir="C:\Program Files\LLVM$(CLANGVER)""
 CXX=$(LLVMInstallDir)\bin\clang-cl.exe
@@ -24,7 +28,7 @@ TMPNN=_tmp.nnue
 CPUTEST=cputest
 EXE=RubiChess
 NATIVEFLAGS=_nativeflags.txt
-
+SDE="C:\_portable\sde-external-8.63.0-2021-01-18-win\sde.exe"
 
 $(RELDIR):
 	mkdir $(RELDIR)
@@ -62,6 +66,8 @@ CPUFLAGS=ssse3 sse2
 CPUFLAGS=popcnt sse2
 !ELSEIF "$(ARCH)" == "x86-64"
 CPUFLAGS=sse2
+!ELSEIF "$(ARCH)" == "arm64-neon"
+CPUFLAGS=neon
 !ENDIF
 
 !IF [@echo $(CPUFLAGS) | find "avx512" > nul] == 0 || [type $(NATIVEFLAGS) 2>nul | find "avx512" > nul] == 0
@@ -100,6 +106,12 @@ ARCHFLAGS=$(ARCHFLAGS) -DUSE_SSE2 -msse2
 !ELSE
 SSE2=no
 !ENDIF
+!IF [@echo $(CPUFLAGS) | find "neon" > nul] == 0 || [type $(NATIVEFLAGS) 2>nul | find "neon" > nul] == 0
+NEON=yes
+ARCHFLAGS=$(ARCHFLAGS) -DUSE_NEON --target=arm64-pc-windows-msvc
+!ELSE
+NEON=no
+!ENDIF
 
 printarch: cpuflags
 	@echo.
@@ -112,6 +124,7 @@ printarch: cpuflags
 	@echo popcnt: $(POPCNT)
 	@echo ssse3_: $(SSSE3)
 	@echo sse2__: $(SSE2)
+	@echo neon__: $(NEON)
 
 buildandarch: printarch compile
 
@@ -132,7 +145,11 @@ pgo: printarch
 	@echo Creating instrumented binary...
 	@nmake -c -f Makefile.clang compile ARCH=$(ARCH) PROFILEFLAGS=-fprofile-instr-generate=$(PROFEXE).clangprof-raw PROFLIB=$(LLVMInstallDir)\lib\clang\$(CLANGVER).0.0\lib\windows\clang_rt.profile-x86_64.lib
 	@echo Bench to generate profiling data...
+!IFDEF EMU
+	-@$(SDE) -- $(PROFEXE) -bench >nul
+!ELSE
 	-@$(PROFEXE) -bench >nul
+!ENDIF
 	@$(PROFDATATOOLEXE) merge -output=$(PROFEXE).clangprof $(PROFEXE).clangprof-raw
 	@echo.
 	@echo Creating optimized binary...
@@ -146,15 +163,22 @@ pgo-rename: printarch pgo
 	@move $(RELDIR)\$(EXE).exe $(RELDIR)\$(EXE)_$(ARCH).exe
 	@echo Successfully created $(EXE)_$(ARCH)
 
+build-rename: build
+	@move $(RELDIR)\$(EXE).exe $(RELDIR)\$(EXE)_$(ARCH).exe
+	@echo Successfully created $(EXE)_$(ARCH)
+
 release:
+	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-avx512 EMU=YES
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-bmi2
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-avx2
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-modern
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-ssse3
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-sse3-popcnt
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64
-	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-avx512
 	@nmake -c -f Makefile.clang profile-clean ARCH=$(ARCH)
+
+release-arm64:
+	@nmake -c -f Makefile.clang build-rename ARCH=arm64-neon
 
 profile-clean:
 	@del $(PROFEXE)* 2>nul

@@ -131,7 +131,11 @@ using namespace std;
 #ifdef EVALTUNE
 #define PREFETCH(a) (void)(0)
 #else
+#ifdef _M_X64
 #define PREFETCH(a) _mm_prefetch((char*)(a), _MM_HINT_T0)
+#else
+#define PREFETCH(a) (void)(0)
+#endif
 #endif
 #else
 #ifdef EVALTUNE
