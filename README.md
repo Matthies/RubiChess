@@ -24,7 +24,7 @@ Use the 'NNUENetpath' option to switch to a different network weight file.
 You can download network files from my repository https://github.com/Matthies/NN and put it in the same folder as the executable.
 
 Default net for last official release is nn-cf8c56d366-20210326.nnue which is also included in Windows release package,
-default net for current master (and strongest one for now) is nn-72b4488f79-20210510.nnue.
+default net for current master (and strongest one for now) is nn-fb50f1a2b1-20210705.nnue.
 
 ## Binaries and hints to build some
 I provide release binary packages for Windows x64 only. Depending on the type of your x86-64 CPU you can choose from
