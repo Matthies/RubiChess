@@ -1356,15 +1356,19 @@ static void search_gen1(searchthread *thr)
             }
         }
 
-        // copy new pv to lastpv
-        int i = 0;
-        while (pos->pvtable[0][i])
+        int i;
+        if (pos->pvtable[0][0])
         {
-            pos->lastpv[i] = pos->pvtable[0][i];
-            i++;
-            if (i == MAXDEPTH - 1) break;
+            // copy new pv to lastpv
+            i = 0;
+            while (pos->pvtable[0][i])
+            {
+                pos->lastpv[i] = pos->pvtable[0][i];
+                i++;
+                if (i == MAXDEPTH - 1) break;
+            }
+            pos->lastpv[i] = 0;
         }
-        pos->lastpv[i] = 0;
 
         nowtime = getTime();
 
