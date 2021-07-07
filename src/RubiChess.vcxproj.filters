@@ -48,6 +48,9 @@
     <ClCompile Include="learn.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="book.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RubiChess.h">

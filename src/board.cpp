@@ -487,6 +487,9 @@ uint32_t chessposition::applyMove(string s, bool resetMstop)
     PieceType promtype;
     PieceCode promotion;
 
+    if (s.size() < 4)
+        return 0;
+
     from = AlgebraicToIndex(s);
     to = AlgebraicToIndex(&s[2]);
 
@@ -518,7 +521,7 @@ uint32_t chessposition::applyMove(string s, bool resetMstop)
 
 
 template <MoveType Mt>
-void evaluateMoves(chessmovelist *ml, chessposition *pos, int16_t **cmptr)
+void evaluateMoves(chessmovelist *ml, chessposition *pos)
 {
     for (int i = 0; i < ml->length; i++)
     {
@@ -533,6 +536,7 @@ void evaluateMoves(chessmovelist *ml, chessposition *pos, int16_t **cmptr)
         {
             int to = GETCORRECTTO(mc);
             ml->move[i].value = pos->history[piece & S2MMASK][GETFROM(mc)][to];
+            int16_t** cmptr = pos->cmptr[pos->ply];
             if (cmptr)
             {
                 for (int j = 0; j < CMPLIES && cmptr[j]; j++)
@@ -553,7 +557,7 @@ void chessposition::getRootMoves()
     chessmovelist movelist;
     prepareStack();
     movelist.length = CreateMovelist<ALL>(this, &movelist.move[0]);
-    evaluateMoves<ALL>(&movelist, this, NULL);
+    evaluateMoves<ALL>(&movelist, this);
 
     int bestval = SCOREBLACKWINS;
     rootmovelist.length = 0;
@@ -564,10 +568,17 @@ void chessposition::getRootMoves()
     int ttscore, tteval;
     uint16_t tthashmovecode;
     bool tthit = tp.probeHash(hash, &ttscore, &tteval, &tthashmovecode, 0, SHRT_MIN + 1, SHRT_MAX, 0);
+    bool bSearchmoves = (en.searchmoves.size() > 0);
 
     excludemovestack[0] = 0; // FIXME: Not very nice; is it worth to do do singular testing in root search?
     for (int i = 0; i < movelist.length; i++)
     {
+        if (bSearchmoves)
+        {
+            string strMove = moveToString(movelist.move[i].code);
+            if (en.searchmoves.find(strMove) == en.searchmoves.end())
+                continue;
+        }
         if (playMove(movelist.move[i].code))
         {
             if (tthit)
@@ -1716,9 +1727,6 @@ bool chessposition::playMove(uint32_t mc)
         }
     }
 
-    PREFETCH(&mtrlhsh.table[materialhash & MATERIALHASHMASK]);
-    PREFETCH(&pwnhsh.table[pawnhash & pwnhsh.sizemask]);
-
     state ^= S2MMASK;
     isCheckbb = isAttackedBy<OCCUPIED>(kingpos[s2m ^ S2MMASK], s2m);
 
@@ -1744,6 +1752,7 @@ bool chessposition::playMove(uint32_t mc)
     kingPinned = 0ULL;
     updatePins<WHITE>();
     updatePins<BLACK>();
+    nodes++;
 
     return true;
 }
@@ -1823,6 +1832,25 @@ void chessposition::unplayMove(uint32_t mc)
 }
 
 
+U64 chessposition::nextHash(uint32_t mc)
+{
+    U64 newhash = hash;
+    int from = GETFROM(mc);
+    int to = GETTO(mc);
+    int pc = GETPIECE(mc);
+    int capture = GETCAPTURE(mc);
+
+    newhash ^= zb.s2m;
+    newhash ^= zb.boardtable[(to << 4) | pc];
+    newhash ^= zb.boardtable[(from << 4) | pc];
+
+    if (capture)
+        newhash ^= zb.boardtable[(to << 4) | capture];
+
+    return newhash;
+}
+
+
 inline void appendMoveToList(chessmove **m, int from, int to, PieceCode piece, PieceCode capture)
 {
     **m = chessmove(from, to, capture, piece);
@@ -1837,7 +1865,7 @@ inline void appendPromotionMove(chessposition *pos, chessmove **m, int from, int
 }
 
 
-template <PieceType Pt> int CreateMovelistPiece(chessposition *pos, chessmove* mstart, U64 occ, U64 targets, int me)
+template <PieceType Pt, Color me> int CreateMovelistPiece(chessposition *pos, chessmove* mstart, U64 occ, U64 targets)
 {
     const PieceCode pc = (PieceCode)((Pt << 1) | me);
     U64 frombits = pos->piece00[pc];
@@ -1866,7 +1894,7 @@ template <PieceType Pt> int CreateMovelistPiece(chessposition *pos, chessmove* m
 }
 
 
-inline int CreateMovelistCastle(chessposition *pos, chessmove* mstart, int me)
+template <Color me> inline int CreateMovelistCastle(chessposition *pos, chessmove* mstart)
 {
     if (pos->isCheckbb)
         return 0;
@@ -1878,8 +1906,8 @@ inline int CreateMovelistCastle(chessposition *pos, chessmove* mstart, int me)
     {
         if ((pos->state & (WQCMASK << cstli)) == 0)
             continue;
-        int kingfrom = pos->kingpos[me];
-        int rookfrom = pos->castlerookfrom[cstli];
+        const int kingfrom = pos->kingpos[me];
+        const int rookfrom = pos->castlerookfrom[cstli];
         if (pos->castleblockers[cstli] & (occupiedbits ^ BITSET(rookfrom) ^ BITSET(kingfrom)))
             continue;
 
@@ -1905,10 +1933,10 @@ inline int CreateMovelistCastle(chessposition *pos, chessmove* mstart, int me)
 }
 
 
-template <MoveType Mt> inline int CreateMovelistPawn(chessposition *pos, chessmove* mstart, int me)
+template <MoveType Mt, Color me> inline int CreateMovelistPawn(chessposition *pos, chessmove* mstart)
 {
     chessmove *m = mstart;
-    int you = 1 - me;
+    const int you = 1 - me;
     const PieceCode pc = (PieceCode)(WPAWN | me);
     const U64 occ = pos->occupied00[0] | pos->occupied00[1];
     U64 frombits, tobits;
@@ -2077,15 +2105,27 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
         targetbits |= emptybits;
     if (Mt & CAPTURE)
         targetbits |= pos->occupied00[me ^ S2MMASK];
-
-    m += CreateMovelistPawn<Mt>(pos, m, me);
-    m += CreateMovelistPiece<KNIGHT>(pos, m, occupiedbits, targetbits, me);
-    m += CreateMovelistPiece<BISHOP>(pos, m, occupiedbits, targetbits, me);
-    m += CreateMovelistPiece<ROOK>(pos, m, occupiedbits, targetbits, me);
-    m += CreateMovelistPiece<QUEEN>(pos, m, occupiedbits, targetbits, me);
-    m += CreateMovelistPiece<KING>(pos, m, occupiedbits, targetbits, me);
-    if (Mt & QUIET)
-        m += CreateMovelistCastle(pos, m, me);
+    if (me)
+    {
+        m += CreateMovelistPawn<Mt, BLACK>(pos, m);
+        m += CreateMovelistPiece<KNIGHT, BLACK>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<BISHOP, BLACK>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<ROOK, BLACK>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<QUEEN, BLACK>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<KING, BLACK>(pos, m, occupiedbits, targetbits);
+        if (Mt & QUIET)
+            m += CreateMovelistCastle<BLACK>(pos, m);
+    }
+    else {
+        m += CreateMovelistPawn<Mt, WHITE>(pos, m);
+        m += CreateMovelistPiece<KNIGHT, WHITE>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<BISHOP, WHITE>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<ROOK, WHITE>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<QUEEN, WHITE>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<KING, WHITE>(pos, m, occupiedbits, targetbits);
+        if (Mt & QUIET)
+            m += CreateMovelistCastle<WHITE>(pos, m);
+    }
 
     return (int)(m - mstart);
 }
@@ -2299,15 +2339,28 @@ void MoveSelector::SetPreferredMoves(chessposition *p)
     {
         onlyGoodCaptures = true;
         state = TACTICALINITSTATE;
+        margin = 1;
     }
     else
     {
         onlyGoodCaptures = false;
         state = EVASIONINITSTATE;
-        pos->getCmptr(&cmptr[0]);
     }
     captures = &pos->captureslist[pos->ply];
     quiets = &pos->quietslist[pos->ply];
+}
+
+// MoveSelector for probcut
+void MoveSelector::SetPreferredMoves(chessposition* p, int m, int excludemove)
+{
+    pos = p;
+    margin = m;
+    onlyGoodCaptures = true;
+    state = TACTICALINITSTATE;
+    if (!excludemove)
+        captures = &pos->captureslist[pos->ply];
+    else
+        captures = &pos->singularcaptureslist[pos->ply];
 }
 
 // MoveSelector for alphabeta search
@@ -2321,7 +2374,6 @@ void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t k
         killermove2 = kllm2;
     if (counter != hashmove && counter != kllm1 && counter != kllm2)
         countermove = counter;
-    pos->getCmptr(&cmptr[0]);
     if (!excludemove)
     {
         captures = &pos->captureslist[pos->ply];
@@ -2355,12 +2407,12 @@ uint32_t MoveSelector::next()
     case TACTICALINITSTATE:
         state++;
         captures->length = CreateMovelist<TACTICAL>(pos, &captures->move[0]);
-        evaluateMoves<CAPTURE>(captures, pos, &cmptr[0]);
+        evaluateMoves<CAPTURE>(captures, pos);
         // fall through
     case TACTICALSTATE:
         while ((m = captures->getNextMove(0)))
         {
-            if (!pos->see(m->code, onlyGoodCaptures))
+            if (!pos->see(m->code, margin))
             {
                 m->value |= BADTACTICALFLAG;
             }
@@ -2398,7 +2450,7 @@ uint32_t MoveSelector::next()
     case QUIETINITSTATE:
         state++;
         quiets->length = CreateMovelist<QUIET>(pos, &quiets->move[0]);
-        evaluateMoves<QUIET>(quiets, pos, &cmptr[0]);
+        evaluateMoves<QUIET>(quiets, pos);
         // fall through
     case QUIETSTATE:
         uint32_t mc;
@@ -2429,7 +2481,7 @@ uint32_t MoveSelector::next()
     case EVASIONINITSTATE:
         state++;
         captures->length = CreateEvasionMovelist(pos, &captures->move[0]);
-        evaluateMoves<ALL>(captures, pos, &cmptr[0]);
+        evaluateMoves<ALL>(captures, pos);
         // fall through
     case EVASIONSTATE:
         while ((mc = captures->getAndRemoveNextMove()))
@@ -2490,6 +2542,18 @@ static void uciSetSyzygyPath()
     init_tablebases((char*)en.SyzygyPath.c_str());
 }
 
+static void uciSetBookFile()
+{
+    if (en.BookFile == "<empty>")
+    {
+        pbook.Open("");
+        return;
+    }
+    if (!pbook.Open(en.BookFile))
+        en.BookFile = "<empty>";
+}
+
+
 #ifdef NNUE
 static void uciSetNnuePath()
 {
@@ -2502,6 +2566,15 @@ static void uciSetNnuePath()
     }
 
     NnueReady = NnueDisabled;
+#ifdef NNUEINCLUDED
+    cout << "info string Initializing net included in binary...";
+    char* p = (char*)&_binary_net_nnue_start;
+    if (!NnueReadNet(&p))
+        cout << " failed. The embedded network seems corrupted.\n";
+    else
+        cout << " successful. Using NNUE evaluation. (" + to_string(NnueReady) + ")\n";
+    return;
+#else
     string NnueNetPath = en.GetNnueNetPath();
     cout << "info string Loading net " << NnueNetPath << " ...";
 
@@ -2510,10 +2583,7 @@ static void uciSetNnuePath()
     if (!is && en.ExecPath != "")
         is.open(en.ExecPath + NnueNetPath, ios::binary);
 
-    if (is)
-        NnueReadNet(&is);
-
-    if (NnueReady)
+    if (is && NnueReadNet(&is))
     {
         cout << " successful. Using NNUE evaluation. (" + to_string(NnueReady) + ")\n";
         if (NnueNetPath.find(NNUEDEFAULTSTR) == string::npos)
@@ -2522,7 +2592,8 @@ static void uciSetNnuePath()
         return;
     }
 
-    cout << " failed. The network file seems corrupted doesn't exist. Set correct path to network file or disable 'Use_NNUE' for handcrafted evaluation.\n";
+    cout << " failed. The network file seems corrupted or doesn't exist. Set correct path to network file or disable 'Use_NNUE' for handcrafted evaluation.\n";
+#endif
 }
 #endif
 
@@ -2584,10 +2655,15 @@ void engine::registerOptions()
     ucioptions.Register(&SyzygyPath, "SyzygyPath", ucistring, "<empty>", 0, 0, uciSetSyzygyPath);
     ucioptions.Register(&Syzygy50MoveRule, "Syzygy50MoveRule", ucicheck, "true");
     ucioptions.Register(&SyzygyProbeLimit, "SyzygyProbeLimit", ucispin, "7", 0, 7, nullptr);
+    ucioptions.Register(&BookFile, "BookFile", ucistring, "<empty>", 0, 0, uciSetBookFile);
+    ucioptions.Register(&BookBestMove, "BookBestMove", ucicheck, "true");
+    ucioptions.Register(&BookDepth, "BookDepth", ucispin, "255", 0, 255);
     ucioptions.Register(&chess960, "UCI_Chess960", ucicheck, "false");
     ucioptions.Register(nullptr, "Clear Hash", ucibutton, "", 0, 0, uciClearHash);
 #ifdef NNUE
+#ifndef NNUEINCLUDED
     ucioptions.Register(&NnueNetpath, "NNUENetpath", ucistring, "<Default>", 0, 0, uciSetNnuePath);
+#endif
     ucioptions.Register(&usennue, "Use_NNUE", ucicheck, "true", 0, 0, uciSetNnuePath);
 #endif
 }
@@ -2617,8 +2693,6 @@ void engine::allocThreads()
     for (int i = 0; i < Threads; i++)
     {
         sthread[i].index = i;
-        sthread[i].searchthreads = sthread;
-        sthread[i].numofthreads = Threads;
         sthread[i].pos.pwnhsh.setSize(sizeOfPh);
         sthread[i].pos.mtrlhsh.init();
     }
@@ -2685,7 +2759,6 @@ void engine::communicate(string inputstring)
 {
     string fen = STARTFEN;
     vector<string> moves;
-    vector<string> searchmoves;
     vector<string> commandargs;
     GuiToken command = UNKNOWN;
     size_t ci, cs;
@@ -2795,6 +2868,7 @@ void engine::communicate(string inputstring)
                 tp.clean();
                 resetStats();
                 sthread[0].pos.lastbestmovescore = NOSCORE;
+                pbook.currentDepth = 0;
                 break;
             case SETOPTION:
                 if (en.stopLevel != ENGINETERMINATEDSEARCH)
@@ -2889,7 +2963,11 @@ void engine::communicate(string inputstring)
                     if (commandargs[ci] == "searchmoves")
                     {
                         while (++ci < cs && AlgebraicToIndex(commandargs[ci]) < 64 && AlgebraicToIndex(&commandargs[ci][2]) < 64)
-                            searchmoves.push_back(commandargs[ci]);
+                            searchmoves.insert(commandargs[ci]);
+                        // Filter root moves again
+                        rootposition.getRootMoves();
+                        rootposition.tbFilterRootMoves();
+                        prepareThreads();
                     }
 
                     else if (commandargs[ci] == "wtime")
@@ -2952,7 +3030,6 @@ void engine::communicate(string inputstring)
                         ci++;
                 }
                 isWhite = (sthread[0].pos.w2m());
-                stopLevel = ENGINERUN;
                 searchStart();
                 if (inputstring != "")
                 {

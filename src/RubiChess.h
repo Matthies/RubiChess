@@ -22,7 +22,7 @@
 
 // Disable this to compile without NNUE evaluation
 #define NNUE
-#define NNUEDEFAULT nn-673bf01913-20210421.nnue
+#define NNUEDEFAULT nn-fb50f1a2b1-20210705.nnue
 
 // Enable to get statistical values about various search features
 //#define STATISTICS
@@ -88,6 +88,7 @@
 #include <limits.h>
 #include <math.h>
 #include <regex>
+#include <set>
 
 #ifdef _WIN32
 
@@ -130,7 +131,11 @@ using namespace std;
 #ifdef EVALTUNE
 #define PREFETCH(a) (void)(0)
 #else
+#ifdef _M_X64
 #define PREFETCH(a) _mm_prefetch((char*)(a), _MM_HINT_T0)
+#else
+#define PREFETCH(a) (void)(0)
+#endif
 #endif
 #else
 #ifdef EVALTUNE
@@ -159,7 +164,7 @@ using namespace std;
 #endif
 
 #ifndef VERSTABLE
-#define VERSION VERNUM "-dev"
+#define VERSION VERNUM "-RC2"
 #else
 #define VERSION VERNUM " "
 #endif
@@ -211,6 +216,7 @@ enum Color { WHITE, BLACK };
 #define FLANKLEFT  0x0f0f0f0f0f0f0f0f
 #define FLANKRIGHT 0xf0f0f0f0f0f0f0f0
 #define CENTER 0x0000001818000000
+#define CORNERS 0x8100000000000081
 #define OUTPOSTAREA(s) ((s) ? 0x000000ffffff0000 : 0x0000ffffff000000)
 #define RANK(x) ((x) >> 3)
 #define RRANK(x,s) ((s) ? ((x) >> 3) ^ 7 : ((x) >> 3))
@@ -608,7 +614,7 @@ typedef struct ranctx { U64 a; U64 b; U64 c; U64 d; } ranctx;
 
 void raninit(ranctx* x, U64 seed);
 U64 ranval(ranctx* x);
-string frcStartFen();
+string frcStartFen(int num = -1);
 U64 calc_key_from_pcs(int *pcs, int mirror);
 void getPcsFromStr(const char* str, int *pcs);
 void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am);
@@ -634,8 +640,6 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
 // NNUE stuff
 //
 #define NNUEDEFAULTSTR TOSTRING(NNUEDEFAULT)
-
-const int NnuePsqThreshold = 300;
 
 enum NnueType { NnueDisabled = 0, NnueRotate, NnueFlip };
 #define NNUEFILEVERSIONROTATE     0x7AF32F16u
@@ -676,6 +680,19 @@ typedef struct {
 
 extern NnueType NnueReady;
 
+#ifdef NNUEINCLUDED
+extern const char  _binary_net_nnue_start;
+extern const char  _binary_net_nnue_end;
+typedef char** NnueNetsource_t;
+#define NNUEREAD(s, t, l) (memcpy(t, (*s), l), (*s) = (*s) + (l))
+#define NNUEREADFAIL(s) ((*s) > (char*)&_binary_net_nnue_end)
+#define NNUEEOF(s) ((*s) == (char*)&_binary_net_nnue_end)
+#else
+typedef ifstream* NnueNetsource_t;
+#define NNUEREAD(s, t, l) s->read(t, l)
+#define NNUEREADFAIL(s) s->fail()
+#define NNUEEOF(s) (s->peek() == ios::traits_type::eof())
+#endif
 
 struct NnueNetwork {
     alignas(64) clipped_t input[NnueFtOutputdims];
@@ -692,7 +709,7 @@ public:
     NnueLayer* previous;
 
     NnueLayer(NnueLayer* prev) { previous = prev; }
-    virtual bool ReadWeights(ifstream* is) = 0;
+    virtual bool ReadWeights(NnueNetsource_t is) = 0;
     virtual uint32_t GetHash() = 0;
 };
 
@@ -704,7 +721,7 @@ public:
 
     NnueFeatureTransformer();
     virtual ~NnueFeatureTransformer();
-    bool ReadWeights(ifstream* is);
+    bool ReadWeights(NnueNetsource_t is);
     uint32_t GetHash();
 };
 
@@ -714,7 +731,7 @@ public:
     int dims;
     NnueClippedRelu(NnueLayer* prev, int d);
     virtual ~NnueClippedRelu() {};
-    bool ReadWeights(ifstream* is);
+    bool ReadWeights(NnueNetsource_t is);
     uint32_t GetHash();
     void Propagate(int32_t *input, clipped_t *output);
 };
@@ -726,7 +743,7 @@ public:
 
     NnueInputSlice();
     virtual ~NnueInputSlice() {};
-    bool ReadWeights(ifstream* is);
+    bool ReadWeights(NnueNetsource_t is);
     uint32_t GetHash();
 };
 
@@ -741,7 +758,7 @@ public:
 
     NnueNetworkLayer(NnueLayer* prev, int id, int od);
     virtual ~NnueNetworkLayer();
-    bool ReadWeights(ifstream* is);
+    bool ReadWeights(NnueNetsource_t is);
     uint32_t GetHash();
     void Propagate(clipped_t *input, int32_t *output);
     void OutLayer(clipped_t* input, int32_t* output);
@@ -757,7 +774,7 @@ public:
 
 void NnueInit();
 void NnueRemove();
-void NnueReadNet(ifstream* is);
+bool NnueReadNet(NnueNetsource_t is);
 #ifdef EVALOPTIONS
 void NnueRegisterEvals();
 #endif
@@ -1209,8 +1226,9 @@ public:
     uint32_t countermove;
     int legalmovenum;
     bool onlyGoodCaptures;
-    int16_t *cmptr[CMPLIES];
+    int margin;
     void SetPreferredMoves(chessposition *p);  // for quiescence move selector
+    void SetPreferredMoves(chessposition* p, int m, int excludemove);  // for probcut move selector
     void SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, uint32_t counter, int excludemove);
     uint32_t next();
 };
@@ -1250,10 +1268,10 @@ enum PruneType { Prune, MatePrune, NoPrune };
 
 int CreateEvasionMovelist(chessposition *pos, chessmove* mstart);
 template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart);
-template <PieceType Pt> inline int CreateMovelistPiece(chessposition *pos, chessmove* mstart, U64 occ, U64 targets, int me);
-template <MoveType Mt> inline int CreateMovelistPawn(chessposition *pos, chessmove* mstart, int me);
-inline int CreateMovelistCastle(chessposition *pos, chessmove* mstart, int me);
-template <MoveType Mt> void evaluateMoves(chessmovelist *ml, chessposition *pos, int16_t **cmptr);
+template <PieceType Pt, Color me> inline int CreateMovelistPiece(chessposition *pos, chessmove* mstart, U64 occ, U64 targets);
+template <MoveType Mt, Color me> inline int CreateMovelistPawn(chessposition *pos, chessmove* mstart);
+template <Color me> inline int CreateMovelistCastle(chessposition *pos, chessmove* mstart);
+template <MoveType Mt> void evaluateMoves(chessmovelist *ml, chessposition *pos);
 
 enum AttackType { FREE, OCCUPIED, OCCUPIEDANDKING };
 
@@ -1382,8 +1400,9 @@ public:
 #endif
     uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];
-    MoveSelector moveSelector[MAXDEPTH];
+    alignas(64) MoveSelector moveSelector[MAXDEPTH];
     MoveSelector extensionMoveSelector[MAXDEPTH];
+    int16_t* cmptr[MAXDEPTH][CMPLIES];
     bool w2m();
     void BitboardSet(int index, PieceCode p);
     void BitboardClear(int index, PieceCode p);
@@ -1411,6 +1430,7 @@ public:
     void unplayMove(uint32_t mc);
     void playNullMove();
     void unplayNullMove();
+    U64 nextHash(uint32_t mc);
     template <int Me> void updatePins();
     template <int Me> bool sliderAttacked(int index, U64 occ);
     bool moveGivesCheck(uint32_t c);  // simple and imperfect as it doesn't handle special moves and cases (mainly to avoid pruning of important moves)
@@ -1418,6 +1438,7 @@ public:
     uint32_t shortMove2FullMove(uint16_t c); // transfer movecode from tt to full move code without checking if pseudoLegal
     int getpsqval(bool showDetails = false);  // only for eval trace
     template <EvalType Et, int Me> int getGeneralEval(positioneval *pe);
+    int getFrcCorrection();
     template <EvalType Et, PieceType Pt, int Me> int getPieceEval(positioneval *pe);
     template <EvalType Et, int Me> int getLateEval(positioneval *pe);
     template <EvalType Et, int Me> void getPawnAndKingEval(pawnhashentry *entry);
@@ -1428,15 +1449,15 @@ public:
     template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth, int inWindowLast, int maxmoveindex = 0);
     template <PruneType Pt> int alphabeta(int alpha, int beta, int depth);
     template <PruneType Pt> int getQuiescence(int alpha, int beta, int depth);
-    void updateHistory(uint32_t code, int16_t **cmptr, int value);
+    void updateHistory(uint32_t code, int value);
     void updateTacticalHst(uint32_t code, int value);
-    void getCmptr(int16_t **cmptr);
+    void getCmptr();
     void updatePvTable(uint32_t mc, bool recursive);
     void updateMultiPvTable(int pvindex, uint32_t mc);
     string getPv(uint32_t *table);
     int applyPv(uint32_t* table);
     void reapplyPv(uint32_t* table, int num);
-    int getHistory(uint32_t code, int16_t **cmptr);
+    int getHistory(uint32_t code);
     int getTacticalHst(uint32_t code);
     void resetStats();
     inline void CheckForImmediateStop();
@@ -1611,6 +1632,9 @@ public:
     string SyzygyPath;
     bool Syzygy50MoveRule = true;
     int SyzygyProbeLimit;
+    string BookFile;
+    bool BookBestMove;
+    int BookDepth;
     chessposition rootposition;
     int Threads;
     int oldThreads;
@@ -1624,6 +1648,7 @@ public:
     ucioptions_t ucioptions;
     compilerinfo* compinfo;
     string ExecPath;
+    set<string> searchmoves;
 
 #ifdef STACKDEBUG
     string assertfile = "";
@@ -1637,10 +1662,14 @@ public:
     bool usennue;
     string NnueNetpath; // UCI option, can be <Default>
     string GetNnueNetPath() {
+#ifdef NNUEINCLUDED
+        return TOSTRING(NNUEINCLUDED);
+#else
         if (NnueNetpath == "<Default>")
             return NNUEDEFAULTSTR;
         else
             return NnueNetpath;
+#endif
     }
 
     string NnueSha256FromName() {
@@ -1713,11 +1742,11 @@ extern compilerinfo cinfo;
 class searchthread
 {
 public:
+    uint64_t toppadding[8];
     chessposition pos;
     thread thr;
     int index;
     int depth;
-    int numofthreads;
     int lastCompleteDepth;
 #ifdef NNUELEARN
     PackedSfenValue* psvbuffer;
@@ -1725,10 +1754,7 @@ public:
     int totalchunks;
     int chunkstate[2];
 #endif
-    // adjust padding to align searchthread at 64 bytes
-    uint8_t padding[16];
-
-    searchthread *searchthreads;
+    uint64_t bottompadding[8];
 };
 
 void searchStart();
@@ -1812,4 +1838,30 @@ void search_statistics();
 #define STATISTICSDO(x)
 #endif
 
+//
+// book stuff
+//
 
+struct bookentry {
+    uint64_t key;
+    uint16_t move;
+    uint16_t weight;
+    uint32_t learn;
+};
+
+
+class polybook
+{
+public:
+    bookentry* table = nullptr;
+    size_t entrynum;
+    size_t iBest;
+    int currentDepth;
+    ranctx rnd;
+    ~polybook();
+    U64 GetHash(chessposition* p);
+    bool Open(string filename);
+    uint32_t GetMove(chessposition* p);
+};
+
+extern polybook pbook;

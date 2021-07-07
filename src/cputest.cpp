@@ -132,7 +132,7 @@ void compilerinfo::GetSystemInfo()
 #else
 void compilerinfo::GetSystemInfo()
 {
-#ifdef __ARM_NEON__
+#if defined(__ARM_NEON__) || defined(__ARM_NEON)
     system = "ARM platform supprting NEON";
     machineSupports = CPUNEON;
 #else

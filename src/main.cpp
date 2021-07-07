@@ -21,6 +21,20 @@
 
 void generateEpd(string egn)
 {
+
+    if (egn == "chess960")
+    {
+        for (int i = 0; i < 960; i++)
+        {
+#if 0   // Filter for corner bishop
+            if (!(i % 4 == 3 || (i / 4) % 4 == 0))
+                continue;
+#endif
+            cout << frcStartFen(i) << "\n";
+        }
+
+        return;
+    }
     chessposition *pos = &en.sthread[0].pos;
     int pcs[16];
 
@@ -1018,9 +1032,6 @@ int main(int argc, char* argv[])
         perftest(perfmaxdepth);
     } else if (benchmark || openbench)
     {
-        // benchmark mode
-        if (openbench)
-            en.ucioptions.Set("Use_NNUE", "false");
         doBenchmark(depth, epdfile, maxtime, startnum, openbench);
 #ifdef NNUE
         if (!openbench && epdfile == "")
