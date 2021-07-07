@@ -18,7 +18,7 @@
 #pragma once
 
 #define VERNUM "2.2"
-//#define VERSTABLE
+#define VERSTABLE
 
 // Disable this to compile without NNUE evaluation
 #define NNUE
@@ -164,7 +164,7 @@ using namespace std;
 #endif
 
 #ifndef VERSTABLE
-#define VERSION VERNUM "-RC2"
+#define VERSION VERNUM "-dev"
 #else
 #define VERSION VERNUM " "
 #endif
