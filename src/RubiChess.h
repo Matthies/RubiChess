@@ -801,6 +801,7 @@ void learn(vector<string> args);
 #define BOUNDMASK   0x03
 #define HASHALPHA   0x01
 #define HASHBETA    0x02
+#define HASHUNKNOWN 0x03
 #define HASHEXACT   0x00
 
 class zobrist
