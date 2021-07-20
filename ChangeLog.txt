@@ -1,5 +1,8 @@
 ChangeLog
 =========
+2.3 (release 202x-xx-xx) :
+    - ...
+
 2.2 (release 2021-07-07) :
     - New default network created with trainingdata from 2.1 and lambda 0.4
     - Some speed improvements

@@ -17,8 +17,8 @@
 
 #pragma once
 
-#define VERNUM "2.2"
-#define VERSTABLE
+#define VERNUM "2.3"
+//#define VERSTABLE
 
 // Disable this to compile without NNUE evaluation
 #define NNUE
