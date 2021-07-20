@@ -521,6 +521,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             staticeval = -staticevalstack[mstop - 1] + CEVAL(eps.eTempo, 2);
         else
             staticeval = getEval<NOTRACE>();
+
+        tp.addHash(hash, staticeval, staticeval, HASHUNKNOWN, 0, hashmovecode);
     }
     staticevalstack[mstop] = staticeval;
 
@@ -618,6 +620,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                     // ProbCut off
                     STATISTICSINC(prune_probcut);
                     SDEBUGDO(isDebugPv, pvabortval[ply] = probcutscore; pvaborttype[ply] = PVA_PROBCUTPRUNED; pvadditionalinfo[ply] = "pruned by " + movelist->move[i].toString(););
+                    tp.addHash(hash, probcutscore, staticeval, HASHBETA, depth - 3, mc);
                     return probcutscore;
                 }
             }
