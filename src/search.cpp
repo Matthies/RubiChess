@@ -619,7 +619,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 {
                     // ProbCut off
                     STATISTICSINC(prune_probcut);
-                    SDEBUGDO(isDebugPv, pvabortval[ply] = probcutscore; pvaborttype[ply] = PVA_PROBCUTPRUNED; pvadditionalinfo[ply] = "pruned by " + movelist->move[i].toString(););
+                    SDEBUGDO(isDebugPv, pvabortval[ply] = probcutscore; pvaborttype[ply] = PVA_PROBCUTPRUNED; pvadditionalinfo[ply] = "pruned by " + moveToString(mc););
                     tp.addHash(hash, probcutscore, staticeval, HASHBETA, depth - 3, mc);
                     return probcutscore;
                 }
