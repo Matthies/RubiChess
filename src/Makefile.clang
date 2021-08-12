@@ -1,11 +1,11 @@
 #
 # Start MSVC Command prompt for x64 native tools and
-# nmake /f Makefile.clang release					to build all binaries for release package in subfolder Release-clang
-# nmake /f Makefile.clang build [ARCH=...]			to build fast binary
-# nmake /f Makefile.clang profile-build [ARCH=...]	to build even faster binary
+# nmake /f Makefile.clang release [SDE="c:\..\sde.exe"]	to build all binaries for release package in subfolder Release-clang using the Intel emulator where necessary
+# nmake /f Makefile.clang build [ARCH=...]				to build fast binary
+# nmake /f Makefile.clang profile-build [ARCH=...]		to build even faster binary
 # ARCH can be one of x86-64-avx512, x86-64-bmi2, x86-64-avx2, x86-64-modern, x86-64-ssse3, x86-64-sse3-popcnt, x86-64
 # If ARCH is omitted the CPU features are auto-detected
-# nmake /f Makefile.clang release-arm64				to cross-compile for ARCH arm64-neon (needs shell with cross-plattform settings)
+# nmake /f Makefile.clang release-arm64					to cross-compile for ARCH arm64-neon (needs shell with cross-plattform settings)
 
 # General settings
 # For best Windows x64 builds install LLVM version 9 from https://releases.llvm.org/9.0.0/LLVM-9.0.0-win64.exe
@@ -28,7 +28,11 @@ TMPNN=_tmp.nnue
 CPUTEST=cputest
 EXE=RubiChess
 NATIVEFLAGS=_nativeflags.txt
-SDE="C:\_portable\sde-external-8.63.0-2021-01-18-win\sde.exe"
+SDEDEFAULT="C:\_portable\sde-external-8.63.0-2021-01-18-win\sde.exe"
+!IF !DEFINED(SDE)
+SDE=$(SDEDEFAULT)
+!ENDIF
+
 
 $(RELDIR):
 	mkdir $(RELDIR)
@@ -145,11 +149,7 @@ pgo: printarch
 	@echo Creating instrumented binary...
 	@nmake -c -f Makefile.clang compile ARCH=$(ARCH) PROFILEFLAGS=-fprofile-instr-generate=$(PROFEXE).clangprof-raw PROFLIB=$(LLVMInstallDir)\lib\clang\$(CLANGVER).0.0\lib\windows\clang_rt.profile-x86_64.lib
 	@echo Bench to generate profiling data...
-!IFDEF EMU
-	-@$(SDE) -- $(PROFEXE) -bench >nul
-!ELSE
-	-@$(PROFEXE) -bench >nul
-!ENDIF
+	@($(PROFEXE) -bench >nul || (if exist $(SDE) ( @echo Using Intels Software Development Emulator... && $(SDE) -- $(PROFEXE) -bench >nul) else (@echo Intels Software Development Emulator needed but not found at $(SDE). Performance will be poor.)))
 	@$(PROFDATATOOLEXE) merge -output=$(PROFEXE).clangprof $(PROFEXE).clangprof-raw
 	@echo.
 	@echo Creating optimized binary...
@@ -168,7 +168,7 @@ build-rename: build
 	@echo Successfully created $(EXE)_$(ARCH)
 
 release:
-	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-avx512 EMU=YES
+	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-avx512
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-bmi2
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-avx2
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-modern

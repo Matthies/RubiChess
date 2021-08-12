@@ -498,7 +498,7 @@ void compilerinfo::GetSystemInfo()
     {
         cout << "info string Error! Binary is not compatible with this machine. Missing cpu features:";
         cout << PrintCpuFeatures(notSupported) << ". Please use correct binary.\n";
-        exit(0);
+        exit(-1);
     }
     
     if (cpuVendor == CPUVENDORAMD && cpuFamily < 25 && (machineSupports & CPUBMI2))
