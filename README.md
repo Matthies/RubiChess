@@ -28,13 +28,13 @@ default net for current master (and strongest one for now) is nn-fb50f1a2b1-2021
 
 ## Binaries and hints to build some
 I provide release binary packages for Windows x64 only. Depending on the type of your x86-64 CPU you can choose from
-1. RubiChess-BMI2: For best performance on modern intel CPUs and probably also new AMD Ryzen Zen3 / 5?00X CPU
-2. RubiChess-AVX2: For best performance on modern AMD Ryzen Zen/Zen2
-3. RubiChess: For older CPUs that support POPCNT but no AVX2
-4. RubiChess-SSSE3: For even older CPUs with SSSE3 but no POPCNT
-5. RubiChess-SSE2POPCNT: For old AMD CPUs supporting POPCNT but no SSSE3 like Phemon II
-6. RubiChess-Legacy: For very old x86-64 CPU without SSSE3 support (are there any?)
-7. New: RubiChess-AVX512: For best performance on new Intel CPUs supporting the AVX512 extensions. Thanks Ipman for kicking me to implement it.
+1. RubiChess-x86-64-avx512: For best performance on new Intel CPUs supporting the AVX512 extensions.
+2. RubiChess-x86-64-bmi2: For best performance on modern intel CPUs and probably also new AMD Ryzen Zen3 / 5?00X CPU
+3. RubiChess-x86-64-avx2: For best performance on modern AMD Ryzen Zen/Zen2
+4. RubiChess-x86-64-modern: For older CPUs that support POPCNT but no AVX2
+5. RubiChess-x86-64-ssse3: For even older CPUs with SSSE3 but no POPCNT
+6. RubiChess-x86-64-sse3-popcount: For old AMD CPUs supporting POPCNT and SSE3 but no SSSE3 like Phemon II
+7. RubiChess-x86-64: For very old x86-64 CPU with just SSE2 support
 
 You will get a warning at startup if the selected binary doesn't match your CPU or it will just crash.
 
@@ -49,3 +49,5 @@ You can also use the (default) gcc/g++ compiler ```make profile-build``` which p
 
 Note 1: For a profile-build in MacOS (Darwin) you have to include the folder containing the llvm-profdata tool in your PATH:
 ```export PATH=$PATH:/Library/Developer/CommandLineTools/usr/bin/```
+
+Note 2: By default a 'native' binary is compiled by detecting the CPU features of the computer. If you want to create a binary with a special set of CPU features, append ARCH=x86-64-... parameter to make. For a list of supported archs looks above.
