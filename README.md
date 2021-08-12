@@ -49,5 +49,3 @@ You can also use the (default) gcc/g++ compiler ```make profile-build``` which p
 
 Note 1: For a profile-build in MacOS (Darwin) you have to include the folder containing the llvm-profdata tool in your PATH:
 ```export PATH=$PATH:/Library/Developer/CommandLineTools/usr/bin/```
-
-Note 2: With current Makefile a profile-build always builds all the different binaries for the x86-64 plattform. Selecting a special one with the ARCH variable is not supported. Maybe later...
