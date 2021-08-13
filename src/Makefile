@@ -187,7 +187,7 @@ ifneq ($(EVALFILE),)
 	NETOBJ = net.o
 endif
 
-MAJORVERSION = $(shell grep "\#define VERNUM " RubiChess.h | awk -F'"' '{print $$2}')
+MAJORVERSION = $(shell grep "\#define VERNUM " RubiChess.h | awk '{print $$3}')
 ifeq ($(shell grep "^\#define VERSTABLE" RubiChess.h),)
 	ifneq ($(GITID),)
 		MINORVERSION = -dev-$(GITID)
