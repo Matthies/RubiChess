@@ -17,7 +17,7 @@
 
 #pragma once
 
-#define VERNUM "2.3"
+#define VERNUM 2.3
 //#define VERSTABLE
 
 // Disable this to compile without NNUE evaluation
@@ -164,9 +164,9 @@ using namespace std;
 #endif
 
 #ifndef VERSTABLE
-#define VERSION VERNUM "-dev"
+#define VERSION TOSTRING(VERNUM) "-dev"
 #else
-#define VERSION VERNUM " "
+#define VERSION TOSTRING(VERNUM) " "
 #endif
 #define ENGINEVER "RubiChess " VERSION
 #ifdef GITID
