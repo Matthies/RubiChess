@@ -1225,7 +1225,6 @@ public:
     uint32_t killermove1;
     uint32_t killermove2;
     uint32_t countermove;
-    int legalmovenum;
     bool onlyGoodCaptures;
     int margin;
     void SetPreferredMoves(chessposition *p);  // for quiescence move selector
