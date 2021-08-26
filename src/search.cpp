@@ -784,7 +784,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 reduction -= PVNode;
 
                 // adjust reduction with opponents move number
-                reduction -= (LegalMoves[ply] >= sps.lmropponentmovecount);
+                reduction -= (CurrentMoveNum[ply] >= sps.lmropponentmovecount);
 
                 STATISTICSINC(red_pi[positionImproved]);
                 STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, legalMoves + 1)]);
@@ -814,11 +814,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (!playMove(mc))
             continue;
 
-        legalMoves++;
         SDEBUGDO(isDebugMove, debugMovePlayed = true;);
         STATISTICSINC(moves_played[(bool)ISTACTICAL(mc)]);
 
-        LegalMoves[ply] = legalMoves;
+        CurrentMoveNum[ply] = ++legalMoves;
         SDEBUGDO(isDebugMove, pvadditionalinfo[ply-1] = ""; );
 
         if (reduction)

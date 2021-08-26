@@ -1333,7 +1333,7 @@ public:
     int lastbestmovescore;
     int bestmovescore[MAXMULTIPV];
     uint32_t pondermove;
-    int LegalMoves[MAXDEPTH];
+    int CurrentMoveNum[MAXDEPTH];
     uint32_t killer[MAXDEPTH][2];
     uint32_t bestFailingLow;
     int threadindex;
