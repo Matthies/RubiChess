@@ -667,6 +667,7 @@ void chessposition::tbFilterRootMoves()
 // test the actual move for three-fold-repetition
 // maybe this could be fixed in the future by using cuckoo tables like SF does it
 // https://marcelk.net/2013-04-06/paper/upcoming-rep-v2.pdf
+#if 0
 int chessposition::testRepetiton()
 {
     int hit = 0;
@@ -685,7 +686,42 @@ int chessposition::testRepetiton()
     }
     return hit;
 }
+#else
+int chessposition::testRepetiton()
+{
+    int hit = 0;
+    int lastrepply = max(mstop - halfmovescounter, lastnullmove + 1);
+    int i = mstop - 4;
+    while (i >= lastrepply)
+    {
+        if (hash == movestack[i].hash)
+        {
+            hit++;
+            if (i > 0)
+            {
+                hit++;
+                break;
+            }
+        }
+        i -= 2;
+    }
+    if (lastrepply == 0)
+    {
+        i += repetitionhashsize;
+        while (i >= 0)
+        {
+            if (hash == repetitionhash[i])
+            {
+                hit++;
+            }
+            i -= 2;
+        }
+    }
 
+
+    return hit;
+}
+#endif
 
 void chessposition::prepareStack()
 {
@@ -2791,6 +2827,13 @@ void engine::communicate(string inputstring)
                         printf("info string Alarm! Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
                 }
                 ponderhit = (lastopponentsmove && lastopponentsmove == rootposition.pondermove);
+                // Preserve hashes of earlier position up to last halfmove counter reset for repetition detection
+                int i = rootposition.repetitionhashsize = rootposition.mstop;
+                while (--i >= 0)
+                    rootposition.repetitionhash[i] = rootposition.movestack[i].hash;
+
+
+                rootposition.mstop = 0;
                 rootposition.rootheight = rootposition.mstop;
                 rootposition.ply = 0;
                 rootposition.getRootMoves();

@@ -1325,6 +1325,8 @@ public:
     int16_t staticevalstack[MAXDEPTH];
 
     int rootheight; // fixed stack offset in root position
+    U64 repetitionhash[128];   // max 100 moves without reset
+    int repetitionhashsize;
     int seldepth;
     int nullmoveside;
     int nullmoveply = 0;

@@ -1,0 +1,68 @@
+Benchmark results for RubiChess 2.3-dev NN-fb50f (avx2) (Build Aug 26 2021 13:39:44 MSVC 1927):
+System: Intel(R) Xeon(R) CPU E3-1220 v5 @ 3.00GHz  Family: 6  Model: 94
+CPU-Features of system: sse2 ssse3 popcnt avx2 bmi2
+CPU-Features of binary: sse2 ssse3 popcnt avx2
+=============================================================================================================
+Bench #   1 ( Startposition / 14): o   e2e4     33 cp  14 ply   0.020914 sec.      28066 nodes    1342003 nps
+Bench #   2 ( ... e2e4 e7e5 / 16): o   g1f3     41 cp  16 ply   0.124801 sec.     157290 nodes    1260330 nps
+Bench #   3 (   Lasker Test / 20): o   a1b1    463 cp  20 ply   0.018328 sec.      71660 nodes    3909779 nps
+Bench #   4 ( ... a1b1 a7b7 / 22): o   b1c1    568 cp  22 ply   0.017113 sec.      62611 nodes    3658573 nps
+Bench #   5 (        IQ4 63 / 14): o   c8e8   -103 cp  14 ply   0.034933 sec.      52281 nodes    1496586 nps
+Bench #   6 ( ... c8e8 e5e4 / 16): o   f3d4    -54 cp  16 ply   0.045634 sec.      69924 nodes    1532275 nps
+Bench #   7 (    Wacnew 167 / 14): o   f2g2  32244 cp  14 ply   0.010487 sec.      16260 nodes    1550565 nps
+Bench #   8 ( ... f2g2 g1g2 / 16): o   f5f2  32246 cp  16 ply   0.002513 sec.       3967 nodes    1578591 nps
+Bench #   9 (    Wacnew 212 / 14): o   h8g7  32244 cp  14 ply   0.024322 sec.      32941 nodes    1354359 nps
+Bench #  10 ( ... h8g7 f6g7 / 16): o   f1f7  32246 cp  16 ply   0.002143 sec.       3751 nodes    1749941 nps
+Bench #  11 (      Carlos 6 / 14): o   b3e6    507 cp  14 ply   0.094768 sec.     125437 nodes    1323617 nps
+Bench #  12 ( ... b3e6 f7f5 / 16): o   e6f5    564 cp  16 ply   0.203205 sec.     247634 nodes    1218642 nps
+Bench #  13 (   Arasan19 83 / 14): o   f7d7    254 cp  14 ply   0.036100 sec.      52417 nodes    1451998 nps
+Bench #  14 ( ... f7d7 h1d1 / 16): o   h6h5    211 cp  16 ply   0.126075 sec.     174634 nodes    1385157 nps
+Bench #  15 (  Arasan19 192 / 14): o   g2c6    -21 cp  14 ply   0.067196 sec.      93018 nodes    1384270 nps
+Bench #  16 ( ... g2c6 b7c6 / 16): o   f1f7      0 cp  16 ply   0.063258 sec.      85778 nodes    1356008 nps
+Bench #  17 (     BT2630 12 / 14): o   e6g4    585 cp  14 ply   0.048215 sec.      75626 nodes    1568522 nps
+Bench #  18 ( ... e6g4 b3b7 / 16): o   f7f8    653 cp  16 ply   0.062710 sec.     100197 nodes    1597778 nps
+Bench #  19 (       IQ4 116 / 14): o   e4f2    408 cp  14 ply   0.041753 sec.      58633 nodes    1404295 nps
+Bench #  20 ( ... e4f2 d1e1 / 16): o   f2g4    411 cp  16 ply   0.052968 sec.      71399 nodes    1347959 nps
+Bench #  21 (  Arasan12 114 / 14): o   a4c3     56 cp  14 ply   0.192991 sec.     236079 nodes    1223264 nps
+Bench #  22 ( ... a4c3 d7e5 / 16): o   c3a4     54 cp  16 ply   0.099770 sec.     126028 nodes    1263186 nps
+Bench #  23 (  Arasan12 140 / 14): o   h2h3    277 cp  14 ply   0.109052 sec.     145929 nodes    1338162 nps
+Bench #  24 ( ... h2h3 e8e7 / 16): o   f3g3    314 cp  16 ply   0.155593 sec.     198068 nodes    1272984 nps
+Bench #  25 (  Arasan12 137 / 14): o   h5h7    161 cp  14 ply   0.114317 sec.     156375 nodes    1367903 nps
+Bench #  26 ( ... h5h7 g7f6 / 16): o   h7h8    209 cp  16 ply   0.081875 sec.     107626 nodes    1314512 nps
+=============================================================================================================
+Overall:                     0/  0 =  0.0%                      1.851035 sec.    2553629 nodes    1379567 nps
+
+
+Benchmark results for RubiChess 2.3-dev (avx2) (Build Aug 26 2021 13:39:44 MSVC 1927):
+System: Intel(R) Xeon(R) CPU E3-1220 v5 @ 3.00GHz  Family: 6  Model: 94
+CPU-Features of system: sse2 ssse3 popcnt avx2 bmi2
+CPU-Features of binary: sse2 ssse3 popcnt avx2
+=============================================================================================================
+Bench #   1 ( Startposition / 14): o   e2e4     64 cp  14 ply   0.022382 sec.      40973 nodes    1830606 nps
+Bench #   2 ( ... e2e4 d7d5 / 16): o   e4d5     37 cp  16 ply   0.087936 sec.     173174 nodes    1969327 nps
+Bench #   3 (   Lasker Test / 20): o   a1b2    167 cp  20 ply   0.005519 sec.      21018 nodes    3808505 nps
+Bench #   4 ( ... a1b2 a7b7 / 22): o   b2c3    340 cp  22 ply   0.025907 sec.     108129 nodes    4173688 nps
+Bench #   5 (        IQ4 63 / 14): o   f3d4   -176 cp  14 ply   0.012192 sec.      24738 nodes    2028968 nps
+Bench #   6 ( ... f3d4 g4e2 / 16): o   d4e2   -189 cp  16 ply   0.067268 sec.     141897 nodes    2109427 nps
+Bench #   7 (    Wacnew 167 / 14): o   f2g2  32244 cp  14 ply   0.009700 sec.      19101 nodes    1969256 nps
+Bench #   8 ( ... f2g2 g1g2 / 16): o   f5f2  32246 cp  16 ply   0.002444 sec.       4974 nodes    2035188 nps
+Bench #   9 (    Wacnew 212 / 14): o   h8g7  32244 cp  14 ply   0.012784 sec.      23220 nodes    1816276 nps
+Bench #  10 ( ... h8g7 f6g7 / 16): o   f1f7  32246 cp  16 ply   0.001658 sec.       2719 nodes    1639828 nps
+Bench #  11 (      Carlos 6 / 14): o   b3e6    435 cp  14 ply   0.035071 sec.      64916 nodes    1851003 nps
+Bench #  12 ( ... b3e6 d8e8 / 16): o   c3d5    549 cp  16 ply   0.139829 sec.     259869 nodes    1858479 nps
+Bench #  13 (   Arasan19 83 / 14): o   a7a5    142 cp  14 ply   0.032258 sec.      64118 nodes    1987692 nps
+Bench #  14 ( ... a7a5 b4a5 / 16): o   b6a5    121 cp  16 ply   0.082988 sec.     178377 nodes    2149428 nps
+Bench #  15 (  Arasan19 192 / 14): o   g4f4     66 cp  14 ply   0.023945 sec.      44753 nodes    1868960 nps
+Bench #  16 ( ... g4f4 e8g8 / 16): o   f4h6      8 cp  16 ply   0.105822 sec.     186337 nodes    1760856 nps
+Bench #  17 (     BT2630 12 / 14): o   e6f5    260 cp  14 ply   0.013748 sec.      32248 nodes    2345667 nps
+Bench #  18 ( ... e6f5 e1f1 / 16): o   f5f4    781 cp  16 ply   0.062764 sec.     147562 nodes    2351049 nps
+Bench #  19 (       IQ4 116 / 14): o   e4f2    357 cp  14 ply   0.036519 sec.      67436 nodes    1846615 nps
+Bench #  20 ( ... e4f2 d1e1 / 16): o   f2g4    355 cp  16 ply   0.035703 sec.      67202 nodes    1882224 nps
+Bench #  21 (  Arasan12 114 / 14): o   h1g1     45 cp  14 ply   0.078252 sec.     131199 nodes    1676619 nps
+Bench #  22 ( ... h1g1 h7h6 / 16): o   f1e2     47 cp  16 ply   0.079145 sec.     132029 nodes    1668184 nps
+Bench #  23 (  Arasan12 140 / 14): o   e4d6    147 cp  14 ply   0.106290 sec.     191061 nodes    1797551 nps
+Bench #  24 ( ... e4d6 c7d6 / 16): o   b2d4    134 cp  16 ply   0.079522 sec.     144909 nodes    1822243 nps
+Bench #  25 (  Arasan12 137 / 14): o   h5h7     90 cp  14 ply   0.053419 sec.      88872 nodes    1663680 nps
+Bench #  26 ( ... h5h7 g7f6 / 16): o   g5f6     78 cp  16 ply   0.104972 sec.     192801 nodes    1836696 nps
+=============================================================================================================
+Overall:                     0/  0 =  0.0%                      1.318037 sec.    2553632 nodes    1937451 nps
