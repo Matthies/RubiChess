@@ -59,7 +59,7 @@ struct searchparamset {
     searchparam SP(lmrf1, 43);
     searchparam SP(lmrmindepth, 3);
     searchparam SP(lmrstatsratio, 625);
-    searchparam SP(lmropponentmovecount, 16);
+    searchparam SP(lmropponentmovecount, 15);
     // LMP table
     searchparam SP(lmpf0, 59);
     searchparam SP(lmppow0, 48);
@@ -311,6 +311,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     STATISTICSINC(qs_loop_n);
 
     uint32_t bestcode = 0;
+    int legalMoves = 0;
     int eval_type = HASHALPHA;
     uint32_t mc;
 
@@ -327,7 +328,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
             continue;
 
         STATISTICSINC(qs_moves);
-        ms->legalmovenum++;
+        legalMoves++;
         score = -getQuiescence<Pt>(-beta, -alpha, depth - 1);
         unplayMove(mc);
         if (score > bestscore)
@@ -357,7 +358,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         copyPositionTuneSet(&targetpts, &myev[0], &this->pts, &this->ev[0]);
 #endif
 
-    if (myIsCheck && !ms->legalmovenum)
+    if (myIsCheck && !legalMoves)
         // It's a mate
         return SCOREBLACKWINS + ply;
 
@@ -651,7 +652,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     int tacticalPlayed = 0;
     while ((mc = ms->next()))
     {
-        ms->legalmovenum++;
 #ifdef SDEBUG
         bool isDebugMove = (debugMove.code == mc);
         SDEBUGDO(isDebugMove, pvmovenum[ply] = legalMoves + 1;);
@@ -784,7 +784,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 reduction -= PVNode;
 
                 // adjust reduction with opponents move number
-                reduction -= (LegalMoves[ply] >= sps.lmropponentmovecount);
+                reduction -= (CurrentMoveNum[ply] >= sps.lmropponentmovecount);
 
                 STATISTICSINC(red_pi[positionImproved]);
                 STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, legalMoves + 1)]);
@@ -814,11 +814,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (!playMove(mc))
             continue;
 
-        legalMoves++;
         SDEBUGDO(isDebugMove, debugMovePlayed = true;);
         STATISTICSINC(moves_played[(bool)ISTACTICAL(mc)]);
 
-        LegalMoves[ply] = ms->legalmovenum;
+        CurrentMoveNum[ply] = ++legalMoves;
         SDEBUGDO(isDebugMove, pvadditionalinfo[ply-1] = ""; );
 
         if (reduction)
