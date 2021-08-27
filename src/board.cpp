@@ -2788,7 +2788,7 @@ void engine::communicate(string inputstring)
                 // Preserve hashes of earlier position up to last halfmove counter reset for repetition detection
                 rootposition.prerootmovenum = rootposition.ply;
                 int i = 0;
-                int j = 128 - rootposition.ply;
+                int j = PREROOTMOVES - rootposition.ply;
                 while (i < rootposition.ply)
                     rootposition.prerootmovestack[j++] = rootposition.movestack[i++];
 
