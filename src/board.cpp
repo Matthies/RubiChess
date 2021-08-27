@@ -472,9 +472,8 @@ int chessposition::getFromFen(const char* sFen)
     hash = zb.getHash(this);
     pawnhash = zb.getPawnHash(this);
     materialhash = zb.getMaterialHash(this);
-    mstop = 0;
-    rootheight = 0;
     lastnullmove = -1;
+    ply = 0;
     useTb = min(TBlargest, en.SyzygyProbeLimit);
     return 0;
 }
@@ -512,7 +511,7 @@ uint32_t chessposition::applyMove(string s, bool resetMstop)
         if (resetMstop && halfmovescounter == 0)
         {
             // Keep the list short, we have to keep below MAXMOVELISTLENGTH
-            mstop = 0;
+            ply = 0;
         }
         return m.code;
     }
@@ -584,7 +583,7 @@ void chessposition::getRootMoves()
             if (tthit)
             {
                 // Test for immediate or possible 3fold to fix a possibly wrong hash entry
-                if (testRepetiton() >= 2)
+                if (testRepetition() >= 2)
                 {
                     // This move triggers 3fold; remember move to update hash
                     bImmediate3fold = true;
@@ -600,7 +599,7 @@ void chessposition::getRootMoves()
                     {
                         if (playMove(followupmovelist.move[j].code))
                         {
-                            if (testRepetiton() >= 2)
+                            if (testRepetition() >= 2)
                                 // 3fold for opponent is possible
                                 moveTo3fold = movelist.move[i].code;
 
@@ -667,49 +666,49 @@ void chessposition::tbFilterRootMoves()
 // test the actual move for three-fold-repetition
 // maybe this could be fixed in the future by using cuckoo tables like SF does it
 // https://marcelk.net/2013-04-06/paper/upcoming-rep-v2.pdf
-int chessposition::testRepetiton()
+int chessposition::testRepetition()
 {
     int hit = 0;
-    int lastrepply = max(mstop - halfmovescounter, lastnullmove + 1);
-    for (int i = mstop - 4; i >= lastrepply; i -= 2)
+    int lastrepply = max(ply - halfmovescounter, lastnullmove + 1);
+    int i = ply - 4;
+    while (i >= lastrepply)
     {
-        if (hash == movestack[i].hash)
+        if (hash == (&movestack[0] + i)->hash)
         {
             hit++;
-            if (i > rootheight)
+            if (i > 0)
             {
                 hit++;
                 break;
             }
         }
+        i -= 2;
     }
     return hit;
 }
 
-
 void chessposition::prepareStack()
 {
-    myassert(mstop >= 0 && mstop < MAXDEPTH, this, 1, mstop);
+    myassert(ply >= 0 && ply < MAXDEPTH, this, 1, ply);
     // copy stack related data directly to stack
-    memcpy(&movestack[mstop], &state, sizeof(chessmovestack));
+    memcpy(&movestack[ply], &state, sizeof(chessmovestack));
 }
 
 
 void chessposition::playNullMove()
 {
-    lastnullmove = mstop;
-    movestack[mstop++].movecode = 0;
+    lastnullmove = ply;
+    movestack[ply++].movecode = 0;
     state ^= S2MMASK;
     hash ^= zb.s2m ^ zb.ept[ept];
     ept = 0;
-    ply++;
-    myassert(mstop <= MAXDEPTH, this, 1, mstop);
+    myassert(ply <= MAXDEPTH, this, 1, ply);
 #ifdef NNUE
-    DirtyPiece* dp = &dirtypiece[mstop];
+    DirtyPiece* dp = &dirtypiece[ply];
     dp->dirtyNum = 0;
     dp->pc[0] = 0; // don't break search for updatable positions on stack
-    accumulator[mstop].computationState[WHITE] = false;
-    accumulator[mstop].computationState[BLACK] = false;
+    accumulator[ply].computationState[WHITE] = false;
+    accumulator[ply].computationState[BLACK] = false;
 #endif
 }
 
@@ -717,11 +716,10 @@ void chessposition::playNullMove()
 void chessposition::unplayNullMove()
 {
     state ^= S2MMASK;
-    ply--;
-    lastnullmove = movestack[--mstop].lastnullmove;
-    ept = movestack[mstop].ept;
+    lastnullmove = movestack[--ply].lastnullmove;
+    ept = movestack[ply].ept;
     hash ^= zb.s2m^ zb.ept[ept];
-    myassert(mstop >= 0, this, 1, mstop);
+    myassert(ply >= 0, this, 1, ply);
 }
 
 
@@ -978,13 +976,11 @@ void chessposition::print(ostream* os)
     *os << "Pawn Hash: 0x" << hex << pawnhash << " (should be 0x" << hex << zb.getPawnHash(this) << ")\n";
     *os << "Material Hash: 0x" << hex << materialhash << " (should be 0x" << hex << zb.getMaterialHash(this) << ")\n";
     *os << "Value: " + to_string(getEval<NOTRACE>()) + "\n";
-    *os << "Repetitions: " + to_string(testRepetiton()) + "\n";
+    *os << "Repetitions: " + to_string(testRepetition()) + "\n";
     *os << "Phase: " + to_string(phase()) + "\n";
     *os << "Pseudo-legal Moves: " + pseudolegalmoves.toStringWithValue() + "\n";
     *os << "Moves in current search: " + movesOnStack() + "\n";
-    *os << "mstop: " + to_string(mstop) + "\n";
     *os << "Ply: " + to_string(ply) + "\n";
-    *os << "rootheight: " + to_string(rootheight) + "\n";
     stringstream ss;
     ss << hex << bestmove;
     *os << "bestmove[0].code: 0x" + ss.str() + "\n";
@@ -994,7 +990,7 @@ void chessposition::print(ostream* os)
 string chessposition::movesOnStack()
 {
     string s = "";
-    for (int i = rootheight; i < mstop; i++)
+    for (int i = 0; i < ply; i++)
     {
         chessmove cm;
         cm.code = movestack[i].movecode;
@@ -1171,9 +1167,9 @@ bool chessposition::triggerDebug(chessmove* nextmove)
 
     int j = 0;
 
-    while (j + rootheight < mstop && pvdebug[j].code)
+    while (j < ply && pvdebug[j].code)
     {
-        if ((movestack[j + rootheight].movecode) != pvdebug[j].code)
+        if ((movestack[j].movecode) != pvdebug[j].code)
             return false;
         j++;
     }
@@ -1532,10 +1528,10 @@ bool chessposition::playMove(uint32_t mc)
     int oldcastle = (state & CASTLEMASK);
 
 #ifdef NNUE
-    DirtyPiece* dp = &dirtypiece[mstop + 1];
+    DirtyPiece* dp = &dirtypiece[ply + 1];
     dp->dirtyNum = 0;
-    accumulator[mstop + 1].computationState[WHITE] = false;
-    accumulator[mstop + 1].computationState[BLACK] = false;
+    accumulator[ply + 1].computationState[WHITE] = false;
+    accumulator[ply + 1].computationState[BLACK] = false;
 #endif
 
     halfmovescounter++;
@@ -1681,11 +1677,11 @@ bool chessposition::playMove(uint32_t mc)
         if (isAttacked(kingpos[s2m], s2m))
         {
             // Move is illegal; just do the necessary subset of unplayMove
-            hash = movestack[mstop].hash;
-            pawnhash = movestack[mstop].pawnhash;
-            materialhash = movestack[mstop].materialhash;
-            kingpos[s2m] = movestack[mstop].kingpos[s2m];
-            halfmovescounter = movestack[mstop].halfmovescounter;
+            hash = movestack[ply].hash;
+            pawnhash = movestack[ply].pawnhash;
+            materialhash = movestack[ply].materialhash;
+            kingpos[s2m] = movestack[ply].kingpos[s2m];
+            halfmovescounter = movestack[ply].halfmovescounter;
             mailbox[from] = pfrom;
             if (promote != BLANK)
             {
@@ -1746,9 +1742,8 @@ bool chessposition::playMove(uint32_t mc)
 
     PREFETCH(&tp.table[hash & tp.sizemask]);
 
-    ply++;
-    movestack[mstop++].movecode = mc;
-    myassert(mstop <= MAXDEPTH, this, 1, mstop);
+    movestack[ply++].movecode = mc;
+    myassert(ply <= MAXDEPTH, this, 1, ply);
     kingPinned = 0ULL;
     updatePins<WHITE>();
     updatePins<BLACK>();
@@ -1761,10 +1756,9 @@ bool chessposition::playMove(uint32_t mc)
 void chessposition::unplayMove(uint32_t mc)
 {
     ply--;
-    mstop--;
-    myassert(mstop >= 0, this, 1, mstop);
+    myassert(ply >= 0, this, 1, ply);
     // copy data from stack back to position
-    memcpy(&state, &movestack[mstop], sizeof(chessmovestack));
+    memcpy(&state, &movestack[ply], sizeof(chessmovestack));
 
     // Castle has special undo
     if (ISCASTLE(mc))
@@ -2716,8 +2710,8 @@ void engine::prepareThreads()
         pos->nullmoveply = 0;
         pos->nullmoveside = 0;
 #ifdef NNUE
-        pos->accumulator[pos->rootheight].computationState[WHITE] = false;
-        pos->accumulator[pos->rootheight].computationState[BLACK] = false;
+        pos->accumulator[0].computationState[WHITE] = false;
+        pos->accumulator[0].computationState[BLACK] = false;
 #endif
     }
 }
@@ -2791,7 +2785,14 @@ void engine::communicate(string inputstring)
                         printf("info string Alarm! Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
                 }
                 ponderhit = (lastopponentsmove && lastopponentsmove == rootposition.pondermove);
-                rootposition.rootheight = rootposition.mstop;
+                // Preserve hashes of earlier position up to last halfmove counter reset for repetition detection
+                rootposition.prerootmovenum = rootposition.ply;
+                int i = 0;
+                int j = PREROOTMOVES - rootposition.ply;
+                while (i < rootposition.ply)
+                    rootposition.prerootmovestack[j++] = rootposition.movestack[i++];
+
+                rootposition.lastnullmove = -rootposition.ply - 1;
                 rootposition.ply = 0;
                 rootposition.getRootMoves();
                 rootposition.tbFilterRootMoves();
@@ -2841,9 +2842,9 @@ void engine::communicate(string inputstring)
                                 printf("info string Alarm! Debug PV Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
                                 continue;
                             }
-                            U64 h = rootposition.movestack[rootposition.mstop - 1].hash;
+                            U64 h = rootposition.movestack[rootposition.ply - 1].hash;
                             tp.markDebugSlot(h, i);
-                            rootposition.pvdebug[i].code = rootposition.movestack[rootposition.mstop - 1].movecode;
+                            rootposition.pvdebug[i].code = rootposition.movestack[rootposition.ply - 1].movecode;
                             rootposition.pvdebug[i++].hash = h;
                         }
                         rootposition.pvdebug[i].code = 0;

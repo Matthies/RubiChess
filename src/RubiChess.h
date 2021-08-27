@@ -127,6 +127,13 @@ void Sleep(long x);
 
 using namespace std;
 
+typedef unsigned long long U64;
+typedef signed long long S64;
+
+typedef unsigned int PieceCode;
+typedef unsigned int PieceType;
+
+
 #ifdef _MSC_VER
 #ifdef EVALTUNE
 #define PREFETCH(a) (void)(0)
@@ -180,14 +187,14 @@ using namespace std;
 #define ONEORZERO(x) (!MORETHANONE(x))
 #if defined(_MSC_VER)
 #define GETLSB(i,x) _BitScanForward64((DWORD*)&(i), (x))
-inline int pullLsb(unsigned long long *x) {
+inline int pullLsb(U64 *x) {
     DWORD i;
     _BitScanForward64(&i, *x);
     *x &= *x - 1;  // this is faster than *x ^= (1ULL << i);
     return i;
 }
 #define GETMSB(i,x) _BitScanReverse64((DWORD*)&(i), (x))
-inline int pullMsb(unsigned long long *x) {
+inline int pullMsb(U64 *x) {
     DWORD i;
     _BitScanReverse64(&i, *x);
     *x ^= (1ULL << i);
@@ -196,13 +203,13 @@ inline int pullMsb(unsigned long long *x) {
 #define POPCOUNT(x) (int)(__popcnt64(x))
 #else
 #define GETLSB(i,x) (i = __builtin_ctzll(x))
-inline int pullLsb(unsigned long long *x) {
+inline int pullLsb(U64 *x) {
     int i = __builtin_ctzll(*x);
     *x &= *x - 1;  // this is faster than *x ^= (1ULL << i);
     return i;
 }
 #define GETMSB(i,x) (i = (63 - __builtin_clzll(x)))
-inline int pullMsb(unsigned long long *x) {
+inline int pullMsb(U64 *x) {
     int i = 63 - __builtin_clzll(*x);
     *x ^= (1ULL << i);
     return i;
@@ -238,12 +245,6 @@ enum Color { WHITE, BLACK };
 #define S2MSIGN(s) (s ? -1 : 1)
 
 
-typedef unsigned long long U64;
-typedef signed long long S64;
-
-typedef unsigned int PieceCode;
-typedef unsigned int PieceType;
-
 // Forward definitions
 class transposition;
 class chessposition;
@@ -258,6 +259,7 @@ struct pawnhashentry;
 
 #define MAXDEPTH 256
 #define MOVESTACKRESERVE 48     // to avoid checking for height reaching MAXDEPTH in probe_wds and getQuiescence
+#define PREROOTMOVES 128        // max. 100 moves are stored for repetition detection
 
 #define NOSCORE SHRT_MIN
 #define SCOREBLACKWINS (SHRT_MIN + 3 + 2 * MAXDEPTH)
@@ -807,13 +809,13 @@ void learn(vector<string> args);
 class zobrist
 {
 public:
-    unsigned long long boardtable[64 * 16];
-    unsigned long long cstl[32];
-    unsigned long long ept[64];
-    unsigned long long s2m;
+    U64 boardtable[64 * 16];
+    U64 cstl[32];
+    U64 ept[64];
+    U64 s2m;
     ranctx rnd;
     zobrist();
-    unsigned long long getRnd();
+    U64 getRnd();
     U64 getHash(chessposition *pos);
     U64 getPawnHash(chessposition *pos);
     U64 getMaterialHash(chessposition *pos);
@@ -1152,9 +1154,9 @@ struct chessmovestack
     int state;
     int ept;
     int kingpos[2];
-    unsigned long long hash;
-    unsigned long long pawnhash;
-    unsigned long long materialhash;
+    U64 hash;
+    U64 pawnhash;
+    U64 materialhash;
     int halfmovescounter;
     int fullmovescounter;
     U64 isCheckbb;
@@ -1298,7 +1300,6 @@ class chessposition
 {
 public:
     U64 nodes;
-    int mstop;      // 0 at last non-reversible move before root, rootheight at root position
     int ply;        // 0 at root position
 
     U64 piece00[14];
@@ -1309,9 +1310,9 @@ public:
     int state;
     int ept;
     int kingpos[2];
-    unsigned long long hash;
-    unsigned long long pawnhash;
-    unsigned long long materialhash;
+    U64 hash;
+    U64 pawnhash;
+    U64 materialhash;
     int halfmovescounter;
     int fullmovescounter;
     U64 isCheckbb;
@@ -1320,11 +1321,12 @@ public:
     U64 kingPinned;
 
     uint8_t mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
+    chessmovestack prerootmovestack[PREROOTMOVES];   // moves before root since last halfmovescounter reset
     chessmovestack movestack[MAXDEPTH];
     uint16_t excludemovestack[MAXDEPTH];
     int16_t staticevalstack[MAXDEPTH];
 
-    int rootheight; // fixed stack offset in root position
+    int prerootmovenum;
     int seldepth;
     int nullmoveside;
     int nullmoveply = 0;
@@ -1384,7 +1386,7 @@ public:
     Materialhash mtrlhsh;
     Pawnhash pwnhsh;
 #ifdef SDEBUG
-    unsigned long long debughash = 0;
+    U64 debughash = 0;
     int pvalpha[MAXDEPTH];
     int pvbeta[MAXDEPTH];
     int pvdepth[MAXDEPTH];
@@ -1466,7 +1468,7 @@ public:
     bool triggerDebug(chessmove* nextmove);
     void pvdebugout();
 #endif
-    int testRepetiton();
+    int testRepetition();
 #ifdef NNUE
     template <NnueType Nt, Color c> void HalfkpAppendActiveIndices(NnueIndexList *active);
     template <NnueType Nt, Color c> void HalfkpAppendChangedIndices(DirtyPiece* dp, NnueIndexList *add, NnueIndexList *remove);
@@ -1699,7 +1701,7 @@ public:
     void communicate(string inputstring);
     void allocThreads();
     U64 getTotalNodes();
-    long long perft(int depth, bool printsysteminfo = false);
+    U64 perft(int depth, bool printsysteminfo = false);
     void prepareThreads();
     void resetStats();
     void registerOptions();

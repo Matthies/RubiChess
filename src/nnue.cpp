@@ -172,11 +172,11 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
     vec16_t acc[NUM_REGS];
 #endif
 
-    int mslast = mstop;
+    int mslast = ply;
     // A full update needs activation of all pieces excep kings
     int fullupdatecost = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]) - 2;
 
-    while (mslast > rootheight && !accumulator[mslast].computationState[c])
+    while (mslast > 0 && !accumulator[mslast].computationState[c])
     {
         // search for position with computed accu on stack that leads to current position by differential updates
         // break at king move or if the dirty piece updates get too expensive
@@ -186,22 +186,22 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
         mslast--;
     }
 
-    if (mslast >= rootheight && accumulator[mslast].computationState[c])
+    if (mslast >= 0 && accumulator[mslast].computationState[c])
     {
-        if (mslast == mstop)
+        if (mslast == ply)
             return;
 
         NnueIndexList removedIndices[2], addedIndices[2];
         removedIndices[0].size = removedIndices[1].size = 0;
         addedIndices[0].size = addedIndices[1].size = 0;
         HalfkpAppendChangedIndices<Nt, c>(&dirtypiece[mslast + 1], &addedIndices[0], &removedIndices[0]);
-        for (int ms = mslast + 2; ms <= mstop; ms++)
+        for (int ms = mslast + 2; ms <= ply; ms++)
             HalfkpAppendChangedIndices<Nt, c>(&dirtypiece[ms], &addedIndices[1], &removedIndices[1]);
 
         accumulator[mslast + 1].computationState[c] = true;
-        accumulator[mstop].computationState[c] = true;
+        accumulator[ply].computationState[c] = true;
 
-        int pos2update[3] = { mslast + 1, mslast + 1 == mstop ? -1 : mstop, -1 };
+        int pos2update[3] = { mslast + 1, mslast + 1 == ply ? -1 : ply, -1 };
 #ifdef USE_SIMD
         for (unsigned int i = 0; i < NnueFtHalfdims / TILE_HEIGHT; i++)
         {
@@ -265,7 +265,7 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
     }
     else {
         // Full update needed
-        NnueAccumulator* ac = &accumulator[mstop];
+        NnueAccumulator* ac = &accumulator[ply];
         ac->computationState[c] = true;
         NnueIndexList activeIndices;
         activeIndices.size = 0;
@@ -312,7 +312,7 @@ template <NnueType Nt> void chessposition::Transform(clipped_t *output)
     UpdateAccumulator<Nt, WHITE>();
     UpdateAccumulator<Nt, BLACK>();
 
-    int16_t(*acc)[2][256] = &accumulator[mstop].accumulation;
+    int16_t(*acc)[2][256] = &accumulator[ply].accumulation;
 
     const int perspectives[2] = { state & S2MMASK, !(state & S2MMASK) };
     for (int p = 0; p < 2; p++)

@@ -85,9 +85,8 @@ void generateEpd(string egn)
             pos->hash = zb.getHash(pos);
             pos->pawnhash = zb.getPawnHash(pos);
             pos->materialhash = zb.getMaterialHash(pos);
-            pos->mstop = 1;
+            pos->ply = 1;
             pos->movestack[0].movecode = -1;  // Avoid fast eval after null move
-            pos->rootheight = 0;
             pos->lastnullmove = -1;
             string sFen = pos->toFen();
             int staticeval = pos->getEval<NOTRACE>();
@@ -103,9 +102,9 @@ void generateEpd(string egn)
 }
 
 
-long long engine::perft(int depth, bool printsysteminfo)
+U64 engine::perft(int depth, bool printsysteminfo)
 {
-    long long retval = 0;
+    U64 retval = 0;
     chessposition *rootpos = &en.sthread[0].pos;
 
     if (printsysteminfo)
@@ -131,7 +130,7 @@ long long engine::perft(int depth, bool printsysteminfo)
     {
         if (rootpos->playMove(movelist.move[i].code))
         {
-            long long moveperft = perft(depth - 1);
+            U64 moveperft = perft(depth - 1);
             rootpos->unplayMove(movelist.move[i].code);
             retval += moveperft;
             if (printsysteminfo)
