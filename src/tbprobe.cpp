@@ -679,7 +679,7 @@ int root_probe_dtz(chessposition *pos)
     // Obtain 50-move counter for the root position.
     int cnt50 = pos->halfmovescounter;
     // FIXME: The use of rep needs testing...
-    int rep = pos->testRepetiton();
+    int rep = pos->testRepetition();
 
     // Now be a bit smart about filtering out moves.
     int mi = 0;

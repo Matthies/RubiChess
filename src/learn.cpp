@@ -164,9 +164,8 @@ int chessposition::getFromSfen(PackedSfen* sfen)
     hash = zb.getHash(this);
     pawnhash = zb.getPawnHash(this);
     materialhash = zb.getMaterialHash(this);
-    mstop = 0;
-    rootheight = 0;
     lastnullmove = -1;
+    ply = 0;
     accumulator[0].computationState[WHITE] = false;
     accumulator[0].computationState[BLACK] = false;
 
@@ -420,7 +419,7 @@ static void gensfenthread(searchthread* thr, U64 rndseed)
                 break;
             }
 
-            if (score == SCOREDRAW && (pos->halfmovescounter>= 100 || pos->testRepetiton() >= 2))
+            if (score == SCOREDRAW && (pos->halfmovescounter>= 100 || pos->testRepetition() >= 2))
             {
                 if (generate_draw) flush_psv(0, thr);
                 break;
@@ -511,21 +510,16 @@ SKIP_SAVE:
                 bool legal = pos->playMove(nmc);
 
                 if (legal)
-                {
-                    if (pos->halfmovescounter == 0)
-                        pos->mstop = 0;
                     break;
-                }
-                else {
-                    movelist.move[i].code = movelist.move[--movelist.length].code;
-                    if (!movelist.length)
-                    {
-                        if (pos->isCheckbb) // Mate
-                            flush_psv(-S2MSIGN(pos->state & S2MMASK), thr);
-                        else if (generate_draw)
-                            flush_psv(0, thr); // Stalemate
-                        break;
-                    }
+
+                movelist.move[i].code = movelist.move[--movelist.length].code;
+                if (!movelist.length)
+                {
+                    if (pos->isCheckbb) // Mate
+                        flush_psv(-S2MSIGN(pos->state & S2MMASK), thr);
+                    else if (generate_draw)
+                        flush_psv(0, thr); // Stalemate
+                    break;
                 }
             }
         }

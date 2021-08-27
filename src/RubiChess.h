@@ -1466,7 +1466,7 @@ public:
     bool triggerDebug(chessmove* nextmove);
     void pvdebugout();
 #endif
-    int testRepetiton();
+    int testRepetition();
 #ifdef NNUE
     template <NnueType Nt, Color c> void HalfkpAppendActiveIndices(NnueIndexList *active);
     template <NnueType Nt, Color c> void HalfkpAppendChangedIndices(DirtyPiece* dp, NnueIndexList *add, NnueIndexList *remove);

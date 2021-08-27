@@ -391,7 +391,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     STATISTICSADD(ab_pv, PVNode);
 
     // test for remis via repetition
-    int rep = testRepetiton();
+    int rep = testRepetition();
     if (rep >= 2)
     {
         STATISTICSINC(ab_draw_or_win);
@@ -1295,7 +1295,7 @@ static void search_gen1(searchthread *thr)
     en.lastReport = 0;
     U64 nowtime;
     pos->lastpv[0] = 0;
-    bool isDraw = (pos->testRepetiton() >= 2) || (pos->halfmovescounter >= 100);
+    bool isDraw = (pos->testRepetition() >= 2) || (pos->halfmovescounter >= 100);
     do
     {
         pos->seldepth = thr->depth;

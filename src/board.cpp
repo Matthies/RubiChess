@@ -583,7 +583,7 @@ void chessposition::getRootMoves()
             if (tthit)
             {
                 // Test for immediate or possible 3fold to fix a possibly wrong hash entry
-                if (testRepetiton() >= 2)
+                if (testRepetition() >= 2)
                 {
                     // This move triggers 3fold; remember move to update hash
                     bImmediate3fold = true;
@@ -599,7 +599,7 @@ void chessposition::getRootMoves()
                     {
                         if (playMove(followupmovelist.move[j].code))
                         {
-                            if (testRepetiton() >= 2)
+                            if (testRepetition() >= 2)
                                 // 3fold for opponent is possible
                                 moveTo3fold = movelist.move[i].code;
 
@@ -666,27 +666,7 @@ void chessposition::tbFilterRootMoves()
 // test the actual move for three-fold-repetition
 // maybe this could be fixed in the future by using cuckoo tables like SF does it
 // https://marcelk.net/2013-04-06/paper/upcoming-rep-v2.pdf
-#if 0
-int chessposition::testRepetiton()
-{
-    int hit = 0;
-    int lastrepply = max(mstop - halfmovescounter, lastnullmove + 1);
-    for (int i = mstop - 4; i >= lastrepply; i -= 2)
-    {
-        if (hash == movestack[i].hash)
-        {
-            hit++;
-            if (i > rootheight)
-            {
-                hit++;
-                break;
-            }
-        }
-    }
-    return hit;
-}
-#else
-int chessposition::testRepetiton()
+int chessposition::testRepetition()
 {
     int hit = 0;
     int lastrepply = max(ply - halfmovescounter, lastnullmove + 1);
@@ -706,6 +686,7 @@ int chessposition::testRepetiton()
     }
     if (lastrepply == 0)
     {
+        // search for repetitions in the moves before root
         i += repetitionhashsize;
         while (i >= 0)
         {
@@ -716,15 +697,12 @@ int chessposition::testRepetiton()
             i -= 2;
         }
     }
-
-
     return hit;
 }
-#endif
 
 void chessposition::prepareStack()
 {
-    myassert(mstop >= 0 && mstop < MAXDEPTH, this, 1, mstop);
+    myassert(ply >= 0 && ply < MAXDEPTH, this, 1, ply);
     // copy stack related data directly to stack
     memcpy(&movestack[ply], &state, sizeof(chessmovestack));
 }
@@ -1011,7 +989,7 @@ void chessposition::print(ostream* os)
     *os << "Pawn Hash: 0x" << hex << pawnhash << " (should be 0x" << hex << zb.getPawnHash(this) << ")\n";
     *os << "Material Hash: 0x" << hex << materialhash << " (should be 0x" << hex << zb.getMaterialHash(this) << ")\n";
     *os << "Value: " + to_string(getEval<NOTRACE>()) + "\n";
-    *os << "Repetitions: " + to_string(testRepetiton()) + "\n";
+    *os << "Repetitions: " + to_string(testRepetition()) + "\n";
     *os << "Phase: " + to_string(phase()) + "\n";
     *os << "Pseudo-legal Moves: " + pseudolegalmoves.toStringWithValue() + "\n";
     *os << "Moves in current search: " + movesOnStack() + "\n";
@@ -1202,9 +1180,9 @@ bool chessposition::triggerDebug(chessmove* nextmove)
 
     int j = 0;
 
-    while (j + rootheight < mstop && pvdebug[j].code)
+    while (j < ply && pvdebug[j].code)
     {
-        if ((movestack[j + rootheight].movecode) != pvdebug[j].code)
+        if ((movestack[j].movecode) != pvdebug[j].code)
             return false;
         j++;
     }
@@ -2875,9 +2853,9 @@ void engine::communicate(string inputstring)
                                 printf("info string Alarm! Debug PV Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
                                 continue;
                             }
-                            U64 h = rootposition.movestack[rootposition.mstop - 1].hash;
+                            U64 h = rootposition.movestack[rootposition.ply - 1].hash;
                             tp.markDebugSlot(h, i);
-                            rootposition.pvdebug[i].code = rootposition.movestack[rootposition.mstop - 1].movecode;
+                            rootposition.pvdebug[i].code = rootposition.movestack[rootposition.ply - 1].movecode;
                             rootposition.pvdebug[i++].hash = h;
                         }
                         rootposition.pvdebug[i].code = 0;
