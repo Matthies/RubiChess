@@ -673,7 +673,7 @@ int chessposition::testRepetition()
     int i = ply - 4;
     while (i >= lastrepply)
     {
-        if (hash == movestack[i].hash)
+        if (hash == (&movestack[0] + i)->hash)
         {
             hit++;
             if (i > 0)
@@ -683,19 +683,6 @@ int chessposition::testRepetition()
             }
         }
         i -= 2;
-    }
-    if (lastrepply == 0)
-    {
-        // search for repetitions in the moves before root
-        i += repetitionhashsize;
-        while (i >= 0)
-        {
-            if (hash == repetitionhash[i])
-            {
-                hit++;
-            }
-            i -= 2;
-        }
     }
     return hit;
 }
@@ -2799,16 +2786,13 @@ void engine::communicate(string inputstring)
                 }
                 ponderhit = (lastopponentsmove && lastopponentsmove == rootposition.pondermove);
                 // Preserve hashes of earlier position up to last halfmove counter reset for repetition detection
-                rootposition.repetitionhashsize = rootposition.ply;
+                rootposition.prerootmovenum = rootposition.ply;
                 int i = 0;
+                int j = 128 - rootposition.ply;
                 while (i < rootposition.ply)
-                {
-                    rootposition.repetitionhash[i] = rootposition.movestack[i].hash;
-                    rootposition.previousmovestack[0] = rootposition.previousmovestack[1];
-                    rootposition.previousmovestack[1] = rootposition.movestack[i];
-                    i++;
-                }
+                    rootposition.prerootmovestack[j++] = rootposition.movestack[i++];
 
+                rootposition.lastnullmove = -rootposition.ply - 1;
                 rootposition.ply = 0;
                 rootposition.getRootMoves();
                 rootposition.tbFilterRootMoves();

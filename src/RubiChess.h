@@ -1319,13 +1319,12 @@ public:
     U64 kingPinned;
 
     uint8_t mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
-    chessmovestack previousmovestack[2];
+    chessmovestack prerootmovestack[128];   // max 100 moves without reset
     chessmovestack movestack[MAXDEPTH];
     uint16_t excludemovestack[MAXDEPTH];
     int16_t staticevalstack[MAXDEPTH];
 
-    U64 repetitionhash[128];   // max 100 moves without reset
-    int repetitionhashsize;
+    int prerootmovenum;
     int seldepth;
     int nullmoveside;
     int nullmoveply = 0;
