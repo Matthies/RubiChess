@@ -2799,10 +2799,15 @@ void engine::communicate(string inputstring)
                 }
                 ponderhit = (lastopponentsmove && lastopponentsmove == rootposition.pondermove);
                 // Preserve hashes of earlier position up to last halfmove counter reset for repetition detection
-                int i = rootposition.repetitionhashsize = rootposition.ply;
-                while (--i >= 0)
+                rootposition.repetitionhashsize = rootposition.ply;
+                int i = 0;
+                while (i < rootposition.ply)
+                {
                     rootposition.repetitionhash[i] = rootposition.movestack[i].hash;
-
+                    rootposition.previousmovestack[0] = rootposition.previousmovestack[1];
+                    rootposition.previousmovestack[1] = rootposition.movestack[i];
+                    i++;
+                }
 
                 rootposition.ply = 0;
                 rootposition.getRootMoves();

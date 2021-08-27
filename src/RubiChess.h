@@ -1319,6 +1319,7 @@ public:
     U64 kingPinned;
 
     uint8_t mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
+    chessmovestack previousmovestack[2];
     chessmovestack movestack[MAXDEPTH];
     uint16_t excludemovestack[MAXDEPTH];
     int16_t staticevalstack[MAXDEPTH];

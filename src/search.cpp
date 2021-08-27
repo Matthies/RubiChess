@@ -147,7 +147,7 @@ void chessposition::getCmptr()
     for (int i = 0, j = ply - 1; i < CMPLIES; i++, j--)
     {
         uint32_t c;
-        if (j >= 0 && (c = movestack[j].movecode))
+        if (j >= -repetitionhashsize && (c = (&movestack[0] + j)->movecode))
             cmptr[ply][i] = (int16_t*)counterhistory[GETPIECE(c)][GETCORRECTTO(c)];
         else
             cmptr[ply][i] = NULL;
