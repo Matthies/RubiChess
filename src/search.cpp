@@ -144,7 +144,7 @@ void searchinit()
 
 void chessposition::getCmptr()
 {
-    for (int i = 0, j = mstop - 1; i < CMPLIES; i++, j--)
+    for (int i = 0, j = ply - 1; i < CMPLIES; i++, j--)
     {
         uint32_t c;
         if (j >= 0 && (c = movestack[j].movecode))
@@ -268,8 +268,8 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         // get static evaluation of the position
         if (staticeval == NOSCORE)
         {
-            if (movestack[mstop - 1].movecode == 0)
-                staticeval = -staticevalstack[mstop - 1] + CEVAL(eps.eTempo, 2);
+            if (movestack[ply - 1].movecode == 0)
+                staticeval = -staticevalstack[ply - 1] + CEVAL(eps.eTempo, 2);
             else
                 staticeval = getEval<NOTRACE>();
         }
@@ -444,12 +444,12 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     }
 
     // Maximum depth
-    if (mstop >= MAXDEPTH - MOVESTACKRESERVE)
+    if (ply >= MAXDEPTH - MOVESTACKRESERVE)
         return getQuiescence<Pt>(alpha, beta, depth);
 
     // Get move for singularity check and change hash to seperate partial searches from full searches
-    uint16_t excludeMove = excludemovestack[mstop - 1];
-    excludemovestack[mstop] = 0;
+    uint16_t excludeMove = excludemovestack[ply - 1];
+    excludemovestack[ply] = 0;
     U64 newhash = hash ^ excludeMove;
 
 #ifdef SDEBUG
@@ -517,18 +517,17 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     // get static evaluation of the position
     if (staticeval == NOSCORE)
     {
-        if (movestack[mstop - 1].movecode == 0)
+        if (movestack[ply - 1].movecode == 0)
             // just reverse the staticeval before the null move respecting the tempo
-            staticeval = -staticevalstack[mstop - 1] + CEVAL(eps.eTempo, 2);
+            staticeval = -staticevalstack[ply - 1] + CEVAL(eps.eTempo, 2);
         else
             staticeval = getEval<NOTRACE>();
 
         tp.addHash(hash, staticeval, staticeval, HASHUNKNOWN, 0, hashmovecode);
     }
-    staticevalstack[mstop] = staticeval;
+    staticevalstack[ply] = staticeval;
 
-    bool positionImproved = (mstop >= rootheight + 2
-        && staticevalstack[mstop] > staticevalstack[mstop - 2]);
+    bool positionImproved = (ply >= 2  && staticevalstack[ply] > staticevalstack[ply - 2]);
 
     // Razoring
     if (!PVNode && !isCheckbb && depth <= 2)
@@ -635,7 +634,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         depth--;
 
     // Get possible countermove from table
-    uint32_t lastmove = movestack[mstop - 1].movecode;
+    uint32_t lastmove = movestack[ply - 1].movecode;
     uint32_t counter = 0;
     if (lastmove)
         counter = countermove[GETPIECE(lastmove)][GETCORRECTTO(lastmove)];
@@ -719,10 +718,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 #endif
             )
         {
-            excludemovestack[mstop - 1] = hashmovecode;
+            excludemovestack[ply - 1] = hashmovecode;
             int sBeta = max(hashscore - sps.singularmarginperdepth * depth, SCOREBLACKWINS);
             int redScore = alphabeta<Pt>(sBeta - 1, sBeta, depth / 2);
-            excludemovestack[mstop - 1] = 0;
+            excludemovestack[ply - 1] = 0;
 
             if (redScore < sBeta)
             {
@@ -871,7 +870,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                     {
                         updateHistory(mc, depth * depth);
                         for (int i = 0; i < quietsPlayed; i++)
-                            updateHistory(quietMoves[mstop][i], -(depth * depth));
+                            updateHistory(quietMoves[ply][i], -(depth * depth));
 
                         // Killermove
                         if (killer[ply][0] != mc)
@@ -888,7 +887,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                     {
                         updateTacticalHst(mc, depth * depth);
                         for (int i = 0; i < tacticalPlayed; i++)
-                            updateTacticalHst(tacticalMoves[mstop][i], -(depth * depth));
+                            updateTacticalHst(tacticalMoves[ply][i], -(depth * depth));
                     }
 
                     STATISTICSINC(moves_fail_high);
@@ -908,9 +907,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         }
 
         if (!ISTACTICAL(mc))
-            quietMoves[mstop][quietsPlayed++] = mc;
+            quietMoves[ply][quietsPlayed++] = mc;
         else
-            tacticalMoves[mstop][tacticalPlayed++] = mc;
+            tacticalMoves[ply][tacticalPlayed++] = mc;
     }
 
     if (legalMoves == 0)
@@ -1030,7 +1029,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
     // get static evaluation of the position
     if (staticeval == NOSCORE)
         staticeval = getEval<NOTRACE>();
-    staticevalstack[mstop] = staticeval;
+    staticevalstack[ply] = staticeval;
 
     int quietsPlayed = 0;
     int tacticalPlayed = 0;

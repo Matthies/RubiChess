@@ -1298,7 +1298,6 @@ class chessposition
 {
 public:
     U64 nodes;
-    int mstop;      // 0 at last non-reversible move before root, rootheight at root position
     int ply;        // 0 at root position
 
     U64 piece00[14];
@@ -1324,7 +1323,6 @@ public:
     uint16_t excludemovestack[MAXDEPTH];
     int16_t staticevalstack[MAXDEPTH];
 
-    int rootheight; // fixed stack offset in root position
     U64 repetitionhash[128];   // max 100 moves without reset
     int repetitionhashsize;
     int seldepth;

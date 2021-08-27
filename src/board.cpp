@@ -472,9 +472,8 @@ int chessposition::getFromFen(const char* sFen)
     hash = zb.getHash(this);
     pawnhash = zb.getPawnHash(this);
     materialhash = zb.getMaterialHash(this);
-    mstop = 0;
-    rootheight = 0;
     lastnullmove = -1;
+    ply = 0;
     useTb = min(TBlargest, en.SyzygyProbeLimit);
     return 0;
 }
@@ -512,7 +511,7 @@ uint32_t chessposition::applyMove(string s, bool resetMstop)
         if (resetMstop && halfmovescounter == 0)
         {
             // Keep the list short, we have to keep below MAXMOVELISTLENGTH
-            mstop = 0;
+            ply = 0;
         }
         return m.code;
     }
@@ -690,8 +689,8 @@ int chessposition::testRepetiton()
 int chessposition::testRepetiton()
 {
     int hit = 0;
-    int lastrepply = max(mstop - halfmovescounter, lastnullmove + 1);
-    int i = mstop - 4;
+    int lastrepply = max(ply - halfmovescounter, lastnullmove + 1);
+    int i = ply - 4;
     while (i >= lastrepply)
     {
         if (hash == movestack[i].hash)
@@ -727,25 +726,24 @@ void chessposition::prepareStack()
 {
     myassert(mstop >= 0 && mstop < MAXDEPTH, this, 1, mstop);
     // copy stack related data directly to stack
-    memcpy(&movestack[mstop], &state, sizeof(chessmovestack));
+    memcpy(&movestack[ply], &state, sizeof(chessmovestack));
 }
 
 
 void chessposition::playNullMove()
 {
-    lastnullmove = mstop;
-    movestack[mstop++].movecode = 0;
+    lastnullmove = ply;
+    movestack[ply++].movecode = 0;
     state ^= S2MMASK;
     hash ^= zb.s2m ^ zb.ept[ept];
     ept = 0;
-    ply++;
-    myassert(mstop <= MAXDEPTH, this, 1, mstop);
+    myassert(ply <= MAXDEPTH, this, 1, ply);
 #ifdef NNUE
-    DirtyPiece* dp = &dirtypiece[mstop];
+    DirtyPiece* dp = &dirtypiece[ply];
     dp->dirtyNum = 0;
     dp->pc[0] = 0; // don't break search for updatable positions on stack
-    accumulator[mstop].computationState[WHITE] = false;
-    accumulator[mstop].computationState[BLACK] = false;
+    accumulator[ply].computationState[WHITE] = false;
+    accumulator[ply].computationState[BLACK] = false;
 #endif
 }
 
@@ -753,11 +751,10 @@ void chessposition::playNullMove()
 void chessposition::unplayNullMove()
 {
     state ^= S2MMASK;
-    ply--;
-    lastnullmove = movestack[--mstop].lastnullmove;
-    ept = movestack[mstop].ept;
+    lastnullmove = movestack[--ply].lastnullmove;
+    ept = movestack[ply].ept;
     hash ^= zb.s2m^ zb.ept[ept];
-    myassert(mstop >= 0, this, 1, mstop);
+    myassert(ply >= 0, this, 1, ply);
 }
 
 
@@ -1018,9 +1015,7 @@ void chessposition::print(ostream* os)
     *os << "Phase: " + to_string(phase()) + "\n";
     *os << "Pseudo-legal Moves: " + pseudolegalmoves.toStringWithValue() + "\n";
     *os << "Moves in current search: " + movesOnStack() + "\n";
-    *os << "mstop: " + to_string(mstop) + "\n";
     *os << "Ply: " + to_string(ply) + "\n";
-    *os << "rootheight: " + to_string(rootheight) + "\n";
     stringstream ss;
     ss << hex << bestmove;
     *os << "bestmove[0].code: 0x" + ss.str() + "\n";
@@ -1030,7 +1025,7 @@ void chessposition::print(ostream* os)
 string chessposition::movesOnStack()
 {
     string s = "";
-    for (int i = rootheight; i < mstop; i++)
+    for (int i = 0; i < ply; i++)
     {
         chessmove cm;
         cm.code = movestack[i].movecode;
@@ -1568,10 +1563,10 @@ bool chessposition::playMove(uint32_t mc)
     int oldcastle = (state & CASTLEMASK);
 
 #ifdef NNUE
-    DirtyPiece* dp = &dirtypiece[mstop + 1];
+    DirtyPiece* dp = &dirtypiece[ply + 1];
     dp->dirtyNum = 0;
-    accumulator[mstop + 1].computationState[WHITE] = false;
-    accumulator[mstop + 1].computationState[BLACK] = false;
+    accumulator[ply + 1].computationState[WHITE] = false;
+    accumulator[ply + 1].computationState[BLACK] = false;
 #endif
 
     halfmovescounter++;
@@ -1717,11 +1712,11 @@ bool chessposition::playMove(uint32_t mc)
         if (isAttacked(kingpos[s2m], s2m))
         {
             // Move is illegal; just do the necessary subset of unplayMove
-            hash = movestack[mstop].hash;
-            pawnhash = movestack[mstop].pawnhash;
-            materialhash = movestack[mstop].materialhash;
-            kingpos[s2m] = movestack[mstop].kingpos[s2m];
-            halfmovescounter = movestack[mstop].halfmovescounter;
+            hash = movestack[ply].hash;
+            pawnhash = movestack[ply].pawnhash;
+            materialhash = movestack[ply].materialhash;
+            kingpos[s2m] = movestack[ply].kingpos[s2m];
+            halfmovescounter = movestack[ply].halfmovescounter;
             mailbox[from] = pfrom;
             if (promote != BLANK)
             {
@@ -1782,9 +1777,8 @@ bool chessposition::playMove(uint32_t mc)
 
     PREFETCH(&tp.table[hash & tp.sizemask]);
 
-    ply++;
-    movestack[mstop++].movecode = mc;
-    myassert(mstop <= MAXDEPTH, this, 1, mstop);
+    movestack[ply++].movecode = mc;
+    myassert(ply <= MAXDEPTH, this, 1, ply);
     kingPinned = 0ULL;
     updatePins<WHITE>();
     updatePins<BLACK>();
@@ -1797,10 +1791,9 @@ bool chessposition::playMove(uint32_t mc)
 void chessposition::unplayMove(uint32_t mc)
 {
     ply--;
-    mstop--;
-    myassert(mstop >= 0, this, 1, mstop);
+    myassert(ply >= 0, this, 1, ply);
     // copy data from stack back to position
-    memcpy(&state, &movestack[mstop], sizeof(chessmovestack));
+    memcpy(&state, &movestack[ply], sizeof(chessmovestack));
 
     // Castle has special undo
     if (ISCASTLE(mc))
@@ -2752,8 +2745,8 @@ void engine::prepareThreads()
         pos->nullmoveply = 0;
         pos->nullmoveside = 0;
 #ifdef NNUE
-        pos->accumulator[pos->rootheight].computationState[WHITE] = false;
-        pos->accumulator[pos->rootheight].computationState[BLACK] = false;
+        pos->accumulator[0].computationState[WHITE] = false;
+        pos->accumulator[0].computationState[BLACK] = false;
 #endif
     }
 }
@@ -2828,13 +2821,11 @@ void engine::communicate(string inputstring)
                 }
                 ponderhit = (lastopponentsmove && lastopponentsmove == rootposition.pondermove);
                 // Preserve hashes of earlier position up to last halfmove counter reset for repetition detection
-                int i = rootposition.repetitionhashsize = rootposition.mstop;
+                int i = rootposition.repetitionhashsize = rootposition.ply;
                 while (--i >= 0)
                     rootposition.repetitionhash[i] = rootposition.movestack[i].hash;
 
 
-                rootposition.mstop = 0;
-                rootposition.rootheight = rootposition.mstop;
                 rootposition.ply = 0;
                 rootposition.getRootMoves();
                 rootposition.tbFilterRootMoves();
