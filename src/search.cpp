@@ -780,6 +780,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 reduction -= stats / (sps.lmrstatsratio * 8);
 
                 // adjust reduction at PV nodes
+                reduction -= PVNode;
+
                 reduction -= (PVNode && (!tpHit || hashmovecode != (uint16_t)mc || hashscore > alpha));
 
                 // adjust reduction with opponents move number
