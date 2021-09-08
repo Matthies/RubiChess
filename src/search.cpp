@@ -465,6 +465,14 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     bool tpHit = tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
     if (tpHit && !rep && !PVNode)
     {
+        int to;
+        if (hashscore >= beta && hashmovecode && (to = GETTO(hashmovecode)) && !mailbox[to])
+        {
+            int from = GETFROM(hashmovecode);
+            int piece = mailbox[from];
+            mc = (piece << 28) | hashmovecode;
+            updateHistory(mc, depth * depth);
+        }
         // not a single repetition; we can (almost) safely trust the hash value
         STATISTICSINC(ab_tt);
 #ifdef SDEBUG
