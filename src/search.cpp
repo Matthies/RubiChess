@@ -469,8 +469,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     {
         if (hashscore >= beta && hashmovecode && !mailbox[GETTO(hashmovecode)])
         {
-            int from = GETFROM(hashmovecode);
-            int piece = mailbox[from];
+            int piece = mailbox[GETFROM(hashmovecode)];
             mc = (piece << 28) | hashmovecode;
             updateHistory(mc, depth * depth);
         }
