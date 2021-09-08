@@ -461,12 +461,14 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     SDEBUGDO(isDebugPv, pvaborttype[ply + 1] = PVA_UNKNOWN; pvdepth[ply] = depth; pvalpha[ply] = alpha; pvbeta[ply] = beta; pvmovenum[ply] = 0;);
 #endif
 
+    getCmptr();
+
     // TT lookup
     bool tpHit = tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
     if (tpHit && !rep && !PVNode)
     {
         int to;
-        if (hashscore >= beta && hashmovecode && (to = GETTO(hashmovecode)) && !mailbox[to])
+        if (0 && hashscore >= beta && hashmovecode && (to = GETTO(hashmovecode)) && !mailbox[to])
         {
             int from = GETFROM(hashmovecode);
             int piece = mailbox[from];
@@ -604,7 +606,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     }
 
     MoveSelector* ms = (excludeMove ? &extensionMoveSelector[ply] : &moveSelector[ply]);
-    getCmptr();
 
     // ProbCut
     if (!PVNode && depth >= sps.probcutmindepth && abs(beta) < SCOREWHITEWINS)
