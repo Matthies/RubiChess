@@ -461,10 +461,18 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     SDEBUGDO(isDebugPv, pvaborttype[ply + 1] = PVA_UNKNOWN; pvdepth[ply] = depth; pvalpha[ply] = alpha; pvbeta[ply] = beta; pvmovenum[ply] = 0;);
 #endif
 
+    getCmptr();
+
     // TT lookup
     bool tpHit = tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
     if (tpHit && !rep && !PVNode)
     {
+        if (hashscore >= beta && hashmovecode && !mailbox[GETTO(hashmovecode)])
+        {
+            int piece = mailbox[GETFROM(hashmovecode)];
+            mc = (piece << 28) | hashmovecode;
+            updateHistory(mc, depth * depth);
+        }
         // not a single repetition; we can (almost) safely trust the hash value
         STATISTICSINC(ab_tt);
 #ifdef SDEBUG
@@ -596,7 +604,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     }
 
     MoveSelector* ms = (excludeMove ? &extensionMoveSelector[ply] : &moveSelector[ply]);
-    getCmptr();
 
     // ProbCut
     if (!PVNode && depth >= sps.probcutmindepth && abs(beta) < SCOREWHITEWINS)
