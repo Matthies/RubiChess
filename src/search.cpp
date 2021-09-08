@@ -468,7 +468,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     if (tpHit && !rep && !PVNode)
     {
         int to;
-        if (0 && hashscore >= beta && hashmovecode && (to = GETTO(hashmovecode)) && !mailbox[to])
+        if (hashscore >= beta && hashmovecode && (to = GETTO(hashmovecode)) && !mailbox[to])
         {
             int from = GETFROM(hashmovecode);
             int piece = mailbox[from];
