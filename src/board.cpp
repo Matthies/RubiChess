@@ -293,18 +293,18 @@ int chessposition::getFromFen(const char* sFen)
 
     psqval = 0;
 
-    for (int i = 0; i < 14; i++)
-        piece00[i] = 0ULL;
+    memset(piece00, 0, sizeof(piece00));
+    memset(mailbox, 0, sizeof(mailbox));
 
-    for (int i = 0; i < BOARDSIZE; i++)
-        mailbox[i] = BLANK;
-
-    for (int i = 0; i < 2; i++)
-        occupied00[i] = 0ULL;
-
-    // At least four token are needed (EPD style string)
-    if (numToken < 4)
+    // At least two token are needed
+    if (numToken < 2)
         return -1;
+
+    while (numToken < 4)
+    {
+        numToken++;
+        token.push_back("-");
+    }
 
     /* the board */
     s = token[0];
@@ -377,7 +377,12 @@ int chessposition::getFromFen(const char* sFen)
     if (rank != 0 || file != 8)
         return -1;
 
-    if (numToken < 0)
+    // Some basic checks for legal positions
+    if ((piece00[WPAWN] | piece00[BPAWN]) & PROMOTERANKBB)
+        return -1;
+    if (POPCOUNT(piece00[WKING]) != 1 || POPCOUNT(piece00[BKING]) != 1)
+        return -1;
+    if (squareDistance[kingpos[WHITE]][kingpos[BLACK]] < 1)
         return -1;
 
     state = 0;
@@ -2777,7 +2782,14 @@ void engine::communicate(string inputstring)
                     stopLevel = ENGINESTOPIMMEDIATELY;
                     searchWaitStop();
                 }
-                rootposition.getFromFen(fen.c_str());
+                if (rootposition.getFromFen(fen.c_str()) < 0)
+                {
+                    printf("info string Illegal FEN string %s. Startposition will be used instead.\n", fen.c_str());
+                    fen = STARTFEN;
+                    rootposition.getFromFen(fen.c_str());
+                    moves.clear();
+                }
+
                 uint32_t lastopponentsmove = 0;
                 for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
                 {
