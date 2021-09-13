@@ -43,6 +43,7 @@
 		<Linker>
 			<Add option="-static" />
 		</Linker>
+		<Unit filename="RubiChess.h" />
 		<Unit filename="board.cpp" />
 		<Unit filename="book.cpp" />
 		<Unit filename="cputest.cpp" />
