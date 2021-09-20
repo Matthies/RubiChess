@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="RubiChess" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/Debug/RubiChess" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="bin/Release/RubiChess" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O3" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+			<Add option="-std=c++11" />
+			<Add option="-fexceptions" />
+			<Add option="-march=znver1" />
+			<Add option="-pthread" />
+			<Add option="-DUSE_AVX2" />
+			<Add option="-DUSE_POPCNT" />
+			<Add option="-DUSE_SSE3" />
+			<Add option="-DUSE_SSSE3" />
+			<Add option="-DUSE_SSE2" />
+		</Compiler>
+		<Linker>
+			<Add option="-static" />
+		</Linker>
+		<Unit filename="RubiChess.h" />
+		<Unit filename="board.cpp" />
+		<Unit filename="book.cpp" />
+		<Unit filename="cputest.cpp" />
+		<Unit filename="eval.cpp" />
+		<Unit filename="learn.cpp" />
+		<Unit filename="main.cpp" />
+		<Unit filename="nnue.cpp" />
+		<Unit filename="search.cpp" />
+		<Unit filename="tbprobe.cpp" />
+		<Unit filename="texel.cpp" />
+		<Unit filename="transposition.cpp" />
+		<Unit filename="uci.cpp" />
+		<Unit filename="utils.cpp" />
+		<Extensions />
+	</Project>
+</CodeBlocks_project_file>
