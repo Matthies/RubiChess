@@ -712,6 +712,9 @@ public:
 
     NnueLayer(NnueLayer* prev) { previous = prev; }
     virtual bool ReadWeights(NnueNetsource_t is) = 0;
+#ifdef EVALOPTIONS
+    virtual void WriteWeights(ofstream *os) = 0;
+#endif
     virtual uint32_t GetHash() = 0;
 };
 
@@ -724,6 +727,9 @@ public:
     NnueFeatureTransformer();
     virtual ~NnueFeatureTransformer();
     bool ReadWeights(NnueNetsource_t is);
+#ifdef EVALOPTIONS
+    void WriteWeights(ofstream *os);
+#endif
     uint32_t GetHash();
 };
 
@@ -734,6 +740,9 @@ public:
     NnueClippedRelu(NnueLayer* prev, int d);
     virtual ~NnueClippedRelu() {};
     bool ReadWeights(NnueNetsource_t is);
+#ifdef EVALOPTIONS
+    void WriteWeights(ofstream* os);
+#endif
     uint32_t GetHash();
     void Propagate(int32_t *input, clipped_t *output);
 };
@@ -746,6 +755,9 @@ public:
     NnueInputSlice();
     virtual ~NnueInputSlice() {};
     bool ReadWeights(NnueNetsource_t is);
+#ifdef EVALOPTIONS
+    void WriteWeights(ofstream* os);
+#endif
     uint32_t GetHash();
 };
 
@@ -761,6 +773,9 @@ public:
     NnueNetworkLayer(NnueLayer* prev, int id, int od);
     virtual ~NnueNetworkLayer();
     bool ReadWeights(NnueNetsource_t is);
+#ifdef EVALOPTIONS
+    void WriteWeights(ofstream* os);
+#endif
     uint32_t GetHash();
     void Propagate(clipped_t *input, int32_t *output);
     void OutLayer(clipped_t* input, int32_t* output);
@@ -778,6 +793,7 @@ void NnueInit();
 void NnueRemove();
 bool NnueReadNet(NnueNetsource_t is);
 #ifdef EVALOPTIONS
+void NnueWriteNet(vector<string> args);
 void NnueRegisterEvals();
 #endif
 
@@ -1486,9 +1502,12 @@ public:
 // uci stuff
 //
 
-enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL, PERFT, TUNE, GENSFEN, CONVERT, LEARN };
+enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL, PERFT, TUNE, GENSFEN, CONVERT, LEARN, EXPORT };
 
 const map<string, GuiToken> GuiCommandMap = {
+#ifdef EVALOPTIONS
+    { "export", EXPORT },
+#endif
 #ifdef EVALTUNE
     { "tune", TUNE },
 #endif

@@ -393,6 +393,17 @@ bool NnueFeatureTransformer::ReadWeights(NnueNetsource_t is)
     return !NNUEREADFAIL(is);
 }
 
+#ifdef EVALOPTIONS
+void NnueFeatureTransformer::WriteWeights(ofstream* os)
+{
+    int i;
+    for (i = 0; i < NnueFtHalfdims; ++i)
+        os->write((char*)&bias[i], sizeof(int16_t));
+    for (i = 0; i < NnueFtHalfdims * NnueFtInputdims; ++i)
+        os->write((char*)&weight[i], sizeof(int16_t));
+}
+#endif
+
 uint32_t NnueFeatureTransformer::GetHash()
 {
     return NNUEFEATUREHASH ^ NnueFtOutputdims;
@@ -484,6 +495,65 @@ bool NnueNetworkLayer::ReadWeights(NnueNetsource_t is)
 
     return !NNUEREADFAIL(is);
 }
+
+#ifdef EVALOPTIONS
+#if defined(USE_AVX512)
+inline unsigned int reverseShuffleWeightIndex(unsigned int idx, unsigned int dims, bool outlayer)
+{
+    if (dims > 32)
+        idx = bit_shuffle(idx, 2, 1, 0x38);
+    else if (dims == 32) {
+        if (!outlayer)
+            idx = bit_shuffle(idx, 3, 2, 0x1f0);
+        idx = bit_shuffle(idx, 2, 2, 0x14);
+    }
+    return idx;
+}
+#else   //AVX2 version
+inline unsigned int reverseShuffleWeightIndex(unsigned int idx, unsigned int dims, bool outlayer)
+{
+    if (dims > 32)
+        idx = bit_shuffle(idx, 1, 1, 0x18);
+    else if (dims == 32) {
+        if (!outlayer)
+            idx = bit_shuffle(idx, 3, 1, 0xf0);
+        idx = bit_shuffle(idx, 1, 2, 0x1c);
+    }
+    return idx;
+}
+#endif
+
+void NnueNetworkLayer::WriteWeights(ofstream* os)
+{
+    if (previous)
+        previous->WriteWeights(os);
+
+    for (unsigned int i = 0; i < outputdims; ++i)
+        os->write((char*)&bias[i], sizeof(int32_t));
+
+    size_t buffersize = outputdims * inputdims;
+    char* weightbuffer = (char*)calloc(buffersize, sizeof(char));
+    if (!weightbuffer) {
+        cout << "Failed to allocated temporary buffer.\n";
+        return;
+    }
+
+    char* w = weightbuffer;
+    for (unsigned int r = 0; r < outputdims; r++)
+        for (unsigned int c = 0; c < inputdims; c++)
+        {
+            unsigned int idx = r * inputdims + c;
+#if defined(USE_AVX2)
+            uint32_t ridx = reverseShuffleWeightIndex(idx, inputdims, outputdims == 1);
+#endif
+            *(w + ridx) = weight[idx];
+        }
+
+    os->write(weightbuffer, buffersize);
+
+    free(weightbuffer);
+}
+#endif
 
 uint32_t NnueNetworkLayer::GetHash()
 {
@@ -793,6 +863,13 @@ bool NnueClippedRelu::ReadWeights(NnueNetsource_t is)
     return true;
 }
 
+#ifdef EVALOPTIONS
+void NnueClippedRelu::WriteWeights(ofstream* os)
+{
+    if (previous) return previous->WriteWeights(os);
+}
+#endif
+
 uint32_t NnueClippedRelu::GetHash()
 {
     return NNUECLIPPEDRELUHASH + previous->GetHash();
@@ -877,6 +954,13 @@ bool NnueInputSlice::ReadWeights(NnueNetsource_t is)
     return true;
 }
 
+#ifdef EVALOPTIONS
+void NnueInputSlice::WriteWeights(ofstream* os)
+{
+    if (previous) return previous->WriteWeights(os);
+}
+#endif
+
 uint32_t NnueInputSlice::GetHash()
 {
     return NNUEINPUTSLICEHASH ^ outputdims;
@@ -938,16 +1022,17 @@ bool NnueReadNet(NnueNetsource_t is)
     if (hash != filehash)
         return false;
 
-    NNUEREAD(is, (char*)&hash, sizeof(uint32_t));
-    if (hash != fthash) return false;
 
     // Read the weights of the feature transformer
-    if (!NnueFt->ReadWeights(is)) return false;
     NNUEREAD(is, (char*)&hash, sizeof(uint32_t));
-    if (hash != nethash) return false;
+    if (hash != fthash) return false;
+    if (!NnueFt->ReadWeights(is)) return false;
 
     // Read the weights of the network layers recursively
+    NNUEREAD(is, (char*)&hash, sizeof(uint32_t));
+    if (hash != nethash) return false;
     if (!NnueOut->ReadWeights(is)) return false;
+
     if (!NNUEEOF(is))
         return false;
 
@@ -957,6 +1042,45 @@ bool NnueReadNet(NnueNetsource_t is)
 }
 
 #ifdef EVALOPTIONS
+void NnueWriteNet(vector<string> args)
+{
+    string NnueNetPath = "export.nnue";
+    if (args.size())
+        NnueNetPath = args[0];
+
+    ofstream os;
+    os.open(NnueNetPath, ios::binary);
+    if (!os && en.ExecPath != "")
+        os.open(en.ExecPath + NnueNetPath, ios::binary);
+
+    if (!os) {
+        cout << "Cannot write file " << NnueNetPath << "\n";
+        return;
+    }
+
+    uint32_t fthash = NnueFt->GetHash();
+    uint32_t nethash = NnueOut->GetHash();
+    uint32_t filehash = (fthash ^ nethash);
+    uint32_t version = NNUEFILEVERSIONROTATE;
+    const string sarchitecture = "Features=HalfKP(Friend)[41024->256x2],Network=AffineTransform[1<-32](ClippedReLU[32](AffineTransform[32<-32](ClippedReLU[32](AffineTransform[32<-512](InputSlice[512(0:512)])))))";
+    uint32_t size = (uint32_t)sarchitecture.size();
+
+    os.write((char*)&version, sizeof(uint32_t));
+    os.write((char*)&filehash, sizeof(uint32_t));
+    os.write((char*)&size, sizeof(uint32_t));
+    os.write((char*)&sarchitecture[0], size);
+
+    os.write((char*)&fthash, sizeof(uint32_t));
+    NnueFt->WriteWeights(&os);
+
+    os.write((char*)&nethash, sizeof(uint32_t));
+    NnueOut->WriteWeights(&os);
+
+    os.close();
+
+    cout << "Network written to file " << NnueNetPath << "\n";
+}
+
 void NnueRegisterEvals()
 {
     // Expose weights and bias of ouput layer as UCI options for tuning
