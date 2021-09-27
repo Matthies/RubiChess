@@ -1866,12 +1866,16 @@ void search_statistics();
 // Feature switch stuff
 //
 #ifdef FEATURESWITCH
-#define IFFEATUREDO(f,x)        { if ((f)) x }
-#define BEGINFEATURE(f)         { if ((f)) {
-#define ENDFEATURE         }}
+#define IFFEATUREDO(f,x)        { if (f) x }
+#define BEGINFEATURE(f)         if (f) {
+#define IFFEATURE(f,c)          if ((f) && (c)) {
+#define ELSEIFFEATURE(f,c)      else if ((f) && (c)) {
+#define ENDFEATURE              }
 #else
 #define IFFEATUREDO(f,x)
 #define BEGINFEATURE(f)
+#define IFFEATURE(f,c)          if (c)
+#define ELSEIFFEATURE(f,c)      else if (c)
 #define ENDFEATURE
 #endif // FEATURESWITCH
 

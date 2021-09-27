@@ -110,6 +110,11 @@ bool featureReverseFutilityPruning;
 bool featureFutilityPruning;
 bool featureNullmovePruning;
 bool featureProbcut;
+bool featureLatemovePruning;
+bool featureBadseePruning;
+bool featureSingularExtension;
+bool featureLatecaptureExtension;
+bool featureGoodquietsExtension;
 
 void registerFeatures()
 {
@@ -121,6 +126,11 @@ void registerFeatures()
     en.ucioptions.Register(&featureFutilityPruning, "FeatureFutilityPruning", ucicheck, "true");
     en.ucioptions.Register(&featureNullmovePruning, "FeatureNullmovePruning", ucicheck, "true");
     en.ucioptions.Register(&featureProbcut, "FeatureProbcut", ucicheck, "true");
+    en.ucioptions.Register(&featureLatemovePruning, "FeatureLatemovePruning", ucicheck, "true");
+    en.ucioptions.Register(&featureBadseePruning, "FeatureBadseePruning", ucicheck, "true");
+    en.ucioptions.Register(&featureSingularExtension, "FeatureSingularExtension", ucicheck, "true");
+    en.ucioptions.Register(&featureLatecaptureExtension, "FeatureLatecaptureExtension", ucicheck, "true");
+    en.ucioptions.Register(&featureGoodquietsExtension, "FeatureGoodquietsExtension", ucicheck, "true");
 }
 #endif
 
@@ -711,6 +721,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             continue;
 
         // Late move pruning
+        BEGINFEATURE(featureLatemovePruning)
         if (Pt != NoPrune
             && depth < MAXLMPDEPTH
             && !ISTACTICAL(mc)
@@ -723,6 +734,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_LMPRUNED;);
             continue;
         }
+        ENDFEATURE
 
         // Check for futility pruning condition for this move and skip move if at least one legal move is already found
         BEGINFEATURE(featureFutilityPruning)
@@ -736,6 +748,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         ENDFEATURE
 
         // Prune moves with bad SEE
+        BEGINFEATURE(featureBadseePruning)
         if (Pt != NoPrune
             && !isCheckbb
             && depth <= sps.seeprunemaxdepth
@@ -747,6 +760,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_SEEPRUNED;);
             continue;
         }
+        ENDFEATURE
 
         // early prefetch of the next tt entry; valid for normal moves
         PREFETCH(&tp.table[nextHash(mc) & tp.sizemask]);
@@ -757,7 +771,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         int to = GETCORRECTTO(mc);
 
         // Singular extension
-        if (Pt != MatePrune
+        IFFEATURE(featureSingularExtension,
+            Pt != MatePrune
             && (mc & 0xffff) == hashmovecode
             && depth >= sps.singularmindepth
             && !excludeMove
@@ -788,13 +803,16 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 return sBeta;
             }
         }
+        ENDFEATURE
         // Extend captures that lead into endgame
-        else if (ph > 200 && GETCAPTURE(mc) >= WKNIGHT)
+        ELSEIFFEATURE(featureLatecaptureExtension, ph > 200 && GETCAPTURE(mc) >= WKNIGHT)
         {
             STATISTICSINC(extend_endgame);
             extendMove = 1;
         }
-        else if(!ISTACTICAL(mc) && cmptr[ply][0] && cmptr[ply][1])
+        ENDFEATURE
+        // Extend quiets with good continuation history
+        ELSEIFFEATURE(featureGoodquietsExtension,!ISTACTICAL(mc) && cmptr[ply][0] && cmptr[ply][1])
         {
             if (cmptr[ply][0][pc * 64 + to] > he_threshold && cmptr[ply][1][pc * 64 + to] > he_threshold)
             {
@@ -818,6 +836,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 }
             }
         }
+        ENDFEATURE
 
         // Late move reduction
         int reduction = 0;
