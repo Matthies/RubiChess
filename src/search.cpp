@@ -105,12 +105,16 @@ struct searchparamset {
 bool featureHistory;
 bool featureTacticalHistory;
 bool featureDeltaPrune;
+bool featureRazoring;
+bool featureReverseFutilityPruning;
 
 void registerFeatures()
 {
     en.ucioptions.Register(&featureHistory, "FeatureHistory", ucicheck, "true");
     en.ucioptions.Register(&featureTacticalHistory, "FeatureTacticalHistory", ucicheck, "true");
     en.ucioptions.Register(&featureDeltaPrune, "FeatureDeltaPrune", ucicheck, "true");
+    en.ucioptions.Register(&featureRazoring, "FeatureRazoring", ucicheck, "true");
+    en.ucioptions.Register(&featureReverseFutilityPruning, "FeatureReverseFutilityPruning", ucicheck, "true");
 }
 #endif
 
@@ -312,8 +316,8 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
             alpha = staticeval;
         }
 
-        BEGINFEATURE(featureDeltaPrune)
         // Delta pruning
+        BEGINFEATURE(featureDeltaPrune)
         int bestExpectableScore = staticeval + sps.deltapruningmargin + getBestPossibleCapture();
         if (Pt != NoPrune && bestExpectableScore < alpha)
         {
@@ -561,6 +565,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     bool positionImproved = (ply >= 2  && staticevalstack[ply] > staticevalstack[ply - 2]);
 
     // Razoring
+    BEGINFEATURE(featureRazoring)
     if (!PVNode && !isCheckbb && depth <= 2)
     {
         const int ralpha = alpha - sps.razormargin - depth * sps.razordepthfactor;
@@ -581,18 +586,21 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             }
         }
     }
+    ENDFEATURE
 
     // futility pruning
     bool futility = false;
     if (Pt != NoPrune && depth <= sps.futilitymindepth)
     {
         // reverse futility pruning
+        BEGINFEATURE(featureReverseFutilityPruning)
         if (!isCheckbb && staticeval - depth * (sps.futilityreversedepthfactor - sps.futilityreverseimproved * positionImproved) > beta)
         {
             STATISTICSINC(prune_futility);
             SDEBUGDO(isDebugPv, pvabortval[ply] = staticeval; pvaborttype[ply] = PVA_REVFUTILITYPRUNED;);
             return staticeval;
         }
+        ENDFEATURE
         futility = (staticeval < alpha - (sps.futilitymargin + sps.futilitymarginperdepth * depth));
     }
 
@@ -715,7 +723,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         }
 
         // Prune moves with bad SEE
-        if (Pt != NoPrune 
+        if (Pt != NoPrune
             && !isCheckbb
             && depth <= sps.seeprunemaxdepth
             && bestscore > (Pt == Prune ? NOSCORE : -SCORETBWININMAXPLY)
@@ -1055,7 +1063,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
                 m->value = KILLERVAL2;
             else if (GETCAPTURE(m->code) != BLANK)
                 m->value = (mvv[GETCAPTURE(m->code) >> 1] | lva[GETPIECE(m->code) >> 1]);
-            else 
+            else
                 m->value = history[state & S2MMASK][GETFROM(m->code)][GETCORRECTTO(m->code)];
         }
     }
@@ -1435,7 +1443,7 @@ static void search_gen1(searchthread *thr)
                     pos->bestmove = pos->shortMove2FullMove(mc);
                     pos->pondermove = 0;
                 }
-                    
+
                 // still no bestmove...
                 if (!pos->bestmove && pos->rootmovelist.length > 0 && !isDraw)
                     pos->bestmove = pos->rootmovelist.move[0].code;
@@ -1518,7 +1526,7 @@ static void search_gen1(searchthread *thr)
             break;
 
     } while (1);
-    
+
     if (isMainThread)
     {
 #ifdef TDEBUG
