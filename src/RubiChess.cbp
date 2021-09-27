@@ -6,16 +6,8 @@
 		<Option pch_mode="2" />
 		<Option compiler="gcc" />
 		<Build>
-			<Target title="Debug">
-				<Option output="bin/Debug/RubiChess" prefix_auto="1" extension_auto="1" />
-				<Option object_output="obj/Debug/" />
-				<Option type="1" />
-				<Option compiler="gcc" />
-				<Compiler>
-					<Add option="-g" />
-				</Compiler>
-			</Target>
-			<Target title="Release">
+			<Target title="Windows">
+				<Option platforms="Windows;" />
 				<Option output="bin/Release/RubiChess" prefix_auto="1" extension_auto="1" />
 				<Option object_output="obj/Release/" />
 				<Option type="1" />
@@ -25,6 +17,22 @@
 				</Compiler>
 				<Linker>
 					<Add option="-s" />
+					<Add option="-static" />
+				</Linker>
+			</Target>
+			<Target title="Linux">
+				<Option platforms="Unix;Mac;" />
+				<Option output="bin/Release/RubiChess" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-flto" />
+					<Add option="-O3" />
+				</Compiler>
+				<Linker>
+					<Add option="-flto" />
+					<Add option="-s" />
 				</Linker>
 			</Target>
 		</Build>
@@ -33,7 +41,6 @@
 			<Add option="-std=c++11" />
 			<Add option="-fexceptions" />
 			<Add option="-march=znver1" />
-			<Add option="-pthread" />
 			<Add option="-DUSE_AVX2" />
 			<Add option="-DUSE_POPCNT" />
 			<Add option="-DUSE_SSE3" />
@@ -41,7 +48,7 @@
 			<Add option="-DUSE_SSE2" />
 		</Compiler>
 		<Linker>
-			<Add option="-static" />
+			<Add library="pthread" />
 		</Linker>
 		<Unit filename="RubiChess.h" />
 		<Unit filename="board.cpp" />
