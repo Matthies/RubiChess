@@ -103,10 +103,14 @@ struct searchparamset {
 
 #ifdef FEATURESWITCH
 bool featureHistory;
+bool featureTacticalHistory;
+bool featureDeltaPrune;
 
 void registerFeatures()
 {
     en.ucioptions.Register(&featureHistory, "FeatureHistory", ucicheck, "true");
+    en.ucioptions.Register(&featureTacticalHistory, "FeatureTacticalHistory", ucicheck, "true");
+    en.ucioptions.Register(&featureDeltaPrune, "FeatureDeltaPrune", ucicheck, "true");
 }
 #endif
 
@@ -207,6 +211,7 @@ inline void chessposition::updateHistory(uint32_t code, int value)
 
 inline int chessposition::getTacticalHst(uint32_t code)
 {
+    IFFEATUREDO(!featureTacticalHistory, return 0;)
     int pt = GETPIECE(code) >> 1;
     int to = GETTO(code);
     int cp = GETCAPTURE(code) >> 1;
@@ -217,6 +222,7 @@ inline int chessposition::getTacticalHst(uint32_t code)
 
 inline void chessposition::updateTacticalHst(uint32_t code, int value)
 {
+    IFFEATUREDO(!featureTacticalHistory, return;)
     int pt = GETPIECE(code) >> 1;
     int to = GETTO(code);
     int cp = GETCAPTURE(code) >> 1;
@@ -306,6 +312,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
             alpha = staticeval;
         }
 
+        BEGINFEATURE(featureDeltaPrune)
         // Delta pruning
         int bestExpectableScore = staticeval + sps.deltapruningmargin + getBestPossibleCapture();
         if (Pt != NoPrune && bestExpectableScore < alpha)
@@ -314,6 +321,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
             tp.addHash(hash, bestExpectableScore, staticeval, HASHALPHA, 0, hashmovecode);
             return staticeval;
         }
+        ENDFEATURE
     }
 
     prepareStack();
