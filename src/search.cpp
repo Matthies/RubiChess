@@ -112,9 +112,11 @@ bool featureNullmovePruning;        //   45.95 +-  7.72Elo  http://chess.grantne
 bool featureProbcut;                //   20.52 +-  6.76Elo  http://chess.grantnet.us/test/19802/
 bool featureLatemovePruning;        //   15.12 +-  6.73Elo  http://chess.grantnet.us/test/19804/
 bool featureBadseePruning;          //   22.44 +-  7.18Elo  http://chess.grantnet.us/test/19805/
+bool featureBadhistoryPruning;
 bool featureSingularExtension;      //    6.25 +-  6.88Elo  http://chess.grantnet.us/test/19806/
 bool featureLatecaptureExtension;   //   -3.47 +-  6.89Elo  http://chess.grantnet.us/test/19807/
 bool featureGoodquietsExtension;    //    1.22 +-  6.69Elo  http://chess.grantnet.us/test/19808/
+bool featureLmrRefinment;           //
 
 void registerFeatures()
 {
@@ -128,9 +130,11 @@ void registerFeatures()
     en.ucioptions.Register(&featureProbcut, "FeatureProbcut", ucicheck, "true");
     en.ucioptions.Register(&featureLatemovePruning, "FeatureLatemovePruning", ucicheck, "true");
     en.ucioptions.Register(&featureBadseePruning, "FeatureBadseePruning", ucicheck, "true");
+    en.ucioptions.Register(&featureBadhistoryPruning, "FeatureBadhistoryPruning", ucicheck, "true");
     en.ucioptions.Register(&featureSingularExtension, "FeatureSingularExtension", ucicheck, "true");
     en.ucioptions.Register(&featureLatecaptureExtension, "FeatureLatecaptureExtension", ucicheck, "true");
     en.ucioptions.Register(&featureGoodquietsExtension, "FeatureGoodquietsExtension", ucicheck, "true");
+    en.ucioptions.Register(&featureLmrRefinment, "FeatureLmrRefinment", ucicheck, "true");
 }
 #endif
 
@@ -846,6 +850,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             {
                 reduction = reductiontable[positionImproved][depth][min(63, legalMoves + 1)];
 
+                BEGINFEATURE(featureLmrRefinment)
                 // adjust reduction by stats value
                 reduction -= stats / (sps.lmrstatsratio * 8);
 
@@ -864,6 +869,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 STATISTICSADD(red_pv, -(int)PVNode);
                 STATISTICSADD(red_pv, -(int)(PVNode && (!tpHit || hashmovecode != (uint16_t)mc || hashscore > alpha)));
                 STATISTICSDO(int red0 = reduction);
+                ENDFEATURE
 
                 reduction = min(depth, max(0, reduction));
 
@@ -875,6 +881,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         effectiveDepth = depth + extendall - reduction + extendMove;
 
         // Prune moves with bad counter move history
+        BEGINFEATURE(featureBadhistoryPruning)
         if (Pt != MatePrune
             && !ISTACTICAL(mc) && effectiveDepth < 4
             && cmptr[ply][0] && cmptr[ply][0][pc * 64 + to] < 0
@@ -883,6 +890,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_BADHISTORYPRUNED;);
             continue;
         }
+        ENDFEATURE
 
         if (!playMove(mc))
             continue;
