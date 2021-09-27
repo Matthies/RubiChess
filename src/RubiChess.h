@@ -48,6 +48,9 @@
 // Enable this to enable NNUE training code
 //#define NNUELEARN
 
+// Enable this to enable/disable search features via UCI options
+#define FEATURESWITCH 
+
 
 #ifdef FINDMEMORYLEAKS
 #ifdef _DEBUG
@@ -1858,6 +1861,16 @@ void search_statistics();
 #define STATISTICSADD(x, v)
 #define STATISTICSDO(x)
 #endif
+
+//
+// Feature switch stuff
+//
+#ifdef FEATURESWITCH
+#define IFFEATUREDO(f,x)        { if ((f)) x }
+#else
+#define IFFEATUREDO(f,x)
+#endif // FEATURESWITCH
+
 
 //
 // book stuff

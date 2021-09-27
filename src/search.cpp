@@ -101,6 +101,15 @@ struct searchparamset {
     searchparam SP(aspinitialdelta, 8);
 } sps;
 
+#ifdef FEATURESWITCH
+bool featureHistory;
+
+void registerFeatures()
+{
+    en.ucioptions.Register(&featureHistory, "FeatureHistory", ucicheck, "true");
+}
+#endif
+
 #define MAXLMPDEPTH 9
 int reductiontable[2][MAXDEPTH][64];
 int lmptable[2][MAXLMPDEPTH];
@@ -133,6 +142,9 @@ void searchtableinit()
 void searchinit()
 {
     searchtableinit();
+#ifdef FEATURESWITCH
+    registerFeatures();
+#endif // FEATURESWITCH
 }
 
 
@@ -157,6 +169,7 @@ void chessposition::getCmptr()
 
 inline int chessposition::getHistory(uint32_t code)
 {
+    IFFEATUREDO(!featureHistory, return 0;)
     int pc = GETPIECE(code);
     int s2m = pc & S2MMASK;
     int from = GETFROM(code);
@@ -172,6 +185,7 @@ inline int chessposition::getHistory(uint32_t code)
 
 inline void chessposition::updateHistory(uint32_t code, int value)
 {
+    IFFEATUREDO(!featureHistory, return;)
     int pc = GETPIECE(code);
     int s2m = pc & S2MMASK;
     int from = GETFROM(code);
