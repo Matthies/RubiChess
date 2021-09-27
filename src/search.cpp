@@ -339,13 +339,14 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 
     while ((mc = ms->next()))
     {
+        BEGINFEATURE(featureDeltaPrune)
         if (Pt != NoPrune && !myIsCheck && staticeval + materialvalue[GETCAPTURE(mc) >> 1] + sps.deltapruningmargin <= alpha)
         {
             // Leave out capture that is delta-pruned
             STATISTICSINC(qs_move_delta);
             continue;
         }
-
+        ENDFEATURE
         if (!playMove(mc))
             continue;
 
