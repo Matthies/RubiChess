@@ -107,6 +107,9 @@ bool featureTacticalHistory;
 bool featureDeltaPrune;
 bool featureRazoring;
 bool featureReverseFutilityPruning;
+bool featureFutilityPruning;
+bool featureNullmovePruning;
+bool featureProbcut;
 
 void registerFeatures()
 {
@@ -115,6 +118,9 @@ void registerFeatures()
     en.ucioptions.Register(&featureDeltaPrune, "FeatureDeltaPrune", ucicheck, "true");
     en.ucioptions.Register(&featureRazoring, "FeatureRazoring", ucicheck, "true");
     en.ucioptions.Register(&featureReverseFutilityPruning, "FeatureReverseFutilityPruning", ucicheck, "true");
+    en.ucioptions.Register(&featureFutilityPruning, "FeatureFutilityPruning", ucicheck, "true");
+    en.ucioptions.Register(&featureNullmovePruning, "FeatureNullmovePruning", ucicheck, "true");
+    en.ucioptions.Register(&featureProbcut, "FeatureProbcut", ucicheck, "true");
 }
 #endif
 
@@ -604,8 +610,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         futility = (staticeval < alpha - (sps.futilitymargin + sps.futilitymarginperdepth * depth));
     }
 
-    // Nullmove pruning with verification like SF does it
     int bestknownscore = (hashscore != NOSCORE ? hashscore : staticeval);
+
+    // Nullmove pruning with verification like SF does it
+    BEGINFEATURE(featureNullmovePruning)
     if (!isCheckbb && depth >= sps.nmmindepth && bestknownscore >= beta && (Pt != MatePrune || beta > -SCORETBWININMAXPLY) && (ply  >= nullmoveply || ply % 2 != nullmoveside) && ph < 255)
     {
         playNullMove();
@@ -633,10 +641,12 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             }
         }
     }
+    ENDFEATURE
 
     MoveSelector* ms = (excludeMove ? &extensionMoveSelector[ply] : &moveSelector[ply]);
 
     // ProbCut
+    BEGINFEATURE(featureProbcut)
     if (!PVNode && depth >= sps.probcutmindepth && abs(beta) < SCOREWHITEWINS)
     {
         int rbeta = min(SCOREWHITEWINS, beta + sps.probcutmargin);
@@ -664,6 +674,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             }
         }
     }
+    ENDFEATURE
 
     // No hashmove reduction
     if (PVNode && !hashmovecode && depth >= sps.nohashreductionmindepth)
@@ -714,6 +725,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         }
 
         // Check for futility pruning condition for this move and skip move if at least one legal move is already found
+        BEGINFEATURE(featureFutilityPruning)
         bool futilityPrune = futility && !ISTACTICAL(mc) && !isCheckbb && alpha <= 900 && !moveGivesCheck(mc);
         if (futilityPrune && legalMoves)
         {
@@ -721,6 +733,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_FUTILITYPRUNED;);
             continue;
         }
+        ENDFEATURE
 
         // Prune moves with bad SEE
         if (Pt != NoPrune
