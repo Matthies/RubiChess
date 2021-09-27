@@ -102,19 +102,19 @@ struct searchparamset {
 } sps;
 
 #ifdef FEATURESWITCH
-bool featureHistory;
-bool featureTacticalHistory;
-bool featureDeltaPrune;
-bool featureRazoring;
-bool featureReverseFutilityPruning;
-bool featureFutilityPruning;
-bool featureNullmovePruning;
-bool featureProbcut;
-bool featureLatemovePruning;
-bool featureBadseePruning;
-bool featureSingularExtension;
-bool featureLatecaptureExtension;
-bool featureGoodquietsExtension;
+bool featureHistory;                //  324.91 +- 15.20Elo  http://chess.grantnet.us/test/19794/
+bool featureTacticalHistory;        //    1.22 +-  6.67Elo  http://chess.grantnet.us/test/19796/
+bool featureDeltaPrune;             //    2.26 +-  6.84Elo  http://chess.grantnet.us/test/19795/
+bool featureRazoring;               //    5.56 +-  6.54Elo  http://chess.grantnet.us/test/19798/
+bool featureReverseFutilityPruning; //   26.98 +-  7.13Elo  http://chess.grantnet.us/test/19799/
+bool featureFutilityPruning;        //   -1.39 +-  7.00Elo  http://chess.grantnet.us/test/19800/
+bool featureNullmovePruning;        //   45.95 +-  7.72Elo  http://chess.grantnet.us/test/19801/
+bool featureProbcut;                //   20.52 +-  6.76Elo  http://chess.grantnet.us/test/19802/
+bool featureLatemovePruning;        //   15.12 +-  6.73Elo  http://chess.grantnet.us/test/19804/
+bool featureBadseePruning;          //   22.44 +-  7.18Elo  http://chess.grantnet.us/test/19805/
+bool featureSingularExtension;      //    6.25 +-  6.88Elo  http://chess.grantnet.us/test/19806/
+bool featureLatecaptureExtension;   //   -3.47 +-  6.89Elo  http://chess.grantnet.us/test/19807/
+bool featureGoodquietsExtension;    //    1.22 +-  6.69Elo  http://chess.grantnet.us/test/19808/
 
 void registerFeatures()
 {
