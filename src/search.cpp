@@ -117,6 +117,10 @@ bool featureSingularExtension;      //    6.25 +-  6.88Elo  http://chess.grantne
 bool featureLatecaptureExtension;   //   -3.47 +-  6.89Elo  http://chess.grantnet.us/test/19807/
 bool featureGoodquietsExtension;    //    1.22 +-  6.69Elo  http://chess.grantnet.us/test/19808/
 bool featureLmrRefinment;           //   50.38 +-  7.36Elo  http://chess.grantnet.us/test/19811/
+bool featureLmrByStats;
+bool featureLmrByPv;
+bool featureLmrByBadHashmove;
+bool featureLmrByPrevMovenumber;
 bool featureKillers;
 bool featureCounter;
 
@@ -137,6 +141,10 @@ void registerFeatures()
     en.ucioptions.Register(&featureLatecaptureExtension, "FeatureLatecaptureExtension", ucicheck, "true");
     en.ucioptions.Register(&featureGoodquietsExtension, "FeatureGoodquietsExtension", ucicheck, "true");
     en.ucioptions.Register(&featureLmrRefinment, "FeatureLmrRefinment", ucicheck, "true");
+    en.ucioptions.Register(&featureLmrByStats, "FeatureLmrByStats", ucicheck, "true");
+    en.ucioptions.Register(&featureLmrByPv, "FeatureLmrByPv", ucicheck, "true");
+    en.ucioptions.Register(&featureLmrByBadHashmove, "FeatureLmrByBadHashmove", ucicheck, "true");
+    en.ucioptions.Register(&featureLmrByPrevMovenumber, "FeatureLmrByPrevMovenumber", ucicheck, "true");
     en.ucioptions.Register(&featureKillers, "FeatureKillers", ucicheck, "true");
     en.ucioptions.Register(&featureCounter, "FeatureCounter", ucicheck, "true");
 }
@@ -857,17 +865,26 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 reduction = reductiontable[positionImproved][depth][min(63, legalMoves + 1)];
 
                 BEGINFEATURE(featureLmrRefinment)
+
                 // adjust reduction by stats value
+                BEGINFEATURE(featureLmrByStats)
                 reduction -= stats / (sps.lmrstatsratio * 8);
+                ENDFEATURE
 
                 // less reduction at PV nodes
+                BEGINFEATURE(featureLmrByPv)
                 reduction -= PVNode;
+                ENDFEATURE
 
                 // even lesser reduction at PV nodes for all but bad hash moves
+                BEGINFEATURE(featureLmrByBadHashmove)
                 reduction -= (PVNode && (!tpHit || hashmovecode != (uint16_t)mc || hashscore > alpha));
+                ENDFEATURE
 
                 // adjust reduction with opponents move number
+                BEGINFEATURE(featureLmrByPrevMovenumber)
                 reduction -= (CurrentMoveNum[ply] >= sps.lmropponentmovecount);
+                ENDFEATURE
 
                 STATISTICSINC(red_pi[positionImproved]);
                 STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, legalMoves + 1)]);
