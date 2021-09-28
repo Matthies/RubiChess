@@ -118,6 +118,7 @@ bool featureLatecaptureExtension;   //   -3.47 +-  6.89Elo  http://chess.grantne
 bool featureGoodquietsExtension;    //    1.22 +-  6.69Elo  http://chess.grantnet.us/test/19808/
 bool featureLmrRefinment;           //   50.38 +-  7.36Elo  http://chess.grantnet.us/test/19811/
 bool featureKillers;
+bool featureCounter;
 
 void registerFeatures()
 {
@@ -137,6 +138,7 @@ void registerFeatures()
     en.ucioptions.Register(&featureGoodquietsExtension, "FeatureGoodquietsExtension", ucicheck, "true");
     en.ucioptions.Register(&featureLmrRefinment, "FeatureLmrRefinment", ucicheck, "true");
     en.ucioptions.Register(&featureKillers, "FeatureKillers", ucicheck, "true");
+    en.ucioptions.Register(&featureCounter, "FeatureCounter", ucicheck, "true");
 }
 #endif
 
@@ -701,8 +703,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     // Get possible countermove from table
     uint32_t lastmove = movestack[ply - 1].movecode;
     uint32_t counter = 0;
+    BEGINFEATURE(featureCounter)
     if (lastmove)
         counter = countermove[GETPIECE(lastmove)][GETCORRECTTO(lastmove)];
+    ENDFEATURE
 
     // Reset killers for child ply
     killer[ply + 1][0] = killer[ply + 1][1] = 0;
