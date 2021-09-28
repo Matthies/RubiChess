@@ -117,6 +117,7 @@ bool featureSingularExtension;      //    6.25 +-  6.88Elo  http://chess.grantne
 bool featureLatecaptureExtension;   //   -3.47 +-  6.89Elo  http://chess.grantnet.us/test/19807/
 bool featureGoodquietsExtension;    //    1.22 +-  6.69Elo  http://chess.grantnet.us/test/19808/
 bool featureLmrRefinment;           //   50.38 +-  7.36Elo  http://chess.grantnet.us/test/19811/
+bool featureKillers;
 
 void registerFeatures()
 {
@@ -135,6 +136,7 @@ void registerFeatures()
     en.ucioptions.Register(&featureLatecaptureExtension, "FeatureLatecaptureExtension", ucicheck, "true");
     en.ucioptions.Register(&featureGoodquietsExtension, "FeatureGoodquietsExtension", ucicheck, "true");
     en.ucioptions.Register(&featureLmrRefinment, "FeatureLmrRefinment", ucicheck, "true");
+    en.ucioptions.Register(&featureKillers, "FeatureKillers", ucicheck, "true");
 }
 #endif
 
@@ -955,11 +957,13 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                             updateHistory(quietMoves[ply][i], -(depth * depth));
 
                         // Killermove
+                        BEGINFEATURE(featureKillers)
                         if (killer[ply][0] != mc)
                         {
                             killer[ply][1] = killer[ply][0];
                             killer[ply][0] = mc;
                         }
+                        ENDFEATURE
 
                         // save countermove
                         if (lastmove)
