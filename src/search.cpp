@@ -117,12 +117,12 @@ bool featureSingularExtension;      //    6.25 +-  6.88Elo  http://chess.grantne
 bool featureLatecaptureExtension;   //   -3.47 +-  6.89Elo  http://chess.grantnet.us/test/19807/
 bool featureGoodquietsExtension;    //    1.22 +-  6.69Elo  http://chess.grantnet.us/test/19808/
 bool featureLmrRefinment;           //   50.38 +-  7.36Elo  http://chess.grantnet.us/test/19811/
-bool featureLmrByStats;
-bool featureLmrByPv;
-bool featureLmrByBadHashmove;
-bool featureLmrByPrevMovenumber;
-bool featureKillers;
-bool featureCounter;
+bool featureLmrByStats;             //   39.25 +-  7.19Elo  http://chess.grantnet.us/test/19824/
+bool featureLmrByPv;                //   -2.26 +-  7.11Elo  http://chess.grantnet.us/test/19825/
+bool featureLmrByBadHashmove;       //    4.17 +-  7.02Elo  http://chess.grantnet.us/test/19826/
+bool featureLmrByPrevMovenumber;    //    0.52 +-  7.06Elo  http://chess.grantnet.us/test/19827/
+bool featureKillers;                //    5.56 +-  6.65Elo  http://chess.grantnet.us/test/19822/
+bool featureCounter;                //    2.43 +-  6.85Elo  http://chess.grantnet.us/test/19823/
 
 void registerFeatures()
 {
