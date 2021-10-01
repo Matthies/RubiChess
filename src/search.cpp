@@ -813,10 +813,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
         // Prune moves with bad counter move history
         if (Pt != MatePrune
-            && !ISTACTICAL(mc) && depth < 4
-            && cmptr[ply][0] && cmptr[ply][0][pc * 64 + to] < -1000 * depth
-            && cmptr[ply][1] && cmptr[ply][1][pc * 64 + to] < -2000 * depth)
+            && !ISTACTICAL(mc) && effectiveDepth < 4
+            && cmptr[ply][0] && cmptr[ply][0][pc * 64 + to] < -1000 * depth)
         {
+            STATISTICSINC(moves_pruned_badcmh);
             SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_BADHISTORYPRUNED;);
             continue;
         }
@@ -1780,11 +1780,12 @@ void search_statistics()
     f2 = 100.0 * statistics.moves_pruned_lmp / (double)n;
     f3 = 100.0 * statistics.moves_pruned_futility / (double)n;
     f4 = 100.0 * statistics.moves_pruned_badsee / (double)n;
+    f10 = 100.0 * statistics.moves_pruned_badcmh / (double)n;
     f5 = n / (double)statistics.moves_loop_n;
     i3 = statistics.moves_played[0] + statistics.moves_played[1];
     f6 = 100.0 * statistics.moves_fail_high / (double)i3;
     f7 = 100.0 * statistics.moves_bad_hash / i2;
-    printf("(ST) Moves:   %12lld   %%Quiet-M.: %5.2f   %%Tact.-M.: %5.2f   %%BadHshM: %5.2f   %%LMP-M.:  %5.2f   %%FutilM.: %5.2f   %%BadSEE: %5.2f  Mvs/Lp: %5.2f   %%FailHi: %5.2f\n", n, f0, f1, f7, f2, f3, f4, f5, f6);
+    printf("(ST) Moves:   %12lld   %%Quiet-M.: %5.2f   %%Tact.-M.: %5.2f   %%BadHshM: %5.2f   %%LMP-M.:  %5.2f   %%FutilM.: %5.2f   %%BadSEE: %5.2f  %%BadCMH: %5.2f  Mvs/Lp: %5.2f   %%FailHi: %5.2f\n", n, f0, f1, f7, f2, f3, f4, f10, f5, f6);
 
     // late move reduction statistics
     U64 red_n = statistics.red_pi[0] + statistics.red_pi[1];
