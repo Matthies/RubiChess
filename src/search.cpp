@@ -810,7 +810,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             }
         }
         effectiveDepth = depth + extendall - reduction + extendMove;
-
+#if 0
         // Prune moves with bad counter move history
         if (Pt != MatePrune
             && !ISTACTICAL(mc) && effectiveDepth < 4
@@ -821,7 +821,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_BADHISTORYPRUNED;);
             continue;
         }
-
+#endif
         if (!playMove(mc))
             continue;
 
