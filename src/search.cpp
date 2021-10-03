@@ -774,6 +774,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 }
             }
         }
+        
+        if (!playMove(mc))
+            continue;
 
         // Late move reduction
         int reduction = 0;
@@ -793,7 +796,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 reduction -= (PVNode && (!tpHit || hashmovecode != (uint16_t)mc || hashscore > alpha));
 
                 // adjust reduction with opponents move number
-                reduction -= (CurrentMoveNum[ply] >= sps.lmropponentmovecount);
+                reduction -= (CurrentMoveNum[ply - 1] >= sps.lmropponentmovecount);
 
                 STATISTICSINC(red_pi[positionImproved]);
                 STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, legalMoves + 1)]);
@@ -810,19 +813,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             }
         }
         effectiveDepth = depth + extendall - reduction + extendMove;
-
-        // Prune moves with bad counter move history
-        if (Pt != MatePrune
-            && !ISTACTICAL(mc) && effectiveDepth < 4
-            && cmptr[ply][0] && cmptr[ply][0][pc * 64 + to] < 0
-            && cmptr[ply][1] && cmptr[ply][1][pc * 64 + to] < 0)
-        {
-            SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_BADHISTORYPRUNED;);
-            continue;
-        }
-
-        if (!playMove(mc))
-            continue;
 
         SDEBUGDO(isDebugMove, debugMovePlayed = true;);
         STATISTICSINC(moves_played[(bool)ISTACTICAL(mc)]);
