@@ -795,12 +795,13 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             && !excludeMove
             && tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth - 3, alpha, beta, ply)  // FIXME: maybe needs hashscore = FIXMATESCOREPROBE(hashscore, ply);
             && hashscore > alpha
-#ifdef NNUELEARN
-            // No singular extension in root of gensfen
-            && ply > 0
-#endif
             )
         {
+#ifdef NNUELEARN
+            // No extension in root of gensfen
+            if (ply == 0)
+                break;
+#endif
             excludemovestack[ply - 1] = hashmovecode;
             int sBeta = max(hashscore - sps.singularmarginperdepth * depth, SCOREBLACKWINS);
             int redScore = alphabeta<Pt>(sBeta - 1, sBeta, depth / 2);
@@ -885,9 +886,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
                 // adjust reduction with opponents move number
                 BEGINFEATURE(featureLmrByPrevMovenumber)
-                reduction -= (CurrentMoveNum[ply] >= sps.lmropponentmovecount);
-                ENDFEATURE
                 reduction -= (CurrentMoveNum[ply - 1] >= sps.lmropponentmovecount);
+                ENDFEATURE
 
                 STATISTICSINC(red_pi[positionImproved]);
                 STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, legalMoves + 1)]);
