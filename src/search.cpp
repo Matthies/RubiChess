@@ -72,8 +72,8 @@ struct searchparamset {
     searchparam SP(futilitymindepth, 8);
     searchparam SP(futilityreversedepthfactor, 70);
     searchparam SP(futilityreverseimproved, 20);
-    searchparam SP(futilitymargin, 7);
-    searchparam SP(futilitymarginperdepth, 70);
+    searchparam SP(futilitymargin, 10);
+    searchparam SP(futilitymarginperdepth, 59);
     // null move
     searchparam SP(nmmindepth, 2);
     searchparam SP(nmmredbase, 4);
