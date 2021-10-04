@@ -1578,8 +1578,8 @@ static void search_gen1(searchthread *thr)
 
 void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
 {
-    int timetouse = (en.isWhite ? en.wtime : en.btime);
     int timeinc = (en.isWhite ? en.winc : en.binc);
+    int timetouse = max(timeinc, (en.isWhite ? en.wtime : en.btime));
     int overhead = en.moveOverhead + 8 * en.Threads;
     int constance = constantRootMoves * 2 + en.ponderhit * 4;
 
@@ -1599,12 +1599,13 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
         en.endtime2 = startTime + min(max(0, timetouse - overhead * en.movestogo), f2 * timetouse / (en.movestogo + 1) / 10) * en.frequency / 1000;
     }
     else if (timetouse) {
-        int ph = en.sthread[0].pos.phase();
         if (timeinc)
         {
-            // sudden death with increment; split the remaining time in (256-phase) timeslots
+            // sudden death with increment; split the remaining time in n timeslots depending on material phase and move number
+            // ph: phase of the game averaging material and move number
             // f1: stop soon after 5..17 timeslot
             // f2: stop immediately after 15..27 timeslots
+            int ph = (en.sthread[0].pos.phase() + min(255, en.sthread[0].pos.fullmovescounter * 6)) / 2;
             int f1 = max(5, 17 - constance);
             int f2 = max(15, 27 - constance);
             if (complete)
@@ -1633,6 +1634,7 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
 
 #ifdef TDEBUG
     printf("info string Time for this move: %4.3f  /  %4.3f\n", (en.endtime1 - en.starttime) / (double)en.frequency, (en.endtime2 - en.starttime) / (double)en.frequency);
+    if (timeinc) printf("info string Timefactor (use/inc): %d\n", timetouse / timeinc);
 #endif
 }
 
