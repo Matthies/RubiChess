@@ -1601,15 +1601,15 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
         if (timeinc)
         {
             // sudden death with increment; split the remaining time in n timeslots depending on material phase and move number
+            // ph: phase of the game averaging material and move number
             // f1: stop soon after 5..17 timeslot
             // f2: stop immediately after 15..27 timeslots
-            int ph = en.sthread[0].pos.phase();                             // 0...255
-            int ph2 = 256 - min(255, en.sthread[0].pos.fullmovescounter * 6);     // 0...255
+            int ph = (en.sthread[0].pos.phase() + min(255, en.sthread[0].pos.fullmovescounter * 6)) / 2;
             int f1 = max(5, 17 - constance);
             int f2 = max(15, 27 - constance);
             if (complete)
-                en.endtime1 = startTime + max(timeinc, f1 * (timetouse + timeinc) / (256 - (ph + ph2) / 2)) * en.frequency / 1000;
-            en.endtime2 = startTime + min(max(0, timetouse - overhead), max(timeinc, f2 * (timetouse + timeinc) / (256 - (ph + ph2) / 2))) * en.frequency / 1000;
+                en.endtime1 = startTime + max(timeinc, f1 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
+            en.endtime2 = startTime + min(max(0, timetouse - overhead), max(timeinc, f2 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
         }
         else {
             // sudden death without increment; play for another x;y moves
