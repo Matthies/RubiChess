@@ -1577,8 +1577,8 @@ static void search_gen1(searchthread *thr)
 
 void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
 {
-    int timetouse = (en.isWhite ? en.wtime : en.btime);
     int timeinc = (en.isWhite ? en.winc : en.binc);
+    int timetouse = max(timeinc, (en.isWhite ? en.wtime : en.btime));
     int overhead = en.moveOverhead + 8 * en.Threads;
     int constance = constantRootMoves * 2 + en.ponderhit * 4;
 
@@ -1599,13 +1599,13 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
     }
     else if (timetouse) {
         int ph = en.sthread[0].pos.phase();
-        int ph2 = max(0, 30 - en.sthread[0].pos.fullmovescounter) / 2;
+        int ph2 = max(0, 40 - en.sthread[0].pos.fullmovescounter) / 8;
         if (timeinc)
         {
             // sudden death with increment; split the remaining time in (256-phase) timeslots
             // f1: stop soon after 5..17 timeslot
             // f2: stop immediately after 15..27 timeslots
-            int f1 = max(5, 17 - constance) + ph2 / 4;
+            int f1 = max(5, 17 - constance) + ph2 / 2;
             int f2 = max(15, 27 - constance) + ph2;
             if (complete)
                 en.endtime1 = startTime + max(timeinc, f1 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
