@@ -1336,6 +1336,7 @@ static void search_gen1(searchthread *thr)
                 delta = min(SCOREWHITEWINS, delta + delta / sps.aspincratio + sps.aspincbase);
                 inWindow = 0;
                 reportedThisDepth = false;
+                constantRootMoves--;
             }
             else if (score == beta)
             {
@@ -1344,6 +1345,7 @@ static void search_gen1(searchthread *thr)
                 delta = min(SCOREWHITEWINS, delta + delta / sps.aspincratio + sps.aspincbase);
                 inWindow = 2;
                 reportedThisDepth = false;
+                constantRootMoves--;
             }
             else
             {
@@ -1447,7 +1449,7 @@ static void search_gen1(searchthread *thr)
             thr->depth++;
             if (en.pondersearch == PONDERING && thr->depth > maxdepth) thr->depth--;  // stay on maxdepth when pondering
             reportedThisDepth = true;
-            constantRootMoves++;
+            constantRootMoves = max(constantRootMoves + 1, 0);
         }
 
         if (lastBestMove != pos->bestmove)
@@ -1599,13 +1601,14 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
     }
     else if (timetouse) {
         int ph = en.sthread[0].pos.phase();
+        int ph2 = max(0, 40 - en.sthread[0].pos.fullmovescounter) / 2;
         if (timeinc)
         {
             // sudden death with increment; split the remaining time in (256-phase) timeslots
             // f1: stop soon after 5..17 timeslot
             // f2: stop immediately after 15..27 timeslots
-            int f1 = max(5, 17 - constance);
-            int f2 = max(15, 27 - constance);
+            int f1 = max(5, 17 - constance) + ph2 / 4;
+            int f2 = max(15, 27 - constance) + ph2;
             if (complete)
                 en.endtime1 = startTime + max(timeinc, f1 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
             en.endtime2 = startTime + min(max(0, timetouse - overhead), max(timeinc, f2 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
