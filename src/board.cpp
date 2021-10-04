@@ -464,7 +464,7 @@ int chessposition::getFromFen(const char* sFen)
     if (numToken > 5)
     {
         try {
-            fullmovescounter = max(1, stoi(token[5]));
+            fullmovescounter = stoi(token[5]);
         }
         catch (...) {}
     }
