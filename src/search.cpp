@@ -1601,7 +1601,7 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
     }
     else if (timetouse) {
         int ph = en.sthread[0].pos.phase();
-        int ph2 = max(0, 40 - en.sthread[0].pos.fullmovescounter) / 2;
+        int ph2 = max(0, 30 - en.sthread[0].pos.fullmovescounter) / 2;
         if (timeinc)
         {
             // sudden death with increment; split the remaining time in (256-phase) timeslots
