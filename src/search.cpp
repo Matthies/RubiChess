@@ -1336,7 +1336,6 @@ static void search_gen1(searchthread *thr)
                 delta = min(SCOREWHITEWINS, delta + delta / sps.aspincratio + sps.aspincbase);
                 inWindow = 0;
                 reportedThisDepth = false;
-                constantRootMoves--;
             }
             else if (score == beta)
             {
@@ -1345,7 +1344,6 @@ static void search_gen1(searchthread *thr)
                 delta = min(SCOREWHITEWINS, delta + delta / sps.aspincratio + sps.aspincbase);
                 inWindow = 2;
                 reportedThisDepth = false;
-                constantRootMoves--;
             }
             else
             {
@@ -1449,7 +1447,7 @@ static void search_gen1(searchthread *thr)
             thr->depth++;
             if (en.pondersearch == PONDERING && thr->depth > maxdepth) thr->depth--;  // stay on maxdepth when pondering
             reportedThisDepth = true;
-            constantRootMoves = max(constantRootMoves + 1, 0);
+            constantRootMoves++;
         }
 
         if (lastBestMove != pos->bestmove)
