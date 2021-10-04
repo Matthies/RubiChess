@@ -1604,7 +1604,7 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
             // f1: stop soon after 5..17 timeslot
             // f2: stop immediately after 15..27 timeslots
             int ph = en.sthread[0].pos.phase();                             // 0...255
-            int ph2 = min(255, en.sthread[0].pos.fullmovescounter * 6);     // 0...255
+            int ph2 = 256 - min(255, en.sthread[0].pos.fullmovescounter * 6);     // 0...255
             int f1 = max(5, 17 - constance);
             int f2 = max(15, 27 - constance);
             if (complete)
