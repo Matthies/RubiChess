@@ -1608,8 +1608,8 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
             int f1 = max(5, 17 - constance);
             int f2 = max(15, 27 - constance);
             if (complete)
-                en.endtime1 = startTime + max(timeinc, f1 * (timetouse + timeinc) / ((128 - ph / 2) + (128 - ph2 / 2))) * en.frequency / 1000;
-            en.endtime2 = startTime + min(max(0, timetouse - overhead), max(timeinc, f2 * (timetouse + timeinc) / ((128 - ph / 2) + (128 - ph2 / 2)))) * en.frequency / 1000;
+                en.endtime1 = startTime + max(timeinc, f1 * (timetouse + timeinc) / (256 - (ph + ph2) / 2)) * en.frequency / 1000;
+            en.endtime2 = startTime + min(max(0, timetouse - overhead), max(timeinc, f2 * (timetouse + timeinc) / (256 - (ph + ph2) / 2))) * en.frequency / 1000;
         }
         else {
             // sudden death without increment; play for another x;y moves
