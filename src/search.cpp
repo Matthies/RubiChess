@@ -1598,18 +1598,18 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
         en.endtime2 = startTime + min(max(0, timetouse - overhead * en.movestogo), f2 * timetouse / (en.movestogo + 1) / 10) * en.frequency / 1000;
     }
     else if (timetouse) {
-        int ph = en.sthread[0].pos.phase();
-        int ph2 = max(0, 40 - en.sthread[0].pos.fullmovescounter) / 8;
+        int ph = en.sthread[0].pos.phase();                             // 0...255
+        int ph2 = max(255, en.sthread[0].pos.fullmovescounter * 6);     // 0...255
         if (timeinc)
         {
             // sudden death with increment; split the remaining time in (256-phase) timeslots
             // f1: stop soon after 5..17 timeslot
             // f2: stop immediately after 15..27 timeslots
-            int f1 = max(5, 17 - constance) + ph2 / 2;
-            int f2 = max(15, 27 - constance) + ph2;
+            int f1 = max(5, 17 - constance);
+            int f2 = max(15, 27 - constance);
             if (complete)
-                en.endtime1 = startTime + max(timeinc, f1 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
-            en.endtime2 = startTime + min(max(0, timetouse - overhead), max(timeinc, f2 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
+                en.endtime1 = startTime + max(timeinc, f1 * (timetouse + timeinc) / ((128 - ph / 2) + (128 - ph2 / 2))) * en.frequency / 1000;
+            en.endtime2 = startTime + min(max(0, timetouse - overhead), max(timeinc, f2 * (timetouse + timeinc) / ((128 - ph / 2) + (128 - ph2 / 2)))) * en.frequency / 1000;
         }
         else {
             // sudden death without increment; play for another x;y moves
@@ -1633,6 +1633,7 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
 
 #ifdef TDEBUG
     printf("info string Time for this move: %4.3f  /  %4.3f\n", (en.endtime1 - en.starttime) / (double)en.frequency, (en.endtime2 - en.starttime) / (double)en.frequency);
+    if (timeinc) printf("info string Timefactor (use/inc): %d\n", timetouse / timeinc);
 #endif
 }
 
