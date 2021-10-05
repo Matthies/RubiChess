@@ -72,8 +72,8 @@ struct searchparamset {
     searchparam SP(futilitymindepth, 8);
     searchparam SP(futilityreversedepthfactor, 70);
     searchparam SP(futilityreverseimproved, 20);
-    searchparam SP(futilitymargin, 436);
-    searchparam SP(futilitymarginperdepth, 0);
+    searchparam SP(futilitymargin, 10);
+    searchparam SP(futilitymarginperdepth, 59);
     // null move
     searchparam SP(nmmindepth, 2);
     searchparam SP(nmmredbase, 4);
@@ -560,7 +560,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     }
 
     // futility pruning
-    //bool futility = false;
+    bool futility = false;
     if (Pt != NoPrune && depth <= sps.futilitymindepth)
     {
         // reverse futility pruning
@@ -570,7 +570,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             SDEBUGDO(isDebugPv, pvabortval[ply] = staticeval; pvaborttype[ply] = PVA_REVFUTILITYPRUNED;);
             return staticeval;
         }
-        //futility = (staticeval < alpha - (sps.futilitymargin + sps.futilitymarginperdepth * depth));
+        futility = (staticeval < alpha - (sps.futilitymargin + sps.futilitymarginperdepth * depth));
     }
 
     // Nullmove pruning with verification like SF does it
@@ -682,6 +682,15 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             continue;
         }
 
+        // Check for futility pruning condition for this move and skip move if at least one legal move is already found
+        bool futilityPrune = futility && !ISTACTICAL(mc) && !isCheckbb && alpha <= 900 && !moveGivesCheck(mc);
+        if (futilityPrune && legalMoves)
+        {
+            STATISTICSINC(moves_pruned_futility);
+            SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_FUTILITYPRUNED;);
+            continue;
+        }
+
         // Prune moves with bad SEE
         if (Pt != NoPrune 
             && !isCheckbb
@@ -765,7 +774,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 }
             }
         }
-        
+
+        if (!playMove(mc))
+            continue;
+
         // Late move reduction
         int reduction = 0;
         if (depth >= sps.lmrmindepth)
@@ -784,7 +796,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 reduction -= (PVNode && (!tpHit || hashmovecode != (uint16_t)mc || hashscore > alpha));
 
                 // adjust reduction with opponents move number
-                reduction -= (CurrentMoveNum[ply] >= sps.lmropponentmovecount);
+                reduction -= (CurrentMoveNum[ply - 1] >= sps.lmropponentmovecount);
 
                 STATISTICSINC(red_pi[positionImproved]);
                 STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, legalMoves + 1)]);
@@ -801,19 +813,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             }
         }
         effectiveDepth = depth + extendall - reduction + extendMove;
-
-        // Check for futility pruning condition for this move and skip move if at least one legal move is already found
-        bool futility = (effectiveDepth <= sps.futilitymindepth && staticeval < alpha - (sps.futilitymargin + sps.futilitymarginperdepth * effectiveDepth));
-        bool futilityPrune = futility && !ISTACTICAL(mc) && !isCheckbb && alpha <= 900 && !moveGivesCheck(mc);
-        if (legalMoves && futilityPrune)
-        {
-            STATISTICSINC(moves_pruned_futility);
-            SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_FUTILITYPRUNED;);
-            continue;
-        }
-
-        if (!playMove(mc))
-            continue;
 
         SDEBUGDO(isDebugMove, debugMovePlayed = true;);
         STATISTICSINC(moves_played[(bool)ISTACTICAL(mc)]);
