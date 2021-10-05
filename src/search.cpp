@@ -966,11 +966,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
         lastmoveindex = 0;
         if (!maxmoveindex)
             maxmoveindex = min(en.MultiPV, rootmovelist.length);
-        for (int i = 0; i < maxmoveindex; i++)
-        {
-            multipvtable[i][0] = 0;
-            bestmovescore[i] = NOSCORE;
-        }
     }
 
 #ifdef SDEBUG
@@ -1024,6 +1019,21 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
                 m->value = (mvv[GETCAPTURE(m->code) >> 1] | lva[GETPIECE(m->code) >> 1]);
             else 
                 m->value = history[state & S2MMASK][GETFROM(m->code)][GETCORRECTTO(m->code)];
+            if (isMultiPV) {
+                if (multipvtable[0][0] == m->code)
+                    m->value = PVVAL;
+                if (multipvtable[1][0] == m->code)
+                    m->value = PVVAL - 1;
+            }
+        }
+    }
+
+    if (isMultiPV)
+    {
+        for (int i = 0; i < maxmoveindex; i++)
+        {
+            multipvtable[i][0] = 0;
+            bestmovescore[i] = NOSCORE;
         }
     }
 
@@ -1205,18 +1215,9 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
         }
     }
 
-    if (isMultiPV)
-    {
-        if (eval_type == HASHEXACT)
-            return bestmovescore[maxmoveindex - 1];
-        else
-            return alpha;
-    }
-    else {
-        tp.addHash(hash, alpha, staticeval, eval_type, depth, (uint16_t)bestmove);
-        SDEBUGDO(isDebugPv, tp.debugSetPv(hash, movesOnStack() + " depth=" + to_string(depth)););
-        return alpha;
-    }
+    tp.addHash(hash, alpha, staticeval, eval_type, depth, (uint16_t)bestmove);
+    SDEBUGDO(isDebugPv, tp.debugSetPv(hash, movesOnStack() + " depth=" + to_string(depth)););
+    return alpha;
 }
 
 
