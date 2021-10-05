@@ -1529,10 +1529,7 @@ static void search_gen1(searchthread *thr)
         en.rootposition.lastbestmovescore = pos->bestmovescore[0];
 
         if (!reportedThisDepth || bestthr->index)
-        {
-            printf("info string notreportedthisdepth\n");
             uciScore(thr, inWindow, getTime(), inWindow == 1 ? pos->bestmovescore[0] : score);
-        }
 
         string strBestmove;
         string strPonder = "";
