@@ -966,11 +966,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
         lastmoveindex = 0;
         if (!maxmoveindex)
             maxmoveindex = min(en.MultiPV, rootmovelist.length);
-        for (int i = 0; i < maxmoveindex; i++)
-        {
-            multipvtable[i][0] = 0;
-            bestmovescore[i] = NOSCORE;
-        }
     }
 
 #ifdef SDEBUG
@@ -1024,6 +1019,21 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
                 m->value = (mvv[GETCAPTURE(m->code) >> 1] | lva[GETPIECE(m->code) >> 1]);
             else 
                 m->value = history[state & S2MMASK][GETFROM(m->code)][GETCORRECTTO(m->code)];
+            if (isMultiPV) {
+                if (multipvtable[0][0] == m->code)
+                    m->value = PVVAL;
+                if (multipvtable[1][0] == m->code)
+                    m->value = PVVAL - 1;
+            }
+        }
+    }
+
+    if (isMultiPV)
+    {
+        for (int i = 0; i < maxmoveindex; i++)
+        {
+            multipvtable[i][0] = 0;
+            bestmovescore[i] = NOSCORE;
         }
     }
 
@@ -1153,18 +1163,18 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
         // If it fails low we don't change bestmove anymore but remember it in bestFailingLow for move ordering
         if (score > alpha)
         {
+            SDEBUGDO(isDebugPv, pvaborttype[0] = isDebugMove ? PVA_BESTMOVE : debugMovePlayed ? PVA_NOTBESTMOVE : PVA_OMITTED;);
+            if (bestmove != pvtable[0][0])
+            {
+                bestmove = pvtable[0][0];
+                pondermove = pvtable[0][1];
+            }
+            else if (pvtable[0][1]) {
+                // use new ponder move
+                pondermove = pvtable[0][1];
+            }
             if (!isMultiPV)
             {
-                SDEBUGDO(isDebugPv, pvaborttype[0] = isDebugMove ? PVA_BESTMOVE : debugMovePlayed ? PVA_NOTBESTMOVE : PVA_OMITTED;);
-                if (bestmove != pvtable[0][0])
-                {
-                    bestmove = pvtable[0][0];
-                    pondermove = pvtable[0][1];
-                }
-                else if (pvtable[0][1]) {
-                    // use new ponder move
-                    pondermove = pvtable[0][1];
-                }
                 alpha = score;
                 bestmovescore[0] = score;
                 eval_type = HASHEXACT;
@@ -1197,7 +1207,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
                 return beta;   // fail hard beta-cutoff
             }
         }
-        else if (!isMultiPV)
+        else
         {
             // at fail low don't overwrite an existing move
             if (!bestmove)
@@ -1205,18 +1215,9 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
         }
     }
 
-    if (isMultiPV)
-    {
-        if (eval_type == HASHEXACT)
-            return bestmovescore[maxmoveindex - 1];
-        else
-            return alpha;
-    }
-    else {
-        tp.addHash(hash, alpha, staticeval, eval_type, depth, (uint16_t)bestmove);
-        SDEBUGDO(isDebugPv, tp.debugSetPv(hash, movesOnStack() + " depth=" + to_string(depth)););
-        return alpha;
-    }
+    tp.addHash(hash, alpha, staticeval, eval_type, depth, (uint16_t)bestmove);
+    SDEBUGDO(isDebugPv, tp.debugSetPv(hash, movesOnStack() + " depth=" + to_string(depth)););
+    return alpha;
 }
 
 
@@ -1383,13 +1384,13 @@ static void search_gen1(searchthread *thr)
             // search was successfull
             if (isMultiPV)
             {
-                i = 0;
+                // Avoid output of incomplete iterations
+                if (en.stopLevel == ENGINESTOPIMMEDIATELY)
+                    break;
+
                 int maxmoveindex = min(en.MultiPV, pos->rootmovelist.length);
-                do
-                {
+                for (int i = 0; i < maxmoveindex; i++)
                     uciScore(thr, inWindow, nowtime, pos->bestmovescore[i], i);
-                    i++;
-                } while (i < maxmoveindex && pos->bestmovescore[i] != NOSCORE);
             }
             else {
                 // The only two cases that bestmove is not set can happen if alphabeta hit the TP table or we are in TB
