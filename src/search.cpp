@@ -1153,18 +1153,18 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
         // If it fails low we don't change bestmove anymore but remember it in bestFailingLow for move ordering
         if (score > alpha)
         {
+            SDEBUGDO(isDebugPv, pvaborttype[0] = isDebugMove ? PVA_BESTMOVE : debugMovePlayed ? PVA_NOTBESTMOVE : PVA_OMITTED;);
+            if (bestmove != pvtable[0][0])
+            {
+                bestmove = pvtable[0][0];
+                pondermove = pvtable[0][1];
+            }
+            else if (pvtable[0][1]) {
+                // use new ponder move
+                pondermove = pvtable[0][1];
+            }
             if (!isMultiPV)
             {
-                SDEBUGDO(isDebugPv, pvaborttype[0] = isDebugMove ? PVA_BESTMOVE : debugMovePlayed ? PVA_NOTBESTMOVE : PVA_OMITTED;);
-                if (bestmove != pvtable[0][0])
-                {
-                    bestmove = pvtable[0][0];
-                    pondermove = pvtable[0][1];
-                }
-                else if (pvtable[0][1]) {
-                    // use new ponder move
-                    pondermove = pvtable[0][1];
-                }
                 alpha = score;
                 bestmovescore[0] = score;
                 eval_type = HASHEXACT;
@@ -1197,7 +1197,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
                 return beta;   // fail hard beta-cutoff
             }
         }
-        else if (!isMultiPV)
+        else
         {
             // at fail low don't overwrite an existing move
             if (!bestmove)
@@ -1383,13 +1383,13 @@ static void search_gen1(searchthread *thr)
             // search was successfull
             if (isMultiPV)
             {
-                i = 0;
+                // Avoid output of incomplete iterations
+                if (en.stopLevel == ENGINESTOPIMMEDIATELY)
+                    break;
+
                 int maxmoveindex = min(en.MultiPV, pos->rootmovelist.length);
-                do
-                {
+                for (int i = 0; i < maxmoveindex; i++)
                     uciScore(thr, inWindow, nowtime, pos->bestmovescore[i], i);
-                    i++;
-                } while (i < maxmoveindex && pos->bestmovescore[i] != NOSCORE);
             }
             else {
                 // The only two cases that bestmove is not set can happen if alphabeta hit the TP table or we are in TB
@@ -1528,7 +1528,10 @@ static void search_gen1(searchthread *thr)
         en.rootposition.lastbestmovescore = pos->bestmovescore[0];
 
         if (!reportedThisDepth || bestthr->index)
+        {
+            printf("info string notreportedthisdepth\n");
             uciScore(thr, inWindow, getTime(), inWindow == 1 ? pos->bestmovescore[0] : score);
+        }
 
         string strBestmove;
         string strPonder = "";
