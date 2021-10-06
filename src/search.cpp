@@ -72,8 +72,8 @@ struct searchparamset {
     searchparam SP(futilitymindepth, 8);
     searchparam SP(futilityreversedepthfactor, 70);
     searchparam SP(futilityreverseimproved, 20);
-    searchparam SP(futilitymargin, 100);
-    searchparam SP(futilitymarginperdepth, 80);
+    searchparam SP(futilitymargin, 10);
+    searchparam SP(futilitymarginperdepth, 59);
     // null move
     searchparam SP(nmmindepth, 2);
     searchparam SP(nmmredbase, 4);
@@ -1060,11 +1060,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
         lastmoveindex = 0;
         if (!maxmoveindex)
             maxmoveindex = min(en.MultiPV, rootmovelist.length);
-        for (int i = 0; i < maxmoveindex; i++)
-        {
-            multipvtable[i][0] = 0;
-            bestmovescore[i] = NOSCORE;
-        }
     }
 
 #ifdef SDEBUG
@@ -1118,6 +1113,21 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
                 m->value = (mvv[GETCAPTURE(m->code) >> 1] | lva[GETPIECE(m->code) >> 1]);
             else
                 m->value = history[state & S2MMASK][GETFROM(m->code)][GETCORRECTTO(m->code)];
+            if (isMultiPV) {
+                if (multipvtable[0][0] == m->code)
+                    m->value = PVVAL;
+                if (multipvtable[1][0] == m->code)
+                    m->value = PVVAL - 1;
+            }
+        }
+    }
+
+    if (isMultiPV)
+    {
+        for (int i = 0; i < maxmoveindex; i++)
+        {
+            multipvtable[i][0] = 0;
+            bestmovescore[i] = NOSCORE;
         }
     }
 
@@ -1247,18 +1257,18 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
         // If it fails low we don't change bestmove anymore but remember it in bestFailingLow for move ordering
         if (score > alpha)
         {
+            SDEBUGDO(isDebugPv, pvaborttype[0] = isDebugMove ? PVA_BESTMOVE : debugMovePlayed ? PVA_NOTBESTMOVE : PVA_OMITTED;);
+            if (bestmove != pvtable[0][0])
+            {
+                bestmove = pvtable[0][0];
+                pondermove = pvtable[0][1];
+            }
+            else if (pvtable[0][1]) {
+                // use new ponder move
+                pondermove = pvtable[0][1];
+            }
             if (!isMultiPV)
             {
-                SDEBUGDO(isDebugPv, pvaborttype[0] = isDebugMove ? PVA_BESTMOVE : debugMovePlayed ? PVA_NOTBESTMOVE : PVA_OMITTED;);
-                if (bestmove != pvtable[0][0])
-                {
-                    bestmove = pvtable[0][0];
-                    pondermove = pvtable[0][1];
-                }
-                else if (pvtable[0][1]) {
-                    // use new ponder move
-                    pondermove = pvtable[0][1];
-                }
                 alpha = score;
                 bestmovescore[0] = score;
                 eval_type = HASHEXACT;
@@ -1291,7 +1301,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
                 return beta;   // fail hard beta-cutoff
             }
         }
-        else if (!isMultiPV)
+        else
         {
             // at fail low don't overwrite an existing move
             if (!bestmove)
@@ -1299,18 +1309,9 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
         }
     }
 
-    if (isMultiPV)
-    {
-        if (eval_type == HASHEXACT)
-            return bestmovescore[maxmoveindex - 1];
-        else
-            return alpha;
-    }
-    else {
-        tp.addHash(hash, alpha, staticeval, eval_type, depth, (uint16_t)bestmove);
-        SDEBUGDO(isDebugPv, tp.debugSetPv(hash, movesOnStack() + " depth=" + to_string(depth)););
-        return alpha;
-    }
+    tp.addHash(hash, alpha, staticeval, eval_type, depth, (uint16_t)bestmove);
+    SDEBUGDO(isDebugPv, tp.debugSetPv(hash, movesOnStack() + " depth=" + to_string(depth)););
+    return alpha;
 }
 
 
@@ -1349,14 +1350,14 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, in
 
 
 template <RootsearchType RT>
-static void search_gen1(searchthread *thr)
+static void mainSearch(searchthread *thr)
 {
     int score;
     int alpha, beta;
     int delta = 8;
     int maxdepth;
     int inWindow = 1;
-    bool reportedThisDepth;
+    bool reportedThisDepth = false;
 
 #ifdef TDEBUG
     en.bStopCount = false;
@@ -1452,11 +1453,10 @@ static void search_gen1(searchthread *thr)
             }
         }
 
-        int i;
         if (pos->pvtable[0][0])
         {
             // copy new pv to lastpv
-            i = 0;
+            int i = 0;
             while (pos->pvtable[0][i])
             {
                 pos->lastpv[i] = pos->pvtable[0][i];
@@ -1477,13 +1477,13 @@ static void search_gen1(searchthread *thr)
             // search was successfull
             if (isMultiPV)
             {
-                i = 0;
+                // Avoid output of incomplete iterations
+                if (en.stopLevel == ENGINESTOPIMMEDIATELY)
+                    break;
+
                 int maxmoveindex = min(en.MultiPV, pos->rootmovelist.length);
-                do
-                {
+                for (int i = 0; i < maxmoveindex; i++)
                     uciScore(thr, inWindow, nowtime, pos->bestmovescore[i], i);
-                    i++;
-                } while (i < maxmoveindex && pos->bestmovescore[i] != NOSCORE);
             }
             else {
                 // The only two cases that bestmove is not set can happen if alphabeta hit the TP table or we are in TB
@@ -1671,8 +1671,8 @@ static void search_gen1(searchthread *thr)
 
 void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
 {
-    int timetouse = (en.isWhite ? en.wtime : en.btime);
     int timeinc = (en.isWhite ? en.winc : en.binc);
+    int timetouse = max(timeinc, (en.isWhite ? en.wtime : en.btime));
     int overhead = en.moveOverhead + 8 * en.Threads;
     int constance = constantRootMoves * 2 + en.ponderhit * 4;
 
@@ -1692,12 +1692,13 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
         en.endtime2 = startTime + min(max(0, timetouse - overhead * en.movestogo), f2 * timetouse / (en.movestogo + 1) / 10) * en.frequency / 1000;
     }
     else if (timetouse) {
-        int ph = en.sthread[0].pos.phase();
         if (timeinc)
         {
-            // sudden death with increment; split the remaining time in (256-phase) timeslots
+            // sudden death with increment; split the remaining time in n timeslots depending on material phase and move number
+            // ph: phase of the game averaging material and move number
             // f1: stop soon after 5..17 timeslot
             // f2: stop immediately after 15..27 timeslots
+            int ph = (en.sthread[0].pos.phase() + min(255, en.sthread[0].pos.fullmovescounter * 6)) / 2;
             int f1 = max(5, 17 - constance);
             int f2 = max(15, 27 - constance);
             if (complete)
@@ -1726,6 +1727,7 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
 
 #ifdef TDEBUG
     printf("info string Time for this move: %4.3f  /  %4.3f\n", (en.endtime1 - en.starttime) / (double)en.frequency, (en.endtime2 - en.starttime) / (double)en.frequency);
+    if (timeinc) printf("info string Timefactor (use/inc): %d\n", timetouse / timeinc);
 #endif
 }
 
@@ -1759,10 +1761,10 @@ void searchStart()
 
     if (en.MultiPV == 1)
         for (int tnum = 0; tnum < en.Threads; tnum++)
-            en.sthread[tnum].thr = thread(&search_gen1<SinglePVSearch>, &en.sthread[tnum]);
+            en.sthread[tnum].thr = thread(&mainSearch<SinglePVSearch>, &en.sthread[tnum]);
     else
         for (int tnum = 0; tnum < en.Threads; tnum++)
-            en.sthread[tnum].thr = thread(&search_gen1<MultiPVSearch>, &en.sthread[tnum]);
+            en.sthread[tnum].thr = thread(&mainSearch<MultiPVSearch>, &en.sthread[tnum]);
 }
 
 
