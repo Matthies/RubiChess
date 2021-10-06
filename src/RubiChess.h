@@ -49,7 +49,7 @@
 //#define NNUELEARN
 
 // Enable this to enable/disable search features via UCI options
-//#define FEATURESWITCH 
+#define FEATURESWITCH 
 
 
 #ifdef FINDMEMORYLEAKS
