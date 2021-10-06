@@ -1256,14 +1256,14 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, in
 
 
 template <RootsearchType RT>
-static void search_gen1(searchthread *thr)
+static void mainSearch(searchthread *thr)
 {
     int score;
     int alpha, beta;
     int delta = 8;
     int maxdepth;
     int inWindow = 1;
-    bool reportedThisDepth;
+    bool reportedThisDepth = false;
 
 #ifdef TDEBUG
     en.bStopCount = false;
@@ -1359,11 +1359,10 @@ static void search_gen1(searchthread *thr)
             }
         }
 
-        int i;
         if (pos->pvtable[0][0])
         {
             // copy new pv to lastpv
-            i = 0;
+            int i = 0;
             while (pos->pvtable[0][i])
             {
                 pos->lastpv[i] = pos->pvtable[0][i];
@@ -1668,10 +1667,10 @@ void searchStart()
 
     if (en.MultiPV == 1)
         for (int tnum = 0; tnum < en.Threads; tnum++)
-            en.sthread[tnum].thr = thread(&search_gen1<SinglePVSearch>, &en.sthread[tnum]);
+            en.sthread[tnum].thr = thread(&mainSearch<SinglePVSearch>, &en.sthread[tnum]);
     else
         for (int tnum = 0; tnum < en.Threads; tnum++)
-            en.sthread[tnum].thr = thread(&search_gen1<MultiPVSearch>, &en.sthread[tnum]);
+            en.sthread[tnum].thr = thread(&mainSearch<MultiPVSearch>, &en.sthread[tnum]);
 }
 
 
