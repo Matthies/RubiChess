@@ -107,7 +107,7 @@ bool featureTacticalHistory;        //    1.22 +-  6.67Elo  http://chess.grantne
 bool featureDeltaPrune;             //    2.26 +-  6.84Elo  http://chess.grantnet.us/test/19795/
 bool featureRazoring;               //    5.56 +-  6.54Elo  http://chess.grantnet.us/test/19798/
 bool featureReverseFutilityPruning; //   26.98 +-  7.13Elo  http://chess.grantnet.us/test/19799/
-bool featureFutilityPruning;        //   -1.39 +-  7.00Elo  http://chess.grantnet.us/test/19800/
+bool featureFutilityPruning;        //    6.13 +-  2.10Elo  http://chess.grantnet.us/test/20033/
 bool featureNullmovePruning;        //   45.95 +-  7.72Elo  http://chess.grantnet.us/test/19801/
 bool featureProbcut;                //   20.52 +-  6.76Elo  http://chess.grantnet.us/test/19802/
 bool featureLatemovePruning;        //   15.12 +-  6.73Elo  http://chess.grantnet.us/test/19804/
