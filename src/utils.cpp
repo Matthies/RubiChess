@@ -463,6 +463,7 @@ void compilerinfo::GetSystemInfo()
 
         if (i == 7)
         {
+            if (CPUInfo[1] & (1 <<  3)) machineSupports |= CPUBMI;
             if (CPUInfo[1] & (1 <<  8)) machineSupports |= CPUBMI2;
             if (CPUInfo[1] & (1 <<  5)) machineSupports |= CPUAVX2;
             if (CPUInfo[1] & ((1 << 16) | (1 << 30))) machineSupports |= CPUAVX512; // AVX512F + AVX512BW needed
