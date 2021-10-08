@@ -204,7 +204,7 @@ inline int pullMsb(U64* x) {
 #else
 #define GETLSB(i,x) _BitScanForward64((DWORD*)&(i), (x))
 inline int pullLsb(U64* x) {
-    int i;
+    DWORD i;
     _BitScanForward64(&i, *x);
     *x &= *x - 1;
     return i;

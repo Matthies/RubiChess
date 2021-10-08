@@ -83,13 +83,13 @@ AVX512=no
 !ENDIF
 !IF [@echo $(CPUFLAGS) | find "bmi2" > nul] == 0 || [type $(NATIVEFLAGS) 2>nul | find "bmi2" > nul] == 0
 BMI2=yes
-ARCHFLAGS=$(ARCHFLAGS) -DUSE_BMI2 -mbmi2
+ARCHFLAGS=$(ARCHFLAGS) -DUSE_BMI2 -mbmi2 -DUSE_BMI -mbmi -mlzcnt
 !ELSE
 BMI2=no
 !ENDIF
 !IF [@echo $(CPUFLAGS) | find "avx2" > nul] == 0 || [type $(NATIVEFLAGS) 2>nul | find "avx2" > nul] == 0
 AVX2=yes
-ARCHFLAGS=$(ARCHFLAGS) -DUSE_AVX2 -mavx2
+ARCHFLAGS=$(ARCHFLAGS) -DUSE_AVX2 -mavx2 -DUSE_BMI -mbmi -mlzcnt
 !ELSE
 AVX2=no
 !ENDIF
