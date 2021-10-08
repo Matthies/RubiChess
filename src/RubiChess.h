@@ -186,11 +186,14 @@ typedef unsigned int PieceType;
 #define MORETHANONE(x) ((x) & ((x) - 1))
 #define ONEORZERO(x) (!MORETHANONE(x))
 #if defined(_MSC_VER)
+#define Bitloop(X) for(;X; X = _blsr_u64(X))
 #define GETLSB(i,x) _BitScanForward64((DWORD*)&(i), (x))
 inline int pullLsb(U64 *x) {
     DWORD i;
-    _BitScanForward64(&i, *x);
-    *x &= *x - 1;  // this is faster than *x ^= (1ULL << i);
+   // _BitScanForward64(&i, *x);
+    i = _tzcnt_u64(*x);
+    //*x &= *x - 1;  // this is faster than *x ^= (1ULL << i);
+    *x = _blsr_u64(*x);
     return i;
 }
 #define GETMSB(i,x) _BitScanReverse64((DWORD*)&(i), (x))
@@ -202,10 +205,14 @@ inline int pullMsb(U64 *x) {
 }
 #define POPCOUNT(x) (int)(__popcnt64(x))
 #else
+//#include <bmiintrin.h>
 #define GETLSB(i,x) (i = __builtin_ctzll(x))
 inline int pullLsb(U64 *x) {
-    int i = __builtin_ctzll(*x);
-    *x &= *x - 1;  // this is faster than *x ^= (1ULL << i);
+    //int i = __builtin_ctzll(*x);
+    int i = _tzcnt_u64(*x);
+    //*x &= *x - 1;  // this is faster than *x ^= (1ULL << i);
+    *x = _blsr_u64(*x);
+
     return i;
 }
 #define GETMSB(i,x) (i = (63 - __builtin_clzll(x)))

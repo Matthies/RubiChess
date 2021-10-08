@@ -156,7 +156,7 @@ ifeq ($(ssse3),yes)
 	CXXFLAGS += -DUSE_SSSE3 -mssse3
 endif
 ifeq ($(sse2),yes)
-	CXXFLAGS += -DUSE_SSE2 -msse2
+	CXXFLAGS += -DUSE_SSE2 -msse2 -mbmi
 endif
 ifeq ($(neon),yes)
 	CXXFLAGS += -DUSE_NEON
