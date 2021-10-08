@@ -118,7 +118,7 @@ bool featureLatecaptureExtension;   //   -3.47 +-  6.89Elo  http://chess.grantne
 bool featureGoodquietsExtension;    //    1.22 +-  6.69Elo  http://chess.grantnet.us/test/19808/
 bool featureLmrRefinment;           //   50.38 +-  7.36Elo  http://chess.grantnet.us/test/19811/
 bool featureLmrByStats;             //   39.25 +-  7.19Elo  http://chess.grantnet.us/test/19824/
-bool featureLmrByPv;                //   -2.26 +-  7.11Elo  http://chess.grantnet.us/test/19825/
+bool featureLmrByPv;                //   -0.07 +-  2.12Elo  http://chess.grantnet.us/test/20046/
 bool featureLmrByBadHashmove;       //    4.17 +-  7.02Elo  http://chess.grantnet.us/test/19826/
 bool featureLmrByPrevMovenumber;    //    0.52 +-  7.06Elo  http://chess.grantnet.us/test/19827/
 bool featureKillers;                //    5.56 +-  6.65Elo  http://chess.grantnet.us/test/19822/
