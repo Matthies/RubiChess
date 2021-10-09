@@ -144,10 +144,10 @@ ifeq ($(avx512),yes)
 	CXXFLAGS += -DUSE_AVX512 -mavx512f -mavx512bw
 endif
 ifeq ($(bmi2),yes)
-	CXXFLAGS += -DUSE_BMI -DUSE_BMI2 -mbmi -mabm -mbmi2
+	CXXFLAGS += -DUSE_BMI -DUSE_BMI2 -mbmi -mlzcnt -mbmi2
 endif
 ifeq ($(avx2),yes)
-	CXXFLAGS += -DUSE_BMI -DUSE_AVX2 -mbmi -mabm -mavx2
+	CXXFLAGS += -DUSE_BMI -DUSE_AVX2 -mbmi -mlzcnt -mavx2
 endif
 ifeq ($(popcnt),yes)
 	CXXFLAGS += -DUSE_POPCNT -mpopcnt -msse3
