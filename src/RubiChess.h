@@ -16,7 +16,7 @@
 */
 
 #pragma once
-#include <immintrin.h>
+
 #define VERNUM 2.3
 //#define VERSTABLE
 
