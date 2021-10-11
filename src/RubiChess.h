@@ -623,7 +623,6 @@ void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am);
 vector<string> SplitString(const char* s);
 unsigned char AlgebraicToIndex(string s);
 string IndexToAlgebraic(int i);
-string AlgebraicFromShort(string s, chessposition *pos);
 void BitboardDraw(U64 b);
 U64 getTime();
 #ifdef _WIN32
@@ -1284,13 +1283,6 @@ enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7 };
 enum RootsearchType { SinglePVSearch, MultiPVSearch };
 enum PruneType { Prune, MatePrune, NoPrune };
 
-int CreateEvasionMovelist(chessposition *pos, chessmove* mstart);
-template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart);
-template <PieceType Pt, Color me> inline int CreateMovelistPiece(chessposition *pos, chessmove* mstart, U64 occ, U64 targets);
-template <MoveType Mt, Color me> inline int CreateMovelistPawn(chessposition *pos, chessmove* mstart);
-template <Color me> inline int CreateMovelistCastle(chessposition *pos, chessmove* mstart);
-template <MoveType Mt> void evaluateMoves(chessmovelist *ml, chessposition *pos);
-
 enum AttackType { FREE, OCCUPIED, OCCUPIEDANDKING };
 
 struct positioneval {
@@ -1479,7 +1471,20 @@ public:
     int getTacticalHst(uint32_t code);
     void resetStats();
     inline void CheckForImmediateStop();
-
+    int CreateEvasionMovelist(chessmove* mstart);
+    template <MoveType Mt> int CreateMovelist(chessmove* mstart);
+    template <PieceType Pt, Color me> inline int CreateMovelistPiece(chessmove* mstart, U64 occ, U64 targets);
+    template <MoveType Mt, Color me> inline int CreateMovelistPawn(chessmove* mstart);
+    template <Color me> inline int CreateMovelistCastle(chessmove* mstart);
+    template <MoveType Mt> void evaluateMoves(chessmovelist* ml);
+    int probe_wdl(int* success);
+    int probe_dtz(int* success);
+    int root_probe_dtz();
+    int root_probe_wdl();
+    int probe_ab(int alpha, int beta, int* success);
+    int probe_wdl_table(int* success);
+    int probe_dtz_table(int wdl, int* success);
+    string AlgebraicFromShort(string s);
 #ifdef SDEBUG
     bool triggerDebug(chessmove* nextmove);
     void pvdebugout();
@@ -1790,10 +1795,6 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete = true);
 extern int TBlargest; // 5 if 5-piece tables, 6 if 6-piece tables were found.
 
 void init_tablebases(char *path);
-int probe_wdl(int *success, chessposition *pos);
-int probe_dtz(int *success, chessposition *pos);
-int root_probe_dtz(chessposition *pos);
-int root_probe_wdl(chessposition *pos);
 
 
 //

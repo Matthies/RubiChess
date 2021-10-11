@@ -525,7 +525,7 @@ uint32_t chessposition::applyMove(string s, bool resetMstop)
 
 
 template <MoveType Mt>
-void evaluateMoves(chessmovelist *ml, chessposition *pos)
+void chessposition::evaluateMoves(chessmovelist *ml)
 {
     for (int i = 0; i < ml->length; i++)
     {
@@ -534,18 +534,18 @@ void evaluateMoves(chessmovelist *ml, chessposition *pos)
         if (Mt == CAPTURE || (Mt == ALL && GETCAPTURE(mc)))
         {
             PieceCode capture = GETCAPTURE(mc);
-            ml->move[i].value = (mvv[capture >> 1] | lva[piece >> 1]) + pos->tacticalhst[piece >> 1][GETTO(mc)][capture >> 1];
+            ml->move[i].value = (mvv[capture >> 1] | lva[piece >> 1]) + tacticalhst[piece >> 1][GETTO(mc)][capture >> 1];
         }
         if (Mt == QUIET || (Mt == ALL && !GETCAPTURE(mc)))
         {
             int to = GETCORRECTTO(mc);
-            ml->move[i].value = pos->history[piece & S2MMASK][GETFROM(mc)][to];
-            int16_t** cmptr = pos->cmptr[pos->ply];
-            if (cmptr)
+            ml->move[i].value = history[piece & S2MMASK][GETFROM(mc)][to];
+            int16_t** cptr = cmptr[ply];
+            if (cptr)
             {
-                for (int j = 0; j < CMPLIES && cmptr[j]; j++)
+                for (int j = 0; j < CMPLIES && cptr[j]; j++)
                 {
-                    ml->move[i].value += cmptr[j][piece * 64 + to];
+                    ml->move[i].value += cptr[j][piece * 64 + to];
                 }
             }
 
@@ -560,8 +560,8 @@ void chessposition::getRootMoves()
 {
     chessmovelist movelist;
     prepareStack();
-    movelist.length = CreateMovelist<ALL>(this, &movelist.move[0]);
-    evaluateMoves<ALL>(&movelist, this);
+    movelist.length = CreateMovelist<ALL>(&movelist.move[0]);
+    evaluateMoves<ALL>(&movelist);
 
     int bestval = SCOREBLACKWINS;
     rootmovelist.length = 0;
@@ -599,7 +599,7 @@ void chessposition::getRootMoves()
                     // Test if this move makes a 3fold possible for opponent
                     prepareStack();
                     chessmovelist followupmovelist;
-                    followupmovelist.length = CreateMovelist<ALL>(this, &followupmovelist.move[0]);
+                    followupmovelist.length = CreateMovelist<ALL>(&followupmovelist.move[0]);
                     for (int j = 0; j < followupmovelist.length; j++)
                     {
                         if (playMove(followupmovelist.move[j].code))
@@ -636,7 +636,7 @@ void chessposition::tbFilterRootMoves()
     if (POPCOUNT(occupied00[0] | occupied00[1]) > useTb)
         return;
 
-    if ((tbPosition = root_probe_dtz(this))) {
+    if ((tbPosition = root_probe_dtz())) {
         // The current root position is in the tablebases.
         // RootMoves now contains only moves that preserve the draw or win.
 
@@ -646,7 +646,7 @@ void chessposition::tbFilterRootMoves()
     else // If DTZ tables are missing, use WDL tables as a fallback
     {
         // Filter out moves that do not preserve a draw or win
-        tbPosition = root_probe_wdl(this);
+        tbPosition = root_probe_wdl();
         // useRootmoveScore is set within root_probe_wdl
     }
 
@@ -971,7 +971,7 @@ void chessposition::print(ostream* os)
         *os << "\n";
     }
     chessmovelist pseudolegalmoves;
-    pseudolegalmoves.length = CreateMovelist<ALL>(this, &pseudolegalmoves.move[0]);
+    pseudolegalmoves.length = CreateMovelist<ALL>(&pseudolegalmoves.move[0]);
     *os << "\nFEN: " + toFen() + "\n";
     *os << "State: " << std::hex << state << "\n";
     *os << "EPT: " + to_string(ept) + "\n";
@@ -1857,17 +1857,17 @@ inline void appendMoveToList(chessmove **m, int from, int to, PieceCode piece, P
 }
 
 
-inline void appendPromotionMove(chessposition *pos, chessmove **m, int from, int to, int col, PieceType promote)
+inline void appendPromotionMove(chessmove **m, int from, int to, int col, PieceType promote, PieceCode capture)
 {
-    appendMoveToList(m, from, to, WPAWN | col, pos->mailbox[to]);
+    appendMoveToList(m, from, to, WPAWN | col, capture);
     (*m - 1)->code |= ((promote << 1) | col) << 12;
 }
 
 
-template <PieceType Pt, Color me> int CreateMovelistPiece(chessposition *pos, chessmove* mstart, U64 occ, U64 targets)
+template <PieceType Pt, Color me> int chessposition::CreateMovelistPiece(chessmove* mstart, U64 occ, U64 targets)
 {
     const PieceCode pc = (PieceCode)((Pt << 1) | me);
-    U64 frombits = pos->piece00[pc];
+    U64 frombits = piece00[pc];
     U64 tobits = 0ULL;
     chessmove *m = mstart;
 
@@ -1885,7 +1885,7 @@ template <PieceType Pt, Color me> int CreateMovelistPiece(chessposition *pos, ch
         while (tobits)
         {
             int to = pullLsb(&tobits);
-            appendMoveToList(&m, from, to, pc, pos->mailbox[to]);
+            appendMoveToList(&m, from, to, pc, mailbox[to]);
         }
     }
 
@@ -1893,32 +1893,32 @@ template <PieceType Pt, Color me> int CreateMovelistPiece(chessposition *pos, ch
 }
 
 
-template <Color me> inline int CreateMovelistCastle(chessposition *pos, chessmove* mstart)
+template <Color me> inline int chessposition::CreateMovelistCastle(chessmove* mstart)
 {
-    if (pos->isCheckbb)
+    if (isCheckbb)
         return 0;
 
     chessmove *m = mstart;
-    U64 occupiedbits = (pos->occupied00[0] | pos->occupied00[1]);
+    U64 occupiedbits = (occupied00[0] | occupied00[1]);
 
     for (int cstli = me * 2; cstli < 2 * me + 2; cstli++)
     {
-        if ((pos->state & (WQCMASK << cstli)) == 0)
+        if ((state & (WQCMASK << cstli)) == 0)
             continue;
-        const int kingfrom = pos->kingpos[me];
-        const int rookfrom = pos->castlerookfrom[cstli];
-        if (pos->castleblockers[cstli] & (occupiedbits ^ BITSET(rookfrom) ^ BITSET(kingfrom)))
+        const int kingfrom = kingpos[me];
+        const int rookfrom = castlerookfrom[cstli];
+        if (castleblockers[cstli] & (occupiedbits ^ BITSET(rookfrom) ^ BITSET(kingfrom)))
             continue;
 
-        pos->BitboardClear(rookfrom, (PieceType)(WROOK | me));
-        U64 kingwalkbb = pos->castlekingwalk[cstli];
+        BitboardClear(rookfrom, (PieceType)(WROOK | me));
+        U64 kingwalkbb = castlekingwalk[cstli];
         bool attacked = false;
         while (!attacked && kingwalkbb)
         {
             int to = pullLsb(&kingwalkbb);
-            attacked = pos->isAttacked(to, me);
+            attacked = isAttacked(to, me);
         }
-        pos->BitboardSet(rookfrom, (PieceType)(WROOK | me));
+        BitboardSet(rookfrom, (PieceType)(WROOK | me));
 
         if (attacked)
             continue;
@@ -1932,19 +1932,19 @@ template <Color me> inline int CreateMovelistCastle(chessposition *pos, chessmov
 }
 
 
-template <MoveType Mt, Color me> inline int CreateMovelistPawn(chessposition *pos, chessmove* mstart)
+template <MoveType Mt, Color me> inline int chessposition::CreateMovelistPawn(chessmove* mstart)
 {
     chessmove *m = mstart;
     const int you = 1 - me;
     const PieceCode pc = (PieceCode)(WPAWN | me);
-    const U64 occ = pos->occupied00[0] | pos->occupied00[1];
+    const U64 occ = occupied00[0] | occupied00[1];
     U64 frombits, tobits;
     int from, to;
 
     if (Mt & QUIET)
     {
         U64 push = PAWNPUSH(you, ~occ & ~PROMOTERANKBB);
-        U64 pushers = push & pos->piece00[pc];
+        U64 pushers = push & piece00[pc];
         U64 doublepushers = PAWNPUSH(you, push) & (RANK2(me) & pushers);
         while (pushers)
         {
@@ -1956,7 +1956,7 @@ template <MoveType Mt, Color me> inline int CreateMovelistPawn(chessposition *po
             from = pullLsb(&doublepushers);
             to = PAWNPUSHDOUBLEINDEX(me, from);
             appendMoveToList(&m, from, to, pc, BLANK);
-            if (epthelper[to] & pos->piece00[WPAWN | you])
+            if (epthelper[to] & piece00[WPAWN | you])
                 // EPT possible for opponent; set EPT field manually
                 (m - 1)->code |= (from + to) << 19;
         }
@@ -1964,24 +1964,24 @@ template <MoveType Mt, Color me> inline int CreateMovelistPawn(chessposition *po
 
     if (Mt & CAPTURE)
     {
-        frombits = pos->piece00[pc] & ~RANK7(me);
+        frombits = piece00[pc] & ~RANK7(me);
         while (frombits)
         {
             from = pullLsb(&frombits);
-            tobits = (pawn_attacks_to[from][me] & pos->occupied00[you]);
+            tobits = (pawn_attacks_to[from][me] & occupied00[you]);
             while (tobits)
             {
                 to = pullLsb(&tobits);
-                appendMoveToList(&m, from, to, pc, pos->mailbox[to]);
+                appendMoveToList(&m, from, to, pc, mailbox[to]);
             }
         }
-        if (pos->ept)
+        if (ept)
         {
-            frombits = pos->piece00[pc] & pawn_attacks_to[pos->ept][you];
+            frombits = piece00[pc] & pawn_attacks_to[ept][you];
             while (frombits)
             {
                 from = pullLsb(&frombits);
-                appendMoveToList(&m, from, pos->ept, pc, WPAWN | you);
+                appendMoveToList(&m, from, ept, pc, WPAWN | you);
                 (m - 1)->code |= EPCAPTUREFLAG;
             }
 
@@ -1990,18 +1990,19 @@ template <MoveType Mt, Color me> inline int CreateMovelistPawn(chessposition *po
 
     if (Mt & PROMOTE)
     {
-        frombits = pos->piece00[pc] & RANK7(me);
+        frombits = piece00[pc] & RANK7(me);
         while (frombits)
         {
             from = pullLsb(&frombits);
-            tobits = (pawn_attacks_to[from][me] & pos->occupied00[you]) | (pawn_moves_to[from][me] & ~occ);
+            tobits = (pawn_attacks_to[from][me] & occupied00[you]) | (pawn_moves_to[from][me] & ~occ);
             while (tobits)
             {
                 to = pullLsb(&tobits);
-                appendPromotionMove(pos, &m, from, to, me, QUEEN);
-                appendPromotionMove(pos, &m, from, to, me, ROOK);
-                appendPromotionMove(pos, &m, from, to, me, BISHOP);
-                appendPromotionMove(pos, &m, from, to, me, KNIGHT);
+                PieceCode cap = mailbox[to];
+                appendPromotionMove(&m, from, to, me, QUEEN, cap);
+                appendPromotionMove(&m, from, to, me, ROOK, cap);
+                appendPromotionMove(&m, from, to, me, BISHOP, cap);
+                appendPromotionMove(&m, from, to, me, KNIGHT, cap);
             }
         }
     }
@@ -2010,38 +2011,38 @@ template <MoveType Mt, Color me> inline int CreateMovelistPawn(chessposition *po
 }
 
 
-int CreateEvasionMovelist(chessposition *pos, chessmove* mstart)
+int chessposition::CreateEvasionMovelist(chessmove* mstart)
 {
     chessmove* m = mstart;
-    int me = pos->state & S2MMASK;
+    int me = state & S2MMASK;
     int you = me ^ S2MMASK;
     U64 targetbits;
     U64 frombits;
     int from, to;
     PieceCode pc;
-    int king = pos->kingpos[me];
-    U64 occupiedbits = (pos->occupied00[0] | pos->occupied00[1]);
+    int king = kingpos[me];
+    U64 occupiedbits = (occupied00[0] | occupied00[1]);
 
     // moving the king is alway a possibe evasion
-    targetbits = king_attacks[king] & ~pos->occupied00[me];
+    targetbits = king_attacks[king] & ~occupied00[me];
     while (targetbits)
     {
         to = pullLsb(&targetbits);
-        if (!pos->isAttackedBy<OCCUPIEDANDKING>(to, you) && !pos->isAttackedByMySlider(to, occupiedbits ^ BITSET(king), you))
+        if (!isAttackedBy<OCCUPIEDANDKING>(to, you) && !isAttackedByMySlider(to, occupiedbits ^ BITSET(king), you))
         {
-            appendMoveToList(&m, king, to, WKING | me, pos->mailbox[to]);
+            appendMoveToList(&m, king, to, WKING | me, mailbox[to]);
         }
     }
 
-    if (POPCOUNT(pos->isCheckbb) == 1)
+    if (POPCOUNT(isCheckbb) == 1)
     {
         // only one attacker => capture or block the attacker is a possible evasion
         int attacker;
-        GETLSB(attacker, pos->isCheckbb);
+        GETLSB(attacker, isCheckbb);
         // special case: attacker is pawn and can be captured enpassant
-        if (pos->ept && pos->ept == attacker + S2MSIGN(me) * 8)
+        if (ept && ept == attacker + S2MSIGN(me) * 8)
         {
-            frombits = pawn_attacks_from[pos->ept][me] & pos->piece00[WPAWN | me];
+            frombits = pawn_attacks_from[ept][me] & piece00[WPAWN | me];
             while (frombits)
             {
                 from = pullLsb(&frombits);
@@ -2052,27 +2053,28 @@ int CreateEvasionMovelist(chessposition *pos, chessmove* mstart)
         }
         // now normal captures of the attacker
         to = attacker;
-        frombits = pos->isAttackedBy<OCCUPIED>(to, me);
+        frombits = isAttackedBy<OCCUPIED>(to, me);
         // later: blockers; targetbits will contain empty squares between king and attacking slider
         targetbits = betweenMask[king][attacker];
         while (true)
         {
-            frombits = frombits & ~pos->kingPinned;
+            frombits = frombits & ~kingPinned;
             while (frombits)
             {
                 from = pullLsb(&frombits);
-                pc = pos->mailbox[from];
+                pc = mailbox[from];
+                PieceCode cap = mailbox[to];
                 if ((pc >> 1) == PAWN)
                 {
                     if (PROMOTERANK(to))
                     {
-                        appendPromotionMove(pos, &m, from, to, me, QUEEN);
-                        appendPromotionMove(pos, &m, from, to, me, ROOK);
-                        appendPromotionMove(pos, &m, from, to, me, BISHOP);
-                        appendPromotionMove(pos, &m, from, to, me, KNIGHT);
+                        appendPromotionMove(&m, from, to, me, QUEEN, cap);
+                        appendPromotionMove(&m, from, to, me, ROOK, cap);
+                        appendPromotionMove(&m, from, to, me, BISHOP, cap);
+                        appendPromotionMove(&m, from, to, me, KNIGHT, cap);
                         continue;
                     }
-                    else if (!((from ^ to) & 0x8) && (epthelper[to] & pos->piece00[pc ^ S2MMASK]))
+                    else if (!((from ^ to) & 0x8) && (epthelper[to] & piece00[pc ^ S2MMASK]))
                     {
                         // EPT possible for opponent; set EPT field manually
                         appendMoveToList(&m, from, to, pc, BLANK);
@@ -2080,22 +2082,22 @@ int CreateEvasionMovelist(chessposition *pos, chessmove* mstart)
                         continue;
                     }
                 }
-                appendMoveToList(&m, from, to, pc, pos->mailbox[to]);
+                appendMoveToList(&m, from, to, pc, mailbox[to]);
             }
             if (!targetbits)
                 break;
             to = pullLsb(&targetbits);
-            frombits = pos->isAttackedBy<FREE>(to, me);  // <FREE> is needed here as the target fields are empty and pawns move normal
+            frombits = isAttackedBy<FREE>(to, me);  // <FREE> is needed here as the target fields are empty and pawns move normal
         }
     }
     return (int)(m - mstart);
 }
 
 
-template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
+template <MoveType Mt> int chessposition::CreateMovelist(chessmove* mstart)
 {
-    int me = pos->state & S2MMASK;
-    U64 occupiedbits = (pos->occupied00[0] | pos->occupied00[1]);
+    int me = state & S2MMASK;
+    U64 occupiedbits = (occupied00[0] | occupied00[1]);
     U64 emptybits = ~occupiedbits;
     U64 targetbits = 0ULL;
     chessmove* m = mstart;
@@ -2103,27 +2105,27 @@ template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart)
     if (Mt & QUIET)
         targetbits |= emptybits;
     if (Mt & CAPTURE)
-        targetbits |= pos->occupied00[me ^ S2MMASK];
+        targetbits |= occupied00[me ^ S2MMASK];
     if (me)
     {
-        m += CreateMovelistPawn<Mt, BLACK>(pos, m);
-        m += CreateMovelistPiece<KNIGHT, BLACK>(pos, m, occupiedbits, targetbits);
-        m += CreateMovelistPiece<BISHOP, BLACK>(pos, m, occupiedbits, targetbits);
-        m += CreateMovelistPiece<ROOK, BLACK>(pos, m, occupiedbits, targetbits);
-        m += CreateMovelistPiece<QUEEN, BLACK>(pos, m, occupiedbits, targetbits);
-        m += CreateMovelistPiece<KING, BLACK>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPawn<Mt, BLACK>(m);
+        m += CreateMovelistPiece<KNIGHT, BLACK>(m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<BISHOP, BLACK>(m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<ROOK, BLACK>(m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<QUEEN, BLACK>(m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<KING, BLACK>(m, occupiedbits, targetbits);
         if (Mt & QUIET)
-            m += CreateMovelistCastle<BLACK>(pos, m);
+            m += CreateMovelistCastle<BLACK>(m);
     }
     else {
-        m += CreateMovelistPawn<Mt, WHITE>(pos, m);
-        m += CreateMovelistPiece<KNIGHT, WHITE>(pos, m, occupiedbits, targetbits);
-        m += CreateMovelistPiece<BISHOP, WHITE>(pos, m, occupiedbits, targetbits);
-        m += CreateMovelistPiece<ROOK, WHITE>(pos, m, occupiedbits, targetbits);
-        m += CreateMovelistPiece<QUEEN, WHITE>(pos, m, occupiedbits, targetbits);
-        m += CreateMovelistPiece<KING, WHITE>(pos, m, occupiedbits, targetbits);
+        m += CreateMovelistPawn<Mt, WHITE>(m);
+        m += CreateMovelistPiece<KNIGHT, WHITE>(m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<BISHOP, WHITE>(m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<ROOK, WHITE>(m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<QUEEN, WHITE>(m, occupiedbits, targetbits);
+        m += CreateMovelistPiece<KING, WHITE>(m, occupiedbits, targetbits);
         if (Mt & QUIET)
-            m += CreateMovelistCastle<WHITE>(pos, m);
+            m += CreateMovelistCastle<WHITE>(m);
     }
 
     return (int)(m - mstart);
@@ -2405,8 +2407,8 @@ uint32_t MoveSelector::next()
         // fall through
     case TACTICALINITSTATE:
         state++;
-        captures->length = CreateMovelist<TACTICAL>(pos, &captures->move[0]);
-        evaluateMoves<CAPTURE>(captures, pos);
+        captures->length = pos->CreateMovelist<TACTICAL>(&captures->move[0]);
+        pos->evaluateMoves<CAPTURE>(captures);
         // fall through
     case TACTICALSTATE:
         while ((m = captures->getNextMove(0)))
@@ -2448,8 +2450,8 @@ uint32_t MoveSelector::next()
         // fall through
     case QUIETINITSTATE:
         state++;
-        quiets->length = CreateMovelist<QUIET>(pos, &quiets->move[0]);
-        evaluateMoves<QUIET>(quiets, pos);
+        quiets->length = pos->CreateMovelist<QUIET>(&quiets->move[0]);
+        pos->evaluateMoves<QUIET>(quiets);
         // fall through
     case QUIETSTATE:
         uint32_t mc;
@@ -2479,8 +2481,8 @@ uint32_t MoveSelector::next()
         return 0;
     case EVASIONINITSTATE:
         state++;
-        captures->length = CreateEvasionMovelist(pos, &captures->move[0]);
-        evaluateMoves<ALL>(captures, pos);
+        captures->length = pos->CreateEvasionMovelist(&captures->move[0]);
+        pos->evaluateMoves<ALL>(captures);
         // fall through
     case EVASIONSTATE:
         while ((mc = captures->getAndRemoveNextMove()))

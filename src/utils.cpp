@@ -215,7 +215,7 @@ void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am)
                 fv[i] = fv[i].substr(0, smk);
             if (moveliststr != "")
                 moveliststr += " ";
-            moveliststr += AlgebraicFromShort(fv[i], p);
+            moveliststr += p->AlgebraicFromShort(fv[i]);
             if (smk != string::npos)
             {
                 if (searchbestmove)
@@ -313,14 +313,14 @@ void BitboardDraw(U64 b)
 }
 
 
-string AlgebraicFromShort(string s, chessposition *pos)
+string chessposition::AlgebraicFromShort(string s)
 {
     string retval = "";
     int castle0 = 0;
     PieceType promotion = BLANKTYPE;
     chessmovelist ml;
-    pos->prepareStack();
-    ml.length = CreateMovelist<ALL>(pos, &ml.move[0]);
+    prepareStack();
+    ml.length = CreateMovelist<ALL>(&ml.move[0]);
     PieceType pt = PAWN;
     int to = 0xc0, from = 0xc0;
     int i = (int)s.size() - 1;
@@ -336,8 +336,8 @@ string AlgebraicFromShort(string s, chessposition *pos)
     if (castle0 >= 2)
     {
         pt = KING;
-        from = pos->kingpos[pos->state & S2MMASK];
-        to = (from & 0x38) | pos->castlerookfrom[castle0 == 2];
+        from = kingpos[state & S2MMASK];
+        to = (from & 0x38) | castlerookfrom[castle0 == 2];
     }
     if (i >= 0 && s[i] >= 'A')
     {
@@ -378,9 +378,9 @@ string AlgebraicFromShort(string s, chessposition *pos)
             && ((to & 0x40) || ((to & 0x07) == (GETTO(ml.move[i].code) & 0x07))))
         {
             // test if the move is legal; otherwise we need to search further
-            if (pos->playMove(ml.move[i].code))
+            if (playMove(ml.move[i].code))
             {
-                pos->unplayMove(ml.move[i].code);
+                unplayMove(ml.move[i].code);
                 retval = ml.move[i].toString();
                 break;
             }
