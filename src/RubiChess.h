@@ -1168,8 +1168,8 @@ extern int squareDistance[64][64];
 struct chessmovestack
 {
     int state;
-    int ept;
-    int kingpos[2];
+    uint8_t ept;
+    uint8_t kingpos[2];
     U64 hash;
     U64 pawnhash;
     U64 materialhash;
@@ -1246,7 +1246,7 @@ public:
     bool onlyGoodCaptures;
     int margin;
     void SetPreferredMoves(chessposition *p);  // for quiescence move selector
-    void SetPreferredMoves(chessposition* p, int m, int excludemove);  // for probcut move selector
+    void SetPreferredMoves(chessposition *p, int m, int excludemove);  // for probcut move selector
     void SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, uint32_t counter, int excludemove);
     uint32_t next();
 };
@@ -1324,8 +1324,8 @@ public:
 
     // The following block is mapped/copied to the movestack, so its important to keep the order
     int state;
-    int ept;
-    int kingpos[2];
+    uint8_t ept;
+    uint8_t kingpos[2];
     U64 hash;
     U64 pawnhash;
     U64 materialhash;

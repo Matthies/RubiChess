@@ -1634,7 +1634,7 @@ bool chessposition::playMove(uint32_t mc)
             materialhash ^= zb.boardtable[(POPCOUNT(piece00[promote]) << 4) | promote];
             BitboardSet(to, promote);
             // just double the hash-switch for target to make the pawn vanish
-            pawnhash ^= zb.boardtable[(to << 4) | mailbox[to]];
+            pawnhash ^= zb.boardtable[(to << 4) | promote];
 #ifdef NNUE
             int di = dp->dirtyNum;
             dp->to[0] = -1; // remove promoting pawn;
