@@ -83,7 +83,7 @@ static uint64 calc_key(int mirror, chessposition *pos)
 
 
 // probe_wdl_table and probe_dtz_table require similar adaptations.
-static int probe_wdl_table(int *success, chessposition *pos)
+int chessposition::probe_wdl_table(int *success)
 {
     TBEntry *ptr;
     uint64 idx;
@@ -93,7 +93,7 @@ static int probe_wdl_table(int *success, chessposition *pos)
     int p[TBPIECES];
 
     // Obtain the position's material signature key.
-    key = pos->materialhash;
+    key = materialhash;
 
     // Test for KvK.
     if (key == (zb.boardtable[WKING] ^ zb.boardtable[BKING]))
@@ -112,7 +112,7 @@ static int probe_wdl_table(int *success, chessposition *pos)
         LOCK(TB_mutex);
         if (!ptr->ready) {
             char str[16];
-            prt_str(str, ptr->key != key, pos);
+            prt_str(str, ptr->key != key, this);
             if (!init_table_wdl(ptr, str)) {
                 ptr->key = 0ULL;
                 *success = 0;
@@ -135,16 +135,16 @@ static int probe_wdl_table(int *success, chessposition *pos)
         if (key != ptr->key) {
             cmirror = 8;
             mirror = 0x38;
-            bside = (pos->w2m());
+            bside = (w2m());
         }
         else {
             cmirror = mirror = 0;
-            bside = !(pos->w2m());
+            bside = !(w2m());
         }
     }
     else {
-        cmirror = pos->w2m() ? 0 : 8;
-        mirror = pos->w2m() ? 0 : 0x38;
+        cmirror = w2m() ? 0 : 8;
+        mirror = w2m() ? 0 : 0x38;
         bside = 0;
     }
 
@@ -155,7 +155,7 @@ static int probe_wdl_table(int *success, chessposition *pos)
         TBEntry_piece *entry = (TBEntry_piece *)ptr;
         ubyte *pc = entry->pieces[bside];
         for (i = 0; i < entry->num;) {
-            U64 bb = pos->piece00[SYZYGY2RUBI_PT(pc[i] ^ cmirror)];
+            U64 bb = piece00[SYZYGY2RUBI_PT(pc[i] ^ cmirror)];
             int index;
             while (bb)
             {
@@ -169,7 +169,7 @@ static int probe_wdl_table(int *success, chessposition *pos)
     else {
         TBEntry_pawn *entry = (TBEntry_pawn *)ptr;
         int k = entry->file[0].pieces[0][0] ^ cmirror;
-        U64 bb = pos->piece00[SYZYGY2RUBI_PT(k)];
+        U64 bb = piece00[SYZYGY2RUBI_PT(k)];
         i = 0;
         int index;
         while (bb)
@@ -180,7 +180,7 @@ static int probe_wdl_table(int *success, chessposition *pos)
         int f = pawn_file(entry, p);
         ubyte *pc = entry->file[f].pieces[bside];
         for (; i < entry->num;) {
-            bb = pos->piece00[SYZYGY2RUBI_PT(pc[i] ^ cmirror)];
+            bb = piece00[SYZYGY2RUBI_PT(pc[i] ^ cmirror)];
             while (bb)
             {
                 index = pullLsb(&bb);
@@ -196,7 +196,7 @@ static int probe_wdl_table(int *success, chessposition *pos)
 
 // The value of wdl MUST correspond to the WDL value of the position without
 // en passant rights.
-static int probe_dtz_table(int wdl, int *success, chessposition *pos)
+int chessposition::probe_dtz_table(int wdl, int *success)
 {
     TBEntry *ptr;
     uint64 idx;
@@ -204,7 +204,7 @@ static int probe_dtz_table(int wdl, int *success, chessposition *pos)
     int p[TBPIECES];
 
     // Obtain the position's material signature key.
-    uint64 key = pos->materialhash;
+    uint64 key = materialhash;
 
     if (DTZ_table[0].key1 != key && DTZ_table[0].key2 != key) {
         for (i = 1; i < DTZ_ENTRIES; i++)
@@ -226,12 +226,12 @@ static int probe_dtz_table(int wdl, int *success, chessposition *pos)
             }
             char str[16];
             int mirror = (ptr->key != key);
-            prt_str(str, mirror, pos);
+            prt_str(str, mirror, this);
             if (DTZ_table[DTZ_ENTRIES - 1].entry)
                 free_dtz_entry(DTZ_table[DTZ_ENTRIES - 1].entry);
             for (i = DTZ_ENTRIES - 1; i > 0; i--)
                 DTZ_table[i] = DTZ_table[i - 1];
-            load_dtz_table(str, calc_key(mirror, pos), calc_key(!mirror, pos));
+            load_dtz_table(str, calc_key(mirror, this), calc_key(!mirror, this));
         }
     }
 
@@ -246,16 +246,16 @@ static int probe_dtz_table(int wdl, int *success, chessposition *pos)
         if (key != ptr->key) {
             cmirror = 8;
             mirror = 0x38;
-            bside = (pos->w2m());
+            bside = (w2m());
         }
         else {
             cmirror = mirror = 0;
-            bside = !(pos->w2m());
+            bside = !(w2m());
         }
     }
     else {
-        cmirror = pos->w2m() ? 0 : 8;
-        mirror = pos->w2m() ? 0 : 0x38;
+        cmirror = w2m() ? 0 : 8;
+        mirror = w2m() ? 0 : 0x38;
         bside = 0;
     }
 
@@ -267,7 +267,7 @@ static int probe_dtz_table(int wdl, int *success, chessposition *pos)
         }
         ubyte *pc = entry->pieces;
         for (i = 0; i < entry->num;) {
-            U64 bb = pos->piece00[SYZYGY2RUBI_PT(pc[i] ^ cmirror)];
+            U64 bb = piece00[SYZYGY2RUBI_PT(pc[i] ^ cmirror)];
             int index;
             while (bb)
             {
@@ -287,7 +287,7 @@ static int probe_dtz_table(int wdl, int *success, chessposition *pos)
     else {
         DTZEntry_pawn *entry = (DTZEntry_pawn *)ptr;
         int k = entry->file[0].pieces[0] ^ cmirror;
-        U64 bb = pos->piece00[SYZYGY2RUBI_PT(k)];
+        U64 bb = piece00[SYZYGY2RUBI_PT(k)];
         i = 0;
         int index;
         while (bb)
@@ -302,7 +302,7 @@ static int probe_dtz_table(int wdl, int *success, chessposition *pos)
         }
         ubyte *pc = entry->file[f].pieces;
         for (; i < entry->num;) {
-            bb = pos->piece00[SYZYGY2RUBI_PT(pc[i] ^ cmirror)];
+            bb = piece00[SYZYGY2RUBI_PT(pc[i] ^ cmirror)];
             while (bb)
             {
                 index = pullLsb(&bb);
@@ -323,26 +323,26 @@ static int probe_dtz_table(int wdl, int *success, chessposition *pos)
 }
 
 
-static int probe_ab(int alpha, int beta, int *success, chessposition *pos)
+int chessposition::probe_ab(int alpha, int beta, int *success)
 {
     int v;
 
     // Generate (at least) all legal captures including (under)promotions.
     // It is OK to generate more, as long as they are filtered out below.
     chessmovelist movelist;
-    pos->prepareStack();
-    movelist.length = CreateMovelist<ALL>(pos, &movelist.move[0]);
+    prepareStack();
+    movelist.length = CreateMovelist<ALL>(&movelist.move[0]);
     for (int i = 0; i < movelist.length; i++)
     {
         uint32_t mc = movelist.move[i].code;
-        if (ISCAPTURE(mc) || ISPROMOTION(mc) || pos->isCheckbb)
+        if (ISCAPTURE(mc) || ISPROMOTION(mc) || isCheckbb)
         {
-            if (pos->playMove(mc))
+            if (playMove(mc))
             {
                 //printf("probe_ab (ply=%d) testing capture/promotion/evasion move %s...\n", pos.ply, pos.actualpath.toString().c_str());
-                v = -probe_ab(-beta, -alpha, success, pos);
+                v = -probe_ab(-beta, -alpha, success);
                 //printf("probe_ab (ply=%d) tested  capture/promotion/evasion move %s... v=%d\n", pos.ply, pos.actualpath.toString().c_str(), v);
-                pos->unplayMove(mc);
+                unplayMove(mc);
                 if (*success == 0) return 0;
                 if (v > alpha) {
                     if (v >= beta)
@@ -355,7 +355,7 @@ static int probe_ab(int alpha, int beta, int *success, chessposition *pos)
         }
     }
 
-    v = probe_wdl_table(success, pos);
+    v = probe_wdl_table(success);
 
     return alpha >= v ? alpha : v;
 }
@@ -375,7 +375,7 @@ static int probe_ab(int alpha, int beta, int *success, chessposition *pos)
 //  0 : draw
 //  1 : win, but draw under 50-move rule
 //  2 : win
-int probe_wdl(int *success, chessposition *pos)
+int chessposition::probe_wdl(int *success)
 {
     *success = 1;
     int best_cap = -3, best_ep = -3;
@@ -383,8 +383,8 @@ int probe_wdl(int *success, chessposition *pos)
 
     // Generate (at least) all legal captures including (under)promotions.
     chessmovelist movelist;
-    pos->prepareStack();
-    movelist.length = CreateMovelist<ALL>(pos, &movelist.move[0]);
+    prepareStack();
+    movelist.length = CreateMovelist<ALL>(&movelist.move[0]);
 
     // We do capture resolution, letting best_cap keep track of the best
     // capture without ep rights and letting best_ep keep track of still
@@ -394,12 +394,12 @@ int probe_wdl(int *success, chessposition *pos)
         uint32_t mc = movelist.move[i].code;
         if (ISCAPTURE(mc))
         {
-            if (pos->playMove(mc))
+            if (playMove(mc))
             {
                 //printf("probe_wdl (ply=%d) testing capture/promotion/evasion move %s...\n", pos.ply, pos.actualpath.toString().c_str());
-                int v = -probe_ab(-2, -best_cap, success, pos);
+                int v = -probe_ab(-2, -best_cap, success);
                 //printf("probe_wdl (ply=%d) tested  capture/promotion/evasion move %s... v=%d\n", pos.ply, pos.actualpath.toString().c_str(), v);
-                pos->unplayMove(mc);
+                unplayMove(mc);
                 if (*success == 0) return 0;
                 if (v > best_cap) {
                     if (v == 2) {
@@ -416,7 +416,7 @@ int probe_wdl(int *success, chessposition *pos)
         }
     }
 
-    int v = probe_wdl_table(success, pos);
+    int v = probe_wdl_table(success);
     if (*success == 0)
         return 0;
 
@@ -453,9 +453,9 @@ int probe_wdl(int *success, chessposition *pos)
             if (ISEPCAPTURE(mc))
                 continue;
 
-            if (pos->playMove(mc))
+            if (playMove(mc))
             {
-                pos->unplayMove(mc);
+                unplayMove(mc);
                 break;
             }
         }
@@ -502,9 +502,9 @@ static int wdl_to_dtz[] = {
 // In short, if a move is available resulting in dtz + 50-move-counter <= 99,
 // then do not accept moves leading to dtz + 50-move-counter == 100.
 //
-int probe_dtz(int *success, chessposition *pos)
+int chessposition::probe_dtz(int *success)
 {
-    int wdl = probe_wdl(success, pos);
+    int wdl = probe_wdl(success);
     if (*success == 0)
         return 0;
 
@@ -522,8 +522,8 @@ int probe_dtz(int *success, chessposition *pos)
     if (wdl > 0) {
         // Generate at least all legal non-capturing pawn moves
         // including non-capturing promotions.
-        pos->prepareStack();
-        movelist.length = CreateMovelist<ALL>(pos, &movelist.move[0]);
+        prepareStack();
+        movelist.length = CreateMovelist<ALL>(&movelist.move[0]);
 
         for (int i = 0; i < movelist.length; i++)
         {
@@ -531,12 +531,12 @@ int probe_dtz(int *success, chessposition *pos)
             if (ISCAPTURE(mc) || (GETPIECE(mc) >> 1) != PAWN)
                 continue;
 
-            if (pos->playMove(mc))
+            if (playMove(mc))
             {
                 //printf("probe_dtz (ply=%d)testing non-capture pawn move %s...\n", pos->ply, m->toString().c_str());
-                int v = -probe_wdl(success, pos);
+                int v = -probe_wdl(success);
                 //printf("probe_dtz (ply=%d)tested  non-capture pawn move %s... v=%d\n", pos->ply, m->toString().c_str(), v);
-                pos->unplayMove(mc);
+                unplayMove(mc);
                 if (*success == 0)
                     return 0;
 
@@ -551,7 +551,7 @@ int probe_dtz(int *success, chessposition *pos)
     // the position without ep rights. It is therefore safe to probe the
     // DTZ table with the current value of wdl.
 
-    int dtz = probe_dtz_table(wdl, success, pos);
+    int dtz = probe_dtz_table(wdl, success);
     if (*success >= 0)
         return wdl_to_dtz[wdl + 2] + ((wdl > 0) ? dtz : -dtz);
 
@@ -566,8 +566,8 @@ int probe_dtz(int *success, chessposition *pos)
         // as the "best" move, leading to dtz of -1 or -101.
         // In case of mate, this will cause -1 to be returned.
         best = wdl_to_dtz[wdl + 2];
-        pos->prepareStack();
-        movelist.length = CreateMovelist<ALL>(pos, &movelist.move[0]);
+        prepareStack();
+        movelist.length = CreateMovelist<ALL>(&movelist.move[0]);
     }
     for (int i = 0; i < movelist.length; i++)
     {
@@ -578,12 +578,12 @@ int probe_dtz(int *success, chessposition *pos)
         if (ISCAPTURE(mc) || (GETPIECE(mc) >> 1) == PAWN)
             continue;
 
-        if (pos->playMove(mc))
+        if (playMove(mc))
         {
             //printf("probe_dtz (ply=%d) testing non-pawn non-capture %s... \n", pos->ply, m->toString().c_str());
-            int v = -probe_dtz(success, pos);
+            int v = -probe_dtz(success);
             //printf("probe_dtz (ply=%d) tested  non-pawn non-capture %s... v=%d\n", pos->ply, m->toString().c_str(), v);
-            pos->unplayMove(mc);
+            unplayMove(mc);
             if (*success == 0)
                 return 0;
 
@@ -616,36 +616,36 @@ static int wdl_to_Value[5] = {
 //
 // A return value of 0 indicates that not all probes were successful and that
 // no moves were filtered out.
-int root_probe_dtz(chessposition *pos)
+int chessposition::root_probe_dtz()
 {
     int success;
 
-    int dtz = probe_dtz(&success, pos);
+    int dtz = probe_dtz(&success);
     if (!success)
         return 0;
 
     bool isBadMove;
 
     // Probe each move.
-    for (int i = 0; i < pos->rootmovelist.length; i++)
+    for (int i = 0; i < rootmovelist.length; i++)
     {
-        chessmove *m = &pos->rootmovelist.move[i];
-        isBadMove = !pos->see(m->code, 0);
-        pos->playMove(m->code);
+        chessmove *m = &rootmovelist.move[i];
+        isBadMove = !see(m->code, 0);
+        playMove(m->code);
         //printf("info string root_probe_dtz (ply=%d) Testing move %s...\n", pos->ply, m->toString().c_str());
         int v = 0;
-        if (pos->isCheckbb && dtz > 0) {
+        if (isCheckbb && dtz > 0) {
             chessmovelist nextmovelist;
-            pos->prepareStack();
-            nextmovelist.length = CreateMovelist<ALL>(pos, &nextmovelist.move[0]);
+            prepareStack();
+            nextmovelist.length = CreateMovelist<ALL>(&nextmovelist.move[0]);
             bool foundevasion = false;
             for (int j = 0; j < nextmovelist.length; j++)
             {
                 uint32_t nmc = nextmovelist.move[j].code;
-                if (pos->playMove(nmc))
+                if (playMove(nmc))
                 {
                     foundevasion = true;
-                    pos->unplayMove(nmc);
+                    unplayMove(nmc);
                     break;
                 }
             }
@@ -653,13 +653,13 @@ int root_probe_dtz(chessposition *pos)
                 v = 1;
         }
         if (!v) {
-            if (pos->halfmovescounter != 0) {
-                v = -probe_dtz(&success, pos);
+            if (halfmovescounter != 0) {
+                v = -probe_dtz(&success);
                 if (v > 0) v++;
                 else if (v < 0) v--;
             }
             else {
-                v = -probe_wdl(&success, pos);
+                v = -probe_wdl(&success);
                 v = wdl_to_dtz[v + 2];
             }
 
@@ -669,7 +669,7 @@ int root_probe_dtz(chessposition *pos)
         }
 
         //printf("info string root_probe_dtz (ply=%d) Tested  move %s... value=%d\n", pos->ply, m->toString().c_str(), v);
-        pos->unplayMove(m->code);
+        unplayMove(m->code);
         if (!success)
             return 0;
 
@@ -677,17 +677,17 @@ int root_probe_dtz(chessposition *pos)
     }
 
     // Obtain 50-move counter for the root position.
-    int cnt50 = pos->halfmovescounter;
+    int cnt50 = halfmovescounter;
     // FIXME: The use of rep needs testing...
-    int rep = pos->testRepetition();
+    int rep = testRepetition();
 
     // Now be a bit smart about filtering out moves.
     int mi = 0;
     if (dtz > 0) { // winning (or 50-move rule draw)
         int best = 0x1ffff;
-        for (int i = 0; i < pos->rootmovelist.length; i++)
+        for (int i = 0; i < rootmovelist.length; i++)
         {
-            chessmove *m = &pos->rootmovelist.move[i];
+            chessmove *m = &rootmovelist.move[i];
             int v = m->value;
             if (v > 0 && v < best)
                 best = v;
@@ -695,15 +695,15 @@ int root_probe_dtz(chessposition *pos)
 
         // If the current phase has not seen repetitions, then try all moves
         // that stay safely within the 50-move budget, if there are any.
-        while (mi < pos->rootmovelist.length)
+        while (mi < rootmovelist.length)
         {
-            int v = pos->rootmovelist.move[mi].value;
+            int v = rootmovelist.move[mi].value;
 
             if (v <= 0)
             {
                 // delete moves that are known for not winning
-                pos->rootmovelist.length--;
-                swap(pos->rootmovelist.move[mi], pos->rootmovelist.move[pos->rootmovelist.length]);
+                rootmovelist.length--;
+                swap(rootmovelist.move[mi], rootmovelist.move[rootmovelist.length]);
             }
             else
             {
@@ -711,10 +711,10 @@ int root_probe_dtz(chessposition *pos)
                 v = (v & 0xffff);
                 if (!en.Syzygy50MoveRule || v + cnt50 <= 100)
                     // win
-                    pos->rootmovelist.move[mi].value = SCORETBWIN - v - (rep ? cnt50 : 0) - isBadMove * 0x100;
+                    rootmovelist.move[mi].value = SCORETBWIN - v - (rep ? cnt50 : 0) - isBadMove * 0x100;
                 else
                     // cursed win = draw
-                    pos->rootmovelist.move[mi].value = SCOREDRAW;
+                    rootmovelist.move[mi].value = SCOREDRAW;
                 //printf("info string root_probe_dtz (ply=%d) Final value for move %s... value=%d\n", pos->ply, pos->rootmovelist.move[mi].toString().c_str(), pos->rootmovelist.move[mi].value);
                 mi++;
             }
@@ -722,41 +722,41 @@ int root_probe_dtz(chessposition *pos)
     }
     else if (dtz < 0) {
         int best = 0;
-        for (int i = 0; i < pos->rootmovelist.length; i++)
+        for (int i = 0; i < rootmovelist.length; i++)
         {
-            int v = pos->rootmovelist.move[i].value;
+            int v = rootmovelist.move[i].value;
             if (v < best)
                 best = v;
         }
-        while (mi < pos->rootmovelist.length)
+        while (mi < rootmovelist.length)
         {
-            int v = pos->rootmovelist.move[mi].value;
+            int v = rootmovelist.move[mi].value;
             if (en.Syzygy50MoveRule && -best + cnt50 > 100 && -v + cnt50 <= 100)
             {
                 // We can reach a draw by 50-moves-rule so delete moves that don't preserve this
-                pos->rootmovelist.length--;
-                swap(pos->rootmovelist.move[mi], pos->rootmovelist.move[pos->rootmovelist.length]);
+                rootmovelist.length--;
+                swap(rootmovelist.move[mi], rootmovelist.move[rootmovelist.length]);
             }
             else
             {
                 if (!en.Syzygy50MoveRule || -v + cnt50 <= 100)
                     // We will probably lose
-                    pos->rootmovelist.move[mi].value = -SCORETBWIN - v;
+                    rootmovelist.move[mi].value = -SCORETBWIN - v;
                 else
                     // We can reach a draw by 50-moves-rule
-                    pos->rootmovelist.move[mi].value = SCOREDRAW;
+                    rootmovelist.move[mi].value = SCOREDRAW;
                 mi++;
             }
         }
     }
     else { // drawing
-        while (mi < pos->rootmovelist.length)
+        while (mi < rootmovelist.length)
         {
-            if (pos->rootmovelist.move[mi].value < 0)
+            if (rootmovelist.move[mi].value < 0)
             {
                 // We can reach a draw so delete moves that don't preserve this
-                pos->rootmovelist.length--;
-                swap(pos->rootmovelist.move[mi], pos->rootmovelist.move[pos->rootmovelist.length]);
+                rootmovelist.length--;
+                swap(rootmovelist.move[mi], rootmovelist.move[rootmovelist.length]);
             }
             else {
                 mi++;
@@ -765,7 +765,7 @@ int root_probe_dtz(chessposition *pos)
     }
 
     // Be fair and report the expected score in any case (even if the opponenmt has a hard job to save the win/draw
-    pos->useRootmoveScore = 1;
+    useRootmoveScore = 1;
     return 1;
 }
 
@@ -774,20 +774,20 @@ int root_probe_dtz(chessposition *pos)
 //
 // A return value of 0 indicates that not all probes were successful and that
 // no moves were filtered out.
-int root_probe_wdl(chessposition *pos)
+int chessposition::root_probe_wdl()
 {
     int success;
     int best = -2;
 
     // Probe each move.
-    for (int i = 0; i < pos->rootmovelist.length; i++)
+    for (int i = 0; i < rootmovelist.length; i++)
     {
-        chessmove *m = &pos->rootmovelist.move[i];
-        pos->playMove(m->code);
+        chessmove *m = &rootmovelist.move[i];
+        playMove(m->code);
         //printf("info string root_probe_wdl (ply=%d) Testing move %s...\n", pos->ply, m->toString().c_str());
-        int v = -probe_wdl(&success, pos);
+        int v = -probe_wdl(&success);
         //printf("info string root_probe_wdl (ply=%d) Tested  move %s... value=%d\n", pos->ply, m->toString().c_str(), v);
-        pos->unplayMove(m->code);
+        unplayMove(m->code);
         if (!success)
             return 0;
         if (!en.Syzygy50MoveRule)
@@ -800,15 +800,15 @@ int root_probe_wdl(chessposition *pos)
     }
 
     int mi = 0;
-    while (mi < pos->rootmovelist.length)
+    while (mi < rootmovelist.length)
     {
-        chessmove *m = &pos->rootmovelist.move[mi];
+        chessmove *m = &rootmovelist.move[mi];
         if (m->value < best)
         {
             // Delete non-optimal move
             //printf("info string root_probe_wdl (ply=%d) Removing non-optimal move %s...\n", pos->ply, m->toString().c_str());
-            pos->rootmovelist.length--;
-            swap(pos->rootmovelist.move[mi], pos->rootmovelist.move[pos->rootmovelist.length]);
+            rootmovelist.length--;
+            swap(rootmovelist.move[mi], rootmovelist.move[rootmovelist.length]);
         }
         else {
             //printf("info string root_probe_wdl (ply=%d) Optimal move %s gets value %d\n", pos->ply, m->toString().c_str(), wdl_to_Value[m->value + 2]);

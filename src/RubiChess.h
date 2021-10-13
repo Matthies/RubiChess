@@ -668,7 +668,6 @@ void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am);
 vector<string> SplitString(const char* s);
 unsigned char AlgebraicToIndex(string s);
 string IndexToAlgebraic(int i);
-string AlgebraicFromShort(string s, chessposition *pos);
 void BitboardDraw(U64 b);
 U64 getTime();
 #ifdef _WIN32
@@ -1213,8 +1212,8 @@ extern int squareDistance[64][64];
 struct chessmovestack
 {
     int state;
-    int ept;
-    int kingpos[2];
+    uint8_t ept;
+    uint8_t kingpos[2];
     U64 hash;
     U64 pawnhash;
     U64 materialhash;
@@ -1291,7 +1290,7 @@ public:
     bool onlyGoodCaptures;
     int margin;
     void SetPreferredMoves(chessposition *p);  // for quiescence move selector
-    void SetPreferredMoves(chessposition* p, int m, int excludemove);  // for probcut move selector
+    void SetPreferredMoves(chessposition *p, int m, int excludemove);  // for probcut move selector
     void SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, uint32_t counter, int excludemove);
     uint32_t next();
 };
@@ -1329,13 +1328,6 @@ enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7 };
 enum RootsearchType { SinglePVSearch, MultiPVSearch };
 enum PruneType { Prune, MatePrune, NoPrune };
 
-int CreateEvasionMovelist(chessposition *pos, chessmove* mstart);
-template <MoveType Mt> int CreateMovelist(chessposition *pos, chessmove* mstart);
-template <PieceType Pt, Color me> inline int CreateMovelistPiece(chessposition *pos, chessmove* mstart, U64 occ, U64 targets);
-template <MoveType Mt, Color me> inline int CreateMovelistPawn(chessposition *pos, chessmove* mstart);
-template <Color me> inline int CreateMovelistCastle(chessposition *pos, chessmove* mstart);
-template <MoveType Mt> void evaluateMoves(chessmovelist *ml, chessposition *pos);
-
 enum AttackType { FREE, OCCUPIED, OCCUPIEDANDKING };
 
 struct positioneval {
@@ -1369,8 +1361,8 @@ public:
 
     // The following block is mapped/copied to the movestack, so its important to keep the order
     int state;
-    int ept;
-    int kingpos[2];
+    uint8_t ept;
+    uint8_t kingpos[2];
     U64 hash;
     U64 pawnhash;
     U64 materialhash;
@@ -1524,7 +1516,20 @@ public:
     int getTacticalHst(uint32_t code);
     void resetStats();
     inline void CheckForImmediateStop();
-
+    int CreateEvasionMovelist(chessmove* mstart);
+    template <MoveType Mt> int CreateMovelist(chessmove* mstart);
+    template <PieceType Pt, Color me> inline int CreateMovelistPiece(chessmove* mstart, U64 occ, U64 targets);
+    template <MoveType Mt, Color me> inline int CreateMovelistPawn(chessmove* mstart);
+    template <Color me> inline int CreateMovelistCastle(chessmove* mstart);
+    template <MoveType Mt> void evaluateMoves(chessmovelist* ml);
+    int probe_wdl(int* success);
+    int probe_dtz(int* success);
+    int root_probe_dtz();
+    int root_probe_wdl();
+    int probe_ab(int alpha, int beta, int* success);
+    int probe_wdl_table(int* success);
+    int probe_dtz_table(int wdl, int* success);
+    string AlgebraicFromShort(string s);
 #ifdef SDEBUG
     bool triggerDebug(chessmove* nextmove);
     void pvdebugout();
@@ -1840,10 +1845,6 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete = true);
 extern int TBlargest; // 5 if 5-piece tables, 6 if 6-piece tables were found.
 
 void init_tablebases(char *path);
-int probe_wdl(int *success, chessposition *pos);
-int probe_dtz(int *success, chessposition *pos);
-int root_probe_dtz(chessposition *pos);
-int root_probe_wdl(chessposition *pos);
 
 
 //

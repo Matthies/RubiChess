@@ -120,9 +120,9 @@ U64 engine::perft(int depth, bool printsysteminfo)
 
     chessmovelist movelist;
     if (rootpos->isCheckbb)
-        movelist.length = CreateEvasionMovelist(rootpos, &movelist.move[0]);
+        movelist.length = rootpos->CreateEvasionMovelist(&movelist.move[0]);
     else
-        movelist.length = CreateMovelist<ALL>(rootpos, &movelist.move[0]);
+        movelist.length = rootpos->CreateMovelist<ALL>(&movelist.move[0]);
 
     rootpos->prepareStack();
 
