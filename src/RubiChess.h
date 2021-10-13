@@ -199,7 +199,7 @@ typedef unsigned int PieceType;
 #define MORETHANONE(x) ((x) & ((x) - 1))
 #define ONEORZERO(x) (!MORETHANONE(x))
 #if defined(_MSC_VER)
-#ifdef USE_BMI
+#ifdef USE_BMI1
 #define GETLSB(i,x) (i =(int) _tzcnt_u64(x))
 inline int pullLsb(U64* x) {
     int i;
@@ -232,7 +232,7 @@ inline int pullMsb(U64* x) {
 #endif
 #define POPCOUNT(x) (int)(__popcnt64(x))
 #else
-#ifdef USE_BMI
+#ifdef USE_BMI1
 #define GETLSB(i,x) (i =  _tzcnt_u64(x))
 inline int pullLsb(U64* x) {
     int i = _tzcnt_u64(*x);
@@ -1620,13 +1620,14 @@ enum ponderstate_t { NO, PONDERING, HITPONDER };
 #define CPUSSE2     (1 << 0)
 #define CPUSSSE3    (1 << 1)
 #define CPUPOPCNT   (1 << 2)
-#define CPUBMI      (1 << 3)
-#define CPUAVX2     (1 << 4)
-#define CPUBMI2     (1 << 5)
-#define CPUAVX512   (1 << 6)
-#define CPUNEON     (1 << 7)
+#define CPULZCNT    (1 << 3)
+#define CPUBMI1     (1 << 4)
+#define CPUAVX2     (1 << 5)
+#define CPUBMI2     (1 << 6)
+#define CPUAVX512   (1 << 7)
+#define CPUNEON     (1 << 8)
 
-#define STRCPUFEATURELIST  { "sse2","ssse3","popcnt","bmi","avx2","bmi2", "avx512", "neon" }
+#define STRCPUFEATURELIST  { "sse2","ssse3","popcnt","lzcnt","bmi1","avx2","bmi2", "avx512", "neon" }
 
 
 extern const string strCpuFeatures[];
@@ -1647,8 +1648,8 @@ public:
 #ifdef USE_AVX2
         | CPUAVX2
 #endif
-#ifdef USE_BMI
-        | CPUBMI
+#ifdef USE_BMI1
+        | CPUBMI1 | CPULZCNT
 #endif
 #ifdef USE_BMI2
         | CPUBMI2

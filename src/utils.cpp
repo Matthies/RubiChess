@@ -463,7 +463,7 @@ void compilerinfo::GetSystemInfo()
 
         if (i == 7)
         {
-            if (CPUInfo[1] & (1 <<  3)) machineSupports |= CPUBMI;
+            if (CPUInfo[1] & (1 <<  3)) machineSupports |= CPUBMI1;
             if (CPUInfo[1] & (1 <<  8)) machineSupports |= CPUBMI2;
             if (CPUInfo[1] & (1 <<  5)) machineSupports |= CPUAVX2;
             if (CPUInfo[1] & ((1 << 16) | (1 << 30))) machineSupports |= CPUAVX512; // AVX512F + AVX512BW needed
@@ -480,7 +480,9 @@ void compilerinfo::GetSystemInfo()
     for (i = 0x80000000; i <= nExIds; ++i)
     {
         CPUID(CPUInfo, i);
-
+        // Extended CPU features
+        if (i == 0x80000001)
+            if (CPUInfo[2] & (1 << 5)) machineSupports |= CPULZCNT;
         // Interpret CPU brand string and cache information.
         if (i == 0x80000002)
             memcpy(CPUBrandString, CPUInfo, sizeof(CPUInfo));

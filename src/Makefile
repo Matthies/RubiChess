@@ -18,6 +18,8 @@ PROFEXE = RubiChess-Prof
 sse2 = no
 ssse3 = no
 popcnt = no
+bmi1 = no
+lzcnt = no
 avx2 = no
 bmi2 = no
 avx512 = no
@@ -95,22 +97,22 @@ ifneq (,$(findstring x86-64,$(ARCH)))
 CPUFLAGS = "sse2"
 endif
 ifneq (,$(findstring x86-64-avx512,$(ARCH)))
-CPUFLAGS = "avx512 bmi2 avx2 popcnt ssse3 sse2"
+CPUFLAGS = "avx512 bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2"
 endif
 ifneq (,$(findstring x86-64-bmi2,$(ARCH)))
-CPUFLAGS = "bmi2 avx2 popcnt ssse3 sse2"
+CPUFLAGS = "bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2"
 endif
 ifneq (,$(findstring x86-64-avx2,$(ARCH)))
-CPUFLAGS = "avx2 popcnt ssse3 sse2"
+CPUFLAGS = "avx2 bmi1 lzcnt popcnt ssse3 sse2"
 endif
 ifneq (,$(findstring x86-64-modern,$(ARCH)))
-CPUFLAGS = "popcnt ssse3 sse2"
+CPUFLAGS = "bmi1 lzcnt popcnt ssse3 sse2"
 endif
 ifneq (,$(findstring x86-64-ssse3,$(ARCH)))
 CPUFLAGS = "ssse3 sse2"
 endif
 ifneq (,$(findstring x86-64-sse3-popcnt,$(ARCH)))
-CPUFLAGS = "popcnt sse2"
+CPUFLAGS = "bmi1 lzcnt popcnt sse2"
 endif
 ifneq (,$(findstring neon,$(ARCH)))
 CPUFLAGS = "neon"
@@ -126,6 +128,12 @@ ifneq (,$(findstring bmi2,$(CPUFLAGS)))
 endif
 ifneq (,$(findstring avx2,$(CPUFLAGS)))
 	avx2 = yes
+endif
+ifneq (,$(findstring bmi1,$(CPUFLAGS)))
+	bmi1 = yes
+endif
+ifneq (,$(findstring lzcnt,$(CPUFLAGS)))
+	lzcnt = yes
 endif
 ifneq (,$(findstring popcnt,$(CPUFLAGS)))
 	popcnt = yes
@@ -144,10 +152,13 @@ ifeq ($(avx512),yes)
 	CXXFLAGS += -DUSE_AVX512 -mavx512f -mavx512bw
 endif
 ifeq ($(bmi2),yes)
-	CXXFLAGS += -DUSE_BMI -DUSE_BMI2 -mbmi -mlzcnt -mbmi2
+	CXXFLAGS += -DUSE_BMI2 -mbmi2
 endif
 ifeq ($(avx2),yes)
-	CXXFLAGS += -DUSE_BMI -DUSE_AVX2 -mbmi -mlzcnt -mavx2
+	CXXFLAGS += -DUSE_AVX2 -mavx2
+endif
+ifeq ($(bmi1)$(lzcnt),yesyes)
+	CXXFLAGS += -DUSE_BMI1 -mbmi -mlzcnt
 endif
 ifeq ($(popcnt),yes)
 	CXXFLAGS += -DUSE_POPCNT -mpopcnt -msse3
@@ -213,6 +224,8 @@ arch:
 	@echo "avx512: $(avx512)"
 	@echo "bmi2  : $(bmi2)"
 	@echo "avx2  : $(avx2)"
+	@echo "bmi1  : $(bmi1)"
+	@echo "lzcnt : $(lzcnt)"
 	@echo "popcnt: $(popcnt)"
 	@echo "ssse3 : $(ssse3)"
 	@echo "sse2  : $(sse2)"
@@ -236,7 +249,7 @@ endif
 
 compile: $(NETOBJ)
 	@echo $(MESSAGE)
-	@$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) *.cpp $(LDFLAGS) $(PTHREADLIB) $(EXTRALDFLAGS) $(GITDEFINE) $(NETDEF) $(NETOBJ) -o $(EXE)
+	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) *.cpp $(LDFLAGS) $(PTHREADLIB) $(EXTRALDFLAGS) $(GITDEFINE) $(NETDEF) $(NETOBJ) -o $(EXE)
 
 objclean:
 	@$(RM) $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(PROFEXE) *.o $(CPUTEST) $(NETBIN) || @echo $(RM) not available.
