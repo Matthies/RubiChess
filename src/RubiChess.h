@@ -90,6 +90,19 @@
 #include <regex>
 #include <set>
 
+#define USE_SIMD
+#if defined(USE_AVX2)
+#include <immintrin.h>
+#elif defined(USE_SSSE3)
+#include <tmmintrin.h>
+#elif defined(USE_SSE2)
+#include <emmintrin.h>
+#elif defined(USE_NEON)
+#include <arm_neon.h>
+#else
+#undef USE_SIMD
+#endif
+
 #ifdef _WIN32
 
 #include <conio.h>
@@ -186,34 +199,66 @@ typedef unsigned int PieceType;
 #define MORETHANONE(x) ((x) & ((x) - 1))
 #define ONEORZERO(x) (!MORETHANONE(x))
 #if defined(_MSC_VER)
+#ifdef USE_BMI1
+#define GETLSB(i,x) (i =(int) _tzcnt_u64(x))
+inline int pullLsb(U64* x) {
+    int i;
+    i = (int)_tzcnt_u64(*x);
+    *x = _blsr_u64(*x);
+    return i;
+}
+#define GETMSB(i,x) (i = 63 ^ (int) _lzcnt_u64(x))
+inline int pullMsb(U64* x) {
+    int i;
+    i = 63 ^ (int)_lzcnt_u64(*x);
+    *x ^= (1ULL << i);
+    return i;
+}
+#else
 #define GETLSB(i,x) _BitScanForward64((DWORD*)&(i), (x))
-inline int pullLsb(U64 *x) {
+inline int pullLsb(U64* x) {
     DWORD i;
     _BitScanForward64(&i, *x);
-    *x &= *x - 1;  // this is faster than *x ^= (1ULL << i);
+    *x &= *x - 1;
     return i;
 }
 #define GETMSB(i,x) _BitScanReverse64((DWORD*)&(i), (x))
-inline int pullMsb(U64 *x) {
+inline int pullMsb(U64* x) {
     DWORD i;
     _BitScanReverse64(&i, *x);
     *x ^= (1ULL << i);
     return i;
 }
+#endif
 #define POPCOUNT(x) (int)(__popcnt64(x))
 #else
-#define GETLSB(i,x) (i = __builtin_ctzll(x))
-inline int pullLsb(U64 *x) {
-    int i = __builtin_ctzll(*x);
-    *x &= *x - 1;  // this is faster than *x ^= (1ULL << i);
+#ifdef USE_BMI1
+#define GETLSB(i,x) (i =  _tzcnt_u64(x))
+inline int pullLsb(U64* x) {
+    int i = _tzcnt_u64(*x);
+    *x = _blsr_u64(*x);
     return i;
 }
-#define GETMSB(i,x) (i = (63 - __builtin_clzll(x)))
-inline int pullMsb(U64 *x) {
+#define GETMSB(i,x) (i = (63 ^ _lzcnt_u64(x)))
+inline int pullMsb(U64* x) {
+    int i = 63 ^ _lzcnt_u64(*x);
+    *x ^= (1ULL << i);
+    return i;
+}
+#else
+#define GETLSB(i,x) (i = __builtin_ctzll(x))
+inline int pullLsb(U64* x) {
+    int i = __builtin_ctzll(*x);
+    *x &= *x - 1;
+    return i;
+}
+#define GETMSB(i,x) (i = (63 ^ __builtin_clzll(x)))
+inline int pullMsb(U64* x) {
     int i = 63 - __builtin_clzll(*x);
     *x ^= (1ULL << i);
     return i;
 }
+#endif
 #define POPCOUNT(x) __builtin_popcountll(x)
 #endif
 
@@ -1575,12 +1620,14 @@ enum ponderstate_t { NO, PONDERING, HITPONDER };
 #define CPUSSE2     (1 << 0)
 #define CPUSSSE3    (1 << 1)
 #define CPUPOPCNT   (1 << 2)
-#define CPUAVX2     (1 << 3)
-#define CPUBMI2     (1 << 4)
-#define CPUAVX512   (1 << 5)
-#define CPUNEON     (1 << 6)
+#define CPULZCNT    (1 << 3)
+#define CPUBMI1     (1 << 4)
+#define CPUAVX2     (1 << 5)
+#define CPUBMI2     (1 << 6)
+#define CPUAVX512   (1 << 7)
+#define CPUNEON     (1 << 8)
 
-#define STRCPUFEATURELIST  { "sse2","ssse3","popcnt","avx2","bmi2", "avx512", "neon" }
+#define STRCPUFEATURELIST  { "sse2","ssse3","popcnt","lzcnt","bmi1","avx2","bmi2", "avx512", "neon" }
 
 
 extern const string strCpuFeatures[];
@@ -1600,6 +1647,9 @@ public:
 #endif
 #ifdef USE_AVX2
         | CPUAVX2
+#endif
+#ifdef USE_BMI1
+        | CPUBMI1 | CPULZCNT
 #endif
 #ifdef USE_BMI2
         | CPUBMI2

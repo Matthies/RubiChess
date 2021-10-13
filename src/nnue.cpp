@@ -26,26 +26,6 @@
 
 #ifdef NNUE
 
-#define USE_SIMD
-
-#if defined(USE_AVX2)
-#include <immintrin.h>
-
-#elif defined(USE_SSSE3)
-#include <tmmintrin.h>
-
-#elif defined(USE_SSE2)
-#include <emmintrin.h>
-
-#elif defined(USE_NEON)
-#include <arm_neon.h>
-
-#else
-#undef USE_SIMD
-
-#endif
-
-
 //
 // Some NNUE related constants and types
 //
