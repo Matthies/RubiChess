@@ -458,7 +458,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     bool debugMovePlayed = false;
     int isDebugPosition = tp.isDebugPosition(newhash);
     bool debugTransposition = (isDebugPosition >= 0 && !isDebugPv);
-    SDEBUGDO(isDebugPv, pvaborttype[ply + 1] = PVA_UNKNOWN; pvdepth[ply] = depth; pvalpha[ply] = alpha; pvbeta[ply] = beta; pvmovenum[ply] = 0;);
+    SDEBUGDO(isDebugPv, pvaborttype[ply + 1] = PVA_UNKNOWN; pvdepth[ply] = depth; pvalpha[ply] = alpha; pvbeta[ply] = beta; pvmovenum[ply] = 0; pvmovevalue[ply] = 0;);
 #endif
 
     getCmptr();
@@ -477,7 +477,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         STATISTICSINC(ab_tt);
 #ifdef SDEBUG
         uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
-        SDEBUGDO(isDebugPv, pvabortval[ply] = hashscore; if (debugMove.code == fullhashmove) pvaborttype[ply] = PVA_FROMTT; else pvaborttype[ply] = PVA_DIFFERENTFROMTT; );
+        SDEBUGDO(isDebugPv, pvabortscore[ply] = hashscore; if (debugMove.code == fullhashmove) pvaborttype[ply] = PVA_FROMTT; else pvaborttype[ply] = PVA_DIFFERENTFROMTT; );
         SDEBUGDO(isDebugPv, pvadditionalinfo[ply] = "TT = " + chessmove(fullhashmove).toString() + "  " + tp.debugGetPv(newhash, ply); );
 #endif
         return hashscore;
@@ -547,13 +547,13 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             if (depth == 1 && ralpha < alpha)
             {
                 qscore = getQuiescence<Pt>(alpha, beta, 0);
-                SDEBUGDO(isDebugPv, pvabortval[ply] = qscore; pvaborttype[ply] = PVA_RAZORPRUNED;);
+                SDEBUGDO(isDebugPv, pvabortscore[ply] = qscore; pvaborttype[ply] = PVA_RAZORPRUNED;);
                 return qscore;
             }
             qscore = getQuiescence<Pt>(ralpha, ralpha + 1, 0);
             if (qscore <= ralpha)
             {
-                SDEBUGDO(isDebugPv, pvabortval[ply] = qscore; pvaborttype[ply] = PVA_RAZORPRUNED;);
+                SDEBUGDO(isDebugPv, pvabortscore[ply] = qscore; pvaborttype[ply] = PVA_RAZORPRUNED;);
                 return qscore;
             }
         }
@@ -567,7 +567,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (!isCheckbb && staticeval - depth * (sps.futilityreversedepthfactor - sps.futilityreverseimproved * positionImproved) > beta)
         {
             STATISTICSINC(prune_futility);
-            SDEBUGDO(isDebugPv, pvabortval[ply] = staticeval; pvaborttype[ply] = PVA_REVFUTILITYPRUNED;);
+            SDEBUGDO(isDebugPv, pvabortscore[ply] = staticeval; pvaborttype[ply] = PVA_REVFUTILITYPRUNED;);
             return staticeval;
         }
         futility = (staticeval < alpha - (sps.futilitymargin + sps.futilitymarginperdepth * depth));
@@ -587,7 +587,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         {
             if (abs(beta) < 5000 && (depth < sps.nmverificationdepth || nullmoveply)) {
                 STATISTICSINC(prune_nm);
-                SDEBUGDO(isDebugPv, pvabortval[ply] = score; pvaborttype[ply] = PVA_NMPRUNED;);
+                SDEBUGDO(isDebugPv, pvabortscore[ply] = score; pvaborttype[ply] = PVA_NMPRUNED;);
+                SDEBUGDO(isDebugPv, pvadditionalinfo[ply] = "NM-Reduction:" +  to_string(depth) + "-" + to_string(nmreduction) + " (no verification)"; );
                 return beta;
             }
             // Verification search
@@ -597,7 +598,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             nullmoveside = nullmoveply = 0;
             if (verificationscore >= beta) {
                 STATISTICSINC(prune_nm);
-                SDEBUGDO(isDebugPv, pvabortval[ply] = score; pvaborttype[ply] = PVA_NMPRUNED;);
+                SDEBUGDO(isDebugPv, pvabortscore[ply] = score; pvaborttype[ply] = PVA_NMPRUNED;);
+                SDEBUGDO(isDebugPv, pvadditionalinfo[ply] = "NM-Reduction:" + to_string(depth) + "-" + to_string(nmreduction) + " (with verification)"; );
                 return beta;
             }
         }
@@ -626,7 +628,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 {
                     // ProbCut off
                     STATISTICSINC(prune_probcut);
-                    SDEBUGDO(isDebugPv, pvabortval[ply] = probcutscore; pvaborttype[ply] = PVA_PROBCUTPRUNED; pvadditionalinfo[ply] = "pruned by " + moveToString(mc););
+                    SDEBUGDO(isDebugPv, pvabortscore[ply] = probcutscore; pvaborttype[ply] = PVA_PROBCUTPRUNED; pvadditionalinfo[ply] = "pruned by " + moveToString(mc););
                     tp.addHash(hash, probcutscore, staticeval, HASHBETA, depth - 3, mc);
                     return probcutscore;
                 }
@@ -660,7 +662,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     {
 #ifdef SDEBUG
         bool isDebugMove = (debugMove.code == mc);
-        SDEBUGDO(isDebugMove, pvmovenum[ply] = legalMoves + 1;);
+        SDEBUGDO(isDebugMove, pvmovenum[ply] = legalMoves + 1; pvmovevalue[ply] = ms->value; );
         SDEBUGDO((isDebugPv && pvmovenum[ply] <= 0), pvmovenum[ply] = -(legalMoves + 1););
 #endif
         STATISTICSINC(moves_n[(bool)ISTACTICAL(mc)]);
@@ -740,7 +742,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             {
                 // Hashscore for lower depth and static eval cut and we have at least a second good move => lets cut here
                 STATISTICSINC(prune_multicut);
-                SDEBUGDO(isDebugPv, pvabortval[ply] = sBeta; pvaborttype[ply] = PVA_MULTICUT;);
+                SDEBUGDO(isDebugPv, pvabortscore[ply] = sBeta; pvaborttype[ply] = PVA_MULTICUT;);
                 return sBeta;
             }
         }
@@ -853,7 +855,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             return beta;
         }
 
-        SDEBUGDO(isDebugMove, pvabortval[ply] = score;);
+        SDEBUGDO(isDebugMove, pvabortscore[ply] = score;);
         SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_BELOWALPHA; pvadditionalinfo[ply] += "Alpha=" + to_string(alpha) + " at this point."; );
         if (score > bestscore)
         {
@@ -991,7 +993,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
             if (score > alpha) bestmovescore[0] = score;
             if (score > NOSCORE)
             {
-                SDEBUGDO(isDebugPv, pvabortval[ply] = score; if (debugMove.code == fullhashmove) pvaborttype[ply] = PVA_FROMTT; else pvaborttype[ply] = PVA_DIFFERENTFROMTT; );
+                SDEBUGDO(isDebugPv, pvabortscore[ply] = score; if (debugMove.code == fullhashmove) pvaborttype[ply] = PVA_FROMTT; else pvaborttype[ply] = PVA_DIFFERENTFROMTT; );
                 SDEBUGDO(isDebugPv, pvadditionalinfo[ply] = "PV = " + getPv(pvtable[ply]) + "  " + tp.debugGetPv(hash, 0); );
                 return score;
             }
@@ -1054,7 +1056,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
         m = &rootmovelist.move[i];
 #ifdef SDEBUG
         bool isDebugMove = (debugMove.code == m->code);
-        SDEBUGDO(isDebugMove, pvmovenum[0] = i + 1; debugMovePlayed = true;)
+        SDEBUGDO(isDebugMove, pvmovenum[0] = i + 1; pvmovevalue[0] = rootmovelist.move[i].value; debugMovePlayed = true;)
         SDEBUGDO(pvmovenum[0] <= 0, pvmovenum[0] = -(i + 1););
 #endif
         playMove(m->code);
@@ -1095,7 +1097,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
             SDEBUGDO(isDebugMove, pvadditionalinfo[ply - 1] += "PVS(alpha=" + to_string(alpha) + ",beta=" + to_string(beta) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
         }
 
-        SDEBUGDO(isDebugMove, pvabortval[0] = score;)
+        SDEBUGDO(isDebugMove, pvabortscore[0] = score;)
 
         unplayMove(m->code);
 

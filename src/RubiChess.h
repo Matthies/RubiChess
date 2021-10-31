@@ -1263,6 +1263,9 @@ class chessmovelist
 public:
     int length;
     chessmove move[MAXMOVELISTLENGTH];
+#ifdef SDEBUG
+    int lastvalue;
+#endif
 	chessmovelist();
 	string toString();
 	string toStringWithValue();
@@ -1289,6 +1292,9 @@ public:
     uint32_t countermove;
     bool onlyGoodCaptures;
     int margin;
+#ifdef SDEBUG
+    int value;
+#endif
     void SetPreferredMoves(chessposition *p);  // for quiescence move selector
     void SetPreferredMoves(chessposition *p, int m, int excludemove);  // for probcut move selector
     void SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, uint32_t counter, int excludemove);
@@ -1423,11 +1429,18 @@ public:
     string getCoeffString();
 #endif
 #ifdef SDEBUG
-    struct {
-        uint32_t code;
-        U64 hash;
-    } pvdebug[MAXDEPTH];
+    U64 debughash = 0;
+    uint32_t pvmovecode[MAXDEPTH];
+    int pvmovevalue[MAXDEPTH];
+    int pvalpha[MAXDEPTH];
+    int pvbeta[MAXDEPTH];
+    int pvdepth[MAXDEPTH];
+    int pvmovenum[MAXDEPTH];
+    PvAbortType pvaborttype[MAXDEPTH];
+    int pvabortscore[MAXDEPTH];
+    string pvadditionalinfo[MAXDEPTH];
 #endif
+
     // The following part of the chessposition object isn't copied from rootposition object to the threads positions
     int16_t history[2][64][64];
     int16_t counterhistory[14][64][14 * 64];
@@ -1438,16 +1451,6 @@ public:
     U64 he_all;
     Materialhash mtrlhsh;
     Pawnhash pwnhsh;
-#ifdef SDEBUG
-    U64 debughash = 0;
-    int pvalpha[MAXDEPTH];
-    int pvbeta[MAXDEPTH];
-    int pvdepth[MAXDEPTH];
-    int pvmovenum[MAXDEPTH];
-    PvAbortType pvaborttype[MAXDEPTH];
-    int pvabortval[MAXDEPTH];
-    string pvadditionalinfo[MAXDEPTH];
-#endif
 #ifdef NNUE
     NnueAccumulator accumulator[MAXDEPTH];
     DirtyPiece dirtypiece[MAXDEPTH];

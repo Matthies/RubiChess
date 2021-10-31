@@ -240,6 +240,7 @@ uint32_t chessmovelist::getAndRemoveNextMove()
     if (current >= 0)
     {
         int mc = move[current].code;
+        SDEBUGDO(true, lastvalue = move[current].value;)
         move[current] = move[--length];
         return mc;
     }
@@ -1167,18 +1168,18 @@ void chessposition::reapplyPv(uint32_t* table, int num)
 #ifdef SDEBUG
 bool chessposition::triggerDebug(chessmove* nextmove)
 {
-    if (pvdebug[0].code == 0)
+    if (pvmovecode[0] == 0)
         return false;
 
     int j = 0;
 
-    while (j < ply && pvdebug[j].code)
+    while (j < ply && pvmovecode[j])
     {
-        if ((movestack[j].movecode) != pvdebug[j].code)
+        if ((movestack[j].movecode) != pvmovecode[j])
             return false;
         j++;
     }
-    nextmove->code = pvdebug[j].code;
+    nextmove->code = pvmovecode[j];
  
     return true;
 }
@@ -1192,19 +1193,19 @@ const char* PvAbortStr[] = {
 
 void chessposition::pvdebugout()
 {
-    printf("===========================================================\n  Window       Move  Num Dep    Val          Reason\n-----------------------------------------------------------\n");
-    for (int i = 0; pvdebug[i].code; i++)
+    printf("=======================================================================\n  Window       Move   MoveVal   Num Dep    Score        Reason\n-----------------------------------------------------------------------\n");
+    for (int i = 0; pvmovecode[i]; i++)
     {
         chessmove m;
-        m.code = pvdebug[i].code;
+        m.code = pvmovecode[i];
 
-        printf("%6d/%6d  %s %s%2d  %2d  %5d %23s  %s\n",
-            pvalpha[i], pvbeta[i], m.toString().c_str(), pvmovenum[i] < 0 ? ">" : " ",
-            abs(pvmovenum[i]), pvdepth[i], pvabortval[i], PvAbortStr[pvaborttype[i]], pvadditionalinfo[i].c_str());
+        printf("%6d/%6d  %s  %8x  %s%2d  %2d  %5d  %23s  %s\n",
+            pvalpha[i], pvbeta[i], m.toString().c_str(), pvmovevalue[i], pvmovenum[i] < 0 ? ">" : " ",
+            abs(pvmovenum[i]), pvdepth[i], pvabortscore[i], PvAbortStr[pvaborttype[i]], pvadditionalinfo[i].c_str());
         if (pvaborttype[i + 1] == PVA_UNKNOWN || pvaborttype[i] == PVA_OMITTED)
             break;
     }
-    printf("===========================================================\n\n");
+    printf("=======================================================================\n\n");
 }
 
 #endif
@@ -2402,6 +2403,7 @@ uint32_t MoveSelector::next()
         state++;
         if (hashmove)
         {
+            SDEBUGDO(true, value = PVVAL;)
             return hashmove;
         }
         // fall through
@@ -2413,6 +2415,7 @@ uint32_t MoveSelector::next()
     case TACTICALSTATE:
         while ((m = captures->getNextMove(0)))
         {
+            SDEBUGDO(true, value = m->value;)
             if (!pos->see(m->code, margin))
             {
                 m->value |= BADTACTICALFLAG;
@@ -2431,6 +2434,7 @@ uint32_t MoveSelector::next()
         state++;
         if (pos->moveIsPseudoLegal(killermove1))
         {
+            SDEBUGDO(true, value = KILLERVAL1;)
             return killermove1;
         }
         // fall through
@@ -2438,6 +2442,7 @@ uint32_t MoveSelector::next()
         state++;
         if (pos->moveIsPseudoLegal(killermove2))
         {
+            SDEBUGDO(true, value = KILLERVAL2;)
             return killermove2;
         }
         // fall through
@@ -2445,6 +2450,7 @@ uint32_t MoveSelector::next()
         state++;
         if (pos->moveIsPseudoLegal(countermove))
         {
+            SDEBUGDO(true, value = NMREFUTEVAL;)
             return countermove;
         }
         // fall through
@@ -2457,6 +2463,7 @@ uint32_t MoveSelector::next()
         uint32_t mc;
         while ((mc = quiets->getAndRemoveNextMove()))
         {
+            SDEBUGDO(true, value = quiets->lastvalue;)
             if (mc != hashmove
                 && mc != killermove1
                 && mc != killermove2
@@ -2468,6 +2475,7 @@ uint32_t MoveSelector::next()
     case BADTACTICALSTATE:
         while ((m = captures->getNextMove()))
         {
+            SDEBUGDO(true, value = m->value;)
             bool bBadTactical = (m->value & BADTACTICALFLAG);
             m->value = INT_MIN;
             if (bBadTactical) {
@@ -2487,6 +2495,7 @@ uint32_t MoveSelector::next()
     case EVASIONSTATE:
         while ((mc = captures->getAndRemoveNextMove()))
         {
+            SDEBUGDO(true, value = captures->lastvalue;)
             return mc;
         }
         state++;
@@ -2858,13 +2867,12 @@ void engine::communicate(string inputstring)
                             }
                             U64 h = rootposition.movestack[rootposition.ply - 1].hash;
                             tp.markDebugSlot(h, i);
-                            rootposition.pvdebug[i].code = rootposition.movestack[rootposition.ply - 1].movecode;
-                            rootposition.pvdebug[i++].hash = h;
+                            rootposition.pvmovecode[i++] = rootposition.movestack[rootposition.ply - 1].movecode;
                         }
-                        rootposition.pvdebug[i].code = 0;
+                        rootposition.pvmovecode[i] = 0;
                         while (i--) {
                             uint32_t mc;
-                            mc = rootposition.pvdebug[i].code;
+                            mc = rootposition.pvmovecode[i];
                             rootposition.unplayMove(mc);
                         }
                         prepareThreads();   // To copy the debug information to the threads position object
