@@ -781,7 +781,7 @@ int chessposition::getEval()
             score = NnueGetEval<NnueRotate>();
         else
             score = NnueGetEval<NnueFlip>();
-        score = score * (128 + phcount) / 128;
+        score = score * (128 - phcount) / 128;
         return score + frcCorrection + eps.eTempo;
     }
 #endif
