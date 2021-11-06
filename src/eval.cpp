@@ -327,7 +327,7 @@ int chessposition::getpsqval(bool showDetails)
             int mv = EVAL(eps.eMaterialvalue[p], S2MSIGN(s2m));
             int pv = EVAL(eps.ePsqt[p][PSQTINDEX(i, s2m)], S2MSIGN(s2m));
             te.material[s2m] += mv + pv;
-            if (showDetails) printf("%4d ", TAPEREDANDSCALEDEVAL(pv, ph, SCALE_NORMAL));
+            if (showDetails) printf("%4d ", TAPEREDANDSCALEDEVAL(pv, getPhase(), SCALE_NORMAL));
         }
         else
         {
@@ -771,7 +771,7 @@ int chessposition::getEval()
     resetTuner();
     getpsqval();
 #endif
-    ph = phase();
+    int ph = getPhase();
 
     int score;
 #ifdef NNUE
