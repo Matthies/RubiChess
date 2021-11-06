@@ -771,7 +771,6 @@ int chessposition::getEval()
     resetTuner();
     getpsqval();
 #endif
-    int ph = getPhase();
 
     int score;
 #ifdef NNUE
@@ -782,6 +781,7 @@ int chessposition::getEval()
             score = NnueGetEval<NnueRotate>();
         else
             score = NnueGetEval<NnueFlip>();
+        score = score * (128 + phcount) / 128;
         return score + frcCorrection + eps.eTempo;
     }
 #endif
@@ -840,13 +840,13 @@ int chessposition::getEval()
         te.complexity[complexity < 0] += complexity;
     }
 
-    score = TAPEREDANDSCALEDEVAL(totalEval, ph, sc) + CEVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
+    score = TAPEREDANDSCALEDEVAL(totalEval, getPhase(), sc) + CEVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
 
     if (bTrace)
     {
         getpsqval(en.evaldetails);
         te.sc = sc;
-        te.ph = ph;
+        te.ph = getPhase();
         te.total = totalEval;
         te.score = score;
         traceEvalOut();
