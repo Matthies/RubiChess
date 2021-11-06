@@ -2226,15 +2226,6 @@ U64 chessposition::attackedByBB(int index, U64 occ)
 }
 
 
-#if 0
-int chessposition::phase()
-{
-    // minor ~ 10-11    rook ~ 21-22    queen ~ 42-43
-    int p = max(0, (24 - POPCOUNT(piece00[4]) - POPCOUNT(piece00[5]) - POPCOUNT(piece00[6]) - POPCOUNT(piece00[7]) - (POPCOUNT(piece00[8]) << 1) - (POPCOUNT(piece00[9]) << 1) - (POPCOUNT(piece00[10]) << 2) - (POPCOUNT(piece00[11]) << 2)));
-    return (p * 255 + 12) / 24;
-}
-#endif
-
 // more advanced see respecting a variable threshold, quiet and promotion moves and faster xray attack handling
 bool chessposition::see(uint32_t move, int threshold)
 {
