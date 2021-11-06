@@ -145,7 +145,7 @@ build: cpuflags
 	@nmake -c -f Makefile.clang buildandarch ARCH=$(ARCH)
 	@nmake -c -f Makefile.clang profile-clean ARCH=$(ARCH)
 
-compile:
+compile: $(RELDIR)
 	@$(CXX) $(CXXFLAGS) $(ARCHFLAGS) $(SOURCE) $(PROFILEFLAGS)
 !IFDEF PROFLIB
 	@$(LD) $(LDFLAGS) /OUT:$(PROFEXE).exe $(OBJ) "$(PROFLIB)"
