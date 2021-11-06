@@ -575,7 +575,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     // Nullmove pruning with verification like SF does it
     int bestknownscore = (hashscore != NOSCORE ? hashscore : staticeval);
-    if (!isCheckbb && depth >= sps.nmmindepth && bestknownscore >= beta && (Pt != MatePrune || beta > -SCORETBWININMAXPLY) && (ply  >= nullmoveply || ply % 2 != nullmoveside) && getPhase() < 255)
+    if (!isCheckbb && depth >= sps.nmmindepth && bestknownscore >= beta && (Pt != MatePrune || beta > -SCORETBWININMAXPLY) && (ply  >= nullmoveply || ply % 2 != nullmoveside) && phcount)
     {
         playNullMove();
         int nmreduction = min(depth, sps.nmmredbase + (depth / sps.nmmreddepthratio) + (bestknownscore - beta) / sps.nmmredevalratio + !PVNode * sps.nmmredpvfactor);
@@ -747,7 +747,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             }
         }
         // Extend captures that lead into endgame
-        else if (getPhase() > 200 && GETCAPTURE(mc) >= WKNIGHT)
+        else if (phcount < 6 && GETCAPTURE(mc) >= WKNIGHT)
         {
             STATISTICSINC(extend_endgame);
             extendMove = 1;

@@ -984,7 +984,7 @@ void chessposition::print(ostream* os)
     *os << "Material Hash: 0x" << hex << materialhash << " (should be 0x" << hex << zb.getMaterialHash(this) << ")\n";
     *os << "Value: " + to_string(getEval<NOTRACE>()) + "\n";
     *os << "Repetitions: " + to_string(testRepetition()) + "\n";
-    *os << "Phase: " + to_string(getPhase()) + "\n";
+    *os << "Phase: " + to_string(phcount) + "\n";
     *os << "Pseudo-legal Moves: " + pseudolegalmoves.toStringWithValue() + "\n";
     *os << "Moves in current search: " + movesOnStack() + "\n";
     *os << "Ply: " + to_string(ply) + "\n";
