@@ -318,6 +318,7 @@ struct pawnhashentry;
 #define MATEFOROPPONENT(s) ((s) < SCOREBLACKWINS + MAXDEPTH)
 #define MATEDETECTED(s) (MATEFORME(s) || MATEFOROPPONENT(s))
 
+const int phasefactor[] = { 0, 0, 1, 1, 2, 4, 0 };
 
 //
 // eval stuff
@@ -1402,7 +1403,7 @@ public:
     uint32_t pvtable[MAXDEPTH][MAXDEPTH];
     uint32_t multipvtable[MAXMULTIPV][MAXDEPTH];
     uint32_t lastpv[MAXDEPTH];
-    int ph; // to store the phase during different evaluation functions
+    int phcount; // weighted number of pieces (0..24)
     int sc; // to stor scaling factor used for evaluation
     int useTb;
     int useRootmoveScore;
@@ -1471,7 +1472,7 @@ public:
     string toFen();
     uint32_t applyMove(string s, bool resetMstop = true);
     void print(ostream* os = &cout);
-    int phase();
+    int getPhase() { return (max(0, 24 - phcount) * 255 + 12) / 24; }
     U64 movesTo(PieceCode pc, int from);
     template <PieceType Pt> U64 pieceMovesTo(int from);
     bool isAttacked(int index, int me);

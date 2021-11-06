@@ -293,6 +293,7 @@ int chessposition::getFromFen(const char* sFen)
     int numToken = (int)token.size();
 
     psqval = 0;
+    phcount = 0;
 
     memset(piece00, 0, sizeof(piece00));
     memset(mailbox, 0, sizeof(mailbox));
@@ -983,7 +984,7 @@ void chessposition::print(ostream* os)
     *os << "Material Hash: 0x" << hex << materialhash << " (should be 0x" << hex << zb.getMaterialHash(this) << ")\n";
     *os << "Value: " + to_string(getEval<NOTRACE>()) + "\n";
     *os << "Repetitions: " + to_string(testRepetition()) + "\n";
-    *os << "Phase: " + to_string(phase()) + "\n";
+    *os << "Phase: " + to_string(phcount) + "\n";
     *os << "Pseudo-legal Moves: " + pseudolegalmoves.toStringWithValue() + "\n";
     *os << "Moves in current search: " + movesOnStack() + "\n";
     *os << "Ply: " + to_string(ply) + "\n";
@@ -1488,6 +1489,7 @@ void chessposition::BitboardSet(int index, PieceCode p)
     piece00[p] |= BITSET(index);
     occupied00[s2m] |= BITSET(index);
     psqval += psqtable[p][index];
+    phcount += phasefactor[p >> 1];
 }
 
 
@@ -1499,6 +1501,7 @@ void chessposition::BitboardClear(int index, PieceCode p)
     piece00[p] ^= BITSET(index);
     occupied00[s2m] ^= BITSET(index);
     psqval -= psqtable[p][index];
+    phcount -= phasefactor[p >> 1];
 }
 
 
@@ -2220,14 +2223,6 @@ U64 chessposition::attackedByBB(int index, U64 occ)
         | (pawn_attacks_to[index][0] & piece00[BPAWN])
         | (ROOKATTACKS(occ, index) & (piece00[WROOK] | piece00[BROOK] | piece00[WQUEEN] | piece00[BQUEEN]))
         | (BISHOPATTACKS(occ, index) & (piece00[WBISHOP] | piece00[BBISHOP] | piece00[WQUEEN] | piece00[BQUEEN]));
-}
-
-
-int chessposition::phase()
-{
-    // minor ~ 10-11    rook ~ 21-22    queen ~ 42-43
-    int p = max(0, (24 - POPCOUNT(piece00[4]) - POPCOUNT(piece00[5]) - POPCOUNT(piece00[6]) - POPCOUNT(piece00[7]) - (POPCOUNT(piece00[8]) << 1) - (POPCOUNT(piece00[9]) << 1) - (POPCOUNT(piece00[10]) << 2) - (POPCOUNT(piece00[11]) << 2)));
-    return (p * 255 + 12) / 24;
 }
 
 

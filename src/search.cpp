@@ -575,7 +575,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     // Nullmove pruning with verification like SF does it
     int bestknownscore = (hashscore != NOSCORE ? hashscore : staticeval);
-    if (!isCheckbb && depth >= sps.nmmindepth && bestknownscore >= beta && (Pt != MatePrune || beta > -SCORETBWININMAXPLY) && (ply  >= nullmoveply || ply % 2 != nullmoveside) && ph < 255)
+    if (!isCheckbb && depth >= sps.nmmindepth && bestknownscore >= beta && (Pt != MatePrune || beta > -SCORETBWININMAXPLY) && (ply  >= nullmoveply || ply % 2 != nullmoveside) && phcount)
     {
         playNullMove();
         int nmreduction = min(depth, sps.nmmredbase + (depth / sps.nmmreddepthratio) + (bestknownscore - beta) / sps.nmmredevalratio + !PVNode * sps.nmmredpvfactor);
@@ -747,7 +747,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             }
         }
         // Extend captures that lead into endgame
-        else if (ph > 200 && GETCAPTURE(mc) >= WKNIGHT)
+        else if (phcount < 6 && GETCAPTURE(mc) >= WKNIGHT)
         {
             STATISTICSINC(extend_endgame);
             extendMove = 1;
@@ -1606,7 +1606,7 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
             // ph: phase of the game averaging material and move number
             // f1: stop soon after 5..17 timeslot
             // f2: stop immediately after 15..27 timeslots
-            int ph = (en.sthread[0].pos.phase() + min(255, en.sthread[0].pos.fullmovescounter * 6)) / 2;
+            int ph = (en.sthread[0].pos.getPhase() + min(255, en.sthread[0].pos.fullmovescounter * 6)) / 2;
             int f1 = max(5, 17 - constance);
             int f2 = max(15, 27 - constance);
             if (complete)
