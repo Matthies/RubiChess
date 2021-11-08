@@ -977,6 +977,7 @@ int main(int argc, char* argv[])
     cout.setf(ios_base::unitbuf);
 
     vector<string> ucicmds;
+    ucicmds.push_back("position startpos");
     int paramindex = 1;
     for (int j = 0; allowedargs[j].cmd; j++)
     {
@@ -1077,7 +1078,6 @@ int main(int argc, char* argv[])
 #endif
     else {
         // usual uci mode
-        en.rootposition.getFromFen(STARTFEN);
         ucicmds.push_back("");
         for (auto it = ucicmds.begin(); it != ucicmds.end(); it++)
             en.communicate(*it);
