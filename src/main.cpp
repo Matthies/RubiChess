@@ -904,6 +904,7 @@ int main(int argc, char* argv[])
         char type;
         const char *defaultval;
     } allowedargs[] = {
+        { "-uci", "Execute UCI command", NULL, 4, NULL },
         { "-verbose", "Show the parameterlist and actuel values.", &verbose, 0, NULL },
         { "-bench", "Do benchmark test for some positions.", &benchmark, 0, NULL },
         { "bench", "Do benchmark with OpenBench compatible output.", &openbench, 0, NULL },
@@ -975,6 +976,7 @@ int main(int argc, char* argv[])
 
     cout.setf(ios_base::unitbuf);
 
+    vector<string> ucicmds;
     int paramindex = 1;
     for (int j = 0; allowedargs[j].cmd; j++)
     {
@@ -1020,6 +1022,15 @@ int main(int argc, char* argv[])
             else {
                 paramindex = 1;
             }
+            break;
+        case 4:
+            if (val > 0 && val < argc - 1)
+            {
+                while (++val < argc && argv[val][0] != '-')
+                    ucicmds.push_back(argv[val]);
+            }
+            paramindex = 1;
+            break;
         }
     }
 
@@ -1066,7 +1077,10 @@ int main(int argc, char* argv[])
 #endif
     else {
         // usual uci mode
-        en.communicate("");
+        en.rootposition.getFromFen(STARTFEN);
+        ucicmds.push_back("");
+        for (auto it = ucicmds.begin(); it != ucicmds.end(); it++)
+            en.communicate(*it);
     }
 
 #ifdef EVALTUNE

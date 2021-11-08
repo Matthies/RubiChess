@@ -2762,7 +2762,7 @@ U64 engine::getTotalNodes()
 
 void engine::communicate(string inputstring)
 {
-    string fen = STARTFEN;
+    string fen = "";// STARTFEN;
     vector<string> moves;
     vector<string> commandargs;
     GuiToken command = UNKNOWN;
@@ -2771,7 +2771,7 @@ void engine::communicate(string inputstring)
     string sName, sValue;
     bool bMoves;
     bool pendingisready = false;
-    bool pendingposition = (inputstring == "");
+    bool pendingposition = false;// (inputstring == "");
     do
     {
         if (stopLevel >= ENGINESTOPIMMEDIATELY)
