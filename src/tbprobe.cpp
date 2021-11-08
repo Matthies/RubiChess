@@ -625,7 +625,6 @@ int chessposition::root_probe_dtz()
         return 0;
 
     bool isBadMove;
-    printf("Halfmovecounter: %d\n", halfmovescounter);
 
     // Probe each move.
     for (int i = 0; i < rootmovelist.length; i++)
