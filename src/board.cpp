@@ -2737,8 +2737,6 @@ void chessposition::resetStats()
     he_yes = 0ULL;
     he_all = 0ULL;
     he_threshold = 8100;
-    useTb = min(TBlargest, en.SyzygyProbeLimit);
-    printf("useTB = %d\n", useTb);
 }
 
 
@@ -2814,6 +2812,7 @@ void engine::communicate(string inputstring)
 
                 rootposition.lastnullmove = -rootposition.ply - 1;
                 rootposition.ply = 0;
+                rootposition.useTb = min(TBlargest, en.SyzygyProbeLimit);
                 rootposition.getRootMoves();
                 rootposition.tbFilterRootMoves();
                 prepareThreads();
@@ -3099,7 +3098,7 @@ void engine::communicate(string inputstring)
             }
         }
     } while (command != QUIT && (inputstring == "" || pendingposition));
-    if (inputstring == "")
+    if (command == QUIT)
         searchWaitStop();
 }
 
