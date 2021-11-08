@@ -481,7 +481,6 @@ int chessposition::getFromFen(const char* sFen)
     materialhash = zb.getMaterialHash(this);
     lastnullmove = -1;
     ply = 0;
-    useTb = min(TBlargest, en.SyzygyProbeLimit);
     return 0;
 }
 
@@ -1143,7 +1142,7 @@ int chessposition::applyPv(uint32_t* table)
 {
     chessmove cm;
     int i = 0;
-    
+
     while ((cm.code = table[i++]))
     {
         prepareStack();
@@ -1181,7 +1180,7 @@ bool chessposition::triggerDebug(chessmove* nextmove)
         j++;
     }
     nextmove->code = pvmovecode[j];
- 
+
     return true;
 }
 
@@ -1332,7 +1331,7 @@ void initBitmaphelper()
             squareDistance[from][j] = max(abs(RANK(from) - RANK(j)), abs(FILE(from) - FILE(j))) - 1;
             betweenMask[from][j] = 0ULL;
             lineMask[from][j] = 0ULL;
-            
+
             if (abs(FILE(from) - FILE(j)) == 1)
             {
                 neighbourfilesMask[from] |= BITSET(j);
@@ -2720,6 +2719,7 @@ void engine::prepareThreads()
         pos->nodes = 0;
         pos->nullmoveply = 0;
         pos->nullmoveside = 0;
+
 #ifdef NNUE
         pos->accumulator[0].computationState[WHITE] = false;
         pos->accumulator[0].computationState[BLACK] = false;
@@ -2737,6 +2737,8 @@ void chessposition::resetStats()
     he_yes = 0ULL;
     he_all = 0ULL;
     he_threshold = 8100;
+    useTb = min(TBlargest, en.SyzygyProbeLimit);
+    printf("useTB = %d\n", useTb);
 }
 
 
@@ -2762,7 +2764,7 @@ U64 engine::getTotalNodes()
 
 void engine::communicate(string inputstring)
 {
-    string fen = "";// STARTFEN;
+    string fen;
     vector<string> moves;
     vector<string> commandargs;
     GuiToken command = UNKNOWN;
@@ -2771,7 +2773,7 @@ void engine::communicate(string inputstring)
     string sName, sValue;
     bool bMoves;
     bool pendingisready = false;
-    bool pendingposition = false;// (inputstring == "");
+    bool pendingposition = false;
     do
     {
         if (stopLevel >= ENGINESTOPIMMEDIATELY)
@@ -3049,11 +3051,9 @@ void engine::communicate(string inputstring)
                 }
                 isWhite = (sthread[0].pos.w2m());
                 searchStart();
-                if (inputstring != "")
-                {
-                    // bench mode; wait for end of search
-                    searchWaitStop(false);
-                }
+                break;
+            case WAIT:
+                searchWaitStop(false);
                 break;
             case PONDERHIT:
                 pondersearch = HITPONDER;

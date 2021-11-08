@@ -1,4 +1,4 @@
-﻿/*
+/*
   RubiChess is a UCI chess playing engine by Andreas Matthies.
 
   RubiChess is free software: you can redistribute it and/or modify
@@ -694,7 +694,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         }
 
         // Prune moves with bad SEE
-        if (Pt != NoPrune 
+        if (Pt != NoPrune
             && !isCheckbb
             && depth <= sps.seeprunemaxdepth
             && bestscore > (Pt == Prune ? NOSCORE : -SCORETBWININMAXPLY)
@@ -1019,7 +1019,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
                 m->value = KILLERVAL2;
             else if (GETCAPTURE(m->code) != BLANK)
                 m->value = (mvv[GETCAPTURE(m->code) >> 1] | lva[GETPIECE(m->code) >> 1]);
-            else 
+            else
                 m->value = history[state & S2MMASK][GETFROM(m->code)][GETCORRECTTO(m->code)];
             if (isMultiPV) {
                 if (multipvtable[0][0] == m->code)
@@ -1404,7 +1404,7 @@ static void mainSearch(searchthread *thr)
                     pos->bestmove = pos->shortMove2FullMove(mc);
                     pos->pondermove = 0;
                 }
-                    
+
                 // still no bestmove...
                 if (!pos->bestmove && pos->rootmovelist.length > 0 && !isDraw)
                     pos->bestmove = pos->rootmovelist.move[0].code;
@@ -1487,7 +1487,7 @@ static void mainSearch(searchthread *thr)
             break;
 
     } while (1);
-    
+
     if (isMainThread)
     {
 #ifdef TDEBUG
