@@ -802,7 +802,7 @@ void convert(vector<string> args)
             if (!rubimovecode || ISEPCAPTUREORCASTLE(rubimovecode))
             {
                 // Fix the incompatible move coding
-                sfmovecode = pos->shortMove2FullMove(move);
+                sfmovecode = pos->shortMove2FullMove(move & 0xfff);
                 if (sfmovecode)
                     move = sfMoveCode(sfmovecode);
                 if (!rubimovecode)
