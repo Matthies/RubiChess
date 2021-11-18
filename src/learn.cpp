@@ -780,6 +780,8 @@ void convert(vector<string> args)
         uint16_t move;
         uint16_t gameply;
         is.read((char*)buffer, buffersize);
+        if (!is)
+            buffersize = is.gcount();
         char* bptr = buffer;
 
         while (bptr < buffer + buffersize)
