@@ -46,7 +46,7 @@
 //#define FINDMEMORYLEAKS
 
 // Enable this to enable NNUE training code
-//#define NNUELEARN
+#define NNUELEARN
 
 
 #ifdef FINDMEMORYLEAKS
@@ -854,6 +854,8 @@ struct PackedSfenValue
     uint8_t padding;
 };
 
+struct BinpackPtr { uint8_t* data; uint8_t bits; };
+
 void gensfen(vector<string> args);
 void convert(vector<string> args);
 void learn(vector<string> args);
@@ -1548,6 +1550,7 @@ public:
 #ifdef NNUELEARN
     void toSfen(PackedSfen *sfen);
     int getFromSfen(PackedSfen* sfen);
+    int getFromBinpack(BinpackPtr *bp);
 #endif
 #endif
 };

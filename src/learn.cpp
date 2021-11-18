@@ -276,6 +276,12 @@ void flush_psv(int result, searchthread* thr)
 }
 
 
+int chessposition::getFromBinpack(BinpackPtr* bp)
+{
+    
+}
+
+
 // global parameters for gensfen variation
 int depth = 4;
 int depth2 = depth;
@@ -390,7 +396,7 @@ static void gensfenthread(searchthread* thr, U64 rndseed)
                 break;
             }
             pos->ply = 0;
-            movelist.length = CreateMovelist<ALL>(pos, &movelist.move[0]);
+            movelist.length = pos->CreateMovelist<ALL>(&movelist.move[0]);
 
             if (movelist.length == 0)
             {
@@ -683,7 +689,7 @@ void gensfen(vector<string> args)
 
 
 
-enum SfenFormat { no, bin, plain };
+enum SfenFormat { no, bin, binpack, plain };
 
 void convert(vector<string> args)
 {
@@ -692,6 +698,7 @@ void convert(vector<string> args)
     int evalstats = 0;
     int generalstats = 0;
     SfenFormat outformat = no;
+    SfenFormat informat = no;
     size_t cs = args.size();
     size_t ci = 0;
     U64 evalsum[2][7] = { 0 };  // evalsum for hce and NNUE classified by at  0 / <0.5 / <1 / <3 / <20 / 1-4 / different prefer
@@ -713,7 +720,7 @@ void convert(vector<string> args)
         }
         if (cmd == "output_format" && ci < cs)
         {
-            outformat = (args[ci] == "bin" ? bin : args[ci] == "plain" ? plain : no);
+            outformat = (args[ci] == "bin" ? bin : args[ci] == "plain" ? plain : args[ci] == "binpack" ? binpack : no);
             ci++;
         }
         if (cmd == "evalstats" && ci < cs)
@@ -735,6 +742,8 @@ void convert(vector<string> args)
         return;
     }
 
+    informat = (inputfile.find(".binpack") != string::npos ? binpack : inputfile.find(".bin") != string::npos ? bin : plain);
+
     ostream *os = &cout;
     ofstream ofs;
     if (outputfile != "")
@@ -749,7 +758,13 @@ void convert(vector<string> args)
     }
 
     chessposition* pos = &en.sthread[0].pos;
-    PackedSfenValue* psvbuffer = (PackedSfenValue*)allocalign64(sfenchunknums * sfenchunksize * sizeof(PackedSfenValue));
+    char* buffer;
+    size_t buffersize;
+    if (informat == bin)
+        buffersize = sfenchunknums * sfenchunksize * sizeof(PackedSfenValue);
+    else if (informat == binpack)
+        buffersize = 1000; // FIXME
+    buffer = (char*)allocalign64(buffersize);
 
     U64 n = 0;
     int rookfiles[2] = { -1, -1 };
@@ -760,10 +775,68 @@ void convert(vector<string> args)
 
     while (is.peek() != ios::traits_type::eof())
     {
-        is.read((char*)psvbuffer, sfenchunknums * sfenchunksize * sizeof(PackedSfenValue));
-        U64 psvread = is.gcount() / sizeof(PackedSfenValue);
+        int16_t score;
+        int8_t result;
+        uint16_t move;
+        uint16_t gameply;
+        is.read((char*)buffer, buffersize);
+        char* bptr = buffer;
 
-        for (PackedSfenValue* psv = psvbuffer; psv < psvbuffer + psvread; psv++)
+        while (bptr < buffer + buffersize)
+        {
+            if (informat == bin)
+            {
+                PackedSfenValue* psv = (PackedSfenValue*)bptr;
+                pos->getFromSfen(&psv->sfen);
+                score = psv->score;
+                result = psv->game_result;
+                move = psv->move;
+                gameply = psv->gamePly;
+                bptr += sizeof(PackedSfenValue);
+            }
+
+            uint32_t rubimovecode = pos->shortMove2FullMove(shortCode(move));
+            uint32_t sfmovecode = rubimovecode;
+            if (!rubimovecode || ISEPCAPTUREORCASTLE(rubimovecode))
+            {
+                // Fix the incompatible move coding
+                sfmovecode = pos->shortMove2FullMove(move);
+                if (sfmovecode)
+                    move = sfMoveCode(sfmovecode);
+                if (!rubimovecode)
+                {
+                    // FIXME: Can this still happen??
+                    printf("Alarm. Movecode: %04x: %s\n", move, pos->toFen().c_str());
+                    rubimovecode = pos->shortMove2FullMove(move);
+                }
+            }
+
+
+
+            if (outformat == plain)
+            {
+                *os << "fen " << pos->toFen() << "\n";
+                *os << "move " << moveToString(rubimovecode) << "\n";
+                *os << "score " << score << "\n";
+                *os << "ply " << to_string(gameply) << "\n";
+                *os << "result " << to_string(result) << "\n";
+                *os << "e\n";
+            }
+            else if (outformat == bin)
+            {
+                PackedSfenValue psv;
+                psv.score = score;
+                psv.game_result = result;
+                psv.gamePly = gameply;
+                psv.move = move; // FIXME: revert to SF format needed
+                pos->toSfen(&psv.sfen);
+                os->write((char*)&psv, sizeof(PackedSfenValue));
+            }
+        }
+
+#if 0
+        U64 psvread = is.gcount() / sizeof(PackedSfenValue);
+        for (PackedSfenValue* psv = (PackedSfenValue*) buffer; psv < buffer + psvread; psv++)
         {
             pos->getFromSfen(&psv->sfen);
             // Test and reset the castle related mebers in case of chess960
@@ -883,11 +956,12 @@ void convert(vector<string> args)
             }
         }
         if (!evalstats) cerr << ".";
+#endif
     }
 
     cerr << "\nFinished converting.\n";
 
-    if (generalstats)
+    if (generalstats && n > 0)
     {
         cerr << "Distribution depending on number of pieces:\n";
         for (int i = 2; i < 33; i++)
