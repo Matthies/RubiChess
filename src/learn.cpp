@@ -276,7 +276,7 @@ void flush_psv(int result, searchthread* thr)
 }
 
 
-int chessposition::getFromBinpack(BinpackPtr* bp)
+int chessposition::getFromBinpack(Binpack *bp)
 {
     
 }
@@ -783,6 +783,7 @@ void convert(vector<string> args)
         if (!is)
             buffersize = is.gcount();
         char* bptr = buffer;
+        Binpack bp;
 
         while (bptr < buffer + buffersize)
         {
@@ -795,6 +796,19 @@ void convert(vector<string> args)
                 move = psv->move;
                 gameply = psv->gamePly;
                 bptr += sizeof(PackedSfenValue);
+            }
+            else if (informat == binpack)
+            {
+                if (!bp.ptr)
+                {
+                    bp.ptr = &bptr;
+                    bp.bits = 0;
+                }
+                pos->getFromBinpack(&bp);
+                score = bp.score;
+                result = bp.game_result;
+                move = bp.move;
+                gameply = bp.gamePly;
             }
 
             uint32_t rubimovecode = pos->shortMove2FullMove(shortCode(move));

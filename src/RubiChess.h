@@ -854,7 +854,15 @@ struct PackedSfenValue
     uint8_t padding;
 };
 
-struct BinpackPtr { uint8_t* data; uint8_t bits; };
+struct Binpack
+{
+    char **ptr;
+    uint8_t bits;
+    int16_t score;
+    uint16_t move;
+    uint16_t gamePly;
+    int8_t game_result;
+};
 
 void gensfen(vector<string> args);
 void convert(vector<string> args);
@@ -1550,7 +1558,7 @@ public:
 #ifdef NNUELEARN
     void toSfen(PackedSfen *sfen);
     int getFromSfen(PackedSfen* sfen);
-    int getFromBinpack(BinpackPtr *bp);
+    int getFromBinpack(Binpack *bp);
 #endif
 #endif
 };
