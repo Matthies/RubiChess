@@ -278,7 +278,9 @@ void flush_psv(int result, searchthread* thr)
 
 int chessposition::getFromBinpack(Binpack *bp)
 {
-    
+
+
+    return 0;
 }
 
 
