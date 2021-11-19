@@ -108,6 +108,7 @@ int chessposition::getFromSfen(PackedSfen* sfen)
     uint8_t b;
     memset(piece00, 0, sizeof(piece00));
     psqval = 0;
+    phcount = 0;
     int bitnum = 0;
     uint8_t* buffer = &sfen->data[0];
     // side to move
@@ -284,13 +285,14 @@ int chessposition::getFromBinpack(Binpack *bp)
         memset(mailbox, 0, sizeof(mailbox));
         psqval = 0;
         state = 0;
-        U64 occ = *(U64*)*bp->ptr;
-        *bp->ptr += sizeof(occ);
+        phcount = 0;
+        U64 occ = *(U64*)*bp->data;
+        *bp->data += sizeof(occ);
         int piecenum = 0;
+        uint8_t b;
         while (occ)
         {
             int sq = pullLsb(&occ);
-            uint8_t b;
             int p;
             PieceCode pc;
             if (piecenum & 1)
@@ -298,8 +300,8 @@ int chessposition::getFromBinpack(Binpack *bp)
                 p = (b >> 4);
             }
             else {
-                b = *(uint8_t*)*bp->ptr;
-                *bp->ptr++;
+                b = *(uint8_t*)*bp->data;
+                (*bp->data)++;
                 p = (b & 0xf);
             }
 
@@ -871,9 +873,9 @@ void convert(vector<string> args)
             }
             else if (informat == binpack)
             {
-                if (!bp.ptr)
+                if (!bp.data)
                 {
-                    bp.ptr = &bptr;
+                    bp.data = &bptr;
                     bp.bits = 0;
                 }
                 pos->getFromBinpack(&bp);

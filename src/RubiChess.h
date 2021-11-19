@@ -856,7 +856,7 @@ struct PackedSfenValue
 
 struct Binpack
 {
-    char **ptr;
+    char **data;
     uint8_t bits;
     int16_t score;
     uint16_t move;
