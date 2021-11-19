@@ -856,13 +856,13 @@ struct PackedSfenValue
 
 struct Binpack
 {
-    int state;
     char **ptr;
     uint8_t bits;
     int16_t score;
     uint16_t move;
     uint16_t gamePly;
     int8_t game_result;
+    uint16_t compressedmoves;
 };
 
 void gensfen(vector<string> args);

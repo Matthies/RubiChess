@@ -107,7 +107,6 @@ int chessposition::getFromSfen(PackedSfen* sfen)
 {
     uint8_t b;
     memset(piece00, 0, sizeof(piece00));
-    memset(occupied00, 0, sizeof(occupied00));
     psqval = 0;
     int bitnum = 0;
     uint8_t* buffer = &sfen->data[0];
@@ -278,7 +277,67 @@ void flush_psv(int result, searchthread* thr)
 
 int chessposition::getFromBinpack(Binpack *bp)
 {
+    if (bp->compressedmoves == 0)
+    {
+        // get a full position
+        memset(piece00, 0, sizeof(piece00));
+        memset(mailbox, 0, sizeof(mailbox));
+        psqval = 0;
+        state = 0;
+        U64 occ = *(U64*)*bp->ptr;
+        *bp->ptr += sizeof(occ);
+        int piecenum = 0;
+        while (occ)
+        {
+            int sq = pullLsb(&occ);
+            uint8_t b;
+            int p;
+            PieceCode pc;
+            if (piecenum & 1)
+            {
+                p = (b >> 4);
+            }
+            else {
+                b = *(uint8_t*)*bp->ptr;
+                *bp->ptr++;
+                p = (b & 0xf);
+            }
 
+            switch (p) {
+            case 12:
+                // pawn with ep square behind
+                ept = (RANK(sq) == 3 ? sq - 8 : sq + 8);
+                pc = (RANK(sq) == 3 ? WPAWN : BPAWN);
+                break;
+            case 13:
+                // white rook with coresponding castling rights
+                pc = WROOK;
+                state |= (piece00[WKING] ? WQCMASK : WKCMASK);
+                break;
+            case 14:
+                // black rook with coresponding castling rights
+                pc = WROOK;
+                state |= (piece00[BKING] ? BQCMASK : BKCMASK);
+                break;
+            case 15:
+                // black king and black is side to move
+                pc = BKING;
+                state |= S2MMASK;
+                break;
+            default:
+                pc = p + 2;
+            }
+            mailbox[sq] = pc;
+            BitboardSet(sq, pc);
+            if ((pc >> 1) == KING)
+                kingpos[pc & S2MMASK] = sq;
+            piecenum++;
+        }
+    }
+    else {
+        // get the next compressed move
+
+    }
 
     return 0;
 }
@@ -762,9 +821,20 @@ void convert(vector<string> args)
     chessposition* pos = &en.sthread[0].pos;
     char* buffer;
     size_t buffersize;
+    uint32_t innum;
     if (informat == bin)
         buffersize = sfenchunknums * sfenchunksize * sizeof(PackedSfenValue);
     else if (informat == binpack)
+    {
+        char hd[8];
+        is.read(hd, 8);
+        if (strncmp(hd, "BINP", 4) != 0)
+        {
+            cout << "BINP Header missing. Exit.\n";
+            return;
+        }
+        innum = *(uint32_t*)&hd[4];
+    }
         buffersize = 1000; // FIXME
     buffer = (char*)allocalign64(buffersize);
 
@@ -785,7 +855,7 @@ void convert(vector<string> args)
         if (!is)
             buffersize = is.gcount();
         char* bptr = buffer;
-        Binpack bp;
+        Binpack bp = { 0 };
 
         while (bptr < buffer + buffersize)
         {
