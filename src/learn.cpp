@@ -278,12 +278,78 @@ void flush_psv(int result, searchthread* thr)
 
 #define SHORTFROMBIGENDIAN(c) ((uint8_t)(c)[1] | ((uint8_t)(c)[0] << 8))
 #define LONGLONGFROMBIGENDIAN(c) ((U64)((uint8_t)(c)[7]) | ((U64)((uint8_t)(c)[6]) << 8) | ((U64)((uint8_t)(c)[5]) << 16) | (((U64)((uint8_t)(c)[4])) << 24ULL) | ((U64)((uint8_t)(c)[3]) << 32) | ((U64)((uint8_t)(c)[2]) << 40) | ((U64)((uint8_t)(c)[1]) << 48) | ((U64)((uint8_t)(c)[0]) << 56))
-// | (uint64_t)((c)[5] << 16) | ((uint8_t)(c)[4] << 24) | ((uint8_t)(c)[3] << 32) | ((uint8_t)(c)[2] << 40) | ((uint8_t)(c)[1] << 48) | ((uint8_t)(c)[0] << 56))
-#define TOSIGNED(c) ((((c) << 15) | ((c) >> 1)) ^ ((c) & 1 ? 0x7fff : 0x0000))
+//#define TOSIGNED(c) ((((c) << 15) | ((c) >> 1)) ^ ((c) & 1 ? 0x7fff : 0x0000))
 
+inline int16_t toSigned(uint16_t u)
+{
+    u = (u << 15) | (u >> 1);
+    if (u & 0x8000)
+        u ^= 0x7fff;
+    int16_t s;
+    memcpy(&s, &u, sizeof(uint16_t));
+    return s;
+}
+
+inline int indexBits(U64 c) {
+    if (c <= 1)  return 0;
+    int n;
+    GETMSB(n, c - 1);
+    return n + 1;
+}
+
+// bitnum <= 8
+inline uint8_t getNextBits(Binpack *bp, int bitnum)
+{
+    uint8_t c;
+
+    uint8_t byte = *(uint8_t*)*bp->data;
+    byte = byte << bp->consumedBits;
+    byte = byte >> (8 - bitnum);
+    bp->consumedBits += bitnum;
+
+    if (bp->consumedBits >= 8)
+    {
+        int bitsleft = bp->consumedBits - 8;
+        uint8_t byte2 = *(uint8_t*)(*bp->data + 1) >> (8 - bitsleft);
+        byte |= byte2;
+        bp->consumedBits -= 8;
+        (*bp->data)++;
+    }
+    return byte;
+}
+
+inline uint16_t getNextBlocks(Binpack* bp, int blocksize)
+{
+    uint8_t mask = BITSET(blocksize) - 1;
+    uint16_t val = 0;
+    int bitnum = 0;
+    while (1)
+    {
+        uint8_t byte = getNextBits(bp, blocksize + 1);
+        val |= (byte & mask) << bitnum;
+        if (!(byte >> blocksize))
+            break;
+        bitnum += blocksize;
+    }
+    return val;
+}
+
+inline int getNthBitIndex(U64 occ, int n)
+{
+    // FIXME: make this faster
+    int index;
+    for (int i = 0; i <= n; i++)
+        index = pullLsb(&occ);
+    return index;
+}
 
 void chessposition::getPosFromBinpack(Binpack* bp)
 {
+    if (bp->consumedBits)
+    {
+        (*bp->data)++;
+        bp->consumedBits = 0;
+    }
     U64 occ = LONGLONGFROMBIGENDIAN(*bp->data);
     *bp->data += sizeof(occ);
     int piecenum = 0;
@@ -365,14 +431,14 @@ int chessposition::getFromBinpack(Binpack *bp)
             shortmc |= (((bpmc & 0x3) + 2) << 13) | ((state & S2MMASK) << 12);
         bp->move = shortmc;
         // get the score
-        bp->score = (int16_t)TOSIGNED(SHORTFROMBIGENDIAN(*bp->data));
+        bp->score = toSigned(SHORTFROMBIGENDIAN(*bp->data));
         *bp->data += sizeof(int16_t);
         //get ply and result
         uint16_t plyandresult = SHORTFROMBIGENDIAN(*bp->data);
         *bp->data += sizeof(uint16_t);
         bp->gamePly = plyandresult & 0x3FFF;
         fullmovescounter = bp->gamePly / 2 + 1;
-        bp->game_result = TOSIGNED(plyandresult >> 14);
+        bp->gameResult = (int8_t)toSigned(plyandresult >> 14);
         // 50-moves-counter
         halfmovescounter = SHORTFROMBIGENDIAN(*bp->data);
         *bp->data += sizeof(int16_t);
@@ -381,9 +447,38 @@ int chessposition::getFromBinpack(Binpack *bp)
         *bp->data += sizeof(int16_t);
     }
     else {
+        bp->compressedmoves--;
+        // play the last move
+        playMove(bp->fullmove);
+        bp->lastScore = -bp->score;
         // get the next compressed move
-        printf("");
-
+        int Me = state & S2MMASK;
+        U64 mysquaresbb = occupied00[state & S2MMASK];
+        int bitnum = indexBits(POPCOUNT(mysquaresbb));
+        int pieceId =  getNextBits(bp, bitnum);
+        int from = getNthBitIndex(mysquaresbb, pieceId);
+        PieceCode pc = mailbox[from];
+        U64 targetbb = movesTo(pc, from) & ~mysquaresbb;
+        bitnum = indexBits(POPCOUNT(targetbb));
+        switch (pc >> 1) {
+        case PAWN:
+            if (RRANK(from, Me) == 6)
+                // promotion
+                bitnum = indexBits(POPCOUNT(targetbb) << 2);
+            break;
+        case KING:
+            break;
+        default:
+            break;
+        }
+        int toId = getNextBits(bp, bitnum);
+        int to = getNthBitIndex(targetbb, toId);
+        uint16_t shortmc = (from << 6) | to;
+        bp->move = shortmc;
+        // get the score diff
+        int16_t scorediff = toSigned(getNextBlocks(bp, 4));
+        bp->score = bp->lastScore + scorediff;
+        bp->gamePly++;
     }
 
     bp->fullmove = shortMove2FullMove(bp->move);
@@ -927,11 +1022,11 @@ void convert(vector<string> args)
                 if (!bp.data)
                 {
                     bp.data = &bptr;
-                    bp.bits = 0;
+                    bp.consumedBits = 0;
                 }
                 pos->getFromBinpack(&bp);
                 score = bp.score;
-                result = bp.game_result;
+                result = bp.gameResult;
                 move = bp.move;
                 gameply = bp.gamePly;
             }
