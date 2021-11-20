@@ -276,69 +276,120 @@ void flush_psv(int result, searchthread* thr)
 }
 
 
+#define SHORTFROMBIGENDIAN(c) ((uint8_t)(c)[1] | ((uint8_t)(c)[0] << 8))
+#define LONGLONGFROMBIGENDIAN(c) ((U64)((uint8_t)(c)[7]) | ((U64)((uint8_t)(c)[6]) << 8) | ((U64)((uint8_t)(c)[5]) << 16) | (((U64)((uint8_t)(c)[4])) << 24ULL) | ((U64)((uint8_t)(c)[3]) << 32) | ((U64)((uint8_t)(c)[2]) << 40) | ((U64)((uint8_t)(c)[1]) << 48) | ((U64)((uint8_t)(c)[0]) << 56))
+// | (uint64_t)((c)[5] << 16) | ((uint8_t)(c)[4] << 24) | ((uint8_t)(c)[3] << 32) | ((uint8_t)(c)[2] << 40) | ((uint8_t)(c)[1] << 48) | ((uint8_t)(c)[0] << 56))
+#define TOSIGNED(c) ((((c) << 15) | ((c) >> 1)) ^ ((c) & 1 ? 0x7fff : 0x0000))
+
+
+void chessposition::getPosFromBinpack(Binpack* bp)
+{
+    U64 occ = LONGLONGFROMBIGENDIAN(*bp->data);
+    *bp->data += sizeof(occ);
+    int piecenum = 0;
+    uint8_t b;
+    while (occ)
+    {
+        int sq = pullLsb(&occ);
+        int p;
+        PieceCode pc;
+        if (piecenum & 1)
+        {
+            p = (b >> 4);
+        }
+        else {
+            b = *(uint8_t*)*bp->data;
+            (*bp->data)++;
+            p = (b & 0xf);
+        }
+
+        switch (p) {
+        case 12:
+            // pawn with ep square behind
+            ept = (RANK(sq) == 3 ? sq - 8 : sq + 8);
+            pc = (RANK(sq) == 3 ? WPAWN : BPAWN);
+            break;
+        case 13:
+            // white rook with coresponding castling rights
+            pc = WROOK;
+            state |= (piece00[WKING] ? WQCMASK : WKCMASK);
+            break;
+        case 14:
+            // black rook with coresponding castling rights
+            pc = WROOK;
+            state |= (piece00[BKING] ? BQCMASK : BKCMASK);
+            break;
+        case 15:
+            // black king and black is side to move
+            pc = BKING;
+            state |= S2MMASK;
+            break;
+        default:
+            pc = p + 2;
+        }
+        mailbox[sq] = pc;
+        BitboardSet(sq, pc);
+        if ((pc >> 1) == KING)
+            kingpos[pc & S2MMASK] = sq;
+        piecenum++;
+    }
+
+    if (piecenum & 1)
+        (*bp->data)++;
+
+}
+
+
 int chessposition::getFromBinpack(Binpack *bp)
 {
     if (bp->compressedmoves == 0)
     {
         // get a full position
+        // reset the position
         memset(piece00, 0, sizeof(piece00));
         memset(mailbox, 0, sizeof(mailbox));
         psqval = 0;
         state = 0;
         phcount = 0;
-        U64 occ = *(U64*)*bp->data;
-        *bp->data += sizeof(occ);
-        int piecenum = 0;
-        uint8_t b;
-        while (occ)
-        {
-            int sq = pullLsb(&occ);
-            int p;
-            PieceCode pc;
-            if (piecenum & 1)
-            {
-                p = (b >> 4);
-            }
-            else {
-                b = *(uint8_t*)*bp->data;
-                (*bp->data)++;
-                p = (b & 0xf);
-            }
-
-            switch (p) {
-            case 12:
-                // pawn with ep square behind
-                ept = (RANK(sq) == 3 ? sq - 8 : sq + 8);
-                pc = (RANK(sq) == 3 ? WPAWN : BPAWN);
-                break;
-            case 13:
-                // white rook with coresponding castling rights
-                pc = WROOK;
-                state |= (piece00[WKING] ? WQCMASK : WKCMASK);
-                break;
-            case 14:
-                // black rook with coresponding castling rights
-                pc = WROOK;
-                state |= (piece00[BKING] ? BQCMASK : BKCMASK);
-                break;
-            case 15:
-                // black king and black is side to move
-                pc = BKING;
-                state |= S2MMASK;
-                break;
-            default:
-                pc = p + 2;
-            }
-            mailbox[sq] = pc;
-            BitboardSet(sq, pc);
-            if ((pc >> 1) == KING)
-                kingpos[pc & S2MMASK] = sq;
-            piecenum++;
-        }
+        // get the pieces
+        getPosFromBinpack(bp);
+        // get the move
+        uint16_t bpmc = SHORTFROMBIGENDIAN(*bp->data);
+        *bp->data += sizeof(uint16_t);
+        int type = (bpmc >> 14);
+        int from = (bpmc >> 8) & 0x3f;
+        int to = (bpmc >> 2) & 0x3f;
+        uint16_t shortmc = (from << 6) | to;
+        if (type == 1)
+            // promotion
+            shortmc |= (((bpmc & 0x3) + 2) << 13) | ((state & S2MMASK) << 12);
+        bp->move = shortmc;
+        // get the score
+        bp->score = (int16_t)TOSIGNED(SHORTFROMBIGENDIAN(*bp->data));
+        *bp->data += sizeof(int16_t);
+        //get ply and result
+        uint16_t plyandresult = SHORTFROMBIGENDIAN(*bp->data);
+        *bp->data += sizeof(uint16_t);
+        bp->gamePly = plyandresult & 0x3FFF;
+        fullmovescounter = bp->gamePly / 2 + 1;
+        bp->game_result = TOSIGNED(plyandresult >> 14);
+        // 50-moves-counter
+        halfmovescounter = SHORTFROMBIGENDIAN(*bp->data);
+        *bp->data += sizeof(int16_t);
+        //number of compressed moves following
+        bp->compressedmoves = SHORTFROMBIGENDIAN(*bp->data);
+        *bp->data += sizeof(int16_t);
     }
     else {
         // get the next compressed move
+        printf("");
 
+    }
+
+    bp->fullmove = shortMove2FullMove(bp->move);
+    if (!bp->fullmove) {
+        printf("Alarm. Falscher Zug %04x\n", bp->move);
+        print();
     }
 
     return 0;
@@ -857,7 +908,7 @@ void convert(vector<string> args)
         if (!is)
             buffersize = is.gcount();
         char* bptr = buffer;
-        Binpack bp = { 0 };
+        Binpack bp;
 
         while (bptr < buffer + buffersize)
         {
