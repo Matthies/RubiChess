@@ -321,7 +321,7 @@ inline uint8_t getNextBits(Binpack *bp, int bitnum)
         bp->consumedBits -= 8;
         (*bp->data)++;
     }
-    printf("getNextBits(%d): %02x  aktuelles Byte: %02x(%d)\n", bitnum, byte, *(uint8_t*)*bp->data, bp->consumedBits);
+    //printf("getNextBits(%d): %02x  aktuelles Byte: %02x(%d)\n", bitnum, byte, *(uint8_t*)*bp->data, bp->consumedBits);
     return byte;
 }
 
@@ -357,7 +357,7 @@ void chessposition::getPosFromBinpack(Binpack* bp)
         (*bp->data)++;
         bp->consumedBits = 0;
     }
-    drawBytes(*bp->data, 8);
+    //drawBytes(*bp->data, 8);
     U64 occ = LONGLONGFROMBIGENDIAN(*bp->data);
     *bp->data += sizeof(occ);
     int piecenum = 0;
@@ -373,7 +373,7 @@ void chessposition::getPosFromBinpack(Binpack* bp)
         }
         else {
             b = *(uint8_t*)*bp->data;
-            drawBytes(*bp->data, 1);
+            //drawBytes(*bp->data, 1);
             (*bp->data)++;
             p = (b & 0xf);
         }
@@ -410,10 +410,10 @@ void chessposition::getPosFromBinpack(Binpack* bp)
     }
 
     int bytesConsumed = (piecenum + 1) / 2;
-    printf("piecenum: %d\n", piecenum);
-    drawBytes(*bp->data, 16 - bytesConsumed);
-    drawBytes(*bp->data + 16 - bytesConsumed, 16);
-    printf("\n");
+    //printf("piecenum: %d\n", piecenum);
+    //drawBytes(*bp->data, 16 - bytesConsumed);
+    //drawBytes(*bp->data + 16 - bytesConsumed, 16);
+    //printf("\n");
     (*bp->data) += 16 - bytesConsumed;
 
 }
@@ -423,7 +423,7 @@ int chessposition::getFromBinpack(Binpack *bp)
 {
     if (bp->compressedmoves == 0)
     {
-        printf("full\n");
+        //printf("full\n");
         // get a full position
         // reset the position
         memset(piece00, 0, sizeof(piece00));
@@ -432,6 +432,7 @@ int chessposition::getFromBinpack(Binpack *bp)
         state = 0;
         phcount = 0;
         ply = 0;
+        ept = 0;
         // get the pieces
         getPosFromBinpack(bp);
         // get the move
@@ -462,7 +463,7 @@ int chessposition::getFromBinpack(Binpack *bp)
         *bp->data += sizeof(int16_t);
     }
     else {
-        printf("compressed\n");
+        //printf("compressed\n");
         bp->compressedmoves--;
         // play the last move
         playMove(bp->fullmove);
@@ -494,7 +495,7 @@ int chessposition::getFromBinpack(Binpack *bp)
                 bitnum = indexBits(targetnum << 2);
                 toId = getNextBits(bp, bitnum);
                 to = getNthBitIndex(targetbb, toId / 4);
-                int promotion = ((toId % 4) + 2) * 2 + Me;
+                int promotion = (((toId % 4) + KNIGHT) << 1) | Me;
                 bp->move = (promotion << 12) | (from << 6) | to;
             }
             else {
