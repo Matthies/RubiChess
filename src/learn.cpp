@@ -278,7 +278,13 @@ void flush_psv(int result, searchthread* thr)
 
 #define SHORTFROMBIGENDIAN(c) ((uint8_t)(c)[1] | ((uint8_t)(c)[0] << 8))
 #define LONGLONGFROMBIGENDIAN(c) ((U64)((uint8_t)(c)[7]) | ((U64)((uint8_t)(c)[6]) << 8) | ((U64)((uint8_t)(c)[5]) << 16) | (((U64)((uint8_t)(c)[4])) << 24ULL) | ((U64)((uint8_t)(c)[3]) << 32) | ((U64)((uint8_t)(c)[2]) << 40) | ((U64)((uint8_t)(c)[1]) << 48) | ((U64)((uint8_t)(c)[0]) << 56))
-//#define TOSIGNED(c) ((((c) << 15) | ((c) >> 1)) ^ ((c) & 1 ? 0x7fff : 0x0000))
+
+void drawBytes(char *b, int n)
+{
+    for (int i = 0; i < n; i++)
+        printf("%02x ", *(uint8_t*)(b + i));
+    printf("\n");
+}
 
 inline int16_t toSigned(uint16_t u)
 {
@@ -315,6 +321,7 @@ inline uint8_t getNextBits(Binpack *bp, int bitnum)
         bp->consumedBits -= 8;
         (*bp->data)++;
     }
+    printf("getNextBits(%d): %02x  aktuelles Byte: %02x(%d)\n", bitnum, byte, *(uint8_t*)*bp->data, bp->consumedBits);
     return byte;
 }
 
@@ -350,6 +357,7 @@ void chessposition::getPosFromBinpack(Binpack* bp)
         (*bp->data)++;
         bp->consumedBits = 0;
     }
+    drawBytes(*bp->data, 8);
     U64 occ = LONGLONGFROMBIGENDIAN(*bp->data);
     *bp->data += sizeof(occ);
     int piecenum = 0;
@@ -365,6 +373,7 @@ void chessposition::getPosFromBinpack(Binpack* bp)
         }
         else {
             b = *(uint8_t*)*bp->data;
+            drawBytes(*bp->data, 1);
             (*bp->data)++;
             p = (b & 0xf);
         }
@@ -378,12 +387,12 @@ void chessposition::getPosFromBinpack(Binpack* bp)
         case 13:
             // white rook with coresponding castling rights
             pc = WROOK;
-            state |= (piece00[WKING] ? WQCMASK : WKCMASK);
+            state |= SETCASTLEFILE(FILE(sq), (bool)piece00[WKING]);
             break;
         case 14:
             // black rook with coresponding castling rights
-            pc = WROOK;
-            state |= (piece00[BKING] ? BQCMASK : BKCMASK);
+            pc = BROOK;
+            state |= SETCASTLEFILE(FILE(sq), 2 + (bool)piece00[BKING]);
             break;
         case 15:
             // black king and black is side to move
@@ -400,8 +409,12 @@ void chessposition::getPosFromBinpack(Binpack* bp)
         piecenum++;
     }
 
-    if (piecenum & 1)
-        (*bp->data)++;
+    int bytesConsumed = (piecenum + 1) / 2;
+    printf("piecenum: %d\n", piecenum);
+    drawBytes(*bp->data, 16 - bytesConsumed);
+    drawBytes(*bp->data + 16 - bytesConsumed, 16);
+    printf("\n");
+    (*bp->data) += 16 - bytesConsumed;
 
 }
 
@@ -410,6 +423,7 @@ int chessposition::getFromBinpack(Binpack *bp)
 {
     if (bp->compressedmoves == 0)
     {
+        printf("full\n");
         // get a full position
         // reset the position
         memset(piece00, 0, sizeof(piece00));
@@ -417,6 +431,7 @@ int chessposition::getFromBinpack(Binpack *bp)
         psqval = 0;
         state = 0;
         phcount = 0;
+        ply = 0;
         // get the pieces
         getPosFromBinpack(bp);
         // get the move
@@ -447,10 +462,12 @@ int chessposition::getFromBinpack(Binpack *bp)
         *bp->data += sizeof(int16_t);
     }
     else {
+        printf("compressed\n");
         bp->compressedmoves--;
         // play the last move
         playMove(bp->fullmove);
         bp->lastScore = -bp->score;
+        bp->gameResult = -bp->gameResult;
         // get the next compressed move
         int Me = state & S2MMASK;
         U64 mysquaresbb = occupied00[state & S2MMASK];
@@ -458,23 +475,64 @@ int chessposition::getFromBinpack(Binpack *bp)
         int pieceId =  getNextBits(bp, bitnum);
         int from = getNthBitIndex(mysquaresbb, pieceId);
         PieceCode pc = mailbox[from];
-        U64 targetbb = movesTo(pc, from) & ~mysquaresbb;
-        bitnum = indexBits(POPCOUNT(targetbb));
+        U64 targetbb;
+        int targetnum;
+        int to;
+        int toId;
         switch (pc >> 1) {
         case PAWN:
+        {
+            U64 occ = occupied00[0] | occupied00[1];
+            targetbb = pawn_moves_to[from][Me] & ~occ;
+            if (targetbb)
+                targetbb |= pawn_moves_to_double[from][Me] & ~occ;
+            targetbb |= pawn_attacks_to[from][Me] & (piece00[1 - Me] | (ept ? BITSET(ept) : 0ULL));
+            targetnum = POPCOUNT(targetbb);
             if (RRANK(from, Me) == 6)
+            {
                 // promotion
-                bitnum = indexBits(POPCOUNT(targetbb) << 2);
+                bitnum = indexBits(targetnum << 2);
+                toId = getNextBits(bp, bitnum);
+                to = getNthBitIndex(targetbb, toId / 4);
+                int promotion = ((toId % 4) + 2) * 2 + Me;
+                bp->move = (promotion << 12) | (from << 6) | to;
+            }
+            else {
+                bitnum = indexBits(targetnum);
+                toId = getNextBits(bp, bitnum);
+                to = getNthBitIndex(targetbb, toId);
+                bp->move = (from << 6) | to;
+            }
+        }
             break;
         case KING:
+        {
+            const int kingfrom = kingpos[Me];
+            targetbb = movesTo(pc, from) & ~mysquaresbb;
+            targetnum = POPCOUNT(targetbb);
+            // Test castle moves
+            int mycastlemask = (Me ? BQCMASK | BKCMASK : WQCMASK | WKCMASK) & state;
+            bitnum = indexBits(targetnum + POPCOUNT(mycastlemask));
+            toId = getNextBits(bp, bitnum);
+            if (toId > targetnum)
+                printf("");
+            if (toId >= targetnum)
+                // castle move; Rubi codes it 'king captures rook'
+                to = castlerookfrom[getNthBitIndex(mycastlemask, toId - targetnum) - 1];
+            else
+                to = getNthBitIndex(targetbb, toId);
+            bp->move = (from << 6) | to;
+        }
             break;
         default:
+            targetbb = movesTo(pc, from) & ~mysquaresbb;
+            targetnum = POPCOUNT(targetbb);
+            bitnum = indexBits(targetnum);
+            toId = getNextBits(bp, bitnum);
+            to = getNthBitIndex(targetbb, toId);
+            bp->move = (from << 6) | to;
             break;
         }
-        int toId = getNextBits(bp, bitnum);
-        int to = getNthBitIndex(targetbb, toId);
-        uint16_t shortmc = (from << 6) | to;
-        bp->move = shortmc;
         // get the score diff
         int16_t scorediff = toSigned(getNextBlocks(bp, 4));
         bp->score = bp->lastScore + scorediff;
@@ -982,8 +1040,8 @@ void convert(vector<string> args)
             return;
         }
         innum = *(uint32_t*)&hd[4];
+        buffersize = 1000000; // FIXME
     }
-        buffersize = 1000; // FIXME
     buffer = (char*)allocalign64(buffersize);
 
     U64 n = 0;

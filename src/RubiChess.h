@@ -1318,6 +1318,8 @@ public:
 extern U64 pawn_attacks_to[64][2];
 extern U64 knight_attacks[64];
 extern U64 king_attacks[64];
+extern U64 pawn_moves_to[64][2];
+extern U64 pawn_moves_to_double[64][2];
 
 struct SMagic {
     U64 mask;  // to mask relevant squares of both lines (no outer squares)
