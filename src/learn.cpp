@@ -457,10 +457,31 @@ int chessposition::getFromBinpack(Binpack *bp)
     else {
         // play the last move
         playMove(bp->fullmove);
+        int Me = state & S2MMASK;
+        if (ept)
+        {
+            int You = 1 - Me;
+            // the ep flag may be wrong (ep capture illegal); recheck as this is important for indexing the pawn doing the ep capture
+            int king = kingpos[Me];
+            int doublepusher = PAWNPUSHINDEX(You, ept);
+            U64 eppawns = epthelper[doublepusher] & piece00[WPAWN | Me];
+            BitboardClear(doublepusher, WPAWN | You);
+            bool eptpossible = false;
+            while (eppawns) {
+                int from = pullLsb(&eppawns);
+                BitboardMove(from, ept, WPAWN | Me);
+                eptpossible = !isAttacked(king, Me);
+                BitboardMove(ept, from, WPAWN | Me);
+                if (eptpossible)
+                    break;
+            }
+            BitboardSet(doublepusher, WPAWN | You);
+            if (!eptpossible)
+                ept = 0;
+        }
         bp->lastScore = -bp->score;
         bp->gameResult = -bp->gameResult;
         // get the next compressed move
-        int Me = state & S2MMASK;
         U64 mysquaresbb = occupied00[state & S2MMASK];
         int bitnum = indexBits(POPCOUNT(mysquaresbb));
         int pieceId =  getNextBits(bp, bitnum);
@@ -1012,15 +1033,15 @@ void convert(vector<string> args)
     ofstream ofs;
     if (outputfile != "")
     {
-        ofs.open(outputfile, ios::binary);
+        if (outformat == no)
+            outformat = (outputfile.find(".binpack") != string::npos ? binpack : outputfile.find(".bin") != string::npos ? bin : plain);
+        ofs.open(outputfile, outformat == plain ? 0 : ios::binary);
         if (!ofs)
         {
             cout << "Cannot open output file.\n";
             return;
         }
         os = &ofs;
-        if (outformat == no)
-            outformat = (outputfile.find(".binpack") != string::npos ? binpack : outputfile.find(".bin") != string::npos ? bin : plain);
     }
 
     chessposition* pos = &en.sthread[0].pos;
@@ -1138,12 +1159,12 @@ void convert(vector<string> args)
 
             if (outformat == plain)
             {
-                *os << "fen " << pos->toFen() << "\n";
-                *os << "move " << moveToString(rubimovecode) << "\n";
-                *os << "score " << score << "\n";
-                *os << "ply " << to_string(gameply) << "\n";
-                *os << "result " << to_string(result) << "\n";
-                *os << "e\n";
+                *os << "fen " << pos->toFen() << endl;
+                *os << "move " << moveToString(rubimovecode) << endl;
+                *os << "score " << score << endl;
+                *os << "ply " << to_string(gameply) << endl;
+                *os << "result " << to_string(result) << endl;
+                *os << "e" << endl;;
             }
             else if (outformat == bin)
             {
