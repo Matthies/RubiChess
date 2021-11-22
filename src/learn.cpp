@@ -281,9 +281,11 @@ void flush_psv(int result, searchthread* thr)
 
 void drawBytes(char *b, int n)
 {
+#if 0
     for (int i = 0; i < n; i++)
         printf("%02x ", *(uint8_t*)(b + i));
     printf("\n");
+#endif
 }
 
 inline int16_t toSigned(uint16_t u)
@@ -306,8 +308,6 @@ inline int indexBits(U64 c) {
 // bitnum <= 8
 inline uint8_t getNextBits(Binpack *bp, int bitnum)
 {
-    uint8_t c;
-
     uint8_t byte = *(uint8_t*)*bp->data;
     byte = byte << bp->consumedBits;
     byte = byte >> (8 - bitnum);
@@ -352,12 +352,7 @@ inline int getNthBitIndex(U64 occ, int n)
 
 void chessposition::getPosFromBinpack(Binpack* bp)
 {
-    if (bp->consumedBits)
-    {
-        (*bp->data)++;
-        bp->consumedBits = 0;
-    }
-    //drawBytes(*bp->data, 8);
+    drawBytes(*bp->data, 8);
     U64 occ = LONGLONGFROMBIGENDIAN(*bp->data);
     *bp->data += sizeof(occ);
     int piecenum = 0;
@@ -373,7 +368,7 @@ void chessposition::getPosFromBinpack(Binpack* bp)
         }
         else {
             b = *(uint8_t*)*bp->data;
-            //drawBytes(*bp->data, 1);
+            drawBytes(*bp->data, 1);
             (*bp->data)++;
             p = (b & 0xf);
         }
@@ -387,12 +382,12 @@ void chessposition::getPosFromBinpack(Binpack* bp)
         case 13:
             // white rook with coresponding castling rights
             pc = WROOK;
-            state |= SETCASTLEFILE(FILE(sq), (bool)piece00[WKING]);
+            state |= SETCASTLEFILE(FILE(sq), (WHITE * 2 + (bool)piece00[WKING]));
             break;
         case 14:
             // black rook with coresponding castling rights
             pc = BROOK;
-            state |= SETCASTLEFILE(FILE(sq), 2 + (bool)piece00[BKING]);
+            state |= SETCASTLEFILE(FILE(sq), (BLACK * 2 + (bool)piece00[BKING]));
             break;
         case 15:
             // black king and black is side to move
@@ -410,10 +405,9 @@ void chessposition::getPosFromBinpack(Binpack* bp)
     }
 
     int bytesConsumed = (piecenum + 1) / 2;
-    //printf("piecenum: %d\n", piecenum);
-    //drawBytes(*bp->data, 16 - bytesConsumed);
-    //drawBytes(*bp->data + 16 - bytesConsumed, 16);
-    //printf("\n");
+
+    drawBytes(*bp->data, 16 - bytesConsumed);
+    drawBytes(*bp->data + 16 - bytesConsumed, 16);
     (*bp->data) += 16 - bytesConsumed;
 
 }
@@ -423,9 +417,7 @@ int chessposition::getFromBinpack(Binpack *bp)
 {
     if (bp->compressedmoves == 0)
     {
-        //printf("full\n");
         // get a full position
-        // reset the position
         memset(piece00, 0, sizeof(piece00));
         memset(mailbox, 0, sizeof(mailbox));
         psqval = 0;
@@ -463,8 +455,6 @@ int chessposition::getFromBinpack(Binpack *bp)
         *bp->data += sizeof(int16_t);
     }
     else {
-        //printf("compressed\n");
-        bp->compressedmoves--;
         // play the last move
         playMove(bp->fullmove);
         bp->lastScore = -bp->score;
@@ -515,8 +505,6 @@ int chessposition::getFromBinpack(Binpack *bp)
             int mycastlemask = (Me ? BQCMASK | BKCMASK : WQCMASK | WKCMASK) & state;
             bitnum = indexBits(targetnum + POPCOUNT(mycastlemask));
             toId = getNextBits(bp, bitnum);
-            if (toId > targetnum)
-                printf("");
             if (toId >= targetnum)
                 // castle move; Rubi codes it 'king captures rook'
                 to = castlerookfrom[getNthBitIndex(mycastlemask, toId - targetnum) - 1];
@@ -538,12 +526,20 @@ int chessposition::getFromBinpack(Binpack *bp)
         int16_t scorediff = toSigned(getNextBlocks(bp, 4));
         bp->score = bp->lastScore + scorediff;
         bp->gamePly++;
+        bp->compressedmoves--;
+        // last compressed move? throw away unused bits
+        if (bp->compressedmoves == 0 && bp->consumedBits)
+        {
+            (*bp->data)++;
+            bp->consumedBits = 0;
+        }
     }
 
     bp->fullmove = shortMove2FullMove(bp->move);
     if (!bp->fullmove) {
-        printf("Alarm. Falscher Zug %04x\n", bp->move);
+        printf("Illegal move %04x. Something wrong here. Exit...\n", bp->move);
         print();
+        return -1;
     }
 
     return 0;
@@ -1023,27 +1019,29 @@ void convert(vector<string> args)
             return;
         }
         os = &ofs;
+        if (outformat == no)
+            outformat = (outputfile.find(".binpack") != string::npos ? binpack : outputfile.find(".bin") != string::npos ? bin : plain);
     }
 
     chessposition* pos = &en.sthread[0].pos;
-    char* buffer;
+    char* buffer = nullptr;
     size_t buffersize;
-    uint32_t innum;
+    //size_t buffernum;
+    //size_t bufferreserve;
+    //size_t currentbuffer;
+    //uint32_t chunksize;
+    Binpack bp;
+
     if (informat == bin)
+    {
         buffersize = sfenchunknums * sfenchunksize * sizeof(PackedSfenValue);
+        //bufferreserve = 0;
+    }
     else if (informat == binpack)
     {
-        char hd[8];
-        is.read(hd, 8);
-        if (strncmp(hd, "BINP", 4) != 0)
-        {
-            cout << "BINP Header missing. Exit.\n";
-            return;
-        }
-        innum = *(uint32_t*)&hd[4];
-        buffersize = 1000000; // FIXME
+        buffersize = 0;
+        //bufferreserve = 64;
     }
-    buffer = (char*)allocalign64(buffersize);
 
     U64 n = 0;
     int rookfiles[2] = { -1, -1 };
@@ -1051,20 +1049,50 @@ void convert(vector<string> args)
     int lastfullmove = INT_MAX;
 
     U64 posWithPieces[32] = { 0ULL };
+    bool okay = true;
 
-    while (is.peek() != ios::traits_type::eof())
+    while (okay && is.peek() != ios::traits_type::eof())
     {
         int16_t score;
         int8_t result;
         uint16_t move;
         uint16_t gameply;
+        size_t nextbuffersize = buffersize;
+
+        if (informat == binpack)
+        {
+            char hd[8];
+            is.read(hd, 8);
+            if (strncmp(hd, "BINP", 4) != 0)
+            {
+                cout << "BINP Header missing. Exit.\n";
+                return;
+            }
+            nextbuffersize = *(uint32_t*)&hd[4];
+        }
+
+        if (nextbuffersize != buffersize)
+        {
+            if (buffer)
+            {
+                freealigned64(buffer);
+                buffer = nullptr;
+            }
+            buffersize = nextbuffersize;
+        }
+
+        if (!buffer)
+        {
+            buffer = (char*)allocalign64(buffersize);
+        }
+
+        char* bptr = buffer;
+        size_t restdata = buffersize;
         is.read((char*)buffer, buffersize);
         if (!is)
-            buffersize = is.gcount();
-        char* bptr = buffer;
-        Binpack bp;
+            restdata = is.gcount();
 
-        while (bptr < buffer + buffersize)
+        while (okay && bptr < buffer + restdata)
         {
             if (informat == bin)
             {
@@ -1083,7 +1111,7 @@ void convert(vector<string> args)
                     bp.data = &bptr;
                     bp.consumedBits = 0;
                 }
-                pos->getFromBinpack(&bp);
+                okay = (pos->getFromBinpack(&bp) == 0);
                 score = bp.score;
                 result = bp.gameResult;
                 move = bp.move;
@@ -1127,6 +1155,9 @@ void convert(vector<string> args)
                 pos->toSfen(&psv.sfen);
                 os->write((char*)&psv, sizeof(PackedSfenValue));
             }
+
+            n++;
+
         }
 
 #if 0
@@ -1254,7 +1285,9 @@ void convert(vector<string> args)
 #endif
     }
 
-    cerr << "\nFinished converting.\n";
+    if (!okay)
+        cerr << "\nAn error occured while reading input data.\n";
+    cerr << "\nFinished converting. " << n << " positions found.\n";
 
     if (generalstats && n > 0)
     {
