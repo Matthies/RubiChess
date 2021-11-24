@@ -212,7 +212,26 @@ void chessposition::toSfen(PackedSfen *sfen)
 }
 
 
-// convert rubi move code to SF/sfen code
+/*
+    Summary about different 16bit move encoding:
+    Rubi:
+        ppppfffffftttttt
+        pppp                Promotion piece code (e.g. 11 = 1011 for promotion to black queen)
+            ffffff          from square
+                  tttttt    to square
+    Castle moves are encoded 'king captures rook'
+    Ep captures are detected by 'diagonal pawn move with empty target square'
+
+    SF/sfen/binpack:
+        ttppfffffftttttt
+        tt                  type (00=normal, 01=promotion, 10=ep capture, 11=castle)
+          pp                promotion piece (00=knight, 01=bishop, 10=rook, 11=queen)
+            ffffff          from square
+                  tttttt    to square
+    Castle moves are encoded 'king moves to its target' (true for FRC?)
+*/
+
+// get SF/sfen code from a long Rubi move code
 inline uint16_t sfMoveCode(uint32_t c)
 {
     uint16_t sfc = (uint16_t)(c & 0xfff);
@@ -222,17 +241,20 @@ inline uint16_t sfMoveCode(uint32_t c)
     else if (ISEPCAPTURE(c))
         sfc |= (2 << 14);
     else if (ISCASTLE(c))
+    {
+        sfc = (sfc & 0xffc0) | GETCORRECTTO(sfc);
         sfc |= (3 << 14);
-
+    }
     return sfc;
 }
 
 
-// convert sfen move code to Rubi short code
-inline uint16_t shortCode(uint16_t c)
+// get Rubi short move code from a SF/sfen code
+inline uint16_t rubiMoveCode(uint16_t c)
 {
     uint16_t rc = c & 0xfff;
-    if ((c & 0xc000) == 0x4000)
+    uint8_t type = (c >> 14);
+    if (type == 1) // promotion
     {
         int p = (((c >> 12) - 2) << 1);
         if (RANK(GETTO(c)) == 0)
@@ -341,11 +363,11 @@ inline uint16_t getNextBlocks(Binpack* bp, int blocksize)
     return val;
 }
 
-inline int getNthBitIndex(U64 occ, int n)
+inline int getNthBitIndex(U64 occ,unsigned int n)
 {
     // FIXME: make this faster
     int index;
-    for (int i = 0; i <= n; i++)
+    for (unsigned int i = 0; i <= n; i++)
         index = pullLsb(&occ);
     return index;
 }
@@ -356,7 +378,7 @@ void chessposition::getPosFromBinpack(Binpack* bp)
     U64 occ = LONGLONGFROMBIGENDIAN(*bp->data);
     *bp->data += sizeof(occ);
     int piecenum = 0;
-    uint8_t b;
+    uint8_t b = 0;
     while (occ)
     {
         int sq = pullLsb(&occ);
@@ -364,13 +386,13 @@ void chessposition::getPosFromBinpack(Binpack* bp)
         PieceCode pc;
         if (piecenum & 1)
         {
-            p = (b >> 4);
+            p = b >> 4;
         }
         else {
             b = *(uint8_t*)*bp->data;
             drawBytes(*bp->data, 1);
+            p = b & 0xf;
             (*bp->data)++;
-            p = (b & 0xf);
         }
 
         switch (p) {
@@ -430,13 +452,13 @@ int chessposition::getFromBinpack(Binpack *bp)
         // get the move
         uint16_t bpmc = SHORTFROMBIGENDIAN(*bp->data);
         *bp->data += sizeof(uint16_t);
-        int type = (bpmc >> 14);
-        int from = (bpmc >> 8) & 0x3f;
-        int to = (bpmc >> 2) & 0x3f;
-        uint16_t shortmc = (from << 6) | to;
+        uint16_t type = (bpmc >> 14);
+        uint16_t from = (bpmc >> 8) & 0x3f;
+        uint16_t to = (bpmc >> 2) & 0x3f;
+        uint16_t shortmc = (type << 14) | (from << 6) | to;
         if (type == 1)
             // promotion
-            shortmc |= (((bpmc & 0x3) + 2) << 13) | ((state & S2MMASK) << 12);
+            shortmc |= ((bpmc & 0x3) << 12);
         bp->move = shortmc;
         // get the score
         bp->score = toSigned(SHORTFROMBIGENDIAN(*bp->data));
@@ -506,20 +528,18 @@ int chessposition::getFromBinpack(Binpack *bp)
                 bitnum = indexBits(targetnum << 2);
                 toId = getNextBits(bp, bitnum);
                 to = getNthBitIndex(targetbb, toId / 4);
-                int promotion = (((toId % 4) + KNIGHT) << 1) | Me;
-                bp->move = (promotion << 12) | (from << 6) | to;
+                bp->move = ((4 + (toId % 4)) << 12) | (from << 6) | to;
             }
             else {
                 bitnum = indexBits(targetnum);
                 toId = getNextBits(bp, bitnum);
                 to = getNthBitIndex(targetbb, toId);
-                bp->move = (from << 6) | to;
+                bp->move = (ept && ept == to ? (2 << 14) : 0) | (from << 6) | to;
             }
         }
             break;
         case KING:
         {
-            const int kingfrom = kingpos[Me];
             targetbb = movesTo(pc, from) & ~mysquaresbb;
             targetnum = POPCOUNT(targetbb);
             // Test castle moves
@@ -556,7 +576,7 @@ int chessposition::getFromBinpack(Binpack *bp)
         }
     }
 
-    bp->fullmove = shortMove2FullMove(bp->move);
+    bp->fullmove = shortMove2FullMove(rubiMoveCode(bp->move));
     if (!bp->fullmove) {
         printf("Illegal move %04x. Something wrong here. Exit...\n", bp->move);
         print();
@@ -986,8 +1006,8 @@ void convert(vector<string> args)
     SfenFormat informat = no;
     size_t cs = args.size();
     size_t ci = 0;
-    U64 evalsum[2][7] = { 0 };  // evalsum for hce and NNUE classified by at  0 / <0.5 / <1 / <3 / <20 / 1-4 / different prefer
-    U64 evaln[7] = { 0 };
+    //U64 evalsum[2][7] = { 0 };  // evalsum for hce and NNUE classified by at  0 / <0.5 / <1 / <3 / <20 / 1-4 / different prefer
+    //U64 evaln[7] = { 0 };
 
     while (ci < cs)
     {
@@ -1035,7 +1055,7 @@ void convert(vector<string> args)
     {
         if (outformat == no)
             outformat = (outputfile.find(".binpack") != string::npos ? binpack : outputfile.find(".bin") != string::npos ? bin : plain);
-        ofs.open(outputfile, outformat == plain ? 0 : ios::binary);
+        ofs.open(outputfile, outformat == plain ? ios::out : ios::binary);
         if (!ofs)
         {
             cout << "Cannot open output file.\n";
@@ -1062,15 +1082,19 @@ void convert(vector<string> args)
     {
         buffersize = 0;
         //bufferreserve = 64;
+    } else  // informat == plain
+    {
+        buffersize = 1024 * 1024;
     }
 
     U64 n = 0;
-    int rookfiles[2] = { -1, -1 };
-    int kingfile = -1;
-    int lastfullmove = INT_MAX;
+    //int rookfiles[2] = { -1, -1 };
+    //int kingfile = -1;
+    //int lastfullmove = INT_MAX;
 
     U64 posWithPieces[32] = { 0ULL };
     bool okay = true;
+    size_t nextbuffersize = buffersize;
 
     while (okay && is.peek() != ios::traits_type::eof())
     {
@@ -1078,7 +1102,6 @@ void convert(vector<string> args)
         int8_t result;
         uint16_t move;
         uint16_t gameply;
-        size_t nextbuffersize = buffersize;
 
         if (informat == binpack)
         {
@@ -1138,8 +1161,15 @@ void convert(vector<string> args)
                 move = bp.move;
                 gameply = bp.gamePly;
             }
+            else // informat == plain
+            {
+                score = NOSCORE;
+                result = 0;
+                move = 0;
+                gameply = 0;
+            }
 
-            uint32_t rubimovecode = pos->shortMove2FullMove(shortCode(move));
+            uint32_t rubimovecode = pos->shortMove2FullMove(rubiMoveCode(move));
             uint32_t sfmovecode = rubimovecode;
             if (!rubimovecode || ISEPCAPTUREORCASTLE(rubimovecode))
             {
