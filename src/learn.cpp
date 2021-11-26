@@ -363,9 +363,10 @@ inline uint16_t getNextBlocks(Binpack* bp, int blocksize)
     return val;
 }
 
+const
+
 inline int getNthBitIndex(U64 occ,unsigned int n)
 {
-    // FIXME: make this faster
     int index;
     for (unsigned int i = 0; i <= n; i++)
         index = pullLsb(&occ);
@@ -1040,14 +1041,14 @@ void convert(vector<string> args)
         }
     }
 
-    ifstream is(inputfile, ios::binary);
+    informat = (inputfile.find(".binpack") != string::npos ? binpack : inputfile.find(".bin") != string::npos ? bin : plain);
+    ifstream is(inputfile, informat != plain ? ios::binary : ios::out);
     if (!is)
     {
         cout << "Cannot open input file " << inputfile << ".\n";
         return;
     }
 
-    informat = (inputfile.find(".binpack") != string::npos ? binpack : inputfile.find(".bin") != string::npos ? bin : plain);
 
     ostream *os = &cout;
     ofstream ofs;
@@ -1072,6 +1073,9 @@ void convert(vector<string> args)
     //size_t currentbuffer;
     //uint32_t chunksize;
     Binpack bp;
+    const size_t plainbuffersize = 100;
+    char plainbuffer[plainbuffersize];
+    size_t plainbufferbytesleft = 0;
 
     if (informat == bin)
     {
@@ -1084,7 +1088,7 @@ void convert(vector<string> args)
         //bufferreserve = 64;
     } else  // informat == plain
     {
-        buffersize = 1024 * 1024;
+        buffersize = 1024;
     }
 
     U64 n = 0;
@@ -1163,6 +1167,13 @@ void convert(vector<string> args)
             }
             else // informat == plain
             {
+                char plainline[256];
+                stringstream ss(plainbuffer[plainbufferbytesleft]);
+                if (ss.getline(plainline, plainbufferbytesleft))
+                    cout << "okay" << endl;
+                else
+                    cout << "error" << endl;
+                cout << plainline << "x" << endl;
                 score = NOSCORE;
                 result = 0;
                 move = 0;
@@ -1194,7 +1205,7 @@ void convert(vector<string> args)
                 *os << "score " << score << endl;
                 *os << "ply " << to_string(gameply) << endl;
                 *os << "result " << to_string(result) << endl;
-                *os << "e" << endl;;
+                *os << "e" << endl;
             }
             else if (outformat == bin)
             {
@@ -1332,8 +1343,8 @@ void convert(vector<string> args)
 
             }
         }
-        if (!evalstats) cerr << ".";
 #endif
+        if (!evalstats) cerr << ".";
     }
 
     if (!okay)
