@@ -262,6 +262,20 @@ inline uint16_t rubiMoveCode(uint16_t c)
             p++;
         rc |= (p << 12);
     }
+    if (type == 3) // castle
+    {
+        int from = GETFROM(c);
+        int to = GETTO(c);
+        if (to > from)
+            to++;
+        else
+            to = to - 2;
+        rc = (from << 6) | to;
+    }
+    if (type == 2) // ep capture
+    {
+
+    }
 
     return rc;
 }
@@ -1069,26 +1083,24 @@ void convert(vector<string> args)
     char* buffer = nullptr;
     size_t buffersize;
     //size_t buffernum;
-    //size_t bufferreserve;
+    size_t bufferreserve;
     //size_t currentbuffer;
     //uint32_t chunksize;
     Binpack bp;
-    const size_t plainbuffersize = 100;
-    char plainbuffer[plainbuffersize];
-    size_t plainbufferbytesleft = 0;
 
     if (informat == bin)
     {
         buffersize = sfenchunknums * sfenchunksize * sizeof(PackedSfenValue);
-        //bufferreserve = 0;
+        bufferreserve = 0;
     }
     else if (informat == binpack)
     {
         buffersize = 0;
-        //bufferreserve = 64;
+        bufferreserve = 0;
     } else  // informat == plain
     {
-        buffersize = 1024;
+        buffersize = 0;//1024;
+        bufferreserve = 0;//200;    // one full position must fit into
     }
 
     U64 n = 0;
@@ -1099,6 +1111,7 @@ void convert(vector<string> args)
     U64 posWithPieces[32] = { 0ULL };
     bool okay = true;
     size_t nextbuffersize = buffersize;
+    char* bptr = nullptr;
 
     while (okay && is.peek() != ios::traits_type::eof())
     {
@@ -1131,17 +1144,24 @@ void convert(vector<string> args)
 
         if (!buffer)
         {
-            buffer = (char*)allocalign64(buffersize);
+            buffer = (char*)allocalign64(buffersize + bufferreserve);
+            bptr = buffer + bufferreserve;
+        } else {
+            size_t bytesleft = buffer + buffersize + bufferreserve - bptr;
+            memcpy(buffer + bufferreserve - bytesleft, bptr, bytesleft);
+            bptr -= buffersize;
         }
 
-        char* bptr = buffer;
         size_t restdata = buffersize;
-        is.read((char*)buffer, buffersize);
+        is.read((char*)buffer + bufferreserve, buffersize);
         if (!is)
             restdata = is.gcount();
 
-        while (okay && bptr < buffer + restdata)
+        while (okay && (restdata == 0 || bptr < buffer + restdata))
         {
+            if (restdata == 0 && (is.peek() == ios::traits_type::eof()))
+                break;
+
             if (informat == bin)
             {
                 PackedSfenValue* psv = (PackedSfenValue*)bptr;
@@ -1167,17 +1187,43 @@ void convert(vector<string> args)
             }
             else // informat == plain
             {
-                char plainline[256];
-                stringstream ss(plainbuffer[plainbufferbytesleft]);
-                if (ss.getline(plainline, plainbufferbytesleft))
-                    cout << "okay" << endl;
-                else
-                    cout << "error" << endl;
-                cout << plainline << "x" << endl;
-                score = NOSCORE;
-                result = 0;
-                move = 0;
-                gameply = 0;
+                string key;
+                string value;
+                //stringstream ss(bptr);
+                while (true) {
+                    if (is.peek() == ios::traits_type::eof())
+                        break;
+                    is >> key;
+                    if (key == "e")
+                        break;
+                    is >> ws;
+                    getline(is, value);
+                    if (key == "fen")
+                        okay |= (pos->getFromFen(value.c_str()) == 0);
+                    if (key == "result")
+                        result = stoi(value);
+                    if (key == "score")
+                        score = stoi(value);
+                    if (key == "ply")
+                        gameply = stoi(value);
+                    if (key == "move" && value.size() >= 4)
+                    {
+                        int from = AlgebraicToIndex(&value[0]);
+                        int to = AlgebraicToIndex(&value[2]);
+                        int type = 0;
+                        int pc = pos->mailbox[from];
+                        int s2m = pc & S2MMASK;
+                        if (from == pos->kingpos[s2m] && abs(FILE(from) - FILE(to)) > 1)
+                            type = (3 << 2);
+                        else if (((pc >> 1) == PAWN) && FILE(from) != FILE(to) && !pos->mailbox[to])
+                            type = (2 << 2);
+                        else if (value.size() > 4)
+                            type = (1 << 2) | (GetPieceType(value[4]) - 2);
+                        move = (type << 12) | (from << 6) | to;
+                    }
+                    //bptr += ss.gcount();
+                    //cout << "key=" << key << "  value=" << value << endl;
+                }
             }
 
             uint32_t rubimovecode = pos->shortMove2FullMove(rubiMoveCode(move));
@@ -1185,15 +1231,15 @@ void convert(vector<string> args)
             if (!rubimovecode || ISEPCAPTUREORCASTLE(rubimovecode))
             {
                 // Fix the incompatible move coding
-                sfmovecode = pos->shortMove2FullMove(move & 0xfff);
-                if (sfmovecode)
-                    move = sfMoveCode(sfmovecode);
                 if (!rubimovecode)
                 {
                     // FIXME: Can this still happen??
                     printf("Alarm. Movecode: %04x: %s\n", move, pos->toFen().c_str());
                     rubimovecode = pos->shortMove2FullMove(move);
                 }
+                sfmovecode = pos->shortMove2FullMove(move & 0xfff);
+                if (sfmovecode)
+                    move = sfMoveCode(sfmovecode);
             }
 
 
@@ -1219,6 +1265,7 @@ void convert(vector<string> args)
             }
 
             n++;
+           if (n % 0x2000 == 0) cerr << ".";
 
         }
 
@@ -1344,7 +1391,6 @@ void convert(vector<string> args)
             }
         }
 #endif
-        if (!evalstats) cerr << ".";
     }
 
     if (!okay)
