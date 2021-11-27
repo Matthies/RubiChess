@@ -21,6 +21,12 @@
 #ifdef NNUELEARN
 
 //
+// ToDo:
+// - write binpack
+// - Halfmoves in bin (6bit, SF cuts, Rubi continues counting)
+// - 
+
+//
 // Generate fens for training
 //
 
@@ -1177,11 +1183,9 @@ void convert(vector<string> args)
         if (!is)
             restdata = is.gcount();
 
-        while (okay && (restdata == 0 || bptr < buffer + restdata))
+        while (okay && ((restdata == 0 && is.peek() != ios::traits_type::eof()) || bptr < buffer + restdata))
         {
-            if (restdata == 0 && (is.peek() == ios::traits_type::eof()))
-                break;
-
+            bool found = true;
             if (informat == bin)
             {
                 PackedSfenValue* psv = (PackedSfenValue*)bptr;
@@ -1207,6 +1211,7 @@ void convert(vector<string> args)
             }
             else // informat == plain
             {
+                found = false;
                 string key;
                 string value;
                 //stringstream ss(bptr);
@@ -1215,7 +1220,10 @@ void convert(vector<string> args)
                         break;
                     is >> key;
                     if (key == "e")
+                    {
+                        found = true;
                         break;
+                    }
                     is >> ws;
                     getline(is, value);
                     if (key == "fen")
@@ -1228,18 +1236,20 @@ void convert(vector<string> args)
                         gameply = stoi(value);
                     if (key == "move" && value.size() >= 4)
                     {
+                        uint16_t mc = 0;
                         int from = AlgebraicToIndex(&value[0]);
                         int to = AlgebraicToIndex(&value[2]);
                         int type = 0;
                         int pc = pos->mailbox[from];
                         int s2m = pc & S2MMASK;
-                        if (from == pos->kingpos[s2m] && abs(FILE(from) - FILE(to)) > 1)
-                            type = (3 << 2);
-                        else if (((pc >> 1) == PAWN) && FILE(from) != FILE(to) && !pos->mailbox[to])
-                            type = (2 << 2);
-                        else if (value.size() > 4)
-                            type = (1 << 2) | (GetPieceType(value[4]) - 2);
-                        move = (type << 12) | (from << 6) | to;
+                        if ((pc >> 1) == KING && ((from ^ to) & 3) == 2)
+                            // castle
+                            to = (to > from ? to + 1 : to - 2);
+                        else if ((pc >> 1) == PAWN && RRANK(from, s2m) == 6)
+                            // promotion
+                            mc = ((GetPieceType(value[4]) << 1) | s2m) << 12;
+                        mc |= (from << 6) | to;
+                        move = pos->shortMove2FullMove(mc);
                     }
                     //bptr += ss.gcount();
                     //cout << "key=" << key << "  value=" << value << endl;
@@ -1262,7 +1272,8 @@ void convert(vector<string> args)
                     move = sfMoveCode(sfmovecode);
             }
 #endif
-
+            if (!found)
+                continue;
 
             if (outformat == plain)
             {
@@ -1286,8 +1297,7 @@ void convert(vector<string> args)
             }
 
             n++;
-           if (n % 0x2000 == 0) cerr << ".";
-
+            if (n % 0x2000 == 0) cerr << ".";
         }
 
 #if 0
