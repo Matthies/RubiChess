@@ -24,6 +24,98 @@
 // Generate fens for training
 //
 
+
+/*
+    Summary about different 16bit move encoding:
+    Rubi:
+        ppppfffffftttttt
+        pppp                Promotion piece code (e.g. 11 = 1011 for promotion to black queen)
+            ffffff          from square
+                  tttttt    to square
+    Castle moves are encoded 'king captures rook'
+    Ep captures are detected by 'diagonal pawn move with empty target square'
+
+    SF/sfen:
+        ttppfffffftttttt
+        tt                  type (00=normal, 01=promotion, 10=ep capture, 11=castle)
+          pp                promotion piece (00=knight, 01=bishop, 10=rook, 11=queen)
+            ffffff          from square
+                  tttttt    to square
+    Castle moves are encoded 'king captures rook'
+
+    binpack:
+        ttppfffffftttttt
+        tt                  type (00=normal, 01=promotion, 10=castle, 11=ep capture)
+          pp                promotion piece (00=knight, 01=bishop, 10=rook, 11=queen)
+            ffffff          from square
+                  tttttt    to square
+    Castle moves are encoded 'king captures rook'
+
+*/
+
+// get SF/sfen code from a long Rubi move code
+inline uint16_t sfFromRubi(uint32_t c)
+{
+    uint16_t sfc = (uint16_t)(c & 0xfff);
+    uint16_t p;
+    if ((p = GETPROMOTION(c)))
+        sfc |= ((p >> 1) + 2) << 12;
+    else if (ISCASTLE(c))
+        sfc |= (3 << 14);
+    else if (ISEPCAPTURE(c))
+        sfc |= (2 << 14);
+    return sfc;
+}
+
+// get SF/sfen code from a long Rubi move code
+inline uint16_t binpackFromRubi(uint32_t c)
+{
+    uint16_t sfc = (GETFROM(c) << 6) | GETCORRECTTO(c);
+    uint16_t p;
+    if ((p = GETPROMOTION(c)))
+        sfc |= ((p >> 1) + 2) << 12;
+    else if (ISCASTLE(c))
+        sfc |= (2 << 14);
+    else if (ISEPCAPTURE(c))
+        sfc |= (3 << 14);
+    return sfc;
+}
+
+// get Rubi full move code from a SF/sfen code
+inline uint32_t rubiFromSf(chessposition *pos, uint16_t c)
+{
+    uint16_t rc = c & 0xfff;
+    uint8_t type = (c >> 14);
+    if (type == 1) // promotion
+    {
+        int p = (((c >> 12) - 2) << 1);
+        if (RANK(GETTO(c)) == 0)
+            // black promotion
+            p++;
+        rc |= (p << 12);
+    }
+    uint32_t fullmove = pos->shortMove2FullMove(rc);
+    return fullmove;
+}
+
+// get Rubi full move code from a binpack code
+inline uint32_t rubiFromBinpack(chessposition* pos, uint16_t c)
+{
+    uint16_t rc = c & 0xfff;
+    uint8_t type = (c >> 14);
+    if (type == 1) // promotion
+    {
+        int p = (((c >> 12) - 2) << 1);
+        if (RANK(GETTO(c)) == 0)
+            // black promotion
+            p++;
+        rc |= (p << 12);
+    }
+    uint32_t fullmove = pos->shortMove2FullMove(rc);
+    return fullmove;
+}
+
+
 #define GENSFEN_HASH_SIZE 0x1000000
 alignas(64) U64 sfenhash[GENSFEN_HASH_SIZE];
 
@@ -212,75 +304,6 @@ void chessposition::toSfen(PackedSfen *sfen)
 }
 
 
-/*
-    Summary about different 16bit move encoding:
-    Rubi:
-        ppppfffffftttttt
-        pppp                Promotion piece code (e.g. 11 = 1011 for promotion to black queen)
-            ffffff          from square
-                  tttttt    to square
-    Castle moves are encoded 'king captures rook'
-    Ep captures are detected by 'diagonal pawn move with empty target square'
-
-    SF/sfen/binpack:
-        ttppfffffftttttt
-        tt                  type (00=normal, 01=promotion, 10=ep capture, 11=castle)
-          pp                promotion piece (00=knight, 01=bishop, 10=rook, 11=queen)
-            ffffff          from square
-                  tttttt    to square
-    Castle moves are encoded 'king moves to its target' (true for FRC?)
-*/
-
-// get SF/sfen code from a long Rubi move code
-inline uint16_t sfMoveCode(uint32_t c)
-{
-    uint16_t sfc = (uint16_t)(c & 0xfff);
-    uint16_t p;
-    if ((p = GETPROMOTION(c)))
-        sfc |= ((p >> 1) + 2) << 12;
-    else if (ISEPCAPTURE(c))
-        sfc |= (2 << 14);
-    else if (ISCASTLE(c))
-    {
-        sfc = (sfc & 0xffc0) | GETCORRECTTO(sfc);
-        sfc |= (3 << 14);
-    }
-    return sfc;
-}
-
-
-// get Rubi short move code from a SF/sfen code
-inline uint16_t rubiMoveCode(uint16_t c)
-{
-    uint16_t rc = c & 0xfff;
-    uint8_t type = (c >> 14);
-    if (type == 1) // promotion
-    {
-        int p = (((c >> 12) - 2) << 1);
-        if (RANK(GETTO(c)) == 0)
-            // black promotion
-            p++;
-        rc |= (p << 12);
-    }
-    if (type == 3) // castle
-    {
-        int from = GETFROM(c);
-        int to = GETTO(c);
-        if (to > from)
-            to++;
-        else
-            to = to - 2;
-        rc = (from << 6) | to;
-    }
-    if (type == 2) // ep capture
-    {
-
-    }
-
-    return rc;
-}
-
-
 void flush_psv(int result, searchthread* thr)
 {
     PackedSfenValue* p;
@@ -377,7 +400,6 @@ inline uint16_t getNextBlocks(Binpack* bp, int blocksize)
     return val;
 }
 
-const
 
 inline int getNthBitIndex(U64 occ,unsigned int n)
 {
@@ -470,11 +492,9 @@ int chessposition::getFromBinpack(Binpack *bp)
         uint16_t type = (bpmc >> 14);
         uint16_t from = (bpmc >> 8) & 0x3f;
         uint16_t to = (bpmc >> 2) & 0x3f;
-        uint16_t shortmc = (type << 14) | (from << 6) | to;
+        bp->move = (type << 14) | (from << 6) | to;
         if (type == 1)
-            // promotion
-            shortmc |= ((bpmc & 0x3) << 12);
-        bp->move = shortmc;
+            bp->move |= (bpmc & 3) << 12;
         // get the score
         bp->score = toSigned(SHORTFROMBIGENDIAN(*bp->data));
         *bp->data += sizeof(int16_t);
@@ -543,13 +563,13 @@ int chessposition::getFromBinpack(Binpack *bp)
                 bitnum = indexBits(targetnum << 2);
                 toId = getNextBits(bp, bitnum);
                 to = getNthBitIndex(targetbb, toId / 4);
-                bp->move = ((4 + (toId % 4)) << 12) | (from << 6) | to;
+                bp->move = (1 << 14) | ((toId % 4) << 12) | (from << 6) | to;
             }
             else {
                 bitnum = indexBits(targetnum);
                 toId = getNextBits(bp, bitnum);
                 to = getNthBitIndex(targetbb, toId);
-                bp->move = (ept && ept == to ? (2 << 14) : 0) | (from << 6) | to;
+                bp->move = (ept && ept == to ? (3 << 14) : 0) | (from << 6) | to;
             }
         }
             break;
@@ -562,8 +582,8 @@ int chessposition::getFromBinpack(Binpack *bp)
             bitnum = indexBits(targetnum + POPCOUNT(mycastlemask));
             toId = getNextBits(bp, bitnum);
             if (toId >= targetnum)
-                // castle move; Rubi codes it 'king captures rook'
-                to = castlerookfrom[getNthBitIndex(mycastlemask, toId - targetnum) - 1];
+                // castle move
+                to = (2 << 14) | castlerookfrom[getNthBitIndex(mycastlemask, toId - targetnum) - 1];
             else
                 to = getNthBitIndex(targetbb, toId);
             bp->move = (from << 6) | to;
@@ -591,7 +611,7 @@ int chessposition::getFromBinpack(Binpack *bp)
         }
     }
 
-    bp->fullmove = shortMove2FullMove(rubiMoveCode(bp->move));
+    bp->fullmove = rubiFromBinpack(this, bp->move);
     if (!bp->fullmove) {
         printf("Illegal move %04x. Something wrong here. Exit...\n", bp->move);
         print();
@@ -769,7 +789,7 @@ static void gensfenthread(searchthread* thr, U64 rndseed)
             pos->toSfen(&thr->psv->sfen);
             thr->psv->score = score;
             thr->psv->gamePly = ply;
-            thr->psv->move = (uint16_t)sfMoveCode(pos->pvtable[0][0]);
+            thr->psv->move = sfFromRubi(pos->pvtable[0][0]);
             thr->psv->game_result = 2 * S2MSIGN(pos->state & S2MMASK); // not yet known
 
             if (thr->psv->move)
@@ -1117,7 +1137,7 @@ void convert(vector<string> args)
     {
         int16_t score;
         int8_t result;
-        uint16_t move;
+        uint32_t move;  // movecode in Rubi long format
         uint16_t gameply;
 
         if (informat == binpack)
@@ -1168,7 +1188,7 @@ void convert(vector<string> args)
                 pos->getFromSfen(&psv->sfen);
                 score = psv->score;
                 result = psv->game_result;
-                move = psv->move;
+                move = rubiFromSf(pos, psv->move);
                 gameply = psv->gamePly;
                 bptr += sizeof(PackedSfenValue);
             }
@@ -1182,7 +1202,7 @@ void convert(vector<string> args)
                 okay = (pos->getFromBinpack(&bp) == 0);
                 score = bp.score;
                 result = bp.gameResult;
-                move = bp.move;
+                move = bp.fullmove;
                 gameply = bp.gamePly;
             }
             else // informat == plain
@@ -1225,7 +1245,7 @@ void convert(vector<string> args)
                     //cout << "key=" << key << "  value=" << value << endl;
                 }
             }
-
+#if 0
             uint32_t rubimovecode = pos->shortMove2FullMove(rubiMoveCode(move));
             uint32_t sfmovecode = rubimovecode;
             if (!rubimovecode || ISEPCAPTUREORCASTLE(rubimovecode))
@@ -1241,13 +1261,13 @@ void convert(vector<string> args)
                 if (sfmovecode)
                     move = sfMoveCode(sfmovecode);
             }
-
+#endif
 
 
             if (outformat == plain)
             {
                 *os << "fen " << pos->toFen() << endl;
-                *os << "move " << moveToString(rubimovecode) << endl;
+                *os << "move " << moveToString(move) << endl;
                 *os << "score " << score << endl;
                 *os << "ply " << to_string(gameply) << endl;
                 *os << "result " << to_string(result) << endl;
@@ -1259,7 +1279,8 @@ void convert(vector<string> args)
                 psv.score = score;
                 psv.game_result = result;
                 psv.gamePly = gameply;
-                psv.move = move; // FIXME: revert to SF format needed
+                psv.move = sfFromRubi(move);
+                psv.padding = 0xff;
                 pos->toSfen(&psv.sfen);
                 os->write((char*)&psv, sizeof(PackedSfenValue));
             }
