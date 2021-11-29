@@ -864,6 +864,7 @@ struct Binpack
     uint16_t gamePly;
     int8_t gameResult;
     uint16_t compressedmoves = 0;
+    char *compmvsptr;
     uint32_t fullmove;
 };
 
@@ -1568,6 +1569,8 @@ public:
     int getNextFromBinpack(Binpack *bp);
     void posToBinpack(Binpack* bp);
     void nextToBinpack(Binpack* bp);
+    void copyToLight(chessposition *target);     //fast copy for follow up detection
+    bool followsTo(chessposition *src, uint32_t mc);    // check if this position is reached by src with move mc
 #endif
 #endif
 };
