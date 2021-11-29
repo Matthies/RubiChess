@@ -1565,7 +1565,9 @@ public:
     void toSfen(PackedSfen *sfen);
     int getFromSfen(PackedSfen* sfen);
     void getPosFromBinpack(Binpack* bp);
-    int getFromBinpack(Binpack *bp);
+    int getNextFromBinpack(Binpack *bp);
+    void posToBinpack(Binpack* bp);
+    void nextToBinpack(Binpack* bp);
 #endif
 #endif
 };

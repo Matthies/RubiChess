@@ -23,7 +23,7 @@
 //
 // ToDo:
 // - write binpack
-// - Halfmoves in bin (6bit, SF cuts, Rubi continues counting)
+// - Halfmoves in bin (6bit limit)
 // - 
 
 //
@@ -121,6 +121,7 @@ inline uint32_t rubiFromBinpack(chessposition* pos, uint16_t c)
     return fullmove;
 }
 
+const size_t maxBinpackChunkSize = 100 * 1024;// *1024;
 
 #define GENSFEN_HASH_SIZE 0x1000000
 alignas(64) U64 sfenhash[GENSFEN_HASH_SIZE];
@@ -478,7 +479,7 @@ void chessposition::getPosFromBinpack(Binpack* bp)
 }
 
 
-int chessposition::getFromBinpack(Binpack *bp)
+int chessposition::getNextFromBinpack(Binpack *bp)
 {
     if (bp->compressedmoves == 0)
     {
@@ -628,7 +629,95 @@ int chessposition::getFromBinpack(Binpack *bp)
 }
 
 
+
+void chessposition::posToBinpack(Binpack* bp)
+{
+    drawBytes(*bp->data, 8);
+    U64 occ = occupied00[0] | occupied00[1];
+    *(U64*)(*bp->data) = LONGLONGFROMBIGENDIAN((char*)&occ);
+    *bp->data += sizeof(occ);
+    int piecenum = 0;
+    uint8_t* b;
+    while (occ)
+    {
+        int sq = pullLsb(&occ);
+        //int p;
+        PieceCode pc = mailbox[sq] - 2;
+        int s2m = pc & S2MMASK;
+        if (ept && ept == (RANK(sq) == 3 ? sq - 8 : sq + 8))
+            // pawn with ep square behind
+            pc = 12;
+        else if ((pc >> 1) == ROOK && (state & (WQCMASK << (s2m * 2 + (sq > kingpos[s2m])))))
+            pc = 13 + s2m;
+        else if (pc == BKING && s2m)
+            pc = 15;
+
+        if (piecenum & 1)
+        {
+            *b |= pc << 4;
+            drawBytes(*bp->data, 1);
+            (*bp->data)++;
+        }
+        else {
+            b = (uint8_t*)*bp->data;
+            *b = pc;
+        }
+        piecenum++;
+    }
+
+    int bytesConsumed = (piecenum + 1) / 2;
+
+    drawBytes(*bp->data, 16 - bytesConsumed);
+    drawBytes(*bp->data + 16 - bytesConsumed, 16);
+    (*bp->data) += 16 - bytesConsumed;
+
+}
+
+
+void chessposition::nextToBinpack(Binpack* bp)
+{
+    if (bp->compressedmoves == 0)
+    {
+        // write a full position
+        // write the pieces
+        posToBinpack(bp);
+        // write the move
+#if 0
+        uint16_t bpmc = SHORTFROMBIGENDIAN(*bp->data);
+        *bp->data += sizeof(uint16_t);
+        uint16_t type = (bpmc >> 14);
+        uint16_t from = (bpmc >> 8) & 0x3f;
+        uint16_t to = (bpmc >> 2) & 0x3f;
+        bp->move = (type << 14) | (from << 6) | to;
+        if (type == 1)
+            bp->move |= (bpmc & 3) << 12;
+        // get the score
+        bp->score = toSigned(SHORTFROMBIGENDIAN(*bp->data));
+        *bp->data += sizeof(int16_t);
+        //get ply and result
+        uint16_t plyandresult = SHORTFROMBIGENDIAN(*bp->data);
+        *bp->data += sizeof(uint16_t);
+        bp->gamePly = plyandresult & 0x3FFF;
+        fullmovescounter = bp->gamePly / 2 + 1;
+        bp->gameResult = (int8_t)toSigned(plyandresult >> 14);
+        // 50-moves-counter
+        halfmovescounter = SHORTFROMBIGENDIAN(*bp->data);
+        *bp->data += sizeof(int16_t);
+        //number of compressed moves following
+        bp->compressedmoves = SHORTFROMBIGENDIAN(*bp->data);
+        *bp->data += sizeof(int16_t);
+#endif
+    }
+}
+
+
+
+
+//
+// 
 // global parameters for gensfen variation
+//
+//
 int depth = 4;
 int depth2 = depth;
 int random_multi_pv = 0;
@@ -1107,12 +1196,13 @@ void convert(vector<string> args)
 
     chessposition* pos = &en.sthread[0].pos;
     char* buffer = nullptr;
+    char* outbuffer = nullptr;
     size_t buffersize;
-    //size_t buffernum;
     size_t bufferreserve;
-    //size_t currentbuffer;
-    //uint32_t chunksize;
-    Binpack bp;
+    Binpack bp; // input
+    Binpack outbp; // output
+    char* bptr = nullptr;
+    char* outbptr = nullptr;
 
     if (informat == bin)
     {
@@ -1125,19 +1215,22 @@ void convert(vector<string> args)
         bufferreserve = 0;
     } else  // informat == plain
     {
-        buffersize = 0;//1024;
-        bufferreserve = 0;//200;    // one full position must fit into
+        buffersize = 0;
+        bufferreserve = 0;
+    }
+
+    if (outformat == binpack)
+    {
+        outbptr = outbuffer = (char*)allocalign64(maxBinpackChunkSize);
+        outbp.data = &outbptr;
+        outbp.consumedBits = 0;
     }
 
     U64 n = 0;
-    //int rookfiles[2] = { -1, -1 };
-    //int kingfile = -1;
-    //int lastfullmove = INT_MAX;
 
     U64 posWithPieces[32] = { 0ULL };
     bool okay = true;
     size_t nextbuffersize = buffersize;
-    char* bptr = nullptr;
 
     while (okay && is.peek() != ios::traits_type::eof())
     {
@@ -1203,7 +1296,7 @@ void convert(vector<string> args)
                     bp.data = &bptr;
                     bp.consumedBits = 0;
                 }
-                okay = (pos->getFromBinpack(&bp) == 0);
+                okay = (pos->getNextFromBinpack(&bp) == 0);
                 score = bp.score;
                 result = bp.gameResult;
                 move = bp.fullmove;
@@ -1214,7 +1307,6 @@ void convert(vector<string> args)
                 found = false;
                 string key;
                 string value;
-                //stringstream ss(bptr);
                 while (true) {
                     if (is.peek() == ios::traits_type::eof())
                         break;
@@ -1251,40 +1343,13 @@ void convert(vector<string> args)
                         mc |= (from << 6) | to;
                         move = pos->shortMove2FullMove(mc);
                     }
-                    //bptr += ss.gcount();
-                    //cout << "key=" << key << "  value=" << value << endl;
                 }
             }
-#if 0
-            uint32_t rubimovecode = pos->shortMove2FullMove(rubiMoveCode(move));
-            uint32_t sfmovecode = rubimovecode;
-            if (!rubimovecode || ISEPCAPTUREORCASTLE(rubimovecode))
-            {
-                // Fix the incompatible move coding
-                if (!rubimovecode)
-                {
-                    // FIXME: Can this still happen??
-                    printf("Alarm. Movecode: %04x: %s\n", move, pos->toFen().c_str());
-                    rubimovecode = pos->shortMove2FullMove(move);
-                }
-                sfmovecode = pos->shortMove2FullMove(move & 0xfff);
-                if (sfmovecode)
-                    move = sfMoveCode(sfmovecode);
-            }
-#endif
+
             if (!found)
                 continue;
 
-            if (outformat == plain)
-            {
-                *os << "fen " << pos->toFen() << endl;
-                *os << "move " << moveToString(move) << endl;
-                *os << "score " << score << endl;
-                *os << "ply " << to_string(gameply) << endl;
-                *os << "result " << to_string(result) << endl;
-                *os << "e" << endl;
-            }
-            else if (outformat == bin)
+            if (outformat == bin)
             {
                 PackedSfenValue psv;
                 psv.score = score;
@@ -1294,6 +1359,47 @@ void convert(vector<string> args)
                 psv.padding = 0xff;
                 pos->toSfen(&psv.sfen);
                 os->write((char*)&psv, sizeof(PackedSfenValue));
+            }
+            else if (outformat == binpack)
+            {
+                if (outbptr == outbuffer)
+                {
+                    // start new chunk
+                    strcpy(outbptr, "BINP");
+                    outbptr += 8;
+                    outbp.fullmove = 0;
+                }
+
+                if (outbptr > outbuffer + maxBinpackChunkSize - 10000)  // FIXME: 10000 is just a guess
+                {
+                    // flush chunk
+                    uint32_t* sz = (uint32_t*)&outbuffer[4];
+                    *sz = (uint32_t)(outbptr - outbuffer - 8);
+                }
+
+                if (move != outbp.fullmove)
+                {
+                    outbp.compressedmoves = 0;
+                    outbp.gameResult = result;
+                    outbp.gamePly = gameply;
+                }
+                else
+                {
+                    outbp.compressedmoves++;
+                    outbp.lastScore = outbp.score;
+                }
+                outbp.score = score;
+                outbp.fullmove = move;
+                pos->nextToBinpack(&outbp);
+            }
+            else // outformat == plain
+            {
+                *os << "fen " << pos->toFen() << endl;
+                *os << "move " << moveToString(move) << endl;
+                *os << "score " << score << endl;
+                *os << "ply " << to_string(gameply) << endl;
+                *os << "result " << to_string(result) << endl;
+                *os << "e" << endl;
             }
 
             n++;
