@@ -866,6 +866,8 @@ struct Binpack
     uint16_t compressedmoves = 0;
     char *compmvsptr;
     uint32_t fullmove;
+    chessposition *inpos;
+    chessposition *outpos;
 };
 
 void gensfen(vector<string> args);
@@ -1568,7 +1570,7 @@ public:
     void getPosFromBinpack(Binpack* bp);
     int getNextFromBinpack(Binpack *bp);
     void posToBinpack(Binpack* bp);
-    void nextToBinpack(Binpack* bp);
+    int nextToBinpack(Binpack* bp);
     void copyToLight(chessposition *target);     //fast copy for follow up detection
     bool followsTo(chessposition *src, uint32_t mc);    // check if this position is reached by src with move mc
 #endif
