@@ -870,7 +870,7 @@ struct Binpack
     uint32_t lastFullmove;
     chessposition *inpos;
     chessposition *outpos;
-    bool debug() { return false; size_t offset = *data - base; return (offset > 0x81340 && offset < 0x81400); }
+    bool debug() { return false;  size_t offset = *data - base; return (offset > 0x29900 && offset < 0x29950); }
 };
 
 void gensfen(vector<string> args);
@@ -1573,9 +1573,10 @@ public:
     void getPosFromBinpack(Binpack* bp);
     int getNextFromBinpack(Binpack *bp);
     void posToBinpack(Binpack* bp);
-    int nextToBinpack(Binpack* bp);
+    void nextToBinpack(Binpack* bp);
     void copyToLight(chessposition *target);     //fast copy for follow up detection
     bool followsTo(chessposition *src, uint32_t mc);    // check if this position is reached by src with move mc
+    void fixEpt();
 #endif
 #endif
 };
