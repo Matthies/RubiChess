@@ -76,15 +76,15 @@ inline uint16_t sfFromRubi(uint32_t c)
 // get SF/sfen code from a long Rubi move code
 inline uint16_t binpackFromRubi(uint32_t c)
 {
-    printf("%08x\n", c);
-    uint16_t sfc = (GETFROM(c) << 8) | (GETCORRECTTO(c) << 2);
+    //printf("%08x\n", c);
+    uint16_t sfc = (GETFROM(c) << 8) | (GETTO(c) << 2);
     if (ISPROMOTION(c))
         sfc |= ((GETPROMOTION(c) >> 1) - 2) | (1 << 14);
     else if (ISCASTLE(c))
         sfc |= (2 << 14);
     else if (ISEPCAPTURE(c))
         sfc |= (3 << 14);
-    printf("%08x\n", sfc);
+    //printf("%08x\n", sfc);
     return sfc;
 }
 
@@ -122,7 +122,7 @@ inline uint32_t rubiFromBinpack(chessposition* pos, uint16_t c)
     return fullmove;
 }
 
-const size_t maxBinpackChunkSize = 100 * 1024;// *1024;
+const size_t maxBinpackChunkSize = 100 * 1024 *1024;
 
 #define GENSFEN_HASH_SIZE 0x1000000
 alignas(64) U64 sfenhash[GENSFEN_HASH_SIZE];
@@ -349,11 +349,9 @@ void flush_psv(int result, searchthread* thr)
 
 void drawBytes(char *b, int n)
 {
-#if 1
     for (int i = 0; i < n; i++)
         printf("%02x ", *(uint8_t*)(b + i));
     printf("\n");
-#endif
 }
 
 inline int16_t toSigned(uint16_t u)
@@ -399,7 +397,7 @@ inline uint8_t getNextBits(Binpack *bp, int bitnum)
         bp->consumedBits -= 8;
         (*bp->data)++;
     }
-    printf("getNextBits(%d): %02x  aktuelles Byte: %02x(%d)\n", bitnum, byte, *(uint8_t*)*bp->data, bp->consumedBits);
+    //printf("getNextBits(%d): %02x  aktuelles Byte: %02x(%d)\n", bitnum, byte, *(uint8_t*)*bp->data, bp->consumedBits);
     return byte;
 }
 
@@ -430,20 +428,20 @@ inline int getNthBitIndex(U64 occ,unsigned int n)
 // bitnum <= 8
 inline void putNextBits(Binpack *bp, uint8_t byte, int bitnum)
 {
-    printf("putNextBits(%d) before: %02x  aktuelles Byte: %02x(%d)\n", bitnum, byte, *(uint8_t*)*bp->data, bp->consumedBits);
+    if (bp->debug()) printf("putNextBits(%d) before: %02x  aktuelles Byte: %02x(%d)\n", bitnum, byte, *(uint8_t*)*bp->data, bp->consumedBits);
     byte = byte << (8 - bitnum);
     *((uint8_t*)*bp->data) |= (byte >> bp->consumedBits);
     bp->consumedBits += bitnum;
 
     if (bp->consumedBits >= 8)
     {
-        printf("putNextBits full byte: %02x\n", *(uint8_t*)*bp->data);
+        if (bp->debug()) printf("putNextBits full byte: %02x\n", *(uint8_t*)*bp->data);
         (*bp->data)++;
         bp->consumedBits -= 8;
         byte = byte << (bitnum - bp->consumedBits);
         *((uint8_t*)*bp->data) = byte;
     }
-    printf("putNextBits(%d) after : %02x  aktuelles Byte: %02x(%d)\n", bitnum, byte, *(uint8_t*)*bp->data, bp->consumedBits);
+    if (bp->debug()) printf("putNextBits(%d) after : %02x  aktuelles Byte: %02x(%d)\n", bitnum, byte, *(uint8_t*)*bp->data, bp->consumedBits);
 }
 
 inline void putNextBlocks(Binpack* bp, int blocksize, uint16_t val)
@@ -473,6 +471,7 @@ void chessposition::copyToLight(chessposition *target)
     target->halfmovescounter = halfmovescounter;
     memcpy(target->kingpos, kingpos, sizeof(kingpos));
     memcpy(target->mailbox, mailbox, sizeof(mailbox));
+    memcpy(target->castlerights, castlerights, sizeof(castlerights));
 }
 
 bool chessposition::followsTo(chessposition *src, uint32_t mc)
@@ -481,7 +480,10 @@ bool chessposition::followsTo(chessposition *src, uint32_t mc)
     //cout << toFen() << "  " << hex << state << endl;
     //cout << "testing play of " << moveToString(mc) << "..." << endl;
     if (!src->playMove(mc))
+    {
+        cout << "failed to play " << hex << mc << "(" << moveToString(mc) << ")" << endl;
         return false;
+    }
 
     //cout << "testing pieces..." << endl;
     for (int p = WPAWN; p <= BKING; p++)
@@ -492,7 +494,7 @@ bool chessposition::followsTo(chessposition *src, uint32_t mc)
 
     //cout << "testing state etc..." << endl;
     const U64 statemsk = CASTLEMASK | S2MMASK;
-    if ((src->state & statemsk)  != (state & statemsk) || src->ept != ept || src->halfmovescounter != halfmovescounter)
+    if ((src->state & statemsk)  != (state & statemsk) || src->ept != ept || (src->halfmovescounter & 0x3f) != (halfmovescounter & 0x3f))
     {
         //cout << hex << src->state << " " << state << "  " << src->halfmovescounter << "  " << halfmovescounter << endl;
         return false;
@@ -502,7 +504,7 @@ bool chessposition::followsTo(chessposition *src, uint32_t mc)
 
 void chessposition::getPosFromBinpack(Binpack* bp)
 {
-    drawBytes(*bp->data, 8);
+    if (bp->debug()) drawBytes(*bp->data, 8);
     U64 occ = LONGLONGFROMBIGENDIAN(*bp->data);
     *bp->data += sizeof(occ);
     int piecenum = 0;
@@ -518,7 +520,7 @@ void chessposition::getPosFromBinpack(Binpack* bp)
         }
         else {
             b = *(uint8_t*)*bp->data;
-            drawBytes(*bp->data, 1);
+            if (bp->debug()) drawBytes(*bp->data, 1);
             p = b & 0xf;
             (*bp->data)++;
         }
@@ -556,8 +558,8 @@ void chessposition::getPosFromBinpack(Binpack* bp)
 
     int bytesConsumed = (piecenum + 1) / 2;
 
-    drawBytes(*bp->data, 16 - bytesConsumed);
-    drawBytes(*bp->data + 16 - bytesConsumed, 16);
+    if (bp->debug()) drawBytes(*bp->data, 16 - bytesConsumed);
+    if (bp->debug()) drawBytes(*bp->data + 16 - bytesConsumed, 16);
     (*bp->data) += 16 - bytesConsumed;
 
 }
@@ -692,8 +694,8 @@ int chessposition::getNextFromBinpack(Binpack *bp)
         // get the score diff
         uint16_t uscore = getNextBlocks(bp, 4);
         int16_t scorediff = toSigned(uscore);
-        cout << "score diff: " << scorediff << endl;
-        cout << hex << uscore << dec << endl;
+        //cout << "score diff: " << scorediff << endl;
+        //cout << hex << uscore << dec << endl;
 
         bp->score = bp->lastScore + scorediff;
         bp->gamePly++;
@@ -722,7 +724,7 @@ void chessposition::posToBinpack(Binpack* bp)
 {
     U64 occ = occupied00[0] | occupied00[1];
     *(U64*)(*bp->data) = LONGLONGFROMBIGENDIAN((char*)&occ);
-    drawBytes(*bp->data, 8);
+    if (bp->debug()) drawBytes(*bp->data, 8);
     *bp->data += sizeof(occ);
     int piecenum = 0;
     while (occ)
@@ -733,7 +735,7 @@ void chessposition::posToBinpack(Binpack* bp)
         if (ept && ept == (RANK(sq) == 3 ? sq - 8 : sq + 8))
             // pawn with ep square behind
             pc = 12;
-        else if ((pc >> 1) == ROOK && (state & (WQCMASK << (s2m * 2 + (sq > kingpos[s2m])))))
+        else if ((pc >> 1) == ROOK && RRANK(sq, s2m) == 0 && (state & (WQCMASK << (s2m * 2 + (sq > kingpos[s2m])))))
             pc = 13 + s2m;
         else if (pc == BKING && (state & S2MMASK))
             pc = 15;
@@ -754,15 +756,13 @@ void chessposition::posToBinpack(Binpack* bp)
     int bytesConsumed = piecenum / 2;
 
     (*bp->data) += 16 - bytesConsumed;
-    drawBytes(*bp->data - 16, 16);
+    if (bp->debug()) drawBytes(*bp->data - 16, 16);
 }
 
 
 int chessposition::nextToBinpack(Binpack* bp)
 {
-    uint32_t mc = bp->fullmove;
-
-    if (!bp->inpos->followsTo(this, mc))
+    if (!bp->inpos->followsTo(this, bp->lastFullmove))
     {
         if (bp->compressedmoves)
             // write number of compressed moves
@@ -777,29 +777,29 @@ int chessposition::nextToBinpack(Binpack* bp)
 
         bp->compressedmoves = 0;
         bp->inpos->copyToLight(this);
-        cout << "copy" << endl;
+        //cout << "copy" << endl;
         // write a full position
         // write the pieces
         posToBinpack(bp);
         // write the move
-        uint16_t bpmc = binpackFromRubi(bp->move);
+        uint16_t bpmc = binpackFromRubi(bp->fullmove);
         *((uint16_t*)*bp->data) = SHORTFROMBIGENDIAN((char*)&bpmc);
-        drawBytes(*bp->data, 2);
+        if (bp->debug()) drawBytes(*bp->data, 2);
         *bp->data += sizeof(uint16_t);
         // write the score
         uint16_t sc = toUnsigned(bp->score);
         *((uint16_t*)*bp->data) = SHORTFROMBIGENDIAN((char*)&sc);
-        drawBytes(*bp->data, 2);
+        if (bp->debug()) drawBytes(*bp->data, 2);
         *bp->data += sizeof(uint16_t);
         // write ply and result
         uint16_t plyandresult = bp->gamePly;
         plyandresult |= (toUnsigned(bp->gameResult) << 14);
         *((uint16_t*)*bp->data) = SHORTFROMBIGENDIAN((char*)&plyandresult);
-        drawBytes(*bp->data, 2);
+        if (bp->debug()) drawBytes(*bp->data, 2);
         *bp->data += sizeof(uint16_t);
         // write half moves counter
         *((uint16_t*)*bp->data) = SHORTFROMBIGENDIAN((char*)&halfmovescounter);
-        drawBytes(*bp->data, 2);
+        if (bp->debug()) drawBytes(*bp->data, 2);
         *bp->data += sizeof(uint16_t);
         // remember the positin to write the number of compressed for later
         bp->compmvsptr = *bp->data;
@@ -809,7 +809,7 @@ int chessposition::nextToBinpack(Binpack* bp)
     else {
         int Me = state & S2MMASK;
         bp->compressedmoves++;
-        cout << "follow:  Me=" << Me << endl;
+        //cout << "follow:  Me=" << Me << endl;
         // fix ept
         if (ept)
         {
@@ -834,13 +834,13 @@ int chessposition::nextToBinpack(Binpack* bp)
         }
 
         // get compressed move encoding for next move
-        mc = bp->move;
+        uint32_t mc = bp->fullmove;
         int from = GETFROM(mc);
         U64 mysquaresbb = occupied00[state & S2MMASK];
 
         int fromlen = indexBits(POPCOUNT(mysquaresbb));
         int fromN = GETBITINDEX(mysquaresbb, from);
-        cout << fromlen << "  " << fromN << "  " << hex << mysquaresbb << endl;
+        //cout << fromlen << "  " << fromN << "  " << hex << mysquaresbb << endl;
 
         int pc = mailbox[from];
         int to = GETTO(mc);
@@ -858,7 +858,7 @@ int chessposition::nextToBinpack(Binpack* bp)
                 targetbb |= pawn_moves_to_double[from][Me] & ~occ;
             targetbb |= pawn_attacks_to[from][Me] & (piece00[1 - Me] | (ept ? BITSET(ept) : 0ULL));
             targetnum = POPCOUNT(targetbb);
-            cout << "from: " << from << "  targetbb: " << hex << targetbb << "  targetnum: " << dec << targetnum << endl;
+            //cout << "from: " << from << "  targetbb: " << hex << targetbb << "  targetnum: " << dec << targetnum << endl;
             if (RRANK(from, Me) == 6)
             {
                 // promotion
@@ -894,12 +894,12 @@ int chessposition::nextToBinpack(Binpack* bp)
         }
         putNextBits(bp, fromN, fromlen);
         putNextBits(bp, toN, tolen);
-        cout << tolen << "  " << toN << "  " << hex << targetbb << endl;
+        //cout << tolen << "  " << toN << "  " << hex << targetbb << endl;
         // Score diff
         int16_t scorediff = bp->score - bp->lastScore;
         uint16_t uscore = toUnsigned(scorediff);
-        cout << "score diff: " << dec << scorediff << "(" << bp->lastScore << " -> " << bp->score << ")" << endl;
-        cout << hex << uscore << dec << endl;
+        //cout << "score diff: " << dec << scorediff << "(" << bp->lastScore << " -> " << bp->score << ")" << endl;
+        //cout << hex << uscore << dec << endl;
         putNextBlocks(bp, 4, uscore);
 #if 0
         int16_t scorediff = toSigned(getNextBlocks(bp, 4));
@@ -1333,9 +1333,20 @@ void gensfen(vector<string> args)
 
 static void flushBinpack(ostream *os, char *buffer, Binpack* bp)
 {
-    cout << *bp->data - buffer << endl;
-    size_t size = *bp->data - buffer - 4;
-    *((uint32_t*)(buffer + 4)) = (uint32_t)size;
+    if (bp->compressedmoves)
+        // write number of compressed moves
+        *((uint16_t*)bp->compmvsptr) = SHORTFROMBIGENDIAN((char*)&bp->compressedmoves);
+
+    // last compressed move? throw away unused bits
+    if (bp->consumedBits)
+    {
+        (*bp->data)++;
+        bp->consumedBits = 0;
+    }
+
+    cout << "flush" << *bp->data - buffer << endl;
+    size_t size = *bp->data - buffer;
+    *((uint32_t*)(buffer + 4)) = (uint32_t)size - 8;
     os->write(buffer, size);
 }
 
@@ -1412,6 +1423,10 @@ void convert(vector<string> args)
     chessposition* inpos = (chessposition*)allocalign64(sizeof(chessposition));
     chessposition* outpos = nullptr;
     chessposition* pos = inpos;
+    int rookfiles[] = { 0 , 7 };
+    int kingfile = 4;
+    pos->initCastleRights(rookfiles, kingfile);
+
     char* buffer = nullptr;
     char* outbuffer = nullptr;
     size_t buffersize;
@@ -1439,6 +1454,7 @@ void convert(vector<string> args)
     if (outformat == binpack)
     {
         outbptr = outbuffer = (char*)allocalign64(maxBinpackChunkSize);
+        outbp.base = outbuffer;
         outbp.data = &outbptr;
         outbp.consumedBits = 0;
         outbp.inpos = inpos;
@@ -1566,6 +1582,30 @@ void convert(vector<string> args)
             if (!found)
                 continue;
 
+            if (pos->ept)
+            {
+                int Me = pos->state & S2MMASK;
+                int You = 1 - Me;
+                // the ep flag may be wrong (ep capture illegal); recheck as this is important for indexing the pawn doing the ep capture
+                int king = pos->kingpos[Me];
+                int doublepusher = PAWNPUSHINDEX(You, pos->ept);
+                U64 eppawns = epthelper[doublepusher] & pos->piece00[WPAWN | Me];
+                pos->BitboardClear(doublepusher, WPAWN | You);
+                bool eptpossible = false;
+                while (eppawns) {
+                    int from = pullLsb(&eppawns);
+                    pos->BitboardMove(from, pos->ept, WPAWN | Me);
+                    eptpossible = !pos->isAttacked(king, Me);
+                    pos->BitboardMove(pos->ept, from, WPAWN | Me);
+                    if (eptpossible)
+                        break;
+                }
+                pos->BitboardSet(doublepusher, WPAWN | You);
+                if (!eptpossible)
+                    pos->ept = 0;
+            }
+
+
             if (outformat == bin)
             {
                 PackedSfenValue psv;
@@ -1579,6 +1619,12 @@ void convert(vector<string> args)
             }
             else if (outformat == binpack)
             {
+                if (outbptr > outbuffer + maxBinpackChunkSize - 10000)  // FIXME: 10000 is just a guess
+                {
+                    // flush chunk
+                    flushBinpack(os, outbuffer, &outbp);
+                    outbptr = outbuffer;
+                }
                 if (outbptr == outbuffer)
                 {
                     // start new chunk
@@ -1587,27 +1633,24 @@ void convert(vector<string> args)
                     outbp.fullmove = 0;
                 }
 
-                if (outbptr > outbuffer + maxBinpackChunkSize - 10000)  // FIXME: 10000 is just a guess
+                if (outbp.debug())
                 {
-                    // flush chunk
-                    uint32_t* sz = (uint32_t*)&outbuffer[4];
-                    *sz = (uint32_t)(outbptr - outbuffer - 8);
-                }
-
                 cout << "fen " << pos->toFen() << endl;
                 cout << "move " << moveToString(move) << endl;
                 cout << "score " << score << endl;
                 cout << "ply " << to_string(gameply) << endl;
                 cout << "result " << to_string(result) << endl;
                 cout << "e" << endl;
-
+                }
                 if (!outpos)
                 {
                     outpos = outbp.outpos = (chessposition*)allocalign64(sizeof(chessposition));
                     memcpy(outbp.outpos->castlerights, pos->castlerights, sizeof(pos->castlerights));
+                    cout << "copied castlerights " << outbp.outpos->castlerights[17] << "/" << pos->castlerights[17] << endl;
                 }
 
-                outbp.move = move;
+                outbp.lastFullmove = outbp.fullmove;
+                outbp.fullmove = move;
                 outbp.lastScore = -outbp.score;
                 outbp.score = score;
                 outbp.gamePly = gameply;
@@ -1628,6 +1671,12 @@ void convert(vector<string> args)
                     //outbp.compressedmoves++;
                     //outbp.lastScore = outbp.score;
                 }
+                if (outbp.debug())
+                {
+                    size_t offset = (outbptr - outbuffer);
+                    cout << "Current offset: " << hex << offset << endl;
+                }
+
                 //outbp.score = score;
                 outbp.fullmove = move;
             }
