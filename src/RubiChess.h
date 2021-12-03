@@ -858,6 +858,7 @@ struct Binpack
 {
     char *base;
     char **data = nullptr;
+    char *flushAt = nullptr;
     uint8_t consumedBits = 0;
     int16_t score;
     int16_t lastScore;
@@ -870,7 +871,7 @@ struct Binpack
     uint32_t lastFullmove;
     chessposition *inpos;
     chessposition *outpos;
-    bool debug() { return false;  size_t offset = *data - base; return (offset > 0x29900 && offset < 0x29950); }
+    bool debug() { return false; /*size_t offset = *data - base; return numChunks == 3 && offset > 0x170 && offset < 0x200; */ }
 };
 
 void gensfen(vector<string> args);

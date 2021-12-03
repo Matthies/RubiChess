@@ -257,6 +257,14 @@ int chessposition::getFromSfen(PackedSfen* sfen)
     // fullmoves counter
     read_n_bit(buffer, (uint8_t*)&fullmovescounter, 8, &bitnum);
 
+    // Fix for overflow of fullmoves (256), comaptible with latest SF and old nodchip
+    read_n_bit(buffer, &b, 8, &bitnum);
+    fullmovescounter += (b << 8);
+
+    // Fix for overflow of halfmoves (64), comaptible with latest SF and old nodchip
+    read_n_bit(buffer, &b, 1, &bitnum);
+    halfmovescounter += (b << 6);
+
     isCheckbb = isAttackedBy<OCCUPIED>(kingpos[state & S2MMASK], (state & S2MMASK) ^ S2MMASK);
     kingPinned = 0ULL;
     updatePins<WHITE>();
@@ -310,6 +318,12 @@ void chessposition::toSfen(PackedSfen *sfen)
 
     // fullmoves counter
     write_n_bit(buffer, fullmovescounter, 8, &bitnum);
+
+    // Fix for overflow of fullmoves (256), comaptible with latest SF and old nodchip
+    write_n_bit(buffer, fullmovescounter >> 8, 8, &bitnum);
+
+    // Fix for overflow of halfmoves (64), comaptible with latest SF and old nodchip
+    write_n_bit(buffer, halfmovescounter >> 6, 1, &bitnum);
 }
 
 
@@ -523,7 +537,7 @@ bool chessposition::followsTo(chessposition *src, uint32_t mc)
 
     //cout << "testing state etc..." << endl;
     const U64 statemsk = CASTLEMASK | S2MMASK;
-    if ((src->state & statemsk)  != (state & statemsk) || src->ept != ept || (src->halfmovescounter & 0x3f) != (halfmovescounter & 0x3f))
+    if ((src->state & statemsk)  != (state & statemsk) || src->ept != ept || src->halfmovescounter != halfmovescounter)
     {
         cout << dec << "srcept:" << src->ept << "  ept:" << ept << endl;
         //cout << hex << src->state << " " << state << "  " << src->halfmovescounter << "  " << halfmovescounter << endl;
@@ -737,20 +751,24 @@ void chessposition::posToBinpack(Binpack* bp)
     if (bp->debug()) drawBytes(*bp->data, 8);
     *bp->data += sizeof(occ);
     int piecenum = 0;
-    while (occ)
+    while (piecenum < 32)
     {
-        int sq = pullLsb(&occ);
-        PieceCode pc = mailbox[sq];
-        int s2m = pc & S2MMASK;
-        if (ept && ept == (RANK(sq) == 3 ? sq - 8 : sq + 8))
-            // pawn with ep square behind
-            pc = 12;
-        else if ((pc >> 1) == ROOK && RRANK(sq, s2m) == 0 && (state & (WQCMASK << (s2m * 2 + (sq > kingpos[s2m])))))
-            pc = 13 + s2m;
-        else if (pc == BKING && (state & S2MMASK))
-            pc = 15;
-        else
-            pc = pc - 2;
+        int pc = 0;
+        if (occ)
+        {
+            int sq = pullLsb(&occ);
+            pc = mailbox[sq];
+            int s2m = pc & S2MMASK;
+            if (ept && ept == (RANK(sq) == 3 ? sq - 8 : sq + 8))
+                // pawn with ep square behind
+                pc = 12;
+            else if ((pc >> 1) == ROOK && RRANK(sq, s2m) == 0 && (state & (WQCMASK << (s2m * 2 + (sq > kingpos[s2m])))))
+                pc = 13 + s2m;
+            else if (pc == BKING && (state & S2MMASK))
+                pc = 15;
+            else
+                pc = pc - 2;
+        }
         if (piecenum & 1)
         {
             *((uint8_t*)*bp->data) |= pc << 4;
@@ -759,34 +777,37 @@ void chessposition::posToBinpack(Binpack* bp)
         else {
             *((uint8_t*)*bp->data) = pc;
         }
-
-        piecenum++;
+    piecenum++;
     }
 
-    int bytesConsumed = piecenum / 2;
-
-    (*bp->data) += 16 - bytesConsumed;
     if (bp->debug()) drawBytes(*bp->data - 16, 16);
 }
 
+void prepareNextBinpackPosition(Binpack* bp)
+{
+    if (bp->debug()) cout << "Compressed moves: " << bp->compressedmoves << "  consumed bits in last byte: " << bp->consumedBits << endl;
+    // throw away unused bits of last compressed move
+    if (bp->consumedBits)
+    {
+        (*bp->data)++;
+        bp->consumedBits = 0;
+    }
+    if (bp->compressedmoves) {
+        // write number of compressed moves
+        *((uint16_t*)bp->compmvsptr) = SHORTFROMBIGENDIAN((char*)&bp->compressedmoves);
+        bp->compressedmoves = 0;
+    }
+}
 
 void chessposition::nextToBinpack(Binpack* bp)
 {
     if (!bp->inpos->followsTo(this, bp->lastFullmove))
     {
-        if (bp->compressedmoves)
-            // write number of compressed moves
-            *((uint16_t*)bp->compmvsptr) = SHORTFROMBIGENDIAN((char*)&bp->compressedmoves);
-        if (bp->debug()) cout << "Compressed moves: " << bp->compressedmoves << endl;
+        prepareNextBinpackPosition(bp);
 
-        // last compressed move? throw away unused bits
-        if (bp->consumedBits)
-        {
-            (*bp->data)++;
-            bp->consumedBits = 0;
-        }
+        if (*bp->data > bp->base + maxBinpackChunkSize + 8)
+            bp->flushAt = *bp->data;
 
-        bp->compressedmoves = 0;
         bp->inpos->copyToLight(this);
         //cout << "copy" << endl;
         // write a full position
@@ -816,6 +837,7 @@ void chessposition::nextToBinpack(Binpack* bp)
         bp->compmvsptr = *bp->data;
         *((uint16_t*)*bp->data) = SHORTFROMBIGENDIAN((char*)&bp->compressedmoves);
         *bp->data += sizeof(uint16_t);
+        **bp->data = 0;
     }
     else {
         int Me = state & S2MMASK;
@@ -1302,21 +1324,21 @@ void gensfen(vector<string> args)
 
 static void flushBinpack(ostream *os, char *buffer, Binpack* bp)
 {
-    if (bp->compressedmoves)
-        // write number of compressed moves
-        *((uint16_t*)bp->compmvsptr) = SHORTFROMBIGENDIAN((char*)&bp->compressedmoves);
-
-    // last compressed move? throw away unused bits
-    if (bp->consumedBits)
-    {
-        (*bp->data)++;
-        bp->consumedBits = 0;
+    size_t size = *bp->data - buffer;   // default: copy everything up to the end
+    if (bp->flushAt) {
+        // buffer full, flushAt is the cutting point
+        size = bp->flushAt - buffer;
     }
 
-    cout << "flush" << *bp->data - buffer << endl;
-    size_t size = *bp->data - buffer;
     *((uint32_t*)(buffer + 4)) = (uint32_t)size - 8;
     os->write(buffer, size);
+    if (bp->flushAt) {
+        size_t wrappedbytes = *bp->data - bp->flushAt;
+        memcpy(buffer + 8, bp->flushAt, wrappedbytes + 1);
+        *bp->data -= size - 8;
+        bp->compmvsptr -= size - 8;
+        bp->flushAt = nullptr;
+    }
 }
 
 enum SfenFormat { no, bin, binpack, plain };
@@ -1334,39 +1356,44 @@ void convert(vector<string> args)
     //U64 evalsum[2][7] = { 0 };  // evalsum for hce and NNUE classified by at  0 / <0.5 / <1 / <3 / <20 / 1-4 / different prefer
     //U64 evaln[7] = { 0 };
 
+    size_t unnamedParams = 0;
     while (ci < cs)
     {
         string cmd = args[ci++];
-
-        if (cmd == "input_file_name" && ci < cs)
+        if ((cmd == "input_file_name" && ci < cs) || (unnamedParams == 1 && ci == 1))
         {
-            inputfile = args[ci++];
+            inputfile = (unnamedParams == ci ? args[ci - 1] : args[ci++]);
             inputfile.erase(remove(inputfile.begin(), inputfile.end(), '\"'), inputfile.end());
         }
-        if (cmd == "output_file_name" && ci < cs)
+        else if ((cmd == "output_file_name" && ci < cs) || (unnamedParams == 2 && ci == 2))
         {
-            outputfile = args[ci++];
+            outputfile = (unnamedParams == ci ? args[ci - 1] : args[ci++]);
             outputfile.erase(remove(outputfile.begin(), outputfile.end(), '\"'), outputfile.end());
         }
-        if (cmd == "output_format" && ci < cs)
+        else if (cmd == "output_format" && ci < cs)
         {
             outformat = (args[ci] == "bin" ? bin : args[ci] == "plain" ? plain : args[ci] == "binpack" ? binpack : no);
             ci++;
         }
-        if (cmd == "evalstats" && ci < cs)
+        else if (cmd == "evalstats" && ci < cs)
         {
             evalstats = (NnueReady != NnueDisabled) * stoi(args[ci++]);
             if (evalstats < 1 || evalstats > 2)
                 evalstats = 0;
         }
-        if (cmd == "generalstats")
+        else if (cmd == "generalstats")
         {
             generalstats = (ci < cs ? stoi(args[ci++]) : 1);
+        }
+        else
+        {
+            unnamedParams++;
+            ci--;
         }
     }
 
     informat = (inputfile.find(".binpack") != string::npos ? binpack : inputfile.find(".bin") != string::npos ? bin : plain);
-    ifstream is(inputfile, informat != plain ? ios::binary : ios::out);
+    ifstream is(inputfile, informat != plain ? ios::binary : ios_base::in);
     if (!is)
     {
         cout << "Cannot open input file " << inputfile << ".\n";
@@ -1566,12 +1593,10 @@ void convert(vector<string> args)
             }
             else if (outformat == binpack)
             {
-                if (outbp.compressedmoves == 0 && outbptr > outbuffer + maxBinpackChunkSize)
-                {
+                if (outbp.flushAt)
                     // flush chunk
                     flushBinpack(os, outbuffer, &outbp);
-                    outbptr = outbuffer;
-                }
+
                 if (outbptr == outbuffer)
                 {
                     // start new chunk
@@ -1593,7 +1618,6 @@ void convert(vector<string> args)
                 {
                     outpos = outbp.outpos = (chessposition*)allocalign64(sizeof(chessposition));
                     memcpy(outbp.outpos->castlerights, pos->castlerights, sizeof(pos->castlerights));
-                    cout << "copied castlerights " << outbp.outpos->castlerights[17] << "/" << pos->castlerights[17] << endl;
                 }
 
                 outbp.lastFullmove = outbp.fullmove;
@@ -1628,7 +1652,11 @@ void convert(vector<string> args)
         }
     }
 
-    flushBinpack(os, outbuffer, &outbp);
+    if (outformat == binpack)
+    {
+        prepareNextBinpackPosition(&outbp);
+        flushBinpack(os, outbuffer, &outbp);
+    }
 
     if (!okay)
         cerr << "\nAn error occured while reading input data.\n";
