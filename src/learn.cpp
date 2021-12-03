@@ -20,16 +20,6 @@
 
 #ifdef NNUELEARN
 
-//
-// ToDo:
-// - write binpack
-// - Halfmoves in bin (6bit limit)
-// -
-
-//
-// Generate fens for training
-//
-
 
 /*
     Summary about different 16bit move encoding:
@@ -122,8 +112,10 @@ inline uint32_t rubiFromBinpack(chessposition* pos, uint16_t c)
     return fullmove;
 }
 
-const size_t maxBinpackChunkSize = 1 * 1024 *1024;
-const size_t maxContinuationSize = 10 * 1024;
+
+//
+// Sfen/bin related code
+//
 
 #define GENSFEN_HASH_SIZE 0x1000000
 alignas(64) U64 sfenhash[GENSFEN_HASH_SIZE];
@@ -358,6 +350,14 @@ void flush_psv(int result, searchthread* thr)
 }
 
 
+
+//
+// BINPACK related code
+//
+
+const size_t maxBinpackChunkSize = 1 * 1024 *1024;
+const size_t maxContinuationSize = 10 * 1024;
+
 #define SHORTFROMBIGENDIAN(c) ((uint8_t)(c)[1] | ((uint8_t)(c)[0] << 8))
 #define LONGLONGFROMBIGENDIAN(c) ((U64)((uint8_t)(c)[7]) | ((U64)((uint8_t)(c)[6]) << 8) | ((U64)((uint8_t)(c)[5]) << 16) | (((U64)((uint8_t)(c)[4])) << 24ULL) | ((U64)((uint8_t)(c)[3]) << 32) | ((U64)((uint8_t)(c)[2]) << 40) | ((U64)((uint8_t)(c)[1]) << 48) | ((U64)((uint8_t)(c)[0]) << 56))
 #define GETBITINDEX(b,i) (POPCOUNT((b) & (((BITSET(i) - 1) << 1) + 1)) - 1)
@@ -412,7 +412,6 @@ inline uint8_t getNextBits(Binpack *bp, int bitnum)
         bp->consumedBits -= 8;
         (*bp->data)++;
     }
-    //printf("getNextBits(%d): %02x  aktuelles Byte: %02x(%d)\n", bitnum, byte, *(uint8_t*)*bp->data, bp->consumedBits);
     return by;
 }
 
@@ -515,34 +514,25 @@ void chessposition::copyToLight(chessposition *target)
     memcpy(target->mailbox, mailbox, sizeof(mailbox));
 }
 
+// test if this is the follow up position of src playing move mc
 bool chessposition::followsTo(chessposition *src, uint32_t mc)
 {
-    //cout << src->toFen() << "  " << hex << src->state << endl;
-    //cout << toFen() << "  " << hex << state << endl;
-    //cout << "testing play of " << moveToString(mc) << "..." << endl;
     if (!src->playMove(mc))
     {
-        cout << "failed to play " << hex << mc << "(" << moveToString(mc) << ")" << endl;
+        // mc should always be possible in position src as it is the preferred move
+        cout << "Alarm! Failed to play " << hex << mc << "(" << moveToString(mc) << ")" << endl;
         return false;
     }
 
     src->fixEpt();
 
-    //cout << "testing pieces..." << endl;
     for (int p = WPAWN; p <= BKING; p++)
-    {
-        //cout << hex << src->piece00[p] << " " << piece00[p] << endl;
         if (src->piece00[p] != piece00[p]) return false;
-    }
 
-    //cout << "testing state etc..." << endl;
     const U64 statemsk = CASTLEMASK | S2MMASK;
     if ((src->state & statemsk)  != (state & statemsk) || src->ept != ept || src->halfmovescounter != halfmovescounter)
-    {
-        cout << dec << "srcept:" << src->ept << "  ept:" << ept << endl;
-        //cout << hex << src->state << " " << state << "  " << src->halfmovescounter << "  " << halfmovescounter << endl;
         return false;
-    }
+
     return true;
 }
 
@@ -718,9 +708,6 @@ int chessposition::getNextFromBinpack(Binpack *bp)
         // get the score diff
         uint16_t uscore = getNextBlocks(bp, 4);
         int16_t scorediff = toSigned(uscore);
-        //cout << "score diff: " << scorediff << endl;
-        //cout << hex << uscore << dec << endl;
-
         bp->score = bp->lastScore + scorediff;
         bp->gamePly++;
         bp->compressedmoves--;
@@ -803,15 +790,14 @@ void chessposition::nextToBinpack(Binpack* bp)
 {
     if (!bp->inpos->followsTo(this, bp->lastFullmove))
     {
+        // no continuation
         prepareNextBinpackPosition(bp);
 
         if (*bp->data > bp->base + maxBinpackChunkSize + 8)
             bp->flushAt = *bp->data;
 
         bp->inpos->copyToLight(this);
-        //cout << "copy" << endl;
-        // write a full position
-        // write the pieces
+        // write the position
         posToBinpack(bp);
         // write the move
         uint16_t bpmc = binpackFromRubi(bp->fullmove);
@@ -833,13 +819,14 @@ void chessposition::nextToBinpack(Binpack* bp)
         *((uint16_t*)*bp->data) = SHORTFROMBIGENDIAN((char*)&halfmovescounter);
         if (bp->debug()) drawBytes(*bp->data, 2);
         *bp->data += sizeof(uint16_t);
-        // remember the positin to write the number of compressed for later
+        // remember the buffer position where to write the number of compressed for later
         bp->compmvsptr = *bp->data;
         *((uint16_t*)*bp->data) = SHORTFROMBIGENDIAN((char*)&bp->compressedmoves);
         *bp->data += sizeof(uint16_t);
         **bp->data = 0;
     }
     else {
+        // we have a continuation
         int Me = state & S2MMASK;
         bp->compressedmoves++;
         fixEpt();
@@ -847,7 +834,6 @@ void chessposition::nextToBinpack(Binpack* bp)
         uint32_t mc = bp->fullmove;
         int from = GETFROM(mc);
         U64 mysquaresbb = occupied00[state & S2MMASK];
-
         int fromlen = indexBits(POPCOUNT(mysquaresbb));
         int fromN = GETBITINDEX(mysquaresbb, from);
         if (bp->debug()) cout << "from=" << from << "  mysquaresbb=" << hex << mysquaresbb << " fromN=" << dec << fromN << endl;
@@ -911,6 +897,9 @@ void chessposition::nextToBinpack(Binpack* bp)
 
 
 
+//
+// Stuff related to generating fens for training
+//
 
 //
 //
@@ -1347,14 +1336,10 @@ void convert(vector<string> args)
 {
     string inputfile;
     string outputfile;
-    int evalstats = 0;
-    int generalstats = 0;
     SfenFormat outformat = no;
     SfenFormat informat = no;
     size_t cs = args.size();
     size_t ci = 0;
-    //U64 evalsum[2][7] = { 0 };  // evalsum for hce and NNUE classified by at  0 / <0.5 / <1 / <3 / <20 / 1-4 / different prefer
-    //U64 evaln[7] = { 0 };
 
     size_t unnamedParams = 0;
     while (ci < cs)
@@ -1374,16 +1359,6 @@ void convert(vector<string> args)
         {
             outformat = (args[ci] == "bin" ? bin : args[ci] == "plain" ? plain : args[ci] == "binpack" ? binpack : no);
             ci++;
-        }
-        else if (cmd == "evalstats" && ci < cs)
-        {
-            evalstats = (NnueReady != NnueDisabled) * stoi(args[ci++]);
-            if (evalstats < 1 || evalstats > 2)
-                evalstats = 0;
-        }
-        else if (cmd == "generalstats")
-        {
-            generalstats = (ci < cs ? stoi(args[ci++]) : 1);
         }
         else
         {
@@ -1458,7 +1433,6 @@ void convert(vector<string> args)
 
     U64 n = 0;
 
-    U64 posWithPieces[32] = { 0ULL };
     bool okay = true;
     size_t nextbuffersize = buffersize;
 
@@ -1648,7 +1622,7 @@ void convert(vector<string> args)
             }
 
             n++;
-            if (n % 0x2000 == 0) cerr << ".";
+            if (n % 0x20000 == 0) cerr << ".";
         }
     }
 
@@ -1662,141 +1636,14 @@ void convert(vector<string> args)
         cerr << "\nAn error occured while reading input data.\n";
     cerr << "\nFinished converting. " << n << " positions found.\n";
 
-    if (generalstats && n > 0)
-    {
-        cerr << "Distribution depending on number of pieces:\n";
-        for (int i = 2; i < 33; i++)
-            cerr << setw(2) << to_string(i) << " pieces: " << 100.0 * posWithPieces[i] / (double)n << "%\n";
-    }
-
+    freealigned64(buffer);
+    if (outbuffer)
+        freealigned64(outbuffer);
     freealigned64(inpos);
     if (outpos)
         freealigned64(outpos);
 }
 
-
-#if 0
-        U64 psvread = is.gcount() / sizeof(PackedSfenValue);
-        for (PackedSfenValue* psv = (PackedSfenValue*) buffer; psv < buffer + psvread; psv++)
-        {
-            pos->getFromSfen(&psv->sfen);
-            // Test and reset the castle related mebers in case of chess960
-            // FIXME: This is not bulletproof; a rook could have walked in the plies not recorded and lead to wrong castle rights
-            int castlestate = pos->state & CASTLEMASK;
-            if (castlestate && pos->fullmovescounter < lastfullmove)
-            {
-                int whiteCanCastle = castlestate & (WQCMASK | WKCMASK);
-                int castleQueenside = castlestate & (WQCMASK | BQCMASK);
-                int castleKingside = castlestate & (WKCMASK | BKCMASK);
-                kingfile = (whiteCanCastle ? FILE(pos->kingpos[WHITE]) : FILE(pos->kingpos[BLACK]));
-
-                rookfiles[0] = -1;
-                if (castleQueenside)
-                {
-                    U64 rooksbb;
-                    if (whiteCanCastle & castleQueenside)
-                        rooksbb = (pos->piece00[WROOK] & RANK1(WHITE));
-                    else
-                        rooksbb = (pos->piece00[BROOK] & RANK1(BLACK));
-                    rookfiles[0] = FILE(pullLsb(&rooksbb));
-                }
-
-                rookfiles[1] = -1;
-                if (castleKingside)
-                {
-                    U64 rooksbb;
-                    if (whiteCanCastle & castleKingside)
-                        rooksbb = (pos->piece00[WROOK] & RANK1(WHITE));
-                    else
-                        rooksbb = (pos->piece00[BROOK] & RANK1(BLACK));
-                    rookfiles[1] = FILE(pullMsb(&rooksbb));
-                }
-                pos->initCastleRights(rookfiles, kingfile);
-            }
-
-            lastfullmove = pos->fullmovescounter;
-
-            uint32_t rubimovecode = pos->shortMove2FullMove(shortCode(psv->move));
-            uint32_t sfmovecode = rubimovecode;
-            if (!rubimovecode || ISEPCAPTUREORCASTLE(rubimovecode))
-            {
-                // Fix the incompatible move coding
-                sfmovecode = pos->shortMove2FullMove(psv->move);
-                if (sfmovecode)
-                    psv->move = sfMoveCode(sfmovecode);
-                if (!rubimovecode)
-                {
-                    // FIXME: Can this still happen??
-                    printf("Alarm. Movecode: %04x: %s\n", psv->move, pos->toFen().c_str());
-                    rubimovecode = pos->shortMove2FullMove(psv->move);
-                }
-            }
-
-            if (!sfmovecode)
-                continue;
-
-            n++;
-
-            if (outformat == plain)
-            {
-                *os << "fen " << pos->toFen() << "\n";
-                *os << "move " << moveToString(rubimovecode) << "\n";
-                *os << "score " << psv->score << "\n";
-                *os << "ply " << to_string((pos->fullmovescounter - 1) * 2 + (pos->state & S2MMASK)) << "\n";
-                *os << "result " << to_string(psv->game_result) << "\n";
-                *os << "e\n";
-            }
-            else if (outformat == bin)
-            {
-                os->write((char*)psv, sizeof(PackedSfenValue));
-            }
-
-            if (generalstats)
-            {
-                posWithPieces[POPCOUNT(pos->occupied00[WHITE] | pos->occupied00[BLACK])]++;
-            }
-
-            if (evalstats)
-            {
-                NnueType origNnue = NnueReady;
-                NnueReady = NnueDisabled;
-                int ev[2];
-                int absev[2];
-                ev[evalstats - 1] = pos->getEval<NOTRACE>();
-                absev[evalstats - 1] = abs(ev[evalstats - 1]);
-                NnueReady = origNnue;
-                ev[2 - evalstats] = pos->getEval<NOTRACE>();
-                absev[2 - evalstats] = abs(ev[2 - evalstats]);
-                int i = (ev[0] == 0 ? 0 : (absev[0] < 50 ? 1 : (absev[0] < 100 ? 2 : (absev[0] < 300 ? 3 : (absev[0] > 2000 ? -1 : 4)))));
-                if (ev[0] * ev[1] < 0)
-                    i = 6;
-
-                if (i < 0) break;
-
-                evalsum[0][i] += absev[0];
-                evalsum[1][i] += absev[1];
-                evaln[i]++;
-                if (i >= 1 && i <= 4)
-                {
-                    evalsum[0][5] += absev[0];
-                    evalsum[1][5] += absev[1];
-                    evaln[5]++;
-                }
-
-                if (n % 10000 == 0)
-                {
-                    cerr << "======================================================================\n";
-                    for (i = 0; i < 7; i++)
-                    {
-                        double avh = evalsum[0][i] / (double)evaln[i];
-                        double avn = evalsum[1][i] / (double)evaln[i];
-                        cerr << setprecision(3) << fixed << i << setw(8) << evaln[i] << setw(14) << avh << setw(14) << avn << setw(14) << avh / avn << "\n";
-                    }
-                }
-
-            }
-        }
-#endif
 
 
 
