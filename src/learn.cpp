@@ -611,6 +611,8 @@ int chessposition::getNextFromBinpack(Binpack *bp)
         phcount = 0;
         ply = 0;
         ept = 0;
+        accumulator[0].computationState[WHITE] = false;
+        accumulator[0].computationState[BLACK] = false;
         // get the pieces
         getPosFromBinpack(bp);
         // get the move
@@ -1332,12 +1334,19 @@ static void flushBinpack(ostream *os, char *buffer, Binpack* bp)
 
 enum SfenFormat { no, bin, binpack, plain };
 
+
+static void convertthread(searchthread* thr)
+{
+}
+
+
 void convert(vector<string> args)
 {
     string inputfile;
     string outputfile;
     SfenFormat outformat = no;
     SfenFormat informat = no;
+    int rescoreDepth = 0;
     size_t cs = args.size();
     size_t ci = 0;
 
@@ -1359,6 +1368,10 @@ void convert(vector<string> args)
         {
             outformat = (args[ci] == "bin" ? bin : args[ci] == "plain" ? plain : args[ci] == "binpack" ? binpack : no);
             ci++;
+        }
+        else if (cmd == "rescore_depth" && ci < cs)
+        {
+            rescoreDepth = stoi(args[ci++]);
         }
         else
         {
@@ -1392,6 +1405,9 @@ void convert(vector<string> args)
     }
 
     chessposition* inpos = (chessposition*)allocalign64(sizeof(chessposition));
+    inpos->pwnhsh.setSize(1);
+    inpos->mtrlhsh.init();
+
     chessposition* outpos = nullptr;
     chessposition* pos = inpos;
     int rookfiles[] = { 0 , 7 };
@@ -1553,6 +1569,11 @@ void convert(vector<string> args)
                 continue;
 
             pos->fixEpt();
+            if (rescoreDepth)
+            {
+                int newscore = pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, rescoreDepth);
+                cout << "score = " << score << "   newscore = " << newscore << endl;
+            }
 
             if (outformat == bin)
             {
@@ -1591,6 +1612,7 @@ void convert(vector<string> args)
                 if (!outpos)
                 {
                     outpos = outbp.outpos = (chessposition*)allocalign64(sizeof(chessposition));
+                    inpos->copyToLight(outpos);
                     memcpy(outbp.outpos->castlerights, pos->castlerights, sizeof(pos->castlerights));
                 }
 
