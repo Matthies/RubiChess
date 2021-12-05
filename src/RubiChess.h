@@ -91,7 +91,7 @@
 #include <set>
 
 #define USE_SIMD
-#if defined(USE_AVX2)
+#if defined(USE_AVX2) || defined(USE_BMI1)
 #include <immintrin.h>
 #elif defined(USE_SSSE3)
 #include <tmmintrin.h>
