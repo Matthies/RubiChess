@@ -674,7 +674,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (Pt != NoPrune
             && depth < MAXLMPDEPTH
             && !ISTACTICAL(mc)
-            && bestscore >(Pt == Prune ? NOSCORE : -SCORETBWININMAXPLY)
+            && bestscore > -SCORETBWININMAXPLY
             && quietsPlayed > lmptable[positionImproved][depth])
         {
             // Proceed to next moveselector state manually to save some time
@@ -697,7 +697,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (Pt != NoPrune 
             && !isCheckbb
             && depth <= sps.seeprunemaxdepth
-            && bestscore > (Pt == Prune ? NOSCORE : -SCORETBWININMAXPLY)
+            && bestscore > -SCORETBWININMAXPLY
             && ms->state >= QUIETSTATE
             && !see(mc, sps.seeprunemarginperdepth * depth * (ISTACTICAL(mc) ? depth : sps.seeprunequietfactor)))
         {
