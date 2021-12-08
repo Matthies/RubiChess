@@ -421,7 +421,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         return beta;
     }
 
-#if 0
     if (Pt == MatePrune)
     {
         // Mate distance pruning
@@ -432,7 +431,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (alpha >= beta)
             return alpha;
     }
-#endif
+
     // Reached depth? Do a qsearch
     if (depth <= 0)
     {
@@ -466,8 +465,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     // TT lookup
     bool tpHit = tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
-    if (hashscore != NOSCORE && abs(hashscore) >= SCOREWHITEWINS - MAXDEPTH)
-        cout << "From hash: " << hashscore << endl;
     if (tpHit && !rep && !PVNode)
     {
         if (hashscore >= beta && hashmovecode && !mailbox[GETTO(hashmovecode)])
@@ -485,9 +482,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 #endif
         return hashscore;
     }
-    // wrong mate score: 4k3/8/p3q3/K1P1B3/6b1/1PQ4p/P7/8 b - - 0 43 
-    if (hashscore != NOSCORE && abs(hashscore) >= SCOREWHITEWINS - MAXDEPTH)
-        cout << "still from hash: " << hashscore << "  alpha=" << alpha << " beta=" << beta << endl;
 
     // TB
     // The test for rule50_count() == 0 is required to prevent probing in case
@@ -903,14 +897,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
                     if (!excludeMove)
                         tp.addHash(newhash, FIXMATESCOREADD(score, ply), staticeval, HASHBETA, effectiveDepth, (uint16_t)bestcode);
-                    if (score > 32000)
-                    {
-                        for (int i = 0; i < ply; i++)
-                            cout << moveToString(movestack[i].movecode) << " ";
-                        cout << moveToString(mc) << endl;
-                        cout << "write-to-hash: " << score << "  bound: HASHBETA   alpha=" << alpha << "  beta=" << beta << "  bestscore=" << bestscore << endl;
-                    }
-
 
                     SDEBUGDO(isDebugPv, pvaborttype[ply] = isDebugMove ? PVA_BETACUT : debugMovePlayed ? PVA_NOTBESTMOVE : PVA_OMITTED;);
                     SDEBUGDO(isDebugPv || debugTransposition, tp.debugSetPv(newhash, movesOnStack() + " " + (debugTransposition ? "(transposition)" : "") + " effectiveDepth=" + to_string(effectiveDepth)););
@@ -1332,7 +1318,6 @@ static void mainSearch(searchthread *thr)
         }
         else
         {
-            cout << "alpha=" << alpha << "  beta=" << beta << endl;
             score = pos->rootsearch<RT>(alpha, beta, thr->depth, inWindow);
 #ifdef TDEBUG
             if (en.stopLevel == ENGINESTOPIMMEDIATELY && isMainThread)
