@@ -123,9 +123,9 @@ void searchtableinit()
     for (int d = 0; d < MAXLMPDEPTH; d++)
     {
         // lmp for not improving positions
-        lmptable[0][d] = (int)(2.6 + (sps.lmpf0 / 100.0) * round(pow(d, sps.lmppow0 / 100.0)));
+        lmptable[0][d] = (int)(2.5 + (sps.lmpf0 / 100.0) * round(pow(d, sps.lmppow0 / 100.0)));
         // lmp for improving positions
-        lmptable[1][d] = (int)(4.2 + (sps.lmpf1 / 100.0) * round(pow(d, sps.lmppow1 / 100.0)));
+        lmptable[1][d] = (int)(4.0 + (sps.lmpf1 / 100.0) * round(pow(d, sps.lmppow1 / 100.0)));
     }
 }
 
