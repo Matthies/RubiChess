@@ -1459,11 +1459,22 @@ static void mainSearch(searchthread *thr)
             constantRootMoves = 0;
         }
 
-        // Reset remaining time if depth is finished or new best move is found
         if (isMainThread)
         {
-            if (inWindow == 1 || !constantRootMoves)
+            if (inWindow == 1)
+            {
+                // Mate found; early exit
+                if (thr->depth > SCOREWHITEWINS - abs(score))
+                    break;
+
+                // Recalculate remaining time for next depth
                 resetEndTime(en.starttime, constantRootMoves);
+            }
+            else if (!constantRootMoves)
+            {
+                // New best move; alöso recalculate remaining time
+                resetEndTime(en.starttime, constantRootMoves);
+            }
         }
 
         // exit if STOPIMMEDIATELY
@@ -1484,9 +1495,6 @@ static void mainSearch(searchthread *thr)
 
         // exit if max depth is reached
         if (thr->depth > maxdepth)
-            break;
-
-        if (inWindow == 1 && thr->depth > SCOREWHITEWINS - abs(score))
             break;
 
     } while (1);
