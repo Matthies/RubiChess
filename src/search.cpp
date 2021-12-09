@@ -520,7 +520,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     if (isCheckbb)
     {
         extendall = 1;
-        threatSquare = 64;
     }
     else {
         if (state & S2MMASK)

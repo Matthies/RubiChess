@@ -1220,6 +1220,7 @@ struct chessmovestack
     int lastnullmove;
     uint32_t movecode;
     U64 kingPinned;
+    unsigned int threatSquare;
 };
 
 #define MAXMOVELISTLENGTH 256   // for lists of possible pseudo-legal moves
@@ -1376,6 +1377,7 @@ public:
     int lastnullmove;
     uint32_t movecode;
     U64 kingPinned;
+    unsigned int threatSquare;
 
     uint8_t mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
     chessmovestack prerootmovestack[PREROOTMOVES];   // moves before root since last halfmovescounter reset
@@ -1444,7 +1446,6 @@ public:
     int16_t counterhistory[14][64][14 * 64];
     int16_t tacticalhst[7][64][6];
     uint32_t countermove[14][64];
-    int threatSquare;
     int he_threshold;
     U64 he_yes;
     U64 he_all;

@@ -561,6 +561,11 @@ void chessposition::evaluateMoves(chessmovelist *ml)
 void chessposition::getRootMoves()
 {
     chessmovelist movelist;
+    
+    if (state & S2MMASK)
+        updateThreats<BLACK>();
+    else
+        updateThreats<WHITE>();
     prepareStack();
     movelist.length = CreateMovelist<ALL>(&movelist.move[0]);
     evaluateMoves<ALL>(&movelist);
@@ -955,7 +960,7 @@ template <int Me> void chessposition::updateThreats()
     threatsByRooks &= piece00[WQUEEN | Me];
 
     threats = threatsByPawns | threatsByMinors | threatsByRooks;
-    if (threats)
+    if (0 && threats)
         GETLSB(threatSquare, threats);
     else
         threatSquare = 64;
