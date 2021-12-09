@@ -960,7 +960,7 @@ template <int Me> void chessposition::updateThreats()
     threatsByRooks &= piece00[WQUEEN | Me];
 
     threats = threatsByPawns | threatsByMinors | threatsByRooks;
-    if (0 && threats)
+    if (threats)
         GETLSB(threatSquare, threats);
     else
         threatSquare = 64;
