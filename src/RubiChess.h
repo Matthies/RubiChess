@@ -1361,6 +1361,7 @@ public:
     U64 piece00[14];
     U64 attackedBy2[2];
     U64 attackedBy[2][7];
+    U64 threats;
 
     // The following block is mapped/copied to the movestack, so its important to keep the order
     int state;
@@ -1439,10 +1440,11 @@ public:
 #endif
 
     // The following part of the chessposition object isn't copied from rootposition object to the threads positions
-    int16_t history[2][64][64];
+    int16_t history[2][65][64][64];
     int16_t counterhistory[14][64][14 * 64];
     int16_t tacticalhst[7][64][6];
     uint32_t countermove[14][64];
+    int threatSquare;
     int he_threshold;
     U64 he_yes;
     U64 he_all;
@@ -1487,6 +1489,7 @@ public:
     void unplayNullMove();
     U64 nextHash(uint32_t mc);
     template <int Me> void updatePins();
+    template <int Me> void updateThreats();
     template <int Me> bool sliderAttacked(int index, U64 occ);
     bool moveGivesCheck(uint32_t c);  // simple and imperfect as it doesn't handle special moves and cases (mainly to avoid pruning of important moves)
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position

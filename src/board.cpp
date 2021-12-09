@@ -541,7 +541,7 @@ void chessposition::evaluateMoves(chessmovelist *ml)
         if (Mt == QUIET || (Mt == ALL && !GETCAPTURE(mc)))
         {
             int to = GETCORRECTTO(mc);
-            ml->move[i].value = history[piece & S2MMASK][GETFROM(mc)][to];
+            ml->move[i].value = history[piece & S2MMASK][threatSquare][GETFROM(mc)][to];
             int16_t** cptr = cmptr[ply];
             if (cptr)
             {
@@ -924,6 +924,41 @@ template <int Me> void chessposition::updatePins()
     }
     // 'Reset' attack vector to make getBestPossibleCapture work even if evaluation was skipped
     attackedBy[Me][0] = 0xffffffffffffffff;
+}
+
+
+template <int Me> void chessposition::updateThreats()
+{
+    const int You = Me ^ S2MMASK;
+
+    U64 threatsByPawns = PAWNATTACK(You, piece00[WPAWN | You]) & (occupied00[Me] ^ piece00[WPAWN | Me]);
+
+    U64 threatsByMinors = 0Ull;
+    U64 yourBishops = piece00[WBISHOP | You];
+    while (yourBishops) {
+        int from = pullLsb(&yourBishops);
+        threatsByMinors |= pieceMovesTo<BISHOP>(from);
+    }
+    U64 yourKnights = piece00[WKNIGHT | You];
+    while (yourKnights) {
+        int from = pullLsb(&yourKnights);
+        threatsByMinors |= pieceMovesTo<KNIGHT>(from);
+    }
+    threatsByMinors &= (piece00[WROOK | Me] | piece00[WQUEEN | Me]);
+
+    U64 threatsByRooks = 0ULL;
+    U64 yourRooks = piece00[WROOK | You];
+    while (yourRooks) {
+        int from = pullLsb(&yourRooks);
+        threatsByRooks |= pieceMovesTo<ROOK>(from);
+    }
+    threatsByRooks &= piece00[WQUEEN | Me];
+
+    threats = threatsByPawns | threatsByMinors | threatsByRooks;
+    if (threats)
+        GETLSB(threatSquare, threats);
+    else
+        threatSquare = 64;
 }
 
 
@@ -3285,3 +3320,5 @@ template bool chessposition::sliderAttacked<WHITE>(int index, U64 occ);
 template bool chessposition::sliderAttacked<BLACK>(int index, U64 occ);
 template void chessposition::updatePins<WHITE>();
 template void chessposition::updatePins<BLACK>();
+template void chessposition::updateThreats<WHITE>();
+template void chessposition::updateThreats<BLACK>();
