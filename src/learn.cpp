@@ -19,7 +19,8 @@
 #include "RubiChess.h"
 
 #ifdef NNUELEARN
-
+#include <atomic>
+#include <mutex>
 
 /*
     Summary about different 16bit move encoding:
@@ -1334,76 +1335,21 @@ static void flushBinpack(ostream *os, char *buffer, Binpack* bp)
 
 enum SfenFormat { no, bin, binpack, plain };
 
-
-static void convertthread(searchthread* thr)
-{
-}
-
-
-void convert(vector<string> args)
-{
-    string inputfile;
-    string outputfile;
+struct conversion_t {
     SfenFormat outformat = no;
     SfenFormat informat = no;
     int rescoreDepth = 0;
-    size_t cs = args.size();
-    size_t ci = 0;
-
-    size_t unnamedParams = 0;
-    while (ci < cs)
-    {
-        string cmd = args[ci++];
-        if ((cmd == "input_file_name" && ci < cs) || (unnamedParams == 1 && ci == 1))
-        {
-            inputfile = (unnamedParams == ci ? args[ci - 1] : args[ci++]);
-            inputfile.erase(remove(inputfile.begin(), inputfile.end(), '\"'), inputfile.end());
-        }
-        else if ((cmd == "output_file_name" && ci < cs) || (unnamedParams == 2 && ci == 2))
-        {
-            outputfile = (unnamedParams == ci ? args[ci - 1] : args[ci++]);
-            outputfile.erase(remove(outputfile.begin(), outputfile.end(), '\"'), outputfile.end());
-        }
-        else if (cmd == "output_format" && ci < cs)
-        {
-            outformat = (args[ci] == "bin" ? bin : args[ci] == "plain" ? plain : args[ci] == "binpack" ? binpack : no);
-            ci++;
-        }
-        else if (cmd == "rescore_depth" && ci < cs)
-        {
-            rescoreDepth = stoi(args[ci++]);
-        }
-        else
-        {
-            unnamedParams++;
-            ci--;
-        }
-    }
-
-    informat = (inputfile.find(".binpack") != string::npos ? binpack : inputfile.find(".bin") != string::npos ? bin : plain);
-    ifstream is(inputfile, informat != plain ? ios::binary : ios_base::in);
-    if (!is)
-    {
-        cout << "Cannot open input file " << inputfile << ".\n";
-        return;
-    }
+    ifstream *is;
+    ostream *os;
+    mutex mtin, mtout;
+    bool okay = true;
+    atomic<unsigned long long> n;
+} conv;
 
 
-    ostream *os = &cout;
-    ofstream ofs;
-    if (outputfile != "")
-    {
-        if (outformat == no)
-            outformat = (outputfile.find(".binpack") != string::npos ? binpack : outputfile.find(".bin") != string::npos ? bin : plain);
-        ofs.open(outputfile, outformat == plain ? ios::out : ios::binary);
-        if (!ofs)
-        {
-            cout << "Cannot open output file.\n";
-            return;
-        }
-        os = &ofs;
-    }
 
+static void convertthread(searchthread* thr, conversion_t* cv)
+{
     chessposition* inpos = (chessposition*)allocalign64(sizeof(chessposition));
     inpos->pwnhsh.setSize(1);
     inpos->mtrlhsh.init();
@@ -1423,12 +1369,12 @@ void convert(vector<string> args)
     char* bptr = nullptr;
     char* outbptr = nullptr;
 
-    if (informat == bin)
+    if (cv->informat == bin)
     {
         buffersize = sfenchunknums * sfenchunksize * sizeof(PackedSfenValue);
         bufferreserve = 0;
     }
-    else if (informat == binpack)
+    else if (cv->informat == binpack)
     {
         buffersize = 0;
         bufferreserve = 0;
@@ -1438,7 +1384,7 @@ void convert(vector<string> args)
         bufferreserve = 0;
     }
 
-    if (outformat == binpack)
+    if (cv->outformat == binpack)
     {
         outbptr = outbuffer = (char*)allocalign64(maxBinpackChunkSize + maxContinuationSize);
         outbp.base = outbuffer;
@@ -1447,22 +1393,19 @@ void convert(vector<string> args)
         outbp.inpos = inpos;
     }
 
-    U64 n = 0;
-
-    bool okay = true;
     size_t nextbuffersize = buffersize;
 
-    while (okay && is.peek() != ios::traits_type::eof())
+    while (cv->okay && cv->is->peek() != ios::traits_type::eof())
     {
         int16_t score;
         int8_t result;
         uint32_t move;  // movecode in Rubi long format
         uint16_t gameply;
 
-        if (informat == binpack)
+        if (cv->informat == binpack)
         {
             char hd[8];
-            is.read(hd, 8);
+            cv->is->read(hd, 8);
             if (strncmp(hd, "BINP", 4) != 0)
             {
                 cout << "BINP Header missing. Exit.\n";
@@ -1492,14 +1435,14 @@ void convert(vector<string> args)
         }
 
         size_t restdata = buffersize;
-        is.read((char*)buffer + bufferreserve, buffersize);
-        if (!is)
-            restdata = is.gcount();
+        cv->is->read((char*)buffer + bufferreserve, buffersize);
+        if (!cv->is)
+            restdata = cv->is->gcount();
 
-        while (okay && ((restdata == 0 && is.peek() != ios::traits_type::eof()) || bptr < buffer + restdata))
+        while (cv->okay && ((restdata == 0 && cv->is->peek() != ios::traits_type::eof()) || bptr < buffer + restdata))
         {
             bool found = true;
-            if (informat == bin)
+            if (cv->informat == bin)
             {
                 PackedSfenValue* psv = (PackedSfenValue*)bptr;
                 pos->getFromSfen(&psv->sfen);
@@ -1509,14 +1452,15 @@ void convert(vector<string> args)
                 gameply = psv->gamePly;
                 bptr += sizeof(PackedSfenValue);
             }
-            else if (informat == binpack)
+            else if (cv->informat == binpack)
             {
                 if (!bp.data)
                 {
                     bp.data = &bptr;
                     bp.consumedBits = 0;
                 }
-                okay = (pos->getNextFromBinpack(&bp) == 0);
+                if (pos->getNextFromBinpack(&bp) != 0)
+                    cv->okay = false;
                 score = bp.score;
                 result = bp.gameResult;
                 move = bp.fullmove;
@@ -1528,18 +1472,19 @@ void convert(vector<string> args)
                 string key;
                 string value;
                 while (true) {
-                    if (is.peek() == ios::traits_type::eof())
+                    if (cv->is->peek() == ios::traits_type::eof())
                         break;
-                    is >> key;
+                    *cv->is >> key;
                     if (key == "e")
                     {
                         found = true;
                         break;
                     }
-                    is >> ws;
-                    getline(is, value);
+                    *cv->is >> ws;
+                    getline(*cv->is, value);
                     if (key == "fen")
-                        okay |= (pos->getFromFen(value.c_str()) == 0);
+                        if (pos->getFromFen(value.c_str()) != 0)
+                            cv->okay = false;
                     if (key == "result")
                         result = stoi(value);
                     if (key == "score")
@@ -1569,13 +1514,13 @@ void convert(vector<string> args)
                 continue;
 
             pos->fixEpt();
-            if (rescoreDepth)
+            if (cv->rescoreDepth)
             {
-                int newscore = pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, rescoreDepth);
+                int newscore = pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, cv->rescoreDepth);
                 cout << "score = " << score << "   newscore = " << newscore << endl;
             }
 
-            if (outformat == bin)
+            if (cv->outformat == bin)
             {
                 PackedSfenValue psv;
                 psv.score = score;
@@ -1584,13 +1529,13 @@ void convert(vector<string> args)
                 psv.move = sfFromRubi(move);
                 psv.padding = 0xff;
                 pos->toSfen(&psv.sfen);
-                os->write((char*)&psv, sizeof(PackedSfenValue));
+                cv->os->write((char*)&psv, sizeof(PackedSfenValue));
             }
-            else if (outformat == binpack)
+            else if (cv->outformat == binpack)
             {
                 if (outbp.flushAt)
                     // flush chunk
-                    flushBinpack(os, outbuffer, &outbp);
+                    flushBinpack(cv->os, outbuffer, &outbp);
 
                 if (outbptr == outbuffer)
                 {
@@ -1635,35 +1580,109 @@ void convert(vector<string> args)
             }
             else // outformat == plain
             {
-                *os << "fen " << pos->toFen() << endl;
-                *os << "move " << moveToString(move) << endl;
-                *os << "score " << score << endl;
-                *os << "ply " << to_string(gameply) << endl;
-                *os << "result " << to_string(result) << endl;
-                *os << "e" << endl;
+                *cv->os << "fen " << pos->toFen() << endl;
+                *cv->os << "move " << moveToString(move) << endl;
+                *cv->os << "score " << score << endl;
+                *cv->os << "ply " << to_string(gameply) << endl;
+                *cv->os << "result " << to_string(result) << endl;
+                *cv->os << "e" << endl;
             }
 
-            n++;
-            if (n % 0x20000 == 0) cerr << ".";
+            cv->n++;
+            if (cv->n % 0x20000 == 0) cerr << ".";
         }
     }
 
-    if (outformat == binpack)
+    if (cv->outformat == binpack)
     {
         prepareNextBinpackPosition(&outbp);
-        flushBinpack(os, outbuffer, &outbp);
+        flushBinpack(cv->os, outbuffer, &outbp);
     }
-
-    if (!okay)
-        cerr << "\nAn error occured while reading input data.\n";
-    cerr << "\nFinished converting. " << n << " positions found.\n";
-
     freealigned64(buffer);
     if (outbuffer)
         freealigned64(outbuffer);
     freealigned64(inpos);
     if (outpos)
         freealigned64(outpos);
+
+}
+
+
+void convert(vector<string> args)
+{
+    string inputfile;
+    string outputfile;
+    size_t cs = args.size();
+    size_t ci = 0;
+
+    size_t unnamedParams = 0;
+    while (ci < cs)
+    {
+        string cmd = args[ci++];
+        if ((cmd == "input_file_name" && ci < cs) || (unnamedParams == 1 && ci == 1))
+        {
+            inputfile = (unnamedParams == ci ? args[ci - 1] : args[ci++]);
+            inputfile.erase(remove(inputfile.begin(), inputfile.end(), '\"'), inputfile.end());
+        }
+        else if ((cmd == "output_file_name" && ci < cs) || (unnamedParams == 2 && ci == 2))
+        {
+            outputfile = (unnamedParams == ci ? args[ci - 1] : args[ci++]);
+            outputfile.erase(remove(outputfile.begin(), outputfile.end(), '\"'), outputfile.end());
+        }
+        else if (cmd == "output_format" && ci < cs)
+        {
+            conv.outformat = (args[ci] == "bin" ? bin : args[ci] == "plain" ? plain : args[ci] == "binpack" ? binpack : no);
+            ci++;
+        }
+        else if (cmd == "rescore_depth" && ci < cs)
+        {
+            conv.rescoreDepth = stoi(args[ci++]);
+        }
+        else
+        {
+            unnamedParams++;
+            ci--;
+        }
+    }
+
+    conv.informat = (inputfile.find(".binpack") != string::npos ? binpack : inputfile.find(".bin") != string::npos ? bin : plain);
+    conv.is->open(inputfile, conv.informat != plain ? ios::binary : ios_base::in);
+    if (!conv.is)
+    {
+        cout << "Cannot open input file " << inputfile << ".\n";
+        return;
+    }
+
+
+    conv.os = &cout;
+    ofstream ofs;
+    if (outputfile != "")
+    {
+        if (conv.outformat == no)
+            conv.outformat = (outputfile.find(".binpack") != string::npos ? binpack : outputfile.find(".bin") != string::npos ? bin : plain);
+        ofs.open(outputfile, conv.outformat == plain ? ios::out : ios::binary);
+    cout << "informat:  " << conv.informat << endl;
+    cout << "outformat: " << conv.outformat << endl;
+        if (!ofs)
+        {
+            cout << "Cannot open output file.\n";
+            return;
+        }
+        conv.os = &ofs;
+    }
+
+    for (int tnum = 0; tnum < en.Threads; tnum++)
+    {
+        en.sthread[tnum].index = tnum;
+        en.sthread[tnum].thr = thread(&convertthread, &en.sthread[tnum], &conv);
+    }
+
+
+
+    if (!conv.okay)
+        cerr << "\nAn error occured while reading input data.\n";
+    cerr << "\nFinished converting. " << conv.n << " positions found.\n";
+
 }
 
 
