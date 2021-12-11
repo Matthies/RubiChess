@@ -356,7 +356,7 @@ void flush_psv(int result, searchthread* thr)
 // BINPACK related code
 //
 
-const size_t maxBinpackChunkSize = 1 * 1024 *1024;
+const size_t maxBinpackChunkSize = 1 * 1024 * 1024;
 const size_t maxContinuationSize = 10 * 1024;
 
 #define SHORTFROMBIGENDIAN(c) ((uint8_t)(c)[1] | ((uint8_t)(c)[0] << 8))
@@ -518,6 +518,9 @@ void chessposition::copyToLight(chessposition *target)
 // test if this is the follow up position of src playing move mc
 bool chessposition::followsTo(chessposition *src, uint32_t mc)
 {
+    if (!mc)
+        return false;
+
     if (!src->playMove(mc))
     {
         // mc should always be possible in position src as it is the preferred move
@@ -1343,7 +1346,12 @@ struct conversion_t {
     ostream *os;
     mutex mtin, mtout;
     bool okay = true;
-    atomic<unsigned long long> n;
+    bool stoprequest;
+    atomic<unsigned long long> numPositions;
+    atomic<unsigned int> numInChunks;
+    atomic<unsigned int> numOutChunks;
+    unsigned int skipChunks;
+    int disable_prune;
 } conv;
 
 
@@ -1359,6 +1367,12 @@ static void convertthread(searchthread* thr, conversion_t* cv)
     int rookfiles[] = { 0 , 7 };
     int kingfile = 4;
     pos->initCastleRights(rookfiles, kingfile);
+    pos->he_yes = 0ULL;
+    pos->he_all = 0ULL;
+    pos->he_threshold = 8100;
+    memset(pos->history, 0, sizeof(chessposition::history));
+    memset(pos->counterhistory, 0, sizeof(chessposition::counterhistory));
+    memset(pos->countermove, 0, sizeof(chessposition::countermove));
 
     char* buffer = nullptr;
     char* outbuffer = nullptr;
@@ -1395,12 +1409,19 @@ static void convertthread(searchthread* thr, conversion_t* cv)
 
     size_t nextbuffersize = buffersize;
 
-    while (cv->okay && cv->is->peek() != ios::traits_type::eof())
+    while (cv->okay && !cv->stoprequest)
     {
         int16_t score;
         int8_t result;
         uint32_t move;  // movecode in Rubi long format
         uint16_t gameply;
+
+        cv->mtin.lock();
+        if (cv->is->peek() == ios::traits_type::eof())
+        {
+            cv->mtin.unlock();
+            break;
+        }
 
         if (cv->informat == binpack)
         {
@@ -1409,6 +1430,7 @@ static void convertthread(searchthread* thr, conversion_t* cv)
             if (strncmp(hd, "BINP", 4) != 0)
             {
                 cout << "BINP Header missing. Exit.\n";
+                cv->mtin.unlock();
                 return;
             }
             nextbuffersize = *(uint32_t*)&hd[4];
@@ -1438,8 +1460,19 @@ static void convertthread(searchthread* thr, conversion_t* cv)
         cv->is->read((char*)buffer + bufferreserve, buffersize);
         if (!cv->is)
             restdata = cv->is->gcount();
+        cv->numInChunks++;
+        if (cv->numInChunks <= cv->skipChunks)
+            restdata = 0;
 
-        while (cv->okay && ((restdata == 0 && cv->is->peek() != ios::traits_type::eof()) || bptr < buffer + restdata))
+        if (restdata == 0 && cv->is->peek() == ios::traits_type::eof())
+        { 
+            cv->mtin.unlock();
+            break;
+        }
+
+        cv->mtin.unlock();
+
+        while (cv->okay && bptr < buffer + restdata)
         {
             bool found = true;
             if (cv->informat == bin)
@@ -1454,6 +1487,8 @@ static void convertthread(searchthread* thr, conversion_t* cv)
             }
             else if (cv->informat == binpack)
             {
+                char* olp = bptr;
+                int oldcons = bp.consumedBits;
                 if (!bp.data)
                 {
                     bp.data = &bptr;
@@ -1516,8 +1551,14 @@ static void convertthread(searchthread* thr, conversion_t* cv)
             pos->fixEpt();
             if (cv->rescoreDepth)
             {
-                int newscore = pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, cv->rescoreDepth);
-                cout << "score = " << score << "   newscore = " << newscore << endl;
+                int newscore;
+                if (cv->disable_prune)
+                    newscore = pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, cv->rescoreDepth);
+                else
+                    newscore = pos->alphabeta<Prune>(SCOREBLACKWINS, SCOREWHITEWINS, cv->rescoreDepth);
+
+                //cout << "score = " << score << "   newscore = " << newscore << endl;
+                score = newscore;
             }
 
             if (cv->outformat == bin)
@@ -1529,13 +1570,19 @@ static void convertthread(searchthread* thr, conversion_t* cv)
                 psv.move = sfFromRubi(move);
                 psv.padding = 0xff;
                 pos->toSfen(&psv.sfen);
+                cv->mtout.lock();
                 cv->os->write((char*)&psv, sizeof(PackedSfenValue));
+                cv->mtout.unlock();
             }
             else if (cv->outformat == binpack)
             {
-                if (outbp.flushAt)
+                if (outbp.flushAt) {
                     // flush chunk
+                    cv->mtout.lock();
                     flushBinpack(cv->os, outbuffer, &outbp);
+                    cv->mtout.unlock();
+                    cv->numOutChunks++;
+                }
 
                 if (outbptr == outbuffer)
                 {
@@ -1588,15 +1635,18 @@ static void convertthread(searchthread* thr, conversion_t* cv)
                 *cv->os << "e" << endl;
             }
 
-            cv->n++;
-            if (cv->n % 0x20000 == 0) cerr << ".";
+            cv->numPositions++;
+            if (cv->numPositions % (cv->rescoreDepth ? 0x2000 : 0x20000) == 0) cerr << ".";
         }
     }
 
     if (cv->outformat == binpack)
     {
         prepareNextBinpackPosition(&outbp);
+        cv->mtout.lock();
+        cv->numOutChunks++;
         flushBinpack(cv->os, outbuffer, &outbp);
+        cv->mtout.unlock();
     }
     freealigned64(buffer);
     if (outbuffer)
@@ -1605,6 +1655,7 @@ static void convertthread(searchthread* thr, conversion_t* cv)
     if (outpos)
         freealigned64(outpos);
 
+    thr->index = -1;
 }
 
 
@@ -1614,6 +1665,13 @@ void convert(vector<string> args)
     string outputfile;
     size_t cs = args.size();
     size_t ci = 0;
+
+    conv.outformat = no;
+    conv.numInChunks = 0;
+    conv.numOutChunks = 0;
+    conv.disable_prune = 0;
+    conv.skipChunks = 0;
+    conv.skipChunks = false;
 
     size_t unnamedParams = 0;
     while (ci < cs)
@@ -1638,6 +1696,14 @@ void convert(vector<string> args)
         {
             conv.rescoreDepth = stoi(args[ci++]);
         }
+        else if (cmd == "disable_prune" && ci < cs)
+        {
+            conv.disable_prune = stoi(args[ci++]);
+        }
+        else if (cmd == "skip_chunks" && ci < cs)
+        {
+            conv.skipChunks = stoi(args[ci++]);
+        }
         else
         {
             unnamedParams++;
@@ -1646,8 +1712,8 @@ void convert(vector<string> args)
     }
 
     conv.informat = (inputfile.find(".binpack") != string::npos ? binpack : inputfile.find(".bin") != string::npos ? bin : plain);
-    conv.is->open(inputfile, conv.informat != plain ? ios::binary : ios_base::in);
-    if (!conv.is)
+    ifstream ifs(inputfile, conv.informat != plain ? ios::binary : ios_base::in);
+    if (!ifs)
     {
         cout << "Cannot open input file " << inputfile << ".\n";
         return;
@@ -1655,14 +1721,14 @@ void convert(vector<string> args)
 
 
     conv.os = &cout;
+    conv.is = &ifs;
     ofstream ofs;
     if (outputfile != "")
     {
         if (conv.outformat == no)
             conv.outformat = (outputfile.find(".binpack") != string::npos ? binpack : outputfile.find(".bin") != string::npos ? bin : plain);
+        
         ofs.open(outputfile, conv.outformat == plain ? ios::out : ios::binary);
-    cout << "informat:  " << conv.informat << endl;
-    cout << "outformat: " << conv.outformat << endl;
         if (!ofs)
         {
             cout << "Cannot open output file.\n";
@@ -1677,12 +1743,34 @@ void convert(vector<string> args)
         en.sthread[tnum].thr = thread(&convertthread, &en.sthread[tnum], &conv);
     }
 
+    int threadsToStop = en.Threads;
+    while (threadsToStop)
+    {
+        Sleep(100);
+        if (_kbhit())
+        {
+            char c = _getch();
+            if (c == 'q') {
+                conv.stoprequest = true;
+                cerr << "Stopping after current chunks";
+            }
+        }
+        for (int tnum = 0; tnum < en.Threads; tnum++)
+        {
+            if (en.sthread[tnum].index < 0 && en.sthread[tnum].thr.joinable())
+            {
+                en.sthread[tnum].thr.join();
+                threadsToStop--;
+            }
+        }
+    }
 
 
     if (!conv.okay)
-        cerr << "\nAn error occured while reading input data.\n";
-    cerr << "\nFinished converting. " << conv.n << " positions found.\n";
-
+        cerr << endl << "An error occured while reading input data." << endl;
+    cerr << endl << "Finished converting. " << conv.numPositions << " positions found." << endl;
+    if (conv.numOutChunks)
+        cerr << "Chunks written:  " << conv.numOutChunks << endl << "Last read chunk: " << conv.numInChunks << endl;
 }
 
 
