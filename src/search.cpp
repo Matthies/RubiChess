@@ -568,6 +568,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         }
     }
 
+    // Koivisto idea (no opponents) threat pruning
+    if (!PVNode && !isCheckbb && depth == 1 && staticeval > beta + (positionImproved ? 0 : 30) && !threats)
+        return beta;
+
     // futility pruning
     bool futility = false;
     if (Pt != NoPrune && depth <= sps.futilitymindepth)
