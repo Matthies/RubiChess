@@ -584,7 +584,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     if (Pt != NoPrune && depth <= sps.futilitymindepth)
     {
         // reverse futility pruning
-        if (!isCheckbb && staticeval - depth * (sps.futilityreversedepthfactor - sps.futilityreverseimproved * positionImproved) > beta)
+        if (!isCheckbb && POPCOUNT(threats) < 2 && staticeval - depth * (sps.futilityreversedepthfactor - sps.futilityreverseimproved * positionImproved) > beta)
         {
             STATISTICSINC(prune_futility);
             SDEBUGDO(isDebugPv, pvabortscore[ply] = staticeval; pvaborttype[ply] = PVA_REVFUTILITYPRUNED;);
