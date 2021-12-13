@@ -1465,7 +1465,7 @@ static void convertthread(searchthread* thr, conversion_t* cv)
             restdata = 0;
 
         if (restdata == 0 && cv->is->peek() == ios::traits_type::eof())
-        { 
+        {
             cv->mtin.unlock();
             break;
         }
@@ -1487,8 +1487,6 @@ static void convertthread(searchthread* thr, conversion_t* cv)
             }
             else if (cv->informat == binpack)
             {
-                char* olp = bptr;
-                int oldcons = bp.consumedBits;
                 if (!bp.data)
                 {
                     bp.data = &bptr;
@@ -1506,6 +1504,10 @@ static void convertthread(searchthread* thr, conversion_t* cv)
                 found = false;
                 string key;
                 string value;
+                move = 0;
+                gameply = 0;
+                result = 0;
+                score = 0;
                 while (true) {
                     if (cv->is->peek() == ios::traits_type::eof())
                         break;
@@ -1727,7 +1729,7 @@ void convert(vector<string> args)
     {
         if (conv.outformat == no)
             conv.outformat = (outputfile.find(".binpack") != string::npos ? binpack : outputfile.find(".bin") != string::npos ? bin : plain);
-        
+
         ofs.open(outputfile, conv.outformat == plain ? ios::out : ios::binary);
         if (!ofs)
         {
