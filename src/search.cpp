@@ -84,6 +84,10 @@ struct searchparamset {
     //Probcut
     searchparam SP(probcutmindepth, 5);
     searchparam SP(probcutmargin, 100);
+    // Threat pruning
+    searchparam SP(threatprunemargin, 30);
+    searchparam SP(threatprunemarginimprove, 0);
+
     // No hashmovereduction
     searchparam SP(nohashreductionmindepth, 3);
     // SEE prune
@@ -569,8 +573,11 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     }
 
     // Koivisto idea (no opponents) threat pruning
-    if (!PVNode && !isCheckbb && depth == 1 && staticeval > beta + (positionImproved ? 0 : 30) && !threats)
+    if (!PVNode && !isCheckbb && depth == 1 && staticeval > beta + (positionImproved ? sps.threatprunemarginimprove : sps.threatprunemargin) && !threats)
+    {
+        STATISTICSINC(prune_threat);
         return beta;
+    }
 
     // futility pruning
     bool futility = false;
@@ -1780,8 +1787,9 @@ void search_statistics()
     f1 = 100.0 * statistics.prune_nm / (double)n;
     f2 = 100.0 * statistics.prune_probcut / (double)n;
     f3 = 100.0 * statistics.prune_multicut / (double)n;
-    f4 = 100.0 * (statistics.prune_futility + statistics.prune_nm + statistics.prune_probcut + statistics.prune_multicut) / (double)n;
-    printf("(ST) Node pruning            %%Futility: %5.2f   %%NullMove: %5.2f   %%ProbeC.: %5.2f   %%MultiC.: %7.5f Total:  %5.2f\n", f0, f1, f2, f3, f4);
+    f4 = 100.0 * statistics.prune_threat / (double)n;
+    f5 = 100.0 * (statistics.prune_futility + statistics.prune_nm + statistics.prune_probcut + statistics.prune_multicut + statistics.prune_threat) / (double)n;
+    printf("(ST) Node pruning            %%Futility: %5.2f   %%NullMove: %5.2f   %%ProbeC.: %5.2f   %%MultiC.: %7.5f   %%Threat.: %7.5f Total:  %5.2f\n", f0, f1, f2, f3, f4, f5);
 
     // move statistics
     i1 = statistics.moves_n[0]; // quiet moves

@@ -1877,6 +1877,7 @@ struct statistic {
     U64 prune_nm;               // nodes pruned by null move;
     U64 prune_probcut;          // nodes pruned by PobCut
     U64 prune_multicut;         // nodes pruned by Multicut (detected by failed singular test)
+    U64 prune_threat;           // nodes pruned by (no opponents) threat
 
     U64 moves_loop_n;           // counts how often the moves loop is entered
     U64 moves_n[2];             // all moves in alphabeta move loop split into quites ans tactical
