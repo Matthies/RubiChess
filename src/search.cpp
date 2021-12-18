@@ -714,7 +714,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         }
 
         // Prune moves with bad SEE
-        if (Pt != NoPrune 
+        if (Pt != NoPrune
             && !isCheckbb
             && depth <= sps.seeprunemaxdepth
             && bestscore > -SCORETBWININMAXPLY
@@ -1428,7 +1428,7 @@ static void mainSearch(searchthread *thr)
                     pos->bestmove = pos->shortMove2FullMove(mc);
                     pos->pondermove = 0;
                 }
-                    
+
                 // still no bestmove...
                 if (!pos->bestmove && pos->rootmovelist.length > 0 && !isDraw)
                     pos->bestmove = pos->rootmovelist.move[0].code;
@@ -1483,11 +1483,22 @@ static void mainSearch(searchthread *thr)
             constantRootMoves = 0;
         }
 
-        // Reset remaining time if depth is finished or new best move is found
         if (isMainThread)
         {
-            if (inWindow == 1 || !constantRootMoves)
+            if (inWindow == 1)
+            {
+                // Mate found; early exit
+                if (thr->depth > SCOREWHITEWINS - abs(score))
+                    break;
+
+                // Recalculate remaining time for next depth
                 resetEndTime(en.starttime, constantRootMoves);
+            }
+            else if (!constantRootMoves)
+            {
+                // New best move; also recalculate remaining time
+                resetEndTime(en.starttime, constantRootMoves);
+            }
         }
 
         // exit if STOPIMMEDIATELY
@@ -1511,7 +1522,7 @@ static void mainSearch(searchthread *thr)
             break;
 
     } while (1);
-    
+
     if (isMainThread)
     {
 #ifdef TDEBUG
