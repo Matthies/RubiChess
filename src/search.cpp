@@ -84,6 +84,10 @@ struct searchparamset {
     //Probcut
     searchparam SP(probcutmindepth, 5);
     searchparam SP(probcutmargin, 100);
+    // Threat pruning
+    searchparam SP(threatprunemargin, 30);
+    searchparam SP(threatprunemarginimprove, 0);
+
     // No hashmovereduction
     searchparam SP(nohashreductionmindepth, 3);
     // SEE prune
@@ -161,7 +165,7 @@ inline int chessposition::getHistory(uint32_t code)
     int s2m = pc & S2MMASK;
     int from = GETFROM(code);
     int to = GETCORRECTTO(code);
-    int value = history[s2m][from][to];
+    int value = history[s2m][threatSquare][from][to];
     for (int i = 0; i < CMPLIES; i++)
         if (cmptr[ply][i])
             value += cmptr[ply][i][pc * 64 + to];
@@ -178,10 +182,10 @@ inline void chessposition::updateHistory(uint32_t code, int value)
     int to = GETCORRECTTO(code);
     value = max(-HISTORYMAXDEPTH * HISTORYMAXDEPTH, min(HISTORYMAXDEPTH * HISTORYMAXDEPTH, value));
 
-    int delta = value * (1 << HISTORYNEWSHIFT) - history[s2m][from][to] * abs(value) / (1 << HISTORYAGESHIFT);
-    myassert(history[s2m][from][to] + delta < MAXINT16 && history[s2m][from][to] + delta > MININT16, this, 2, history[s2m][from][to], delta);
+    int delta = value * (1 << HISTORYNEWSHIFT) - history[s2m][threatSquare][from][to] * abs(value) / (1 << HISTORYAGESHIFT);
+    myassert(history[s2m][from][to] + delta < MAXINT16 && history[s2m][threatSquare][from][to] + delta > MININT16, this, 2, history[s2m][from][to], delta);
 
-    history[s2m][from][to] += delta;
+    history[s2m][threatSquare][from][to] += delta;
 
     for (int i = 0; i < CMPLIES; i++)
         if (cmptr[ply][i]) {
@@ -518,7 +522,15 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     // Check extension
     if (isCheckbb)
+    {
         extendall = 1;
+    }
+    else {
+        if (state & S2MMASK)
+            updateThreats<BLACK>();
+        else
+            updateThreats<WHITE>();
+    }
 
     prepareStack();
 
@@ -534,6 +546,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         tp.addHash(hash, staticeval, staticeval, HASHUNKNOWN, 0, hashmovecode);
     }
     staticevalstack[ply] = staticeval;
+    
 
     bool positionImproved = (ply >= 2  && staticevalstack[ply] > staticevalstack[ply - 2]);
 
@@ -559,12 +572,19 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         }
     }
 
+    // Koivisto idea (no opponents) threat pruning
+    if (!PVNode && !isCheckbb && depth == 1 && staticeval > beta + (positionImproved ? sps.threatprunemarginimprove : sps.threatprunemargin) && !threats)
+    {
+        STATISTICSINC(prune_threat);
+        return beta;
+    }
+
     // futility pruning
     bool futility = false;
     if (Pt != NoPrune && depth <= sps.futilitymindepth)
     {
         // reverse futility pruning
-        if (!isCheckbb && staticeval - depth * (sps.futilityreversedepthfactor - sps.futilityreverseimproved * positionImproved) > beta)
+        if (!isCheckbb && POPCOUNT(threats) < 2 && staticeval - depth * (sps.futilityreversedepthfactor - sps.futilityreverseimproved * positionImproved) > beta)
         {
             STATISTICSINC(prune_futility);
             SDEBUGDO(isDebugPv, pvabortscore[ply] = staticeval; pvaborttype[ply] = PVA_REVFUTILITYPRUNED;);
@@ -575,7 +595,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     // Nullmove pruning with verification like SF does it
     int bestknownscore = (hashscore != NOSCORE ? hashscore : staticeval);
-    if (!isCheckbb && depth >= sps.nmmindepth && bestknownscore >= beta && (Pt != MatePrune || beta > -SCORETBWININMAXPLY) && (ply  >= nullmoveply || ply % 2 != nullmoveside) && phcount)
+    if (!isCheckbb && !threats && depth >= sps.nmmindepth && bestknownscore >= beta && (Pt != MatePrune || beta > -SCORETBWININMAXPLY) && (ply  >= nullmoveply || ply % 2 != nullmoveside) && phcount)
     {
         playNullMove();
         int nmreduction = min(depth, sps.nmmredbase + (depth / sps.nmmreddepthratio) + (bestknownscore - beta) / sps.nmmredevalratio + !PVNode * sps.nmmredpvfactor);
@@ -1002,6 +1022,10 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
 
     if (!tbPosition)
     {
+        if (state & S2MMASK)
+            updateThreats<BLACK>();
+        else
+            updateThreats<WHITE>();
         // Reset move values
         for (int i = 0; i < rootmovelist.length; i++)
         {
@@ -1019,8 +1043,8 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
                 m->value = KILLERVAL2;
             else if (GETCAPTURE(m->code) != BLANK)
                 m->value = (mvv[GETCAPTURE(m->code) >> 1] | lva[GETPIECE(m->code) >> 1]);
-            else
-                m->value = history[state & S2MMASK][GETFROM(m->code)][GETCORRECTTO(m->code)];
+            else 
+                m->value = history[state & S2MMASK][threatSquare][GETFROM(m->code)][GETCORRECTTO(m->code)];
             if (isMultiPV) {
                 if (multipvtable[0][0] == m->code)
                     m->value = PVVAL;
@@ -1774,8 +1798,9 @@ void search_statistics()
     f1 = 100.0 * statistics.prune_nm / (double)n;
     f2 = 100.0 * statistics.prune_probcut / (double)n;
     f3 = 100.0 * statistics.prune_multicut / (double)n;
-    f4 = 100.0 * (statistics.prune_futility + statistics.prune_nm + statistics.prune_probcut + statistics.prune_multicut) / (double)n;
-    printf("(ST) Node pruning            %%Futility: %5.2f   %%NullMove: %5.2f   %%ProbeC.: %5.2f   %%MultiC.: %7.5f Total:  %5.2f\n", f0, f1, f2, f3, f4);
+    f4 = 100.0 * statistics.prune_threat / (double)n;
+    f5 = 100.0 * (statistics.prune_futility + statistics.prune_nm + statistics.prune_probcut + statistics.prune_multicut + statistics.prune_threat) / (double)n;
+    printf("(ST) Node pruning            %%Futility: %5.2f   %%NullMove: %5.2f   %%ProbeC.: %5.2f   %%MultiC.: %7.5f   %%Threat.: %7.5f Total:  %5.2f\n", f0, f1, f2, f3, f4, f5);
 
     // move statistics
     i1 = statistics.moves_n[0]; // quiet moves
