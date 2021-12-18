@@ -1496,7 +1496,7 @@ static void mainSearch(searchthread *thr)
             }
             else if (!constantRootMoves)
             {
-                // New best move; alöso recalculate remaining time
+                // New best move; also recalculate remaining time
                 resetEndTime(en.starttime, constantRootMoves);
             }
         }
