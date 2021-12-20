@@ -1341,6 +1341,7 @@ enum SfenFormat { no, bin, binpack, plain };
 struct conversion_t {
     string outfilename;
     string outfileext;
+    ofstream ofs;
     SfenFormat outformat = no;
     SfenFormat informat = no;
     int rescoreDepth = 0;
@@ -1360,19 +1361,20 @@ struct conversion_t {
 
 bool openOutputFile(conversion_t* cv)
 {
-    ofstream ofs;
     string filename;
+    if (cv->ofs)
+        cv->ofs.close();
     if (cv->splitChunks)
         filename = cv->outfilename + "-" + to_string(cv->numOutChunks / cv->splitChunks) + cv->outfileext;
     else
         filename = cv->outfilename + cv->outfileext;
-    ofs.open(filename, conv.outformat == plain ? ios::out : ios::binary);
-    if (!ofs)
+    cv->ofs.open(filename, conv.outformat == plain ? ios::out : ios::binary);
+    if (!cv->ofs)
     {
         cout << "Cannot open output file " << filename << endl;
         return false;
      }
-     cv->os = &ofs;
+     cv->os = &cv->ofs;
      return true;
 }
 
@@ -1669,8 +1671,10 @@ static void convertthread(searchthread* thr, conversion_t* cv)
     {
         prepareNextBinpackPosition(&outbp);
         cv->mtout.lock();
-        cv->numOutChunks++;
         flushBinpack(cv->os, outbuffer, &outbp);
+        cv->numOutChunks++;
+        if (cv->splitChunks && cv->numOutChunks % cv->splitChunks == 0)
+            openOutputFile(cv);
         cv->mtout.unlock();
     }
     freealigned64(buffer);
@@ -1744,7 +1748,7 @@ void convert(vector<string> args)
     ifstream ifs(inputfile, conv.informat != plain ? ios::binary : ios_base::in);
     if (!ifs)
     {
-        cout << "Cannot open input file " << inputfile << ".\n";
+        cout << "Cannot open input file " << inputfile << endl;
         return;
     }
 
@@ -1755,23 +1759,13 @@ void convert(vector<string> args)
     if (outputfile != "")
     {
         size_t iExt = outputfile.find_last_of(".");
-        conv.outfilename = outputfile.substr(0, iExt - 1);
+        conv.outfilename = outputfile.substr(0, iExt);
         conv.outfileext = outputfile.substr(iExt);
         if (conv.outformat == no)
             conv.outformat = (conv.outfileext.find(".binpack") != string::npos ? binpack : conv.outfileext.find(".bin") != string::npos ? bin : plain);
 
         if (!openOutputFile(&conv))
             return;
-
-#if 0
-        ofs.open(outputfile, conv.outformat == plain ? ios::out : ios::binary);
-        if (!ofs)
-        {
-            cout << "Cannot open output file.\n";
-            return;
-        }
-        conv.os = &ofs;
- #endif
     }
 
     for (int tnum = 0; tnum < en.Threads; tnum++)
@@ -1801,6 +1795,9 @@ void convert(vector<string> args)
             }
         }
     }
+
+    if (conv.ofs)
+        conv.ofs.close();
 
     if (!conv.okay)
         cerr << endl << "An error occured while reading input data." << endl;
