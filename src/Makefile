@@ -13,7 +13,7 @@ endif
 CPUTEST=cputest
 ARCH=native
 PROFDIR = OPT
-PROFEXE = RubiChess-Prof
+PROFEXE = RubiChess
 
 sse2 = no
 ssse3 = no
