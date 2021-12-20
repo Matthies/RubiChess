@@ -91,12 +91,8 @@
 #include <set>
 
 #define USE_SIMD
-#if defined(USE_AVX2)
+#if defined(USE_SSE2)
 #include <immintrin.h>
-#elif defined(USE_SSSE3)
-#include <tmmintrin.h>
-#elif defined(USE_SSE2)
-#include <emmintrin.h>
 #elif defined(USE_NEON)
 #include <arm_neon.h>
 #else
@@ -1244,6 +1240,7 @@ struct chessmovestack
     int lastnullmove;
     uint32_t movecode;
     U64 kingPinned;
+    unsigned int threatSquare;
 };
 
 #define MAXMOVELISTLENGTH 256   // for lists of possible pseudo-legal moves
@@ -1388,6 +1385,7 @@ public:
     U64 piece00[14];
     U64 attackedBy2[2];
     U64 attackedBy[2][7];
+    U64 threats;
 
     // The following block is mapped/copied to the movestack, so its important to keep the order
     int state;
@@ -1402,6 +1400,7 @@ public:
     int lastnullmove;
     uint32_t movecode;
     U64 kingPinned;
+    unsigned int threatSquare;
 
     uint8_t mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
     chessmovestack prerootmovestack[PREROOTMOVES];   // moves before root since last halfmovescounter reset
@@ -1466,7 +1465,7 @@ public:
 #endif
 
     // The following part of the chessposition object isn't copied from rootposition object to the threads positions
-    int16_t history[2][64][64];
+    int16_t history[2][65][64][64];
     int16_t counterhistory[14][64][14 * 64];
     int16_t tacticalhst[7][64][6];
     uint32_t countermove[14][64];
@@ -1514,6 +1513,7 @@ public:
     void unplayNullMove();
     U64 nextHash(uint32_t mc);
     template <int Me> void updatePins();
+    template <int Me> void updateThreats();
     template <int Me> bool sliderAttacked(int index, U64 occ);
     bool moveGivesCheck(uint32_t c);  // simple and imperfect as it doesn't handle special moves and cases (mainly to avoid pruning of important moves)
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
@@ -1907,6 +1907,7 @@ struct statistic {
     U64 prune_nm;               // nodes pruned by null move;
     U64 prune_probcut;          // nodes pruned by PobCut
     U64 prune_multicut;         // nodes pruned by Multicut (detected by failed singular test)
+    U64 prune_threat;           // nodes pruned by (no opponents) threat
 
     U64 moves_loop_n;           // counts how often the moves loop is entered
     U64 moves_n[2];             // all moves in alphabeta move loop split into quites ans tactical
