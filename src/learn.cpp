@@ -1339,6 +1339,8 @@ static void flushBinpack(ostream *os, char *buffer, Binpack* bp)
 enum SfenFormat { no, bin, binpack, plain };
 
 struct conversion_t {
+    string outfilename;
+    string outfileext;
     SfenFormat outformat = no;
     SfenFormat informat = no;
     int rescoreDepth = 0;
@@ -1351,9 +1353,28 @@ struct conversion_t {
     atomic<unsigned int> numInChunks;
     atomic<unsigned int> numOutChunks;
     unsigned int skipChunks;
+    unsigned int splitChunks;
     int disable_prune;
 } conv;
 
+
+bool openOutputFile(conversion_t* cv)
+{
+    ofstream ofs;
+    string filename;
+    if (cv->splitChunks)
+        filename = cv->outfilename + "-" + to_string(cv->numOutChunks / cv->splitChunks) + cv->outfileext;
+    else
+        filename = cv->outfilename + cv->outfileext;
+    ofs.open(filename, conv.outformat == plain ? ios::out : ios::binary);
+    if (!ofs)
+    {
+        cout << "Cannot open output file " << filename << endl;
+        return false;
+     }
+     cv->os = &ofs;
+     return true;
+}
 
 
 static void convertthread(searchthread* thr, conversion_t* cv)
@@ -1582,8 +1603,10 @@ static void convertthread(searchthread* thr, conversion_t* cv)
                     // flush chunk
                     cv->mtout.lock();
                     flushBinpack(cv->os, outbuffer, &outbp);
-                    cv->mtout.unlock();
                     cv->numOutChunks++;
+                    if (cv->splitChunks && cv->numOutChunks % cv->splitChunks == 0)
+                        openOutputFile(cv);
+                    cv->mtout.unlock();
                 }
 
                 if (outbptr == outbuffer)
@@ -1673,7 +1696,7 @@ void convert(vector<string> args)
     conv.numOutChunks = 0;
     conv.disable_prune = 0;
     conv.skipChunks = 0;
-    conv.skipChunks = false;
+    conv.splitChunks = 0;
 
     size_t unnamedParams = 0;
     while (ci < cs)
@@ -1706,6 +1729,10 @@ void convert(vector<string> args)
         {
             conv.skipChunks = stoi(args[ci++]);
         }
+        else if (cmd == "split_chunks" && ci < cs)
+        {
+            conv.splitChunks = stoi(args[ci++]);
+        }
         else
         {
             unnamedParams++;
@@ -1724,12 +1751,19 @@ void convert(vector<string> args)
 
     conv.os = &cout;
     conv.is = &ifs;
-    ofstream ofs;
+    //ofstream ofs;
     if (outputfile != "")
     {
+        size_t iExt = outputfile.find_last_of(".");
+        conv.outfilename = outputfile.substr(0, iExt - 1);
+        conv.outfileext = outputfile.substr(iExt);
         if (conv.outformat == no)
-            conv.outformat = (outputfile.find(".binpack") != string::npos ? binpack : outputfile.find(".bin") != string::npos ? bin : plain);
+            conv.outformat = (conv.outfileext.find(".binpack") != string::npos ? binpack : conv.outfileext.find(".bin") != string::npos ? bin : plain);
 
+        if (!openOutputFile(&conv))
+            return;
+
+#if 0
         ofs.open(outputfile, conv.outformat == plain ? ios::out : ios::binary);
         if (!ofs)
         {
@@ -1737,6 +1771,7 @@ void convert(vector<string> args)
             return;
         }
         conv.os = &ofs;
+ #endif
     }
 
     for (int tnum = 0; tnum < en.Threads; tnum++)
@@ -1766,7 +1801,6 @@ void convert(vector<string> args)
             }
         }
     }
-
 
     if (!conv.okay)
         cerr << endl << "An error occured while reading input data." << endl;
