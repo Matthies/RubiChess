@@ -64,11 +64,11 @@ CPUFLAGS=bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2
 !ELSEIF "$(ARCH)" == "x86-64-avx2"
 CPUFLAGS=avx2 bmi1 lzcnt popcnt ssse3 sse2
 !ELSEIF "$(ARCH)" == "x86-64-modern"
-CPUFLAGS=bmi1 lzcnt popcnt ssse3 sse2
+CPUFLAGS=popcnt ssse3 sse2
 !ELSEIF "$(ARCH)" == "x86-64-ssse3"
 CPUFLAGS=ssse3 sse2
 !ELSEIF "$(ARCH)" == "x86-64-sse3-popcnt"
-CPUFLAGS=bmi1 lzcnt popcnt sse2
+CPUFLAGS=popcnt sse2
 !ELSEIF "$(ARCH)" == "x86-64"
 CPUFLAGS=sse2
 !ELSEIF "$(ARCH)" == "arm64-neon"
