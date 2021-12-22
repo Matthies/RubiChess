@@ -270,7 +270,7 @@ int chessposition::getFromSfen(PackedSfen* sfen)
     ply = 0;
     accumulator[0].computationState[WHITE] = false;
     accumulator[0].computationState[BLACK] = false;
-
+    threatSquare = 64;
     return 0;
 }
 
@@ -599,7 +599,6 @@ void chessposition::getPosFromBinpack(Binpack* bp)
     if (bp->debug()) drawBytes(*bp->data, 16 - bytesConsumed);
     if (bp->debug()) drawBytes(*bp->data + 16 - bytesConsumed, 16);
     (*bp->data) += 16 - bytesConsumed;
-
 }
 
 
@@ -615,10 +614,19 @@ int chessposition::getNextFromBinpack(Binpack *bp)
         phcount = 0;
         ply = 0;
         ept = 0;
+        threatSquare = 64;
+        lastnullmove = -1;
         accumulator[0].computationState[WHITE] = false;
         accumulator[0].computationState[BLACK] = false;
         // get the pieces
         getPosFromBinpack(bp);
+        hash = zb.getHash(this);
+        pawnhash = zb.getPawnHash(this);
+        materialhash = zb.getMaterialHash(this);
+        isCheckbb = isAttackedBy<OCCUPIED>(kingpos[state & S2MMASK], (state & S2MMASK) ^ S2MMASK);
+        kingPinned = 0ULL;
+        updatePins<WHITE>();
+        updatePins<BLACK>();
         // get the move
         uint16_t bpmc = SHORTFROMBIGENDIAN(*bp->data);
         *bp->data += sizeof(uint16_t);
@@ -1394,8 +1402,13 @@ static void convertthread(searchthread* thr, conversion_t* cv)
     pos->he_all = 0ULL;
     pos->he_threshold = 8100;
     memset(pos->history, 0, sizeof(chessposition::history));
+    memset(pos->killer, 0, sizeof(chessposition::killer));
     memset(pos->counterhistory, 0, sizeof(chessposition::counterhistory));
     memset(pos->countermove, 0, sizeof(chessposition::countermove));
+    memset(pos->prerootmovestack, 0xff, sizeof(chessposition::prerootmovestack));
+    memset(pos->movestack, 0, sizeof(chessposition::movestack));
+    pos->prerootmovenum = 0;
+    pos->prerootmovestack[PREROOTMOVES - 1].movecode = 0x00000001; // satisfy 'no nullmove eval available' and 'unused countermove within bounds'
 
     char* buffer = nullptr;
     char* outbuffer = nullptr;
@@ -1581,7 +1594,6 @@ static void convertthread(searchthread* thr, conversion_t* cv)
                     newscore = pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, cv->rescoreDepth);
                 else
                     newscore = pos->alphabeta<Prune>(SCOREBLACKWINS, SCOREWHITEWINS, cv->rescoreDepth);
-
                 //cout << "score = " << score << "   newscore = " << newscore << endl;
                 score = newscore;
             }
@@ -1701,6 +1713,7 @@ void convert(vector<string> args)
     conv.disable_prune = 0;
     conv.skipChunks = 0;
     conv.splitChunks = 0;
+    conv.numPositions = 0;
 
     size_t unnamedParams = 0;
     while (ci < cs)
