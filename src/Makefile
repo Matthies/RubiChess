@@ -45,7 +45,7 @@ CXXFLAGS=-std=c++11 -Wall -O3 -flto
 ifeq ($(COMP),$(filter $(COMP),gcc mingw))
 	CXX=g++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
-	
+
 ifeq ($(COMP),mingw)
 	# Always do a static built with Mingw
 	LDFLAGS += -static
@@ -106,13 +106,13 @@ ifneq (,$(findstring x86-64-avx2,$(ARCH)))
 CPUFLAGS = "avx2 bmi1 lzcnt popcnt ssse3 sse2"
 endif
 ifneq (,$(findstring x86-64-modern,$(ARCH)))
-CPUFLAGS = "bmi1 lzcnt popcnt ssse3 sse2"
+CPUFLAGS = "popcnt ssse3 sse2"
 endif
 ifneq (,$(findstring x86-64-ssse3,$(ARCH)))
 CPUFLAGS = "ssse3 sse2"
 endif
 ifneq (,$(findstring x86-64-sse3-popcnt,$(ARCH)))
-CPUFLAGS = "bmi1 lzcnt popcnt sse2"
+CPUFLAGS = "popcnt sse2"
 endif
 ifneq (,$(findstring neon,$(ARCH)))
 CPUFLAGS = "neon"
@@ -262,7 +262,7 @@ clean: objclean profileclean
 
 pgo: arch
 	@$(MAKE) compile EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Creating instrumented build ...'
-	@./$(PROFEXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo "Running bench to generate profiling data... successful!") || (echo "Running bench to generate profiling data... failed! Profiling with native build..." && $(MAKE) profileclean && $(MAKE) compile ARCH=native EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Creating instrumented build ...' && ./$(PROFEXE) -bench 1>/dev/null)   
+	@./$(PROFEXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo "Running bench to generate profiling data... successful!") || (echo "Running bench to generate profiling data... failed! Profiling with native build..." && $(MAKE) profileclean && $(MAKE) compile ARCH=native EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Creating instrumented build ...' && ./$(PROFEXE) -bench 1>/dev/null)
 	@$(PROFMERGE)
 	@$(RM) ./$(PROFEXE)
 	@$(MAKE) compile EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS=$(PGOEXTRALDFLAGS) MESSAGE='Creating optimized build ...'
@@ -284,7 +284,7 @@ release_x86: net
 	@$(MAKE) pgo-rename  ARCH=x86-64-ssse3 PTHREADLIB=$(PTHREADSTATICLIB)
 	@$(MAKE) pgo-rename  ARCH=x86-64-sse3-popcnt PTHREADLIB=$(PTHREADSTATICLIB)
 	@$(MAKE) pgo-rename  ARCH=x86-64 PTHREADLIB=$(PTHREADSTATICLIB)
-	
+
 release_arm64: net
 	@$(MAKE) pgo-rename  ARCH=arm64_neon PTHREADLIB=$(PTHREADSTATICLIB)
 
