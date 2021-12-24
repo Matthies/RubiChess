@@ -1452,6 +1452,10 @@ static void convertthread(searchthread* thr, conversion_t* cv)
         uint32_t move;  // movecode in Rubi long format
         uint16_t gameply;
 
+        // Preserve order
+        while (cv->informat == binpack && cv->is->peek() != ios::traits_type::eof() && cv->numInChunks % en.Threads != thr->index)
+            Sleep(100);
+
         cv->mtin.lock();
         if (cv->is->peek() == ios::traits_type::eof())
         {
@@ -1614,6 +1618,9 @@ static void convertthread(searchthread* thr, conversion_t* cv)
             else if (cv->outformat == binpack)
             {
                 if (outbp.flushAt) {
+                    // Wait for correct order
+                    while (cv->numOutChunks % en.Threads != thr->index)
+                        Sleep(100);
                     // flush chunk
                     cv->mtout.lock();
                     flushBinpack(cv->os, outbuffer, &outbp);
@@ -1682,6 +1689,8 @@ static void convertthread(searchthread* thr, conversion_t* cv)
     if (cv->outformat == binpack)
     {
         prepareNextBinpackPosition(&outbp);
+        while (cv->numOutChunks % en.Threads != thr->index)
+            Sleep(100);
         cv->mtout.lock();
         flushBinpack(cv->os, outbuffer, &outbp);
         cv->numOutChunks++;
