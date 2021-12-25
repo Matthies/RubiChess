@@ -1359,10 +1359,10 @@ struct conversion_t {
     bool okay = true;
     bool stoprequest;
     atomic<unsigned long long> numPositions;
-    atomic<unsigned int> numInChunks;
-    atomic<unsigned int> numOutChunks;
-    unsigned int skipChunks;
-    unsigned int splitChunks;
+    atomic<int> numInChunks;
+    atomic<int> numOutChunks;
+    int skipChunks;
+    int splitChunks;
     int disable_prune;
     int preserveChunks;
 } conv;
