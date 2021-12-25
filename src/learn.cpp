@@ -357,7 +357,7 @@ void flush_psv(int result, searchthread* thr)
 //
 
 const size_t maxBinpackChunkSize = 1 * 1024 * 1024;
-const size_t maxContinuationSize = 10 * 1024;
+size_t maxContinuationSize;
 
 #define SHORTFROMBIGENDIAN(c) ((uint8_t)(c)[1] | ((uint8_t)(c)[0] << 8))
 #define LONGLONGFROMBIGENDIAN(c) ((U64)((uint8_t)(c)[7]) | ((U64)((uint8_t)(c)[6]) << 8) | ((U64)((uint8_t)(c)[5]) << 16) | (((U64)((uint8_t)(c)[4])) << 24ULL) | ((U64)((uint8_t)(c)[3]) << 32) | ((U64)((uint8_t)(c)[2]) << 40) | ((U64)((uint8_t)(c)[1]) << 48) | ((U64)((uint8_t)(c)[0]) << 56))
@@ -807,7 +807,7 @@ void chessposition::nextToBinpack(Binpack* bp)
         // no continuation
         prepareNextBinpackPosition(bp);
 
-        if (*bp->data > bp->base + maxBinpackChunkSize + 8)
+        if (*bp->data > bp->base + maxBinpackChunkSize + 8 + maxContinuationSize)
             bp->flushAt = *bp->data;
 
         bp->inpos->copyToLight(this);
@@ -1364,6 +1364,7 @@ struct conversion_t {
     unsigned int skipChunks;
     unsigned int splitChunks;
     int disable_prune;
+    int preserveChunks;
 } conv;
 
 
@@ -1436,7 +1437,7 @@ static void convertthread(searchthread* thr, conversion_t* cv)
 
     if (cv->outformat == binpack)
     {
-        outbptr = outbuffer = (char*)allocalign64(maxBinpackChunkSize + maxContinuationSize);
+        outbptr = outbuffer = (char*)allocalign64(maxBinpackChunkSize + 2 * maxContinuationSize);
         outbp.base = outbuffer;
         outbp.data = &outbptr;
         outbp.consumedBits = 0;
@@ -1663,6 +1664,11 @@ static void convertthread(searchthread* thr, conversion_t* cv)
 
                 outpos->nextToBinpack(&outbp);
 
+                if (cv->preserveChunks && bptr >= buffer + restdata) {
+                    prepareNextBinpackPosition(&outbp);
+                    outbp.flushAt = *outbp.data;
+                }
+
                 if (outbp.debug())
                 {
                     size_t offset = (outbptr - outbuffer);
@@ -1673,12 +1679,14 @@ static void convertthread(searchthread* thr, conversion_t* cv)
             }
             else // outformat == plain
             {
+                cv->mtout.lock();
                 *cv->os << "fen " << pos->toFen() << endl;
                 *cv->os << "move " << moveToString(move) << endl;
                 *cv->os << "score " << score << endl;
                 *cv->os << "ply " << to_string(gameply) << endl;
                 *cv->os << "result " << to_string(result) << endl;
                 *cv->os << "e" << endl;
+                cv->mtout.unlock();
             }
 
             cv->numPositions++;
@@ -1723,6 +1731,7 @@ void convert(vector<string> args)
     conv.skipChunks = 0;
     conv.splitChunks = 0;
     conv.numPositions = 0;
+    conv.preserveChunks = 0;
 
     size_t unnamedParams = 0;
     while (ci < cs)
@@ -1759,6 +1768,10 @@ void convert(vector<string> args)
         {
             conv.splitChunks = stoi(args[ci++]);
         }
+        else if (cmd == "preserve_chunks" && ci < cs)
+        {
+            conv.preserveChunks = stoi(args[ci++]);
+        }
         else
         {
             unnamedParams++;
@@ -1789,6 +1802,8 @@ void convert(vector<string> args)
         if (!openOutputFile(&conv))
             return;
     }
+
+    maxContinuationSize = (conv.preserveChunks ? maxBinpackChunkSize : 10 * 1024);
 
     for (int tnum = 0; tnum < en.Threads; tnum++)
     {
