@@ -1350,13 +1350,13 @@ struct conversion_t {
     string outfilename;
     string outfileext;
     ofstream ofs;
-    SfenFormat outformat = no;
-    SfenFormat informat = no;
-    int rescoreDepth = 0;
+    SfenFormat outformat;
+    SfenFormat informat;
+    int rescoreDepth;
     ifstream *is;
     ostream *os;
     mutex mtin, mtout;
-    bool okay = true;
+    bool okay;
     bool stoprequest;
     atomic<unsigned long long> numPositions;
     atomic<int> numInChunks;
@@ -1446,7 +1446,7 @@ static void convertthread(searchthread* thr, conversion_t* cv)
 
     size_t nextbuffersize = buffersize;
 
-    while (cv->okay && !cv->stoprequest)
+    while (true)
     {
         int16_t score;
         int8_t result;
@@ -1454,11 +1454,11 @@ static void convertthread(searchthread* thr, conversion_t* cv)
         uint16_t gameply;
 
         // Preserve order
-        while (cv->informat == binpack && cv->is->peek() != ios::traits_type::eof() && cv->numInChunks % en.Threads != thr->index)
+        while (cv->informat == binpack && !cv->stoprequest && cv->numInChunks % en.Threads != thr->index)
             Sleep(100);
 
         cv->mtin.lock();
-        if (cv->is->peek() == ios::traits_type::eof())
+        if (!cv->okay || cv->stoprequest)
         {
             cv->mtin.unlock();
             break;
@@ -1470,7 +1470,7 @@ static void convertthread(searchthread* thr, conversion_t* cv)
             cv->is->read(hd, 8);
             if (strncmp(hd, "BINP", 4) != 0)
             {
-                cout << "BINP Header missing. Exit.\n";
+                cout << "BINP Header missing. Exit." << endl; 
                 cv->mtin.unlock();
                 return;
             }
@@ -1501,6 +1501,10 @@ static void convertthread(searchthread* thr, conversion_t* cv)
         cv->is->read((char*)buffer + bufferreserve, buffersize);
         if (!cv->is)
             restdata = cv->is->gcount();
+       
+        if (!cv->is || cv->is->peek() == ios::traits_type::eof())
+            cv->stoprequest = true;
+
         cv->numInChunks++;
         if (cv->numInChunks <= cv->skipChunks)
             restdata = 0;
@@ -1729,9 +1733,12 @@ void convert(vector<string> args)
     conv.numOutChunks = 0;
     conv.disable_prune = 0;
     conv.skipChunks = 0;
+    conv.rescoreDepth = 0;
     conv.splitChunks = 0;
     conv.numPositions = 0;
     conv.preserveChunks = 0;
+    conv.stoprequest = false;
+    conv.okay = true;
 
     size_t unnamedParams = 0;
     while (ci < cs)
