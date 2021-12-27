@@ -763,7 +763,7 @@ void chessposition::posToBinpack(Binpack* bp)
             if (ept && ept == (RANK(sq) == 3 ? sq - 8 : sq + 8))
                 // pawn with ep square behind
                 pc = 12;
-            else if ((pc >> 1) == ROOK && RRANK(sq, s2m) == 0 && (state & (WQCMASK << (s2m * 2 + (sq > kingpos[s2m])))))
+            else if ((pc >> 1) == ROOK && RRANK(sq, s2m) == 0 && ISOUTERFILE(sq) && (state & (WQCMASK << (s2m * 2 + (sq > kingpos[s2m])))))
                 pc = 13 + s2m;
             else if (pc == BKING && (state & S2MMASK))
                 pc = 15;
