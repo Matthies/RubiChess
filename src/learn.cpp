@@ -1361,6 +1361,7 @@ struct conversion_t {
     atomic<unsigned long long> numPositions;
     atomic<int> numInChunks;
     atomic<int> numOutChunks;
+    atomic<int> chunksWritten;
     int skipChunks;
     int splitChunks;
     int disable_prune;
@@ -1626,13 +1627,17 @@ static void convertthread(searchthread* thr, conversion_t* cv)
                     // Wait for correct order
                     while (cv->numOutChunks % en.Threads != thr->index)
                         Sleep(100);
-                    // flush chunk
-                    cv->mtout.lock();
-                    flushBinpack(cv->os, outbuffer, &outbp);
+                    if (*outbp.data > outbuffer)
+                    {
+                        // flush chunk
+                        cv->mtout.lock();
+                        flushBinpack(cv->os, outbuffer, &outbp);
+                        if (cv->splitChunks && cv->numOutChunks % cv->splitChunks == 0)
+                            openOutputFile(cv);
+                        cv->mtout.unlock();
+                        cv->chunksWritten++;
+                    }
                     cv->numOutChunks++;
-                    if (cv->splitChunks && cv->numOutChunks % cv->splitChunks == 0)
-                        openOutputFile(cv);
-                    cv->mtout.unlock();
                 }
 
                 if (outbptr == outbuffer)
@@ -1703,12 +1708,17 @@ static void convertthread(searchthread* thr, conversion_t* cv)
         prepareNextBinpackPosition(&outbp);
         while (cv->numOutChunks % en.Threads != thr->index)
             Sleep(100);
-        cv->mtout.lock();
-        flushBinpack(cv->os, outbuffer, &outbp);
+        if (*outbp.data > outbuffer)
+        {
+            // flush chunk
+            cv->mtout.lock();
+            flushBinpack(cv->os, outbuffer, &outbp);
+            if (cv->splitChunks && cv->numOutChunks % cv->splitChunks == 0)
+                openOutputFile(cv);
+            cv->mtout.unlock();
+            cv->chunksWritten++;
+        }
         cv->numOutChunks++;
-        if (cv->splitChunks && cv->numOutChunks % cv->splitChunks == 0)
-            openOutputFile(cv);
-        cv->mtout.unlock();
     }
     freealigned64(buffer);
     if (outbuffer)
@@ -1731,6 +1741,7 @@ void convert(vector<string> args)
     conv.outformat = no;
     conv.numInChunks = 0;
     conv.numOutChunks = 0;
+    conv.chunksWritten = 0;
     conv.disable_prune = 0;
     conv.skipChunks = 0;
     conv.rescoreDepth = 0;
@@ -1847,7 +1858,7 @@ void convert(vector<string> args)
         cerr << endl << "An error occured while reading input data." << endl;
     cerr << endl << "Finished converting. " << conv.numPositions << " positions found." << endl;
     if (conv.numOutChunks)
-        cerr << "Chunks written:  " << conv.numOutChunks << endl << "Last read chunk: " << conv.numInChunks << endl;
+        cerr << "Chunks written:  " << conv.chunksWritten << endl << "Last read chunk: " << conv.numInChunks << endl;
 }
 
 
