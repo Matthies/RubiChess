@@ -850,6 +850,26 @@ struct PackedSfenValue
     uint8_t padding;
 };
 
+struct Binpack
+{
+    char *base;
+    char **data = nullptr;
+    char *flushAt = nullptr;
+    uint8_t consumedBits = 0;
+    int16_t score;
+    int16_t lastScore;
+    uint16_t move;      // binpack encoded move
+    uint16_t gamePly;
+    int8_t gameResult;
+    uint16_t compressedmoves = 0;
+    char *compmvsptr;
+    uint32_t fullmove;
+    uint32_t lastFullmove;
+    chessposition *inpos;
+    chessposition *outpos;
+    bool debug() { return false; /*size_t offset = *data - base; return numChunks == 3 && offset > 0x170 && offset < 0x200; */ }
+};
+
 void gensfen(vector<string> args);
 void convert(vector<string> args);
 void learn(vector<string> args);
@@ -1302,6 +1322,9 @@ public:
 extern U64 pawn_attacks_to[64][2];
 extern U64 knight_attacks[64];
 extern U64 king_attacks[64];
+extern U64 pawn_moves_to[64][2];
+extern U64 pawn_moves_to_double[64][2];
+extern U64 epthelper[64];
 
 struct SMagic {
     U64 mask;  // to mask relevant squares of both lines (no outer squares)
@@ -1548,6 +1571,13 @@ public:
 #ifdef NNUELEARN
     void toSfen(PackedSfen *sfen);
     int getFromSfen(PackedSfen* sfen);
+    void getPosFromBinpack(Binpack* bp);
+    int getNextFromBinpack(Binpack *bp);
+    void posToBinpack(Binpack* bp);
+    void nextToBinpack(Binpack* bp);
+    void copyToLight(chessposition *target);     //fast copy for follow up detection
+    bool followsTo(chessposition *src, uint32_t mc);    // check if this position is reached by src with move mc
+    void fixEpt();
 #endif
 #endif
 };
