@@ -1,7 +1,17 @@
 ChangeLog
 =========
-2.3 (release 202x-xx-xx) :
-    - ...
+2021 (release 2021-12-31) :
+    - Switch to a date-based versioning
+    - Better use of transposition table like saving fail high in probcut
+    - Improve reductions based on hash move
+    - Removed pruning of moves with bad counter history
+    - Futility pruning retuned
+    - Make use of bmi1 and lzcnt cpu instructions
+    - Scale nnue evaluation with game phase
+    - Use a per-threatened-square move history table (idea by Koivisto)
+    - Some fixes for MultiPV
+    - Use less time and less moves to mate
+    - Implement binpack format for generating training data
 
 2.2 (release 2021-07-07) :
     - New default network created with trainingdata from 2.1 and lambda 0.4

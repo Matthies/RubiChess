@@ -172,11 +172,12 @@ pgo-rename: printarch pgo
 	@echo Successfully created $(EXE)-$(VERSION)_$(ARCH)
 
 build-rename: build
-	@move $(RELDIR)\$(EXE).exe $(RELDIR)\$(EXE)_$(ARCH).exe 1>nul
-	@echo Successfully created $(EXE)_$(ARCH)
+	@move $(RELDIR)\$(EXE).exe $(RELDIR)\$(EXE)-$(VERSION)_$(ARCH).exe 1>nul
+	@echo Successfully created $(EXE)-$(VERSION)_$(ARCH)
 
 releaseversion:
 	@echo Version: $(VERSION)
+!IF "$(VSCMD_ARG_TGT_ARCH)" == "x64"
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-avx512
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-bmi2
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-avx2
@@ -185,6 +186,10 @@ releaseversion:
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-sse3-popcnt
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64
 	@nmake -c -f Makefile.clang profile-clean ARCH=$(ARCH)
+!ENDIF
+!IF "$(VSCMD_ARG_TGT_ARCH)" == "arm64"
+	@nmake -c -f Makefile.clang build-rename ARCH=arm64-neon
+!ENDIF
 
 release:
 	@echo ::Batch to get version number> $(VERSIONCMD)

@@ -10,6 +10,6 @@ call "%vcvarscmd%" x64 -vcvars_ver=14.16
 nmake -f Makefile.clang release
 
 call "%vcvarscmd%" x64_arm64 -vcvars_ver=14.16
-nmake -f Makefile.clang release-arm64
+nmake -f Makefile.clang release
 
 pause
