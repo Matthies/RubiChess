@@ -17,8 +17,8 @@
 
 #pragma once
 
-#define VERNUM 2021
-#define VERSTABLE
+#define VERNUM 2022
+//#define VERSTABLE
 
 // Disable this to compile without NNUE evaluation
 #define NNUE
