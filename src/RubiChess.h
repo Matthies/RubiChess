@@ -22,7 +22,7 @@
 
 // Disable this to compile without NNUE evaluation
 #define NNUE
-#define NNUEDEFAULT nn-fb50f1a2b1-20210705.nnue
+#define NNUEDEFAULT nn-555efa676e-20220105.nnue
 
 // Enable to get statistical values about various search features
 //#define STATISTICS
