@@ -1488,7 +1488,7 @@ static void mainSearch(searchthread *thr)
             if (inWindow == 1)
             {
                 // Mate found; early exit
-                if (!isMultiPV && thr->depth > SCOREWHITEWINS - abs(score))
+                if (!isMultiPV && en.endtime1 && thr->depth > SCOREWHITEWINS - abs(score))
                     break;
 
                 // Recalculate remaining time for next depth
