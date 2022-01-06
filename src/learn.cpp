@@ -900,6 +900,7 @@ void chessposition::nextToBinpack(Binpack* bp)
             toN = GETBITINDEX(targetbb, to);
             break;
         }
+        if (bp->debug()) cout << "to = " << to << "  targetbb =" << hex << targetbb << " toN = " << dec << toN << endl;
         putNextBits(bp, fromN, fromlen);
         putNextBits(bp, toN, tolen);
         // Score diff
@@ -1518,7 +1519,7 @@ static void convertthread(searchthread* thr, conversion_t* cv)
 
         cv->mtin.unlock();
 
-        while (cv->okay && bptr < buffer + restdata)
+        while (cv->okay && (cv->informat == plain || bptr < buffer + restdata))
         {
             bool found = true;
             if (cv->informat == bin)
@@ -1594,7 +1595,7 @@ static void convertthread(searchthread* thr, conversion_t* cv)
             }
 
             if (!found)
-                continue;
+                break;
 
             pos->fixEpt();
             if (cv->rescoreDepth)
