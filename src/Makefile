@@ -240,12 +240,13 @@ else
 		@if [ "$(RUBINETHASH)" != `$(shasum_command) $(RUBINET) | cut -c1-10` ]; then echo "Failed download or $(RUBINET) corrupted, please delete!"; exit 1; else echo "$(RUBINET) has correct hash."; fi
 endif
 
-$(NETOBJ):
+$(NETOBJ): FORCE
 ifneq ($(EVALFILE),)
 		@echo Embedding networkfile $(EVALFILE)
 		@cp $(EVALFILE) $(NETBIN)
 		@ld -r -b binary $(NETBIN) -o $(NETOBJ)
 endif
+FORCE:
 
 compile: $(NETOBJ)
 	@echo $(MESSAGE)

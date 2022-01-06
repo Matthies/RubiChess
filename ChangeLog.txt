@@ -15,6 +15,7 @@ ChangeLog
     - Some fixes for MultiPV
     - Use less time and less moves to mate
     - Implement binpack format for generating training data
+    - Export network is possible now
 
 2.2 (release 2021-07-07) :
     - New default network created with trainingdata from 2.1 and lambda 0.4
