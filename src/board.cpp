@@ -267,16 +267,6 @@ void chessposition::initCastleRights(int rookfiles[2][2], int kingfile[2])
             castlerights[from] &= ~QCMASK[color];
         if (color >= 0 && (f == rookfiles[color][1] || f == kingfile[color]))
             castlerights[from] &= ~KCMASK[color];
-#if 0
-        if (r == 0 && (f == rookfiles[0] || f == kingfile))
-            castlerights[from] &= ~WQCMASK;
-        if (r == 0 && (f == rookfiles[1] || f == kingfile))
-            castlerights[from] &= ~WKCMASK;
-        if (r == 7 && (f == rookfiles[0] || f == kingfile))
-            castlerights[from] &= ~BQCMASK;
-        if (r == 7 && (f == rookfiles[1] || f == kingfile))
-            castlerights[from] &= ~BKCMASK;
-#endif
     }
 
     for (int i = 0; i < 4; i++)
@@ -433,16 +423,8 @@ int chessposition::getFromFen(const char* sFen)
         if (rookfile >= 0)
         {
             state |= SETCASTLEFILE(rookfile, castleindex);
-#if 0
-            if (rookfiles[col][gCastle] >= 0 && rookfiles[col][gCastle] != rookfile)
-                printf("info string Alarm! Castle rights for both sides but rooks on different files.\n");
-#endif
+            // FIXME: Maybe some sanity check if castle flag fits to rook placement
             rookfiles[col][gCastle] = rookfile;
-#if 0
-            if (kingfile >= 0 && kingfile != FILE(kingpos[col]))
-                printf("info string Alarm! Castle rights for both sides but kings on different files.\n");
-            kingfile = FILE(kingpos[col]);
-#endif
             // Set chess960 if non-standard rook/king setup is found
             if (kingfile[col] != 4 || rookfiles[col][gCastle] != gCastle * 7)
                 en.chess960 = true;
