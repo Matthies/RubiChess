@@ -1490,7 +1490,7 @@ public:
     void BitboardMove(int from, int to, PieceCode p);
     void BitboardPrint(U64 b);
     int getFromFen(const char* sFen);
-    void initCastleRights(int rookfiles[], int kingfile);
+    void initCastleRights(int rookfiles[2][2], int kingfile[2]);
     string toFen();
     uint32_t applyMove(string s, bool resetMstop = true);
     void print(ostream* os = &cout);
