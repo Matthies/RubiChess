@@ -76,7 +76,7 @@ static int frcPlaceAtX(char* p, char c, int x, int loc = 0)
 }
 
 //  https://en.wikipedia.org/wiki/Fischer_random_chess_numbering_scheme
-string frcStartFen(int num)
+string frcPositionFen(int num)
 {
     char p[8] = { 0 };
     int b1, b2, n1;
@@ -121,8 +121,24 @@ string frcStartFen(int num)
 
     frcPlaceFirst(p, 'R', l);
 
-    string wPieceStr = string(p, 8);
+    return string(p, 8);
+}
+
+string frcStartFen(int num)
+{
+    string wPieceStr = frcPositionFen(num);
     string bPieceStr = wPieceStr;
+    transform(bPieceStr.begin(), bPieceStr.end(), bPieceStr.begin(), ::tolower);
+
+    return bPieceStr + "/pppppppp/8/8/8/8/PPPPPPPP/" + wPieceStr + " w KQkq - 0 1";
+}
+
+string dfrcStartFen(int num)
+{
+    int numWhite = (num < 0 ? -1 : num / 960);
+    int numBlack = (num < 0 ? -1 : num % 960);
+    string wPieceStr = frcPositionFen(numWhite);
+    string bPieceStr = frcPositionFen(numBlack);
     transform(bPieceStr.begin(), bPieceStr.end(), bPieceStr.begin(), ::tolower);
 
     return bPieceStr + "/pppppppp/8/8/8/8/PPPPPPPP/" + wPieceStr + " w KQkq - 0 1";
