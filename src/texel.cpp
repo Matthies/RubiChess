@@ -464,7 +464,7 @@ void chessposition::resetTuner()
 
 void chessposition::getPositionTuneSet(positiontuneset* p, evalparam* e)
 {
-    p->ph = ph;
+    p->ph = getPhase();
     p->sc = sc;
     p->num = 0;
     for (int i = 0; i < tps.count; i++)

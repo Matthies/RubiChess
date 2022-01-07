@@ -42,6 +42,7 @@
 			<Add option="-fexceptions" />
 			<Add option="-march=znver1" />
 			<Add option="-DUSE_AVX2" />
+			<Add option="-DUSE_BMI1" />
 			<Add option="-DUSE_POPCNT" />
 			<Add option="-DUSE_SSE3" />
 			<Add option="-DUSE_SSSE3" />
