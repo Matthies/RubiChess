@@ -133,10 +133,8 @@ string frcStartFen(int num)
     return bPieceStr + "/pppppppp/8/8/8/8/PPPPPPPP/" + wPieceStr + " w KQkq - 0 1";
 }
 
-string dfrcStartFen(int num)
+string dfrcStartFen(int numWhite, int numBlack)
 {
-    int numWhite = (num < 0 ? -1 : num / 960);
-    int numBlack = (num < 0 ? -1 : num % 960);
     string wPieceStr = frcPositionFen(numWhite);
     string bPieceStr = frcPositionFen(numBlack);
     transform(bPieceStr.begin(), bPieceStr.end(), bPieceStr.begin(), ::tolower);
