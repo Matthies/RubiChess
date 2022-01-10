@@ -103,7 +103,6 @@
 
 #include <conio.h>
 #include <AclAPI.h>
-#include <intrin.h>
 #include <Windows.h>
 
 #ifdef STACKDEBUG
