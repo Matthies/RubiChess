@@ -124,19 +124,15 @@ string frcPositionFen(int num)
     return string(p, 8);
 }
 
-string frcStartFen(int num)
-{
-    string wPieceStr = frcPositionFen(num);
-    string bPieceStr = wPieceStr;
-    transform(bPieceStr.begin(), bPieceStr.end(), bPieceStr.begin(), ::tolower);
 
-    return bPieceStr + "/pppppppp/8/8/8/8/PPPPPPPP/" + wPieceStr + " w KQkq - 0 1";
-}
-
-string dfrcStartFen(int numWhite, int numBlack)
+string frcStartFen(int numWhite, int numBlack)
 {
     string wPieceStr = frcPositionFen(numWhite);
-    string bPieceStr = frcPositionFen(numBlack);
+    string bPieceStr;
+    if (numWhite == numBlack)
+        bPieceStr = wPieceStr;
+    else
+        bPieceStr = frcPositionFen(numBlack);
     transform(bPieceStr.begin(), bPieceStr.end(), bPieceStr.begin(), ::tolower);
 
     return bPieceStr + "/pppppppp/8/8/8/8/PPPPPPPP/" + wPieceStr + " w KQkq - 0 1";

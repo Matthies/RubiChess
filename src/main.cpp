@@ -33,10 +33,10 @@ void generateEpd(string egn)
             if (egn == "dfrc")
             {
                 for (int j = 0; j < 960; j++)
-                    cout << dfrcStartFen(i, j) << "\n";
+                    cout << frcStartFen(i, j) << "\n";
             }
             else {
-                cout << frcStartFen(i) << "\n";
+                cout << frcStartFen(i, i) << "\n";
             }
         }
 
