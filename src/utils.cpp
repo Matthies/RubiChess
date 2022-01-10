@@ -403,6 +403,7 @@ string compilerinfo::PrintCpuFeatures(U64 f, bool onlyHighest)
 #if defined(_M_X64) || defined(__amd64)
 
 #if defined _MSC_VER && !defined(__clang_major__)
+#include <intrin.h>
 #define CPUID(x,i) __cpuid(x, i)
 #endif
 

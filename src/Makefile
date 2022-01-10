@@ -28,7 +28,9 @@ neon = no
 PTHREADLIB=-pthread
 # Use workaround for weak symbols problem in pthreads; https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58909
 PTHREADSTATICLIB="-static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
-ifeq ($(shell uname -s),Darwin)
+UNAME_S=$(shell uname -s)
+
+ifeq ($(UNAME_S),Darwin)
 	# Use clang compiler for MacOS
 	COMP=clang
 endif
@@ -42,14 +44,14 @@ ifeq ($(EXE),)
 endif
 
 CXXFLAGS=-std=c++11 -Wall -O3 -flto
-ifeq ($(COMP),$(filter $(COMP),gcc mingw))
-	CXX=g++
-	CXXFLAGS += -pedantic -Wextra -Wshadow
-
-ifeq ($(COMP),mingw)
+ifneq (, $(findstring MINGW64,$(UNAME_S)))
 	# Always do a static built with Mingw
 	LDFLAGS += -static
 endif
+ifeq ($(COMP),$(filter $(COMP),gcc))
+	CXX=g++
+	CXXFLAGS += -pedantic -Wextra -Wshadow
+
 	INSTRUMENTEDEXTRACXXFLAGS='-fprofile-generate=$(PROFDIR)'
 	INSTRUMENTEDEXTRALDFLAGS='-lgcov'
 	PGOEXTRACXXFLAGS='-fprofile-use=$(PROFDIR) -fno-peel-loops -fno-tracer -Wno-coverage-mismatch -fprofile-correction'
