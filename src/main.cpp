@@ -22,7 +22,7 @@
 void generateEpd(string egn)
 {
 
-    if (egn == "chess960")
+    if (egn == "chess960" || egn == "frc" || egn == "dfrc")
     {
         for (int i = 0; i < 960; i++)
         {
@@ -30,7 +30,14 @@ void generateEpd(string egn)
             if (!(i % 4 == 3 || (i / 4) % 4 == 0))
                 continue;
 #endif
-            cout << frcStartFen(i) << "\n";
+            if (egn == "dfrc")
+            {
+                for (int j = 0; j < 960; j++)
+                    cout << frcStartFen(i, j) << "\n";
+            }
+            else {
+                cout << frcStartFen(i, i) << "\n";
+            }
         }
 
         return;

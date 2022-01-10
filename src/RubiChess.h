@@ -657,7 +657,7 @@ typedef struct ranctx { U64 a; U64 b; U64 c; U64 d; } ranctx;
 
 void raninit(ranctx* x, U64 seed);
 U64 ranval(ranctx* x);
-string frcStartFen(int num = -1);
+string frcStartFen(int numWhite = -1, int numBlack = -1);
 U64 calc_key_from_pcs(int *pcs, int mirror);
 void getPcsFromStr(const char* str, int *pcs);
 void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am);
@@ -1489,7 +1489,7 @@ public:
     void BitboardMove(int from, int to, PieceCode p);
     void BitboardPrint(U64 b);
     int getFromFen(const char* sFen);
-    void initCastleRights(int rookfiles[], int kingfile);
+    void initCastleRights(int rookfiles[2][2], int kingfile[2]);
     string toFen();
     uint32_t applyMove(string s, bool resetMstop = true);
     void print(ostream* os = &cout);

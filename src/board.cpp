@@ -255,33 +255,30 @@ bool chessposition::w2m()
 }
 
 
-void chessposition::initCastleRights(int rookfiles[], int kingfile)
+void chessposition::initCastleRights(int rookfiles[2][2], int kingfile[2])
 {
     for (int from = 0; from < 64; from++)
     {
         castlerights[from] = ~0;
         int f = FILE(from);
         int r = RANK(from);
-        if (r == 0 && (f == rookfiles[0] || f == kingfile))
-            castlerights[from] &= ~WQCMASK;
-        if (r == 0 && (f == rookfiles[1] || f == kingfile))
-            castlerights[from] &= ~WKCMASK;
-        if (r == 7 && (f == rookfiles[0] || f == kingfile))
-            castlerights[from] &= ~BQCMASK;
-        if (r == 7 && (f == rookfiles[1] || f == kingfile))
-            castlerights[from] &= ~BKCMASK;
+        int color = (r == 0 ? 0 : r == 7 ? 1 : -1);
+        if (color >= 0 && (f == rookfiles[color][0] || f == kingfile[color]))
+            castlerights[from] &= ~QCMASK[color];
+        if (color >= 0 && (f == rookfiles[color][1] || f == kingfile[color]))
+            castlerights[from] &= ~KCMASK[color];
     }
 
     for (int i = 0; i < 4; i++)
     {
         int col = i / 2;
         int gCastle = i % 2;
-        castlerookfrom[i] = rookfiles[gCastle] + 56 * col;
-        castleblockers[i] = betweenMask[kingfile + 56 * col][castlekingto[i]]
+        castlerookfrom[i] = rookfiles[col][gCastle] + 56 * col;
+        castleblockers[i] = betweenMask[kingfile[col] + 56 * col][castlekingto[i]]
             | betweenMask[castlerookfrom[i]][castlerookto[i]]
             | BITSET(castlerookto[i]) | BITSET(castlekingto[i]);
 
-        castlekingwalk[i] = betweenMask[kingfile + 56 * col][castlekingto[i]] | BITSET(castlekingto[i]);
+        castlekingwalk[i] = betweenMask[kingfile[col] + 56 * col][castlekingto[i]] | BITSET(castlekingto[i]);
     }
 }
 
@@ -393,8 +390,8 @@ int chessposition::getFromFen(const char* sFen)
         state |= S2MMASK;
 
     /* castle rights */
-    int rookfiles[2] = { -1, -1 };
-    int kingfile = -1;
+    int rookfiles[2][2] = { -1 };
+    int kingfile[2] = { FILE(kingpos[0]), FILE(kingpos[1]) };
     s = token[2];
     const string usualcastles = "QKqk";
     const string castles960 = "ABCDEFGHabcdefgh";
@@ -426,14 +423,10 @@ int chessposition::getFromFen(const char* sFen)
         if (rookfile >= 0)
         {
             state |= SETCASTLEFILE(rookfile, castleindex);
-            if (rookfiles[gCastle] >= 0 && rookfiles[gCastle] != rookfile)
-                printf("info string Alarm! Castle rights for both sides but rooks on different files.\n");
-            rookfiles[gCastle] = rookfile;
-            if (kingfile >= 0 && kingfile != FILE(kingpos[col]))
-                printf("info string Alarm! Castle rights for both sides but kings on different files.\n");
-            kingfile = FILE(kingpos[col]);
+            // FIXME: Maybe some sanity check if castle flag fits to rook placement
+            rookfiles[col][gCastle] = rookfile;
             // Set chess960 if non-standard rook/king setup is found
-            if (kingfile != 4 || rookfiles[gCastle] != gCastle * 7)
+            if (kingfile[col] != 4 || rookfiles[col][gCastle] != gCastle * 7)
                 en.chess960 = true;
         }
     }
@@ -2662,8 +2655,9 @@ engine::engine(compilerinfo *c)
 #endif
     rootposition.pwnhsh.setSize(1);  // some dummy pawnhash just to make the prefetch in playMove happy
     // default castle rights
-    int rf[] = { 0, 7 };
-    rootposition.initCastleRights(rf, 4);
+    int rf[2][2] = { { 0, 7 },{0,7} };
+    int kf[2] = { 4,4 };
+    rootposition.initCastleRights(rf, kf);
 
 #ifdef _WIN32
     LARGE_INTEGER f;

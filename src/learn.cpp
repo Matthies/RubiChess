@@ -1398,8 +1398,8 @@ static void convertthread(searchthread* thr, conversion_t* cv)
 
     chessposition* outpos = nullptr;
     chessposition* pos = inpos;
-    int rookfiles[] = { 0 , 7 };
-    int kingfile = 4;
+    int rookfiles[2][2] = { { 0 , 7 }, {0 , 7} };
+    int kingfile[2] = { 4, 4 };
     pos->initCastleRights(rookfiles, kingfile);
     pos->he_yes = 0ULL;
     pos->he_all = 0ULL;
