@@ -390,7 +390,7 @@ int chessposition::getFromFen(const char* sFen)
         state |= S2MMASK;
 
     /* castle rights */
-    int rookfiles[2][2] = { -1 };
+    int rookfiles[2][2] = {{ -1, -1 }, { -1, -1 }};
     int kingfile[2] = { FILE(kingpos[0]), FILE(kingpos[1]) };
     s = token[2];
     const string usualcastles = "QKqk";
@@ -554,7 +554,7 @@ void chessposition::evaluateMoves(chessmovelist *ml)
 void chessposition::getRootMoves()
 {
     chessmovelist movelist;
-    
+
     if (state & S2MMASK)
         updateThreats<BLACK>();
     else
