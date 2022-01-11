@@ -462,7 +462,6 @@ inline void putNextBits(Binpack *bp, uint8_t by, int bitnum)
 inline void putNextBlocks(Binpack* bp, int blocksize, uint16_t val)
 {
     uint8_t mask = BITSET(blocksize) - 1;
-    int bitnum = 0;
     while (1)
     {
         uint8_t by = val & mask;
@@ -470,7 +469,6 @@ inline void putNextBlocks(Binpack* bp, int blocksize, uint16_t val)
         if (val)
             by |= BITSET(blocksize);
         putNextBits(bp, by, blocksize + 1);
-        bitnum += blocksize;
         if (!val)
             break;
     }
@@ -1472,7 +1470,7 @@ static void convertthread(searchthread* thr, conversion_t* cv)
             cv->is->read(hd, 8);
             if (strncmp(hd, "BINP", 4) != 0)
             {
-                cout << "BINP Header missing. Exit." << endl; 
+                cout << "BINP Header missing. Exit." << endl;
                 cv->mtin.unlock();
                 return;
             }
@@ -1503,7 +1501,7 @@ static void convertthread(searchthread* thr, conversion_t* cv)
         cv->is->read((char*)buffer + bufferreserve, buffersize);
         if (!cv->is)
             restdata = cv->is->gcount();
-       
+
         if (!cv->is || cv->is->peek() == ios::traits_type::eof())
             cv->stoprequest = true;
 
