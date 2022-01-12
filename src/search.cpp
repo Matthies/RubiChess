@@ -1502,7 +1502,7 @@ static void mainSearch(searchthread *thr)
         }
 
         // exit if STOPIMMEDIATELY
-        if (en.stopLevel == ENGINESTOPIMMEDIATELY && thr->depth > 3)
+        if (en.stopLevel == ENGINESTOPIMMEDIATELY)
             break;
 
         // Pondering; just continue next iteration
@@ -1645,7 +1645,7 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
             int ph = (en.sthread[0].pos.getPhase() + min(255, en.sthread[0].pos.fullmovescounter * 6)) / 2;
             int f1 = max(5, 17 - constance);
             int f2 = max(15, 27 - constance);
-            int lower = min(timeinc, overhead / 2);
+            int lower = min(timeinc, overhead) / 2;
             if (complete)
                 en.endtime1 = startTime + max(lower, f1 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
             en.endtime2 = startTime + max(lower, min(max(0, timetouse - overhead), max(0, f2 * (timetouse + timeinc) / (256 - ph) - overhead))) * en.frequency / 1000;
