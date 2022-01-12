@@ -183,7 +183,7 @@ inline void chessposition::updateHistory(uint32_t code, int value)
     value = max(-HISTORYMAXDEPTH * HISTORYMAXDEPTH, min(HISTORYMAXDEPTH * HISTORYMAXDEPTH, value));
 
     int delta = value * (1 << HISTORYNEWSHIFT) - history[s2m][threatSquare][from][to] * abs(value) / (1 << HISTORYAGESHIFT);
-    myassert(history[s2m][from][to] + delta < MAXINT16 && history[s2m][threatSquare][from][to] + delta > MININT16, this, 2, history[s2m][from][to], delta);
+    myassert(history[s2m][threatSquare][from][to] + delta < MAXINT16 && history[s2m][threatSquare][from][to] + delta > MININT16, this, 2, history[s2m][from][to], delta);
 
     history[s2m][threatSquare][from][to] += delta;
 
@@ -1645,9 +1645,10 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
             int ph = (en.sthread[0].pos.getPhase() + min(255, en.sthread[0].pos.fullmovescounter * 6)) / 2;
             int f1 = max(5, 17 - constance);
             int f2 = max(15, 27 - constance);
+            int lower = min(timeinc, overhead);
             if (complete)
-                en.endtime1 = startTime + max(timeinc, f1 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
-            en.endtime2 = startTime + min(max(0, timetouse - overhead), max(timeinc, f2 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
+                en.endtime1 = startTime + max(lower, f1 * (timetouse + timeinc) / (256 - ph) - overhead) * en.frequency / 1000;
+            en.endtime2 = startTime + max(lower, min(max(0, timetouse - overhead), max(0, f2 * (timetouse + timeinc) / (256 - ph) - overhead))) * en.frequency / 1000;
         }
         else {
             // sudden death without increment; play for another x;y moves
@@ -1670,6 +1671,7 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
     }
 
 #ifdef TDEBUG
+    printf("info string Time from UCI: time=%d  inc=%d  overhead=%d  constance=%d  ph=%d\n", timetouse, timeinc, overhead, constance, (en.sthread[0].pos.getPhase() + min(255, en.sthread[0].pos.fullmovescounter * 6)) / 2);
     printf("info string Time for this move: %4.3f  /  %4.3f\n", (en.endtime1 - en.starttime) / (double)en.frequency, (en.endtime2 - en.starttime) / (double)en.frequency);
     if (timeinc) printf("info string Timefactor (use/inc): %d\n", timetouse / timeinc);
 #endif
