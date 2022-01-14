@@ -1030,7 +1030,7 @@ int main(int argc, char* argv[])
         }
     }
 
-    if (verbose) printf("%s (Build %s)\n UCI compatible chess engine by %s\n", en.name().c_str(), BUILD, en.author);
+    if (verbose) printf("%s (Build %s)\n UCI compatible chess engine by %s\n", en.name().c_str(), BUILD, en.author.c_str());
 
     if (perfmaxdepth)
     {

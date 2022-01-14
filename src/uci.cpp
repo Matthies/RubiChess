@@ -18,7 +18,9 @@
 
 #include "RubiChess.h"
 
+GuiCommunication guiCom(cout);
 
+#if 0
 void engine::send(const char* format, ...)
 {
     va_list argptr;
@@ -28,6 +30,7 @@ void engine::send(const char* format, ...)
 
     //cout << s;
 }
+#endif
 
 GuiToken engine::parse(vector<string>* args, string ss)
 {
@@ -38,7 +41,9 @@ GuiToken engine::parse(vector<string>* args, string ss)
 
     if (cin.eof())
         return QUIT;
-
+#ifdef UCILOGGING
+    guiCom.fromGui(ss);
+#endif
     GuiToken result = UNKNOWN;
     istringstream iss(ss);
     for (string s; iss >> s; )

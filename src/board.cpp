@@ -170,7 +170,7 @@ string chessmove::toString()
 
 void chessmove::print()
 {
-    cout << toString();
+    guiCom << toString();
 }
 
 
@@ -2591,6 +2591,17 @@ static void uciSetBookFile()
         en.BookFile = "<empty>";
 }
 
+#ifdef UCILOGGING
+static void uciSetLogFile()
+{
+    if (en.LogFile == "")
+        return;
+
+    string filename = en.ExecPath + en.LogFile;
+    if (!guiCom.openLog(filename, en.frequency))
+        guiCom << "info string Cannot open Logfile " + filename + "\n";
+}
+#endif
 
 #ifdef NNUE
 static void uciSetNnuePath()
@@ -2598,24 +2609,22 @@ static void uciSetNnuePath()
     if (!en.usennue)
     {
         if (NnueReady != NnueDisabled)
-            cout << "info string NNUE evaluation is disabled.\n";
+            guiCom << "info string NNUE evaluation is disabled.\n";
         NnueReady = NnueDisabled;
         return;
     }
 
     NnueReady = NnueDisabled;
 #ifdef NNUEINCLUDED
-    cout << "info string Initializing net included in binary...";
+    guiCom << "info string Initializing net included in binary...";
     char* p = (char*)&_binary_net_nnue_start;
     if (!NnueReadNet(&p))
-        cout << " failed. The embedded network seems corrupted.\n";
+        guiCom << " failed. The embedded network seems corrupted.\n";
     else
-        cout << " successful. Using NNUE evaluation. (" + to_string(NnueReady) + ")\n";
+        guiCom << " successful. Using NNUE evaluation. (" + to_string(NnueReady) + ")\n";
     return;
 #else
     string NnueNetPath = en.GetNnueNetPath();
-    cout << "info string Loading net " << NnueNetPath << " ...";
-
     ifstream is;
     is.open(NnueNetPath, ios::binary);
     if (!is && en.ExecPath != "")
@@ -2623,14 +2632,14 @@ static void uciSetNnuePath()
 
     if (is && NnueReadNet(&is))
     {
-        cout << " successful. Using NNUE evaluation. (" + to_string(NnueReady) + ")\n";
+        guiCom << "info string Loading net " + NnueNetPath + " successful. Using NNUE evaluation. (" + to_string(NnueReady) + ")\n";
         if (NnueNetPath.find(NNUEDEFAULTSTR) == string::npos)
-            cout << "info string Warning! You are not using the default network file. Playing strength of the engine highly depends on it.\n";
+            guiCom << "info string Warning! You are not using the default network file. Playing strength of the engine highly depends on it.\n";
 
         return;
     }
 
-    cout << " failed. The network file seems corrupted or doesn't exist. Set correct path to network file or disable 'Use_NNUE' for handcrafted evaluation.\n";
+    guiCom << "info string Loading net " + NnueNetPath + " failed. The network file seems corrupted or doesn't exist. Set correct path to network file or disable 'Use_NNUE' for handcrafted evaluation.\n";
 #endif
 }
 #endif
@@ -2698,6 +2707,9 @@ void engine::registerOptions()
     ucioptions.Register(&BookBestMove, "BookBestMove", ucicheck, "true");
     ucioptions.Register(&BookDepth, "BookDepth", ucispin, "255", 0, 255);
     ucioptions.Register(&chess960, "UCI_Chess960", ucicheck, "false");
+#ifdef UCILOGGING
+    ucioptions.Register(&LogFile, "LogFile", ucistring, "RubiChess.log", 0, 0, uciSetLogFile);
+#endif
     ucioptions.Register(nullptr, "Clear Hash", ucibutton, "", 0, 0, uciClearHash);
 #ifdef NNUE
 #ifndef NNUEINCLUDED
@@ -2824,7 +2836,7 @@ void engine::communicate(string inputstring)
                 }
                 if (rootposition.getFromFen(fen.c_str()) < 0)
                 {
-                    printf("info string Illegal FEN string %s. Startposition will be used instead.\n", fen.c_str());
+                    guiCom << "info string Illegal FEN string " + fen + ". Startposition will be used instead.\n";
                     fen = STARTFEN;
                     rootposition.getFromFen(fen.c_str());
                     moves.clear();
@@ -2834,7 +2846,7 @@ void engine::communicate(string inputstring)
                 for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
                 {
                     if (!(lastopponentsmove = rootposition.applyMove(*it)))
-                        printf("info string Alarm! Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
+                        guiCom << "info string Alarm! Move " + (*it)  + "%s illegal (possible engine error)\n";
                 }
                 ponderhit = (lastopponentsmove && lastopponentsmove == rootposition.pondermove);
                 // Preserve hashes of earlier position up to last halfmove counter reset for repetition detection
@@ -2857,7 +2869,7 @@ void engine::communicate(string inputstring)
             }
             if (pendingisready)
             {
-                send("readyok\n");
+                guiCom << "readyok\n";
                 pendingisready = false;
             }
         }
@@ -2910,10 +2922,10 @@ void engine::communicate(string inputstring)
                 }
                 break;
             case UCI:
-                send("id name %s\n", name().c_str());
-                send("id author %s\n", author);
+                guiCom << "id name " + name() + "\n";
+                guiCom << "id author " + author + "\n";
                 ucioptions.Print();
-                send("uciok\n", author);
+                guiCom << "uciok\n";
                 break;
             case UCINEWGAME:
                 // invalidate hash and history
@@ -2925,7 +2937,7 @@ void engine::communicate(string inputstring)
             case SETOPTION:
                 if (en.stopLevel != ENGINETERMINATEDSEARCH)
                 {
-                    send("info string Changing option while searching is not supported. stopLevel = %d\n", en.stopLevel);
+                    guiCom << "info string Changing option while searching is not supported. stopLevel = " + to_string(en.stopLevel) + "\n";
                     break;
                 }
                 bGetName = bGetValue = false;
@@ -3263,32 +3275,32 @@ void ucioptions_t::Print()
     for (optionmapiterator it = optionmap.begin(); it != optionmap.end(); it++)
     {
         ucioption_t *op = &(it->second);
-        cout << "option name " << op->name << " type ";
+        string optionStr = "option name " + op->name + " type ";
 
         switch (op->type)
         {
         case ucinnuebias:
         case ucinnueweight:
         case ucispin:
-            cout << "spin default " << op->def << " min " << op->min << " max " << op->max << "\n";
+            guiCom << optionStr + "spin default " + op->def + " min " + to_string(op->min) + " max " + to_string(op->max) + "\n";
             break;
         case ucistring:
-            cout << "string default " << op->def << "\n";
+            guiCom << optionStr + "string default " + op->def + "\n";
             break;
         case ucicheck:
-            cout << "check default " << op->def << "\n";
+            guiCom << optionStr + "check default " + op->def + "\n";
             break;
         case ucibutton:
-            cout << "button\n";
+            guiCom << optionStr + "button\n";
             break;
 #ifdef EVALOPTIONS
         case ucieval:
-            cout << "string default " << op->def << "\n";
+            guiCom << optionStr + "string default " + op->def + "\n";
             break;
 #endif
 #ifdef SEARCHOPTIONS
         case ucisearch:
-            cout << "string default " << op->def << "\n";
+            guiCom << optionStr + "string default " + op->def << "\n";
             break;
 #endif
         case ucicombo:

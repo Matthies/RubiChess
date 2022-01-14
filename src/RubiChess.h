@@ -48,6 +48,9 @@
 // Enable this to enable NNUE training code
 //#define NNUELEARN
 
+// Enable to log every input and output of the engine into a file
+//#define UCILOGGING
+
 
 #ifdef FINDMEMORYLEAKS
 #ifdef _DEBUG
@@ -1585,6 +1588,56 @@ public:
 // uci stuff
 //
 
+
+class GuiCommunication {
+private:
+    ostream& myos;
+#ifdef UCILOGGING
+    ofstream logstream;
+    stringstream logline;
+    U64 logStartTime = 0ULL;
+    U64 freq;
+    string timestamp() {
+        U64 timeDiff = (getTime() - logStartTime) * 1000 / freq;
+        U64 ms = timeDiff % 1000;
+        U64 s = (timeDiff / 1000);
+        stringstream ts;
+        ts << setfill(' ') << setw(8) << s << "." << setw(3) << setfill('0') << ms;
+        return ts.str();
+    }
+#endif
+public:
+    GuiCommunication(ostream& os) : myos(os)
+    {
+    }
+    template <typename T>
+    GuiCommunication& operator<<(const T& thing) {
+        myos << thing;
+#ifdef UCILOGGING
+        logline << thing;
+        logstream << timestamp() << " < " << thing;
+#endif
+        return *this;
+    }
+#ifdef UCILOGGING
+    void fromGui(string input)
+    {
+        logstream << timestamp() << " > " << input << "\n";
+    }
+    bool openLog(string filename, U64 fr) {
+        logstream.open(filename, ios::out);
+        if (!logstream)
+            return false;
+        logStartTime = getTime();
+        freq = fr;
+        return true;
+    }
+#endif
+
+
+};
+
+
 enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL, PERFT, TUNE, GENSFEN, CONVERT, LEARN, EXPORT };
 
 const map<string, GuiToken> GuiCommandMap = {
@@ -1717,7 +1770,7 @@ class engine
 public:
     engine(compilerinfo *c);
     ~engine();
-    const char* author = "Andreas Matthies";
+    const string author = "Andreas Matthies";
     bool isWhite;
     U64 tbhits;
     U64 starttime;
@@ -1767,6 +1820,9 @@ public:
     int t2stop = 0;     // immediate stop
     bool bStopCount;
 #endif
+#ifdef UCILOGGING
+    string LogFile;
+#endif
 #ifdef NNUE
     bool usennue;
     string NnueNetpath; // UCI option, can be <Default>
@@ -1804,7 +1860,7 @@ public:
         return string(ENGINEVER) + sNnue +  (sbinary != "" ? " (" + sbinary + ")" : "");
     };
     GuiToken parse(vector<string>*, string ss);
-    void send(const char* format, ...);
+    //void send(const char* format, ...);
     void communicate(string inputstring);
     void allocThreads();
     U64 getTotalNodes();
@@ -1837,6 +1893,7 @@ public:
 
 extern engine en;
 extern compilerinfo cinfo;
+extern GuiCommunication guiCom;
 
 #ifdef SDEBUG
 #define SDEBUGDO(c, s) if (c) {s}
