@@ -43,7 +43,7 @@
 //#define SEARCHOPTIONS
 
 // Enable this to find memory leaks with the MSVC debug build
-#define FINDMEMORYLEAKS
+//#define FINDMEMORYLEAKS
 
 // Enable this to enable NNUE training code
 //#define NNUELEARN
@@ -1615,18 +1615,23 @@ public:
     GuiCommunication& operator<<(const T& thing) {
         myos << thing;
 #ifdef UCILOGGING
-        logstream << timestamp() << " < " << thing;
+        if (freq)
+            logstream << timestamp() << " < " << thing;
 #endif
         return *this;
     }
 #ifdef UCILOGGING
     void fromGui(string input)
     {
-        logstream << timestamp() << " > " << input << "\n";
+        if (freq)
+            logstream << timestamp() << " > " << input << "\n";
     }
     bool openLog(string filename, U64 fr) {
+        freq = 0;
         if (logstream)
             logstream.close();
+        if (filename == "")
+            return true;
         logstream.open(filename, ios::out);
         if (!logstream)
             return false;

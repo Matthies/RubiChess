@@ -2597,7 +2597,7 @@ void uciSetLogFile()
     if (en.LogFile == "")
         return;
 
-    string filename = en.ExecPath + en.LogFile;
+    string filename = (en.LogFile == "" ? "" : en.ExecPath + en.LogFile);
     if (!guiCom.openLog(filename, en.frequency))
         guiCom << "info string Cannot open Logfile " + filename + "\n";
 }
