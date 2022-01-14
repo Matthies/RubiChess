@@ -2594,12 +2594,21 @@ static void uciSetBookFile()
 #ifdef UCILOGGING
 void uciSetLogFile()
 {
-    if (en.LogFile == "")
-        return;
-
     string filename = (en.LogFile == "" ? "" : en.ExecPath + en.LogFile);
+    string sLogging;
     if (!guiCom.openLog(filename, en.frequency))
-        guiCom << "info string Cannot open Logfile " + filename + "\n";
+        sLogging = "Cannot open Logfile " + filename;
+    else
+        sLogging = (filename == "" ? "No logging." : "Logging to " + filename);
+
+    guiCom << en.name() + " (Build " + BUILD + ")\n";
+    guiCom << "UCI compatible chess engine by " + en.author + "\n";
+    guiCom << "----------------------------------------------------------------------------------------\n";
+    guiCom << "System: " + cinfo.SystemName() + "\n";
+    guiCom << "CPU-Features of system: " + cinfo.PrintCpuFeatures(cinfo.machineSupports) + "\n";
+    guiCom << "CPU-Features of binary: " + cinfo.PrintCpuFeatures(cinfo.binarySupports) + "\n";
+    guiCom << "========================================================================================\n";
+    guiCom << "info string " + sLogging + "\n";
 }
 #endif
 
@@ -2692,6 +2701,9 @@ engine::~engine()
 
 void engine::registerOptions()
 {
+#ifdef UCILOGGING
+    en.ucioptions.Register(&en.LogFile, "LogFile", ucistring, "", 0, 0, uciSetLogFile);
+#endif
 #ifdef _WIN32
     ucioptions.Register(&allowlargepages, "Allow Large Pages", ucicheck, "true", 0, 0, uciAllowLargePages);
 #endif

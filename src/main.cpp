@@ -965,18 +965,6 @@ int main(int argc, char* argv[])
             en.ExecPath = execPath.substr(0, si + 1);
     }
 
-#ifdef UCILOGGING
-    en.ucioptions.Register(&en.LogFile, "LogFile", ucistring, "", 0, 0, uciSetLogFile);
-#endif
-
-    guiCom << en.name() + " (Build " + BUILD + ")\n";
-    guiCom << "UCI compatible chess engine by " + en.author + "\n";
-    guiCom << "----------------------------------------------------------------------------------------\n";
-    guiCom << "System: " + cinfo.SystemName() + "\n";
-    guiCom << "CPU-Features of system: " + cinfo.PrintCpuFeatures(cinfo.machineSupports) + "\n";
-    guiCom << "CPU-Features of binary: " + cinfo.PrintCpuFeatures(cinfo.binarySupports) + "\n";
-    guiCom << "========================================================================================\n";
-
     en.registerOptions();
 
 #ifdef EVALOPTIONS

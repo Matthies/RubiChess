@@ -1603,7 +1603,7 @@ private:
         U64 ms = timeDiff % 1000;
         U64 s = (timeDiff / 1000);
         stringstream ts;
-        ts << setfill(' ') << setw(8) << s << "." << setw(3) << setfill('0') << ms;
+        ts << setfill(' ') << setw(6) << s << "." << setw(3) << setfill('0') << ms;
         return ts.str();
     }
 #endif
