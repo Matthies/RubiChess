@@ -327,7 +327,7 @@ void init_tablebases(char *path)
           }
       }
 
-  printf("info string Found %d (%d pawn-less / %d with pawn) tablebases.\n", TBnum_piece + TBnum_pawn, TBnum_piece, TBnum_pawn);
+  guiCom << "info string Found " + to_string(TBnum_piece + TBnum_pawn) + " (" + to_string(TBnum_piece) + " pawn-less / " + to_string(TBnum_pawn ) + " with pawn) tablebases.\n";
 }
 
 static const signed char offdiag[] = {

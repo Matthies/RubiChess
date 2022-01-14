@@ -43,13 +43,13 @@
 //#define SEARCHOPTIONS
 
 // Enable this to find memory leaks with the MSVC debug build
-//#define FINDMEMORYLEAKS
+#define FINDMEMORYLEAKS
 
 // Enable this to enable NNUE training code
 //#define NNUELEARN
 
 // Enable to log every input and output of the engine into a file
-//#define UCILOGGING
+#define UCILOGGING
 
 
 #ifdef FINDMEMORYLEAKS
@@ -1588,13 +1588,14 @@ public:
 // uci stuff
 //
 
-
+#ifdef UCILOGGING
+extern void uciSetLogFile();
+#endif
 class GuiCommunication {
 private:
     ostream& myos;
 #ifdef UCILOGGING
     ofstream logstream;
-    stringstream logline;
     U64 logStartTime = 0ULL;
     U64 freq;
     string timestamp() {
@@ -1614,7 +1615,6 @@ public:
     GuiCommunication& operator<<(const T& thing) {
         myos << thing;
 #ifdef UCILOGGING
-        logline << thing;
         logstream << timestamp() << " < " << thing;
 #endif
         return *this;
@@ -1625,6 +1625,8 @@ public:
         logstream << timestamp() << " > " << input << "\n";
     }
     bool openLog(string filename, U64 fr) {
+        if (logstream)
+            logstream.close();
         logstream.open(filename, ios::out);
         if (!logstream)
             return false;

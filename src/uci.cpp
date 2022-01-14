@@ -18,19 +18,8 @@
 
 #include "RubiChess.h"
 
-GuiCommunication guiCom(cout);
+alignas(64) GuiCommunication guiCom(cout);
 
-#if 0
-void engine::send(const char* format, ...)
-{
-    va_list argptr;
-    va_start(argptr, format);
-    vfprintf(stdout, format, argptr);
-    va_end(argptr);
-
-    //cout << s;
-}
-#endif
 
 GuiToken engine::parse(vector<string>* args, string ss)
 {

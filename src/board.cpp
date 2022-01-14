@@ -2592,7 +2592,7 @@ static void uciSetBookFile()
 }
 
 #ifdef UCILOGGING
-static void uciSetLogFile()
+void uciSetLogFile()
 {
     if (en.LogFile == "")
         return;
@@ -2707,9 +2707,6 @@ void engine::registerOptions()
     ucioptions.Register(&BookBestMove, "BookBestMove", ucicheck, "true");
     ucioptions.Register(&BookDepth, "BookDepth", ucispin, "255", 0, 255);
     ucioptions.Register(&chess960, "UCI_Chess960", ucicheck, "false");
-#ifdef UCILOGGING
-    ucioptions.Register(&LogFile, "LogFile", ucistring, "RubiChess.log", 0, 0, uciSetLogFile);
-#endif
     ucioptions.Register(nullptr, "Clear Hash", ucibutton, "", 0, 0, uciClearHash);
 #ifdef NNUE
 #ifndef NNUEINCLUDED

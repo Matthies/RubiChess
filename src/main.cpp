@@ -965,6 +965,13 @@ int main(int argc, char* argv[])
             en.ExecPath = execPath.substr(0, si + 1);
     }
 
+#ifdef UCILOGGING
+    en.ucioptions.Register(&en.LogFile, "LogFile", ucistring, "RubiChess.log", 0, 0, uciSetLogFile);
+#endif
+
+    guiCom << en.name() + " (Build " + BUILD + ")\n";
+    guiCom << "UCI compatible chess engine by " + en.author + "\n";
+
     en.registerOptions();
 
 #ifdef EVALOPTIONS
@@ -1029,8 +1036,6 @@ int main(int argc, char* argv[])
             }
         }
     }
-
-    if (verbose) printf("%s (Build %s)\n UCI compatible chess engine by %s\n", en.name().c_str(), BUILD, en.author.c_str());
 
     if (perfmaxdepth)
     {
