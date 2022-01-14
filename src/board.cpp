@@ -596,6 +596,7 @@ void chessposition::getRootMoves()
                 }
                 else if ((uint16_t)movelist.move[i].code == tthashmovecode)
                 {
+                    movelist.move[i].value = PVVAL;
                     // Test if this move makes a 3fold possible for opponent
                     prepareStack();
                     chessmovelist followupmovelist;
