@@ -523,8 +523,9 @@ void NnueNetworkLayer::WriteWeights(ofstream* os)
         for (unsigned int c = 0; c < inputdims; c++)
         {
             unsigned int idx = r * inputdims + c;
+            uint32_t ridx = idx;
 #if defined(USE_AVX2)
-            uint32_t ridx = reverseShuffleWeightIndex(idx, inputdims, outputdims == 1);
+            ridx = reverseShuffleWeightIndex(idx, inputdims, outputdims == 1);
 #endif
             *(w + ridx) = weight[idx];
         }

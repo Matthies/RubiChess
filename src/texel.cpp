@@ -263,7 +263,7 @@ bool PGNtoFEN(int depth)
                             fenscore[gamepositions] = NOSCORE;
                             fenresult[gamepositions++] = result;
                         }
-                        lastmove = AlgebraicFromShort(match.str(1), &pos);
+                        lastmove = pos.AlgebraicFromShort(match.str(1));
                         if (lastmove == "" || !pos.applyMove(lastmove))
                         {
                             printf("Alarm (game %d): %s\n", gamescount, match.str(1).c_str());
