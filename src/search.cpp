@@ -1263,29 +1263,16 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, in
 
     if (!MATEDETECTED(score))
     {
-#if 0
-        cout << "info depth " << thr->depth << " seldepth " << pos->seldepth << " multipv " << mpvIndex + 1 << " time " << msRun
-            << " score cp " << score << " " << boundscore[inWindow] << "nodes " << nodes << " nps " << nps << " tbhits " << en.tbhits
-            << " hashfull " << tp.getUsedinPermill() << " pv " << pvstring << "\n";
-#else
         guiCom << "info depth " + to_string(thr->depth) + " seldepth " + to_string(pos->seldepth) + " multipv " + to_string(mpvIndex + 1) + " time " + to_string(msRun)
             + " score cp " + to_string(score) + " " + boundscore[inWindow] + "nodes " + to_string(nodes) + " nps " + to_string(nps) + " tbhits " + to_string(en.tbhits)
             + " hashfull " + to_string(tp.getUsedinPermill()) + " pv " + pvstring + "\n";
-#endif
     }
     else
     {
         int matein = (score > 0 ? (SCOREWHITEWINS - score + 1) / 2 : (SCOREBLACKWINS - score) / 2);
-#if 0
-        cout << "info depth " << thr->depth << " seldepth " << pos->seldepth << " multipv " << mpvIndex + 1 << " time " << msRun
-            << " score mate " << matein << " " << boundscore[inWindow] << "nodes " << nodes << " nps " << nps << " tbhits " << en.tbhits
-            << " hashfull " << tp.getUsedinPermill() << " pv " << pvstring << "\n";
-#else
         cout << "info depth " + to_string(thr->depth) + " seldepth " + to_string(pos->seldepth) + " multipv " + to_string(mpvIndex + 1) + " time " + to_string(msRun)
             + " score mate " + to_string(matein) + " " + boundscore[inWindow] + "nodes " + to_string(nodes) + " nps " + to_string(nps) + " tbhits " + to_string(en.tbhits)
             + " hashfull " + to_string(tp.getUsedinPermill()) + " pv " + pvstring + "\n";
-#endif
-
     }
 
     SDEBUGDO(true, printf("Raw score: %d\n", score););

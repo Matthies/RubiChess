@@ -1867,7 +1867,6 @@ public:
         return string(ENGINEVER) + sNnue +  (sbinary != "" ? " (" + sbinary + ")" : "");
     };
     GuiToken parse(vector<string>*, string ss);
-    //void send(const char* format, ...);
     void communicate(string inputstring);
     void allocThreads();
     U64 getTotalNodes();
