@@ -196,13 +196,13 @@ endif
 
 NETBIN = net.nnue
 ifneq ($(EVALFILE),)
-	NETDEF = -DNNUEINCLUDED=$(EVALFILE)
-	NETOBJ = net.o
 ifeq ($(EVALFILE),default)
 	EMBEDFILE = $(RUBINET)
 else
 	EMBEDFILE = $(EVALFILE)
 endif
+	NETDEF = -DNNUEINCLUDED=$(EMBEDFILE)
+	NETOBJ = net.o
 endif
 
 MAJORVERSION = $(shell grep "\#define VERNUM " RubiChess.h | awk '{print $$3}')
