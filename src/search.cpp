@@ -1460,7 +1460,7 @@ static void mainSearch(searchthread *thr)
                 // Score decreases; use more thinking time
                 constantRootMoves /= 2;
 #ifdef TDEBUG
-                printf("info string Score decreases... more thinking time at depth %d...\n", thr->depth);
+                guiCom.log("[TDEBUG] Score decreases... more thinking time at depth " + to_string(thr->depth) + "\n");
 #endif
             }
             lastiterationscore = pos->bestmovescore[0];
@@ -1528,7 +1528,9 @@ static void mainSearch(searchthread *thr)
 #ifdef TDEBUG
         if (!en.bStopCount)
             en.t1stop++;
-        printf("info string stop info last movetime: %4.3f    full-it. / immediate:  %4d /%4d\n", (nowtime - en.starttime) / (double)en.frequency, en.t1stop, en.t2stop);
+        stringstream ss;
+        ss << "[TDEBUG] stop info last movetime: " << setprecision(3) << (nowtime - en.starttime) / (double)en.frequency << "    full-it. / immediate:  " << en.t1stop << " / " << en.t2stop << "\n";
+        guiCom.log(ss.str());
 #endif
         // Output of best move
         searchthread *bestthr = thr;
@@ -1617,6 +1619,7 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
     int timetouse = max(timeinc, (en.isWhite ? en.wtime : en.btime));
     int overhead = en.moveOverhead + 8 * en.Threads;
     int constance = constantRootMoves * 2 + en.ponderhit * 4;
+    int ph;
 
     // main goal is to let the search stop at endtime1 (full iterations) most times and get only few stops at endtime2 (interrupted iteration)
     // constance: ponder hit and/or onstance of best move in the last iteration lower the time within a given interval
@@ -1641,7 +1644,7 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
             // ph: phase of the game averaging material and move number
             // f1: stop soon after 5..17 timeslot
             // f2: stop immediately after 15..27 timeslots
-            int ph = (en.sthread[0].pos.getPhase() + min(255, en.sthread[0].pos.fullmovescounter * 6)) / 2;
+            ph = (en.sthread[0].pos.getPhase() + min(255, en.sthread[0].pos.fullmovescounter * 6)) / 2;
             int f1 = max(5, 17 - constance);
             int f2 = max(15, 27 - constance);
             int lower = min(timeinc, overhead) / 2;
@@ -1670,9 +1673,11 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
     }
 
 #ifdef TDEBUG
-    printf("info string Time from UCI: time=%d  inc=%d  overhead=%d  constance=%d  ph=%d\n", timetouse, timeinc, overhead, constance, (en.sthread[0].pos.getPhase() + min(255, en.sthread[0].pos.fullmovescounter * 6)) / 2);
-    printf("info string Time for this move: %4.3f  /  %4.3f\n", (en.endtime1 - en.starttime) / (double)en.frequency, (en.endtime2 - en.starttime) / (double)en.frequency);
-    if (timeinc) printf("info string Timefactor (use/inc): %d\n", timetouse / timeinc);
+    stringstream ss;
+    guiCom.log("[TDEBUG] Time from UCI: time=" + to_string(timetouse) + "  inc=" + to_string(timeinc) + "  overhead=" + to_string(overhead) + "  constance=" + to_string(constance) + "  ph=" + to_string(ph) + "\n");
+    ss << "[TDEBUG] Time for this move: " << setprecision(3) << (en.endtime1 - en.starttime) / (double)en.frequency << " / " << (en.endtime2 - en.starttime) / (double)en.frequency << "\n";
+    guiCom.log(ss.str());
+    if (timeinc) guiCom.log("[TDEBUG] Timefactor (use/inc): " + to_string(timetouse / timeinc) + "\n");
 #endif
 }
 

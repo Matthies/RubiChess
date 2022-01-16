@@ -31,7 +31,7 @@
 //#define SDEBUG
 
 // Enable to debug the time management
-//#define TDEBUG
+#define TDEBUG
 
 // Enable this for texel tuning
 //#define EVALTUNE
@@ -1638,6 +1638,10 @@ public:
         logStartTime = getTime();
         freq = fr;
         return true;
+    }
+    void log(string input) {
+        if (freq)
+            logstream << timestamp() << " < " << input;
     }
 #endif
 
