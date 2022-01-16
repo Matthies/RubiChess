@@ -198,6 +198,11 @@ NETBIN = net.nnue
 ifneq ($(EVALFILE),)
 	NETDEF = -DNNUEINCLUDED=$(EVALFILE)
 	NETOBJ = net.o
+ifeq ($(EVALFILE),default)
+	EMBEDFILE = $(RUBINET)
+else
+	EMBEDFILE = $(EVALFILE)
+endif
 endif
 
 MAJORVERSION = $(shell grep "\#define VERNUM " RubiChess.h | awk '{print $$3}')
@@ -234,7 +239,7 @@ arch:
 	@echo "neon  : $(neon)"
 
 net:
-ifeq ($(EVALFILE),)
+ifeq ($(EVALFILE),$(filter $(EVALFILE),default))
 ifeq ($(RUBINET),)
 		echo "Network not found in header"
 else
@@ -246,8 +251,8 @@ endif
 
 $(NETOBJ): FORCE
 ifneq ($(EVALFILE),)
-		@echo Embedding networkfile $(EVALFILE)
-		@cp $(EVALFILE) $(NETBIN)
+		@echo Embedding networkfile $(EMBEDFILE)
+		@cp $(EMBEDFILE) $(NETBIN)
 		@ld -r -b binary $(NETBIN) -o $(NETOBJ)
 endif
 FORCE:
