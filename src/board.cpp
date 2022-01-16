@@ -2601,6 +2601,7 @@ void uciSetLogFile()
     else
         sLogging = (filename == "" ? "No logging." : "Logging to " + filename);
 
+    guiCom << "========================================================================================\n";
     guiCom << en.name() + " (Build " + BUILD + ")\n";
     guiCom << "UCI compatible chess engine by " + en.author + "\n";
     guiCom << "----------------------------------------------------------------------------------------\n";
@@ -2701,6 +2702,12 @@ engine::~engine()
 
 void engine::registerOptions()
 {
+#ifdef NNUE
+#ifndef NNUEINCLUDED
+    ucioptions.Register(&NnueNetpath, "NNUENetpath", ucistring, "<Default>", 0, 0, uciSetNnuePath);
+#endif
+    ucioptions.Register(&usennue, "Use_NNUE", ucicheck, "true", 0, 0, uciSetNnuePath);
+#endif
 #ifdef UCILOGGING
     en.ucioptions.Register(&en.LogFile, "LogFile", ucistring, "", 0, 0, uciSetLogFile);
 #endif
@@ -2720,12 +2727,6 @@ void engine::registerOptions()
     ucioptions.Register(&BookDepth, "BookDepth", ucispin, "255", 0, 255);
     ucioptions.Register(&chess960, "UCI_Chess960", ucicheck, "false");
     ucioptions.Register(nullptr, "Clear Hash", ucibutton, "", 0, 0, uciClearHash);
-#ifdef NNUE
-#ifndef NNUEINCLUDED
-    ucioptions.Register(&NnueNetpath, "NNUENetpath", ucistring, "<Default>", 0, 0, uciSetNnuePath);
-#endif
-    ucioptions.Register(&usennue, "Use_NNUE", ucicheck, "true", 0, 0, uciSetNnuePath);
-#endif
 }
 
 
