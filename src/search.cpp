@@ -1085,7 +1085,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
 
 #ifndef SDEBUG
         if (en.moveoutput && !threadindex && (en.pondersearch != PONDERING || depth < MAXDEPTH - 1))
-            cout << "info depth " << depth << " currmove " << m->toString() << " currmovenumber " << i + 1 << "\n";
+            guiCom << "info depth " + to_string(depth) + " currmove " + m->toString() + " currmovenumber " + to_string(i + 1) + "\n";
 #endif
         int reduction = 0;
 
@@ -1264,17 +1264,16 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, in
 
     if (!MATEDETECTED(score))
     {
-        cout << "info depth " << thr->depth << " seldepth " << pos->seldepth << " multipv " << mpvIndex + 1 << " time " << msRun
-            << " score cp " << score << " " << boundscore[inWindow] << "nodes " << nodes << " nps " << nps << " tbhits " << en.tbhits
-            << " hashfull " << tp.getUsedinPermill() << " pv " << pvstring << "\n";
+        guiCom << "info depth " + to_string(thr->depth) + " seldepth " + to_string(pos->seldepth) + " multipv " + to_string(mpvIndex + 1) + " time " + to_string(msRun)
+            + " score cp " + to_string(score) + " " + boundscore[inWindow] + "nodes " + to_string(nodes) + " nps " + to_string(nps) + " tbhits " + to_string(en.tbhits)
+            + " hashfull " + to_string(tp.getUsedinPermill()) + " pv " + pvstring + "\n";
     }
     else
     {
         int matein = (score > 0 ? (SCOREWHITEWINS - score + 1) / 2 : (SCOREBLACKWINS - score) / 2);
-        cout << "info depth " << thr->depth << " seldepth " << pos->seldepth << " multipv " << mpvIndex + 1 << " time " << msRun
-            << " score mate " << matein << " " << boundscore[inWindow] << "nodes " << nodes << " nps " << nps << " tbhits " << en.tbhits
-            << " hashfull " << tp.getUsedinPermill() << " pv " << pvstring << "\n";
-
+        guiCom << "info depth " + to_string(thr->depth) + " seldepth " + to_string(pos->seldepth) + " multipv " + to_string(mpvIndex + 1) + " time " + to_string(msRun)
+            + " score mate " + to_string(matein) + " " + boundscore[inWindow] + "nodes " + to_string(nodes) + " nps " + to_string(nps) + " tbhits " + to_string(en.tbhits)
+            + " hashfull " + to_string(tp.getUsedinPermill()) + " pv " + pvstring + "\n";
     }
 
     SDEBUGDO(true, printf("Raw score: %d\n", score););
@@ -1461,7 +1460,7 @@ static void mainSearch(searchthread *thr)
                 // Score decreases; use more thinking time
                 constantRootMoves /= 2;
 #ifdef TDEBUG
-                printf("info string Score descreases... more thinking time at depth %d...\n", thr->depth);
+                printf("info string Score decreases... more thinking time at depth %d...\n", thr->depth);
 #endif
             }
             lastiterationscore = pos->bestmovescore[0];
@@ -1579,8 +1578,7 @@ static void mainSearch(searchthread *thr)
         }
 
         strBestmove = moveToString(pos->bestmove);
-        cout << "bestmove " << strBestmove;
-
+        string guiStr = "bestmove " + strBestmove;
         if (!pos->pondermove)
         {
             // Get the ponder move from TT
@@ -1593,9 +1591,9 @@ static void mainSearch(searchthread *thr)
         if (pos->pondermove)
         {
             strPonder = moveToString(pos->pondermove);
-            cout << " ponder " << strPonder;
+            guiStr += " ponder " + strPonder;
         }
-        cout << "\n";
+        guiCom << guiStr + "\n";
         en.stopLevel = ENGINESTOPIMMEDIATELY;
 
         // Save pondermove in rootposition for time management of following search
@@ -1693,7 +1691,7 @@ void searchStart()
     uint32_t bm = pbook.GetMove(&en.sthread[0].pos);
     if (bm)
     {
-        cout << "bestmove " << moveToString(bm) << "\n";
+        guiCom << "bestmove " + moveToString(bm) + "\n";
         return;
     }
 

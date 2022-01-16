@@ -18,16 +18,8 @@
 
 #include "RubiChess.h"
 
+alignas(64) GuiCommunication guiCom(cout);
 
-void engine::send(const char* format, ...)
-{
-    va_list argptr;
-    va_start(argptr, format);
-    vfprintf(stdout, format, argptr);
-    va_end(argptr);
-
-    //cout << s;
-}
 
 GuiToken engine::parse(vector<string>* args, string ss)
 {
@@ -38,7 +30,9 @@ GuiToken engine::parse(vector<string>* args, string ss)
 
     if (cin.eof())
         return QUIT;
-
+#ifdef UCILOGGING
+    guiCom.fromGui(ss);
+#endif
     GuiToken result = UNKNOWN;
     istringstream iss(ss);
     for (string s; iss >> s; )

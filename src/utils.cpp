@@ -510,8 +510,7 @@ void compilerinfo::GetSystemInfo()
 
     if (notSupported)
     {
-        cout << "info string Error! Binary is not compatible with this machine. Missing cpu features:";
-        cout << PrintCpuFeatures(notSupported) << ". Please use correct binary.\n";
+        cout << "info string Error! Binary is not compatible with this machine. Missing cpu features:" + PrintCpuFeatures(notSupported) + ". Please use correct binary.\n";
         exit(-1);
     }
     
@@ -525,10 +524,7 @@ void compilerinfo::GetSystemInfo()
 
     U64 supportedButunused = machineSupports & ~binarySupports;
     if (supportedButunused)
-    {
-        cout << "info string Warning! Binary not optimal for this machine. Unused cpu features:";
-        cout << PrintCpuFeatures(supportedButunused) << ". Please use correct binary for best performance.\n";
-    }
+        cout << "info string Warning! Binary not optimal for this machine. Unused cpu features:" + PrintCpuFeatures(supportedButunused) + ". Please use correct binary for best performance.\n";
 }
 
 #else
@@ -590,7 +586,7 @@ void* my_large_malloc(size_t s)
             CloseHandle(hProcessToken);
         }
 
-        cout << (UseLargePages ? "info string Allocation of memory uses large pages.\n" : "info string Allocation of memory: Large pages not available.\n");
+        guiCom << (UseLargePages ? "info string Allocation of memory uses large pages.\n" : "info string Allocation of memory: Large pages not available.\n");
     }
 
     if (allowlp && UseLargePages)
@@ -603,7 +599,7 @@ void* my_large_malloc(size_t s)
         if (!mem)
         {
             UseLargePages = -1;
-            cout << ("info string Allocation of memory: Large pages not available for this size. Disabled for now.\n");
+            guiCom << "info string Allocation of memory: Large pages not available for this size. Disabled for now.\n";
         }
     }
 
