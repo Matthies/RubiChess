@@ -183,7 +183,7 @@ inline void chessposition::updateHistory(uint32_t code, int value)
     value = max(-HISTORYMAXDEPTH * HISTORYMAXDEPTH, min(HISTORYMAXDEPTH * HISTORYMAXDEPTH, value));
 
     int delta = value * (1 << HISTORYNEWSHIFT) - history[s2m][threatSquare][from][to] * abs(value) / (1 << HISTORYAGESHIFT);
-    myassert(history[s2m][from][to] + delta < MAXINT16 && history[s2m][threatSquare][from][to] + delta > MININT16, this, 2, history[s2m][from][to], delta);
+    myassert(history[s2m][threatSquare][from][to] + delta < MAXINT16 && history[s2m][threatSquare][from][to] + delta > MININT16, this, 2, history[s2m][from][to], delta);
 
     history[s2m][threatSquare][from][to] += delta;
 
@@ -1459,7 +1459,7 @@ static void mainSearch(searchthread *thr)
                 // Score decreases; use more thinking time
                 constantRootMoves /= 2;
 #ifdef TDEBUG
-                printf("info string Score decreases... more thinking time at depth %d...\n", thr->depth);
+                guiCom.log("[TDEBUG] Score decreases... more thinking time at depth " + to_string(thr->depth) + "\n");
 #endif
             }
             lastiterationscore = pos->bestmovescore[0];
@@ -1527,7 +1527,9 @@ static void mainSearch(searchthread *thr)
 #ifdef TDEBUG
         if (!en.bStopCount)
             en.t1stop++;
-        printf("info string stop info last movetime: %4.3f    full-it. / immediate:  %4d /%4d\n", (nowtime - en.starttime) / (double)en.frequency, en.t1stop, en.t2stop);
+        stringstream ss;
+        ss << "[TDEBUG] stop info last movetime: " << setprecision(3) << (nowtime - en.starttime) / (double)en.frequency << "    full-it. / immediate:  " << en.t1stop << " / " << en.t2stop << "\n";
+        guiCom.log(ss.str());
 #endif
         // Output of best move
         searchthread *bestthr = thr;
@@ -1668,8 +1670,11 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
     }
 
 #ifdef TDEBUG
-    printf("info string Time for this move: %4.3f  /  %4.3f\n", (en.endtime1 - en.starttime) / (double)en.frequency, (en.endtime2 - en.starttime) / (double)en.frequency);
-    if (timeinc) printf("info string Timefactor (use/inc): %d\n", timetouse / timeinc);
+    stringstream ss;
+    guiCom.log("[TDEBUG] Time from UCI: time=" + to_string(timetouse) + "  inc=" + to_string(timeinc) + "  overhead=" + to_string(overhead) + "  constance=" + to_string(constance) + "  ph=" + to_string(ph) + "\n");
+    ss << "[TDEBUG] Time for this move: " << setprecision(3) << (en.endtime1 - en.starttime) / (double)en.frequency << " / " << (en.endtime2 - en.starttime) / (double)en.frequency << "\n";
+    guiCom.log(ss.str());
+    if (timeinc) guiCom.log("[TDEBUG] Timefactor (use/inc): " + to_string(timetouse / timeinc) + "\n");
 #endif
 }
 

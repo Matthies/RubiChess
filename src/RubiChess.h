@@ -1639,6 +1639,10 @@ public:
         freq = fr;
         return true;
     }
+    void log(string input) {
+        if (freq)
+            logstream << timestamp() << " < " << input;
+    }
 #endif
 
 
