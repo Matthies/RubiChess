@@ -978,6 +978,8 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
     const bool isMultiPV = (RT == MultiPVSearch);
     bool mateprune = (alpha > SCORETBWININMAXPLY || beta < -SCORETBWININMAXPLY);
 
+    CheckForImmediateStop();
+
     // reset pv
     pvtable[0][0] = 0;
 
@@ -1178,9 +1180,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
         else {
             updatePvTable(m->code, true);
         }
-
-
-        CheckForImmediateStop();
 
         // We have a new best move.
         // Now it gets a little tricky what to do with it
@@ -1619,7 +1618,6 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
     int timetouse = max(timeinc, (en.isWhite ? en.wtime : en.btime));
     int overhead = en.moveOverhead + 8 * en.Threads;
     int constance = constantRootMoves * 2 + en.ponderhit * 4;
-    int ph;
 
     // main goal is to let the search stop at endtime1 (full iterations) most times and get only few stops at endtime2 (interrupted iteration)
     // constance: ponder hit and/or onstance of best move in the last iteration lower the time within a given interval
@@ -1644,13 +1642,12 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
             // ph: phase of the game averaging material and move number
             // f1: stop soon after 5..17 timeslot
             // f2: stop immediately after 15..27 timeslots
-            ph = (en.sthread[0].pos.getPhase() + min(255, en.sthread[0].pos.fullmovescounter * 6)) / 2;
+            int ph = (en.sthread[0].pos.getPhase() + min(255, en.sthread[0].pos.fullmovescounter * 6)) / 2;
             int f1 = max(5, 17 - constance);
             int f2 = max(15, 27 - constance);
-            int lower = min(timeinc, overhead) / 2;
             if (complete)
-                en.endtime1 = startTime + max(lower, f1 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
-            en.endtime2 = startTime + max(lower, min(max(0, timetouse - overhead), max(0, f2 * (timetouse + timeinc) / (256 - ph) - overhead))) * en.frequency / 1000;
+                en.endtime1 = startTime + max(timeinc, f1 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
+            en.endtime2 = startTime + min(max(0, timetouse - overhead), max(timeinc, f2 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
         }
         else {
             // sudden death without increment; play for another x;y moves

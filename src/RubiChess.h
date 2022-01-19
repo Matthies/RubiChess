@@ -31,7 +31,7 @@
 //#define SDEBUG
 
 // Enable to debug the time management
-#define TDEBUG
+//#define TDEBUG
 
 // Enable this for texel tuning
 //#define EVALTUNE
