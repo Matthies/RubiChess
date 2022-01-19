@@ -1463,7 +1463,7 @@ public:
     int pvmovenum[MAXDEPTH];
     PvAbortType pvaborttype[MAXDEPTH];
     int pvabortscore[MAXDEPTH];
-    string pvadditionalinfo[MAXDEPTH];
+    char pvadditionalinfo[MAXDEPTH][256];
 #endif
 
     // The following part of the chessposition object isn't copied from rootposition object to the threads positions
