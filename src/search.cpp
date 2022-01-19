@@ -1100,25 +1100,25 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
         }
 
         int effectiveDepth = depth - reduction;
-        SDEBUGDO(isDebugMove, pvadditionalinfo[ply - 1] = ""; );
+        SDEBUGDO(isDebugMove, pvadditionalinfo[0] = ""; );
 
         if (i > 0)
         {
             // LMR search; test against alpha
             score = -alphabeta<Prune>(-alpha - 1, -alpha, effectiveDepth - 1);
-            SDEBUGDO(isDebugMove, pvadditionalinfo[ply - 1] += "PVS(alpha=" + to_string(alpha) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
+            SDEBUGDO(isDebugMove, pvadditionalinfo[0] += "PVS(alpha=" + to_string(alpha) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
             if (reduction && score > alpha)
             {
                 // research without reduction
                 effectiveDepth += reduction;
                 score = -alphabeta<Prune>(-alpha - 1, -alpha, effectiveDepth - 1);
-                SDEBUGDO(isDebugMove, pvadditionalinfo[ply - 1] += "PVS(alpha=" + to_string(alpha) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
+                SDEBUGDO(isDebugMove, pvadditionalinfo[0] += "PVS(alpha=" + to_string(alpha) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
             }
         }
         // (re)search with full window if necessary
         if (i == 0 || score > alpha) {
             score = (mateprune ? -alphabeta<MatePrune>(-beta, -alpha, effectiveDepth - 1) : -alphabeta<Prune>(-beta, -alpha, effectiveDepth - 1));
-            SDEBUGDO(isDebugMove, pvadditionalinfo[ply - 1] += "PVS(alpha=" + to_string(alpha) + ",beta=" + to_string(beta) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
+            SDEBUGDO(isDebugMove, pvadditionalinfo[0] += "PVS(alpha=" + to_string(alpha) + ",beta=" + to_string(beta) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
         }
 
         SDEBUGDO(isDebugMove, pvabortscore[0] = score;)
@@ -1275,7 +1275,7 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, in
             + " hashfull " + to_string(tp.getUsedinPermill()) + " pv " + pvstring + "\n";
     }
 
-    SDEBUGDO(true, printf("Raw score: %d\n", score););
+    SDEBUGDO(true, guiCom.log("[SDEBUG] Raw score: " + to_string(score) + "\n"););
     SDEBUGDO(true, pos->pvdebugout(););
 }
 

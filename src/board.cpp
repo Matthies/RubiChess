@@ -1227,6 +1227,7 @@ const char* PvAbortStr[] = {
 
 void chessposition::pvdebugout()
 {
+#if 0
     printf("=======================================================================\n  Window       Move   MoveVal   Num Dep    Score        Reason\n-----------------------------------------------------------------------\n");
     for (int i = 0; pvmovecode[i]; i++)
     {
@@ -1240,6 +1241,24 @@ void chessposition::pvdebugout()
             break;
     }
     printf("=======================================================================\n\n");
+#else
+    guiCom.log("[SDEBUG] =======================================================================\n");
+    guiCom.log("[SDEBUG]   Window       Move   MoveVal   Num Dep    Score        Reason         \n");
+    guiCom.log("[SDEBUG] -----------------------------------------------------------------------\n");
+    for (int i = 0; pvmovecode[i]; i++)
+    {
+        chessmove m;
+        m.code = pvmovecode[i];
+        stringstream ss;
+        ss << "[SDEBUG] " << setw(6) << pvalpha[i] << "/" << setw(6) << pvbeta[i] << "  " << m.toString() << "  " << setw(8) << hex << pvmovevalue[i] << "  " << (pvmovenum[i] < 0 ? ">" : " ")
+            << setw(2) << abs(pvmovenum[i]) << "  " << setw(2) << pvdepth[i] << "  " << setw(5) << pvabortscore[i] << "  " << setw(23) << PvAbortStr[pvaborttype[i]] << "  " << pvadditionalinfo[i] << "\n";
+        guiCom.log(ss.str());
+
+        if (pvaborttype[i + 1] == PVA_UNKNOWN || pvaborttype[i] == PVA_OMITTED)
+            break;
+    }
+    guiCom.log("[SDEBUG] =======================================================================\n");
+#endif
 }
 
 #endif
@@ -2691,7 +2710,7 @@ engine::~engine()
 {
     ucioptions.Set("SyzygyPath", "<empty>");
     Threads = 0;
-    allocThreads();
+    //allocThreads();
     rootposition.pwnhsh.remove();
     rootposition.mtrlhsh.remove();
 #ifdef NNUE
