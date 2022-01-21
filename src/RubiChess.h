@@ -53,16 +53,6 @@
 
 
 #ifdef FINDMEMORYLEAKS
-#ifdef _DEBUG
-#define DEBUG_CLIENTBLOCK   new( _CLIENT_BLOCK, __FILE__, __LINE__)
-#else
-#define DEBUG_CLIENTBLOCK
-#endif // _DEBUG
-
-#ifdef _DEBUG
-#define new DEBUG_CLIENTBLOCK
-#endif
-
 #define _CRTDBG_MAP_ALLOC
 #endif
 
@@ -1456,14 +1446,6 @@ public:
 #ifdef SDEBUG
     U64 debughash = 0;
     uint32_t pvmovecode[MAXDEPTH];
-    int pvmovevalue[MAXDEPTH];
-    int pvalpha[MAXDEPTH];
-    int pvbeta[MAXDEPTH];
-    int pvdepth[MAXDEPTH];
-    int pvmovenum[MAXDEPTH];
-    PvAbortType pvaborttype[MAXDEPTH];
-    int pvabortscore[MAXDEPTH];
-    string pvadditionalinfo[MAXDEPTH];
 #endif
 
     // The following part of the chessposition object isn't copied from rootposition object to the threads positions
@@ -1486,6 +1468,16 @@ public:
     alignas(64) MoveSelector moveSelector[MAXDEPTH];
     MoveSelector extensionMoveSelector[MAXDEPTH];
     int16_t* cmptr[MAXDEPTH][CMPLIES];
+#ifdef SDEBUG
+    int pvmovevalue[MAXDEPTH];
+    int pvalpha[MAXDEPTH];
+    int pvbeta[MAXDEPTH];
+    int pvdepth[MAXDEPTH];
+    int pvmovenum[MAXDEPTH];
+    PvAbortType pvaborttype[MAXDEPTH];
+    int pvabortscore[MAXDEPTH];
+    string pvadditionalinfo[MAXDEPTH];
+#endif
     bool w2m();
     void BitboardSet(int index, PieceCode p);
     void BitboardClear(int index, PieceCode p);
