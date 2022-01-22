@@ -2756,6 +2756,7 @@ void engine::allocThreads()
     {
         sthread[i].pos.mtrlhsh.remove();
         sthread[i].pos.pwnhsh.remove();
+        sthread[i].pos.~chessposition();
     }
 
     freealigned64(sthread);
@@ -2798,10 +2799,6 @@ void engine::prepareThreads()
 #ifdef NNUE
         pos->accumulator[0].computationState[WHITE] = false;
         pos->accumulator[0].computationState[BLACK] = false;
-#endif
-#ifdef SDEBUG
-        for (int i = 0; i < MAXDEPTH; i++)
-            ;// strcpy(pos->pvadditionalinfo[i], "");
 #endif
     }
 }
