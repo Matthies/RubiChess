@@ -1850,11 +1850,12 @@ public:
 
     string NnueSha256FromName() {
         string path = GetNnueNetPath();
-        size_t s2 = path.rfind('-');
-        size_t s1 = path.rfind('-', s2 - 1) + 1;
-        if (s1 != string::npos && s2 != string::npos && s2 - s1 == 10)
+        size_t s1, s2;
+        if ((s2 = path.rfind('-')) != string::npos
+            && (s1 = path.rfind('-', s2 - 1)) != string::npos
+            && s2 - s1 == 11)
             // Most probably a Rubi net; shorten name to 5 digits
-            return path.substr(s1, 5);
+            return path.substr(s1 + 1, 5);
         else
             return "<unknown>";
     }
