@@ -2768,8 +2768,8 @@ void engine::allocThreads()
     size_t size = Threads * sizeof(searchthread);
     myassert(size % 64 == 0, nullptr, 1, size % 64);
 
-    sthread = (searchthread*) allocalign64(size);
-    memset((void*)sthread, 0, size);
+    char* buf = (char*)allocalign64(size);
+    sthread = new (buf) searchthread[Threads];
     for (int i = 0; i < Threads; i++)
     {
         sthread[i].index = i;
@@ -2813,6 +2813,7 @@ void chessposition::resetStats()
     memset(tacticalhst, 0, sizeof(chessposition::tacticalhst));
     memset(counterhistory, 0, sizeof(chessposition::counterhistory));
     memset(countermove, 0, sizeof(chessposition::countermove));
+    memset(cmptr, 0, sizeof(chessposition::cmptr));
     he_yes = 0ULL;
     he_all = 0ULL;
     he_threshold = 8100;
