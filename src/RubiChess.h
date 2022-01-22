@@ -1852,7 +1852,7 @@ public:
         string path = GetNnueNetPath();
         size_t s2 = path.rfind('-');
         size_t s1 = path.rfind('-', s2 - 1) + 1;
-        if (s1 && s2 && s2 - s1 == 10)
+        if (s1 != string::npos && s2 != string::npos && s2 - s1 == 10)
             // Most probably a Rubi net; shorten name to 5 digits
             return path.substr(s1, 5);
         else
