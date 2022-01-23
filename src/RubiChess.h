@@ -28,7 +28,7 @@
 //#define STATISTICS
 
 // Enable to debug the search against a gives pv
-#define SDEBUG
+//#define SDEBUG
 
 // Enable to debug the time management
 //#define TDEBUG
@@ -43,7 +43,7 @@
 //#define SEARCHOPTIONS
 
 // Enable this to find memory leaks with the MSVC debug build
-#define FINDMEMORYLEAKS
+//#define FINDMEMORYLEAKS
 
 // Enable this to enable NNUE training code
 //#define NNUELEARN
