@@ -1227,24 +1227,27 @@ const char* PvAbortStr[] = {
 
 void chessposition::pvdebugout()
 {
-    printf("=======================================================================\n  Window       Move   MoveVal   Num Dep    Score        Reason\n-----------------------------------------------------------------------\n");
+    guiCom.log("[SDEBUG] =======================================================================\n");
+    guiCom.log("[SDEBUG]   Window       Move   MoveVal   Num Dep  Score          Reason         \n");
+    guiCom.log("[SDEBUG] -----------------------------------------------------------------------\n");
     for (int i = 0; pvmovecode[i]; i++)
     {
         chessmove m;
         m.code = pvmovecode[i];
+        stringstream ss;
+        ss << "[SDEBUG] " << setw(6) << pvalpha[i] << "/" << setw(6) << pvbeta[i] << "  " << m.toString() << "  " << setw(8) << hex << pvmovevalue[i] << dec << "  " << (pvmovenum[i] < 0 ? ">" : " ")
+            << setw(2) << abs(pvmovenum[i]) << "  " << setw(2) << pvdepth[i] << "  " << setw(5) << pvabortscore[i] << "  " << setw(23) << PvAbortStr[pvaborttype[i]] << "  " << pvadditionalinfo[i] << "\n";
+        guiCom.log(ss.str());
 
-        printf("%6d/%6d  %s  %8x  %s%2d  %2d  %5d  %23s  %s\n",
-            pvalpha[i], pvbeta[i], m.toString().c_str(), pvmovevalue[i], pvmovenum[i] < 0 ? ">" : " ",
-            abs(pvmovenum[i]), pvdepth[i], pvabortscore[i], PvAbortStr[pvaborttype[i]], pvadditionalinfo[i].c_str());
         if (pvaborttype[i + 1] == PVA_UNKNOWN || pvaborttype[i] == PVA_OMITTED)
             break;
     }
-    printf("=======================================================================\n\n");
+    guiCom.log("[SDEBUG] =======================================================================\n");
 }
 
 #endif
 
-// shameless copy from http://chessprogramming.wikispaces.com/Magic+Bitboards#Plain
+// shameless copy from https://www.chessprogramming.org/Magic_Bitboards
 alignas(64) U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 alignas(64) U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 
@@ -2737,6 +2740,7 @@ void engine::allocThreads()
     {
         sthread[i].pos.mtrlhsh.remove();
         sthread[i].pos.pwnhsh.remove();
+        sthread[i].pos.~chessposition();
     }
 
     freealigned64(sthread);
