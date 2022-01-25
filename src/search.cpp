@@ -804,35 +804,32 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         int reduction = 0;
         if (depth >= sps.lmrmindepth)
         {
-            if (!ISTACTICAL(mc))
-            {
-                reduction = reductiontable[positionImproved][depth][min(63, legalMoves + 1)];
+            reduction = reductiontable[positionImproved][depth][min(63, legalMoves + 1)];
 
-                // adjust reduction by stats value
-                reduction -= stats / (sps.lmrstatsratio * 8);
+            // adjust reduction by stats value
+            reduction -= stats / (sps.lmrstatsratio * 8);
 
-                // less reduction at PV nodes
-                reduction -= PVNode;
+            // less reduction at PV nodes
+            reduction -= PVNode;
 
-                // even lesser reduction at PV nodes for all but bad hash moves
-                reduction -= (PVNode && (!tpHit || hashmovecode != (uint16_t)mc || hashscore > alpha));
+            // even lesser reduction at PV nodes for all but bad hash moves
+            reduction -= (PVNode && (!tpHit || hashmovecode != (uint16_t)mc || hashscore > alpha));
 
-                // adjust reduction with opponents move number
-                reduction -= (CurrentMoveNum[ply - 1] >= sps.lmropponentmovecount);
+            // adjust reduction with opponents move number
+            reduction -= (CurrentMoveNum[ply - 1] >= sps.lmropponentmovecount);
 
-                STATISTICSINC(red_pi[positionImproved]);
-                STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, legalMoves + 1)]);
-                STATISTICSADD(red_history, -stats / (sps.lmrstatsratio * 8));
-                STATISTICSADD(red_pv, -(int)PVNode);
-                STATISTICSADD(red_pv, -(int)(PVNode && (!tpHit || hashmovecode != (uint16_t)mc || hashscore > alpha)));
-                STATISTICSDO(int red0 = reduction);
+            STATISTICSINC(red_pi[positionImproved]);
+            STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, legalMoves + 1)]);
+            STATISTICSADD(red_history, -stats / (sps.lmrstatsratio * 8));
+            STATISTICSADD(red_pv, -(int)PVNode);
+            STATISTICSADD(red_pv, -(int)(PVNode && (!tpHit || hashmovecode != (uint16_t)mc || hashscore > alpha)));
+            STATISTICSDO(int red0 = reduction);
 
-                reduction = min(depth, max(0, reduction));
+            reduction = min(depth, max(0, reduction));
 
-                STATISTICSDO(int red1 = reduction);
-                STATISTICSADD(red_correction, red1 - red0);
-                STATISTICSADD(red_total, reduction);
-            }
+            STATISTICSDO(int red1 = reduction);
+            STATISTICSADD(red_correction, red1 - red0);
+            STATISTICSADD(red_total, reduction);
         }
         effectiveDepth = depth + extendall - reduction + extendMove;
 
