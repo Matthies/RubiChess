@@ -546,7 +546,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         tp.addHash(hash, staticeval, staticeval, HASHUNKNOWN, 0, hashmovecode);
     }
     staticevalstack[ply] = staticeval;
-    
+
 
     bool positionImproved = (ply >= 2  && staticevalstack[ply] > staticevalstack[ply - 2]);
 
@@ -1042,7 +1042,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
                 m->value = KILLERVAL2;
             else if (GETCAPTURE(m->code) != BLANK)
                 m->value = (mvv[GETCAPTURE(m->code) >> 1] | lva[GETPIECE(m->code) >> 1]);
-            else 
+            else
                 m->value = history[state & S2MMASK][threatSquare][GETFROM(m->code)][GETCORRECTTO(m->code)];
             if (isMultiPV) {
                 if (multipvtable[0][0] == m->code)
@@ -1613,7 +1613,7 @@ static void mainSearch(searchthread *thr)
 void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
 {
     int timeinc = (en.isWhite ? en.winc : en.binc);
-    int timetouse = max(timeinc, (en.isWhite ? en.wtime : en.btime));
+    int timetouse = (en.isWhite ? en.wtime : en.btime);
     int overhead = en.moveOverhead + 8 * en.Threads;
     int constance = constantRootMoves * 2 + en.ponderhit * 4;
 
@@ -1643,6 +1643,7 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
             int ph = (en.sthread[0].pos.getPhase() + min(255, en.sthread[0].pos.fullmovescounter * 6)) / 2;
             int f1 = max(5, 17 - constance);
             int f2 = max(15, 27 - constance);
+            timetouse = max(timeinc, timetouse); // workaround for Arena bug
             if (complete)
                 en.endtime1 = startTime + max(timeinc, f1 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
             en.endtime2 = startTime + min(max(0, timetouse - overhead), max(timeinc, f2 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
