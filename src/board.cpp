@@ -170,7 +170,7 @@ string chessmove::toString()
 
 void chessmove::print()
 {
-    cout << toString();
+    guiCom << toString();
 }
 
 
@@ -255,33 +255,30 @@ bool chessposition::w2m()
 }
 
 
-void chessposition::initCastleRights(int rookfiles[], int kingfile)
+void chessposition::initCastleRights(int rookfiles[2][2], int kingfile[2])
 {
     for (int from = 0; from < 64; from++)
     {
         castlerights[from] = ~0;
         int f = FILE(from);
         int r = RANK(from);
-        if (r == 0 && (f == rookfiles[0] || f == kingfile))
-            castlerights[from] &= ~WQCMASK;
-        if (r == 0 && (f == rookfiles[1] || f == kingfile))
-            castlerights[from] &= ~WKCMASK;
-        if (r == 7 && (f == rookfiles[0] || f == kingfile))
-            castlerights[from] &= ~BQCMASK;
-        if (r == 7 && (f == rookfiles[1] || f == kingfile))
-            castlerights[from] &= ~BKCMASK;
+        int color = (r == 0 ? 0 : r == 7 ? 1 : -1);
+        if (color >= 0 && (f == rookfiles[color][0] || f == kingfile[color]))
+            castlerights[from] &= ~QCMASK[color];
+        if (color >= 0 && (f == rookfiles[color][1] || f == kingfile[color]))
+            castlerights[from] &= ~KCMASK[color];
     }
 
     for (int i = 0; i < 4; i++)
     {
         int col = i / 2;
         int gCastle = i % 2;
-        castlerookfrom[i] = rookfiles[gCastle] + 56 * col;
-        castleblockers[i] = betweenMask[kingfile + 56 * col][castlekingto[i]]
+        castlerookfrom[i] = rookfiles[col][gCastle] + 56 * col;
+        castleblockers[i] = betweenMask[kingfile[col] + 56 * col][castlekingto[i]]
             | betweenMask[castlerookfrom[i]][castlerookto[i]]
             | BITSET(castlerookto[i]) | BITSET(castlekingto[i]);
 
-        castlekingwalk[i] = betweenMask[kingfile + 56 * col][castlekingto[i]] | BITSET(castlekingto[i]);
+        castlekingwalk[i] = betweenMask[kingfile[col] + 56 * col][castlekingto[i]] | BITSET(castlekingto[i]);
     }
 }
 
@@ -393,8 +390,8 @@ int chessposition::getFromFen(const char* sFen)
         state |= S2MMASK;
 
     /* castle rights */
-    int rookfiles[2] = { -1, -1 };
-    int kingfile = -1;
+    int rookfiles[2][2] = {{ -1, -1 }, { -1, -1 }};
+    int kingfile[2] = { FILE(kingpos[0]), FILE(kingpos[1]) };
     s = token[2];
     const string usualcastles = "QKqk";
     const string castles960 = "ABCDEFGHabcdefgh";
@@ -426,14 +423,10 @@ int chessposition::getFromFen(const char* sFen)
         if (rookfile >= 0)
         {
             state |= SETCASTLEFILE(rookfile, castleindex);
-            if (rookfiles[gCastle] >= 0 && rookfiles[gCastle] != rookfile)
-                printf("info string Alarm! Castle rights for both sides but rooks on different files.\n");
-            rookfiles[gCastle] = rookfile;
-            if (kingfile >= 0 && kingfile != FILE(kingpos[col]))
-                printf("info string Alarm! Castle rights for both sides but kings on different files.\n");
-            kingfile = FILE(kingpos[col]);
+            // FIXME: Maybe some sanity check if castle flag fits to rook placement
+            rookfiles[col][gCastle] = rookfile;
             // Set chess960 if non-standard rook/king setup is found
-            if (kingfile != 4 || rookfiles[gCastle] != gCastle * 7)
+            if (kingfile[col] != 4 || rookfiles[col][gCastle] != gCastle * 7)
                 en.chess960 = true;
         }
     }
@@ -540,7 +533,7 @@ void chessposition::evaluateMoves(chessmovelist *ml)
         if (Mt == QUIET || (Mt == ALL && !GETCAPTURE(mc)))
         {
             int to = GETCORRECTTO(mc);
-            ml->move[i].value = history[piece & S2MMASK][GETFROM(mc)][to];
+            ml->move[i].value = history[piece & S2MMASK][threatSquare][GETFROM(mc)][to];
             int16_t** cptr = cmptr[ply];
             if (cptr)
             {
@@ -560,6 +553,11 @@ void chessposition::evaluateMoves(chessmovelist *ml)
 void chessposition::getRootMoves()
 {
     chessmovelist movelist;
+
+    if (state & S2MMASK)
+        updateThreats<BLACK>();
+    else
+        updateThreats<WHITE>();
     prepareStack();
     movelist.length = CreateMovelist<ALL>(&movelist.move[0]);
     evaluateMoves<ALL>(&movelist);
@@ -926,6 +924,41 @@ template <int Me> void chessposition::updatePins()
 }
 
 
+template <int Me> void chessposition::updateThreats()
+{
+    const int You = Me ^ S2MMASK;
+
+    U64 threatsByPawns = PAWNATTACK(You, piece00[WPAWN | You]) & (occupied00[Me] ^ piece00[WPAWN | Me]);
+
+    U64 threatsByMinors = 0Ull;
+    U64 yourBishops = piece00[WBISHOP | You];
+    while (yourBishops) {
+        int from = pullLsb(&yourBishops);
+        threatsByMinors |= pieceMovesTo<BISHOP>(from);
+    }
+    U64 yourKnights = piece00[WKNIGHT | You];
+    while (yourKnights) {
+        int from = pullLsb(&yourKnights);
+        threatsByMinors |= pieceMovesTo<KNIGHT>(from);
+    }
+    threatsByMinors &= (piece00[WROOK | Me] | piece00[WQUEEN | Me]);
+
+    U64 threatsByRooks = 0ULL;
+    U64 yourRooks = piece00[WROOK | You];
+    while (yourRooks) {
+        int from = pullLsb(&yourRooks);
+        threatsByRooks |= pieceMovesTo<ROOK>(from);
+    }
+    threatsByRooks &= piece00[WQUEEN | Me];
+
+    threats = threatsByPawns | threatsByMinors | threatsByRooks;
+    if (threats)
+        GETLSB(threatSquare, threats);
+    else
+        threatSquare = 64;
+}
+
+
 bool chessposition::moveGivesCheck(uint32_t c)
 {
     int pc = GETPIECE(c);
@@ -1193,24 +1226,27 @@ const char* PvAbortStr[] = {
 
 void chessposition::pvdebugout()
 {
-    printf("=======================================================================\n  Window       Move   MoveVal   Num Dep    Score        Reason\n-----------------------------------------------------------------------\n");
+    guiCom.log("[SDEBUG] =======================================================================\n");
+    guiCom.log("[SDEBUG]   Window       Move   MoveVal   Num Dep  Score          Reason         \n");
+    guiCom.log("[SDEBUG] -----------------------------------------------------------------------\n");
     for (int i = 0; pvmovecode[i]; i++)
     {
         chessmove m;
         m.code = pvmovecode[i];
+        stringstream ss;
+        ss << "[SDEBUG] " << setw(6) << pvalpha[i] << "/" << setw(6) << pvbeta[i] << "  " << m.toString() << "  " << setw(8) << hex << pvmovevalue[i] << dec << "  " << (pvmovenum[i] < 0 ? ">" : " ")
+            << setw(2) << abs(pvmovenum[i]) << "  " << setw(2) << pvdepth[i] << "  " << setw(5) << pvabortscore[i] << "  " << setw(23) << PvAbortStr[pvaborttype[i]] << "  " << pvadditionalinfo[i] << "\n";
+        guiCom.log(ss.str());
 
-        printf("%6d/%6d  %s  %8x  %s%2d  %2d  %5d  %23s  %s\n",
-            pvalpha[i], pvbeta[i], m.toString().c_str(), pvmovevalue[i], pvmovenum[i] < 0 ? ">" : " ",
-            abs(pvmovenum[i]), pvdepth[i], pvabortscore[i], PvAbortStr[pvaborttype[i]], pvadditionalinfo[i].c_str());
         if (pvaborttype[i + 1] == PVA_UNKNOWN || pvaborttype[i] == PVA_OMITTED)
             break;
     }
-    printf("=======================================================================\n\n");
+    guiCom.log("[SDEBUG] =======================================================================\n");
 }
 
 #endif
 
-// shameless copy from http://chessprogramming.wikispaces.com/Magic+Bitboards#Plain
+// shameless copy from https://www.chessprogramming.org/Magic_Bitboards
 alignas(64) U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 alignas(64) U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 
@@ -2557,6 +2593,27 @@ static void uciSetBookFile()
         en.BookFile = "<empty>";
 }
 
+#ifdef UCILOGGING
+void uciSetLogFile()
+{
+    string filename = (en.LogFile == "" ? "" : en.ExecPath + en.LogFile);
+    string sLogging;
+    if (!guiCom.openLog(filename, en.frequency))
+        sLogging = "Cannot open Logfile " + filename;
+    else
+        sLogging = (filename == "" ? "No logging." : "Logging to " + filename);
+
+    guiCom << "========================================================================================\n";
+    guiCom << en.name() + " (Build " + BUILD + ")\n";
+    guiCom << "UCI compatible chess engine by " + en.author + "\n";
+    guiCom << "----------------------------------------------------------------------------------------\n";
+    guiCom << "System: " + cinfo.SystemName() + "\n";
+    guiCom << "CPU-Features of system: " + cinfo.PrintCpuFeatures(cinfo.machineSupports) + "\n";
+    guiCom << "CPU-Features of binary: " + cinfo.PrintCpuFeatures(cinfo.binarySupports) + "\n";
+    guiCom << "========================================================================================\n";
+    guiCom << "info string " + sLogging + "\n";
+}
+#endif
 
 #ifdef NNUE
 static void uciSetNnuePath()
@@ -2564,24 +2621,22 @@ static void uciSetNnuePath()
     if (!en.usennue)
     {
         if (NnueReady != NnueDisabled)
-            cout << "info string NNUE evaluation is disabled.\n";
+            guiCom << "info string NNUE evaluation is disabled.\n";
         NnueReady = NnueDisabled;
         return;
     }
 
     NnueReady = NnueDisabled;
 #ifdef NNUEINCLUDED
-    cout << "info string Initializing net included in binary...";
+    guiCom << "info string Initializing net included in binary...";
     char* p = (char*)&_binary_net_nnue_start;
     if (!NnueReadNet(&p))
-        cout << " failed. The embedded network seems corrupted.\n";
+        guiCom << " failed. The embedded network seems corrupted.\n";
     else
-        cout << " successful. Using NNUE evaluation. (" + to_string(NnueReady) + ")\n";
+        guiCom << " successful. Using NNUE evaluation. (" + to_string(NnueReady) + ")\n";
     return;
 #else
     string NnueNetPath = en.GetNnueNetPath();
-    cout << "info string Loading net " << NnueNetPath << " ...";
-
     ifstream is;
     is.open(NnueNetPath, ios::binary);
     if (!is && en.ExecPath != "")
@@ -2589,14 +2644,14 @@ static void uciSetNnuePath()
 
     if (is && NnueReadNet(&is))
     {
-        cout << " successful. Using NNUE evaluation. (" + to_string(NnueReady) + ")\n";
+        guiCom << "info string Loading net " + NnueNetPath + " successful. Using NNUE evaluation. (" + to_string(NnueReady) + ")\n";
         if (NnueNetPath.find(NNUEDEFAULTSTR) == string::npos)
-            cout << "info string Warning! You are not using the default network file. Playing strength of the engine highly depends on it.\n";
+            guiCom << "info string Warning! You are not using the default network file. Playing strength of the engine highly depends on it.\n";
 
         return;
     }
 
-    cout << " failed. The network file seems corrupted or doesn't exist. Set correct path to network file or disable 'Use_NNUE' for handcrafted evaluation.\n";
+    guiCom << "info string Loading net " + NnueNetPath + " failed. The network file seems corrupted or doesn't exist. Set correct path to network file or disable 'Use_NNUE' for handcrafted evaluation.\n";
 #endif
 }
 #endif
@@ -2621,8 +2676,9 @@ engine::engine(compilerinfo *c)
 #endif
     rootposition.pwnhsh.setSize(1);  // some dummy pawnhash just to make the prefetch in playMove happy
     // default castle rights
-    int rf[] = { 0, 7 };
-    rootposition.initCastleRights(rf, 4);
+    int rf[2][2] = { { 0, 7 },{0,7} };
+    int kf[2] = { 4,4 };
+    rootposition.initCastleRights(rf, kf);
 
 #ifdef _WIN32
     LARGE_INTEGER f;
@@ -2648,12 +2704,21 @@ engine::~engine()
 
 void engine::registerOptions()
 {
+#ifdef NNUE
+#ifndef NNUEINCLUDED
+    ucioptions.Register(&NnueNetpath, "NNUENetpath", ucistring, "<Default>", 0, 0, uciSetNnuePath);
+#endif
+    ucioptions.Register(&usennue, "Use_NNUE", ucicheck, "true", 0, 0, uciSetNnuePath);
+#endif
+#ifdef UCILOGGING
+    en.ucioptions.Register(&en.LogFile, "LogFile", ucistring, "", 0, 0, uciSetLogFile);
+#endif
 #ifdef _WIN32
     ucioptions.Register(&allowlargepages, "Allow Large Pages", ucicheck, "true", 0, 0, uciAllowLargePages);
 #endif
     ucioptions.Register(&Threads, "Threads", ucispin, "1", 1, MAXTHREADS, uciSetThreads);  // order is important as the pawnhash depends on Threads > 0
     ucioptions.Register(&Hash, "Hash", ucispin, to_string(DEFAULTHASH), 1, MAXHASH, uciSetHash);
-    ucioptions.Register(&moveOverhead, "Move_Overhead", ucispin, "50", 0, 5000, nullptr);
+    ucioptions.Register(&moveOverhead, "Move_Overhead", ucispin, "100", 0, 5000, nullptr);
     ucioptions.Register(&MultiPV, "MultiPV", ucispin, "1", 1, MAXMULTIPV, nullptr);
     ucioptions.Register(&ponder, "Ponder", ucicheck, "false");
     ucioptions.Register(&SyzygyPath, "SyzygyPath", ucistring, "<empty>", 0, 0, uciSetSyzygyPath);
@@ -2664,12 +2729,6 @@ void engine::registerOptions()
     ucioptions.Register(&BookDepth, "BookDepth", ucispin, "255", 0, 255);
     ucioptions.Register(&chess960, "UCI_Chess960", ucicheck, "false");
     ucioptions.Register(nullptr, "Clear Hash", ucibutton, "", 0, 0, uciClearHash);
-#ifdef NNUE
-#ifndef NNUEINCLUDED
-    ucioptions.Register(&NnueNetpath, "NNUENetpath", ucistring, "<Default>", 0, 0, uciSetNnuePath);
-#endif
-    ucioptions.Register(&usennue, "Use_NNUE", ucicheck, "true", 0, 0, uciSetNnuePath);
-#endif
 }
 
 
@@ -2680,6 +2739,7 @@ void engine::allocThreads()
     {
         sthread[i].pos.mtrlhsh.remove();
         sthread[i].pos.pwnhsh.remove();
+        sthread[i].pos.~chessposition();
     }
 
     freealigned64(sthread);
@@ -2692,8 +2752,8 @@ void engine::allocThreads()
     size_t size = Threads * sizeof(searchthread);
     myassert(size % 64 == 0, nullptr, 1, size % 64);
 
-    sthread = (searchthread*) allocalign64(size);
-    memset((void*)sthread, 0, size);
+    char* buf = (char*)allocalign64(size);
+    sthread = new (buf) searchthread[Threads];
     for (int i = 0; i < Threads; i++)
     {
         sthread[i].index = i;
@@ -2734,6 +2794,7 @@ void chessposition::resetStats()
     memset(tacticalhst, 0, sizeof(chessposition::tacticalhst));
     memset(counterhistory, 0, sizeof(chessposition::counterhistory));
     memset(countermove, 0, sizeof(chessposition::countermove));
+    memset(cmptr, 0, sizeof(chessposition::cmptr));
     he_yes = 0ULL;
     he_all = 0ULL;
     he_threshold = 8100;
@@ -2790,7 +2851,7 @@ void engine::communicate(string inputstring)
                 }
                 if (rootposition.getFromFen(fen.c_str()) < 0)
                 {
-                    printf("info string Illegal FEN string %s. Startposition will be used instead.\n", fen.c_str());
+                    guiCom << "info string Illegal FEN string " + fen + ". Startposition will be used instead.\n";
                     fen = STARTFEN;
                     rootposition.getFromFen(fen.c_str());
                     moves.clear();
@@ -2800,7 +2861,7 @@ void engine::communicate(string inputstring)
                 for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
                 {
                     if (!(lastopponentsmove = rootposition.applyMove(*it)))
-                        printf("info string Alarm! Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
+                        guiCom << "info string Alarm! Move " + (*it)  + "%s illegal (possible engine error)\n";
                 }
                 ponderhit = (lastopponentsmove && lastopponentsmove == rootposition.pondermove);
                 // Preserve hashes of earlier position up to last halfmove counter reset for repetition detection
@@ -2824,7 +2885,7 @@ void engine::communicate(string inputstring)
             }
             if (pendingisready)
             {
-                send("readyok\n");
+                guiCom << "readyok\n";
                 pendingisready = false;
             }
         }
@@ -2877,10 +2938,10 @@ void engine::communicate(string inputstring)
                 }
                 break;
             case UCI:
-                send("id name %s\n", name().c_str());
-                send("id author %s\n", author);
+                guiCom << "id name " + name() + "\n";
+                guiCom << "id author " + author + "\n";
                 ucioptions.Print();
-                send("uciok\n", author);
+                guiCom << "uciok\n";
                 break;
             case UCINEWGAME:
                 // invalidate hash and history
@@ -2892,7 +2953,7 @@ void engine::communicate(string inputstring)
             case SETOPTION:
                 if (en.stopLevel != ENGINETERMINATEDSEARCH)
                 {
-                    send("info string Changing option while searching is not supported. stopLevel = %d\n", en.stopLevel);
+                    guiCom << "info string Changing option while searching is not supported. stopLevel = " + to_string(en.stopLevel) + "\n";
                     break;
                 }
                 bGetName = bGetValue = false;
@@ -3228,32 +3289,32 @@ void ucioptions_t::Print()
     for (optionmapiterator it = optionmap.begin(); it != optionmap.end(); it++)
     {
         ucioption_t *op = &(it->second);
-        cout << "option name " << op->name << " type ";
+        string optionStr = "option name " + op->name + " type ";
 
         switch (op->type)
         {
         case ucinnuebias:
         case ucinnueweight:
         case ucispin:
-            cout << "spin default " << op->def << " min " << op->min << " max " << op->max << "\n";
+            guiCom << optionStr + "spin default " + op->def + " min " + to_string(op->min) + " max " + to_string(op->max) + "\n";
             break;
         case ucistring:
-            cout << "string default " << op->def << "\n";
+            guiCom << optionStr + "string default " + op->def + "\n";
             break;
         case ucicheck:
-            cout << "check default " << op->def << "\n";
+            guiCom << optionStr + "check default " + op->def + "\n";
             break;
         case ucibutton:
-            cout << "button\n";
+            guiCom << optionStr + "button\n";
             break;
 #ifdef EVALOPTIONS
         case ucieval:
-            cout << "string default " << op->def << "\n";
+            guiCom << optionStr + "string default " + op->def + "\n";
             break;
 #endif
 #ifdef SEARCHOPTIONS
         case ucisearch:
-            cout << "string default " << op->def << "\n";
+            guiCom << optionStr + "string default " + op->def << "\n";
             break;
 #endif
         case ucicombo:
@@ -3284,3 +3345,5 @@ template bool chessposition::sliderAttacked<WHITE>(int index, U64 occ);
 template bool chessposition::sliderAttacked<BLACK>(int index, U64 occ);
 template void chessposition::updatePins<WHITE>();
 template void chessposition::updatePins<BLACK>();
+template void chessposition::updateThreats<WHITE>();
+template void chessposition::updateThreats<BLACK>();

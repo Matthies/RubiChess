@@ -13,7 +13,7 @@ endif
 CPUTEST=cputest
 ARCH=native
 PROFDIR = OPT
-PROFEXE = RubiChess-Prof
+PROFEXE = RubiChess
 
 sse2 = no
 ssse3 = no
@@ -28,7 +28,9 @@ neon = no
 PTHREADLIB=-pthread
 # Use workaround for weak symbols problem in pthreads; https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58909
 PTHREADSTATICLIB="-static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
-ifeq ($(shell uname -s),Darwin)
+UNAME_S=$(shell uname -s)
+
+ifeq ($(UNAME_S),Darwin)
 	# Use clang compiler for MacOS
 	COMP=clang
 endif
@@ -42,14 +44,14 @@ ifeq ($(EXE),)
 endif
 
 CXXFLAGS=-std=c++11 -Wall -O3 -flto
-ifeq ($(COMP),$(filter $(COMP),gcc mingw))
-	CXX=g++
-	CXXFLAGS += -pedantic -Wextra -Wshadow
-	
-ifeq ($(COMP),mingw)
+ifneq (, $(findstring MINGW64,$(UNAME_S)))
 	# Always do a static built with Mingw
 	LDFLAGS += -static
 endif
+ifeq ($(COMP),$(filter $(COMP),gcc))
+	CXX=g++
+	CXXFLAGS += -pedantic -Wextra -Wshadow
+
 	INSTRUMENTEDEXTRACXXFLAGS='-fprofile-generate=$(PROFDIR)'
 	INSTRUMENTEDEXTRALDFLAGS='-lgcov'
 	PGOEXTRACXXFLAGS='-fprofile-use=$(PROFDIR) -fno-peel-loops -fno-tracer -Wno-coverage-mismatch -fprofile-correction'
@@ -106,13 +108,13 @@ ifneq (,$(findstring x86-64-avx2,$(ARCH)))
 CPUFLAGS = "avx2 bmi1 lzcnt popcnt ssse3 sse2"
 endif
 ifneq (,$(findstring x86-64-modern,$(ARCH)))
-CPUFLAGS = "bmi1 lzcnt popcnt ssse3 sse2"
+CPUFLAGS = "popcnt ssse3 sse2"
 endif
 ifneq (,$(findstring x86-64-ssse3,$(ARCH)))
 CPUFLAGS = "ssse3 sse2"
 endif
 ifneq (,$(findstring x86-64-sse3-popcnt,$(ARCH)))
-CPUFLAGS = "bmi1 lzcnt popcnt sse2"
+CPUFLAGS = "popcnt sse2"
 endif
 ifneq (,$(findstring neon,$(ARCH)))
 CPUFLAGS = "neon"
@@ -194,7 +196,12 @@ endif
 
 NETBIN = net.nnue
 ifneq ($(EVALFILE),)
-	NETDEF = -DNNUEINCLUDED=$(EVALFILE)
+ifeq ($(EVALFILE),default)
+	EMBEDFILE = $(RUBINET)
+else
+	EMBEDFILE = $(EVALFILE)
+endif
+	NETDEF = -DNNUEINCLUDED=$(EMBEDFILE)
 	NETOBJ = net.o
 endif
 
@@ -210,7 +217,7 @@ VERSION=$(MAJORVERSION)$(MINORVERSION)
 
 .PHONY: clean profile-build gcc-profile-make clang-profile-make net arch compile pgo profile-build pgo-rename release_x86 release_arm32 release_arm64 release
 
-default: arch
+default: net arch
 	@$(MAKE) compile MESSAGE='Creating standard build ...'
 
 build: net default
@@ -232,6 +239,7 @@ arch:
 	@echo "neon  : $(neon)"
 
 net:
+ifeq ($(EVALFILE),$(filter $(EVALFILE),default))
 ifeq ($(RUBINET),)
 		echo "Network not found in header"
 else
@@ -239,13 +247,15 @@ else
 		$(eval shasum_command := $(shell if hash shasum 2>/dev/null; then echo "shasum -a 256 "; elif hash sha256sum 2>/dev/null; then echo "sha256sum "; fi))
 		@if [ "$(RUBINETHASH)" != `$(shasum_command) $(RUBINET) | cut -c1-10` ]; then echo "Failed download or $(RUBINET) corrupted, please delete!"; exit 1; else echo "$(RUBINET) has correct hash."; fi
 endif
+endif
 
-$(NETOBJ):
+$(NETOBJ): FORCE
 ifneq ($(EVALFILE),)
-		@echo Embedding networkfile $(EVALFILE)
-		@cp $(EVALFILE) $(NETBIN)
+		@echo Embedding networkfile $(EMBEDFILE)
+		@cp $(EMBEDFILE) $(NETBIN)
 		@ld -r -b binary $(NETBIN) -o $(NETOBJ)
 endif
+FORCE:
 
 compile: $(NETOBJ)
 	@echo $(MESSAGE)
@@ -262,7 +272,7 @@ clean: objclean profileclean
 
 pgo: arch
 	@$(MAKE) compile EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Creating instrumented build ...'
-	@./$(PROFEXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo "Running bench to generate profiling data... successful!") || (echo "Running bench to generate profiling data... failed! Profiling with native build..." && $(MAKE) profileclean && $(MAKE) compile ARCH=native EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Creating instrumented build ...' && ./$(PROFEXE) -bench 1>/dev/null)   
+	@./$(PROFEXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo "Running bench to generate profiling data... successful!") || (echo "Running bench to generate profiling data... failed! Profiling with native build..." && $(MAKE) profileclean && $(MAKE) compile ARCH=native EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Creating instrumented build ...' && ./$(PROFEXE) -bench 1>/dev/null)
 	@$(PROFMERGE)
 	@$(RM) ./$(PROFEXE)
 	@$(MAKE) compile EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS=$(PGOEXTRALDFLAGS) MESSAGE='Creating optimized build ...'
@@ -284,7 +294,7 @@ release_x86: net
 	@$(MAKE) pgo-rename  ARCH=x86-64-ssse3 PTHREADLIB=$(PTHREADSTATICLIB)
 	@$(MAKE) pgo-rename  ARCH=x86-64-sse3-popcnt PTHREADLIB=$(PTHREADSTATICLIB)
 	@$(MAKE) pgo-rename  ARCH=x86-64 PTHREADLIB=$(PTHREADSTATICLIB)
-	
+
 release_arm64: net
 	@$(MAKE) pgo-rename  ARCH=arm64_neon PTHREADLIB=$(PTHREADSTATICLIB)
 

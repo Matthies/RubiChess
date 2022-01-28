@@ -43,7 +43,7 @@ void initPsqtable()
 #ifdef EVALTUNE
 
 
-static void registertuner(chessposition *pos, eval *e, string name, int index1, int bound1, int index2, int bound2, bool tune)
+static void registerfortuning(chessposition *pos, eval *e, string name, int index1, int bound1, int index2, int bound2, bool tune)
 {
     int i = pos->tps.count;
     pos->tps.ev[i] = e;
@@ -60,7 +60,7 @@ static void registertuner(chessposition *pos, eval *e, string name, int index1, 
 
 #ifdef EVALOPTIONS
 
-static void registertuner(chessposition *pos, eval *e, string name, int index1, int bound1, int index2, int bound2, bool tune)
+static void registerforoptions(eval *e, string name, int index1, int bound1, int index2, int bound2)
 {
     ostringstream osName;
     size_t maxdig1 = bound1 > 0 ? to_string(bound1 - 1).length() : 0;
@@ -87,6 +87,19 @@ static void registertuner(chessposition *pos, eval *e, string name, int index1, 
 #endif
 
 #if defined(EVALTUNE) || defined(EVALOPTIONS)
+
+static void registertuner(chessposition* pos, eval* e, string name, int index1, int bound1, int index2, int bound2, bool tune)
+{
+#ifdef EVALTUNE
+    registerfortuning(pos, e, name, index1, bound1, index2, bound2, tune);
+#endif
+
+#ifdef EVALOPTIONS
+    (void) pos;
+    (void) tune;
+    registerforoptions(e, name, index1, bound1, index2, bound2);
+#endif
+}
 
 const int maxmobility[4] = { 9, 14, 15, 28 }; // indexed by piece - 2
 

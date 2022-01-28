@@ -263,7 +263,7 @@ bool PGNtoFEN(int depth)
                             fenscore[gamepositions] = NOSCORE;
                             fenresult[gamepositions++] = result;
                         }
-                        lastmove = AlgebraicFromShort(match.str(1), &pos);
+                        lastmove = pos.AlgebraicFromShort(match.str(1));
                         if (lastmove == "" || !pos.applyMove(lastmove))
                         {
                             printf("Alarm (game %d): %s\n", gamescount, match.str(1).c_str());
@@ -464,7 +464,7 @@ void chessposition::resetTuner()
 
 void chessposition::getPositionTuneSet(positiontuneset* p, evalparam* e)
 {
-    p->ph = ph;
+    p->ph = getPhase();
     p->sc = sc;
     p->num = 0;
     for (int i = 0; i < tps.count; i++)

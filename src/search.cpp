@@ -84,6 +84,10 @@ struct searchparamset {
     //Probcut
     searchparam SP(probcutmindepth, 5);
     searchparam SP(probcutmargin, 100);
+    // Threat pruning
+    searchparam SP(threatprunemargin, 30);
+    searchparam SP(threatprunemarginimprove, 0);
+
     // No hashmovereduction
     searchparam SP(nohashreductionmindepth, 3);
     // SEE prune
@@ -161,7 +165,7 @@ inline int chessposition::getHistory(uint32_t code)
     int s2m = pc & S2MMASK;
     int from = GETFROM(code);
     int to = GETCORRECTTO(code);
-    int value = history[s2m][from][to];
+    int value = history[s2m][threatSquare][from][to];
     for (int i = 0; i < CMPLIES; i++)
         if (cmptr[ply][i])
             value += cmptr[ply][i][pc * 64 + to];
@@ -178,10 +182,10 @@ inline void chessposition::updateHistory(uint32_t code, int value)
     int to = GETCORRECTTO(code);
     value = max(-HISTORYMAXDEPTH * HISTORYMAXDEPTH, min(HISTORYMAXDEPTH * HISTORYMAXDEPTH, value));
 
-    int delta = value * (1 << HISTORYNEWSHIFT) - history[s2m][from][to] * abs(value) / (1 << HISTORYAGESHIFT);
-    myassert(history[s2m][from][to] + delta < MAXINT16 && history[s2m][from][to] + delta > MININT16, this, 2, history[s2m][from][to], delta);
+    int delta = value * (1 << HISTORYNEWSHIFT) - history[s2m][threatSquare][from][to] * abs(value) / (1 << HISTORYAGESHIFT);
+    myassert(history[s2m][threatSquare][from][to] + delta < MAXINT16 && history[s2m][threatSquare][from][to] + delta > MININT16, this, 2, history[s2m][from][to], delta);
 
-    history[s2m][from][to] += delta;
+    history[s2m][threatSquare][from][to] += delta;
 
     for (int i = 0; i < CMPLIES; i++)
         if (cmptr[ply][i]) {
@@ -458,7 +462,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     bool debugMovePlayed = false;
     int isDebugPosition = tp.isDebugPosition(newhash);
     bool debugTransposition = (isDebugPosition >= 0 && !isDebugPv);
-    SDEBUGDO(isDebugPv, pvaborttype[ply + 1] = PVA_UNKNOWN; pvdepth[ply] = depth; pvalpha[ply] = alpha; pvbeta[ply] = beta; pvmovenum[ply] = 0; pvmovevalue[ply] = 0;);
+    SDEBUGDO(isDebugPv, pvaborttype[ply + 1] = PVA_UNKNOWN; pvdepth[ply] = depth; pvalpha[ply] = alpha; pvbeta[ply] = beta; pvmovenum[ply] = 0; pvmovevalue[ply] = 0; pvadditionalinfo[ply] = "";);
 #endif
 
     getCmptr();
@@ -518,7 +522,15 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     // Check extension
     if (isCheckbb)
+    {
         extendall = 1;
+    }
+    else {
+        if (state & S2MMASK)
+            updateThreats<BLACK>();
+        else
+            updateThreats<WHITE>();
+    }
 
     prepareStack();
 
@@ -534,6 +546,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         tp.addHash(hash, staticeval, staticeval, HASHUNKNOWN, 0, hashmovecode);
     }
     staticevalstack[ply] = staticeval;
+
 
     bool positionImproved = (ply >= 2  && staticevalstack[ply] > staticevalstack[ply - 2]);
 
@@ -559,12 +572,19 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         }
     }
 
+    // Koivisto idea (no opponents) threat pruning
+    if (!PVNode && !isCheckbb && depth == 1 && staticeval > beta + (positionImproved ? sps.threatprunemarginimprove : sps.threatprunemargin) && !threats)
+    {
+        STATISTICSINC(prune_threat);
+        return beta;
+    }
+
     // futility pruning
     bool futility = false;
     if (Pt != NoPrune && depth <= sps.futilitymindepth)
     {
         // reverse futility pruning
-        if (!isCheckbb && staticeval - depth * (sps.futilityreversedepthfactor - sps.futilityreverseimproved * positionImproved) > beta)
+        if (!isCheckbb && POPCOUNT(threats) < 2 && staticeval - depth * (sps.futilityreversedepthfactor - sps.futilityreverseimproved * positionImproved) > beta)
         {
             STATISTICSINC(prune_futility);
             SDEBUGDO(isDebugPv, pvabortscore[ply] = staticeval; pvaborttype[ply] = PVA_REVFUTILITYPRUNED;);
@@ -575,7 +595,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     // Nullmove pruning with verification like SF does it
     int bestknownscore = (hashscore != NOSCORE ? hashscore : staticeval);
-    if (!isCheckbb && depth >= sps.nmmindepth && bestknownscore >= beta && (Pt != MatePrune || beta > -SCORETBWININMAXPLY) && (ply  >= nullmoveply || ply % 2 != nullmoveside) && phcount)
+    if (!isCheckbb && !threats && depth >= sps.nmmindepth && bestknownscore >= beta && (Pt != MatePrune || beta > -SCORETBWININMAXPLY) && (ply  >= nullmoveply || ply % 2 != nullmoveside) && phcount)
     {
         playNullMove();
         int nmreduction = min(depth, sps.nmmredbase + (depth / sps.nmmreddepthratio) + (bestknownscore - beta) / sps.nmmredevalratio + !PVNode * sps.nmmredpvfactor);
@@ -674,7 +694,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (Pt != NoPrune
             && depth < MAXLMPDEPTH
             && !ISTACTICAL(mc)
-            && bestscore >(Pt == Prune ? NOSCORE : -SCORETBWININMAXPLY)
+            && bestscore > -SCORETBWININMAXPLY
             && quietsPlayed > lmptable[positionImproved][depth])
         {
             // Proceed to next moveselector state manually to save some time
@@ -697,7 +717,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (Pt != NoPrune
             && !isCheckbb
             && depth <= sps.seeprunemaxdepth
-            && bestscore > (Pt == Prune ? NOSCORE : -SCORETBWININMAXPLY)
+            && bestscore > -SCORETBWININMAXPLY
             && ms->state >= QUIETSTATE
             && !see(mc, sps.seeprunemarginperdepth * depth * (ISTACTICAL(mc) ? depth : sps.seeprunequietfactor)))
         {
@@ -784,35 +804,32 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         int reduction = 0;
         if (depth >= sps.lmrmindepth)
         {
-            if (!ISTACTICAL(mc))
-            {
-                reduction = reductiontable[positionImproved][depth][min(63, legalMoves + 1)];
+            reduction = reductiontable[positionImproved][depth][min(63, legalMoves + 1)];
 
-                // adjust reduction by stats value
-                reduction -= stats / (sps.lmrstatsratio * 8);
+            // adjust reduction by stats value
+            reduction -= stats / (sps.lmrstatsratio * 8);
 
-                // less reduction at PV nodes
-                reduction -= PVNode;
+            // less reduction at PV nodes
+            reduction -= PVNode;
 
-                // even lesser reduction at PV nodes for all but bad hash moves
-                reduction -= (PVNode && (!tpHit || hashmovecode != (uint16_t)mc || hashscore > alpha));
+            // even lesser reduction at PV nodes for all but bad hash moves
+            reduction -= (PVNode && (!tpHit || hashmovecode != (uint16_t)mc || hashscore > alpha));
 
-                // adjust reduction with opponents move number
-                reduction -= (CurrentMoveNum[ply - 1] >= sps.lmropponentmovecount);
+            // adjust reduction with opponents move number
+            reduction -= (CurrentMoveNum[ply - 1] >= sps.lmropponentmovecount);
 
-                STATISTICSINC(red_pi[positionImproved]);
-                STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, legalMoves + 1)]);
-                STATISTICSADD(red_history, -stats / (sps.lmrstatsratio * 8));
-                STATISTICSADD(red_pv, -(int)PVNode);
-                STATISTICSADD(red_pv, -(int)(PVNode && (!tpHit || hashmovecode != (uint16_t)mc || hashscore > alpha)));
-                STATISTICSDO(int red0 = reduction);
+            STATISTICSINC(red_pi[positionImproved]);
+            STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, legalMoves + 1)]);
+            STATISTICSADD(red_history, -stats / (sps.lmrstatsratio * 8));
+            STATISTICSADD(red_pv, -(int)PVNode);
+            STATISTICSADD(red_pv, -(int)(PVNode && (!tpHit || hashmovecode != (uint16_t)mc || hashscore > alpha)));
+            STATISTICSDO(int red0 = reduction);
 
-                reduction = min(depth, max(0, reduction));
+            reduction = min(depth, max(0, reduction));
 
-                STATISTICSDO(int red1 = reduction);
-                STATISTICSADD(red_correction, red1 - red0);
-                STATISTICSADD(red_total, reduction);
-            }
+            STATISTICSDO(int red1 = reduction);
+            STATISTICSADD(red_correction, red1 - red0);
+            STATISTICSADD(red_total, reduction);
         }
         effectiveDepth = depth + extendall - reduction + extendMove;
 
@@ -820,7 +837,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         STATISTICSINC(moves_played[(bool)ISTACTICAL(mc)]);
 
         CurrentMoveNum[ply] = ++legalMoves;
-        SDEBUGDO(isDebugMove, pvadditionalinfo[ply-1] = ""; );
 
         if (reduction)
         {
@@ -974,7 +990,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
     chessmove debugMove;
     bool isDebugPv = triggerDebug(&debugMove);
     bool debugMovePlayed = false;
-    SDEBUGDO(isDebugPv, pvaborttype[1] = PVA_UNKNOWN; pvdepth[0] = depth; pvalpha[0] = alpha; pvbeta[0] = beta; pvmovenum[ply] = 0;);
+    SDEBUGDO(isDebugPv, pvaborttype[1] = PVA_UNKNOWN; pvdepth[0] = depth; pvalpha[0] = alpha; pvbeta[0] = beta; pvmovenum[0] = 0; pvadditionalinfo[0] = "";);
 #endif
 
     if (!isMultiPV
@@ -993,8 +1009,8 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
             if (score > alpha) bestmovescore[0] = score;
             if (score > NOSCORE)
             {
-                SDEBUGDO(isDebugPv, pvabortscore[ply] = score; if (debugMove.code == fullhashmove) pvaborttype[ply] = PVA_FROMTT; else pvaborttype[ply] = PVA_DIFFERENTFROMTT; );
-                SDEBUGDO(isDebugPv, pvadditionalinfo[ply] = "PV = " + getPv(pvtable[ply]) + "  " + tp.debugGetPv(hash, 0); );
+                SDEBUGDO(isDebugPv, pvabortscore[0] = score; if (debugMove.code == fullhashmove) pvaborttype[0] = PVA_FROMTT; else pvaborttype[0] = PVA_DIFFERENTFROMTT; );
+                SDEBUGDO(isDebugPv, pvadditionalinfo[0] = "PV = " + getPv(pvtable[0]) + "  " + tp.debugGetPv(hash, 0); );
                 return score;
             }
         }
@@ -1002,6 +1018,10 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
 
     if (!tbPosition)
     {
+        if (state & S2MMASK)
+            updateThreats<BLACK>();
+        else
+            updateThreats<WHITE>();
         // Reset move values
         for (int i = 0; i < rootmovelist.length; i++)
         {
@@ -1020,7 +1040,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
             else if (GETCAPTURE(m->code) != BLANK)
                 m->value = (mvv[GETCAPTURE(m->code) >> 1] | lva[GETPIECE(m->code) >> 1]);
             else
-                m->value = history[state & S2MMASK][GETFROM(m->code)][GETCORRECTTO(m->code)];
+                m->value = history[state & S2MMASK][threatSquare][GETFROM(m->code)][GETCORRECTTO(m->code)];
             if (isMultiPV) {
                 if (multipvtable[0][0] == m->code)
                     m->value = PVVAL;
@@ -1063,7 +1083,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
 
 #ifndef SDEBUG
         if (en.moveoutput && !threadindex && (en.pondersearch != PONDERING || depth < MAXDEPTH - 1))
-            cout << "info depth " << depth << " currmove " << m->toString() << " currmovenumber " << i + 1 << "\n";
+            guiCom << "info depth " + to_string(depth) + " currmove " + m->toString() + " currmovenumber " + to_string(i + 1) + "\n";
 #endif
         int reduction = 0;
 
@@ -1076,25 +1096,24 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
         }
 
         int effectiveDepth = depth - reduction;
-        SDEBUGDO(isDebugMove, pvadditionalinfo[ply - 1] = ""; );
 
         if (i > 0)
         {
             // LMR search; test against alpha
             score = -alphabeta<Prune>(-alpha - 1, -alpha, effectiveDepth - 1);
-            SDEBUGDO(isDebugMove, pvadditionalinfo[ply - 1] += "PVS(alpha=" + to_string(alpha) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
+            SDEBUGDO(isDebugMove, pvadditionalinfo[0] += "PVS(alpha=" + to_string(alpha) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
             if (reduction && score > alpha)
             {
                 // research without reduction
                 effectiveDepth += reduction;
                 score = -alphabeta<Prune>(-alpha - 1, -alpha, effectiveDepth - 1);
-                SDEBUGDO(isDebugMove, pvadditionalinfo[ply - 1] += "PVS(alpha=" + to_string(alpha) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
+                SDEBUGDO(isDebugMove, pvadditionalinfo[0] += "PVS(alpha=" + to_string(alpha) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
             }
         }
         // (re)search with full window if necessary
         if (i == 0 || score > alpha) {
             score = (mateprune ? -alphabeta<MatePrune>(-beta, -alpha, effectiveDepth - 1) : -alphabeta<Prune>(-beta, -alpha, effectiveDepth - 1));
-            SDEBUGDO(isDebugMove, pvadditionalinfo[ply - 1] += "PVS(alpha=" + to_string(alpha) + ",beta=" + to_string(beta) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
+            SDEBUGDO(isDebugMove, pvadditionalinfo[0] += "PVS(alpha=" + to_string(alpha) + ",beta=" + to_string(beta) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
         }
 
         SDEBUGDO(isDebugMove, pvabortscore[0] = score;)
@@ -1239,20 +1258,19 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, in
 
     if (!MATEDETECTED(score))
     {
-        cout << "info depth " << thr->depth << " seldepth " << pos->seldepth << " multipv " << mpvIndex + 1 << " time " << msRun
-            << " score cp " << score << " " << boundscore[inWindow] << "nodes " << nodes << " nps " << nps << " tbhits " << en.tbhits
-            << " hashfull " << tp.getUsedinPermill() << " pv " << pvstring << "\n";
+        guiCom << "info depth " + to_string(thr->depth) + " seldepth " + to_string(pos->seldepth) + " multipv " + to_string(mpvIndex + 1) + " time " + to_string(msRun)
+            + " score cp " + to_string(score) + " " + boundscore[inWindow] + "nodes " + to_string(nodes) + " nps " + to_string(nps) + " tbhits " + to_string(en.tbhits)
+            + " hashfull " + to_string(tp.getUsedinPermill()) + " pv " + pvstring + "\n";
     }
     else
     {
         int matein = (score > 0 ? (SCOREWHITEWINS - score + 1) / 2 : (SCOREBLACKWINS - score) / 2);
-        cout << "info depth " << thr->depth << " seldepth " << pos->seldepth << " multipv " << mpvIndex + 1 << " time " << msRun
-            << " score mate " << matein << " " << boundscore[inWindow] << "nodes " << nodes << " nps " << nps << " tbhits " << en.tbhits
-            << " hashfull " << tp.getUsedinPermill() << " pv " << pvstring << "\n";
-
+        guiCom << "info depth " + to_string(thr->depth) + " seldepth " + to_string(pos->seldepth) + " multipv " + to_string(mpvIndex + 1) + " time " + to_string(msRun)
+            + " score mate " + to_string(matein) + " " + boundscore[inWindow] + "nodes " + to_string(nodes) + " nps " + to_string(nps) + " tbhits " + to_string(en.tbhits)
+            + " hashfull " + to_string(tp.getUsedinPermill()) + " pv " + pvstring + "\n";
     }
 
-    SDEBUGDO(true, printf("Raw score: %d\n", score););
+    SDEBUGDO(true, guiCom.log("[SDEBUG] Raw score: " + to_string(score) + "\n"););
     SDEBUGDO(true, pos->pvdebugout(););
 }
 
@@ -1436,7 +1454,7 @@ static void mainSearch(searchthread *thr)
                 // Score decreases; use more thinking time
                 constantRootMoves /= 2;
 #ifdef TDEBUG
-                printf("info string Score descreases... more thinking time at depth %d...\n", thr->depth);
+                guiCom.log("[TDEBUG] Score decreases... more thinking time at depth " + to_string(thr->depth) + "\n");
 #endif
             }
             lastiterationscore = pos->bestmovescore[0];
@@ -1459,11 +1477,22 @@ static void mainSearch(searchthread *thr)
             constantRootMoves = 0;
         }
 
-        // Reset remaining time if depth is finished or new best move is found
         if (isMainThread)
         {
-            if (inWindow == 1 || !constantRootMoves)
+            if (inWindow == 1)
+            {
+                // Mate found; early exit
+                if (!isMultiPV && en.endtime1 && thr->depth > SCOREWHITEWINS - abs(score))
+                    break;
+
+                // Recalculate remaining time for next depth
                 resetEndTime(en.starttime, constantRootMoves);
+            }
+            else if (!constantRootMoves)
+            {
+                // New best move; also recalculate remaining time
+                resetEndTime(en.starttime, constantRootMoves);
+            }
         }
 
         // exit if STOPIMMEDIATELY
@@ -1493,7 +1522,9 @@ static void mainSearch(searchthread *thr)
 #ifdef TDEBUG
         if (!en.bStopCount)
             en.t1stop++;
-        printf("info string stop info last movetime: %4.3f    full-it. / immediate:  %4d /%4d\n", (nowtime - en.starttime) / (double)en.frequency, en.t1stop, en.t2stop);
+        stringstream ss;
+        ss << "[TDEBUG] stop info last movetime: " << setprecision(3) << (nowtime - en.starttime) / (double)en.frequency << "    full-it. / immediate:  " << en.t1stop << " / " << en.t2stop << "\n";
+        guiCom.log(ss.str());
 #endif
         // Output of best move
         searchthread *bestthr = thr;
@@ -1543,8 +1574,7 @@ static void mainSearch(searchthread *thr)
         }
 
         strBestmove = moveToString(pos->bestmove);
-        cout << "bestmove " << strBestmove;
-
+        string guiStr = "bestmove " + strBestmove;
         if (!pos->pondermove)
         {
             // Get the ponder move from TT
@@ -1557,9 +1587,9 @@ static void mainSearch(searchthread *thr)
         if (pos->pondermove)
         {
             strPonder = moveToString(pos->pondermove);
-            cout << " ponder " << strPonder;
+            guiStr += " ponder " + strPonder;
         }
-        cout << "\n";
+        guiCom << guiStr + "\n";
         en.stopLevel = ENGINESTOPIMMEDIATELY;
 
         // Save pondermove in rootposition for time management of following search
@@ -1580,7 +1610,7 @@ static void mainSearch(searchthread *thr)
 void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
 {
     int timeinc = (en.isWhite ? en.winc : en.binc);
-    int timetouse = max(timeinc, (en.isWhite ? en.wtime : en.btime));
+    int timetouse = (en.isWhite ? en.wtime : en.btime);
     int overhead = en.moveOverhead + 8 * en.Threads;
     int constance = constantRootMoves * 2 + en.ponderhit * 4;
 
@@ -1595,9 +1625,10 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
         int movevariation = min(32, en.movestogo) * 3 / 32;
         int f1 = max(10 - movevariation, 22 - movevariation - constance);
         int f2 = max(19, 31 - constance);
+        int timeforallmoves = timetouse + en.movestogo * timeinc;
         if (complete)
-            en.endtime1 = startTime + timetouse * en.frequency * f1 / (en.movestogo + 1) / 10000;
-        en.endtime2 = startTime + min(max(0, timetouse - overhead * en.movestogo), f2 * timetouse / (en.movestogo + 1) / 10) * en.frequency / 1000;
+            en.endtime1 = startTime + timeforallmoves * en.frequency * f1 / (en.movestogo + 1) / 10000;
+        en.endtime2 = startTime + min(max(0, timetouse - overhead), f2 * timeforallmoves / (en.movestogo + 1) / 10) * en.frequency / 1000;
     }
     else if (timetouse) {
         if (timeinc)
@@ -1609,6 +1640,7 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
             int ph = (en.sthread[0].pos.getPhase() + min(255, en.sthread[0].pos.fullmovescounter * 6)) / 2;
             int f1 = max(5, 17 - constance);
             int f2 = max(15, 27 - constance);
+            timetouse = max(timeinc, timetouse); // workaround for Arena bug
             if (complete)
                 en.endtime1 = startTime + max(timeinc, f1 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
             en.endtime2 = startTime + min(max(0, timetouse - overhead), max(timeinc, f2 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
@@ -1634,8 +1666,11 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
     }
 
 #ifdef TDEBUG
-    printf("info string Time for this move: %4.3f  /  %4.3f\n", (en.endtime1 - en.starttime) / (double)en.frequency, (en.endtime2 - en.starttime) / (double)en.frequency);
-    if (timeinc) printf("info string Timefactor (use/inc): %d\n", timetouse / timeinc);
+    stringstream ss;
+    guiCom.log("[TDEBUG] Time from UCI: time=" + to_string(timetouse) + "  inc=" + to_string(timeinc) + "  overhead=" + to_string(overhead) + "  constance=" + to_string(constance) + "  ph=" + to_string(ph) + "\n");
+    ss << "[TDEBUG] Time for this move: " << setprecision(3) << (en.endtime1 - en.starttime) / (double)en.frequency << " / " << (en.endtime2 - en.starttime) / (double)en.frequency << "\n";
+    guiCom.log(ss.str());
+    if (timeinc) guiCom.log("[TDEBUG] Timefactor (use/inc): " + to_string(timetouse / timeinc) + "\n");
 #endif
 }
 
@@ -1654,7 +1689,7 @@ void searchStart()
     uint32_t bm = pbook.GetMove(&en.sthread[0].pos);
     if (bm)
     {
-        cout << "bestmove " << moveToString(bm) << "\n";
+        guiCom << "bestmove " + moveToString(bm) + "\n";
         return;
     }
 
@@ -1762,8 +1797,9 @@ void search_statistics()
     f1 = 100.0 * statistics.prune_nm / (double)n;
     f2 = 100.0 * statistics.prune_probcut / (double)n;
     f3 = 100.0 * statistics.prune_multicut / (double)n;
-    f4 = 100.0 * (statistics.prune_futility + statistics.prune_nm + statistics.prune_probcut + statistics.prune_multicut) / (double)n;
-    printf("(ST) Node pruning            %%Futility: %5.2f   %%NullMove: %5.2f   %%ProbeC.: %5.2f   %%MultiC.: %7.5f Total:  %5.2f\n", f0, f1, f2, f3, f4);
+    f4 = 100.0 * statistics.prune_threat / (double)n;
+    f5 = 100.0 * (statistics.prune_futility + statistics.prune_nm + statistics.prune_probcut + statistics.prune_multicut + statistics.prune_threat) / (double)n;
+    printf("(ST) Node pruning            %%Futility: %5.2f   %%NullMove: %5.2f   %%ProbeC.: %5.2f   %%MultiC.: %7.5f   %%Threat.: %7.5f Total:  %5.2f\n", f0, f1, f2, f3, f4, f5);
 
     // move statistics
     i1 = statistics.moves_n[0]; // quiet moves

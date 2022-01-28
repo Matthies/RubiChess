@@ -17,12 +17,12 @@
 
 #pragma once
 
-#define VERNUM 2.3
+#define VERNUM 2022
 //#define VERSTABLE
 
 // Disable this to compile without NNUE evaluation
 #define NNUE
-#define NNUEDEFAULT nn-fb50f1a2b1-20210705.nnue
+#define NNUEDEFAULT nn-26119c6435-20220109.nnue
 
 // Enable to get statistical values about various search features
 //#define STATISTICS
@@ -36,7 +36,7 @@
 // Enable this for texel tuning
 //#define EVALTUNE
 
-// Enable this to expose the evaluation and NNUE parameters as UCI options; either this or EVALTUNE can be enabled
+// Enable this to expose the evaluation and NNUE parameters as UCI options
 //#define EVALOPTIONS
 
 // Enable this to expose the search parameters as UCI options
@@ -48,18 +48,11 @@
 // Enable this to enable NNUE training code
 //#define NNUELEARN
 
+// Enable to log every input and output of the engine into a file
+#define UCILOGGING
+
 
 #ifdef FINDMEMORYLEAKS
-#ifdef _DEBUG
-#define DEBUG_CLIENTBLOCK   new( _CLIENT_BLOCK, __FILE__, __LINE__)
-#else
-#define DEBUG_CLIENTBLOCK
-#endif // _DEBUG
-
-#ifdef _DEBUG
-#define new DEBUG_CLIENTBLOCK
-#endif
-
 #define _CRTDBG_MAP_ALLOC
 #endif
 
@@ -91,12 +84,8 @@
 #include <set>
 
 #define USE_SIMD
-#if defined(USE_AVX2)
+#if defined(USE_SSE2)
 #include <immintrin.h>
-#elif defined(USE_SSSE3)
-#include <tmmintrin.h>
-#elif defined(USE_SSE2)
-#include <emmintrin.h>
 #elif defined(USE_NEON)
 #include <arm_neon.h>
 #else
@@ -107,7 +96,6 @@
 
 #include <conio.h>
 #include <AclAPI.h>
-#include <intrin.h>
 #include <Windows.h>
 
 #ifdef STACKDEBUG
@@ -662,7 +650,7 @@ typedef struct ranctx { U64 a; U64 b; U64 c; U64 d; } ranctx;
 
 void raninit(ranctx* x, U64 seed);
 U64 ranval(ranctx* x);
-string frcStartFen(int num = -1);
+string frcStartFen(int numWhite = -1, int numBlack = -1);
 U64 calc_key_from_pcs(int *pcs, int mirror);
 void getPcsFromStr(const char* str, int *pcs);
 void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am);
@@ -852,6 +840,26 @@ struct PackedSfenValue
     uint16_t gamePly;
     int8_t game_result;
     uint8_t padding;
+};
+
+struct Binpack
+{
+    char *base;
+    char **data = nullptr;
+    char *flushAt = nullptr;
+    uint8_t consumedBits = 0;
+    int16_t score;
+    int16_t lastScore;
+    uint16_t move;      // binpack encoded move
+    uint16_t gamePly;
+    int8_t gameResult;
+    uint16_t compressedmoves = 0;
+    char *compmvsptr;
+    uint32_t fullmove;
+    uint32_t lastFullmove;
+    chessposition *inpos;
+    chessposition *outpos;
+    bool debug() { return false; /*size_t offset = *data - base; return numChunks == 3 && offset > 0x170 && offset < 0x200; */ }
 };
 
 void gensfen(vector<string> args);
@@ -1224,6 +1232,7 @@ struct chessmovestack
     int lastnullmove;
     uint32_t movecode;
     U64 kingPinned;
+    unsigned int threatSquare;
 };
 
 #define MAXMOVELISTLENGTH 256   // for lists of possible pseudo-legal moves
@@ -1305,6 +1314,9 @@ public:
 extern U64 pawn_attacks_to[64][2];
 extern U64 knight_attacks[64];
 extern U64 king_attacks[64];
+extern U64 pawn_moves_to[64][2];
+extern U64 pawn_moves_to_double[64][2];
+extern U64 epthelper[64];
 
 struct SMagic {
     U64 mask;  // to mask relevant squares of both lines (no outer squares)
@@ -1365,6 +1377,7 @@ public:
     U64 piece00[14];
     U64 attackedBy2[2];
     U64 attackedBy[2][7];
+    U64 threats;
 
     // The following block is mapped/copied to the movestack, so its important to keep the order
     int state;
@@ -1379,6 +1392,7 @@ public:
     int lastnullmove;
     uint32_t movecode;
     U64 kingPinned;
+    unsigned int threatSquare;
 
     uint8_t mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
     chessmovestack prerootmovestack[PREROOTMOVES];   // moves before root since last halfmovescounter reset
@@ -1432,18 +1446,10 @@ public:
 #ifdef SDEBUG
     U64 debughash = 0;
     uint32_t pvmovecode[MAXDEPTH];
-    int pvmovevalue[MAXDEPTH];
-    int pvalpha[MAXDEPTH];
-    int pvbeta[MAXDEPTH];
-    int pvdepth[MAXDEPTH];
-    int pvmovenum[MAXDEPTH];
-    PvAbortType pvaborttype[MAXDEPTH];
-    int pvabortscore[MAXDEPTH];
-    string pvadditionalinfo[MAXDEPTH];
 #endif
 
     // The following part of the chessposition object isn't copied from rootposition object to the threads positions
-    int16_t history[2][64][64];
+    int16_t history[2][65][64][64];
     int16_t counterhistory[14][64][14 * 64];
     int16_t tacticalhst[7][64][6];
     uint32_t countermove[14][64];
@@ -1462,13 +1468,23 @@ public:
     alignas(64) MoveSelector moveSelector[MAXDEPTH];
     MoveSelector extensionMoveSelector[MAXDEPTH];
     int16_t* cmptr[MAXDEPTH][CMPLIES];
+#ifdef SDEBUG
+    int pvmovevalue[MAXDEPTH];
+    int pvalpha[MAXDEPTH];
+    int pvbeta[MAXDEPTH];
+    int pvdepth[MAXDEPTH];
+    int pvmovenum[MAXDEPTH];
+    PvAbortType pvaborttype[MAXDEPTH];
+    int pvabortscore[MAXDEPTH];
+    string pvadditionalinfo[MAXDEPTH];
+#endif
     bool w2m();
     void BitboardSet(int index, PieceCode p);
     void BitboardClear(int index, PieceCode p);
     void BitboardMove(int from, int to, PieceCode p);
     void BitboardPrint(U64 b);
     int getFromFen(const char* sFen);
-    void initCastleRights(int rookfiles[], int kingfile);
+    void initCastleRights(int rookfiles[2][2], int kingfile[2]);
     string toFen();
     uint32_t applyMove(string s, bool resetMstop = true);
     void print(ostream* os = &cout);
@@ -1491,6 +1507,7 @@ public:
     void unplayNullMove();
     U64 nextHash(uint32_t mc);
     template <int Me> void updatePins();
+    template <int Me> void updateThreats();
     template <int Me> bool sliderAttacked(int index, U64 occ);
     bool moveGivesCheck(uint32_t c);  // simple and imperfect as it doesn't handle special moves and cases (mainly to avoid pruning of important moves)
     bool moveIsPseudoLegal(uint32_t c);     // test if move is possible in current position
@@ -1548,6 +1565,13 @@ public:
 #ifdef NNUELEARN
     void toSfen(PackedSfen *sfen);
     int getFromSfen(PackedSfen* sfen);
+    void getPosFromBinpack(Binpack* bp);
+    int getNextFromBinpack(Binpack *bp);
+    void posToBinpack(Binpack* bp);
+    void nextToBinpack(Binpack* bp);
+    void copyToLight(chessposition *target);     //fast copy for follow up detection
+    bool followsTo(chessposition *src, uint32_t mc);    // check if this position is reached by src with move mc
+    void fixEpt();
 #endif
 #endif
 };
@@ -1556,7 +1580,68 @@ public:
 // uci stuff
 //
 
-enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, WAIT, EVAL, PERFT, TUNE, GENSFEN, CONVERT, LEARN, EXPORT };
+#ifdef UCILOGGING
+extern void uciSetLogFile();
+#endif
+class GuiCommunication {
+private:
+    ostream& myos;
+#ifdef UCILOGGING
+    ofstream logstream;
+    U64 logStartTime = 0ULL;
+    U64 freq;
+    string timestamp() {
+        U64 timeDiff = (getTime() - logStartTime) * 1000 / freq;
+        U64 ms = timeDiff % 1000;
+        U64 s = (timeDiff / 1000);
+        stringstream ts;
+        ts << setfill(' ') << setw(6) << s << "." << setw(3) << setfill('0') << ms;
+        return ts.str();
+    }
+#endif
+public:
+    GuiCommunication(ostream& os) : myos(os)
+    {
+    }
+    template <typename T>
+    GuiCommunication& operator<<(const T& thing) {
+        myos << thing;
+#ifdef UCILOGGING
+        if (freq)
+            logstream << timestamp() << " < " << thing;
+#endif
+        return *this;
+    }
+#ifdef UCILOGGING
+    void fromGui(string input)
+    {
+        if (freq)
+            logstream << timestamp() << " > " << input << "\n";
+    }
+    bool openLog(string filename, U64 fr) {
+        freq = 0;
+        if (logstream)
+            logstream.close();
+        if (filename == "")
+            return true;
+        logstream.open(filename, ios::out);
+        if (!logstream)
+            return false;
+        logStartTime = getTime();
+        freq = fr;
+        return true;
+    }
+    void log(string input) {
+        if (freq)
+            logstream << timestamp() << " < " << input;
+    }
+#endif
+
+
+};
+
+
+enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL, PERFT, TUNE, GENSFEN, CONVERT, LEARN, EXPORT };
 
 const map<string, GuiToken> GuiCommandMap = {
 #ifdef EVALOPTIONS
@@ -1689,7 +1774,7 @@ class engine
 public:
     engine(compilerinfo *c);
     ~engine();
-    const char* author = "Andreas Matthies";
+    const string author = "Andreas Matthies";
     bool isWhite;
     U64 tbhits;
     U64 starttime;
@@ -1739,6 +1824,9 @@ public:
     int t2stop = 0;     // immediate stop
     bool bStopCount;
 #endif
+#ifdef UCILOGGING
+    string LogFile;
+#endif
 #ifdef NNUE
     bool usennue;
     string NnueNetpath; // UCI option, can be <Default>
@@ -1755,11 +1843,12 @@ public:
 
     string NnueSha256FromName() {
         string path = GetNnueNetPath();
-        size_t s2 = path.rfind('-');
-        size_t s1 = path.rfind('-', s2 - 1) + 1;
-        if (s1 && s2 && s2 - s1 == 10)
+        size_t s1, s2;
+        if ((s2 = path.rfind('-')) != string::npos
+            && (s1 = path.rfind('-', s2 - 1)) != string::npos
+            && s2 - s1 == 11)
             // Most probably a Rubi net; shorten name to 5 digits
-            return path.substr(s1, 5);
+            return path.substr(s1 + 1, 5);
         else
             return "<unknown>";
     }
@@ -1776,7 +1865,6 @@ public:
         return string(ENGINEVER) + sNnue +  (sbinary != "" ? " (" + sbinary + ")" : "");
     };
     GuiToken parse(vector<string>*, string ss);
-    void send(const char* format, ...);
     void communicate(string inputstring);
     void allocThreads();
     U64 getTotalNodes();
@@ -1809,6 +1897,7 @@ public:
 
 extern engine en;
 extern compilerinfo cinfo;
+extern GuiCommunication guiCom;
 
 #ifdef SDEBUG
 #define SDEBUGDO(c, s) if (c) {s}
@@ -1878,6 +1967,7 @@ struct statistic {
     U64 prune_nm;               // nodes pruned by null move;
     U64 prune_probcut;          // nodes pruned by PobCut
     U64 prune_multicut;         // nodes pruned by Multicut (detected by failed singular test)
+    U64 prune_threat;           // nodes pruned by (no opponents) threat
 
     U64 moves_loop_n;           // counts how often the moves loop is entered
     U64 moves_n[2];             // all moves in alphabeta move loop split into quites ans tactical
