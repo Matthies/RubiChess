@@ -1641,7 +1641,7 @@ public:
 };
 
 
-enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, QUIT, EVAL, PERFT, TUNE, GENSFEN, CONVERT, LEARN, EXPORT };
+enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, WAIT, PONDERHIT, QUIT, EVAL, PERFT, TUNE, GENSFEN, CONVERT, LEARN, EXPORT };
 
 const map<string, GuiToken> GuiCommandMap = {
 #ifdef EVALOPTIONS
@@ -1666,6 +1666,7 @@ const map<string, GuiToken> GuiCommandMap = {
     { "stop", STOP },
     { "ponderhit", PONDERHIT },
     { "quit", QUIT },
+    { "wait", WAIT },
     { "eval", EVAL },
     { "perft", PERFT }
 };

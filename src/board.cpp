@@ -474,7 +474,6 @@ int chessposition::getFromFen(const char* sFen)
     materialhash = zb.getMaterialHash(this);
     lastnullmove = -1;
     ply = 0;
-    useTb = min(TBlargest, en.SyzygyProbeLimit);
     return 0;
 }
 
@@ -2578,9 +2577,20 @@ static void uciClearHash()
     tp.clean();
 }
 
+static void uciSetSyzygyParam()
+{
+    // Changing Syzygy related parameters may affect rootmoves filtering
+    en.rootposition.useTb = min(TBlargest, en.SyzygyProbeLimit);
+    en.rootposition.getRootMoves();
+    en.rootposition.tbFilterRootMoves();
+    en.prepareThreads();
+}
+
 static void uciSetSyzygyPath()
 {
     init_tablebases((char*)en.SyzygyPath.c_str());
+    if (en.SyzygyPath != "<empty>")
+        uciSetSyzygyParam();
 }
 
 static void uciSetBookFile()
@@ -2723,8 +2733,8 @@ void engine::registerOptions()
     ucioptions.Register(&MultiPV, "MultiPV", ucispin, "1", 1, MAXMULTIPV, nullptr);
     ucioptions.Register(&ponder, "Ponder", ucicheck, "false");
     ucioptions.Register(&SyzygyPath, "SyzygyPath", ucistring, "<empty>", 0, 0, uciSetSyzygyPath);
-    ucioptions.Register(&Syzygy50MoveRule, "Syzygy50MoveRule", ucicheck, "true");
-    ucioptions.Register(&SyzygyProbeLimit, "SyzygyProbeLimit", ucispin, "7", 0, 7, nullptr);
+    ucioptions.Register(&Syzygy50MoveRule, "Syzygy50MoveRule", ucicheck, "true", 0, 0, uciSetSyzygyParam);
+    ucioptions.Register(&SyzygyProbeLimit, "SyzygyProbeLimit", ucispin, "7", 0, 7, uciSetSyzygyParam);
     ucioptions.Register(&BookFile, "BookFile", ucistring, "<empty>", 0, 0, uciSetBookFile);
     ucioptions.Register(&BookBestMove, "BookBestMove", ucicheck, "true");
     ucioptions.Register(&BookDepth, "BookDepth", ucispin, "255", 0, 255);
@@ -2780,6 +2790,7 @@ void engine::prepareThreads()
         pos->nodes = 0;
         pos->nullmoveply = 0;
         pos->nullmoveside = 0;
+
 #ifdef NNUE
         pos->accumulator[0].computationState[WHITE] = false;
         pos->accumulator[0].computationState[BLACK] = false;
@@ -2823,7 +2834,7 @@ U64 engine::getTotalNodes()
 
 void engine::communicate(string inputstring)
 {
-    string fen = STARTFEN;
+    string fen;
     vector<string> moves;
     vector<string> commandargs;
     GuiToken command = UNKNOWN;
@@ -2832,7 +2843,7 @@ void engine::communicate(string inputstring)
     string sName, sValue;
     bool bMoves;
     bool pendingisready = false;
-    bool pendingposition = (inputstring == "");
+    bool pendingposition = false;
     do
     {
         if (stopLevel >= ENGINESTOPIMMEDIATELY)
@@ -2873,6 +2884,7 @@ void engine::communicate(string inputstring)
 
                 rootposition.lastnullmove = -rootposition.ply - 1;
                 rootposition.ply = 0;
+                rootposition.useTb = min(TBlargest, en.SyzygyProbeLimit);
                 rootposition.getRootMoves();
                 rootposition.tbFilterRootMoves();
                 prepareThreads();
@@ -3110,11 +3122,9 @@ void engine::communicate(string inputstring)
                 }
                 isWhite = (sthread[0].pos.w2m());
                 searchStart();
-                if (inputstring != "")
-                {
-                    // bench mode; wait for end of search
-                    searchWaitStop(false);
-                }
+                break;
+            case WAIT:
+                searchWaitStop(false);
                 break;
             case PONDERHIT:
                 pondersearch = HITPONDER;
@@ -3160,7 +3170,7 @@ void engine::communicate(string inputstring)
             }
         }
     } while (command != QUIT && (inputstring == "" || pendingposition));
-    if (inputstring == "")
+    if (command == QUIT)
         searchWaitStop();
 }
 

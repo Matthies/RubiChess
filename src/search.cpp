@@ -1,4 +1,4 @@
-﻿/*
+/*
   RubiChess is a UCI chess playing engine by Andreas Matthies.
 
   RubiChess is free software: you can redistribute it and/or modify

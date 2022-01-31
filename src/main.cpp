@@ -308,7 +308,7 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, int s
 {
     benchmarkstruct benchmark[] =
     {
-        {   
+        {
             "Startposition",
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             14,
@@ -332,7 +332,7 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, int s
             14,
             0, 0, 0, 0, "", 0
         },
-        { 
+        {
             "Wacnew 212",
             "rn1qr2Q/pbppk1p1/1p2pb2/4N3/3P4/2N5/PPP3PP/R4RK1 w - - 0 1",
             14,
@@ -344,7 +344,7 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, int s
             14,
             0, 0, 0, 0, "", 0
         },
-         
+
         {
             "Arasan19 83",
             "6k1/p4qp1/1p3r1p/2pPp1p1/1PP1PnP1/2P1KR1P/1B6/7Q b - - 0 1 ",
@@ -463,8 +463,9 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, int s
         else if (dp)
             en.communicate("go depth " + to_string(dp));
         else
-            en.communicate("go infinite");
+            cout << "No depth and no movetime. Skipping.\n";
 
+        searchWaitStop(false);
         endtime = getTime();
         bm->time = endtime - starttime;
         bm->nodes = en.getTotalNodes();
@@ -487,7 +488,7 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, int s
             bFollowup = !bFollowup;
         if (bFollowup)
             i--;
-        
+
         bmlist.push_back(*bm);
     }
 
@@ -546,7 +547,6 @@ static void readfromengine(HANDLE pipe, enginestate *es)
                             try
                             {
                                 es->score = int(stof(scoretoken[1]) * 100);
-                                //printf("%d\n", es->score);
                             }
                             catch (const invalid_argument&) {}
                         }
@@ -555,7 +555,6 @@ static void readfromengine(HANDLE pipe, enginestate *es)
                 }
                 else
                 {
-
                     const char *bestmovestr = strstr(s, "bestmove ");
                     const char *pv = strstr(s, " pv ");
                     const char *score = strstr(s, " cp ");
@@ -911,6 +910,7 @@ int main(int argc, char* argv[])
         char type;
         const char *defaultval;
     } allowedargs[] = {
+        { "-uci", "Execute UCI command", NULL, 4, NULL },
         { "-verbose", "Show the parameterlist and actuel values.", &verbose, 0, NULL },
         { "-bench", "Do benchmark test for some positions.", &benchmark, 0, NULL },
         { "bench", "Do benchmark with OpenBench compatible output.", &openbench, 0, NULL },
@@ -941,13 +941,13 @@ int main(int argc, char* argv[])
     };
 
 #ifdef FINDMEMORYLEAKS
-    // Get current flag  
+    // Get current flag
     int tmpFlag = _CrtSetDbgFlag(_CRTDBG_REPORT_FLAG);
 
-    // Turn on leak-checking bit.  
+    // Turn on leak-checking bit.
     tmpFlag |= _CRTDBG_LEAK_CHECK_DF;
 
-    // Set flag to the new value.  
+    // Set flag to the new value.
     _CrtSetDbgFlag(tmpFlag);
 #endif
 
@@ -982,6 +982,8 @@ int main(int argc, char* argv[])
 
     cout.setf(ios_base::unitbuf);
 
+    vector<string> ucicmds;
+    ucicmds.push_back("position startpos");
     int paramindex = 1;
     for (int j = 0; allowedargs[j].cmd; j++)
     {
@@ -1027,6 +1029,18 @@ int main(int argc, char* argv[])
             else {
                 paramindex = 1;
             }
+            break;
+        case 4:
+            if (val > 0 && val < argc - 1)
+            {
+                while (++val < argc && argv[val][0] != '-')
+                    ucicmds.push_back(argv[val]);
+            }
+            else {
+                ucicmds.push_back("");
+            }
+            paramindex = 1;
+            break;
         }
     }
 
@@ -1071,7 +1085,8 @@ int main(int argc, char* argv[])
 #endif
     else {
         // usual uci mode
-        en.communicate("");
+        for (auto it = ucicmds.begin(); it != ucicmds.end(); it++)
+            en.communicate(*it);
     }
 
 #ifdef EVALTUNE
