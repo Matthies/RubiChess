@@ -1249,7 +1249,7 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, in
     if (inWindow != 1 && (msRun - en.lastReport) < 200)
         return;
 #endif
-    const string boundscore[] = { "upperbound ", " ", "lowerbound " };
+    const string boundscore[] = { "upperbound ", "", "lowerbound " };
     chessposition *pos = &thr->pos;
     en.lastReport = msRun;
     string pvstring = pos->getPv(mpvIndex ? pos->multipvtable[mpvIndex] : pos->lastpv);
