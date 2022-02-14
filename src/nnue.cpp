@@ -1029,6 +1029,12 @@ void NnueWriteNet(vector<string> args)
     if (args.size())
         NnueNetPath = args[0];
 
+    int rescale = 0;
+    if (args.size() > 2 && args[1] == "rescale")
+    {
+        rescale = stoi(args[2]);
+    }
+
     ofstream os;
     os.open(NnueNetPath, ios::binary);
     if (!os && en.ExecPath != "")
@@ -1037,6 +1043,19 @@ void NnueWriteNet(vector<string> args)
     if (!os) {
         cout << "Cannot write file " << NnueNetPath << "\n";
         return;
+    }
+
+    if (rescale)
+    {
+        NnueOut->bias[0] = round(NnueOut->bias[0] * rescale / NnueValueScale);
+        for (int i = 0; i < 32; i++)
+        {
+            int idx = i;
+#if defined(USE_AVX2)
+            idx = shuffleWeightIndex(idx, 32, true);
+#endif
+            NnueOut->weight[idx] = round(NnueOut->weight[idx] * rescale / NnueValueScale);
+        }
     }
 
     uint32_t fthash = NnueFt->GetHash();
