@@ -17,7 +17,7 @@
 
 #pragma once
 
-#define VERNUM 2022
+#define VERNUMLEGACY 2022
 //#define VERSTABLE
 
 // Disable this to compile without NNUE evaluation
@@ -171,10 +171,14 @@ typedef unsigned int PieceType;
 #define COMPILER "unknown compiler"
 #endif
 
+#ifndef GITVER
 #ifndef VERSTABLE
-#define VERSION TOSTRING(VERNUM) "-dev"
+#define VERSION TOSTRING(VERNUMLEGACY) "-dev"
 #else
-#define VERSION TOSTRING(VERNUM) " "
+#define VERSION TOSTRING(VERNUMLEGACY) " "
+#endif
+#else
+#define VERSION GITVER
 #endif
 #define ENGINEVER "RubiChess " VERSION
 #ifdef GITID
@@ -1856,13 +1860,17 @@ public:
 #ifdef _WIN32
     bool allowlargepages;
 #endif
-    string name() {
+    string name(bool full = true) {
         string sbinary = compinfo->PrintCpuFeatures(compinfo->binarySupports, true);
+        sbinary = (sbinary != "" ? " (" + sbinary + ")" : "");
+        if (!full)
+            return string(ENGINEVER) + sbinary;
+
         string sNnue = "";
 #ifdef NNUE
         if (NnueReady) sNnue = " NN-" + NnueSha256FromName();
 #endif
-        return string(ENGINEVER) + sNnue +  (sbinary != "" ? " (" + sbinary + ")" : "");
+        return string(ENGINEVER) + sNnue +  sbinary;
     };
     GuiToken parse(vector<string>*, string ss);
     void communicate(string inputstring);

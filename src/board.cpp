@@ -2949,7 +2949,7 @@ void engine::communicate(string inputstring)
                 }
                 break;
             case UCI:
-                guiCom << "id name " + name() + "\n";
+                guiCom << "id name " + name(false) + "\n";
                 guiCom << "id author " + author + "\n";
                 ucioptions.Print();
                 guiCom << "uciok\n";
