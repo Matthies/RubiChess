@@ -33,7 +33,13 @@ SDEDEFAULT="C:\_portable\sde-external-8.63.0-2021-01-18-win\sde.exe"
 !IF !DEFINED(SDE)
 SDE=$(SDEDEFAULT)
 !ENDIF
-
+GETDEFINE=
+!IF "$(GITVER)"!=""
+GITDEFINE = -D GITVER=\"$(GITVER)\"
+!ENDIF
+!IF "$(GITID)"!=""
+GITDEFINE = $(GITDEFINE) -D GITID=\"$(GITID)\"
+!ENDIF
 
 $(RELDIR):
 	mkdir $(RELDIR)
@@ -146,7 +152,7 @@ build: cpuflags
 	@nmake -c -f Makefile.clang profile-clean ARCH=$(ARCH)
 
 compile: $(RELDIR)
-	@$(CXX) $(CXXFLAGS) $(ARCHFLAGS) $(SOURCE) $(PROFILEFLAGS)
+	@$(CXX) $(CXXFLAGS) $(ARCHFLAGS) $(SOURCE) $(PROFILEFLAGS) $(GITDEFINE)
 !IFDEF PROFLIB
 	@$(LD) $(LDFLAGS) /OUT:$(PROFEXE).exe $(OBJ) "$(PROFLIB)"
 !ELSE
@@ -168,7 +174,7 @@ profile-build: cpuflags
 	@nmake -c -f Makefile.clang profile-clean ARCH=$(ARCH)
 
 pgo-rename: printarch pgo
-	@move $(RELDIR)\$(EXE).exe $(RELDIR)\$(EXE)-$(VERSION)_$(ARCH).exe
+	@move $(RELDIR)\$(EXE).exe $(RELDIR)\$(EXE)-$(VERSION)_$(ARCH).exe 1>nul
 	@echo Successfully created $(EXE)-$(VERSION)_$(ARCH)
 
 build-rename: build
@@ -194,16 +200,13 @@ releaseversion:
 release:
 	@echo ::Batch to get version number> $(VERSIONCMD)
 	@echo @echo off>> $(VERSIONCMD)
-	@echo FOR /F "tokens=3" %%%%A IN ('find "define VERNUMLEGACY " RubiChess.h') DO ( set MAJORVERSION=%%%%A)>> $(VERSIONCMD)
-	@echo findstr /r /c:"^.define VERSTABLE" RubiChess.h 2^>nul>> $(VERSIONCMD)
-	@echo if errorlevel 1 (>> $(VERSIONCMD)
-	@echo   set MINORVERSION=-dev>> $(VERSIONCMD)
-	@echo   FOR /F "tokens=2" %%%%A IN ('cmd /c "git show --name-only --abbrev-commit | findstr /r /c:"^commit"" ') DO ( set GITID=-%%%%A) >> $(VERSIONCMD)
-	@echo ) else (>> $(VERSIONCMD)
-	@echo   set MINORVERSION=>> $(VERSIONCMD)
-	@echo   set GITID=>> $(VERSIONCMD)
-	@echo ) >> $(VERSIONCMD)
-	@echo set VERSION=%%MAJORVERSION%%%%MINORVERSION%%%%GITID%%>> $(VERSIONCMD)
+	@echo set GITVER=>> $(VERSIONCMD)
+	@echo FOR /F "tokens=3" %%%%A IN ('find "define VERNUMLEGACY " RubiChess.h') DO ( set VERSION=%%%%A)>> $(VERSIONCMD)
+	@echo FOR /F "tokens=2" %%%%A IN ('cmd /c "git show --name-only --abbrev-commit --date=format:%%%%Y%%%%m%%%%d | findstr /I /r /c:"^Date"" ') DO ( set GITVER=%%%%A) >> $(VERSIONCMD)
+	@echo FOR /F "tokens=2" %%%%A IN ('cmd /c "git show --name-only --abbrev-commit | findstr /r /c:"^commit"" ') DO ( set GITID=%%%%A) >> $(VERSIONCMD)
+	@echo if not [%%GITVER%%]==[] (>> $(VERSIONCMD)
+	@echo   set VERSION=%%GITVER%%>> $(VERSIONCMD)
+	@echo )>> $(VERSIONCMD)
 	@echo nmake -f Makefile.clang releaseversion ARCH=$(ARCH) >> $(VERSIONCMD)
 	@$(VERSIONCMD)
 	@del $(VERSIONCMD)
