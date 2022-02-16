@@ -205,14 +205,12 @@ endif
 	NETOBJ = net.o
 endif
 
-MAJORVERSION = $(shell grep "\#define VERNUM " RubiChess.h | awk '{print $$3}')
-ifeq ($(shell grep "^\#define VERSTABLE" RubiChess.h),)
-	ifneq ($(GITID),)
-		MINORVERSION = -dev-$(GITID)
-	else
-		MINORVERSION=-dev
-	endif
+ifeq ($(GITVER),)
+	MAJORVERSION = $(shell grep "\#define VERNUMLEGACY " RubiChess.h | awk '{print $$3}')
+else
+	MAJORVERSION = $(GITVER)
 endif
+MINORVERSION = ""
 VERSION=$(MAJORVERSION)$(MINORVERSION)
 
 .PHONY: clean profile-build gcc-profile-make clang-profile-make net arch compile pgo profile-build pgo-rename release_x86 release_arm32 release_arm64 release

@@ -194,7 +194,7 @@ releaseversion:
 release:
 	@echo ::Batch to get version number> $(VERSIONCMD)
 	@echo @echo off>> $(VERSIONCMD)
-	@echo FOR /F "tokens=3" %%%%A IN ('find "define VERNUM " RubiChess.h') DO ( set MAJORVERSION=%%%%A)>> $(VERSIONCMD)
+	@echo FOR /F "tokens=3" %%%%A IN ('find "define VERNUMLEGACY " RubiChess.h') DO ( set MAJORVERSION=%%%%A)>> $(VERSIONCMD)
 	@echo findstr /r /c:"^.define VERSTABLE" RubiChess.h 2^>nul>> $(VERSIONCMD)
 	@echo if errorlevel 1 (>> $(VERSIONCMD)
 	@echo   set MINORVERSION=-dev>> $(VERSIONCMD)

@@ -18,7 +18,6 @@
 #pragma once
 
 #define VERNUMLEGACY 2022
-//#define VERSTABLE
 
 // Disable this to compile without NNUE evaluation
 #define NNUE
@@ -172,11 +171,7 @@ typedef unsigned int PieceType;
 #endif
 
 #ifndef GITVER
-#ifndef VERSTABLE
-#define VERSION TOSTRING(VERNUMLEGACY) "-dev"
-#else
-#define VERSION TOSTRING(VERNUMLEGACY) " "
-#endif
+#define VERSION TOSTRING(VERNUMLEGACY)
 #else
 #define VERSION GITVER
 #endif
