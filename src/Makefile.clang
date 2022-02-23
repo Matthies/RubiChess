@@ -202,7 +202,7 @@ release:
 	@echo @echo off>> $(VERSIONCMD)
 	@echo set GITVER=>> $(VERSIONCMD)
 	@echo FOR /F "tokens=3" %%%%A IN ('find "define VERNUMLEGACY " RubiChess.h') DO ( set VERSION=%%%%A)>> $(VERSIONCMD)
-	@echo FOR /F "tokens=2" %%%%A IN ('cmd /c "git show --name-only --abbrev-commit --date=format:%%%%Y%%%%m%%%%d | findstr /I /r /c:"^Date"" ') DO ( set GITVER=%%%%A) >> $(VERSIONCMD)
+	@echo FOR /F "tokens=2" %%%%A IN ('cmd /c "git show --name-only --abbrev-commit --date=format:%%%%Y%%%%m%%%%d | findstr /I /r /c:"^Date: "" ') DO ( set GITVER=%%%%A) >> $(VERSIONCMD)
 	@echo FOR /F "tokens=2" %%%%A IN ('cmd /c "git show --name-only --abbrev-commit | findstr /r /c:"^commit"" ') DO ( set GITID=%%%%A) >> $(VERSIONCMD)
 	@echo if not [%%GITVER%%]==[] (>> $(VERSIONCMD)
 	@echo   set VERSION=%%GITVER%%>> $(VERSIONCMD)
