@@ -1,7 +1,17 @@
 ChangeLog
 =========
-2022 (release 2022-xx-xx) :
-    - ...
+20220223 (release 2022-02-23) :
+    - Several new and improved networks by successful training (still the Nodchip/S. Vieri fork with several modifications)
+        + using > 3 billion completely shuffled positions now
+        + scored by iteratively improved networks
+        + created by starting with several books like Stefan Pohls UHO
+        + pre-testing every epoch's network, not only the loss-decreasing nets
+    - New binpack encoder/decoder; full support for converstion between binpack, sfen/bin and plain
+    - Fix for DFRC (double fisher random chess)
+    - New -uci parameter to feed the engine with UCI commands for batch mode (use 'wait' to let search finish)
+    - Use late move reduction for tactical moves
+    - New UCI option 'LogFile' to log UCI communication and SDEBUG/TDEBUG output
+    - Several fixes: Mates in multi-pv, cpuid detection, embedding networks, ...
 
 2021 (release 2021-12-31) :
     - Switch to a date-based versioning

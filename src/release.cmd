@@ -4,7 +4,13 @@
 ::
 
 @echo off
-set vcvarscmd=C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat
+
+set SDE=
+:: Some defaults for the SDE on my computer
+if exist C:\bin\SDE\sde.exe set SDE=C:\bin\SDE\sde.exe
+
+set vcvarscmd=
+if exist "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" set vcvarscmd=C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat
 
 call "%vcvarscmd%" x64 -vcvars_ver=14.16
 nmake -f Makefile.clang release
