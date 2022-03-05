@@ -676,8 +676,10 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
 #define NNUEDEFAULTSTR TOSTRING(NNUEDEFAULT)
 
 enum NnueType { NnueDisabled = 0, NnueRotate, NnueFlip };
-#define NNUEFILEVERSIONROTATE     0x7AF32F16u
-#define NNUEFILEVERSIONFLIP       0x7AF32F17u
+// The following constants were introduced in original NNUE port from Shogi
+#define NNUEFILEVERSIONROTATE   0x7AF32F16u
+#define NNUEFILEVERSIONNOBPZ    0x7AF32F17u
+#define NNUEFILEVERSIONFLIP     0x7AF32F18u
 #define NNUENETLAYERHASH    0xCC03DAE4u
 #define NNUECLIPPEDRELUHASH 0x538D24C7u
 #define NNUEFEATUREHASH     (0x5D69D5B9u ^ true)
@@ -685,9 +687,10 @@ enum NnueType { NnueDisabled = 0, NnueRotate, NnueFlip };
 
 #define ORIENT(c,i,r) ((c) ? (i) ^ (r) : (i))
 
+// Net dimensions
 const int NnueFtHalfdims = 256;
 const int NnueFtOutputdims = NnueFtHalfdims * 2;
-const int NnueFtInputdims = 64 * 641;
+const int NnueFtInputdims = 64 * 10 * 64;   // (kingsquare x piecetype x piecesquare)
 const int NnueClippingShift = 6;
 
 #if defined(USE_SSE2) && !defined(USE_SSSE3)
@@ -755,6 +758,7 @@ class NnueFeatureTransformer : public NnueLayer
 public:
     int16_t* bias;
     int16_t* weight;
+    bool bpz;
 
     NnueFeatureTransformer();
     virtual ~NnueFeatureTransformer();
