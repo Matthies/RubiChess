@@ -18,37 +18,3 @@
 
 #include "RubiChess.h"
 
-alignas(64) GuiCommunication guiCom(cout);
-
-
-GuiToken engine::parse(vector<string>* args, string ss)
-{
-    bool firsttoken = false;
-
-    if (ss == "")
-        getline(cin, ss);
-
-    if (cin.eof())
-        return QUIT;
-#ifdef UCILOGGING
-    guiCom.fromGui(ss);
-#endif
-    GuiToken result = UNKNOWN;
-    istringstream iss(ss);
-    for (string s; iss >> s; )
-    {
-        if (!firsttoken)
-        {
-            if (GuiCommandMap.find(s.c_str()) != GuiCommandMap.end())
-            {
-                result = GuiCommandMap.find(s.c_str())->second;
-                firsttoken = true;
-            }
-        }
-        else {
-            args->push_back(s);
-        }
-    }
-
-    return result;
-}

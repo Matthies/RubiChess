@@ -554,6 +554,7 @@ struct evalparamset {
 
 void registerallevals(chessposition* pos = nullptr);
 void initPsqtable();
+void initBitmaphelper();
 
 #define SCALE_NORMAL 128
 #define SCALE_DRAW 0
@@ -1285,7 +1286,7 @@ public:
 	string toString();
 	string toStringWithValue();
 	void print();
-    chessmove* getNextMove(int minval);
+    chessmove* getNextMove(int minval = INT_MIN);
     uint32_t getAndRemoveNextMove();
 };
 
@@ -1317,6 +1318,7 @@ public:
 };
 
 extern U64 pawn_attacks_to[64][2];
+extern U64 pawn_attacks_from[64][2];
 extern U64 knight_attacks[64];
 extern U64 king_attacks[64];
 extern U64 pawn_moves_to[64][2];
@@ -1767,11 +1769,12 @@ public:
     int cpuVendor;
     int cpuFamily;
     int cpuModel;
-    compilerinfo();
+    compilerinfo() { GetSystemInfo(); }
     void GetSystemInfo();
-    string SystemName();
+    string SystemName() { return system; }
     string PrintCpuFeatures(U64 features, bool onlyHighest = false);
 };
+
 
 
 class engine
@@ -1780,13 +1783,12 @@ public:
     engine(compilerinfo *c);
     ~engine();
     const string author = "Andreas Matthies";
-    bool isWhite;
     U64 tbhits;
     U64 starttime;
     U64 endtime1; // time to stop before starting next iteration
     U64 endtime2; // time to stop immediately
     U64 frequency;
-    int wtime, btime, winc, binc, movestogo, mate, movetime, maxdepth;
+    int mytime, yourtime, myinc, yourinc, movestogo, mate, movetime, maxdepth;
     U64 maxnodes;
     bool infinite;
     bool debug = false;
@@ -1884,6 +1886,7 @@ public:
 };
 
 PieceType GetPieceType(char c);
+char PieceChar(PieceCode c, bool lower = false);
 
 // enginestate is for communication with external engine process
 struct enginestate

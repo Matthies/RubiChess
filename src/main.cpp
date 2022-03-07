@@ -965,6 +965,11 @@ int main(int argc, char* argv[])
             en.ExecPath = execPath.substr(0, si + 1);
     }
 
+    initBitmaphelper();
+#ifdef NNUE
+    NnueInit();
+#endif
+
     en.registerOptions();
 
 #ifdef EVALOPTIONS

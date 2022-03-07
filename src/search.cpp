@@ -1527,8 +1527,8 @@ static void mainSearch(searchthread *thr)
 
 void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
 {
-    int timeinc = (en.isWhite ? en.winc : en.binc);
-    int timetouse = (en.isWhite ? en.wtime : en.btime);
+    int timeinc = en.myinc;
+    int timetouse = en.mytime;
     int overhead = en.moveOverhead + 8 * en.Threads;
     int constance = constantRootMoves * 2 + en.ponderhit * 4;
 
