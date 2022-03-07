@@ -24,28 +24,28 @@
 #define NNUEDEFAULT nn-d458c5999d-20220222.nnue
 
 // Enable to get statistical values about various search features
-//#define STATISTICS
+#define STATISTICS
 
 // Enable to debug the search against a gives pv
-//#define SDEBUG
+#define SDEBUG
 
 // Enable to debug the time management
-//#define TDEBUG
+#define TDEBUG
 
 // Enable this for texel tuning
-//#define EVALTUNE
+#define EVALTUNE
 
 // Enable this to expose the evaluation and NNUE parameters as UCI options
-//#define EVALOPTIONS
+#define EVALOPTIONS
 
 // Enable this to expose the search parameters as UCI options
-//#define SEARCHOPTIONS
+#define SEARCHOPTIONS
 
 // Enable this to find memory leaks with the MSVC debug build
-//#define FINDMEMORYLEAKS
+#define FINDMEMORYLEAKS
 
 // Enable this to enable NNUE training code
-//#define NNUELEARN
+#define NNUELEARN
 
 // Enable to log every input and output of the engine into a file
 #define UCILOGGING
@@ -691,6 +691,8 @@ enum NnueType { NnueDisabled = 0, NnueRotate, NnueFlip };
 const int NnueFtHalfdims = 256;
 const int NnueFtOutputdims = NnueFtHalfdims * 2;
 const int NnueFtInputdims = 64 * 10 * 64;   // (kingsquare x piecetype x piecesquare)
+const int NnueHidden1Dims = 32;
+const int NnueHidden2Dims = 32;
 const int NnueClippingShift = 6;
 
 #if defined(USE_SSE2) && !defined(USE_SSSE3)
@@ -1435,17 +1437,6 @@ public:
     U64 castleblockers[4];
     U64 castlekingwalk[4];
 
-#ifdef EVALTUNE
-    bool isQuiet;
-    bool noQs;
-    tuneparamselection tps;
-    positiontuneset pts;
-    evalparam ev[NUMOFEVALPARAMS];
-    void resetTuner();
-    void getPositionTuneSet(positiontuneset *p, evalparam *e);
-    void copyPositionTuneSet(positiontuneset *from, evalparam *efrom, positiontuneset *to, evalparam *eto);
-    string getCoeffString();
-#endif
 #ifdef SDEBUG
     U64 debughash = 0;
     uint32_t pvmovecode[MAXDEPTH];
@@ -1480,6 +1471,17 @@ public:
     PvAbortType pvaborttype[MAXDEPTH];
     int pvabortscore[MAXDEPTH];
     string pvadditionalinfo[MAXDEPTH];
+#endif
+#ifdef EVALTUNE
+    bool isQuiet;
+    bool noQs;
+    tuneparamselection tps;
+    positiontuneset pts;
+    evalparam ev[NUMOFEVALPARAMS];
+    void resetTuner();
+    void getPositionTuneSet(positiontuneset* p, evalparam* e);
+    void copyPositionTuneSet(positiontuneset* from, evalparam* efrom, positiontuneset* to, evalparam* eto);
+    string getCoeffString();
 #endif
     bool w2m();
     void BitboardSet(int index, PieceCode p);

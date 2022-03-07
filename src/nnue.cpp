@@ -566,7 +566,7 @@ uint32_t NnueNetworkLayer::GetHash()
 }
 
 
-// 32->1 propagation to output value
+// propagation to output value
 void NnueNetworkLayer::OutLayer(clipped_t* input, int32_t* output)
 {
 #if defined(USE_AVX2)
@@ -615,7 +615,7 @@ void NnueNetworkLayer::OutLayer(clipped_t* input, int32_t* output)
 
 #else
     *output = bias[0];
-    for (unsigned int j = 0; j < 32; j++)
+    for (unsigned int j = 0; j < NnueHidden2Dims; j++)
         *output += weight[j] * input[j];
 #endif
 
@@ -848,7 +848,6 @@ void NnueNetworkLayer::Propagate(clipped_t* input, int32_t* output)
             sum += weight[offset + j] * input[j];
         output[i] = sum;
     }
-
 #endif
 
 
@@ -979,11 +978,11 @@ void NnueInit()
 {
     NnueFt = new NnueFeatureTransformer();
     NnueIn = new NnueInputSlice();
-    NnueHd1 = new NnueNetworkLayer(NnueIn, 512, 32);
-    NnueCl1 = new NnueClippedRelu(NnueHd1, 32);
-    NnueHd2 = new NnueNetworkLayer(NnueCl1, 32, 32);
-    NnueCl2 = new NnueClippedRelu(NnueHd2, 32);
-    NnueOut = new NnueNetworkLayer(NnueCl2, 32, 1);
+    NnueHd1 = new NnueNetworkLayer(NnueIn, NnueFtOutputdims, NnueHidden1Dims);
+    NnueCl1 = new NnueClippedRelu(NnueHd1, NnueHidden1Dims);
+    NnueHd2 = new NnueNetworkLayer(NnueCl1, NnueHidden1Dims, NnueHidden2Dims);
+    NnueCl2 = new NnueClippedRelu(NnueHd2, NnueHidden2Dims);
+    NnueOut = new NnueNetworkLayer(NnueCl2, NnueHidden2Dims, 1);
 }
 
 void NnueRemove()
@@ -1035,7 +1034,6 @@ bool NnueReadNet(NnueNetsource_t is)
 
     if (hash != filehash)
         return false;
-
 
     // Read the weights of the feature transformer
     NNUEREAD(is, (char*)&hash, sizeof(uint32_t));
@@ -1090,7 +1088,7 @@ void NnueWriteNet(vector<string> args)
     if (rescale)
     {
         NnueOut->bias[0] = (int32_t)round(NnueOut->bias[0] * rescale / NnueValueScale);
-        for (int i = 0; i < 32; i++)
+        for (int i = 0; i < NnueHidden2Dims; i++)
         {
             int idx = i;
 #if defined(USE_AVX2)
@@ -1136,7 +1134,7 @@ void NnueRegisterEvals()
     // Expose weights and bias of ouput layer as UCI options for tuning
     en.ucioptions.Register(&NnueValueScale, "NnueValueScale", ucinnuebias, to_string(NnueValueScale), INT_MIN, INT_MAX, nullptr);
     en.ucioptions.Register(&NnueOut->bias[0], "NnueOutBias", ucinnuebias, to_string(NnueOut->bias[0]), INT_MIN, INT_MAX, nullptr);
-    for (int i = 0; i < 32; i++)
+    for (int i = 0; i < NnueHidden2Dims; i++)
     {
         ostringstream osName;
         osName << "NnueOutWeight_" << setw(2) << setfill('0') << to_string(i);

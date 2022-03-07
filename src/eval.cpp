@@ -91,7 +91,8 @@ static void registerforoptions(eval *e, string name, int index1, int bound1, int
 static void registertuner(chessposition* pos, eval* e, string name, int index1, int bound1, int index2, int bound2, bool tune)
 {
 #ifdef EVALTUNE
-    registerfortuning(pos, e, name, index1, bound1, index2, bound2, tune);
+    if (pos)
+        registerfortuning(pos, e, name, index1, bound1, index2, bound2, tune);
 #endif
 
 #ifdef EVALOPTIONS

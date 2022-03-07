@@ -2685,12 +2685,13 @@ engine::engine(compilerinfo *c)
 #ifdef NNUE
     NnueInit();
 #endif
+#if 0
     rootposition.pwnhsh.setSize(1);  // some dummy pawnhash just to make the prefetch in playMove happy
     // default castle rights
     int rf[2][2] = { { 0, 7 },{0,7} };
     int kf[2] = { 4,4 };
     rootposition.initCastleRights(rf, kf);
-
+#endif
 #ifdef _WIN32
     LARGE_INTEGER f;
     QueryPerformanceFrequency(&f);
