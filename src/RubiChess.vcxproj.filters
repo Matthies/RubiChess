@@ -18,9 +18,6 @@
     <ClCompile Include="board.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="uci.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="transposition.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
@@ -49,6 +46,12 @@
       <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="book.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="engine.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="move.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>
