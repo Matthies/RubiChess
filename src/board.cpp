@@ -104,7 +104,7 @@ char PieceChar(PieceCode c, bool lower = false)
 }
 
 
-inline string moveToString(uint32_t mc)
+string moveToString(uint32_t mc)
 {
     char s[8];
 
@@ -2723,7 +2723,7 @@ void engine::registerOptions()
     ucioptions.Register(&usennue, "Use_NNUE", ucicheck, "true", 0, 0, uciSetNnuePath);
 #endif
 #ifdef UCILOGGING
-    en.ucioptions.Register(&en.LogFile, "LogFile", ucistring, "", 0, 0, uciSetLogFile);
+    ucioptions.Register(&LogFile, "LogFile", ucistring, "", 0, 0, uciSetLogFile);
 #endif
 #ifdef _WIN32
     ucioptions.Register(&allowlargepages, "Allow Large Pages", ucicheck, "true", 0, 0, uciAllowLargePages);
@@ -3344,6 +3344,7 @@ alignas(64) compilerinfo cinfo;
 alignas(64) evalparamset eps;
 alignas(64) zobrist zb;
 alignas(64) engine en(&cinfo);
+alignas(64) searchparamset sps;
 
 
 // Explicit template instantiation

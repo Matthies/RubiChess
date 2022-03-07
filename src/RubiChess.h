@@ -24,28 +24,28 @@
 #define NNUEDEFAULT nn-d458c5999d-20220222.nnue
 
 // Enable to get statistical values about various search features
-#define STATISTICS
+//#define STATISTICS
 
 // Enable to debug the search against a gives pv
-#define SDEBUG
+//#define SDEBUG
 
 // Enable to debug the time management
-#define TDEBUG
+//#define TDEBUG
 
 // Enable this for texel tuning
-#define EVALTUNE
+//#define EVALTUNE
 
 // Enable this to expose the evaluation and NNUE parameters as UCI options
-#define EVALOPTIONS
+//#define EVALOPTIONS
 
 // Enable this to expose the search parameters as UCI options
-#define SEARCHOPTIONS
+//#define SEARCHOPTIONS
 
 // Enable this to find memory leaks with the MSVC debug build
-#define FINDMEMORYLEAKS
+//#define FINDMEMORYLEAKS
 
 // Enable this to enable NNUE training code
-#define NNUELEARN
+//#define NNUELEARN
 
 // Enable to log every input and output of the engine into a file
 #define UCILOGGING
@@ -1908,6 +1908,7 @@ extern engine en;
 extern compilerinfo cinfo;
 extern GuiCommunication guiCom;
 
+
 #ifdef SDEBUG
 #define SDEBUGDO(c, s) if (c) {s}
 #else
@@ -1918,6 +1919,92 @@ extern GuiCommunication guiCom;
 //
 // search stuff
 //
+
+#ifdef SEARCHOPTIONS
+void searchtableinit();
+class searchparam {
+public:
+    int val;
+    string name;
+
+    searchparam(const char* c) {
+        string s(c);
+        size_t i = s.find('/');
+        val = stoi(s.substr(i + 1));
+        name = "S_" + s.substr(0, i);
+        en.ucioptions.Register((void*)&val, name, ucisearch, to_string(val), 0, 0, searchtableinit);
+    }
+    operator int() const { return val; }
+};
+
+#define SP(x,y) x = #x "/" #y
+
+#else // SEARCHOPTIONS
+typedef const int searchparam;
+#define SP(x,y) x = y
+#endif
+
+struct searchparamset {
+#ifdef EVALTUNE
+    searchparam SP(deltapruningmargin, 4000);
+#else
+    searchparam SP(deltapruningmargin, 160);
+#endif
+    // LMR table
+    searchparam SP(lmrlogf0, 150);
+    searchparam SP(lmrf0, 60);
+    searchparam SP(lmrlogf1, 150);
+    searchparam SP(lmrf1, 43);
+    searchparam SP(lmrmindepth, 3);
+    searchparam SP(lmrstatsratio, 625);
+    searchparam SP(lmropponentmovecount, 15);
+    // LMP table
+    searchparam SP(lmpf0, 59);
+    searchparam SP(lmppow0, 48);
+    searchparam SP(lmpf1, 74);
+    searchparam SP(lmppow1, 170);
+    // Razoring
+    searchparam SP(razormargin, 250);
+    searchparam SP(razordepthfactor, 50);
+    //futility pruning
+    searchparam SP(futilitymindepth, 8);
+    searchparam SP(futilityreversedepthfactor, 70);
+    searchparam SP(futilityreverseimproved, 20);
+    searchparam SP(futilitymargin, 10);
+    searchparam SP(futilitymarginperdepth, 59);
+    // null move
+    searchparam SP(nmmindepth, 2);
+    searchparam SP(nmmredbase, 4);
+    searchparam SP(nmmreddepthratio, 6);
+    searchparam SP(nmmredevalratio, 150);
+    searchparam SP(nmmredpvfactor, 2);
+    searchparam SP(nmverificationdepth, 12);
+    //Probcut
+    searchparam SP(probcutmindepth, 5);
+    searchparam SP(probcutmargin, 100);
+    // Threat pruning
+    searchparam SP(threatprunemargin, 30);
+    searchparam SP(threatprunemarginimprove, 0);
+
+    // No hashmovereduction
+    searchparam SP(nohashreductionmindepth, 3);
+    // SEE prune
+    searchparam SP(seeprunemaxdepth, 8);
+    searchparam SP(seeprunemarginperdepth, -20);
+    searchparam SP(seeprunequietfactor, 4);
+    // Singular extension
+    searchparam SP(singularmindepth, 8);
+    searchparam SP(singularmarginperdepth, 2);
+    // History extension
+    searchparam SP(histextminthreshold, 9);
+    searchparam SP(histextmaxthreshold, 15);
+    searchparam SP(aspincratio, 4);
+    searchparam SP(aspincbase, 2);
+    searchparam SP(aspinitialdelta, 8);
+};
+
+extern searchparamset sps;
+
 class searchthread
 {
 public:
