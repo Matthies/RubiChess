@@ -55,15 +55,16 @@
 		<Unit filename="board.cpp" />
 		<Unit filename="book.cpp" />
 		<Unit filename="cputest.cpp" />
+		<Unit filename="engine.cpp" />
 		<Unit filename="eval.cpp" />
 		<Unit filename="learn.cpp" />
 		<Unit filename="main.cpp" />
+		<Unit filename="move.cpp" />
 		<Unit filename="nnue.cpp" />
 		<Unit filename="search.cpp" />
 		<Unit filename="tbprobe.cpp" />
 		<Unit filename="texel.cpp" />
 		<Unit filename="transposition.cpp" />
-		<Unit filename="uci.cpp" />
 		<Unit filename="utils.cpp" />
 		<Extensions />
 	</Project>
