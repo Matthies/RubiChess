@@ -74,7 +74,7 @@ static void registerforoptions(eval *e, string name, int index1, int bound1, int
     {
         osName << "_" << setw(maxdig1) << setfill('0') << to_string(index1);
     }
-    
+
     string sDef =  to_string(GETMGVAL(*e));
     en.ucioptions.Register((void*)e, osName.str() + "_mg", ucieval, sDef, 0, 0, initPsqtable);
     sDef = to_string(GETEGVAL(*e));
@@ -180,7 +180,7 @@ void registerallevals(chessposition *pos)
         for (j = 0; j < 28; j++)
             registertuner(pos, &eps.eMobilitybonus[i][j], "eMobilitybonus", j, 28, i, 4, tuneIt && (j < maxmobility[i]));
 
-    tuneIt = true;
+    tuneIt = false;
     registertuner(pos, &eps.eNocastlepenalty, "eNocastlepenalty", 0, 0, 0, 0, tuneIt);
 
     tuneIt = false;
@@ -218,7 +218,7 @@ void registerallevals(chessposition *pos)
     registertuner(pos, &eps.eKingdangerbyqueen, "eKingdangerbyqueen", 0, 0, 0, 0, tuneIt);
     for (i = 0; i < 6; i++)
         registertuner(pos, &eps.eKingringattack[i], "eKingringattack", i, 6, 0, 0, tuneIt);
-    
+
     tuneIt = false;
     for (i = 0; i < 7; i++)
         for (j = 0; j < 64; j++)
@@ -359,7 +359,7 @@ void chessposition::getPawnAndKingEval(pawnhashentry *entryptr)
     const int You = Me ^ S2MMASK;
     const int pc = WPAWN | Me;
     int index;
-    
+
     // kingshield safety
     entryptr->value += EVAL(eps.eKingshieldbonus, S2MSIGN(Me) * POPCOUNT(piece00[WPAWN | Me] & kingshieldMask[kingpos[Me]][Me]));
     if (bTrace) te.kingattackpower[You] += EVAL(eps.eKingshieldbonus, S2MSIGN(Me) * POPCOUNT(piece00[WPAWN | Me] & kingshieldMask[kingpos[Me]][Me]));
@@ -526,7 +526,7 @@ int chessposition::getPieceEval(positioneval *pe)
         {
             attack = ROOKATTACKS(xrayrookoccupied, index);
 
-            // extrabonus for rook on (semi-)open file  
+            // extrabonus for rook on (semi-)open file
             if (Pt == ROOK) {
                 if (pe->phentry->semiopen[Me] & BITSET(FILE(index))) {
                     result += EVAL(eps.eSlideronfreefilebonus[bool(pe->phentry->semiopen[You] & BITSET(FILE(index)))], S2MSIGN(Me));
@@ -936,7 +936,7 @@ void chessposition::getScaling(Materialhashentry* mhentry)
         && nonpawnvalue[WHITE] <= materialvalue[BISHOP]
         && nonpawnvalue[BLACK] <= materialvalue[BISHOP])
         mhentry->scale[WHITE] = mhentry->scale[BLACK] = SCALE_OCB;
-    
+
     mhentry->onlyPawns = (nonpawnvalue[0] + nonpawnvalue[1] == 0);
     mhentry->numOfPawns = pawns[0] + pawns[1];
 }

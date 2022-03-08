@@ -1087,6 +1087,7 @@ static void gensfenthread(searchthread* thr, U64 rndseed)
             thr->psv->gamePly = ply;
             thr->psv->move = sfFromRubi(pos->pvtable[0][0]);
             thr->psv->game_result = 2 * S2MSIGN(pos->state & S2MMASK); // not yet known
+            thr->psv->padding = 0xff;
 
             if (thr->psv->move)
             {
@@ -1231,7 +1232,8 @@ void gensfen(vector<string> args)
     cout << "disable_prune:         " << disable_prune << "\n";
     cout << "book:                  " << book << "\n";
 
-    const unsigned int chunksneeded = (unsigned int)(loop / sfenchunksize) + 1;
+    // create full chunks but ensure at least loop positions
+    const unsigned int chunksneeded = (unsigned int)((loop - 1) / sfenchunksize) + 1;
     ofstream os(outputfile, ios::binary | fstream::app);
     if (!os)
     {
@@ -1499,7 +1501,7 @@ static void convertthread(searchthread* thr, conversion_t* cv)
 
         size_t restdata = buffersize;
         cv->is->read((char*)buffer + bufferreserve, buffersize);
-        if (!cv->is)
+        if (cv->is->eof())
             restdata = cv->is->gcount();
 
         if (!cv->is || cv->is->peek() == ios::traits_type::eof())
