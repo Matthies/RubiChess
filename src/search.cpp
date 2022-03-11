@@ -1187,9 +1187,8 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, in
             + " score mate " + to_string(matein) + " " + boundscore[inWindow] + "nodes " + to_string(nodes) + " nps " + to_string(nps) + " tbhits " + to_string(en.tbhits)
             + " hashfull " + to_string(tp.getUsedinPermill()) + " pv " + pvstring + "\n";
     }
-
-    SDEBUGDO(true, guiCom.log("[SDEBUG] Raw score: " + to_string(score) + "\n"););
-    SDEBUGDO(true, pos->pvdebugout(););
+    SDEBUGDO(pos->pvmovecode[0], guiCom.log("[SDEBUG] Raw score: " + to_string(score) + "\n"););
+    SDEBUGDO(pos->pvmovecode[0], pos->pvdebugout(););
 }
 
 
@@ -1683,8 +1682,9 @@ void search_statistics()
 {
     U64 n, i1, i2, i3, i4;
     double f0, f1, f2, f3, f4, f5, f6, f7, f10, f11;
+    char str[512];
 
-    printf("(ST)====Statistics====================================================================================================================================\n");
+    guiCom.log("[STATS] ==================================================================================================================================================================\n");
 
     // quiescense search statistics
     i1 = statistics.qs_n[0];
@@ -1699,7 +1699,8 @@ void search_statistics()
     f4 =  i3 / (double)statistics.qs_loop_n;
     f5 = 100.0 * statistics.qs_move_delta / (double)i3;
     f6 = 100.0 * statistics.qs_moves_fh / (double)statistics.qs_moves;
-    printf("(ST) QSearch: %12lld   %%InCheck:  %5.2f   %%TT-Hits:  %5.2f   %%Std.Pat: %5.2f   %%DeltaPr: %5.2f   Mvs/Lp: %5.2f   %%DlPrM: %5.2f   %%FailHi: %5.2f   mindepth: %3lld\n", n, f0, f1, f2, f3, f4, f5, f6, i4);
+    sprintf(str, "[STATS] QSearch: %12lld   %%InCheck:  %5.2f   %%TT-Hits:  %5.2f   %%Std.Pat: %5.2f   %%DeltaPr: %5.2f   Mvs/Lp: %5.2f   %%DlPrM: %5.2f   %%FailHi: %5.2f   mindepth: %3lld\n", n, f0, f1, f2, f3, f4, f5, f6, i4);
+    guiCom.log(str);
 
     // general aplhabeta statistics
     n = statistics.ab_n;
@@ -1708,7 +1709,8 @@ void search_statistics()
     f2 = 100.0 * statistics.ab_tb / (double)n;
     f3 = 100.0 * statistics.ab_qs / (double)n;
     f4 = 100.0 * statistics.ab_draw_or_win / (double)n;
-    printf("(ST) Total AB:%12lld   %%PV-Nodes: %5.2f   %%TT-Hits:  %5.2f   %%TB-Hits: %5.2f   %%QSCalls: %5.2f   %%Draw/Mates: %5.2f\n", n, f0, f1, f2, f3, f4);
+    sprintf(str, "[STATS] Total AB:%12lld   %%PV-Nodes: %5.2f   %%TT-Hits:  %5.2f   %%TB-Hits: %5.2f   %%QSCalls: %5.2f   %%Draw/Mates: %5.2f\n", n, f0, f1, f2, f3, f4);
+    guiCom.log(str);
 
     // node pruning
     f0 = 100.0 * statistics.prune_futility / (double)n;
@@ -1717,7 +1719,8 @@ void search_statistics()
     f3 = 100.0 * statistics.prune_multicut / (double)n;
     f4 = 100.0 * statistics.prune_threat / (double)n;
     f5 = 100.0 * (statistics.prune_futility + statistics.prune_nm + statistics.prune_probcut + statistics.prune_multicut + statistics.prune_threat) / (double)n;
-    printf("(ST) Node pruning            %%Futility: %5.2f   %%NullMove: %5.2f   %%ProbeC.: %5.2f   %%MultiC.: %7.5f   %%Threat.: %7.5f Total:  %5.2f\n", f0, f1, f2, f3, f4, f5);
+    sprintf(str, "[STATS] Node pruning            %%Futility: %5.2f   %%NullMove: %5.2f   %%ProbeC.: %5.2f   %%MultiC.: %7.5f   %%Threat.: %7.5f Total:  %5.2f\n", f0, f1, f2, f3, f4, f5);
+    guiCom.log(str);
 
     // move statistics
     i1 = statistics.moves_n[0]; // quiet moves
@@ -1732,7 +1735,8 @@ void search_statistics()
     i3 = statistics.moves_played[0] + statistics.moves_played[1];
     f6 = 100.0 * statistics.moves_fail_high / (double)i3;
     f7 = 100.0 * statistics.moves_bad_hash / i2;
-    printf("(ST) Moves:   %12lld   %%Quiet-M.: %5.2f   %%Tact.-M.: %5.2f   %%BadHshM: %5.2f   %%LMP-M.:  %5.2f   %%FutilM.: %5.2f   %%BadSEE: %5.2f  Mvs/Lp: %5.2f   %%FailHi: %5.2f\n", n, f0, f1, f7, f2, f3, f4, f5, f6);
+    sprintf(str, "[STATS] Moves:   %12lld   %%Quiet-M.: %5.2f   %%Tact.-M.: %5.2f   %%BadHshM: %5.2f   %%LMP-M.:  %5.2f   %%FutilM.: %5.2f   %%BadSEE: %5.2f  Mvs/Lp: %5.2f   %%FailHi: %5.2f\n", n, f0, f1, f7, f2, f3, f4, f5, f6);
+    guiCom.log(str);
 
     // late move reduction statistics
     U64 red_n = statistics.red_pi[0] + statistics.red_pi[1];
@@ -1743,13 +1747,15 @@ void search_statistics()
     f3 = statistics.red_pv / (double)red_n;
     f4 = statistics.red_correction / (double)red_n;
     f5 = statistics.red_total / (double)red_n;
-    printf("(ST) Reduct.  %12lld   lmr[0]: %4.2f   lmr[1]: %4.2f   lmr: %4.2f   hist: %4.2f   pv: %4.2f   corr: %4.2f   total: %4.2f\n", red_n, f10, f11, f1, f2, f3, f4, f5);
+    sprintf(str, "[STATS] Reduct.  %12lld   lmr[0]: %4.2f   lmr[1]: %4.2f   lmr: %4.2f   hist: %4.2f   pv: %4.2f   corr: %4.2f   total: %4.2f\n", red_n, f10, f11, f1, f2, f3, f4, f5);
+    guiCom.log(str);
 
     f0 = 100.0 * statistics.extend_singular / (double)n;
     f1 = 100.0 * statistics.extend_endgame / (double)n;
     f2 = 100.0 * statistics.extend_history / (double)n;
-    printf("(ST) Extensions: %%singular: %7.4f   %%endgame: %7.4f   %%history: %7.4f\n", f0, f1, f2);
-    printf("(ST)==================================================================================================================================================\n");
+    sprintf(str, "[STATS] Extensions: %%singular: %7.4f   %%endgame: %7.4f   %%history: %7.4f\n", f0, f1, f2);
+    guiCom.log(str);
+    guiCom.log("[STATS] ==================================================================================================================================================================\n");
 }
 #endif
 

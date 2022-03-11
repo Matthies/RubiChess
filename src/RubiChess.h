@@ -1432,7 +1432,6 @@ public:
     int castlerookfrom[4];
     U64 castleblockers[4];
     U64 castlekingwalk[4];
-
 #ifdef SDEBUG
     U64 debughash = 0;
     uint32_t pvmovecode[MAXDEPTH];
@@ -1448,11 +1447,9 @@ public:
     U64 he_all;
     Materialhash mtrlhsh;
     Pawnhash pwnhsh;
-
     NnueAccumulator accumulator[MAXDEPTH];
     DirtyPiece dirtypiece[MAXDEPTH];
     NnueNetwork network;
-
     uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     alignas(64) MoveSelector moveSelector[MAXDEPTH];
@@ -1575,10 +1572,10 @@ public:
 #endif
 };
 
-//
-// uci stuff
-//
 
+//
+// engine stuff
+//
 extern void uciSetLogFile();
 class GuiCommunication {
 private:
@@ -1660,9 +1657,6 @@ const map<string, GuiToken> GuiCommandMap = {
     { "perft", PERFT }
 };
 
-//
-// engine stuff
-//
 class engine;   //forward definition
 
 // order of ucioptiontypes is important for (not) setting default at registration
