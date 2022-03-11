@@ -131,15 +131,16 @@
   <ItemGroup>
     <ClCompile Include="board.cpp" />
     <ClCompile Include="book.cpp" />
+    <ClCompile Include="engine.cpp" />
     <ClCompile Include="eval.cpp" />
     <ClCompile Include="learn.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="move.cpp" />
     <ClCompile Include="nnue.cpp" />
     <ClCompile Include="search.cpp" />
     <ClCompile Include="tbprobe.cpp" />
     <ClCompile Include="texel.cpp" />
     <ClCompile Include="transposition.cpp" />
-    <ClCompile Include="uci.cpp" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>

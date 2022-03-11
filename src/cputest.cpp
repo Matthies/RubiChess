@@ -22,16 +22,6 @@
 
 const string strCpuFeatures[] = STRCPUFEATURELIST;
 
-compilerinfo::compilerinfo()
-{
-    GetSystemInfo();
-}
-
-string compilerinfo::SystemName()
-{
-    return system;
-}
-
 
 #if defined(_M_X64) || defined(__amd64)
 
@@ -163,7 +153,7 @@ int main()
     compilerinfo ci;
     ci.GetSystemInfo();
     cout << ci.PrintCpuFeatures(ci.machineSupports) << "\n";
-    
+
 }
 
 #endif

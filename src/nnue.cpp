@@ -24,25 +24,23 @@
 
 #include "RubiChess.h"
 
-#ifdef NNUE
-
 //
 // Some NNUE related constants and types
 //
 
 // PieceSquare indices
 enum {
-    PS_WPAWN    = 1,
-    PS_BPAWN    = 1 * 64 + 1,
-    PS_WKNIGHT  = 2 * 64 + 1,
-    PS_BKNIGHT  = 3 * 64 + 1,
-    PS_WBISHOP  = 4 * 64 + 1,
-    PS_BBISHOP  = 5 * 64 + 1,
-    PS_WROOK    = 6 * 64 + 1,
-    PS_BROOK    = 7 * 64 + 1,
-    PS_WQUEEN   = 8 * 64 + 1,
-    PS_BQUEEN   = 9 * 64 + 1,
-    PS_END      = 10 * 64 + 1
+    PS_WPAWN    = 0 * 64,
+    PS_BPAWN    = 1 * 64,
+    PS_WKNIGHT  = 2 * 64,
+    PS_BKNIGHT  = 3 * 64,
+    PS_WBISHOP  = 4 * 64,
+    PS_BBISHOP  = 5 * 64,
+    PS_WROOK    = 6 * 64,
+    PS_BROOK    = 7 * 64,
+    PS_WQUEEN   = 8 * 64,
+    PS_BQUEEN   = 9 * 64,
+    PS_END      = 10 * 64
 };
 
 // table to translate PieceCode to PieceSquare index for both POVs respecting the piece order special to RubiChess
@@ -364,11 +362,23 @@ NnueFeatureTransformer::~NnueFeatureTransformer()
 
 bool NnueFeatureTransformer::ReadWeights(NnueNetsource_t is)
 {
-    int i;
+    int i, j;
     for (i = 0; i < NnueFtHalfdims; ++i)
         NNUEREAD(is, (char*)&bias[i], sizeof(int16_t));
-    for (i = 0; i < NnueFtHalfdims * NnueFtInputdims; ++i)
-        NNUEREAD(is, (char*)&weight[i], sizeof(int16_t));
+
+    int weightsRead = 0;
+    for (i = 0; i < NnueFtInputdims; i++)
+    {
+        if (bpz && i % (10 * 64) == 0) {
+            int16_t dummyweight;
+            for (j = 0; j < NnueFtHalfdims; ++j)
+                NNUEREAD(is, (char*)&dummyweight, sizeof(int16_t));
+        }
+        for (j = 0; j < NnueFtHalfdims; ++j) {
+            NNUEREAD(is, (char*)&weight[weightsRead], sizeof(int16_t));
+            weightsRead++;
+        }
+    }
 
     return !NNUEREADFAIL(is);
 }
@@ -376,11 +386,23 @@ bool NnueFeatureTransformer::ReadWeights(NnueNetsource_t is)
 #ifdef EVALOPTIONS
 void NnueFeatureTransformer::WriteWeights(ofstream* os)
 {
-    int i;
+    int i, j;
     for (i = 0; i < NnueFtHalfdims; ++i)
         os->write((char*)&bias[i], sizeof(int16_t));
-    for (i = 0; i < NnueFtHalfdims * NnueFtInputdims; ++i)
-        os->write((char*)&weight[i], sizeof(int16_t));
+
+    int weightsRead = 0;
+    for (i = 0; i < NnueFtInputdims; i++)
+    {
+        if (bpz && i % (10 * 64) == 0) {
+            int16_t dummyweight = 0;
+            for (j = 0; j < NnueFtHalfdims; ++j)
+                os->write((char*)&dummyweight, sizeof(int16_t));
+        }
+        for (j = 0; j < NnueFtHalfdims; ++j) {
+            os->write((char*)&weight[weightsRead], sizeof(int16_t));
+            weightsRead++;
+        }
+    }
 }
 #endif
 
@@ -542,7 +564,7 @@ uint32_t NnueNetworkLayer::GetHash()
 }
 
 
-// 32->1 propagation to output value
+// propagation to output value
 void NnueNetworkLayer::OutLayer(clipped_t* input, int32_t* output)
 {
 #if defined(USE_AVX2)
@@ -591,7 +613,7 @@ void NnueNetworkLayer::OutLayer(clipped_t* input, int32_t* output)
 
 #else
     *output = bias[0];
-    for (unsigned int j = 0; j < 32; j++)
+    for (unsigned int j = 0; j < NnueHidden2Dims; j++)
         *output += weight[j] * input[j];
 #endif
 
@@ -824,7 +846,6 @@ void NnueNetworkLayer::Propagate(clipped_t* input, int32_t* output)
             sum += weight[offset + j] * input[j];
         output[i] = sum;
     }
-
 #endif
 
 
@@ -955,11 +976,11 @@ void NnueInit()
 {
     NnueFt = new NnueFeatureTransformer();
     NnueIn = new NnueInputSlice();
-    NnueHd1 = new NnueNetworkLayer(NnueIn, 512, 32);
-    NnueCl1 = new NnueClippedRelu(NnueHd1, 32);
-    NnueHd2 = new NnueNetworkLayer(NnueCl1, 32, 32);
-    NnueCl2 = new NnueClippedRelu(NnueHd2, 32);
-    NnueOut = new NnueNetworkLayer(NnueCl2, 32, 1);
+    NnueHd1 = new NnueNetworkLayer(NnueIn, NnueFtOutputdims, NnueHidden1Dims);
+    NnueCl1 = new NnueClippedRelu(NnueHd1, NnueHidden1Dims);
+    NnueHd2 = new NnueNetworkLayer(NnueCl1, NnueHidden1Dims, NnueHidden2Dims);
+    NnueCl2 = new NnueClippedRelu(NnueHd2, NnueHidden2Dims);
+    NnueOut = new NnueNetworkLayer(NnueCl2, NnueHidden2Dims, 1);
 }
 
 void NnueRemove()
@@ -983,7 +1004,7 @@ bool NnueReadNet(NnueNetsource_t is)
 
     uint32_t version, hash, size;
     string sarchitecture;
-    
+
     NNUEREAD(is, (char*)&version, sizeof(uint32_t));
     NNUEREAD(is, (char*)&hash, sizeof(uint32_t));
     NNUEREAD(is, (char*)&size, sizeof(uint32_t));
@@ -992,17 +1013,25 @@ bool NnueReadNet(NnueNetsource_t is)
     NNUEREAD(is, (char*)&sarchitecture[0], size);
 
     NnueType nt;
-    if (version == NNUEFILEVERSIONROTATE)
+    switch (version) {
+    case NNUEFILEVERSIONROTATE:
+        NnueFt->bpz = true;
         nt = NnueRotate;
-    else if (version == NNUEFILEVERSIONFLIP)
+        break;
+    case NNUEFILEVERSIONNOBPZ:
+        NnueFt->bpz = false;
+        nt = NnueRotate;
+        break;
+    case NNUEFILEVERSIONFLIP:
+        NnueFt->bpz = false;
         nt = NnueFlip;
-    else
+        break;
+    default:
         return false;
-
+    }
 
     if (hash != filehash)
         return false;
-
 
     // Read the weights of the feature transformer
     NNUEREAD(is, (char*)&hash, sizeof(uint32_t));
@@ -1025,16 +1054,25 @@ bool NnueReadNet(NnueNetsource_t is)
 #ifdef EVALOPTIONS
 void NnueWriteNet(vector<string> args)
 {
+    size_t ci = 0;
+    size_t cs = args.size();
     string NnueNetPath = "export.nnue";
-    if (args.size())
-        NnueNetPath = args[0];
-
     int rescale = 0;
-    if (args.size() > 2 && args[1] == "rescale")
-    {
-        rescale = stoi(args[2]);
-    }
+    NnueFt->bpz = true;
+    if (ci < cs)
+        NnueNetPath = args[ci++];
 
+    while (ci < cs) {
+        if (args[ci] == "rescale" && ++ci < cs)
+        {
+            rescale = stoi(args[ci++]);
+        }
+        if (args[ci] == "nobpz")
+        {
+            NnueFt->bpz = false;
+            ci++;
+        }
+    }
     ofstream os;
     os.open(NnueNetPath, ios::binary);
     if (!os && en.ExecPath != "")
@@ -1047,22 +1085,30 @@ void NnueWriteNet(vector<string> args)
 
     if (rescale)
     {
-        NnueOut->bias[0] = round(NnueOut->bias[0] * rescale / NnueValueScale);
-        for (int i = 0; i < 32; i++)
+        NnueOut->bias[0] = (int32_t)round(NnueOut->bias[0] * rescale / NnueValueScale);
+        for (int i = 0; i < NnueHidden2Dims; i++)
         {
             int idx = i;
 #if defined(USE_AVX2)
             idx = shuffleWeightIndex(idx, 32, true);
 #endif
-            NnueOut->weight[idx] = round(NnueOut->weight[idx] * rescale / NnueValueScale);
+            NnueOut->weight[idx] = (weight_t)(NnueOut->weight[idx] * rescale / NnueValueScale);
         }
     }
 
     uint32_t fthash = NnueFt->GetHash();
     uint32_t nethash = NnueOut->GetHash();
     uint32_t filehash = (fthash ^ nethash);
-    uint32_t version = NNUEFILEVERSIONROTATE;
-    const string sarchitecture = "Features=HalfKP(Friend)[41024->256x2],Network=AffineTransform[1<-32](ClippedReLU[32](AffineTransform[32<-32](ClippedReLU[32](AffineTransform[32<-512](InputSlice[512(0:512)])))))";
+    uint32_t version;
+    string sarchitecture;
+    if (NnueFt->bpz) {
+        sarchitecture = "Features=HalfKP(Friend)[41024->256x2],Network=AffineTransform[1<-32](ClippedReLU[32](AffineTransform[32<-32](ClippedReLU[32](AffineTransform[32<-512](InputSlice[512(0:512)])))))";
+        version = NNUEFILEVERSIONROTATE;
+    }
+    else {
+        sarchitecture = "Features=HalfKP(Friend)[40960->256x2],Network=AffineTransform[1<-32](ClippedReLU[32](AffineTransform[32<-32](ClippedReLU[32](AffineTransform[32<-512](InputSlice[512(0:512)])))))";
+        version = NNUEFILEVERSIONNOBPZ;
+    }
     uint32_t size = (uint32_t)sarchitecture.size();
 
     os.write((char*)&version, sizeof(uint32_t));
@@ -1086,7 +1132,7 @@ void NnueRegisterEvals()
     // Expose weights and bias of ouput layer as UCI options for tuning
     en.ucioptions.Register(&NnueValueScale, "NnueValueScale", ucinnuebias, to_string(NnueValueScale), INT_MIN, INT_MAX, nullptr);
     en.ucioptions.Register(&NnueOut->bias[0], "NnueOutBias", ucinnuebias, to_string(NnueOut->bias[0]), INT_MIN, INT_MAX, nullptr);
-    for (int i = 0; i < 32; i++)
+    for (int i = 0; i < NnueHidden2Dims; i++)
     {
         ostringstream osName;
         osName << "NnueOutWeight_" << setw(2) << setfill('0') << to_string(i);
@@ -1103,6 +1149,3 @@ void NnueRegisterEvals()
 // This avoids putting these definitions in header file
 template int chessposition::NnueGetEval<NnueRotate>();
 template int chessposition::NnueGetEval<NnueFlip>();
-
-
-#endif

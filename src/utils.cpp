@@ -323,6 +323,94 @@ void BitboardDraw(U64 b)
 }
 
 
+PieceType GetPieceType(char c)
+{
+    switch (c)
+    {
+    case 'n':
+    case 'N':
+        return KNIGHT;
+    case 'b':
+    case 'B':
+        return BISHOP;
+    case 'r':
+    case 'R':
+        return ROOK;
+    case 'q':
+    case 'Q':
+        return QUEEN;
+    case 'k':
+    case 'K':
+        return KING;
+    default:
+        break;
+    }
+    return BLANKTYPE;
+}
+
+
+char PieceChar(PieceCode c, bool lower)
+{
+    PieceType p = (PieceType)(c >> 1);
+    int color = (c & 1);
+    char o;
+    switch (p)
+    {
+    case PAWN:
+        o = 'p';
+        break;
+    case KNIGHT:
+        o = 'n';
+        break;
+    case BISHOP:
+        o = 'b';
+        break;
+    case ROOK:
+        o = 'r';
+        break;
+    case QUEEN:
+        o = 'q';
+        break;
+    case KING:
+        o = 'k';
+        break;
+    default:
+        o = ' ';
+        break;
+    }
+    if (!lower && !color)
+        o = (char)(o + ('A' - 'a'));
+    return o;
+}
+
+
+string moveToString(uint32_t mc)
+{
+    char s[8];
+
+    if (mc == 0)
+        return "(none)";
+
+    int from, to;
+    PieceCode promotion;
+    from = GETFROM(mc);
+    if (!en.chess960)
+        to = GETCORRECTTO(mc);
+    else
+        to = GETTO(mc);
+    promotion = GETPROMOTION(mc);
+
+    sprintf_s(s, "%c%d%c%d", (from & 0x7) + 'a', ((from >> 3) & 0x7) + 1, (to & 0x7) + 'a', ((to >> 3) & 0x7) + 1);
+    if (promotion)
+    {
+        string ps(1, PieceChar(promotion, true));
+        return s + ps;
+    }
+
+    return s;
+}
+
+
 string chessposition::AlgebraicFromShort(string s)
 {
     string retval = "";
@@ -399,7 +487,7 @@ string chessposition::AlgebraicFromShort(string s)
     return retval;
 }
 
-
+const string strCpuFeatures[] = STRCPUFEATURELIST;
 string compilerinfo::PrintCpuFeatures(U64 f, bool onlyHighest)
 {
     string s = "";
@@ -513,7 +601,7 @@ void compilerinfo::GetSystemInfo()
         cout << "info string Error! Binary is not compatible with this machine. Missing cpu features:" + PrintCpuFeatures(notSupported) + ". Please use correct binary.\n";
         exit(-1);
     }
-    
+
     if (cpuVendor == CPUVENDORAMD && cpuFamily < 25 && (machineSupports & CPUBMI2))
     {
         // No real BMI2 support on AMD cpu before Zen3
@@ -699,7 +787,7 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
     PVOID addrs[25] = { 0 };
     USHORT frames = CaptureStackBackTrace(1, 25, addrs, NULL);
     for (USHORT i = 0; i < frames; i++) {
-        // Allocate a buffer large enough to hold the symbol information on the stack and get 
+        // Allocate a buffer large enough to hold the symbol information on the stack and get
         // a pointer to the buffer.  We also have to set the size of the symbol structure itself
         // and the number of bytes reserved for the name.
         ULONG64 buffer[(sizeof(SYMBOL_INFO) + 1024 + sizeof(ULONG64) - 1) / sizeof(ULONG64)] = { 0 };

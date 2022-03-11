@@ -18,9 +18,6 @@
 #pragma once
 
 #define VERNUMLEGACY 2022
-
-// Disable this to compile without NNUE evaluation
-#define NNUE
 #define NNUEDEFAULT nn-d458c5999d-20220222.nnue
 
 // Enable to get statistical values about various search features
@@ -46,9 +43,6 @@
 
 // Enable this to enable NNUE training code
 //#define NNUELEARN
-
-// Enable to log every input and output of the engine into a file
-#define UCILOGGING
 
 
 #ifdef FINDMEMORYLEAKS
@@ -554,6 +548,7 @@ struct evalparamset {
 
 void registerallevals(chessposition* pos = nullptr);
 void initPsqtable();
+void initBitmaphelper();
 
 #define SCALE_NORMAL 128
 #define SCALE_DRAW 0
@@ -676,8 +671,10 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
 #define NNUEDEFAULTSTR TOSTRING(NNUEDEFAULT)
 
 enum NnueType { NnueDisabled = 0, NnueRotate, NnueFlip };
-#define NNUEFILEVERSIONROTATE     0x7AF32F16u
-#define NNUEFILEVERSIONFLIP       0x7AF32F17u
+// The following constants were introduced in original NNUE port from Shogi
+#define NNUEFILEVERSIONROTATE   0x7AF32F16u
+#define NNUEFILEVERSIONNOBPZ    0x7AF32F17u
+#define NNUEFILEVERSIONFLIP     0x7AF32F18u
 #define NNUENETLAYERHASH    0xCC03DAE4u
 #define NNUECLIPPEDRELUHASH 0x538D24C7u
 #define NNUEFEATUREHASH     (0x5D69D5B9u ^ true)
@@ -685,9 +682,12 @@ enum NnueType { NnueDisabled = 0, NnueRotate, NnueFlip };
 
 #define ORIENT(c,i,r) ((c) ? (i) ^ (r) : (i))
 
+// Net dimensions
 const int NnueFtHalfdims = 256;
 const int NnueFtOutputdims = NnueFtHalfdims * 2;
-const int NnueFtInputdims = 64 * 641;
+const int NnueFtInputdims = 64 * 10 * 64;   // (kingsquare x piecetype x piecesquare)
+const int NnueHidden1Dims = 32;
+const int NnueHidden2Dims = 32;
 const int NnueClippingShift = 6;
 
 #if defined(USE_SSE2) && !defined(USE_SSSE3)
@@ -755,6 +755,7 @@ class NnueFeatureTransformer : public NnueLayer
 public:
     int16_t* bias;
     int16_t* weight;
+    bool bpz;
 
     NnueFeatureTransformer();
     virtual ~NnueFeatureTransformer();
@@ -1279,7 +1280,7 @@ public:
 	string toString();
 	string toStringWithValue();
 	void print();
-    chessmove* getNextMove(int minval);
+    chessmove* getNextMove(int minval = INT_MIN);
     uint32_t getAndRemoveNextMove();
 };
 
@@ -1311,6 +1312,7 @@ public:
 };
 
 extern U64 pawn_attacks_to[64][2];
+extern U64 pawn_attacks_from[64][2];
 extern U64 knight_attacks[64];
 extern U64 king_attacks[64];
 extern U64 pawn_moves_to[64][2];
@@ -1430,18 +1432,6 @@ public:
     int castlerookfrom[4];
     U64 castleblockers[4];
     U64 castlekingwalk[4];
-
-#ifdef EVALTUNE
-    bool isQuiet;
-    bool noQs;
-    tuneparamselection tps;
-    positiontuneset pts;
-    evalparam ev[NUMOFEVALPARAMS];
-    void resetTuner();
-    void getPositionTuneSet(positiontuneset *p, evalparam *e);
-    void copyPositionTuneSet(positiontuneset *from, evalparam *efrom, positiontuneset *to, evalparam *eto);
-    string getCoeffString();
-#endif
 #ifdef SDEBUG
     U64 debughash = 0;
     uint32_t pvmovecode[MAXDEPTH];
@@ -1457,11 +1447,9 @@ public:
     U64 he_all;
     Materialhash mtrlhsh;
     Pawnhash pwnhsh;
-#ifdef NNUE
     NnueAccumulator accumulator[MAXDEPTH];
     DirtyPiece dirtypiece[MAXDEPTH];
     NnueNetwork network;
-#endif
     uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     alignas(64) MoveSelector moveSelector[MAXDEPTH];
@@ -1476,6 +1464,17 @@ public:
     PvAbortType pvaborttype[MAXDEPTH];
     int pvabortscore[MAXDEPTH];
     string pvadditionalinfo[MAXDEPTH];
+#endif
+#ifdef EVALTUNE
+    bool isQuiet;
+    bool noQs;
+    tuneparamselection tps;
+    positiontuneset pts;
+    evalparam ev[NUMOFEVALPARAMS];
+    void resetTuner();
+    void getPositionTuneSet(positiontuneset* p, evalparam* e);
+    void copyPositionTuneSet(positiontuneset* from, evalparam* efrom, positiontuneset* to, evalparam* eto);
+    string getCoeffString();
 #endif
     bool w2m();
     void BitboardSet(int index, PieceCode p);
@@ -1555,7 +1554,6 @@ public:
     void pvdebugout();
 #endif
     int testRepetition();
-#ifdef NNUE
     template <NnueType Nt, Color c> void HalfkpAppendActiveIndices(NnueIndexList *active);
     template <NnueType Nt, Color c> void HalfkpAppendChangedIndices(DirtyPiece* dp, NnueIndexList *add, NnueIndexList *remove);
     template <NnueType Nt, Color c> void UpdateAccumulator();
@@ -1572,20 +1570,16 @@ public:
     bool followsTo(chessposition *src, uint32_t mc);    // check if this position is reached by src with move mc
     void fixEpt();
 #endif
-#endif
 };
 
-//
-// uci stuff
-//
 
-#ifdef UCILOGGING
+//
+// engine stuff
+//
 extern void uciSetLogFile();
-#endif
 class GuiCommunication {
 private:
     ostream& myos;
-#ifdef UCILOGGING
     ofstream logstream;
     U64 logStartTime = 0ULL;
     U64 freq;
@@ -1597,7 +1591,6 @@ private:
         ts << setfill(' ') << setw(6) << s << "." << setw(3) << setfill('0') << ms;
         return ts.str();
     }
-#endif
 public:
     GuiCommunication(ostream& os) : myos(os)
     {
@@ -1605,13 +1598,10 @@ public:
     template <typename T>
     GuiCommunication& operator<<(const T& thing) {
         myos << thing;
-#ifdef UCILOGGING
         if (freq)
             logstream << timestamp() << " < " << thing;
-#endif
         return *this;
     }
-#ifdef UCILOGGING
     void fromGui(string input)
     {
         if (freq)
@@ -1634,9 +1624,6 @@ public:
         if (freq)
             logstream << timestamp() << " < " << input;
     }
-#endif
-
-
 };
 
 
@@ -1670,9 +1657,6 @@ const map<string, GuiToken> GuiCommandMap = {
     { "perft", PERFT }
 };
 
-//
-// engine stuff
-//
 class engine;   //forward definition
 
 // order of ucioptiontypes is important for (not) setting default at registration
@@ -1761,11 +1745,12 @@ public:
     int cpuVendor;
     int cpuFamily;
     int cpuModel;
-    compilerinfo();
+    compilerinfo() { GetSystemInfo(); }
     void GetSystemInfo();
-    string SystemName();
+    string SystemName() { return system; }
     string PrintCpuFeatures(U64 features, bool onlyHighest = false);
 };
+
 
 
 class engine
@@ -1774,13 +1759,12 @@ public:
     engine(compilerinfo *c);
     ~engine();
     const string author = "Andreas Matthies";
-    bool isWhite;
     U64 tbhits;
     U64 starttime;
     U64 endtime1; // time to stop before starting next iteration
     U64 endtime2; // time to stop immediately
     U64 frequency;
-    int wtime, btime, winc, binc, movestogo, mate, movetime, maxdepth;
+    int mytime, yourtime, myinc, yourinc, movestogo, mate, movetime, maxdepth;
     U64 maxnodes;
     bool infinite;
     bool debug = false;
@@ -1823,10 +1807,7 @@ public:
     int t2stop = 0;     // immediate stop
     bool bStopCount;
 #endif
-#ifdef UCILOGGING
     string LogFile;
-#endif
-#ifdef NNUE
     bool usennue;
     string NnueNetpath; // UCI option, can be <Default>
     string GetNnueNetPath() {
@@ -1851,7 +1832,6 @@ public:
         else
             return "<unknown>";
     }
-#endif
 #ifdef _WIN32
     bool allowlargepages;
 #endif
@@ -1862,9 +1842,7 @@ public:
             return string(ENGINEVER) + sbinary;
 
         string sNnue = "";
-#ifdef NNUE
         if (NnueReady) sNnue = " NN-" + NnueSha256FromName();
-#endif
         return string(ENGINEVER) + sNnue +  sbinary;
     };
     GuiToken parse(vector<string>*, string ss);
@@ -1878,6 +1856,7 @@ public:
 };
 
 PieceType GetPieceType(char c);
+char PieceChar(PieceCode c, bool lower = false);
 
 // enginestate is for communication with external engine process
 struct enginestate
@@ -1902,6 +1881,7 @@ extern engine en;
 extern compilerinfo cinfo;
 extern GuiCommunication guiCom;
 
+
 #ifdef SDEBUG
 #define SDEBUGDO(c, s) if (c) {s}
 #else
@@ -1912,6 +1892,92 @@ extern GuiCommunication guiCom;
 //
 // search stuff
 //
+
+#ifdef SEARCHOPTIONS
+void searchtableinit();
+class searchparam {
+public:
+    int val;
+    string name;
+
+    searchparam(const char* c) {
+        string s(c);
+        size_t i = s.find('/');
+        val = stoi(s.substr(i + 1));
+        name = "S_" + s.substr(0, i);
+        en.ucioptions.Register((void*)&val, name, ucisearch, to_string(val), 0, 0, searchtableinit);
+    }
+    operator int() const { return val; }
+};
+
+#define SP(x,y) x = #x "/" #y
+
+#else // SEARCHOPTIONS
+typedef const int searchparam;
+#define SP(x,y) x = y
+#endif
+
+struct searchparamset {
+#ifdef EVALTUNE
+    searchparam SP(deltapruningmargin, 4000);
+#else
+    searchparam SP(deltapruningmargin, 160);
+#endif
+    // LMR table
+    searchparam SP(lmrlogf0, 150);
+    searchparam SP(lmrf0, 60);
+    searchparam SP(lmrlogf1, 150);
+    searchparam SP(lmrf1, 43);
+    searchparam SP(lmrmindepth, 3);
+    searchparam SP(lmrstatsratio, 625);
+    searchparam SP(lmropponentmovecount, 15);
+    // LMP table
+    searchparam SP(lmpf0, 59);
+    searchparam SP(lmppow0, 48);
+    searchparam SP(lmpf1, 74);
+    searchparam SP(lmppow1, 170);
+    // Razoring
+    searchparam SP(razormargin, 250);
+    searchparam SP(razordepthfactor, 50);
+    //futility pruning
+    searchparam SP(futilitymindepth, 8);
+    searchparam SP(futilityreversedepthfactor, 70);
+    searchparam SP(futilityreverseimproved, 20);
+    searchparam SP(futilitymargin, 10);
+    searchparam SP(futilitymarginperdepth, 59);
+    // null move
+    searchparam SP(nmmindepth, 2);
+    searchparam SP(nmmredbase, 4);
+    searchparam SP(nmmreddepthratio, 6);
+    searchparam SP(nmmredevalratio, 150);
+    searchparam SP(nmmredpvfactor, 2);
+    searchparam SP(nmverificationdepth, 12);
+    //Probcut
+    searchparam SP(probcutmindepth, 5);
+    searchparam SP(probcutmargin, 100);
+    // Threat pruning
+    searchparam SP(threatprunemargin, 30);
+    searchparam SP(threatprunemarginimprove, 0);
+
+    // No hashmovereduction
+    searchparam SP(nohashreductionmindepth, 3);
+    // SEE prune
+    searchparam SP(seeprunemaxdepth, 8);
+    searchparam SP(seeprunemarginperdepth, -20);
+    searchparam SP(seeprunequietfactor, 4);
+    // Singular extension
+    searchparam SP(singularmindepth, 8);
+    searchparam SP(singularmarginperdepth, 2);
+    // History extension
+    searchparam SP(histextminthreshold, 9);
+    searchparam SP(histextmaxthreshold, 15);
+    searchparam SP(aspincratio, 4);
+    searchparam SP(aspincbase, 2);
+    searchparam SP(aspinitialdelta, 8);
+};
+
+extern searchparamset sps;
+
 class searchthread
 {
 public:

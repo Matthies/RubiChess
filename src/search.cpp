@@ -22,88 +22,6 @@
 statistic statistics;
 #endif
 
-#ifdef SEARCHOPTIONS
-void searchtableinit();
-class searchparam {
-public:
-    int val;
-    string name;
-
-    searchparam(const char* c) {
-        string s(c);
-        size_t i = s.find('/');
-        val = stoi(s.substr(i + 1));
-        name = "S_" + s.substr(0, i);
-        en.ucioptions.Register((void*)&val, name, ucisearch, to_string(val), 0, 0, searchtableinit);
-    }
-    operator int() const { return val; }
-};
-
-#define SP(x,y) x = #x "/" #y
-
-#else // SEARCHOPTIONS
-typedef const int searchparam;
-#define SP(x,y) x = y
-#endif
-
-struct searchparamset {
-#ifdef EVALTUNE
-    searchparam SP(deltapruningmargin, 4000);
-#else
-    searchparam SP(deltapruningmargin, 160);
-#endif
-    // LMR table
-    searchparam SP(lmrlogf0, 150);
-    searchparam SP(lmrf0, 60);
-    searchparam SP(lmrlogf1, 150);
-    searchparam SP(lmrf1, 43);
-    searchparam SP(lmrmindepth, 3);
-    searchparam SP(lmrstatsratio, 625);
-    searchparam SP(lmropponentmovecount, 15);
-    // LMP table
-    searchparam SP(lmpf0, 59);
-    searchparam SP(lmppow0, 48);
-    searchparam SP(lmpf1, 74);
-    searchparam SP(lmppow1, 170);
-    // Razoring
-    searchparam SP(razormargin, 250);
-    searchparam SP(razordepthfactor, 50);
-    //futility pruning
-    searchparam SP(futilitymindepth, 8);
-    searchparam SP(futilityreversedepthfactor, 70);
-    searchparam SP(futilityreverseimproved, 20);
-    searchparam SP(futilitymargin, 10);
-    searchparam SP(futilitymarginperdepth, 59);
-    // null move
-    searchparam SP(nmmindepth, 2);
-    searchparam SP(nmmredbase, 4);
-    searchparam SP(nmmreddepthratio, 6);
-    searchparam SP(nmmredevalratio, 150);
-    searchparam SP(nmmredpvfactor, 2);
-    searchparam SP(nmverificationdepth, 12);
-    //Probcut
-    searchparam SP(probcutmindepth, 5);
-    searchparam SP(probcutmargin, 100);
-    // Threat pruning
-    searchparam SP(threatprunemargin, 30);
-    searchparam SP(threatprunemarginimprove, 0);
-
-    // No hashmovereduction
-    searchparam SP(nohashreductionmindepth, 3);
-    // SEE prune
-    searchparam SP(seeprunemaxdepth, 8);
-    searchparam SP(seeprunemarginperdepth, -20);
-    searchparam SP(seeprunequietfactor, 4);
-    // Singular extension
-    searchparam SP(singularmindepth, 8);
-    searchparam SP(singularmarginperdepth, 2);
-    // History extension
-    searchparam SP(histextminthreshold, 9);
-    searchparam SP(histextmaxthreshold, 15);
-    searchparam SP(aspincratio, 4);
-    searchparam SP(aspincbase, 2);
-    searchparam SP(aspinitialdelta, 8);
-} sps;
 
 #define MAXLMPDEPTH 9
 int reductiontable[2][MAXDEPTH][64];
@@ -1269,9 +1187,8 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, in
             + " score mate " + to_string(matein) + " " + boundscore[inWindow] + "nodes " + to_string(nodes) + " nps " + to_string(nps) + " tbhits " + to_string(en.tbhits)
             + " hashfull " + to_string(tp.getUsedinPermill()) + " pv " + pvstring + "\n";
     }
-
-    SDEBUGDO(true, guiCom.log("[SDEBUG] Raw score: " + to_string(score) + "\n"););
-    SDEBUGDO(true, pos->pvdebugout(););
+    SDEBUGDO(pos->pvmovecode[0], guiCom.log("[SDEBUG] Raw score: " + to_string(score) + "\n"););
+    SDEBUGDO(pos->pvmovecode[0], pos->pvdebugout(););
 }
 
 
@@ -1609,8 +1526,8 @@ static void mainSearch(searchthread *thr)
 
 void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
 {
-    int timeinc = (en.isWhite ? en.winc : en.binc);
-    int timetouse = (en.isWhite ? en.wtime : en.btime);
+    int timeinc = en.myinc;
+    int timetouse = en.mytime;
     int overhead = en.moveOverhead + 8 * en.Threads;
     int constance = constantRootMoves * 2 + en.ponderhit * 4;
 
@@ -1667,7 +1584,7 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
 
 #ifdef TDEBUG
     stringstream ss;
-    guiCom.log("[TDEBUG] Time from UCI: time=" + to_string(timetouse) + "  inc=" + to_string(timeinc) + "  overhead=" + to_string(overhead) + "  constance=" + to_string(constance) + "  ph=" + to_string(ph) + "\n");
+    guiCom.log("[TDEBUG] Time from UCI: time=" + to_string(timetouse) + "  inc=" + to_string(timeinc) + "  overhead=" + to_string(overhead) + "  constance=" + to_string(constance) + "\n");
     ss << "[TDEBUG] Time for this move: " << setprecision(3) << (en.endtime1 - en.starttime) / (double)en.frequency << " / " << (en.endtime2 - en.starttime) / (double)en.frequency << "\n";
     guiCom.log(ss.str());
     if (timeinc) guiCom.log("[TDEBUG] Timefactor (use/inc): " + to_string(timetouse / timeinc) + "\n");
@@ -1765,8 +1682,9 @@ void search_statistics()
 {
     U64 n, i1, i2, i3, i4;
     double f0, f1, f2, f3, f4, f5, f6, f7, f10, f11;
+    char str[512];
 
-    printf("(ST)====Statistics====================================================================================================================================\n");
+    guiCom.log("[STATS] ==================================================================================================================================================================\n");
 
     // quiescense search statistics
     i1 = statistics.qs_n[0];
@@ -1781,7 +1699,8 @@ void search_statistics()
     f4 =  i3 / (double)statistics.qs_loop_n;
     f5 = 100.0 * statistics.qs_move_delta / (double)i3;
     f6 = 100.0 * statistics.qs_moves_fh / (double)statistics.qs_moves;
-    printf("(ST) QSearch: %12lld   %%InCheck:  %5.2f   %%TT-Hits:  %5.2f   %%Std.Pat: %5.2f   %%DeltaPr: %5.2f   Mvs/Lp: %5.2f   %%DlPrM: %5.2f   %%FailHi: %5.2f   mindepth: %3lld\n", n, f0, f1, f2, f3, f4, f5, f6, i4);
+    sprintf(str, "[STATS] QSearch: %12lld   %%InCheck:  %5.2f   %%TT-Hits:  %5.2f   %%Std.Pat: %5.2f   %%DeltaPr: %5.2f   Mvs/Lp: %5.2f   %%DlPrM: %5.2f   %%FailHi: %5.2f   mindepth: %3lld\n", n, f0, f1, f2, f3, f4, f5, f6, i4);
+    guiCom.log(str);
 
     // general aplhabeta statistics
     n = statistics.ab_n;
@@ -1790,7 +1709,8 @@ void search_statistics()
     f2 = 100.0 * statistics.ab_tb / (double)n;
     f3 = 100.0 * statistics.ab_qs / (double)n;
     f4 = 100.0 * statistics.ab_draw_or_win / (double)n;
-    printf("(ST) Total AB:%12lld   %%PV-Nodes: %5.2f   %%TT-Hits:  %5.2f   %%TB-Hits: %5.2f   %%QSCalls: %5.2f   %%Draw/Mates: %5.2f\n", n, f0, f1, f2, f3, f4);
+    sprintf(str, "[STATS] Total AB:%12lld   %%PV-Nodes: %5.2f   %%TT-Hits:  %5.2f   %%TB-Hits: %5.2f   %%QSCalls: %5.2f   %%Draw/Mates: %5.2f\n", n, f0, f1, f2, f3, f4);
+    guiCom.log(str);
 
     // node pruning
     f0 = 100.0 * statistics.prune_futility / (double)n;
@@ -1799,7 +1719,8 @@ void search_statistics()
     f3 = 100.0 * statistics.prune_multicut / (double)n;
     f4 = 100.0 * statistics.prune_threat / (double)n;
     f5 = 100.0 * (statistics.prune_futility + statistics.prune_nm + statistics.prune_probcut + statistics.prune_multicut + statistics.prune_threat) / (double)n;
-    printf("(ST) Node pruning            %%Futility: %5.2f   %%NullMove: %5.2f   %%ProbeC.: %5.2f   %%MultiC.: %7.5f   %%Threat.: %7.5f Total:  %5.2f\n", f0, f1, f2, f3, f4, f5);
+    sprintf(str, "[STATS] Node pruning            %%Futility: %5.2f   %%NullMove: %5.2f   %%ProbeC.: %5.2f   %%MultiC.: %7.5f   %%Threat.: %7.5f Total:  %5.2f\n", f0, f1, f2, f3, f4, f5);
+    guiCom.log(str);
 
     // move statistics
     i1 = statistics.moves_n[0]; // quiet moves
@@ -1814,7 +1735,8 @@ void search_statistics()
     i3 = statistics.moves_played[0] + statistics.moves_played[1];
     f6 = 100.0 * statistics.moves_fail_high / (double)i3;
     f7 = 100.0 * statistics.moves_bad_hash / i2;
-    printf("(ST) Moves:   %12lld   %%Quiet-M.: %5.2f   %%Tact.-M.: %5.2f   %%BadHshM: %5.2f   %%LMP-M.:  %5.2f   %%FutilM.: %5.2f   %%BadSEE: %5.2f  Mvs/Lp: %5.2f   %%FailHi: %5.2f\n", n, f0, f1, f7, f2, f3, f4, f5, f6);
+    sprintf(str, "[STATS] Moves:   %12lld   %%Quiet-M.: %5.2f   %%Tact.-M.: %5.2f   %%BadHshM: %5.2f   %%LMP-M.:  %5.2f   %%FutilM.: %5.2f   %%BadSEE: %5.2f  Mvs/Lp: %5.2f   %%FailHi: %5.2f\n", n, f0, f1, f7, f2, f3, f4, f5, f6);
+    guiCom.log(str);
 
     // late move reduction statistics
     U64 red_n = statistics.red_pi[0] + statistics.red_pi[1];
@@ -1825,13 +1747,15 @@ void search_statistics()
     f3 = statistics.red_pv / (double)red_n;
     f4 = statistics.red_correction / (double)red_n;
     f5 = statistics.red_total / (double)red_n;
-    printf("(ST) Reduct.  %12lld   lmr[0]: %4.2f   lmr[1]: %4.2f   lmr: %4.2f   hist: %4.2f   pv: %4.2f   corr: %4.2f   total: %4.2f\n", red_n, f10, f11, f1, f2, f3, f4, f5);
+    sprintf(str, "[STATS] Reduct.  %12lld   lmr[0]: %4.2f   lmr[1]: %4.2f   lmr: %4.2f   hist: %4.2f   pv: %4.2f   corr: %4.2f   total: %4.2f\n", red_n, f10, f11, f1, f2, f3, f4, f5);
+    guiCom.log(str);
 
     f0 = 100.0 * statistics.extend_singular / (double)n;
     f1 = 100.0 * statistics.extend_endgame / (double)n;
     f2 = 100.0 * statistics.extend_history / (double)n;
-    printf("(ST) Extensions: %%singular: %7.4f   %%endgame: %7.4f   %%history: %7.4f\n", f0, f1, f2);
-    printf("(ST)==================================================================================================================================================\n");
+    sprintf(str, "[STATS] Extensions: %%singular: %7.4f   %%endgame: %7.4f   %%history: %7.4f\n", f0, f1, f2);
+    guiCom.log(str);
+    guiCom.log("[STATS] ==================================================================================================================================================================\n");
 }
 #endif
 

@@ -965,13 +965,14 @@ int main(int argc, char* argv[])
             en.ExecPath = execPath.substr(0, si + 1);
     }
 
+    initBitmaphelper();
+    NnueInit();
+
     en.registerOptions();
 
 #ifdef EVALOPTIONS
     registerallevals();
-#ifdef NNUE
     NnueRegisterEvals();
-#endif
 #endif
 
 #ifdef EVALTUNE
@@ -1051,7 +1052,6 @@ int main(int argc, char* argv[])
     } else if (benchmark || openbench)
     {
         doBenchmark(depth, epdfile, maxtime, startnum, openbench);
-#ifdef NNUE
         if (!openbench && epdfile == "")
         {
             NnueType oldNnueReady = NnueReady;
@@ -1060,7 +1060,6 @@ int main(int argc, char* argv[])
             if (NnueReady || oldNnueReady)
                 doBenchmark(depth, epdfile, maxtime, startnum, openbench);
         }
-#endif
     } else if (enginetest)
     {
 #ifdef _WIN32
