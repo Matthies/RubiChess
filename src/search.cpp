@@ -1658,8 +1658,8 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
     }
     else if (timeinc)
     {
-        // timetouse = 0 => movetime mode: Use exactly timeinc without overhead or early stop
-        en.endtime1 = en.endtime2 = startTime + timeinc * en.frequency / 1000;
+        // timetouse = 0 => movetime mode: Use exactly timeinc respecting overhead
+        en.endtime1 = en.endtime2 = startTime + (timeinc - overhead) * en.frequency / 1000;
     }
     else {
         en.endtime1 = en.endtime2 = 0;
