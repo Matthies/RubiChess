@@ -87,7 +87,6 @@ static void uciSetBookFile()
         en.BookFile = "<empty>";
 }
 
-#ifdef UCILOGGING
 void uciSetLogFile()
 {
     string filename = (en.LogFile == "" ? "" : en.ExecPath + en.LogFile);
@@ -107,9 +106,7 @@ void uciSetLogFile()
     guiCom << "========================================================================================\n";
     guiCom << "info string " + sLogging + "\n";
 }
-#endif
 
-#ifdef NNUE
 static void uciSetNnuePath()
 {
     if (!en.usennue)
@@ -148,19 +145,11 @@ static void uciSetNnuePath()
     guiCom << "info string Loading net " + NnueNetPath + " failed. The network file seems corrupted or doesn't exist. Set correct path to network file or disable 'Use_NNUE' for handcrafted evaluation.\n";
 #endif
 }
-#endif
 
 
 engine::engine(compilerinfo *c)
 {
     compinfo = c;
-#if 0
-    rootposition.pwnhsh.setSize(1);  // some dummy pawnhash just to make the prefetch in playMove happy
-    // default castle rights
-    int rf[2][2] = { { 0, 7 },{0,7} };
-    int kf[2] = { 4,4 };
-    rootposition.initCastleRights(rf, kf);
-#endif
 #ifdef _WIN32
     LARGE_INTEGER f;
     QueryPerformanceFrequency(&f);
@@ -177,23 +166,17 @@ engine::~engine()
     allocThreads();
     rootposition.pwnhsh.remove();
     rootposition.mtrlhsh.remove();
-#ifdef NNUE
     NnueRemove();
-#endif
 }
 
 
 void engine::registerOptions()
 {
-#ifdef NNUE
 #ifndef NNUEINCLUDED
     ucioptions.Register(&NnueNetpath, "NNUENetpath", ucistring, "<Default>", 0, 0, uciSetNnuePath);
 #endif
     ucioptions.Register(&usennue, "Use_NNUE", ucicheck, "true", 0, 0, uciSetNnuePath);
-#endif
-#ifdef UCILOGGING
     ucioptions.Register(&LogFile, "LogFile", ucistring, "", 0, 0, uciSetLogFile);
-#endif
 #ifdef _WIN32
     ucioptions.Register(&allowlargepages, "Allow Large Pages", ucicheck, "true", 0, 0, uciAllowLargePages);
 #endif
@@ -261,10 +244,8 @@ void engine::prepareThreads()
         pos->nullmoveply = 0;
         pos->nullmoveside = 0;
 
-#ifdef NNUE
         pos->accumulator[0].computationState[WHITE] = false;
         pos->accumulator[0].computationState[BLACK] = false;
-#endif
     }
 }
 
@@ -510,10 +491,8 @@ void engine::communicate(string inputstring)
                 pendingposition = (fen != "");
                 break;
             case GO:
-#ifdef NNUE
                 if (en.usennue && !NnueReady)
                     break;
-#endif
                 pondersearch = NO;
                 searchmoves.clear();
                 mytime = yourtime = myinc = yourinc = movestogo = mate = maxdepth = 0;
@@ -666,9 +645,7 @@ GuiToken engine::parse(vector<string>* args, string ss)
 
     if (cin.eof())
         return QUIT;
-#ifdef UCILOGGING
     guiCom.fromGui(ss);
-#endif
     GuiToken result = UNKNOWN;
     istringstream iss(ss);
     for (string s; iss >> s; )

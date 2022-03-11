@@ -517,13 +517,11 @@ void chessposition::playNullMove()
     hash ^= zb.s2m ^ zb.ept[ept];
     ept = 0;
     myassert(ply <= MAXDEPTH, this, 1, ply);
-#ifdef NNUE
     DirtyPiece* dp = &dirtypiece[ply];
     dp->dirtyNum = 0;
     dp->pc[0] = 0; // don't break search for updatable positions on stack
     accumulator[ply].computationState[WHITE] = false;
     accumulator[ply].computationState[BLACK] = false;
-#endif
 }
 
 
@@ -543,12 +541,10 @@ bool chessposition::playMove(uint32_t mc)
     int eptnew = 0;
     int oldcastle = (state & CASTLEMASK);
 
-#ifdef NNUE
     DirtyPiece* dp = &dirtypiece[ply + 1];
     dp->dirtyNum = 0;
     accumulator[ply + 1].computationState[WHITE] = false;
     accumulator[ply + 1].computationState[BLACK] = false;
-#endif
 
     halfmovescounter++;
 
@@ -575,24 +571,20 @@ bool chessposition::playMove(uint32_t mc)
             BitboardMove(kingfrom, kingto, kingpc);
             hash ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
             pawnhash ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
-#ifdef NNUE
             dp->pc[0] = kingpc;
             dp->from[0] = kingfrom;
             dp->to[0] = kingto;
             dp->dirtyNum = 1;
-#endif
         }
         if (rookfrom != rookto)
         {
             BitboardMove(rookfrom, rookto, rookpc);
             hash ^= zb.boardtable[(rookfrom << 4) | rookpc] ^ zb.boardtable[(rookto << 4) | rookpc];
-#ifdef NNUE
             int di = dp->dirtyNum;
             dp->pc[di] = rookpc;
             dp->from[di] = rookfrom;
             dp->to[di] = rookto;
             dp->dirtyNum++;
-#endif
         }
         state &= (s2m ? ~(BQCMASK | BKCMASK) : ~(WQCMASK | WKCMASK));
     }
@@ -605,12 +597,10 @@ bool chessposition::playMove(uint32_t mc)
         PieceCode promote = GETPROMOTION(mc);
         PieceCode capture = GETCAPTURE(mc);
 
-#ifdef NNUE
         dp->pc[0] = pfrom;
         dp->from[0] = from;
         dp->to[0] = to;
         dp->dirtyNum = 1;
-#endif
 
         myassert(!promote || (ptype == PAWN && RRANK(to, s2m) == 7), this, 4, promote, ptype, to, s2m);
         myassert(pfrom == mailbox[from], this, 3, pfrom, from, mailbox[from]);
@@ -625,12 +615,10 @@ bool chessposition::playMove(uint32_t mc)
             BitboardClear(to, capture);
             materialhash ^= zb.boardtable[(POPCOUNT(piece00[capture]) << 4) | capture];
             halfmovescounter = 0;
-#ifdef NNUE
             dp->pc[1] = capture;
             dp->from[1] = to;
             dp->to[1] = -1;
             dp->dirtyNum = 2;
-#endif
         }
 
         if (promote == BLANK)
@@ -646,14 +634,12 @@ bool chessposition::playMove(uint32_t mc)
             BitboardSet(to, promote);
             // just double the hash-switch for target to make the pawn vanish
             pawnhash ^= zb.boardtable[(to << 4) | promote];
-#ifdef NNUE
             int di = dp->dirtyNum;
             dp->to[0] = -1; // remove promoting pawn;
             dp->from[di] = -1;
             dp->to[di] = to;
             dp->pc[di] = promote;
             dp->dirtyNum++;
-#endif
         }
 
         hash ^= zb.boardtable[(to << 4) | mailbox[to]];
@@ -677,12 +663,10 @@ bool chessposition::playMove(uint32_t mc)
                 hash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
                 pawnhash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
                 materialhash ^= zb.boardtable[(POPCOUNT(piece00[(pfrom ^ S2MMASK)]) << 4) | (pfrom ^ S2MMASK)];
-#ifdef NNUE
                 dp->pc[1] = (pfrom ^ S2MMASK);
                 dp->from[1] = epfield;
                 dp->to[1] = -1;
                 dp->dirtyNum++;
-#endif
             }
         }
 

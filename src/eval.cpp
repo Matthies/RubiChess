@@ -80,9 +80,7 @@ static void registerforoptions(eval *e, string name, int index1, int bound1, int
     sDef = to_string(GETEGVAL(*e));
     en.ucioptions.Register((void*)e, osName.str() + "_eg", ucieval, sDef, 0, 0, initPsqtable);
     en.ucioptions.Register(&FrcCorneredBishopPenalty, "FrcCorneredBishopPenalty", ucispin, to_string(FrcCorneredBishopPenalty), 0, SCOREWHITEWINS, nullptr);
-#ifdef NNUE
     en.ucioptions.Register(&NnuePsqThreshold, "NnuePsqThreshold", ucinnuebias, to_string(NnuePsqThreshold), 0, SCOREWHITEWINS, nullptr);
-#endif
 }
 #endif
 
@@ -787,7 +785,6 @@ int chessposition::getEval()
 #endif
 
     int score;
-#ifdef NNUE
     if (NnueReady && abs(GETEGVAL(psqval)) < NnuePsqThreshold)
     {
         int frcCorrection = (en.chess960 ? getFrcCorrection() : 0);
@@ -798,7 +795,6 @@ int chessposition::getEval()
         score = score * (116 + phcount) / 128;
         return score + frcCorrection + eps.eTempo;
     }
-#endif
 
     // reset the attackedBy information
     memset(attackedBy, 0, sizeof(attackedBy));

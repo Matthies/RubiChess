@@ -18,9 +18,6 @@
 #pragma once
 
 #define VERNUMLEGACY 2022
-
-// Disable this to compile without NNUE evaluation
-#define NNUE
 #define NNUEDEFAULT nn-d458c5999d-20220222.nnue
 
 // Enable to get statistical values about various search features
@@ -46,9 +43,6 @@
 
 // Enable this to enable NNUE training code
 //#define NNUELEARN
-
-// Enable to log every input and output of the engine into a file
-#define UCILOGGING
 
 
 #ifdef FINDMEMORYLEAKS
@@ -1454,11 +1448,11 @@ public:
     U64 he_all;
     Materialhash mtrlhsh;
     Pawnhash pwnhsh;
-#ifdef NNUE
+
     NnueAccumulator accumulator[MAXDEPTH];
     DirtyPiece dirtypiece[MAXDEPTH];
     NnueNetwork network;
-#endif
+
     uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     alignas(64) MoveSelector moveSelector[MAXDEPTH];
@@ -1563,7 +1557,6 @@ public:
     void pvdebugout();
 #endif
     int testRepetition();
-#ifdef NNUE
     template <NnueType Nt, Color c> void HalfkpAppendActiveIndices(NnueIndexList *active);
     template <NnueType Nt, Color c> void HalfkpAppendChangedIndices(DirtyPiece* dp, NnueIndexList *add, NnueIndexList *remove);
     template <NnueType Nt, Color c> void UpdateAccumulator();
@@ -1580,20 +1573,16 @@ public:
     bool followsTo(chessposition *src, uint32_t mc);    // check if this position is reached by src with move mc
     void fixEpt();
 #endif
-#endif
 };
 
 //
 // uci stuff
 //
 
-#ifdef UCILOGGING
 extern void uciSetLogFile();
-#endif
 class GuiCommunication {
 private:
     ostream& myos;
-#ifdef UCILOGGING
     ofstream logstream;
     U64 logStartTime = 0ULL;
     U64 freq;
@@ -1605,7 +1594,6 @@ private:
         ts << setfill(' ') << setw(6) << s << "." << setw(3) << setfill('0') << ms;
         return ts.str();
     }
-#endif
 public:
     GuiCommunication(ostream& os) : myos(os)
     {
@@ -1613,13 +1601,10 @@ public:
     template <typename T>
     GuiCommunication& operator<<(const T& thing) {
         myos << thing;
-#ifdef UCILOGGING
         if (freq)
             logstream << timestamp() << " < " << thing;
-#endif
         return *this;
     }
-#ifdef UCILOGGING
     void fromGui(string input)
     {
         if (freq)
@@ -1642,9 +1627,6 @@ public:
         if (freq)
             logstream << timestamp() << " < " << input;
     }
-#endif
-
-
 };
 
 
@@ -1831,10 +1813,7 @@ public:
     int t2stop = 0;     // immediate stop
     bool bStopCount;
 #endif
-#ifdef UCILOGGING
     string LogFile;
-#endif
-#ifdef NNUE
     bool usennue;
     string NnueNetpath; // UCI option, can be <Default>
     string GetNnueNetPath() {
@@ -1859,7 +1838,6 @@ public:
         else
             return "<unknown>";
     }
-#endif
 #ifdef _WIN32
     bool allowlargepages;
 #endif
@@ -1870,9 +1848,7 @@ public:
             return string(ENGINEVER) + sbinary;
 
         string sNnue = "";
-#ifdef NNUE
         if (NnueReady) sNnue = " NN-" + NnueSha256FromName();
-#endif
         return string(ENGINEVER) + sNnue +  sbinary;
     };
     GuiToken parse(vector<string>*, string ss);

@@ -24,8 +24,6 @@
 
 #include "RubiChess.h"
 
-#ifdef NNUE
-
 //
 // Some NNUE related constants and types
 //
@@ -1006,7 +1004,7 @@ bool NnueReadNet(NnueNetsource_t is)
 
     uint32_t version, hash, size;
     string sarchitecture;
-    
+
     NNUEREAD(is, (char*)&version, sizeof(uint32_t));
     NNUEREAD(is, (char*)&hash, sizeof(uint32_t));
     NNUEREAD(is, (char*)&size, sizeof(uint32_t));
@@ -1151,6 +1149,3 @@ void NnueRegisterEvals()
 // This avoids putting these definitions in header file
 template int chessposition::NnueGetEval<NnueRotate>();
 template int chessposition::NnueGetEval<NnueFlip>();
-
-
-#endif
