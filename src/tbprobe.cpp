@@ -339,9 +339,9 @@ int chessposition::probe_ab(int alpha, int beta, int *success)
         {
             if (playMove(mc))
             {
-                //printf("probe_ab (ply=%d) testing capture/promotion/evasion move %s...\n", pos.ply, pos.actualpath.toString().c_str());
+                //printf("probe_ab (ply=%d) testing capture/promotion/evasion move %s...\n", ply, moveToString(mc).c_str());
                 v = -probe_ab(-beta, -alpha, success);
-                //printf("probe_ab (ply=%d) tested  capture/promotion/evasion move %s... v=%d\n", pos.ply, pos.actualpath.toString().c_str(), v);
+                //printf("probe_ab (ply=%d) tested  capture/promotion/evasion move %s... v=%d\n", ply, moveToString(mc).c_str(), v);
                 unplayMove(mc);
                 if (*success == 0) return 0;
                 if (v > alpha) {
@@ -396,9 +396,9 @@ int chessposition::probe_wdl(int *success)
         {
             if (playMove(mc))
             {
-                //printf("probe_wdl (ply=%d) testing capture/promotion/evasion move %s...\n", pos.ply, pos.actualpath.toString().c_str());
+                //printf("probe_wdl (ply=%d) testing capture/promotion/evasion move %s...\n", ply, moveToString(mc).c_str());
                 int v = -probe_ab(-2, -best_cap, success);
-                //printf("probe_wdl (ply=%d) tested  capture/promotion/evasion move %s... v=%d\n", pos.ply, pos.actualpath.toString().c_str(), v);
+                //printf("probe_wdl (ply=%d) tested  capture/promotion/evasion move %s... v=%d\n", ply, moveToString(mc).c_str(), v);
                 unplayMove(mc);
                 if (*success == 0) return 0;
                 if (v > best_cap) {
@@ -533,9 +533,9 @@ int chessposition::probe_dtz(int *success)
 
             if (playMove(mc))
             {
-                //printf("probe_dtz (ply=%d)testing non-capture pawn move %s...\n", pos->ply, m->toString().c_str());
+                //printf("probe_dtz (ply=%d)testing non-capture pawn move %s...\n", ply, moveToString(mc).c_str());
                 int v = -probe_wdl(success);
-                //printf("probe_dtz (ply=%d)tested  non-capture pawn move %s... v=%d\n", pos->ply, m->toString().c_str(), v);
+                //printf("probe_dtz (ply=%d)tested  non-capture pawn move %s... v=%d\n", ply, moveToString(mc).c_str(), v);
                 unplayMove(mc);
                 if (*success == 0)
                     return 0;
@@ -580,9 +580,9 @@ int chessposition::probe_dtz(int *success)
 
         if (playMove(mc))
         {
-            //printf("probe_dtz (ply=%d) testing non-pawn non-capture %s... \n", pos->ply, m->toString().c_str());
+            //printf("probe_dtz (ply=%d) testing non-pawn non-capture %s... \n", ply, moveToString(mc).c_str());
             int v = -probe_dtz(success);
-            //printf("probe_dtz (ply=%d) tested  non-pawn non-capture %s... v=%d\n", pos->ply, m->toString().c_str(), v);
+            //printf("probe_dtz (ply=%d) tested  non-pawn non-capture %s... v=%d\n", ply, moveToString(mc).c_str(), v);
             unplayMove(mc);
             if (*success == 0)
                 return 0;
@@ -632,7 +632,7 @@ int chessposition::root_probe_dtz()
         chessmove *m = &rootmovelist.move[i];
         isBadMove = !see(m->code, 0);
         playMove(m->code);
-        //printf("info string root_probe_dtz (ply=%d) Testing move %s...\n", pos->ply, m->toString().c_str());
+        //printf("info string root_probe_dtz (ply=%d) Testing move %s...\n", ply, m->toString().c_str());
         int v = 0;
         if (isCheckbb && dtz > 0) {
             chessmovelist nextmovelist;
@@ -668,7 +668,7 @@ int chessposition::root_probe_dtz()
                 v += 0x10000;
         }
 
-        //printf("info string root_probe_dtz (ply=%d) Tested  move %s... value=%d\n", pos->ply, m->toString().c_str(), v);
+        //printf("info string root_probe_dtz (ply=%d) Tested  move %s... value=%d\n", ply, m->toString().c_str(), v);
         unplayMove(m->code);
         if (!success)
             return 0;
@@ -699,9 +699,9 @@ int chessposition::root_probe_dtz()
         {
             int v = rootmovelist.move[mi].value;
 
-            if (v <= 0)
+            if (v <= 0 || (rep && (v & 0xffff) > best))
             {
-                // delete moves that are known for not winning
+                // delete moves that are known for not winning or not optimal and we already have a repetition
                 rootmovelist.length--;
                 swap(rootmovelist.move[mi], rootmovelist.move[rootmovelist.length]);
             }
@@ -715,7 +715,7 @@ int chessposition::root_probe_dtz()
                 else
                     // cursed win = draw
                     rootmovelist.move[mi].value = SCOREDRAW;
-                //printf("info string root_probe_dtz (ply=%d) Final value for move %s... value=%d\n", pos->ply, pos->rootmovelist.move[mi].toString().c_str(), pos->rootmovelist.move[mi].value);
+                //printf("info string root_probe_dtz (ply=%d) Final value for move %s... value=%d rep=%d\n", ply, rootmovelist.move[mi].toString().c_str(), rootmovelist.move[mi].value, rep);
                 mi++;
             }
         }
@@ -784,9 +784,9 @@ int chessposition::root_probe_wdl()
     {
         chessmove *m = &rootmovelist.move[i];
         playMove(m->code);
-        //printf("info string root_probe_wdl (ply=%d) Testing move %s...\n", pos->ply, m->toString().c_str());
+        //printf("info string root_probe_wdl (ply=%d) Testing move %s...\n", ply, m->toString().c_str());
         int v = -probe_wdl(&success);
-        //printf("info string root_probe_wdl (ply=%d) Tested  move %s... value=%d\n", pos->ply, m->toString().c_str(), v);
+        //printf("info string root_probe_wdl (ply=%d) Tested  move %s... value=%d\n", ply, m->toString().c_str(), v);
         unplayMove(m->code);
         if (!success)
             return 0;
@@ -806,12 +806,12 @@ int chessposition::root_probe_wdl()
         if (m->value < best)
         {
             // Delete non-optimal move
-            //printf("info string root_probe_wdl (ply=%d) Removing non-optimal move %s...\n", pos->ply, m->toString().c_str());
+            //printf("info string root_probe_wdl (ply=%d) Removing non-optimal move %s...\n", ply, m->toString().c_str());
             rootmovelist.length--;
             swap(rootmovelist.move[mi], rootmovelist.move[rootmovelist.length]);
         }
         else {
-            //printf("info string root_probe_wdl (ply=%d) Optimal move %s gets value %d\n", pos->ply, m->toString().c_str(), wdl_to_Value[m->value + 2]);
+            //printf("info string root_probe_wdl (ply=%d) Optimal move %s gets value %d\n", ply, m->toString().c_str(), wdl_to_Value[m->value + 2]);
             m->value = wdl_to_Value[m->value + 2];
             mi++;
         }
