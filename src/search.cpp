@@ -1540,12 +1540,12 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
         // f2: stop immediately at 1.9...3.1 x average movetime
         // movevariation: many moves to go decrease f1 (stop soon)
         int movevariation = min(32, en.movestogo) * 3 / 32;
-        int f1 = max(10 - movevariation, 22 - movevariation - constance);
+        int f1 = max(9 - movevariation, 21 - movevariation - constance);
         int f2 = max(19, 31 - constance);
         int timeforallmoves = timetouse + en.movestogo * timeinc;
         if (complete)
             en.endtime1 = startTime + timeforallmoves * en.frequency * f1 / (en.movestogo + 1) / 10000;
-        en.endtime2 = startTime + min(max(0, timetouse - overhead), f2 * timeforallmoves / (en.movestogo + 1) / 10) * en.frequency / 1000;
+        en.endtime2 = startTime + min(max(0, timetouse - overhead), f2 * timeforallmoves / (en.movestogo + 1) / (19 -  4 * movevariation)) * en.frequency / 1000;
     }
     else if (timetouse) {
         if (timeinc)
