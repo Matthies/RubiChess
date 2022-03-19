@@ -601,18 +601,18 @@ void engine::communicate(string inputstring)
                 break;
             case PERFT:
                 if (ci < cs) {
-                    try { maxdepth = max(1, stoi(commandargs[ci++])); } catch (...) {}
-                    perft(maxdepth, true);
+                    try { maxdepth = stoi(commandargs[ci++]); } catch (...) {}
+                    perft(max(1, maxdepth), true);
                 }
                 break;
             case BENCH:
                 maxdepth = 0;
                 mytime = 0;
                 if (ci < cs)
-                    try { maxdepth = max(0, stoi(commandargs[ci++])); } catch (...) {}
+                    try { maxdepth = stoi(commandargs[ci++]); } catch (...) {}
                 if (ci < cs)
-                    try { mytime = max(0, stoi(commandargs[ci++])); } catch (...) {}
-                bench(maxdepth, "", mytime, 1, true);
+                    try { mytime = stoi(commandargs[ci++]); } catch (...) {}
+                bench(max(0, maxdepth), "", max(0, mytime), 1, true);
                 break;
 #ifdef NNUELEARN
             case GENSFEN:
