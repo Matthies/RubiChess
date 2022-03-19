@@ -792,8 +792,18 @@ int chessposition::getEval()
             score = NnueGetEval<NnueRotate>();
         else
             score = NnueGetEval<NnueFlip>();
-        score = score * (116 + phcount) / 128;
-        return score + frcCorrection + eps.eTempo;
+        int phscaled = score * (116 + phcount) / 128;
+
+        if (bTrace) {
+            cout << "Raw NNUE eval:  " << S2MSIGN(state & S2MMASK) * score << endl;
+            cout << "Phased scaled:  " << S2MSIGN(state & S2MMASK) * phscaled << endl;
+            if (frcCorrection)
+                cout << "FRC correction: " << S2MSIGN(state & S2MMASK) * frcCorrection << endl;
+            cout << "Tempo:          " << S2MSIGN(state & S2MMASK) * eps.eTempo << endl;
+            cout << "Total:          " << S2MSIGN(state & S2MMASK) * phscaled + frcCorrection + eps.eTempo << endl;
+        }
+
+        return phscaled + frcCorrection + eps.eTempo;
     }
 
     // reset the attackedBy information

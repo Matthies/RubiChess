@@ -1278,7 +1278,6 @@ public:
 #endif
 	chessmovelist();
 	string toString();
-	string toStringWithValue();
 	void print();
     chessmove* getNextMove(int minval = INT_MIN);
     uint32_t getAndRemoveNextMove();
