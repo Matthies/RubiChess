@@ -1627,7 +1627,7 @@ public:
 };
 
 
-enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, WAIT, PONDERHIT, QUIT, EVAL, PERFT, TUNE, GENSFEN, CONVERT, LEARN, EXPORT };
+enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, WAIT, PONDERHIT, QUIT, EVAL, PERFT, BENCH, TUNE, GENSFEN, CONVERT, LEARN, EXPORT };
 
 const map<string, GuiToken> GuiCommandMap = {
 #ifdef EVALOPTIONS
@@ -1654,7 +1654,8 @@ const map<string, GuiToken> GuiCommandMap = {
     { "quit", QUIT },
     { "wait", WAIT },
     { "eval", EVAL },
-    { "perft", PERFT }
+    { "perft", PERFT },
+    { "bench", BENCH }
 };
 
 class engine;   //forward definition
@@ -1850,6 +1851,7 @@ public:
     void allocThreads();
     U64 getTotalNodes();
     U64 perft(int depth, bool printsysteminfo = false);
+    void bench(int constdepth, string epdfilename, int consttime, int startnum, bool openbench);
     void prepareThreads();
     void resetStats();
     void registerOptions();
