@@ -341,7 +341,7 @@ void engine::communicate(string inputstring)
                 prepareThreads();
                 if (debug)
                 {
-                    rootposition.print();
+                    sthread[0].pos.print();
                 }
                 pendingposition = false;
             }
