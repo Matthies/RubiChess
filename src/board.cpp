@@ -405,7 +405,7 @@ void chessposition::print(ostream* os)
     *os << "Value: " + to_string(getEval<NOTRACE>()) + "\n";
     *os << "Repetitions: " + to_string(testRepetition()) + "\n";
     *os << "Phase: " + to_string(phcount) + "\n";
-    *os << "Pseudo-legal Moves: " + pseudolegalmoves.toStringWithValue() + "\n";
+    *os << "Pseudo-legal Moves: " + pseudolegalmoves.toString() + "\n";
     *os << "Moves in current search: " + movesOnStack() + "\n";
     *os << "Ply: " + to_string(ply) + "\n";
     stringstream ss;

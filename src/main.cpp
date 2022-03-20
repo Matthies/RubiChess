@@ -304,7 +304,7 @@ static void benchTableFooder(FILE *out, long long totaltime, long long totalnode
         totalsolved[1], totaltests, fSolved, ((float)totaltime / (float)en.frequency), totalnodes, 10, totalnodes * en.frequency / totaltime);
 }
 
-static void doBenchmark(int constdepth, string epdfilename, int consttime, int startnum, bool openbench)
+void engine::bench(int constdepth, string epdfilename, int consttime, int startnum, bool openbench)
 {
     benchmarkstruct benchmark[] =
     {
@@ -393,7 +393,7 @@ static void doBenchmark(int constdepth, string epdfilename, int consttime, int s
         }
     };
 
-    long long starttime, endtime;
+    long long endtime;
     list<benchmarkstruct> bmlist;
 
     ifstream epdfile;
@@ -1051,14 +1051,14 @@ int main(int argc, char* argv[])
         perftest(perfmaxdepth);
     } else if (benchmark || openbench)
     {
-        doBenchmark(depth, epdfile, maxtime, startnum, openbench);
+        en.bench(depth, epdfile, maxtime, startnum, openbench);
         if (!openbench && epdfile == "")
         {
             NnueType oldNnueReady = NnueReady;
             // Profile build; switch eval mode for more recording
             en.ucioptions.Set("Use_NNUE", NnueReady ? "false" : "true");
             if (NnueReady || oldNnueReady)
-                doBenchmark(depth, epdfile, maxtime, startnum, openbench);
+                en.bench(depth, epdfile, maxtime, startnum, openbench);
         }
     } else if (enginetest)
     {

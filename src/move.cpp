@@ -76,16 +76,6 @@ string chessmovelist::toString()
     return s;
 }
 
-string chessmovelist::toStringWithValue()
-{
-    string s = "";
-    for (int i = 0; i < length; i++)
-    {
-        s = s + move[i].toString() + "(" + to_string((int)move[i].value) + ") ";
-    }
-    return s;
-}
-
 void chessmovelist::print()
 {
     printf("%s", toString().c_str());
