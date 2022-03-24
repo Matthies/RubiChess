@@ -420,7 +420,7 @@ string chessposition::movesOnStack()
     for (int i = 0; i < ply; i++)
     {
         chessmove cm;
-        cm.code = movestack[i].movecode;
+        cm.code = movecode[i];
         s = s + cm.toString() + " ";
     }
     return s;
@@ -596,7 +596,7 @@ bool chessposition::triggerDebug(chessmove* nextmove)
 
     while (j < ply && pvmovecode[j])
     {
-        if ((movestack[j].movecode) != pvmovecode[j])
+        if (movecode[j] != pvmovecode[j])
             return false;
         j++;
     }

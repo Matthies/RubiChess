@@ -1229,9 +1229,8 @@ struct chessmovestack
     int halfmovescounter;
     int fullmovescounter;
     U64 isCheckbb;
-    int lastnullmove;
-    uint32_t movecode;
     U64 kingPinned;
+    int lastnullmove;
     unsigned int threatSquare;
 };
 
@@ -1389,14 +1388,15 @@ public:
     int halfmovescounter;
     int fullmovescounter;
     U64 isCheckbb;
-    int lastnullmove;
-    uint32_t movecode;
     U64 kingPinned;
+    int lastnullmove;
     unsigned int threatSquare;
 
     uint8_t mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
     chessmovestack prerootmovestack[PREROOTMOVES];   // moves before root since last halfmovescounter reset
     chessmovestack movestack[MAXDEPTH];
+    uint32_t prerootmovecode[PREROOTMOVES];
+    uint32_t movecode[MAXDEPTH];
     uint16_t excludemovestack[MAXDEPTH];
     int16_t staticevalstack[MAXDEPTH];
 

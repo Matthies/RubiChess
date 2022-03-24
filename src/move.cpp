@@ -502,7 +502,7 @@ bool chessposition::moveGivesCheck(uint32_t c)
 void chessposition::playNullMove()
 {
     lastnullmove = ply;
-    movestack[ply++].movecode = 0;
+    movecode[ply++] = 0;
     state ^= S2MMASK;
     hash ^= zb.s2m ^ zb.ept[ept];
     ept = 0;
@@ -732,7 +732,7 @@ bool chessposition::playMove(uint32_t mc)
 
     PREFETCH(&tp.table[hash & tp.sizemask]);
 
-    movestack[ply++].movecode = mc;
+    movecode[ply++] = mc;
     myassert(ply <= MAXDEPTH, this, 1, ply);
     kingPinned = 0ULL;
     updatePins<WHITE>();

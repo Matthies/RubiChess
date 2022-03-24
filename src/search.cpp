@@ -69,7 +69,7 @@ void chessposition::getCmptr()
     for (int i = 0, j = ply - 1; i < CMPLIES; i++, j--)
     {
         uint32_t c;
-        if (j >= -prerootmovenum && (c = (&movestack[0] + j)->movecode))
+        if (j >= -prerootmovenum && (c = movecode[j]))
             cmptr[ply][i] = (int16_t*)counterhistory[GETPIECE(c)][GETCORRECTTO(c)];
         else
             cmptr[ply][i] = NULL;
@@ -190,7 +190,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         // get static evaluation of the position
         if (staticeval == NOSCORE)
         {
-            if (movestack[ply - 1].movecode == 0)
+            if (movecode[ply - 1] == 0)
                 staticeval = -staticevalstack[ply - 1] + CEVAL(eps.eTempo, 2);
             else
                 staticeval = getEval<NOTRACE>();
@@ -455,7 +455,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     // get static evaluation of the position
     if (staticeval == NOSCORE)
     {
-        if (movestack[ply - 1].movecode == 0)
+        if (movecode[ply - 1] == 0)
             // just reverse the staticeval before the null move respecting the tempo
             staticeval = -staticevalstack[ply - 1] + CEVAL(eps.eTempo, 2);
         else
@@ -581,7 +581,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         depth--;
 
     // Get possible countermove from table
-    uint32_t lastmove = movestack[ply - 1].movecode;
+    uint32_t lastmove = movecode[ply - 1];
     uint32_t counter = 0;
     if (lastmove)
         counter = countermove[GETPIECE(lastmove)][GETCORRECTTO(lastmove)];

@@ -1411,7 +1411,7 @@ static void convertthread(searchthread* thr, conversion_t* cv)
     memset(pos->prerootmovestack, 0xff, sizeof(chessposition::prerootmovestack));
     memset(pos->movestack, 0, sizeof(chessposition::movestack));
     pos->prerootmovenum = 0;
-    pos->prerootmovestack[PREROOTMOVES - 1].movecode = 0x00000001; // satisfy 'no nullmove eval available' and 'unused countermove within bounds'
+    pos->prerootmovecode[PREROOTMOVES - 1] = 0x00000001; // satisfy 'no nullmove eval available' and 'unused countermove within bounds'
 
     char* buffer = nullptr;
     char* outbuffer = nullptr;
