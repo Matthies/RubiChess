@@ -91,7 +91,7 @@ inline int chessposition::getHistory(uint32_t code)
             value += cmptr[ply][i][pc * 64 + to];
 #else
     int pieceTo = pc * 64 + to;
-    value += (conthistptr[ply - 1][pieceTo] + conthistptr[ply - 2][pieceTo]);
+    value += (conthistptr[ply - 1][pieceTo] + conthistptr[ply - 2][pieceTo] + conthistptr[ply - 4][pieceTo]);
 
 #endif
     return value;
@@ -118,8 +118,10 @@ inline void chessposition::updateHistory(uint32_t code, int value)
         }
 #else
     int pieceTo = pc * 64 + to;
-    const int maxplies = min(CMPLIES, ply);
-    for (int i = 0; i < maxplies; i++) {
+    const int maxplies = min(4, ply);
+    for (int i : {0, 1, 3}) {
+        if (i >= maxplies)
+            break;
         delta = value * (1 << HISTORYNEWSHIFT) - conthistptr[ply - 1 - i][pieceTo] * abs(value) / (1 << HISTORYAGESHIFT);
         conthistptr[ply - 1 - i][pieceTo] += delta;
     }

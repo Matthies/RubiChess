@@ -192,7 +192,7 @@ void chessposition::evaluateMoves(chessmovelist *ml)
             }
 #else
             int pieceTo = piece * 64 + to;
-            ml->move[i].value += (conthistptr[ply - 1][pieceTo] + conthistptr[ply - 2][pieceTo]);
+            ml->move[i].value += (conthistptr[ply - 1][pieceTo] + conthistptr[ply - 2][pieceTo] + conthistptr[ply - 4][pieceTo]);
 #endif
         }
         if (GETPROMOTION(mc))

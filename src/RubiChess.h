@@ -1282,7 +1282,7 @@ public:
     uint32_t getAndRemoveNextMove();
 };
 
-#define CMPLIES 2
+//#define CMPLIES 2
 
 enum MoveSelector_State { INITSTATE, HASHMOVESTATE, TACTICALINITSTATE, TACTICALSTATE, KILLERMOVE1STATE, KILLERMOVE2STATE,
     COUNTERMOVESTATE, QUIETINITSTATE, QUIETSTATE, BADTACTICALSTATE, BADTACTICALEND, EVASIONINITSTATE, EVASIONSTATE };
@@ -1453,7 +1453,7 @@ public:
     uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     alignas(64) MoveSelector moveSelector[MAXDEPTH];
     MoveSelector extensionMoveSelector[MAXDEPTH];
-    int16_t* prerootconthistptr[2] = { counterhistory[0][0], counterhistory[0][0] };
+    int16_t* prerootconthistptr[4] = { counterhistory[0][0], counterhistory[0][0], counterhistory[0][0], counterhistory[0][0] };
     int16_t* conthistptr[MAXDEPTH];
 #ifdef SDEBUG
     int pvmovevalue[MAXDEPTH];
