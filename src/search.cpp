@@ -118,8 +118,10 @@ inline void chessposition::updateHistory(uint32_t code, int value)
         }
 #else
     int pieceTo = pc * 64 + to;
-    conthistptr[ply - 1][pieceTo] += delta;
-    conthistptr[ply - 2][pieceTo] += delta;
+    for (int i = 0; i < CMPLIES; i++) {
+        delta = value * (1 << HISTORYNEWSHIFT) - conthistptr[ply - 1 - i][pieceTo] * abs(value) / (1 << HISTORYAGESHIFT);
+        conthistptr[ply - 1 - i][pieceTo] += delta;
+    }
 #endif
 }
 
@@ -709,10 +711,11 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             STATISTICSINC(extend_endgame);
             extendMove = 1;
         }
-#if 0
-        else if(!ISTACTICAL(mc) && cmptr[ply][0] && cmptr[ply][1])
+#if 1
+        else if(!ISTACTICAL(mc)) // && cmptr[ply][0] && cmptr[ply][1])
         {
-            if (cmptr[ply][0][pc * 64 + to] > he_threshold && cmptr[ply][1][pc * 64 + to] > he_threshold)
+            int pieceTo = pc * 64 + to;
+            if (conthistptr[ply - 1][pieceTo] > he_threshold && conthistptr[ply - 2][pieceTo] > he_threshold)
             {
                 STATISTICSINC(extend_history);
                 extendMove = 1;
