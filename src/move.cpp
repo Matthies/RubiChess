@@ -506,6 +506,7 @@ bool chessposition::moveGivesCheck(uint32_t c)
 void chessposition::playNullMove()
 {
     lastnullmove = ply;
+    conthistptr[ply] = (int16_t*)counterhistory[0][0];
     movecode[ply++] = 0;
     state ^= S2MMASK;
     hash ^= zb.s2m ^ zb.ept[ept];
@@ -736,6 +737,7 @@ bool chessposition::playMove(uint32_t mc)
 
     PREFETCH(&tp.table[hash & tp.sizemask]);
 
+    conthistptr[ply] = (int16_t*)counterhistory[GETPIECE(mc)][GETCORRECTTO(mc)];
     movecode[ply++] = mc;
     myassert(ply <= MAXDEPTH, this, 1, ply);
     kingPinned = 0ULL;

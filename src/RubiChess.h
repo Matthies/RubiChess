@@ -1453,6 +1453,7 @@ public:
     uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     alignas(64) MoveSelector moveSelector[MAXDEPTH];
     MoveSelector extensionMoveSelector[MAXDEPTH];
+    //int16_t* cmptr[MAXDEPTH][CMPLIES];
     int16_t* prerootconthistptr[4] = { counterhistory[0][0], counterhistory[0][0], counterhistory[0][0], counterhistory[0][0] };
     int16_t* conthistptr[MAXDEPTH];
 #ifdef SDEBUG

@@ -111,12 +111,13 @@ inline void chessposition::updateHistory(uint32_t code, int value)
 
     history[s2m][threatSquare][from][to] += delta;
 #if 0
+    int newval[4] = { 0 };
     for (int i = 0; i < CMPLIES; i++)
         if (cmptr[ply][i]) {
             delta = value * (1 << HISTORYNEWSHIFT) - cmptr[ply][i][pc * 64 + to] * abs(value) / (1 << HISTORYAGESHIFT);
-            cmptr[ply][i][pc * 64 + to] += delta;
+            newval[i] = cmptr[ply][i][pc * 64 + to] + delta;
         }
-#else
+#endif
     int pieceTo = pc * 64 + to;
     const int maxplies = min(4, ply);
     for (int i : {0, 1, 3}) {
@@ -124,8 +125,11 @@ inline void chessposition::updateHistory(uint32_t code, int value)
             break;
         delta = value * (1 << HISTORYNEWSHIFT) - conthistptr[ply - 1 - i][pieceTo] * abs(value) / (1 << HISTORYAGESHIFT);
         conthistptr[ply - 1 - i][pieceTo] += delta;
-    }
+#if 0
+        if (conthistptr[ply - 1 - i][pieceTo] != newval[i])
+            cout << "Alarm! New: " << conthistptr[ply - 1 - i][pieceTo] << "  Old: " << newval[i] << endl;
 #endif
+    }
 }
 
 
@@ -264,8 +268,6 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 
         if (!playMove(mc))
             continue;
-
-        conthistptr[ply - 1] = (int16_t*)counterhistory[GETPIECE(mc)][GETCORRECTTO(mc)];
 
         STATISTICSINC(qs_moves);
         legalMoves++;
@@ -533,7 +535,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     int bestknownscore = (hashscore != NOSCORE ? hashscore : staticeval);
     if (!isCheckbb && !threats && depth >= sps.nmmindepth && bestknownscore >= beta && (Pt != MatePrune || beta > -SCORETBWININMAXPLY) && (ply  >= nullmoveply || ply % 2 != nullmoveside) && phcount)
     {
-        conthistptr[ply] = (int16_t*)counterhistory[0][0];
 
         playNullMove();
         int nmreduction = min(depth, sps.nmmredbase + (depth / sps.nmmreddepthratio) + (bestknownscore - beta) / sps.nmmredevalratio + !PVNode * sps.nmmredpvfactor);
@@ -576,8 +577,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         {
             if (playMove(mc))
             {
-                conthistptr[ply - 1] = (int16_t*)counterhistory[GETPIECE(mc)][GETCORRECTTO(mc)];
-
                 int probcutscore = -getQuiescence<Pt>(-rbeta, -rbeta + 1, 0);
                 if (probcutscore >= rbeta)
                     probcutscore = -alphabeta<Pt>(-rbeta, -rbeta + 1, depth - 4);
@@ -668,8 +667,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
         // early prefetch of the next tt entry; valid for normal moves
         PREFETCH(&tp.table[nextHash(mc) & tp.sizemask]);
-
-        conthistptr[ply] = (int16_t*)counterhistory[GETPIECE(mc)][GETCORRECTTO(mc)];
 
         int stats = !ISTACTICAL(mc) ? getHistory(mc) : getTacticalHst(mc);
         int extendMove = 0;
@@ -1023,7 +1020,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
         SDEBUGDO(isDebugMove, pvmovenum[0] = i + 1; pvmovevalue[0] = rootmovelist.move[i].value; debugMovePlayed = true;)
         SDEBUGDO(pvmovenum[0] <= 0, pvmovenum[0] = -(i + 1););
 #endif
-        conthistptr[0] = (int16_t*)counterhistory[GETPIECE(m->code)][GETCORRECTTO(m->code)];
 
         playMove(m->code);
 
