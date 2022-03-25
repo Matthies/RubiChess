@@ -2051,7 +2051,8 @@ struct statistic {
     U64 red_total;              // total reductions
     U64 red_lmr[2];             // total late-move-reductions for (not) improved moves
     U64 red_pi[2];              // number of quiets moves that are reduced split into (not) / improved moves
-    S64 red_history;            // total reduction by history
+    S64 red_history;            // total reduction by history (can be positive and negative)
+    S64 red_historyabs;         // total absolute reduction changes of history
     S64 red_pv;                 // total reduction by pv nodes
     S64 red_correction;         // total reduction correction by over-/underflow
 

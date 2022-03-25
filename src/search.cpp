@@ -739,6 +739,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             STATISTICSINC(red_pi[positionImproved]);
             STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, legalMoves + 1)]);
             STATISTICSADD(red_history, -stats / (sps.lmrstatsratio * 8));
+            STATISTICSADD(red_historyabs, abs(-stats) / (sps.lmrstatsratio * 8));
             STATISTICSADD(red_pv, -(int)PVNode);
             STATISTICSADD(red_pv, -(int)(PVNode && (!tpHit || hashmovecode != (uint16_t)mc || hashscore > alpha)));
             STATISTICSDO(int red0 = reduction);
@@ -1744,10 +1745,11 @@ void search_statistics()
     f11 = statistics.red_lmr[1] / (double)statistics.red_pi[1];
     f1 = (statistics.red_lmr[0] + statistics.red_lmr[1]) / (double)red_n;
     f2 = statistics.red_history / (double)red_n;
+    f6 = statistics.red_historyabs / (double)red_n;
     f3 = statistics.red_pv / (double)red_n;
     f4 = statistics.red_correction / (double)red_n;
     f5 = statistics.red_total / (double)red_n;
-    sprintf(str, "[STATS] Reduct.  %12lld   lmr[0]: %4.2f   lmr[1]: %4.2f   lmr: %4.2f   hist: %4.2f   pv: %4.2f   corr: %4.2f   total: %4.2f\n", red_n, f10, f11, f1, f2, f3, f4, f5);
+    sprintf(str, "[STATS] Reduct.  %12lld   lmr[0]: %4.2f   lmr[1]: %4.2f   lmr: %4.2f   hist: %4.2f   |hst|:%4.2f   pv: %4.2f   corr: %4.2f   total: %4.2f\n", red_n, f10, f11, f1, f2, f6, f3, f4, f5);
     guiCom.log(str);
 
     f0 = 100.0 * statistics.extend_singular / (double)n;
