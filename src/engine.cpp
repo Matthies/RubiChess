@@ -266,7 +266,7 @@ void chessposition::resetStats()
     memset(tacticalhst, 0, sizeof(chessposition::tacticalhst));
     memset(counterhistory, 0, sizeof(chessposition::counterhistory));
     memset(countermove, 0, sizeof(chessposition::countermove));
-    memset(cmptr, 0, sizeof(chessposition::cmptr));
+    memset(conthistptr, 0, sizeof(chessposition::conthistptr));
     he_yes = 0ULL;
     he_all = 0ULL;
     he_threshold = 8100;

@@ -64,6 +64,7 @@ void searchinit()
 #define HISTORYNEWSHIFT 5
 
 
+#if 0
 void chessposition::getCmptr()
 {
     for (int i = 0, j = ply - 1; i < CMPLIES; i++, j--)
@@ -75,7 +76,7 @@ void chessposition::getCmptr()
             cmptr[ply][i] = NULL;
     }
 }
-
+#endif
 
 inline int chessposition::getHistory(uint32_t code)
 {
@@ -84,10 +85,15 @@ inline int chessposition::getHistory(uint32_t code)
     int from = GETFROM(code);
     int to = GETCORRECTTO(code);
     int value = history[s2m][threatSquare][from][to];
+#if 0
     for (int i = 0; i < CMPLIES; i++)
         if (cmptr[ply][i])
             value += cmptr[ply][i][pc * 64 + to];
+#else
+    int pieceTo = pc * 64 + to;
+    value += (conthistptr[ply - 1][pieceTo] + conthistptr[ply - 2][pieceTo]);
 
+#endif
     return value;
 }
 
@@ -104,12 +110,17 @@ inline void chessposition::updateHistory(uint32_t code, int value)
     myassert(history[s2m][threatSquare][from][to] + delta < MAXINT16 && history[s2m][threatSquare][from][to] + delta > MININT16, this, 2, history[s2m][from][to], delta);
 
     history[s2m][threatSquare][from][to] += delta;
-
+#if 0
     for (int i = 0; i < CMPLIES; i++)
         if (cmptr[ply][i]) {
             delta = value * (1 << HISTORYNEWSHIFT) - cmptr[ply][i][pc * 64 + to] * abs(value) / (1 << HISTORYAGESHIFT);
             cmptr[ply][i][pc * 64 + to] += delta;
         }
+#else
+    int pieceTo = pc * 64 + to;
+    conthistptr[ply - 1][pieceTo] += delta;
+    conthistptr[ply - 2][pieceTo] += delta;
+#endif
 }
 
 
@@ -226,7 +237,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 
     prepareStack();
 
-    getCmptr();
+    //getCmptr();
     MoveSelector* ms = &moveSelector[ply];
     memset(ms, 0, sizeof(MoveSelector));
     ms->SetPreferredMoves(this);
@@ -248,6 +259,8 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 
         if (!playMove(mc))
             continue;
+
+        conthistptr[ply - 1] = (int16_t*)counterhistory[GETPIECE(mc)][GETCORRECTTO(mc)];
 
         STATISTICSINC(qs_moves);
         legalMoves++;
@@ -383,7 +396,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     SDEBUGDO(isDebugPv, pvaborttype[ply + 1] = PVA_UNKNOWN; pvdepth[ply] = depth; pvalpha[ply] = alpha; pvbeta[ply] = beta; pvmovenum[ply] = 0; pvmovevalue[ply] = 0; pvadditionalinfo[ply] = "";);
 #endif
 
-    getCmptr();
+    //getCmptr();
 
     // TT lookup
     bool tpHit = tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
@@ -515,6 +528,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     int bestknownscore = (hashscore != NOSCORE ? hashscore : staticeval);
     if (!isCheckbb && !threats && depth >= sps.nmmindepth && bestknownscore >= beta && (Pt != MatePrune || beta > -SCORETBWININMAXPLY) && (ply  >= nullmoveply || ply % 2 != nullmoveside) && phcount)
     {
+        conthistptr[ply] = (int16_t*)counterhistory[0][0];
+
         playNullMove();
         int nmreduction = min(depth, sps.nmmredbase + (depth / sps.nmmreddepthratio) + (bestknownscore - beta) / sps.nmmredevalratio + !PVNode * sps.nmmredpvfactor);
 
@@ -556,6 +571,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         {
             if (playMove(mc))
             {
+                conthistptr[ply - 1] = (int16_t*)counterhistory[GETPIECE(mc)][GETCORRECTTO(mc)];
+
                 int probcutscore = -getQuiescence<Pt>(-rbeta, -rbeta + 1, 0);
                 if (probcutscore >= rbeta)
                     probcutscore = -alphabeta<Pt>(-rbeta, -rbeta + 1, depth - 4);
@@ -647,6 +664,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         // early prefetch of the next tt entry; valid for normal moves
         PREFETCH(&tp.table[nextHash(mc) & tp.sizemask]);
 
+        conthistptr[ply] = (int16_t*)counterhistory[GETPIECE(mc)][GETCORRECTTO(mc)];
+
         int stats = !ISTACTICAL(mc) ? getHistory(mc) : getTacticalHst(mc);
         int extendMove = 0;
         int pc = GETPIECE(mc);
@@ -690,6 +709,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             STATISTICSINC(extend_endgame);
             extendMove = 1;
         }
+#if 0
         else if(!ISTACTICAL(mc) && cmptr[ply][0] && cmptr[ply][1])
         {
             if (cmptr[ply][0][pc * 64 + to] > he_threshold && cmptr[ply][1][pc * 64 + to] > he_threshold)
@@ -714,7 +734,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
                 }
             }
         }
-
+#endif
         if (!playMove(mc))
             continue;
 
@@ -997,6 +1017,8 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
         SDEBUGDO(isDebugMove, pvmovenum[0] = i + 1; pvmovevalue[0] = rootmovelist.move[i].value; debugMovePlayed = true;)
         SDEBUGDO(pvmovenum[0] <= 0, pvmovenum[0] = -(i + 1););
 #endif
+        conthistptr[0] = (int16_t*)counterhistory[GETPIECE(m->code)][GETCORRECTTO(m->code)];
+
         playMove(m->code);
 
 #ifndef SDEBUG
