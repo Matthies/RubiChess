@@ -266,7 +266,7 @@ void chessposition::resetStats()
     memset(tacticalhst, 0, sizeof(chessposition::tacticalhst));
     memset(counterhistory, 0, sizeof(chessposition::counterhistory));
     memset(countermove, 0, sizeof(chessposition::countermove));
-    memset(cmptr, 0, sizeof(chessposition::cmptr));
+    memset(conthistptr, 0, sizeof(chessposition::conthistptr));
     he_yes = 0ULL;
     he_all = 0ULL;
     he_threshold = 8100;
@@ -331,8 +331,10 @@ void engine::communicate(string inputstring)
                 int i = 0;
                 int j = PREROOTMOVES - rootposition.ply;
                 while (i < rootposition.ply)
+                {
+                    rootposition.prerootmovecode[j] = rootposition.movecode[i];
                     rootposition.prerootmovestack[j++] = rootposition.movestack[i++];
-
+                }
                 rootposition.lastnullmove = -rootposition.ply - 1;
                 rootposition.ply = 0;
                 rootposition.useTb = min(TBlargest, en.SyzygyProbeLimit);
@@ -386,7 +388,7 @@ void engine::communicate(string inputstring)
                             }
                             U64 h = rootposition.movestack[rootposition.ply - 1].hash;
                             tp.markDebugSlot(h, i);
-                            rootposition.pvmovecode[i++] = rootposition.movestack[rootposition.ply - 1].movecode;
+                            rootposition.pvmovecode[i++] = rootposition.movecode[rootposition.ply - 1];
                         }
                         rootposition.pvmovecode[i] = 0;
                         while (i--) {

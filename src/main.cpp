@@ -93,7 +93,7 @@ void generateEpd(string egn)
             pos->pawnhash = zb.getPawnHash(pos);
             pos->materialhash = zb.getMaterialHash(pos);
             pos->ply = 1;
-            pos->movestack[0].movecode = -1;  // Avoid fast eval after null move
+            pos->movecode[0] = -1;  // Avoid fast eval after null move
             pos->lastnullmove = -1;
             string sFen = pos->toFen();
             int staticeval = pos->getEval<NOTRACE>();

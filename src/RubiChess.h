@@ -1229,9 +1229,8 @@ struct chessmovestack
     int halfmovescounter;
     int fullmovescounter;
     U64 isCheckbb;
-    int lastnullmove;
-    uint32_t movecode;
     U64 kingPinned;
+    int lastnullmove;
     unsigned int threatSquare;
 };
 
@@ -1283,7 +1282,6 @@ public:
     uint32_t getAndRemoveNextMove();
 };
 
-#define CMPLIES 2
 
 enum MoveSelector_State { INITSTATE, HASHMOVESTATE, TACTICALINITSTATE, TACTICALSTATE, KILLERMOVE1STATE, KILLERMOVE2STATE,
     COUNTERMOVESTATE, QUIETINITSTATE, QUIETSTATE, BADTACTICALSTATE, BADTACTICALEND, EVASIONINITSTATE, EVASIONSTATE };
@@ -1389,14 +1387,15 @@ public:
     int halfmovescounter;
     int fullmovescounter;
     U64 isCheckbb;
-    int lastnullmove;
-    uint32_t movecode;
     U64 kingPinned;
+    int lastnullmove;
     unsigned int threatSquare;
 
     uint8_t mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
     chessmovestack prerootmovestack[PREROOTMOVES];   // moves before root since last halfmovescounter reset
     chessmovestack movestack[MAXDEPTH];
+    uint32_t prerootmovecode[PREROOTMOVES];
+    uint32_t movecode[MAXDEPTH];
     uint16_t excludemovestack[MAXDEPTH];
     int16_t staticevalstack[MAXDEPTH];
 
@@ -1453,7 +1452,8 @@ public:
     uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     alignas(64) MoveSelector moveSelector[MAXDEPTH];
     MoveSelector extensionMoveSelector[MAXDEPTH];
-    int16_t* cmptr[MAXDEPTH][CMPLIES];
+    int16_t* prerootconthistptr[4] = { counterhistory[0][0], counterhistory[0][0], counterhistory[0][0], counterhistory[0][0] };
+    int16_t* conthistptr[MAXDEPTH];
 #ifdef SDEBUG
     int pvmovevalue[MAXDEPTH];
     int pvalpha[MAXDEPTH];
@@ -1524,7 +1524,6 @@ public:
     template <PruneType Pt> int getQuiescence(int alpha, int beta, int depth);
     void updateHistory(uint32_t code, int value);
     void updateTacticalHst(uint32_t code, int value);
-    void getCmptr();
     void updatePvTable(uint32_t mc, bool recursive);
     void updateMultiPvTable(int pvindex, uint32_t mc);
     string getPv(uint32_t *table);
@@ -1930,7 +1929,7 @@ struct searchparamset {
     searchparam SP(lmrlogf1, 150);
     searchparam SP(lmrf1, 43);
     searchparam SP(lmrmindepth, 3);
-    searchparam SP(lmrstatsratio, 625);
+    searchparam SP(lmrstatsratio, 870);
     searchparam SP(lmropponentmovecount, 15);
     // LMP table
     searchparam SP(lmpf0, 59);

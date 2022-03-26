@@ -64,19 +64,6 @@ void searchinit()
 #define HISTORYNEWSHIFT 5
 
 
-void chessposition::getCmptr()
-{
-    for (int i = 0, j = ply - 1; i < CMPLIES; i++, j--)
-    {
-        uint32_t c;
-        if (j >= -prerootmovenum && (c = (&movestack[0] + j)->movecode))
-            cmptr[ply][i] = (int16_t*)counterhistory[GETPIECE(c)][GETCORRECTTO(c)];
-        else
-            cmptr[ply][i] = NULL;
-    }
-}
-
-
 inline int chessposition::getHistory(uint32_t code)
 {
     int pc = GETPIECE(code);
@@ -84,9 +71,8 @@ inline int chessposition::getHistory(uint32_t code)
     int from = GETFROM(code);
     int to = GETCORRECTTO(code);
     int value = history[s2m][threatSquare][from][to];
-    for (int i = 0; i < CMPLIES; i++)
-        if (cmptr[ply][i])
-            value += cmptr[ply][i][pc * 64 + to];
+    int pieceTo = pc * 64 + to;
+    value += (conthistptr[ply - 1][pieceTo] + conthistptr[ply - 2][pieceTo] + conthistptr[ply - 4][pieceTo]);
 
     return value;
 }
@@ -104,12 +90,14 @@ inline void chessposition::updateHistory(uint32_t code, int value)
     myassert(history[s2m][threatSquare][from][to] + delta < MAXINT16 && history[s2m][threatSquare][from][to] + delta > MININT16, this, 2, history[s2m][from][to], delta);
 
     history[s2m][threatSquare][from][to] += delta;
-
-    for (int i = 0; i < CMPLIES; i++)
-        if (cmptr[ply][i]) {
-            delta = value * (1 << HISTORYNEWSHIFT) - cmptr[ply][i][pc * 64 + to] * abs(value) / (1 << HISTORYAGESHIFT);
-            cmptr[ply][i][pc * 64 + to] += delta;
-        }
+    int pieceTo = pc * 64 + to;
+    const int maxplies = min(4, ply);
+    for (int i : {0, 1, 3}) {
+        if (i >= maxplies)
+            break;
+        delta = value * (1 << HISTORYNEWSHIFT) - conthistptr[ply - 1 - i][pieceTo] * abs(value) / (1 << HISTORYAGESHIFT);
+        conthistptr[ply - 1 - i][pieceTo] += delta;
+    }
 }
 
 
@@ -190,7 +178,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         // get static evaluation of the position
         if (staticeval == NOSCORE)
         {
-            if (movestack[ply - 1].movecode == 0)
+            if (movecode[ply - 1] == 0)
                 staticeval = -staticevalstack[ply - 1] + CEVAL(eps.eTempo, 2);
             else
                 staticeval = getEval<NOTRACE>();
@@ -226,7 +214,6 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 
     prepareStack();
 
-    getCmptr();
     MoveSelector* ms = &moveSelector[ply];
     memset(ms, 0, sizeof(MoveSelector));
     ms->SetPreferredMoves(this);
@@ -383,8 +370,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     SDEBUGDO(isDebugPv, pvaborttype[ply + 1] = PVA_UNKNOWN; pvdepth[ply] = depth; pvalpha[ply] = alpha; pvbeta[ply] = beta; pvmovenum[ply] = 0; pvmovevalue[ply] = 0; pvadditionalinfo[ply] = "";);
 #endif
 
-    getCmptr();
-
     // TT lookup
     bool tpHit = tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
     if (tpHit && !rep && !PVNode)
@@ -455,7 +440,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     // get static evaluation of the position
     if (staticeval == NOSCORE)
     {
-        if (movestack[ply - 1].movecode == 0)
+        if (movecode[ply - 1] == 0)
             // just reverse the staticeval before the null move respecting the tempo
             staticeval = -staticevalstack[ply - 1] + CEVAL(eps.eTempo, 2);
         else
@@ -581,7 +566,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         depth--;
 
     // Get possible countermove from table
-    uint32_t lastmove = movestack[ply - 1].movecode;
+    uint32_t lastmove = movecode[ply - 1];
     uint32_t counter = 0;
     if (lastmove)
         counter = countermove[GETPIECE(lastmove)][GETCORRECTTO(lastmove)];
@@ -690,9 +675,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             STATISTICSINC(extend_endgame);
             extendMove = 1;
         }
-        else if(!ISTACTICAL(mc) && cmptr[ply][0] && cmptr[ply][1])
+        else if(!ISTACTICAL(mc))
         {
-            if (cmptr[ply][0][pc * 64 + to] > he_threshold && cmptr[ply][1][pc * 64 + to] > he_threshold)
+            int pieceTo = pc * 64 + to;
+            if (conthistptr[ply - 1][pieceTo] > he_threshold && conthistptr[ply - 2][pieceTo] > he_threshold)
             {
                 STATISTICSINC(extend_history);
                 extendMove = 1;
