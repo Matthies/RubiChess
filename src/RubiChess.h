@@ -1575,9 +1575,10 @@ public:
 // engine stuff
 //
 extern void uciSetLogFile();
+extern void engineHeader();
 class GuiCommunication {
 private:
-    ostream& myos;
+    ostream* myos;
     ofstream logstream;
     U64 logStartTime = 0ULL;
     U64 freq;
@@ -1590,12 +1591,14 @@ private:
         return ts.str();
     }
 public:
-    GuiCommunication(ostream& os) : myos(os)
+    GuiCommunication()
     {
+        myos = &cout;
+        freq = 0;
     }
     template <typename T>
     GuiCommunication& operator<<(const T& thing) {
-        myos << thing;
+        *myos << thing;
         if (freq)
             logstream << timestamp() << " < " << thing;
         return *this;
@@ -1621,6 +1624,9 @@ public:
     void log(string input) {
         if (freq)
             logstream << timestamp() << " < " << input;
+    }
+    void switchStream() {
+        myos = (myos == &cout ? &cerr : &cout);
     }
 };
 

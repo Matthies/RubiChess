@@ -115,12 +115,7 @@ U64 engine::perft(int depth, bool printsysteminfo)
     chessposition *rootpos = &en.sthread[0].pos;
 
     if (printsysteminfo)
-    {
-        printf("\n\nPerft results for %s (Build %s)\n", en.name().c_str(), BUILD);
-        printf("System: %s\n", cinfo.SystemName().c_str());
-        printf("CPU-Features of system: %s\nCPU-Features of binary: %s\n", cinfo.PrintCpuFeatures(cinfo.machineSupports).c_str(), cinfo.PrintCpuFeatures(cinfo.binarySupports).c_str());
-        printf("Depth: %d    %8s\n", maxdepth, en.chess960 ? "Chess960" : "");
-    }
+        guiCom << "Perft for depth " + to_string(maxdepth) + (en.chess960 ? "  Chess960" : "") + "\n";
 
     if (depth == 0)
         return 1;
@@ -141,12 +136,16 @@ U64 engine::perft(int depth, bool printsysteminfo)
             rootpos->unplayMove(movelist.move[i].code);
             retval += moveperft;
             if (printsysteminfo)
-                cout << setw(5) << left << moveToString(movelist.move[i].code) << ": " << moveperft << "\n";
+            {
+                stringstream ss;
+                ss << setw(5) << left << moveToString(movelist.move[i].code) << ": " << moveperft << "\n";
+                guiCom << ss.str();
+            }
         }
     }
 
     if (printsysteminfo)
-        cout << "Total nodes: " << retval << "\n";
+        guiCom << "Total nodes: " + to_string(retval) + "\n";
 
     return retval;
 }
@@ -219,11 +218,9 @@ static void perftest(int maxdepth)
     };
 
     int i = 0;
-    printf("\n\nPerft results for %s (Build %s)\n", en.name().c_str(), BUILD);
-    printf("System: %s\n", cinfo.SystemName().c_str());
-    printf("CPU-Features of system: %s\nCPU-Features of binary: %s\n", cinfo.PrintCpuFeatures(cinfo.machineSupports).c_str(), cinfo.PrintCpuFeatures(cinfo.binarySupports).c_str());
-    printf("Depth = %d    %8s\n", maxdepth, en.chess960 ? "Chess960" : "");
-    printf("========================================================================\n");
+    char str[256];
+
+    guiCom << "Perft for depth " + to_string(maxdepth) + (en.chess960 ? "  Chess960" : "") + "\n";
 
     float df;
     U64 totalresult = 0ULL;
@@ -250,19 +247,18 @@ static void perftest(int maxdepth)
 
             perftlasttime = getTime();
             df = float(perftlasttime - starttime) / (float) en.frequency;
-            printf("Perft %d depth %d  : %*llu  %*f sec.  %*d nps ", i + 1, j, 10, result, 10, df, 8, (int)(df > 0.0 ? (double)result / df : 0));
-            if (result == ptr[i].nodes[j])
-                printf("  OK\n");
-            else
-                printf("  wrong (should be %llu)\n", ptr[i].nodes[j]);
+            sprintf(str, "Perft %d depth %d  : %*llu  %*f sec.  %*d nps   %s\n", i + 1, j, 10, result, 10, df,
+                8, (int)(df > 0.0 ? (double)result / df : 0), (result == ptr[i].nodes[j] ? "OK" : "Wrong!"));
+            guiCom << str;
             j++;
         }
         if (ptr[++i].fen != "")
-            printf("\n");
+            guiCom << "\n";
     }
     df = float(perftlasttime - perftstarttime) / (float)en.frequency;
-    printf("========================================================================\n");
-    printf("Total:             %*llu  %*f sec.  %*d nps \n", 10, totalresult, 10, df, 8, (int)(df > 0.0 ? (double)totalresult / df : 0));
+    guiCom << "========================================================================\n";
+    sprintf(str, "Total:             %*llu  %*f sec.  %*d nps \n", 10, totalresult, 10, df, 8, (int)(df > 0.0 ? (double)totalresult / df : 0));
+    guiCom << str;
 }
 
 
@@ -282,26 +278,40 @@ struct benchmarkstruct
 const string solvedstr[] = { "-", "+", "o" };
 
 
-static void benchTableHeader(FILE* out)
+static void benchTableHeader(bool bToErr)
 {
-        fprintf(out, "\n\nBenchmark results for %s (Build %s):\n", en.name().c_str(), BUILD);
-        fprintf(out, "System: %s\n", cinfo.SystemName().c_str());
-        fprintf(out, "CPU-Features of system: %s\nCPU-Features of binary: %s\n", cinfo.PrintCpuFeatures(cinfo.machineSupports).c_str(), cinfo.PrintCpuFeatures(cinfo.binarySupports).c_str());
-        fprintf(out, "=============================================================================================================\n");
+    if (bToErr)
+        guiCom.switchStream();
+    guiCom << "\n" << "Benchmark results\n";
+    engineHeader();
+    if (bToErr)
+        guiCom.switchStream();
 }
 
-static void benchTableItem(FILE* out, int i, benchmarkstruct *bm)
+static void benchTableItem(bool bToErr, int i, benchmarkstruct *bm)
 {
-    fprintf(out, "Bench # %3d (%14s / %2d): %s  %5s %6d cp %3d ply %10f sec. %10lld nodes %10lld nps\n", i, bm->name.c_str(), bm->depth, solvedstr[bm->solved].c_str(), bm->move.c_str(), bm->score, bm->depthAtExit, (float)bm->time / (float)en.frequency, bm->nodes, bm->nodes * en.frequency / bm->time);
+    if (bToErr)
+        guiCom.switchStream();
+    char str[256];
+    sprintf(str, "Bench # %3d (%14s / %2d): %s  %5s %6d cp %3d ply %10f sec. %10lld nodes %10lld nps\n", i, bm->name.c_str(), bm->depth, solvedstr[bm->solved].c_str(), bm->move.c_str(), bm->score, bm->depthAtExit, (float)bm->time / (float)en.frequency, bm->nodes, bm->nodes * en.frequency / bm->time);
+    guiCom << str;
+    if (bToErr)
+        guiCom.switchStream();
 }
 
-static void benchTableFooder(FILE *out, long long totaltime, long long totalnodes, int totalsolved[2])
+static void benchTableFooder(bool bToErr, long long totaltime, long long totalnodes, int totalsolved[2])
 {
+    if (bToErr)
+        guiCom.switchStream();
     int totaltests = totalsolved[0] + totalsolved[1];
     double fSolved = totaltests ? 100.0 * totalsolved[1] / (double)totaltests : 0.0;
-    fprintf(out, "=============================================================================================================\n");
-    fprintf(out, "Overall:                  %4d/%3d = %4.1f%%                    %10f sec. %10lld nodes %*lld nps\n",
+    guiCom << "=============================================================================================================\n";
+    char str[256];
+    sprintf(str, "Overall:                  %4d/%3d = %4.1f%%                    %10f sec. %10lld nodes %*lld nps\n",
         totalsolved[1], totaltests, fSolved, ((float)totaltime / (float)en.frequency), totalnodes, 10, totalnodes * en.frequency / totaltime);
+    guiCom << str;
+    if (bToErr)
+        guiCom.switchStream();
 }
 
 void engine::bench(int constdepth, string epdfilename, int consttime, int startnum, bool openbench)
@@ -403,13 +413,12 @@ void engine::bench(int constdepth, string epdfilename, int consttime, int startn
         epdfile.open(epdfilename, ifstream::in);
         bGetFromEpd = epdfile.is_open();
         if (!bGetFromEpd)
-            printf("Cannot open file %s for reading.\n", epdfilename.c_str());
+            guiCom << "Cannot open file " + epdfilename + " for reading.\n";
     }
 
     int i = 0;
     int totalSolved[2] = { 0 };
     benchmarkstruct epdbm;
-    FILE *tableout = openbench ? stdout : stderr;
     bool bFollowup = false;
 
     while (true)
@@ -463,7 +472,7 @@ void engine::bench(int constdepth, string epdfilename, int consttime, int startn
         else if (dp)
             en.communicate("go depth " + to_string(dp));
         else
-            cout << "No depth and no movetime. Skipping.\n";
+            guiCom << "No depth and no movetime. Skipping.\n";
 
         searchWaitStop(false);
         endtime = getTime();
@@ -482,7 +491,7 @@ void engine::bench(int constdepth, string epdfilename, int consttime, int startn
             totalSolved[bm->solved]++;
 
         if (bGetFromEpd)
-            benchTableItem(tableout, i, bm);
+            benchTableItem(!openbench, i, bm);
 
         if (!bGetFromEpd)
             bFollowup = !bFollowup;
@@ -495,19 +504,22 @@ void engine::bench(int constdepth, string epdfilename, int consttime, int startn
     i = 0;
     long long totaltime = 0;
     long long totalnodes = 0;
-    benchTableHeader(tableout);
+    benchTableHeader(!openbench);
 
     for (list<benchmarkstruct>::iterator bm = bmlist.begin(); bm != bmlist.end(); bm++)
     {
         totaltime += bm->time;
         totalnodes += bm->nodes;
-        benchTableItem(tableout, ++i, &*bm);
+        benchTableItem(!openbench, ++i, &*bm);
     }
     if (totaltime)
     {
-        benchTableFooder(tableout, totaltime, totalnodes, totalSolved);
-        if (openbench)
-            printf("Time  : %lld\nNodes : %lld\nNPS   : %lld\n", totaltime * 1000 / en.frequency, totalnodes, totalnodes * en.frequency / totaltime);
+        benchTableFooder(!openbench, totaltime, totalnodes, totalSolved);
+        if (openbench) {
+            guiCom << "Time  : " + to_string(totaltime * 1000 / en.frequency) + "\n";
+            guiCom << "Nodes : " + to_string(totalnodes) + "\n";
+            guiCom << "NPS   : " + to_string(totalnodes * en.frequency / totaltime) + "\n";
+        }
     }
 }
 

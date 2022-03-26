@@ -1166,7 +1166,7 @@ alignas(64) evalparamset eps;
 alignas(64) zobrist zb;
 alignas(64) engine en(&cinfo);
 alignas(64) searchparamset sps;
-alignas(64) GuiCommunication guiCom(cout);
+alignas(64) GuiCommunication guiCom;
 
 // Explicit template instantiation
 // This avoids putting these definitions in header file

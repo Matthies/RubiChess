@@ -18,6 +18,18 @@
 
 #include "RubiChess.h"
 
+void engineHeader()
+{
+    guiCom << "========================================================================================\n";
+    guiCom << en.name() + " (Build " + BUILD + ")\n";
+    guiCom << "UCI compatible chess engine by " + en.author + "\n";
+    guiCom << "----------------------------------------------------------------------------------------\n";
+    guiCom << "System: " + cinfo.SystemName() + "\n";
+    guiCom << "CPU-Features of system: " + cinfo.PrintCpuFeatures(cinfo.machineSupports) + "\n";
+    guiCom << "CPU-Features of binary: " + cinfo.PrintCpuFeatures(cinfo.binarySupports) + "\n";
+    guiCom << "========================================================================================\n";
+}
+
 
 //
 // callbacks for ucioptions
@@ -96,14 +108,7 @@ void uciSetLogFile()
     else
         sLogging = (filename == "" ? "No logging." : "Logging to " + filename);
 
-    guiCom << "========================================================================================\n";
-    guiCom << en.name() + " (Build " + BUILD + ")\n";
-    guiCom << "UCI compatible chess engine by " + en.author + "\n";
-    guiCom << "----------------------------------------------------------------------------------------\n";
-    guiCom << "System: " + cinfo.SystemName() + "\n";
-    guiCom << "CPU-Features of system: " + cinfo.PrintCpuFeatures(cinfo.machineSupports) + "\n";
-    guiCom << "CPU-Features of binary: " + cinfo.PrintCpuFeatures(cinfo.binarySupports) + "\n";
-    guiCom << "========================================================================================\n";
+    engineHeader();
     guiCom << "info string " + sLogging + "\n";
 }
 
