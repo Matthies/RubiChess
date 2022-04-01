@@ -678,9 +678,21 @@ int chessposition::root_probe_dtz()
 
     // Obtain 50-move counter for the root position.
     int cnt50 = halfmovescounter;
-    // FIXME: The use of rep needs testing...
-    int rep = testRepetition();
 
+    // Test if there was any single repetition since last halfmove reset
+    bool hasRepetition = false;
+    for (int revply = 0, i = PREROOTMOVES; !hasRepetition &&  revply < prerootmovenum; revply++, i--) {
+        U64 h = prerootmovestack[i].hash;
+        int j = i - 4;
+        while (i - j + revply <= prerootmovenum) {
+            if (prerootmovestack[j].hash == h) {
+                hasRepetition = true;
+                break;
+            }
+            j = j - 2;
+        }
+    }
+    
     // Now be a bit smart about filtering out moves.
     int mi = 0;
     if (dtz > 0) { // winning (or 50-move rule draw)
@@ -699,7 +711,7 @@ int chessposition::root_probe_dtz()
         {
             int v = rootmovelist.move[mi].value;
 
-            if (v <= 0 || (rep && (v & 0xffff) > best))
+            if (v <= 0 || ((hasRepetition || (v & 0xffff) + cnt50 >= 100) && (v & 0xffff) > best))
             {
                 // delete moves that are known for not winning or not optimal and we already have a repetition
                 rootmovelist.length--;
@@ -711,11 +723,11 @@ int chessposition::root_probe_dtz()
                 v = (v & 0xffff);
                 if (!en.Syzygy50MoveRule || v + cnt50 <= 100)
                     // win
-                    rootmovelist.move[mi].value = SCORETBWIN - v - (rep ? cnt50 : 0) - isBadMove * 0x100;
+                    rootmovelist.move[mi].value = SCORETBWIN - v - (hasRepetition ? cnt50 : 0) - isBadMove * 0x100;
                 else
                     // cursed win = draw
                     rootmovelist.move[mi].value = SCOREDRAW;
-                //printf("info string root_probe_dtz (ply=%d) Final value for move %s... value=%d rep=%d\n", ply, rootmovelist.move[mi].toString().c_str(), rootmovelist.move[mi].value, rep);
+                //printf("info string root_probe_dtz (ply=%d) Final value for move %s... value=%d rep=%d\n", ply, rootmovelist.move[mi].toString().c_str(), rootmovelist.move[mi].value, hasRepetition);
                 mi++;
             }
         }
