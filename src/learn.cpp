@@ -989,12 +989,7 @@ static void gensfenthread(searchthread* thr, U64 rndseed)
     U64 psvnums = 0;
     uint32_t nmc;
     chessposition* pos = &thr->pos;
-    pos->he_yes = 0ULL;
-    pos->he_all = 0ULL;
-    pos->he_threshold = 8100;
-    memset(pos->history, 0, sizeof(chessposition::history));
-    memset(pos->counterhistory, 0, sizeof(chessposition::counterhistory));
-    memset(pos->countermove, 0, sizeof(chessposition::countermove));
+    pos->resetStats();
     const int depthvariance = max(1, depth2 - depth + 1);
     thr->totalchunks = 0;
 
@@ -1401,13 +1396,7 @@ static void convertthread(searchthread* thr, conversion_t* cv)
     int rookfiles[2][2] = { { 0 , 7 }, {0 , 7} };
     int kingfile[2] = { 4, 4 };
     pos->initCastleRights(rookfiles, kingfile);
-    pos->he_yes = 0ULL;
-    pos->he_all = 0ULL;
-    pos->he_threshold = 8100;
-    memset(pos->history, 0, sizeof(chessposition::history));
-    memset(pos->killer, 0, sizeof(chessposition::killer));
-    memset(pos->counterhistory, 0, sizeof(chessposition::counterhistory));
-    memset(pos->countermove, 0, sizeof(chessposition::countermove));
+    pos->resetStats();
     memset(pos->prerootmovestack, 0xff, sizeof(chessposition::prerootmovestack));
     memset(pos->movestack, 0, sizeof(chessposition::movestack));
     pos->prerootmovenum = 0;

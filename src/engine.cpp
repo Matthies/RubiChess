@@ -162,6 +162,7 @@ engine::engine(compilerinfo *c)
 #else
     frequency = 1000000000LL;
 #endif
+    rootposition.resetStats();
 }
 
 engine::~engine()
@@ -272,6 +273,8 @@ void chessposition::resetStats()
     memset(counterhistory, 0, sizeof(chessposition::counterhistory));
     memset(countermove, 0, sizeof(chessposition::countermove));
     memset(conthistptr, 0, sizeof(chessposition::conthistptr));
+    for (int i = 0; i < 4; i++)
+        prerootconthistptr[i] = counterhistory[0][0];
     he_yes = 0ULL;
     he_all = 0ULL;
     he_threshold = 8100;
