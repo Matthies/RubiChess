@@ -199,6 +199,13 @@ void getPcsFromStr(const char* str, int *pcs)
 }
 
 
+U64 calc_key_from_str(const char* str)
+{
+    int pcs[16];
+    getPcsFromStr(str, pcs);
+    return calc_key_from_pcs(pcs, 0);
+}
+
 void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am)
 {
     *fen = "";

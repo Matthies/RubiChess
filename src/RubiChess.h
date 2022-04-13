@@ -647,6 +647,7 @@ U64 ranval(ranctx* x);
 string frcStartFen(int numWhite = -1, int numBlack = -1);
 U64 calc_key_from_pcs(int *pcs, int mirror);
 void getPcsFromStr(const char* str, int *pcs);
+U64 calc_key_from_str(const char* str);
 void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am);
 vector<string> SplitString(const char* s);
 unsigned char AlgebraicToIndex(string s);
