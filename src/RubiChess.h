@@ -381,6 +381,7 @@ typedef const int32_t eval;
 
 struct evalparamset {
     // Tuned with Lichess-quiet (psqt), lc0games (kingdanger), manually (complex) and Laser games (everything else)
+    eval eContempt = CVALUE(  10);
     eval eComplexpawnsbonus =  EVALUE(   4);
     eval eComplexpawnflanksbonus =  EVALUE(  66);
     eval eComplexonlypawnsbonus =  EVALUE(  71);
@@ -1418,7 +1419,8 @@ public:
     uint32_t multipvtable[MAXMULTIPV][MAXDEPTH];
     uint32_t lastpv[MAXDEPTH];
     int phcount; // weighted number of pieces (0..24)
-    int sc; // to stor scaling factor used for evaluation
+    int sc; // to store scaling factor used for evaluation
+    int contempt;
     int useTb;
     int useRootmoveScore;
     int tbPosition;

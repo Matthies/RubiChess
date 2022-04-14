@@ -333,6 +333,7 @@ void engine::communicate(string inputstring)
                     if (!(lastopponentsmove = rootposition.applyMove(*it)))
                         guiCom << "info string Alarm! Move " + (*it)  + "%s illegal (possible engine error)\n";
                 }
+                rootposition.contempt = S2MSIGN(rootposition.state & S2MMASK) * eps.eContempt;
                 ponderhit = (lastopponentsmove && lastopponentsmove == rootposition.pondermove);
                 // Preserve hashes of earlier position up to last halfmove counter reset for repetition detection
                 rootposition.prerootmovenum = rootposition.ply;
