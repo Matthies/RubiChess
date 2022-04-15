@@ -298,6 +298,7 @@ struct pawnhashentry;
 #define MATEFORME(s) ((s) > SCOREWHITEWINS - MAXDEPTH)
 #define MATEFOROPPONENT(s) ((s) < SCOREBLACKWINS + MAXDEPTH)
 #define MATEDETECTED(s) (MATEFORME(s) || MATEFOROPPONENT(s))
+#define MATEIN(s) (s > 0 ? (SCOREWHITEWINS - s + 1) / 2 : (SCOREBLACKWINS - s) / 2)
 
 const int phasefactor[] = { 0, 0, 1, 1, 2, 4, 0 };
 
