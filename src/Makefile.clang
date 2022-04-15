@@ -12,11 +12,13 @@
 # in folder C:\Program Files\LLVM9
 # For profiling a not supported platform (like avx512 in my case) set SDE to the Intel Software Development Emulator https://software.intel.com/content/www/us/en/develop/articles/intel-software-development-emulator.html
 # and define EMU when calling pgo-rename
+!IF !DEFINED(CLANGVER)
 CLANGVER=9
-LLVMInstallDir="C:\Program Files\LLVM$(CLANGVER)""
-CXX=$(LLVMInstallDir)\bin\clang-cl.exe
-LD=$(LLVMInstallDir)\bin\lld-link.exe
-PROFDATATOOLEXE=$(LLVMInstallDir)\bin\llvm-profdata
+!ENDIF
+LLVMInstallDir=C:\Program Files\LLVM$(CLANGVER)
+CXX="$(LLVMInstallDir)\bin\clang-cl.exe"
+LD="$(LLVMInstallDir)\bin\lld-link.exe"
+PROFDATATOOLEXE="$(LLVMInstallDir)\bin\llvm-profdata.exe"
 SOURCE=*.cpp
 OBJ=*.obj
 RELDIR=Release-clang
@@ -44,15 +46,37 @@ GITDEFINE = $(GITDEFINE) -D GITID=\"$(GITID)\"
 $(RELDIR):
 	mkdir $(RELDIR)
 
+compilercheck:
+!IF !DEFINED(ARCH)
+!MESSAGE Compiler and Tools:
+!IF !EXIST($(CXX))
+!ERROR Compiler $(CXX) not found. Exit!
+!ELSE
+!MESSAGE Found Compiler $(CXX).
+!ENDIF
+!IF !EXIST($(LD))
+!ERROR Linker $(LD) not found. Exit!
+!ELSE
+!MESSAGE Found Linker $(LD).
+!ENDIF
+!IF !EXIST($(PROFDATATOOLEXE))
+!ERROR Profiling tool $(PROFDATATOOLEXE) not found. Exit!
+!ELSE
+!MESSAGE Found Profiling tool $(PROFDATATOOLEXE).
+!ENDIF
+!MESSAGE ==========================================================================
+!ENDIF
+
 network:
 !IF !DEFINED(ARCH)
-!IF [@FOR /F "tokens=3" %A IN ('find "NNUEDEFAULT " RubiChess.h') DO @(if exist %A ( @echo Net already exists ) else ( curl -skL $(NETURL)%A > $(TMPNN) && move $(TMPNN) %A && echo Net %A was downloaded. )) && @if not exist $(RELDIR)\%A ( @copy  %A $(RELDIR)\%A )  ] != 0
+!MESSAGE Network:
+!IF [@FOR /F "tokens=3" %A IN ('find "NNUEDEFAULT " RubiChess.h') DO @(if exist %A ( @echo Net %A already exists ) else ( curl -skL $(NETURL)%A > $(TMPNN) && move $(TMPNN) %A && echo Net %A was downloaded. )) && @if not exist $(RELDIR)\%A ( @copy  %A $(RELDIR)\%A )  ] != 0
 	@echo Cannot get default net from header file or download failed!
 !ENDIF
+!MESSAGE ==========================================================================
 !ENDIF
 
 ARCH=native
-
 
 nativeflags:
 !IF "$(ARCH)"=="native"
@@ -161,7 +185,7 @@ compile: $(RELDIR)
 
 pgo: printarch
 	@echo Creating instrumented binary...
-	@nmake -c -f Makefile.clang compile ARCH=$(ARCH) PROFILEFLAGS=-fprofile-instr-generate=$(PROFEXE).clangprof-raw PROFLIB=$(LLVMInstallDir)\lib\clang\$(CLANGVER).0.0\lib\windows\clang_rt.profile-x86_64.lib
+	@nmake -c -f Makefile.clang compile ARCH=$(ARCH) PROFILEFLAGS=-fprofile-instr-generate=$(PROFEXE).clangprof-raw PROFLIB="$(LLVMInstallDir)\lib\clang\$(CLANGVER).0.0\lib\windows\clang_rt.profile-x86_64.lib"
 	@echo Bench to generate profiling data...
 	@($(PROFEXE) -bench >nul || (if exist $(SDE) ( @echo Using Intels Software Development Emulator... && $(SDE) -- $(PROFEXE) -bench >nul) else (@echo Intels Software Development Emulator needed but not found at $(SDE). Performance will be poor.)))
 	@$(PROFDATATOOLEXE) merge -output=$(PROFEXE).clangprof $(PROFEXE).clangprof-raw
