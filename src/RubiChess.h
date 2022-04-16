@@ -21,7 +21,7 @@
 #define NNUEDEFAULT nn-d458c5999d-20220222.nnue
 
 // Enable to get statistical values about various search features
-//#define STATISTICS
+#define STATISTICS
 
 // Enable to debug the search against a gives pv
 //#define SDEBUG
@@ -1303,6 +1303,9 @@ public:
 #ifdef SDEBUG
     int value;
 #endif
+#ifdef STATISTICS
+    int depth;
+#endif
     void SetPreferredMoves(chessposition *p);  // for quiescence move selector
     void SetPreferredMoves(chessposition *p, int m, int excludemove);  // for probcut move selector
     void SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, uint32_t counter, int excludemove);
@@ -2021,7 +2024,9 @@ void init_tablebases(char *path);
 // statistics stuff
 //
 #ifdef STATISTICS
-struct statistic {
+class statistic
+{
+public:
     int qs_mindepth;
     U64 qs_n[2];                // total calls to qs split into no check / check
     U64 qs_tt;                  // qs hits tt
@@ -2063,11 +2068,27 @@ struct statistic {
     S64 red_correction;         // total reduction correction by over-/underflow
 
     U64 extend_singular;        // total singular extensions
-    U64 extend_endgame;        // total endgame extensions
-    U64 extend_history;        // total history extensions
+    U64 extend_endgame;         // total endgame extensions
+    U64 extend_history;         // total history extensions
+
+#define MAXSTATDEPTH 30
+    U64 ms_n[MAXSTATDEPTH];                // total instantiations of moveselector in depth n (0 -> QS, MAXSTATDEPTH-1: ProbCut)
+    U64 ms_moves[MAXSTATDEPTH];            // total number of moves delivered in depth n
+    U64 ms_tactic_stage[MAXSTATDEPTH];     // how many times was the (good) tactic stage entered
+    U64 ms_tactic_moves[MAXSTATDEPTH];     // total number of goodtactical moves delivered in depth n
+    U64 ms_spcl_stage[MAXSTATDEPTH];       // how many times was the stage with special quiets (killer, counter) entered
+    U64 ms_spcl_moves[MAXSTATDEPTH];       // total number of special quiet moves delivered in depth n
+    U64 ms_quiet_stage[MAXSTATDEPTH];      // how many times was the quiet stage entered
+    U64 ms_quiet_moves[MAXSTATDEPTH];      // total number of quiet moves delivered in depth n
+    U64 ms_badtactic_stage[MAXSTATDEPTH];  // how many times was the quiet stage entered
+    U64 ms_badtactic_moves[MAXSTATDEPTH];  // total number of special quiet moves delivered in depth n
+    U64 ms_evasion_stage[MAXSTATDEPTH];    // how many times was the evasion stage entered
+    U64 ms_evasion_moves[MAXSTATDEPTH];    // total number of evasion moves delivered in depth n
+
+    void output();
 };
 
-extern struct statistic statistics;
+extern statistic statistics;
 
 void search_statistics();
 
