@@ -309,8 +309,14 @@ const int phasefactor[] = { 0, 0, 1, 1, 2, 4, 0 };
 #define GETMGVAL(v) ((int16_t)(((uint32_t)(v) + 0x8000) >> 16))
 #define GETEGVAL(v) ((int16_t)((v) & 0xffff))
 
-#ifdef EVALTUNE
 
+#if defined(EVALTUNE) || defined(EVALOPTIONS)
+#define EPSCONST
+#else
+#define EPSCONST const
+#endif
+
+#ifdef EVALTUNE
 class eval;
 class sqevallist
 {
@@ -357,7 +363,6 @@ public:
 #define EVALUE(v) eval(3, 0, v)
 #define EEVAL(e, f) ((e).addGrad(f), (e) * (f))
 #else // EVALTUNE
-
 #define SQVALUE(i, v) (v)
 #define VALUE(m, e) ((int32_t)((uint32_t)(m) << 16) + (e))
 #define EVAL(e, f) ((e) * (f))
@@ -1071,7 +1076,7 @@ const int orthogonalanddiagonaloffset[] = { -8, -1, 1, 8, -7, -9, 7, 9 };
 const struct { int offset; bool needsblank; } pawnmove[] = { { 0x10, true }, { 0x0f, false }, { 0x11, false } };
 extern const int materialvalue[];
 extern int psqtable[14][64];
-extern evalparamset eps;
+extern EPSCONST evalparamset eps;
 
 // values for move ordering
 const int mvv[] = { 0U << 27, 1U << 27, 2U << 27, 2U << 27, 3U << 27, 4U << 27, 5U << 27 };
@@ -1901,6 +1906,7 @@ extern GuiCommunication guiCom;
 //
 
 #ifdef SEARCHOPTIONS
+#define SPSCONST
 void searchtableinit();
 class searchparam {
 public:
@@ -1920,6 +1926,7 @@ public:
 #define SP(x,y) x = #x "/" #y
 
 #else // SEARCHOPTIONS
+#define SPSCONST const
 typedef const int searchparam;
 #define SP(x,y) x = y
 #endif
@@ -1983,7 +1990,7 @@ struct searchparamset {
     searchparam SP(aspinitialdelta, 8);
 };
 
-extern searchparamset sps;
+extern SPSCONST searchparamset sps;
 
 class searchthread
 {
