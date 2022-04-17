@@ -1421,7 +1421,7 @@ public:
     uint32_t lastpv[MAXDEPTH];
     int phcount; // weighted number of pieces (0..24)
     int sc; // to store scaling factor used for evaluation
-    int contempt;
+    int rootColor;
     int useTb;
     int useRootmoveScore;
     int tbPosition;
