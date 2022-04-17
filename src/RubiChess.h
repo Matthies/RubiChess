@@ -1640,7 +1640,7 @@ public:
 };
 
 
-enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, WAIT, PONDERHIT, QUIT, EVAL, PERFT, BENCH, TUNE, GENSFEN, CONVERT, LEARN, EXPORT };
+enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, WAIT, PONDERHIT, QUIT, EVAL, PERFT, BENCH, TUNE, GENSFEN, CONVERT, LEARN, EXPORT, STATS };
 
 const map<string, GuiToken> GuiCommandMap = {
 #ifdef EVALOPTIONS
@@ -1653,6 +1653,9 @@ const map<string, GuiToken> GuiCommandMap = {
     { "gensfen", GENSFEN },
     { "convert", CONVERT },
     { "learn", LEARN },
+#endif
+#ifdef STATISTICS
+    { "stats", STATS },
 #endif
     { "uci", UCI },
     { "debug", UCIDEBUG },
@@ -2092,7 +2095,7 @@ public:
     U64 ms_evasion_stage[MAXSTATDEPTH];    // how many times was the evasion stage entered
     U64 ms_evasion_moves[MAXSTATDEPTH];    // total number of evasion moves delivered in depth n
 
-    void output();
+    void output(vector<string> args);
 };
 
 extern statistic statistics;

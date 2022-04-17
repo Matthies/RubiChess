@@ -645,6 +645,14 @@ void engine::communicate(string inputstring)
                 NnueWriteNet(commandargs);
                 break;
 #endif
+#ifdef STATISTICS
+            case STATS:
+
+#ifdef STATISTICS
+                statistics.output(commandargs);
+#endif
+
+#endif
             default:
                 break;
             }
