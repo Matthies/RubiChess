@@ -917,9 +917,8 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
                 pondermove = 0;
             }
             updatePvTable(fullhashmove, false);
-            if (score > alpha) bestmovescore[0] = score;
-            if (score > NOSCORE)
-            {
+            if (score > alpha) {
+                bestmovescore[0] = score;
                 SDEBUGDO(isDebugPv, pvabortscore[0] = score; if (debugMove.code == fullhashmove) pvaborttype[0] = PVA_FROMTT; else pvaborttype[0] = PVA_DIFFERENTFROMTT; );
                 SDEBUGDO(isDebugPv, pvadditionalinfo[0] = "PV = " + getPv(pvtable[0]) + "  " + tp.debugGetPv(hash, 0); );
                 return score;
