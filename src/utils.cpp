@@ -753,12 +753,12 @@ void statistic::output(vector<string> args)
         if (cmd == "reset")
         {
             memset(this, 0, sizeof(*this));
+            guiCom << "[STATS] counters are reset.\n";
             return;
         }
         else if (cmd == "print")
         {
-
-
+            // add some parameter like 'all', 'ms', ...
         }
         else
         {
@@ -842,28 +842,30 @@ void statistic::output(vector<string> args)
     guiCom << str;
 
     // Move selector
-    n = i1 = i2 = i3 = 0;
-    int d;
-    for (d = 0; d < MAXSTATDEPTH; d++) {
-        n += ms_n[d];
-        i1 += ms_moves[d];
+    for (int p = 0; p < 2; p++)
+    {
+        n = i1 = i2 = i3 = 0;
+        int d;
+        guiCom << "[STATS] Statistics of move selector " + (p ? string("PV node") : string("non-PV node")) + "\n";
+        for (d = 0; d < MAXSTATDEPTH; d++) {
+            n += ms_n[p][d];
+            i1 += ms_moves[p][d];
 
-        i2 += ms_quiet_moves[d];
-        i3 += ms_evasion_moves[d];
+            i2 += ms_quiet_moves[p][d];
+            i3 += ms_evasion_moves[p][d];
+        }
+        for (d = 0; d < MAXSTATDEPTH; d++) {
+            string depthStr = (d == 0 ? "QSearch " : d == MAXSTATDEPTH - 1 ? "ProbCut " : "Depth#" + (d < 10 ? string(" ") : "") + to_string(d));
+            sprintf(str, "n=%12lld   (%5.2f%%)  %%TctStg:%5.1f Mvs:%4.1f  %%SpcStg:%5.1f Mvs:%4.1f  %%QteStg:%5.1f Mvs:%4.1f  %%BdTStg:%5.1f Mvs:%4.1f  %%EvsStg:%5.1f Mvs:%4.1f\n",
+                ms_n[p][d], 100.0 * ms_n[p][d] / NODBZ(n),
+                100.0 * ms_tactic_stage[p][d] / NODBZ(ms_n[p][d]), ms_tactic_moves[p][d] / NODBZ(ms_tactic_stage[p][d]),
+                100.0 * ms_spcl_stage[p][d] / NODBZ(ms_n[p][d]), ms_spcl_moves[p][d] / NODBZ(ms_spcl_stage[p][d]),
+                100.0 * ms_quiet_stage[p][d] / NODBZ(ms_n[p][d]), ms_quiet_moves[p][d] / NODBZ(ms_quiet_stage[p][d]),
+                100.0 * ms_badtactic_stage[p][d] / NODBZ(ms_n[p][d]), ms_badtactic_moves[p][d] / NODBZ(ms_badtactic_stage[p][d]),
+                100.0 * ms_evasion_stage[p][d] / NODBZ(ms_n[p][d]), ms_evasion_moves[p][d] / NODBZ(ms_evasion_stage[p][d]));
+            guiCom << "[STATS] " + depthStr + "  " + str;
+        }
     }
-    guiCom << "[STATS] Statistics of move selector\n";
-    for (d = 0; d < MAXSTATDEPTH; d++) {
-        string depthStr = (d == 0 ? "QSearch " : d == MAXSTATDEPTH - 1 ? "ProbCut " : "Depth#" + (d < 10 ? string(" ") : "") + to_string(d));
-        sprintf(str, "n=%12lld   (%5.2f%%)  %%TctStg:%5.1f Mvs:%4.1f  %%SpcStg:%5.1f Mvs:%4.1f  %%QteStg:%5.1f Mvs:%4.1f  %%BdTStg:%5.1f Mvs:%4.1f  %%EvsStg:%5.1f Mvs:%4.1f\n",
-            ms_n[d], 100.0 * ms_n[d] / NODBZ(n),
-            100.0 * ms_tactic_stage[d] / NODBZ(ms_n[d]), ms_tactic_moves[d] / NODBZ(ms_tactic_stage[d]),
-            100.0 * ms_spcl_stage[d] / NODBZ(ms_n[d]), ms_spcl_moves[d] / NODBZ(ms_spcl_stage[d]),
-            100.0 * ms_quiet_stage[d] / NODBZ(ms_n[d]), ms_quiet_moves[d] / NODBZ(ms_quiet_stage[d]),
-            100.0 * ms_badtactic_stage[d] / NODBZ(ms_n[d]), ms_badtactic_moves[d] / NODBZ(ms_badtactic_stage[d]),
-            100.0 * ms_evasion_stage[d] / NODBZ(ms_n[d]), ms_evasion_moves[d] / NODBZ(ms_evasion_stage[d]));
-        guiCom << "[STATS] " + depthStr + "  " + str;
-    }
-
     guiCom << "[STATS] ==================================================================================================================================================================\n";
 }
 #endif

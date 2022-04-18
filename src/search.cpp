@@ -219,7 +219,8 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     ms->SetPreferredMoves(this);
     STATISTICSINC(qs_loop_n);
     STATISTICSDO(ms->depth = 0);
-    STATISTICSINC(ms_n[0]);
+    STATISTICSDO(ms->PvNode = (alpha != beta - 1));
+    STATISTICSINC(ms_n[ms->PvNode][0]);
 
     uint32_t bestcode = 0;
     int legalMoves = 0;
@@ -539,7 +540,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         memset(ms, 0, sizeof(MoveSelector));
         ms->SetPreferredMoves(this, rbeta - staticeval, excludeMove);
         STATISTICSDO(ms->depth = MAXSTATDEPTH - 1);
-        STATISTICSINC(ms_n[ms->depth]);
+        STATISTICSDO(ms->PvNode = 0);
+        STATISTICSINC(ms_n[0][ms->depth]);
 
         while ((mc = ms->next()))
         {
@@ -582,7 +584,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     ms->SetPreferredMoves(this, hashmovecode, killer[ply][0], killer[ply][1], counter, excludeMove);
     STATISTICSINC(moves_loop_n);
     STATISTICSDO(ms->depth = min(MAXSTATDEPTH - 2, depth));
-    STATISTICSINC(ms_n[ms->depth]);
+    STATISTICSDO(ms->PvNode = PVNode);
+    STATISTICSINC(ms_n[PVNode][ms->depth]);
 
     int legalMoves = 0;
     int quietsPlayed = 0;

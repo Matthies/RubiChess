@@ -616,14 +616,21 @@ void engine::communicate(string inputstring)
                 }
                 break;
             case BENCH:
+            {
                 maxdepth = 0;
                 mytime = 0;
+                string epdf = "";
                 if (ci < cs)
-                    try { maxdepth = stoi(commandargs[ci++]); } catch (...) {}
+                    try { maxdepth = stoi(commandargs[ci++]); }
+                catch (...) {}
                 if (ci < cs)
-                    try { mytime = stoi(commandargs[ci++]); } catch (...) {}
-                bench(max(0, maxdepth), "", max(0, mytime), 1, true);
+                    try { mytime = stoi(commandargs[ci++]); }
+                catch (...) {}
+                if (ci < cs)
+                    epdf = commandargs[ci++];
+                bench(max(0, maxdepth), epdf, max(0, mytime), 1, true);
                 break;
+            }
 #ifdef NNUELEARN
             case GENSFEN:
                 gensfen(commandargs);

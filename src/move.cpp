@@ -889,7 +889,7 @@ uint32_t MoveSelector::next()
         }
         // fall through
     case TACTICALINITSTATE:
-        STATISTICSINC(ms_tactic_stage[depth]);
+        STATISTICSINC(ms_tactic_stage[PvNode][depth]);
         state++;
         captures->length = pos->CreateMovelist<TACTICAL>(&captures->move[0]);
         pos->evaluateMoves<CAPTURE>(captures);
@@ -905,7 +905,7 @@ uint32_t MoveSelector::next()
             else {
                 m->value = INT_MIN;
                 if (m->code != hashmove) {
-                    STATISTICSINC(ms_tactic_moves[depth]);
+                    STATISTICSINC(ms_tactic_moves[PvNode][depth]);
                     return m->code;
                 }
             }
@@ -915,12 +915,12 @@ uint32_t MoveSelector::next()
             return 0;
         // fall through
     case KILLERMOVE1STATE:
-        STATISTICSINC(ms_spcl_stage[depth]);
+        STATISTICSINC(ms_spcl_stage[PvNode][depth]);
         state++;
         if (pos->moveIsPseudoLegal(killermove1))
         {
             SDEBUGDO(true, value = KILLERVAL1;)
-            STATISTICSINC(ms_spcl_moves[depth]);
+            STATISTICSINC(ms_spcl_moves[PvNode][depth]);
             return killermove1;
         }
         // fall through
@@ -929,7 +929,7 @@ uint32_t MoveSelector::next()
         if (pos->moveIsPseudoLegal(killermove2))
         {
             SDEBUGDO(true, value = KILLERVAL2;)
-            STATISTICSINC(ms_spcl_moves[depth]);
+            STATISTICSINC(ms_spcl_moves[PvNode][depth]);
             return killermove2;
         }
         // fall through
@@ -938,12 +938,12 @@ uint32_t MoveSelector::next()
         if (pos->moveIsPseudoLegal(countermove))
         {
             SDEBUGDO(true, value = NMREFUTEVAL;)
-            STATISTICSINC(ms_spcl_moves[depth]);
+            STATISTICSINC(ms_spcl_moves[PvNode][depth]);
             return countermove;
         }
         // fall through
     case QUIETINITSTATE:
-        STATISTICSINC(ms_quiet_stage[depth]);
+        STATISTICSINC(ms_quiet_stage[PvNode][depth]);
         state++;
         quiets->length = pos->CreateMovelist<QUIET>(&quiets->move[0]);
         pos->evaluateMoves<QUIET>(quiets);
@@ -958,11 +958,11 @@ uint32_t MoveSelector::next()
                 && mc != killermove2
                 && mc != countermove)
             {
-                STATISTICSINC(ms_quiet_moves[depth]);
+                STATISTICSINC(ms_quiet_moves[PvNode][depth]);
                 return mc;
             }
         }
-        STATISTICSINC(ms_badtactic_stage[depth]);
+        STATISTICSINC(ms_badtactic_stage[PvNode][depth]);
         state++;
         // fall through
     case BADTACTICALSTATE:
@@ -973,7 +973,7 @@ uint32_t MoveSelector::next()
             m->value = INT_MIN;
             if (bBadTactical) {
                 STATISTICSDO(if (m->code == hashmove) STATISTICSINC(moves_bad_hash));
-                STATISTICSINC(ms_badtactic_moves[depth]);
+                STATISTICSINC(ms_badtactic_moves[PvNode][depth]);
                 return m->code;
             }
         }
@@ -982,7 +982,7 @@ uint32_t MoveSelector::next()
     case BADTACTICALEND:
         return 0;
     case EVASIONINITSTATE:
-        STATISTICSINC(ms_evasion_stage[depth]);
+        STATISTICSINC(ms_evasion_stage[PvNode][depth]);
         state++;
         captures->length = pos->CreateEvasionMovelist(&captures->move[0]);
         pos->evaluateMoves<ALL>(captures);
@@ -991,7 +991,7 @@ uint32_t MoveSelector::next()
         while ((mc = captures->getAndRemoveNextMove()))
         {
             SDEBUGDO(true, value = captures->lastvalue;)
-            STATISTICSINC(ms_evasion_moves[depth]);
+            STATISTICSINC(ms_evasion_moves[PvNode][depth]);
             return mc;
         }
         state++;
