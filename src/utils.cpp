@@ -741,7 +741,7 @@ void Sleep(long x)
 void statistic::output(vector<string> args)
 {
 
-    U64 n, i1, i2, i3, i4;
+    U64 n, i1, i2, i3, i4, i5, i6, i7, i8, i9, i10, i11;;
     double f0, f1, f2, f3, f4, f5, f6, f7, f10, f11;
     char str[512];
 
@@ -842,28 +842,66 @@ void statistic::output(vector<string> args)
     guiCom << str;
 
     // Move selector
-    for (int p = 0; p < 2; p++)
+    int p, d, l;
+    int maxdepth = 0;
+    for (p = 0; p < 2; p++)
     {
-        n = i1 = i2 = i3 = 0;
-        int d;
+        n = i1 = i2 = i3 = i4 = i5 = i6 = i7 = i8 = i9 = i10 = i11 = 0ULL;
         guiCom << "[STATS] Statistics of move selector " + (p ? string("PV node") : string("non-PV node")) + "\n";
         for (d = 0; d < MAXSTATDEPTH; d++) {
             n += ms_n[p][d];
-            i1 += ms_moves[p][d];
-
-            i2 += ms_quiet_moves[p][d];
-            i3 += ms_evasion_moves[p][d];
         }
         for (d = 0; d < MAXSTATDEPTH; d++) {
+            if (ms_n[p][d] == 0)
+                continue;
+            maxdepth = d;
             string depthStr = (d == 0 ? "QSearch " : d == MAXSTATDEPTH - 1 ? "ProbCut " : "Depth#" + (d < 10 ? string(" ") : "") + to_string(d));
-            sprintf(str, "n=%12lld   (%5.2f%%)  %%TctStg:%5.1f Mvs:%4.1f  %%SpcStg:%5.1f Mvs:%4.1f  %%QteStg:%5.1f Mvs:%4.1f  %%BdTStg:%5.1f Mvs:%4.1f  %%EvsStg:%5.1f Mvs:%4.1f\n",
+            sprintf(str, "n=%12lld   (%6.2f%%)  %%TctStg:%5.1f Mvs:%4.1f  %%SpcStg:%5.1f Mvs:%4.1f  %%QteStg:%5.1f Mvs:%4.1f  %%BdTStg:%5.1f Mvs:%4.1f  %%EvsStg:%5.1f Mvs:%4.1f\n",
                 ms_n[p][d], 100.0 * ms_n[p][d] / NODBZ(n),
-                100.0 * ms_tactic_stage[p][d] / NODBZ(ms_n[p][d]), ms_tactic_moves[p][d] / NODBZ(ms_tactic_stage[p][d]),
+                100.0 * ms_tactic_stage[p][d][0] / NODBZ(ms_n[p][d]), ms_tactic_moves[p][d][0] / NODBZ(ms_tactic_stage[p][d][0]),
                 100.0 * ms_spcl_stage[p][d] / NODBZ(ms_n[p][d]), ms_spcl_moves[p][d] / NODBZ(ms_spcl_stage[p][d]),
-                100.0 * ms_quiet_stage[p][d] / NODBZ(ms_n[p][d]), ms_quiet_moves[p][d] / NODBZ(ms_quiet_stage[p][d]),
+                100.0 * ms_quiet_stage[p][d][0] / NODBZ(ms_n[p][d]), ms_quiet_moves[p][d][0] / NODBZ(ms_quiet_stage[p][d][0]),
                 100.0 * ms_badtactic_stage[p][d] / NODBZ(ms_n[p][d]), ms_badtactic_moves[p][d] / NODBZ(ms_badtactic_stage[p][d]),
-                100.0 * ms_evasion_stage[p][d] / NODBZ(ms_n[p][d]), ms_evasion_moves[p][d] / NODBZ(ms_evasion_stage[p][d]));
+                100.0 * ms_evasion_stage[p][d][0] / NODBZ(ms_n[p][d]), ms_evasion_moves[p][d][0] / NODBZ(ms_evasion_stage[p][d][0]));
             guiCom << "[STATS] " + depthStr + "  " + str;
+            i1 += ms_n[p][d];
+            i2 += ms_tactic_stage[p][d][0];
+            i3 += ms_tactic_moves[p][d][0];
+            i4 += ms_spcl_stage[p][d];
+            i5 += ms_spcl_moves[p][d];
+            i6 += ms_quiet_stage[p][d][0];
+            i7 += ms_quiet_moves[p][d][0];
+            i8 += ms_badtactic_stage[p][d];
+            i9 += ms_badtactic_moves[p][d];
+            i10 += ms_evasion_stage[p][d][0];
+            i11 += ms_evasion_moves[p][d][0];
+        }
+        sprintf(str, "n=%12lld   (%6.2f%%)  %%TctStg:%5.1f Mvs:%4.1f  %%SpcStg:%5.1f Mvs:%4.1f  %%QteStg:%5.1f Mvs:%4.1f  %%BdTStg:%5.1f Mvs:%4.1f  %%EvsStg:%5.1f Mvs:%4.1f\n",
+            i1, 100.0 * i1 / NODBZ(n),
+            100.0 * i2 / NODBZ(n), i3 / NODBZ(i2),
+            100.0 * i4 / NODBZ(n), i5 / NODBZ(i4),
+            100.0 * i6 / NODBZ(n), i7 / NODBZ(i6),
+            100.0 * i8 / NODBZ(n), i9 / NODBZ(i8),
+            100.0 * i10 / NODBZ(n), i11 / NODBZ(i10));
+        guiCom << string("[STATS] Total:    ") + str;
+
+        guiCom << "[STATS]  Quiets per movelist lenth\n";
+        for (l = 1; l < MAXSTATMOVES; l++)
+        {
+            i1 = i2 = 0;
+            for (d = 0; d < MAXSTATDEPTH; d++) {
+                i1 += ms_quiet_stage[p][d][l];
+                i2 += ms_quiet_moves[p][d][l];
+            }
+            if (i1 == 0)
+                continue;
+            sprintf(str, "length %2d  n=%12lld   Total MvsAvg:%4.1f   ", l, i1, i2 / NODBZ(i1));
+            string lengthStr = string("[STATS] ") + str;
+            for (d = 1; d < MAXSTATDEPTH && ms_quiet_stage[p][d][0]; d++) {
+                sprintf(str, "  %4.1f (%2d)", ms_quiet_moves[p][d][l] / NODBZ(ms_quiet_stage[p][d][l]), d);
+                lengthStr += str;
+            }
+            guiCom << lengthStr + "\n";
         }
     }
     guiCom << "[STATS] ==================================================================================================================================================================\n";

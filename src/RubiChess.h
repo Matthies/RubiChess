@@ -1311,6 +1311,9 @@ public:
 #ifdef STATISTICS
     int depth;
     int PvNode;
+    int numOfQuiets;
+    int numOfCaptures;
+    int numOfEvasions;
 #endif
     void SetPreferredMoves(chessposition *p);  // for quiescence move selector
     void SetPreferredMoves(chessposition *p, int m, int excludemove);  // for probcut move selector
@@ -2089,18 +2092,19 @@ public:
     U64 extend_history;         // total history extensions
 
 #define MAXSTATDEPTH 30
-    U64 ms_n[2][MAXSTATDEPTH];                // total instantiations of moveselector in depth n (0 -> QS, MAXSTATDEPTH-1: ProbCut)
-    U64 ms_moves[2][MAXSTATDEPTH];            // total number of moves delivered in depth n
-    U64 ms_tactic_stage[2][MAXSTATDEPTH];     // how many times was the (good) tactic stage entered
-    U64 ms_tactic_moves[2][MAXSTATDEPTH];     // total number of goodtactical moves delivered in depth n
-    U64 ms_spcl_stage[2][MAXSTATDEPTH];       // how many times was the stage with special quiets (killer, counter) entered
-    U64 ms_spcl_moves[2][MAXSTATDEPTH];       // total number of special quiet moves delivered in depth n
-    U64 ms_quiet_stage[2][MAXSTATDEPTH];      // how many times was the quiet stage entered
-    U64 ms_quiet_moves[2][MAXSTATDEPTH];      // total number of quiet moves delivered in depth n
-    U64 ms_badtactic_stage[2][MAXSTATDEPTH];  // how many times was the quiet stage entered
-    U64 ms_badtactic_moves[2][MAXSTATDEPTH];  // total number of special quiet moves delivered in depth n
-    U64 ms_evasion_stage[2][MAXSTATDEPTH];    // how many times was the evasion stage entered
-    U64 ms_evasion_moves[2][MAXSTATDEPTH];    // total number of evasion moves delivered in depth n
+#define MAXSTATMOVES 128
+    U64 ms_n[2][MAXSTATDEPTH];                          // total instantiations of moveselector in depth n (0 -> QS, MAXSTATDEPTH-1: ProbCut)
+    U64 ms_moves[2][MAXSTATDEPTH];                      // total number of moves delivered in depth n
+    U64 ms_tactic_stage[2][MAXSTATDEPTH][MAXSTATMOVES]; // how many times was the (good) tactic stage entered with a move list of length m
+    U64 ms_tactic_moves[2][MAXSTATDEPTH][MAXSTATMOVES]; // total number of goodtactical moves delivered in depth n with a move list of length m
+    U64 ms_spcl_stage[2][MAXSTATDEPTH];                 // how many times was the stage with special quiets (killer, counter) entered
+    U64 ms_spcl_moves[2][MAXSTATDEPTH];                 // total number of special quiet moves delivered in depth n
+    U64 ms_quiet_stage[2][MAXSTATDEPTH][MAXSTATMOVES];  // how many times was the quiet stage entered with a move list of length m
+    U64 ms_quiet_moves[2][MAXSTATDEPTH][MAXSTATMOVES];  // total number of quiet moves delivered in depth n with a move list of length m
+    U64 ms_badtactic_stage[2][MAXSTATDEPTH];            // how many times was the quiet stage entered
+    U64 ms_badtactic_moves[2][MAXSTATDEPTH];            // total number of special quiet moves delivered in depth n
+    U64 ms_evasion_stage[2][MAXSTATDEPTH][MAXSTATMOVES];// how many times was the evasion stage entered with a move list of length m
+    U64 ms_evasion_moves[2][MAXSTATDEPTH][MAXSTATMOVES];// total number of evasion moves delivered in depth n with a move list of length m
 
     bool outputDone = false;
 
