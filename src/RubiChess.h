@@ -1618,17 +1618,23 @@ public:
         if (freq)
             logstream << timestamp() << " > " << input << "\n";
     }
-    bool openLog(string filename, U64 fr) {
+    bool openLog(string filename, U64 fr, bool ap) {
         freq = 0;
         if (logstream)
             logstream.close();
         if (filename == "")
             return true;
-        logstream.open(filename, ios::out);
+        ios_base::openmode om = ios::out;
+        if (ap)
+            om |= ios::app;
+        logstream.open(filename, om);
         if (!logstream)
             return false;
         logStartTime = getTime();
         freq = fr;
+        auto now = chrono::system_clock::now();
+        time_t now_time = chrono::system_clock::to_time_t(now);
+        logstream << timestamp() << " Logging started at " << ctime(&now_time);
         return true;
     }
     void log(string input) {
@@ -2095,6 +2101,8 @@ public:
     U64 ms_badtactic_moves[2][MAXSTATDEPTH];  // total number of special quiet moves delivered in depth n
     U64 ms_evasion_stage[2][MAXSTATDEPTH];    // how many times was the evasion stage entered
     U64 ms_evasion_moves[2][MAXSTATDEPTH];    // total number of evasion moves delivered in depth n
+
+    bool outputDone = false;
 
     void output(vector<string> args);
 };

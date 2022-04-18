@@ -102,11 +102,12 @@ static void uciSetBookFile()
 void uciSetLogFile()
 {
     string filename = (en.LogFile == "" ? "" : en.ExecPath + en.LogFile);
+    bool bAppend = (en.LogFile.find("_app") != string::npos);
     string sLogging;
-    if (!guiCom.openLog(filename, en.frequency))
+    if (!guiCom.openLog(filename, en.frequency, bAppend))
         sLogging = "Cannot open Logfile " + filename;
     else
-        sLogging = (filename == "" ? "No logging." : "Logging to " + filename);
+        sLogging = (filename == "" ? "No logging." : "Logging to " + filename + (bAppend ? string("  (appending log)") : string("  (new log)")));
 
     engineHeader();
     guiCom << "info string " + sLogging + "\n";
@@ -168,6 +169,7 @@ engine::engine(compilerinfo *c)
 engine::~engine()
 {
     ucioptions.Set("SyzygyPath", "<empty>");
+    ucioptions.Set("LogFile", "");
     Threads = 0;
     allocThreads();
     rootposition.pwnhsh.remove();
@@ -654,19 +656,22 @@ void engine::communicate(string inputstring)
 #endif
 #ifdef STATISTICS
             case STATS:
-
-#ifdef STATISTICS
                 statistics.output(commandargs);
-#endif
-
+                break;
 #endif
             default:
                 break;
             }
         }
     } while (command != QUIT && (inputstring == "" || pendingposition));
-    if (command == QUIT)
+    if (command == QUIT) {
         searchWaitStop();
+#ifdef STATISTICS
+        // Output of statistics data before exit (e.g. when palying in a GUI)
+        if (!statistics.outputDone)
+            statistics.output({ "print" });
+#endif
+    }
 }
 
 
