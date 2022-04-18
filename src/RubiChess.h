@@ -1308,6 +1308,10 @@ public:
 #ifdef SDEBUG
     int value;
 #endif
+#ifdef STATISTICS
+    int depth;
+    int PvNode;
+#endif
     void SetPreferredMoves(chessposition *p);  // for quiescence move selector
     void SetPreferredMoves(chessposition *p, int m, int excludemove);  // for probcut move selector
     void SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, uint32_t counter, int excludemove);
@@ -1637,7 +1641,7 @@ public:
 };
 
 
-enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, WAIT, PONDERHIT, QUIT, EVAL, PERFT, BENCH, TUNE, GENSFEN, CONVERT, LEARN, EXPORT };
+enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, WAIT, PONDERHIT, QUIT, EVAL, PERFT, BENCH, TUNE, GENSFEN, CONVERT, LEARN, EXPORT, STATS };
 
 const map<string, GuiToken> GuiCommandMap = {
 #ifdef EVALOPTIONS
@@ -1650,6 +1654,9 @@ const map<string, GuiToken> GuiCommandMap = {
     { "gensfen", GENSFEN },
     { "convert", CONVERT },
     { "learn", LEARN },
+#endif
+#ifdef STATISTICS
+    { "stats", STATS },
 #endif
     { "uci", UCI },
     { "debug", UCIDEBUG },
@@ -2028,7 +2035,9 @@ void init_tablebases(char *path);
 // statistics stuff
 //
 #ifdef STATISTICS
-struct statistic {
+class statistic
+{
+public:
     int qs_mindepth;
     U64 qs_n[2];                // total calls to qs split into no check / check
     U64 qs_tt;                  // qs hits tt
@@ -2070,13 +2079,27 @@ struct statistic {
     S64 red_correction;         // total reduction correction by over-/underflow
 
     U64 extend_singular;        // total singular extensions
-    U64 extend_endgame;        // total endgame extensions
-    U64 extend_history;        // total history extensions
+    U64 extend_endgame;         // total endgame extensions
+    U64 extend_history;         // total history extensions
+
+#define MAXSTATDEPTH 30
+    U64 ms_n[2][MAXSTATDEPTH];                // total instantiations of moveselector in depth n (0 -> QS, MAXSTATDEPTH-1: ProbCut)
+    U64 ms_moves[2][MAXSTATDEPTH];            // total number of moves delivered in depth n
+    U64 ms_tactic_stage[2][MAXSTATDEPTH];     // how many times was the (good) tactic stage entered
+    U64 ms_tactic_moves[2][MAXSTATDEPTH];     // total number of goodtactical moves delivered in depth n
+    U64 ms_spcl_stage[2][MAXSTATDEPTH];       // how many times was the stage with special quiets (killer, counter) entered
+    U64 ms_spcl_moves[2][MAXSTATDEPTH];       // total number of special quiet moves delivered in depth n
+    U64 ms_quiet_stage[2][MAXSTATDEPTH];      // how many times was the quiet stage entered
+    U64 ms_quiet_moves[2][MAXSTATDEPTH];      // total number of quiet moves delivered in depth n
+    U64 ms_badtactic_stage[2][MAXSTATDEPTH];  // how many times was the quiet stage entered
+    U64 ms_badtactic_moves[2][MAXSTATDEPTH];  // total number of special quiet moves delivered in depth n
+    U64 ms_evasion_stage[2][MAXSTATDEPTH];    // how many times was the evasion stage entered
+    U64 ms_evasion_moves[2][MAXSTATDEPTH];    // total number of evasion moves delivered in depth n
+
+    void output(vector<string> args);
 };
 
-extern struct statistic statistics;
-
-void search_statistics();
+extern statistic statistics;
 
 // some macros to limit the ifdef STATISTICS inside the code
 #define STATISTICSINC(x)        statistics.x++

@@ -218,6 +218,9 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     memset(ms, 0, sizeof(MoveSelector));
     ms->SetPreferredMoves(this);
     STATISTICSINC(qs_loop_n);
+    STATISTICSDO(ms->depth = 0);
+    STATISTICSDO(ms->PvNode = (alpha != beta - 1));
+    STATISTICSINC(ms_n[ms->PvNode][0]);
 
     uint32_t bestcode = 0;
     int legalMoves = 0;
@@ -536,6 +539,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         int rbeta = min(SCOREWHITEWINS, beta + sps.probcutmargin);
         memset(ms, 0, sizeof(MoveSelector));
         ms->SetPreferredMoves(this, rbeta - staticeval, excludeMove);
+        STATISTICSDO(ms->depth = MAXSTATDEPTH - 1);
+        STATISTICSDO(ms->PvNode = 0);
+        STATISTICSINC(ms_n[0][ms->depth]);
 
         while ((mc = ms->next()))
         {
@@ -577,6 +583,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     memset(ms, 0, sizeof(MoveSelector));
     ms->SetPreferredMoves(this, hashmovecode, killer[ply][0], killer[ply][1], counter, excludeMove);
     STATISTICSINC(moves_loop_n);
+    STATISTICSDO(ms->depth = min(MAXSTATDEPTH - 2, depth));
+    STATISTICSDO(ms->PvNode = PVNode);
+    STATISTICSINC(ms_n[PVNode][ms->depth]);
 
     int legalMoves = 0;
     int quietsPlayed = 0;
@@ -1502,10 +1511,6 @@ static void mainSearch(searchthread *thr)
         en.benchdepth = thr->depth - 1;
         en.benchmove = strBestmove;
         en.benchpondermove = strPonder;
-
-#ifdef STATISTICS
-        search_statistics();
-#endif
     }
 }
 
@@ -1662,89 +1667,6 @@ inline void chessposition::CheckForImmediateStop()
 }
 
 
-
-#ifdef STATISTICS
-void search_statistics()
-{
-    U64 n, i1, i2, i3, i4;
-    double f0, f1, f2, f3, f4, f5, f6, f7, f10, f11;
-    char str[512];
-
-    guiCom.log("[STATS] ==================================================================================================================================================================\n");
-
-    // quiescense search statistics
-    i1 = statistics.qs_n[0];
-    i2 = statistics.qs_n[1];
-    i4 = statistics.qs_mindepth;
-    n = i1 + i2;
-    f0 = 100.0 * i2 / (double)n;
-    f1 = 100.0 * statistics.qs_tt / (double)n;
-    f2 = 100.0 * statistics.qs_pat / (double)n;
-    f3 = 100.0 * statistics.qs_delta / (double)n;
-    i3 = statistics.qs_move_delta + statistics.qs_moves;
-    f4 =  i3 / (double)statistics.qs_loop_n;
-    f5 = 100.0 * statistics.qs_move_delta / (double)i3;
-    f6 = 100.0 * statistics.qs_moves_fh / (double)statistics.qs_moves;
-    sprintf(str, "[STATS] QSearch: %12lld   %%InCheck:  %5.2f   %%TT-Hits:  %5.2f   %%Std.Pat: %5.2f   %%DeltaPr: %5.2f   Mvs/Lp: %5.2f   %%DlPrM: %5.2f   %%FailHi: %5.2f   mindepth: %3lld\n", n, f0, f1, f2, f3, f4, f5, f6, i4);
-    guiCom.log(str);
-
-    // general aplhabeta statistics
-    n = statistics.ab_n;
-    f0 = 100.0 * statistics.ab_pv / (double)n;
-    f1 = 100.0 * statistics.ab_tt / (double)n;
-    f2 = 100.0 * statistics.ab_tb / (double)n;
-    f3 = 100.0 * statistics.ab_qs / (double)n;
-    f4 = 100.0 * statistics.ab_draw_or_win / (double)n;
-    sprintf(str, "[STATS] Total AB:%12lld   %%PV-Nodes: %5.2f   %%TT-Hits:  %5.2f   %%TB-Hits: %5.2f   %%QSCalls: %5.2f   %%Draw/Mates: %5.2f\n", n, f0, f1, f2, f3, f4);
-    guiCom.log(str);
-
-    // node pruning
-    f0 = 100.0 * statistics.prune_futility / (double)n;
-    f1 = 100.0 * statistics.prune_nm / (double)n;
-    f2 = 100.0 * statistics.prune_probcut / (double)n;
-    f3 = 100.0 * statistics.prune_multicut / (double)n;
-    f4 = 100.0 * statistics.prune_threat / (double)n;
-    f5 = 100.0 * (statistics.prune_futility + statistics.prune_nm + statistics.prune_probcut + statistics.prune_multicut + statistics.prune_threat) / (double)n;
-    sprintf(str, "[STATS] Node pruning            %%Futility: %5.2f   %%NullMove: %5.2f   %%ProbeC.: %5.2f   %%MultiC.: %7.5f   %%Threat.: %7.5f Total:  %5.2f\n", f0, f1, f2, f3, f4, f5);
-    guiCom.log(str);
-
-    // move statistics
-    i1 = statistics.moves_n[0]; // quiet moves
-    i2 = statistics.moves_n[1]; // tactical moves
-    n = i1 + i2;
-    f0 = 100.0 * i1 / (double)n;
-    f1 = 100.0 * i2 / (double)n;
-    f2 = 100.0 * statistics.moves_pruned_lmp / (double)n;
-    f3 = 100.0 * statistics.moves_pruned_futility / (double)n;
-    f4 = 100.0 * statistics.moves_pruned_badsee / (double)n;
-    f5 = n / (double)statistics.moves_loop_n;
-    i3 = statistics.moves_played[0] + statistics.moves_played[1];
-    f6 = 100.0 * statistics.moves_fail_high / (double)i3;
-    f7 = 100.0 * statistics.moves_bad_hash / i2;
-    sprintf(str, "[STATS] Moves:   %12lld   %%Quiet-M.: %5.2f   %%Tact.-M.: %5.2f   %%BadHshM: %5.2f   %%LMP-M.:  %5.2f   %%FutilM.: %5.2f   %%BadSEE: %5.2f  Mvs/Lp: %5.2f   %%FailHi: %5.2f\n", n, f0, f1, f7, f2, f3, f4, f5, f6);
-    guiCom.log(str);
-
-    // late move reduction statistics
-    U64 red_n = statistics.red_pi[0] + statistics.red_pi[1];
-    f10 = statistics.red_lmr[0] / (double)statistics.red_pi[0];
-    f11 = statistics.red_lmr[1] / (double)statistics.red_pi[1];
-    f1 = (statistics.red_lmr[0] + statistics.red_lmr[1]) / (double)red_n;
-    f2 = statistics.red_history / (double)red_n;
-    f6 = statistics.red_historyabs / (double)red_n;
-    f3 = statistics.red_pv / (double)red_n;
-    f4 = statistics.red_correction / (double)red_n;
-    f5 = statistics.red_total / (double)red_n;
-    sprintf(str, "[STATS] Reduct.  %12lld   lmr[0]: %4.2f   lmr[1]: %4.2f   lmr: %4.2f   hist: %4.2f   |hst|:%4.2f   pv: %4.2f   corr: %4.2f   total: %4.2f\n", red_n, f10, f11, f1, f2, f6, f3, f4, f5);
-    guiCom.log(str);
-
-    f0 = 100.0 * statistics.extend_singular / (double)n;
-    f1 = 100.0 * statistics.extend_endgame / (double)n;
-    f2 = 100.0 * statistics.extend_history / (double)n;
-    sprintf(str, "[STATS] Extensions: %%singular: %7.4f   %%endgame: %7.4f   %%history: %7.4f\n", f0, f1, f2);
-    guiCom.log(str);
-    guiCom.log("[STATS] ==================================================================================================================================================================\n");
-}
-#endif
 
 // Explicit template instantiation
 // This avoids putting these definitions in header file
