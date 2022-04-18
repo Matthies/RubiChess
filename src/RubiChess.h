@@ -2101,8 +2101,6 @@ public:
 
 extern statistic statistics;
 
-void search_statistics();
-
 // some macros to limit the ifdef STATISTICS inside the code
 #define STATISTICSINC(x)        statistics.x++
 #define STATISTICSADD(x, v)     statistics.x += (v)
