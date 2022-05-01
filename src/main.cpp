@@ -942,6 +942,7 @@ int main(int argc, char* argv[])
     tuneInit();
 #endif
 
+    engineHeader();
     searchinit();
 
     cout.setf(ios_base::unitbuf);

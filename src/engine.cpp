@@ -105,10 +105,15 @@ void uciSetLogFile()
     bool bAppend = (en.LogFile.find("_app") != string::npos);
     string sLogging;
     if (!guiCom.openLog(filename, en.frequency, bAppend))
+    {
         sLogging = "Cannot open Logfile " + filename;
-    else
-        sLogging = (filename == "" ? "No logging." : "Logging to " + filename + (bAppend ? string("  (appending log)") : string("  (new log)")));
+        en.LogFile = "";
+    }
 
+    if (en.LogFile == "")
+        return;
+
+    sLogging = "Logging to " + filename + (bAppend ? string("  (appending log)") : string("  (new log)"));
     engineHeader();
     guiCom << "info string " + sLogging + "\n";
 }
