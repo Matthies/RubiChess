@@ -631,6 +631,7 @@ void compilerinfo::GetSystemInfo()
 
 
 #ifdef _WIN32
+#include <process.h>
 int compilerinfo::GetProcessId()
 {
     return _getpid();
