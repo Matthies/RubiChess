@@ -103,6 +103,12 @@ void uciSetLogFile()
 {
     string filename = (en.LogFile == "" ? "" : en.ExecPath + en.LogFile);
     bool bAppend = (en.LogFile.find("_app") != string::npos);
+    size_t nPid = filename.find("_pid");
+    if (nPid != string::npos)
+    {
+        int pid = cinfo.GetProcessId();
+        filename.replace(nPid, 4, "_" + to_string(pid));
+    }
     string sLogging;
     if (!guiCom.openLog(filename, en.frequency, bAppend))
     {
