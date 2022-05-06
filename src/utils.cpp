@@ -629,13 +629,13 @@ void compilerinfo::GetSystemInfo()
 
 #endif
 
+
+#ifdef _WIN32
 int compilerinfo::GetProcessId()
 {
     return _getpid();
 }
 
-
-#ifdef _WIN32
 U64 getTime()
 {
     LARGE_INTEGER now;
@@ -722,6 +722,12 @@ void my_large_free(void* m)
 
 
 #else
+
+#include <unistd.h>
+int compilerinfo::GetProcessId()
+{
+    return getpid();
+}
 
 U64 getTime()
 {
