@@ -629,6 +629,11 @@ void compilerinfo::GetSystemInfo()
 
 #endif
 
+int compilerinfo::GetProcessId()
+{
+    return _getpid();
+}
+
 
 #ifdef _WIN32
 U64 getTime()

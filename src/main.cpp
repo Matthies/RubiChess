@@ -928,6 +928,7 @@ int main(int argc, char* argv[])
             en.ExecPath = execPath.substr(0, si + 1);
     }
 
+    cout << "PID: " << cinfo.GetProcessId() << "\n";
     initBitmaphelper();
     NnueInit();
 

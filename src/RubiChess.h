@@ -1776,6 +1776,7 @@ public:
     void GetSystemInfo();
     string SystemName() { return system; }
     string PrintCpuFeatures(U64 features, bool onlyHighest = false);
+    int GetProcessId();
 };
 
 
