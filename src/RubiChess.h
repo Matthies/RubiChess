@@ -1788,7 +1788,8 @@ public:
     ~engine();
     const string author = "Andreas Matthies";
     U64 tbhits;
-    U64 starttime;
+    U64 thinkstarttime;
+    U64 clockstarttime;
     U64 endtime1; // time to stop before starting next iteration
     U64 endtime2; // time to stop immediately
     U64 frequency;
@@ -1817,7 +1818,7 @@ public:
     int oldThreads;
     searchthread *sthread;
     ponderstate_t pondersearch;
-    bool ponderhit;
+    int ponderhitbonus;
     int lastReport;
     int benchdepth;
     string benchmove;
@@ -2030,7 +2031,7 @@ public:
 void searchStart();
 void searchWaitStop(bool forceStop = true);
 void searchinit();
-void resetEndTime(U64 startTime, int constantRootMoves, bool complete = true);
+void resetEndTime(int constantRootMoves);
 
 
 //

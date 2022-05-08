@@ -405,8 +405,8 @@ void engine::bench(int constdepth, string epdfilename, int consttime, int startn
             bm->name = " ... " + en.benchmove + " " + en.benchpondermove;
         }
         cout << strPosition << "\n";
-        en.communicate(strPosition);
-        starttime = getTime();
+        communicate(strPosition);
+        thinkstarttime = getTime();
         int dp = 0;
         int tm = consttime;
         if (constdepth)
@@ -419,15 +419,15 @@ void engine::bench(int constdepth, string epdfilename, int consttime, int startn
         bm->depth = dp;
 
         if (tm)
-            en.communicate("go movetime " + to_string(tm * 1000));
+            communicate("go movetime " + to_string(tm * 1000));
         else if (dp)
-            en.communicate("go depth " + to_string(dp));
+            communicate("go depth " + to_string(dp));
         else
             guiCom << "No depth and no movetime. Skipping.\n";
 
         searchWaitStop(false);
         endtime = getTime();
-        bm->time = endtime - starttime;
+        bm->time = endtime - thinkstarttime;
         bm->nodes = en.getTotalNodes();
         bm->score = en.rootposition.lastbestmovescore;
         bm->depthAtExit = en.benchdepth;

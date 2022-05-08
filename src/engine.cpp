@@ -346,7 +346,7 @@ void engine::communicate(string inputstring)
                     if (!(lastopponentsmove = rootposition.applyMove(*it)))
                         guiCom << "info string Alarm! Move " + (*it)  + "%s illegal (possible engine error)\n";
                 }
-                ponderhit = (lastopponentsmove && lastopponentsmove == rootposition.pondermove);
+                ponderhitbonus = 4 * (lastopponentsmove && lastopponentsmove == rootposition.pondermove);
                 // Preserve hashes of earlier position up to last halfmove counter reset for repetition detection
                 rootposition.prerootmovenum = rootposition.ply;
                 int i = 0;
