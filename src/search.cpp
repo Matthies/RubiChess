@@ -1514,7 +1514,7 @@ void resetEndTime(int constantRootMoves)
     U64 thinkStartTime = en.thinkstarttime;
     int timeinc = en.myinc;
     int timetouse = en.mytime;
-    int overhead = en.moveOverhead + 8 * en.Threads;
+    int overhead = en.moveOverhead;
     int constance = constantRootMoves * 2 + en.ponderhitbonus;
 
     // main goal is to let the search stop at endtime1 (full iterations) most times and get only few stops at endtime2 (interrupted iteration)
@@ -1562,7 +1562,7 @@ void resetEndTime(int constantRootMoves)
     else if (timeinc)
     {
         // timetouse = 0 => movetime mode: Use exactly timeinc respecting overhead
-        en.endtime1 = en.endtime2 = thinkStartTime + (timeinc - overhead) * en.frequency / 1000;
+        en.endtime1 = en.endtime2 = thinkStartTime + max(0, (timeinc - overhead)) * en.frequency / 1000;
     }
     else {
         en.endtime1 = en.endtime2 = 0;
