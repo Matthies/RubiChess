@@ -1583,8 +1583,6 @@ void startSearchTime(bool ponderhit)
     en.clockstarttime = getTime();
     if (!ponderhit)
         en.thinkstarttime = en.clockstarttime;
-    else
-        en.ponderhitbonus = 5;
 
     resetEndTime(0);
 }
