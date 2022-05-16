@@ -1157,7 +1157,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
 
 static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, int mpvIndex = 0)
 {
-    int msRun = (int)((nowtime - en.starttime) * 1000 / en.frequency);
+    int msRun = (int)((nowtime - en.thinkstarttime) * 1000 / en.frequency);
 #ifndef SDEBUG
     if (inWindow != 1 && (msRun - en.lastReport) < 200)
         return;
@@ -1167,7 +1167,7 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, in
     en.lastReport = msRun;
     string pvstring = pos->getPv(mpvIndex ? pos->multipvtable[mpvIndex] : pos->lastpv);
     U64 nodes = en.getTotalNodes();
-    U64 nps = (nowtime == en.starttime) ? 1 : nodes / 1024 * en.frequency / (nowtime - en.starttime) * 1024;  // lower resolution to avoid overflow under Linux in high performance systems
+    U64 nps = (nowtime == en.thinkstarttime) ? 1 : nodes / 1024 * en.frequency / (nowtime - en.thinkstarttime) * 1024;  // lower resolution to avoid overflow under Linux in high performance systems
 
     if (!MATEDETECTED(score))
     {
@@ -1309,7 +1309,7 @@ static void mainSearch(searchthread *thr)
         if (score > NOSCORE && isMainThread)
         {
             // Enable currentmove output after 3 seconds
-            if (!en.moveoutput && nowtime - en.starttime > 3 * en.frequency)
+            if (!en.moveoutput && nowtime - en.thinkstarttime > 3 * en.frequency)
                 en.moveoutput = true;
 
             // search was successfull
@@ -1382,34 +1382,27 @@ static void mainSearch(searchthread *thr)
             constantRootMoves++;
         }
 
-        if (lastBestMove != pos->bestmove)
-        {
-            // New best move is found; reset thinking time
-            lastBestMove = pos->bestmove;
-            constantRootMoves = 0;
-        }
-
-        if (isMainThread)
-        {
-            if (inWindow == 1)
-            {
-                // Mate found; early exit
-                if (!isMultiPV && en.endtime1 && thr->depth > SCOREWHITEWINS - abs(score))
-                    break;
-
-                // Recalculate remaining time for next depth
-                resetEndTime(en.starttime, constantRootMoves);
-            }
-            else if (!constantRootMoves)
-            {
-                // New best move; also recalculate remaining time
-                resetEndTime(en.starttime, constantRootMoves);
-            }
-        }
-
         // exit if STOPIMMEDIATELY
         if (en.stopLevel == ENGINESTOPIMMEDIATELY)
             break;
+
+        if (isMainThread)
+        {
+            if (lastBestMove != pos->bestmove)
+            {
+                // New best move is found; reset thinking time
+                lastBestMove = pos->bestmove;
+                constantRootMoves = 0;
+            }
+
+            if (inWindow == 1 || !constantRootMoves)
+                // Recalculate remaining time for next depth
+                resetEndTime(constantRootMoves);
+
+            // Mate found; early exit
+            if (!isMultiPV && inWindow == 1 && en.endtime1 && thr->depth > SCOREWHITEWINS - abs(score) && en.pondersearch != PONDERING)
+                break;
+        }
 
         // Pondering; just continue next iteration
         if (en.pondersearch == PONDERING)
@@ -1435,7 +1428,7 @@ static void mainSearch(searchthread *thr)
         if (!en.bStopCount)
             en.t1stop++;
         stringstream ss;
-        ss << "[TDEBUG] stop info last movetime: " << setprecision(3) << (nowtime - en.starttime) / (double)en.frequency << "    full-it. / immediate:  " << en.t1stop << " / " << en.t2stop << "\n";
+        ss << "[TDEBUG] stop info last movetime: " << setprecision(3) << (nowtime - en.clockstarttime) / (double)en.frequency << "    full-it. / immediate:  " << en.t1stop << " / " << en.t2stop << "\n";
         guiCom.log(ss.str());
 #endif
         // Output of best move
@@ -1515,12 +1508,14 @@ static void mainSearch(searchthread *thr)
 }
 
 
-void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
+void resetEndTime(int constantRootMoves)
 {
+    U64 clockStartTime = en.clockstarttime;
+    U64 thinkStartTime = en.thinkstarttime;
     int timeinc = en.myinc;
     int timetouse = en.mytime;
     int overhead = en.moveOverhead + 8 * en.Threads;
-    int constance = constantRootMoves * 2 + en.ponderhit * 4;
+    int constance = constantRootMoves * 2 + en.ponderhitbonus;
 
     // main goal is to let the search stop at endtime1 (full iterations) most times and get only few stops at endtime2 (interrupted iteration)
     // constance: ponder hit and/or onstance of best move in the last iteration lower the time within a given interval
@@ -1534,9 +1529,9 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
         int f1 = max(9 - movevariation, 21 - movevariation - constance);
         int f2 = max(19, 31 - constance);
         int timeforallmoves = timetouse + en.movestogo * timeinc;
-        if (complete)
-            en.endtime1 = startTime + timeforallmoves * en.frequency * f1 / (en.movestogo + 1) / 10000;
-        en.endtime2 = startTime + min(max(0, timetouse - overhead), f2 * timeforallmoves / (en.movestogo + 1) / (19 -  4 * movevariation)) * en.frequency / 1000;
+
+        en.endtime1 = thinkStartTime + timeforallmoves * en.frequency * f1 / (en.movestogo + 1) / 10000;
+        en.endtime2 = clockStartTime + min(max(0, timetouse - overhead), f2 * timeforallmoves / (en.movestogo + 1) / (19 -  4 * movevariation)) * en.frequency / 1000;
     }
     else if (timetouse) {
         if (timeinc)
@@ -1549,9 +1544,9 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
             int f1 = max(5, 17 - constance);
             int f2 = max(15, 27 - constance);
             timetouse = max(timeinc, timetouse); // workaround for Arena bug
-            if (complete)
-                en.endtime1 = startTime + max(timeinc, f1 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
-            en.endtime2 = startTime + min(max(0, timetouse - overhead), max(timeinc, f2 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
+
+            en.endtime1 = thinkStartTime + max(timeinc, f1 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
+            en.endtime2 = clockStartTime + min(max(0, timetouse - overhead), max(timeinc, f2 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
         }
         else {
             // sudden death without increment; play for another x;y moves
@@ -1559,15 +1554,15 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
             // f2: stop immediately at 1/10...1/22 time slot
             int f1 = min(42, 30 + constance);
             int f2 = min(22, 10 + constance);
-            if (complete)
-                en.endtime1 = startTime + timetouse / f1 * en.frequency / 1000;
-            en.endtime2 = startTime + min(max(0, timetouse - overhead), timetouse / f2) * en.frequency / 1000;
+
+            en.endtime1 = thinkStartTime + timetouse / f1 * en.frequency / 1000;
+            en.endtime2 = clockStartTime + min(max(0, timetouse - overhead), timetouse / f2) * en.frequency / 1000;
         }
     }
     else if (timeinc)
     {
         // timetouse = 0 => movetime mode: Use exactly timeinc respecting overhead
-        en.endtime1 = en.endtime2 = startTime + (timeinc - overhead) * en.frequency / 1000;
+        en.endtime1 = en.endtime2 = thinkStartTime + (timeinc - overhead) * en.frequency / 1000;
     }
     else {
         en.endtime1 = en.endtime2 = 0;
@@ -1576,19 +1571,20 @@ void resetEndTime(U64 startTime, int constantRootMoves, bool complete)
 #ifdef TDEBUG
     stringstream ss;
     guiCom.log("[TDEBUG] Time from UCI: time=" + to_string(timetouse) + "  inc=" + to_string(timeinc) + "  overhead=" + to_string(overhead) + "  constance=" + to_string(constance) + "\n");
-    ss << "[TDEBUG] Time for this move: " << setprecision(3) << (en.endtime1 - en.starttime) / (double)en.frequency << " / " << (en.endtime2 - en.starttime) / (double)en.frequency << "\n";
+    ss << "[TDEBUG] Time for this move: " << setprecision(3) << (en.endtime1 - en.clockstarttime) / (double)en.frequency << " / " << (en.endtime2 - en.clockstarttime) / (double)en.frequency << "\n";
     guiCom.log(ss.str());
     if (timeinc) guiCom.log("[TDEBUG] Timefactor (use/inc): " + to_string(timetouse / timeinc) + "\n");
 #endif
 }
 
 
-void startSearchTime(bool complete = true)
+void startSearchTime(bool ponderhit)
 {
-    U64 nowTime = getTime();
-    if (complete)
-        en.starttime = nowTime;
-    resetEndTime(nowTime, 0, complete);
+    en.clockstarttime = getTime();
+    if (!ponderhit)
+        en.thinkstarttime = en.clockstarttime;
+
+    resetEndTime(0);
 }
 
 
@@ -1602,7 +1598,7 @@ void searchStart()
     }
 
     en.stopLevel = ENGINERUN;
-    startSearchTime();
+    startSearchTime(false);
 
     en.moveoutput = false;
     en.tbhits = en.sthread[0].pos.tbPosition;  // Rootpos in TB => report at least one tbhit
@@ -1646,7 +1642,7 @@ inline void chessposition::CheckForImmediateStop()
     if (en.pondersearch == HITPONDER)
     {
         // ponderhit
-        startSearchTime(false);
+        startSearchTime(true);
         en.pondersearch = NO;
         return;
     }
