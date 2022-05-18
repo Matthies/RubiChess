@@ -653,6 +653,7 @@ int chessposition::getNextFromBinpack(Binpack *bp)
     else {
         // play the last move
         playMove(bp->fullmove);
+        ply = 0;
         int Me = state & S2MMASK;
         fixEpt();
         bp->lastScore = -bp->score;
