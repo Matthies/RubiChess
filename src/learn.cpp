@@ -527,6 +527,7 @@ bool chessposition::followsTo(chessposition *src, uint32_t mc)
     }
 
     src->fixEpt();
+    src->ply = 0;
 
     for (int p = WPAWN; p <= BKING; p++)
         if (src->piece00[p] != piece00[p]) return false;
