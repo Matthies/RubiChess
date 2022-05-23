@@ -163,6 +163,20 @@ static void uciSetNnuePath()
 #endif
 }
 
+static void uciSetContempt()
+{
+    int newResultingContempt = en.Contempt;
+    if (en.RatingAdv)
+    {
+        newResultingContempt += en.RatingAdv / 8;
+    }
+    if (en.ResultingContempt != newResultingContempt)
+    {
+        guiCom << "info string Using contempt " << newResultingContempt << "\n";
+        en.ResultingContempt = newResultingContempt;
+    }
+}
+
 
 engine::engine(compilerinfo *c)
 {
@@ -212,6 +226,8 @@ void engine::registerOptions()
     ucioptions.Register(&BookDepth, "BookDepth", ucispin, "255", 0, 255);
     ucioptions.Register(&chess960, "UCI_Chess960", ucicheck, "false");
     ucioptions.Register(nullptr, "Clear Hash", ucibutton, "", 0, 0, uciClearHash);
+    ucioptions.Register(&Contempt, "Contempt", ucispin, "0", -100, 100, uciSetContempt);
+    ucioptions.Register(&RatingAdv, "UCI_RatingAdv", ucispin, "0", -10000, 10000, uciSetContempt);
 }
 
 

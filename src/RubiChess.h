@@ -387,7 +387,7 @@ typedef const int32_t eval;
 
 struct evalparamset {
     // Tuned with Lichess-quiet (psqt), lc0games (kingdanger), manually (complex) and Laser games (everything else)
-    eval eContempt = CVALUE(  10);
+    //eval eContempt = CVALUE(   0);
     eval eComplexpawnsbonus =  EVALUE(   4);
     eval eComplexpawnflanksbonus =  EVALUE(  66);
     eval eComplexonlypawnsbonus =  EVALUE(  71);
@@ -1816,6 +1816,9 @@ public:
     string BookFile;
     bool BookBestMove;
     int BookDepth;
+    int Contempt;
+    int RatingAdv;
+    int ResultingContempt;
     chessposition rootposition;
     int Threads;
     int oldThreads;

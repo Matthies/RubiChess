@@ -841,7 +841,7 @@ int chessposition::getEval()
             score = NnueGetEval<NnueRotate>();
         else
             score = NnueGetEval<NnueFlip>();
-        score += S2MSIGN(state & S2MMASK) * rootColor * eps.eContempt;
+        score += S2MSIGN(state & S2MMASK) * rootColor * en.ResultingContempt;
         int phscaled = score * (116 + phcount) / 128;
 
         if (bTrace) {
