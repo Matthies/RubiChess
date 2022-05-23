@@ -1162,10 +1162,10 @@ int chessposition::getBestPossibleCapture()
 
 // Some global objects
 alignas(64) compilerinfo cinfo;
-alignas(64) evalparamset eps;
+alignas(64) EPSCONST evalparamset eps;
 alignas(64) zobrist zb;
 alignas(64) engine en(&cinfo);
-alignas(64) searchparamset sps;
+alignas(64) SPSCONST searchparamset sps;
 alignas(64) GuiCommunication guiCom;
 
 // Explicit template instantiation

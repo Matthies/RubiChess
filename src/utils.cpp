@@ -638,6 +638,12 @@ void compilerinfo::GetSystemInfo()
 
 
 #ifdef _WIN32
+#include <process.h>
+int compilerinfo::GetProcessId()
+{
+    return _getpid();
+}
+
 U64 getTime()
 {
     LARGE_INTEGER now;
@@ -725,6 +731,12 @@ void my_large_free(void* m)
 
 #else
 
+#include <unistd.h>
+int compilerinfo::GetProcessId()
+{
+    return getpid();
+}
+
 U64 getTime()
 {
     timespec now;
@@ -740,6 +752,180 @@ void Sleep(long x)
     nanosleep(&now, NULL);
 }
 
+#endif
+
+
+#ifdef STATISTICS
+#define NODBZ(x) (double)(max(1ULL, x))
+void statistic::output(vector<string> args)
+{
+
+    U64 n, i1, i2, i3, i4, i5, i6, i7, i8, i9, i10, i11;;
+    double f0, f1, f2, f3, f4, f5, f6, f7, f10, f11;
+    char str[512];
+
+    size_t cs = args.size();
+    size_t ci = 0;
+    while (ci < cs)
+    {
+        string cmd = args[ci++];
+        if (cmd == "reset")
+        {
+            memset(this, 0, sizeof(*this));
+            guiCom << "[STATS] counters are reset.\n";
+            return;
+        }
+        else if (cmd == "print")
+        {
+            // add some parameter like 'all', 'ms', ...
+        }
+        else
+        {
+            cout << "Unknown command " << cmd << "\n";
+            return;
+        }
+    }
+
+    guiCom << "[STATS] ==================================================================================================================================================================\n";
+
+    // quiescense search statistics
+    i1 = qs_n[0];
+    i2 = qs_n[1];
+    i4 = qs_mindepth;
+    n = i1 + i2;
+    f0 = 100.0 * i2 / NODBZ(n);
+    f1 = 100.0 * qs_tt / NODBZ(n);
+    f2 = 100.0 * qs_pat / NODBZ(n);
+    f3 = 100.0 * qs_delta / NODBZ(n);
+    i3 = qs_move_delta + qs_moves;
+    f4 = i3 / NODBZ(qs_loop_n);
+    f5 = 100.0 * qs_move_delta / NODBZ(i3);
+    f6 = 100.0 * qs_moves_fh / NODBZ(qs_moves);
+    sprintf(str, "[STATS] QSearch: %12lld   %%InCheck:  %5.2f   %%TT-Hits:  %5.2f   %%Std.Pat: %5.2f   %%DeltaPr: %5.2f   Mvs/Lp: %5.2f   %%DlPrM: %5.2f   %%FailHi: %5.2f   mindepth: %3lld\n", n, f0, f1, f2, f3, f4, f5, f6, i4);
+    guiCom << str;
+
+    // general aplhabeta statistics
+    n = ab_n;
+    f0 = 100.0 * ab_pv / NODBZ(n);
+    f1 = 100.0 * ab_tt / NODBZ(n);
+    f2 = 100.0 * ab_tb / NODBZ(n);
+    f3 = 100.0 * ab_qs / NODBZ(n);
+    f4 = 100.0 * ab_draw_or_win / NODBZ(n);
+    sprintf(str, "[STATS] Total AB:%12lld   %%PV-Nodes: %5.2f   %%TT-Hits:  %5.2f   %%TB-Hits: %5.2f   %%QSCalls: %5.2f   %%Draw/Mates: %5.2f\n", n, f0, f1, f2, f3, f4);
+    guiCom << str;
+
+    // node pruning
+    f0 = 100.0 * prune_futility / NODBZ(n);
+    f1 = 100.0 * prune_nm / NODBZ(n);
+    f2 = 100.0 * prune_probcut / NODBZ(n);
+    f3 = 100.0 * prune_multicut / NODBZ(n);
+    f4 = 100.0 * prune_threat / NODBZ(n);
+    f5 = 100.0 * (prune_futility + prune_nm + prune_probcut + prune_multicut + prune_threat) / (double)n;
+    sprintf(str, "[STATS] Node pruning            %%Futility: %5.2f   %%NullMove: %5.2f   %%ProbeC.: %5.2f   %%MultiC.: %7.5f   %%Threat.: %7.5f Total:  %5.2f\n", f0, f1, f2, f3, f4, f5);
+    guiCom << str;
+
+    // move statistics
+    i1 = moves_n[0]; // quiet moves
+    i2 = moves_n[1]; // tactical moves
+    n = i1 + i2;
+    f0 = 100.0 * i1 / NODBZ(n);
+    f1 = 100.0 * i2 / NODBZ(n);
+    f2 = 100.0 * moves_pruned_lmp / NODBZ(n);
+    f3 = 100.0 * moves_pruned_futility / NODBZ(n);
+    f4 = 100.0 * moves_pruned_badsee / NODBZ(n);
+    f5 = n / NODBZ(moves_loop_n);
+    i3 = moves_played[0] + moves_played[1];
+    f6 = 100.0 * moves_fail_high / NODBZ(i3);
+    f7 = 100.0 * moves_bad_hash / NODBZ(i2);
+    sprintf(str, "[STATS] Moves:   %12lld   %%Quiet-M.: %5.2f   %%Tact.-M.: %5.2f   %%BadHshM: %5.2f   %%LMP-M.:  %5.2f   %%FutilM.: %5.2f   %%BadSEE: %5.2f  Mvs/Lp: %5.2f   %%FailHi: %5.2f\n", n, f0, f1, f7, f2, f3, f4, f5, f6);
+    guiCom << str;
+
+    // late move reduction statistics
+    U64 red_n = red_pi[0] + red_pi[1];
+    f10 = red_lmr[0] / NODBZ(red_pi[0]);
+    f11 = red_lmr[1] / NODBZ(red_pi[1]);
+    f1 = (red_lmr[0] + red_lmr[1]) / NODBZ(red_n);
+    f2 = red_history / NODBZ(red_n);
+    f6 = red_historyabs / NODBZ(red_n);
+    f3 = red_pv / NODBZ(red_n);
+    f4 = red_correction / NODBZ(red_n);
+    f5 = red_total / NODBZ(red_n);
+    sprintf(str, "[STATS] Reduct.  %12lld   lmr[0]: %4.2f   lmr[1]: %4.2f   lmr: %4.2f   hist: %4.2f   |hst|:%4.2f   pv: %4.2f   corr: %4.2f   total: %4.2f\n", red_n, f10, f11, f1, f2, f6, f3, f4, f5);
+    guiCom << str;
+
+    // extensions
+    f0 = 100.0 * extend_singular / NODBZ(n);
+    f1 = 100.0 * extend_endgame / NODBZ(n);
+    f2 = 100.0 * extend_history / NODBZ(n);
+    sprintf(str, "[STATS] Extensions: %%singular: %7.4f   %%endgame: %7.4f   %%history: %7.4f\n", f0, f1, f2);
+    guiCom << str;
+
+    // Move selector
+    int p, d, l;
+    int maxdepth = 0;
+    for (p = 0; p < 2; p++)
+    {
+        n = i1 = i2 = i3 = i4 = i5 = i6 = i7 = i8 = i9 = i10 = i11 = 0ULL;
+        guiCom << "[STATS] Statistics of move selector " + (p ? string("PV node") : string("non-PV node")) + "\n";
+        for (d = 0; d < MAXSTATDEPTH; d++) {
+            n += ms_n[p][d];
+        }
+        for (d = 0; d < MAXSTATDEPTH; d++) {
+            if (ms_n[p][d] == 0)
+                continue;
+            maxdepth = d;
+            string depthStr = (d == 0 ? "QSearch " : d == MAXSTATDEPTH - 1 ? "ProbCut " : "Depth#" + (d < 10 ? string(" ") : "") + to_string(d));
+            sprintf(str, "n=%12lld   (%6.2f%%)  %%TctStg:%5.1f Mvs:%4.1f  %%SpcStg:%5.1f Mvs:%4.1f  %%QteStg:%5.1f Mvs:%4.1f  %%BdTStg:%5.1f Mvs:%4.1f  %%EvsStg:%5.1f Mvs:%4.1f\n",
+                ms_n[p][d], 100.0 * ms_n[p][d] / NODBZ(n),
+                100.0 * ms_tactic_stage[p][d][0] / NODBZ(ms_n[p][d]), ms_tactic_moves[p][d][0] / NODBZ(ms_tactic_stage[p][d][0]),
+                100.0 * ms_spcl_stage[p][d] / NODBZ(ms_n[p][d]), ms_spcl_moves[p][d] / NODBZ(ms_spcl_stage[p][d]),
+                100.0 * ms_quiet_stage[p][d][0] / NODBZ(ms_n[p][d]), ms_quiet_moves[p][d][0] / NODBZ(ms_quiet_stage[p][d][0]),
+                100.0 * ms_badtactic_stage[p][d] / NODBZ(ms_n[p][d]), ms_badtactic_moves[p][d] / NODBZ(ms_badtactic_stage[p][d]),
+                100.0 * ms_evasion_stage[p][d][0] / NODBZ(ms_n[p][d]), ms_evasion_moves[p][d][0] / NODBZ(ms_evasion_stage[p][d][0]));
+            guiCom << "[STATS] " + depthStr + "  " + str;
+            i1 += ms_n[p][d];
+            i2 += ms_tactic_stage[p][d][0];
+            i3 += ms_tactic_moves[p][d][0];
+            i4 += ms_spcl_stage[p][d];
+            i5 += ms_spcl_moves[p][d];
+            i6 += ms_quiet_stage[p][d][0];
+            i7 += ms_quiet_moves[p][d][0];
+            i8 += ms_badtactic_stage[p][d];
+            i9 += ms_badtactic_moves[p][d];
+            i10 += ms_evasion_stage[p][d][0];
+            i11 += ms_evasion_moves[p][d][0];
+        }
+        sprintf(str, "n=%12lld   (%6.2f%%)  %%TctStg:%5.1f Mvs:%4.1f  %%SpcStg:%5.1f Mvs:%4.1f  %%QteStg:%5.1f Mvs:%4.1f  %%BdTStg:%5.1f Mvs:%4.1f  %%EvsStg:%5.1f Mvs:%4.1f\n",
+            i1, 100.0 * i1 / NODBZ(n),
+            100.0 * i2 / NODBZ(n), i3 / NODBZ(i2),
+            100.0 * i4 / NODBZ(n), i5 / NODBZ(i4),
+            100.0 * i6 / NODBZ(n), i7 / NODBZ(i6),
+            100.0 * i8 / NODBZ(n), i9 / NODBZ(i8),
+            100.0 * i10 / NODBZ(n), i11 / NODBZ(i10));
+        guiCom << string("[STATS] Total:    ") + str;
+
+        guiCom << "[STATS]  Quiets per movelist lenth\n";
+        for (l = 1; l < MAXSTATMOVES; l++)
+        {
+            i1 = i2 = 0;
+            for (d = 0; d < MAXSTATDEPTH; d++) {
+                i1 += ms_quiet_stage[p][d][l];
+                i2 += ms_quiet_moves[p][d][l];
+            }
+            if (i1 == 0)
+                continue;
+            sprintf(str, "length %2d  n=%12lld   Total MvsAvg:%4.1f   ", l, i1, i2 / NODBZ(i1));
+            string lengthStr = string("[STATS] ") + str;
+            for (d = 1; d < MAXSTATDEPTH && ms_quiet_stage[p][d][0]; d++) {
+                sprintf(str, "  %4.1f (%2d)", ms_quiet_moves[p][d][l] / NODBZ(ms_quiet_stage[p][d][l]), d);
+                lengthStr += str;
+            }
+            guiCom << lengthStr + "\n";
+        }
+    }
+    guiCom << "[STATS] ==================================================================================================================================================================\n";
+    outputDone = true;
+}
 #endif
 
 

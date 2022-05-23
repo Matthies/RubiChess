@@ -891,6 +891,8 @@ uint32_t MoveSelector::next()
     case TACTICALINITSTATE:
         state++;
         captures->length = pos->CreateMovelist<TACTICAL>(&captures->move[0]);
+        STATISTICSDO(numOfCaptures = captures->length);
+        STATISTICSDO(if (numOfCaptures) statistics.ms_tactic_stage[PvNode][depth][numOfCaptures]++ && statistics.ms_tactic_stage[PvNode][depth][0]++);
         pos->evaluateMoves<CAPTURE>(captures);
         // fall through
     case TACTICALSTATE:
@@ -903,8 +905,11 @@ uint32_t MoveSelector::next()
             }
             else {
                 m->value = INT_MIN;
-                if (m->code != hashmove)
+                if (m->code != hashmove) {
+                    STATISTICSINC(ms_tactic_moves[PvNode][depth][numOfCaptures]);
+                    STATISTICSINC(ms_tactic_moves[PvNode][depth][0]);
                     return m->code;
+                }
             }
         }
         state++;
@@ -912,10 +917,12 @@ uint32_t MoveSelector::next()
             return 0;
         // fall through
     case KILLERMOVE1STATE:
+        STATISTICSINC(ms_spcl_stage[PvNode][depth]);
         state++;
         if (pos->moveIsPseudoLegal(killermove1))
         {
             SDEBUGDO(true, value = KILLERVAL1;)
+            STATISTICSINC(ms_spcl_moves[PvNode][depth]);
             return killermove1;
         }
         // fall through
@@ -924,6 +931,7 @@ uint32_t MoveSelector::next()
         if (pos->moveIsPseudoLegal(killermove2))
         {
             SDEBUGDO(true, value = KILLERVAL2;)
+            STATISTICSINC(ms_spcl_moves[PvNode][depth]);
             return killermove2;
         }
         // fall through
@@ -932,25 +940,33 @@ uint32_t MoveSelector::next()
         if (pos->moveIsPseudoLegal(countermove))
         {
             SDEBUGDO(true, value = NMREFUTEVAL;)
+            STATISTICSINC(ms_spcl_moves[PvNode][depth]);
             return countermove;
         }
         // fall through
     case QUIETINITSTATE:
         state++;
         quiets->length = pos->CreateMovelist<QUIET>(&quiets->move[0]);
+        STATISTICSDO(numOfQuiets = min(MAXSTATMOVES - 1, quiets->length));
+        STATISTICSDO(if (numOfQuiets) statistics.ms_quiet_stage[PvNode][depth][numOfQuiets]++ && statistics.ms_quiet_stage[PvNode][depth][0]++);
         pos->evaluateMoves<QUIET>(quiets);
         // fall through
     case QUIETSTATE:
         uint32_t mc;
         while ((mc = quiets->getAndRemoveNextMove()))
         {
-            SDEBUGDO(true, value = quiets->lastvalue;)
+            SDEBUGDO(true, value = quiets->lastvalue;);
             if (mc != hashmove
                 && mc != killermove1
                 && mc != killermove2
                 && mc != countermove)
+            {
+                STATISTICSINC(ms_quiet_moves[PvNode][depth][numOfQuiets]);
+                STATISTICSINC(ms_quiet_moves[PvNode][depth][0]);
                 return mc;
+            }
         }
+        STATISTICSINC(ms_badtactic_stage[PvNode][depth]);
         state++;
         // fall through
     case BADTACTICALSTATE:
@@ -961,6 +977,7 @@ uint32_t MoveSelector::next()
             m->value = INT_MIN;
             if (bBadTactical) {
                 STATISTICSDO(if (m->code == hashmove) STATISTICSINC(moves_bad_hash));
+                STATISTICSINC(ms_badtactic_moves[PvNode][depth]);
                 return m->code;
             }
         }
@@ -971,12 +988,16 @@ uint32_t MoveSelector::next()
     case EVASIONINITSTATE:
         state++;
         captures->length = pos->CreateEvasionMovelist(&captures->move[0]);
+        STATISTICSDO(numOfCaptures = captures->length);
+        STATISTICSDO(if (numOfCaptures) statistics.ms_evasion_stage[PvNode][depth][numOfCaptures]++&& statistics.ms_evasion_stage[PvNode][depth][0]++);
         pos->evaluateMoves<ALL>(captures);
         // fall through
     case EVASIONSTATE:
         while ((mc = captures->getAndRemoveNextMove()))
         {
             SDEBUGDO(true, value = captures->lastvalue;)
+            STATISTICSINC(ms_evasion_moves[PvNode][depth][numOfCaptures]);
+            STATISTICSINC(ms_evasion_moves[PvNode][depth][0]);
             return mc;
         }
         state++;

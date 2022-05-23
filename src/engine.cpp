@@ -102,12 +102,24 @@ static void uciSetBookFile()
 void uciSetLogFile()
 {
     string filename = (en.LogFile == "" ? "" : en.ExecPath + en.LogFile);
+    bool bAppend = (en.LogFile.find("_app") != string::npos);
+    size_t nPid = filename.find("_pid");
+    if (nPid != string::npos)
+    {
+        int pid = cinfo.GetProcessId();
+        filename.replace(nPid, 4, "_" + to_string(pid));
+    }
     string sLogging;
-    if (!guiCom.openLog(filename, en.frequency))
+    if (!guiCom.openLog(filename, en.frequency, bAppend))
+    {
         sLogging = "Cannot open Logfile " + filename;
-    else
-        sLogging = (filename == "" ? "No logging." : "Logging to " + filename);
+        en.LogFile = "";
+    }
 
+    if (en.LogFile == "")
+        return;
+
+    sLogging = "Logging to " + filename + (bAppend ? string("  (appending log)") : string("  (new log)"));
     engineHeader();
     guiCom << "info string " + sLogging + "\n";
 }
@@ -168,6 +180,7 @@ engine::engine(compilerinfo *c)
 engine::~engine()
 {
     ucioptions.Set("SyzygyPath", "<empty>");
+    ucioptions.Set("LogFile", "");
     Threads = 0;
     allocThreads();
     rootposition.pwnhsh.remove();
@@ -333,8 +346,7 @@ void engine::communicate(string inputstring)
                     if (!(lastopponentsmove = rootposition.applyMove(*it)))
                         guiCom << "info string Alarm! Move " + (*it)  + "%s illegal (possible engine error)\n";
                 }
-                rootposition.rootColor = S2MSIGN(rootposition.state & S2MMASK);
-                ponderhit = (lastopponentsmove && lastopponentsmove == rootposition.pondermove);
+                ponderhitbonus = 4 * (lastopponentsmove && lastopponentsmove == rootposition.pondermove);
                 // Preserve hashes of earlier position up to last halfmove counter reset for repetition detection
                 rootposition.prerootmovenum = rootposition.ply;
                 int i = 0;
@@ -617,14 +629,21 @@ void engine::communicate(string inputstring)
                 }
                 break;
             case BENCH:
+            {
                 maxdepth = 0;
                 mytime = 0;
+                string epdf = "";
                 if (ci < cs)
-                    try { maxdepth = stoi(commandargs[ci++]); } catch (...) {}
+                    try { maxdepth = stoi(commandargs[ci++]); }
+                catch (...) {}
                 if (ci < cs)
-                    try { mytime = stoi(commandargs[ci++]); } catch (...) {}
-                bench(max(0, maxdepth), "", max(0, mytime), 1, true);
+                    try { mytime = stoi(commandargs[ci++]); }
+                catch (...) {}
+                if (ci < cs)
+                    epdf = commandargs[ci++];
+                bench(max(0, maxdepth), epdf, max(0, mytime), 1, true);
                 break;
+            }
 #ifdef NNUELEARN
             case GENSFEN:
                 gensfen(commandargs);
@@ -646,13 +665,24 @@ void engine::communicate(string inputstring)
                 NnueWriteNet(commandargs);
                 break;
 #endif
+#ifdef STATISTICS
+            case STATS:
+                statistics.output(commandargs);
+                break;
+#endif
             default:
                 break;
             }
         }
     } while (command != QUIT && (inputstring == "" || pendingposition));
-    if (command == QUIT)
+    if (command == QUIT) {
         searchWaitStop();
+#ifdef STATISTICS
+        // Output of statistics data before exit (e.g. when palying in a GUI)
+        if (!statistics.outputDone)
+            statistics.output({ "print" });
+#endif
+    }
 }
 
 

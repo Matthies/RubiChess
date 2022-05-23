@@ -309,8 +309,14 @@ const int phasefactor[] = { 0, 0, 1, 1, 2, 4, 0 };
 #define GETMGVAL(v) ((int16_t)(((uint32_t)(v) + 0x8000) >> 16))
 #define GETEGVAL(v) ((int16_t)((v) & 0xffff))
 
-#ifdef EVALTUNE
 
+#if defined(EVALTUNE) || defined(EVALOPTIONS)
+#define EPSCONST
+#else
+#define EPSCONST const
+#endif
+
+#ifdef EVALTUNE
 class eval;
 class sqevallist
 {
@@ -357,7 +363,6 @@ public:
 #define EVALUE(v) eval(3, 0, v)
 #define EEVAL(e, f) ((e).addGrad(f), (e) * (f))
 #else // EVALTUNE
-
 #define SQVALUE(i, v) (v)
 #define VALUE(m, e) ((int32_t)((uint32_t)(m) << 16) + (e))
 #define EVAL(e, f) ((e) * (f))
@@ -1073,7 +1078,7 @@ const int orthogonalanddiagonaloffset[] = { -8, -1, 1, 8, -7, -9, 7, 9 };
 const struct { int offset; bool needsblank; } pawnmove[] = { { 0x10, true }, { 0x0f, false }, { 0x11, false } };
 extern const int materialvalue[];
 extern int psqtable[14][64];
-extern evalparamset eps;
+extern EPSCONST evalparamset eps;
 
 // values for move ordering
 const int mvv[] = { 0U << 27, 1U << 27, 2U << 27, 2U << 27, 3U << 27, 4U << 27, 5U << 27 };
@@ -1304,6 +1309,13 @@ public:
     int margin;
 #ifdef SDEBUG
     int value;
+#endif
+#ifdef STATISTICS
+    int depth;
+    int PvNode;
+    int numOfQuiets;
+    int numOfCaptures;
+    int numOfEvasions;
 #endif
     void SetPreferredMoves(chessposition *p);  // for quiescence move selector
     void SetPreferredMoves(chessposition *p, int m, int excludemove);  // for probcut move selector
@@ -1612,17 +1624,23 @@ public:
         if (freq)
             logstream << timestamp() << " > " << input << "\n";
     }
-    bool openLog(string filename, U64 fr) {
+    bool openLog(string filename, U64 fr, bool ap) {
         freq = 0;
         if (logstream)
             logstream.close();
         if (filename == "")
             return true;
-        logstream.open(filename, ios::out);
+        ios_base::openmode om = ios::out;
+        if (ap)
+            om |= ios::app;
+        logstream.open(filename, om);
         if (!logstream)
             return false;
         logStartTime = getTime();
         freq = fr;
+        auto now = chrono::system_clock::now();
+        time_t now_time = chrono::system_clock::to_time_t(now);
+        logstream << timestamp() << " Logging started at " << ctime(&now_time);
         return true;
     }
     void log(string input) {
@@ -1635,7 +1653,7 @@ public:
 };
 
 
-enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, WAIT, PONDERHIT, QUIT, EVAL, PERFT, BENCH, TUNE, GENSFEN, CONVERT, LEARN, EXPORT };
+enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, WAIT, PONDERHIT, QUIT, EVAL, PERFT, BENCH, TUNE, GENSFEN, CONVERT, LEARN, EXPORT, STATS };
 
 const map<string, GuiToken> GuiCommandMap = {
 #ifdef EVALOPTIONS
@@ -1648,6 +1666,9 @@ const map<string, GuiToken> GuiCommandMap = {
     { "gensfen", GENSFEN },
     { "convert", CONVERT },
     { "learn", LEARN },
+#endif
+#ifdef STATISTICS
+    { "stats", STATS },
 #endif
     { "uci", UCI },
     { "debug", UCIDEBUG },
@@ -1758,6 +1779,7 @@ public:
     void GetSystemInfo();
     string SystemName() { return system; }
     string PrintCpuFeatures(U64 features, bool onlyHighest = false);
+    int GetProcessId();
 };
 
 
@@ -1769,7 +1791,8 @@ public:
     ~engine();
     const string author = "Andreas Matthies";
     U64 tbhits;
-    U64 starttime;
+    U64 thinkstarttime;
+    U64 clockstarttime;
     U64 endtime1; // time to stop before starting next iteration
     U64 endtime2; // time to stop immediately
     U64 frequency;
@@ -1798,7 +1821,7 @@ public:
     int oldThreads;
     searchthread *sthread;
     ponderstate_t pondersearch;
-    bool ponderhit;
+    int ponderhitbonus;
     int lastReport;
     int benchdepth;
     string benchmove;
@@ -1904,6 +1927,7 @@ extern GuiCommunication guiCom;
 //
 
 #ifdef SEARCHOPTIONS
+#define SPSCONST
 void searchtableinit();
 class searchparam {
 public:
@@ -1923,6 +1947,7 @@ public:
 #define SP(x,y) x = #x "/" #y
 
 #else // SEARCHOPTIONS
+#define SPSCONST const
 typedef const int searchparam;
 #define SP(x,y) x = y
 #endif
@@ -1986,7 +2011,7 @@ struct searchparamset {
     searchparam SP(aspinitialdelta, 8);
 };
 
-extern searchparamset sps;
+extern SPSCONST searchparamset sps;
 
 class searchthread
 {
@@ -2009,7 +2034,7 @@ public:
 void searchStart();
 void searchWaitStop(bool forceStop = true);
 void searchinit();
-void resetEndTime(U64 startTime, int constantRootMoves, bool complete = true);
+void resetEndTime(int constantRootMoves);
 
 
 //
@@ -2024,7 +2049,9 @@ void init_tablebases(char *path);
 // statistics stuff
 //
 #ifdef STATISTICS
-struct statistic {
+class statistic
+{
+public:
     int qs_mindepth;
     U64 qs_n[2];                // total calls to qs split into no check / check
     U64 qs_tt;                  // qs hits tt
@@ -2066,13 +2093,30 @@ struct statistic {
     S64 red_correction;         // total reduction correction by over-/underflow
 
     U64 extend_singular;        // total singular extensions
-    U64 extend_endgame;        // total endgame extensions
-    U64 extend_history;        // total history extensions
+    U64 extend_endgame;         // total endgame extensions
+    U64 extend_history;         // total history extensions
+
+#define MAXSTATDEPTH 30
+#define MAXSTATMOVES 128
+    U64 ms_n[2][MAXSTATDEPTH];                          // total instantiations of moveselector in depth n (0 -> QS, MAXSTATDEPTH-1: ProbCut)
+    U64 ms_moves[2][MAXSTATDEPTH];                      // total number of moves delivered in depth n
+    U64 ms_tactic_stage[2][MAXSTATDEPTH][MAXSTATMOVES]; // how many times was the (good) tactic stage entered with a move list of length m
+    U64 ms_tactic_moves[2][MAXSTATDEPTH][MAXSTATMOVES]; // total number of goodtactical moves delivered in depth n with a move list of length m
+    U64 ms_spcl_stage[2][MAXSTATDEPTH];                 // how many times was the stage with special quiets (killer, counter) entered
+    U64 ms_spcl_moves[2][MAXSTATDEPTH];                 // total number of special quiet moves delivered in depth n
+    U64 ms_quiet_stage[2][MAXSTATDEPTH][MAXSTATMOVES];  // how many times was the quiet stage entered with a move list of length m
+    U64 ms_quiet_moves[2][MAXSTATDEPTH][MAXSTATMOVES];  // total number of quiet moves delivered in depth n with a move list of length m
+    U64 ms_badtactic_stage[2][MAXSTATDEPTH];            // how many times was the quiet stage entered
+    U64 ms_badtactic_moves[2][MAXSTATDEPTH];            // total number of special quiet moves delivered in depth n
+    U64 ms_evasion_stage[2][MAXSTATDEPTH][MAXSTATMOVES];// how many times was the evasion stage entered with a move list of length m
+    U64 ms_evasion_moves[2][MAXSTATDEPTH][MAXSTATMOVES];// total number of evasion moves delivered in depth n with a move list of length m
+
+    bool outputDone = false;
+
+    void output(vector<string> args);
 };
 
-extern struct statistic statistics;
-
-void search_statistics();
+extern statistic statistics;
 
 // some macros to limit the ifdef STATISTICS inside the code
 #define STATISTICSINC(x)        statistics.x++
