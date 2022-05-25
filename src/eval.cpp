@@ -770,6 +770,52 @@ int chessposition::getFrcCorrection()
 }
 
 
+inline bool isDraw(U64 mh)
+{
+#if 0
+    cout << "#define MH_Kk   0x" << hex << calc_key_from_str("KvK") << "\n";
+    cout << "#define MH_KNk  0x" << hex << calc_key_from_str("KNvK") << "\n";
+    cout << "#define MH_KBk  0x" << hex << calc_key_from_str("KBvK") << "\n";
+    cout << "#define MH_KNNk 0x" << hex << calc_key_from_str("KNNvK") << "\n";
+    cout << "#define MH_Kkn  0x" << hex << calc_key_from_str("KvKN") << "\n";
+    cout << "#define MH_Kkb  0x" << hex << calc_key_from_str("KvKB") << "\n";
+    cout << "#define MH_Kknn 0x" << hex << calc_key_from_str("KvKNN") << "\n";
+    cout << "#define MH_KNkn 0x" << hex << calc_key_from_str("KNvKN") << "\n";
+    cout << "#define MH_KBkb 0x" << hex << calc_key_from_str("KBvKB") << "\n";
+    cout << "#define MH_KNkb 0x" << hex << calc_key_from_str("KNvKB") << "\n";
+    cout << "#define MH_KBkn 0x" << hex << calc_key_from_str("KBvKN") << "\n";
+#endif // 0
+
+#define MH_Kk   0x3679a3a322768ab5
+#define MH_KNk  0x83f6d94bcf81a7ce
+#define MH_KBk  0x6e56427061f09750
+#define MH_KNNk 0xa6d01badbcd3304c
+#define MH_Kkn  0x764e7792d2a7e7a2
+#define MH_Kkb  0x8d7565c35c201dd8
+#define MH_Kknn 0xbdec92b4d5e8455
+#define MH_KNkn 0xc3c10d7a3f50cad9
+#define MH_KBkb 0xd55a84101fa6003d
+#define MH_KNkb 0x38fa1f2bb1d730a3
+#define MH_KBkn 0x2e6196419121fa47
+
+    switch(mh) {
+    case MH_Kk:
+    case MH_KNk:
+    case MH_KBk:
+    case MH_KNNk:
+    case MH_Kkn:
+    case MH_Kkb:
+    case MH_Kknn:
+    case MH_KNkn:
+    case MH_KBkb:
+    case MH_KNkb:
+    case MH_KBkn:
+        return true;
+    default:
+        return false;
+    }
+}
+
 //
 // getEval() is the general evaluation interface for search
 // It returns the score of the position from the view of the side to move
@@ -784,6 +830,9 @@ int chessposition::getEval()
     getpsqval();
 #endif
 
+    if (isDraw(materialhash))
+        return SCOREDRAW;
+
     int score;
     if (NnueReady && abs(GETEGVAL(psqval)) < NnuePsqThreshold)
     {
@@ -792,6 +841,7 @@ int chessposition::getEval()
             score = NnueGetEval<NnueRotate>();
         else
             score = NnueGetEval<NnueFlip>();
+        score += S2MSIGN(state & S2MMASK) * contempt;
         int phscaled = score * (116 + phcount) / 128;
 
         if (bTrace) {

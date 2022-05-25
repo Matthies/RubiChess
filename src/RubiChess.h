@@ -653,6 +653,7 @@ U64 ranval(ranctx* x);
 string frcStartFen(int numWhite = -1, int numBlack = -1);
 U64 calc_key_from_pcs(int *pcs, int mirror);
 void getPcsFromStr(const char* str, int *pcs);
+U64 calc_key_from_str(const char* str);
 void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am);
 vector<string> SplitString(const char* s);
 unsigned char AlgebraicToIndex(string s);
@@ -1430,7 +1431,8 @@ public:
     uint32_t multipvtable[MAXMULTIPV][MAXDEPTH];
     uint32_t lastpv[MAXDEPTH];
     int phcount; // weighted number of pieces (0..24)
-    int sc; // to stor scaling factor used for evaluation
+    int sc; // to store scaling factor used for evaluation
+    int contempt;
     int useTb;
     int useRootmoveScore;
     int tbPosition;
@@ -1813,6 +1815,10 @@ public:
     string BookFile;
     bool BookBestMove;
     int BookDepth;
+    int Contempt;
+    int RatingAdv;
+    int ContemptRatio;
+    int ResultingContempt;
     chessposition rootposition;
     int Threads;
     int oldThreads;
