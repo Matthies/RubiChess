@@ -168,12 +168,12 @@ static void uciSetContempt()
     int newResultingContempt = en.Contempt;
     if (en.RatingAdv)
     {
-        newResultingContempt += en.RatingAdv / 4;
+        newResultingContempt += en.RatingAdv * en.ContemptRatio / 16;
     }
     newResultingContempt = max(-100, min(100, newResultingContempt));
     if (en.ResultingContempt != newResultingContempt)
     {
-        guiCom << "info string Using contempt " << newResultingContempt << "\n";
+        guiCom << "info string Using contempt " + to_string(newResultingContempt) + "\n";
         en.ResultingContempt = newResultingContempt;
     }
 }
@@ -229,6 +229,7 @@ void engine::registerOptions()
     ucioptions.Register(nullptr, "Clear Hash", ucibutton, "", 0, 0, uciClearHash);
     ucioptions.Register(&Contempt, "Contempt", ucispin, "0", -100, 100, uciSetContempt);
     ucioptions.Register(&RatingAdv, "UCI_RatingAdv", ucispin, "0", -10000, 10000, uciSetContempt);
+    ucioptions.Register(&ContemptRatio, "ContemptRatio", ucispin, "4", 0, 16, uciSetContempt);
 }
 
 
@@ -363,7 +364,7 @@ void engine::communicate(string inputstring)
                     if (!(lastopponentsmove = rootposition.applyMove(*it)))
                         guiCom << "info string Alarm! Move " + (*it)  + "%s illegal (possible engine error)\n";
                 }
-                rootposition.rootColor = S2MSIGN(rootposition.state & S2MMASK);
+                rootposition.contempt = S2MSIGN(rootposition.state & S2MMASK) * en.ResultingContempt * rootposition.phcount / 24;
                 ponderhitbonus = 4 * (lastopponentsmove && lastopponentsmove == rootposition.pondermove);
                 // Preserve hashes of earlier position up to last halfmove counter reset for repetition detection
                 rootposition.prerootmovenum = rootposition.ply;

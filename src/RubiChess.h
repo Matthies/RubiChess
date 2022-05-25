@@ -1432,7 +1432,7 @@ public:
     uint32_t lastpv[MAXDEPTH];
     int phcount; // weighted number of pieces (0..24)
     int sc; // to store scaling factor used for evaluation
-    int rootColor;
+    int contempt;
     int useTb;
     int useRootmoveScore;
     int tbPosition;
@@ -1817,6 +1817,7 @@ public:
     int BookDepth;
     int Contempt;
     int RatingAdv;
+    int ContemptRatio;
     int ResultingContempt;
     chessposition rootposition;
     int Threads;
