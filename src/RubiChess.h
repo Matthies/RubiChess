@@ -387,7 +387,6 @@ typedef const int32_t eval;
 
 struct evalparamset {
     // Tuned with Lichess-quiet (psqt), lc0games (kingdanger), manually (complex) and Laser games (everything else)
-    //eval eContempt = CVALUE(   0);
     eval eComplexpawnsbonus =  EVALUE(   4);
     eval eComplexpawnflanksbonus =  EVALUE(  66);
     eval eComplexonlypawnsbonus =  EVALUE(  71);
