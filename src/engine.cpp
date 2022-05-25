@@ -599,7 +599,7 @@ void engine::communicate(string inputstring)
                     else if (commandargs[ci] == "nodes")
                     {
                         if (++ci < cs)
-                            maxnodes = stoull(commandargs[ci++]);
+                            maxnodes = stoull(commandargs[ci++]) / en.Threads;
                     }
                     else if (commandargs[ci] == "mate")
                     {

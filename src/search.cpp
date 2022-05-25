@@ -279,7 +279,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 }
 
 
-template <PruneType Pt>
+template <PruneType Pt, TimecontrolType Tc>
 int chessposition::alphabeta(int alpha, int beta, int depth)
 {
     int score;
@@ -293,8 +293,13 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     int extendall = 0;
     int effectiveDepth;
     const bool PVNode = (alpha != beta - 1);
+    const bool bFixedNodes = (Tc == FixedNodes);
+    const bool bNeedsTimecheck = (Tc == VariableTime);
 
-    CheckForImmediateStop();
+    if (bFixedNodes && nodes >= en.maxnodes)
+        return beta;
+    else if(bNeedsTimecheck)
+        CheckForImmediateStop();
 
     // Reset pv
     pvtable[ply][0] = 0;
@@ -506,7 +511,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         playNullMove();
         int nmreduction = min(depth, sps.nmmredbase + (depth / sps.nmmreddepthratio) + (bestknownscore - beta) / sps.nmmredevalratio + !PVNode * sps.nmmredpvfactor);
 
-        score = -alphabeta<Pt>(-beta, -beta + 1, depth - nmreduction);
+        score = -alphabeta<Pt, Tc>(-beta, -beta + 1, depth - nmreduction);
         unplayNullMove();
 
         if (score >= beta)
@@ -520,7 +525,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             // Verification search
             nullmoveply = ply + 3 * (depth - nmreduction) / 4;
             nullmoveside = ply % 2;
-            int verificationscore = alphabeta<Pt>(beta - 1, beta, depth - nmreduction);
+            int verificationscore = alphabeta<Pt, Tc>(beta - 1, beta, depth - nmreduction);
             nullmoveside = nullmoveply = 0;
             if (verificationscore >= beta) {
                 STATISTICSINC(prune_nm);
@@ -549,7 +554,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             {
                 int probcutscore = -getQuiescence<Pt>(-rbeta, -rbeta + 1, 0);
                 if (probcutscore >= rbeta)
-                    probcutscore = -alphabeta<Pt>(-rbeta, -rbeta + 1, depth - 4);
+                    probcutscore = -alphabeta<Pt, Tc>(-rbeta, -rbeta + 1, depth - 4);
 
                 unplayMove(mc);
 
@@ -661,7 +666,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         {
             excludemovestack[ply - 1] = hashmovecode;
             int sBeta = max(hashscore - sps.singularmarginperdepth * depth, SCOREBLACKWINS);
-            int redScore = alphabeta<Pt>(sBeta - 1, sBeta, depth / 2);
+            int redScore = alphabeta<Pt, Tc>(sBeta - 1, sBeta, depth / 2);
             excludemovestack[ply - 1] = 0;
 
             if (redScore < sBeta)
@@ -755,25 +760,25 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (reduction)
         {
             // LMR search; test against alpha
-            score = -alphabeta<Pt>(-alpha - 1, -alpha, effectiveDepth - 1);
+            score = -alphabeta<Pt, Tc>(-alpha - 1, -alpha, effectiveDepth - 1);
             SDEBUGDO(isDebugMove, pvadditionalinfo[ply-1] += "PVS(alpha=" + to_string(alpha) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
             if (score > alpha)
             {
                 // research without reduction
                 effectiveDepth += reduction;
-                score = -alphabeta<Pt>(-alpha - 1, -alpha, effectiveDepth - 1);
+                score = -alphabeta<Pt, Tc>(-alpha - 1, -alpha, effectiveDepth - 1);
                 SDEBUGDO(isDebugMove, pvadditionalinfo[ply-1] += "PVS(alpha=" + to_string(alpha) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
             }
         }
         else if (!PVNode || legalMoves > 1)
         {
             // Np PV node or not the first move; test against alpha
-            score = -alphabeta<Pt>(-alpha - 1, -alpha, effectiveDepth - 1);
+            score = -alphabeta<Pt, Tc>(-alpha - 1, -alpha, effectiveDepth - 1);
             SDEBUGDO(isDebugMove, pvadditionalinfo[ply-1] += "PVS(alpha=" + to_string(alpha) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
         }
         // (re)search with full window at PV nodes if necessary
         if (PVNode && (legalMoves == 1 || score > alpha)) {
-            score = -alphabeta<Pt>(-beta, -alpha, effectiveDepth - 1);
+            score = -alphabeta<Pt, Tc>(-beta, -alpha, effectiveDepth - 1);
             SDEBUGDO(isDebugMove, pvadditionalinfo[ply-1] += "PVS(alpha=" + to_string(alpha)+ ",beta=" +to_string(beta) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
         }
         SDEBUGDO(isDebugMove, pvadditionalinfo[ply - 1] += "score=" + to_string(score) + "  "; );
@@ -874,7 +879,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
 
 
-template <RootsearchType RT>
+template <RootsearchType RT, TimecontrolType Tc>
 int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, int maxmoveindex)
 {
     int score;
@@ -886,9 +891,15 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
     int lastmoveindex;
 
     const bool isMultiPV = (RT == MultiPVSearch);
-    bool mateprune = (alpha > SCORETBWININMAXPLY || beta < -SCORETBWININMAXPLY);
+    const bool bFixedNodes = (Tc == FixedNodes);
+    const bool bNeedsTimecheck = (Tc == VariableTime);
 
-    CheckForImmediateStop();
+    if (bFixedNodes && nodes >= en.maxnodes)
+        return beta;
+    else if (bNeedsTimecheck)
+        CheckForImmediateStop();
+
+    bool mateprune = (alpha > SCORETBWININMAXPLY || beta < -SCORETBWININMAXPLY);
 
     // reset pv
     pvtable[0][0] = 0;
@@ -1013,19 +1024,19 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
         if (i > 0)
         {
             // LMR search; test against alpha
-            score = -alphabeta<Prune>(-alpha - 1, -alpha, effectiveDepth - 1);
+            score = -alphabeta<Prune, Tc>(-alpha - 1, -alpha, effectiveDepth - 1);
             SDEBUGDO(isDebugMove, pvadditionalinfo[0] += "PVS(alpha=" + to_string(alpha) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
             if (reduction && score > alpha)
             {
                 // research without reduction
                 effectiveDepth += reduction;
-                score = -alphabeta<Prune>(-alpha - 1, -alpha, effectiveDepth - 1);
+                score = -alphabeta<Prune, Tc>(-alpha - 1, -alpha, effectiveDepth - 1);
                 SDEBUGDO(isDebugMove, pvadditionalinfo[0] += "PVS(alpha=" + to_string(alpha) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
             }
         }
         // (re)search with full window if necessary
         if (i == 0 || score > alpha) {
-            score = (mateprune ? -alphabeta<MatePrune>(-beta, -alpha, effectiveDepth - 1) : -alphabeta<Prune>(-beta, -alpha, effectiveDepth - 1));
+            score = (mateprune ? -alphabeta<MatePrune, Tc>(-beta, -alpha, effectiveDepth - 1) : -alphabeta<Prune, Tc>(-beta, -alpha, effectiveDepth - 1));
             SDEBUGDO(isDebugMove, pvadditionalinfo[0] += "PVS(alpha=" + to_string(alpha) + ",beta=" + to_string(beta) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
         }
 
@@ -1203,6 +1214,8 @@ static void mainSearch(searchthread *thr)
 
     const bool isMultiPV = (RT == MultiPVSearch);
     const bool isMainThread = (thr->index == 0);
+    const bool bFixedNodes = (bool)en.maxnodes;
+    const bool bNeedsTimecheck = (bool)en.endtime2;
 
     chessposition *pos = &thr->pos;
 
@@ -1248,7 +1261,9 @@ static void mainSearch(searchthread *thr)
         }
         else
         {
-            score = pos->rootsearch<RT>(alpha, beta, thr->depth, inWindow);
+            score = (bFixedNodes ? pos->rootsearch<RT, FixedNodes>(alpha, beta, thr->depth, inWindow)
+                : bNeedsTimecheck ? pos->rootsearch<RT, VariableTime>(alpha, beta, thr->depth, inWindow)
+                : pos->rootsearch<RT, InfiniteTime>(alpha, beta, thr->depth, inWindow));
 #ifdef TDEBUG
             if (en.stopLevel == ENGINESTOPIMMEDIATELY && isMainThread)
             {
@@ -1384,6 +1399,10 @@ static void mainSearch(searchthread *thr)
 
         // exit if STOPIMMEDIATELY
         if (en.stopLevel == ENGINESTOPIMMEDIATELY)
+            break;
+
+        // exit when max nodes reached
+        if (bFixedNodes && pos->nodes >= en.maxnodes)
             break;
 
         if (isMainThread)
@@ -1649,21 +1668,12 @@ inline void chessposition::CheckForImmediateStop()
 
     U64 nowtime = getTime();
 
-    if (en.endtime2 && nowtime >= en.endtime2 && en.stopLevel < ENGINESTOPIMMEDIATELY)
-    {
+    if (nowtime >= en.endtime2 && en.stopLevel < ENGINESTOPIMMEDIATELY)
         en.stopLevel = ENGINESTOPIMMEDIATELY;
-        return;
-    }
-
-    if (en.maxnodes && en.maxnodes <= en.getTotalNodes() && en.stopLevel < ENGINESTOPIMMEDIATELY)
-    {
-        en.stopLevel = ENGINESTOPIMMEDIATELY;
-        return;
-    }
 }
 
 
 
 // Explicit template instantiation
 // This avoids putting these definitions in header file
-template int chessposition::alphabeta<NoPrune>(int alpha, int beta, int depth);
+template int chessposition::alphabeta<NoPrune, VariableTime>(int alpha, int beta, int depth);
