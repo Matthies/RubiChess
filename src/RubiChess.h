@@ -18,7 +18,7 @@
 #pragma once
 
 #define VERNUMLEGACY 2022
-#define NNUEDEFAULT nn-bc67e15665-20220523.nnue
+#define NNUEDEFAULT nn-d3b95fbbeb-20220524.nnue
 
 // Enable to get statistical values about various search features
 //#define STATISTICS
