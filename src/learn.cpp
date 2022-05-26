@@ -1043,8 +1043,8 @@ static void gensfenthread(searchthread* thr, U64 rndseed)
             int nextdepth = depth + ranval(&rnd) % depthvariance;
 
             int score = (disable_prune ?
-                pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, nextdepth)
-                : pos->alphabeta<Prune>(SCOREBLACKWINS, SCOREWHITEWINS, nextdepth));
+                pos->alphabeta<NoPrune, InfiniteTime>(SCOREBLACKWINS, SCOREWHITEWINS, nextdepth)
+                : pos->alphabeta<Prune, InfiniteTime>(SCOREBLACKWINS, SCOREWHITEWINS, nextdepth));
 
             if (POPCOUNT(pos->occupied00[0] | pos->occupied00[1]) <= pos->useTb) // TB adjudication; FIXME: bad with incomplete TB sets
             {
@@ -1137,7 +1137,7 @@ SKIP_SAVE:
                         pos->getRootMoves();
                         int cur_multi_pv = min(pos->rootmovelist.length, (ply < random_opening_ply ? 8 : random_multi_pv));
                         int cur_multi_pv_diff = (ply < random_opening_ply ? 100 : random_multi_pv_diff);
-                        pos->rootsearch<MultiPVSearch>(SCOREBLACKWINS, SCOREWHITEWINS, random_multi_pv_depth, 1, cur_multi_pv);
+                        pos->rootsearch<MultiPVSearch, InfiniteTime>(SCOREBLACKWINS, SCOREWHITEWINS, random_multi_pv_depth, 1, cur_multi_pv);
                         int s = min(pos->rootmovelist.length, cur_multi_pv);
                         // Exclude moves with score outside of allowed margin
                         while (cur_multi_pv_diff && pos->bestmovescore[0] > pos->bestmovescore[s - 1] + cur_multi_pv_diff)
@@ -1593,9 +1593,9 @@ static void convertthread(searchthread* thr, conversion_t* cv)
             {
                 int newscore;
                 if (cv->disable_prune)
-                    newscore = pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, cv->rescoreDepth);
+                    newscore = pos->alphabeta<NoPrune, InfiniteTime>(SCOREBLACKWINS, SCOREWHITEWINS, cv->rescoreDepth);
                 else
-                    newscore = pos->alphabeta<Prune>(SCOREBLACKWINS, SCOREWHITEWINS, cv->rescoreDepth);
+                    newscore = pos->alphabeta<Prune, InfiniteTime>(SCOREBLACKWINS, SCOREWHITEWINS, cv->rescoreDepth);
                 //cout << "score = " << score << "   newscore = " << newscore << endl;
                 score = newscore;
             }

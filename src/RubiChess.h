@@ -1828,6 +1828,7 @@ public:
     int ponderhitbonus;
     int lastReport;
     int benchdepth;
+    bool prepared;
     string benchmove;
     string benchpondermove;
     ucioptions_t ucioptions;

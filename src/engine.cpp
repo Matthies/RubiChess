@@ -284,6 +284,7 @@ void engine::prepareThreads()
         pos->accumulator[0].computationState[WHITE] = false;
         pos->accumulator[0].computationState[BLACK] = false;
     }
+    prepared = true;
 }
 
 
@@ -624,6 +625,8 @@ void engine::communicate(string inputstring)
                     else
                         ci++;
                 }
+                if (!prepared)
+                    prepareThreads();
                 searchStart();
                 break;
             case WAIT:

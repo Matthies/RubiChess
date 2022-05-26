@@ -1198,7 +1198,7 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, in
 }
 
 
-template <RootsearchType RT>
+template <RootsearchType RT, TimecontrolType TC>
 static void mainSearch(searchthread *thr)
 {
     int score;
@@ -1214,8 +1214,8 @@ static void mainSearch(searchthread *thr)
 
     const bool isMultiPV = (RT == MultiPVSearch);
     const bool isMainThread = (thr->index == 0);
-    const bool bFixedNodes = (bool)en.maxnodes;
-    const bool bNeedsTimecheck = (bool)en.endtime2;
+    const bool bFixedNodes = (TC == FixedNodes);
+    const bool bNeedsTimecheck = (TC == VariableTime);
 
     chessposition *pos = &thr->pos;
 
@@ -1261,9 +1261,7 @@ static void mainSearch(searchthread *thr)
         }
         else
         {
-            score = (bFixedNodes ? pos->rootsearch<RT, FixedNodes>(alpha, beta, thr->depth, inWindow)
-                : bNeedsTimecheck ? pos->rootsearch<RT, VariableTime>(alpha, beta, thr->depth, inWindow)
-                : pos->rootsearch<RT, InfiniteTime>(alpha, beta, thr->depth, inWindow));
+            score = pos->rootsearch<RT, TC>(alpha, beta, thr->depth, inWindow);
 #ifdef TDEBUG
             if (en.stopLevel == ENGINESTOPIMMEDIATELY && isMainThread)
             {
@@ -1414,7 +1412,7 @@ static void mainSearch(searchthread *thr)
                 constantRootMoves = 0;
             }
 
-            if (inWindow == 1 || !constantRootMoves)
+            if (bNeedsTimecheck && (inWindow == 1 || !constantRootMoves))
                 // Recalculate remaining time for next depth
                 resetEndTime(constantRootMoves);
 
@@ -1432,7 +1430,7 @@ static void mainSearch(searchthread *thr)
             break;
 
         // exit if STOPSOON is requested and we're in aspiration window
-        if (en.endtime1 && nowtime >= en.endtime1 && inWindow == 1 && constantRootMoves && isMainThread)
+        if (bNeedsTimecheck && en.endtime1 && nowtime >= en.endtime1 && inWindow == 1 && constantRootMoves && isMainThread)
             break;
 
         // exit if max depth is reached
@@ -1450,6 +1448,16 @@ static void mainSearch(searchthread *thr)
         ss << "[TDEBUG] stop info last movetime: " << setprecision(3) << (nowtime - en.clockstarttime) / (double)en.frequency << "    full-it. / immediate:  " << en.t1stop << " / " << en.t2stop << "\n";
         guiCom.log(ss.str());
 #endif
+        if (bFixedNodes)
+        {
+            // Wait for helper threads to finish their nodes
+            for (int i = 1; i < en.Threads; i++)
+            {
+                while (en.sthread[i].pos.threadindex)
+                    Sleep(1);
+            }
+        }
+
         // Output of best move
         searchthread *bestthr = thr;
         int bestscore = bestthr->pos.bestmovescore[0];
@@ -1524,6 +1532,8 @@ static void mainSearch(searchthread *thr)
         en.benchmove = strBestmove;
         en.benchpondermove = strPonder;
     }
+
+    pos->threadindex = 0; //reset index to signal termination of thread
 }
 
 
@@ -1625,12 +1635,16 @@ void searchStart()
     // increment generation counter for tt aging
     tp.nextSearch();
 
-    if (en.MultiPV == 1)
-        for (int tnum = 0; tnum < en.Threads; tnum++)
-            en.sthread[tnum].thr = thread(&mainSearch<SinglePVSearch>, &en.sthread[tnum]);
+    void (*msearchptr)(searchthread * thr);
+    if (en.maxnodes)
+        msearchptr = (en.MultiPV == 1 ? mainSearch<SinglePVSearch, FixedNodes> : mainSearch<MultiPVSearch, FixedNodes>);
+    else if (en.endtime2)
+        msearchptr = (en.MultiPV == 1 ? mainSearch<SinglePVSearch, VariableTime> : mainSearch<MultiPVSearch, VariableTime>);
     else
-        for (int tnum = 0; tnum < en.Threads; tnum++)
-            en.sthread[tnum].thr = thread(&mainSearch<MultiPVSearch>, &en.sthread[tnum]);
+        msearchptr = (en.MultiPV == 1 ? mainSearch<SinglePVSearch, InfiniteTime> : mainSearch<MultiPVSearch, InfiniteTime>);
+
+    for (int tnum = 0; tnum < en.Threads; tnum++)
+        en.sthread[tnum].thr = thread(msearchptr, &en.sthread[tnum]);
 }
 
 
@@ -1646,6 +1660,7 @@ void searchWaitStop(bool forceStop)
         if (en.sthread[tnum].thr.joinable())
             en.sthread[tnum].thr.join();
     en.stopLevel = ENGINETERMINATEDSEARCH;
+    en.prepared = false;
 }
 
 
@@ -1677,3 +1692,4 @@ inline void chessposition::CheckForImmediateStop()
 // Explicit template instantiation
 // This avoids putting these definitions in header file
 template int chessposition::alphabeta<NoPrune, VariableTime>(int alpha, int beta, int depth);
+template int chessposition::alphabeta<NoPrune, InfiniteTime>(int alpha, int beta, int depth);

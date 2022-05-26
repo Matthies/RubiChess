@@ -241,7 +241,7 @@ bool PGNtoFEN(int depth)
                         if (depth >= 0)
                         {
                             // AGE mode (search and apply the pv of this search)
-                            score = pos.alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, depth);
+                            score = pos.alphabeta<NoPrune, InfiniteTime>(SCOREBLACKWINS, SCOREWHITEWINS, depth);
                             int s2m = pos.state & S2MMASK;
                             uint32_t* pvt = pos.pvtable[pos.ply];
                             int num = pos.applyPv(pvt);
