@@ -1337,7 +1337,8 @@ static void flushBinpack(ostream *os, char *buffer, Binpack* bp)
         size_t wrappedbytes = *bp->data - bp->flushAt;
         memcpy(buffer + 8, bp->flushAt, wrappedbytes + 1);
         *bp->data -= size - 8;
-        bp->compmvsptr -= size - 8;
+        if (wrappedbytes)
+            bp->compmvsptr -= size - 8;
         bp->flushAt = nullptr;
     }
 }
