@@ -216,13 +216,16 @@ void chessposition::getRootMoves()
     excludemovestack[0] = 0; // FIXME: Not very nice; is it worth to do do singular testing in root search?
     for (int i = 0; i < movelist.length; i++)
     {
+        chessmove* m = &movelist.move[i];
+        if (!see(m->code, 0))
+            m->code |= BADSEEFLAG;
         if (bSearchmoves)
         {
-            string strMove = moveToString(movelist.move[i].code);
+            string strMove = moveToString(m->code);
             if (en.searchmoves.find(strMove) == en.searchmoves.end())
                 continue;
         }
-        if (playMove(movelist.move[i].code))
+        if (playMove(m->code))
         {
             if (tthit)
             {
@@ -231,9 +234,9 @@ void chessposition::getRootMoves()
                 {
                     // This move triggers 3fold; remember move to update hash
                     bImmediate3fold = true;
-                    moveTo3fold = movelist.move[i].code;
+                    moveTo3fold = m->code;
                 }
-                else if ((uint16_t)movelist.move[i].code == tthashmovecode)
+                else if ((uint16_t)m->code == tthashmovecode)
                 {
                     // Test if this move makes a 3fold possible for opponent
                     prepareStack();
@@ -245,7 +248,7 @@ void chessposition::getRootMoves()
                         {
                             if (testRepetition() >= 2)
                                 // 3fold for opponent is possible
-                                moveTo3fold = movelist.move[i].code;
+                                moveTo3fold = m->code;
 
                             unplayMove(followupmovelist.move[j].code);
                         }
@@ -253,12 +256,12 @@ void chessposition::getRootMoves()
                 }
             }
 
-            rootmovelist.move[rootmovelist.length++] = movelist.move[i];
-            unplayMove(movelist.move[i].code);
-            if (bestval < movelist.move[i].value)
+            rootmovelist.move[rootmovelist.length++] = *m;
+            unplayMove(m->code);
+            if (bestval < m->value)
             {
-                defaultmove = movelist.move[i].code;
-                bestval = movelist.move[i].value;
+                defaultmove = m->code;
+                bestval = m->value;
             }
         }
     }
@@ -334,8 +337,8 @@ uint32_t chessposition::shortMove2FullMove(uint16_t c)
         }
         else if ((from ^ to) == 16 && (epthelper[to] & piece00[pc ^ 1]))
         {
-            // double push enables epc
-            myeptcastle = ((from + to) / 2) << 20;
+            // double push enables ept
+            myeptcastle = ADDEPT(from, to);
         }
     }
 
@@ -1119,7 +1122,7 @@ template <MoveType Mt, Color me> inline int chessposition::CreateMovelistPawn(ch
             appendMoveToList(&m, from, to, pc, BLANK);
             if (epthelper[to] & piece00[WPAWN | you])
                 // EPT possible for opponent; set EPT field manually
-                (m - 1)->code |= (from + to) << 19;
+                (m - 1)->code |= ADDEPT(from, to);
         }
     }
 
@@ -1239,7 +1242,7 @@ int chessposition::CreateEvasionMovelist(chessmove* mstart)
                     {
                         // EPT possible for opponent; set EPT field manually
                         appendMoveToList(&m, from, to, pc, BLANK);
-                        (m - 1)->code |= (from + to) << 19;
+                        (m - 1)->code |= ADDEPT(from, to);
                         continue;
                     }
                 }

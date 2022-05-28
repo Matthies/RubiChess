@@ -1094,18 +1094,41 @@ const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 2
 // xxxx                             Piece code
 //     x                            Castle flag
 //      x                           EP capture flag
-//       xxxxxx                     EP capture target square
+//       x                          bad see flag
+//          xxx                     EP capture target rank (file in to/from)
 //           xx                     castle index (00=white queen 01=white king 10=black queen 11=black king)
 //             xxxx                 captured piece code
 //                 xxxx             promotion piece code
 //                     xxxxxx       from square
 //                           xxxxxx to square
-#define EPCAPTUREFLAG 0x4000000
-#define CASTLEFLAG    0x8000000
+class chessmove
+{
+public:
+    uint32_t code;
+    int value;
+
+    chessmove();
+    chessmove(uint32_t c);
+    chessmove(int from, int to, PieceCode piece);
+    chessmove(int from, int to, PieceCode capture, PieceCode piece);
+    chessmove(int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
+    chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
+
+    bool operator<(const chessmove cm) const { return (value < cm.value); }
+    bool operator>(const chessmove cm) const { return (value > cm.value); }
+    string toString();
+    void print();
+};
+
+
+#define CASTLEFLAG    0x08000000
+#define EPCAPTUREFLAG 0x04000000
+#define BADSEEFLAG    0x02000000
 #define GETFROM(x) (((x) & 0x0fc0) >> 6)
 #define GETTO(x) ((x) & 0x003f)
 #define GETCORRECTTO(x) (ISCASTLE(x) ? castlekingto[GETCASTLEINDEX(x)] : GETTO(x))
-#define GETEPT(x) (((x) & 0x03f00000) >> 20)
+#define GETEPT(x) (((x) & 0x00700000) ? (((x) & 0x00700000) >> 17) | ((x) & 0x07) : 0)
+#define ADDEPT(f,t) ((((f) + (t)) / 16) << 20)
 #define ISEPCAPTURE(x) ((x) & EPCAPTUREFLAG)
 #define ISCASTLE(x) ((x) & CASTLEFLAG)
 #define GETCASTLEINDEX(x) (((x) & 0x00300000) >> 20)
@@ -1244,35 +1267,6 @@ struct chessmovestack
 #define MAXMOVELISTLENGTH 256   // for lists of possible pseudo-legal moves
 
 string moveToString(uint32_t mc);
-
-class chessmove
-{
-public:
-    // ppppyxeeeeeeccccrrrrfffffftttttt
-    // t(6): index of 'to'-square
-    // f(6): index of 'from'-square
-    // r(4): piececode of promote
-    // c(4): piececode of capture
-    // e(4): index of ep capture target
-    // x(1): flags an ep capture move
-    // y(1): flags a move givin check (not every move that gives check is flagged!); not implemented yet
-    // p(4): piececode of the moving piece
-
-    uint32_t code;
-    int value;
-
-    chessmove();
-    chessmove(uint32_t c);
-    chessmove(int from, int to, PieceCode piece);
-    chessmove(int from, int to, PieceCode capture, PieceCode piece);
-    chessmove(int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
-    chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
-
-    bool operator<(const chessmove cm) const { return (value < cm.value); }
-    bool operator>(const chessmove cm) const { return (value > cm.value); }
-    string toString();
-    void print();
-};
 
 class chessmovelist
 {
