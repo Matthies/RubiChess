@@ -945,13 +945,13 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
                 m->value = PVVAL;
             else if (bestFailingLow == m->code)
                 m->value = KILLERVAL2 - 1;
-            // killermoves gets score better than non-capture
+            // killermoves gets score better than other quiets
             else if (killer[0][0] == m->code)
                 m->value = KILLERVAL1;
             else if (killer[0][1] == m->code)
                 m->value = KILLERVAL2;
             else if (GETCAPTURE(m->code) != BLANK)
-                m->value = (mvv[GETCAPTURE(m->code) >> 1] | lva[GETPIECE(m->code) >> 1]);
+                m->value = (m->code & BADSEEFLAG ? -1 : 1) * (mvv[GETCAPTURE(m->code) >> 1] | lva[GETPIECE(m->code) >> 1]);
             else
                 m->value = history[state & S2MMASK][threatSquare][GETFROM(m->code)][GETCORRECTTO(m->code)];
             if (isMultiPV) {
