@@ -536,6 +536,7 @@ void engine::communicate(string inputstring)
             case GO:
                 if (en.usennue && !NnueReady)
                     break;
+                startSearchTime(false);
                 pondersearch = NO;
                 searchmoves.clear();
                 mytime = yourtime = myinc = yourinc = movestogo = mate = maxdepth = 0;
@@ -627,13 +628,18 @@ void engine::communicate(string inputstring)
                 }
                 if (!prepared)
                     prepareThreads();
-                searchStart();
+                if (en.MultiPV == 1)
+                    searchStart<SinglePVSearch>();
+                else
+                    searchStart<MultiPVSearch>();
                 break;
             case WAIT:
                 searchWaitStop(false);
                 break;
             case PONDERHIT:
                 pondersearch = HITPONDER;
+                startSearchTime(true);
+
                 break;
             case STOP:
             case QUIT:

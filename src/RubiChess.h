@@ -1352,7 +1352,7 @@ extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7 };
 enum RootsearchType { SinglePVSearch, MultiPVSearch };
 enum PruneType { Prune, MatePrune, NoPrune };
-enum TimecontrolType { VariableTime, FixedNodes, InfiniteTime };
+enum TimecontrolType { ShortTime, VariableTime, FixedNodes, InfiniteTime };
 
 enum AttackType { FREE, OCCUPIED, OCCUPIEDANDKING };
 
@@ -1542,7 +1542,7 @@ public:
     int getHistory(uint32_t code);
     int getTacticalHst(uint32_t code);
     void resetStats();
-    inline void CheckForImmediateStop();
+    template <TimecontrolType Tc> inline bool CheckForImmediateStop();
     int CreateEvasionMovelist(chessmove* mstart);
     template <MoveType Mt> int CreateMovelist(chessmove* mstart);
     template <PieceType Pt, Color me> inline int CreateMovelistPiece(chessmove* mstart, U64 occ, U64 targets);
@@ -2030,10 +2030,11 @@ public:
     uint64_t bottompadding[8];
 };
 
-void searchStart();
+template <RootsearchType RT> void searchStart();
 void searchWaitStop(bool forceStop = true);
 void searchinit();
 void resetEndTime(int constantRootMoves);
+void startSearchTime(bool ponderhit);
 
 
 //

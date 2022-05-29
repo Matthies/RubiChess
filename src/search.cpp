@@ -294,12 +294,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     int effectiveDepth;
     const bool PVNode = (alpha != beta - 1);
     const bool bFixedNodes = (Tc == FixedNodes);
-    const bool bNeedsTimecheck = (Tc == VariableTime);
+    const bool bNeedsTimecheck = (Tc <= VariableTime);
 
-    if (bFixedNodes && nodes >= en.maxnodes)
+    if (CheckForImmediateStop<Tc>())
         return beta;
-    else if(bNeedsTimecheck)
-        CheckForImmediateStop();
 
     // Reset pv
     pvtable[ply][0] = 0;
@@ -891,13 +889,9 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
     int lastmoveindex;
 
     const bool isMultiPV = (RT == MultiPVSearch);
-    const bool bFixedNodes = (Tc == FixedNodes);
-    const bool bNeedsTimecheck = (Tc == VariableTime);
 
-    if (bFixedNodes && nodes >= en.maxnodes)
-        return beta;
-    else if (bNeedsTimecheck)
-        CheckForImmediateStop();
+    if (CheckForImmediateStop<Tc>())
+        return alpha;
 
     bool mateprune = (alpha > SCORETBWININMAXPLY || beta < -SCORETBWININMAXPLY);
 
@@ -1215,7 +1209,7 @@ static void mainSearch(searchthread *thr)
     const bool isMultiPV = (RT == MultiPVSearch);
     const bool isMainThread = (thr->index == 0);
     const bool bFixedNodes = (TC == FixedNodes);
-    const bool bNeedsTimecheck = (TC == VariableTime);
+    const bool bNeedsTimecheck = (TC <= VariableTime);
 
     chessposition *pos = &thr->pos;
 
@@ -1612,11 +1606,10 @@ void startSearchTime(bool ponderhit)
     en.clockstarttime = getTime();
     if (!ponderhit)
         en.thinkstarttime = en.clockstarttime;
-
-    resetEndTime(0);
 }
 
 
+template <RootsearchType RT>
 void searchStart()
 {
     uint32_t bm = pbook.GetMove(&en.sthread[0].pos);
@@ -1627,7 +1620,7 @@ void searchStart()
     }
 
     en.stopLevel = ENGINERUN;
-    startSearchTime(false);
+    resetEndTime(0);
 
     en.moveoutput = false;
     en.tbhits = en.sthread[0].pos.tbPosition;  // Rootpos in TB => report at least one tbhit
@@ -1635,13 +1628,16 @@ void searchStart()
     // increment generation counter for tt aging
     tp.nextSearch();
 
+    U64 totaltime = en.mytime + en.myinc;
+    bool bfrequentTimechecks = (totaltime && totaltime <= 20);
+
     void (*msearchptr)(searchthread * thr);
-    if (en.maxnodes)
-        msearchptr = (en.MultiPV == 1 ? mainSearch<SinglePVSearch, FixedNodes> : mainSearch<MultiPVSearch, FixedNodes>);
-    else if (en.endtime2)
-        msearchptr = (en.MultiPV == 1 ? mainSearch<SinglePVSearch, VariableTime> : mainSearch<MultiPVSearch, VariableTime>);
+    if (en.endtime2)
+        msearchptr = (bfrequentTimechecks ? mainSearch<RT, ShortTime> : mainSearch<RT, VariableTime>);
+    else if (en.maxnodes)
+        msearchptr = mainSearch<RT, FixedNodes>;
     else
-        msearchptr = (en.MultiPV == 1 ? mainSearch<SinglePVSearch, InfiniteTime> : mainSearch<MultiPVSearch, InfiniteTime>);
+        msearchptr = mainSearch<RT, InfiniteTime>;
 
     for (int tnum = 0; tnum < en.Threads; tnum++)
         en.sthread[tnum].thr = thread(msearchptr, &en.sthread[tnum]);
@@ -1663,28 +1659,39 @@ void searchWaitStop(bool forceStop)
     en.prepared = false;
 }
 
-
-inline void chessposition::CheckForImmediateStop()
+template <TimecontrolType Tc>
+inline bool chessposition::CheckForImmediateStop()
 {
-    if (threadindex || (nodes & NODESPERCHECK))
-        return;
+    if (Tc == InfiniteTime)
+        return false;
+
+    if (Tc == FixedNodes)
+        return (nodes >= en.maxnodes);
+
+    const U64 nodespercheckmsk = (Tc == VariableTime ? 0xfff : 0xf);
+
+    if (threadindex || (nodes & nodespercheckmsk))
+        return false;
 
     if (en.pondersearch == PONDERING)
         // pondering... just continue searching
-        return;
+        return false;
 
     if (en.pondersearch == HITPONDER)
     {
-        // ponderhit
-        startSearchTime(true);
+        resetEndTime(0);
         en.pondersearch = NO;
-        return;
+        return false;
     }
 
     U64 nowtime = getTime();
 
     if (nowtime >= en.endtime2 && en.stopLevel < ENGINESTOPIMMEDIATELY)
+    {
         en.stopLevel = ENGINESTOPIMMEDIATELY;
+        return true;
+    }
+    return false;
 }
 
 
@@ -1693,3 +1700,5 @@ inline void chessposition::CheckForImmediateStop()
 // This avoids putting these definitions in header file
 template int chessposition::alphabeta<NoPrune, VariableTime>(int alpha, int beta, int depth);
 template int chessposition::alphabeta<NoPrune, InfiniteTime>(int alpha, int beta, int depth);
+template void searchStart <SinglePVSearch>();
+template void searchStart <MultiPVSearch>();
