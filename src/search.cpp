@@ -975,7 +975,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
     // get static evaluation of the position
     if (staticeval == NOSCORE)
         staticeval = getEval<NOTRACE>();
-    staticevalstack[ply] = staticeval;
+    staticevalstack[0] = staticeval;
 
     int quietsPlayed = 0;
     int tacticalPlayed = 0;
