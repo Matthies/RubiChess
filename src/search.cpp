@@ -58,6 +58,40 @@ void searchinit()
 }
 
 
+template <TimecontrolType Tc>
+inline bool chessposition::CheckForImmediateStop()
+{
+    if (Tc == FixedNodes)
+        return (nodes >= en.maxnodes);
+
+    if (threadindex)
+        return false;
+
+    if (Tc == InfiniteTime)
+        return false;
+
+    if (en.pondersearch == PONDERING)
+        // pondering... just continue searching
+        return false;
+
+    if (--en.nodesToNextCheck > 0)
+        return false;
+
+    en.nodesToNextCheck = (Tc == VariableTime ? 0x1000 : 0x1000);
+
+    //guiCom.log("CFI at node " + to_string(nodes) + "\n");
+
+    U64 nowtime = getTime();
+
+    if (nowtime >= en.endtime2 && en.stopLevel < ENGINESTOPIMMEDIATELY)
+    {
+        en.stopLevel = ENGINESTOPIMMEDIATELY;
+        return true;
+    }
+    return false;
+}
+
+
 
 #define HISTORYMAXDEPTH 20
 #define HISTORYAGESHIFT 8
@@ -293,9 +327,10 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     int extendall = 0;
     int effectiveDepth;
     const bool PVNode = (alpha != beta - 1);
+#if 0
     const bool bFixedNodes = (Tc == FixedNodes);
     const bool bNeedsTimecheck = (Tc <= VariableTime);
-
+#endif
     if (CheckForImmediateStop<Tc>())
         return beta;
 
@@ -1193,7 +1228,7 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, in
 
 
 template <RootsearchType RT, TimecontrolType TC>
-static void mainSearch(searchthread *thr)
+void mainSearch(searchthread *thr)
 {
     int score;
     int alpha, beta;
@@ -1234,7 +1269,7 @@ static void mainSearch(searchthread *thr)
     int constantRootMoves = 0;
     int lastiterationscore = NOSCORE;
     en.lastReport = 0;
-    U64 nowtime;
+    U64 nowtime = 0;
     pos->lastpv[0] = 0;
     bool isDraw = (pos->testRepetition() >= 2) || (pos->halfmovescounter >= 100);
     do
@@ -1311,7 +1346,8 @@ static void mainSearch(searchthread *thr)
             pos->lastpv[i] = 0;
         }
 
-        nowtime = getTime();
+        if (isMainThread)
+            nowtime = getTime();
 
         if (score > NOSCORE && isMainThread)
         {
@@ -1408,7 +1444,7 @@ static void mainSearch(searchthread *thr)
 
             if (bNeedsTimecheck && (inWindow == 1 || !constantRootMoves))
                 // Recalculate remaining time for next depth
-                resetEndTime(constantRootMoves);
+                en.resetEndTime(constantRootMoves);
 
             // Mate found; early exit
             if (!isMultiPV && inWindow == 1 && en.endtime1 && thr->depth > SCOREWHITEWINS - abs(score) && en.pondersearch != PONDERING)
@@ -1424,7 +1460,7 @@ static void mainSearch(searchthread *thr)
             break;
 
         // exit if STOPSOON is requested and we're in aspiration window
-        if (bNeedsTimecheck && en.endtime1 && nowtime >= en.endtime1 && inWindow == 1 && constantRootMoves && isMainThread)
+        if (isMainThread && bNeedsTimecheck && en.endtime1 && nowtime >= en.endtime1 && inWindow == 1 && constantRootMoves)
             break;
 
         // exit if max depth is reached
@@ -1517,6 +1553,8 @@ static void mainSearch(searchthread *thr)
         }
         guiCom << guiStr + "\n";
         en.stopLevel = ENGINESTOPIMMEDIATELY;
+        en.clockstoptime = getTime();
+        en.lastmovetime = en.clockstoptime - en.clockstarttime;
 
         // Save pondermove in rootposition for time management of following search
         en.rootposition.pondermove = pos->pondermove;
@@ -1531,174 +1569,15 @@ static void mainSearch(searchthread *thr)
 }
 
 
-void resetEndTime(int constantRootMoves)
-{
-    U64 clockStartTime = en.clockstarttime;
-    U64 thinkStartTime = en.thinkstarttime;
-    int timeinc = en.myinc;
-    int timetouse = en.mytime;
-    int overhead = en.moveOverhead;
-    int constance = constantRootMoves * 2 + en.ponderhitbonus;
-
-    // main goal is to let the search stop at endtime1 (full iterations) most times and get only few stops at endtime2 (interrupted iteration)
-    // constance: ponder hit and/or onstance of best move in the last iteration lower the time within a given interval
-    if (en.movestogo)
-    {
-        // should garantee timetouse > 0
-        // f1: stop soon after current iteration at 1.0...2.2 x average movetime
-        // f2: stop immediately at 1.9...3.1 x average movetime
-        // movevariation: many moves to go decrease f1 (stop soon)
-        int movevariation = min(32, en.movestogo) * 3 / 32;
-        int f1 = max(9 - movevariation, 21 - movevariation - constance);
-        int f2 = max(19, 31 - constance);
-        int timeforallmoves = timetouse + en.movestogo * timeinc;
-
-        en.endtime1 = thinkStartTime + timeforallmoves * en.frequency * f1 / (en.movestogo + 1) / 10000;
-        en.endtime2 = clockStartTime + min(max(0, timetouse - overhead), f2 * timeforallmoves / (en.movestogo + 1) / (19 -  4 * movevariation)) * en.frequency / 1000;
-    }
-    else if (timetouse) {
-        if (timeinc)
-        {
-            // sudden death with increment; split the remaining time in n timeslots depending on material phase and move number
-            // ph: phase of the game averaging material and move number
-            // f1: stop soon after 5..17 timeslot
-            // f2: stop immediately after 15..27 timeslots
-            int ph = (en.sthread[0].pos.getPhase() + min(255, en.sthread[0].pos.fullmovescounter * 6)) / 2;
-            int f1 = max(5, 17 - constance);
-            int f2 = max(15, 27 - constance);
-            timetouse = max(timeinc, timetouse); // workaround for Arena bug
-
-            en.endtime1 = thinkStartTime + max(timeinc, f1 * (timetouse + timeinc) / (256 - ph)) * en.frequency / 1000;
-            en.endtime2 = clockStartTime + min(max(0, timetouse - overhead), max(timeinc, f2 * (timetouse + timeinc) / (256 - ph))) * en.frequency / 1000;
-        }
-        else {
-            // sudden death without increment; play for another x;y moves
-            // f1: stop soon at 1/30...1/42 time slot
-            // f2: stop immediately at 1/10...1/22 time slot
-            int f1 = min(42, 30 + constance);
-            int f2 = min(22, 10 + constance);
-
-            en.endtime1 = thinkStartTime + timetouse / f1 * en.frequency / 1000;
-            en.endtime2 = clockStartTime + min(max(0, timetouse - overhead), timetouse / f2) * en.frequency / 1000;
-        }
-    }
-    else if (timeinc)
-    {
-        // timetouse = 0 => movetime mode: Use exactly timeinc respecting overhead
-        en.endtime1 = en.endtime2 = thinkStartTime + max(0, (timeinc - overhead)) * en.frequency / 1000;
-    }
-    else {
-        en.endtime1 = en.endtime2 = 0;
-    }
-
-#ifdef TDEBUG
-    stringstream ss;
-    guiCom.log("[TDEBUG] Time from UCI: time=" + to_string(timetouse) + "  inc=" + to_string(timeinc) + "  overhead=" + to_string(overhead) + "  constance=" + to_string(constance) + "\n");
-    ss << "[TDEBUG] Time for this move: " << setprecision(3) << (en.endtime1 - en.clockstarttime) / (double)en.frequency << " / " << (en.endtime2 - en.clockstarttime) / (double)en.frequency << "\n";
-    guiCom.log(ss.str());
-    if (timeinc) guiCom.log("[TDEBUG] Timefactor (use/inc): " + to_string(timetouse / timeinc) + "\n");
-#endif
-}
-
-
-void startSearchTime(bool ponderhit)
-{
-    en.clockstarttime = getTime();
-    if (!ponderhit)
-        en.thinkstarttime = en.clockstarttime;
-}
-
-
-template <RootsearchType RT>
-void searchStart()
-{
-    uint32_t bm = pbook.GetMove(&en.sthread[0].pos);
-    if (bm)
-    {
-        guiCom << "bestmove " + moveToString(bm) + "\n";
-        return;
-    }
-
-    en.stopLevel = ENGINERUN;
-    resetEndTime(0);
-
-    en.moveoutput = false;
-    en.tbhits = en.sthread[0].pos.tbPosition;  // Rootpos in TB => report at least one tbhit
-
-    // increment generation counter for tt aging
-    tp.nextSearch();
-
-    U64 totaltime = en.mytime + en.myinc;
-    bool bfrequentTimechecks = (totaltime && totaltime <= 20);
-
-    void (*msearchptr)(searchthread * thr);
-    if (en.endtime2)
-        msearchptr = (bfrequentTimechecks ? mainSearch<RT, ShortTime> : mainSearch<RT, VariableTime>);
-    else if (en.maxnodes)
-        msearchptr = mainSearch<RT, FixedNodes>;
-    else
-        msearchptr = mainSearch<RT, InfiniteTime>;
-
-    for (int tnum = 0; tnum < en.Threads; tnum++)
-        en.sthread[tnum].thr = thread(msearchptr, &en.sthread[tnum]);
-}
-
-
-void searchWaitStop(bool forceStop)
-{
-    if (en.stopLevel == ENGINETERMINATEDSEARCH)
-        return;
-
-    // Make the other threads stop now
-    if (forceStop)
-        en.stopLevel = ENGINESTOPIMMEDIATELY;
-    for (int tnum = 0; tnum < en.Threads; tnum++)
-        if (en.sthread[tnum].thr.joinable())
-            en.sthread[tnum].thr.join();
-    en.stopLevel = ENGINETERMINATEDSEARCH;
-    en.prepared = false;
-}
-
-template <TimecontrolType Tc>
-inline bool chessposition::CheckForImmediateStop()
-{
-    if (Tc == InfiniteTime)
-        return false;
-
-    if (Tc == FixedNodes)
-        return (nodes >= en.maxnodes);
-
-    const U64 nodespercheckmsk = (Tc == VariableTime ? 0xfff : 0xf);
-
-    if (threadindex || (nodes & nodespercheckmsk))
-        return false;
-
-    if (en.pondersearch == PONDERING)
-        // pondering... just continue searching
-        return false;
-
-    if (en.pondersearch == HITPONDER)
-    {
-        resetEndTime(0);
-        en.pondersearch = NO;
-        return false;
-    }
-
-    U64 nowtime = getTime();
-
-    if (nowtime >= en.endtime2 && en.stopLevel < ENGINESTOPIMMEDIATELY)
-    {
-        en.stopLevel = ENGINESTOPIMMEDIATELY;
-        return true;
-    }
-    return false;
-}
-
-
-
 // Explicit template instantiation
 // This avoids putting these definitions in header file
 template int chessposition::alphabeta<NoPrune, VariableTime>(int alpha, int beta, int depth);
 template int chessposition::alphabeta<NoPrune, InfiniteTime>(int alpha, int beta, int depth);
-template void searchStart <SinglePVSearch>();
-template void searchStart <MultiPVSearch>();
+template void mainSearch<SinglePVSearch, ShortTime>(searchthread*);
+template void mainSearch<SinglePVSearch, VariableTime>(searchthread*);
+template void mainSearch<SinglePVSearch, FixedNodes>(searchthread*);
+template void mainSearch<SinglePVSearch, InfiniteTime>(searchthread*);
+template void mainSearch<MultiPVSearch, ShortTime>(searchthread*);
+template void mainSearch<MultiPVSearch, VariableTime>(searchthread*);
+template void mainSearch<MultiPVSearch, FixedNodes>(searchthread*);
+template void mainSearch<MultiPVSearch, InfiniteTime>(searchthread*);
