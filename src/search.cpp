@@ -77,17 +77,19 @@ inline bool chessposition::CheckForImmediateStop()
     if (--en.nodesToNextCheck > 0)
         return false;
 
-    en.nodesToNextCheck = (Tc == VariableTime ? 0x1000 : 0x1000);
+    S64 remainingticks = en.endtime2 - getTime();
 
-    //guiCom.log("CFI at node " + to_string(nodes) + "\n");
-
-    U64 nowtime = getTime();
-
-    if (nowtime >= en.endtime2 && en.stopLevel < ENGINESTOPIMMEDIATELY)
+    if (remainingticks <= 0 && en.stopLevel < ENGINESTOPIMMEDIATELY)
     {
         en.stopLevel = ENGINESTOPIMMEDIATELY;
         return true;
     }
+
+    U64 remainingMs = (U64)(remainingticks * 1000.0 / en.frequency);
+    en.nodesToNextCheck = (remainingMs > 5000 ? 0x10000 : remainingMs > 500 ? 0x1000 : 0x100);
+
+    //guiCom.log("info string CFI next: " + to_string(en.nodesToNextCheck) + "\n");
+
     return false;
 }
 
@@ -442,6 +444,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         int v = probe_wdl(&success);
         if (success) {
             en.tbhits++;
+            en.nodesToNextCheck = 0;
             int bound;
             if (v <= -1 - en.Syzygy50MoveRule) {
                 bound = HASHALPHA;
