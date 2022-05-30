@@ -865,19 +865,8 @@ void engine::searchStart()
     // increment generation counter for tt aging
     tp.nextSearch();
 
-    U64 totaltime = mytime + myinc;
-    bool bfrequentTimechecks = (totaltime && totaltime <= 20);
-
-    void (*msearchptr)(searchthread * thr);
-    if (endtime2)
-        msearchptr = (bfrequentTimechecks ? mainSearch<RT, ShortTime> : mainSearch<RT, VariableTime>);
-    else if (maxnodes)
-        msearchptr = mainSearch<RT, FixedNodes>;
-    else
-        msearchptr = mainSearch<RT, InfiniteTime>;
-
     for (int tnum = 0; tnum < Threads; tnum++)
-        sthread[tnum].thr = thread(msearchptr, &sthread[tnum]);
+        sthread[tnum].thr = thread(mainSearch<RT>, &sthread[tnum]);
 }
 
 

@@ -1352,7 +1352,7 @@ extern U64 mRookAttacks[64][1 << ROOKINDEXBITS];
 enum MoveType { QUIET = 1, CAPTURE = 2, PROMOTE = 4, TACTICAL = 6, ALL = 7 };
 enum RootsearchType { SinglePVSearch, MultiPVSearch };
 enum PruneType { Prune, MatePrune, NoPrune };
-enum TimecontrolType { ShortTime, VariableTime, FixedNodes, InfiniteTime };
+//enum TimecontrolType { ShortTime, VariableTime, FixedNodes, InfiniteTime };
 
 enum AttackType { FREE, OCCUPIED, OCCUPIEDANDKING };
 
@@ -1529,8 +1529,8 @@ public:
     void getScaling(Materialhashentry *mhentry);
     int getComplexity(int eval, pawnhashentry *phentry, Materialhashentry *mhentry);
 
-    template <RootsearchType RT, TimecontrolType Tc> int rootsearch(int alpha, int beta, int depth, int inWindowLast, int maxmoveindex = 0);
-    template <PruneType Pt, TimecontrolType Tc> int alphabeta(int alpha, int beta, int depth);
+    template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth, int inWindowLast, int maxmoveindex = 0);
+    template <PruneType Pt> int alphabeta(int alpha, int beta, int depth);
     template <PruneType Pt> int getQuiescence(int alpha, int beta, int depth);
     void updateHistory(uint32_t code, int value);
     void updateTacticalHst(uint32_t code, int value);
@@ -1542,7 +1542,7 @@ public:
     int getHistory(uint32_t code);
     int getTacticalHst(uint32_t code);
     void resetStats();
-    template <TimecontrolType Tc> inline bool CheckForImmediateStop();
+    inline bool CheckForImmediateStop();
     int CreateEvasionMovelist(chessmove* mstart);
     template <MoveType Mt> int CreateMovelist(chessmove* mstart);
     template <PieceType Pt, Color me> inline int CreateMovelistPiece(chessmove* mstart, U64 occ, U64 targets);
@@ -2043,7 +2043,7 @@ public:
 
 
 void searchinit();
-template <RootsearchType RT, TimecontrolType TC> void mainSearch(searchthread* thr);
+template <RootsearchType RT> void mainSearch(searchthread* thr);
 
 //
 // TB stuff
