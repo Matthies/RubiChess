@@ -334,7 +334,13 @@ void engine::measureOverhead()
         if (measuredOverhead > maxMeasuredOverhead)
         {
             maxMeasuredOverhead = measuredOverhead;
-            guiCom << "New maximal move overhead measured: " + to_string(measuredOverhead) + "\n";
+            if (measuredOverhead > moveOverhead / 2)
+            {
+                if (measuredOverhead > moveOverhead)
+                    guiCom << "info string Measured move overhead is " + to_string(measuredOverhead) + "ms and time forfeits are very likely. Please increase Move_Overhead option!\n";
+                else
+                    guiCom << "info string Measured move overhead is " + to_string(measuredOverhead) + "ms (> 50% of allowed via Move_Overhead option).\n";
+            }
         }
     }
 
