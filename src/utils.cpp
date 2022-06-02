@@ -862,7 +862,6 @@ void statistic::output(vector<string> args)
 
     // Move selector
     int p, d, l;
-    int maxdepth = 0;
     for (p = 0; p < 2; p++)
     {
         n = i1 = i2 = i3 = i4 = i5 = i6 = i7 = i8 = i9 = i10 = i11 = 0ULL;
@@ -873,7 +872,6 @@ void statistic::output(vector<string> args)
         for (d = 0; d < MAXSTATDEPTH; d++) {
             if (ms_n[p][d] == 0)
                 continue;
-            maxdepth = d;
             string depthStr = (d == 0 ? "QSearch " : d == MAXSTATDEPTH - 1 ? "ProbCut " : "Depth#" + (d < 10 ? string(" ") : "") + to_string(d));
             sprintf(str, "n=%12lld   (%6.2f%%)  %%TctStg:%5.1f Mvs:%4.1f  %%SpcStg:%5.1f Mvs:%4.1f  %%QteStg:%5.1f Mvs:%4.1f  %%BdTStg:%5.1f Mvs:%4.1f  %%EvsStg:%5.1f Mvs:%4.1f\n",
                 ms_n[p][d], 100.0 * ms_n[p][d] / NODBZ(n),

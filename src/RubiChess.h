@@ -1463,6 +1463,7 @@ public:
     MoveSelector extensionMoveSelector[MAXDEPTH];
     int16_t* prerootconthistptr[4];
     int16_t* conthistptr[MAXDEPTH];
+    int nodesToNextCheck;
 #ifdef SDEBUG
     int pvmovevalue[MAXDEPTH];
     int pvalpha[MAXDEPTH];
@@ -1541,7 +1542,7 @@ public:
     int getHistory(uint32_t code);
     int getTacticalHst(uint32_t code);
     void resetStats();
-    inline void CheckForImmediateStop();
+    inline bool CheckForImmediateStop();
     int CreateEvasionMovelist(chessmove* mstart);
     template <MoveType Mt> int CreateMovelist(chessmove* mstart);
     template <PieceType Pt, Color me> inline int CreateMovelistPiece(chessmove* mstart, U64 occ, U64 targets);
@@ -1715,7 +1716,7 @@ typedef map<string, ucioption_t>::iterator optionmapiterator;
 #define ENGINETERMINATEDSEARCH 3
 
 #define NODESPERCHECK 0xfff
-enum ponderstate_t { NO, PONDERING, HITPONDER };
+enum ponderstate_t { NO, PONDERING };
 
 
 #define CPUSSE2     (1 << 0)
@@ -1786,10 +1787,14 @@ public:
     U64 tbhits;
     U64 thinkstarttime;
     U64 clockstarttime;
+    U64 clockstoptime;
+    U64 lastmovetime;
+    U64 lastclockstarttime;
     U64 endtime1; // time to stop before starting next iteration
     U64 endtime2; // time to stop immediately
     U64 frequency;
     int mytime, yourtime, myinc, yourinc, movestogo, mate, movetime, maxdepth;
+    int lastmytime, lastmyinc;
     U64 maxnodes;
     bool infinite;
     bool debug = false;
@@ -1800,6 +1805,7 @@ public:
     int restSizeOfTp = 0;
     int sizeOfPh;
     int moveOverhead;
+    int maxMeasuredOverhead;
     int MultiPV;
     bool ponder;
     bool chess960;
@@ -1821,6 +1827,7 @@ public:
     int ponderhitbonus;
     int lastReport;
     int benchdepth;
+    bool prepared;
     string benchmove;
     string benchpondermove;
     ucioptions_t ucioptions;
@@ -1883,6 +1890,11 @@ public:
     void prepareThreads();
     void resetStats();
     void registerOptions();
+    void measureOverhead();
+    template <RootsearchType RT> void searchStart();
+    void searchWaitStop(bool forceStop = true);
+    void resetEndTime(int constantRootMoves);
+    void startSearchTime(bool ponderhit);
 };
 
 PieceType GetPieceType(char c);
@@ -2028,11 +2040,9 @@ public:
     uint64_t bottompadding[8];
 };
 
-void searchStart();
-void searchWaitStop(bool forceStop = true);
-void searchinit();
-void resetEndTime(int constantRootMoves);
 
+void searchinit();
+template <RootsearchType RT> void mainSearch(searchthread* thr);
 
 //
 // TB stuff
