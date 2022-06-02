@@ -664,7 +664,6 @@ void engine::communicate(string inputstring)
                 searchWaitStop(false);
                 break;
             case PONDERHIT:
-                //pondersearch = HITPONDER;
                 startSearchTime(true);
                 resetEndTime(0);
                 pondersearch = NO;

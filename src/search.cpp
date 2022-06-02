@@ -87,8 +87,6 @@ inline bool chessposition::CheckForImmediateStop()
     U64 remainingMs = (U64)(remainingticks * 1000.0 / en.frequency);
     en.nodesToNextCheck = (remainingMs > 5000 ? 0x10000 : remainingMs > 500 ? 0x1000 : 0x100);
 
-    //guiCom.log("info string CFI next: " + to_string(en.nodesToNextCheck) + "\n");
-
     return false;
 }
 
@@ -328,10 +326,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     int extendall = 0;
     int effectiveDepth;
     const bool PVNode = (alpha != beta - 1);
-#if 0
-    const bool bFixedNodes = (Tc == FixedNodes);
-    const bool bNeedsTimecheck = (Tc <= VariableTime);
-#endif
+
     if (CheckForImmediateStop())
         return beta;
 
