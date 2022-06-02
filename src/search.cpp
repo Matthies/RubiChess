@@ -73,7 +73,7 @@ inline bool chessposition::CheckForImmediateStop()
         // pondering... just continue searching
         return false;
 
-    if (--en.nodesToNextCheck > 0)
+    if (--nodesToNextCheck > 0)
         return false;
 
     S64 remainingticks = en.endtime2 - getTime();
@@ -85,7 +85,7 @@ inline bool chessposition::CheckForImmediateStop()
     }
 
     U64 remainingMs = (U64)(remainingticks * 1000.0 / en.frequency);
-    en.nodesToNextCheck = (remainingMs > 5000 ? 0x10000 : remainingMs > 500 ? 0x1000 : 0x100);
+    nodesToNextCheck = (remainingMs > 5000 ? 0x10000 : remainingMs > 500 ? 0x1000 : 0x100);
 
     return false;
 }
@@ -438,7 +438,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         int v = probe_wdl(&success);
         if (success) {
             en.tbhits++;
-            en.nodesToNextCheck = 0;
+            nodesToNextCheck = 0;
             int bound;
             if (v <= -1 - en.Syzygy50MoveRule) {
                 bound = HASHALPHA;

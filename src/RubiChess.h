@@ -1463,6 +1463,7 @@ public:
     MoveSelector extensionMoveSelector[MAXDEPTH];
     int16_t* prerootconthistptr[4];
     int16_t* conthistptr[MAXDEPTH];
+    int nodesToNextCheck;
 #ifdef SDEBUG
     int pvmovevalue[MAXDEPTH];
     int pvalpha[MAXDEPTH];
@@ -1805,7 +1806,6 @@ public:
     int sizeOfPh;
     int moveOverhead;
     int maxMeasuredOverhead;
-    int nodesToNextCheck;
     int MultiPV;
     bool ponder;
     bool chess960;

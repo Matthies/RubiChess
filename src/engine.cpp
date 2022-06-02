@@ -280,6 +280,8 @@ void engine::prepareThreads()
         pos->nodes = 0;
         pos->nullmoveply = 0;
         pos->nullmoveside = 0;
+        pos->nodesToNextCheck = 0;
+
 
         pos->accumulator[0].computationState[WHITE] = false;
         pos->accumulator[0].computationState[BLACK] = false;
@@ -847,7 +849,6 @@ void engine::startSearchTime(bool ponderhit)
     clockstarttime = getTime();
     if (!ponderhit)
         thinkstarttime = clockstarttime;
-    nodesToNextCheck = 0;
 }
 
 
