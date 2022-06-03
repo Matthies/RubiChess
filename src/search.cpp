@@ -1023,6 +1023,8 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
             if (rootmovelist.move[i] < rootmovelist.move[j])
                 swap(rootmovelist.move[i], rootmovelist.move[j]);
 
+        U64 nodesbeforemove = nodes;
+
         m = &rootmovelist.move[i];
 #ifdef SDEBUG
         bool isDebugMove = (debugMove.code == m->code);
@@ -1069,6 +1071,8 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
         SDEBUGDO(isDebugMove, pvabortscore[0] = score;)
 
         unplayMove(m->code);
+
+        nodespermove[(uint16_t)m->code] += nodes - nodesbeforemove;
 
         if (en.stopLevel == ENGINESTOPIMMEDIATELY)
         {
@@ -1438,8 +1442,11 @@ void mainSearch(searchthread *thr)
             }
 
             if (en.endtime1 && (inWindow == 1 || !constantRootMoves))
+            {
                 // Recalculate remaining time for next depth
-                en.resetEndTime(constantRootMoves);
+                double bestmovenodesratio = max(0.5, 2.5 -  2 * (double)pos->nodespermove[(uint16_t)pos->bestmove] / pos->nodes);
+                en.resetEndTime(constantRootMoves, bestmovenodesratio);
+            }
 
             // Mate found; early exit
             if (!isMultiPV && inWindow == 1 && en.endtime1 && thr->depth > SCOREWHITEWINS - abs(score) && en.pondersearch != PONDERING)

@@ -286,6 +286,7 @@ void engine::prepareThreads()
         pos->accumulator[0].computationState[WHITE] = false;
         pos->accumulator[0].computationState[BLACK] = false;
     }
+    memset(&sthread[0].pos.nodespermove, 0, sizeof(chessposition::nodespermove));
     prepared = true;
 }
 
@@ -774,7 +775,7 @@ GuiToken engine::parse(vector<string>* args, string ss)
 }
 
 
-void engine::resetEndTime(int constantRootMoves)
+void engine::resetEndTime(int constantRootMoves, int bestmovenodesratio)
 {
     U64 clockStartTime = clockstarttime;
     U64 thinkStartTime = thinkstarttime;
@@ -792,8 +793,8 @@ void engine::resetEndTime(int constantRootMoves)
         // f2: stop immediately at 1.9...3.1 x average movetime
         // movevariation: many moves to go decrease f1 (stop soon)
         int movevariation = min(32, movestogo) * 3 / 32;
-        int f1 = max(9 - movevariation, 21 - movevariation - constance);
-        int f2 = max(19, 31 - constance);
+        int f1 = max(9 - movevariation, 21 - movevariation - constance) * bestmovenodesratio;
+        int f2 = max(19, 31 - constance) * bestmovenodesratio;
         int timeforallmoves = timetouse + movestogo * timeinc;
 
         endtime1 = thinkStartTime + timeforallmoves * frequency * f1 / (movestogo + 1) / 10000;
@@ -807,8 +808,8 @@ void engine::resetEndTime(int constantRootMoves)
             // f1: stop soon after 5..17 timeslot
             // f2: stop immediately after 15..27 timeslots
             int ph = (sthread[0].pos.getPhase() + min(255, sthread[0].pos.fullmovescounter * 6)) / 2;
-            int f1 = max(5, 17 - constance);
-            int f2 = max(15, 27 - constance);
+            int f1 = max(5, 17 - constance) * bestmovenodesratio;
+            int f2 = max(15, 27 - constance) * bestmovenodesratio;
             timetouse = max(timeinc, timetouse); // workaround for Arena bug
 
             endtime1 = thinkStartTime + max(timeinc, f1 * (timetouse + timeinc) / (256 - ph)) * frequency / 1000;
