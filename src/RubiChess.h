@@ -1894,7 +1894,7 @@ public:
     void measureOverhead();
     template <RootsearchType RT> void searchStart();
     void searchWaitStop(bool forceStop = true);
-    void resetEndTime(int constantRootMoves = 0, int bestmovenodesratio = 100);
+    void resetEndTime(int constantRootMoves = 0, int bestmovenodesratio = 128);
     void startSearchTime(bool ponderhit);
 };
 

@@ -1444,7 +1444,7 @@ void mainSearch(searchthread *thr)
             if (en.endtime1 && (inWindow == 1 || !constantRootMoves))
             {
                 // Recalculate remaining time for next depth
-                double bestmovenodesratio = max(0.5, 2.5 -  2 * (double)pos->nodespermove[(uint16_t)pos->bestmove] / pos->nodes);
+                int bestmovenodesratio = pos->nodes ? (int)(128 * max(0.5, 2.5 -  2 * (double)pos->nodespermove[(uint16_t)pos->bestmove] / pos->nodes)) : 128;
                 en.resetEndTime(constantRootMoves, bestmovenodesratio);
             }
 

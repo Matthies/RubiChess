@@ -668,7 +668,7 @@ void engine::communicate(string inputstring)
                 break;
             case PONDERHIT:
                 startSearchTime(true);
-                resetEndTime(0);
+                resetEndTime();
                 pondersearch = NO;
                 break;
             case STOP:
@@ -797,8 +797,8 @@ void engine::resetEndTime(int constantRootMoves, int bestmovenodesratio)
         int f2 = max(19, 31 - constance) * bestmovenodesratio;
         int timeforallmoves = timetouse + movestogo * timeinc;
 
-        endtime1 = thinkStartTime + timeforallmoves * frequency * f1 / (movestogo + 1) / 10000;
-        endtime2 = clockStartTime + min(max(0, timetouse - overhead), f2 * timeforallmoves / (movestogo + 1) / (19 - 4 * movevariation)) * frequency / 1000;
+        endtime1 = thinkStartTime + timeforallmoves * frequency * f1 / 128 / (movestogo + 1) / 10000;
+        endtime2 = clockStartTime + min(max(0, timetouse - overhead), f2 * timeforallmoves / 128 / (movestogo + 1) / (19 - 4 * movevariation)) * frequency / 1000;
     }
     else if (timetouse) {
         if (timeinc)
@@ -812,8 +812,8 @@ void engine::resetEndTime(int constantRootMoves, int bestmovenodesratio)
             int f2 = max(15, 27 - constance) * bestmovenodesratio;
             timetouse = max(timeinc, timetouse); // workaround for Arena bug
 
-            endtime1 = thinkStartTime + max(timeinc, f1 * (timetouse + timeinc) / (256 - ph)) * frequency / 1000;
-            endtime2 = clockStartTime + min(max(0, timetouse - overhead), max(timeinc, f2 * (timetouse + timeinc) / (256 - ph))) * frequency / 1000;
+            endtime1 = thinkStartTime + max(timeinc, f1 * (timetouse + timeinc) / 128 / (256 - ph)) * frequency / 1000;
+            endtime2 = clockStartTime + min(max(0, timetouse - overhead), max(timeinc, f2 * (timetouse + timeinc) / 128 / (256 - ph))) * frequency / 1000;
         }
         else {
             // sudden death without increment; play for another x;y moves
@@ -822,8 +822,8 @@ void engine::resetEndTime(int constantRootMoves, int bestmovenodesratio)
             int f1 = min(42, 30 + constance);
             int f2 = min(22, 10 + constance);
 
-            endtime1 = thinkStartTime + timetouse / f1 * frequency / 1000;
-            endtime2 = clockStartTime + min(max(0, timetouse - overhead), timetouse / f2) * frequency / 1000;
+            endtime1 = thinkStartTime + timetouse / f1 * frequency * bestmovenodesratio / 128 / 1000;
+            endtime2 = clockStartTime + min(max(0, timetouse - overhead), timetouse / f2 * bestmovenodesratio / 128) * frequency / 1000;
         }
     }
     else if (timeinc)
@@ -864,7 +864,7 @@ void engine::searchStart()
     }
 
     stopLevel = ENGINERUN;
-    resetEndTime(0);
+    resetEndTime();
 
     moveoutput = false;
     tbhits = sthread[0].pos.tbPosition;  // Rootpos in TB => report at least one tbhit
