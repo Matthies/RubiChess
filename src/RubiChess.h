@@ -1449,6 +1449,7 @@ public:
     int16_t counterhistory[14][64][14 * 64];
     int16_t tacticalhst[7][64][6];
     uint32_t countermove[14][64];
+    U64 nodespermove[0x10000];
     int he_threshold;
     U64 he_yes;
     U64 he_all;
@@ -1893,7 +1894,7 @@ public:
     void measureOverhead();
     template <RootsearchType RT> void searchStart();
     void searchWaitStop(bool forceStop = true);
-    void resetEndTime(int constantRootMoves);
+    void resetEndTime(int constantRootMoves = 0, int bestmovenodesratio = 128);
     void startSearchTime(bool ponderhit);
 };
 
