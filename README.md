@@ -11,9 +11,11 @@ Many thanks to the excellent documentation at https://chessprogramming.org.
 Also many thanks to Bluefever and his video tutorial https://www.youtube.com/user/BlueFeverSoft/videos
 A special thank you goes to open source engine Olithink. I had a look at its source code or even two.
 And while improving RubiChess more and more I looked at several open source engines like
-Ethereal, Stockfish, Pirarucu, Laser, ...
+Ethereal, Stockfish, Pirarucu, Laser, Koivisto, Berserk, ...
 Thank you for the great list of engines at http://www.computerchess.org.uk/ccrl/4040/
 Not mentioned all the other documentation and tools freely available.
+
+Also a big thank you goes to the guys at http://chess.grantnet.us/ especially Andrew Grant for running and improving this testing framework and to Bojun Guo (noobpwnftw) for spending all the hardware ressources for testing.
 ## NNUE
 Starting with version 1.9 RubiChess supports evaluation using NNUE weight files. With version 2.0 NNUE evaluation becomes the default.
 
