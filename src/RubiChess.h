@@ -996,7 +996,6 @@ struct Materialhashentry {
     int scale[2];
     bool onlyPawns;
     int numOfPawns;
-    int(*endgame)(chessposition*);
 };
 
 
@@ -1398,6 +1397,7 @@ public:
     U64 kingPinned;
     int lastnullmove;
     unsigned int threatSquare;
+    int piececount;
 
     uint8_t mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
     chessmovestack prerootmovestack[PREROOTMOVES];   // moves before root since last halfmovescounter reset
@@ -1523,6 +1523,7 @@ public:
     int getpsqval(bool showDetails = false);  // only for eval trace
     template <EvalType Et, int Me> int getGeneralEval(positioneval *pe);
     int getFrcCorrection();
+    bool isEndgame(int *score);
     template <EvalType Et, PieceType Pt, int Me> int getPieceEval(positioneval *pe);
     template <EvalType Et, int Me> int getLateEval(positioneval *pe);
     template <EvalType Et, int Me> void getPawnAndKingEval(pawnhashentry *entry);

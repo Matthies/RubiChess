@@ -404,7 +404,6 @@ bool  Materialhash::probeHash(U64 hash, Materialhashentry **entry)
     if ((*entry)->hash == hash)
         return true;
 
-    (*entry)->endgame = nullptr;
     (*entry)->hash = hash;
     return false;
 }

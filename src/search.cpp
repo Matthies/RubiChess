@@ -432,7 +432,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     // the root position is a TB position but only WDL tables are available.
     // In that case the search should not probe before a pawn move or capture
     // is made.
-    if (POPCOUNT(occupied00[0] | occupied00[1]) <= useTb && halfmovescounter == 0)
+    if (piececount <= useTb && halfmovescounter == 0)
     {
         int success;
         int v = probe_wdl(&success);
