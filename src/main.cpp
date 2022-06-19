@@ -21,7 +21,7 @@
 
 void generateEpd(string egn)
 {
-
+    cout << "Writing fens to stderr. Redirect stderr to file for collecting the fens.\n";
     if (egn == "chess960" || egn == "frc" || egn == "dfrc")
     {
         for (int i = 0; i < 960; i++)
@@ -33,10 +33,10 @@ void generateEpd(string egn)
             if (egn == "dfrc")
             {
                 for (int j = 0; j < 960; j++)
-                    cout << frcStartFen(i, j) << "\n";
+                    cerr << frcStartFen(i, j) << "\n";
             }
             else {
-                cout << frcStartFen(i, i) << "\n";
+                cerr << frcStartFen(i, i) << "\n";
             }
         }
 
@@ -102,7 +102,7 @@ void generateEpd(string egn)
             if (isQuiet)
             {
                 i++;
-                cout << sFen << "\n";
+                cerr << sFen << "\n";
             }
         }
     }
