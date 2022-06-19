@@ -774,9 +774,11 @@ int chessposition::getFrcCorrection()
 #define MH_KNk   0x83F6D94BCF81A7CE
 #define MH_KBk   0x6E56427061F09750
 #define MH_KNNk  0xA6D01BADBCD3304C
+#define MH_KNNkp 0xD91FCF5D7995A2F7
 #define MH_Kkn   0x764E7792D2A7E7A2
 #define MH_Kkb   0x8D7565C35C201DD8
 #define MH_Kknn  0x0BDEC92B4D5E8455
+#define MH_KPknn 0x3BBFD5FC105CD09B
 #define MH_KNkn  0xC3C10D7A3F50CAD9
 #define MH_KBkb  0xD55A84101FA6003D
 #define MH_KNkb  0x38FA1F2BB1D730A3
@@ -787,6 +789,8 @@ int chessposition::getFrcCorrection()
 #define MH_Kkbpp 0xF843081EE1F63B4D
 #define MH_KBNk  0xDBD938988C07BA2B
 #define MH_Kkbn  0xCD42B1F2ACF170CF
+#define MH_KBNkp 0xA416EC6849412890
+#define MH_KPkbn 0xFD23AD25F1F32401
 
 inline bool chessposition::isEndgame(int *score)
 {
@@ -826,15 +830,15 @@ inline bool chessposition::isEndgame(int *score)
     case MH_KBPk:
     case MH_KBPPk:
         if (piece00[WBISHOP] & WHITEBB)
-            return !(piece00[WPAWN] & ~FILEHBB);
+            return !(piece00[WPAWN] & ~FILEHBB) && squareDistance[kingpos[BLACK]][63] <= 0;
         else
-            return !(piece00[WPAWN] & ~FILEABB);
+            return !(piece00[WPAWN] & ~FILEABB) && squareDistance[kingpos[BLACK]][56] <= 0;
     case MH_Kkbp:
     case MH_Kkbpp:
         if (piece00[BBISHOP] & WHITEBB)
-            return !(piece00[BPAWN] & ~FILEABB);
+            return !(piece00[BPAWN] & ~FILEABB) && squareDistance[kingpos[WHITE]][0] <= 0;
         else
-            return !(piece00[BPAWN] & ~FILEHBB);
+            return !(piece00[BPAWN] & ~FILEHBB) && squareDistance[kingpos[WHITE]][7] <= 0;
     case MH_KBNk:
     case MH_Kkbn:
         *score = KBNvK(this);
