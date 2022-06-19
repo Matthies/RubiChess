@@ -268,6 +268,7 @@ int chessposition::getFromSfen(PackedSfen* sfen)
     materialhash = zb.getMaterialHash(this);
     lastnullmove = -1;
     ply = 0;
+    piececount = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]);
     accumulator[0].computationState[WHITE] = false;
     accumulator[0].computationState[BLACK] = false;
     threatSquare = 64;
@@ -511,6 +512,7 @@ void chessposition::copyToLight(chessposition *target)
     target->halfmovescounter = halfmovescounter;
     memcpy(target->kingpos, kingpos, sizeof(kingpos));
     memcpy(target->mailbox, mailbox, sizeof(mailbox));
+    target->piececount = piececount;
 }
 
 // test if this is the follow up position of src playing move mc
@@ -626,6 +628,7 @@ int chessposition::getNextFromBinpack(Binpack *bp)
         kingPinned = 0ULL;
         updatePins<WHITE>();
         updatePins<BLACK>();
+        piececount = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]);
         // get the move
         uint16_t bpmc = SHORTFROMBIGENDIAN(*bp->data);
         *bp->data += sizeof(uint16_t);
