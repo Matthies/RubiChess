@@ -277,6 +277,7 @@ void engine::prepareThreads()
         // early reset of variables that are important for bestmove selection
         pos->bestmovescore[0] = NOSCORE;
         pos->bestmove = 0;
+        pos->pondermove = 0;
         pos->nodes = 0;
         pos->nullmoveply = 0;
         pos->nullmoveside = 0;
