@@ -78,7 +78,7 @@ inline bool chessposition::CheckForImmediateStop()
 
     S64 remainingticks = en.endtime2 - getTime();
 
-    if (remainingticks <= 0 && en.stopLevel < ENGINESTOPIMMEDIATELY)
+    if (remainingticks <= 0)
     {
         en.stopLevel = ENGINESTOPIMMEDIATELY;
         return true;
@@ -1535,6 +1535,8 @@ void mainSearch(searchthread *thr)
             // Not enough time to get any bestmove? Fall back to default move
             pos->bestmove = pos->defaultmove;
             pos->pondermove = 0;
+            // Enable next line to detect out-of-time situations via cutechess "illegal ponder move h8h8"
+            // pos->pondermove = 0xfff;
         }
 
         strBestmove = moveToString(pos->bestmove);
