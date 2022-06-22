@@ -1537,6 +1537,9 @@ void mainSearch(searchthread *thr)
             pos->pondermove = 0;
             // Enable next line to detect out-of-time situations via cutechess "illegal ponder move h8h8"
             // pos->pondermove = 0xfff;
+#ifdef TDEBUG
+            guiCom.log("[TDEBUG] Warning! Run out of time and using default move which may lose!\n");
+#endif
         }
 
         strBestmove = moveToString(pos->bestmove);
