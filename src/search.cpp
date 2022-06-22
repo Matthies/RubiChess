@@ -922,9 +922,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
 
     const bool isMultiPV = (RT == MultiPVSearch);
 
-    if (CheckForImmediateStop())
-        return alpha;
-
     bool mateprune = (alpha > SCORETBWININMAXPLY || beta < -SCORETBWININMAXPLY);
 
     // reset pv
@@ -1074,12 +1071,15 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
 
         nodespermove[(uint16_t)m->code] += nodes - nodesbeforemove;
 
+        if (CheckForImmediateStop())
+            return bestscore;
+#if 0
         if (en.stopLevel == ENGINESTOPIMMEDIATELY)
         {
             // time over; immediate stop requested
             return bestscore;
         }
-
+#endif
         if (!ISTACTICAL(m->code))
             quietMoves[0][quietsPlayed++] = m->code;
         else
