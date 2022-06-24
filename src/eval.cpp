@@ -304,7 +304,7 @@ void register_endgame(string gamesignature, int(*endgame)(chessposition*))
 
 
 // some common endgames that need help of special evaluation
-static int KBNvK(chessposition *p)
+inline int KBNvK(chessposition *p)
 {
     int strongside = p->piece00[WBISHOP] ? WHITE : BLACK;
     int ks = p->kingpos[strongside];
@@ -317,7 +317,7 @@ static int KBNvK(chessposition *p)
     int kwcornerdistance = (int)(10.0 * min(pow(abs(FILE(c1) - FILE(kw)), pw) + pow(abs(RANK(c1) - RANK(kw)), pw),
         pow(abs(FILE(c2) - FILE(kw)), pw) + pow(abs(RANK(c2) - RANK(kw)), pw)));
 
-    return (SCOREWONENDGAME - kwcornerdistance * 10 + squareDistance[ks][kw] - p->testRepetition() * 50 - p->halfmovescounter) * S2MSIGN(strongside);
+    return (1000 - kwcornerdistance * 10 + squareDistance[ks][kw] - p->testRepetition() * 50 - p->halfmovescounter) * S2MSIGN(strongside);
 }
 
 
@@ -770,35 +770,51 @@ int chessposition::getFrcCorrection()
 }
 
 
-inline bool isDraw(U64 mh)
+#define MH_Kk    0x3679A3A322768AB5
+#define MH_KNk   0x83F6D94BCF81A7CE
+#define MH_KBk   0x6E56427061F09750
+#define MH_KNNk  0xA6D01BADBCD3304C
+#define MH_KNNkp 0xD91FCF5D7995A2F7
+#define MH_Kkn   0x764E7792D2A7E7A2
+#define MH_Kkb   0x8D7565C35C201DD8
+#define MH_Kknn  0x0BDEC92B4D5E8455
+#define MH_KPknn 0x3BBFD5FC105CD09B
+#define MH_KNkn  0xC3C10D7A3F50CAD9
+#define MH_KBkb  0xD55A84101FA6003D
+#define MH_KNkb  0x38FA1F2BB1D730A3
+#define MH_KBkn  0x2E6196419121FA47
+#define MH_KBPk  0x5E375EA73CF2C39E
+#define MH_KBPPk 0x6B50E60679111E9A
+#define MH_Kkbp  0xF2BAB13399668F63
+#define MH_Kkbpp 0xF843081EE1F63B4D
+#define MH_KBNk  0xDBD938988C07BA2B
+#define MH_Kkbn  0xCD42B1F2ACF170CF
+#define MH_KBNkp 0xA416EC6849412890
+#define MH_KPkbn 0xFD23AD25F1F32401
+
+inline bool chessposition::isEndgame(int *score)
 {
 #if 0
-    cout << "#define MH_Kk   0x" << hex << calc_key_from_str("KvK") << "\n";
-    cout << "#define MH_KNk  0x" << hex << calc_key_from_str("KNvK") << "\n";
-    cout << "#define MH_KBk  0x" << hex << calc_key_from_str("KBvK") << "\n";
-    cout << "#define MH_KNNk 0x" << hex << calc_key_from_str("KNNvK") << "\n";
-    cout << "#define MH_Kkn  0x" << hex << calc_key_from_str("KvKN") << "\n";
-    cout << "#define MH_Kkb  0x" << hex << calc_key_from_str("KvKB") << "\n";
-    cout << "#define MH_Kknn 0x" << hex << calc_key_from_str("KvKNN") << "\n";
-    cout << "#define MH_KNkn 0x" << hex << calc_key_from_str("KNvKN") << "\n";
-    cout << "#define MH_KBkb 0x" << hex << calc_key_from_str("KBvKB") << "\n";
-    cout << "#define MH_KNkb 0x" << hex << calc_key_from_str("KNvKB") << "\n";
-    cout << "#define MH_KBkn 0x" << hex << calc_key_from_str("KBvKN") << "\n";
+    printf("#define MH_Kk    0x%016llX\n", calc_key_from_str("KvK"));
+    printf("#define MH_KNk   0x%016llX\n", calc_key_from_str("KNvK"));
+    printf("#define MH_KBk   0x%016llX\n", calc_key_from_str("KBvK"));
+    printf("#define MH_KNNk  0x%016llX\n", calc_key_from_str("KNNvK"));
+    printf("#define MH_Kkn   0x%016llX\n", calc_key_from_str("KvKN"));
+    printf("#define MH_Kkb   0x%016llX\n", calc_key_from_str("KvKB"));
+    printf("#define MH_Kknn  0x%016llX\n", calc_key_from_str("KvKNN"));
+    printf("#define MH_KNkn  0x%016llX\n", calc_key_from_str("KNvKN"));
+    printf("#define MH_KBkb  0x%016llX\n", calc_key_from_str("KBvKB"));
+    printf("#define MH_KNkb  0x%016llX\n", calc_key_from_str("KNvKB"));
+    printf("#define MH_KBkn  0x%016llX\n", calc_key_from_str("KBvKN"));
+    printf("#define MH_KBPk  0x%016llX\n", calc_key_from_str("KBPvK"));
+    printf("#define MH_KBPPk 0x%016llX\n", calc_key_from_str("KBPPvK"));
+    printf("#define MH_Kkbp  0x%016llX\n", calc_key_from_str("KvKBP"));
+    printf("#define MH_Kkbpp 0x%016llX\n", calc_key_from_str("KvKBPP"));
+    printf("#define MH_KBNk  0x%016llX\n", calc_key_from_str("KBNvK"));
+    printf("#define MH_Kkbn  0x%016llX\n", calc_key_from_str("KvKBN"));
 #endif // 0
 
-#define MH_Kk   0x3679a3a322768ab5
-#define MH_KNk  0x83f6d94bcf81a7ce
-#define MH_KBk  0x6e56427061f09750
-#define MH_KNNk 0xa6d01badbcd3304c
-#define MH_Kkn  0x764e7792d2a7e7a2
-#define MH_Kkb  0x8d7565c35c201dd8
-#define MH_Kknn 0xbdec92b4d5e8455
-#define MH_KNkn 0xc3c10d7a3f50cad9
-#define MH_KBkb 0xd55a84101fa6003d
-#define MH_KNkb 0x38fa1f2bb1d730a3
-#define MH_KBkn 0x2e6196419121fa47
-
-    switch(mh) {
+    switch(materialhash) {
     case MH_Kk:
     case MH_KNk:
     case MH_KBk:
@@ -810,6 +826,22 @@ inline bool isDraw(U64 mh)
     case MH_KBkb:
     case MH_KNkb:
     case MH_KBkn:
+        return true;
+    case MH_KBPk:
+    case MH_KBPPk:
+        if (piece00[WBISHOP] & WHITEBB)
+            return !(piece00[WPAWN] & ~FILEHBB) && squareDistance[kingpos[BLACK]][63] <= 0;
+        else
+            return !(piece00[WPAWN] & ~FILEABB) && squareDistance[kingpos[BLACK]][56] <= 0;
+    case MH_Kkbp:
+    case MH_Kkbpp:
+        if (piece00[BBISHOP] & WHITEBB)
+            return !(piece00[BPAWN] & ~FILEABB) && squareDistance[kingpos[WHITE]][0] <= 0;
+        else
+            return !(piece00[BPAWN] & ~FILEHBB) && squareDistance[kingpos[WHITE]][7] <= 0;
+    case MH_KBNk:
+    case MH_Kkbn:
+        *score = KBNvK(this);
         return true;
     default:
         return false;
@@ -830,10 +862,11 @@ int chessposition::getEval()
     getpsqval();
 #endif
 
-    if (isDraw(materialhash))
-        return SCOREDRAW;
+    int score = SCOREDRAW;
 
-    int score;
+    if (piececount <= 5 && isEndgame(&score))
+        return S2MSIGN(state & S2MMASK) * score;
+
     if (NnueReady && abs(GETEGVAL(psqval)) < NnuePsqThreshold)
     {
         int frcCorrection = (en.chess960 ? getFrcCorrection() : 0);
@@ -863,17 +896,6 @@ int chessposition::getEval()
     bool hashexist = mtrlhsh.probeHash(materialhash, &pe.mhentry);
     if (!hashexist)
         getScaling(pe.mhentry);
-
-    if (pe.mhentry->endgame)
-    {
-        score = pe.mhentry->endgame(this);
-        if (bTrace)
-        {
-            te.endgame = te.score = score;
-            traceEvalOut();
-        }
-        return S2MSIGN(state & S2MMASK) * score;
-    }
 
     hashexist = pwnhsh.probeHash(pawnhash, &pe.phentry);
     if (bTrace || !hashexist)
@@ -960,16 +982,6 @@ void chessposition::getScaling(Materialhashentry* mhentry)
 
     int stronger = (nonpawnvalue[WHITE] > nonpawnvalue[BLACK] || (nonpawnvalue[WHITE] == nonpawnvalue[BLACK] && pawns[WHITE] >= pawns[BLACK])) ? WHITE : BLACK;
     int weaker = 1 - stronger;
-
-    // special endgames
-    if (piece00[WKNIGHT | stronger] && piece00[WBISHOP | stronger]
-        && (occupied00[stronger] ^ piece00[WKNIGHT | stronger] ^ piece00[WBISHOP | stronger]) == piece00[WKING | stronger]
-        && piece00[WKING | weaker] == occupied00[weaker])
-    {
-        mhentry->endgame = KBNvK;
-        return;
-    }
-
 
     // Default scaling
     mhentry->scale[WHITE] = mhentry->scale[BLACK] = SCALE_NORMAL;

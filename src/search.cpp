@@ -78,7 +78,7 @@ inline bool chessposition::CheckForImmediateStop()
 
     S64 remainingticks = en.endtime2 - getTime();
 
-    if (remainingticks <= 0 && en.stopLevel < ENGINESTOPIMMEDIATELY)
+    if (remainingticks <= 0)
     {
         en.stopLevel = ENGINESTOPIMMEDIATELY;
         return true;
@@ -432,7 +432,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     // the root position is a TB position but only WDL tables are available.
     // In that case the search should not probe before a pawn move or capture
     // is made.
-    if (POPCOUNT(occupied00[0] | occupied00[1]) <= useTb && halfmovescounter == 0)
+    if (piececount <= useTb && halfmovescounter == 0)
     {
         int success;
         int v = probe_wdl(&success);
@@ -922,9 +922,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
 
     const bool isMultiPV = (RT == MultiPVSearch);
 
-    if (CheckForImmediateStop())
-        return alpha;
-
     bool mateprune = (alpha > SCORETBWININMAXPLY || beta < -SCORETBWININMAXPLY);
 
     // reset pv
@@ -1074,12 +1071,15 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
 
         nodespermove[(uint16_t)m->code] += nodes - nodesbeforemove;
 
+        if (CheckForImmediateStop())
+            return bestscore;
+#if 0
         if (en.stopLevel == ENGINESTOPIMMEDIATELY)
         {
             // time over; immediate stop requested
             return bestscore;
         }
-
+#endif
         if (!ISTACTICAL(m->code))
             quietMoves[0][quietsPlayed++] = m->code;
         else
@@ -1535,6 +1535,11 @@ void mainSearch(searchthread *thr)
             // Not enough time to get any bestmove? Fall back to default move
             pos->bestmove = pos->defaultmove;
             pos->pondermove = 0;
+            // Enable next line to detect out-of-time situations via cutechess "illegal ponder move h8h8"
+            // pos->pondermove = 0xfff;
+#ifdef TDEBUG
+            guiCom.log("[TDEBUG] Warning! Run out of time and using default move which may lose!\n");
+#endif
         }
 
         strBestmove = moveToString(pos->bestmove);

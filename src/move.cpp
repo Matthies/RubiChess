@@ -606,6 +606,7 @@ bool chessposition::playMove(uint32_t mc)
             dp->from[1] = to;
             dp->to[1] = -1;
             dp->dirtyNum = 2;
+            piececount--;
         }
 
         if (promote == BLANK)
@@ -654,6 +655,7 @@ bool chessposition::playMove(uint32_t mc)
                 dp->from[1] = epfield;
                 dp->to[1] = -1;
                 dp->dirtyNum++;
+                piececount--;
             }
         }
 
@@ -694,6 +696,7 @@ bool chessposition::playMove(uint32_t mc)
                     BitboardSet(to, capture);
                     mailbox[to] = capture;
                 }
+                piececount++;
             }
             else {
                 mailbox[to] = BLANK;
@@ -732,6 +735,7 @@ bool chessposition::playMove(uint32_t mc)
     conthistptr[ply] = (int16_t*)counterhistory[GETPIECE(mc)][GETCORRECTTO(mc)];
     movecode[ply++] = mc;
     myassert(ply <= MAXDEPTH, this, 1, ply);
+    myassert(piececount == POPCOUNT(occupied00[WHITE] | occupied00[BLACK]), this, 1, piececount);
     kingPinned = 0ULL;
     updatePins<WHITE>();
     updatePins<BLACK>();
@@ -806,6 +810,7 @@ void chessposition::unplayMove(uint32_t mc)
                 BitboardSet(to, capture);
                 mailbox[to] = capture;
             }
+            piececount++;
         }
         else {
             mailbox[to] = BLANK;

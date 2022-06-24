@@ -277,6 +277,7 @@ void engine::prepareThreads()
         // early reset of variables that are important for bestmove selection
         pos->bestmovescore[0] = NOSCORE;
         pos->bestmove = 0;
+        pos->pondermove = 0;
         pos->nodes = 0;
         pos->nullmoveply = 0;
         pos->nullmoveside = 0;
@@ -796,9 +797,10 @@ void engine::resetEndTime(int constantRootMoves, int bestmovenodesratio)
         int f1 = max(9 - movevariation, 21 - movevariation - constance) * bestmovenodesratio;
         int f2 = max(19, 31 - constance) * bestmovenodesratio;
         int timeforallmoves = timetouse + movestogo * timeinc;
+        const int mtg_1 = movestogo + 1;
 
-        endtime1 = thinkStartTime + timeforallmoves * frequency * f1 / 128 / (movestogo + 1) / 10000;
-        endtime2 = clockStartTime + min(max(0, timetouse - overhead), f2 * timeforallmoves / 128 / (movestogo + 1) / (19 - 4 * movevariation)) * frequency / 1000;
+        endtime1 = thinkStartTime + timeforallmoves * frequency * f1 / 128 / mtg_1 / 10000;
+        endtime2 = clockStartTime + min(max(0, timetouse - overhead * mtg_1), f2 * timeforallmoves / 128 / mtg_1 / (19 - 4 * movevariation)) * frequency / 1000;
     }
     else if (timetouse) {
         if (timeinc)

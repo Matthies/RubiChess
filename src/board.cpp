@@ -266,6 +266,7 @@ int chessposition::getFromFen(const char* sFen)
     materialhash = zb.getMaterialHash(this);
     lastnullmove = -1;
     ply = 0;
+    piececount = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]);
     return 0;
 }
 
