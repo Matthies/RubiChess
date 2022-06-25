@@ -980,9 +980,6 @@ void chessposition::getScaling(Materialhashentry* mhentry)
         + queens[BLACK] * materialvalue[QUEEN]
     };
 
-    int stronger = (nonpawnvalue[WHITE] > nonpawnvalue[BLACK] || (nonpawnvalue[WHITE] == nonpawnvalue[BLACK] && pawns[WHITE] >= pawns[BLACK])) ? WHITE : BLACK;
-    int weaker = 1 - stronger;
-
     // Default scaling
     mhentry->scale[WHITE] = mhentry->scale[BLACK] = SCALE_NORMAL;
 
