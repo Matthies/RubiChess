@@ -378,8 +378,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             return alpha;
     }
 
-    // Reached depth? Do a qsearch
-    if (depth <= 0)
+    // Reached depth? Do a qsearch; searching for mate doesn't need qsearch
+    if (Pt != MatePrune && depth <= 0)
     {
         // update selective depth info
         if (seldepth < ply + 1)
@@ -488,6 +488,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     }
     staticevalstack[ply] = staticeval;
 
+    if (Pt == MatePrune && depth <= 0)
+        return staticeval;
 
     bool positionImproved = (ply >= 2  && staticevalstack[ply] > staticevalstack[ply - 2]);
 
