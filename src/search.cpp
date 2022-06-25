@@ -922,7 +922,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
 
     const bool isMultiPV = (RT == MultiPVSearch);
 
-    bool mateprune = (alpha > SCORETBWININMAXPLY || beta < -SCORETBWININMAXPLY);
+    bool mateprune = (en.mate > 0 || alpha > SCORETBWININMAXPLY || beta < -SCORETBWININMAXPLY);
 
     // reset pv
     pvtable[0][0] = 0;
@@ -1247,19 +1247,12 @@ void mainSearch(searchthread *thr)
 
     chessposition *pos = &thr->pos;
 
-    if (en.mate > 0)  // FIXME: Not tested for a long time.
-    {
-        thr->depth = maxdepth = en.mate * 2;
-    }
+    thr->lastCompleteDepth = 0;
+    thr->depth = 1;
+    if (en.maxdepth > 0)
+        maxdepth = en.maxdepth;
     else
-    {
-        thr->lastCompleteDepth = 0;
-        thr->depth = 1;
-        if (en.maxdepth > 0)
-            maxdepth = en.maxdepth;
-        else
-            maxdepth = MAXDEPTH - 1;
-    }
+        maxdepth = MAXDEPTH - 1;
 
     alpha = SCOREBLACKWINS;
     beta = SCOREWHITEWINS;
