@@ -1449,6 +1449,10 @@ void mainSearch(searchthread *thr)
             // Mate found; early exit
             if (!isMultiPV && inWindow == 1 && en.endtime1 && thr->depth > SCOREWHITEWINS - abs(score) && en.pondersearch != PONDERING)
                 break;
+
+            // Exit when searching for mate and found it
+            if (en.mate && score >= SCOREWHITEWINS - 2 * en.mate)
+                break;
         }
 
         // Pondering; just continue next iteration
