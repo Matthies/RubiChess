@@ -378,8 +378,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             return alpha;
     }
 
-    // Reached depth? Do a qsearch
-    if (depth <= 0)
+    // Reached depth? Do a qsearch; searching for mate doesn't need qsearch
+    if (Pt != MatePrune && depth <= 0)
     {
         // update selective depth info
         if (seldepth < ply + 1)
@@ -488,6 +488,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     }
     staticevalstack[ply] = staticeval;
 
+    if (Pt == MatePrune && depth <= 0)
+        return staticeval;
 
     bool positionImproved = (ply >= 2  && staticevalstack[ply] > staticevalstack[ply - 2]);
 
@@ -514,7 +516,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
     }
 
     // Koivisto idea (no opponents) threat pruning
-    if (!PVNode && !isCheckbb && depth == 1 && staticeval > beta + (positionImproved ? sps.threatprunemarginimprove : sps.threatprunemargin) && !threats)
+    if (Pt != MatePrune && !PVNode && !isCheckbb && depth == 1 && staticeval > beta + (positionImproved ? sps.threatprunemarginimprove : sps.threatprunemargin) && !threats)
     {
         STATISTICSINC(prune_threat);
         return beta;
@@ -681,66 +683,69 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         int pc = GETPIECE(mc);
         int to = GETCORRECTTO(mc);
 
-        // Singular extension
-        if (Pt != MatePrune
-            && (mc & 0xffff) == hashmovecode
-            && depth >= sps.singularmindepth
-            && !excludeMove
-            && tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth - 3, alpha, beta, ply)  // FIXME: maybe needs hashscore = FIXMATESCOREPROBE(hashscore, ply);
-            && hashscore > alpha
+        if (Pt != MatePrune)
+        {
+            // Singular extension
+            if ((mc & 0xffff) == hashmovecode
+                && depth >= sps.singularmindepth
+                && !excludeMove
+                && tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth - 3, alpha, beta, ply)  // FIXME: maybe needs hashscore = FIXMATESCOREPROBE(hashscore, ply);
+                && hashscore > alpha
 #ifdef NNUELEARN
-            // No singular extension in root of gensfen
-            && ply > 0
+                // No singular extension in root of gensfen
+                && ply > 0
 #endif
-            )
-        {
-            excludemovestack[ply - 1] = hashmovecode;
-            int sBeta = max(hashscore - sps.singularmarginperdepth * depth, SCOREBLACKWINS);
-            int redScore = alphabeta<Pt>(sBeta - 1, sBeta, depth / 2);
-            excludemovestack[ply - 1] = 0;
+                )
+            {
+                excludemovestack[ply - 1] = hashmovecode;
+                int sBeta = max(hashscore - sps.singularmarginperdepth * depth, SCOREBLACKWINS);
+                int redScore = alphabeta<Pt>(sBeta - 1, sBeta, depth / 2);
+                excludemovestack[ply - 1] = 0;
 
-            if (redScore < sBeta)
+                if (redScore < sBeta)
+                {
+                    // Move is singular
+                    STATISTICSINC(extend_singular);
+                    extendMove = 1;
+                }
+                else if (bestknownscore >= beta && sBeta >= beta)
+                {
+                    // Hashscore for lower depth and static eval cut and we have at least a second good move => lets cut here
+                    STATISTICSINC(prune_multicut);
+                    SDEBUGDO(isDebugPv, pvabortscore[ply] = sBeta; pvaborttype[ply] = PVA_MULTICUT;);
+                    return sBeta;
+                }
+            }
+            // Extend captures that lead into endgame
+            else if (phcount < 6 && GETCAPTURE(mc) >= WKNIGHT)
             {
-                // Move is singular
-                STATISTICSINC(extend_singular);
+                STATISTICSINC(extend_endgame);
                 extendMove = 1;
             }
-            else if (bestknownscore >= beta && sBeta >= beta)
+            else if (!ISTACTICAL(mc))
             {
-                // Hashscore for lower depth and static eval cut and we have at least a second good move => lets cut here
-                STATISTICSINC(prune_multicut);
-                SDEBUGDO(isDebugPv, pvabortscore[ply] = sBeta; pvaborttype[ply] = PVA_MULTICUT;);
-                return sBeta;
-            }
-        }
-        // Extend captures that lead into endgame
-        else if (phcount < 6 && GETCAPTURE(mc) >= WKNIGHT)
-        {
-            STATISTICSINC(extend_endgame);
-            extendMove = 1;
-        }
-        else if(!ISTACTICAL(mc))
-        {
-            int pieceTo = pc * 64 + to;
-            if (conthistptr[ply - 1][pieceTo] > he_threshold && conthistptr[ply - 2][pieceTo] > he_threshold)
-            {
-                STATISTICSINC(extend_history);
-                extendMove = 1;
-                he_yes++;
-            }
-            if ((++he_all & 0x3fffff) == 0)
-            {
-                // adjust history extension threshold
-                if (he_all / (1ULL << sps.histextminthreshold) < he_yes)
+                int pieceTo = pc * 64 + to;
+                if (conthistptr[ply - 1][pieceTo] > he_threshold && conthistptr[ply - 2][pieceTo] > he_threshold)
                 {
-                    // 1/512 ~ extension ratio > 0.1953% ==> increase threshold
-                    he_threshold = he_threshold * 257 / 256;
-                    he_all = he_yes = 0ULL;
-                } else if (he_all / (1ULL << sps.histextmaxthreshold) > he_yes)
+                    STATISTICSINC(extend_history);
+                    extendMove = 1;
+                    he_yes++;
+                }
+                if ((++he_all & 0x3fffff) == 0)
                 {
-                    // 1/32768 ~ extension ratio < 0.0030% ==> decrease threshold
-                    he_threshold = he_threshold * 255 / 256;
-                    he_all = he_yes = 0ULL;
+                    // adjust history extension threshold
+                    if (he_all / (1ULL << sps.histextminthreshold) < he_yes)
+                    {
+                        // 1/512 ~ extension ratio > 0.1953% ==> increase threshold
+                        he_threshold = he_threshold * 257 / 256;
+                        he_all = he_yes = 0ULL;
+                    }
+                    else if (he_all / (1ULL << sps.histextmaxthreshold) > he_yes)
+                    {
+                        // 1/32768 ~ extension ratio < 0.0030% ==> decrease threshold
+                        he_threshold = he_threshold * 255 / 256;
+                        he_all = he_yes = 0ULL;
+                    }
                 }
             }
         }
@@ -922,7 +927,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
 
     const bool isMultiPV = (RT == MultiPVSearch);
 
-    bool mateprune = (alpha > SCORETBWININMAXPLY || beta < -SCORETBWININMAXPLY);
+    bool mateprune = (en.mate > 0 || alpha > SCORETBWININMAXPLY || beta < -SCORETBWININMAXPLY);
 
     // reset pv
     pvtable[0][0] = 0;
@@ -1247,19 +1252,12 @@ void mainSearch(searchthread *thr)
 
     chessposition *pos = &thr->pos;
 
-    if (en.mate > 0)  // FIXME: Not tested for a long time.
-    {
-        thr->depth = maxdepth = en.mate * 2;
-    }
+    thr->lastCompleteDepth = 0;
+    thr->depth = 1;
+    if (en.maxdepth > 0)
+        maxdepth = en.maxdepth;
     else
-    {
-        thr->lastCompleteDepth = 0;
-        thr->depth = 1;
-        if (en.maxdepth > 0)
-            maxdepth = en.maxdepth;
-        else
-            maxdepth = MAXDEPTH - 1;
-    }
+        maxdepth = MAXDEPTH - 1;
 
     alpha = SCOREBLACKWINS;
     beta = SCOREWHITEWINS;
@@ -1450,6 +1448,10 @@ void mainSearch(searchthread *thr)
 
             // Mate found; early exit
             if (!isMultiPV && inWindow == 1 && en.endtime1 && thr->depth > SCOREWHITEWINS - abs(score) && en.pondersearch != PONDERING)
+                break;
+
+            // Exit when searching for mate and found it
+            if (en.mate && score >= SCOREWHITEWINS - 2 * en.mate)
                 break;
         }
 
