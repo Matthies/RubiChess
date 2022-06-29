@@ -25,10 +25,10 @@ goto end
 echo Found MSVC Build tools %vcvarscmd%
 
 call "%vcvarscmd%" x64 -vcvars_ver=14.16
-nmake -f Makefile.clang release
+nmake -c -f Makefile.clang release
 
 call "%vcvarscmd%" x64_arm64 -vcvars_ver=14.16
-nmake -f Makefile.clang release
+nmake -c -f Makefile.clang release
 
 :end
 pause

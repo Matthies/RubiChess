@@ -1730,13 +1730,9 @@ enum ponderstate_t { NO, PONDERING };
 #define CPUAVX512   (1 << 7)
 #define CPUNEON     (1 << 8)
 
-#define STRCPUFEATURELIST  { "sse2","ssse3","popcnt","lzcnt","bmi1","avx2","bmi2", "avx512", "neon" }
-
-
-extern const string strCpuFeatures[];
-
 class compilerinfo
 {
+    const string strCpuFeatures[9] = { "sse2","ssse3","popcnt","lzcnt","bmi1","avx2","bmi2", "avx512", "neon" };
 public:
     const U64 binarySupports = 0ULL
 #ifdef USE_POPCNT

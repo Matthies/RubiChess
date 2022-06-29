@@ -27,21 +27,15 @@ LDFLAGS=/OPT:REF /OPT:ICF advapi32.lib
 PROFEXE=RubiChess-WinProf
 NETURL=https://github.com/Matthies/NN/raw/main/
 TMPNN=_tmp.nnue
-VERSIONCMD=_version.cmd
 CPUTEST=cputest
 EXE=RubiChess
+GIT=git
 NATIVEFLAGS=_nativeflags.txt
 SDEDEFAULT="C:\_portable\sde-external-8.63.0-2021-01-18-win\sde.exe"
 !IF !DEFINED(SDE)
 SDE=$(SDEDEFAULT)
 !ENDIF
-GETDEFINE=
-!IF "$(GITVER)"!=""
-GITDEFINE = -D GITVER=\"$(GITVER)\"
-!ENDIF
-!IF "$(GITID)"!=""
-GITDEFINE = $(GITDEFINE) -D GITID=\"$(GITID)\"
-!ENDIF
+
 
 $(RELDIR):
 	mkdir $(RELDIR)
@@ -64,6 +58,11 @@ compilercheck:
 !ELSE
 !MESSAGE Found Profiling tool $(PROFDATATOOLEXE).
 !ENDIF
+!IF EXIST($(SDE))
+!MESSAGE Found Software Development Emulator (SDE) at $(SDE).
+!ELSE
+!MESSAGE Software Development Emulator (SDE) not found.
+!ENDIF
 !MESSAGE ==========================================================================
 !ENDIF
 
@@ -76,10 +75,12 @@ network:
 !MESSAGE ==========================================================================
 !ENDIF
 
+!IFNDEF ARCH
 ARCH=native
+!ENDIF
 
 nativeflags:
-!IF "$(ARCH)"=="native"
+!IF "$(ARCH)"=="native" || "$(ARCH)"=="" || !defined(ARCH)
 	@$(CXX) /GX -DCPUTEST $(CPUTEST).cpp -o $(CPUTEST)
 	-@$(CPUTEST) > $(NATIVEFLAGS)
 !ELSE
@@ -176,11 +177,19 @@ build: cpuflags
 	@nmake -c -f Makefile.clang profile-clean ARCH=$(ARCH)
 
 compile: $(RELDIR)
-	@$(CXX) $(CXXFLAGS) $(ARCHFLAGS) $(SOURCE) $(PROFILEFLAGS) $(GITDEFINE)
+!IFNDEF GITVER
+	@FOR /F "tokens=2" %A IN ('cmd /c "($(GIT) show --name-only --abbrev-commit --date=format:%Y%m%d || echo Date: %date%) | findstr /I /r /c:"^Date: "" ') DO @(set GITVER=%A&&  nmake -f Makefile.clang $* /$(MAKEFLAGS) && exit /B)
+!ELSE
+!IFNDEF GITID
+	@FOR /F "tokens=2" %A IN ('cmd /c "($(GIT) show --name-only --abbrev-commit || echo commit unknown) | findstr /r /c:"^commit"" ') DO @(set GITID=%A&& nmake -f Makefile.clang $* /$(MAKEFLAGS) && exit /B)
+!ELSE
+	@$(CXX) $(CXXFLAGS) $(ARCHFLAGS) $(SOURCE) $(PROFILEFLAGS) -D GITVER=\"$(GITVER)\" -D GITID=\"$(GITID)\"
 !IFDEF PROFLIB
 	@$(LD) $(LDFLAGS) /OUT:$(PROFEXE).exe $(OBJ) "$(PROFLIB)"
 !ELSE
 	@$(LD) $(LDFLAGS) /OUT:$(RELDIR)\$(EXE).exe $(OBJ) "$(PROFLIB)"
+!ENDIF
+!ENDIF
 !ENDIF
 
 pgo: printarch
@@ -222,18 +231,15 @@ releaseversion:
 !ENDIF
 
 release:
-	@echo ::Batch to get version number> $(VERSIONCMD)
-	@echo @echo off>> $(VERSIONCMD)
-	@echo set GITVER=>> $(VERSIONCMD)
-	@echo FOR /F "tokens=3" %%%%A IN ('find "define VERNUMLEGACY " RubiChess.h') DO ( set VERSION=%%%%A)>> $(VERSIONCMD)
-	@echo FOR /F "tokens=2" %%%%A IN ('cmd /c "git show --name-only --abbrev-commit --date=format:%%%%Y%%%%m%%%%d | findstr /I /r /c:"^Date: "" ') DO ( set GITVER=%%%%A) >> $(VERSIONCMD)
-	@echo FOR /F "tokens=2" %%%%A IN ('cmd /c "git show --name-only --abbrev-commit | findstr /r /c:"^commit"" ') DO ( set GITID=%%%%A) >> $(VERSIONCMD)
-	@echo if not [%%GITVER%%]==[] (>> $(VERSIONCMD)
-	@echo   set VERSION=%%GITVER%%>> $(VERSIONCMD)
-	@echo )>> $(VERSIONCMD)
-	@echo nmake -f Makefile.clang releaseversion ARCH=$(ARCH) >> $(VERSIONCMD)
-	@$(VERSIONCMD)
-	@del $(VERSIONCMD)
+!IFNDEF VERSIONLEGACY
+	@FOR /F "tokens=3" %A IN ('find "define VERNUMLEGACY " RubiChess.h') DO @(set VERSIONLEGACY=%A&& nmake -f Makefile.clang $* /$(MAKEFLAGS) ARCH=$(ARCH) && exit /B)
+!ELSE
+!IFNDEF VERSION
+	@FOR /F "tokens=2" %A IN ('cmd /c "($(GIT) show --name-only --abbrev-commit --date=format:%Y%m%d || echo Date: %VERSIONLEGACY%) | findstr /I /r /c:"^Date: "" ') DO @(set VERSION=%A&&  nmake -f Makefile.clang $* /$(MAKEFLAGS) ARCH=$(ARCH) && exit /B)
+!ELSE
+	@nmake -c -f Makefile.clang releaseversion ARCH=$(ARCH)
+!ENDIF
+!ENDIF
 
 release-arm64:
 	@nmake -c -f Makefile.clang build-rename ARCH=arm64-neon
@@ -246,6 +252,5 @@ profile-clean:
 clean: profile-clean
 	@del $(RELDIR)\$(EXE).exe 2>nul
 	@del $(CPUTEST).exe 2>nul
-	@del $(VERSIONCMD) 2>nul
 	@set RUBINET=
 

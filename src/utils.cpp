@@ -494,7 +494,6 @@ string chessposition::AlgebraicFromShort(string s)
     return retval;
 }
 
-const string strCpuFeatures[] = STRCPUFEATURELIST;
 string compilerinfo::PrintCpuFeatures(U64 f, bool onlyHighest)
 {
     string s = "";
@@ -605,7 +604,7 @@ void compilerinfo::GetSystemInfo()
 
     if (notSupported)
     {
-        cout << "info string Error! Binary is not compatible with this machine. Missing cpu features:" + PrintCpuFeatures(notSupported) + ". Please use correct binary.\n";
+        cout << "info string Error! Binary is not compatible with this machine. Missing cpu features: " + PrintCpuFeatures(notSupported) + ". Please use correct binary.\n";
         exit(-1);
     }
 
@@ -614,12 +613,12 @@ void compilerinfo::GetSystemInfo()
         // No real BMI2 support on AMD cpu before Zen3
         machineSupports ^= CPUBMI2;
         if (binarySupports & CPUBMI2)
-            cout << "info string Warning! You are running the BMI2 binary on an AMD cpu which is known for bad performance. Please use the different binary for best performance.\n";
+            cout << "info string Warning! You are running the BMI2 binary on an AMD cpu which is known for bad performance. Please use avx2 binary for best performance.\n";
     }
 
     U64 supportedButunused = machineSupports & ~binarySupports;
     if (supportedButunused)
-        cout << "info string Warning! Binary not optimal for this machine. Unused cpu features:" + PrintCpuFeatures(supportedButunused) + ". Please use correct binary for best performance.\n";
+        cout << "info string Warning! Binary not optimal for this machine. Unused cpu features: " + PrintCpuFeatures(supportedButunused) + ". Please use correct binary for best performance.\n";
 }
 
 #else
