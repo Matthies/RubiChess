@@ -794,13 +794,13 @@ void engine::resetEndTime(int constantRootMoves, int bestmovenodesratio)
         // f2: stop immediately at 1.9...3.1 x average movetime
         // movevariation: many moves to go decrease f1 (stop soon)
         int movevariation = min(32, movestogo) * 3 / 32;
-        int f1 = max(9 - movevariation, 21 - movevariation - constance) * bestmovenodesratio;
-        int f2 = max(19, 31 - constance) * bestmovenodesratio;
-        int timeforallmoves = timetouse + movestogo * timeinc;
+        U64 f1 = max(9 - movevariation, 21 - movevariation - constance) * bestmovenodesratio;
+        U64 f2 = max(19, 31 - constance) * bestmovenodesratio;
+        U64 timeforallmoves = timetouse + movestogo * timeinc;
         const int mtg_1 = movestogo + 1;
 
         endtime1 = thinkStartTime + timeforallmoves * frequency * f1 / 128 / mtg_1 / 10000;
-        endtime2 = clockStartTime + min(max(0, timetouse - overhead * mtg_1), f2 * timeforallmoves / 128 / mtg_1 / (19 - 4 * movevariation)) * frequency / 1000;
+        endtime2 = clockStartTime + min(max(0, timetouse - overhead * mtg_1), (int)(f2 * timeforallmoves / 128 / mtg_1 / (19 - 4 * movevariation))) * frequency / 1000;
     }
     else if (timetouse) {
         if (timeinc)
@@ -810,12 +810,12 @@ void engine::resetEndTime(int constantRootMoves, int bestmovenodesratio)
             // f1: stop soon after 5..17 timeslot
             // f2: stop immediately after 15..27 timeslots
             int ph = (sthread[0].pos.getPhase() + min(255, sthread[0].pos.fullmovescounter * 6)) / 2;
-            int f1 = max(5, 17 - constance) * bestmovenodesratio;
-            int f2 = max(15, 27 - constance) * bestmovenodesratio;
+            U64 f1 = max(5, 17 - constance) * bestmovenodesratio;
+            U64 f2 = max(15, 27 - constance) * bestmovenodesratio;
             timetouse = max(timeinc, timetouse); // workaround for Arena bug
 
-            endtime1 = thinkStartTime + max(timeinc, (int)((U64)f1 * (timetouse + timeinc) / 128 / (256 - ph))) * frequency / 1000;
-            endtime2 = clockStartTime + min(max(0, timetouse - overhead), max(timeinc, (int)((U64)f2 * (timetouse + timeinc) / 128 / (256 - ph)))) * frequency / 1000;
+            endtime1 = thinkStartTime + max(timeinc, (int)(f1 * (timetouse + timeinc) / 128 / (256 - ph))) * frequency / 1000;
+            endtime2 = clockStartTime + min(max(0, timetouse - overhead), max(timeinc, (int)(f2 * (timetouse + timeinc) / 128 / (256 - ph)))) * frequency / 1000;
         }
         else {
             // sudden death without increment; play for another x;y moves
