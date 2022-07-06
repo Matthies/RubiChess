@@ -796,7 +796,7 @@ void engine::resetEndTime(int constantRootMoves, int bestmovenodesratio)
         int movevariation = min(32, movestogo) * 3 / 32;
         U64 f1 = max(9 - movevariation, 21 - movevariation - constance) * bestmovenodesratio;
         U64 f2 = max(19, 31 - constance) * bestmovenodesratio;
-        U64 timeforallmoves = timetouse + movestogo * timeinc;
+        int timeforallmoves = timetouse + movestogo * timeinc;
         const int mtg_1 = movestogo + 1;
 
         endtime1 = thinkStartTime + timeforallmoves * frequency * f1 / 128 / mtg_1 / 10000;
