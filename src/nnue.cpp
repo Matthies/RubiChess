@@ -56,9 +56,9 @@ uint32_t PieceToIndex[2][16] = {
 NnueType NnueReady = NnueDisabled;
 
 // The network architecture
-NnueFeatureTransformer NnueFt;
-NnueInputSlice NnueIn;
-NnueNetworkLayer<NnueFtOutputdims, NnueHidden1Dims> NnueHd1(&NnueIn);
+NnueFeatureTransformer<NnueFtHalfdims, NnueFtInputdims> NnueFt;
+//NnueInputSlice NnueIn;
+NnueNetworkLayer<NnueFtOutputdims, NnueHidden1Dims> NnueHd1(&NnueFt);
 NnueClippedRelu<NnueHidden1Dims> NnueCl1(&NnueHd1);
 NnueNetworkLayer<NnueHidden1Dims, NnueHidden2Dims> NnueHd2(&NnueCl1);
 NnueClippedRelu<NnueHidden2Dims> NnueCl2(&NnueHd2);
@@ -351,35 +351,32 @@ template <NnueType Nt> int chessposition::NnueGetEval()
 //
 // FeatureTransformer
 //
-NnueFeatureTransformer::NnueFeatureTransformer() : NnueLayer(NULL)
+template <int ftdims, int inputdims>
+NnueFeatureTransformer<ftdims, inputdims>::NnueFeatureTransformer() : NnueLayer(NULL)
 {
-    size_t allocsize = NnueFtHalfdims * sizeof(int16_t);
-    bias = (int16_t*)allocalign64(allocsize);
-    allocsize = (size_t)NnueFtHalfdims * (size_t)NnueFtInputdims * sizeof(int16_t);
-    weight = (int16_t*)allocalign64(allocsize);
 }
 
-NnueFeatureTransformer::~NnueFeatureTransformer()
+template <int ftdims, int inputdims>
+NnueFeatureTransformer<ftdims, inputdims>::~NnueFeatureTransformer()
 {
-    freealigned64(bias);
-    freealigned64(weight);
 }
 
-bool NnueFeatureTransformer::ReadWeights(NnueNetsource_t is)
+template <int ftdims, int inputdims>
+bool NnueFeatureTransformer<ftdims, inputdims>::ReadFeatureWeights(NnueNetsource_t is)
 {
     int i, j;
-    for (i = 0; i < NnueFtHalfdims; ++i)
+    for (i = 0; i < ftdims; ++i)
         NNUEREAD(is, (char*)&bias[i], sizeof(int16_t));
 
     int weightsRead = 0;
-    for (i = 0; i < NnueFtInputdims; i++)
+    for (i = 0; i < inputdims; i++)
     {
         if (bpz && i % (10 * 64) == 0) {
             int16_t dummyweight;
-            for (j = 0; j < NnueFtHalfdims; ++j)
+            for (j = 0; j < ftdims; ++j)
                 NNUEREAD(is, (char*)&dummyweight, sizeof(int16_t));
         }
-        for (j = 0; j < NnueFtHalfdims; ++j) {
+        for (j = 0; j < ftdims; ++j) {
             NNUEREAD(is, (char*)&weight[weightsRead], sizeof(int16_t));
             weightsRead++;
         }
@@ -389,21 +386,22 @@ bool NnueFeatureTransformer::ReadWeights(NnueNetsource_t is)
 }
 
 #ifdef EVALOPTIONS
-void NnueFeatureTransformer::WriteWeights(ofstream* os)
+template <int ftdims, int inputdims>
+void NnueFeatureTransformer<ftdims, inputdims>::WriteFeatureWeights(ofstream* os)
 {
     int i, j;
-    for (i = 0; i < NnueFtHalfdims; ++i)
+    for (i = 0; i < ftdims; ++i)
         os->write((char*)&bias[i], sizeof(int16_t));
 
     int weightsRead = 0;
-    for (i = 0; i < NnueFtInputdims; i++)
+    for (i = 0; i < inputdims; i++)
     {
         if (bpz && i % (10 * 64) == 0) {
             int16_t dummyweight = 0;
-            for (j = 0; j < NnueFtHalfdims; ++j)
+            for (j = 0; j < ftdims; ++j)
                 os->write((char*)&dummyweight, sizeof(int16_t));
         }
-        for (j = 0; j < NnueFtHalfdims; ++j) {
+        for (j = 0; j < ftdims; ++j) {
             os->write((char*)&weight[weightsRead], sizeof(int16_t));
             weightsRead++;
         }
@@ -411,11 +409,17 @@ void NnueFeatureTransformer::WriteWeights(ofstream* os)
 }
 #endif
 
-uint32_t NnueFeatureTransformer::GetHash()
+template <int ftdims, int inputdims>
+uint32_t NnueFeatureTransformer<ftdims, inputdims>::GetFtHash()
 {
     return NNUEFEATUREHASH ^ NnueFtOutputdims;
 }
 
+template <int ftdims, int inputdims>
+uint32_t NnueFeatureTransformer<ftdims, inputdims>::GetHash()
+{
+    return NNUEINPUTSLICEHASH ^ (ftdims * 2);
+}
 
 //
 // NetworkLayer
@@ -423,17 +427,11 @@ uint32_t NnueFeatureTransformer::GetHash()
 template <unsigned int inputdims, unsigned int outputdims>
 NnueNetworkLayer<inputdims, outputdims>::NnueNetworkLayer(NnueLayer* prev) : NnueLayer(prev)
 {
-    size_t allocsize = outputdims * sizeof(int32_t);
-    bias = (int32_t*)allocalign64(allocsize);
-    allocsize = (size_t)inputdims * (size_t)outputdims * sizeof(weight_t);
-    weight = (weight_t*)allocalign64(allocsize);
 }
 
 template <unsigned int inputdims, unsigned int outputdims>
 NnueNetworkLayer<inputdims, outputdims>::~NnueNetworkLayer()
 {
-    freealigned64(bias);
-    freealigned64(weight);
 }
 
 
@@ -531,7 +529,8 @@ inline unsigned int reverseShuffleWeightIndex(unsigned int idx, unsigned int dim
 }
 #endif
 
-void NnueNetworkLayer::WriteWeights(ofstream* os)
+template <unsigned int inputdims, unsigned int outputdims>
+void NnueNetworkLayer<inputdims, outputdims>::WriteWeights(ofstream* os)
 {
     if (previous)
         previous->WriteWeights(os);
@@ -877,7 +876,8 @@ bool NnueClippedRelu<dims>::ReadWeights(NnueNetsource_t is)
 }
 
 #ifdef EVALOPTIONS
-void NnueClippedRelu::WriteWeights(ofstream* os)
+template <unsigned int dims>
+void NnueClippedRelu<dims>::WriteWeights(ofstream* os)
 {
     if (previous) return previous->WriteWeights(os);
 }
@@ -957,32 +957,6 @@ void NnueClippedRelu<dims>::Propagate(int32_t *input, clipped_t *output)
 
 
 //
-// InputSlice
-//
-NnueInputSlice::NnueInputSlice() : NnueLayer(NULL)
-{
-}
-
-bool NnueInputSlice::ReadWeights(NnueNetsource_t is)
-{
-    if (previous) return previous->ReadWeights(is);
-    return true;
-}
-
-#ifdef EVALOPTIONS
-void NnueInputSlice::WriteWeights(ofstream* os)
-{
-    if (previous) return previous->WriteWeights(os);
-}
-#endif
-
-uint32_t NnueInputSlice::GetHash()
-{
-    return NNUEINPUTSLICEHASH ^ outputdims;
-}
-
-
-//
 // Global Interface
 //
 void NnueInit()
@@ -991,22 +965,13 @@ void NnueInit()
 
 void NnueRemove()
 {
-#if 0
-    delete NnueFt;
-    delete NnueIn;
-    delete NnueHd1;
-    delete NnueCl1;
-    delete NnueHd2;
-    delete NnueCl2;
-    delete NnueOut;
-#endif
 }
 
 bool NnueReadNet(NnueNetsource_t is)
 {
     NnueReady = NnueDisabled;
 
-    uint32_t fthash = NnueFt.GetHash();
+    uint32_t fthash = NnueFt.GetFtHash();
     uint32_t nethash = NnueOut.GetHash();
     uint32_t filehash = (fthash ^ nethash);
 
@@ -1044,7 +1009,7 @@ bool NnueReadNet(NnueNetsource_t is)
     // Read the weights of the feature transformer
     NNUEREAD(is, (char*)&hash, sizeof(uint32_t));
     if (hash != fthash) return false;
-    if (!NnueFt.ReadWeights(is)) return false;
+    if (!NnueFt.ReadFeatureWeights(is)) return false;
 
     // Read the weights of the network layers recursively
     NNUEREAD(is, (char*)&hash, sizeof(uint32_t));
@@ -1066,7 +1031,7 @@ void NnueWriteNet(vector<string> args)
     size_t cs = args.size();
     string NnueNetPath = "export.nnue";
     int rescale = 0;
-    NnueFt->bpz = true;
+    NnueFt.bpz = true;
     if (ci < cs)
         NnueNetPath = args[ci++];
 
@@ -1077,7 +1042,7 @@ void NnueWriteNet(vector<string> args)
         }
         if (args[ci] == "nobpz")
         {
-            NnueFt->bpz = false;
+            NnueFt.bpz = false;
             ci++;
         }
     }
@@ -1093,23 +1058,23 @@ void NnueWriteNet(vector<string> args)
 
     if (rescale)
     {
-        NnueOut->bias[0] = (int32_t)round(NnueOut->bias[0] * rescale / NnueValueScale);
+        NnueOut.bias[0] = (int32_t)round(NnueOut.bias[0] * rescale / NnueValueScale);
         for (int i = 0; i < NnueHidden2Dims; i++)
         {
             int idx = i;
 #if defined(USE_AVX2)
             idx = shuffleWeightIndex(idx, 32, true);
 #endif
-            NnueOut->weight[idx] = (weight_t)(NnueOut->weight[idx] * rescale / NnueValueScale);
+            NnueOut.weight[idx] = (weight_t)(NnueOut.weight[idx] * rescale / NnueValueScale);
         }
     }
 
-    uint32_t fthash = NnueFt->GetHash();
-    uint32_t nethash = NnueOut->GetHash();
+    uint32_t fthash = NnueFt.GetHash();
+    uint32_t nethash = NnueOut.GetHash();
     uint32_t filehash = (fthash ^ nethash);
     uint32_t version;
     string sarchitecture;
-    if (NnueFt->bpz) {
+    if (NnueFt.bpz) {
         sarchitecture = "Features=HalfKP(Friend)[41024->256x2],Network=AffineTransform[1<-32](ClippedReLU[32](AffineTransform[32<-32](ClippedReLU[32](AffineTransform[32<-512](InputSlice[512(0:512)])))))";
         version = NNUEFILEVERSIONROTATE;
     }
@@ -1125,10 +1090,10 @@ void NnueWriteNet(vector<string> args)
     os.write((char*)&sarchitecture[0], size);
 
     os.write((char*)&fthash, sizeof(uint32_t));
-    NnueFt->WriteWeights(&os);
+    NnueFt.WriteFeatureWeights(&os);
 
     os.write((char*)&nethash, sizeof(uint32_t));
-    NnueOut->WriteWeights(&os);
+    NnueOut.WriteWeights(&os);
 
     os.close();
 
@@ -1139,7 +1104,7 @@ void NnueRegisterEvals()
 {
     // Expose weights and bias of ouput layer as UCI options for tuning
     en.ucioptions.Register(&NnueValueScale, "NnueValueScale", ucinnuebias, to_string(NnueValueScale), INT_MIN, INT_MAX, nullptr);
-    en.ucioptions.Register(&NnueOut->bias[0], "NnueOutBias", ucinnuebias, to_string(NnueOut->bias[0]), INT_MIN, INT_MAX, nullptr);
+    en.ucioptions.Register(&NnueOut.bias[0], "NnueOutBias", ucinnuebias, to_string(NnueOut.bias[0]), INT_MIN, INT_MAX, nullptr);
     for (int i = 0; i < NnueHidden2Dims; i++)
     {
         ostringstream osName;
@@ -1148,7 +1113,7 @@ void NnueRegisterEvals()
 #if defined(USE_AVX2)
         idx = shuffleWeightIndex(idx, 32, true);
 #endif
-        en.ucioptions.Register(&NnueOut->weight[idx], osName.str(), ucinnueweight, to_string(NnueOut->weight[idx]), CHAR_MIN, CHAR_MAX, nullptr);
+        en.ucioptions.Register(&NnueOut.weight[idx], osName.str(), ucinnueweight, to_string(NnueOut.weight[idx]), CHAR_MIN, CHAR_MAX, nullptr);
     }
 }
 #endif

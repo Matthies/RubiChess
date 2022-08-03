@@ -33,7 +33,7 @@
 //#define EVALTUNE
 
 // Enable this to expose the evaluation and NNUE parameters as UCI options
-//#define EVALOPTIONS
+#define EVALOPTIONS
 
 // Enable this to expose the search parameters as UCI options
 //#define SEARCHOPTIONS
@@ -736,10 +736,10 @@ typedef ifstream* NnueNetsource_t;
 
 struct NnueNetwork {
     alignas(64) clipped_t input[NnueFtOutputdims];
-    int32_t hidden1_values[32];
-    int32_t hidden2_values[32];
-    clipped_t hidden1_clipped[32];
-    clipped_t hidden2_clipped[32];
+    int32_t hidden1_values[NnueHidden1Dims];
+    int32_t hidden2_values[NnueHidden2Dims];
+    clipped_t hidden1_clipped[NnueHidden1Dims];
+    clipped_t hidden2_clipped[NnueHidden2Dims];
     int32_t out_value;
 };
 
@@ -756,19 +756,23 @@ public:
     virtual uint32_t GetHash() = 0;
 };
 
+template <int ftdims, int inputdims>
 class NnueFeatureTransformer : public NnueLayer
 {
 public:
-    int16_t* bias;
-    int16_t* weight;
+    alignas(64) int16_t bias[ftdims];
+    alignas(64) int16_t weight[ftdims * inputdims];
     bool bpz;
 
     NnueFeatureTransformer();
     virtual ~NnueFeatureTransformer();
-    bool ReadWeights(NnueNetsource_t is);
+    bool ReadFeatureWeights(NnueNetsource_t is);
+    bool ReadWeights(NnueNetsource_t is) { return true; }
 #ifdef EVALOPTIONS
-    void WriteWeights(ofstream *os);
+    void WriteFeatureWeights(ofstream *os);
+    void WriteWeights(ofstream* os) {}
 #endif
+    uint32_t GetFtHash();
     uint32_t GetHash();
 };
 
@@ -786,26 +790,12 @@ public:
     void Propagate(int32_t *input, clipped_t *output);
 };
 
-class NnueInputSlice : public NnueLayer
-{
-public:
-    const int outputdims = 512;
-
-    NnueInputSlice();
-    virtual ~NnueInputSlice() {};
-    bool ReadWeights(NnueNetsource_t is);
-#ifdef EVALOPTIONS
-    void WriteWeights(ofstream* os);
-#endif
-    uint32_t GetHash();
-};
-
 template <unsigned int inputdims, unsigned int outputdims>
 class NnueNetworkLayer : public NnueLayer
 {
 public:
-    int32_t* bias;
-    weight_t* weight;
+    alignas(64)int32_t bias[outputdims];
+    alignas(64)weight_t weight[inputdims * outputdims];
 
     NnueNetworkLayer(NnueLayer* prev);
     virtual ~NnueNetworkLayer();
