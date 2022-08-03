@@ -55,10 +55,15 @@ uint32_t PieceToIndex[2][16] = {
 //
 NnueType NnueReady = NnueDisabled;
 
-NnueInputSlice* NnueIn;
-NnueClippedRelu *NnueCl1, *NnueCl2;
-NnueNetworkLayer *NnueOut, *NnueHd1, *NnueHd2;
-NnueFeatureTransformer *NnueFt;
+// The network architecture
+NnueFeatureTransformer NnueFt;
+NnueInputSlice NnueIn;
+NnueNetworkLayer<NnueFtOutputdims, NnueHidden1Dims> NnueHd1(&NnueIn);
+NnueClippedRelu<NnueHidden1Dims> NnueCl1(&NnueHd1);
+NnueNetworkLayer<NnueHidden1Dims, NnueHidden2Dims> NnueHd2(&NnueCl1);
+NnueClippedRelu<NnueHidden2Dims> NnueCl2(&NnueHd2);
+NnueNetworkLayer<NnueHidden2Dims, 1> NnueOut(&NnueCl2);
+
 
 
 //
@@ -193,7 +198,7 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
                 {
                     unsigned int index = removedIndices[l].values[k];
                     const unsigned int offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
-                    vec16_t* column = (vec16_t*)&NnueFt->weight[offset];
+                    vec16_t* column = (vec16_t*)&NnueFt.weight[offset];
                     for (unsigned int j = 0; j < NUM_REGS; j++)
                         acc[j] = vec_sub_16(acc[j], column[j]);
                 }
@@ -203,7 +208,7 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
                 {
                     unsigned int index = addedIndices[l].values[k];
                     const unsigned int offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
-                    vec16_t* column = (vec16_t*)&NnueFt->weight[offset];
+                    vec16_t* column = (vec16_t*)&NnueFt.weight[offset];
                     for (unsigned int j = 0; j < NUM_REGS; j++)
                         acc[j] = vec_add_16(acc[j], column[j]);
                 }
@@ -251,7 +256,7 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
 #ifdef USE_SIMD
         for (unsigned int i = 0; i < NnueFtHalfdims / TILE_HEIGHT; i++)
         {
-            vec16_t* ft_biases_tile = (vec16_t*)&NnueFt->bias[i * TILE_HEIGHT];
+            vec16_t* ft_biases_tile = (vec16_t*)&NnueFt.bias[i * TILE_HEIGHT];
             for (unsigned int j = 0; j < NUM_REGS; j++)
                 acc[j] = ft_biases_tile[j];
 
@@ -259,7 +264,7 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
             {
                 unsigned int index = activeIndices.values[k];
                 unsigned int offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
-                vec16_t* column = (vec16_t*)&NnueFt->weight[offset];
+                vec16_t* column = (vec16_t*)&NnueFt.weight[offset];
                 for (unsigned int j = 0; j < NUM_REGS; j++)
                     acc[j] = vec_add_16(acc[j], column[j]);
             }
@@ -333,11 +338,11 @@ eval NnueValueScale = 64;
 template <NnueType Nt> int chessposition::NnueGetEval()
 {
     Transform<Nt>(network.input);
-    NnueHd1->Propagate(network.input, network.hidden1_values);
-    NnueCl1->Propagate(network.hidden1_values, network.hidden1_clipped);
-    NnueHd2->Propagate(network.hidden1_clipped, network.hidden2_values);
-    NnueCl1->Propagate(network.hidden2_values, network.hidden2_clipped);
-    NnueOut->OutLayer(network.hidden2_clipped, &network.out_value);
+    NnueHd1.Propagate(network.input, network.hidden1_values);
+    NnueCl1.Propagate(network.hidden1_values, network.hidden1_clipped);
+    NnueHd2.Propagate(network.hidden1_clipped, network.hidden2_values);
+    NnueCl1.Propagate(network.hidden2_values, network.hidden2_clipped);
+    NnueOut.OutLayer(network.hidden2_clipped, &network.out_value);
 
     return network.out_value * NnueValueScale / 1024;
 }
@@ -415,17 +420,17 @@ uint32_t NnueFeatureTransformer::GetHash()
 //
 // NetworkLayer
 //
-NnueNetworkLayer::NnueNetworkLayer(NnueLayer* prev, int id, int od) : NnueLayer(prev)
+template <unsigned int inputdims, unsigned int outputdims>
+NnueNetworkLayer<inputdims, outputdims>::NnueNetworkLayer(NnueLayer* prev) : NnueLayer(prev)
 {
-    inputdims = id;
-    outputdims = od;
-    size_t allocsize = od * sizeof(int32_t);
+    size_t allocsize = outputdims * sizeof(int32_t);
     bias = (int32_t*)allocalign64(allocsize);
-    allocsize = (size_t)id * (size_t)od * sizeof(weight_t);
+    allocsize = (size_t)inputdims * (size_t)outputdims * sizeof(weight_t);
     weight = (weight_t*)allocalign64(allocsize);
 }
 
-NnueNetworkLayer::~NnueNetworkLayer()
+template <unsigned int inputdims, unsigned int outputdims>
+NnueNetworkLayer<inputdims, outputdims>::~NnueNetworkLayer()
 {
     freealigned64(bias);
     freealigned64(weight);
@@ -466,7 +471,8 @@ inline unsigned int shuffleWeightIndex(unsigned int idx, unsigned int dims, bool
 }
 #endif
 
-bool NnueNetworkLayer::ReadWeights(NnueNetsource_t is)
+template <unsigned int inputdims, unsigned int outputdims>
+bool NnueNetworkLayer<inputdims, outputdims>::ReadWeights(NnueNetsource_t is)
 {
     if (previous)
         previous->ReadWeights(is);
@@ -558,14 +564,16 @@ void NnueNetworkLayer::WriteWeights(ofstream* os)
 }
 #endif
 
-uint32_t NnueNetworkLayer::GetHash()
+template <unsigned int inputdims, unsigned int outputdims>
+uint32_t NnueNetworkLayer<inputdims, outputdims>::GetHash()
 {
     return (NNUENETLAYERHASH + outputdims) ^ (previous->GetHash() >> 1) ^ (previous->GetHash() << 31);
 }
 
 
 // propagation to output value
-void NnueNetworkLayer::OutLayer(clipped_t* input, int32_t* output)
+template <unsigned int inputdims, unsigned int outputdims>
+void NnueNetworkLayer<inputdims, outputdims>::OutLayer(clipped_t* input, int32_t* output)
 {
 #if defined(USE_AVX2)
     __m256i* iv = (__m256i*)input;
@@ -620,7 +628,8 @@ void NnueNetworkLayer::OutLayer(clipped_t* input, int32_t* output)
 }
 
 
-void NnueNetworkLayer::Propagate(clipped_t* input, int32_t* output)
+template <unsigned int inputdims, unsigned int outputdims>
+void NnueNetworkLayer<inputdims, outputdims>::Propagate(clipped_t* input, int32_t* output)
 {
     myassert(inputdims == 32 || inputdims % 128 == 0, nullptr, 1, inputdims);
     myassert(outputdims % 8 == 0, nullptr, 1, outputdims);
@@ -854,12 +863,14 @@ void NnueNetworkLayer::Propagate(clipped_t* input, int32_t* output)
 //
 // ClippedRelu
 //
-NnueClippedRelu::NnueClippedRelu(NnueLayer* prev, int d) : NnueLayer(prev)
+template <unsigned int dims>
+NnueClippedRelu<dims>::NnueClippedRelu(NnueLayer* prev) : NnueLayer(prev)
 {
-    dims = d;
 }
 
-bool NnueClippedRelu::ReadWeights(NnueNetsource_t is)
+
+template <unsigned int dims>
+bool NnueClippedRelu<dims>::ReadWeights(NnueNetsource_t is)
 {
     if (previous) return previous->ReadWeights(is);
     return true;
@@ -872,12 +883,14 @@ void NnueClippedRelu::WriteWeights(ofstream* os)
 }
 #endif
 
-uint32_t NnueClippedRelu::GetHash()
+template <unsigned int dims>
+uint32_t NnueClippedRelu<dims>::GetHash()
 {
     return NNUECLIPPEDRELUHASH + previous->GetHash();
 }
 
-void NnueClippedRelu::Propagate(int32_t *input, clipped_t *output)
+template <unsigned int dims>
+void NnueClippedRelu<dims>::Propagate(int32_t *input, clipped_t *output)
 {
 #if defined(USE_AVX512)
     __m512i* in = (__m512i*)input;
@@ -974,17 +987,11 @@ uint32_t NnueInputSlice::GetHash()
 //
 void NnueInit()
 {
-    NnueFt = new NnueFeatureTransformer();
-    NnueIn = new NnueInputSlice();
-    NnueHd1 = new NnueNetworkLayer(NnueIn, NnueFtOutputdims, NnueHidden1Dims);
-    NnueCl1 = new NnueClippedRelu(NnueHd1, NnueHidden1Dims);
-    NnueHd2 = new NnueNetworkLayer(NnueCl1, NnueHidden1Dims, NnueHidden2Dims);
-    NnueCl2 = new NnueClippedRelu(NnueHd2, NnueHidden2Dims);
-    NnueOut = new NnueNetworkLayer(NnueCl2, NnueHidden2Dims, 1);
 }
 
 void NnueRemove()
 {
+#if 0
     delete NnueFt;
     delete NnueIn;
     delete NnueHd1;
@@ -992,14 +999,15 @@ void NnueRemove()
     delete NnueHd2;
     delete NnueCl2;
     delete NnueOut;
+#endif
 }
 
 bool NnueReadNet(NnueNetsource_t is)
 {
     NnueReady = NnueDisabled;
 
-    uint32_t fthash = NnueFt->GetHash();
-    uint32_t nethash = NnueOut->GetHash();
+    uint32_t fthash = NnueFt.GetHash();
+    uint32_t nethash = NnueOut.GetHash();
     uint32_t filehash = (fthash ^ nethash);
 
     uint32_t version, hash, size;
@@ -1015,15 +1023,15 @@ bool NnueReadNet(NnueNetsource_t is)
     NnueType nt;
     switch (version) {
     case NNUEFILEVERSIONROTATE:
-        NnueFt->bpz = true;
+        NnueFt.bpz = true;
         nt = NnueRotate;
         break;
     case NNUEFILEVERSIONNOBPZ:
-        NnueFt->bpz = false;
+        NnueFt.bpz = false;
         nt = NnueRotate;
         break;
     case NNUEFILEVERSIONFLIP:
-        NnueFt->bpz = false;
+        NnueFt.bpz = false;
         nt = NnueFlip;
         break;
     default:
@@ -1036,12 +1044,12 @@ bool NnueReadNet(NnueNetsource_t is)
     // Read the weights of the feature transformer
     NNUEREAD(is, (char*)&hash, sizeof(uint32_t));
     if (hash != fthash) return false;
-    if (!NnueFt->ReadWeights(is)) return false;
+    if (!NnueFt.ReadWeights(is)) return false;
 
     // Read the weights of the network layers recursively
     NNUEREAD(is, (char*)&hash, sizeof(uint32_t));
     if (hash != nethash) return false;
-    if (!NnueOut->ReadWeights(is)) return false;
+    if (!NnueOut.ReadWeights(is)) return false;
 
     if (!NNUEEOF(is))
         return false;

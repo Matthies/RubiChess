@@ -772,11 +772,11 @@ public:
     uint32_t GetHash();
 };
 
+template <unsigned int dims>
 class NnueClippedRelu : public NnueLayer
 {
 public:
-    int dims;
-    NnueClippedRelu(NnueLayer* prev, int d);
+    NnueClippedRelu(NnueLayer* prev);
     virtual ~NnueClippedRelu() {};
     bool ReadWeights(NnueNetsource_t is);
 #ifdef EVALOPTIONS
@@ -800,16 +800,14 @@ public:
     uint32_t GetHash();
 };
 
+template <unsigned int inputdims, unsigned int outputdims>
 class NnueNetworkLayer : public NnueLayer
 {
 public:
-    unsigned int inputdims;
-    unsigned int outputdims;
-
     int32_t* bias;
     weight_t* weight;
 
-    NnueNetworkLayer(NnueLayer* prev, int id, int od);
+    NnueNetworkLayer(NnueLayer* prev);
     virtual ~NnueNetworkLayer();
     bool ReadWeights(NnueNetsource_t is);
 #ifdef EVALOPTIONS
