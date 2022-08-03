@@ -767,10 +767,15 @@ public:
     NnueFeatureTransformer();
     virtual ~NnueFeatureTransformer();
     bool ReadFeatureWeights(NnueNetsource_t is);
-    bool ReadWeights(NnueNetsource_t is) { return true; }
+    bool ReadWeights(NnueNetsource_t is) {
+        if (previous) return previous->ReadWeights(is);
+        return true;
+    }
 #ifdef EVALOPTIONS
     void WriteFeatureWeights(ofstream *os);
-    void WriteWeights(ofstream* os) {}
+    void WriteWeights(ofstream* os) {
+        if (previous) return previous->WriteWeights(os);
+    }
 #endif
     uint32_t GetFtHash();
     uint32_t GetHash();

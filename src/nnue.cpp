@@ -57,13 +57,11 @@ NnueType NnueReady = NnueDisabled;
 
 // The network architecture
 NnueFeatureTransformer<NnueFtHalfdims, NnueFtInputdims> NnueFt;
-//NnueInputSlice NnueIn;
 NnueNetworkLayer<NnueFtOutputdims, NnueHidden1Dims> NnueHd1(&NnueFt);
 NnueClippedRelu<NnueHidden1Dims> NnueCl1(&NnueHd1);
 NnueNetworkLayer<NnueHidden1Dims, NnueHidden2Dims> NnueHd2(&NnueCl1);
 NnueClippedRelu<NnueHidden2Dims> NnueCl2(&NnueHd2);
 NnueNetworkLayer<NnueHidden2Dims, 1> NnueOut(&NnueCl2);
-
 
 
 //
