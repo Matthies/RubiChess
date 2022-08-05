@@ -158,20 +158,20 @@ typedef __m128i bias_vec_t;
 #define NUM_REGS 16
 #define SIMD_WIDTH 128
 typedef __m128i ft_vec_t;
+#define k0x80s _mm_set1_epi8(-128)
 #define vec_add_16(a,b) _mm_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm_sub_epi16(a,b)
 #define vec_packs(a,b) _mm_packs_epi16(a,b)
 #if defined(USE_SSSE3)
 typedef __m128i ft_vec_t, in_vec_t, acc_vec_t, weight_vec_t, bias_vec_t;
 #define vec_zero _mm_setzero_si128()
-
 #define vec_clip_8(a,b) vec_packs(_mm_max_epi16(a,_mm_setzero_si128()),_mm_max_epi16(b,_mm_setzero_si128()))
 #define vec_add_dpbusd_32x2_large Simd::m128_add_dpbusd_32x2
 #define vec_haddx4_large Simd::m128_haddx4
 #define vec_hadd_large Simd::m128_hadd
 
 #else
-#define vec_clip_16(a) _mm_min_epi16(_mm_max_epi16(a,_mm_setzero_si128()),_mm_set1_epi16(127))
+#define vec_clip_8(a,b) _mm_subs_epi8(_mm_adds_epi8(_mm_packs_epi16(a, b), k0x80s), k0x80s)
 #endif
 
 #elif defined(USE_NEON)
@@ -350,7 +350,6 @@ template <NnueType Nt> void chessposition::Transform(clipped_t *output)
 #ifdef USE_SIMD
         constexpr unsigned int numChunks = (16 * NnueFtHalfdims) / SIMD_WIDTH;
 
-#if defined(USE_SSSE3) || defined(USE_NEON)
         ft_vec_t* out = (ft_vec_t*)&output[offset];
 
         for (unsigned int i = 0; i < numChunks / 2; i++) {
@@ -358,32 +357,6 @@ template <NnueType Nt> void chessposition::Transform(clipped_t *output)
             ft_vec_t s1 = acc[i * 2 + 1];
             out[i] = vec_clip_8(s0, s1);
         }
-
-#else
-#if 0
-        ft_vec_t* out = (ft_vec_t*)&output[offset];
-        for (unsigned int i = 0; i < numChunks; i++) {
-            ft_vec_t sum = ((ft_vec_t*)(*acc)[perspectives[p]])[i];
-            out[i] = vec_clip_16(sum);
-        }
-#else
-        ft_vec_t* out = (ft_vec_t*)&output[offset];
-        for (unsigned int i = 0; i < numChunks / 2; i++) {
-            ft_vec_t sum0 = _mm_load_si128(&acc[i * 2]);
-            ft_vec_t sum1 = _mm_load_si128(&acc[i * 2 + 1]);
-            ft_vec_t  packedbytes = _mm_packs_epi16(sum0, sum1);
-            const __m128i k0x80s = _mm_set1_epi8(-128);
-            ft_vec_t sum80 = _mm_adds_epi8(packedbytes, k0x80s);
-            ft_vec_t dif = _mm_subs_epi8(sum80, k0x80s);
-            _mm_store_si128(&out[i], dif);
-
-#ifdef USE_SSE41
-                _mm_max_epi8(packedbytes, kZero)
-               
-#endif
-        }
-#endif
-#endif
 #else
         for (unsigned int i = 0; i < NnueFtHalfdims; i++) {
             int16_t sum = acc[i];
@@ -1108,7 +1081,6 @@ void NnueClippedRelu<dims>::Propagate(int32_t *input, clipped_t *output)
     }
 #elif defined(USE_SSE2)
     const unsigned int numChunks = dims / SimdWidth;
-    const __m128i k0x80s = _mm_set1_epi8(-128);
     __m128i* in = (__m128i*)input;
     __m128i* out = (__m128i*)output;
     for (unsigned int i = 0; i < numChunks; i++) {

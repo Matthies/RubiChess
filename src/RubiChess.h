@@ -47,6 +47,12 @@
 // Enable this to enable NNUE debug output
 //#define NNUEDEBUG
 
+#if 0
+#undef USE_AVX512
+#undef USE_AVX2
+#undef USE_SSSE3
+#undef USE_SSE2
+#endif
 
 #ifdef FINDMEMORYLEAKS
 #define _CRTDBG_MAP_ALLOC
