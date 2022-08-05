@@ -95,34 +95,81 @@ template <NnueType Nt, Color c> void chessposition::HalfkpAppendChangedIndices(D
     }
 }
 
+// Macros for NnueNetworkLayer new Propagate for small layers
+#if defined (USE_AVX2)
+typedef __m256i sml_vec_t;
+#define vec_setzero _mm256_setzero_si256
+#define vec_set_32 _mm256_set1_epi32
+#define vec_add_dpbusd_32 Simd::m256_add_dpbusd_32
+#define vec_add_dpbusd_32x2 Simd::m256_add_dpbusd_32x2
+#define vec_hadd Simd::m256_hadd
+#define vec_haddx4 Simd::m256_haddx4
+
+#elif defined (USE_SSSE3)
+typedef __m128i sml_vec_t;
+#define vec_setzero _mm_setzero_si128
+#define vec_set_32 _mm_set1_epi32
+#define vec_add_dpbusd_32 Simd::m128_add_dpbusd_32
+#define vec_add_dpbusd_32x2 Simd::m128_add_dpbusd_32x2
+#define vec_add_dpbusd_32x4 Simd::m128_add_dpbusd_epi32x4
+#define vec_hadd Simd::m128_hadd
+#define vec_haddx4 Simd::m128_haddx4
+#endif
+
+
 #ifdef USE_AVX512
 #define NUM_REGS 8
 #define SIMD_WIDTH 512
-typedef __m512i vec8_t, vec16_t;
-typedef __mmask64 mask_t;
+typedef __m512i ft_vec_t, in_vec_t, acc_vec_t, weight_vec_t, ft_vec_t;
+typedef __m128i bias_vec_t;
+#define vec_zero _mm512_setzero_si512()
 #define vec_add_16(a,b) _mm512_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm512_sub_epi16(a,b)
 #define vec_packs(a,b) _mm512_packs_epi16(a,b)
-#define vec_clip_8(a,b) _mm512_max_epi8(vec_packs(a,b),_mm512_setzero_si512())
+#define vec_clip_8(a,b) _mm512_permutexvar_epi64(_mm512_setr_epi64(0, 2, 4, 6, 1, 3, 5, 7) ,_mm512_max_epi8(vec_packs(a,b),_mm512_setzero_si512()))
+#define vec_add_dpbusd_32x2_large Simd::m512_add_dpbusd_32x2
+#define vec_haddx4_large Simd::m512_haddx4
+#define vec_hadd_large Simd::m512_hadd
+
 
 #elif defined(USE_AVX2)
 #define NUM_REGS 16
 #define SIMD_WIDTH 256
-typedef __m256i vec8_t, vec16_t;
+typedef __m256i ft_vec_t, in_vec_t, acc_vec_t, weight_vec_t;
+typedef __m128i bias_vec_t;
+#define vec_zero _mm256_setzero_si256()
 #define vec_add_16(a,b) _mm256_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm256_sub_epi16(a,b)
 #define vec_packs(a,b) _mm256_packs_epi16(a,b)
-#define vec_clip_8(a,b) _mm256_max_epi8(vec_packs(a,b),_mm256_setzero_si256())
+#define vec_clip_8(a,b) _mm256_permute4x64_epi64(_mm256_max_epi8(vec_packs(a,b),_mm256_setzero_si256()), 0xd8)
+#define vec_add_dpbusd_32x2_large Simd::m256_add_dpbusd_32x2
+#define vec_haddx4_large Simd::m256_haddx4
+#define vec_hadd_large Simd::m256_hadd
+
+
+//#define vec_zero_psqt() _mm256_setzero_si256()
+//#define vec_add_psqt_32(a,b) _mm256_add_epi32(a,b)
+//#define vec_sub_psqt_32(a,b) _mm256_sub_epi32(a,b)
+//#define vec_load_psqt(a) _mm256_load_si256(a)
+//#define vec_store_psqt(a,b) _mm256_store_si256(a,b)
+
 
 #elif defined(USE_SSE2)
 #define NUM_REGS 16
 #define SIMD_WIDTH 128
-typedef __m128i vec8_t, vec16_t;
+typedef __m128i ft_vec_t;
 #define vec_add_16(a,b) _mm_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm_sub_epi16(a,b)
 #define vec_packs(a,b) _mm_packs_epi16(a,b)
 #if defined(USE_SSSE3)
+typedef __m128i ft_vec_t, in_vec_t, acc_vec_t, weight_vec_t, bias_vec_t;
+#define vec_zero _mm_setzero_si128()
+
 #define vec_clip_8(a,b) vec_packs(_mm_max_epi16(a,_mm_setzero_si128()),_mm_max_epi16(b,_mm_setzero_si128()))
+#define vec_add_dpbusd_32x2_large Simd::m128_add_dpbusd_32x2
+#define vec_haddx4_large Simd::m128_haddx4
+#define vec_hadd_large Simd::m128_hadd
+
 #else
 #define vec_clip_16(a) _mm_min_epi16(_mm_max_epi16(a,_mm_setzero_si128()),_mm_set1_epi16(127))
 #endif
@@ -130,13 +177,14 @@ typedef __m128i vec8_t, vec16_t;
 #elif defined(USE_NEON)
 #define NUM_REGS 16
 #define SIMD_WIDTH 128
-typedef int16x8_t vec16_t;
-typedef int8x16_t vec8_t;
+typedef int16x8_t ft_vec_t;
 #define vec_add_16(a,b) vaddq_s16(a,b)
 #define vec_sub_16(a,b) vsubq_s16(a,b)
 #define vec_packs(a,b) vcombine_s8(vqmovn_s16(a),vqmovn_s16(b))
 #define vec_clip_8(a,b) vmaxq_s8(vec_packs(a,b),vdupq_n_s8(0))
 
+#else
+typedef int16_t ft_vec_t;
 #endif
 
 
@@ -150,7 +198,7 @@ typedef int8x16_t vec8_t;
 template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
 {
 #ifdef USE_SIMD
-    vec16_t acc[NUM_REGS];
+    ft_vec_t acc[NUM_REGS];
 #endif
 
     int mslast = ply;
@@ -186,7 +234,7 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
 #ifdef USE_SIMD
         for (unsigned int i = 0; i < NnueFtHalfdims / TILE_HEIGHT; i++)
         {
-            vec16_t* accTile = (vec16_t*)&accumulator[mslast].accumulation[c][i * TILE_HEIGHT];
+            ft_vec_t* accTile = (ft_vec_t*)&accumulator[mslast].accumulation[c][i * TILE_HEIGHT];
             for (unsigned int j = 0; j < NUM_REGS; j++)
                 acc[j] = accTile[j];
             for (unsigned int l = 0; pos2update[l] >= 0; l++)
@@ -196,7 +244,7 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
                 {
                     unsigned int index = removedIndices[l].values[k];
                     const unsigned int offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
-                    vec16_t* column = (vec16_t*)&NnueFt.weight[offset];
+                    ft_vec_t* column = (ft_vec_t*)&NnueFt.weight[offset];
                     for (unsigned int j = 0; j < NUM_REGS; j++)
                         acc[j] = vec_sub_16(acc[j], column[j]);
                 }
@@ -206,12 +254,12 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
                 {
                     unsigned int index = addedIndices[l].values[k];
                     const unsigned int offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
-                    vec16_t* column = (vec16_t*)&NnueFt.weight[offset];
+                    ft_vec_t* column = (ft_vec_t*)&NnueFt.weight[offset];
                     for (unsigned int j = 0; j < NUM_REGS; j++)
                         acc[j] = vec_add_16(acc[j], column[j]);
                 }
 
-                accTile = (vec16_t*)&accumulator[pos2update[l]].accumulation[c][i * TILE_HEIGHT];
+                accTile = (ft_vec_t*)&accumulator[pos2update[l]].accumulation[c][i * TILE_HEIGHT];
                 for (unsigned int j = 0; j < NUM_REGS; j++)
                     accTile[j] = acc[j];
             }
@@ -229,7 +277,7 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
                 const unsigned int offset = NnueFtHalfdims * index;
 
                 for (unsigned int j = 0; j < NnueFtHalfdims; j++)
-                    accumulator[mslast].accumulation[c][j] -= NnueFt->weight[offset + j];
+                    accumulator[mslast].accumulation[c][j] -= NnueFt.weight[offset + j];
             }
 
             // Difference calculation for the activated features
@@ -239,7 +287,7 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
                 const unsigned int offset = NnueFtHalfdims * index;
 
                 for (unsigned int j = 0; j < NnueFtHalfdims; j++)
-                    accumulator[mslast].accumulation[c][j] += NnueFt->weight[offset + j];
+                    accumulator[mslast].accumulation[c][j] += NnueFt.weight[offset + j];
             }
         }
 #endif
@@ -254,7 +302,7 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
 #ifdef USE_SIMD
         for (unsigned int i = 0; i < NnueFtHalfdims / TILE_HEIGHT; i++)
         {
-            vec16_t* ft_biases_tile = (vec16_t*)&NnueFt.bias[i * TILE_HEIGHT];
+            ft_vec_t* ft_biases_tile = (ft_vec_t*)&NnueFt.bias[i * TILE_HEIGHT];
             for (unsigned int j = 0; j < NUM_REGS; j++)
                 acc[j] = ft_biases_tile[j];
 
@@ -262,18 +310,18 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
             {
                 unsigned int index = activeIndices.values[k];
                 unsigned int offset = NnueFtHalfdims * index + i * TILE_HEIGHT;
-                vec16_t* column = (vec16_t*)&NnueFt.weight[offset];
+                ft_vec_t* column = (ft_vec_t*)&NnueFt.weight[offset];
                 for (unsigned int j = 0; j < NUM_REGS; j++)
                     acc[j] = vec_add_16(acc[j], column[j]);
             }
 
-            vec16_t* accTile = (vec16_t*)&ac->accumulation[c][i * TILE_HEIGHT];
+            ft_vec_t* accTile = (ft_vec_t*)&ac->accumulation[c][i * TILE_HEIGHT];
             for (unsigned int j = 0; j < NUM_REGS; j++)
                 accTile[j] = acc[j];
         }
 
 #else
-        memcpy(ac->accumulation[c], NnueFt->bias, NnueFtHalfdims * sizeof(int16_t));
+        memcpy(ac->accumulation[c], NnueFt.bias, NnueFtHalfdims * sizeof(int16_t));
 
         for (unsigned int k = 0; k < activeIndices.size; k++)
         {
@@ -281,7 +329,7 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
             unsigned int offset = NnueFtHalfdims * index;
 
             for (unsigned int j = 0; j < NnueFtHalfdims; j++)
-                ac->accumulation[c][j] += NnueFt->weight[offset + j];
+                ac->accumulation[c][j] += NnueFt.weight[offset + j];
         }
 #endif
     }
@@ -293,38 +341,64 @@ template <NnueType Nt> void chessposition::Transform(clipped_t *output)
     UpdateAccumulator<Nt, WHITE>();
     UpdateAccumulator<Nt, BLACK>();
 
-    int16_t(*acc)[2][256] = &accumulator[ply].accumulation;
-
     const int perspectives[2] = { state & S2MMASK, !(state & S2MMASK) };
     for (int p = 0; p < 2; p++)
     {
         const unsigned int offset = NnueFtHalfdims * p;
+        const ft_vec_t* acc = (ft_vec_t*)&accumulator[ply].accumulation[perspectives[p]][0];
 
 #ifdef USE_SIMD
-        const unsigned int numChunks = (16 * NnueFtHalfdims) / SIMD_WIDTH;
+        constexpr unsigned int numChunks = (16 * NnueFtHalfdims) / SIMD_WIDTH;
 
 #if defined(USE_SSSE3) || defined(USE_NEON)
-        vec8_t* out = (vec8_t*)&output[offset];
+        ft_vec_t* out = (ft_vec_t*)&output[offset];
+
         for (unsigned int i = 0; i < numChunks / 2; i++) {
-            vec16_t s0 = ((vec16_t*)(*acc)[perspectives[p]])[i * 2];
-            vec16_t s1 = ((vec16_t*)(*acc)[perspectives[p]])[i * 2 + 1];
+            ft_vec_t s0 = acc[i * 2];
+            ft_vec_t s1 = acc[i * 2 + 1];
             out[i] = vec_clip_8(s0, s1);
         }
 
 #else
-        vec16_t* out = (vec16_t*)&output[offset];
+#if 0
+        ft_vec_t* out = (ft_vec_t*)&output[offset];
         for (unsigned int i = 0; i < numChunks; i++) {
-            vec16_t sum = ((vec16_t*)(*acc)[perspectives[p]])[i];
+            ft_vec_t sum = ((ft_vec_t*)(*acc)[perspectives[p]])[i];
             out[i] = vec_clip_16(sum);
         }
+#else
+        ft_vec_t* out = (ft_vec_t*)&output[offset];
+        for (unsigned int i = 0; i < numChunks / 2; i++) {
+            ft_vec_t sum0 = _mm_load_si128(&acc[i * 2]);
+            ft_vec_t sum1 = _mm_load_si128(&acc[i * 2 + 1]);
+            ft_vec_t  packedbytes = _mm_packs_epi16(sum0, sum1);
+            const __m128i k0x80s = _mm_set1_epi8(-128);
+            ft_vec_t sum80 = _mm_adds_epi8(packedbytes, k0x80s);
+            ft_vec_t dif = _mm_subs_epi8(sum80, k0x80s);
+            _mm_store_si128(&out[i], dif);
 
+#ifdef USE_SSE41
+                _mm_max_epi8(packedbytes, kZero)
+               
+#endif
+        }
+#endif
 #endif
 #else
         for (unsigned int i = 0; i < NnueFtHalfdims; i++) {
-            int16_t sum = (*acc)[perspectives[p]][i];
-            output[offset + i] = max<int16_t>(0, min<int16_t>(127, sum));
+            int16_t sum = acc[i];
+            output[offset + i] = (clipped_t)max<int16_t>(0, min<int16_t>(127, sum));
         }
 
+#endif
+#ifdef NNUEDEBUG
+        cout << "\ninput layer (p=" << p << "):\n";
+        for (unsigned int i = 0; i < NnueFtHalfdims; i++) {
+            cout << hex << setfill('0') << setw(2) << (int)output[offset + i] << " ";
+            if (i % 16 == 15)
+                cout << "   " << hex << setfill('0') << setw(3) << (int)(i / 16 * 16) << "\n";
+        }
+        cout << dec;
 #endif
     }
 }
@@ -340,7 +414,7 @@ template <NnueType Nt> int chessposition::NnueGetEval()
     NnueCl1.Propagate(network.hidden1_values, network.hidden1_clipped);
     NnueHd2.Propagate(network.hidden1_clipped, network.hidden2_values);
     NnueCl1.Propagate(network.hidden2_values, network.hidden2_clipped);
-    NnueOut.OutLayer(network.hidden2_clipped, &network.out_value);
+    NnueOut.Propagate(network.hidden2_clipped, &network.out_value);
 
     return network.out_value * NnueValueScale / 1024;
 }
@@ -349,6 +423,7 @@ template <NnueType Nt> int chessposition::NnueGetEval()
 //
 // FeatureTransformer
 //
+
 template <int ftdims, int inputdims>
 NnueFeatureTransformer<ftdims, inputdims>::NnueFeatureTransformer() : NnueLayer(NULL)
 {
@@ -456,6 +531,7 @@ inline unsigned int shuffleWeightIndex(unsigned int idx, unsigned int dims, bool
 #else   //AVX2 version
 inline unsigned int shuffleWeightIndex(unsigned int idx, unsigned int dims, bool outlayer)
 {
+    return idx;
     if (dims > 32)
         idx = bit_shuffle(idx, 1, 1, 0x18);
     else if (dims == 32) {
@@ -489,9 +565,7 @@ bool NnueNetworkLayer<inputdims, outputdims>::ReadWeights(NnueNetsource_t is)
         for (unsigned int c = 0; c < inputdims; c++)
         {
             unsigned int idx = r * inputdims + c;
-#if defined(USE_AVX2)
-            idx = shuffleWeightIndex(idx, inputdims, outputdims == 1);
-#endif
+            idx = shuffleWeightIndex(idx);
             weight[idx] = *w++;
         }
 
@@ -568,6 +642,7 @@ uint32_t NnueNetworkLayer<inputdims, outputdims>::GetHash()
 }
 
 
+#if 0
 // propagation to output value
 template <unsigned int inputdims, unsigned int outputdims>
 void NnueNetworkLayer<inputdims, outputdims>::OutLayer(clipped_t* input, int32_t* output)
@@ -623,11 +698,13 @@ void NnueNetworkLayer<inputdims, outputdims>::OutLayer(clipped_t* input, int32_t
 #endif
 
 }
+#endif
 
 
 template <unsigned int inputdims, unsigned int outputdims>
 void NnueNetworkLayer<inputdims, outputdims>::Propagate(clipped_t* input, int32_t* output)
 {
+#if 0
     myassert(inputdims == 32 || inputdims % 128 == 0, nullptr, 1, inputdims);
     myassert(outputdims % 8 == 0, nullptr, 1, outputdims);
 
@@ -853,8 +930,113 @@ void NnueNetworkLayer<inputdims, outputdims>::Propagate(clipped_t* input, int32_
         output[i] = sum;
     }
 #endif
+#endif
 
 
+#if defined (USE_SSSE3)
+    if (paddedInputdims < 128) {
+        if (outputdims % 8 == 0)
+        {
+            constexpr unsigned int numChunks = paddedInputdims / 4;
+
+            const int32_t* input32 = (int32_t*)input;
+            const sml_vec_t* biasvec = (sml_vec_t*)bias;
+            sml_vec_t acc[NumOutputRegsSmall];
+            for (unsigned int k = 0; k < NumOutputRegsSmall; ++k)
+                acc[k] = biasvec[k];
+
+            for (unsigned int i = 0; i < numChunks; i += 2)
+            {
+                const sml_vec_t in0 = vec_set_32(input32[i + 0]);
+                const sml_vec_t in1 = vec_set_32(input32[i + 1]);
+                const sml_vec_t* col0 = (sml_vec_t*)(&weight[(i + 0) * outputdims * 4]);
+                const sml_vec_t* col1 = (sml_vec_t*)(&weight[(i + 1) * outputdims * 4]);
+                for (unsigned int k = 0; k < NumOutputRegsSmall; ++k)
+                    vec_add_dpbusd_32x2(acc[k], in0, col0[k], in1, col1[k]);
+            }
+
+            sml_vec_t* outptr = (sml_vec_t*)output;
+            for (unsigned int k = 0; k < NumOutputRegsSmall; ++k)
+                outptr[k] = acc[k];
+        }
+        else {
+            constexpr unsigned int numChunks = paddedInputdims / SimdWidth;
+            const sml_vec_t* inputVector = (sml_vec_t*)input;
+
+            sml_vec_t sum0 = vec_setzero();
+            sml_vec_t* row0 = (sml_vec_t*)&weight[0];
+
+            for (int j = 0; j < (int)numChunks; ++j)
+            {
+                const sml_vec_t in = inputVector[j];
+                vec_add_dpbusd_32(sum0, in, row0[j]);
+            }
+            output[0] = vec_hadd(sum0, bias[0]);
+        }
+    }
+    else {
+        const in_vec_t* invec = (in_vec_t*)input;
+
+        // Perform accumulation to registers for each big block
+        for (unsigned int bigBlock = 0; bigBlock < NumBigBlocks; ++bigBlock)
+        {
+            acc_vec_t acc[NumOutputRegsBig] = { vec_zero };
+
+            // Each big block has NumOutputRegs small blocks in each "row", one per register.
+            // We process two small blocks at a time to save on one addition without VNNI.
+            for (unsigned int smallBlock = 0; smallBlock < NumSmallBlocksPerOutput; smallBlock += 2)
+            {
+                const weight_vec_t* weightvec = (weight_vec_t*)(weight + bigBlock * BigBlockSize + smallBlock * SmallBlockSize * NumOutputRegsBig);
+                const in_vec_t in0 = invec[smallBlock + 0];
+                const in_vec_t in1 = invec[smallBlock + 1];
+
+                for (unsigned int k = 0; k < NumOutputRegsBig; ++k)
+                    vec_add_dpbusd_32x2_large(acc[k], in0, weightvec[k], in1, weightvec[k + NumOutputRegsBig]);
+            }
+
+            // Horizontally add all accumulators.
+            if (NumOutputRegsBig % 4 == 0)
+            {
+                bias_vec_t* outputvec = (bias_vec_t*)output;
+                const bias_vec_t* biasvec = (bias_vec_t*)bias;
+
+                for (unsigned int k = 0; k < NumOutputRegsBig; k += 4)
+                {
+                    const unsigned int idx = (bigBlock * NumOutputRegsBig + k) / 4;
+                    outputvec[idx] = vec_haddx4_large(acc[k + 0], acc[k + 1], acc[k + 2], acc[k + 3], biasvec[idx]);
+                }
+            }
+            else
+            {
+                for (unsigned int k = 0; k < NumOutputRegsBig; ++k)
+                {
+                    const unsigned int idx = (bigBlock * NumOutputRegsBig + k);
+                    output[idx] = vec_hadd_large(acc[k], bias[idx]);
+                }
+            }
+        }
+    }
+
+
+#else
+    for (unsigned int i = 0; i < outputdims; i++) {
+        unsigned int offset = i * paddedInputdims;
+        int32_t sum = bias[i];
+        for (unsigned int j = 0; j < inputdims; j++)
+            sum += weight[offset + j] * input[j];
+        output[i] = sum;
+    }
+#endif
+
+#ifdef NNUEDEBUG
+    cout << "\nnetwork layer:\n";
+    for (unsigned int i = 0; i < outputdims; i++) {
+        cout << dec << setfill(' ') << setw(6) << (int)output[i] << " ";
+        if (i % 16 == 15 || (i + 1 == outputdims))
+            cout << "   " << hex << setfill('0') << setw(3) << (int)(i / 16 * 16) << "\n";
+    }
+    cout << dec;
+#endif
 }
 
 //
@@ -890,27 +1072,42 @@ uint32_t NnueClippedRelu<dims>::GetHash()
 template <unsigned int dims>
 void NnueClippedRelu<dims>::Propagate(int32_t *input, clipped_t *output)
 {
-#if defined(USE_AVX512)
-    __m512i* in = (__m512i*)input;
-    __m256i* out = (__m256i*)output;
-    __m512i words = _mm512_srai_epi16(_mm512_packs_epi32(in[0], in[1]), NnueClippingShift);
-    __m256i packed = _mm256_packs_epi16(
-        _mm512_castsi512_si256(words), _mm512_extracti64x4_epi64(words, 1));
-    out[0] = _mm256_max_epi8(packed, _mm256_setzero_si256());
-#elif defined(USE_AVX2)
-    const unsigned int numChunks = dims / 32;
-    const __m256i kZero = _mm256_setzero_si256();
-    __m256i* in = (__m256i*)input;
-    __m256i* out = (__m256i*)output;
-    for (unsigned int i = 0; i < numChunks; i++) {
-        __m256i words0 = _mm256_srai_epi16(_mm256_packs_epi32(
-            in[i * 4 + 0], in[i * 4 + 1]), NnueClippingShift);
-        __m256i words1 = _mm256_srai_epi16(_mm256_packs_epi32(
-            in[i * 4 + 2], in[i * 4 + 3]), NnueClippingShift);
-        out[i] = _mm256_max_epi8(_mm256_packs_epi16(words0, words1), kZero);
+#ifdef USE_AVX2
+    if (dims % SimdWidth == 0) {
+            const unsigned int numChunks = dims / SimdWidth;
+            const __m256i Zero = _mm256_setzero_si256();
+            const __m256i Offsets = _mm256_set_epi32(7, 3, 6, 2, 5, 1, 4, 0);
+            const __m256i* in = (__m256i*)input;
+            __m256i* out = (__m256i*)output;
+            for (unsigned int i = 0; i < numChunks; ++i) {
+                const __m256i words0 = _mm256_srai_epi16(_mm256_packs_epi32(
+                    _mm256_load_si256(&in[i * 4 + 0]),
+                    _mm256_load_si256(&in[i * 4 + 1])), NnueClippingShift);
+                const __m256i words1 = _mm256_srai_epi16(_mm256_packs_epi32(
+                    _mm256_load_si256(&in[i * 4 + 2]),
+                    _mm256_load_si256(&in[i * 4 + 3])), NnueClippingShift);
+                _mm256_store_si256(&out[i], _mm256_permutevar8x32_epi32(_mm256_max_epi8(
+                    _mm256_packs_epi16(words0, words1), Zero), Offsets));
+        }
     }
-#elif defined(USE_SSSE3)
-    const unsigned int numChunks = dims / 16;
+    else {
+        const unsigned int numChunks = dims / (SimdWidth / 2);
+        const __m128i Zero = _mm_setzero_si128();
+        __m128i* in = (__m128i*)input;
+        __m128i* out = (__m128i*)output;
+        for (unsigned int i = 0; i < numChunks; i++) {
+            const __m128i words0 = _mm_srai_epi16(_mm_packs_epi32(
+                _mm_load_si128(&in[i * 4 + 0]),
+                _mm_load_si128(&in[i * 4 + 1])), NnueClippingShift);
+            const __m128i words1 = _mm_srai_epi16(_mm_packs_epi32(
+                _mm_load_si128(&in[i * 4 + 2]),
+                _mm_load_si128(&in[i * 4 + 3])), NnueClippingShift);
+            const __m128i packedbytes = _mm_packs_epi16(words0, words1);
+            _mm_store_si128(&out[i], _mm_max_epi8(packedbytes, Zero));
+        }
+    }
+#elif defined(USE_SSE2)
+    const unsigned int numChunks = dims / SimdWidth;
     const __m128i k0x80s = _mm_set1_epi8(-128);
     __m128i* in = (__m128i*)input;
     __m128i* out = (__m128i*)output;
@@ -923,8 +1120,8 @@ void NnueClippedRelu<dims>::Propagate(int32_t *input, clipped_t *output)
         out[i] = _mm_subs_epi8(_mm_adds_epi8(packedbytes, k0x80s), k0x80s);
     }
 
-#elif defined(USE_SSE2)
-    const unsigned int numChunks = dims / 8;
+#elif defined(xxxUSE_SSE2)
+    const unsigned int numChunks = dims / SimdWidth;
     const __m128i kZero = _mm_setzero_si128();
     const __m128i k0x7f = _mm_set1_epi16(0x7f);
     __m128i* in = (__m128i*)input;
@@ -951,6 +1148,15 @@ void NnueClippedRelu<dims>::Propagate(int32_t *input, clipped_t *output)
         output[i] = max(0, min(127, input[i] >> NnueClippingShift));
 #endif
 
+#ifdef NNUEDEBUG
+    cout << "\nclipped relu:\n";
+    for (unsigned int i = 0; i < dims; i++) {
+        cout << hex << setfill('0') << setw(2) << (int)output[i] << " ";
+        if (i % 16 == 15 || (i + 1 == dims))
+            cout << "   " << hex << setfill('0') << setw(3) << (int)(i / 16 * 16) << "\n";
+    }
+    cout << dec;
+#endif
 }
 
 
