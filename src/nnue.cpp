@@ -990,8 +990,20 @@ void NnueNetworkLayer<inputdims, outputdims>::Propagate(clipped_t* input, int32_
             }
         }
     }
-
-
+#elif defined(USE_NEON)
+    const unsigned int numChunks = paddedInputdims / 16;
+    int8x8_t* inVec = (int8x8_t*)input;
+    for (unsigned int i = 0; i < outputdims; ++i) {
+        unsigned int offset = i * inputdims;
+        int32x4_t sum = { bias[i] };
+        int8x8_t* row = (int8x8_t*)&weight[offset];
+        for (unsigned int j = 0; j < numChunks; j++) {
+            int16x8_t product = vmull_s8(inVec[j * 2], row[j * 2]);
+            product = vmlal_s8(product, inVec[j * 2 + 1], row[j * 2 + 1]);
+            sum = vpadalq_s16(sum, product);
+        }
+        output[i] = sum[0] + sum[1] + sum[2] + sum[3];
+    }
 #else
     for (unsigned int i = 0; i < outputdims; i++) {
         unsigned int offset = i * paddedInputdims;
