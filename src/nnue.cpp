@@ -120,7 +120,7 @@ typedef __m128i sml_vec_t;
 #ifdef USE_AVX512
 #define NUM_REGS 8
 #define SIMD_WIDTH 512
-typedef __m512i ft_vec_t, in_vec_t, acc_vec_t, weight_vec_t, ft_vec_t;
+typedef __m512i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, ft_vec_t;
 typedef __m128i bias_vec_t;
 #define vec_zero _mm512_setzero_si512()
 #define vec_add_16(a,b) _mm512_add_epi16(a,b)
@@ -135,7 +135,7 @@ typedef __m128i bias_vec_t;
 #elif defined(USE_AVX2)
 #define NUM_REGS 16
 #define SIMD_WIDTH 256
-typedef __m256i ft_vec_t, in_vec_t, acc_vec_t, weight_vec_t;
+typedef __m256i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t;
 typedef __m128i bias_vec_t;
 #define vec_zero _mm256_setzero_si256()
 #define vec_add_16(a,b) _mm256_add_epi16(a,b)
@@ -157,13 +157,13 @@ typedef __m128i bias_vec_t;
 #elif defined(USE_SSE2)
 #define NUM_REGS 16
 #define SIMD_WIDTH 128
-typedef __m128i ft_vec_t;
+typedef __m128i ft_vec_t, ftout_vec_t;
 #define k0x80s _mm_set1_epi8(-128)
 #define vec_add_16(a,b) _mm_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm_sub_epi16(a,b)
 #define vec_packs(a,b) _mm_packs_epi16(a,b)
 #if defined(USE_SSSE3)
-typedef __m128i ft_vec_t, in_vec_t, acc_vec_t, weight_vec_t, bias_vec_t;
+typedef __m128i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, bias_vec_t;
 #define vec_zero _mm_setzero_si128()
 #define vec_clip_8(a,b) vec_packs(_mm_max_epi16(a,_mm_setzero_si128()),_mm_max_epi16(b,_mm_setzero_si128()))
 #define vec_add_dpbusd_32x2_large Simd::m128_add_dpbusd_32x2
@@ -178,6 +178,7 @@ typedef __m128i ft_vec_t, in_vec_t, acc_vec_t, weight_vec_t, bias_vec_t;
 #define NUM_REGS 16
 #define SIMD_WIDTH 128
 typedef int16x8_t ft_vec_t;
+typedef int8x16_t ftout_vec_t;
 #define vec_add_16(a,b) vaddq_s16(a,b)
 #define vec_sub_16(a,b) vsubq_s16(a,b)
 #define vec_packs(a,b) vcombine_s8(vqmovn_s16(a),vqmovn_s16(b))
@@ -350,7 +351,7 @@ template <NnueType Nt> void chessposition::Transform(clipped_t *output)
 #ifdef USE_SIMD
         constexpr unsigned int numChunks = (16 * NnueFtHalfdims) / SIMD_WIDTH;
 
-        ft_vec_t* out = (ft_vec_t*)&output[offset];
+        ftout_vec_t* out = (ftout_vec_t*)&output[offset];
 
         for (unsigned int i = 0; i < numChunks / 2; i++) {
             ft_vec_t s0 = acc[i * 2];
