@@ -680,6 +680,9 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
 //
 #define NNUEDEFAULTSTR TOSTRING(NNUEDEFAULT)
 
+// enable this switch for faster SSE2 code using 16bit integers
+#define FASTSSE2
+
 enum NnueType { NnueDisabled = 0, NnueRotate, NnueFlip };
 // The following constants were introduced in original NNUE port from Shogi
 #define NNUEFILEVERSIONROTATE   0x7AF32F16u
@@ -702,8 +705,15 @@ const int NnueHidden1Dims = 32;
 const int NnueHidden2Dims = 32;
 const int NnueClippingShift = 6;
 
+#if defined(USE_SSE2) && !defined(USE_SSSE3) && defined FASTSSE2
+// for native SSE2 platforms we have faster intrinsics for 16bit integers
+#define USE_FASTSSE2
+typedef int16_t weight_t;
+typedef int16_t clipped_t;
+#else
 typedef int8_t weight_t;
 typedef int8_t clipped_t;
+#endif
 
 // All pieces besides kings are inputs => 30 dimensions
 typedef struct {

@@ -162,6 +162,7 @@ typedef __m128i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, bias_v
 #define vec_hadd_large Simd::m128_hadd
 #else // USE_SSSE3
 #define vec_clip_8(a,b) _mm_subs_epi8(_mm_adds_epi8(_mm_packs_epi16(a, b), k0x80s), k0x80s)
+#define vec_clip_16(a) _mm_min_epi16(_mm_max_epi16(a,_mm_setzero_si128()),_mm_set1_epi16(127))
 #endif
 
 #elif defined(USE_NEON)
@@ -346,11 +347,18 @@ template <NnueType Nt> void chessposition::Transform(clipped_t *output)
 #ifdef USE_SIMD
         constexpr unsigned int numChunks = (16 * NnueFtHalfdims) / SIMD_WIDTH;
         ftout_vec_t* out = (ftout_vec_t*)&output[offset];
+#ifdef USE_FASTSSE2
+        for (unsigned int i = 0; i < numChunks; i++) {
+            ft_vec_t sum = (ft_vec_t)acc[i];
+            out[i] = vec_clip_16(sum);
+        }
+#else
         for (unsigned int i = 0; i < numChunks / 2; i++) {
             ft_vec_t s0 = acc[i * 2];
             ft_vec_t s1 = acc[i * 2 + 1];
             out[i] = vec_clip_8(s0, s1);
         }
+#endif
 #else
         for (unsigned int i = 0; i < NnueFtHalfdims; i++) {
             int16_t sum = acc[i];
@@ -605,7 +613,44 @@ void NnueNetworkLayer<inputdims, outputdims>::Propagate(clipped_t* input, int32_
 template <unsigned int inputdims, unsigned int outputdims>
 void NnueNetworkLayer<inputdims, outputdims>::PropagateNative(clipped_t* input, int32_t* output)
 {
-# if defined(USE_SSE2)
+#ifdef USE_FASTSSE2
+    if (outputdims % 4 == 0) {
+        __m128i* outVec = (__m128i*)output;
+        __m128i* biasVec = (__m128i*)bias;
+        __m128i* inVec = (__m128i*)input;
+        for (unsigned int i = 0; i < outputdims / 4; i++) {
+            __m128i* w = (__m128i*) & weight[4 * i * inputdims], p, s0, s1, s2, s3;
+            s0 = s1 = s2 = s3 = _mm_setzero_si128();
+            for (unsigned int j = 0; j < inputdims / 8; j++) {
+                p = _mm_madd_epi16(inVec[j], w[0 * inputdims / 8 + j]);
+                s0 = _mm_add_epi32(s0, p);
+                p = _mm_madd_epi16(inVec[j], w[1 * inputdims / 8 + j]);
+                s1 = _mm_add_epi32(s1, p);
+                p = _mm_madd_epi16(inVec[j], w[2 * inputdims / 8 + j]);
+                s2 = _mm_add_epi32(s2, p);
+                p = _mm_madd_epi16(inVec[j], w[3 * inputdims / 8 + j]);
+                s3 = _mm_add_epi32(s3, p);
+            }
+            s0 = _mm_add_epi32(_mm_unpacklo_epi32(s0, s1), _mm_unpackhi_epi32(s0, s1));
+            s2 = _mm_add_epi32(_mm_unpacklo_epi32(s2, s3), _mm_unpackhi_epi32(s2, s3));
+            s0 = _mm_add_epi32(_mm_unpacklo_epi64(s0, s2), _mm_unpackhi_epi64(s0, s2));
+            outVec[i] = _mm_add_epi32(s0, biasVec[i]);
+        }
+    }
+    else {
+        __m128i* iv = (__m128i*)input;
+        __m128i* row = (__m128i*)weight;
+        __m128i p0 = _mm_madd_epi16(iv[0], row[0]);
+        __m128i p1 = _mm_madd_epi16(iv[1], row[1]);
+        __m128i p2 = _mm_madd_epi16(iv[2], row[2]);
+        __m128i p3 = _mm_madd_epi16(iv[3], row[3]);
+        __m128i sum = _mm_add_epi32(_mm_add_epi32(p0, p1), _mm_add_epi32(p2, p3));
+        sum = _mm_add_epi32(sum, _mm_shuffle_epi32(sum, 0xb));
+        sum = _mm_add_epi32(sum, _mm_shuffle_epi32(sum, 0x1));
+        *output = _mm_cvtsi128_si32(sum) + bias[0];
+    }
+#else
+#if defined(USE_SSE2)
     // At least a multiple of 16, with SSE2.
     const unsigned int numChunks = paddedInputdims / 16;
     const __m128i Zeros = _mm_setzero_si128();
@@ -616,7 +661,7 @@ void NnueNetworkLayer<inputdims, outputdims>::PropagateNative(clipped_t* input, 
 # endif
     for (unsigned int i = 0; i < outputdims; ++i) {
         unsigned int offset = i * inputdims;
-# if defined(USE_SSE2)
+#if defined(USE_SSE2)
         __m128i sumLo = _mm_cvtsi32_si128(bias[i]);
         __m128i sumHi = Zeros;
         const __m128i* row = (__m128i*)&weight[offset];
@@ -638,7 +683,7 @@ void NnueNetworkLayer<inputdims, outputdims>::PropagateNative(clipped_t* input, 
         __m128i sum_second_32 = _mm_shufflelo_epi16(sum, _MM_SHUFFLE(1, 0, 3, 2));
         sum = _mm_add_epi32(sum, sum_second_32);
         output[i] = _mm_cvtsi128_si32(sum);
-# elif defined(USE_NEON)
+#elif defined(USE_NEON)
         int32x4_t sum = { bias[i] };
         const int8x8_t* row = (int8x8_t*)&weight[offset];
         for (unsigned int j = 0; j < numChunks; ++j) {
@@ -647,14 +692,15 @@ void NnueNetworkLayer<inputdims, outputdims>::PropagateNative(clipped_t* input, 
             sum = vpadalq_s16(sum, product);
         }
         output[i] = sum[0] + sum[1] + sum[2] + sum[3];
-# else
+#else
         int32_t sum = bias[i];
         for (unsigned int j = 0; j < inputdims; ++j) {
             sum += weight[offset + j] * input[j];
         }
         output[i] = sum;
-# endif
+#endif
     }
+#endif
 }
 
 
@@ -701,9 +747,19 @@ void NnueClippedRelu<dims>::Propagate(int32_t *input, clipped_t *output)
         }
     }
 #elif defined(USE_SSE2)
-    const unsigned int numChunks = dims / SimdWidth;
     __m128i* in = (__m128i*)input;
     __m128i* out = (__m128i*)output;
+#ifdef USE_FASTSSE2
+    const unsigned int numChunks = dims / 8;
+    const __m128i kZero = _mm_setzero_si128();
+    const __m128i k0x7f = _mm_set1_epi16(0x7f);
+    for (unsigned int i = 0; i < numChunks; i++) {
+        __m128i words = _mm_srai_epi16(_mm_packs_epi32(in[i * 2], in[i * 2 + 1]),
+            NnueClippingShift);
+        out[i] = _mm_min_epi16(_mm_max_epi16(words, kZero), k0x7f);
+    }
+#else
+    const unsigned int numChunks = dims / SimdWidth;
     for (unsigned int i = 0; i < numChunks; i++) {
         __m128i words0 = _mm_srai_epi16(
             _mm_packs_epi32(in[i * 4 + 0], in[i * 4 + 1]), NnueClippingShift);
@@ -712,6 +768,7 @@ void NnueClippedRelu<dims>::Propagate(int32_t *input, clipped_t *output)
         __m128i packedbytes = _mm_packs_epi16(words0, words1);
         out[i] = _mm_subs_epi8(_mm_adds_epi8(packedbytes, k0x80s), k0x80s);
     }
+#endif
 #elif defined(USE_NEON)
     const unsigned int numChunks = dims / 8;
     const int8x8_t kZero = { 0 };
