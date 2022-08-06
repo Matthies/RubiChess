@@ -33,7 +33,7 @@
 //#define EVALTUNE
 
 // Enable this to expose the evaluation and NNUE parameters as UCI options
-//#define EVALOPTIONS
+#define EVALOPTIONS
 
 // Enable this to expose the search parameters as UCI options
 //#define SEARCHOPTIONS
@@ -46,7 +46,8 @@
 
 // Enable this to enable NNUE debug output
 //#define NNUEDEBUG
-
+#undef USE_AVX2
+//#undef USE_SSSE3
 
 
 #ifdef FINDMEMORYLEAKS
@@ -694,22 +695,6 @@ enum NnueType { NnueDisabled = 0, NnueRotate, NnueFlip };
 #define ORIENT(c,i,r) ((c) ? (i) ^ (r) : (i))
 #define MULTIPLEOFN(i,n) (((i) + (n-1)) / n * n)
 
-#if defined (USE_AVX512)
-const unsigned int InputSimdWidth = 64;
-const unsigned int MaxNumOutputRegs = 16;
-#elif defined (USE_AVX2)
-const unsigned int InputSimdWidth = 32;
-constexpr unsigned int MaxNumOutputRegs = 8;
-#elif defined (USE_SSSE3)
-const unsigned int InputSimdWidth = 16;
-const unsigned int MaxNumOutputRegs = 8;
-#elif defined (USE_NEON)
-const unsigned int InputSimdWidth = 8;
-const unsigned int MaxNumOutputRegs = 8;
-#else
-const unsigned int InputSimdWidth = 1;
-const unsigned int MaxNumOutputRegs = 1;
-#endif
 
 // Net dimensions
 const int NnueFtHalfdims = 256;
@@ -719,13 +704,8 @@ const int NnueHidden1Dims = 32;
 const int NnueHidden2Dims = 32;
 const int NnueClippingShift = 6;
 
-#if defined(xUSE_SSE2) && !defined(USE_SSSE3)
-typedef int16_t clipped_t;
-typedef int16_t weight_t;
-#else
 typedef int8_t weight_t;
 typedef int8_t clipped_t;
-#endif
 
 // All pieces besides kings are inputs => 30 dimensions
 typedef struct {
@@ -793,8 +773,7 @@ public:
     alignas(64) int16_t weight[ftdims * inputdims];
     bool bpz;
 
-    NnueFeatureTransformer();
-    virtual ~NnueFeatureTransformer();
+    NnueFeatureTransformer() : NnueLayer(NULL) {}
     bool ReadFeatureWeights(NnueNetsource_t is);
     bool ReadWeights(NnueNetsource_t is) {
         if (previous) return previous->ReadWeights(is);
@@ -806,31 +785,56 @@ public:
         if (previous) return previous->WriteWeights(os);
     }
 #endif
-    uint32_t GetFtHash();
-    uint32_t GetHash();
+    uint32_t GetFtHash() {
+        return NNUEFEATUREHASH ^ NnueFtOutputdims;
+    }
+    uint32_t GetHash() {
+        return NNUEINPUTSLICEHASH ^ (ftdims * 2);
+    };
 };
 
 template <unsigned int dims>
 class NnueClippedRelu : public NnueLayer
 {
 public:
-    NnueClippedRelu(NnueLayer* prev);
-    virtual ~NnueClippedRelu() {};
-    bool ReadWeights(NnueNetsource_t is);
+    NnueClippedRelu(NnueLayer* prev) : NnueLayer(prev) {}
+    bool ReadWeights(NnueNetsource_t is) {
+        return (previous ? previous->ReadWeights(is) : true);
+    }
 #ifdef EVALOPTIONS
-    void WriteWeights(ofstream* os);
+    void WriteWeights(ofstream* os) {
+        return (previous ? previous->WriteWeights(os) : true);
+    }
 #endif
-    uint32_t GetHash();
+    uint32_t GetHash() {
+        return NNUECLIPPEDRELUHASH + previous->GetHash();
+    }
     void Propagate(int32_t *input, clipped_t *output);
 };
 
 template <unsigned int inputdims, unsigned int outputdims>
 class NnueNetworkLayer : public NnueLayer
 {
-    // SIMD width (in bytes)
+#if defined (USE_AVX512)
+    static constexpr unsigned int InputSimdWidth = 64;
+    static constexpr unsigned int MaxNumOutputRegs = 16;
+#elif defined (USE_AVX2)
+    static constexpr unsigned int InputSimdWidth = 32;
+    static constexpr unsigned int MaxNumOutputRegs = 8;
+#elif defined (USE_SSSE3)
+    static constexpr unsigned int InputSimdWidth = 16;
+    static constexpr unsigned int MaxNumOutputRegs = 8;
+#elif defined (USE_NEON)
+    static constexpr unsigned int InputSimdWidth = 8;
+    static constexpr unsigned int MaxNumOutputRegs = 8;
+#else
+    static constexpr unsigned int InputSimdWidth = 1;
+    static constexpr unsigned int MaxNumOutputRegs = 1;
+#endif
+
     static constexpr unsigned int paddedInputdims = MULTIPLEOFN(inputdims, 32);
     static constexpr unsigned int paddedOutputdims = MULTIPLEOFN(outputdims, 32);
-    static constexpr unsigned int NumOutputRegsBig =(MaxNumOutputRegs < outputdims ? MaxNumOutputRegs : outputdims);
+    static constexpr unsigned int NumOutputRegsBig = (MaxNumOutputRegs < outputdims ? MaxNumOutputRegs : outputdims);
     static constexpr unsigned int NumOutputRegsSmall = (outputdims / (SimdWidth / 4) > 1 ? outputdims / (SimdWidth / 4) : 1);
     static constexpr unsigned int SmallBlockSize = InputSimdWidth;
     static constexpr unsigned int BigBlockSize = NumOutputRegsBig * paddedInputdims;
@@ -843,13 +847,14 @@ public:
     alignas(64)int32_t bias[outputdims];
     alignas(64)weight_t weight[inputdims * outputdims];
 
-    NnueNetworkLayer(NnueLayer* prev);
-    virtual ~NnueNetworkLayer();
+    NnueNetworkLayer(NnueLayer* prev) : NnueLayer(prev) {}
     bool ReadWeights(NnueNetsource_t is);
 #ifdef EVALOPTIONS
     void WriteWeights(ofstream* os);
 #endif
-    uint32_t GetHash();
+    uint32_t GetHash() {
+        return (NNUENETLAYERHASH + outputdims) ^ (previous->GetHash() >> 1) ^ (previous->GetHash() << 31);
+    }
     void Propagate(clipped_t *input, int32_t *output);
     void PropagateNative(clipped_t* input, int32_t* output);
     inline unsigned int shuffleWeightIndex(unsigned int idx)
@@ -868,9 +873,6 @@ public:
         const int smallBlockRow = smallBlock % NumSmallBlocksPerOutput;
         const int bigBlock = idx / BigBlockSize;
         const int rest = idx % SmallBlockSize;
-
-        if (!idx)
-            fprintf(stdout, "BigBlockSize: %d  SmallBlockSize: %d  NumSmallBlocksInBigBlock: %d  NumSmallBlocksPerOutput: %d\n", BigBlockSize, SmallBlockSize, NumSmallBlocksInBigBlock, NumSmallBlocksPerOutput);
 
         return bigBlock * BigBlockSize
             + smallBlockRow * SmallBlockSize * NumOutputRegsBig

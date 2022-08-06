@@ -95,7 +95,7 @@ template <NnueType Nt, Color c> void chessposition::HalfkpAppendChangedIndices(D
     }
 }
 
-// Macros for NnueNetworkLayer new Propagate for small layers
+// Macros for NnueNetworkLayer Propagate for small layers
 #if defined (USE_AVX2)
 typedef __m256i sml_vec_t;
 #define vec_setzero _mm256_setzero_si256
@@ -116,7 +116,7 @@ typedef __m128i sml_vec_t;
 #define vec_haddx4 Simd::m128_haddx4
 #endif
 
-
+// Macros for Propagate for big layers and Feature ´transformation
 #ifdef USE_AVX512
 #define NUM_REGS 8
 #define SIMD_WIDTH 512
@@ -131,7 +131,6 @@ typedef __m128i bias_vec_t;
 #define vec_haddx4_large Simd::m512_haddx4
 #define vec_hadd_large Simd::m512_hadd
 
-
 #elif defined(USE_AVX2)
 #define NUM_REGS 16
 #define SIMD_WIDTH 256
@@ -145,14 +144,6 @@ typedef __m128i bias_vec_t;
 #define vec_add_dpbusd_32x2_large Simd::m256_add_dpbusd_32x2
 #define vec_haddx4_large Simd::m256_haddx4
 #define vec_hadd_large Simd::m256_hadd
-
-
-//#define vec_zero_psqt() _mm256_setzero_si256()
-//#define vec_add_psqt_32(a,b) _mm256_add_epi32(a,b)
-//#define vec_sub_psqt_32(a,b) _mm256_sub_epi32(a,b)
-//#define vec_load_psqt(a) _mm256_load_si256(a)
-//#define vec_store_psqt(a,b) _mm256_store_si256(a,b)
-
 
 #elif defined(USE_SSE2)
 #define NUM_REGS 16
@@ -169,8 +160,7 @@ typedef __m128i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, bias_v
 #define vec_add_dpbusd_32x2_large Simd::m128_add_dpbusd_32x2
 #define vec_haddx4_large Simd::m128_haddx4
 #define vec_hadd_large Simd::m128_hadd
-
-#else
+#else // USE_SSSE3
 #define vec_clip_8(a,b) _mm_subs_epi8(_mm_adds_epi8(_mm_packs_epi16(a, b), k0x80s), k0x80s)
 #endif
 
@@ -182,16 +172,13 @@ typedef int16x8_t ft_vec_t;
 typedef int8x16_t ftout_vec_t;
 typedef int32x4_t acc_vec_t, bias_vec_t;
 #define vec_zero {0}
-#define vec_add_dpbusd_32x2_large Simd::neon_m128_add_dpbusd_epi32x2
-#define vec_hadd_large Simd::neon_m128_hadd
-#define vec_haddx4_large Simd::neon_m128_haddx4
-
-
-
 #define vec_add_16(a,b) vaddq_s16(a,b)
 #define vec_sub_16(a,b) vsubq_s16(a,b)
 #define vec_packs(a,b) vcombine_s8(vqmovn_s16(a),vqmovn_s16(b))
 #define vec_clip_8(a,b) vmaxq_s8(vec_packs(a,b),vdupq_n_s8(0))
+#define vec_add_dpbusd_32x2_large Simd::neon_m128_add_dpbusd_epi32x2
+#define vec_hadd_large Simd::neon_m128_hadd
+#define vec_haddx4_large Simd::neon_m128_haddx4
 
 #else
 typedef int16_t ft_vec_t;
@@ -329,7 +316,6 @@ template <NnueType Nt, Color c> void chessposition::UpdateAccumulator()
             for (unsigned int j = 0; j < NUM_REGS; j++)
                 accTile[j] = acc[j];
         }
-
 #else
         memcpy(ac->accumulation[c], NnueFt.bias, NnueFtHalfdims * sizeof(int16_t));
 
@@ -359,9 +345,7 @@ template <NnueType Nt> void chessposition::Transform(clipped_t *output)
 
 #ifdef USE_SIMD
         constexpr unsigned int numChunks = (16 * NnueFtHalfdims) / SIMD_WIDTH;
-
         ftout_vec_t* out = (ftout_vec_t*)&output[offset];
-
         for (unsigned int i = 0; i < numChunks / 2; i++) {
             ft_vec_t s0 = acc[i * 2];
             ft_vec_t s1 = acc[i * 2 + 1];
@@ -372,8 +356,8 @@ template <NnueType Nt> void chessposition::Transform(clipped_t *output)
             int16_t sum = acc[i];
             output[offset + i] = (clipped_t)max<int16_t>(0, min<int16_t>(127, sum));
         }
-
 #endif
+
 #ifdef NNUEDEBUG
         cout << "\ninput layer (p=" << p << "):\n";
         for (unsigned int i = 0; i < NnueFtHalfdims; i++) {
@@ -406,16 +390,6 @@ template <NnueType Nt> int chessposition::NnueGetEval()
 //
 // FeatureTransformer
 //
-
-template <int ftdims, int inputdims>
-NnueFeatureTransformer<ftdims, inputdims>::NnueFeatureTransformer() : NnueLayer(NULL)
-{
-}
-
-template <int ftdims, int inputdims>
-NnueFeatureTransformer<ftdims, inputdims>::~NnueFeatureTransformer()
-{
-}
 
 template <int ftdims, int inputdims>
 bool NnueFeatureTransformer<ftdims, inputdims>::ReadFeatureWeights(NnueNetsource_t is)
@@ -465,66 +439,10 @@ void NnueFeatureTransformer<ftdims, inputdims>::WriteFeatureWeights(ofstream* os
 }
 #endif
 
-template <int ftdims, int inputdims>
-uint32_t NnueFeatureTransformer<ftdims, inputdims>::GetFtHash()
-{
-    return NNUEFEATUREHASH ^ NnueFtOutputdims;
-}
-
-template <int ftdims, int inputdims>
-uint32_t NnueFeatureTransformer<ftdims, inputdims>::GetHash()
-{
-    return NNUEINPUTSLICEHASH ^ (ftdims * 2);
-}
 
 //
 // NetworkLayer
 //
-template <unsigned int inputdims, unsigned int outputdims>
-NnueNetworkLayer<inputdims, outputdims>::NnueNetworkLayer(NnueLayer* prev) : NnueLayer(prev)
-{
-}
-
-template <unsigned int inputdims, unsigned int outputdims>
-NnueNetworkLayer<inputdims, outputdims>::~NnueNetworkLayer()
-{
-}
-
-
-unsigned int bit_shuffle(unsigned int v, int left, int right, unsigned int mask)
-{
-    unsigned int w = v & mask;
-    w = (w << left) | (w >> right);
-    return (v & ~mask) | (w & mask);
-}
-
-
-#if defined(USE_AVX512)
-inline unsigned int shuffleWeightIndex(unsigned int idx, unsigned int dims, bool outlayer)
-{
-    if (dims > 32)
-        idx = bit_shuffle(idx, 1, 2, 0x38);
-    else if (dims == 32) {
-        idx = bit_shuffle(idx, 2, 2, 0x14);
-        if (!outlayer)
-            idx = bit_shuffle(idx, 2, 3, 0x1f0);
-    }
-    return idx;
-}
-#else   //AVX2 version
-inline unsigned int shuffleWeightIndex(unsigned int idx, unsigned int dims, bool outlayer)
-{
-    return idx;
-    if (dims > 32)
-        idx = bit_shuffle(idx, 1, 1, 0x18);
-    else if (dims == 32) {
-        idx = bit_shuffle(idx, 2, 1, 0x1c);
-        if (!outlayer)
-            idx = bit_shuffle(idx, 1, 3, 0xf0);
-    }
-    return idx;
-}
-#endif
 
 template <unsigned int inputdims, unsigned int outputdims>
 bool NnueNetworkLayer<inputdims, outputdims>::ReadWeights(NnueNetsource_t is)
@@ -558,32 +476,6 @@ bool NnueNetworkLayer<inputdims, outputdims>::ReadWeights(NnueNetsource_t is)
 }
 
 #ifdef EVALOPTIONS
-#if defined(USE_AVX512)
-inline unsigned int reverseShuffleWeightIndex(unsigned int idx, unsigned int dims, bool outlayer)
-{
-    if (dims > 32)
-        idx = bit_shuffle(idx, 2, 1, 0x38);
-    else if (dims == 32) {
-        if (!outlayer)
-            idx = bit_shuffle(idx, 3, 2, 0x1f0);
-        idx = bit_shuffle(idx, 2, 2, 0x14);
-    }
-    return idx;
-}
-#else   //AVX2 version
-inline unsigned int reverseShuffleWeightIndex(unsigned int idx, unsigned int dims, bool outlayer)
-{
-    if (dims > 32)
-        idx = bit_shuffle(idx, 1, 1, 0x18);
-    else if (dims == 32) {
-        if (!outlayer)
-            idx = bit_shuffle(idx, 3, 1, 0xf0);
-        idx = bit_shuffle(idx, 1, 2, 0x1c);
-    }
-    return idx;
-}
-#endif
-
 template <unsigned int inputdims, unsigned int outputdims>
 void NnueNetworkLayer<inputdims, outputdims>::WriteWeights(ofstream* os)
 {
@@ -593,37 +485,10 @@ void NnueNetworkLayer<inputdims, outputdims>::WriteWeights(ofstream* os)
     for (unsigned int i = 0; i < outputdims; ++i)
         os->write((char*)&bias[i], sizeof(int32_t));
 
-    size_t buffersize = outputdims * inputdims;
-    char* weightbuffer = (char*)calloc(buffersize, sizeof(char));
-    if (!weightbuffer) {
-        cout << "Failed to allocated temporary buffer.\n";
-        return;
-    }
-
-    char* w = weightbuffer;
-    for (unsigned int r = 0; r < outputdims; r++)
-        for (unsigned int c = 0; c < inputdims; c++)
-        {
-            unsigned int idx = r * inputdims + c;
-            uint32_t ridx = idx;
-#if defined(USE_AVX2)
-            ridx = reverseShuffleWeightIndex(idx, inputdims, outputdims == 1);
-#endif
-            *(w + ridx) = weight[idx];
-        }
-
-    os->write(weightbuffer, buffersize);
-
-    free(weightbuffer);
+    for (unsigned int i = 0; i < outputdims * inputdims; i++)
+            os->write((char*)&weight[shuffleWeightIndex(i)], sizeof(char));
 }
 #endif
-
-template <unsigned int inputdims, unsigned int outputdims>
-uint32_t NnueNetworkLayer<inputdims, outputdims>::GetHash()
-{
-    return (NNUENETLAYERHASH + outputdims) ^ (previous->GetHash() >> 1) ^ (previous->GetHash() << 31);
-}
-
 
 
 template <unsigned int inputdims, unsigned int outputdims>
@@ -754,7 +619,7 @@ void NnueNetworkLayer<inputdims, outputdims>::PropagateNative(clipped_t* input, 
 # if defined(USE_SSE2)
         __m128i sumLo = _mm_cvtsi32_si128(bias[i]);
         __m128i sumHi = Zeros;
-        const auto row = reinterpret_cast<const __m128i*>(&weight[offset]);
+        const __m128i* row = (__m128i*)&weight[offset];
         for (unsigned int j = 0; j < numChunks; ++j) {
             __m128i row_j = _mm_load_si128(&row[j]);
             __m128i input_j = _mm_load_si128(&inVec[j]);
@@ -797,32 +662,6 @@ void NnueNetworkLayer<inputdims, outputdims>::PropagateNative(clipped_t* input, 
 //
 // ClippedRelu
 //
-template <unsigned int dims>
-NnueClippedRelu<dims>::NnueClippedRelu(NnueLayer* prev) : NnueLayer(prev)
-{
-}
-
-
-template <unsigned int dims>
-bool NnueClippedRelu<dims>::ReadWeights(NnueNetsource_t is)
-{
-    if (previous) return previous->ReadWeights(is);
-    return true;
-}
-
-#ifdef EVALOPTIONS
-template <unsigned int dims>
-void NnueClippedRelu<dims>::WriteWeights(ofstream* os)
-{
-    if (previous) return previous->WriteWeights(os);
-}
-#endif
-
-template <unsigned int dims>
-uint32_t NnueClippedRelu<dims>::GetHash()
-{
-    return NNUECLIPPEDRELUHASH + previous->GetHash();
-}
 
 template <unsigned int dims>
 void NnueClippedRelu<dims>::Propagate(int32_t *input, clipped_t *output)
@@ -1019,15 +858,11 @@ void NnueWriteNet(vector<string> args)
         NnueOut.bias[0] = (int32_t)round(NnueOut.bias[0] * rescale / NnueValueScale);
         for (int i = 0; i < NnueHidden2Dims; i++)
         {
-            int idx = i;
-#if defined(USE_AVX2)
-            idx = shuffleWeightIndex(idx, 32, true);
-#endif
-            NnueOut.weight[idx] = (weight_t)(NnueOut.weight[idx] * rescale / NnueValueScale);
+            NnueOut.weight[i] = (weight_t)(NnueOut.weight[i] * rescale / NnueValueScale);
         }
     }
 
-    uint32_t fthash = NnueFt.GetHash();
+    uint32_t fthash = NnueFt.GetFtHash();
     uint32_t nethash = NnueOut.GetHash();
     uint32_t filehash = (fthash ^ nethash);
     uint32_t version;
@@ -1067,11 +902,7 @@ void NnueRegisterEvals()
     {
         ostringstream osName;
         osName << "NnueOutWeight_" << setw(2) << setfill('0') << to_string(i);
-        int idx = i;
-#if defined(USE_AVX2)
-        idx = shuffleWeightIndex(idx, 32, true);
-#endif
-        en.ucioptions.Register(&NnueOut.weight[idx], osName.str(), ucinnueweight, to_string(NnueOut.weight[idx]), CHAR_MIN, CHAR_MAX, nullptr);
+        en.ucioptions.Register(&NnueOut.weight[i], osName.str(), ucinnueweight, to_string(NnueOut.weight[i]), CHAR_MIN, CHAR_MAX, nullptr);
     }
 }
 #endif
