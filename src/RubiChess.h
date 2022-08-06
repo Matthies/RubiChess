@@ -33,7 +33,7 @@
 //#define EVALTUNE
 
 // Enable this to expose the evaluation and NNUE parameters as UCI options
-#define EVALOPTIONS
+//#define EVALOPTIONS
 
 // Enable this to expose the search parameters as UCI options
 //#define SEARCHOPTIONS
@@ -46,8 +46,6 @@
 
 // Enable this to enable NNUE debug output
 //#define NNUEDEBUG
-#undef USE_AVX2
-//#undef USE_SSSE3
 
 
 #ifdef FINDMEMORYLEAKS
