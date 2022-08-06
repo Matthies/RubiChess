@@ -47,12 +47,7 @@
 // Enable this to enable NNUE debug output
 //#define NNUEDEBUG
 
-#if 0
-#undef USE_AVX512
-#undef USE_AVX2
-#undef USE_SSSE3
-#undef USE_SSE2
-#endif
+
 
 #ifdef FINDMEMORYLEAKS
 #define _CRTDBG_MAP_ALLOC
@@ -856,7 +851,7 @@ public:
 #endif
     uint32_t GetHash();
     void Propagate(clipped_t *input, int32_t *output);
-    //void OutLayer(clipped_t* input, int32_t* output);
+    void PropagateNative(clipped_t* input, int32_t* output);
     inline unsigned int shuffleWeightIndex(unsigned int idx)
     {
         if (paddedInputdims < 128)
@@ -882,8 +877,6 @@ public:
             + smallBlockCol * SmallBlockSize
             + rest;
     }
-
-
 };
 
 class NnueAccumulator
@@ -2337,5 +2330,32 @@ namespace Simd {
         sum0 = _mm_hadd_epi32(sum0, sum2);
         return _mm_add_epi32(sum0, bias);
     }
+#endif
+
+#ifdef USE_NEON
+    inline int neon_m128_reduce_add_epi32(int32x4_t s) {
+        return s[0] + s[1] + s[2] + s[3];
+    }
+    inline int neon_m128_hadd(int32x4_t sum, int bias) {
+        return neon_m128_reduce_add_epi32(sum) + bias;
+    }
+
+    inline int32x4_t neon_m128_haddx4(int32x4_t sum0, int32x4_t sum1, int32x4_t sum2, int32x4_t sum3, int32x4_t bias) {
+        int32x4_t hsums{
+          neon_m128_reduce_add_epi32(sum0),
+          neon_m128_reduce_add_epi32(sum1),
+          neon_m128_reduce_add_epi32(sum2),
+          neon_m128_reduce_add_epi32(sum3)
+      };
+
+        return vaddq_s32(hsums, bias);
+    }
+
+    inline void neon_m128_add_dpbusd_epi32x2(int32x4_t& acc, int8x8_t a0, int8x8_t b0, int8x8_t a1, int8x8_t b1) {
+        int16x8_t product = vmull_s8(a0, b0);
+        product = vmlal_s8(product, a1, b1);
+        acc = vpadalq_s16(acc, product);
+    }
+
 #endif
 }
