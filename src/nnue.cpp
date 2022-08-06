@@ -712,19 +712,6 @@ void NnueClippedRelu<dims>::Propagate(int32_t *input, clipped_t *output)
         __m128i packedbytes = _mm_packs_epi16(words0, words1);
         out[i] = _mm_subs_epi8(_mm_adds_epi8(packedbytes, k0x80s), k0x80s);
     }
-
-#elif defined(xxxUSE_SSE2)
-    const unsigned int numChunks = dims / SimdWidth;
-    const __m128i kZero = _mm_setzero_si128();
-    const __m128i k0x7f = _mm_set1_epi16(0x7f);
-    __m128i* in = (__m128i*)input;
-    __m128i* out = (__m128i*)output;
-    for (unsigned int i = 0; i < numChunks; i++) {
-        __m128i words = _mm_srai_epi16(_mm_packs_epi32(in[i * 2], in[i * 2 + 1]),
-            NnueClippingShift);
-        out[i] = _mm_min_epi16(_mm_max_epi16(words, kZero), k0x7f);
-    }
-
 #elif defined(USE_NEON)
     const unsigned int numChunks = dims / 8;
     const int8x8_t kZero = { 0 };
@@ -735,7 +722,6 @@ void NnueClippedRelu<dims>::Propagate(int32_t *input, clipped_t *output)
             vqshrn_n_s32(in[i * 2], NnueClippingShift), vqshrn_n_s32(in[i * 2 + 1], NnueClippingShift));
         out[i] = vmax_s8(vqmovn_s16(shifted), kZero);
     }
-
 #else
     for (unsigned int i = 0; i < dims; i++)
         output[i] = max(0, min(127, input[i] >> NnueClippingShift));
