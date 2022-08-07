@@ -683,27 +683,46 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
 //
 #define NNUEDEFAULTSTR TOSTRING(NNUEDEFAULT)
 
-enum NnueType { NnueDisabled = 0, NnueRotate, NnueFlip };
-// The following constants were introduced in original NNUE port from Shogi
-#define NNUEFILEVERSIONROTATE   0x7AF32F16u
-#define NNUEFILEVERSIONNOBPZ    0x7AF32F17u
-#define NNUEFILEVERSIONFLIP     0x7AF32F18u
-#define NNUENETLAYERHASH    0xCC03DAE4u
-#define NNUECLIPPEDRELUHASH 0x538D24C7u
-#define NNUEFEATUREHASH     (0x5D69D5B9u ^ true)
-#define NNUEINPUTSLICEHASH  0xEC42E90Du
+enum NnueType { NnueDisabled = 0, NnueArchV1, NnueArchV5 };
 
-#define ORIENT(c,i,r) ((c) ? (i) ^ (r) : (i))
+// The following constants were introduced in original NNUE port from Shogi
+#define NNUEFILEVERSIONROTATE       0x7AF32F16u
+#define NNUEFILEVERSIONNOBPZ        0x7AF32F17u
+#define NNUEFILEVERSIONSFNNv5       0x7af32f20u
+#define NNUENETLAYERHASH            0xCC03DAE4u
+#define NNUECLIPPEDRELUHASH         0x538D24C7u
+#define NNUEFEATUREHASH_HalfKP      0x5D69D5B8u
+#define NNUEFEATUTEHASH_HalfKAv2_hm 0x7f234cb8u
+#define NNUEINPUTSLICEHASH          0xEC42E90Du
+
+#define ORIENT(c,i) ((c) ? (i) ^ 0x3f : (i))
+#define HMORIENT(c,i,k) (i ^ (bool(c) * 56) ^ ((FILE(k) < 4) * 7))
 #define MULTIPLEOFN(i,n) (((i) + (n-1)) / n * n)
 
 
-// Net dimensions
-const int NnueFtHalfdims = 256;
-const int NnueFtOutputdims = NnueFtHalfdims * 2;
-const int NnueFtInputdims = 64 * 10 * 64;   // (kingsquare x piecetype x piecesquare)
-const int NnueHidden1Dims = 32;
+
+#if 0
+const int NnueFtHalfdimsV1 = 256;
+const int NnueFtOutputdimsV1 = NnueFtHalfdimsV1 * 2;
+const int NnueFtInputdimsV1 = 64 * 10 * 64;   // (kingsquare x piecetype x piecesquare)
+const int NnueHidden1DimsV1 = 32;
+const int NnueHidden2DimsV1 = 32;
+const int NnueClippingShiftV1 = 6;
+#endif
+
+#if 0
+// Net dimensions ArchV5
+const int NnueFtOutputdims = 1024;
+const int NnueFtHalfdims = NnueFtOutputdims;
+const int NnueFtInputdims = 64 * 11 * 64 / 2;
+const int NnueHidden1Dims = 16;
+const int NnueHidden1Out = 15;
 const int NnueHidden2Dims = 32;
+const int NnueHidden2Out = 32;
 const int NnueClippingShift = 6;
+const int NnuePsqtBuckets = 8;
+const int NnueLayerStacks = 8;
+#endif
 
 #if defined(USE_SSE2) && !defined(USE_SSSE3) && defined FASTSSE2
 // for native SSE2 platforms we have faster intrinsics for 16bit integers
@@ -773,6 +792,7 @@ public:
     virtual uint32_t GetHash() = 0;
 };
 
+
 template <int ftdims, int inputdims>
 class NnueFeatureTransformer : public NnueLayer
 {
@@ -793,15 +813,18 @@ public:
         if (previous) return previous->WriteWeights(os);
     }
 #endif
-    uint32_t GetFtHash() {
-        return NNUEFEATUREHASH ^ NnueFtOutputdims;
+    uint32_t GetFtHash(NnueType nt) {
+        if (nt == NnueArchV5)
+            return NNUEFEATUTEHASH_HalfKAv2_hm;
+        else
+            return NNUEFEATUREHASH_HalfKP;
     }
     uint32_t GetHash() {
         return NNUEINPUTSLICEHASH ^ (ftdims * 2);
     };
 };
 
-template <unsigned int dims>
+template <unsigned int dims, unsigned int clippingshift>
 class NnueClippedRelu : public NnueLayer
 {
 public:
@@ -1634,8 +1657,8 @@ public:
     int testRepetition();
     template <NnueType Nt, Color c> void HalfkpAppendActiveIndices(NnueIndexList *active);
     template <NnueType Nt, Color c> void HalfkpAppendChangedIndices(DirtyPiece* dp, NnueIndexList *add, NnueIndexList *remove);
-    template <NnueType Nt, Color c> void UpdateAccumulator();
-    template <NnueType Nt> void Transform(clipped_t *output);
+    template <NnueType Nt, Color c, unsigned int NnueFtHalfdims> void UpdateAccumulator();
+    template <NnueType Nt, unsigned int NnueFtHalfdims> void Transform(clipped_t *output);
     template <NnueType Nt> int NnueGetEval();
 #ifdef NNUELEARN
     void toSfen(PackedSfen *sfen);
