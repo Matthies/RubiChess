@@ -20,6 +20,9 @@
 #define VERNUMLEGACY 2022
 #define NNUEDEFAULT nn-b1c332ae1d-20220613.nnue
 
+// enable this switch for faster SSE2 code using 16bit integers
+#define FASTSSE2
+
 // Enable to get statistical values about various search features
 //#define STATISTICS
 
@@ -43,6 +46,9 @@
 
 // Enable this to enable NNUE training code
 //#define NNUELEARN
+
+// Enable this to enable NNUE debug output
+//#define NNUEDEBUG
 
 
 #ifdef FINDMEMORYLEAKS
@@ -181,6 +187,7 @@ typedef unsigned int PieceType;
 #define ONEORZERO(x) (!MORETHANONE(x))
 #if defined(_MSC_VER)
 #ifdef USE_BMI1
+#include <immintrin.h>
 #define GETLSB(i,x) (i =(int) _tzcnt_u64(x))
 inline int pullLsb(U64* x) {
     int i;
@@ -687,6 +694,8 @@ enum NnueType { NnueDisabled = 0, NnueRotate, NnueFlip };
 #define NNUEINPUTSLICEHASH  0xEC42E90Du
 
 #define ORIENT(c,i,r) ((c) ? (i) ^ (r) : (i))
+#define MULTIPLEOFN(i,n) (((i) + (n-1)) / n * n)
+
 
 // Net dimensions
 const int NnueFtHalfdims = 256;
@@ -696,9 +705,11 @@ const int NnueHidden1Dims = 32;
 const int NnueHidden2Dims = 32;
 const int NnueClippingShift = 6;
 
-#if defined(USE_SSE2) && !defined(USE_SSSE3)
-typedef int16_t clipped_t;
+#if defined(USE_SSE2) && !defined(USE_SSSE3) && defined FASTSSE2
+// for native SSE2 platforms we have faster intrinsics for 16bit integers
+#define USE_FASTSSE2
 typedef int16_t weight_t;
+typedef int16_t clipped_t;
 #else
 typedef int8_t weight_t;
 typedef int8_t clipped_t;
@@ -736,17 +747,23 @@ typedef ifstream* NnueNetsource_t;
 
 struct NnueNetwork {
     alignas(64) clipped_t input[NnueFtOutputdims];
-    int32_t hidden1_values[32];
-    int32_t hidden2_values[32];
-    clipped_t hidden1_clipped[32];
-    clipped_t hidden2_clipped[32];
+    int32_t hidden1_values[NnueHidden1Dims];
+    int32_t hidden2_values[NnueHidden2Dims];
+    clipped_t hidden1_clipped[NnueHidden1Dims];
+    clipped_t hidden2_clipped[NnueHidden2Dims];
     int32_t out_value;
 };
 
 class NnueLayer
 {
+
 public:
     NnueLayer* previous;
+#if defined(USE_AVX2)
+    static constexpr size_t SimdWidth = 32;
+#else
+    static constexpr size_t SimdWidth = 16;
+#endif
 
     NnueLayer(NnueLayer* prev) { previous = prev; }
     virtual bool ReadWeights(NnueNetsource_t is) = 0;
@@ -756,68 +773,120 @@ public:
     virtual uint32_t GetHash() = 0;
 };
 
+template <int ftdims, int inputdims>
 class NnueFeatureTransformer : public NnueLayer
 {
 public:
-    int16_t* bias;
-    int16_t* weight;
+    alignas(64) int16_t bias[ftdims];
+    alignas(64) int16_t weight[ftdims * inputdims];
     bool bpz;
 
-    NnueFeatureTransformer();
-    virtual ~NnueFeatureTransformer();
-    bool ReadWeights(NnueNetsource_t is);
+    NnueFeatureTransformer() : NnueLayer(NULL) {}
+    bool ReadFeatureWeights(NnueNetsource_t is);
+    bool ReadWeights(NnueNetsource_t is) {
+        if (previous) return previous->ReadWeights(is);
+        return true;
+    }
 #ifdef EVALOPTIONS
-    void WriteWeights(ofstream *os);
+    void WriteFeatureWeights(ofstream *os);
+    void WriteWeights(ofstream* os) {
+        if (previous) return previous->WriteWeights(os);
+    }
 #endif
-    uint32_t GetHash();
+    uint32_t GetFtHash() {
+        return NNUEFEATUREHASH ^ NnueFtOutputdims;
+    }
+    uint32_t GetHash() {
+        return NNUEINPUTSLICEHASH ^ (ftdims * 2);
+    };
 };
 
+template <unsigned int dims>
 class NnueClippedRelu : public NnueLayer
 {
 public:
-    int dims;
-    NnueClippedRelu(NnueLayer* prev, int d);
-    virtual ~NnueClippedRelu() {};
-    bool ReadWeights(NnueNetsource_t is);
+    NnueClippedRelu(NnueLayer* prev) : NnueLayer(prev) {}
+    bool ReadWeights(NnueNetsource_t is) {
+        return (previous ? previous->ReadWeights(is) : true);
+    }
 #ifdef EVALOPTIONS
-    void WriteWeights(ofstream* os);
+    void WriteWeights(ofstream* os) {
+        return (previous ? previous->WriteWeights(os) : true);
+    }
 #endif
-    uint32_t GetHash();
+    uint32_t GetHash() {
+        return NNUECLIPPEDRELUHASH + previous->GetHash();
+    }
     void Propagate(int32_t *input, clipped_t *output);
 };
 
-class NnueInputSlice : public NnueLayer
-{
-public:
-    const int outputdims = 512;
-
-    NnueInputSlice();
-    virtual ~NnueInputSlice() {};
-    bool ReadWeights(NnueNetsource_t is);
-#ifdef EVALOPTIONS
-    void WriteWeights(ofstream* os);
-#endif
-    uint32_t GetHash();
-};
-
+template <unsigned int inputdims, unsigned int outputdims>
 class NnueNetworkLayer : public NnueLayer
 {
+#if defined (USE_AVX512)
+    static constexpr unsigned int InputSimdWidth = 64;
+    static constexpr unsigned int MaxNumOutputRegs = 16;
+#elif defined (USE_AVX2)
+    static constexpr unsigned int InputSimdWidth = 32;
+    static constexpr unsigned int MaxNumOutputRegs = 8;
+#elif defined (USE_SSSE3)
+    static constexpr unsigned int InputSimdWidth = 16;
+    static constexpr unsigned int MaxNumOutputRegs = 8;
+#elif defined (USE_NEON)
+    static constexpr unsigned int InputSimdWidth = 8;
+    static constexpr unsigned int MaxNumOutputRegs = 8;
+#else
+    static constexpr unsigned int InputSimdWidth = 1;
+    static constexpr unsigned int MaxNumOutputRegs = 1;
+#endif
+
+    static constexpr unsigned int paddedInputdims = MULTIPLEOFN(inputdims, 32);
+    static constexpr unsigned int paddedOutputdims = MULTIPLEOFN(outputdims, 32);
+    static constexpr unsigned int NumOutputRegsBig = (MaxNumOutputRegs < outputdims ? MaxNumOutputRegs : outputdims);
+    static constexpr unsigned int NumOutputRegsSmall = (outputdims / (SimdWidth / 4) > 1 ? outputdims / (SimdWidth / 4) : 1);
+    static constexpr unsigned int SmallBlockSize = InputSimdWidth;
+    static constexpr unsigned int BigBlockSize = NumOutputRegsBig * paddedInputdims;
+    static constexpr unsigned int NumSmallBlocksInBigBlock = BigBlockSize / SmallBlockSize;
+    static constexpr unsigned int NumSmallBlocksPerOutput = paddedInputdims / SmallBlockSize;
+    static constexpr unsigned int NumBigBlocks = outputdims / NumOutputRegsBig;
+    static constexpr unsigned int OutputSimdWidth = SimdWidth / 4;
+
 public:
-    unsigned int inputdims;
-    unsigned int outputdims;
+    alignas(64)int32_t bias[outputdims];
+    alignas(64)weight_t weight[inputdims * outputdims];
 
-    int32_t* bias;
-    weight_t* weight;
-
-    NnueNetworkLayer(NnueLayer* prev, int id, int od);
-    virtual ~NnueNetworkLayer();
+    NnueNetworkLayer(NnueLayer* prev) : NnueLayer(prev) {}
     bool ReadWeights(NnueNetsource_t is);
 #ifdef EVALOPTIONS
     void WriteWeights(ofstream* os);
 #endif
-    uint32_t GetHash();
+    uint32_t GetHash() {
+        return (NNUENETLAYERHASH + outputdims) ^ (previous->GetHash() >> 1) ^ (previous->GetHash() << 31);
+    }
     void Propagate(clipped_t *input, int32_t *output);
-    void OutLayer(clipped_t* input, int32_t* output);
+    void PropagateNative(clipped_t* input, int32_t* output);
+    inline unsigned int shuffleWeightIndex(unsigned int idx)
+    {
+        if (paddedInputdims < 128)
+#ifdef USE_SSSE3
+            return   (idx / 4) % (paddedInputdims / 4) * outputdims * 4 +
+            idx / paddedInputdims * 4 +
+            idx % 4;
+#else
+            return idx;
+#endif
+
+        const int smallBlock = (idx / SmallBlockSize) % NumSmallBlocksInBigBlock;
+        const int smallBlockCol = smallBlock / NumSmallBlocksPerOutput;
+        const int smallBlockRow = smallBlock % NumSmallBlocksPerOutput;
+        const int bigBlock = idx / BigBlockSize;
+        const int rest = idx % SmallBlockSize;
+
+        return bigBlock * BigBlockSize
+            + smallBlockRow * SmallBlockSize * NumOutputRegsBig
+            + smallBlockCol * SmallBlockSize
+            + rest;
+    }
 };
 
 class NnueAccumulator
@@ -2160,3 +2229,143 @@ public:
 };
 
 extern polybook pbook;
+
+
+//
+// SIMD definitions
+//
+
+namespace Simd {
+
+#if USE_AVX512
+    // 512bit intrinsics
+    inline void m512_add_dpbusd_32x2(__m512i& acc, __m512i a0, __m512i b0,  __m512i a1, __m512i b1) {
+#if defined (USE_VNNI)
+        acc = _mm512_dpbusd_epi32(acc, a0, b0);
+        acc = _mm512_dpbusd_epi32(acc, a1, b1);
+#else
+        __m512i product0 = _mm512_maddubs_epi16(a0, b0);
+        __m512i product1 = _mm512_maddubs_epi16(a1, b1);
+        product0 = _mm512_adds_epi16(product0, product1);
+        product0 = _mm512_madd_epi16(product0, _mm512_set1_epi16(1));
+        acc = _mm512_add_epi32(acc, product0);
+#endif
+    }
+
+    inline int m512_hadd(__m512i sum, int bias) {
+        return _mm512_reduce_add_epi32(sum) + bias;
+    }
+
+    inline __m512i m512_hadd128x16_interleave(__m512i sum0, __m512i sum1, __m512i sum2, __m512i sum3) {
+        __m512i sum01a = _mm512_unpacklo_epi32(sum0, sum1);
+        __m512i sum01b = _mm512_unpackhi_epi32(sum0, sum1);
+        __m512i sum23a = _mm512_unpacklo_epi32(sum2, sum3);
+        __m512i sum23b = _mm512_unpackhi_epi32(sum2, sum3);
+        __m512i sum01 = _mm512_add_epi32(sum01a, sum01b);
+        __m512i sum23 = _mm512_add_epi32(sum23a, sum23b);
+        __m512i sum0123a = _mm512_unpacklo_epi64(sum01, sum23);
+        __m512i sum0123b = _mm512_unpackhi_epi64(sum01, sum23);
+        return _mm512_add_epi32(sum0123a, sum0123b);
+    }
+    
+    inline __m128i m512_haddx4(__m512i sum0, __m512i sum1, __m512i sum2, __m512i sum3, __m128i bias) {
+        __m512i sum = m512_hadd128x16_interleave(sum0, sum1, sum2, sum3);
+        __m256i sum256lo = _mm512_castsi512_si256(sum);
+        __m256i sum256hi = _mm512_extracti64x4_epi64(sum, 1);
+        sum256lo = _mm256_add_epi32(sum256lo, sum256hi);
+        __m128i sum128lo = _mm256_castsi256_si128(sum256lo);
+        __m128i sum128hi = _mm256_extracti128_si256(sum256lo, 1);
+        return _mm_add_epi32(_mm_add_epi32(sum128lo, sum128hi), bias);
+    }
+#endif
+
+#ifdef USE_AVX2
+    // 256bit intrinsics
+    inline void m256_add_dpbusd_32(__m256i& acc, __m256i a, __m256i b) {
+        __m256i product0 = _mm256_maddubs_epi16(a, b);
+        product0 = _mm256_madd_epi16(product0, _mm256_set1_epi16(1));
+        acc = _mm256_add_epi32(acc, product0);
+    }
+
+    inline void m256_add_dpbusd_32x2(__m256i& acc, __m256i a0, __m256i b0, __m256i a1, __m256i b1) {
+        __m256i product0 = _mm256_maddubs_epi16(a0, b0);
+        __m256i product1 = _mm256_maddubs_epi16(a1, b1);
+        product0 = _mm256_adds_epi16(product0, product1);
+        product0 = _mm256_madd_epi16(product0, _mm256_set1_epi16(1));
+        acc = _mm256_add_epi32(acc, product0);
+    }
+
+    inline int m256_hadd(__m256i sum, int bias) {
+        __m128i sum128 = _mm_add_epi32(_mm256_castsi256_si128(sum), _mm256_extracti128_si256(sum, 1));
+        sum128 = _mm_add_epi32(sum128, _mm_shuffle_epi32(sum128, 0x4E)); //_MM_PERM_BADC
+        sum128 = _mm_add_epi32(sum128, _mm_shuffle_epi32(sum128, 0xB1)); //_MM_PERM_CDAB
+        return _mm_cvtsi128_si32(sum128) + bias;
+    }
+
+    inline __m128i m256_haddx4(__m256i sum0, __m256i sum1, __m256i sum2, __m256i sum3, __m128i bias) {
+        sum0 = _mm256_hadd_epi32(sum0, sum1);
+        sum2 = _mm256_hadd_epi32(sum2, sum3);
+        sum0 = _mm256_hadd_epi32(sum0, sum2);
+        __m128i sum128lo = _mm256_castsi256_si128(sum0);
+        __m128i sum128hi = _mm256_extracti128_si256(sum0, 1);
+        return _mm_add_epi32(_mm_add_epi32(sum128lo, sum128hi), bias);
+    }
+#endif
+
+#ifdef USE_SSSE3
+    // 128bit intrinsics
+    inline void m128_add_dpbusd_32(__m128i& acc, __m128i a, __m128i b) {
+        __m128i product0 = _mm_maddubs_epi16(a, b);
+        product0 = _mm_madd_epi16(product0, _mm_set1_epi16(1));
+        acc = _mm_add_epi32(acc, product0);
+    }
+
+    inline void m128_add_dpbusd_32x2(__m128i& acc, __m128i a0, __m128i b0, __m128i a1, __m128i b1) {
+        __m128i product0 = _mm_maddubs_epi16(a0, b0);
+        __m128i product1 = _mm_maddubs_epi16(a1, b1);
+        product0 = _mm_adds_epi16(product0, product1);
+        product0 = _mm_madd_epi16(product0, _mm_set1_epi16(1));
+        acc = _mm_add_epi32(acc, product0);
+    }
+
+    inline int m128_hadd(__m128i sum, int bias) {
+        sum = _mm_add_epi32(sum, _mm_shuffle_epi32(sum, 0x4E)); //_MM_PERM_BADC
+        sum = _mm_add_epi32(sum, _mm_shuffle_epi32(sum, 0xB1)); //_MM_PERM_CDAB
+        return _mm_cvtsi128_si32(sum) + bias;
+    }
+
+    inline __m128i m128_haddx4(__m128i sum0, __m128i sum1, __m128i sum2, __m128i sum3, __m128i bias) {
+        sum0 = _mm_hadd_epi32(sum0, sum1);
+        sum2 = _mm_hadd_epi32(sum2, sum3);
+        sum0 = _mm_hadd_epi32(sum0, sum2);
+        return _mm_add_epi32(sum0, bias);
+    }
+#endif
+
+#ifdef USE_NEON
+    inline int neon_m128_reduce_add_epi32(int32x4_t s) {
+        return s[0] + s[1] + s[2] + s[3];
+    }
+    inline int neon_m128_hadd(int32x4_t sum, int bias) {
+        return neon_m128_reduce_add_epi32(sum) + bias;
+    }
+
+    inline int32x4_t neon_m128_haddx4(int32x4_t sum0, int32x4_t sum1, int32x4_t sum2, int32x4_t sum3, int32x4_t bias) {
+        int32x4_t hsums{
+          neon_m128_reduce_add_epi32(sum0),
+          neon_m128_reduce_add_epi32(sum1),
+          neon_m128_reduce_add_epi32(sum2),
+          neon_m128_reduce_add_epi32(sum3)
+      };
+
+        return vaddq_s32(hsums, bias);
+    }
+
+    inline void neon_m128_add_dpbusd_epi32x2(int32x4_t& acc, int8x8_t a0, int8x8_t b0, int8x8_t a1, int8x8_t b1) {
+        int16x8_t product = vmull_s8(a0, b0);
+        product = vmlal_s8(product, a1, b1);
+        acc = vpadalq_s16(acc, product);
+    }
+
+#endif
+}
