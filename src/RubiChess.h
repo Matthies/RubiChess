@@ -20,6 +20,9 @@
 #define VERNUMLEGACY 2022
 #define NNUEDEFAULT nn-b1c332ae1d-20220613.nnue
 
+// enable this switch for faster SSE2 code using 16bit integers
+#define FASTSSE2
+
 // Enable to get statistical values about various search features
 //#define STATISTICS
 
@@ -679,9 +682,6 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
 // NNUE stuff
 //
 #define NNUEDEFAULTSTR TOSTRING(NNUEDEFAULT)
-
-// enable this switch for faster SSE2 code using 16bit integers
-#define FASTSSE2
 
 enum NnueType { NnueDisabled = 0, NnueRotate, NnueFlip };
 // The following constants were introduced in original NNUE port from Shogi

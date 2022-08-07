@@ -95,7 +95,7 @@ template <NnueType Nt, Color c> void chessposition::HalfkpAppendChangedIndices(D
     }
 }
 
-// Macros for NnueNetworkLayer Propagate for small layers
+// Macros for propagation of small layers
 #if defined (USE_AVX2)
 typedef __m256i sml_vec_t;
 #define vec_setzero _mm256_setzero_si256
@@ -116,7 +116,7 @@ typedef __m128i sml_vec_t;
 #define vec_haddx4 Simd::m128_haddx4
 #endif
 
-// Macros for Propagate for big layers and Feature ´transformation
+// Macros for propagation of big layers and feature transformation
 #ifdef USE_AVX512
 #define NUM_REGS 8
 #define SIMD_WIDTH 512
@@ -553,14 +553,10 @@ void NnueNetworkLayer<inputdims, outputdims>::Propagate(clipped_t* input, int32_
     {
         // Big Layer fast propagation
         const in_vec_t* invec = (in_vec_t*)input;
-
-        // Perform accumulation to registers for each big block
         for (unsigned int bigBlock = 0; bigBlock < NumBigBlocks; ++bigBlock)
         {
             acc_vec_t acc[NumOutputRegsBig] = { vec_zero };
 
-            // Each big block has NumOutputRegs small blocks in each "row", one per register.
-            // We process two small blocks at a time to save on one addition without VNNI.
             for (unsigned int smallBlock = 0; smallBlock < NumSmallBlocksPerOutput; smallBlock += 2)
             {
                 const weight_vec_t* weightvec = (weight_vec_t*)(weight + bigBlock * BigBlockSize + smallBlock * SmallBlockSize * NumOutputRegsBig);
@@ -571,7 +567,6 @@ void NnueNetworkLayer<inputdims, outputdims>::Propagate(clipped_t* input, int32_
                     vec_add_dpbusd_32x2_large(acc[k], in0, weightvec[k], in1, weightvec[k + NumOutputRegsBig]);
             }
 
-            // Horizontally add all accumulators.
             if (NumOutputRegsBig % 4 == 0)
             {
                 bias_vec_t* outputvec = (bias_vec_t*)output;
@@ -651,7 +646,6 @@ void NnueNetworkLayer<inputdims, outputdims>::PropagateNative(clipped_t* input, 
     }
 #else
 #if defined(USE_SSE2)
-    // At least a multiple of 16, with SSE2.
     const unsigned int numChunks = paddedInputdims / 16;
     const __m128i Zeros = _mm_setzero_si128();
     const __m128i* inVec = (__m128i*)input;
