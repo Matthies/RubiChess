@@ -764,15 +764,6 @@ typedef ifstream* NnueNetsource_t;
 #define NNUEEOF(s) (s->peek() == ios::traits_type::eof())
 #endif
 
-struct NnueNetwork {
-    alignas(64) clipped_t input[NnueFtOutputdims];
-    int32_t hidden1_values[NnueHidden1Dims];
-    int32_t hidden2_values[NnueHidden2Dims];
-    clipped_t hidden1_clipped[NnueHidden1Dims];
-    clipped_t hidden2_clipped[NnueHidden2Dims];
-    int32_t out_value;
-};
-
 class NnueLayer
 {
 
@@ -799,16 +790,15 @@ class NnueFeatureTransformer : public NnueLayer
 public:
     alignas(64) int16_t bias[ftdims];
     alignas(64) int16_t weight[ftdims * inputdims];
-    bool bpz;
 
     NnueFeatureTransformer() : NnueLayer(NULL) {}
-    bool ReadFeatureWeights(NnueNetsource_t is);
+    bool ReadFeatureWeights(NnueNetsource_t is, bool bpz);
     bool ReadWeights(NnueNetsource_t is) {
         if (previous) return previous->ReadWeights(is);
         return true;
     }
 #ifdef EVALOPTIONS
-    void WriteFeatureWeights(ofstream *os);
+    void WriteFeatureWeights(ofstream *os, bool bpz);
     void WriteWeights(ofstream* os) {
         if (previous) return previous->WriteWeights(os);
     }
@@ -1548,7 +1538,6 @@ public:
     Pawnhash pwnhsh;
     NnueAccumulator accumulator[MAXDEPTH];
     DirtyPiece dirtypiece[MAXDEPTH];
-    NnueNetwork network;
     uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     alignas(64) MoveSelector moveSelector[MAXDEPTH];
@@ -2290,7 +2279,7 @@ namespace Simd {
         __m512i sum0123b = _mm512_unpackhi_epi64(sum01, sum23);
         return _mm512_add_epi32(sum0123a, sum0123b);
     }
-    
+
     inline __m128i m512_haddx4(__m512i sum0, __m512i sum1, __m512i sum2, __m512i sum3, __m128i bias) {
         __m512i sum = m512_hadd128x16_interleave(sum0, sum1, sum2, sum3);
         __m256i sum256lo = _mm512_castsi512_si256(sum);

@@ -60,7 +60,7 @@ eval NnueValueScale = 64;
 class NnueArchitecture
 {
 public:
-    virtual bool ReadFeatureWeights(NnueNetsource_t is) = 0;
+    virtual bool ReadFeatureWeights(NnueNetsource_t is, bool bpz) = 0;
     virtual bool ReadWeights(NnueNetsource_t is) = 0;
     virtual uint32_t GetFtHash() = 0;
     virtual uint32_t GetHash() = 0;
@@ -93,13 +93,22 @@ public:
         return NnueOut.GetHash();
     }
 
-    bool ReadFeatureWeights(NnueNetsource_t is) {
-        return NnueFt.ReadFeatureWeights(is);
+    bool ReadFeatureWeights(NnueNetsource_t is, bool bpz) {
+        return NnueFt.ReadFeatureWeights(is, bpz);
     }
     bool ReadWeights(NnueNetsource_t is) {
         return NnueOut.ReadWeights(is);
     }
     int getEval(chessposition *pos) {
+        struct NnueNetwork {
+            alignas(64) clipped_t input[NnueFtOutputdims];
+            int32_t hidden1_values[NnueHidden1Dims];
+            int32_t hidden2_values[NnueHidden2Dims];
+            clipped_t hidden1_clipped[NnueHidden1Dims];
+            clipped_t hidden2_clipped[NnueHidden2Dims];
+            int32_t out_value;
+        } network;
+
         pos->Transform<NnueArchV1, NnueFtHalfdims>(network.input);
         NnueHd1.Propagate(network.input, network.hidden1_values);
         NnueCl1.Propagate(network.hidden1_values, network.hidden1_clipped);
@@ -132,14 +141,14 @@ public:
     uint32_t GetHash() {
         return 0;
     }
-    bool ReadFeatureWeights(NnueNetsource_t is) {
+    bool ReadFeatureWeights(NnueNetsource_t is, bool bpz) {
         return false;
     }
     bool ReadWeights(NnueNetsource_t is) {
         return false;
     }
     int getEval(chessposition* pos) {
-        
+
         return 0 * NnueValueScale / 1024;
     }
 } NnueV5;
@@ -148,13 +157,13 @@ public:
 template<NnueType Nt>
 class NnueArchInterface {
 public:
-    constexpr int16_t* getFeatureWeight() {
+    constexpr static int16_t* getFeatureWeight() {
         return (Nt == NnueArchV1 ? NnueV1.NnueFt.weight : nullptr);
     }
-    constexpr int16_t* getFeatureBias() {
+    constexpr static int16_t* getFeatureBias() {
         return (Nt == NnueArchV1 ? NnueV1.NnueFt.bias : nullptr);
     }
-    constexpr int getEval(chessposition* pos) {
+    constexpr static int getEval(chessposition* pos) {
         return (Nt == NnueArchV1 ? NnueV1.getEval(pos) : NnueV5.getEval(pos));
     }
 };
@@ -502,7 +511,7 @@ template <NnueType Nt> int chessposition::NnueGetEval()
 //
 
 template <int ftdims, int inputdims>
-bool NnueFeatureTransformer<ftdims, inputdims>::ReadFeatureWeights(NnueNetsource_t is)
+bool NnueFeatureTransformer<ftdims, inputdims>::ReadFeatureWeights(NnueNetsource_t is, bool bpz)
 {
     int i, j;
     for (i = 0; i < ftdims; ++i)
@@ -938,9 +947,10 @@ bool NnueReadNet(NnueNetsource_t is)
 
     NnueArchitecture* filesArch = (nt == NnueArchV1 ? (NnueArchitecture*) & NnueV1 : (NnueArchitecture*)&NnueV5);
 
+
     if (!filesArch)
         return false;
-    
+
     uint32_t fthash = filesArch->GetFtHash();
     uint32_t nethash = filesArch->GetHash();
     uint32_t filehash = (fthash ^ nethash);
@@ -951,7 +961,7 @@ bool NnueReadNet(NnueNetsource_t is)
     // Read the weights of the feature transformer
     NNUEREAD(is, (char*)&hash, sizeof(uint32_t));
     if (hash != fthash) return false;
-    if (!filesArch->ReadFeatureWeights(is)) return false;
+    if (!filesArch->ReadFeatureWeights(is, bpz)) return false;
 
     // Read the weights of the network layers recursively
     NNUEREAD(is, (char*)&hash, sizeof(uint32_t));
