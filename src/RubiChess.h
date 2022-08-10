@@ -734,10 +734,10 @@ typedef int8_t weight_t;
 typedef int8_t clipped_t;
 #endif
 
-// All pieces besides kings are inputs => 30 dimensions
+// All pieces and both kings for HalfKA are inputs => 32 dimensions
 typedef struct {
     size_t size;
-    unsigned values[30];
+    unsigned values[32];
 } NnueIndexList;
 
 typedef struct {
@@ -784,12 +784,15 @@ public:
 };
 
 
-template <int ftdims, int inputdims>
+template <int ftdims, int inputdims, int psqtbuckets>
 class NnueFeatureTransformer : public NnueLayer
 {
 public:
+    //static constexpr unsigned int effpsqtbuckets = 
     alignas(64) int16_t bias[ftdims];
     alignas(64) int16_t weight[ftdims * inputdims];
+    alignas(64) int32_t* psqtWeights[psqtbuckets ? psqtbuckets * inputdims : 1];    // hack to avoid zero-sized array
+
 
     NnueFeatureTransformer() : NnueLayer(NULL) {}
     bool ReadFeatureWeights(NnueNetsource_t is, bool bpz);
@@ -922,7 +925,9 @@ public:
 class NnueAccumulator
 {
 public:
-    alignas(64) int16_t accumulation[2][256];
+    // use maximum size for supported archs
+    alignas(64) int16_t accumulation[2][1024];
+    int32_t psqtAccumulation[2][8];
     bool computationState[2];
 };
 
@@ -1664,7 +1669,7 @@ public:
     template <NnueType Nt, Color c> void HalfkpAppendActiveIndices(NnueIndexList *active);
     template <NnueType Nt, Color c> void HalfkpAppendChangedIndices(DirtyPiece* dp, NnueIndexList *add, NnueIndexList *remove);
     template <NnueType Nt, Color c, unsigned int NnueFtHalfdims> void UpdateAccumulator();
-    template <NnueType Nt, unsigned int NnueFtHalfdims> void Transform(clipped_t *output);
+    template <NnueType Nt, unsigned int NnueFtHalfdims> int Transform(clipped_t *output, int bucket = 0);
     template <NnueType Nt> int NnueGetEval();
 #ifdef NNUELEARN
     void toSfen(PackedSfen *sfen);
