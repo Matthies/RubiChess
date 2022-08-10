@@ -833,6 +833,23 @@ public:
     void Propagate(int32_t *input, clipped_t *output);
 };
 
+template <unsigned int dims>
+class NnueSqrClippedRelu : public NnueLayer
+{
+public:
+    NnueSqrClippedRelu(NnueLayer* prev) : NnueLayer(prev) {}
+    bool ReadWeights(NnueNetsource_t is) {
+        return (previous ? previous->ReadWeights(is) : true);
+    }
+#ifdef EVALOPTIONS
+    void WriteWeights(ofstream* os);
+#endif
+    uint32_t GetHash() {
+        return NNUECLIPPEDRELUHASH + previous->GetHash();
+    }
+    void Propagate(int32_t* input, clipped_t* output);
+};
+
 template <unsigned int inputdims, unsigned int outputdims>
 class NnueNetworkLayer : public NnueLayer
 {

@@ -76,28 +76,46 @@ public:
     static constexpr unsigned int NnueFtInputdims = 64 * 10 * 64;   // (kingsquare x piecetype x piecesquare)
     static constexpr unsigned int NnueHidden1Dims = 32;
     static constexpr unsigned int NnueHidden2Dims = 32;
+    static constexpr unsigned int NnuePsqtBuckets = 0;
+    static constexpr unsigned int NnueLayerStacks = 1;
     static constexpr unsigned int NnueClippingShift = 6;
 
     NnueFeatureTransformer<NnueFtHalfdims, NnueFtInputdims> NnueFt;
+#if 0
     NnueNetworkLayer<NnueFtOutputdims, NnueHidden1Dims> NnueHd1;
     NnueClippedRelu<NnueHidden1Dims, NnueClippingShift> NnueCl1;
     NnueNetworkLayer<NnueHidden1Dims, NnueHidden2Dims> NnueHd2;
     NnueClippedRelu<NnueHidden2Dims, NnueClippingShift> NnueCl2;
     NnueNetworkLayer<NnueHidden2Dims, 1> NnueOut;
+#endif
+    class NnueLayerStack {
+    public:
+        NnueNetworkLayer<NnueFtOutputdims, NnueHidden1Dims> NnueHd1;
+        NnueClippedRelu<NnueHidden1Dims, NnueClippingShift> NnueCl1;
+        NnueNetworkLayer<NnueHidden1Dims, NnueHidden2Dims> NnueHd2;
+        NnueClippedRelu<NnueHidden2Dims, NnueClippingShift> NnueCl2;
+        NnueNetworkLayer<NnueHidden2Dims, 1> NnueOut;
+        NnueLayerStack() : NnueHd1(nullptr), NnueCl1(&NnueHd1), NnueHd2(&NnueCl1), NnueCl2(&NnueHd2), NnueOut(&NnueCl2) {}
+    } LayerStack[NnueLayerStacks];
 
-    NnueArchitectureV1() : NnueHd1(&NnueFt), NnueCl1(&NnueHd1), NnueHd2(&NnueCl1), NnueCl2(&NnueHd2), NnueOut(&NnueCl2) {}
+    NnueArchitectureV1() {
+        LayerStack[0].NnueHd1.previous = &NnueFt;
+    }
     uint32_t GetFtHash() {
         return NnueFt.GetFtHash(NnueArchV1) ^ NnueFtOutputdims;
     }
     uint32_t GetHash() {
-        return NnueOut.GetHash();
+        return LayerStack[0].NnueOut.GetHash();
     }
 
     bool ReadFeatureWeights(NnueNetsource_t is, bool bpz) {
         return NnueFt.ReadFeatureWeights(is, bpz);
     }
     bool ReadWeights(NnueNetsource_t is) {
-        return NnueOut.ReadWeights(is);
+        bool okay = true;
+        for (unsigned int i = 0; okay && i < NnueLayerStacks; i++)
+            okay = LayerStack[i].NnueOut.ReadWeights(is);
+        return okay;
     }
     int getEval(chessposition *pos) {
         struct NnueNetwork {
@@ -110,11 +128,11 @@ public:
         } network;
 
         pos->Transform<NnueArchV1, NnueFtHalfdims>(network.input);
-        NnueHd1.Propagate(network.input, network.hidden1_values);
-        NnueCl1.Propagate(network.hidden1_values, network.hidden1_clipped);
-        NnueHd2.Propagate(network.hidden1_clipped, network.hidden2_values);
-        NnueCl1.Propagate(network.hidden2_values, network.hidden2_clipped);
-        NnueOut.Propagate(network.hidden2_clipped, &network.out_value);
+        LayerStack[0].NnueHd1.Propagate(network.input, network.hidden1_values);
+        LayerStack[0].NnueCl1.Propagate(network.hidden1_values, network.hidden1_clipped);
+        LayerStack[0].NnueHd2.Propagate(network.hidden1_clipped, network.hidden2_values);
+        LayerStack[0].NnueCl1.Propagate(network.hidden2_values, network.hidden2_clipped);
+        LayerStack[0].NnueOut.Propagate(network.hidden2_clipped, &network.out_value);
 
         return network.out_value * NnueValueScale / 1024;
     }
@@ -134,7 +152,20 @@ public:
     static constexpr unsigned int NnuePsqtBuckets = 8;
     static constexpr unsigned int NnueLayerStacks = 8;
 
-    NnueArchitectureV5() {}
+    NnueFeatureTransformer<NnueFtHalfdims, NnueFtInputdims> NnueFt;
+    class NnueLayerStack {
+    public:
+        NnueNetworkLayer<NnueFtOutputdims, NnueHidden1Dims> NnueHd1;
+        NnueSqrClippedRelu<NnueHidden1Dims> NnueSqrCl;
+        NnueClippedRelu<NnueHidden1Dims, NnueClippingShift> NnueCl1;
+        NnueNetworkLayer<NnueHidden1Dims, NnueHidden2Dims> NnueHd2;
+        NnueClippedRelu<NnueHidden2Dims, NnueClippingShift> NnueCl2;
+        NnueNetworkLayer<NnueHidden2Dims, 1> NnueOut;
+        NnueLayerStack() : NnueHd1(nullptr), NnueSqrCl(&NnueHd1), NnueCl1(&NnueHd1), NnueHd2(&NnueCl1), NnueCl2(&NnueHd2), NnueOut(&NnueCl2) {}
+    } LayerStack[NnueLayerStacks];
+    NnueArchitectureV5() {
+        LayerStack[0].NnueHd1.previous = &NnueFt;
+    }
     uint32_t GetFtHash() {
         return 0;
     }
