@@ -40,13 +40,27 @@ enum {
     PS_BROOK    = 7 * 64,
     PS_WQUEEN   = 8 * 64,
     PS_BQUEEN   = 9 * 64,
-    PS_END      = 10 * 64
+    PS_KING     = 10 * 64,
+    PS_KPEND    = 10 * 64,
+    PS_KAEND    = 11 * 64
 };
 
 // table to translate PieceCode to PieceSquare index for both POVs respecting the piece order special to RubiChess
 uint32_t PieceToIndex[2][16] = {
-  { 0, 0, PS_WPAWN, PS_BPAWN, PS_WKNIGHT, PS_BKNIGHT, PS_WBISHOP, PS_BBISHOP, PS_WROOK, PS_BROOK, PS_WQUEEN, PS_BQUEEN, 0, 0, 0, 0 },
-  { 0, 0, PS_BPAWN, PS_WPAWN, PS_BKNIGHT, PS_WKNIGHT, PS_BBISHOP, PS_WBISHOP, PS_BROOK, PS_WROOK, PS_BQUEEN, PS_WQUEEN, 0, 0, 0, 0 }
+  { 0, 0, PS_WPAWN, PS_BPAWN, PS_WKNIGHT, PS_BKNIGHT, PS_WBISHOP, PS_BBISHOP, PS_WROOK, PS_BROOK, PS_WQUEEN, PS_BQUEEN, PS_KING, PS_KING, 0, 0 },
+  { 0, 0, PS_BPAWN, PS_WPAWN, PS_BKNIGHT, PS_WKNIGHT, PS_BBISHOP, PS_WBISHOP, PS_BROOK, PS_WROOK, PS_BQUEEN, PS_WQUEEN, PS_KING, PS_KING, 0, 0 }
+};
+
+// table for horizontal mirroring of king buckets
+static constexpr int KingBucket[64] = {
+  -1, -1, -1, -1, 31, 30, 29, 28,
+  -1, -1, -1, -1, 27, 26, 25, 24,
+  -1, -1, -1, -1, 23, 22, 21, 20,
+  -1, -1, -1, -1, 19, 18, 17, 16,
+  -1, -1, -1, -1, 15, 14, 13, 12,
+  -1, -1, -1, -1, 11, 10,  9,  8,
+  -1, -1, -1, -1,  7,  6,  5,  4,
+  -1, -1, -1, -1,  3,  2,  1,  0
 };
 
 
@@ -276,27 +290,44 @@ public:
 //
 template <NnueType Nt, Color c> void chessposition::HalfkpAppendActiveIndices(NnueIndexList *active)
 {
-    int k = ORIENT(c, kingpos[c]);
-    U64 nonkingsbb = (occupied00[0] | occupied00[1]) & ~(piece00[WKING] | piece00[BKING]);
-    while (nonkingsbb)
+    const int ksq = kingpos[c];
+    const int oksq = (Nt == NnueArchV1 ? ORIENT(c, ksq) : HMORIENT(c, ksq, ksq));
+    U64 piecebb = (occupied00[0] | occupied00[1]);
+    if (Nt == NnueArchV1)
+        piecebb &= ~(piece00[WKING] | piece00[BKING]);
+    while (piecebb)
     {
-        int index = pullLsb(&nonkingsbb);
-        active->values[active->size++] = ORIENT(c, index) + PieceToIndex[c][mailbox[index]] + PS_END * k;
+        int index = pullLsb(&piecebb);
+        if (Nt == NnueArchV1)
+            active->values[active->size++] = ORIENT(c, index) + PieceToIndex[c][mailbox[index]] + PS_KPEND * oksq;
+        else
+            active->values[active->size++] = HMORIENT(c, index, ksq) + PieceToIndex[c][mailbox[index]] + PS_KAEND * KingBucket[oksq];
     }
 }
 
 
 template <NnueType Nt, Color c> void chessposition::HalfkpAppendChangedIndices(DirtyPiece* dp, NnueIndexList* add, NnueIndexList* remove)
 {
-    int k = ORIENT(c, kingpos[c]);
+    const int ksq = kingpos[c];
+    const int oksq = (Nt == NnueArchV1 ? ORIENT(c, ksq) : HMORIENT(c, ksq, ksq));
     for (int i = 0; i < dp->dirtyNum; i++) {
         PieceCode pc = dp->pc[i];
-        if ((pc >> 1) == KING)
+        if (Nt == NnueArchV1 && (pc >> 1) == KING)
             continue;
-        if (dp->from[i] >= 0)
-            remove->values[remove->size++] = ORIENT(c, dp->from[i]) + PieceToIndex[c][pc] + PS_END * k;
-        if (dp->to[i] >= 0)
-            add->values[add->size++] = ORIENT(c, dp->to[i]) + PieceToIndex[c][pc] + PS_END * k;
+        int sq = dp->from[i];
+        if (sq >= 0) {
+            if (Nt == NnueArchV1)
+                remove->values[remove->size++] = ORIENT(c, sq) + PieceToIndex[c][pc] + PS_KPEND * oksq;
+            else
+                remove->values[remove->size++] = HMORIENT(c, sq, ksq) + PieceToIndex[c][pc] + PS_KAEND * KingBucket[oksq];
+        }
+        sq = dp->to[i];
+        if (sq >= 0) {
+            if (Nt == NnueArchV1)
+                add->values[add->size++] = ORIENT(c, sq) + PieceToIndex[c][pc] + PS_KPEND * oksq;
+            else
+                add->values[add->size++] = HMORIENT(c, sq, ksq) + PieceToIndex[c][pc] + PS_KAEND * KingBucket[oksq];
+        }
     }
 }
 

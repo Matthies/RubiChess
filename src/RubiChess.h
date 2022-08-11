@@ -48,7 +48,7 @@
 //#define NNUELEARN
 
 // Enable this to enable NNUE debug output
-//#define NNUEDEBUG
+#define NNUEDEBUG
 
 
 #ifdef FINDMEMORYLEAKS
@@ -788,7 +788,7 @@ template <int ftdims, int inputdims, int psqtbuckets>
 class NnueFeatureTransformer : public NnueLayer
 {
 public:
-    //static constexpr unsigned int effpsqtbuckets = 
+    //static constexpr unsigned int effpsqtbuckets =
     alignas(64) int16_t bias[ftdims];
     alignas(64) int16_t weight[ftdims * inputdims];
     alignas(64) int32_t* psqtWeights[psqtbuckets ? psqtbuckets * inputdims : 1];    // hack to avoid zero-sized array
