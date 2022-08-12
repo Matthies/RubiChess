@@ -50,6 +50,11 @@
 // Enable this to enable NNUE debug output
 #define NNUEDEBUG
 
+#if 0
+#undef USE_AVX2
+#undef USE_SSSE3
+#undef USE_SSE2
+#endif
 
 #ifdef FINDMEMORYLEAKS
 #define _CRTDBG_MAP_ALLOC
@@ -791,7 +796,7 @@ public:
     //static constexpr unsigned int effpsqtbuckets =
     alignas(64) int16_t bias[ftdims];
     alignas(64) int16_t weight[ftdims * inputdims];
-    alignas(64) int32_t* psqtWeights[psqtbuckets ? psqtbuckets * inputdims : 1];    // hack to avoid zero-sized array
+    alignas(64) int32_t psqtWeights[psqtbuckets ? psqtbuckets * inputdims : 1];    // hack to avoid zero-sized array
 
 
     NnueFeatureTransformer() : NnueLayer(NULL) {}
@@ -1668,8 +1673,8 @@ public:
     int testRepetition();
     template <NnueType Nt, Color c> void HalfkpAppendActiveIndices(NnueIndexList *active);
     template <NnueType Nt, Color c> void HalfkpAppendChangedIndices(DirtyPiece* dp, NnueIndexList *add, NnueIndexList *remove);
-    template <NnueType Nt, Color c, unsigned int NnueFtHalfdims> void UpdateAccumulator();
-    template <NnueType Nt, unsigned int NnueFtHalfdims> int Transform(clipped_t *output, int bucket = 0);
+    template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void UpdateAccumulator();
+    template <NnueType Nt, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> int Transform(clipped_t *output, int bucket = 0);
     template <NnueType Nt> int NnueGetEval();
 #ifdef NNUELEARN
     void toSfen(PackedSfen *sfen);
