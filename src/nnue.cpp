@@ -558,6 +558,9 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
         for (unsigned int l = 0; pos2update[l] >= 0; l++)
         {
             memcpy(&accumulator[pos2update[l]].accumulation[c], &accumulator[mslast].accumulation[c], NnueFtHalfdims * sizeof(int16_t));
+            for (unsigned int i = 0; i < NnuePsqtBuckets; i++)
+                accumulator[pos2update[l]].psqtAccumulation[c][i] = accumulator[mslast].psqtAccumulation[c][i];
+
             mslast = pos2update[l];
             NnueAccumulator* ac = &accumulator[mslast];
 
