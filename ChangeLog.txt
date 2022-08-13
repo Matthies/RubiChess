@@ -1,5 +1,19 @@
 ChangeLog
 =========
+20220813 (release 2022-08-13) :
+    - Time management improvements: best move
+        + Plays movetime mode respecting move overhead
+        + More flexible time usage depending on nodes spending on
+        + Plays very short time controls like 1+0.001 without time forfeits now
+        + Better support for nodes based time control
+        + Avoid getting low on time in moves/time control
+    - New default network nn-b1c332ae1d-20220613.nnue
+    - Improve endgame draw detection when playing withou tablebase
+    - Contempt (default 0) and rating based contempt (triggered by GUI using UCI_RatingAdv)
+    - Improved logging ('..._app' for appending, '..._pid' for concurrent loggin using the process id)
+    - Speed improvements (1-3% on x86, > 10% on Arm/Neon)
+    - Several fixes
+
 20220223 (release 2022-02-23) :
     - Several new and improved networks by successful training (still the Nodchip/S. Vieri fork with several modifications)
         + using > 3 billion completely shuffled positions now
