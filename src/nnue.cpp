@@ -1209,8 +1209,6 @@ void NnueClippedRelu<dims, clippingshift>::Propagate(int32_t *input, clipped_t *
     __m128i* out = (__m128i*)output;
 #ifdef USE_FASTSSE2
     const unsigned int numChunks = dims / 8;
-    const __m128i kZero = _mm_setzero_si128();
-    const __m128i k0x7f = _mm_set1_epi16(0x7f);
     for (unsigned int i = 0; i < numChunks; i++) {
         __m128i words = _mm_srai_epi16(_mm_packs_epi32(in[i * 2], in[i * 2 + 1]),
             clippingshift);
