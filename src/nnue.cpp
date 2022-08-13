@@ -454,7 +454,7 @@ typedef __m128i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, bias_v
 typedef int8x8_t in_vec_t, weight_vec_t;
 typedef int16x8_t ft_vec_t;
 typedef int16x8_t ftout_vec_t;
-typedef int32x4_t acc_vec_t, bias_vec_t, psqt_vec_t;;
+typedef int32x4_t acc_vec_t, bias_vec_t, psqt_vec_t;
 #define vec_zero() {0}
 #define vec_set_16(a) vdupq_n_s16(a)
 #define vec_max_16(a,b) vmaxq_s16(a,b)
@@ -789,7 +789,7 @@ template <NnueType Nt, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets
             for (unsigned int i = 0; i < numChunks / 2; i++) {
                 ft_vec_t s0 = acc[i * 2];
                 ft_vec_t s1 = acc[i * 2 + 1];
-                out[i] = vec_clip_8(s0, s1);
+                out[i] = (ftout_vec_t)vec_clip_8(s0, s1);
             }
 #endif
         }
