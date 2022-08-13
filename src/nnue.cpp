@@ -1283,9 +1283,6 @@ void NnueSqrClippedRelu<dims>::Propagate(int32_t* input, clipped_t* output)
         out[i] = vec_clip_8_128(words0, words1);
 #endif
     }
-
-#elif defined(USE_NEON)
-
 #else
 
     const int start = 0;
