@@ -3,7 +3,7 @@ ChangeLog
 20220813 (release 2022-08-13) :
     - Time management improvements:
         + Plays movetime mode respecting move overhead
-        + More flexible time usage depending on nodes spending on
+        + More flexible time usage depending on nodes spending on best move
         + Plays very short time controls like 1+0.001 without time forfeits now
         + Better support for nodes based time control
         + Avoid getting low on time in moves/time control
