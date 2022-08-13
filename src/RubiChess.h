@@ -48,13 +48,14 @@
 //#define NNUELEARN
 
 // Enable this to enable NNUE debug output
-#define NNUEDEBUG
+//#define NNUEDEBUG
 
-
+#if 0
+#undef USE_AVX512
 #undef USE_AVX2
 #undef USE_SSSE3
-//#undef USE_SSE2
-
+#undef USE_SSE2
+#endif
 
 #ifdef FINDMEMORYLEAKS
 #define _CRTDBG_MAP_ALLOC
@@ -884,8 +885,8 @@ class NnueNetworkLayer : public NnueLayer
     static constexpr unsigned int NumOutputRegsSmall = (outputdims / (SimdWidth / 4) > 1 ? outputdims / (SimdWidth / 4) : 1);
     static constexpr unsigned int SmallBlockSize = InputSimdWidth;
     static constexpr unsigned int BigBlockSize = NumOutputRegsBig * paddedInputdims;
-    static constexpr unsigned int NumSmallBlocksInBigBlock = BigBlockSize / SmallBlockSize;
-    static constexpr unsigned int NumSmallBlocksPerOutput = paddedInputdims / SmallBlockSize;
+    static constexpr unsigned int NumSmallBlocksInBigBlock = (BigBlockSize < SmallBlockSize ? 1 : BigBlockSize / SmallBlockSize);   // avoid warning of MSVC compiler
+    static constexpr unsigned int NumSmallBlocksPerOutput = (paddedInputdims < SmallBlockSize ? 1 : paddedInputdims / SmallBlockSize);
     static constexpr unsigned int NumBigBlocks = outputdims / NumOutputRegsBig;
     static constexpr unsigned int OutputSimdWidth = SimdWidth / 4;
 
@@ -914,16 +915,19 @@ public:
             return idx;
 #endif
 
-        const int smallBlock = (idx / SmallBlockSize) % NumSmallBlocksInBigBlock;
-        const int smallBlockCol = smallBlock / NumSmallBlocksPerOutput;
-        const int smallBlockRow = smallBlock % NumSmallBlocksPerOutput;
-        const int bigBlock = idx / BigBlockSize;
-        const int rest = idx % SmallBlockSize;
+        if (paddedInputdims >= 128)
+        {
+            const int smallBlock = (idx / SmallBlockSize) % NumSmallBlocksInBigBlock;
+            const int smallBlockCol = smallBlock / NumSmallBlocksPerOutput;
+            const int smallBlockRow = smallBlock % NumSmallBlocksPerOutput;
+            const int bigBlock = idx / BigBlockSize;
+            const int rest = idx % SmallBlockSize;
 
-        return bigBlock * BigBlockSize
-            + smallBlockRow * SmallBlockSize * NumOutputRegsBig
-            + smallBlockCol * SmallBlockSize
-            + rest;
+            return bigBlock * BigBlockSize
+                + smallBlockRow * SmallBlockSize * NumOutputRegsBig
+                + smallBlockCol * SmallBlockSize
+                + rest;
+        }
     }
 };
 
