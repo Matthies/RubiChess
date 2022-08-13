@@ -222,7 +222,7 @@ public:
             alignas(64) clipped_t input[NnueFtOutputdims];
             int32_t hidden1_values[NnueHidden1Dims];
             int32_t hidden2_values[NnueHidden2Dims];
-            clipped_t hidden1_sqrclipped[NnueHidden1Dims];
+            clipped_t hidden1_sqrclipped[MULTIPLEOFN(NnueHidden1Out, 32)];
             clipped_t hidden1_clipped[NnueHidden1Dims];
             clipped_t hidden2_clipped[NnueHidden2Dims];
             int32_t out_value;
@@ -337,11 +337,6 @@ typedef __m256i sml_vec_t;
 #define vec_add_dpbusd_32x2 Simd::m256_add_dpbusd_32x2
 #define vec_hadd Simd::m256_hadd
 #define vec_haddx4 Simd::m256_haddx4
-#define vec_zero_psqt() _mm256_setzero_si256()
-#define vec_add_psqt_32(a,b) _mm256_add_epi32(a,b)
-#define vec_sub_psqt_32(a,b) _mm256_sub_epi32(a,b)
-#define vec_load_psqt(a) _mm256_load_si256(a)
-#define vec_store_psqt(a,b) _mm256_store_si256(a,b)
 
 #elif defined (USE_SSSE3)
 typedef __m128i sml_vec_t;
@@ -352,11 +347,6 @@ typedef __m128i sml_vec_t;
 #define vec_add_dpbusd_32x4 Simd::m128_add_dpbusd_epi32x4
 #define vec_hadd Simd::m128_hadd
 #define vec_haddx4 Simd::m128_haddx4
-#define vec_zero_psqt() _mm_setzero_si128()
-#define vec_add_psqt_32(a,b) _mm_add_epi32(a,b)
-#define vec_sub_psqt_32(a,b) _mm_sub_epi32(a,b)
-#define vec_load_psqt(a) (*(a))
-#define vec_store_psqt(a,b) *(a)=(b)
 
 #endif
 
@@ -377,6 +367,11 @@ typedef __m128i bias_vec_t;
 #define vec_add_dpbusd_32x2_large Simd::m512_add_dpbusd_32x2
 #define vec_haddx4_large Simd::m512_haddx4
 #define vec_hadd_large Simd::m512_hadd
+#define vec_zero_psqt() _mm256_setzero_si256()
+#define vec_add_psqt_32(a,b) _mm256_add_epi32(a,b)
+#define vec_sub_psqt_32(a,b) _mm256_sub_epi32(a,b)
+#define vec_load_psqt(a) _mm256_load_si256(a)
+#define vec_store_psqt(a,b) _mm256_store_si256(a,b)
 
 #elif defined(USE_AVX2)
 #define NUM_REGS 16
@@ -401,6 +396,11 @@ inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define vec_add_dpbusd_32x2_large Simd::m256_add_dpbusd_32x2
 #define vec_haddx4_large Simd::m256_haddx4
 #define vec_hadd_large Simd::m256_hadd
+#define vec_zero_psqt() _mm256_setzero_si256()
+#define vec_add_psqt_32(a,b) _mm256_add_epi32(a,b)
+#define vec_sub_psqt_32(a,b) _mm256_sub_epi32(a,b)
+#define vec_load_psqt(a) _mm256_load_si256(a)
+#define vec_store_psqt(a,b) _mm256_store_si256(a,b)
 
 #elif defined(USE_SSE2)
 #define NUM_REGS 16
@@ -409,17 +409,23 @@ inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define MAXCHUNKSIZE 16
 typedef __m128i ft_vec_t, ftout_vec_t, psqt_vec_t;
 #define k0x80s _mm_set1_epi8(-128)
-#define vec_mul_16(a,b) _mm_mullo_epi16(a,b)
-#define vec_add_16(a,b) _mm_add_epi16(a,b)
-#define vec_sub_16(a,b) _mm_sub_epi16(a,b)
-#define vec_packs(a,b) _mm_packs_epi16(a,b)
-#if defined(USE_SSSE3)
-typedef __m128i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, bias_vec_t;
 #define vec_zero() _mm_setzero_si128()
 #define vec_set_16(a) _mm_set1_epi16(a)
 #define vec_max_16(a,b) _mm_max_epi16(a,b)
 #define vec_min_16(a,b) _mm_min_epi16(a,b)
+#define vec_mul_16(a,b) _mm_mullo_epi16(a,b)
+#define vec_add_16(a,b) _mm_add_epi16(a,b)
+#define vec_sub_16(a,b) _mm_sub_epi16(a,b)
+#define vec_packs(a,b) _mm_packs_epi16(a,b)
 #define vec_msb_pack_16(a,b) _mm_packs_epi16(_mm_srli_epi16(a,7),_mm_srli_epi16(b,7))
+#define vec_zero_psqt() _mm_setzero_si128()
+#define vec_add_psqt_32(a,b) _mm_add_epi32(a,b)
+#define vec_sub_psqt_32(a,b) _mm_sub_epi32(a,b)
+#define vec_load_psqt(a) (*(a))
+#define vec_store_psqt(a,b) *(a)=(b)
+
+#if defined(USE_SSSE3)
+typedef __m128i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, bias_vec_t;
 #define vec_clip_8(a,b) vec_packs(_mm_max_epi16(a,_mm_setzero_si128()),_mm_max_epi16(b,_mm_setzero_si128()))
 #define vec_add_dpbusd_32x2_large Simd::m128_add_dpbusd_32x2
 #define vec_haddx4_large Simd::m128_haddx4
@@ -730,8 +736,16 @@ template <NnueType Nt, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets
 
                 const ft_vec_t pa = vec_mul_16(sum0a, sum1a);
                 const ft_vec_t pb = vec_mul_16(sum0b, sum1b);
+#ifdef USE_FASTSSE2
+                const ft_vec_t shfta =  _mm_srli_epi16(pa, 7);
+                const ft_vec_t shftb = _mm_srli_epi16(pb, 7);
+                //const ft_vec_t pack = _mm_packs_epi16(shfta, shftb);
 
+                out[i * 2] = shfta;
+                out[i * 2 + 1] = shftb;
+#else
                 out[i] = vec_msb_pack_16(pa, pb);
+#endif
             }
         }
         else {
@@ -1036,16 +1050,16 @@ void NnueNetworkLayer<inputdims, outputdims>::PropagateNative(clipped_t* input, 
         __m128i* biasVec = (__m128i*)bias;
         __m128i* inVec = (__m128i*)input;
         for (unsigned int i = 0; i < outputdims / 4; i++) {
-            __m128i* w = (__m128i*) & weight[4 * i * inputdims], p, s0, s1, s2, s3;
+            __m128i* w = (__m128i*) & weight[4 * i * paddedInputdims], p, s0, s1, s2, s3;
             s0 = s1 = s2 = s3 = _mm_setzero_si128();
-            for (unsigned int j = 0; j < inputdims / 8; j++) {
-                p = _mm_madd_epi16(inVec[j], w[0 * inputdims / 8 + j]);
+            for (unsigned int j = 0; j < paddedInputdims / 8; j++) {
+                p = _mm_madd_epi16(inVec[j], w[0 * paddedInputdims / 8 + j]);
                 s0 = _mm_add_epi32(s0, p);
-                p = _mm_madd_epi16(inVec[j], w[1 * inputdims / 8 + j]);
+                p = _mm_madd_epi16(inVec[j], w[1 * paddedInputdims / 8 + j]);
                 s1 = _mm_add_epi32(s1, p);
-                p = _mm_madd_epi16(inVec[j], w[2 * inputdims / 8 + j]);
+                p = _mm_madd_epi16(inVec[j], w[2 * paddedInputdims / 8 + j]);
                 s2 = _mm_add_epi32(s2, p);
-                p = _mm_madd_epi16(inVec[j], w[3 * inputdims / 8 + j]);
+                p = _mm_madd_epi16(inVec[j], w[3 * paddedInputdims / 8 + j]);
                 s3 = _mm_add_epi32(s3, p);
             }
             s0 = _mm_add_epi32(_mm_unpacklo_epi32(s0, s1), _mm_unpackhi_epi32(s0, s1));
@@ -1237,8 +1251,13 @@ void NnueSqrClippedRelu<dims>::Propagate(int32_t* input, clipped_t* output)
         words0 = _mm_srli_epi16(_mm_mulhi_epi16(words0, words0), 3);
         words1 = _mm_srli_epi16(_mm_mulhi_epi16(words1, words1), 3);
 
+#ifdef USE_FASTSSE2
+        out[2 * i] = _mm_min_epi16(words0, _mm_set1_epi16(127));
+        out[2 * i + 1] = _mm_min_epi16(words1, _mm_set1_epi16(127));
+#else
         const __m128i packedbytes = _mm_packs_epi16(words0, words1);
         _mm_store_si128(&out[i], _mm_subs_epi8(_mm_adds_epi8(packedbytes, k0x80s), k0x80s));
+#endif
     }
 
 #elif defined(USE_NEON)
@@ -1253,7 +1272,7 @@ void NnueSqrClippedRelu<dims>::Propagate(int32_t* input, clipped_t* output)
 
 
 #ifdef NNUEDEBUG
-    cout << "\nclipped relu:\n";
+    cout << "\nsqrclipped relu:\n";
     for (unsigned int i = 0; i < dims; i++) {
         cout << hex << setfill('0') << setw(2) << (int)output[i] << " ";
         if (i % 16 == 15 || (i + 1 == dims))

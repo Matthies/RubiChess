@@ -48,11 +48,11 @@
 //#define NNUELEARN
 
 // Enable this to enable NNUE debug output
-//#define NNUEDEBUG
+#define NNUEDEBUG
 
 
 #undef USE_AVX2
-//#undef USE_SSSE3
+#undef USE_SSSE3
 //#undef USE_SSE2
 
 
