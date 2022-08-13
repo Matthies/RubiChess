@@ -352,6 +352,12 @@ typedef __m128i sml_vec_t;
 #define vec_add_dpbusd_32x4 Simd::m128_add_dpbusd_epi32x4
 #define vec_hadd Simd::m128_hadd
 #define vec_haddx4 Simd::m128_haddx4
+#define vec_zero_psqt() _mm_setzero_si128()
+#define vec_add_psqt_32(a,b) _mm_add_epi32(a,b)
+#define vec_sub_psqt_32(a,b) _mm_sub_epi32(a,b)
+#define vec_load_psqt(a) (*(a))
+#define vec_store_psqt(a,b) *(a)=(b)
+
 #endif
 
 // Macros for propagation of big layers and feature transformation
@@ -359,10 +365,11 @@ typedef __m128i sml_vec_t;
 #define NUM_REGS 32
 #define NUM_PSQT_REGS 1
 #define SIMD_WIDTH 512
+#define MAXCHUNKSIZE 64
 typedef __m512i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, ft_vec_t;
 #typedef _m256i psqt_vec_t;
 typedef __m128i bias_vec_t;
-#define vec_zero _mm512_setzero_si512()
+#define vec_zero() _mm512_setzero_si512()
 #define vec_add_16(a,b) _mm512_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm512_sub_epi16(a,b)
 #define vec_packs(a,b) _mm512_packs_epi16(a,b)
@@ -375,6 +382,7 @@ typedef __m128i bias_vec_t;
 #define NUM_REGS 16
 #define NUM_PSQT_REGS 1
 #define SIMD_WIDTH 256
+#define MAXCHUNKSIZE 32
 typedef __m256i ft_vec_t, ftout_vec_t, psqt_vec_t, in_vec_t, acc_vec_t, weight_vec_t;
 typedef __m128i bias_vec_t;
 #define vec_zero() _mm256_setzero_si256()
@@ -398,14 +406,20 @@ inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define NUM_REGS 16
 #define NUM_PSQT_REGS 2
 #define SIMD_WIDTH 128
+#define MAXCHUNKSIZE 16
 typedef __m128i ft_vec_t, ftout_vec_t, psqt_vec_t;
 #define k0x80s _mm_set1_epi8(-128)
+#define vec_mul_16(a,b) _mm_mullo_epi16(a,b)
 #define vec_add_16(a,b) _mm_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm_sub_epi16(a,b)
 #define vec_packs(a,b) _mm_packs_epi16(a,b)
 #if defined(USE_SSSE3)
 typedef __m128i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, bias_vec_t;
-#define vec_zero _mm_setzero_si128()
+#define vec_zero() _mm_setzero_si128()
+#define vec_set_16(a) _mm_set1_epi16(a)
+#define vec_max_16(a,b) _mm_max_epi16(a,b)
+#define vec_min_16(a,b) _mm_min_epi16(a,b)
+#define vec_msb_pack_16(a,b) _mm_packs_epi16(_mm_srli_epi16(a,7),_mm_srli_epi16(b,7))
 #define vec_clip_8(a,b) vec_packs(_mm_max_epi16(a,_mm_setzero_si128()),_mm_max_epi16(b,_mm_setzero_si128()))
 #define vec_add_dpbusd_32x2_large Simd::m128_add_dpbusd_32x2
 #define vec_haddx4_large Simd::m128_haddx4
@@ -419,11 +433,12 @@ typedef __m128i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, bias_v
 #define NUM_REGS 16
 #define NUM_PSQT_REGS 2
 #define SIMD_WIDTH 128
+#define MAXCHUNKSIZE 16
 typedef int8x8_t in_vec_t, weight_vec_t;
 typedef int16x8_t ft_vec_t;
 typedef int8x16_t ftout_vec_t;
 typedef int32x4_t acc_vec_t, bias_vec_t;
-#define vec_zero {0}
+#define vec_zero() {0}
 #define vec_add_16(a,b) vaddq_s16(a,b)
 #define vec_sub_16(a,b) vsubq_s16(a,b)
 #define vec_packs(a,b) vcombine_s8(vqmovn_s16(a),vqmovn_s16(b))
@@ -699,7 +714,7 @@ template <NnueType Nt, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets
 #ifdef USE_SIMD
         if (Nt == NnueArchV5)
         {
-            const unsigned int numChunks = NnueFtHalfdims / 2 / 32;
+            const unsigned int numChunks = NnueFtHalfdims / 2 / MAXCHUNKSIZE;
             ft_vec_t Zero = vec_zero();
             ft_vec_t One = vec_set_16(127);
 
@@ -1207,7 +1222,7 @@ void NnueSqrClippedRelu<dims>::Propagate(int32_t* input, clipped_t* output)
     const int NnueClippingShift = 6;
 #if defined(USE_SSE2)
     const unsigned int numChunks = dims / 16;
-    const __m128i k0x80s = _mm_set1_epi8(-128);
+    //const __m128i k0x80s = _mm_set1_epi8(-128);
     const auto in = (__m128i*)input;
     const auto out = (__m128i*)output;
 
