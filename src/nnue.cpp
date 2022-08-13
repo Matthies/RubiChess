@@ -453,7 +453,7 @@ typedef __m128i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, bias_v
 #define MAXCHUNKSIZE 16
 typedef int8x8_t in_vec_t, weight_vec_t;
 typedef int16x8_t ft_vec_t;
-typedef int8x16_t ftout_vec_t;
+typedef int16x8_t ftout_vec_t;
 typedef int32x4_t acc_vec_t, bias_vec_t, psqt_vec_t;;
 #define vec_zero() {0}
 #define vec_set_16(a) vdupq_n_s16(a)
