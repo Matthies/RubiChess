@@ -1285,8 +1285,8 @@ void NnueSqrClippedRelu<dims>::Propagate(int32_t* input, clipped_t* output)
     }
 #else
 
-    const int start = 0;
-    for (int i = start; i < dims; ++i) {
+    const unsigned int start = 0;
+    for (unsigned int i = start; i < dims; ++i) {
         output[i] = (clipped_t)max(0LL, min(127LL, (((long long)input[i] * input[i]) >> (2 * 6)) / 128));
     }
 #endif
