@@ -95,13 +95,6 @@ public:
     static constexpr unsigned int NnueClippingShift = 6;
 
     NnueFeatureTransformer<NnueFtHalfdims, NnueFtInputdims, NnuePsqtBuckets> NnueFt;
-#if 0
-    NnueNetworkLayer<NnueFtOutputdims, NnueHidden1Dims> NnueHd1;
-    NnueClippedRelu<NnueHidden1Dims, NnueClippingShift> NnueCl1;
-    NnueNetworkLayer<NnueHidden1Dims, NnueHidden2Dims> NnueHd2;
-    NnueClippedRelu<NnueHidden2Dims, NnueClippingShift> NnueCl2;
-    NnueNetworkLayer<NnueHidden2Dims, 1> NnueOut;
-#endif
     class NnueLayerStack {
     public:
         NnueNetworkLayer<NnueFtOutputdims, NnueHidden1Dims> NnueHd1;
@@ -170,17 +163,6 @@ public:
     static constexpr unsigned int NnueClippingShift = 6;
     static constexpr unsigned int NnuePsqtBuckets = 8;
     static constexpr unsigned int NnueLayerStacks = 8;
-#if 0
-    NnueIn[i] = new NnueInputSlice();
-    NnueHd1[i] = new NnueNetworkLayer(NnueIn[i], NnueFtOutputdims, NnueHidden1Dims);
-    NnueSqrCl[i] = new NnueSqrClippedRelu(NnueHd1[i], NnueHidden1Dims);
-    NnueCl1[i] = new NnueClippedRelu(NnueHd1[i], NnueHidden1Dims);
-    //NnueHd2[i] = new NnueNetworkLayer(NnueCl1[i], NnueHidden1Dims, NnueHidden2Dims);
-    NnueHd2[i] = new NnueNetworkLayer(NnueCl1[i], NnueHidden1Out * 2, NnueHidden2Dims);
-    NnueCl2[i] = new NnueClippedRelu(NnueHd2[i], NnueHidden2Dims);
-    NnueOut[i] = new NnueNetworkLayer(NnueCl2[i], NnueHidden2Dims, 1);
-
-#endif
 
     NnueFeatureTransformer<NnueFtHalfdims, NnueFtInputdims, NnuePsqtBuckets> NnueFt;
     class NnueLayerStack {
@@ -193,6 +175,7 @@ public:
         NnueNetworkLayer<NnueHidden2Dims, 1> NnueOut;
         NnueLayerStack() : NnueHd1(nullptr), NnueSqrCl(&NnueHd1), NnueCl1(&NnueHd1), NnueHd2(&NnueCl1), NnueCl2(&NnueHd2), NnueOut(&NnueCl2) {}
     } LayerStack[NnueLayerStacks];
+
     NnueArchitectureV5() {
         for (unsigned int i = 0; i < NnueLayerStacks; i++)
             LayerStack[i].NnueHd1.previous = &NnueFt;
@@ -243,23 +226,6 @@ public:
         int positional = network.out_value + fwdout;
 
         return (psqt + positional) * NnueValueScale / 1024;
-
-#if 0
-
-        // ab hier von v5
-        NnueHd1[bucket]->Propagate(network.input, network.hidden1_values);
-        memset(network.hidden1_sqrclipped, 0, sizeof(network.hidden1_sqrclipped));  // FIXME: is this needed?
-        NnueSqrCl[bucket]->Propagate(network.hidden1_values, network.hidden1_sqrclipped);
-        NnueCl1[bucket]->Propagate(network.hidden1_values, network.hidden1_clipped);
-        memcpy(network.hidden1_sqrclipped + NnueHidden1Out, network.hidden1_clipped, NnueHidden1Out * sizeof(clipped_t));
-        NnueHd2[bucket]->Propagate(network.hidden1_sqrclipped, network.hidden2_values);
-        NnueCl2[bucket]->Propagate(network.hidden2_values, network.hidden2_clipped);
-        NnueOut[bucket]->Propagate(network.hidden2_clipped, &network.out_value);
-        int32_t fwdout = network.hidden1_values[NnueHidden1Out] * (600 * 1024 / NnueValueScale) / (127 * (1 << NnueClippingShift));
-        positional = network.out_value + fwdout;
-#endif
-
-        return 0;
     }
 } NnueV5;
 
@@ -767,7 +733,6 @@ template <NnueType Nt, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets
 #ifdef USE_FASTSSE2
                 const ft_vec_t shfta =  _mm_srli_epi16(pa, 7);
                 const ft_vec_t shftb = _mm_srli_epi16(pb, 7);
-                //const ft_vec_t pack = _mm_packs_epi16(shfta, shftb);
 
                 out[i * 2] = shfta;
                 out[i * 2 + 1] = shftb;
@@ -812,6 +777,7 @@ template <NnueType Nt, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets
         }
 #endif
     }
+
 #ifdef NNUEDEBUG
     cout << "\ninput layer:\n";
     for (unsigned int i = 0; i < NnueFtHalfdims; i++) {
@@ -835,17 +801,6 @@ template <NnueType Nt> int chessposition::NnueGetEval()
 {
     NnueArchInterface<Nt> NnueIf;
     return NnueIf.getEval(this);
-#if 0
-    Transform<Nt>(network.input);
-    NnueHd1.Propagate(network.input, network.hidden1_values);
-    NnueCl1.Propagate(network.hidden1_values, network.hidden1_clipped);
-    NnueHd2.Propagate(network.hidden1_clipped, network.hidden2_values);
-    NnueCl1.Propagate(network.hidden2_values, network.hidden2_clipped);
-    NnueOut.Propagate(network.hidden2_clipped, &network.out_value);
-
-    return network.out_value * NnueValueScale / 1024;
-#endif
-    return 0;
 }
 
 
@@ -1288,7 +1243,6 @@ void NnueSqrClippedRelu<dims>::Propagate(int32_t* input, clipped_t* output)
         output[i] = (clipped_t)max(0LL, min(127LL, (((long long)input[i] * input[i]) >> (2 * 6)) / 128));
     }
 #endif
-
 
 #ifdef NNUEDEBUG
     cout << "\nsqrclipped relu:\n";

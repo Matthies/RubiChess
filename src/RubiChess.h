@@ -50,12 +50,6 @@
 // Enable this to enable NNUE debug output
 //#define NNUEDEBUG
 
-#if 0
-#undef USE_AVX512
-#undef USE_AVX2
-#undef USE_SSSE3
-#undef USE_SSE2
-#endif
 
 #ifdef FINDMEMORYLEAKS
 #define _CRTDBG_MAP_ALLOC
@@ -703,32 +697,8 @@ enum NnueType { NnueDisabled = 0, NnueArchV1, NnueArchV5 };
 
 #define ORIENT(c,i) ((c) ? (i) ^ 0x3f : (i))
 #define HMORIENT(c,i,k) (i ^ (bool(c) * 56) ^ ((FILE(k) < 4) * 7))
-#define MULTIPLEOFN(i,n) (((i) + (n-1)) / n * n)
+#define MULTIPLEOFN(i,n) (((i) + (n - 1)) / n * n)
 
-
-
-#if 0
-const int NnueFtHalfdimsV1 = 256;
-const int NnueFtOutputdimsV1 = NnueFtHalfdimsV1 * 2;
-const int NnueFtInputdimsV1 = 64 * 10 * 64;   // (kingsquare x piecetype x piecesquare)
-const int NnueHidden1DimsV1 = 32;
-const int NnueHidden2DimsV1 = 32;
-const int NnueClippingShiftV1 = 6;
-#endif
-
-#if 0
-// Net dimensions ArchV5
-const int NnueFtOutputdims = 1024;
-const int NnueFtHalfdims = NnueFtOutputdims;
-const int NnueFtInputdims = 64 * 11 * 64 / 2;
-const int NnueHidden1Dims = 16;
-const int NnueHidden1Out = 15;
-const int NnueHidden2Dims = 32;
-const int NnueHidden2Out = 32;
-const int NnueClippingShift = 6;
-const int NnuePsqtBuckets = 8;
-const int NnueLayerStacks = 8;
-#endif
 
 #if defined(USE_SSE2) && !defined(USE_SSSE3) && defined FASTSSE2
 // for native SSE2 platforms we have faster intrinsics for 16bit integers
@@ -794,11 +764,9 @@ template <int ftdims, int inputdims, int psqtbuckets>
 class NnueFeatureTransformer : public NnueLayer
 {
 public:
-    //static constexpr unsigned int effpsqtbuckets =
     alignas(64) int16_t bias[ftdims];
     alignas(64) int16_t weight[ftdims * inputdims];
     alignas(64) int32_t psqtWeights[psqtbuckets ? psqtbuckets * inputdims : 1];    // hack to avoid zero-sized array
-
 
     NnueFeatureTransformer() : NnueLayer(NULL) {}
     bool ReadFeatureWeights(NnueNetsource_t is, bool bpz);

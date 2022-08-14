@@ -794,7 +794,6 @@ int chessposition::getFrcCorrection()
 
 inline bool chessposition::isEndgame(int *score)
 {
-    //return false;
 #if 0
     printf("#define MH_Kk    0x%016llX\n", calc_key_from_str("KvK"));
     printf("#define MH_KNk   0x%016llX\n", calc_key_from_str("KNvK"));
