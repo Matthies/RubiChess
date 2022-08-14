@@ -36,7 +36,7 @@
 //#define EVALTUNE
 
 // Enable this to expose the evaluation and NNUE parameters as UCI options
-//#define EVALOPTIONS
+#define EVALOPTIONS
 
 // Enable this to expose the search parameters as UCI options
 //#define SEARCHOPTIONS
@@ -777,7 +777,8 @@ public:
 #ifdef EVALOPTIONS
     void WriteFeatureWeights(ofstream *os, bool bpz);
     void WriteWeights(ofstream* os) {
-        if (previous) return previous->WriteWeights(os);
+        if (previous)
+            previous->WriteWeights(os);
     }
 #endif
     uint32_t GetFtHash(NnueType nt) {
@@ -801,7 +802,8 @@ public:
     }
 #ifdef EVALOPTIONS
     void WriteWeights(ofstream* os) {
-        return (previous ? previous->WriteWeights(os) : true);
+        if (previous)
+            previous->WriteWeights(os);
     }
 #endif
     uint32_t GetHash() {
@@ -819,7 +821,10 @@ public:
         return (previous ? previous->ReadWeights(is) : true);
     }
 #ifdef EVALOPTIONS
-    void WriteWeights(ofstream* os);
+    void WriteWeights(ofstream* os) {
+        if (previous)
+            previous->WriteWeights(os);
+    }
 #endif
     uint32_t GetHash() {
         return NNUECLIPPEDRELUHASH + previous->GetHash();
@@ -860,7 +865,7 @@ class NnueNetworkLayer : public NnueLayer
 
 public:
     alignas(64)int32_t bias[outputdims];
-    alignas(64)weight_t weight[inputdims * outputdims];
+    alignas(64)weight_t weight[paddedInputdims * outputdims];
 
     NnueNetworkLayer(NnueLayer* prev) : NnueLayer(prev) {}
     bool ReadWeights(NnueNetsource_t is);
