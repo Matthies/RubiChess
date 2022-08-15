@@ -79,12 +79,12 @@ public:
 #ifdef EVALOPTIONS
     virtual void WriteFeatureWeights(ofstream *os, bool bpz) = 0;
     virtual void WriteWeights(ofstream *os, uint32_t nethash) = 0;
+    virtual void rescaleLastLayer(int ratio64) = 0;
+    virtual string getArchDescription() = 0;
 #endif
     virtual uint32_t GetFtHash() = 0;
     virtual uint32_t GetHash() = 0;
     virtual int getEval(chessposition* pos) = 0;
-    virtual void rescaleLastLayer(int ratio64) = 0;
-    virtual string getArchDescription() = 0;
 };
 
 
@@ -141,6 +141,14 @@ public:
         os->write((char*)&nethash, sizeof(uint32_t));
         LayerStack[0].NnueOut.WriteWeights(os);
     }
+    void rescaleLastLayer(int ratio64) {
+        LayerStack[0].NnueOut.bias[0] = (int32_t)round(LayerStack[0].NnueOut.bias[0] * ratio64 / NnueValueScale);
+        for (unsigned int i = 0; i < NnueHidden2Dims; i++)
+            LayerStack[0].NnueOut.weight[i] = (int32_t)round(LayerStack[0].NnueOut.weight[i] * ratio64 / NnueValueScale);
+    }
+    string getArchDescription() {
+        return "Features=HalfKP(Friend)[40960->256x2],Network=AffineTransform[1<-32](ClippedReLU[32](AffineTransform[32<-32](ClippedReLU[32](AffineTransform[32<-512](InputSlice[512(0:512)])))))";
+    }
 #endif
     int getEval(chessposition *pos) {
         struct NnueNetwork {
@@ -160,14 +168,6 @@ public:
         LayerStack[0].NnueOut.Propagate(network.hidden2_clipped, &network.out_value);
 
         return network.out_value * NnueValueScale / 1024;
-    }
-    void rescaleLastLayer(int ratio64) {
-        LayerStack[0].NnueOut.bias[0] = (int32_t)round(LayerStack[0].NnueOut.bias[0] * ratio64 / NnueValueScale);
-        for (int i = 0; i < NnueHidden2Dims; i++)
-            LayerStack[0].NnueOut.weight[i] = (int32_t)round(LayerStack[0].NnueOut.weight[i] * ratio64 / NnueValueScale);
-    }
-    virtual string getArchDescription() {
-        return "Features=HalfKP(Friend)[40960->256x2],Network=AffineTransform[1<-32](ClippedReLU[32](AffineTransform[32<-32](ClippedReLU[32](AffineTransform[32<-512](InputSlice[512(0:512)])))))";
     }
 } NnueV1;
 
@@ -231,6 +231,16 @@ public:
             LayerStack[i].NnueOut.WriteWeights(os);
         }
     }
+    void rescaleLastLayer(int ratio64) {
+        for (unsigned int b = 0; b < NnueLayerStacks; b++) {
+            LayerStack[b].NnueOut.bias[0] = (int32_t)round(LayerStack[b].NnueOut.bias[0] * ratio64 / NnueValueScale);
+            for (unsigned int i = 0; i < NnueHidden2Dims; i++)
+                LayerStack[b].NnueOut.weight[i] = (int32_t)round(LayerStack[b].NnueOut.weight[i] * ratio64 / NnueValueScale);
+        }
+    }
+    string getArchDescription() {
+        return "SFNNv5 (https://github.com/glinscott/nnue-pytorch/blob/master/docs/nnue.md#historical-stockfish-evaluation-network-architectures)";
+    }
 #endif
     int getEval(chessposition* pos) {
         struct NnueNetwork {
@@ -258,16 +268,6 @@ public:
         int positional = network.out_value + fwdout;
 
         return (psqt + positional) * NnueValueScale / 1024;
-    }
-    void rescaleLastLayer(int ratio64) {
-        for (int b = 0; b < NnueLayerStacks; b++) {
-            LayerStack[b].NnueOut.bias[0] = (int32_t)round(LayerStack[b].NnueOut.bias[0] * ratio64 / NnueValueScale);
-            for (int i = 0; i < NnueHidden2Dims; i++)
-                LayerStack[b].NnueOut.weight[i] = (int32_t)round(LayerStack[b].NnueOut.weight[i] * ratio64 / NnueValueScale);
-        }
-    }
-    virtual string getArchDescription() {
-        return "SFNNv5 (https://github.com/glinscott/nnue-pytorch/blob/master/docs/nnue.md#historical-stockfish-evaluation-network-architectures)";
     }
 } NnueV5;
 
