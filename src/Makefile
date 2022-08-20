@@ -218,7 +218,7 @@ VERSION=$(MAJORVERSION)$(MINORVERSION)
 default: net arch
 	@$(MAKE) compile MESSAGE='Creating standard build ...'
 
-build: net default
+build: default
 
 arch:
 	@echo
@@ -246,16 +246,13 @@ else
 		@if [ "$(RUBINETHASH)" != `$(shasum_command) $(RUBINET) | cut -c1-10` ]; then echo "Failed download or $(RUBINET) corrupted, please delete!"; exit 1; else echo "$(RUBINET) has correct hash."; fi
 endif
 endif
-
-$(NETOBJ): FORCE
 ifneq ($(EVALFILE),)
 		@echo Embedding networkfile $(EMBEDFILE)
 		@cp $(EMBEDFILE) $(NETBIN)
 		@ld -r -b binary $(NETBIN) -o $(NETOBJ)
 endif
-FORCE:
 
-compile: $(NETOBJ)
+compile:
 	@echo $(MESSAGE)
 	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) *.cpp $(LDFLAGS) $(PTHREADLIB) $(EXTRALDFLAGS) $(GITDEFINE) $(NETDEF) $(NETOBJ) -o $(EXE)
 
@@ -278,13 +275,14 @@ pgo: arch
 	@strip $(EXE)$(EXEEXT)
 	@echo Binary $(EXE) created successfully.
 
-profile-build: net pgo
+profile-build: net
+	@$(MAKE) pgo
 
 pgo-rename: pgo
 	@mv $(EXE) $(EXE)-$(VERSION)_$(ARCH)
 	@echo Successfully created $(EXE)-$(VERSION)_$(ARCH)
 
-release_x86: net
+release_x86:
 	@$(MAKE) pgo-rename  ARCH=x86-64-avx512 PTHREADLIB=$(PTHREADSTATICLIB)
 	@$(MAKE) pgo-rename  ARCH=x86-64-bmi2 PTHREADLIB=$(PTHREADSTATICLIB)
 	@$(MAKE) pgo-rename  ARCH=x86-64-avx2 PTHREADLIB=$(PTHREADSTATICLIB)
@@ -293,11 +291,25 @@ release_x86: net
 	@$(MAKE) pgo-rename  ARCH=x86-64-sse3-popcnt PTHREADLIB=$(PTHREADSTATICLIB)
 	@$(MAKE) pgo-rename  ARCH=x86-64 PTHREADLIB=$(PTHREADSTATICLIB)
 
-release_arm64: net
+release_arm64:
 	@$(MAKE) pgo-rename  ARCH=arm64_neon PTHREADLIB=$(PTHREADSTATICLIB)
 
-release_arm32: net
+release_arm32:
 	@$(MAKE) pgo-rename  ARCH=arm32_neon PTHREADLIB=$(PTHREADSTATICLIB)
 
-release:
+release: net
 	@$(MAKE) release_$(ARCHFAMILY)
+
+help:
+	@echo ""
+	@echo "Compile RubiChess with following command:"
+	@echo "make target [ARCH=arch] [COMP=compiler] [EVALFILE=networkfile|default]"
+	@echo "Supported targets:"
+	@echo "build             standard build (default target)"
+	@echo "profile-build     profiling optimized build (pgo)"
+	@echo "release           build all pgo optimized binaries CPU family"
+	@echo ""
+	@echo "ARCH should only be set when building a binary for a hardware different from the host"
+	@echo "COMP can be gcc (default) or clang (usually faster but has some more dependencies)"
+	@echo "Setting EVALFILE will build binaries with network included"
+	@echo ""
