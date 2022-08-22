@@ -81,6 +81,9 @@
 #include <math.h>
 #include <regex>
 #include <set>
+#ifdef USE_ZLIB
+#include <zlib.h>
+#endif
 
 #define USE_SIMD
 #if defined(USE_SSE2)
@@ -729,6 +732,24 @@ extern NnueType NnueReady;
 #ifdef NNUEINCLUDED
 extern const char  _binary_net_nnue_start;
 extern const char  _binary_net_nnue_end;
+#endif
+
+class NnueNetsource {
+public:
+    bool isEmbedded;
+    unsigned char* readbuffer;
+    size_t readbuffersize;
+    unsigned char* next;
+    bool open();
+    void read(unsigned char* target, size_t readsize);
+    bool readFailed();
+    bool endOfNet();
+};
+
+#if 0
+#ifdef NNUEINCLUDED
+extern const char  _binary_net_nnue_start;
+extern const char  _binary_net_nnue_end;
 typedef char** NnueNetsource_t;
 #define NNUEREAD(s, t, l) (memcpy(t, (*s), l), (*s) = (*s) + (l))
 #define NNUEREADFAIL(s) ((*s) > (char*)&_binary_net_nnue_end)
@@ -739,10 +760,10 @@ typedef ifstream* NnueNetsource_t;
 #define NNUEREADFAIL(s) s->fail()
 #define NNUEEOF(s) (s->peek() == ios::traits_type::eof())
 #endif
+#endif // 0
 
 class NnueLayer
 {
-
 public:
     NnueLayer* previous;
 #if defined(USE_AVX2)
@@ -752,7 +773,7 @@ public:
 #endif
 
     NnueLayer(NnueLayer* prev) { previous = prev; }
-    virtual bool ReadWeights(NnueNetsource_t is) = 0;
+    virtual bool ReadWeights(NnueNetsource* nr) = 0;
 #ifdef EVALOPTIONS
     virtual void WriteWeights(ofstream *os) = 0;
 #endif
@@ -769,9 +790,9 @@ public:
     alignas(64) int32_t psqtWeights[psqtbuckets ? psqtbuckets * inputdims : 1];    // hack to avoid zero-sized array
 
     NnueFeatureTransformer() : NnueLayer(NULL) {}
-    bool ReadFeatureWeights(NnueNetsource_t is, bool bpz);
-    bool ReadWeights(NnueNetsource_t is) {
-        if (previous) return previous->ReadWeights(is);
+    bool ReadFeatureWeights(NnueNetsource* nr, bool bpz);
+    bool ReadWeights(NnueNetsource* nr) {
+        if (previous) return previous->ReadWeights(nr);
         return true;
     }
 #ifdef EVALOPTIONS
@@ -797,8 +818,8 @@ class NnueClippedRelu : public NnueLayer
 {
 public:
     NnueClippedRelu(NnueLayer* prev) : NnueLayer(prev) {}
-    bool ReadWeights(NnueNetsource_t is) {
-        return (previous ? previous->ReadWeights(is) : true);
+    bool ReadWeights(NnueNetsource* nr) {
+        return (previous ? previous->ReadWeights(nr) : true);
     }
 #ifdef EVALOPTIONS
     void WriteWeights(ofstream* os) {
@@ -817,8 +838,8 @@ class NnueSqrClippedRelu : public NnueLayer
 {
 public:
     NnueSqrClippedRelu(NnueLayer* prev) : NnueLayer(prev) {}
-    bool ReadWeights(NnueNetsource_t is) {
-        return (previous ? previous->ReadWeights(is) : true);
+    bool ReadWeights(NnueNetsource* nr) {
+        return (previous ? previous->ReadWeights(nr) : true);
     }
 #ifdef EVALOPTIONS
     void WriteWeights(ofstream* os) {
@@ -868,7 +889,7 @@ public:
     alignas(64)weight_t weight[paddedInputdims * outputdims];
 
     NnueNetworkLayer(NnueLayer* prev) : NnueLayer(prev) {}
-    bool ReadWeights(NnueNetsource_t is);
+    bool ReadWeights(NnueNetsource* nr);
 #ifdef EVALOPTIONS
     void WriteWeights(ofstream* os);
 #endif
@@ -916,7 +937,7 @@ public:
 
 void NnueInit();
 void NnueRemove();
-bool NnueReadNet(NnueNetsource_t is);
+bool NnueReadNet(NnueNetsource* nr);
 #ifdef EVALOPTIONS
 void NnueWriteNet(vector<string> args);
 void NnueRegisterEvals();
@@ -1928,11 +1949,14 @@ public:
     string LogFile;
     bool usennue;
     string NnueNetpath; // UCI option, can be <Default>
+    bool NnueUseDefault() {
+        return (NnueNetpath == "<Default>");
+    }
     string GetNnueNetPath() {
 #ifdef NNUEINCLUDED
         return TOSTRING(NNUEINCLUDED);
 #else
-        if (NnueNetpath == "<Default>")
+        if (NnueUseDefault())
             return NNUEDEFAULTSTR;
         else
             return NnueNetpath;

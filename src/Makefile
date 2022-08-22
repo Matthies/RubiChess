@@ -24,6 +24,7 @@ avx2 = no
 bmi2 = no
 avx512 = no
 neon = no
+zlib = no
 
 PTHREADLIB=-pthread
 # Use workaround for weak symbols problem in pthreads; https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58909
@@ -42,6 +43,8 @@ endif
 ifeq ($(EXE),)
 	EXE=RubiChess
 endif
+
+zlib = $(shell if echo -e "#include <zlib.h>\nint main(int a, char* b[]) { return 0;}" | $(COMP) -lxz -xc -o ztest - 2>/dev/null; then echo yes; else echo no; fi; rm ztest 2>/dev/null)
 
 CXXFLAGS=-std=c++11 -Wall -O3 -flto
 ifneq (, $(findstring MINGW64,$(UNAME_S)))
@@ -174,6 +177,10 @@ endif
 ifeq ($(neon),yes)
 	CXXFLAGS += -DUSE_NEON
 endif
+ifeq ($(zlib),yes)
+	CXXFLAGS += -DUSE_ZLIB
+	LDFLAGS += -lz
+endif
 
 DEPS = RubiChess.h
 
@@ -235,6 +242,7 @@ arch:
 	@echo "ssse3 : $(ssse3)"
 	@echo "sse2  : $(sse2)"
 	@echo "neon  : $(neon)"
+	@echo "zlib  : $(zlib)"
 
 net:
 ifeq ($(EVALFILE),$(filter $(EVALFILE),default))

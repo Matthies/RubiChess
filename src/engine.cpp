@@ -135,6 +135,15 @@ static void uciSetNnuePath()
     }
 
     NnueReady = NnueDisabled;
+    NnueNetsource nr;
+
+    if (!nr.open())
+    {
+        guiCom << "Failed to open network. Maybe file does not exist.";
+        return;
+    }
+
+#if 0
 #ifdef NNUEINCLUDED
     guiCom << "info string Initializing net included in binary...";
     char* p = (char*)&_binary_net_nnue_start;
@@ -160,6 +169,7 @@ static void uciSetNnuePath()
     }
 
     guiCom << "info string Loading net " + NnueNetPath + " failed. The network file seems corrupted or doesn't exist. Set correct path to network file or disable 'Use_NNUE' for handcrafted evaluation.\n";
+#endif
 #endif
 }
 
