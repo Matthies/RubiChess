@@ -1509,7 +1509,7 @@ bool NnueNetsource::open()
 
 #if USE_ZLIB
     int ret;
-    unsigned char* inflatebuffer = (unsigned char*)allocalign64(MAXNNUEFILESIZE*1024);
+    unsigned char* inflatebuffer = (unsigned char*)allocalign64(MAXNNUEFILESIZE);
     if (!inflatebuffer) {
         guiCom << "Cannot alloc buffer for decompression.\n";
     } else {
