@@ -60,9 +60,11 @@
 			<Add option="-DUSE_SSE3" />
 			<Add option="-DUSE_SSSE3" />
 			<Add option="-DUSE_SSE2" />
+			<Add option="-DUSE_ZLIB" />
 		</Compiler>
 		<Linker>
 			<Add library="pthread" />
+			<Add library="z" />
 		</Linker>
 		<Unit filename="RubiChess.h" />
 		<Unit filename="board.cpp" />
