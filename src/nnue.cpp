@@ -1475,7 +1475,7 @@ static int zInflate(unsigned char* in, unsigned char* out, size_t insize, size_t
     if (ret != Z_OK)
         return ret;
 
-    strm.avail_in = insize;
+    strm.avail_in = (uInt)insize;
     strm.next_in = in;
 
     strm.avail_out = MAXNNUEFILESIZE;
@@ -1483,7 +1483,8 @@ static int zInflate(unsigned char* in, unsigned char* out, size_t insize, size_t
     ret = inflate(&strm, Z_NO_FLUSH);
     switch (ret) {
     case Z_NEED_DICT:
-        ret = Z_DATA_ERROR;     /* and fall through */
+        ret = Z_DATA_ERROR;
+        // fall through
     case Z_DATA_ERROR:
     case Z_MEM_ERROR:
         (void)inflateEnd(&strm);
@@ -1504,7 +1505,8 @@ bool NnueNetsource::open()
     size_t insize = 0;
     bool openOk = false;
     bool inflatePossible = false;
-
+    unsigned int fileindex;
+    vector<string> filenames;
     unsigned char* inbuffer;
 
 #if USE_ZLIB
@@ -1531,7 +1533,6 @@ bool NnueNetsource::open()
             guiCom << "Cannot alloc buffer for network file.\n";
             goto cleanup;
         }
-        vector<string> filenames;
         string NnueNetPath = en.GetNnueNetPath();
         if (inflatePossible)
             filenames.push_back(NnueNetPath + ".z");
@@ -1542,16 +1543,15 @@ bool NnueNetsource::open()
             filenames.push_back(en.ExecPath + NnueNetPath);
         }
 
-        unsigned int i;
-        for (i = 0; i < filenames.size(); i++) {
+        for (fileindex = 0; fileindex < filenames.size(); fileindex++) {
             ifstream is;
-            is.open(filenames[i], ios::binary);
+            is.open(filenames[fileindex], ios::binary);
             if (!is)
                 continue;
             is.read((char*)inbuffer, MAXNNUEFILESIZE);
             insize = is.gcount();
             if (insize == MAXNNUEFILESIZE) {
-                guiCom << "Buffer too small for file " << filenames[i] << "\n";
+                guiCom << "Buffer too small for file " << filenames[fileindex] << "\n";
                 goto cleanup;
             }
             if (insize > 0)
@@ -1592,7 +1592,7 @@ bool NnueNetsource::open()
     if (!openOk)
         guiCom << "The network seems corrupted.\n";
     else
-        guiCom << "Reading network successful. Using NNUE evaluation.\n";
+        guiCom << "Reading network " << filenames[fileindex] << " successful. Using NNUE evaluation.\n";
 
 cleanup:
     if (!isEmbedded)
