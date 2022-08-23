@@ -743,7 +743,6 @@ public:
     bool open();
     bool read(unsigned char* target, size_t readsize);
     bool write(unsigned char* source, size_t writesize);
-    bool readFailed();
     bool endOfNet();
 };
 

@@ -125,12 +125,10 @@ public:
         return NnueFt.ReadFeatureWeights(nr, bpz);
     }
     bool ReadWeights(NnueNetsource* nr, uint32_t nethash) {
-        bool okay = true;
         uint32_t hash;
-        nr->read((unsigned char*)&hash, sizeof(uint32_t));
-        if (hash != nethash)
-            return false;
-        okay = LayerStack[0].NnueOut.ReadWeights(nr);
+        bool okay = nr->read((unsigned char*)&hash, sizeof(uint32_t))
+            && hash == nethash
+            && LayerStack[0].NnueOut.ReadWeights(nr);
         return okay;
     }
 #ifdef EVALOPTIONS
@@ -214,10 +212,9 @@ public:
         bool okay = true;
         for (unsigned int i = 0; okay && i < NnueLayerStacks; i++) {
             uint32_t hash;
-            nr->read((unsigned char*)&hash, sizeof(uint32_t));
-            if (hash != nethash)
-                return false;
-            okay = LayerStack[i].NnueOut.ReadWeights(nr);
+            okay = nr->read((unsigned char*)&hash, sizeof(uint32_t))
+                && hash == nethash
+                && LayerStack[i].NnueOut.ReadWeights(nr);
         }
         return okay;
     }
@@ -854,8 +851,9 @@ template <int ftdims, int inputdims, int psqtbuckets>
 bool NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::ReadFeatureWeights(NnueNetsource* nr, bool bpz)
 {
     int i, j;
+    bool okay = true;
     for (i = 0; i < ftdims; ++i)
-        nr->read((unsigned char*)&bias[i], sizeof(int16_t));
+        okay = okay && nr->read((unsigned char*)&bias[i], sizeof(int16_t));
 
     int weightsRead = 0;
     for (i = 0; i < inputdims; i++)
@@ -863,10 +861,10 @@ bool NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::ReadFeatureWeights(
         if (bpz && i % (10 * 64) == 0) {
             int16_t dummyweight;
             for (j = 0; j < ftdims; ++j)
-                nr->read((unsigned char*)&dummyweight, sizeof(int16_t));
+                okay = okay && nr->read((unsigned char*)&dummyweight, sizeof(int16_t));
         }
         for (j = 0; j < ftdims; ++j) {
-            nr->read((unsigned char*)&weight[weightsRead], sizeof(int16_t));
+            okay = okay && nr->read((unsigned char*)&weight[weightsRead], sizeof(int16_t));
             weightsRead++;
         }
     }
@@ -876,12 +874,12 @@ bool NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::ReadFeatureWeights(
     {
         for (j = 0; j < psqtbuckets; j++)
         {
-            nr->read((unsigned char*)&psqtWeights[weightsRead], sizeof(int32_t));
+            okay = okay && nr->read((unsigned char*)&psqtWeights[weightsRead], sizeof(int32_t));
             weightsRead++;
         }
     }
 
-    return !nr->readFailed();
+    return okay;
 }
 
 #ifdef EVALOPTIONS
@@ -926,11 +924,13 @@ void NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::WriteFeatureWeights
 template <unsigned int inputdims, unsigned int outputdims>
 bool NnueNetworkLayer<inputdims, outputdims>::ReadWeights(NnueNetsource* nr)
 {
+    bool okay = true;
+
     if (previous)
-        previous->ReadWeights(nr);
+        okay = previous->ReadWeights(nr);
 
     for (unsigned int i = 0; i < outputdims; ++i)
-        nr->read((unsigned char*)&bias[i], sizeof(int32_t));
+        okay = okay && nr->read((unsigned char*)&bias[i], sizeof(int32_t));
 
     size_t buffersize = outputdims * paddedInputdims;
     char* weightbuffer = (char*)calloc(buffersize, sizeof(char));
@@ -939,7 +939,7 @@ bool NnueNetworkLayer<inputdims, outputdims>::ReadWeights(NnueNetsource* nr)
         return false;
 
     char* w = weightbuffer;
-    nr->read((unsigned char*)weightbuffer, buffersize);
+    okay = okay && nr->read((unsigned char*)weightbuffer, buffersize);
 
     for (unsigned int r = 0; r < outputdims; r++)
         for (unsigned int c = 0; c < paddedInputdims; c++)
@@ -951,7 +951,7 @@ bool NnueNetworkLayer<inputdims, outputdims>::ReadWeights(NnueNetsource* nr)
 
     free(weightbuffer);
 
-    return !nr->readFailed();
+    return okay;
 }
 
 #ifdef EVALOPTIONS
@@ -1326,12 +1326,14 @@ bool NnueReadNet(NnueNetsource* nr)
     uint32_t version, hash, size;
     string sarchitecture;
 
-    nr->read((unsigned char*)&version, sizeof(uint32_t));
-    nr->read((unsigned char*)&hash, sizeof(uint32_t));
-    nr->read((unsigned char*)&size, sizeof(uint32_t));
+    if (!nr->read((unsigned char*)&version, sizeof(uint32_t))
+        || !nr->read((unsigned char*)&hash, sizeof(uint32_t))
+        || !nr->read((unsigned char*)&size, sizeof(uint32_t)))
+    return false;
 
     sarchitecture.resize(size);
-    nr->read((unsigned char*)&sarchitecture[0], size);
+    if (!nr->read((unsigned char*)&sarchitecture[0], size))
+        return false;
 
     NnueType nt;
     bool bpz;
@@ -1366,8 +1368,8 @@ bool NnueReadNet(NnueNetsource* nr)
         return false;
 
     // Read the weights of the feature transformer
-    nr->read((unsigned char*)&hash, sizeof(uint32_t));
-    if (hash != fthash) return false;
+    if (!nr->read((unsigned char*)&hash, sizeof(uint32_t)) || hash != fthash)
+        return false;
     if (!filesArch->ReadFeatureWeights(nr, bpz))
         return false;
 
@@ -1525,9 +1527,9 @@ bool NnueNetsource::open()
     size_t insize = 0;
     bool openOk = false;
     bool inflatePossible = false;
-    unsigned int fileindex;
+    unsigned int fileindex = -1;
     vector<string> filenames;
-    unsigned char* inbuffer;
+    unsigned char* inbuffer = nullptr;
 
 #if USE_ZLIB
     int ret;
@@ -1545,6 +1547,7 @@ bool NnueNetsource::open()
         isEmbedded = true;
         inbuffer = (unsigned char*)&_binary_net_nnue_start;
         insize = _binary_net_nnue_end - _binary_net_nnue_start;
+        cout << "insize = " << insize << "\n";
     }
 #endif // NNUEINCLUDED
     if (!isEmbedded) {
@@ -1609,7 +1612,7 @@ bool NnueNetsource::open()
     if (!openOk)
         guiCom << "The network seems corrupted.\n";
     else
-        guiCom << "Reading network " << filenames[fileindex] << " successful. Using NNUE evaluation (" << (NnueReady == NnueArchV1 ? "V1" : "V5") << ").\n";
+        guiCom << "Reading network " << (isEmbedded ? en.GetNnueNetPath() : filenames[fileindex]) << " successful. Using NNUE evaluation (" << (NnueReady == NnueArchV1 ? "V1" : "V5") << ").\n";
 
 cleanup:
     if (!isEmbedded)
@@ -1637,11 +1640,6 @@ bool NnueNetsource::write(unsigned char* source, size_t writesize)
     memcpy(next, source, writesize);
     next += writesize;
     return true;
-}
-
-bool NnueNetsource::readFailed()
-{
-    return (next > readbuffer + readbuffersize);
 }
 
 bool NnueNetsource::endOfNet()
