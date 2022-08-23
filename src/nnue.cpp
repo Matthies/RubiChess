@@ -1621,16 +1621,22 @@ cleanup:
     return openOk;
 }
 
-void NnueNetsource::read(unsigned char* target, size_t readsize)
+bool NnueNetsource::read(unsigned char* target, size_t readsize)
 {
+    if (next - readbuffer + readsize > readbuffersize)
+        return false;
     memcpy(target, next, readsize);
     next += readsize;
+    return true;
 }
 
-void NnueNetsource::write(unsigned char* source, size_t writesize)
+bool NnueNetsource::write(unsigned char* source, size_t writesize)
 {
+    if (next - readbuffer + writesize > readbuffersize)
+        return false;
     memcpy(next, source, writesize);
     next += writesize;
+    return true;
 }
 
 bool NnueNetsource::readFailed()
