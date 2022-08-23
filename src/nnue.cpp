@@ -77,8 +77,8 @@ public:
     virtual bool ReadFeatureWeights(NnueNetsource* nr, bool bpz) = 0;
     virtual bool ReadWeights(NnueNetsource* nr, uint32_t nethash) = 0;
 #ifdef EVALOPTIONS
-    virtual void WriteFeatureWeights(ofstream *os, bool bpz) = 0;
-    virtual void WriteWeights(ofstream *os, uint32_t nethash) = 0;
+    virtual void WriteFeatureWeights(NnueNetsource* nr, bool bpz) = 0;
+    virtual void WriteWeights(NnueNetsource* nr, uint32_t nethash) = 0;
     virtual void rescaleLastLayer(int ratio64) = 0;
     virtual string getArchDescription() = 0;
 #endif
@@ -134,12 +134,12 @@ public:
         return okay;
     }
 #ifdef EVALOPTIONS
-    void WriteFeatureWeights(ofstream *os, bool bpz) {
-        NnueFt.WriteFeatureWeights(os, bpz);
+    void WriteFeatureWeights(NnueNetsource* nr, bool bpz) {
+        NnueFt.WriteFeatureWeights(nr, bpz);
     }
-    void WriteWeights(ofstream* os, uint32_t nethash) {
-        os->write((char*)&nethash, sizeof(uint32_t));
-        LayerStack[0].NnueOut.WriteWeights(os);
+    void WriteWeights(NnueNetsource* nr, uint32_t nethash) {
+        nr->write((unsigned char*)&nethash, sizeof(uint32_t));
+        LayerStack[0].NnueOut.WriteWeights(nr);
     }
     void rescaleLastLayer(int ratio64) {
         LayerStack[0].NnueOut.bias[0] = (int32_t)round(LayerStack[0].NnueOut.bias[0] * ratio64 / NnueValueScale);
@@ -222,13 +222,13 @@ public:
         return okay;
     }
 #ifdef EVALOPTIONS
-    void WriteFeatureWeights(ofstream* os, bool bpz) {
-        NnueFt.WriteFeatureWeights(os, bpz);
+    void WriteFeatureWeights(NnueNetsource* nr, bool bpz) {
+        NnueFt.WriteFeatureWeights(nr, bpz);
     }
-    void WriteWeights(ofstream* os, uint32_t nethash) {
+    void WriteWeights(NnueNetsource* nr, uint32_t nethash) {
         for (unsigned int i = 0; i < NnueLayerStacks; i++) {
-            os->write((char*)&nethash, sizeof(uint32_t));
-            LayerStack[i].NnueOut.WriteWeights(os);
+            nr->write((unsigned char*)&nethash, sizeof(uint32_t));
+            LayerStack[i].NnueOut.WriteWeights(nr);
         }
     }
     void rescaleLastLayer(int ratio64) {
@@ -886,11 +886,11 @@ bool NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::ReadFeatureWeights(
 
 #ifdef EVALOPTIONS
 template <int ftdims, int inputdims, int psqtbuckets>
-void NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::WriteFeatureWeights(ofstream* os, bool bpz)
+void NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::WriteFeatureWeights(NnueNetsource* nr, bool bpz)
 {
     int i, j;
     for (i = 0; i < ftdims; ++i)
-        os->write((char*)&bias[i], sizeof(int16_t));
+        nr->write((unsigned char*)&bias[i], sizeof(int16_t));
 
     int weightsRead = 0;
     for (i = 0; i < inputdims; i++)
@@ -898,10 +898,10 @@ void NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::WriteFeatureWeights
         if (bpz && i % (10 * 64) == 0) {
             int16_t dummyweight = 0;
             for (j = 0; j < ftdims; ++j)
-                os->write((char*)&dummyweight, sizeof(int16_t));
+                nr->write((unsigned char*)&dummyweight, sizeof(int16_t));
         }
         for (j = 0; j < ftdims; ++j) {
-            os->write((char*)&weight[weightsRead], sizeof(int16_t));
+            nr->write((unsigned char*)&weight[weightsRead], sizeof(int16_t));
             weightsRead++;
         }
     }
@@ -911,7 +911,7 @@ void NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::WriteFeatureWeights
     {
         for (j = 0; j < psqtbuckets; j++)
         {
-            os->write((char*)&psqtWeights[weightsRead], sizeof(int32_t));
+            nr->write((unsigned char*)&psqtWeights[weightsRead], sizeof(int32_t));
             weightsRead++;
         }
     }
@@ -956,16 +956,16 @@ bool NnueNetworkLayer<inputdims, outputdims>::ReadWeights(NnueNetsource* nr)
 
 #ifdef EVALOPTIONS
 template <unsigned int inputdims, unsigned int outputdims>
-void NnueNetworkLayer<inputdims, outputdims>::WriteWeights(ofstream* os)
+void NnueNetworkLayer<inputdims, outputdims>::WriteWeights(NnueNetsource* nr)
 {
     if (previous)
-        previous->WriteWeights(os);
+        previous->WriteWeights(nr);
 
     for (unsigned int i = 0; i < outputdims; ++i)
-        os->write((char*)&bias[i], sizeof(int32_t));
+        nr->write((unsigned char*)&bias[i], sizeof(int32_t));
 
     for (unsigned int i = 0; i < outputdims * paddedInputdims; i++)
-            os->write((char*)&weight[shuffleWeightIndex(i)], sizeof(char));
+            nr->write((unsigned char*)&weight[shuffleWeightIndex(i)], sizeof(char));
 }
 #endif
 
@@ -1383,6 +1383,46 @@ bool NnueReadNet(NnueNetsource* nr)
     return true;
 }
 
+
+//
+// Implementation of NNUE network reader including embedded networks and zipped networks
+//
+
+#define MAXNNUEFILESIZE (50 * 1024 * 1024)
+
+#ifdef USE_ZLIB
+
+// (De)Compress input buffer using zlib
+// code taken from zlib example zpipe.c
+static int xFlate(bool compress, unsigned char* in, unsigned char* out, size_t insize, size_t* outsize)
+{
+    int ret;
+    z_stream strm;
+
+    /* allocate xflate state */
+    strm.zalloc = Z_NULL;
+    strm.zfree = Z_NULL;
+    strm.opaque = Z_NULL;
+    ret = (compress ? deflateInit(&strm, Z_DEFAULT_COMPRESSION) : inflateInit(&strm));
+    if (ret != Z_OK)
+        return ret;
+
+    strm.avail_in = (uInt)insize;
+    strm.next_in = in;
+    strm.avail_out = MAXNNUEFILESIZE;
+    strm.next_out = out;
+    ret = (compress ? deflate(&strm, Z_FINISH) : inflate(&strm, Z_NO_FLUSH));
+    *outsize = MAXNNUEFILESIZE - strm.avail_out;
+    /* clean up and return */
+    if (compress)
+        deflateEnd(&strm);
+    else
+        inflateEnd(&strm);
+    return ret == Z_STREAM_END ? Z_OK : Z_DATA_ERROR;
+}
+#endif // USE_ZLIB
+
+
 #ifdef EVALOPTIONS
 void NnueWriteNet(vector<string> args)
 {
@@ -1405,6 +1445,22 @@ void NnueWriteNet(vector<string> args)
             ci++;
         }
     }
+
+    NnueNetsource nr;
+    nr.readbuffer = (unsigned char*)allocalign64(MAXNNUEFILESIZE);
+    nr.next = nr.readbuffer;
+#ifdef USE_ZLIB
+    bool zExport = (NnueNetPath.substr(NnueNetPath.length() - 2) == ".z");
+    unsigned char* deflatebuffer;
+    size_t deflatesize = 0;
+    if (zExport) {
+        deflatebuffer = (unsigned char*)allocalign64(MAXNNUEFILESIZE);
+        if (!deflatebuffer) {
+            guiCom << "Cannot alloc buffer for compression.\n";
+            zExport = false;
+        }
+    }
+#endif // USE_ZLIB
     ofstream os;
     os.open(NnueNetPath, ios::binary);
     if (!os && en.ExecPath != "")
@@ -1428,17 +1484,29 @@ void NnueWriteNet(vector<string> args)
     string sarchitecture = filesArch->getArchDescription();
     uint32_t size = (uint32_t)sarchitecture.size();
 
-    os.write((char*)&version, sizeof(uint32_t));
-    os.write((char*)&filehash, sizeof(uint32_t));
-    os.write((char*)&size, sizeof(uint32_t));
-    os.write((char*)&sarchitecture[0], size);
+    nr.write((unsigned char*)&version, sizeof(uint32_t));
+    nr.write((unsigned char*)&filehash, sizeof(uint32_t));
+    nr.write((unsigned char*)&size, sizeof(uint32_t));
+    nr.write((unsigned char*)&sarchitecture[0], size);
+    nr.write((unsigned char*)&fthash, sizeof(uint32_t));
 
-    os.write((char*)&fthash, sizeof(uint32_t));
+    filesArch->WriteFeatureWeights(&nr, bpz);
+    filesArch->WriteWeights(&nr, nethash);
 
-    filesArch->WriteFeatureWeights(&os, bpz);
-    filesArch->WriteWeights(&os, nethash);
+    size_t insize = nr.next - nr.readbuffer;
 
+#ifdef USE_ZLIB
+    if (zExport) {
+        if (xFlate(true, nr.readbuffer, deflatebuffer, insize, &deflatesize) == Z_OK) {
+            memcpy(nr.readbuffer, deflatebuffer, deflatesize);
+            insize = deflatesize;
+        }
+        freealigned64(deflatebuffer);
+    }
+#endif
+    os.write((char*)nr.readbuffer, insize);
     os.close();
+    freealigned64(nr.readbuffer);
 
     cout << "Network written to file " << NnueNetPath << "\n";
 }
@@ -1449,54 +1517,6 @@ void NnueRegisterEvals()
     en.ucioptions.Register(&NnueValueScale, "NnueValueScale", ucinnuebias, to_string(NnueValueScale), INT_MIN, INT_MAX, nullptr);
 }
 #endif
-
-
-//
-// Implementation of NNUE network reader including embedded networks and zipped networks
-//
-
-#define MAXNNUEFILESIZE (50 * 1024 * 1024)
-
-#if USE_ZLIB
-// inflating input buffer using zlib
-// code taken from zlib example zpipe.c
-static int zInflate(unsigned char* in, unsigned char* out, size_t insize, size_t* outsize)
-{
-    int ret;
-    z_stream strm;
-
-    /* allocate inflate state */
-    strm.zalloc = Z_NULL;
-    strm.zfree = Z_NULL;
-    strm.opaque = Z_NULL;
-    strm.avail_in = 0;
-    strm.next_in = Z_NULL;
-    ret = inflateInit(&strm);
-    if (ret != Z_OK)
-        return ret;
-
-    strm.avail_in = (uInt)insize;
-    strm.next_in = in;
-
-    strm.avail_out = MAXNNUEFILESIZE;
-    strm.next_out = out;
-    ret = inflate(&strm, Z_NO_FLUSH);
-    switch (ret) {
-    case Z_NEED_DICT:
-        ret = Z_DATA_ERROR;
-        // fall through
-    case Z_DATA_ERROR:
-    case Z_MEM_ERROR:
-        (void)inflateEnd(&strm);
-        return ret;
-    }
-
-    *outsize = MAXNNUEFILESIZE - strm.avail_out;
-    /* clean up and return */
-    (void)inflateEnd(&strm);
-    return ret == Z_STREAM_END ? Z_OK : Z_DATA_ERROR;
-}
-#endif // USE_ZLIB
 
 
 bool NnueNetsource::open()
@@ -1565,14 +1585,11 @@ bool NnueNetsource::open()
 #if USE_ZLIB
     // Now test if the input is compressed
     if (inflatePossible) {
-        ret = zInflate(inbuffer, inflatebuffer, insize, &inflatesize);
+        ret = xFlate(false, inbuffer, inflatebuffer, insize, &inflatesize);
         if (ret == Z_OK) {
             guiCom << "Successfully inflated compressed network\n";
             memcpy(inbuffer, inflatebuffer, inflatesize);
             insize = inflatesize;
-        }
-        else {
-            guiCom << "Error while inflating network: " << ret << "\n";
         }
     }
 #endif // USE_ZLIB
@@ -1592,7 +1609,7 @@ bool NnueNetsource::open()
     if (!openOk)
         guiCom << "The network seems corrupted.\n";
     else
-        guiCom << "Reading network " << filenames[fileindex] << " successful. Using NNUE evaluation.\n";
+        guiCom << "Reading network " << filenames[fileindex] << " successful. Using NNUE evaluation (" << (NnueReady == NnueArchV1 ? "V1" : "V5") << ").\n";
 
 cleanup:
     if (!isEmbedded)
@@ -1608,6 +1625,12 @@ void NnueNetsource::read(unsigned char* target, size_t readsize)
 {
     memcpy(target, next, readsize);
     next += readsize;
+}
+
+void NnueNetsource::write(unsigned char* source, size_t writesize)
+{
+    memcpy(next, source, writesize);
+    next += writesize;
 }
 
 bool NnueNetsource::readFailed()

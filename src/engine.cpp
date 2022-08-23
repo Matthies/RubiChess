@@ -139,38 +139,8 @@ static void uciSetNnuePath()
 
     if (!nr.open())
     {
-        guiCom << "Failed to open network. Maybe file does not exist.";
-        return;
+        guiCom << "Failed to open network. Maybe file does not exist.\n";
     }
-
-#if 0
-#ifdef NNUEINCLUDED
-    guiCom << "info string Initializing net included in binary...";
-    char* p = (char*)&_binary_net_nnue_start;
-    if (!NnueReadNet(&p))
-        guiCom << " failed. The embedded network seems corrupted.\n";
-    else
-        guiCom << " successful. Using NNUE evaluation. (" + to_string(NnueReady) + ")\n";
-    return;
-#else
-    string NnueNetPath = en.GetNnueNetPath();
-    ifstream is;
-    is.open(NnueNetPath, ios::binary);
-    if (!is && en.ExecPath != "")
-        is.open(en.ExecPath + NnueNetPath, ios::binary);
-
-    if (is && NnueReadNet(&is))
-    {
-        guiCom << "info string Loading net " + NnueNetPath + " successful. Using NNUE evaluation. (" + to_string(NnueReady) + ")\n";
-        if (NnueNetPath.find(NNUEDEFAULTSTR) == string::npos)
-            guiCom << "info string Warning! You are not using the default network file. Playing strength of the engine highly depends on it.\n";
-
-        return;
-    }
-
-    guiCom << "info string Loading net " + NnueNetPath + " failed. The network file seems corrupted or doesn't exist. Set correct path to network file or disable 'Use_NNUE' for handcrafted evaluation.\n";
-#endif
-#endif
 }
 
 static void uciSetContempt()

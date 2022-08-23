@@ -742,6 +742,7 @@ public:
     unsigned char* next;
     bool open();
     void read(unsigned char* target, size_t readsize);
+    void write(unsigned char* source, size_t writesize);
     bool readFailed();
     bool endOfNet();
 };
@@ -775,7 +776,7 @@ public:
     NnueLayer(NnueLayer* prev) { previous = prev; }
     virtual bool ReadWeights(NnueNetsource* nr) = 0;
 #ifdef EVALOPTIONS
-    virtual void WriteWeights(ofstream *os) = 0;
+    virtual void WriteWeights(NnueNetsource* nr) = 0;
 #endif
     virtual uint32_t GetHash() = 0;
 };
@@ -796,10 +797,10 @@ public:
         return true;
     }
 #ifdef EVALOPTIONS
-    void WriteFeatureWeights(ofstream *os, bool bpz);
-    void WriteWeights(ofstream* os) {
+    void WriteFeatureWeights(NnueNetsource* nr, bool bpz);
+    void WriteWeights(NnueNetsource* nr) {
         if (previous)
-            previous->WriteWeights(os);
+            previous->WriteWeights(nr);
     }
 #endif
     uint32_t GetFtHash(NnueType nt) {
@@ -822,9 +823,9 @@ public:
         return (previous ? previous->ReadWeights(nr) : true);
     }
 #ifdef EVALOPTIONS
-    void WriteWeights(ofstream* os) {
+    void WriteWeights(NnueNetsource* nr) {
         if (previous)
-            previous->WriteWeights(os);
+            previous->WriteWeights(nr);
     }
 #endif
     uint32_t GetHash() {
@@ -842,9 +843,9 @@ public:
         return (previous ? previous->ReadWeights(nr) : true);
     }
 #ifdef EVALOPTIONS
-    void WriteWeights(ofstream* os) {
+    void WriteWeights(NnueNetsource* nr) {
         if (previous)
-            previous->WriteWeights(os);
+            previous->WriteWeights(nr);
     }
 #endif
     uint32_t GetHash() {
@@ -891,7 +892,7 @@ public:
     NnueNetworkLayer(NnueLayer* prev) : NnueLayer(prev) {}
     bool ReadWeights(NnueNetsource* nr);
 #ifdef EVALOPTIONS
-    void WriteWeights(ofstream* os);
+    void WriteWeights(NnueNetsource* nr);
 #endif
     uint32_t GetHash() {
         return (NNUENETLAYERHASH + outputdims) ^ (previous->GetHash() >> 1) ^ (previous->GetHash() << 31);
