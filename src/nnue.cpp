@@ -1219,7 +1219,7 @@ void NnueClippedRelu<dims, clippingshift>::Propagate(int32_t *input, clipped_t *
     for (unsigned int i = 0; i < numChunks; i++) {
         __m128i words = _mm_srai_epi16(_mm_packs_epi32(in[i * 2], in[i * 2 + 1]),
             clippingshift);
-        out[i] = vec_clip_16(words);
+        _mm_store_si128(&out[i], vec_clip_16(words));
     }
 #else
     const unsigned int numChunks = dims / SimdWidth;
@@ -1228,7 +1228,7 @@ void NnueClippedRelu<dims, clippingshift>::Propagate(int32_t *input, clipped_t *
             _mm_packs_epi32(in[i * 4 + 0], in[i * 4 + 1]), clippingshift);
         __m128i words1 = _mm_srai_epi16(
             _mm_packs_epi32(in[i * 4 + 2], in[i * 4 + 3]), clippingshift);
-        out[i] = vec_clip_8(words0, words1);
+        _mm_store_si128(&out[i], vec_clip_8(words0, words1));
     }
 #endif
 #elif defined(USE_NEON)
@@ -1282,10 +1282,10 @@ void NnueSqrClippedRelu<dims>::Propagate(int32_t* input, clipped_t* output)
         words1 = _mm_srli_epi16(_mm_mulhi_epi16(words1, words1), 3);
 
 #ifdef USE_FASTSSE2
-        out[2 * i] = _mm_min_epi16(words0, _mm_set1_epi16(127));
-        out[2 * i + 1] = _mm_min_epi16(words1, _mm_set1_epi16(127));
+        _mm_store_si128(&out[2 * i], _mm_min_epi16(words0, _mm_set1_epi16(127)));
+        _mm_store_si128(&out[2 * i + 1], _mm_min_epi16(words1, _mm_set1_epi16(127)));
 #else
-        out[i] = vec_clip_8_128(words0, words1);
+        _mm_store_si128(&out[i], vec_clip_8_128(words0, words1));
 #endif
     }
 #else
