@@ -273,5 +273,4 @@ __pycache__/
 # Linux executables
 /src/RubiChess
 /src/cputest
-/src/include
-/src/lib
+*.lib
