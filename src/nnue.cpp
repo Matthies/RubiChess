@@ -1267,8 +1267,8 @@ void NnueSqrClippedRelu<dims>::Propagate(int32_t* input, clipped_t* output)
 {
 #if defined(USE_SSE2)
     const unsigned int numChunks = dims / 16;
-    const __m128i* in = (__m128i*)input;
-    const __m128i* out = (__m128i*)output;
+    __m128i* in = (__m128i*)input;
+    __m128i* out = (__m128i*)output;
 
     for (unsigned int i = 0; i < numChunks; i++) {
         __m128i words0 = _mm_packs_epi32(
