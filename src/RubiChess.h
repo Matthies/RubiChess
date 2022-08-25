@@ -746,21 +746,6 @@ public:
     bool endOfNet();
 };
 
-#if 0
-#ifdef NNUEINCLUDED
-extern const char  _binary_net_nnue_start;
-extern const char  _binary_net_nnue_end;
-typedef char** NnueNetsource_t;
-#define NNUEREAD(s, t, l) (memcpy(t, (*s), l), (*s) = (*s) + (l))
-#define NNUEREADFAIL(s) ((*s) > (char*)&_binary_net_nnue_end)
-#define NNUEEOF(s) ((*s) == (char*)&_binary_net_nnue_end)
-#else
-typedef ifstream* NnueNetsource_t;
-#define NNUEREAD(s, t, l) s->read(t, l)
-#define NNUEREADFAIL(s) s->fail()
-#define NNUEEOF(s) (s->peek() == ios::traits_type::eof())
-#endif
-#endif // 0
 
 class NnueLayer
 {
