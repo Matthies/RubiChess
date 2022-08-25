@@ -1356,7 +1356,6 @@ bool NnueReadNet(NnueNetsource* nr)
 
     NnueArchitecture* filesArch = (nt == NnueArchV1 ? (NnueArchitecture*) & NnueV1 : (NnueArchitecture*)&NnueV5);
 
-
     if (!filesArch)
         return false;
 
