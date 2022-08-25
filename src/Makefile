@@ -44,8 +44,6 @@ ifeq ($(EXE),)
 	EXE=RubiChess
 endif
 
-zlib = $(shell if (echo "#include <zlib.h>" | $(COMP) -E - >/dev/null 2>&1 ); then echo yes; else echo no; fi)
-
 CXXFLAGS=-std=c++11 -Wall -O3 -flto
 ifneq (, $(findstring MINGW64,$(UNAME_S)))
 	# Always do a static built with Mingw
@@ -54,6 +52,7 @@ endif
 ifeq ($(COMP),$(filter $(COMP),gcc))
 	CXX=g++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
+	CC=gcc
 
 	INSTRUMENTEDEXTRACXXFLAGS='-fprofile-generate=$(PROFDIR)'
 	INSTRUMENTEDEXTRALDFLAGS='-lgcov'
@@ -65,6 +64,7 @@ endif
 ifeq ($(COMP),clang)
 	CXX=clang++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
+	CC=clang
 	LDFLAGS += $(shell type lld 1>/dev/null 2>/dev/null && echo "-fuse-ld=lld")
 	INSTRUMENTEDEXTRACXXFLAGS='-fprofile-instr-generate=$(EXE).clangprof-raw'
 	INSTRUMENTEDEXTRALDFLAGS=
@@ -88,6 +88,17 @@ endif
 ifeq ($(shell uname -m),x86_64)
 	ARCHFAMILY=x86
 endif
+
+zlib = $(shell if (echo "#include <zlib.h>" | $(CC) -E - >/dev/null 2>&1 ); then echo yes; else echo no; fi)
+ifneq ($(zlib),yes)
+	internalzlib = $(shell (test -f zlib/libz.a || (cd zlib && $(CC) -w -c *.c && $(AR) rcs libz.a *.o && cd ..)) && echo "internal")
+endif
+ifeq ($(internalzlib),internal)
+	CXXFLAGS += -Izlib
+	LDFLAGS += -Lzlib
+	zlib = yes
+endif
+
 
 ifeq (,$(CPUFLAGS))
 ifeq ($(ARCH),native)
@@ -242,7 +253,7 @@ arch:
 	@echo "ssse3 : $(ssse3)"
 	@echo "sse2  : $(sse2)"
 	@echo "neon  : $(neon)"
-	@echo "zlib  : $(zlib)"
+	@echo "zlib  : $(zlib) $(internalzlib)"
 
 net:
 ifeq ($(EVALFILE),$(filter $(EVALFILE),default))
@@ -268,7 +279,7 @@ compile: $(NETOBJ)
 	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) *.cpp $(LDFLAGS) $(PTHREADLIB) $(EXTRALDFLAGS) $(GITDEFINE) $(NETDEF) $(NETOBJ) -o $(EXE)
 
 objclean:
-	@$(RM) $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(PROFEXE) *.o $(CPUTEST) $(NETBIN) || @echo $(RM) not available.
+	@$(RM) $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(PROFEXE) *.o zlib/*.o zlib/*.a $(CPUTEST) $(NETBIN) || @echo $(RM) not available.
 
 profileclean:
 	@$(RM) -rf $(PROFDIR) || @echo $(RM) not available.
