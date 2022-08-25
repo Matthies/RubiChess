@@ -157,8 +157,8 @@ NEON=no
 !ENDIF
 
 ARCHFLAGS=$(ARCHFLAGS) -DUSE_ZLIB
-CXXFLAGS=$(CXXFLAGS) /Izlib
-LDFLAGS=$(LDFLAGS) zlib.lib
+CXXFLAGS=$(CXXFLAGS) /I$(ZLIBDIR)
+LDFLAGS=$(LDFLAGS) /libpath:$(ZLIBDIR) zlib.lib
 
 printarch: cpuflags
 	@echo.
@@ -176,11 +176,11 @@ printarch: cpuflags
 
 buildandarch: printarch compile
 
-zlib.lib:
+$(ZLIBDIR)\zlib.lib:
 	@echo Building zlib...
-	@cd zlib
-	@$(CXX) $(CXXFLAGS) $(ARCHFLAGS) -w /c *.c
-	@$(LD) /lib /OUT:..\zlib.lib $(OBJ)
+	@cd $(ZLIBDIR)
+	@$(CXX) $(CXXFLAGS) -w /c *.c
+	@$(LD) /lib /OUT:zlib.lib $(OBJ)
 	@cd ..
 
 build: cpuflags
@@ -188,7 +188,7 @@ build: cpuflags
 	@nmake -c -f Makefile.clang buildandarch ARCH=$(ARCH)
 	@nmake -c -f Makefile.clang profile-clean ARCH=$(ARCH)
 
-compile: $(RELDIR) zlib.lib
+compile: $(RELDIR) $(ZLIBDIR)\zlib.lib
 !IFNDEF GITVER
 	@FOR /F "tokens=2" %A IN ('cmd /c "($(GIT) show --name-only --abbrev-commit --date=format:%Y%m%d || echo Date: %date%) | findstr /I /r /c:"^Date: "" ') DO @(set GITVER=%A&&  nmake -f Makefile.clang $* /$(MAKEFLAGS) && exit /B)
 !ELSE
@@ -213,10 +213,10 @@ pgo: printarch
 	@echo.
 	@echo Creating optimized binary...
 	@nmake -c -f Makefile.clang compile ARCH=$(ARCH) PROFILEFLAGS=-fprofile-instr-use=$(PROFEXE).clangprof
-	@nmake -c -f Makefile.clang profile-clean ARCH=$(ARCH)
 
 profile-build: cpuflags
 	@nmake -c -f Makefile.clang pgo ARCH=$(ARCH)
+	@nmake -c -f Makefile.clang profile-clean ARCH=$(ARCH)
 
 pgo-rename: printarch pgo
 	@move $(RELDIR)\$(EXE).exe $(RELDIR)\$(EXE)-$(VERSION)_$(ARCH).exe 1>nul
@@ -242,6 +242,7 @@ releaseversion:
 !ENDIF
 
 release:
+	@nmake -c -f Makefile.clang profile-clean ARCH=$(ARCH)
 !IFNDEF VERSIONLEGACY
 	@FOR /F "tokens=3" %A IN ('find "define VERNUMLEGACY " RubiChess.h') DO @(set VERSIONLEGACY=%A&& nmake -f Makefile.clang $* /$(MAKEFLAGS) ARCH=$(ARCH) && exit /B)
 !ELSE
@@ -251,6 +252,7 @@ release:
 	@nmake -c -f Makefile.clang releaseversion ARCH=$(ARCH)
 !ENDIF
 !ENDIF
+	@nmake -c -f Makefile.clang profile-clean ARCH=$(ARCH)
 
 release-arm64:
 	@nmake -c -f Makefile.clang build-rename ARCH=arm64-neon
@@ -259,7 +261,7 @@ profile-clean:
 	@del $(PROFEXE)* 2>nul
 	@del *.obj 2>nul
 	@del $(ZLIBDIR)\*.obj 2>nul
-	@del zlib.lib 2>nul
+	@del $(ZLIBDIR)\zlib.lib 2>nul
 	@del $(NATIVEFLAGS) 2>nul
 
 clean: profile-clean

@@ -274,3 +274,4 @@ __pycache__/
 /src/RubiChess
 /src/cputest
 *.lib
+*.a
