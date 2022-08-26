@@ -179,7 +179,7 @@ buildandarch: printarch compile
 $(ZLIBDIR)\zlib.lib:
 	@echo Building zlib...
 	@cd $(ZLIBDIR)
-	@$(CXX) $(CXXFLAGS) -w /c *.c
+	@$(CXX) $(CXXFLAGS) $(ARCHFLAGS) -w /c *.c
 	@$(LD) /lib /OUT:zlib.lib $(OBJ)
 	@cd ..
 
