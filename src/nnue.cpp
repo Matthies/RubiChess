@@ -1534,7 +1534,7 @@ bool NnueNetsource::open()
     int ret;
     unsigned char* inflatebuffer = (unsigned char*)allocalign64(MAXNNUEFILESIZE);
     if (!inflatebuffer) {
-        guiCom << "Cannot alloc buffer for decompression.\n";
+        guiCom << "info string Cannot alloc buffer for decompression.\n";
     } else {
         inflatePossible = true;
     }
@@ -1552,7 +1552,7 @@ bool NnueNetsource::open()
     if (!isEmbedded) {
         inbuffer = (unsigned char*)allocalign64(MAXNNUEFILESIZE);
         if (!inbuffer) {
-            guiCom << "Cannot alloc buffer for network file.\n";
+            guiCom << "info string Cannot alloc buffer for network file.\n";
             goto cleanup;
         }
         string NnueNetPath = en.GetNnueNetPath();
@@ -1573,7 +1573,7 @@ bool NnueNetsource::open()
             is.read((char*)inbuffer, MAXNNUEFILESIZE);
             insize = is.gcount();
             if (insize == MAXNNUEFILESIZE) {
-                guiCom << "Buffer too small for file " << filenames[fileindex] << "\n";
+                guiCom << "info string Buffer too small for file " << filenames[fileindex] << "\n";
                 goto cleanup;
             }
             if (insize > 0)
@@ -1581,15 +1581,17 @@ bool NnueNetsource::open()
         }
     }
 
-    if (!insize)
+    if (!insize) {
+        guiCom << "info string Cannot open file. Probably doesn't exist.\n";
         goto cleanup;
+    }
 
 #if USE_ZLIB
     // Now test if the input is compressed
     if (inflatePossible) {
         ret = xFlate(false, inbuffer, inflatebuffer, insize, &inflatesize);
         if (ret == Z_OK) {
-            guiCom << "Successfully inflated compressed network\n";
+            guiCom << "info string Successfully inflated compressed network\n";
             memcpy(inbuffer, inflatebuffer, inflatesize);
             insize = inflatesize;
         }
@@ -1599,7 +1601,7 @@ bool NnueNetsource::open()
     // Finally locate buffer for the NnueNetsource object, copy the network data and free the temporary buffers
     readbuffer = (unsigned char*)allocalign64(insize);
     if (!readbuffer) {
-        guiCom << "Cannot alloc buffer for network file.\n";
+        guiCom << "info string Cannot alloc buffer for network file.\n";
         goto cleanup;
     }
     memcpy(readbuffer, inbuffer, insize);
@@ -1609,9 +1611,9 @@ bool NnueNetsource::open()
     openOk = NnueReadNet(this);
 
     if (!openOk)
-        guiCom << "The network seems corrupted.\n";
+        guiCom << "info string The network seems corrupted or format is not supported.\n";
     else
-        guiCom << "Reading network " << (isEmbedded ? en.GetNnueNetPath() : filenames[fileindex]) << " successful. Using NNUE evaluation (" << (NnueReady == NnueArchV1 ? "V1" : "V5") << ").\n";
+        guiCom << "info string Reading network " << (isEmbedded ? en.GetNnueNetPath() : filenames[fileindex]) << " successful. Using NNUE evaluation (" << (NnueReady == NnueArchV1 ? "V1" : "V5") << ").\n";
 
 cleanup:
     if (!isEmbedded)

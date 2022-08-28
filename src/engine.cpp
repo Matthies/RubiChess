@@ -139,7 +139,7 @@ static void uciSetNnuePath()
 
     if (!nr.open())
     {
-        guiCom << "Failed to open network. Maybe file does not exist.\n";
+        guiCom << "info string Failed to open network.\n";
     }
 }
 
