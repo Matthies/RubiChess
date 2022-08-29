@@ -168,7 +168,7 @@ public:
 
 class NnueArchitectureV5 : public NnueArchitecture {
 public:
-    static constexpr unsigned int NnueFtOutputdims = 1024;
+    static constexpr unsigned int NnueFtOutputdims = 512;
     static constexpr unsigned int NnueFtHalfdims = NnueFtOutputdims;
     static constexpr unsigned int NnueFtInputdims = 64 * 11 * 64 / 2;
     static constexpr unsigned int NnueHidden1Dims = 16;
