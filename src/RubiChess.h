@@ -1732,9 +1732,7 @@ public:
 enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, WAIT, PONDERHIT, QUIT, EVAL, PERFT, BENCH, TUNE, GENSFEN, CONVERT, LEARN, EXPORT, STATS };
 
 const map<string, GuiToken> GuiCommandMap = {
-#ifdef EVALOPTIONS
     { "export", EXPORT },
-#endif
 #ifdef EVALTUNE
     { "tune", TUNE },
 #endif
