@@ -759,9 +759,7 @@ public:
 
     NnueLayer(NnueLayer* prev) { previous = prev; }
     virtual bool ReadWeights(NnueNetsource* nr) = 0;
-#ifdef EVALOPTIONS
     virtual void WriteWeights(NnueNetsource* nr) = 0;
-#endif
     virtual uint32_t GetHash() = 0;
 };
 
@@ -780,13 +778,11 @@ public:
         if (previous) return previous->ReadWeights(nr);
         return true;
     }
-#ifdef EVALOPTIONS
     void WriteFeatureWeights(NnueNetsource* nr, bool bpz);
     void WriteWeights(NnueNetsource* nr) {
         if (previous)
             previous->WriteWeights(nr);
     }
-#endif
     uint32_t GetFtHash(NnueType nt) {
         if (nt == NnueArchV5)
             return NNUEFEATUTEHASH_HalfKAv2_hm;
@@ -806,12 +802,10 @@ public:
     bool ReadWeights(NnueNetsource* nr) {
         return (previous ? previous->ReadWeights(nr) : true);
     }
-#ifdef EVALOPTIONS
     void WriteWeights(NnueNetsource* nr) {
         if (previous)
             previous->WriteWeights(nr);
     }
-#endif
     uint32_t GetHash() {
         return NNUECLIPPEDRELUHASH + previous->GetHash();
     }
@@ -826,12 +820,10 @@ public:
     bool ReadWeights(NnueNetsource* nr) {
         return (previous ? previous->ReadWeights(nr) : true);
     }
-#ifdef EVALOPTIONS
     void WriteWeights(NnueNetsource* nr) {
         if (previous)
             previous->WriteWeights(nr);
     }
-#endif
     uint32_t GetHash() {
         return NNUECLIPPEDRELUHASH + previous->GetHash();
     }
@@ -875,9 +867,7 @@ public:
 
     NnueNetworkLayer(NnueLayer* prev) : NnueLayer(prev) {}
     bool ReadWeights(NnueNetsource* nr);
-#ifdef EVALOPTIONS
     void WriteWeights(NnueNetsource* nr);
-#endif
     uint32_t GetHash() {
         return (NNUENETLAYERHASH + outputdims) ^ (previous->GetHash() >> 1) ^ (previous->GetHash() << 31);
     }
@@ -923,8 +913,8 @@ public:
 void NnueInit();
 void NnueRemove();
 bool NnueReadNet(NnueNetsource* nr);
-#ifdef EVALOPTIONS
 void NnueWriteNet(vector<string> args);
+#ifdef EVALOPTIONS
 void NnueRegisterEvals();
 #endif
 

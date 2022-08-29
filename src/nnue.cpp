@@ -76,12 +76,10 @@ class NnueArchitecture
 public:
     virtual bool ReadFeatureWeights(NnueNetsource* nr, bool bpz) = 0;
     virtual bool ReadWeights(NnueNetsource* nr, uint32_t nethash) = 0;
-#ifdef EVALOPTIONS
     virtual void WriteFeatureWeights(NnueNetsource* nr, bool bpz) = 0;
     virtual void WriteWeights(NnueNetsource* nr, uint32_t nethash) = 0;
     virtual void rescaleLastLayer(int ratio64) = 0;
     virtual string getArchDescription() = 0;
-#endif
     virtual uint32_t GetFtHash() = 0;
     virtual uint32_t GetHash() = 0;
     virtual int getEval(chessposition* pos) = 0;
@@ -131,7 +129,6 @@ public:
             && LayerStack[0].NnueOut.ReadWeights(nr);
         return okay;
     }
-#ifdef EVALOPTIONS
     void WriteFeatureWeights(NnueNetsource* nr, bool bpz) {
         NnueFt.WriteFeatureWeights(nr, bpz);
     }
@@ -147,7 +144,6 @@ public:
     string getArchDescription() {
         return "Features=HalfKP(Friend)[40960->256x2],Network=AffineTransform[1<-32](ClippedReLU[32](AffineTransform[32<-32](ClippedReLU[32](AffineTransform[32<-512](InputSlice[512(0:512)])))))";
     }
-#endif
     int getEval(chessposition *pos) {
         struct NnueNetwork {
             alignas(64) clipped_t input[NnueFtOutputdims];
@@ -218,7 +214,6 @@ public:
         }
         return okay;
     }
-#ifdef EVALOPTIONS
     void WriteFeatureWeights(NnueNetsource* nr, bool bpz) {
         NnueFt.WriteFeatureWeights(nr, bpz);
     }
@@ -238,7 +233,6 @@ public:
     string getArchDescription() {
         return "SFNNv5 (https://github.com/glinscott/nnue-pytorch/blob/master/docs/nnue.md#historical-stockfish-evaluation-network-architectures)";
     }
-#endif
     int getEval(chessposition* pos) {
         struct NnueNetwork {
             alignas(64) clipped_t input[NnueFtOutputdims];
@@ -882,7 +876,6 @@ bool NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::ReadFeatureWeights(
     return okay;
 }
 
-#ifdef EVALOPTIONS
 template <int ftdims, int inputdims, int psqtbuckets>
 void NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::WriteFeatureWeights(NnueNetsource* nr, bool bpz)
 {
@@ -914,7 +907,6 @@ void NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::WriteFeatureWeights
         }
     }
 }
-#endif
 
 
 //
@@ -954,7 +946,6 @@ bool NnueNetworkLayer<inputdims, outputdims>::ReadWeights(NnueNetsource* nr)
     return okay;
 }
 
-#ifdef EVALOPTIONS
 template <unsigned int inputdims, unsigned int outputdims>
 void NnueNetworkLayer<inputdims, outputdims>::WriteWeights(NnueNetsource* nr)
 {
@@ -967,7 +958,6 @@ void NnueNetworkLayer<inputdims, outputdims>::WriteWeights(NnueNetsource* nr)
     for (unsigned int i = 0; i < outputdims * paddedInputdims; i++)
             nr->write((unsigned char*)&weight[shuffleWeightIndex(i)], sizeof(char));
 }
-#endif
 
 
 template <unsigned int inputdims, unsigned int outputdims>
@@ -1424,7 +1414,6 @@ static int xFlate(bool compress, unsigned char* in, unsigned char* out, size_t i
 #endif // USE_ZLIB
 
 
-#ifdef EVALOPTIONS
 void NnueWriteNet(vector<string> args)
 {
     size_t ci = 0;
@@ -1432,6 +1421,7 @@ void NnueWriteNet(vector<string> args)
     string NnueNetPath = "export.nnue";
     int rescale = 0;
     bool bpz = false;
+    bool zExport = false;
     if (ci < cs)
         NnueNetPath = args[ci++];
 
@@ -1445,14 +1435,18 @@ void NnueWriteNet(vector<string> args)
             bpz = true;
             ci++;
         }
+        if (args[ci] == "z")
+        {
+            zExport = true;
+            ci++;
+        }
     }
 
     NnueNetsource nr;
     nr.readbuffer = (unsigned char*)allocalign64(MAXNNUEFILESIZE);
     nr.next = nr.readbuffer;
 #ifdef USE_ZLIB
-    bool zExport = (NnueNetPath.substr(NnueNetPath.length() - 2) == ".z");
-    unsigned char* deflatebuffer;
+    unsigned char* deflatebuffer = nullptr;
     size_t deflatesize = 0;
     if (zExport) {
         deflatebuffer = (unsigned char*)allocalign64(MAXNNUEFILESIZE);
@@ -1512,6 +1506,7 @@ void NnueWriteNet(vector<string> args)
     cout << "Network written to file " << NnueNetPath << "\n";
 }
 
+#ifdef EVALOPTIONS
 void NnueRegisterEvals()
 {
     // Expose weights and bias of ouput layer as UCI options for tuning
@@ -1556,14 +1551,9 @@ bool NnueNetsource::open()
             goto cleanup;
         }
         string NnueNetPath = en.GetNnueNetPath();
-        if (inflatePossible)
-            filenames.push_back(NnueNetPath + ".z");
         filenames.push_back(NnueNetPath);
-        if (en.ExecPath != "") {
-            if (inflatePossible)
-                filenames.push_back(en.ExecPath + NnueNetPath + ".z");
+        if (en.ExecPath != "")
             filenames.push_back(en.ExecPath + NnueNetPath);
-        }
 
         for (fileindex = 0; fileindex < filenames.size(); fileindex++) {
             ifstream is;
@@ -1579,11 +1569,11 @@ bool NnueNetsource::open()
             if (insize > 0)
                 break;
         }
-    }
 
-    if (!insize) {
-        guiCom << "info string Cannot open file. Probably doesn't exist.\n";
-        goto cleanup;
+        if (!insize) {
+            guiCom << "info string Cannot open file " << NnueNetPath << ". Probably doesn't exist.\n";
+            goto cleanup;
+        }
     }
 
 #if USE_ZLIB
@@ -1591,7 +1581,6 @@ bool NnueNetsource::open()
     if (inflatePossible) {
         ret = xFlate(false, inbuffer, inflatebuffer, insize, &inflatesize);
         if (ret == Z_OK) {
-            guiCom << "info string Successfully inflated compressed network\n";
             memcpy(inbuffer, inflatebuffer, inflatesize);
             insize = inflatesize;
         }

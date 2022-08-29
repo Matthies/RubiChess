@@ -699,11 +699,9 @@ void engine::communicate(string inputstring)
                 parseTune(commandargs);
                 break;
 #endif
-#ifdef EVALOPTIONS
             case EXPORT:
                 NnueWriteNet(commandargs);
                 break;
-#endif
 #ifdef STATISTICS
             case STATS:
                 statistics.output(commandargs);
