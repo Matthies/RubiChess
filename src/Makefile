@@ -89,7 +89,7 @@ ifeq ($(shell uname -m),x86_64)
 	ARCHFAMILY=x86
 endif
 
-internalzlib = $(shell (test -f zlib/libz.a || (cd zlib && $(CC) -w -c *.c && $(AR) rcs libz.a *.o && cd ..)) && echo "internal")
+internalzlib = $(shell (test -f zlib/libz.a || (cd zlib && gcc -w -c *.c && $(AR) rcs libz.a *.o && cd ..)) && echo "internal")
 ifeq ($(internalzlib),internal)
 	CXXFLAGS += -Izlib
 	LDFLAGS += -Lzlib
