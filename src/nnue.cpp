@@ -1501,7 +1501,6 @@ void NnueWriteNet(vector<string> args)
 #endif
     os.write((char*)nr.readbuffer, insize);
     os.close();
-    freealigned64(nr.readbuffer);
 
     cout << "Network written to file " << NnueNetPath << "\n";
 }
@@ -1517,13 +1516,13 @@ void NnueRegisterEvals()
 
 bool NnueNetsource::open()
 {
-    isEmbedded = false;
     size_t insize = 0;
     bool openOk = false;
     bool inflatePossible = false;
-    unsigned int fileindex = -1;
     vector<string> filenames;
     unsigned char* inbuffer = nullptr;
+    unsigned char* sourcebuffer = nullptr;
+    string NnueNetPath = en.GetNnueNetPath();
 
 #if USE_ZLIB
     int ret;
@@ -1537,51 +1536,45 @@ bool NnueNetsource::open()
 #endif
 
 #ifdef NNUEINCLUDED
-    if (en.NnueUseDefault()) {
-        isEmbedded = true;
-        inbuffer = (unsigned char*)&_binary_net_nnue_start;
-        insize = _binary_net_nnue_end - _binary_net_nnue_start;
-        cout << "insize = " << insize << "\n";
+    inbuffer = (unsigned char*)&_binary_net_nnue_start;
+    insize = _binary_net_nnue_end - _binary_net_nnue_start;
+#else
+    inbuffer = (unsigned char*)allocalign64(MAXNNUEFILESIZE);
+    if (!inbuffer) {
+        guiCom << "info string Cannot alloc buffer for network file.\n";
+        goto cleanup;
+    }
+    filenames.push_back(NnueNetPath);
+    if (en.ExecPath != "")
+        filenames.push_back(en.ExecPath + NnueNetPath);
+    for (fileindex = 0; fileindex < filenames.size(); fileindex++) {
+        ifstream is;
+        is.open(filenames[fileindex], ios::binary);
+        if (!is)
+            continue;
+        is.read((char*)inbuffer, MAXNNUEFILESIZE);
+        insize = is.gcount();
+        if (insize == MAXNNUEFILESIZE) {
+            guiCom << "info string Buffer too small for file " << filenames[fileindex] << "\n";
+            goto cleanup;
+        }
+        if (insize > 0)
+            break;
+    }
+    if (!insize) {
+        guiCom << "info string Cannot open file " << NnueNetPath << ". Probably doesn't exist.\n";
+        goto cleanup;
     }
 #endif // NNUEINCLUDED
-    if (!isEmbedded) {
-        inbuffer = (unsigned char*)allocalign64(MAXNNUEFILESIZE);
-        if (!inbuffer) {
-            guiCom << "info string Cannot alloc buffer for network file.\n";
-            goto cleanup;
-        }
-        string NnueNetPath = en.GetNnueNetPath();
-        filenames.push_back(NnueNetPath);
-        if (en.ExecPath != "")
-            filenames.push_back(en.ExecPath + NnueNetPath);
 
-        for (fileindex = 0; fileindex < filenames.size(); fileindex++) {
-            ifstream is;
-            is.open(filenames[fileindex], ios::binary);
-            if (!is)
-                continue;
-            is.read((char*)inbuffer, MAXNNUEFILESIZE);
-            insize = is.gcount();
-            if (insize == MAXNNUEFILESIZE) {
-                guiCom << "info string Buffer too small for file " << filenames[fileindex] << "\n";
-                goto cleanup;
-            }
-            if (insize > 0)
-                break;
-        }
-
-        if (!insize) {
-            guiCom << "info string Cannot open file " << NnueNetPath << ". Probably doesn't exist.\n";
-            goto cleanup;
-        }
-    }
-
+    sourcebuffer = inbuffer;
+    
 #if USE_ZLIB
     // Now test if the input is compressed
     if (inflatePossible) {
         ret = xFlate(false, inbuffer, inflatebuffer, insize, &inflatesize);
         if (ret == Z_OK) {
-            memcpy(inbuffer, inflatebuffer, inflatesize);
+            sourcebuffer = inflatebuffer;
             insize = inflatesize;
         }
     }
@@ -1593,7 +1586,7 @@ bool NnueNetsource::open()
         guiCom << "info string Cannot alloc buffer for network file.\n";
         goto cleanup;
     }
-    memcpy(readbuffer, inbuffer, insize);
+    memcpy(readbuffer, sourcebuffer, insize);
     readbuffersize = insize;
     next = readbuffer;
 
@@ -1602,11 +1595,12 @@ bool NnueNetsource::open()
     if (!openOk)
         guiCom << "info string The network seems corrupted or format is not supported.\n";
     else
-        guiCom << "info string Reading network " << (isEmbedded ? en.GetNnueNetPath() : filenames[fileindex]) << " successful. Using NNUE evaluation (" << (NnueReady == NnueArchV1 ? "V1" : "V5") << ").\n";
+        guiCom << "info string Reading network successful. Using NNUE evaluation (" << (NnueReady == NnueArchV1 ? "V1" : "V5") << ").\n";
 
 cleanup:
-    if (!isEmbedded)
-        freealigned64(inbuffer);
+#ifndef NNUEINCLUDED
+    freealigned64(inbuffer);
+#endif
 #if USE_ZLIB
     freealigned64(inflatebuffer);
 #endif

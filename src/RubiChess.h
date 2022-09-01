@@ -736,7 +736,9 @@ extern const char  _binary_net_nnue_end;
 
 class NnueNetsource {
 public:
-    bool isEmbedded;
+    ~NnueNetsource() {
+        freealigned64(readbuffer);
+    };
     unsigned char* readbuffer;
     size_t readbuffersize;
     unsigned char* next;
