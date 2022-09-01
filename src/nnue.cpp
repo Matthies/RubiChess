@@ -1547,15 +1547,15 @@ bool NnueNetsource::open()
     filenames.push_back(NnueNetPath);
     if (en.ExecPath != "")
         filenames.push_back(en.ExecPath + NnueNetPath);
-    for (fileindex = 0; fileindex < filenames.size(); fileindex++) {
+    for (int i = 0; i < filenames.size(); i++) {
         ifstream is;
-        is.open(filenames[fileindex], ios::binary);
+        is.open(filenames[i], ios::binary);
         if (!is)
             continue;
         is.read((char*)inbuffer, MAXNNUEFILESIZE);
         insize = is.gcount();
         if (insize == MAXNNUEFILESIZE) {
-            guiCom << "info string Buffer too small for file " << filenames[fileindex] << "\n";
+            guiCom << "info string Buffer too small for file " << filenames[i] << "\n";
             goto cleanup;
         }
         if (insize > 0)
