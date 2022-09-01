@@ -1547,7 +1547,7 @@ bool NnueNetsource::open()
     filenames.push_back(NnueNetPath);
     if (en.ExecPath != "")
         filenames.push_back(en.ExecPath + NnueNetPath);
-    for (int i = 0; i < filenames.size(); i++) {
+    for (unsigned int i = 0; i < filenames.size(); i++) {
         ifstream is;
         is.open(filenames[i], ios::binary);
         if (!is)
@@ -1593,9 +1593,9 @@ bool NnueNetsource::open()
     openOk = NnueReadNet(this);
 
     if (!openOk)
-        guiCom << "info string The network seems corrupted or format is not supported.\n";
+        guiCom << "info string The network " << en.GetNnueNetPath() << " seems corrupted or format is not supported.\n";
     else
-        guiCom << "info string Reading network successful. Using NNUE evaluation (" << (NnueReady == NnueArchV1 ? "V1" : "V5") << ").\n";
+        guiCom << "info string Reading network " << en.GetNnueNetPath() << " successful.Using NNUE evaluation(" << (NnueReady == NnueArchV1 ? "V1" : "V5") << ").\n";
 
 cleanup:
 #ifndef NNUEINCLUDED
