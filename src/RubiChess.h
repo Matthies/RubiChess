@@ -82,7 +82,7 @@
 #include <regex>
 #include <set>
 #ifdef USE_ZLIB
-#include <zlib.h>
+#include "zlib/zlib.h"
 #endif
 
 #define USE_SIMD
