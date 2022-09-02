@@ -91,10 +91,12 @@ class NnueArchitectureV1 : public NnueArchitecture {
 public:
     static constexpr unsigned int NnueFtHalfdims = 256;
     static constexpr unsigned int NnueFtOutputdims = NnueFtHalfdims * 2;
+    static_assert(NnueFtOutputdims <= MAXINPUTLAYER, "Accumulator not big enough");
     static constexpr unsigned int NnueFtInputdims = 64 * 10 * 64;   // (kingsquare x piecetype x piecesquare)
     static constexpr unsigned int NnueHidden1Dims = 32;
     static constexpr unsigned int NnueHidden2Dims = 32;
     static constexpr unsigned int NnuePsqtBuckets = 0;
+    static_assert(NnuePsqtBuckets <= MAXBUCKETNUM, "Accumulator not big enough");
     static constexpr unsigned int NnueLayerStacks = 1;
     static constexpr unsigned int NnueClippingShift = 6;
 
@@ -169,6 +171,7 @@ public:
 class NnueArchitectureV5 : public NnueArchitecture {
 public:
     static constexpr unsigned int NnueFtOutputdims = 512;
+    static_assert(NnueFtOutputdims <= MAXINPUTLAYER, "Accumulator not big enough");
     static constexpr unsigned int NnueFtHalfdims = NnueFtOutputdims;
     static constexpr unsigned int NnueFtInputdims = 64 * 11 * 64 / 2;
     static constexpr unsigned int NnueHidden1Dims = 16;
@@ -177,6 +180,7 @@ public:
     static constexpr unsigned int NnueHidden2Out = 32;
     static constexpr unsigned int NnueClippingShift = 6;
     static constexpr unsigned int NnuePsqtBuckets = 8;
+    static_assert(NnuePsqtBuckets <= MAXBUCKETNUM, "Accumulator not big enough");
     static constexpr unsigned int NnueLayerStacks = 8;
 
     NnueFeatureTransformer<NnueFtHalfdims, NnueFtInputdims, NnuePsqtBuckets> NnueFt;
@@ -231,7 +235,7 @@ public:
         }
     }
     string getArchDescription() {
-        return "SFNNv5 (https://github.com/glinscott/nnue-pytorch/blob/master/docs/nnue.md#historical-stockfish-evaluation-network-architectures)";
+        return "HalfKAv2_hm, 512x16+16x32x1";
     }
     int getEval(chessposition* pos) {
         struct NnueNetwork {
@@ -731,7 +735,8 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 }
 
 
-template <NnueType Nt, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> int chessposition::Transform(clipped_t *output, int bucket)
+template <NnueType Nt, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets>
+int chessposition::Transform(clipped_t *output, int bucket)
 {
     UpdateAccumulator<Nt, WHITE, NnueFtHalfdims, NnuePsqtBuckets>();
     UpdateAccumulator<Nt, BLACK, NnueFtHalfdims, NnuePsqtBuckets>();

@@ -702,6 +702,9 @@ enum NnueType { NnueDisabled = 0, NnueArchV1, NnueArchV5 };
 #define HMORIENT(c,i,k) (i ^ (bool(c) * 56) ^ ((FILE(k) < 4) * 7))
 #define MULTIPLEOFN(i,n) (((i) + (n - 1)) / n * n)
 
+// Some limits for static arrays
+#define MAXBUCKETNUM    8
+#define MAXINPUTLAYER   1024
 
 #if defined(USE_SSE2) && !defined(USE_SSSE3) && defined FASTSSE2
 // for native SSE2 platforms we have faster intrinsics for 16bit integers
@@ -905,9 +908,9 @@ public:
 class NnueAccumulator
 {
 public:
-    // use maximum size for supported archs
-    alignas(64) int16_t accumulation[2][1024];
-    int32_t psqtAccumulation[2][8];
+    // use maximum size for supported archs (input layer: 1024 neurons, 8 buckets by piece number
+    alignas(64) int16_t accumulation[2][MAXINPUTLAYER];
+    int32_t psqtAccumulation[2][MAXBUCKETNUM];
     bool computationState[2];
 };
 
