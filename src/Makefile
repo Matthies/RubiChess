@@ -52,7 +52,8 @@ endif
 ifeq ($(COMP),$(filter $(COMP),gcc))
 	CXX=g++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
-	CC=gcc
+	# Workaround OB giving wrong CC=g++
+	MYCC=gcc
 
 	INSTRUMENTEDEXTRACXXFLAGS='-fprofile-generate=$(PROFDIR)'
 	INSTRUMENTEDEXTRALDFLAGS='-lgcov'
@@ -64,7 +65,7 @@ endif
 ifeq ($(COMP),clang)
 	CXX=clang++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
-	CC=clang
+	MYCC=clang
 	LDFLAGS += $(shell type lld 1>/dev/null 2>/dev/null && echo "-fuse-ld=lld")
 	INSTRUMENTEDEXTRACXXFLAGS='-fprofile-instr-generate=$(EXE).clangprof-raw'
 	INSTRUMENTEDEXTRALDFLAGS=
@@ -89,7 +90,7 @@ ifeq ($(shell uname -m),x86_64)
 	ARCHFAMILY=x86
 endif
 
-internalzlib = $(shell (test -f zlib/libz.a || (cd zlib && gcc -w -c *.c && $(AR) rcs libz.a *.o && cd ..)) && echo "internal")
+internalzlib = $(shell (test -f zlib/libz.a || (cd zlib && $(MYCC) -w -c *.c && $(AR) rcs libz.a *.o && cd ..)) && echo "internal")
 ifeq ($(internalzlib),internal)
 	CXXFLAGS += -Izlib
 	LDFLAGS += -Lzlib
