@@ -908,7 +908,7 @@ public:
 class NnueAccumulator
 {
 public:
-    // use maximum size for supported archs (input layer: 1024 neurons, 8 buckets by piece number
+    // use maximum size for supported archs (input layer: 1024 neurons, 8 buckets by piece number)
     alignas(64) int16_t accumulation[2][MAXINPUTLAYER];
     int32_t psqtAccumulation[2][MAXBUCKETNUM];
     bool computationState[2];
