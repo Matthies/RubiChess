@@ -18,7 +18,7 @@
 #pragma once
 
 #define VERNUMLEGACY 2022
-#define NNUEDEFAULT nn-b1c332ae1d-20220613.nnue
+#define NNUEDEFAULT nn-df29ab9d61-20220831.nnue
 
 // enable this switch for faster SSE2 code using 16bit integers
 #define FASTSSE2
@@ -81,6 +81,9 @@
 #include <math.h>
 #include <regex>
 #include <set>
+#ifdef USE_ZLIB
+#include "zlib/zlib.h"
+#endif
 
 #define USE_SIMD
 #if defined(USE_SSE2)
@@ -683,27 +686,25 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
 //
 #define NNUEDEFAULTSTR TOSTRING(NNUEDEFAULT)
 
-enum NnueType { NnueDisabled = 0, NnueRotate, NnueFlip };
+enum NnueType { NnueDisabled = 0, NnueArchV1, NnueArchV5 };
+
 // The following constants were introduced in original NNUE port from Shogi
-#define NNUEFILEVERSIONROTATE   0x7AF32F16u
-#define NNUEFILEVERSIONNOBPZ    0x7AF32F17u
-#define NNUEFILEVERSIONFLIP     0x7AF32F18u
-#define NNUENETLAYERHASH    0xCC03DAE4u
-#define NNUECLIPPEDRELUHASH 0x538D24C7u
-#define NNUEFEATUREHASH     (0x5D69D5B9u ^ true)
-#define NNUEINPUTSLICEHASH  0xEC42E90Du
+#define NNUEFILEVERSIONROTATE       0x7AF32F16u
+#define NNUEFILEVERSIONNOBPZ        0x7AF32F17u
+#define NNUEFILEVERSIONSFNNv5       0x7af32f20u
+#define NNUENETLAYERHASH            0xCC03DAE4u
+#define NNUECLIPPEDRELUHASH         0x538D24C7u
+#define NNUEFEATUREHASH_HalfKP      0x5D69D5B8u
+#define NNUEFEATUTEHASH_HalfKAv2_hm 0x7f234cb8u
+#define NNUEINPUTSLICEHASH          0xEC42E90Du
 
-#define ORIENT(c,i,r) ((c) ? (i) ^ (r) : (i))
-#define MULTIPLEOFN(i,n) (((i) + (n-1)) / n * n)
+#define ORIENT(c,i) ((c) ? (i) ^ 0x3f : (i))
+#define HMORIENT(c,i,k) (i ^ (bool(c) * 56) ^ ((FILE(k) < 4) * 7))
+#define MULTIPLEOFN(i,n) (((i) + (n - 1)) / n * n)
 
-
-// Net dimensions
-const int NnueFtHalfdims = 256;
-const int NnueFtOutputdims = NnueFtHalfdims * 2;
-const int NnueFtInputdims = 64 * 10 * 64;   // (kingsquare x piecetype x piecesquare)
-const int NnueHidden1Dims = 32;
-const int NnueHidden2Dims = 32;
-const int NnueClippingShift = 6;
+// Some limits for static arrays
+#define MAXBUCKETNUM    8
+#define MAXINPUTLAYER   1024
 
 #if defined(USE_SSE2) && !defined(USE_SSSE3) && defined FASTSSE2
 // for native SSE2 platforms we have faster intrinsics for 16bit integers
@@ -715,10 +716,10 @@ typedef int8_t weight_t;
 typedef int8_t clipped_t;
 #endif
 
-// All pieces besides kings are inputs => 30 dimensions
+// All pieces and both kings for HalfKA are inputs => 32 dimensions
 typedef struct {
     size_t size;
-    unsigned values[30];
+    unsigned values[32];
 } NnueIndexList;
 
 typedef struct {
@@ -734,29 +735,25 @@ extern NnueType NnueReady;
 #ifdef NNUEINCLUDED
 extern const char  _binary_net_nnue_start;
 extern const char  _binary_net_nnue_end;
-typedef char** NnueNetsource_t;
-#define NNUEREAD(s, t, l) (memcpy(t, (*s), l), (*s) = (*s) + (l))
-#define NNUEREADFAIL(s) ((*s) > (char*)&_binary_net_nnue_end)
-#define NNUEEOF(s) ((*s) == (char*)&_binary_net_nnue_end)
-#else
-typedef ifstream* NnueNetsource_t;
-#define NNUEREAD(s, t, l) s->read(t, l)
-#define NNUEREADFAIL(s) s->fail()
-#define NNUEEOF(s) (s->peek() == ios::traits_type::eof())
 #endif
 
-struct NnueNetwork {
-    alignas(64) clipped_t input[NnueFtOutputdims];
-    int32_t hidden1_values[NnueHidden1Dims];
-    int32_t hidden2_values[NnueHidden2Dims];
-    clipped_t hidden1_clipped[NnueHidden1Dims];
-    clipped_t hidden2_clipped[NnueHidden2Dims];
-    int32_t out_value;
+class NnueNetsource {
+public:
+    ~NnueNetsource() {
+        freealigned64(readbuffer);
+    };
+    unsigned char* readbuffer;
+    size_t readbuffersize;
+    unsigned char* next;
+    bool open();
+    bool read(unsigned char* target, size_t readsize);
+    bool write(unsigned char* source, size_t writesize);
+    bool endOfNet();
 };
+
 
 class NnueLayer
 {
-
 public:
     NnueLayer* previous;
 #if defined(USE_AVX2)
@@ -766,58 +763,76 @@ public:
 #endif
 
     NnueLayer(NnueLayer* prev) { previous = prev; }
-    virtual bool ReadWeights(NnueNetsource_t is) = 0;
-#ifdef EVALOPTIONS
-    virtual void WriteWeights(ofstream *os) = 0;
-#endif
+    virtual bool ReadWeights(NnueNetsource* nr) = 0;
+    virtual void WriteWeights(NnueNetsource* nr) = 0;
     virtual uint32_t GetHash() = 0;
 };
 
-template <int ftdims, int inputdims>
+
+template <int ftdims, int inputdims, int psqtbuckets>
 class NnueFeatureTransformer : public NnueLayer
 {
 public:
     alignas(64) int16_t bias[ftdims];
     alignas(64) int16_t weight[ftdims * inputdims];
-    bool bpz;
+    alignas(64) int32_t psqtWeights[psqtbuckets ? psqtbuckets * inputdims : 1];    // hack to avoid zero-sized array
 
     NnueFeatureTransformer() : NnueLayer(NULL) {}
-    bool ReadFeatureWeights(NnueNetsource_t is);
-    bool ReadWeights(NnueNetsource_t is) {
-        if (previous) return previous->ReadWeights(is);
+    bool ReadFeatureWeights(NnueNetsource* nr, bool bpz);
+    bool ReadWeights(NnueNetsource* nr) {
+        if (previous) return previous->ReadWeights(nr);
         return true;
     }
-#ifdef EVALOPTIONS
-    void WriteFeatureWeights(ofstream *os);
-    void WriteWeights(ofstream* os) {
-        if (previous) return previous->WriteWeights(os);
+    void WriteFeatureWeights(NnueNetsource* nr, bool bpz);
+    void WriteWeights(NnueNetsource* nr) {
+        if (previous)
+            previous->WriteWeights(nr);
     }
-#endif
-    uint32_t GetFtHash() {
-        return NNUEFEATUREHASH ^ NnueFtOutputdims;
+    uint32_t GetFtHash(NnueType nt) {
+        if (nt == NnueArchV5)
+            return NNUEFEATUTEHASH_HalfKAv2_hm;
+        else
+            return NNUEFEATUREHASH_HalfKP;
     }
     uint32_t GetHash() {
         return NNUEINPUTSLICEHASH ^ (ftdims * 2);
     };
 };
 
-template <unsigned int dims>
+template <unsigned int dims, unsigned int clippingshift>
 class NnueClippedRelu : public NnueLayer
 {
 public:
     NnueClippedRelu(NnueLayer* prev) : NnueLayer(prev) {}
-    bool ReadWeights(NnueNetsource_t is) {
-        return (previous ? previous->ReadWeights(is) : true);
+    bool ReadWeights(NnueNetsource* nr) {
+        return (previous ? previous->ReadWeights(nr) : true);
     }
-#ifdef EVALOPTIONS
-    void WriteWeights(ofstream* os) {
-        return (previous ? previous->WriteWeights(os) : true);
+    void WriteWeights(NnueNetsource* nr) {
+        if (previous)
+            previous->WriteWeights(nr);
     }
-#endif
     uint32_t GetHash() {
         return NNUECLIPPEDRELUHASH + previous->GetHash();
     }
     void Propagate(int32_t *input, clipped_t *output);
+};
+
+template <unsigned int dims>
+class NnueSqrClippedRelu : public NnueLayer
+{
+public:
+    NnueSqrClippedRelu(NnueLayer* prev) : NnueLayer(prev) {}
+    bool ReadWeights(NnueNetsource* nr) {
+        return (previous ? previous->ReadWeights(nr) : true);
+    }
+    void WriteWeights(NnueNetsource* nr) {
+        if (previous)
+            previous->WriteWeights(nr);
+    }
+    uint32_t GetHash() {
+        return NNUECLIPPEDRELUHASH + previous->GetHash();
+    }
+    void Propagate(int32_t* input, clipped_t* output);
 };
 
 template <unsigned int inputdims, unsigned int outputdims>
@@ -846,20 +861,18 @@ class NnueNetworkLayer : public NnueLayer
     static constexpr unsigned int NumOutputRegsSmall = (outputdims / (SimdWidth / 4) > 1 ? outputdims / (SimdWidth / 4) : 1);
     static constexpr unsigned int SmallBlockSize = InputSimdWidth;
     static constexpr unsigned int BigBlockSize = NumOutputRegsBig * paddedInputdims;
-    static constexpr unsigned int NumSmallBlocksInBigBlock = BigBlockSize / SmallBlockSize;
-    static constexpr unsigned int NumSmallBlocksPerOutput = paddedInputdims / SmallBlockSize;
+    static constexpr unsigned int NumSmallBlocksInBigBlock = (BigBlockSize < SmallBlockSize ? 1 : BigBlockSize / SmallBlockSize);   // avoid warning of MSVC compiler
+    static constexpr unsigned int NumSmallBlocksPerOutput = (paddedInputdims < SmallBlockSize ? 1 : paddedInputdims / SmallBlockSize);
     static constexpr unsigned int NumBigBlocks = outputdims / NumOutputRegsBig;
     static constexpr unsigned int OutputSimdWidth = SimdWidth / 4;
 
 public:
     alignas(64)int32_t bias[outputdims];
-    alignas(64)weight_t weight[inputdims * outputdims];
+    alignas(64)weight_t weight[paddedInputdims * outputdims];
 
     NnueNetworkLayer(NnueLayer* prev) : NnueLayer(prev) {}
-    bool ReadWeights(NnueNetsource_t is);
-#ifdef EVALOPTIONS
-    void WriteWeights(ofstream* os);
-#endif
+    bool ReadWeights(NnueNetsource* nr);
+    void WriteWeights(NnueNetsource* nr);
     uint32_t GetHash() {
         return (NNUENETLAYERHASH + outputdims) ^ (previous->GetHash() >> 1) ^ (previous->GetHash() << 31);
     }
@@ -876,32 +889,37 @@ public:
             return idx;
 #endif
 
-        const int smallBlock = (idx / SmallBlockSize) % NumSmallBlocksInBigBlock;
-        const int smallBlockCol = smallBlock / NumSmallBlocksPerOutput;
-        const int smallBlockRow = smallBlock % NumSmallBlocksPerOutput;
-        const int bigBlock = idx / BigBlockSize;
-        const int rest = idx % SmallBlockSize;
+        if (paddedInputdims >= 128)
+        {
+            const int smallBlock = (idx / SmallBlockSize) % NumSmallBlocksInBigBlock;
+            const int smallBlockCol = smallBlock / NumSmallBlocksPerOutput;
+            const int smallBlockRow = smallBlock % NumSmallBlocksPerOutput;
+            const int bigBlock = idx / BigBlockSize;
+            const int rest = idx % SmallBlockSize;
 
-        return bigBlock * BigBlockSize
-            + smallBlockRow * SmallBlockSize * NumOutputRegsBig
-            + smallBlockCol * SmallBlockSize
-            + rest;
+            return bigBlock * BigBlockSize
+                + smallBlockRow * SmallBlockSize * NumOutputRegsBig
+                + smallBlockCol * SmallBlockSize
+                + rest;
+        }
     }
 };
 
 class NnueAccumulator
 {
 public:
-    alignas(64) int16_t accumulation[2][256];
+    // use maximum size for supported archs (input layer: 1024 neurons, 8 buckets by piece number)
+    alignas(64) int16_t accumulation[2][MAXINPUTLAYER];
+    int32_t psqtAccumulation[2][MAXBUCKETNUM];
     bool computationState[2];
 };
 
 
 void NnueInit();
 void NnueRemove();
-bool NnueReadNet(NnueNetsource_t is);
-#ifdef EVALOPTIONS
+bool NnueReadNet(NnueNetsource* nr);
 void NnueWriteNet(vector<string> args);
+#ifdef EVALOPTIONS
 void NnueRegisterEvals();
 #endif
 
@@ -1525,7 +1543,6 @@ public:
     Pawnhash pwnhsh;
     NnueAccumulator accumulator[MAXDEPTH];
     DirtyPiece dirtypiece[MAXDEPTH];
-    NnueNetwork network;
     uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     alignas(64) MoveSelector moveSelector[MAXDEPTH];
@@ -1634,8 +1651,8 @@ public:
     int testRepetition();
     template <NnueType Nt, Color c> void HalfkpAppendActiveIndices(NnueIndexList *active);
     template <NnueType Nt, Color c> void HalfkpAppendChangedIndices(DirtyPiece* dp, NnueIndexList *add, NnueIndexList *remove);
-    template <NnueType Nt, Color c> void UpdateAccumulator();
-    template <NnueType Nt> void Transform(clipped_t *output);
+    template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void UpdateAccumulator();
+    template <NnueType Nt, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> int Transform(clipped_t *output, int bucket = 0);
     template <NnueType Nt> int NnueGetEval();
 #ifdef NNUELEARN
     void toSfen(PackedSfen *sfen);
@@ -1720,9 +1737,7 @@ public:
 enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, WAIT, PONDERHIT, QUIT, EVAL, PERFT, BENCH, TUNE, GENSFEN, CONVERT, LEARN, EXPORT, STATS };
 
 const map<string, GuiToken> GuiCommandMap = {
-#ifdef EVALOPTIONS
     { "export", EXPORT },
-#endif
 #ifdef EVALTUNE
     { "tune", TUNE },
 #endif
@@ -1912,11 +1927,14 @@ public:
     string LogFile;
     bool usennue;
     string NnueNetpath; // UCI option, can be <Default>
+    bool NnueUseDefault() {
+        return (NnueNetpath == "<Default>");
+    }
     string GetNnueNetPath() {
 #ifdef NNUEINCLUDED
         return TOSTRING(NNUEINCLUDED);
 #else
-        if (NnueNetpath == "<Default>")
+        if (NnueUseDefault())
             return NNUEDEFAULTSTR;
         else
             return NnueNetpath;
@@ -2267,7 +2285,7 @@ namespace Simd {
         __m512i sum0123b = _mm512_unpackhi_epi64(sum01, sum23);
         return _mm512_add_epi32(sum0123a, sum0123b);
     }
-    
+
     inline __m128i m512_haddx4(__m512i sum0, __m512i sum1, __m512i sum2, __m512i sum3, __m128i bias) {
         __m512i sum = m512_hadd128x16_interleave(sum0, sum1, sum2, sum3);
         __m256i sum256lo = _mm512_castsi512_si256(sum);

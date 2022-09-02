@@ -870,10 +870,10 @@ int chessposition::getEval()
     if (NnueReady && abs(GETEGVAL(psqval)) < NnuePsqThreshold)
     {
         int frcCorrection = (en.chess960 ? getFrcCorrection() : 0);
-        if (NnueReady == NnueRotate)
-            score = NnueGetEval<NnueRotate>();
+        if (NnueReady == NnueArchV1)
+            score = NnueGetEval<NnueArchV1>();
         else
-            score = NnueGetEval<NnueFlip>();
+            score = NnueGetEval<NnueArchV5>();
         score += S2MSIGN(state & S2MMASK) * contempt;
         int phscaled = score * (116 + phcount) / 128;
 

@@ -22,6 +22,7 @@ PROFDATATOOLEXE="$(LLVMInstallDir)\bin\llvm-profdata.exe"
 SOURCE=*.cpp
 OBJ=*.obj
 RELDIR=Release-clang
+ZLIBDIR=zlib
 CXXFLAGS=/EHsc /O2 /Oi /Ot /c -flto -fuse-ld=lld
 LDFLAGS=/OPT:REF /OPT:ICF advapi32.lib
 PROFEXE=RubiChess-WinProf
@@ -155,6 +156,10 @@ ARCHFLAGS=$(ARCHFLAGS) -DUSE_NEON --target=arm64-pc-windows-msvc
 NEON=no
 !ENDIF
 
+ARCHFLAGS=$(ARCHFLAGS) -DUSE_ZLIB
+CXXFLAGS=$(CXXFLAGS) /I$(ZLIBDIR)
+LDFLAGS=$(LDFLAGS) /libpath:$(ZLIBDIR) zlib.lib
+
 printarch: cpuflags
 	@echo.
 	@echo Arch: $(ARCH)
@@ -171,12 +176,19 @@ printarch: cpuflags
 
 buildandarch: printarch compile
 
+$(ZLIBDIR)\zlib.lib:
+	@echo Building zlib...
+	@cd $(ZLIBDIR)
+	@$(CXX) $(CXXFLAGS) $(ARCHFLAGS) -w /c *.c
+	@$(LD) /lib /OUT:zlib.lib $(OBJ)
+	@cd ..
+
 build: cpuflags
-	@echo Building binary for $(ARCH)
+	@echo Building binary for $(ARCH)...
 	@nmake -c -f Makefile.clang buildandarch ARCH=$(ARCH)
 	@nmake -c -f Makefile.clang profile-clean ARCH=$(ARCH)
 
-compile: $(RELDIR)
+compile: $(RELDIR) $(ZLIBDIR)\zlib.lib
 !IFNDEF GITVER
 	@FOR /F "tokens=2" %A IN ('cmd /c "($(GIT) show --name-only --abbrev-commit --date=format:%Y%m%d || echo Date: %date%) | findstr /I /r /c:"^Date: "" ') DO @(set GITVER=%A&&  nmake -f Makefile.clang $* /$(MAKEFLAGS) && exit /B)
 !ELSE
@@ -224,13 +236,13 @@ releaseversion:
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-ssse3
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-sse3-popcnt
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64
-	@nmake -c -f Makefile.clang profile-clean ARCH=$(ARCH)
 !ENDIF
 !IF "$(VSCMD_ARG_TGT_ARCH)" == "arm64"
 	@nmake -c -f Makefile.clang build-rename ARCH=arm64-neon
 !ENDIF
 
 release:
+	@nmake -c -f Makefile.clang profile-clean ARCH=$(ARCH)
 !IFNDEF VERSIONLEGACY
 	@FOR /F "tokens=3" %A IN ('find "define VERNUMLEGACY " RubiChess.h') DO @(set VERSIONLEGACY=%A&& nmake -f Makefile.clang $* /$(MAKEFLAGS) ARCH=$(ARCH) && exit /B)
 !ELSE
@@ -240,6 +252,7 @@ release:
 	@nmake -c -f Makefile.clang releaseversion ARCH=$(ARCH)
 !ENDIF
 !ENDIF
+	@nmake -c -f Makefile.clang profile-clean ARCH=$(ARCH)
 
 release-arm64:
 	@nmake -c -f Makefile.clang build-rename ARCH=arm64-neon
@@ -247,6 +260,8 @@ release-arm64:
 profile-clean:
 	@del $(PROFEXE)* 2>nul
 	@del *.obj 2>nul
+	@del $(ZLIBDIR)\*.obj 2>nul
+	@del $(ZLIBDIR)\zlib.lib 2>nul
 	@del $(NATIVEFLAGS) 2>nul
 
 clean: profile-clean

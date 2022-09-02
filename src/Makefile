@@ -24,6 +24,7 @@ avx2 = no
 bmi2 = no
 avx512 = no
 neon = no
+zlib = no
 
 PTHREADLIB=-pthread
 # Use workaround for weak symbols problem in pthreads; https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58909
@@ -51,6 +52,8 @@ endif
 ifeq ($(COMP),$(filter $(COMP),gcc))
 	CXX=g++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
+	# Workaround OB giving wrong CC=g++
+	MYCC=gcc
 
 	INSTRUMENTEDEXTRACXXFLAGS='-fprofile-generate=$(PROFDIR)'
 	INSTRUMENTEDEXTRALDFLAGS='-lgcov'
@@ -62,6 +65,7 @@ endif
 ifeq ($(COMP),clang)
 	CXX=clang++
 	CXXFLAGS += -pedantic -Wextra -Wshadow
+	MYCC=clang
 	LDFLAGS += $(shell type lld 1>/dev/null 2>/dev/null && echo "-fuse-ld=lld")
 	INSTRUMENTEDEXTRACXXFLAGS='-fprofile-instr-generate=$(EXE).clangprof-raw'
 	INSTRUMENTEDEXTRALDFLAGS=
@@ -85,6 +89,14 @@ endif
 ifeq ($(shell uname -m),x86_64)
 	ARCHFAMILY=x86
 endif
+
+internalzlib = $(shell (test -f zlib/libz.a || (cd zlib && $(MYCC) -w -c *.c && $(AR) rcs libz.a *.o && cd ..)) && echo "internal")
+ifeq ($(internalzlib),internal)
+	CXXFLAGS += -Izlib
+	LDFLAGS += -Lzlib
+	zlib = yes
+endif
+
 
 ifeq (,$(CPUFLAGS))
 ifeq ($(ARCH),native)
@@ -174,6 +186,10 @@ endif
 ifeq ($(neon),yes)
 	CXXFLAGS += -DUSE_NEON
 endif
+ifeq ($(zlib),yes)
+	CXXFLAGS += -DUSE_ZLIB
+	LDFLAGS += -lz
+endif
 
 DEPS = RubiChess.h
 
@@ -235,6 +251,7 @@ arch:
 	@echo "ssse3 : $(ssse3)"
 	@echo "sse2  : $(sse2)"
 	@echo "neon  : $(neon)"
+	@echo "zlib  : $(zlib) $(internalzlib)"
 
 net:
 ifeq ($(EVALFILE),$(filter $(EVALFILE),default))
@@ -257,7 +274,7 @@ compile:
 	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) *.cpp $(LDFLAGS) $(PTHREADLIB) $(EXTRALDFLAGS) $(GITDEFINE) $(NETDEF) $(NETOBJ) -o $(EXE)
 
 objclean:
-	@$(RM) $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(PROFEXE) *.o $(CPUTEST) $(NETBIN) || @echo $(RM) not available.
+	@$(RM) $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(PROFEXE) *.o zlib/*.o zlib/*.a $(CPUTEST) $(NETBIN) || @echo $(RM) not available.
 
 profileclean:
 	@$(RM) -rf $(PROFDIR) || @echo $(RM) not available.

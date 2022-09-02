@@ -268,5 +268,10 @@ __pycache__/
 
 # Network weight files
 *.nnue
+*.z
+
+# Linux executables
 /src/RubiChess
 /src/cputest
+*.lib
+*.a

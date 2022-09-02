@@ -135,32 +135,12 @@ static void uciSetNnuePath()
     }
 
     NnueReady = NnueDisabled;
-#ifdef NNUEINCLUDED
-    guiCom << "info string Initializing net included in binary...";
-    char* p = (char*)&_binary_net_nnue_start;
-    if (!NnueReadNet(&p))
-        guiCom << " failed. The embedded network seems corrupted.\n";
-    else
-        guiCom << " successful. Using NNUE evaluation. (" + to_string(NnueReady) + ")\n";
-    return;
-#else
-    string NnueNetPath = en.GetNnueNetPath();
-    ifstream is;
-    is.open(NnueNetPath, ios::binary);
-    if (!is && en.ExecPath != "")
-        is.open(en.ExecPath + NnueNetPath, ios::binary);
+    NnueNetsource nr;
 
-    if (is && NnueReadNet(&is))
+    if (!nr.open())
     {
-        guiCom << "info string Loading net " + NnueNetPath + " successful. Using NNUE evaluation. (" + to_string(NnueReady) + ")\n";
-        if (NnueNetPath.find(NNUEDEFAULTSTR) == string::npos)
-            guiCom << "info string Warning! You are not using the default network file. Playing strength of the engine highly depends on it.\n";
-
-        return;
+        guiCom << "info string Failed to open network.\n";
     }
-
-    guiCom << "info string Loading net " + NnueNetPath + " failed. The network file seems corrupted or doesn't exist. Set correct path to network file or disable 'Use_NNUE' for handcrafted evaluation.\n";
-#endif
 }
 
 static void uciSetContempt()
@@ -719,11 +699,9 @@ void engine::communicate(string inputstring)
                 parseTune(commandargs);
                 break;
 #endif
-#ifdef EVALOPTIONS
             case EXPORT:
                 NnueWriteNet(commandargs);
                 break;
-#endif
 #ifdef STATISTICS
             case STATS:
                 statistics.output(commandargs);
