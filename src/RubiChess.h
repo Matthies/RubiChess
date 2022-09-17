@@ -2115,6 +2115,7 @@ public:
     int index;
     int depth;
     int lastCompleteDepth;
+    U64 nps;
 #ifdef NNUELEARN
     PackedSfenValue* psvbuffer;
     PackedSfenValue* psv;
