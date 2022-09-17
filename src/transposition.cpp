@@ -288,7 +288,8 @@ void transposition::printHashentry(U64 hash)
 }
 
 
-bool transposition::probeHash(U64 hash, int *val, int *staticeval, uint16_t *movecode, int depth, int alpha, int beta, int ply)
+template <bool qsprobe>
+int transposition::probeHash(U64 hash, int *val, int *staticeval, uint16_t *movecode, int depth, int alpha, int beta, int ply)
 {
 #ifdef EVALTUNE
     // don't use transposition table when tuning evaluation
@@ -306,26 +307,19 @@ bool transposition::probeHash(U64 hash, int *val, int *staticeval, uint16_t *mov
             int bound = (e->boundAndAge & BOUNDMASK);
             int v = FIXMATESCOREPROBE(e->value, ply);
             if (bound == HASHEXACT)
-            {
                 *val = v;
-                return (e->depth >= depth);
-            }
-            if (bound == HASHALPHA && v <= alpha)
-            {
+            else if (bound == HASHALPHA && v <= alpha)
                 *val = alpha;
-                return (e->depth >= depth);
-            }
-            if (bound == HASHBETA && v >= beta)
-            {
+            else if (bound == HASHBETA && v >= beta)
                 *val = beta;
-                return (e->depth >= depth);
-            }
-            // value outside boundary
-            return false;
+            else
+                // value outside boundary
+                return 0;
+            return (qsprobe ? 1 : (e->depth >= depth ? e->depth : 0));
         }
     }
     // not found
-    return false;
+    return 0;
 }
 
 
@@ -410,3 +404,8 @@ bool  Materialhash::probeHash(U64 hash, Materialhashentry **entry)
 
 
 transposition tp;
+
+// Explicit template instantiation
+// This avoids putting these definitions in header file
+template int transposition::probeHash<true>(U64, int*, int*, uint16_t*, int, int, int, int);
+template int transposition::probeHash<false>(U64, int*, int*, uint16_t*, int, int, int, int);

@@ -196,7 +196,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     int hashscore = NOSCORE;
     uint16_t hashmovecode = 0;
     int staticeval = NOSCORE;
-    bool tpHit = tp.probeHash(hash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
+    bool tpHit = tp.probeHash<true>(hash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
     if (tpHit)
     {
         STATISTICSINC(qs_tt);
@@ -408,7 +408,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 #endif
 
     // TT lookup
-    bool tpHit = tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
+    bool tpHit = tp.probeHash<false>(newhash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
     if (tpHit && !rep && !PVNode)
     {
         if (hashscore >= beta && hashmovecode && !mailbox[GETTO(hashmovecode)])
@@ -689,7 +689,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             if ((mc & 0xffff) == hashmovecode
                 && depth >= sps.singularmindepth
                 && !excludeMove
-                && tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth - 3, alpha, beta, ply)  // FIXME: maybe needs hashscore = FIXMATESCOREPROBE(hashscore, ply);
+                && tp.probeHash<false>(newhash, &hashscore, &staticeval, &hashmovecode, depth - 3, alpha, beta, ply)  // FIXME: maybe needs hashscore = FIXMATESCOREPROBE(hashscore, ply);
                 && hashscore > alpha
 #ifdef NNUELEARN
                 // No singular extension in root of gensfen
@@ -915,8 +915,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
 
 template <RootsearchType RT>
-int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, int maxmoveindex)
+int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLast, int maxmoveindex)
 {
+    int depth = *depthptr;
     int score;
     uint16_t hashmovecode = 0;
     int bestscore = NOSCORE;
@@ -946,9 +947,10 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
     SDEBUGDO(isDebugPv, pvaborttype[1] = PVA_UNKNOWN; pvdepth[0] = depth; pvalpha[0] = alpha; pvbeta[0] = beta; pvmovenum[0] = 0; pvadditionalinfo[0] = "";);
 #endif
 
+    int newDepth;
     if (!isMultiPV
         && !useRootmoveScore
-        && tp.probeHash(hash, &score, &staticeval, &hashmovecode, depth, alpha, beta, 0))
+        && (newDepth = tp.probeHash<false>(hash, &score, &staticeval, &hashmovecode, depth, alpha, beta, 0)))
     {
         // Hash is fixed regarding scores that don't see actual 3folds so we can trust the entry
         uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
@@ -963,6 +965,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
                 bestmovescore[0] = score;
                 SDEBUGDO(isDebugPv, pvabortscore[0] = score; if (debugMove.code == fullhashmove) pvaborttype[0] = PVA_FROMTT; else pvaborttype[0] = PVA_DIFFERENTFROMTT; );
                 SDEBUGDO(isDebugPv, pvadditionalinfo[0] = "PV = " + getPv(pvtable[0]) + "  " + tp.debugGetPv(hash, 0); );
+                *depthptr = newDepth;
                 return score;
             }
         }
@@ -1207,19 +1210,21 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, in
     en.lastReport = msRun;
     string pvstring = pos->getPv(mpvIndex ? pos->multipvtable[mpvIndex] : pos->lastpv);
     U64 nodes = en.getTotalNodes();
-    U64 nps = (nowtime == en.thinkstarttime) ? 1 : nodes / 1024 * en.frequency / (nowtime - en.thinkstarttime) * 1024;  // lower resolution to avoid overflow under Linux in high performance systems
+
+    if (nodes)
+        thr->nps = nodes * en.frequency / (nowtime + 1 - en.thinkstarttime);  // lower resolution to avoid overflow under Linux in high performance systems
 
     if (!MATEDETECTED(score))
     {
         guiCom << "info depth " + to_string(thr->depth) + " seldepth " + to_string(pos->seldepth) + " multipv " + to_string(mpvIndex + 1) + " time " + to_string(msRun)
-            + " score cp " + to_string(score) + " " + boundscore[inWindow] + "nodes " + to_string(nodes) + " nps " + to_string(nps) + " tbhits " + to_string(en.tbhits)
+            + " score cp " + to_string(score) + " " + boundscore[inWindow] + "nodes " + to_string(nodes) + " nps " + to_string(thr->nps) + " tbhits " + to_string(en.tbhits)
             + " hashfull " + to_string(tp.getUsedinPermill()) + " pv " + pvstring + "\n";
     }
     else
     {
         int matein = MATEIN(score);
         guiCom << "info depth " + to_string(thr->depth) + " seldepth " + to_string(pos->seldepth) + " multipv " + to_string(mpvIndex + 1) + " time " + to_string(msRun)
-            + " score mate " + to_string(matein) + " " + boundscore[inWindow] + "nodes " + to_string(nodes) + " nps " + to_string(nps) + " tbhits " + to_string(en.tbhits)
+            + " score mate " + to_string(matein) + " " + boundscore[inWindow] + "nodes " + to_string(nodes) + " nps " + to_string(thr->nps) + " tbhits " + to_string(en.tbhits)
             + " hashfull " + to_string(tp.getUsedinPermill()) + " pv " + pvstring + "\n";
     }
     SDEBUGDO(pos->pvmovecode[0], guiCom.log("[SDEBUG] Raw score: " + to_string(score) + "\n"););
@@ -1281,7 +1286,7 @@ void mainSearch(searchthread *thr)
         }
         else
         {
-            score = pos->rootsearch<RT>(alpha, beta, thr->depth, inWindow);
+            score = pos->rootsearch<RT>(alpha, beta, &thr->depth, inWindow);
 #ifdef TDEBUG
             if (en.stopLevel == ENGINESTOPIMMEDIATELY && isMainThread)
             {
@@ -1364,7 +1369,7 @@ void mainSearch(searchthread *thr)
                 {
                     uint16_t mc = 0;
                     int dummystaticeval;
-                    tp.probeHash(pos->hash, &score, &dummystaticeval, &mc, MAXDEPTH, alpha, beta, 0);
+                    tp.probeHash<false>(pos->hash, &score, &dummystaticeval, &mc, MAXDEPTH, alpha, beta, 0);
                     pos->bestmove = pos->shortMove2FullMove(mc);
                     pos->pondermove = 0;
                 }

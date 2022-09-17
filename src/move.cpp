@@ -210,7 +210,7 @@ void chessposition::getRootMoves()
     bool bImmediate3fold = false;
     int ttscore, tteval;
     uint16_t tthashmovecode;
-    bool tthit = tp.probeHash(hash, &ttscore, &tteval, &tthashmovecode, 0, SHRT_MIN + 1, SHRT_MAX, 0);
+    bool tthit = tp.probeHash<false>(hash, &ttscore, &tteval, &tthashmovecode, 0, SHRT_MIN + 1, SHRT_MAX, 0);
     bool bSearchmoves = (en.searchmoves.size() > 0);
 
     excludemovestack[0] = 0; // FIXME: Not very nice; is it worth to do do singular testing in root search?
