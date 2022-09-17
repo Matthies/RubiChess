@@ -1023,7 +1023,7 @@ public:
     void clean();
     void addHash(U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode);
     void printHashentry(U64 hash);
-    bool probeHash(U64 hash, int *val, int *staticeval, uint16_t *movecode, int depth, int alpha, int beta, int ply);
+    int probeHash(U64 hash, int *val, int *staticeval, uint16_t *movecode, int depth, int alpha, int beta, int ply);
     uint16_t getMoveCode(U64 hash);
     unsigned int getUsedinPermill();
     void nextSearch() { numOfSearchShiftTwo = (numOfSearchShiftTwo + 4) & 0xfc; }
@@ -1616,7 +1616,7 @@ public:
     void getScaling(Materialhashentry *mhentry);
     int getComplexity(int eval, pawnhashentry *phentry, Materialhashentry *mhentry);
 
-    template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth, int inWindowLast, int maxmoveindex = 0);
+    template <RootsearchType RT> int rootsearch(int alpha, int beta, int *depth, int inWindowLast, int maxmoveindex = 0);
     template <PruneType Pt> int alphabeta(int alpha, int beta, int depth);
     template <PruneType Pt> int getQuiescence(int alpha, int beta, int depth);
     void updateHistory(uint32_t code, int value);

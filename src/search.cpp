@@ -915,8 +915,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
 
 template <RootsearchType RT>
-int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, int maxmoveindex)
+int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLast, int maxmoveindex)
 {
+    int depth = *depthptr;
     int score;
     uint16_t hashmovecode = 0;
     int bestscore = NOSCORE;
@@ -946,9 +947,10 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
     SDEBUGDO(isDebugPv, pvaborttype[1] = PVA_UNKNOWN; pvdepth[0] = depth; pvalpha[0] = alpha; pvbeta[0] = beta; pvmovenum[0] = 0; pvadditionalinfo[0] = "";);
 #endif
 
+    int newDepth;
     if (!isMultiPV
         && !useRootmoveScore
-        && tp.probeHash(hash, &score, &staticeval, &hashmovecode, depth, alpha, beta, 0))
+        && (newDepth = tp.probeHash(hash, &score, &staticeval, &hashmovecode, depth, alpha, beta, 0)))
     {
         // Hash is fixed regarding scores that don't see actual 3folds so we can trust the entry
         uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
@@ -963,6 +965,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
                 bestmovescore[0] = score;
                 SDEBUGDO(isDebugPv, pvabortscore[0] = score; if (debugMove.code == fullhashmove) pvaborttype[0] = PVA_FROMTT; else pvaborttype[0] = PVA_DIFFERENTFROMTT; );
                 SDEBUGDO(isDebugPv, pvadditionalinfo[0] = "PV = " + getPv(pvtable[0]) + "  " + tp.debugGetPv(hash, 0); );
+                *depthptr = newDepth;
                 return score;
             }
         }
@@ -1281,7 +1284,7 @@ void mainSearch(searchthread *thr)
         }
         else
         {
-            score = pos->rootsearch<RT>(alpha, beta, thr->depth, inWindow);
+            score = pos->rootsearch<RT>(alpha, beta, &thr->depth, inWindow);
 #ifdef TDEBUG
             if (en.stopLevel == ENGINESTOPIMMEDIATELY && isMainThread)
             {
