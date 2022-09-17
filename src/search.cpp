@@ -1210,7 +1210,8 @@ static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, in
     en.lastReport = msRun;
     string pvstring = pos->getPv(mpvIndex ? pos->multipvtable[mpvIndex] : pos->lastpv);
     U64 nodes = en.getTotalNodes();
-    if (msRun > 100)
+
+    if (nodes)
         thr->nps = nodes * en.frequency / (nowtime + 1 - en.thinkstarttime);  // lower resolution to avoid overflow under Linux in high performance systems
 
     if (!MATEDETECTED(score))
