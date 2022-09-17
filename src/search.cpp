@@ -1078,13 +1078,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
 
         if (CheckForImmediateStop())
             return bestscore;
-#if 0
-        if (en.stopLevel == ENGINESTOPIMMEDIATELY)
-        {
-            // time over; immediate stop requested
-            return bestscore;
-        }
-#endif
+
         if (!ISTACTICAL(m->code))
             quietMoves[0][quietsPlayed++] = m->code;
         else
