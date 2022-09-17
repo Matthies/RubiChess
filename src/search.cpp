@@ -196,7 +196,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     int hashscore = NOSCORE;
     uint16_t hashmovecode = 0;
     int staticeval = NOSCORE;
-    bool tpHit = tp.probeHash(hash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
+    bool tpHit = tp.probeHash<true>(hash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
     if (tpHit)
     {
         STATISTICSINC(qs_tt);
@@ -408,7 +408,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 #endif
 
     // TT lookup
-    bool tpHit = tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
+    bool tpHit = tp.probeHash<false>(newhash, &hashscore, &staticeval, &hashmovecode, depth, alpha, beta, ply);
     if (tpHit && !rep && !PVNode)
     {
         if (hashscore >= beta && hashmovecode && !mailbox[GETTO(hashmovecode)])
@@ -689,7 +689,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             if ((mc & 0xffff) == hashmovecode
                 && depth >= sps.singularmindepth
                 && !excludeMove
-                && tp.probeHash(newhash, &hashscore, &staticeval, &hashmovecode, depth - 3, alpha, beta, ply)  // FIXME: maybe needs hashscore = FIXMATESCOREPROBE(hashscore, ply);
+                && tp.probeHash<false>(newhash, &hashscore, &staticeval, &hashmovecode, depth - 3, alpha, beta, ply)  // FIXME: maybe needs hashscore = FIXMATESCOREPROBE(hashscore, ply);
                 && hashscore > alpha
 #ifdef NNUELEARN
                 // No singular extension in root of gensfen
@@ -950,7 +950,7 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
     int newDepth;
     if (!isMultiPV
         && !useRootmoveScore
-        && (newDepth = tp.probeHash(hash, &score, &staticeval, &hashmovecode, depth, alpha, beta, 0)))
+        && (newDepth = tp.probeHash<false>(hash, &score, &staticeval, &hashmovecode, depth, alpha, beta, 0)))
     {
         // Hash is fixed regarding scores that don't see actual 3folds so we can trust the entry
         uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
@@ -1367,7 +1367,7 @@ void mainSearch(searchthread *thr)
                 {
                     uint16_t mc = 0;
                     int dummystaticeval;
-                    tp.probeHash(pos->hash, &score, &dummystaticeval, &mc, MAXDEPTH, alpha, beta, 0);
+                    tp.probeHash<false>(pos->hash, &score, &dummystaticeval, &mc, MAXDEPTH, alpha, beta, 0);
                     pos->bestmove = pos->shortMove2FullMove(mc);
                     pos->pondermove = 0;
                 }
