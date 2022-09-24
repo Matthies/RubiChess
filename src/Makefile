@@ -44,17 +44,16 @@ ifeq ($(EXE),)
 	EXE=RubiChess
 endif
 
-CXXFLAGS=-std=c++11 -Wall -O3 -flto
+CXXFLAGS=-std=c++11 -Wall -O3 -flto -pedantic -Wextra -Wshadow
+CFLAGS=-Wall -O3 -flto -pedantic -Wextra -Wshadow
 ifneq (, $(findstring MINGW64,$(UNAME_S)))
 	# Always do a static built with Mingw
 	LDFLAGS += -static
 endif
 ifeq ($(COMP),$(filter $(COMP),gcc))
 	CXX=g++
-	CXXFLAGS += -pedantic -Wextra -Wshadow
 	# Workaround OB giving wrong CC=g++
 	MYCC=gcc
-
 	INSTRUMENTEDEXTRACXXFLAGS='-fprofile-generate=$(PROFDIR)'
 	INSTRUMENTEDEXTRALDFLAGS='-lgcov'
 	PGOEXTRACXXFLAGS='-fprofile-use=$(PROFDIR) -fno-peel-loops -fno-tracer -Wno-coverage-mismatch -fprofile-correction'
@@ -64,7 +63,6 @@ endif
 
 ifeq ($(COMP),clang)
 	CXX=clang++
-	CXXFLAGS += -pedantic -Wextra -Wshadow
 	MYCC=clang
 	LDFLAGS += $(shell type lld 1>/dev/null 2>/dev/null && echo "-fuse-ld=lld")
 	INSTRUMENTEDEXTRACXXFLAGS='-fprofile-instr-generate=$(EXE).clangprof-raw'
@@ -230,7 +228,7 @@ VERSION=$(MAJORVERSION)$(MINORVERSION)
 .PHONY: clean profile-build gcc-profile-make clang-profile-make net arch compile pgo profile-build pgo-rename release_x86 release_arm32 release_arm64 release
 
 default: net arch
-	@$(MAKE) compile MESSAGE='Creating standard build ...'
+	@$(MAKE) compile MESSAGE='Compiling standard build ...'
 
 build: default
 
@@ -268,8 +266,8 @@ ifneq ($(EVALFILE),)
 endif
 
 $(ZLIBDIR)/libz.a:
-	@echo Building zlib...
-	cd $(ZLIBDIR); $(MYCC) $(ARCHFLAGS) -w -c *.c; $(AR) rcs libz.a *.o; cd ..
+	@echo Compiling zlib...
+	@cd $(ZLIBDIR); $(MYCC) $(CFLAGS) $(ARCHFLAGS) -w -c *.c; $(AR) rcs libz.a *.o; cd ..
 
 compile: $(ZLIBDIR)/libz.a
 	@echo $(MESSAGE)
@@ -288,11 +286,11 @@ profileclean: libclean
 clean: objclean profileclean
 
 pgo: arch
-	@$(MAKE) compile EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Creating instrumented build ...'
-	@./$(PROFEXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo "Running bench to generate profiling data... successful!") || (echo "Running bench to generate profiling data... failed! Profiling with native build..." && $(MAKE) profileclean && $(MAKE) compile ARCH=native EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Creating instrumented build ...' && ./$(PROFEXE) -bench 1>/dev/null)
+	@$(MAKE) compile EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Compiling instrumented build ...'
+	@./$(PROFEXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo "Running bench to generate profiling data... successful!") || (echo "Running bench to generate profiling data... failed! Profiling with native build..." && $(MAKE) profileclean && $(MAKE) compile ARCH=native EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Compiling instrumented build ...' && ./$(PROFEXE) -bench 1>/dev/null)
 	@$(PROFMERGE)
 	@$(RM) ./$(PROFEXE)
-	@$(MAKE) compile EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS=$(PGOEXTRALDFLAGS) MESSAGE='Creating optimized build ...'
+	@$(MAKE) compile EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS=$(PGOEXTRALDFLAGS) MESSAGE='Compiling optimized build ...'
 	@$(MAKE) profileclean
 	@strip $(EXE)$(EXEEXT)
 	@echo Binary $(EXE) created successfully.

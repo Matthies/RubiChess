@@ -177,7 +177,6 @@ printarch: cpuflags
 buildandarch: printarch compile
 
 $(ZLIBDIR)\zlib.lib:
-	@echo Building zlib...
 	@cd $(ZLIBDIR)
 	@$(CXX) $(CXXFLAGS) $(ARCHFLAGS) -w /c *.c
 	@$(LD) /lib /OUT:zlib.lib $(OBJ)
@@ -205,13 +204,13 @@ compile: $(RELDIR) $(ZLIBDIR)\zlib.lib
 !ENDIF
 
 pgo: printarch
-	@echo Creating instrumented binary...
+	@echo Compiling instrumented binary...
 	@nmake -c -f Makefile.clang compile ARCH=$(ARCH) PROFILEFLAGS=-fprofile-instr-generate=$(PROFEXE).clangprof-raw PROFLIB="$(LLVMInstallDir)\lib\clang\$(CLANGVER).0.0\lib\windows\clang_rt.profile-x86_64.lib"
 	@echo Bench to generate profiling data...
 	@($(PROFEXE) -bench >nul || (if exist $(SDE) ( @echo Using Intels Software Development Emulator... && $(SDE) -- $(PROFEXE) -bench >nul) else (@echo Intels Software Development Emulator needed but not found at $(SDE). Performance will be poor.)))
 	@$(PROFDATATOOLEXE) merge -output=$(PROFEXE).clangprof $(PROFEXE).clangprof-raw
 	@echo.
-	@echo Creating optimized binary...
+	@echo Compiling optimized binary...
 	@nmake -c -f Makefile.clang compile ARCH=$(ARCH) PROFILEFLAGS=-fprofile-instr-use=$(PROFEXE).clangprof
 
 profile-build: cpuflags
@@ -220,11 +219,11 @@ profile-build: cpuflags
 
 pgo-rename: printarch pgo
 	@move $(RELDIR)\$(EXE).exe $(RELDIR)\$(EXE)-$(VERSION)_$(ARCH).exe 1>nul
-	@echo Successfully created $(EXE)-$(VERSION)_$(ARCH)
+	@echo Successfully built $(EXE)-$(VERSION)_$(ARCH)
 
 build-rename: build
 	@move $(RELDIR)\$(EXE).exe $(RELDIR)\$(EXE)-$(VERSION)_$(ARCH).exe 1>nul
-	@echo Successfully created $(EXE)-$(VERSION)_$(ARCH)
+	@echo Successfully built $(EXE)-$(VERSION)_$(ARCH)
 
 releaseversion:
 	@echo Version: $(VERSION)
@@ -260,9 +259,8 @@ release-arm64:
 lib-clean:
 	@del $(ZLIBDIR)\*.obj 2>nul
 	@del $(ZLIBDIR)\zlib.lib 2>nul
-	@echo Lib deleted
 
-profile-clean:
+profile-clean: lib-clean
 	@del $(PROFEXE)* 2>nul
 	@del *.obj 2>nul
 	@del $(NATIVEFLAGS) 2>nul
