@@ -90,13 +90,10 @@ ifeq ($(shell uname -m),x86_64)
 	ARCHFAMILY=x86
 endif
 
-internalzlib = $(shell (test -f zlib/libz.a || (cd zlib && $(MYCC) -w -c *.c && $(AR) rcs libz.a *.o && cd ..)) && echo "internal")
-ifeq ($(internalzlib),internal)
-	CXXFLAGS += -Izlib
-	LDFLAGS += -Lzlib
-	zlib = yes
-endif
-
+ZLIBDIR=zlib
+CXXFLAGS += -Izlib
+LDFLAGS += -Lzlib
+zlib = yes
 
 ifeq (,$(CPUFLAGS))
 ifeq ($(ARCH),native)
@@ -236,7 +233,7 @@ default: net arch
 
 build: default
 
-arch:
+arch: libclean
 	@echo
 	@echo "Compiler: $(COMP)"
 	@echo "Arch: $(ARCH)"
@@ -251,7 +248,7 @@ arch:
 	@echo "ssse3 : $(ssse3)"
 	@echo "sse2  : $(sse2)"
 	@echo "neon  : $(neon)"
-	@echo "zlib  : $(zlib) $(internalzlib)"
+	@echo "zlib  : $(zlib)"
 
 net:
 ifeq ($(EVALFILE),$(filter $(EVALFILE),default))
@@ -269,14 +266,21 @@ ifneq ($(EVALFILE),)
 		@ld -r -b binary $(NETBIN) -o $(NETOBJ)
 endif
 
-compile:
+$(ZLIBDIR)/libz.a:
+	@echo Building zlib...
+	@cd $(ZLIBDIR); $(MYCC) $(CXXFLAGS) -w -c *.c; $(AR) rcs libz.a *.o; cd ..
+
+compile: $(ZLIBDIR)/libz.a
 	@echo $(MESSAGE)
 	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) *.cpp $(LDFLAGS) $(PTHREADLIB) $(EXTRALDFLAGS) $(GITDEFINE) $(NETDEF) $(NETOBJ) -o $(EXE)
 
 objclean:
-	@$(RM) $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(PROFEXE) *.o zlib/*.o zlib/*.a $(CPUTEST) $(NETBIN) || @echo $(RM) not available.
+	@$(RM) $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(PROFEXE) $(CPUTEST) $(NETBIN) || @echo $(RM) not available.
 
-profileclean:
+libclean:
+	@$(RM) *.o zlib/*.o zlib/*.a || @echo $(RM) not available.
+
+profileclean: libclean
 	@$(RM) -rf $(PROFDIR) || @echo $(RM) not available.
 	@$(RM) *.clangprof-raw *.profdata || @echo $(RM) not available.
 

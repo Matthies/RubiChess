@@ -88,7 +88,7 @@ nativeflags:
 	-@del $(NATIVEFLAGS) 2>nul
 !ENDIF
 
-cpuflags: nativeflags
+cpuflags: nativeflags lib-clean
 !IF "$(ARCH)" == "x86-64-avx512"
 CPUFLAGS=avx512 bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2
 !ELSEIF "$(ARCH)" == "x86-64-bmi2"
@@ -257,14 +257,17 @@ release:
 release-arm64:
 	@nmake -c -f Makefile.clang build-rename ARCH=arm64-neon
 
+lib-clean:
+	@del $(ZLIBDIR)\*.obj 2>nul
+	@del $(ZLIBDIR)\zlib.lib 2>nul
+	@echo Lib deleted
+
 profile-clean:
 	@del $(PROFEXE)* 2>nul
 	@del *.obj 2>nul
-	@del $(ZLIBDIR)\*.obj 2>nul
-	@del $(ZLIBDIR)\zlib.lib 2>nul
 	@del $(NATIVEFLAGS) 2>nul
 
-clean: profile-clean
+clean: profile-clean lib-clean
 	@del $(RELDIR)\$(EXE).exe 2>nul
 	@del $(CPUTEST).exe 2>nul
 	@set RUBINET=
