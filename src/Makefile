@@ -159,29 +159,30 @@ ifneq (,$(findstring neon,$(CPUFLAGS)))
 	neon = yes
 endif
 
+ARCHFLAGS=
 ifeq ($(avx512),yes)
-	CXXFLAGS += -DUSE_AVX512 -mavx512f -mavx512bw
+	ARCHFLAGS += -DUSE_AVX512 -mavx512f -mavx512bw
 endif
 ifeq ($(bmi2),yes)
-	CXXFLAGS += -DUSE_BMI2 -mbmi2
+	ARCHFLAGS += -DUSE_BMI2 -mbmi2
 endif
 ifeq ($(avx2),yes)
-	CXXFLAGS += -DUSE_AVX2 -mavx2
+	ARCHFLAGS += -DUSE_AVX2 -mavx2
 endif
 ifeq ($(bmi1)$(lzcnt),yesyes)
-	CXXFLAGS += -DUSE_BMI1 -mbmi -mlzcnt
+	ARCHFLAGS += -DUSE_BMI1 -mbmi -mlzcnt
 endif
 ifeq ($(popcnt),yes)
-	CXXFLAGS += -DUSE_POPCNT -mpopcnt -msse3
+	ARCHFLAGS += -DUSE_POPCNT -mpopcnt -msse3
 endif
 ifeq ($(ssse3),yes)
-	CXXFLAGS += -DUSE_SSSE3 -mssse3
+	ARCHFLAGS += -DUSE_SSSE3 -mssse3
 endif
 ifeq ($(sse2),yes)
-	CXXFLAGS += -DUSE_SSE2 -msse2
+	ARCHFLAGS += -DUSE_SSE2 -msse2
 endif
 ifeq ($(neon),yes)
-	CXXFLAGS += -DUSE_NEON
+	ARCHFLAGS += -DUSE_NEON
 endif
 ifeq ($(zlib),yes)
 	CXXFLAGS += -DUSE_ZLIB
@@ -268,11 +269,11 @@ endif
 
 $(ZLIBDIR)/libz.a:
 	@echo Building zlib...
-	@cd $(ZLIBDIR); $(MYCC) $(CXXFLAGS) -w -c *.c; $(AR) rcs libz.a *.o; cd ..
+	cd $(ZLIBDIR); $(MYCC) $(ARCHFLAGS) -w -c *.c; $(AR) rcs libz.a *.o; cd ..
 
 compile: $(ZLIBDIR)/libz.a
 	@echo $(MESSAGE)
-	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) *.cpp $(LDFLAGS) $(PTHREADLIB) $(EXTRALDFLAGS) $(GITDEFINE) $(NETDEF) $(NETOBJ) -o $(EXE)
+	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(LDFLAGS) $(PTHREADLIB) $(EXTRALDFLAGS) $(GITDEFINE) $(NETDEF) $(NETOBJ) -o $(EXE)
 
 objclean:
 	@$(RM) $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(PROFEXE) $(CPUTEST) $(NETBIN) || @echo $(RM) not available.
