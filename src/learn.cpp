@@ -1852,7 +1852,7 @@ void convert(vector<string> args)
 
     if (!conv.okay)
         cerr << endl << "An error occured while reading input data." << endl;
-    cerr << endl << "Finished converting. " << conv.numPositions << " positions found." << endl;
+    cerr << endl << "Finished converting " << inputfile << ". " << conv.numPositions << " positions found." << endl;
     if (conv.numOutChunks)
         cerr << "Chunks written:  " << conv.chunksWritten << endl << "Last read chunk: " << conv.numInChunks << endl;
 }
