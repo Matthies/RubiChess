@@ -1682,7 +1682,7 @@ static void convertthread(searchthread* thr, conversion_t* cv)
 
                 outbp.fullmove = move;
             }
-            else // outformat == plain
+            else if (cv->outformat == plain)
             {
                 cv->mtout.lock();
                 *cv->os << "fen " << pos->toFen() << endl;
@@ -1730,7 +1730,7 @@ static void convertthread(searchthread* thr, conversion_t* cv)
 void convert(vector<string> args)
 {
     string inputfile;
-    string outputfile;
+    string outputfile = "";
     size_t cs = args.size();
     size_t ci = 0;
 
