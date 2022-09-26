@@ -1716,6 +1716,9 @@ static void convertthread(searchthread* thr, conversion_t* cv)
         }
         cv->numOutChunks++;
     }
+
+    inpos->pwnhsh.remove();
+    inpos->mtrlhsh.remove();
     freealigned64(buffer);
     if (outbuffer)
         freealigned64(outbuffer);
