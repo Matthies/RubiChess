@@ -274,10 +274,10 @@ compile: $(ZLIBDIR)/libz.a
 	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(LDFLAGS) $(PTHREADLIB) $(EXTRALDFLAGS) $(GITDEFINE) $(NETDEF) $(NETOBJ) -o $(EXE)
 
 objclean:
-	@$(RM) $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(PROFEXE) $(CPUTEST) $(NETBIN) || @echo $(RM) not available.
+	@$(RM) *.o $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(PROFEXE) $(CPUTEST) $(NETBIN) || @echo $(RM) not available.
 
 libclean:
-	@$(RM) *.o zlib/*.o zlib/*.a || @echo $(RM) not available.
+	@$(RM) zlib/*.o zlib/*.a || @echo $(RM) not available.
 
 profileclean: libclean
 	@$(RM) -rf $(PROFDIR) || @echo $(RM) not available.
