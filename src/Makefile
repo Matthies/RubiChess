@@ -45,7 +45,7 @@ ifeq ($(EXE),)
 endif
 
 CXXFLAGS=-std=c++11 -Wall -O3 -flto -pedantic -Wextra -Wshadow
-CFLAGS=-Wall -O3 -flto -pedantic -Wextra -Wshadow
+CFLAGS=-Wall -O3 -pedantic -Wextra -Wshadow
 ifneq (, $(findstring MINGW64,$(UNAME_S)))
 	# Always do a static built with Mingw
 	LDFLAGS += -static
