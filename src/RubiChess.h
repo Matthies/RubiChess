@@ -2068,7 +2068,6 @@ struct searchparamset {
     searchparam SP(razormargin, 250);
     searchparam SP(razordepthfactor, 50);
     //futility pruning
-    searchparam SP(futilitymindepth, 8);
     searchparam SP(futilityreversedepthfactor, 70);
     searchparam SP(futilityreverseimproved, 20);
     searchparam SP(futilitymargin, 10);
@@ -2090,7 +2089,6 @@ struct searchparamset {
     // No hashmovereduction
     searchparam SP(nohashreductionmindepth, 3);
     // SEE prune
-    searchparam SP(seeprunemaxdepth, 8);
     searchparam SP(seeprunemarginperdepth, -20);
     searchparam SP(seeprunequietfactor, 4);
     // Singular extension

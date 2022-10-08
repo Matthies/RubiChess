@@ -23,9 +23,9 @@ statistic statistics;
 #endif
 
 
-#define MAXLMPDEPTH 9
+#define MAXPRUNINGDEPTH 8
 int reductiontable[2][MAXDEPTH][64];
-int lmptable[2][MAXLMPDEPTH];
+int lmptable[2][MAXPRUNINGDEPTH + 1];
 
 // Shameless copy of Ethereal/Laser for now; may be improved/changed in the future
 static const int SkipSize[16] = { 1, 1, 1, 2, 2, 2, 1, 3, 2, 2, 1, 3, 3, 2, 2, 1 };
@@ -42,7 +42,7 @@ void searchtableinit()
             // reduction for improving positions
             reductiontable[1][d][m] = (int)round(log(d * (sps.lmrlogf1 / 100.0)) * log(m * 2) * (sps.lmrf1 / 100.0));
         }
-    for (int d = 0; d < MAXLMPDEPTH; d++)
+    for (int d = 0; d <= MAXPRUNINGDEPTH; d++)
     {
         // lmp for not improving positions
         lmptable[0][d] = (int)(2.5 + (sps.lmpf0 / 100.0) * round(pow(d, sps.lmppow0 / 100.0)));
@@ -524,7 +524,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
 
     // futility pruning
     bool futility = false;
-    if (Pt != NoPrune && depth <= sps.futilitymindepth)
+    if (Pt != NoPrune && depth <= MAXPRUNINGDEPTH)
     {
         // reverse futility pruning
         if (!isCheckbb && POPCOUNT(threats) < 2 && staticeval - depth * (sps.futilityreversedepthfactor - sps.futilityreverseimproved * positionImproved) > beta)
@@ -639,40 +639,37 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if ((mc & 0xffff) == excludeMove)
             continue;
 
-        // Late move pruning
-        if (Pt != NoPrune
-            && depth < MAXLMPDEPTH
-            && !ISTACTICAL(mc)
-            && bestscore > -SCORETBWININMAXPLY
-            && quietsPlayed > lmptable[positionImproved][depth])
+        if (Pt != NoPrune && depth <= MAXPRUNINGDEPTH && bestscore > -SCORETBWININMAXPLY)
         {
-            // Proceed to next moveselector state manually to save some time
-            ms->state++;
-            STATISTICSINC(moves_pruned_lmp);
-            SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_LMPRUNED;);
-            continue;
-        }
+            // Late move pruning
+            if (!ISTACTICAL(mc)
+                && quietsPlayed > lmptable[positionImproved][depth])
+            {
+                // Proceed to next moveselector state manually to save some time
+                ms->state++;
+                STATISTICSINC(moves_pruned_lmp);
+                SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_LMPRUNED;);
+                continue;
+            }
 
-        // Check for futility pruning condition for this move and skip move if at least one legal move is already found
-        bool futilityPrune = futility && !ISTACTICAL(mc) && !isCheckbb && alpha <= 900 && !moveGivesCheck(mc);
-        if (futilityPrune && legalMoves)
-        {
-            STATISTICSINC(moves_pruned_futility);
-            SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_FUTILITYPRUNED;);
-            continue;
-        }
+            // Check for futility pruning condition for this move and skip move if at least one legal move is already found
+            bool futilityPrune = futility && !ISTACTICAL(mc) && !isCheckbb && !moveGivesCheck(mc);
+            if (futilityPrune && legalMoves)
+            {
+                STATISTICSINC(moves_pruned_futility);
+                SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_FUTILITYPRUNED;);
+                continue;
+            }
 
-        // Prune moves with bad SEE
-        if (Pt != NoPrune
-            && !isCheckbb
-            && depth <= sps.seeprunemaxdepth
-            && bestscore > -SCORETBWININMAXPLY
-            && ms->state >= QUIETSTATE
-            && !see(mc, sps.seeprunemarginperdepth * depth * (ISTACTICAL(mc) ? depth : sps.seeprunequietfactor)))
-        {
-            STATISTICSINC(moves_pruned_badsee);
-            SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_SEEPRUNED;);
-            continue;
+            // Prune moves with bad SEE
+            if (!isCheckbb
+                && ms->state >= QUIETSTATE
+                && !see(mc, sps.seeprunemarginperdepth * depth * (ISTACTICAL(mc) ? depth : sps.seeprunequietfactor)))
+            {
+                STATISTICSINC(moves_pruned_badsee);
+                SDEBUGDO(isDebugMove, pvaborttype[ply] = PVA_SEEPRUNED;);
+                continue;
+            }
         }
 
         // early prefetch of the next tt entry; valid for normal moves
@@ -1240,7 +1237,7 @@ void mainSearch(searchthread *thr)
     int delta = 8;
     int maxdepth;
     int inWindow = 1;
-    bool reportedThisDepth = false;
+    bool uciNeedsReport = true;
 
 #ifdef TDEBUG
     en.bStopCount = false;
@@ -1306,7 +1303,6 @@ void mainSearch(searchthread *thr)
                 alpha = max(SCOREBLACKWINS, alpha - delta);
                 delta = min(SCOREWHITEWINS, delta + delta / sps.aspincratio + sps.aspincbase);
                 inWindow = 0;
-                reportedThisDepth = false;
             }
             else if (score == beta)
             {
@@ -1314,11 +1310,12 @@ void mainSearch(searchthread *thr)
                 beta = min(SCOREWHITEWINS, beta + delta);
                 delta = min(SCOREWHITEWINS, delta + delta / sps.aspincratio + sps.aspincbase);
                 inWindow = 2;
-                reportedThisDepth = false;
+                uciNeedsReport = true;
             }
             else
             {
                 inWindow = 1;
+                uciNeedsReport = true;
                 thr->lastCompleteDepth = thr->depth;
                 if (thr->depth > 4 && !isMultiPV) {
                     // next depth with new aspiration window
@@ -1328,6 +1325,14 @@ void mainSearch(searchthread *thr)
                 }
             }
         }
+
+        // exit if STOPIMMEDIATELY
+        if (en.stopLevel == ENGINESTOPIMMEDIATELY)
+            break;
+
+        // exit when max nodes reached
+        if (en.maxnodes && pos->nodes >= en.maxnodes)
+            break;
 
         if (pos->pvtable[0][0])
         {
@@ -1394,8 +1399,10 @@ void mainSearch(searchthread *thr)
                         score = pos->bestmovescore[0] = tbScore;
                 }
 
-                if (en.pondersearch != PONDERING || thr->depth < maxdepth)
+                if (en.pondersearch != PONDERING || thr->depth < maxdepth) {
                     uciScore(thr, inWindow, nowtime, inWindow == 1 ? pos->bestmovescore[0] : score);
+                    uciNeedsReport = false;
+                }
             }
         }
         if (inWindow == 1)
@@ -1417,17 +1424,8 @@ void mainSearch(searchthread *thr)
 
             thr->depth++;
             if (en.pondersearch == PONDERING && thr->depth > maxdepth) thr->depth--;  // stay on maxdepth when pondering
-            reportedThisDepth = true;
             constantRootMoves++;
         }
-
-        // exit if STOPIMMEDIATELY
-        if (en.stopLevel == ENGINESTOPIMMEDIATELY)
-            break;
-
-        // exit when max nodes reached
-        if (en.maxnodes && pos->nodes >= en.maxnodes)
-            break;
 
         if (isMainThread)
         {
@@ -1525,7 +1523,7 @@ void mainSearch(searchthread *thr)
         // remember score for next search in case of an instamove
         en.rootposition.lastbestmovescore = pos->bestmovescore[0];
 
-        if (!reportedThisDepth || bestthr->index)
+        if (uciNeedsReport || bestthr->index)
             uciScore(thr, inWindow, getTime(), inWindow == 1 ? pos->bestmovescore[0] : score);
 
         string strBestmove;
