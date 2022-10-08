@@ -1237,7 +1237,7 @@ void mainSearch(searchthread *thr)
     int delta = 8;
     int maxdepth;
     int inWindow = 1;
-    bool reportedThisDepth = false;
+    bool uciNeedsReport = true;
 
 #ifdef TDEBUG
     en.bStopCount = false;
@@ -1303,7 +1303,6 @@ void mainSearch(searchthread *thr)
                 alpha = max(SCOREBLACKWINS, alpha - delta);
                 delta = min(SCOREWHITEWINS, delta + delta / sps.aspincratio + sps.aspincbase);
                 inWindow = 0;
-                reportedThisDepth = false;
             }
             else if (score == beta)
             {
@@ -1311,11 +1310,12 @@ void mainSearch(searchthread *thr)
                 beta = min(SCOREWHITEWINS, beta + delta);
                 delta = min(SCOREWHITEWINS, delta + delta / sps.aspincratio + sps.aspincbase);
                 inWindow = 2;
-                reportedThisDepth = false;
+                uciNeedsReport = true;
             }
             else
             {
                 inWindow = 1;
+                uciNeedsReport = true;
                 thr->lastCompleteDepth = thr->depth;
                 if (thr->depth > 4 && !isMultiPV) {
                     // next depth with new aspiration window
@@ -1325,6 +1325,14 @@ void mainSearch(searchthread *thr)
                 }
             }
         }
+
+        // exit if STOPIMMEDIATELY
+        if (en.stopLevel == ENGINESTOPIMMEDIATELY)
+            break;
+
+        // exit when max nodes reached
+        if (en.maxnodes && pos->nodes >= en.maxnodes)
+            break;
 
         if (pos->pvtable[0][0])
         {
@@ -1391,8 +1399,10 @@ void mainSearch(searchthread *thr)
                         score = pos->bestmovescore[0] = tbScore;
                 }
 
-                if (en.pondersearch != PONDERING || thr->depth < maxdepth)
+                if (en.pondersearch != PONDERING || thr->depth < maxdepth) {
                     uciScore(thr, inWindow, nowtime, inWindow == 1 ? pos->bestmovescore[0] : score);
+                    uciNeedsReport = false;
+                }
             }
         }
         if (inWindow == 1)
@@ -1414,17 +1424,8 @@ void mainSearch(searchthread *thr)
 
             thr->depth++;
             if (en.pondersearch == PONDERING && thr->depth > maxdepth) thr->depth--;  // stay on maxdepth when pondering
-            reportedThisDepth = true;
             constantRootMoves++;
         }
-
-        // exit if STOPIMMEDIATELY
-        if (en.stopLevel == ENGINESTOPIMMEDIATELY)
-            break;
-
-        // exit when max nodes reached
-        if (en.maxnodes && pos->nodes >= en.maxnodes)
-            break;
 
         if (isMainThread)
         {
@@ -1522,7 +1523,7 @@ void mainSearch(searchthread *thr)
         // remember score for next search in case of an instamove
         en.rootposition.lastbestmovescore = pos->bestmovescore[0];
 
-        if (!reportedThisDepth || bestthr->index)
+        if (uciNeedsReport || bestthr->index)
             uciScore(thr, inWindow, getTime(), inWindow == 1 ? pos->bestmovescore[0] : score);
 
         string strBestmove;
