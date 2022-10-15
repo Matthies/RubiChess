@@ -1364,8 +1364,10 @@ void mainSearch(searchthread *thr)
                     break;
 
                 int maxmoveindex = min(en.MultiPV, pos->rootmovelist.length);
-                for (int i = 0; i < maxmoveindex; i++)
+                for (int i = 0; i < maxmoveindex; i++) {
                     uciScore(thr, inWindow, nowtime, pos->bestmovescore[i], i);
+                    uciNeedsReport = false;
+                }
             }
             else {
                 // The only two cases that bestmove is not set can happen if alphabeta hit the TP table or we are in TB
