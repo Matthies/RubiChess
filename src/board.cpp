@@ -644,26 +644,6 @@ alignas(64) SMagic mRookTbl[64];
 
 
 
-U64 patternToMask(int i, int d, int p)
-{
-    U64 occ = 0ULL;
-    int j = i;
-    // run to lower border
-    while (ISNEIGHBOUR(j, j - d)) j -= d;
-    while (p)
-    {
-        // loop steps to upper border
-        if (p & 1)
-            occ |= (1ULL << j);
-        p >>= 1;
-        if (!ISNEIGHBOUR(j, j + d))
-            p = 0;
-        j += d;
-    }
-    return occ;
-}
-
-
 U64 getAttacks(int index, U64 occ, int delta)
 {
     U64 attacks = 0ULL;
@@ -695,16 +675,7 @@ U64 getOccupiedFromMBIndex(int j, U64 mask)
     return occ;
 }
 
-#if 0  // Code to generate magics below, don't remove
-U64 getMagicCandidate(U64 mask)
-{
-    U64 magic;
-    do {
-        magic = zb.getRnd() & zb.getRnd() & zb.getRnd();
-    } while (POPCOUNT((mask * magic) & 0xFF00000000000000ULL) < 6);
-    return magic;
-}
-#endif
+
 
 // Use precalculated macigs for better to save time at startup
 const U64 bishopmagics[] = {
