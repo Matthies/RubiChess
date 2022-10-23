@@ -699,7 +699,7 @@ static uint64 encode_pawn(struct TBEntry_pawn *ptr, ubyte *norm, int *pos, uint6
   return idx;
 }
 
-static ubyte decompress_pairs(struct PairsData *d, uint64 index);
+static ubyte* decompress_pairs(struct PairsData *d, uint64 index);
 
 // place k like pieces on n squares
 static int subfactor(int k, int n)
@@ -902,6 +902,9 @@ static struct PairsData *setup_pairs(unsigned char *data, uint64 tb_size, uint64
       d->min_len = 0;
     *next = data + 2;
     size[0] = size[1] = size[2] = 0;
+    d->constValue[0] = wdl ? data[1] : 0;
+    d->constValue[1] = 0;
+
     return d;
   }
 
@@ -967,6 +970,7 @@ static int init_table_wdl(struct TBEntry *entry, char *str)
   }
 
   ubyte *data = (ubyte *)entry->data;
+  printf("data set wdl\n");
   if (((uint32 *)data)[0] != WDL_MAGIC) {
     printf("Corrupted table.\n");
     unmap_file(entry->data, entry->mapping);
@@ -977,42 +981,56 @@ static int init_table_wdl(struct TBEntry *entry, char *str)
   int split = data[4] & 0x01;
   int files = data[4] & 0x02 ? 4 : 1;
 
+  printf("datastep_wdl (header): %x\n", 5); 
   data += 5;
 
   if (!entry->has_pawns) {
     struct TBEntry_piece *ptr = (struct TBEntry_piece *)entry;
     setup_pieces_piece(ptr, data, &tb_size[0]);
+    printf("datastep_wdl (num+1): %x\n", ptr->num + 1); 
     data += ptr->num + 1;
+    printf("datastep_wdl (mod 2): %llx\n", ((uintptr_t)data) & 0x01); 
     data += ((uintptr_t)data) & 0x01;
 
     ptr->precomp[0] = setup_pairs(data, tb_size[0], &size[0], &next, &flags, 1);
+    printf("datastep_wdl (setup_pairs): %llx\n", next - data); 
     data = next;
     if (split) {
       ptr->precomp[1] = setup_pairs(data, tb_size[1], &size[3], &next, &flags, 1);
+      printf("datastep_wdl (setup_pairs): %llx\n", next - data); 
       data = next;
     } else
       ptr->precomp[1] = NULL;
 
     ptr->precomp[0]->indextable = (char *)data;
+    printf("ptr->precomp[0]->indextable[0]: %02x\n", ptr->precomp[0]->indextable[0]); 
     data += size[0];
+    printf("datastep_wdl (size_0): %llx\n", size[0]); 
     if (split) {
       ptr->precomp[1]->indextable = (char *)data;
+      printf("ptr->precomp[1]->indextable[0]: %02x\n", ptr->precomp[1]->indextable[0]);
+      printf("datastep_wdl (size_3): %llx\n", size[3]); 
       data += size[3];
     }
 
     ptr->precomp[0]->sizetable = (ushort *)data;
+    printf("datastep_wdl (size_1): %llx\n", size[1]); 
     data += size[1];
     if (split) {
       ptr->precomp[1]->sizetable = (ushort *)data;
+      printf("datastep_wdl (size_4): %llx\n", size[4]); 
       data += size[4];
     }
 
+    printf("datastep_wdl (mod 0x40): %llx\n", (ubyte*)((((uintptr_t)data) + 0x3f) & ~0x3f) - data); 
     data = (ubyte *)((((uintptr_t)data) + 0x3f) & ~0x3f);
     ptr->precomp[0]->data = data;
+    printf("datastep_wdl (size_2): %llx\n", size[2]); 
     data += size[2];
     if (split) {
-      data = (ubyte *)((((uintptr_t)data) + 0x3f) & ~0x3f);
-      ptr->precomp[1]->data = data;
+        printf("datastep_wdl (mod 0x40): %llx\n", (ubyte*)((((uintptr_t)data) + 0x3f) & ~0x3f) - data);
+        data = (ubyte*)((((uintptr_t)data) + 0x3f) & ~0x3f);
+        ptr->precomp[1]->data = data;
     }
   } else {
     struct TBEntry_pawn *ptr = (struct TBEntry_pawn *)entry;
@@ -1069,6 +1087,7 @@ static int init_table_wdl(struct TBEntry *entry, char *str)
 static int init_table_dtz(struct TBEntry *entry)
 {
   ubyte *data = (ubyte *)entry->data;
+  printf("data set dtz\n"); 
   ubyte *next;
   int f, s;
   uint64 tb_size[4];
@@ -1084,109 +1103,135 @@ static int init_table_dtz(struct TBEntry *entry)
 
   int files = data[4] & 0x02 ? 4 : 1;
 
+  printf("datastep_dtz (header): %x\n", 5); 
   data += 5;
 
   if (!entry->has_pawns) {
-    struct DTZEntry_piece *ptr = (struct DTZEntry_piece *)entry;
-    setup_pieces_piece_dtz(ptr, data, &tb_size[0]);
-    data += ptr->num + 1;
-    data += ((uintptr_t)data) & 0x01;
-
-    ptr->precomp = setup_pairs(data, tb_size[0], &size[0], &next, &(ptr->flags), 0);
-    data = next;
-
-    ptr->map = data;
-    if (ptr->flags & 2) {
-      int i;
-      if (!(ptr->flags & 16)) {
-          for (i = 0; i < 4; i++) {
-              ptr->map_idx[i] = (ushort)(data + 1 - ptr->map);
-              data += 1 + data[0];
-          }
-      }
-      else {
-          data += (uintptr_t)data & 0x01;
-          for (i = 0; i < 4; i++) {
-              ptr->map_idx[i] = (ushort)(data + 1 - ptr->map);
-              data += 2 + 2 * *(uint16_t*)(data);
-          }
-      }
+      struct DTZEntry_piece* ptr = (struct DTZEntry_piece*)entry;
+      setup_pieces_piece_dtz(ptr, data, &tb_size[0]);
+      printf("datastep_dtz (num+1): %x\n", ptr->num + 1);
+      data += ptr->num + 1;
+      printf("datastep_dtz (mod 2): %llx\n", ((uintptr_t)data) & 0x01);
       data += ((uintptr_t)data) & 0x01;
-    }
 
-    ptr->precomp->indextable = (char *)data;
-    data += size[0];
-
-    ptr->precomp->sizetable = (ushort *)data;
-    data += size[1];
-
-    data = (ubyte *)((((uintptr_t)data) + 0x3f) & ~0x3f);
-    ptr->precomp->data = data;
-    data += size[2];
-  } else {
-    struct DTZEntry_pawn *ptr = (struct DTZEntry_pawn *)entry;
-    s = 1 + (ptr->pawns[1] > 0);
-    for (f = 0; f < 4; f++) {
-      setup_pieces_pawn_dtz(ptr, data, &tb_size[f], f);
-      data += ptr->num + s;
-    }
-    data += ((uintptr_t)data) & 0x01;
-
-    for (f = 0; f < files; f++) {
-      ptr->file[f].precomp = setup_pairs(data, tb_size[f], &size[3 * f], &next, &(ptr->flags[f]), 0);
+      ptr->precomp = setup_pairs(data, tb_size[0], &size[0], &next, &(ptr->flags), 0);
+      printf("datastep_dtz (setup_pairs): %llx\n", next - data);
       data = next;
-    }
 
-    ptr->map = data;
-    for (f = 0; f < files; f++) {
-      if (ptr->flags[f] & 2) {
+      ptr->map = data;
+      if (ptr->flags & 2) {
           int i;
-          if (!(ptr->flags[f] & 16)) {
+          if (!(ptr->flags & 16)) {
               for (i = 0; i < 4; i++) {
-                  ptr->map_idx[f][i] = (ushort)(data + 1 - ptr->map);
+                  ptr->map_idx[i] = (ushort)(data + 1 - ptr->map);
+                  printf("datastep_dtz (1+data0): %x\n", 1 + data[0]);
                   data += 1 + data[0];
               }
           }
           else {
+              printf("datastep_dtz (mod 2): %llx\n", ((uintptr_t)data) & 0x01);
               data += (uintptr_t)data & 0x01;
               for (i = 0; i < 4; i++) {
-                  ptr->map_idx[f][i] = (ushort)(data + 1 - ptr->map);
+                  ptr->map_idx[i] = (ushort)(data + 1 - ptr->map);
+                  printf("datastep_dtz (2+2*data0): %x\n", 2 + 2 * *(uint16_t*)(data));
                   data += 2 + 2 * *(uint16_t*)(data);
               }
           }
+          printf("datastep_dtz (mod 2): %llx\n", ((uintptr_t)data) & 0x01);
+          data += ((uintptr_t)data) & 0x01;
       }
-    }
-    data += ((uintptr_t)data) & 0x01;
 
-    for (f = 0; f < files; f++) {
-      ptr->file[f].precomp->indextable = (char *)data;
-      data += size[3 * f];
-    }
+      ptr->precomp->indextable = (char*)data;
+      printf("ptr->precomp->indextable[0]: %02x\n", ptr->precomp->indextable[0]);
+      printf("datastep_dtz (size0): %llx\n", size[0]);
+      data += size[0];
 
-    for (f = 0; f < files; f++) {
-      ptr->file[f].precomp->sizetable = (ushort *)data;
-      data += size[3 * f + 1];
-    }
+      ptr->precomp->sizetable = (ushort*)data;
+      printf("datastep_dtz (size1): %llx\n", size[1]);
+      data += size[1];
 
-    for (f = 0; f < files; f++) {
-      data = (ubyte *)((((uintptr_t)data) + 0x3f) & ~0x3f);
-      ptr->file[f].precomp->data = data;
-      data += size[3 * f + 2];
-    }
+      printf("datastep_dtz (mod 0x40): %llx\n", (ubyte*)((((uintptr_t)data) + 0x3f) & ~0x3f) - data); data = (ubyte*)((((uintptr_t)data) + 0x3f) & ~0x3f);
+      ptr->precomp->data = data;
+      printf("datastep_dtz (size2): %llx\n", size[2]);
+      data += size[2];
+  } else {
+      struct DTZEntry_pawn* ptr = (struct DTZEntry_pawn*)entry;
+      s = 1 + (ptr->pawns[1] > 0);
+      for (f = 0; f < 4; f++) {
+          setup_pieces_pawn_dtz(ptr, data, &tb_size[f], f);
+          data += ptr->num + s;
+      }
+      data += ((uintptr_t)data) & 0x01;
+
+      for (f = 0; f < files; f++) {
+          ptr->file[f].precomp = setup_pairs(data, tb_size[f], &size[3 * f], &next, &(ptr->flags[f]), 0);
+          data = next;
+      }
+
+      ptr->map = data;
+      for (f = 0; f < files; f++) {
+          if (ptr->flags[f] & 2) {
+              int i;
+              if (!(ptr->flags[f] & 16)) {
+                  for (i = 0; i < 4; i++) {
+                      ptr->map_idx[f][i] = (ushort)(data + 1 - ptr->map);
+                      data += 1 + data[0];
+                  }
+              }
+              else {
+                  data += (uintptr_t)data & 0x01;
+                  for (i = 0; i < 4; i++) {
+                      ptr->map_idx[f][i] = (ushort)(data + 1 - ptr->map);
+                      data += 2 + 2 * *(uint16_t*)(data);
+                  }
+              }
+          }
+      }
+      data += ((uintptr_t)data) & 0x01;
+
+      for (f = 0; f < files; f++) {
+          ptr->file[f].precomp->indextable = (char*)data;
+          data += size[3 * f];
+      }
+
+      for (f = 0; f < files; f++) {
+          ptr->file[f].precomp->sizetable = (ushort*)data;
+          data += size[3 * f + 1];
+      }
+
+      for (f = 0; f < files; f++) {
+          data = (ubyte*)((((uintptr_t)data) + 0x3f) & ~0x3f);
+          ptr->file[f].precomp->data = data;
+          data += size[3 * f + 2];
+      }
   }
 
   return 1;
 }
 
-static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
+static ubyte* decompress_pairs(struct PairsData *d, uint64 idx)
 {
   if (!d->idxbits)
-    return d->min_len;
+    return d->constValue;
 
   uint32 mainidx = (uint32)(idx >> d->idxbits);
   int litidx = ((int)idx & ((1 << d->idxbits) - 1)) - (1 << (d->idxbits - 1));
   uint32 block = *(uint32 *)(d->indextable + 6 * mainidx);
+  uint16_t idxOffset = *(uint16_t*)(d->indextable + 6 * mainidx + 4);
+  printf("tablefirstbype: %02x %02x %02x %02x %02x %02x %02x %02x  idx: %lld  idxbits: %d  blockbefore: %d  litidx before: %d  idxoffset: %d\n",
+      d->indextable[0],
+      d->indextable[1],
+      d->indextable[2],
+      d->indextable[3],
+      d->indextable[4],
+      d->indextable[5],
+      d->indextable[6],
+      d->indextable[7],
+      idx, d->idxbits, block, litidx, idxOffset);
+
   litidx += *(ushort *)(d->indextable + 6 * mainidx + 4);
+  printf("mainidx: %d  litidx: %d\n", mainidx, litidx);
+
   if (litidx < 0) {
     do {
       litidx += d->sizetable[--block] + 1;
@@ -1196,6 +1241,7 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
       litidx -= d->sizetable[block++] + 1;
   }
 
+  printf("decompress block: %d  blocksize: %d\n", block, d->blocksize); 
   uint32 *ptr = (uint32 *)(d->data + ((size_t)block << d->blocksize));
 
   int m = d->min_len;
@@ -1258,7 +1304,23 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
     }
   }
 
-  return *(sympat + 3 * sym);
+  return (sympat + 3 * sym);
+
+#if 0
+  uint8_t* symPat = d->symPat;
+  while (symLen[sym] != 0) {
+      uint8_t* w = symPat + (3 * sym);
+      int s1 = ((w[1] & 0xf) << 8) | w[0];
+      if (litIdx < (int)symLen[s1] + 1)
+          sym = s1;
+      else {
+          litIdx -= (int)symLen[s1] + 1;
+          sym = (w[2] << 4) | (w[1] >> 4);
+      }
+  }
+  return &symPat[3 * sym];
+
+#endif
 }
 
 void load_dtz_table(char *str, uint64 key1, uint64 key2)

@@ -73,6 +73,7 @@ struct PairsData {
   int blocksize;
   int idxbits;
   int min_len;
+  uint8_t constValue[2];
   base_t base[1]; // C++ complains about base[]...
 };
 

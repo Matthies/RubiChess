@@ -164,7 +164,7 @@ int chessposition::probe_wdl_table(int *success)
             };
         }
         idx = encode_piece(entry, entry->norm[bside], p, entry->factor[bside]);
-        res = decompress_pairs(entry->precomp[bside], idx);
+        res = *decompress_pairs(entry->precomp[bside], idx);
     }
     else {
         TBEntry_pawn *entry = (TBEntry_pawn *)ptr;
@@ -188,7 +188,7 @@ int chessposition::probe_wdl_table(int *success)
             };
         }
         idx = encode_pawn(entry, entry->file[f].norm[bside], p, entry->file[f].factor[bside]);
-        res = decompress_pairs(entry->file[f].precomp[bside], idx);
+        res = *decompress_pairs(entry->file[f].precomp[bside], idx);
     }
 
     return ((int)res) - 2;
@@ -276,13 +276,22 @@ int chessposition::probe_dtz_table(int wdl, int *success)
             }
         }
         idx = encode_piece((TBEntry_piece *)entry, entry->norm, p, entry->factor);
-        res = decompress_pairs(entry->precomp, idx);
+
+        uint8_t* w = decompress_pairs(entry->precomp, idx);
+        res = w[0] + ((w[1] & 0x0f) << 8);
 
         if (entry->flags & 2) {
-            if (!(entry->flags & 16))
-                res = entry->map[entry->map_idx[wdl_to_map[wdl + 2]] + res];
-            else
-                res = (int)*(uint16_t*)&entry->map[entry->map_idx[wdl_to_map[wdl + 2]] + res];
+            int m = wdl_to_map[wdl + 2];
+            if (!(entry->flags & 16)) {
+                printf("probe_dtz_u8_raw : v=%02x m=%02x e=%02x\n", res, m, ((uint8_t*)entry->map)[entry->map_idx[m] + res]);
+                res = (int)((uint8_t*)entry->map)[entry->map_idx[m] + res];
+                printf("probe_dtz_u8 : %d\n", res);
+            }
+            else {
+                printf("probe_dtz_u16_raw: v=%02x m=%02x e=%04x\n", res, m, ((uint16_t*)entry->map)[entry->map_idx[m] + res]);
+                res = (int)((uint16_t*)entry->map)[entry->map_idx[m] + res];
+                printf("probe_dtz_u16: %d\n", res);
+            }
         }
 
         if (!(entry->flags & pa_flags[wdl + 2]) || (wdl & 1))
@@ -314,13 +323,14 @@ int chessposition::probe_dtz_table(int wdl, int *success)
             }
         }
         idx = encode_pawn((TBEntry_pawn *)entry, entry->file[f].norm, p, entry->file[f].factor);
-        res = decompress_pairs(entry->file[f].precomp, idx);
+        uint8_t* w = decompress_pairs(entry->file[f].precomp, idx);
+        res = w[0] + ((w[1] & 0x0f) << 8);
 
         if (entry->flags[f] & 2) {
             if (!(entry->flags[f] & 16))
                 res = entry->map[entry->map_idx[f][wdl_to_map[wdl + 2]] + res];
             else
-                res = *(uint16_t*)&entry->map[entry->map_idx[f][wdl_to_map[wdl + 2]] + res];
+                res = (int)((uint16_t*)entry->map)[entry->map_idx[f][wdl_to_map[wdl + 2]] + res];
         }
 
         if (!(entry->flags[f] & pa_flags[wdl + 2]) || (wdl & 1))
