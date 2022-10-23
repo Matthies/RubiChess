@@ -907,8 +907,8 @@ static struct PairsData *setup_pairs(unsigned char *data, uint64 tb_size, uint64
 
   int blocksize = data[1];
   int idxbits = data[2];
-  int real_num_blocks = *(uint32 *)(&data[4]);
-  int num_blocks = real_num_blocks + *(ubyte *)(&data[3]);
+  uint32 real_num_blocks = *(uint32 *)(&data[4]);
+  uint32 num_blocks = real_num_blocks + *(ubyte *)(&data[3]);
   int max_len = data[8];
   int min_len = data[9];
   int h = max_len - min_len + 1;
@@ -1098,9 +1098,18 @@ static int init_table_dtz(struct TBEntry *entry)
     ptr->map = data;
     if (ptr->flags & 2) {
       int i;
-      for (i = 0; i < 4; i++) {
-	ptr->map_idx[i] = (ushort)(data + 1 - ptr->map);
-	data += 1 + data[0];
+      if (!(ptr->flags & 16)) {
+          for (i = 0; i < 4; i++) {
+              ptr->map_idx[i] = (ushort)(data + 1 - ptr->map);
+              data += 1 + data[0];
+          }
+      }
+      else {
+          data += (uintptr_t)data & 0x01;
+          for (i = 0; i < 4; i++) {
+              ptr->map_idx[i] = (ushort)(data + 1 - ptr->map);
+              data += 2 + 2 * *(uint16_t*)(data);
+          }
       }
       data += ((uintptr_t)data) & 0x01;
     }
@@ -1131,11 +1140,20 @@ static int init_table_dtz(struct TBEntry *entry)
     ptr->map = data;
     for (f = 0; f < files; f++) {
       if (ptr->flags[f] & 2) {
-	int i;
-	for (i = 0; i < 4; i++) {
-	  ptr->map_idx[f][i] = (ushort)(data + 1 - ptr->map);
-	  data += 1 + data[0];
-	}
+          int i;
+          if (!(ptr->flags[f] & 16)) {
+              for (i = 0; i < 4; i++) {
+                  ptr->map_idx[f][i] = (ushort)(data + 1 - ptr->map);
+                  data += 1 + data[0];
+              }
+          }
+          else {
+              data += (uintptr_t)data & 0x01;
+              for (i = 0; i < 4; i++) {
+                  ptr->map_idx[f][i] = (ushort)(data + 1 - ptr->map);
+                  data += 2 + 2 * *(uint16_t*)(data);
+              }
+          }
       }
     }
     data += ((uintptr_t)data) & 0x01;

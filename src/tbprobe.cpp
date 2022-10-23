@@ -278,8 +278,12 @@ int chessposition::probe_dtz_table(int wdl, int *success)
         idx = encode_piece((TBEntry_piece *)entry, entry->norm, p, entry->factor);
         res = decompress_pairs(entry->precomp, idx);
 
-        if (entry->flags & 2)
-            res = entry->map[entry->map_idx[wdl_to_map[wdl + 2]] + res];
+        if (entry->flags & 2) {
+            if (!(entry->flags & 16))
+                res = entry->map[entry->map_idx[wdl_to_map[wdl + 2]] + res];
+            else
+                res = (int)*(uint16_t*)&entry->map[entry->map_idx[wdl_to_map[wdl + 2]] + res];
+        }
 
         if (!(entry->flags & pa_flags[wdl + 2]) || (wdl & 1))
             res *= 2;
@@ -312,13 +316,18 @@ int chessposition::probe_dtz_table(int wdl, int *success)
         idx = encode_pawn((TBEntry_pawn *)entry, entry->file[f].norm, p, entry->file[f].factor);
         res = decompress_pairs(entry->file[f].precomp, idx);
 
-        if (entry->flags[f] & 2)
-            res = entry->map[entry->map_idx[f][wdl_to_map[wdl + 2]] + res];
+        if (entry->flags[f] & 2) {
+            if (!(entry->flags[f] & 16))
+                res = entry->map[entry->map_idx[f][wdl_to_map[wdl + 2]] + res];
+            else
+                res = *(uint16_t*)&entry->map[entry->map_idx[f][wdl_to_map[wdl + 2]] + res];
+        }
 
         if (!(entry->flags[f] & pa_flags[wdl + 2]) || (wdl & 1))
             res *= 2;
     }
 
+    printf("probe_dtz_table: %d\n", res);
     return res;
 }
 
@@ -580,9 +589,9 @@ int chessposition::probe_dtz(int *success)
 
         if (playMove(mc))
         {
-            //printf("probe_dtz (ply=%d) testing non-pawn non-capture %s... \n", ply, moveToString(mc).c_str());
+            printf("probe_dtz (ply=%d) testing non-pawn non-capture %s... \n", ply, moveToString(mc).c_str());
             int v = -probe_dtz(success);
-            //printf("probe_dtz (ply=%d) tested  non-pawn non-capture %s... v=%d\n", ply, moveToString(mc).c_str(), v);
+            printf("probe_dtz (ply=%d) tested  non-pawn non-capture %s... v=%d\n", ply, moveToString(mc).c_str(), v);
             unplayMove(mc);
             if (*success == 0)
                 return 0;
@@ -727,7 +736,7 @@ int chessposition::root_probe_dtz()
                 else
                     // cursed win = draw
                     rootmovelist.move[mi].value = SCOREDRAW;
-                //printf("info string root_probe_dtz (ply=%d) Final value for move %s... value=%d rep=%d\n", ply, rootmovelist.move[mi].toString().c_str(), rootmovelist.move[mi].value, hasRepetition);
+                printf("info string root_probe_dtz (ply=%d) Final value for move %s... value=%d rep=%d\n", ply, rootmovelist.move[mi].toString().c_str(), rootmovelist.move[mi].value, hasRepetition);
                 mi++;
             }
         }
@@ -757,6 +766,7 @@ int chessposition::root_probe_dtz()
                 else
                     // We can reach a draw by 50-moves-rule
                     rootmovelist.move[mi].value = SCOREDRAW;
+                printf("info string root_probe_dtz (ply=%d) Final value for move %s... value=%d rep=%d\n", ply, rootmovelist.move[mi].toString().c_str(), rootmovelist.move[mi].value, hasRepetition);
                 mi++;
             }
         }
