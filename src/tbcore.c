@@ -58,153 +58,159 @@ static void free_dtz_entry(struct TBEntry *entry);
 
 static FD open_tb(const char *str, const char *suffix)
 {
-  int i;
-  FD fd;
-  char file[256];
+    int i;
+    FD fd;
+    char file[256];
 
-  for (i = 0; i < num_paths; i++) {
-    strcpy(file, paths[i]);
-    strcat(file, "/");
-    strcat(file, str);
-    strcat(file, suffix);
+    for (i = 0; i < num_paths; i++) {
+        strcpy(file, paths[i]);
+        strcat(file, "/");
+        strcat(file, str);
+        strcat(file, suffix);
 #ifndef _WIN32
-    fd = open(file, O_RDONLY);
+        fd = open(file, O_RDONLY);
 #else
-    fd = CreateFile(file, GENERIC_READ, FILE_SHARE_READ, NULL,
-			  OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, NULL);
+        fd = CreateFile(file, GENERIC_READ, FILE_SHARE_READ, NULL,
+            OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, NULL);
 #endif
-    if (fd != FD_ERR) return fd;
-  }
-  return FD_ERR;
+        if (fd != FD_ERR) return fd;
+    }
+    return FD_ERR;
 }
+
 
 static void close_tb(FD fd)
 {
 #ifndef _WIN32
-  close(fd);
+    close(fd);
 #else
-  CloseHandle(fd);
+    CloseHandle(fd);
 #endif
 }
 
+
 static char *map_file(const char *name, const char *suffix, uint64 *mapping)
 {
-  FD fd = open_tb(name, suffix);
-  if (fd == FD_ERR)
-    return NULL;
+    FD fd = open_tb(name, suffix);
+    if (fd == FD_ERR)
+        return NULL;
 #ifndef _WIN32
-  struct stat statbuf;
-  fstat(fd, &statbuf);
-  *mapping = statbuf.st_size;
-  char *data = (char *)mmap(NULL, statbuf.st_size, PROT_READ,
-			      MAP_SHARED, fd, 0);
-  if (data == (char *)(-1)) {
-    printf("Could not mmap() %s.\n", name);
-    exit(1);
-  }
+    struct stat statbuf;
+    fstat(fd, &statbuf);
+    *mapping = statbuf.st_size;
+    char* data = (char*)mmap(NULL, statbuf.st_size, PROT_READ,
+        MAP_SHARED, fd, 0);
+    if (data == (char*)(-1)) {
+        printf("Could not mmap() %s.\n", name);
+        exit(1);
+    }
 #else
-  DWORD size_low, size_high;
-  size_low = GetFileSize(fd, &size_high);
-  HANDLE map = CreateFileMapping(fd, NULL, PAGE_READONLY, size_high, size_low,
-				  NULL);
-  if (map == NULL) {
-    printf("CreateFileMapping() failed.\n");
-    exit(1);
-  }
-  *mapping = (uint64)map;
-  char *data = (char *)MapViewOfFile(map, FILE_MAP_READ, 0, 0, 0);
-  if (data == NULL) {
-    printf("MapViewOfFile() failed, name = %s%s, error = %lu.\n", name, suffix, GetLastError());
-    exit(1);
-  }
+    DWORD size_low, size_high;
+    size_low = GetFileSize(fd, &size_high);
+    HANDLE map = CreateFileMapping(fd, NULL, PAGE_READONLY, size_high, size_low,
+        NULL);
+    if (map == NULL) {
+        printf("CreateFileMapping() failed.\n");
+        exit(1);
+    }
+    *mapping = (uint64)map;
+    char* data = (char*)MapViewOfFile(map, FILE_MAP_READ, 0, 0, 0);
+    if (data == NULL) {
+        printf("MapViewOfFile() failed, name = %s%s, error = %lu.\n", name, suffix, GetLastError());
+        exit(1);
+    }
 #endif
-  close_tb(fd);
-  return data;
+    close_tb(fd);
+    return data;
 }
+
 
 #ifndef _WIN32
 static void unmap_file(char *data, uint64 size)
 {
-  if (!data) return;
-  munmap(data, size);
+    if (!data) return;
+    munmap(data, size);
 }
 #else
 static void unmap_file(char *data, uint64 mapping)
 {
-  if (!data) return;
-  UnmapViewOfFile(data);
-  CloseHandle((HANDLE)mapping);
+    if (!data) return;
+    UnmapViewOfFile(data);
+    CloseHandle((HANDLE)mapping);
 }
 #endif
 
+
 static void add_to_hash(struct TBEntry *ptr, uint64 key)
 {
-  int hshidx;
+    int hshidx;
 
-  hshidx = key >> (64 - TBHASHBITS);
-  while (TB_hash[hshidx].ptr)
-      hshidx = (hshidx + 1) & ((1 << TBHASHBITS) - 1);
-  TB_hash[hshidx].key = key;
-  TB_hash[hshidx].ptr = ptr;
+    hshidx = key >> (64 - TBHASHBITS);
+    while (TB_hash[hshidx].ptr)
+        hshidx = (hshidx + 1) & ((1 << TBHASHBITS) - 1);
+    TB_hash[hshidx].key = key;
+    TB_hash[hshidx].ptr = ptr;
 }
 
 static char pchr[] = {'K', 'Q', 'R', 'B', 'N', 'P'};
 
 static void init_tb(char *str)
 {
-  FD fd;
-  struct TBEntry *entry;
-  int i, j, pcs[16];
-  uint64 key, key2;
-  fd = open_tb(str, WDLSUFFIX);
-  if (fd == FD_ERR) return;
-  close_tb(fd);
+    FD fd;
+    struct TBEntry* entry;
+    int i, j, pcs[16];
+    uint64 key, key2;
+    fd = open_tb(str, WDLSUFFIX);
+    if (fd == FD_ERR) return;
+    close_tb(fd);
 
-  getPcsFromStr(str, pcs);
+    getPcsFromStr(str, pcs);
 
-  key = calc_key_from_pcs(pcs, 0);
-  key2 = calc_key_from_pcs(pcs, 1);
-  if (pcs[TB_WPAWN] + pcs[TB_BPAWN] == 0) {
-    if (TBnum_piece == TBMAX_PIECE) {
-      printf("TBMAX_PIECE limit too low!\n");
-      exit(1);
+    key = calc_key_from_pcs(pcs, 0);
+    key2 = calc_key_from_pcs(pcs, 1);
+    if (pcs[TB_WPAWN] + pcs[TB_BPAWN] == 0) {
+        if (TBnum_piece == TBMAX_PIECE) {
+            printf("TBMAX_PIECE limit too low!\n");
+            exit(1);
+        }
+        entry = (struct TBEntry*)&TB_piece[TBnum_piece++];
+        memset(entry, 0, sizeof(TBEntry_piece));
     }
-    entry = (struct TBEntry *)&TB_piece[TBnum_piece++];
-    memset(entry, 0, sizeof(TBEntry_piece));
-  } else {
-    if (TBnum_pawn == TBMAX_PAWN) {
-      printf("TBMAX_PAWN limit too low!\n");
-      exit(1);
+    else {
+        if (TBnum_pawn == TBMAX_PAWN) {
+            printf("TBMAX_PAWN limit too low!\n");
+            exit(1);
+        }
+        entry = (struct TBEntry*)&TB_pawn[TBnum_pawn++];
+        memset(entry, 0, sizeof(TBEntry_pawn));
     }
-    entry = (struct TBEntry *)&TB_pawn[TBnum_pawn++];
-    memset(entry, 0, sizeof(TBEntry_pawn));
-  }
-  entry->key = key;
-  for (i = 0; i < 16; i++)
-    entry->num += pcs[i];
-  entry->symmetric = (key == key2);
-  entry->has_pawns = (pcs[TB_WPAWN] + pcs[TB_BPAWN] > 0);
-  if (entry->num > TBlargest)
-    TBlargest = entry->num;
+    entry->key = key;
+    for (i = 0; i < 16; i++)
+        entry->num += pcs[i];
+    entry->symmetric = (key == key2);
+    entry->has_pawns = (pcs[TB_WPAWN] + pcs[TB_BPAWN] > 0);
+    if (entry->num > TBlargest)
+        TBlargest = entry->num;
 
-  if (entry->has_pawns) {
-    struct TBEntry_pawn *ptr = (struct TBEntry_pawn *)entry;
-    ptr->pawns[0] = pcs[TB_WPAWN];
-    ptr->pawns[1] = pcs[TB_BPAWN];
-    if (pcs[TB_BPAWN] > 0
-	      && (pcs[TB_WPAWN] == 0 || pcs[TB_BPAWN] < pcs[TB_WPAWN])) {
-      ptr->pawns[0] = pcs[TB_BPAWN];
-      ptr->pawns[1] = pcs[TB_WPAWN];
+    if (entry->has_pawns) {
+        struct TBEntry_pawn* ptr = (struct TBEntry_pawn*)entry;
+        ptr->pawns[0] = pcs[TB_WPAWN];
+        ptr->pawns[1] = pcs[TB_BPAWN];
+        if (pcs[TB_BPAWN] > 0
+            && (pcs[TB_WPAWN] == 0 || pcs[TB_BPAWN] < pcs[TB_WPAWN])) {
+            ptr->pawns[0] = pcs[TB_BPAWN];
+            ptr->pawns[1] = pcs[TB_WPAWN];
+        }
     }
-  } else {
-    struct TBEntry_piece *ptr = (struct TBEntry_piece *)entry;
-    for (i = 0, j = 0; i < 16; i++)
-      if (pcs[i] == 1) j++;
-    if (j >= 3) ptr->enc_type = 0;
-    else ptr->enc_type = 2;
-  }
-  add_to_hash(entry, key);
-  if (key2 != key) add_to_hash(entry, key2);
+    else {
+        struct TBEntry_piece* ptr = (struct TBEntry_piece*)entry;
+        for (i = 0, j = 0; i < 16; i++)
+            if (pcs[i] == 1) j++;
+        if (j >= 3) ptr->enc_type = 0;
+        else ptr->enc_type = 2;
+    }
+    add_to_hash(entry, key);
+    if (key2 != key) add_to_hash(entry, key2);
 }
 
 
@@ -231,104 +237,106 @@ bool digit5(char c[], int x, int l, int y = -1)
     return true;
 }
 
+
 void init_tablebases(char *path)
 {
-  int i, j;
+    int i, j;
 
-  if (!initialized) {
-    init_indices();
-    initialized = 1;
-  }
+    if (!initialized) {
+        init_indices();
+        initialized = 1;
+    }
 
-  // if path_string is set, we need to clean up first.
-  if (path_string) {
-    free(path_string);
-    free(paths);
-    struct TBEntry *entry;
-    for (i = 0; i < TBnum_piece; i++) {
-      entry = (struct TBEntry *)&TB_piece[i];
-      free_wdl_entry(entry);
-    }
-    for (i = 0; i < TBnum_pawn; i++) {
-      entry = (struct TBEntry *)&TB_pawn[i];
-      free_wdl_entry(entry);
-    }
-    for (i = 0; i < DTZ_ENTRIES; i++)
-        if (DTZ_table[i].entry)
-        {
-            free_dtz_entry(DTZ_table[i].entry);
-            DTZ_table[i].key1 = DTZ_table[i].key2 = 0;
-            DTZ_table[i].entry = NULL;
+    // if path_string is set, we need to clean up first.
+    if (path_string) {
+        free(path_string);
+        free(paths);
+        struct TBEntry* entry;
+        for (i = 0; i < TBnum_piece; i++) {
+            entry = (struct TBEntry*)&TB_piece[i];
+            free_wdl_entry(entry);
         }
-    LOCK_DESTROY(TB_mutex);
-    path_string = NULL;
-  }
+        for (i = 0; i < TBnum_pawn; i++) {
+            entry = (struct TBEntry*)&TB_pawn[i];
+            free_wdl_entry(entry);
+        }
+        for (i = 0; i < DTZ_ENTRIES; i++)
+            if (DTZ_table[i].entry)
+            {
+                free_dtz_entry(DTZ_table[i].entry);
+                DTZ_table[i].key1 = DTZ_table[i].key2 = 0;
+                DTZ_table[i].entry = NULL;
+            }
+        LOCK_DESTROY(TB_mutex);
+        path_string = NULL;
+    }
 
-  // if path is an empty string or equals "<empty>", we are done.
-  char *pa = path;
-  if (strlen(pa) == 0 || !strcmp(pa, "<empty>")) return;
+    // if path is an empty string or equals "<empty>", we are done.
+    char* pa = path;
+    if (strlen(pa) == 0 || !strcmp(pa, "<empty>")) return;
 
-  size_t l = strlen(pa) + 1;
-  path_string = (char *)malloc(l);
-  strcpy(path_string, pa);
-  num_paths = 0;
-  for (i = 0;; i++) {
-    if (path_string[i] != SEP_CHAR)
-      num_paths++;
-    while (path_string[i] && path_string[i] != SEP_CHAR)
-      i++;
-    if (!path_string[i]) break;
-    path_string[i] = 0;
-  }
-  paths = (char **)malloc(num_paths * sizeof(char *));
-  for (i = j = 0; i < num_paths; i++) {
-    while (!path_string[j]) j++;
-    paths[i] = &path_string[j];
-    while (path_string[j]) j++;
-  }
+    size_t l = strlen(pa) + 1;
+    path_string = (char*)malloc(l);
+    strcpy(path_string, pa);
+    num_paths = 0;
+    for (i = 0;; i++) {
+        if (path_string[i] != SEP_CHAR)
+            num_paths++;
+        while (path_string[i] && path_string[i] != SEP_CHAR)
+            i++;
+        if (!path_string[i]) break;
+        path_string[i] = 0;
+    }
+    paths = (char**)malloc(num_paths * sizeof(char*));
+    for (i = j = 0; i < num_paths; i++) {
+        while (!path_string[j]) j++;
+        paths[i] = &path_string[j];
+        while (path_string[j]) j++;
+    }
 
-  LOCK_INIT(TB_mutex);
+    LOCK_INIT(TB_mutex);
 
-  TBnum_piece = TBnum_pawn = 0;
-  TBlargest = 0;
+    TBnum_piece = TBnum_pawn = 0;
+    TBlargest = 0;
 
-  for (i = 0; i < (1 << TBHASHBITS); i++)
-  {
-      TB_hash[i].key = 0ULL;
-      TB_hash[i].ptr = NULL;
-  }
+    for (i = 0; i < (1 << TBHASHBITS); i++)
+    {
+        TB_hash[i].key = 0ULL;
+        TB_hash[i].ptr = NULL;
+    }
 
-  for (i = 0; i < DTZ_ENTRIES; i++)
-    DTZ_table[i].entry = NULL;
+    for (i = 0; i < DTZ_ENTRIES; i++)
+        DTZ_table[i].entry = NULL;
 
-  char w[TBPIECES - 2];  // white pieces in order
-  char b[TBPIECES - 2];  // black pieces in order
-  for (int p = 1; p <= TBPIECES - 2; p++)       // total pieces besides kings
-      for (int pw = (p + 1) / 2; pw <= p; pw++)    // pieces of white
-      {
-          int pb = p - pw;    // pieces of black
-          int cw = 1;   // combinations for white
-          for (int f = 0; f < pw; f++) cw *= 5;
-          int cb = 1;   // combinations for black
-          for (int f = 0; f < pb; f++) cb *= 5;
-          for (int ow = 0; ow < cw; ow++)
-          {
-              if (digit5(w, ow, pw))
-              {
-                  for (int ob = 0; ob < cb; ob++)
-                  {
-                      if (digit5(b, ob, pb, pw == pb ? ow : -1))
-                      {
-                          string s = "K" + string(w, pw) + "vK" + string(b, pb);
-                          init_tb((char*)s.c_str());
-                      }
-                  }
-              }
-          }
-      }
+    char w[TBPIECES - 2];  // white pieces in order
+    char b[TBPIECES - 2];  // black pieces in order
+    for (int p = 1; p <= TBPIECES - 2; p++)       // total pieces besides kings
+        for (int pw = (p + 1) / 2; pw <= p; pw++)    // pieces of white
+        {
+            int pb = p - pw;    // pieces of black
+            int cw = 1;   // combinations for white
+            for (int f = 0; f < pw; f++) cw *= 5;
+            int cb = 1;   // combinations for black
+            for (int f = 0; f < pb; f++) cb *= 5;
+            for (int ow = 0; ow < cw; ow++)
+            {
+                if (digit5(w, ow, pw))
+                {
+                    for (int ob = 0; ob < cb; ob++)
+                    {
+                        if (digit5(b, ob, pb, pw == pb ? ow : -1))
+                        {
+                            string s = "K" + string(w, pw) + "vK" + string(b, pb);
+                            init_tb((char*)s.c_str());
+                        }
+                    }
+                }
+            }
+        }
 
-  guiCom << "info string Found " + to_string(TBnum_piece + TBnum_pawn) + " (" + to_string(TBnum_piece) + " pawn-less / " + to_string(TBnum_pawn ) + " with pawn) tablebases.\n";
+    guiCom << "info string Found " + to_string(TBnum_piece + TBnum_pawn) + " (" + to_string(TBnum_piece) + " pawn-less / " + to_string(TBnum_pawn) + " with pawn) tablebases.\n";
 }
+
 
 static const signed char offdiag[] = {
   0,-1,-1,-1,-1,-1,-1,-1,
@@ -523,819 +531,849 @@ static int pfactor[6][4];
 
 static void init_indices(void)
 {
-  int i, j, k;
+    int i, j, k;
 
-// binomial[k-1][n] = Bin(n, k)
-  for (i = 0; i < 6; i++)
-    for (j = 0; j < 64; j++) {
-      long long f = j;
-      long long l = 1;
-      for (k = 1; k <= i; k++) {
-          f *= (j - k);
-          l *= (k + 1);
-      }
-      binomial[i][j] = (int) (f / l);
-    }
+    // binomial[k-1][n] = Bin(n, k)
+    for (i = 0; i < 6; i++)
+        for (j = 0; j < 64; j++) {
+            long long f = j;
+            long long l = 1;
+            for (k = 1; k <= i; k++) {
+                f *= (j - k);
+                l *= (k + 1);
+            }
+            binomial[i][j] = (int)(f / l);
+        }
 
-  for (i = 0; i < 6; i++) {
-    int s = 0;
-    for (j = 0; j < 6; j++) {
-      pawnidx[i][j] = s;
-      s += (i == 0) ? 1 : binomial[i - 1][ptwist[invflap[j]]];
+    for (i = 0; i < 6; i++) {
+        int s = 0;
+        for (j = 0; j < 6; j++) {
+            pawnidx[i][j] = s;
+            s += (i == 0) ? 1 : binomial[i - 1][ptwist[invflap[j]]];
+        }
+        pfactor[i][0] = s;
+        s = 0;
+        for (; j < 12; j++) {
+            pawnidx[i][j] = s;
+            s += (i == 0) ? 1 : binomial[i - 1][ptwist[invflap[j]]];
+        }
+        pfactor[i][1] = s;
+        s = 0;
+        for (; j < 18; j++) {
+            pawnidx[i][j] = s;
+            s += (i == 0) ? 1 : binomial[i - 1][ptwist[invflap[j]]];
+        }
+        pfactor[i][2] = s;
+        s = 0;
+        for (; j < 24; j++) {
+            pawnidx[i][j] = s;
+            s += (i == 0) ? 1 : binomial[i - 1][ptwist[invflap[j]]];
+        }
+        pfactor[i][3] = s;
     }
-    pfactor[i][0] = s;
-    s = 0;
-    for (; j < 12; j++) {
-      pawnidx[i][j] = s;
-      s += (i == 0) ? 1 : binomial[i - 1][ptwist[invflap[j]]];
-    }
-    pfactor[i][1] = s;
-    s = 0;
-    for (; j < 18; j++) {
-      pawnidx[i][j] = s;
-      s += (i == 0) ? 1 : binomial[i - 1][ptwist[invflap[j]]];
-    }
-    pfactor[i][2] = s;
-    s = 0;
-    for (; j < 24; j++) {
-      pawnidx[i][j] = s;
-      s += (i == 0) ? 1 : binomial[i - 1][ptwist[invflap[j]]];
-    }
-    pfactor[i][3] = s;
-  }
 }
+
 
 static uint64 encode_piece(struct TBEntry_piece *ptr, ubyte *norm, int *pos, uint64 *factor)
 {
-  uint64 idx;
-  int i, j, k, m, l, p;
-  int n = ptr->num;
+    uint64 idx;
+    int i, j, k, m, l, p;
+    int n = ptr->num;
 
-  if (pos[0] & 0x04) {
-    for (i = 0; i < n; i++)
-      pos[i] ^= 0x07;
-  }
-  if (pos[0] & 0x20) {
-    for (i = 0; i < n; i++)
-      pos[i] ^= 0x38;
-  }
-
-  for (i = 0; i < n; i++)
-    if (offdiag[pos[i]]) break;
-  if (i < (ptr->enc_type == 0 ? 3 : 2) && offdiag[pos[i]] > 0)
-    for (i = 0; i < n; i++)
-      pos[i] = flipdiag[pos[i]];
-
-  switch (ptr->enc_type) {
-
-  case 0: /* 111 */
-    i = (pos[1] > pos[0]);
-    j = (pos[2] > pos[0]) + (pos[2] > pos[1]);
-
-    if (offdiag[pos[0]])
-      idx = triangle[pos[0]] * 63*62 + (pos[1] - i) * 62 + (pos[2] - j);
-    else if (offdiag[pos[1]])
-      idx = 6*63*62 + diag[pos[0]] * 28*62 + lower[pos[1]] * 62 + pos[2] - j;
-    else if (offdiag[pos[2]])
-      idx = 6*63*62 + 4*28*62 + (diag[pos[0]]) * 7*28 + (diag[pos[1]] - i) * 28 + lower[pos[2]];
-    else
-      idx = 6*63*62 + 4*28*62 + 4*7*28 + (diag[pos[0]] * 7*6) + (diag[pos[1]] - i) * 6 + (diag[pos[2]] - j);
-    i = 3;
-    break;
-
-  default: /* K2 */
-    idx = KK_idx[triangle[pos[0]]][pos[1]];
-    i = 2;
-    break;
-  }
-  idx *= factor[0];
-
-  for (; i < n;) {
-    int t = norm[i];
-    for (j = i; j < i + t; j++)
-      for (k = j + 1; k < i + t; k++)
-	if (pos[j] > pos[k]) Swap(pos[j], pos[k]);
-    int s = 0;
-    for (m = i; m < i + t; m++) {
-      p = pos[m];
-      for (l = 0, j = 0; l < i; l++)
-	j += (p > pos[l]);
-      s += binomial[m - i][p - j];
+    if (pos[0] & 0x04) {
+        for (i = 0; i < n; i++)
+            pos[i] ^= 0x07;
     }
-    idx += ((uint64)s) * ((uint64)factor[i]);
-    i += t;
-  }
+    if (pos[0] & 0x20) {
+        for (i = 0; i < n; i++)
+            pos[i] ^= 0x38;
+    }
 
-  return idx;
+    for (i = 0; i < n; i++)
+        if (offdiag[pos[i]]) break;
+    if (i < (ptr->enc_type == 0 ? 3 : 2) && offdiag[pos[i]] > 0)
+        for (i = 0; i < n; i++)
+            pos[i] = flipdiag[pos[i]];
+
+    switch (ptr->enc_type) {
+
+    case 0: /* 111 */
+        i = (pos[1] > pos[0]);
+        j = (pos[2] > pos[0]) + (pos[2] > pos[1]);
+
+        if (offdiag[pos[0]])
+            idx = triangle[pos[0]] * 63 * 62 + (pos[1] - i) * 62 + (pos[2] - j);
+        else if (offdiag[pos[1]])
+            idx = 6 * 63 * 62 + diag[pos[0]] * 28 * 62 + lower[pos[1]] * 62 + pos[2] - j;
+        else if (offdiag[pos[2]])
+            idx = 6 * 63 * 62 + 4 * 28 * 62 + (diag[pos[0]]) * 7 * 28 + (diag[pos[1]] - i) * 28 + lower[pos[2]];
+        else
+            idx = 6 * 63 * 62 + 4 * 28 * 62 + 4 * 7 * 28 + (diag[pos[0]] * 7 * 6) + (diag[pos[1]] - i) * 6 + (diag[pos[2]] - j);
+        i = 3;
+        break;
+
+    default: /* K2 */
+        idx = KK_idx[triangle[pos[0]]][pos[1]];
+        i = 2;
+        break;
+    }
+    idx *= factor[0];
+
+    for (; i < n;) {
+        int t = norm[i];
+        for (j = i; j < i + t; j++)
+            for (k = j + 1; k < i + t; k++)
+                if (pos[j] > pos[k]) Swap(pos[j], pos[k]);
+        int s = 0;
+        for (m = i; m < i + t; m++) {
+            p = pos[m];
+            for (l = 0, j = 0; l < i; l++)
+                j += (p > pos[l]);
+            s += binomial[m - i][p - j];
+        }
+        idx += ((uint64)s) * ((uint64)factor[i]);
+        i += t;
+    }
+
+    return idx;
 }
+
 
 // determine file of leftmost pawn and sort pawns
 static int pawn_file(struct TBEntry_pawn *ptr, int *pos)
 {
-  int i;
+    int i;
 
-  for (i = 1; i < ptr->pawns[0]; i++)
-    if (flap[pos[0]] > flap[pos[i]])
-      Swap(pos[0], pos[i]);
+    for (i = 1; i < ptr->pawns[0]; i++)
+        if (flap[pos[0]] > flap[pos[i]])
+            Swap(pos[0], pos[i]);
 
-  return file_to_file[pos[0] & 0x07];
+    return file_to_file[pos[0] & 0x07];
 }
+
 
 static uint64 encode_pawn(struct TBEntry_pawn *ptr, ubyte *norm, int *pos, uint64 *factor)
 {
-  uint64 idx;
-  int i, j, k, m, s, t;
-  int n = ptr->num;
+    uint64 idx;
+    int i, j, k, m, s, t;
+    int n = ptr->num;
 
-  if (pos[0] & 0x04)
-    for (i = 0; i < n; i++)
-      pos[i] ^= 0x07;
+    if (pos[0] & 0x04)
+        for (i = 0; i < n; i++)
+            pos[i] ^= 0x07;
 
-  for (i = 1; i < ptr->pawns[0]; i++)
-    for (j = i + 1; j < ptr->pawns[0]; j++)
-      if (ptwist[pos[i]] < ptwist[pos[j]])
-	Swap(pos[i], pos[j]);
+    for (i = 1; i < ptr->pawns[0]; i++)
+        for (j = i + 1; j < ptr->pawns[0]; j++)
+            if (ptwist[pos[i]] < ptwist[pos[j]])
+                Swap(pos[i], pos[j]);
 
-  t = ptr->pawns[0] - 1;
-  idx = pawnidx[t][flap[pos[0]]];
-  for (i = t; i > 0; i--)
-    idx += binomial[t - i][ptwist[pos[i]]];
-  idx *= factor[0];
+    t = ptr->pawns[0] - 1;
+    idx = pawnidx[t][flap[pos[0]]];
+    for (i = t; i > 0; i--)
+        idx += binomial[t - i][ptwist[pos[i]]];
+    idx *= factor[0];
 
-// remaining pawns
-  i = ptr->pawns[0];
-  t = i + ptr->pawns[1];
-  if (t > i) {
-    for (j = i; j < t; j++)
-      for (k = j + 1; k < t; k++)
-	if (pos[j] > pos[k]) Swap(pos[j], pos[k]);
-    s = 0;
-    for (m = i; m < t; m++) {
-      int p = pos[m];
-      for (k = 0, j = 0; k < i; k++)
-	j += (p > pos[k]);
-      s += binomial[m - i][p - j - 8];
+    // remaining pawns
+    i = ptr->pawns[0];
+    t = i + ptr->pawns[1];
+    if (t > i) {
+        for (j = i; j < t; j++)
+            for (k = j + 1; k < t; k++)
+                if (pos[j] > pos[k]) Swap(pos[j], pos[k]);
+        s = 0;
+        for (m = i; m < t; m++) {
+            int p = pos[m];
+            for (k = 0, j = 0; k < i; k++)
+                j += (p > pos[k]);
+            s += binomial[m - i][p - j - 8];
+        }
+        idx += ((uint64)s) * factor[i];
+        i = t;
     }
-    idx += ((uint64)s) * factor[i];
-    i = t;
-  }
 
-  for (; i < n;) {
-    t = norm[i];
-    for (j = i; j < i + t; j++)
-      for (k = j + 1; k < i + t; k++)
-	if (pos[j] > pos[k]) Swap(pos[j], pos[k]);
-    s = 0;
-    for (m = i; m < i + t; m++) {
-      int p = pos[m];
-      for (k = 0, j = 0; k < i; k++)
-	j += (p > pos[k]);
-      s += binomial[m - i][p - j];
+    for (; i < n;) {
+        t = norm[i];
+        for (j = i; j < i + t; j++)
+            for (k = j + 1; k < i + t; k++)
+                if (pos[j] > pos[k]) Swap(pos[j], pos[k]);
+        s = 0;
+        for (m = i; m < i + t; m++) {
+            int p = pos[m];
+            for (k = 0, j = 0; k < i; k++)
+                j += (p > pos[k]);
+            s += binomial[m - i][p - j];
+        }
+        idx += ((uint64)s) * ((uint64)factor[i]);
+        i += t;
     }
-    idx += ((uint64)s) * ((uint64)factor[i]);
-    i += t;
-  }
 
-  return idx;
+    return idx;
 }
+
 
 static ubyte* decompress_pairs(struct PairsData *d, uint64 index);
 
 // place k like pieces on n squares
 static int subfactor(int k, int n)
 {
-  int i, f, l;
+    int i, f, l;
 
-  f = n;
-  l = 1;
-  for (i = 1; i < k; i++) {
-    f *= n - i;
-    l *= i + 1;
-  }
+    f = n;
+    l = 1;
+    for (i = 1; i < k; i++) {
+        f *= n - i;
+        l *= i + 1;
+    }
 
-  return f / l;
+    return f / l;
 }
+
 
 static uint64 calc_factors_piece(uint64 *factor, int num, int order, ubyte *norm, ubyte enc_type)
 {
-  int i, k, n;
-  uint64 f;
-  static int pivfac[] = { 31332, 28056, 462 };
+    int i, k, n;
+    uint64 f;
+    static int pivfac[] = { 31332, 28056, 462 };
 
-  n = 64 - norm[0];
+    n = 64 - norm[0];
 
-  f = 1;
-  for (i = norm[0], k = 0; i < num || k == order; k++) {
-    if (k == order) {
-      factor[0] = f;
-      f *= pivfac[enc_type];
-    } else {
-      factor[i] = f;
-      f *= subfactor(norm[i], n);
-      n -= norm[i];
-      i += norm[i];
+    f = 1;
+    for (i = norm[0], k = 0; i < num || k == order; k++) {
+        if (k == order) {
+            factor[0] = f;
+            f *= pivfac[enc_type];
+        }
+        else {
+            factor[i] = f;
+            f *= subfactor(norm[i], n);
+            n -= norm[i];
+            i += norm[i];
+        }
     }
-  }
 
-  return f;
+    return f;
 }
+
 
 static uint64 calc_factors_pawn(uint64 *factor, int num, int order, int order2, ubyte *norm, int file)
 {
-  int i, k, n;
-  uint64 f;
+    int i, k, n;
+    uint64 f;
 
-  i = norm[0];
-  if (order2 < 0x0f) i += norm[i];
-  n = 64 - i;
+    i = norm[0];
+    if (order2 < 0x0f) i += norm[i];
+    n = 64 - i;
 
-  f = 1;
-  for (k = 0; i < num || k == order || k == order2; k++) {
-    if (k == order) {
-      factor[0] = f;
-      f *= pfactor[norm[0] - 1][file];
-    } else if (k == order2) {
-      factor[norm[0]] = f;
-      f *= subfactor(norm[norm[0]], 48 - norm[0]);
-    } else {
-      factor[i] = f;
-      f *= subfactor(norm[i], n);
-      n -= norm[i];
-      i += norm[i];
+    f = 1;
+    for (k = 0; i < num || k == order || k == order2; k++) {
+        if (k == order) {
+            factor[0] = f;
+            f *= pfactor[norm[0] - 1][file];
+        }
+        else if (k == order2) {
+            factor[norm[0]] = f;
+            f *= subfactor(norm[norm[0]], 48 - norm[0]);
+        }
+        else {
+            factor[i] = f;
+            f *= subfactor(norm[i], n);
+            n -= norm[i];
+            i += norm[i];
+        }
     }
-  }
 
-  return f;
+    return f;
 }
+
 
 static void set_norm_piece(struct TBEntry_piece *ptr, ubyte *norm, ubyte *pieces)
 {
-  int i, j;
+    int i, j;
 
-  for (i = 0; i < ptr->num; i++)
-    norm[i] = 0;
+    for (i = 0; i < ptr->num; i++)
+        norm[i] = 0;
 
-  switch (ptr->enc_type) {
-  case 0:
-    norm[0] = 3;
-    break;
-  default:
-    norm[0] = 2;
-    break;
-  }
+    switch (ptr->enc_type) {
+    case 0:
+        norm[0] = 3;
+        break;
+    default:
+        norm[0] = 2;
+        break;
+    }
 
-  for (i = norm[0]; i < ptr->num; i += norm[i])
-    for (j = i; j < ptr->num && pieces[j] == pieces[i]; j++)
-      norm[i]++;
+    for (i = norm[0]; i < ptr->num; i += norm[i])
+        for (j = i; j < ptr->num && pieces[j] == pieces[i]; j++)
+            norm[i]++;
 }
+
 
 static void set_norm_pawn(struct TBEntry_pawn *ptr, ubyte *norm, ubyte *pieces)
 {
-  int i, j;
+    int i, j;
 
-  for (i = 0; i < ptr->num; i++)
-    norm[i] = 0;
+    for (i = 0; i < ptr->num; i++)
+        norm[i] = 0;
 
-  norm[0] = ptr->pawns[0];
-  if (ptr->pawns[1]) norm[ptr->pawns[0]] = ptr->pawns[1];
+    norm[0] = ptr->pawns[0];
+    if (ptr->pawns[1]) norm[ptr->pawns[0]] = ptr->pawns[1];
 
-  for (i = ptr->pawns[0] + ptr->pawns[1]; i < ptr->num; i += norm[i])
-    for (j = i; j < ptr->num && pieces[j] == pieces[i]; j++)
-      norm[i]++;
+    for (i = ptr->pawns[0] + ptr->pawns[1]; i < ptr->num; i += norm[i])
+        for (j = i; j < ptr->num && pieces[j] == pieces[i]; j++)
+            norm[i]++;
 }
+
 
 static void setup_pieces_piece(struct TBEntry_piece *ptr, unsigned char *data, uint64 *tb_size)
 {
-  int i;
-  int order;
+    int i;
+    int order;
 
-  for (i = 0; i < ptr->num; i++)
-    ptr->pieces[0][i] = data[i + 1] & 0x0f;
-  order = data[0] & 0x0f;
-  set_norm_piece(ptr, ptr->norm[0], ptr->pieces[0]);
-  tb_size[0] = calc_factors_piece(ptr->factor[0], ptr->num, order, ptr->norm[0], ptr->enc_type);
+    for (i = 0; i < ptr->num; i++)
+        ptr->pieces[0][i] = data[i + 1] & 0x0f;
+    order = data[0] & 0x0f;
+    set_norm_piece(ptr, ptr->norm[0], ptr->pieces[0]);
+    tb_size[0] = calc_factors_piece(ptr->factor[0], ptr->num, order, ptr->norm[0], ptr->enc_type);
 
-  for (i = 0; i < ptr->num; i++)
-    ptr->pieces[1][i] = data[i + 1] >> 4;
-  order = data[0] >> 4;
-  set_norm_piece(ptr, ptr->norm[1], ptr->pieces[1]);
-  tb_size[1] = calc_factors_piece(ptr->factor[1], ptr->num, order, ptr->norm[1], ptr->enc_type);
+    for (i = 0; i < ptr->num; i++)
+        ptr->pieces[1][i] = data[i + 1] >> 4;
+    order = data[0] >> 4;
+    set_norm_piece(ptr, ptr->norm[1], ptr->pieces[1]);
+    tb_size[1] = calc_factors_piece(ptr->factor[1], ptr->num, order, ptr->norm[1], ptr->enc_type);
 }
+
 
 static void setup_pieces_piece_dtz(struct DTZEntry_piece *ptr, unsigned char *data, uint64 *tb_size)
 {
-  int i;
-  int order;
+    int i;
+    int order;
 
-  for (i = 0; i < ptr->num; i++)
-    ptr->pieces[i] = data[i + 1] & 0x0f;
-  order = data[0] & 0x0f;
-  set_norm_piece((struct TBEntry_piece *)ptr, ptr->norm, ptr->pieces);
-  tb_size[0] = calc_factors_piece(ptr->factor, ptr->num, order, ptr->norm, ptr->enc_type);
+    for (i = 0; i < ptr->num; i++)
+        ptr->pieces[i] = data[i + 1] & 0x0f;
+    order = data[0] & 0x0f;
+    set_norm_piece((struct TBEntry_piece*)ptr, ptr->norm, ptr->pieces);
+    tb_size[0] = calc_factors_piece(ptr->factor, ptr->num, order, ptr->norm, ptr->enc_type);
 }
+
 
 static void setup_pieces_pawn(struct TBEntry_pawn *ptr, unsigned char *data, uint64 *tb_size, int f)
 {
-  int i, j;
-  int order, order2;
+    int i, j;
+    int order, order2;
 
-  j = 1 + (ptr->pawns[1] > 0);
-  order = data[0] & 0x0f;
-  order2 = ptr->pawns[1] ? (data[1] & 0x0f) : 0x0f;
-  for (i = 0; i < ptr->num; i++)
-    ptr->file[f].pieces[0][i] = data[i + j] & 0x0f;
-  set_norm_pawn(ptr, ptr->file[f].norm[0], ptr->file[f].pieces[0]);
-  tb_size[0] = calc_factors_pawn(ptr->file[f].factor[0], ptr->num, order, order2, ptr->file[f].norm[0], f);
+    j = 1 + (ptr->pawns[1] > 0);
+    order = data[0] & 0x0f;
+    order2 = ptr->pawns[1] ? (data[1] & 0x0f) : 0x0f;
+    for (i = 0; i < ptr->num; i++)
+        ptr->file[f].pieces[0][i] = data[i + j] & 0x0f;
+    set_norm_pawn(ptr, ptr->file[f].norm[0], ptr->file[f].pieces[0]);
+    tb_size[0] = calc_factors_pawn(ptr->file[f].factor[0], ptr->num, order, order2, ptr->file[f].norm[0], f);
 
-  order = data[0] >> 4;
-  order2 = ptr->pawns[1] ? (data[1] >> 4) : 0x0f;
-  for (i = 0; i < ptr->num; i++)
-    ptr->file[f].pieces[1][i] = data[i + j] >> 4;
-  set_norm_pawn(ptr, ptr->file[f].norm[1], ptr->file[f].pieces[1]);
-  tb_size[1] = calc_factors_pawn(ptr->file[f].factor[1], ptr->num, order, order2, ptr->file[f].norm[1], f);
+    order = data[0] >> 4;
+    order2 = ptr->pawns[1] ? (data[1] >> 4) : 0x0f;
+    for (i = 0; i < ptr->num; i++)
+        ptr->file[f].pieces[1][i] = data[i + j] >> 4;
+    set_norm_pawn(ptr, ptr->file[f].norm[1], ptr->file[f].pieces[1]);
+    tb_size[1] = calc_factors_pawn(ptr->file[f].factor[1], ptr->num, order, order2, ptr->file[f].norm[1], f);
 }
+
 
 static void setup_pieces_pawn_dtz(struct DTZEntry_pawn *ptr, unsigned char *data, uint64 *tb_size, int f)
 {
-  int i, j;
-  int order, order2;
+    int i, j;
+    int order, order2;
 
-  j = 1 + (ptr->pawns[1] > 0);
-  order = data[0] & 0x0f;
-  order2 = ptr->pawns[1] ? (data[1] & 0x0f) : 0x0f;
-  for (i = 0; i < ptr->num; i++)
-    ptr->file[f].pieces[i] = data[i + j] & 0x0f;
-  set_norm_pawn((struct TBEntry_pawn *)ptr, ptr->file[f].norm, ptr->file[f].pieces);
-  tb_size[0] = calc_factors_pawn(ptr->file[f].factor, ptr->num, order, order2, ptr->file[f].norm, f);
+    j = 1 + (ptr->pawns[1] > 0);
+    order = data[0] & 0x0f;
+    order2 = ptr->pawns[1] ? (data[1] & 0x0f) : 0x0f;
+    for (i = 0; i < ptr->num; i++)
+        ptr->file[f].pieces[i] = data[i + j] & 0x0f;
+    set_norm_pawn((struct TBEntry_pawn*)ptr, ptr->file[f].norm, ptr->file[f].pieces);
+    tb_size[0] = calc_factors_pawn(ptr->file[f].factor, ptr->num, order, order2, ptr->file[f].norm, f);
 }
+
 
 static void calc_symlen(struct PairsData *d, int s, char *tmp)
 {
-  int s1, s2;
+    int s1, s2;
 
-  int w = *(int *)(d->sympat + 3 * s);
-  s2 = (w >> 12) & 0x0fff;
-  if (s2 == 0x0fff)
-    d->symlen[s] = 0;
-  else {
-    s1 = w & 0x0fff;
-    if (!tmp[s1]) calc_symlen(d, s1, tmp);
-    if (!tmp[s2]) calc_symlen(d, s2, tmp);
-    d->symlen[s] = d->symlen[s1] + d->symlen[s2] + 1;
-  }
-  tmp[s] = 1;
+    int w = *(int*)(d->sympat + 3 * s);
+    s2 = (w >> 12) & 0x0fff;
+    if (s2 == 0x0fff)
+        d->symlen[s] = 0;
+    else {
+        s1 = w & 0x0fff;
+        if (!tmp[s1]) calc_symlen(d, s1, tmp);
+        if (!tmp[s2]) calc_symlen(d, s2, tmp);
+        d->symlen[s] = d->symlen[s1] + d->symlen[s2] + 1;
+    }
+    tmp[s] = 1;
 }
+
 
 static struct PairsData *setup_pairs(unsigned char *data, uint64 tb_size, uint64 *size, unsigned char **next, ubyte *flags, int wdl)
 {
-  const int maxnumsyms = 4096;
-  struct PairsData *d;
-  int i;
+    const int maxnumsyms = 4096;
+    struct PairsData* d;
+    int i;
 
-  *flags = data[0];
-  if (data[0] & 0x80) {
-    d = (struct PairsData *)malloc(sizeof(struct PairsData));
-    d->idxbits = 0;
-    if (wdl)
-      d->min_len = data[1];
-    else
-      d->min_len = 0;
-    *next = data + 2;
-    size[0] = size[1] = size[2] = 0;
-    d->constValue[0] = wdl ? data[1] : 0;
-    d->constValue[1] = 0;
+    *flags = data[0];
+    if (data[0] & 0x80) {
+        d = (struct PairsData*)malloc(sizeof(struct PairsData));
+        d->idxbits = 0;
+        if (wdl)
+            d->min_len = data[1];
+        else
+            d->min_len = 0;
+        *next = data + 2;
+        size[0] = size[1] = size[2] = 0;
+        d->constValue[0] = wdl ? data[1] : 0;
+        d->constValue[1] = 0;
 
-    return d;
-  }
+        return d;
+    }
 
-  int blocksize = data[1];
-  int idxbits = data[2];
-  uint32 real_num_blocks = *(uint32 *)(&data[4]);
-  uint32 num_blocks = real_num_blocks + *(ubyte *)(&data[3]);
-  int max_len = data[8];
-  int min_len = data[9];
-  int h = max_len - min_len + 1;
-  int num_syms = *(ushort *)(&data[10 + 2 * h]);
-  myassert(num_syms <= maxnumsyms, nullptr, 1, num_syms);
-  d = (struct PairsData *)malloc(sizeof(struct PairsData) + (h - 1) * sizeof(base_t) + num_syms);
-  d->blocksize = blocksize;
-  d->idxbits = idxbits;
-  d->offset = (ushort *)(&data[10]);
-  d->symlen = ((ubyte *)d) + sizeof(struct PairsData) + (h - 1) * sizeof(base_t);
-  d->sympat = &data[12 + 2 * h];
-  d->min_len = min_len;
-  *next = &data[12 + 2 * h + 3 * num_syms + (num_syms & 1)];
+    int blocksize = data[1];
+    int idxbits = data[2];
+    uint32 real_num_blocks = *(uint32*)(&data[4]);
+    uint32 num_blocks = real_num_blocks + *(ubyte*)(&data[3]);
+    int max_len = data[8];
+    int min_len = data[9];
+    int h = max_len - min_len + 1;
+    int num_syms = *(ushort*)(&data[10 + 2 * h]);
+    myassert(num_syms <= maxnumsyms, nullptr, 1, num_syms);
+    d = (struct PairsData*)malloc(sizeof(struct PairsData) + (h - 1) * sizeof(base_t) + num_syms);
+    d->blocksize = blocksize;
+    d->idxbits = idxbits;
+    d->offset = (ushort*)(&data[10]);
+    d->symlen = ((ubyte*)d) + sizeof(struct PairsData) + (h - 1) * sizeof(base_t);
+    d->sympat = &data[12 + 2 * h];
+    d->min_len = min_len;
+    *next = &data[12 + 2 * h + 3 * num_syms + (num_syms & 1)];
 
-  int num_indices = (int)((tb_size + (1ULL << idxbits) - 1) >> idxbits);
-  size[0] = 6ULL * num_indices;
-  size[1] = 2ULL * num_blocks;
-  size[2] = (1ULL << blocksize) * real_num_blocks;
+    int num_indices = (int)((tb_size + (1ULL << idxbits) - 1) >> idxbits);
+    size[0] = 6ULL * num_indices;
+    size[1] = 2ULL * num_blocks;
+    size[2] = (1ULL << blocksize) * real_num_blocks;
 
-  char tmp[maxnumsyms];
-  for (i = 0; i < num_syms; i++)
-    tmp[i] = 0;
-  for (i = 0; i < num_syms; i++)
-    if (!tmp[i])
-      calc_symlen(d, i, tmp);
+    char tmp[maxnumsyms];
+    for (i = 0; i < num_syms; i++)
+        tmp[i] = 0;
+    for (i = 0; i < num_syms; i++)
+        if (!tmp[i])
+            calc_symlen(d, i, tmp);
 
-  d->base[h - 1] = 0;
-  for (i = h - 2; i >= 0; i--)
-    d->base[i] = (d->base[i + 1] + d->offset[i] - d->offset[i + 1]) / 2;
+    d->base[h - 1] = 0;
+    for (i = h - 2; i >= 0; i--)
+        d->base[i] = (d->base[i + 1] + d->offset[i] - d->offset[i + 1]) / 2;
 #ifdef DECOMP64
-  for (i = 0; i < h; i++)
-    d->base[i] <<= 64 - (min_len + i);
+    for (i = 0; i < h; i++)
+        d->base[i] <<= 64 - (min_len + i);
 #else
-  for (i = 0; i < h; i++)
-    d->base[i] <<= 32 - (min_len + i);
+    for (i = 0; i < h; i++)
+        d->base[i] <<= 32 - (min_len + i);
 #endif
 
-  d->offset -= d->min_len;
+    d->offset -= d->min_len;
 
-  return d;
+    return d;
 }
+
 
 static int init_table_wdl(struct TBEntry *entry, char *str)
 {
-  ubyte *next;
-  int f, s;
-  uint64 tb_size[8];
-  uint64 size[8 * 3];
-  ubyte flags;
+    ubyte* next;
+    int f, s;
+    uint64 tb_size[8];
+    uint64 size[8 * 3];
+    ubyte flags;
 
-  // first mmap the table into memory
-  entry->data = map_file(str, WDLSUFFIX, &entry->mapping);
-  if (!entry->data) {
-    printf("Could not find %s" WDLSUFFIX "\n", str);
-    return 0;
-  }
-
-  ubyte *data = (ubyte *)entry->data;
-  if (((uint32 *)data)[0] != WDL_MAGIC) {
-    printf("Corrupted table.\n");
-    unmap_file(entry->data, entry->mapping);
-    entry->data = 0;
-    return 0;
-  }
-
-  int split = data[4] & 0x01;
-  int files = data[4] & 0x02 ? 4 : 1;
-
-  data += 5;
-
-  if (!entry->has_pawns) {
-    struct TBEntry_piece *ptr = (struct TBEntry_piece *)entry;
-    setup_pieces_piece(ptr, data, &tb_size[0]);
-    data += ptr->num + 1;
-    data += ((uintptr_t)data) & 0x01;
-
-    ptr->precomp[0] = setup_pairs(data, tb_size[0], &size[0], &next, &flags, 1);
-    data = next;
-    if (split) {
-      ptr->precomp[1] = setup_pairs(data, tb_size[1], &size[3], &next, &flags, 1);
-      data = next;
-    } else
-      ptr->precomp[1] = NULL;
-
-    ptr->precomp[0]->indextable = (char *)data;
-    data += size[0];
-    if (split) {
-      ptr->precomp[1]->indextable = (char *)data;
-      data += size[3];
+    // first mmap the table into memory
+    entry->data = map_file(str, WDLSUFFIX, &entry->mapping);
+    if (!entry->data) {
+        printf("Could not find %s" WDLSUFFIX "\n", str);
+        return 0;
     }
 
-    ptr->precomp[0]->sizetable = (ushort *)data;
-    data += size[1];
-    if (split) {
-      ptr->precomp[1]->sizetable = (ushort *)data;
-      data += size[4];
+    ubyte* data = (ubyte*)entry->data;
+    if (((uint32*)data)[0] != WDL_MAGIC) {
+        printf("Corrupted table.\n");
+        unmap_file(entry->data, entry->mapping);
+        entry->data = 0;
+        return 0;
     }
 
-    data = (ubyte *)((((uintptr_t)data) + 0x3f) & ~0x3f);
-    ptr->precomp[0]->data = data;
-    data += size[2];
-    if (split) {
+    int split = data[4] & 0x01;
+    int files = data[4] & 0x02 ? 4 : 1;
+
+    data += 5;
+
+    if (!entry->has_pawns) {
+        struct TBEntry_piece* ptr = (struct TBEntry_piece*)entry;
+        setup_pieces_piece(ptr, data, &tb_size[0]);
+        data += ptr->num + 1;
+        data += ((uintptr_t)data) & 0x01;
+
+        ptr->precomp[0] = setup_pairs(data, tb_size[0], &size[0], &next, &flags, 1);
+        data = next;
+        if (split) {
+            ptr->precomp[1] = setup_pairs(data, tb_size[1], &size[3], &next, &flags, 1);
+            data = next;
+        }
+        else
+            ptr->precomp[1] = NULL;
+
+        ptr->precomp[0]->indextable = (char*)data;
+        data += size[0];
+        if (split) {
+            ptr->precomp[1]->indextable = (char*)data;
+            data += size[3];
+        }
+
+        ptr->precomp[0]->sizetable = (ushort*)data;
+        data += size[1];
+        if (split) {
+            ptr->precomp[1]->sizetable = (ushort*)data;
+            data += size[4];
+        }
+
         data = (ubyte*)((((uintptr_t)data) + 0x3f) & ~0x3f);
-        ptr->precomp[1]->data = data;
+        ptr->precomp[0]->data = data;
+        data += size[2];
+        if (split) {
+            data = (ubyte*)((((uintptr_t)data) + 0x3f) & ~0x3f);
+            ptr->precomp[1]->data = data;
+        }
     }
-  } else {
-    struct TBEntry_pawn *ptr = (struct TBEntry_pawn *)entry;
-    s = 1 + (ptr->pawns[1] > 0);
-    for (f = 0; f < 4; f++) {
-      setup_pieces_pawn((struct TBEntry_pawn *)ptr, data, &tb_size[2 * f], f);
-      data += ptr->num + s;
-    }
-    data += ((uintptr_t)data) & 0x01;
+    else {
+        struct TBEntry_pawn* ptr = (struct TBEntry_pawn*)entry;
+        s = 1 + (ptr->pawns[1] > 0);
+        for (f = 0; f < 4; f++) {
+            setup_pieces_pawn((struct TBEntry_pawn*)ptr, data, &tb_size[2 * f], f);
+            data += ptr->num + s;
+        }
+        data += ((uintptr_t)data) & 0x01;
 
-    for (f = 0; f < files; f++) {
-      ptr->file[f].precomp[0] = setup_pairs(data, tb_size[2 * f], &size[6 * f], &next, &flags, 1);
-      data = next;
-      if (split) {
-	ptr->file[f].precomp[1] = setup_pairs(data, tb_size[2 * f + 1], &size[6 * f + 3], &next, &flags, 1);
-	data = next;
-      } else
-	ptr->file[f].precomp[1] = NULL;
+        for (f = 0; f < files; f++) {
+            ptr->file[f].precomp[0] = setup_pairs(data, tb_size[2 * f], &size[6 * f], &next, &flags, 1);
+            data = next;
+            if (split) {
+                ptr->file[f].precomp[1] = setup_pairs(data, tb_size[2 * f + 1], &size[6 * f + 3], &next, &flags, 1);
+                data = next;
+            }
+            else
+                ptr->file[f].precomp[1] = NULL;
+        }
+
+        for (f = 0; f < files; f++) {
+            ptr->file[f].precomp[0]->indextable = (char*)data;
+            data += size[6 * f];
+            if (split) {
+                ptr->file[f].precomp[1]->indextable = (char*)data;
+                data += size[6 * f + 3];
+            }
+        }
+
+        for (f = 0; f < files; f++) {
+            ptr->file[f].precomp[0]->sizetable = (ushort*)data;
+            data += size[6 * f + 1];
+            if (split) {
+                ptr->file[f].precomp[1]->sizetable = (ushort*)data;
+                data += size[6 * f + 4];
+            }
+        }
+
+        for (f = 0; f < files; f++) {
+            data = (ubyte*)((((uintptr_t)data) + 0x3f) & ~0x3f);
+            ptr->file[f].precomp[0]->data = data;
+            data += size[6 * f + 2];
+            if (split) {
+                data = (ubyte*)((((uintptr_t)data) + 0x3f) & ~0x3f);
+                ptr->file[f].precomp[1]->data = data;
+                data += size[6 * f + 5];
+            }
+        }
     }
 
-    for (f = 0; f < files; f++) {
-      ptr->file[f].precomp[0]->indextable = (char *)data;
-      data += size[6 * f];
-      if (split) {
-	ptr->file[f].precomp[1]->indextable = (char *)data;
-	data += size[6 * f + 3];
-      }
-    }
-
-    for (f = 0; f < files; f++) {
-      ptr->file[f].precomp[0]->sizetable = (ushort *)data;
-      data += size[6 * f + 1];
-      if (split) {
-	ptr->file[f].precomp[1]->sizetable = (ushort *)data;
-	data += size[6 * f + 4];
-      }
-    }
-
-    for (f = 0; f < files; f++) {
-      data = (ubyte *)((((uintptr_t)data) + 0x3f) & ~0x3f);
-      ptr->file[f].precomp[0]->data = data;
-      data += size[6 * f + 2];
-      if (split) {
-	data = (ubyte *)((((uintptr_t)data) + 0x3f) & ~0x3f);
-	ptr->file[f].precomp[1]->data = data;
-	data += size[6 * f + 5];
-      }
-    }
-  }
-
-  return 1;
+    return 1;
 }
+
 
 static int init_table_dtz(struct TBEntry *entry)
 {
-  ubyte *data = (ubyte *)entry->data;
-  ubyte *next;
-  int f, s;
-  uint64 tb_size[4];
-  uint64 size[4 * 3];
+    ubyte* data = (ubyte*)entry->data;
+    ubyte* next;
+    int f, s;
+    uint64 tb_size[4];
+    uint64 size[4 * 3];
 
-  if (!data)
-    return 0;
+    if (!data)
+        return 0;
 
-  if (((uint32 *)data)[0] != DTZ_MAGIC) {
-    printf("Corrupted table.\n");
-    return 0;
-  }
+    if (((uint32*)data)[0] != DTZ_MAGIC) {
+        printf("Corrupted table.\n");
+        return 0;
+    }
 
-  int files = data[4] & 0x02 ? 4 : 1;
+    int files = data[4] & 0x02 ? 4 : 1;
 
-  data += 5;
+    data += 5;
 
-  if (!entry->has_pawns) {
-      struct DTZEntry_piece* ptr = (struct DTZEntry_piece*)entry;
-      setup_pieces_piece_dtz(ptr, data, &tb_size[0]);
-      data += ptr->num + 1;
-      data += ((uintptr_t)data) & 0x01;
+    if (!entry->has_pawns) {
+        struct DTZEntry_piece* ptr = (struct DTZEntry_piece*)entry;
+        setup_pieces_piece_dtz(ptr, data, &tb_size[0]);
+        data += ptr->num + 1;
+        data += ((uintptr_t)data) & 0x01;
 
-      ptr->precomp = setup_pairs(data, tb_size[0], &size[0], &next, &(ptr->flags), 0);
-      data = next;
+        ptr->precomp = setup_pairs(data, tb_size[0], &size[0], &next, &(ptr->flags), 0);
+        data = next;
 
-      ptr->map = data;
-      if (ptr->flags & 2) {
-          int i;
-          if (!(ptr->flags & 16)) {
-              for (i = 0; i < 4; i++) {
-                  ptr->map_idx[i] = (ushort)(data + 1 - ptr->map);
-                  data += 1 + data[0];
-              }
-          }
-          else {
-              data += (uintptr_t)data & 0x01;
-              for (i = 0; i < 4; i++) {
-                  ptr->map_idx[i] = (ushort)((uint16_t*)data + 1 - (uint16_t*)ptr->map);
-                  data += 2 + 2 * *(uint16_t*)(data);
-              }
-          }
-          data += ((uintptr_t)data) & 0x01;
-      }
+        ptr->map = data;
+        if (ptr->flags & 2) {
+            int i;
+            if (!(ptr->flags & 16)) {
+                for (i = 0; i < 4; i++) {
+                    ptr->map_idx[i] = (ushort)(data + 1 - ptr->map);
+                    data += 1 + data[0];
+                }
+            }
+            else {
+                data += (uintptr_t)data & 0x01;
+                for (i = 0; i < 4; i++) {
+                    ptr->map_idx[i] = (ushort)((uint16_t*)data + 1 - (uint16_t*)ptr->map);
+                    data += 2 + 2 * *(uint16_t*)(data);
+                }
+            }
+            data += ((uintptr_t)data) & 0x01;
+        }
 
-      ptr->precomp->indextable = (char*)data;
-      data += size[0];
+        ptr->precomp->indextable = (char*)data;
+        data += size[0];
 
-      ptr->precomp->sizetable = (ushort*)data;
-      data += size[1];
+        ptr->precomp->sizetable = (ushort*)data;
+        data += size[1];
 
-      data = (ubyte*)((((uintptr_t)data) + 0x3f) & ~0x3f);
-      ptr->precomp->data = data;
-      data += size[2];
-  } else {
-      struct DTZEntry_pawn* ptr = (struct DTZEntry_pawn*)entry;
-      s = 1 + (ptr->pawns[1] > 0);
-      for (f = 0; f < 4; f++) {
-          setup_pieces_pawn_dtz(ptr, data, &tb_size[f], f);
-          data += ptr->num + s;
-      }
-      data += ((uintptr_t)data) & 0x01;
+        data = (ubyte*)((((uintptr_t)data) + 0x3f) & ~0x3f);
+        ptr->precomp->data = data;
+        data += size[2];
+    }
+    else {
+        struct DTZEntry_pawn* ptr = (struct DTZEntry_pawn*)entry;
+        s = 1 + (ptr->pawns[1] > 0);
+        for (f = 0; f < 4; f++) {
+            setup_pieces_pawn_dtz(ptr, data, &tb_size[f], f);
+            data += ptr->num + s;
+        }
+        data += ((uintptr_t)data) & 0x01;
 
-      for (f = 0; f < files; f++) {
-          ptr->file[f].precomp = setup_pairs(data, tb_size[f], &size[3 * f], &next, &(ptr->flags[f]), 0);
-          data = next;
-      }
+        for (f = 0; f < files; f++) {
+            ptr->file[f].precomp = setup_pairs(data, tb_size[f], &size[3 * f], &next, &(ptr->flags[f]), 0);
+            data = next;
+        }
 
-      ptr->map = data;
-      for (f = 0; f < files; f++) {
-          if (ptr->flags[f] & 2) {
-              int i;
-              if (!(ptr->flags[f] & 16)) {
-                  for (i = 0; i < 4; i++) {
-                      ptr->map_idx[f][i] = (ushort)(data + 1 - ptr->map);
-                      data += 1 + data[0];
-                  }
-              }
-              else {
-                  data += (uintptr_t)data & 0x01;
-                  for (i = 0; i < 4; i++) {
-                      ptr->map_idx[f][i] = (ushort)(data + 1 - ptr->map);
-                      data += 2 + 2 * *(uint16_t*)(data);
-                  }
-              }
-          }
-      }
-      data += ((uintptr_t)data) & 0x01;
+        ptr->map = data;
+        for (f = 0; f < files; f++) {
+            if (ptr->flags[f] & 2) {
+                int i;
+                if (!(ptr->flags[f] & 16)) {
+                    for (i = 0; i < 4; i++) {
+                        ptr->map_idx[f][i] = (ushort)(data + 1 - ptr->map);
+                        data += 1 + data[0];
+                    }
+                }
+                else {
+                    data += (uintptr_t)data & 0x01;
+                    for (i = 0; i < 4; i++) {
+                        ptr->map_idx[f][i] = (ushort)(data + 1 - ptr->map);
+                        data += 2 + 2 * *(uint16_t*)(data);
+                    }
+                }
+            }
+        }
+        data += ((uintptr_t)data) & 0x01;
 
-      for (f = 0; f < files; f++) {
-          ptr->file[f].precomp->indextable = (char*)data;
-          data += size[3 * f];
-      }
+        for (f = 0; f < files; f++) {
+            ptr->file[f].precomp->indextable = (char*)data;
+            data += size[3 * f];
+        }
 
-      for (f = 0; f < files; f++) {
-          ptr->file[f].precomp->sizetable = (ushort*)data;
-          data += size[3 * f + 1];
-      }
+        for (f = 0; f < files; f++) {
+            ptr->file[f].precomp->sizetable = (ushort*)data;
+            data += size[3 * f + 1];
+        }
 
-      for (f = 0; f < files; f++) {
-          data = (ubyte*)((((uintptr_t)data) + 0x3f) & ~0x3f);
-          ptr->file[f].precomp->data = data;
-          data += size[3 * f + 2];
-      }
-  }
+        for (f = 0; f < files; f++) {
+            data = (ubyte*)((((uintptr_t)data) + 0x3f) & ~0x3f);
+            ptr->file[f].precomp->data = data;
+            data += size[3 * f + 2];
+        }
+    }
 
-  return 1;
+    return 1;
 }
+
 
 static ubyte* decompress_pairs(struct PairsData *d, uint64 idx)
 {
-  if (!d->idxbits)
-    return d->constValue;
+    if (!d->idxbits)
+        return d->constValue;
 
-  uint32 mainidx = (uint32)(idx >> d->idxbits);
-  int litidx = ((int)idx & ((1 << d->idxbits) - 1)) - (1 << (d->idxbits - 1));
-  uint32 block = *(uint32 *)(d->indextable + 6 * mainidx);
-  litidx += *(ushort *)(d->indextable + 6 * mainidx + 4);
+    uint32 mainidx = (uint32)(idx >> d->idxbits);
+    int litidx = ((int)idx & ((1 << d->idxbits) - 1)) - (1 << (d->idxbits - 1));
+    uint32 block = *(uint32*)(d->indextable + 6 * mainidx);
+    litidx += *(ushort*)(d->indextable + 6 * mainidx + 4);
 
-  if (litidx < 0) {
-    do {
-      litidx += d->sizetable[--block] + 1;
-    } while (litidx < 0);
-  } else {
-    while (litidx > d->sizetable[block])
-      litidx -= d->sizetable[block++] + 1;
-  }
+    if (litidx < 0) {
+        do {
+            litidx += d->sizetable[--block] + 1;
+        } while (litidx < 0);
+    }
+    else {
+        while (litidx > d->sizetable[block])
+            litidx -= d->sizetable[block++] + 1;
+    }
 
-  uint32 *ptr = (uint32 *)(d->data + ((size_t)block << d->blocksize));
+    uint32* ptr = (uint32*)(d->data + ((size_t)block << d->blocksize));
 
-  int m = d->min_len;
-  ushort *offset = d->offset;
-  base_t *base = d->base - m;
-  ubyte *symlen = d->symlen;
-  int sym, bitcnt;
+    int m = d->min_len;
+    ushort* offset = d->offset;
+    base_t* base = d->base - m;
+    ubyte* symlen = d->symlen;
+    int sym, bitcnt;
 
 #ifdef DECOMP64
-  uint64 code = __builtin_bswap64(*((uint64 *)ptr));
-  ptr += 2;
-  bitcnt = 0; // number of "empty bits" in code
-  for (;;) {
-    int l = m;
-    while (code < base[l]) l++;
-    sym = offset[l] + (int)((code - base[l]) >> (64 - l));
-    if (litidx < (int)symlen[sym] + 1) break;
-    litidx -= (int)symlen[sym] + 1;
-    code <<= l;
-    bitcnt += l;
-    if (bitcnt >= 32) {
-      bitcnt -= 32;
-      code |= ((uint64)(__builtin_bswap32(*ptr++))) << bitcnt;
+    uint64 code = __builtin_bswap64(*((uint64*)ptr));
+    ptr += 2;
+    bitcnt = 0; // number of "empty bits" in code
+    for (;;) {
+        int l = m;
+        while (code < base[l]) l++;
+        sym = offset[l] + (int)((code - base[l]) >> (64 - l));
+        if (litidx < (int)symlen[sym] + 1) break;
+        litidx -= (int)symlen[sym] + 1;
+        code <<= l;
+        bitcnt += l;
+        if (bitcnt >= 32) {
+            bitcnt -= 32;
+            code |= ((uint64)(__builtin_bswap32(*ptr++))) << bitcnt;
+        }
     }
-  }
 #else
-  uint32 next = 0;
-  uint32 code = __builtin_bswap32(*ptr++);
-  bitcnt = 0; // number of bits in next
-  for (;;) {
-    int l = m;
-    while (code < base[l]) l++;
-    sym = offset[l] + ((code - base[l]) >> (32 - l));
-    if (litidx < (int)symlen[sym] + 1) break;
-    litidx -= (int)symlen[sym] + 1;
-    code <<= l;
-    if (bitcnt < l) {
-      if (bitcnt) {
-	code |= (next >> (32 - l));
-	l -= bitcnt;
-      }
-      next = __builtin_bswap32(*ptr++);
-      bitcnt = 32;
+    uint32 next = 0;
+    uint32 code = __builtin_bswap32(*ptr++);
+    bitcnt = 0; // number of bits in next
+    for (;;) {
+        int l = m;
+        while (code < base[l]) l++;
+        sym = offset[l] + ((code - base[l]) >> (32 - l));
+        if (litidx < (int)symlen[sym] + 1) break;
+        litidx -= (int)symlen[sym] + 1;
+        code <<= l;
+        if (bitcnt < l) {
+            if (bitcnt) {
+                code |= (next >> (32 - l));
+                l -= bitcnt;
+            }
+            next = __builtin_bswap32(*ptr++);
+            bitcnt = 32;
+        }
+        code |= (next >> (32 - l));
+        next <<= l;
+        bitcnt -= l;
     }
-    code |= (next >> (32 - l));
-    next <<= l;
-    bitcnt -= l;
-  }
 #endif
 
-  ubyte *sympat = d->sympat;
-  while (symlen[sym] != 0) {
-    int w = *(int *)(sympat + 3 * sym);
-    int s1 = w & 0x0fff;
-    if (litidx < (int)symlen[s1] + 1)
-      sym = s1;
-    else {
-      litidx -= (int)symlen[s1] + 1;
-      sym = (w >> 12) & 0x0fff;
+    ubyte* sympat = d->sympat;
+    while (symlen[sym] != 0) {
+        int w = *(int*)(sympat + 3 * sym);
+        int s1 = w & 0x0fff;
+        if (litidx < (int)symlen[s1] + 1)
+            sym = s1;
+        else {
+            litidx -= (int)symlen[s1] + 1;
+            sym = (w >> 12) & 0x0fff;
+        }
     }
-  }
 
-  return (sympat + 3 * sym);
+    return (sympat + 3 * sym);
 }
+
 
 void load_dtz_table(char *str, uint64 key1, uint64 key2)
 {
-  struct TBEntry *ptr, *ptr3;
+    struct TBEntry* ptr, * ptr3;
 
-  DTZ_table[0].key1 = key1;
-  DTZ_table[0].key2 = key2;
-  DTZ_table[0].entry = NULL;
+    DTZ_table[0].key1 = key1;
+    DTZ_table[0].key2 = key2;
+    DTZ_table[0].entry = NULL;
 
-  // find corresponding WDL entry
-  int hashIdx = key1 >> (64 - TBHASHBITS);
-  while (TB_hash[hashIdx].key != key1)
-      hashIdx = (hashIdx + 1) & ((1 << TBHASHBITS) - 1);
-  ptr = TB_hash[hashIdx].ptr;
-  if (!ptr) return;
-  ptr3 = (struct TBEntry *)malloc(ptr->has_pawns
-				? sizeof(struct DTZEntry_pawn)
-				: sizeof(struct DTZEntry_piece));
+    // find corresponding WDL entry
+    int hashIdx = key1 >> (64 - TBHASHBITS);
+    while (TB_hash[hashIdx].key != key1)
+        hashIdx = (hashIdx + 1) & ((1 << TBHASHBITS) - 1);
+    ptr = TB_hash[hashIdx].ptr;
+    if (!ptr) return;
+    ptr3 = (struct TBEntry*)malloc(ptr->has_pawns
+        ? sizeof(struct DTZEntry_pawn)
+        : sizeof(struct DTZEntry_piece));
 
-  ptr3->data = map_file(str, DTZSUFFIX, &ptr3->mapping);
-  ptr3->key = ptr->key;
-  ptr3->num = ptr->num;
-  ptr3->symmetric = ptr->symmetric;
-  ptr3->has_pawns = ptr->has_pawns;
-  if (ptr3->has_pawns) {
-    struct DTZEntry_pawn *entry = (struct DTZEntry_pawn *)ptr3;
-    entry->pawns[0] = ((struct TBEntry_pawn *)ptr)->pawns[0];
-    entry->pawns[1] = ((struct TBEntry_pawn *)ptr)->pawns[1];
-  } else {
-    struct DTZEntry_piece *entry = (struct DTZEntry_piece *)ptr3;
-    entry->enc_type = ((struct TBEntry_piece *)ptr)->enc_type;
-  }
-  if (!init_table_dtz(ptr3))
-    free(ptr3);
-  else
-    DTZ_table[0].entry = ptr3;
+    ptr3->data = map_file(str, DTZSUFFIX, &ptr3->mapping);
+    ptr3->key = ptr->key;
+    ptr3->num = ptr->num;
+    ptr3->symmetric = ptr->symmetric;
+    ptr3->has_pawns = ptr->has_pawns;
+    if (ptr3->has_pawns) {
+        struct DTZEntry_pawn* entry = (struct DTZEntry_pawn*)ptr3;
+        entry->pawns[0] = ((struct TBEntry_pawn*)ptr)->pawns[0];
+        entry->pawns[1] = ((struct TBEntry_pawn*)ptr)->pawns[1];
+    }
+    else {
+        struct DTZEntry_piece* entry = (struct DTZEntry_piece*)ptr3;
+        entry->enc_type = ((struct TBEntry_piece*)ptr)->enc_type;
+    }
+    if (!init_table_dtz(ptr3))
+        free(ptr3);
+    else
+        DTZ_table[0].entry = ptr3;
 }
+
 
 static void free_wdl_entry(struct TBEntry *entry)
 {
-  unmap_file(entry->data, entry->mapping);
-  if (!entry->has_pawns) {
-    struct TBEntry_piece *ptr = (struct TBEntry_piece *)entry;
-    free(ptr->precomp[0]);
-    if (ptr->precomp[1])
-      free(ptr->precomp[1]);
-  } else {
-    struct TBEntry_pawn *ptr = (struct TBEntry_pawn *)entry;
-    int f;
-    for (f = 0; f < 4; f++) {
-      free(ptr->file[f].precomp[0]);
-      if (ptr->file[f].precomp[1])
-	free(ptr->file[f].precomp[1]);
+    unmap_file(entry->data, entry->mapping);
+    if (!entry->has_pawns) {
+        struct TBEntry_piece* ptr = (struct TBEntry_piece*)entry;
+        free(ptr->precomp[0]);
+        if (ptr->precomp[1])
+            free(ptr->precomp[1]);
     }
-  }
+    else {
+        struct TBEntry_pawn* ptr = (struct TBEntry_pawn*)entry;
+        int f;
+        for (f = 0; f < 4; f++) {
+            free(ptr->file[f].precomp[0]);
+            if (ptr->file[f].precomp[1])
+                free(ptr->file[f].precomp[1]);
+        }
+    }
 }
+
 
 static void free_dtz_entry(struct TBEntry *entry)
 {
-  unmap_file(entry->data, entry->mapping);
-  if (!entry->has_pawns) {
-    struct DTZEntry_piece *ptr = (struct DTZEntry_piece *)entry;
-    free(ptr->precomp);
-  } else {
-    struct DTZEntry_pawn *ptr = (struct DTZEntry_pawn *)entry;
-    int f;
-    for (f = 0; f < 4; f++)
-      free(ptr->file[f].precomp);
-  }
-  free(entry);
+    unmap_file(entry->data, entry->mapping);
+    if (!entry->has_pawns) {
+        struct DTZEntry_piece* ptr = (struct DTZEntry_piece*)entry;
+        free(ptr->precomp);
+    }
+    else {
+        struct DTZEntry_pawn* ptr = (struct DTZEntry_pawn*)entry;
+        int f;
+        for (f = 0; f < 4; f++)
+            free(ptr->file[f].precomp);
+    }
+    free(entry);
 }
 
 static int wdl_to_map[5] = { 1, 3, 0, 2, 0 };
 static ubyte pa_flags[5] = { 8, 0, 0, 0, 4 };
-
