@@ -280,19 +280,15 @@ int chessposition::probe_dtz_table(int wdl, int *success)
         uint8_t* w = decompress_pairs(entry->precomp, idx);
         res = w[0] + ((w[1] & 0x0f) << 8);
 
-        uint8_t* map = entry->map;
-        uint16_t* idx = entry->map_idx;
         if (entry->flags & 2) {
+            uint8_t* map = entry->map;
+            uint16_t* midx = entry->map_idx;
             int m = wdl_to_map[wdl + 2];
             if (!(entry->flags & 16)) {
-                printf("probe_dtz_u8_raw : v=%02x m=%02x e=%02x\n", res, m, map[idx[m] + res]);
-                res = map[idx[m] + res];
-                printf("probe_dtz_u8 : %d\n", res);
+                res = map[midx[m] + res];
             }
             else {
-                printf("probe_dtz_u16_raw: v=%02x m=%02x e=%04x\n", res, m, ((uint16_t*)map)[idx[m] + res]);
-                res = ((uint16_t*)map)[idx[m] + res];
-                printf("probe_dtz_u16: %d\n", res);
+                res = ((uint16_t*)map)[midx[m] + res];
             }
         }
 
@@ -329,17 +325,21 @@ int chessposition::probe_dtz_table(int wdl, int *success)
         res = w[0] + ((w[1] & 0x0f) << 8);
 
         if (entry->flags[f] & 2) {
-            if (!(entry->flags[f] & 16))
-                res = entry->map[entry->map_idx[f][wdl_to_map[wdl + 2]] + res];
-            else
-                res = (int)((uint16_t*)entry->map)[entry->map_idx[f][wdl_to_map[wdl + 2]] + res];
+            uint8_t* map = entry->map;
+            uint16_t* midx = entry->map_idx[f];
+            int m = wdl_to_map[wdl + 2];
+            if (!(entry->flags[f] & 16)) {
+                res = map[midx[m] + res];
+            }
+            else {
+                res = ((uint16_t*)map)[midx[m] + res];
+            }
         }
 
         if (!(entry->flags[f] & pa_flags[wdl + 2]) || (wdl & 1))
             res *= 2;
     }
 
-    printf("probe_dtz_table: %d\n", res);
     return res;
 }
 
@@ -601,9 +601,9 @@ int chessposition::probe_dtz(int *success)
 
         if (playMove(mc))
         {
-            printf("probe_dtz (ply=%d) testing non-pawn non-capture %s... \n", ply, moveToString(mc).c_str());
+            //printf("probe_dtz (ply=%d) testing non-pawn non-capture %s... \n", ply, moveToString(mc).c_str());
             int v = -probe_dtz(success);
-            printf("probe_dtz (ply=%d) tested  non-pawn non-capture %s... v=%d\n", ply, moveToString(mc).c_str(), v);
+            //printf("probe_dtz (ply=%d) tested  non-pawn non-capture %s... v=%d\n", ply, moveToString(mc).c_str(), v);
             unplayMove(mc);
             if (*success == 0)
                 return 0;
@@ -615,7 +615,6 @@ int chessposition::probe_dtz(int *success)
             else {
                 if (v - 1 < best)
                     best = v - 1;
-
             }
         }
     }
@@ -748,7 +747,7 @@ int chessposition::root_probe_dtz()
                 else
                     // cursed win = draw
                     rootmovelist.move[mi].value = SCOREDRAW;
-                printf("info string root_probe_dtz (ply=%d) Final value for move %s... value=%d rep=%d\n", ply, rootmovelist.move[mi].toString().c_str(), rootmovelist.move[mi].value, hasRepetition);
+                //printf("info string root_probe_dtz (ply=%d) Final value for move %s... value=%d rep=%d\n", ply, rootmovelist.move[mi].toString().c_str(), rootmovelist.move[mi].value, hasRepetition);
                 mi++;
             }
         }
@@ -778,7 +777,7 @@ int chessposition::root_probe_dtz()
                 else
                     // We can reach a draw by 50-moves-rule
                     rootmovelist.move[mi].value = SCOREDRAW;
-                printf("info string root_probe_dtz (ply=%d) Final value for move %s... value=%d rep=%d\n", ply, rootmovelist.move[mi].toString().c_str(), rootmovelist.move[mi].value, hasRepetition);
+                //printf("info string root_probe_dtz (ply=%d) Final value for move %s... value=%d rep=%d\n", ply, rootmovelist.move[mi].toString().c_str(), rootmovelist.move[mi].value, hasRepetition);
                 mi++;
             }
         }
