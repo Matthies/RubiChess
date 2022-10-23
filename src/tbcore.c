@@ -1132,7 +1132,7 @@ static int init_table_dtz(struct TBEntry *entry)
               printf("datastep_dtz (mod 2): %llx\n", ((uintptr_t)data) & 0x01);
               data += (uintptr_t)data & 0x01;
               for (i = 0; i < 4; i++) {
-                  ptr->map_idx[i] = (ushort)(data + 1 - ptr->map);
+                  ptr->map_idx[i] = (ushort)((uint16_t*)data + 1 - (uint16_t*)ptr->map);
                   printf("datastep_dtz (2+2*data0): %x\n", 2 + 2 * *(uint16_t*)(data));
                   data += 2 + 2 * *(uint16_t*)(data);
               }
@@ -1292,6 +1292,7 @@ static ubyte* decompress_pairs(struct PairsData *d, uint64 idx)
   }
 #endif
 
+  printf("decompress sym: %04x\n", sym);
   ubyte *sympat = d->sympat;
   while (symlen[sym] != 0) {
     int w = *(int *)(sympat + 3 * sym);

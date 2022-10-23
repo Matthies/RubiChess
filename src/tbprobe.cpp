@@ -280,16 +280,18 @@ int chessposition::probe_dtz_table(int wdl, int *success)
         uint8_t* w = decompress_pairs(entry->precomp, idx);
         res = w[0] + ((w[1] & 0x0f) << 8);
 
+        uint8_t* map = entry->map;
+        uint16_t* idx = entry->map_idx;
         if (entry->flags & 2) {
             int m = wdl_to_map[wdl + 2];
             if (!(entry->flags & 16)) {
-                printf("probe_dtz_u8_raw : v=%02x m=%02x e=%02x\n", res, m, ((uint8_t*)entry->map)[entry->map_idx[m] + res]);
-                res = (int)((uint8_t*)entry->map)[entry->map_idx[m] + res];
+                printf("probe_dtz_u8_raw : v=%02x m=%02x e=%02x\n", res, m, map[idx[m] + res]);
+                res = map[idx[m] + res];
                 printf("probe_dtz_u8 : %d\n", res);
             }
             else {
-                printf("probe_dtz_u16_raw: v=%02x m=%02x e=%04x\n", res, m, ((uint16_t*)entry->map)[entry->map_idx[m] + res]);
-                res = (int)((uint16_t*)entry->map)[entry->map_idx[m] + res];
+                printf("probe_dtz_u16_raw: v=%02x m=%02x e=%04x\n", res, m, ((uint16_t*)map)[idx[m] + res]);
+                res = ((uint16_t*)map)[idx[m] + res];
                 printf("probe_dtz_u16: %d\n", res);
             }
         }
