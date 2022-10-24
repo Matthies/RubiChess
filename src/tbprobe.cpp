@@ -61,12 +61,12 @@ static void prt_str(char *str, int color, chessposition *pos)
 // Given a position, produce a 64-bit material signature key.
 // If the engine supports such a key, it should equal the engine's key.
 // Again no need to make this very efficient.
-static uint64 calc_key(int mirror, chessposition *pos)
+static uint64_t calc_key(int mirror, chessposition *pos)
 {
     int color;
     PieceType pt;
     int i;
-    uint64 key = 0;
+    uint64_t key = 0;
     color = !mirror ? 0 : 1;
 
 
@@ -86,10 +86,10 @@ static uint64 calc_key(int mirror, chessposition *pos)
 int chessposition::probe_wdl_table(int *success)
 {
     TBEntry *ptr;
-    uint64 idx;
-    uint64 key;
+    uint64_t idx;
+    uint64_t key;
     int i;
-    ubyte res;
+    uint8_t res;
     int p[TBPIECES];
 
     // Obtain the position's material signature key.
@@ -153,7 +153,7 @@ int chessposition::probe_wdl_table(int *success)
     // Pieces of the same type are guaranteed to be consecutive.
     if (!ptr->has_pawns) {
         TBEntry_piece *entry = (TBEntry_piece *)ptr;
-        ubyte *pc = entry->pieces[bside];
+        uint8_t *pc = entry->pieces[bside];
         for (i = 0; i < entry->num;) {
             U64 bb = piece00[SYZYGY2RUBI_PT(pc[i] ^ cmirror)];
             int index;
@@ -178,7 +178,7 @@ int chessposition::probe_wdl_table(int *success)
             p[i++] = index ^ mirror;
         };
         int f = pawn_file(entry, p);
-        ubyte *pc = entry->file[f].pieces[bside];
+        uint8_t *pc = entry->file[f].pieces[bside];
         for (; i < entry->num;) {
             bb = piece00[SYZYGY2RUBI_PT(pc[i] ^ cmirror)];
             while (bb)
@@ -199,12 +199,12 @@ int chessposition::probe_wdl_table(int *success)
 int chessposition::probe_dtz_table(int wdl, int *success)
 {
     TBEntry *ptr;
-    uint64 idx;
+    uint64_t idx;
     int i, res;
     int p[TBPIECES];
 
     // Obtain the position's material signature key.
-    uint64 key = materialhash;
+    uint64_t key = materialhash;
 
     if (DTZ_table[0].key1 != key && DTZ_table[0].key2 != key) {
         for (i = 1; i < DTZ_ENTRIES; i++)
@@ -265,7 +265,7 @@ int chessposition::probe_dtz_table(int wdl, int *success)
             *success = -1;
             return 0;
         }
-        ubyte *pc = entry->pieces;
+        uint8_t *pc = entry->pieces;
         for (i = 0; i < entry->num;) {
             U64 bb = piece00[SYZYGY2RUBI_PT(pc[i] ^ cmirror)];
             int index;
@@ -311,7 +311,7 @@ int chessposition::probe_dtz_table(int wdl, int *success)
             *success = -1;
             return 0;
         }
-        ubyte *pc = entry->file[f].pieces;
+        uint8_t *pc = entry->file[f].pieces;
         for (; i < entry->num;) {
             bb = piece00[SYZYGY2RUBI_PT(pc[i] ^ cmirror)];
             while (bb)
