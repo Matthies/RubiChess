@@ -275,7 +275,7 @@ void chessposition::tbFilterRootMoves()
 {
     tbPosition = 0;
     useRootmoveScore = 0;
-    if (POPCOUNT(occupied00[0] | occupied00[1]) > useTb)
+    if (!useTb || POPCOUNT(occupied00[0] | occupied00[1]) > useTb)
         return;
 
     if ((tbPosition = root_probe_dtz())) {
