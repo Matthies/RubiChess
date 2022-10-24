@@ -50,11 +50,6 @@
 
 #define TBHASHBITS 12
 
-//typedef unsigned long long uint64_t;
-//typedef unsigned int uint32;
-//typedef unsigned char uint8_t;
-//typedef unsigned short uint16_t;
-
 struct TBHashEntry;
 
 #ifdef DECOMP64
