@@ -1184,7 +1184,7 @@ static int init_table_dtz(struct TBEntry *entry)
                 else {
                     data += (uintptr_t)data & 0x01;
                     for (i = 0; i < 4; i++) {
-                        ptr->map_idx[f][i] = (uint16_t)(data + 1 - ptr->map);
+                        ptr->map_idx[f][i] = (uint16_t)((uint16_t*)data + 1 - (uint16_t*)ptr->map);
                         data += 2 + 2 * *(uint16_t*)(data);
                     }
                 }
