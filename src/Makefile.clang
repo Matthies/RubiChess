@@ -32,17 +32,24 @@ CPUTEST=cputest
 EXE=RubiChess
 GIT=git
 NATIVEFLAGS=_nativeflags.txt
-SDEDEFAULT="C:\_portable\sde-external-8.63.0-2021-01-18-win\sde.exe"
+SDEDEFAULT="C:\bin\SDE\sde.exe"
 !IF !DEFINED(SDE)
 SDE=$(SDEDEFAULT)
 !ENDIF
 
 
-$(RELDIR):
-	mkdir $(RELDIR)
+# Release-Dir
+!IF !EXIST($(RELDIR))
+!MESSAGE $(RELDIR):
+!IF [mkdir $(RELDIR)] != 0
+!ERROR Cannot create folder  $(RELDIR)!
+!ELSE
+!MESSAGE Successfully created folder $(RELDIR)!
+!ENDIF
+!ENDIF
 
-compilercheck:
-!IF !DEFINED(ARCH)
+# compilercheck
+!IF !DEFINED(CCHECK)
 !MESSAGE Compiler and Tools:
 !IF !EXIST($(CXX))
 !ERROR Compiler $(CXX) not found. Exit!
@@ -65,30 +72,33 @@ compilercheck:
 !MESSAGE Software Development Emulator (SDE) not found.
 !ENDIF
 !MESSAGE ==========================================================================
-!ENDIF
 
-network:
-!IF !DEFINED(ARCH)
+# network
 !MESSAGE Network:
 !IF [@FOR /F "tokens=3" %A IN ('find "NNUEDEFAULT " RubiChess.h') DO @(if exist %A ( @echo Net %A already exists ) else ( curl -skL $(NETURL)%A > $(TMPNN) && move $(TMPNN) %A && echo Net %A was downloaded. )) && @if not exist $(RELDIR)\%A ( @copy  %A $(RELDIR)\%A )  ] != 0
-	@echo Cannot get default net from header file or download failed!
+!ERROR Cannot get default net from header file or download failed!
 !ENDIF
 !MESSAGE ==========================================================================
+CCHECK=done
 !ENDIF
 
 !IFNDEF ARCH
 ARCH=native
 !ENDIF
 
-nativeflags:
-!IF "$(ARCH)"=="native" || "$(ARCH)"=="" || !defined(ARCH)
-	@$(CXX) /GX -DCPUTEST $(CPUTEST).cpp -o $(CPUTEST)
-	-@$(CPUTEST) > $(NATIVEFLAGS)
-!ELSE
-	-@del $(NATIVEFLAGS) 2>nul
+# nativeflags
+!IF "$(ARCH)"=="native" && !EXIST($(NATIVEFLAGS)) && "$(VSCMD_ARG_HOST_ARCH)"=="$(VSCMD_ARG_TGT_ARCH)"
+!IF [@$(CXX) /GX -DCPUTEST $(CPUTEST).cpp -o $(CPUTEST) && @$(CPUTEST) > $(NATIVEFLAGS)] != 0
+!ERROR Cannot compile and/or run $(CPUTEST) to determine cpu flags on this machine!
+!ENDIF
+!ENDIF
+!IF "$(ARCH)"!="native"
+!IF EXIST($(NATIVEFLAGS)) && [@del $(NATIVEFLAGS) 2>nul] != 0
+!ERROR Cannot delete cpu flags file $(NATIVEFLAGS)
+!ENDIF
 !ENDIF
 
-cpuflags: nativeflags lib-clean
+cpuflags: lib-clean
 !IF "$(ARCH)" == "x86-64-avx512"
 CPUFLAGS=avx512 bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2
 !ELSEIF "$(ARCH)" == "x86-64-bmi2"
@@ -183,11 +193,13 @@ $(ZLIBDIR)\zlib.lib:
 	@cd ..
 
 build: cpuflags
+	@set CCHECK=$(CCHECK)
+	@set ARCH=$(ARCH)
 	@echo Building binary for $(ARCH)...
-	@nmake -c -f Makefile.clang buildandarch ARCH=$(ARCH)
-	@nmake -c -f Makefile.clang profile-clean ARCH=$(ARCH)
+	@nmake -c -f Makefile.clang buildandarch
+	@nmake -c -f Makefile.clang profile-clean
 
-compile: $(RELDIR) $(ZLIBDIR)\zlib.lib
+compile: $(ZLIBDIR)\zlib.lib
 !IFNDEF GITVER
 	@FOR /F "tokens=2" %A IN ('cmd /c "($(GIT) show --name-only --abbrev-commit --date=format:%Y%m%d || echo Date: %date%) | findstr /I /r /c:"^Date: "" ') DO @(set GITVER=%A&&  nmake -f Makefile.clang $* /$(MAKEFLAGS) && exit /B)
 !ELSE
@@ -205,17 +217,19 @@ compile: $(RELDIR) $(ZLIBDIR)\zlib.lib
 
 pgo: printarch
 	@echo Compiling instrumented binary...
-	@nmake -c -f Makefile.clang compile ARCH=$(ARCH) PROFILEFLAGS=-fprofile-instr-generate=$(PROFEXE).clangprof-raw PROFLIB="$(LLVMInstallDir)\lib\clang\$(CLANGVER).0.0\lib\windows\clang_rt.profile-x86_64.lib"
+	@nmake -c -f Makefile.clang compile PROFILEFLAGS=-fprofile-instr-generate=$(PROFEXE).clangprof-raw PROFLIB="$(LLVMInstallDir)\lib\clang\$(CLANGVER).0.0\lib\windows\clang_rt.profile-x86_64.lib"
 	@echo Bench to generate profiling data...
 	@($(PROFEXE) -bench >nul || (if exist $(SDE) ( @echo Using Intels Software Development Emulator... && $(SDE) -- $(PROFEXE) -bench >nul) else (@echo Intels Software Development Emulator needed but not found at $(SDE). Performance will be poor.)))
 	@$(PROFDATATOOLEXE) merge -output=$(PROFEXE).clangprof $(PROFEXE).clangprof-raw
 	@echo.
 	@echo Compiling optimized binary...
-	@nmake -c -f Makefile.clang compile ARCH=$(ARCH) PROFILEFLAGS=-fprofile-instr-use=$(PROFEXE).clangprof
+	@nmake -c -f Makefile.clang compile PROFILEFLAGS=-fprofile-instr-use=$(PROFEXE).clangprof
 
 profile-build: cpuflags
-	@nmake -c -f Makefile.clang pgo ARCH=$(ARCH)
-	@nmake -c -f Makefile.clang profile-clean ARCH=$(ARCH)
+	@set CCHECK=$(CCHECK)
+	@set ARCH=$(ARCH)
+	@nmake -c -f Makefile.clang pgo
+	@nmake -c -f Makefile.clang profile-clean
 
 pgo-rename: printarch pgo
 	@move $(RELDIR)\$(EXE).exe $(RELDIR)\$(EXE)-$(VERSION)_$(ARCH).exe 1>nul
@@ -241,17 +255,19 @@ releaseversion:
 !ENDIF
 
 release:
-	@nmake -c -f Makefile.clang profile-clean ARCH=$(ARCH)
+	@set CCHECK=$(CCHECK)
+	@set ARCH=special
+	@nmake -c -f Makefile.clang profile-clean
 !IFNDEF VERSIONLEGACY
-	@FOR /F "tokens=3" %A IN ('find "define VERNUMLEGACY " RubiChess.h') DO @(set VERSIONLEGACY=%A&& nmake -f Makefile.clang $* /$(MAKEFLAGS) ARCH=$(ARCH) && exit /B)
+	@FOR /F "tokens=3" %A IN ('find "define VERNUMLEGACY " RubiChess.h') DO @(set VERSIONLEGACY=%A&& nmake -f Makefile.clang $* /$(MAKEFLAGS) && exit /B)
 !ELSE
 !IFNDEF VERSION
-	@FOR /F "tokens=2" %A IN ('cmd /c "($(GIT) show --name-only --abbrev-commit --date=format:%Y%m%d || echo Date: %VERSIONLEGACY%) | findstr /I /r /c:"^Date: "" ') DO @(set VERSION=%A&&  nmake -f Makefile.clang $* /$(MAKEFLAGS) ARCH=$(ARCH) && exit /B)
+	@FOR /F "tokens=2" %A IN ('cmd /c "($(GIT) show --name-only --abbrev-commit --date=format:%Y%m%d || echo Date: %VERSIONLEGACY%) | findstr /I /r /c:"^Date: "" ') DO @(set VERSION=%A&&  nmake -f Makefile.clang $* /$(MAKEFLAGS) && exit /B)
 !ELSE
-	@nmake -c -f Makefile.clang releaseversion ARCH=$(ARCH)
+	@nmake -c -f Makefile.clang releaseversion
 !ENDIF
 !ENDIF
-	@nmake -c -f Makefile.clang profile-clean ARCH=$(ARCH)
+	@nmake -c -f Makefile.clang profile-clean
 
 release-arm64:
 	@nmake -c -f Makefile.clang build-rename ARCH=arm64-neon
