@@ -1974,7 +1974,7 @@ public:
     void prepareThreads();
     void resetStats();
     void registerOptions();
-    void measureOverhead();
+    void measureOverhead(bool wasPondering);
     template <RootsearchType RT> void searchStart();
     void searchWaitStop(bool forceStop = true);
     void resetEndTime(int constantRootMoves = 0, int bestmovenodesratio = 128);

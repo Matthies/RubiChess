@@ -308,9 +308,9 @@ U64 engine::getTotalNodes()
 }
 
 
-void engine::measureOverhead()
+void engine::measureOverhead(bool wasPondering)
 {
-    if (lastmytime && lastmyinc == myinc)
+    if (!wasPondering && lastmytime && lastmyinc == myinc)
     {
         int guiTimeOfLastMove = lastmytime - mytime + myinc;
         double myTimeOfLastMove = lastmovetime * 1000.0 / frequency;
@@ -405,6 +405,7 @@ void engine::communicate(string inputstring)
             }
         }
         else {
+            bool wasPondering = (pondersearch == PONDERING);
             commandargs.clear();
             command = parse(&commandargs, inputstring);  // blocking!!
             ci = 0;
@@ -638,7 +639,7 @@ void engine::communicate(string inputstring)
                 }
                 if (!prepared)
                     prepareThreads();
-                measureOverhead();
+                measureOverhead(wasPondering);
                 if (en.MultiPV == 1)
                     searchStart<SinglePVSearch>();
                 else
