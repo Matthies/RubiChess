@@ -57,6 +57,7 @@ void generateEpd(string egn)
 
     pos->halfmovescounter = pos->ept = 0;
     pos->fullmovescounter = 1;
+    pos->ply = 0;
     int i = 0;
     srand((unsigned)time(NULL));
     while (i < n)
@@ -89,16 +90,19 @@ void generateEpd(string egn)
             && squareDistance[pos->kingpos[0]][pos->kingpos[1]] > 0;
         if (isLegal)
         {
+            pos->getRootMoves();
+            if (pos->rootmovelist.length == 0)
+                continue;
             pos->hash = zb.getHash(pos);
             pos->pawnhash = zb.getPawnHash(pos);
             pos->materialhash = zb.getMaterialHash(pos);
-            pos->ply = 1;
-            pos->movecode[0] = -1;  // Avoid fast eval after null move
-            pos->lastnullmove = -1;
+
             string sFen = pos->toFen();
-            int staticeval = pos->getEval<NOTRACE>();
-            int quietval = pos->getQuiescence<Prune>(SCOREBLACKWINS, SCOREWHITEWINS, 0);
-            bool isQuiet = (abs(staticeval - quietval) < 100);
+
+            MoveSelector* ms = &pos->moveSelector[1];
+            memset(ms, 0, sizeof(MoveSelector));
+            ms->SetPreferredMoves(pos);
+            bool isQuiet = !ms->next();
             if (isQuiet)
             {
                 i++;
