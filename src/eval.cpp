@@ -317,7 +317,7 @@ inline int KBNvK(chessposition *p)
     int kwcornerdistance = (int)(10.0 * min(pow(abs(FILE(c1) - FILE(kw)), pw) + pow(abs(RANK(c1) - RANK(kw)), pw),
         pow(abs(FILE(c2) - FILE(kw)), pw) + pow(abs(RANK(c2) - RANK(kw)), pw)));
 
-    return (1000 - kwcornerdistance * 10 + squareDistance[ks][kw] - p->testRepetition() * 50 - p->halfmovescounter) * S2MSIGN(strongside);
+    return (1000 - kwcornerdistance * 10 - squareDistance[ks][kw] - p->testRepetition() * 50 - p->halfmovescounter) * S2MSIGN(strongside);
 }
 
 
