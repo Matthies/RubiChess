@@ -727,6 +727,8 @@ void my_large_free(void* m)
         _aligned_free(m);
 }
 
+#define MYCWD(x,y) _getcwd(x,y)
+const char kPathSeparator = '\\';
 
 #else
 
@@ -751,7 +753,20 @@ void Sleep(long x)
     nanosleep(&now, NULL);
 }
 
+#define MYCWD(x,y) getcwd(x,y)
+const char kPathSeparator = '/';
+
 #endif
+
+
+string CurrentWorkingDir()
+{
+    char* cwd = MYCWD( 0, 0 );
+    string working_directory(cwd);
+    free(cwd) ;
+    return working_directory + kPathSeparator;    
+}
+
 
 
 #ifdef STATISTICS

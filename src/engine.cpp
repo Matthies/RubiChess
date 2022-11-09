@@ -101,7 +101,7 @@ static void uciSetBookFile()
 
 void uciSetLogFile()
 {
-    string filename = (en.LogFile == "" ? "" : en.ExecPath + en.LogFile);
+    string filename = (en.LogFile == "" ? "" : en.LogFile);
     bool bAppend = (en.LogFile.find("_app") != string::npos);
     size_t nPid = filename.find("_pid");
     if (nPid != string::npos)
@@ -110,16 +110,18 @@ void uciSetLogFile()
         filename.replace(nPid, 4, "_" + to_string(pid));
     }
     string sLogging;
-    if (!guiCom.openLog(filename, en.frequency, bAppend))
+    string fullpath;
+    if (!guiCom.openLog(fullpath = CurrentWorkingDir() + filename, en.frequency, bAppend)
+        && !guiCom.openLog(fullpath = en.ExecPath + filename, en.frequency, bAppend))
     {
-        sLogging = "Cannot open Logfile " + filename;
+        sLogging = "Cannot open Logfile " + fullpath;
         en.LogFile = "";
     }
 
     if (en.LogFile == "")
         return;
 
-    sLogging = "Logging to " + filename + (bAppend ? string("  (appending log)") : string("  (new log)"));
+    sLogging = "Logging to " + fullpath + (bAppend ? string("  (appending log)") : string("  (new log)"));
     engineHeader();
     guiCom << "info string " + sLogging + "\n";
 }
