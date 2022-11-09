@@ -727,6 +727,7 @@ void my_large_free(void* m)
         _aligned_free(m);
 }
 
+#include <direct.h>
 #define MYCWD(x,y) _getcwd(x,y)
 const char kPathSeparator = '\\';
 
