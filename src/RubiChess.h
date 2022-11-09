@@ -669,6 +669,7 @@ unsigned char AlgebraicToIndex(string s);
 string IndexToAlgebraic(int i);
 void BitboardDraw(U64 b);
 U64 getTime();
+string CurrentWorkingDir();
 #ifdef _WIN32
 void* my_large_malloc(size_t s);
 void my_large_free(void *m);
