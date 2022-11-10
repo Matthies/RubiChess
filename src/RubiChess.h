@@ -741,7 +741,9 @@ extern const char  _binary_net_nnue_end;
 class NnueNetsource {
 public:
     ~NnueNetsource() {
-        freealigned64(readbuffer);
+        if (readbuffer)
+            freealigned64(readbuffer);
+        readbuffer = nullptr;
     };
     unsigned char* readbuffer;
     size_t readbuffersize;

@@ -1527,6 +1527,7 @@ bool NnueNetsource::open()
     vector<string> filenames;
     unsigned char* inbuffer = nullptr;
     unsigned char* sourcebuffer = nullptr;
+    readbuffer = nullptr;
     string NnueNetPath = en.GetNnueNetPath();
 
 #if USE_ZLIB
@@ -1598,9 +1599,9 @@ bool NnueNetsource::open()
     openOk = NnueReadNet(this);
 
     if (!openOk)
-        guiCom << "info string The network " << en.GetNnueNetPath() << " seems corrupted or format is not supported.\n";
+        guiCom << "info string The network " + en.GetNnueNetPath() + " seems corrupted or format is not supported.\n";
     else
-        guiCom << "info string Reading network " << en.GetNnueNetPath() << " successful. Using NNUE evaluation(" << (NnueReady == NnueArchV1 ? "V1" : "V5") << ").\n";
+        guiCom << "info string Reading network " + en.GetNnueNetPath() + " successful. Using NNUE evaluation(" + (NnueReady == NnueArchV1 ? "V1" : "V5") + ").\n";
 
 cleanup:
 #ifndef NNUEINCLUDED
