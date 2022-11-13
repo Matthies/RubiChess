@@ -10,10 +10,11 @@ else
 	EXEEXT=
 endif
 
-CPUTEST=cputest
-ARCH=native
+CPUTEST = cputest
+ARCH = native
 PROFDIR = OPT
 PROFEXE = RubiChess
+STRIP = strip
 
 sse2 = no
 ssse3 = no
@@ -61,7 +62,7 @@ ifeq ($(COMP),$(filter $(COMP),gcc))
 	PROFMERGE=
 endif
 
-ifeq ($(COMP),clang)
+ifeq ($(COMP),$(filter $(COMP), clang ndk))
 	CXX=clang++
 	MYCC=clang
 	LDFLAGS += $(shell type lld 1>/dev/null 2>/dev/null && echo "-fuse-ld=lld")
@@ -87,6 +88,24 @@ endif
 ifeq ($(shell uname -m),x86_64)
 	ARCHFAMILY=x86
 endif
+
+ifeq ($(COMP),ndk)
+	CXXFLAGS += -stdlib=libc++ -fPIE
+	STRIP=llvm-strip
+	AR=llvm-ar
+	EXEEXT=
+	ifeq ($(ARCH),armv7)
+		CXX=armv7a-linux-androideabi19-clang++
+		MYCC=armv7a-linux-androideabi19-clang
+		CXXFLAGS += -mthumb -march=armv7-a -mfloat-abi=softfp -mfpu=neon
+	endif
+	ifeq ($(ARCH),armv8)
+		CXX=aarch64-linux-android21-clang++
+		MYCC=aarch64-linux-android21-clang
+	endif
+	LDFLAGS += -static-libstdc++ -pie -lm -latomic
+endif
+
 
 ZLIBDIR=zlib
 CXXFLAGS += -Izlib
@@ -124,7 +143,10 @@ ifneq (,$(findstring x86-64-sse3-popcnt,$(ARCH)))
 CPUFLAGS = "popcnt sse2"
 endif
 ifneq (,$(findstring neon,$(ARCH)))
-CPUFLAGS = "neon"
+CPUFLAGS = "popcnt neon"
+endif
+ifneq (,$(findstring arm,$(ARCH)))
+CPUFLAGS = "popcnt neon"
 endif
 endif
 
@@ -229,6 +251,7 @@ VERSION=$(MAJORVERSION)$(MINORVERSION)
 
 default: net arch
 	@$(MAKE) compile MESSAGE='Compiling standard build ...'
+	$(STRIP) $(EXE)$(EXEEXT)
 
 build: default
 
@@ -267,7 +290,7 @@ endif
 
 $(ZLIBDIR)/libz.a:
 	@echo Compiling zlib...
-	@cd $(ZLIBDIR); $(MYCC) $(CFLAGS) $(ARCHFLAGS) -w -c *.c; $(AR) rcs libz.a *.o; cd ..
+	cd $(ZLIBDIR); $(MYCC) $(CFLAGS) $(ARCHFLAGS) -w -c *.c; $(AR) rcs libz.a *.o; cd ..
 
 compile: $(ZLIBDIR)/libz.a
 	@echo $(MESSAGE)
@@ -292,7 +315,7 @@ pgo: arch
 	@$(RM) ./$(PROFEXE)
 	@$(MAKE) compile EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS=$(PGOEXTRALDFLAGS) MESSAGE='Compiling optimized build ...'
 	@$(MAKE) profileclean
-	@strip $(EXE)$(EXEEXT)
+	@$(STRIP) $(EXE)$(EXEEXT)
 	@echo Binary $(EXE) created successfully.
 
 profile-build: net
