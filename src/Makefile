@@ -90,7 +90,7 @@ ifeq ($(shell uname -m),x86_64)
 endif
 
 ifeq ($(COMP),ndk)
-	CXXFLAGS += -stdlib=libc++ -fPIE
+	ARCHFAMILY=android
 	STRIP=llvm-strip
 	AR=llvm-ar
 	EXEEXT=
@@ -103,7 +103,17 @@ ifeq ($(COMP),ndk)
 		CXX=aarch64-linux-android21-clang++
 		MYCC=aarch64-linux-android21-clang
 	endif
-	LDFLAGS += -static-libstdc++ -pie -lm -latomic
+	ifeq ($(ARCH),x86)
+		CXX=i686-linux-android21-clang++
+		MYCC=i686-linux-android21-clang
+		CPUFLAGS = "ssse3 sse2"
+	endif
+	ifeq ($(ARCH),x86_64)
+		CXX=x86_64-linux-android21-clang++
+		MYCC=x86_64-linux-android21-clang
+		CPUFLAGS = "popcnt ssse3 sse2"
+	endif
+	LDFLAGS += -static-libstdc++
 endif
 
 
@@ -251,7 +261,7 @@ VERSION=$(MAJORVERSION)$(MINORVERSION)
 
 default: net arch
 	@$(MAKE) compile MESSAGE='Compiling standard build ...'
-	$(STRIP) $(EXE)$(EXEEXT)
+	@$(STRIP) $(EXE)$(EXEEXT)
 
 build: default
 
@@ -290,7 +300,7 @@ endif
 
 $(ZLIBDIR)/libz.a:
 	@echo Compiling zlib...
-	cd $(ZLIBDIR); $(MYCC) $(CFLAGS) $(ARCHFLAGS) -w -c *.c; $(AR) rcs libz.a *.o; cd ..
+	@cd $(ZLIBDIR); $(MYCC) $(CFLAGS) $(ARCHFLAGS) -w -c *.c; $(AR) rcs libz.a *.o; cd ..
 
 compile: $(ZLIBDIR)/libz.a
 	@echo $(MESSAGE)
@@ -316,11 +326,11 @@ ifeq ($(COMP),ndk)
 	@sleep 60
 	@adb shell "rm -rf /data/RubiChess"
 	@adb shell "mkdir /data/RubiChess"
-	@adb push $(PROFEXE) /data/RubiChess
-	@adb push $(RUBINET) /data/RubiChess
+	@adb push $(PROFEXE) /data/RubiChess 1>/dev/null
+	@adb push $(RUBINET) /data/RubiChess 1>/dev/null
 	@echo "Running bench on emulator to generate profiling data..."
 	@adb shell "cd /data/RubiChess && ./$(PROFEXE) -bench 1>/dev/null"
-	@adb pull /data/RubiChess/$(EXE).clangprof-raw .
+	@adb pull /data/RubiChess/$(EXE).clangprof-raw .  1>/dev/null
 	@if test -f $(EXE).clangprof-raw; then echo "$(RUBINET) already exists."; else echo "Downloading $(RUBINET)..."; $(WGETCMD) $(NETURL)$(RUBINET) > $(RUBINET); fi;
 	@adb emu kill
 else
@@ -354,6 +364,12 @@ release_arm64:
 
 release_arm32:
 	@$(MAKE) pgo-rename  ARCH=arm32_neon PTHREADLIB=$(PTHREADSTATICLIB)
+
+release_android:
+	@$(MAKE) pgo-rename  ARCH=armv8 COMP=$(COMP)
+	@$(MAKE) pgo-rename  ARCH=armv7 COMP=$(COMP)
+	@$(MAKE) pgo-rename  ARCH=x86_64 COMP=$(COMP)
+	@$(MAKE) pgo-rename  ARCH=x86 COMP=$(COMP)
 
 release: net
 	@$(MAKE) release_$(ARCHFAMILY)
