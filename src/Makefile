@@ -310,7 +310,22 @@ clean: objclean profileclean
 
 pgo: arch
 	@$(MAKE) compile EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Compiling instrumented build ...'
+ifeq ($(COMP),ndk)
+	@/home/andreas/Android/Sdk/emulator/emulator -avd $(ARCH) -no-snapshot-load 1>/dev/null &
+	@echo Wait 60 seconds for emulator startup...
+	@sleep 60
+	@adb shell "rm -rf /data/RubiChess"
+	@adb shell "mkdir /data/RubiChess"
+	@adb push $(PROFEXE) /data/RubiChess
+	@adb push $(RUBINET) /data/RubiChess
+	@echo "Running bench on emulator to generate profiling data..."
+	@adb shell "cd /data/RubiChess && ./$(PROFEXE) -bench 1>/dev/null"
+	@adb pull /data/RubiChess/$(EXE).clangprof-raw .
+	@if test -f $(EXE).clangprof-raw; then echo "$(RUBINET) already exists."; else echo "Downloading $(RUBINET)..."; $(WGETCMD) $(NETURL)$(RUBINET) > $(RUBINET); fi;
+	@adb emu kill
+else
 	@./$(PROFEXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo "Running bench to generate profiling data... successful!") || (echo "Running bench to generate profiling data... failed! Profiling with native build..." && $(MAKE) profileclean && $(MAKE) compile ARCH=native EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Compiling instrumented build ...' && ./$(PROFEXE) -bench 1>/dev/null)
+endif
 	@$(PROFMERGE)
 	@$(RM) ./$(PROFEXE)
 	@$(MAKE) compile EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS=$(PGOEXTRALDFLAGS) MESSAGE='Compiling optimized build ...'
