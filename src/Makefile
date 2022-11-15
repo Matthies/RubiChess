@@ -4,6 +4,8 @@
 
 MAKEFLAGS += --no-print-directory
 
+ANDROIDEMU = /home/andreas/Android/Sdk/emulator/emulator
+
 ifeq ($(OS), Windows_NT)
 	EXEEXT=.exe
 else
@@ -321,7 +323,8 @@ clean: objclean profileclean
 pgo: arch
 	@$(MAKE) compile EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Compiling instrumented build ...'
 ifeq ($(COMP),ndk)
-	@/home/andreas/Android/Sdk/emulator/emulator -avd $(ARCH) -no-snapshot-load 1>/dev/null &
+	@if !(test -f $(ANDROIDEMU)); then echo "Android emulator not found at $(ANDROIDEMU). Exit!"; exit 1; fi
+	@$(ANDROIDEMU) -avd $(ARCH) -no-snapshot-load 1>/dev/null &
 	@echo Wait 60 seconds for emulator startup...
 	@sleep 60
 	@adb shell "rm -rf /data/RubiChess"
