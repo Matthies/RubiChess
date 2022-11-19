@@ -757,7 +757,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
             reduction = reductiontable[positionImproved][depth][min(63, legalMoves + 1)];
 
             // more reduction at cut nodes
-            reduction += cutnode;
+            reduction -= !cutnode;
 
             // adjust reduction by stats value
             reduction -= stats / (sps.lmrstatsratio * 8);
