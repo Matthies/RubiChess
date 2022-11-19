@@ -1620,7 +1620,7 @@ public:
     int getComplexity(int eval, pawnhashentry *phentry, Materialhashentry *mhentry);
 
     template <RootsearchType RT> int rootsearch(int alpha, int beta, int *depth, int inWindowLast, int maxmoveindex = 0);
-    template <PruneType Pt> int alphabeta(int alpha, int beta, int depth);
+    template <PruneType Pt> int alphabeta(int alpha, int beta, int depth, bool cutnode);
     template <PruneType Pt> int getQuiescence(int alpha, int beta, int depth);
     void updateHistory(uint32_t code, int value);
     void updateTacticalHst(uint32_t code, int value);
