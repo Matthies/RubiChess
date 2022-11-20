@@ -313,7 +313,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 
 
 template <PruneType Pt>
-int chessposition::alphabeta(int alpha, int beta, int depth)
+int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
 {
     int score;
     int hashscore = NOSCORE;
@@ -543,7 +543,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         playNullMove();
         int nmreduction = min(depth, sps.nmmredbase + (depth / sps.nmmreddepthratio) + (bestknownscore - beta) / sps.nmmredevalratio + !PVNode * sps.nmmredpvfactor);
 
-        score = -alphabeta<Pt>(-beta, -beta + 1, depth - nmreduction);
+        score = -alphabeta<Pt>(-beta, -beta + 1, depth - nmreduction, !cutnode);
         unplayNullMove();
 
         if (score >= beta)
@@ -557,7 +557,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             // Verification search
             nullmoveply = ply + 3 * (depth - nmreduction) / 4;
             nullmoveside = ply % 2;
-            int verificationscore = alphabeta<Pt>(beta - 1, beta, depth - nmreduction);
+            int verificationscore = alphabeta<Pt>(beta - 1, beta, depth - nmreduction, false);
             nullmoveside = nullmoveply = 0;
             if (verificationscore >= beta) {
                 STATISTICSINC(prune_nm);
@@ -586,7 +586,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             {
                 int probcutscore = -getQuiescence<Pt>(-rbeta, -rbeta + 1, 0);
                 if (probcutscore >= rbeta)
-                    probcutscore = -alphabeta<Pt>(-rbeta, -rbeta + 1, depth - 4);
+                    probcutscore = -alphabeta<Pt>(-rbeta, -rbeta + 1, depth - 4, !cutnode);
 
                 unplayMove(mc);
 
@@ -696,7 +696,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
             {
                 excludemovestack[ply - 1] = hashmovecode;
                 int sBeta = max(hashscore - sps.singularmarginperdepth * depth, SCOREBLACKWINS);
-                int redScore = alphabeta<Pt>(sBeta - 1, sBeta, depth / 2);
+                int redScore = alphabeta<Pt>(sBeta - 1, sBeta, depth / 2, cutnode);
                 excludemovestack[ply - 1] = 0;
 
                 if (redScore < sBeta)
@@ -756,6 +756,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         {
             reduction = reductiontable[positionImproved][depth][min(63, legalMoves + 1)];
 
+            // more reduction at cut nodes
+            reduction += (cutnode && !ISTACTICAL(mc));
+
             // adjust reduction by stats value
             reduction -= stats / (sps.lmrstatsratio * 8);
 
@@ -792,25 +795,25 @@ int chessposition::alphabeta(int alpha, int beta, int depth)
         if (reduction)
         {
             // LMR search; test against alpha
-            score = -alphabeta<Pt>(-alpha - 1, -alpha, effectiveDepth - 1);
+            score = -alphabeta<Pt>(-alpha - 1, -alpha, effectiveDepth - 1, true);
             SDEBUGDO(isDebugMove, pvadditionalinfo[ply-1] += "PVS(alpha=" + to_string(alpha) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
             if (score > alpha)
             {
                 // research without reduction
                 effectiveDepth += reduction;
-                score = -alphabeta<Pt>(-alpha - 1, -alpha, effectiveDepth - 1);
+                score = -alphabeta<Pt>(-alpha - 1, -alpha, effectiveDepth - 1, !cutnode);
                 SDEBUGDO(isDebugMove, pvadditionalinfo[ply-1] += "PVS(alpha=" + to_string(alpha) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
             }
         }
         else if (!PVNode || legalMoves > 1)
         {
             // Np PV node or not the first move; test against alpha
-            score = -alphabeta<Pt>(-alpha - 1, -alpha, effectiveDepth - 1);
+            score = -alphabeta<Pt>(-alpha - 1, -alpha, effectiveDepth - 1, !cutnode);
             SDEBUGDO(isDebugMove, pvadditionalinfo[ply-1] += "PVS(alpha=" + to_string(alpha) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
         }
         // (re)search with full window at PV nodes if necessary
         if (PVNode && (legalMoves == 1 || score > alpha)) {
-            score = -alphabeta<Pt>(-beta, -alpha, effectiveDepth - 1);
+            score = -alphabeta<Pt>(-beta, -alpha, effectiveDepth - 1, false);
             SDEBUGDO(isDebugMove, pvadditionalinfo[ply-1] += "PVS(alpha=" + to_string(alpha)+ ",beta=" +to_string(beta) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
         }
         SDEBUGDO(isDebugMove, pvadditionalinfo[ply - 1] += "score=" + to_string(score) + "  "; );
@@ -1054,19 +1057,19 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
         if (i > 0)
         {
             // LMR search; test against alpha
-            score = -alphabeta<Prune>(-alpha - 1, -alpha, effectiveDepth - 1);
+            score = -alphabeta<Prune>(-alpha - 1, -alpha, effectiveDepth - 1, true);
             SDEBUGDO(isDebugMove, pvadditionalinfo[0] += "PVS(alpha=" + to_string(alpha) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
             if (reduction && score > alpha)
             {
                 // research without reduction
                 effectiveDepth += reduction;
-                score = -alphabeta<Prune>(-alpha - 1, -alpha, effectiveDepth - 1);
+                score = -alphabeta<Prune>(-alpha - 1, -alpha, effectiveDepth - 1, true);
                 SDEBUGDO(isDebugMove, pvadditionalinfo[0] += "PVS(alpha=" + to_string(alpha) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
             }
         }
         // (re)search with full window if necessary
         if (i == 0 || score > alpha) {
-            score = (mateprune ? -alphabeta<MatePrune>(-beta, -alpha, effectiveDepth - 1) : -alphabeta<Prune>(-beta, -alpha, effectiveDepth - 1));
+            score = (mateprune ? -alphabeta<MatePrune>(-beta, -alpha, effectiveDepth - 1, false) : -alphabeta<Prune>(-beta, -alpha, effectiveDepth - 1, false));
             SDEBUGDO(isDebugMove, pvadditionalinfo[0] += "PVS(alpha=" + to_string(alpha) + ",beta=" + to_string(beta) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
         }
 
@@ -1195,32 +1198,38 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
 }
 
 
-static void uciScore(searchthread *thr, int inWindow, U64 nowtime, int score, int mpvIndex = 0)
+inline bool uciScoreOutputNeeded(int inWindow, U64 thinktime)
 {
-    int msRun = (int)((nowtime - en.thinkstarttime) * 1000 / en.frequency);
+    int msRun = (int)(thinktime * 1000 / en.frequency);
 #ifndef SDEBUG
-    if (inWindow != 1 && (msRun - en.lastReport) < 200)
-        return;
+    if (msRun - en.lastReport < 1 + 128 * (inWindow != 1))
+        return false;
 #endif
+    en.lastReport = msRun;
+    return true;
+}
+
+static void uciScore(searchthread *thr, int inWindow, U64 thinktime, int score, int mpvIndex = 0)
+{
     const string boundscore[] = { "upperbound ", "", "lowerbound " };
     chessposition *pos = &thr->pos;
-    en.lastReport = msRun;
+    
     string pvstring = pos->getPv(mpvIndex ? pos->multipvtable[mpvIndex] : pos->lastpv);
     U64 nodes = en.getTotalNodes();
 
     if (nodes)
-        thr->nps = nodes * en.frequency / (nowtime + 1 - en.thinkstarttime);  // lower resolution to avoid overflow under Linux in high performance systems
+        thr->nps = nodes * en.frequency / (thinktime + 1);  // lower resolution to avoid overflow under Linux in high performance systems
 
     if (!MATEDETECTED(score))
     {
-        guiCom << "info depth " + to_string(thr->depth) + " seldepth " + to_string(pos->seldepth) + " multipv " + to_string(mpvIndex + 1) + " time " + to_string(msRun)
+        guiCom << "info depth " + to_string(thr->depth) + " seldepth " + to_string(pos->seldepth) + " multipv " + to_string(mpvIndex + 1) + " time " + to_string(thinktime * 1000 / en.frequency)
             + " score cp " + to_string(score) + " " + boundscore[inWindow] + "nodes " + to_string(nodes) + " nps " + to_string(thr->nps) + " tbhits " + to_string(en.tbhits)
             + " hashfull " + to_string(tp.getUsedinPermill()) + " pv " + pvstring + "\n";
     }
     else
     {
         int matein = MATEIN(score);
-        guiCom << "info depth " + to_string(thr->depth) + " seldepth " + to_string(pos->seldepth) + " multipv " + to_string(mpvIndex + 1) + " time " + to_string(msRun)
+        guiCom << "info depth " + to_string(thr->depth) + " seldepth " + to_string(pos->seldepth) + " multipv " + to_string(mpvIndex + 1) + " time " + to_string(thinktime * 1000 / en.frequency)
             + " score mate " + to_string(matein) + " " + boundscore[inWindow] + "nodes " + to_string(nodes) + " nps " + to_string(thr->nps) + " tbhits " + to_string(en.tbhits)
             + " hashfull " + to_string(tp.getUsedinPermill()) + " pv " + pvstring + "\n";
     }
@@ -1261,7 +1270,7 @@ void mainSearch(searchthread *thr)
     uint32_t lastBestMove = 0;
     int constantRootMoves = 0;
     int lastiterationscore = NOSCORE;
-    en.lastReport = 0;
+    en.lastReport = -1;
     U64 nowtime = 0;
     pos->lastpv[0] = 0;
     bool isDraw = (pos->testRepetition() >= 2) || (pos->halfmovescounter >= 100);
@@ -1365,8 +1374,11 @@ void mainSearch(searchthread *thr)
 
                 int maxmoveindex = min(en.MultiPV, pos->rootmovelist.length);
                 for (int i = 0; i < maxmoveindex; i++) {
-                    uciScore(thr, inWindow, nowtime, pos->bestmovescore[i], i);
-                    uciNeedsReport = false;
+                    U64 thinkTime = nowtime - en.thinkstarttime;
+                    if (uciScoreOutputNeeded(inWindow, thinkTime)) {
+                        uciScore(thr, inWindow, thinkTime, pos->bestmovescore[i], i);
+                        uciNeedsReport = false;
+                    }
                 }
             }
             else {
@@ -1402,8 +1414,11 @@ void mainSearch(searchthread *thr)
                 }
 
                 if (en.pondersearch != PONDERING || thr->depth < maxdepth) {
-                    uciScore(thr, inWindow, nowtime, inWindow == 1 ? pos->bestmovescore[0] : score);
-                    uciNeedsReport = false;
+                    U64 thinkTime = nowtime - en.thinkstarttime;
+                    if (uciScoreOutputNeeded(inWindow, thinkTime)) {
+                        uciScore(thr, inWindow, thinkTime, inWindow == 1 ? pos->bestmovescore[0] : score);
+                        uciNeedsReport = false;
+                    }
                 }
             }
         }
@@ -1526,7 +1541,7 @@ void mainSearch(searchthread *thr)
         en.rootposition.lastbestmovescore = pos->bestmovescore[0];
 
         if (uciNeedsReport || bestthr->index)
-            uciScore(thr, inWindow, getTime(), inWindow == 1 ? pos->bestmovescore[0] : score);
+            uciScore(thr, inWindow, getTime() - en.thinkstarttime, inWindow == 1 ? pos->bestmovescore[0] : score);
 
         string strBestmove;
         string strPonder = "";
@@ -1579,6 +1594,6 @@ void mainSearch(searchthread *thr)
 
 // Explicit template instantiation
 // This avoids putting these definitions in header file
-template int chessposition::alphabeta<NoPrune>(int alpha, int beta, int depth);
+template int chessposition::alphabeta<NoPrune>(int alpha, int beta, int depth, bool cutnode);
 template void mainSearch<SinglePVSearch>(searchthread*);
 template void mainSearch<MultiPVSearch>(searchthread*);

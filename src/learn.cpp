@@ -1046,8 +1046,8 @@ static void gensfenthread(searchthread* thr, U64 rndseed)
             int nextdepth = depth + ranval(&rnd) % depthvariance;
 
             int score = (disable_prune ?
-                pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, nextdepth)
-                : pos->alphabeta<Prune>(SCOREBLACKWINS, SCOREWHITEWINS, nextdepth));
+                pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, nextdepth, false)
+                : pos->alphabeta<Prune>(SCOREBLACKWINS, SCOREWHITEWINS, nextdepth, false));
 
             if (POPCOUNT(pos->occupied00[0] | pos->occupied00[1]) <= pos->useTb) // TB adjudication; FIXME: bad with incomplete TB sets
             {
@@ -1597,9 +1597,9 @@ static void convertthread(searchthread* thr, conversion_t* cv)
             {
                 int newscore;
                 if (cv->disable_prune)
-                    newscore = pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, cv->rescoreDepth);
+                    newscore = pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, cv->rescoreDepth, false);
                 else
-                    newscore = pos->alphabeta<Prune>(SCOREBLACKWINS, SCOREWHITEWINS, cv->rescoreDepth);
+                    newscore = pos->alphabeta<Prune>(SCOREBLACKWINS, SCOREWHITEWINS, cv->rescoreDepth, false);
                 //cout << "score = " << score << "   newscore = " << newscore << endl;
                 score = newscore;
             }

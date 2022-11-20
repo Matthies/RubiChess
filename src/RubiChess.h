@@ -18,7 +18,7 @@
 #pragma once
 
 #define VERNUMLEGACY 2022
-#define NNUEDEFAULT nn-a2bb5af869-20221001.nnue
+#define NNUEDEFAULT nn-5e6b321f90-20221001.nnue
 
 // enable this switch for faster SSE2 code using 16bit integers
 #define FASTSSE2
@@ -692,7 +692,8 @@ enum NnueType { NnueDisabled = 0, NnueArchV1, NnueArchV5 };
 // The following constants were introduced in original NNUE port from Shogi
 #define NNUEFILEVERSIONROTATE       0x7AF32F16u
 #define NNUEFILEVERSIONNOBPZ        0x7AF32F17u
-#define NNUEFILEVERSIONSFNNv5       0x7af32f20u
+#define NNUEFILEVERSIONSFNNv5_1024  0x7af32f20u
+#define NNUEFILEVERSIONSFNNv5_512   0x7af32f30u
 #define NNUENETLAYERHASH            0xCC03DAE4u
 #define NNUECLIPPEDRELUHASH         0x538D24C7u
 #define NNUEFEATUREHASH_HalfKP      0x5D69D5B8u
@@ -1620,7 +1621,7 @@ public:
     int getComplexity(int eval, pawnhashentry *phentry, Materialhashentry *mhentry);
 
     template <RootsearchType RT> int rootsearch(int alpha, int beta, int *depth, int inWindowLast, int maxmoveindex = 0);
-    template <PruneType Pt> int alphabeta(int alpha, int beta, int depth);
+    template <PruneType Pt> int alphabeta(int alpha, int beta, int depth, bool cutnode);
     template <PruneType Pt> int getQuiescence(int alpha, int beta, int depth);
     void updateHistory(uint32_t code, int value);
     void updateTacticalHst(uint32_t code, int value);
@@ -1656,7 +1657,7 @@ public:
     template <NnueType Nt, Color c> void HalfkpAppendChangedIndices(DirtyPiece* dp, NnueIndexList *add, NnueIndexList *remove);
     template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void UpdateAccumulator();
     template <NnueType Nt, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> int Transform(clipped_t *output, int bucket = 0);
-    template <NnueType Nt> int NnueGetEval();
+    int NnueGetEval();
 #ifdef NNUELEARN
     void toSfen(PackedSfen *sfen);
     int getFromSfen(PackedSfen* sfen);
