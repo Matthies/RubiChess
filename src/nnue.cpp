@@ -523,10 +523,10 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     int16_t* bias = NnueCurrentArch->GetFeatureBias();
     int32_t* psqtweight = NnueCurrentArch->GetFeaturePsqtWeight();
 
-    constexpr unsigned int numRegs = (NUM_REGS > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : NUM_REGS);
-    constexpr unsigned int tileHeight = numRegs * SIMD_WIDTH / 16;
 
 #ifdef USE_SIMD
+    constexpr unsigned int numRegs = (NUM_REGS > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : NUM_REGS);
+    constexpr unsigned int tileHeight = numRegs * SIMD_WIDTH / 16;
     ft_vec_t acc[numRegs];
     psqt_vec_t psqt[NUM_PSQT_REGS];
 #endif
@@ -830,8 +830,8 @@ int chessposition::Transform(clipped_t *output, int bucket)
             for (unsigned int i = 0; i < NnueFtHalfdims / 2; i++) {
                 int16_t sum0 = acm->accumulation[perspectives[p]][i];
                 int16_t sum1 = acm->accumulation[perspectives[p]][i + NnueFtHalfdims / 2];
-                sum0 = max(0, min(127, sum0));
-                sum1 = max(0, min(127, sum1));
+                sum0 = max((int16_t)0, min((int16_t)127, sum0));
+                sum1 = max((int16_t)0, min((int16_t)127, sum1));
                 output[offset + i] = sum0 * sum1 / 128;
             }
         }
@@ -1606,7 +1606,7 @@ bool NnueNetsource::open()
 #endif // NNUEINCLUDED
 
     sourcebuffer = inbuffer;
-    
+
 #if USE_ZLIB
     // Now test if the input is compressed
     if (inflatePossible) {

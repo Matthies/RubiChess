@@ -504,7 +504,7 @@ string compilerinfo::PrintCpuFeatures(U64 f, bool onlyHighest)
 }
 
 
-#if defined(_M_X64) || defined(__amd64)
+#if defined(_M_X64) || defined(__amd64) || defined(_M_IX86) || defined(__i386)
 
 #if defined _MSC_VER && !defined(__clang_major__)
 #include <intrin.h>
@@ -626,7 +626,7 @@ void compilerinfo::GetSystemInfo()
 {
 #if defined(__ARM_NEON__) || defined(__ARM_NEON)
     system = "ARM platform supprting NEON";
-    machineSupports = CPUNEON;
+    machineSupports = CPUNEON | CPUPOPCNT;
 #else
     system = "Some non-x86-64 platform.";
     machineSupports = 0ULL;
@@ -765,7 +765,7 @@ string CurrentWorkingDir()
     char* cwd = MYCWD( 0, 0 );
     string working_directory(cwd);
     free(cwd) ;
-    return working_directory + kPathSeparator;    
+    return working_directory + kPathSeparator;
 }
 
 

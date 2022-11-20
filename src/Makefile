@@ -4,16 +4,19 @@
 
 MAKEFLAGS += --no-print-directory
 
+ANDROIDEMU = ~/Android/Sdk/emulator/emulator
+
 ifeq ($(OS), Windows_NT)
 	EXEEXT=.exe
 else
 	EXEEXT=
 endif
 
-CPUTEST=cputest
-ARCH=native
+CPUTEST = cputest
+ARCH = native
 PROFDIR = OPT
 PROFEXE = RubiChess
+STRIP = strip
 
 sse2 = no
 ssse3 = no
@@ -61,7 +64,7 @@ ifeq ($(COMP),$(filter $(COMP),gcc))
 	PROFMERGE=
 endif
 
-ifeq ($(COMP),clang)
+ifeq ($(COMP),$(filter $(COMP), clang ndk))
 	CXX=clang++
 	MYCC=clang
 	LDFLAGS += $(shell type lld 1>/dev/null 2>/dev/null && echo "-fuse-ld=lld")
@@ -87,6 +90,34 @@ endif
 ifeq ($(shell uname -m),x86_64)
 	ARCHFAMILY=x86
 endif
+
+ifeq ($(COMP),ndk)
+	ARCHFAMILY=android
+	STRIP=llvm-strip
+	AR=llvm-ar
+	EXEEXT=
+	ifeq ($(ARCH),armv7)
+		CXX=armv7a-linux-androideabi19-clang++
+		MYCC=armv7a-linux-androideabi19-clang
+		CXXFLAGS += -mthumb -march=armv7-a -mfloat-abi=softfp -mfpu=neon
+	endif
+	ifeq ($(ARCH),armv8)
+		CXX=aarch64-linux-android21-clang++
+		MYCC=aarch64-linux-android21-clang
+	endif
+	ifeq ($(ARCH),x86)
+		CXX=i686-linux-android21-clang++
+		MYCC=i686-linux-android21-clang
+		CPUFLAGS = "ssse3 sse2"
+	endif
+	ifeq ($(ARCH),x86_64)
+		CXX=x86_64-linux-android21-clang++
+		MYCC=x86_64-linux-android21-clang
+		CPUFLAGS = "popcnt ssse3 sse2"
+	endif
+	LDFLAGS += -static-libstdc++
+endif
+
 
 ZLIBDIR=zlib
 CXXFLAGS += -Izlib
@@ -124,7 +155,10 @@ ifneq (,$(findstring x86-64-sse3-popcnt,$(ARCH)))
 CPUFLAGS = "popcnt sse2"
 endif
 ifneq (,$(findstring neon,$(ARCH)))
-CPUFLAGS = "neon"
+CPUFLAGS = "popcnt neon"
+endif
+ifneq (,$(findstring arm,$(ARCH)))
+CPUFLAGS = "popcnt neon"
 endif
 endif
 
@@ -229,6 +263,7 @@ VERSION=$(MAJORVERSION)$(MINORVERSION)
 
 default: net arch
 	@$(MAKE) compile MESSAGE='Compiling standard build ...'
+	@$(STRIP) $(EXE)$(EXEEXT)
 
 build: default
 
@@ -287,12 +322,28 @@ clean: objclean profileclean
 
 pgo: arch
 	@$(MAKE) compile EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Compiling instrumented build ...'
+ifeq ($(COMP),ndk)
+	@if !(test -f $(ANDROIDEMU)); then echo "Android emulator not found at $(ANDROIDEMU). Exit!"; exit 1; fi
+	@$(ANDROIDEMU) -avd $(ARCH) -no-snapshot-load 1>/dev/null &
+	@echo Wait 60 seconds for emulator startup...
+	@sleep 60
+	@adb shell "rm -rf /data/RubiChess"
+	@adb shell "mkdir /data/RubiChess"
+	@adb push $(PROFEXE) /data/RubiChess 1>/dev/null
+	@adb push $(RUBINET) /data/RubiChess 1>/dev/null
+	@echo "Running bench on emulator to generate profiling data..."
+	@adb shell "cd /data/RubiChess && ./$(PROFEXE) -bench 1>/dev/null"
+	@adb pull /data/RubiChess/$(EXE).clangprof-raw .  1>/dev/null
+	@if test -f $(EXE).clangprof-raw; then echo "$(RUBINET) already exists."; else echo "Downloading $(RUBINET)..."; $(WGETCMD) $(NETURL)$(RUBINET) > $(RUBINET); fi;
+	@adb emu kill
+else
 	@./$(PROFEXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo "Running bench to generate profiling data... successful!") || (echo "Running bench to generate profiling data... failed! Profiling with native build..." && $(MAKE) profileclean && $(MAKE) compile ARCH=native EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Compiling instrumented build ...' && ./$(PROFEXE) -bench 1>/dev/null)
+endif
 	@$(PROFMERGE)
 	@$(RM) ./$(PROFEXE)
 	@$(MAKE) compile EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS=$(PGOEXTRALDFLAGS) MESSAGE='Compiling optimized build ...'
 	@$(MAKE) profileclean
-	@strip $(EXE)$(EXEEXT)
+	@$(STRIP) $(EXE)$(EXEEXT)
 	@echo Binary $(EXE) created successfully.
 
 profile-build: net
@@ -316,6 +367,12 @@ release_arm64:
 
 release_arm32:
 	@$(MAKE) pgo-rename  ARCH=arm32_neon PTHREADLIB=$(PTHREADSTATICLIB)
+
+release_android:
+	@$(MAKE) pgo-rename  ARCH=armv8 COMP=$(COMP)
+	@$(MAKE) pgo-rename  ARCH=armv7 COMP=$(COMP)
+	@$(MAKE) pgo-rename  ARCH=x86_64 COMP=$(COMP)
+	@$(MAKE) pgo-rename  ARCH=x86 COMP=$(COMP)
 
 release: net
 	@$(MAKE) release_$(ARCHFAMILY)
