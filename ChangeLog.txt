@@ -1,5 +1,15 @@
 ChangeLog
 =========
+20221120 (release 2022-11-20) :
+    - New default network nn-5e6b321f90-20221001.nnue using a new archtitecture
+    - Preserving compatibility to old networks
+    - Support for (de-)compressing network files using zlib
+    - Fixed a bug probing 7-men-dtz files using the wide extension
+    - Prevent flooding UCI output in low depth
+    - Small improvements in search (pruning, cut nodes)
+    - Several fixes (crash when default net missing, multi-pv output)
+    - Implemented cross-compilation fpr Android (thanks go to Archimedes)
+
 20220813 (release 2022-08-13) :
     - Time management improvements:
         + Plays movetime mode respecting move overhead
