@@ -4,7 +4,7 @@
 
 MAKEFLAGS += --no-print-directory
 
-ANDROIDEMU = /home/andreas/Android/Sdk/emulator/emulator
+ANDROIDEMU = ~/Android/Sdk/emulator/emulator
 
 ifeq ($(OS), Windows_NT)
 	EXEEXT=.exe
