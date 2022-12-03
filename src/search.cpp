@@ -1372,13 +1372,12 @@ void mainSearch(searchthread *thr)
                 if (en.stopLevel == ENGINESTOPIMMEDIATELY)
                     break;
 
+                U64 thinkTime = nowtime - en.thinkstarttime;
                 int maxmoveindex = min(en.MultiPV, pos->rootmovelist.length);
-                for (int i = 0; i < maxmoveindex; i++) {
-                    U64 thinkTime = nowtime - en.thinkstarttime;
-                    if (uciScoreOutputNeeded(inWindow, thinkTime)) {
+                if (uciScoreOutputNeeded(inWindow, thinkTime)) {
+                    for (int i = 0; i < maxmoveindex; i++)
                         uciScore(thr, inWindow, thinkTime, pos->bestmovescore[i], i);
-                        uciNeedsReport = false;
-                    }
+                    uciNeedsReport = false;
                 }
             }
             else {
