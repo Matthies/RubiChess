@@ -454,7 +454,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
             }
             if (bound == HASHEXACT || (bound == HASHALPHA ? (score <= alpha) : (score >= beta)))
             {
-                tp.addHash(hash, score, staticeval, bound, MAXDEPTH, 0);
+                tp.addHash(hash, score, staticeval, bound, MAXDEPTH - 1, 0);
             }
             STATISTICSINC(ab_tb);
             return score;
