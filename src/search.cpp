@@ -437,7 +437,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
         int success;
         int v = probe_wdl(&success);
         if (success) {
-            en.tbhits++;
+            tbhits++;
             nodesToNextCheck = 0;
             int bound;
             if (v <= -1 - en.Syzygy50MoveRule) {
@@ -454,7 +454,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
             }
             if (bound == HASHEXACT || (bound == HASHALPHA ? (score <= alpha) : (score >= beta)))
             {
-                tp.addHash(hash, score, staticeval, bound, MAXDEPTH, 0);
+                tp.addHash(hash, score, staticeval, bound, MAXDEPTH - 1, 0);
             }
             STATISTICSINC(ab_tb);
             return score;
@@ -1215,7 +1215,8 @@ static void uciScore(searchthread *thr, int inWindow, U64 thinktime, int score, 
     chessposition *pos = &thr->pos;
     
     string pvstring = pos->getPv(mpvIndex ? pos->multipvtable[mpvIndex] : pos->lastpv);
-    U64 nodes = en.getTotalNodes();
+    U64 nodes, tbhits;
+    en.getNodesAndTbhits(&nodes, &tbhits);
 
     if (nodes)
         thr->nps = nodes * en.frequency / (thinktime + 1);  // lower resolution to avoid overflow under Linux in high performance systems
@@ -1223,14 +1224,14 @@ static void uciScore(searchthread *thr, int inWindow, U64 thinktime, int score, 
     if (!MATEDETECTED(score))
     {
         guiCom << "info depth " + to_string(thr->depth) + " seldepth " + to_string(pos->seldepth) + " multipv " + to_string(mpvIndex + 1) + " time " + to_string(thinktime * 1000 / en.frequency)
-            + " score cp " + to_string(score) + " " + boundscore[inWindow] + "nodes " + to_string(nodes) + " nps " + to_string(thr->nps) + " tbhits " + to_string(en.tbhits)
+            + " score cp " + to_string(score) + " " + boundscore[inWindow] + "nodes " + to_string(nodes) + " nps " + to_string(thr->nps) + " tbhits " + to_string(tbhits)
             + " hashfull " + to_string(tp.getUsedinPermill()) + " pv " + pvstring + "\n";
     }
     else
     {
         int matein = MATEIN(score);
         guiCom << "info depth " + to_string(thr->depth) + " seldepth " + to_string(pos->seldepth) + " multipv " + to_string(mpvIndex + 1) + " time " + to_string(thinktime * 1000 / en.frequency)
-            + " score mate " + to_string(matein) + " " + boundscore[inWindow] + "nodes " + to_string(nodes) + " nps " + to_string(thr->nps) + " tbhits " + to_string(en.tbhits)
+            + " score mate " + to_string(matein) + " " + boundscore[inWindow] + "nodes " + to_string(nodes) + " nps " + to_string(thr->nps) + " tbhits " + to_string(tbhits)
             + " hashfull " + to_string(tp.getUsedinPermill()) + " pv " + pvstring + "\n";
     }
     SDEBUGDO(pos->pvmovecode[0], guiCom.log("[SDEBUG] Raw score: " + to_string(score) + "\n"););

@@ -261,6 +261,7 @@ void engine::prepareThreads()
         pos->bestmove = 0;
         pos->pondermove = 0;
         pos->nodes = 0;
+        pos->tbhits = 0;
         pos->nullmoveply = 0;
         pos->nullmoveside = 0;
         pos->nodesToNextCheck = 0;
@@ -300,13 +301,17 @@ void chessposition::resetStats()
 }
 
 
-U64 engine::getTotalNodes()
+void engine::getNodesAndTbhits(U64* nodes, U64* tbhits)
 {
-    U64 nodes = 0;
-    for (int i = 0; i < Threads; i++)
-        nodes += sthread[i].pos.nodes;
+    U64 mynodes = 0;
+    U64 mytbhits = 0;
+    for (int i = 0; i < Threads; i++) {
+        mynodes += sthread[i].pos.nodes;
+        mytbhits += sthread[i].pos.tbhits;
+    }
 
-    return nodes;
+    *nodes = mynodes;
+    *tbhits = mytbhits;
 }
 
 
@@ -850,7 +855,6 @@ void engine::searchStart()
     resetEndTime();
 
     moveoutput = false;
-    tbhits = sthread[0].pos.tbPosition;  // Rootpos in TB => report at least one tbhit
 
     // increment generation counter for tt aging
     tp.nextSearch();

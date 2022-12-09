@@ -1467,6 +1467,7 @@ class chessposition
 {
 public:
     U64 nodes;
+    U64 tbhits;
     int ply;        // 0 at root position
 
     U64 piece00[14];
@@ -1869,7 +1870,6 @@ public:
     engine(compilerinfo *c);
     ~engine();
     const string author = "Andreas Matthies";
-    U64 tbhits;
     U64 thinkstarttime;
     U64 clockstarttime;
     U64 clockstoptime;
@@ -1972,7 +1972,7 @@ public:
     GuiToken parse(vector<string>*, string ss);
     void communicate(string inputstring);
     void allocThreads();
-    U64 getTotalNodes();
+    void getNodesAndTbhits(U64 *nodes, U64 *tbhits);
     U64 perft(int depth, bool printsysteminfo = false);
     void bench(int constdepth, string epdfilename, int consttime, int startnum, bool openbench);
     void prepareThreads();

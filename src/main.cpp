@@ -272,7 +272,7 @@ struct benchmarkstruct
     string fen;
     int depth;
     long long time;
-    long long nodes;
+    U64 nodes;
     int score;
     int depthAtExit;
     string move;
@@ -432,7 +432,8 @@ void engine::bench(int constdepth, string epdfilename, int consttime, int startn
         searchWaitStop(false);
         endtime = getTime();
         bm->time = endtime - thinkstarttime;
-        bm->nodes = en.getTotalNodes();
+        U64 tbhits;
+        en.getNodesAndTbhits(&bm->nodes, &tbhits);
         bm->score = en.rootposition.lastbestmovescore;
         bm->depthAtExit = en.benchdepth;
         bm->move = en.benchmove;
