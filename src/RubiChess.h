@@ -1904,6 +1904,7 @@ public:
     int RatingAdv;
     int ContemptRatio;
     int ResultingContempt;
+    int LimitKnps;
     chessposition rootposition;
     int Threads;
     int oldThreads;

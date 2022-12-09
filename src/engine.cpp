@@ -212,6 +212,7 @@ void engine::registerOptions()
     ucioptions.Register(&Contempt, "Contempt", ucispin, "0", -100, 100, uciSetContempt);
     ucioptions.Register(&RatingAdv, "UCI_RatingAdv", ucispin, "0", -10000, 10000, uciSetContempt);
     ucioptions.Register(&ContemptRatio, "ContemptRatio", ucispin, "4", 0, 16, uciSetContempt);
+    ucioptions.Register(&LimitKnps, "LimitKnps", ucispin, "0", 0, INT_MAX, nullptr);
 }
 
 
@@ -571,7 +572,7 @@ void engine::communicate(string inputstring)
                     btime = &mytime;
                     binc = &myinc;
                 }
-                maxnodes = 0ULL;
+                maxnodes = LimitKnps * 1024 / en.Threads;
                 infinite = false;
                 while (ci < cs)
                 {
