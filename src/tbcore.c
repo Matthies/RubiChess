@@ -100,6 +100,9 @@ static char *map_file(const char *name, const char *suffix, uint64_t *mapping)
     *mapping = statbuf.st_size;
     char* data = (char*)mmap(NULL, statbuf.st_size, PROT_READ,
         MAP_SHARED, fd, 0);
+#if defined(MADV_RANDOM)
+    madvise((void*)data, statbuf.st_size, MADV_RANDOM);
+#endif
     if (data == (char*)(-1)) {
         printf("Could not mmap() %s.\n", name);
         exit(1);
