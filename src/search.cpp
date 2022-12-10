@@ -67,20 +67,26 @@ inline bool chessposition::CheckForImmediateStop()
         
         // Limit nps
         U64 now = getTime();
-        int thinkingTimeMs = (int)((now - en.thinkstarttime) * 1000 / en.frequency);
+        int thinkingTimeMs = (int)((S64)(now - en.thinkstarttime) * 1000.0 / en.frequency);
         int AllowedTimeMs = (int)(nodes * 1024 / en.maxnodes);
-        int remainingMs = (int)((en.endtime2 - now) * 1000 / en.frequency);
-        int waitMs = min(remainingMs, max(0, AllowedTimeMs - thinkingTimeMs));
-        if (waitMs) {
-            //guiCom << "info string Allowed=" + to_string(AllowedTimeMs) + "  thinking=" + to_string(thinkingTimeMs) + "  remaining=" + to_string(remainingMs) + "\n";
-            //guiCom << "info string Sleeping " + to_string(waitMs) + "\n";
+        int waitMs = max(0, AllowedTimeMs - thinkingTimeMs);
+        if (en.endtime2) {
+            int remainingMs = (int)((S64)(en.endtime2 - now) * 1000.0 / en.frequency);
+            waitMs = max(0, min(remainingMs, waitMs));
+        }
+
+        if (waitMs)
             Sleep(waitMs);
-            if (en.endtime2 && en.endtime2 - getTime() <= 0) {
+
+        // Check again if time is over cause Sleep is not precise
+        if (en.endtime2) {
+            S64 remainingticks = en.endtime2 - getTime();
+            if (remainingticks <= 0) {
                 en.stopLevel = ENGINESTOPIMMEDIATELY;
                 return true;
             }
-            return false;
         }
+        return false;
     }
 
     if (threadindex)
