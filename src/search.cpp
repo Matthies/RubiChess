@@ -77,16 +77,6 @@ inline bool chessposition::CheckForImmediateStop()
 
         if (waitMs)
             Sleep(waitMs);
-
-        // Check again if time is over cause Sleep is not precise
-        if (en.endtime2) {
-            S64 remainingticks = en.endtime2 - getTime();
-            if (remainingticks <= 0) {
-                en.stopLevel = ENGINESTOPIMMEDIATELY;
-                return true;
-            }
-        }
-        return false;
     }
 
     if (threadindex)
@@ -99,7 +89,7 @@ inline bool chessposition::CheckForImmediateStop()
         // pondering... just continue searching
         return false;
 
-    if (--nodesToNextCheck > 0)
+    if (!en.LimitKnps && --nodesToNextCheck > 0)
         return false;
 
     S64 remainingticks = en.endtime2 - getTime();
