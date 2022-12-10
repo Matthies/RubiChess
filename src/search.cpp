@@ -71,7 +71,16 @@ inline bool chessposition::CheckForImmediateStop()
         int AllowedTimeMs = (int)(nodes * 1024 / en.maxnodes);
         int remainingMs = (int)((en.endtime2 - now) * 1000 / en.frequency);
         int waitMs = min(remainingMs, max(0, AllowedTimeMs - thinkingTimeMs));
-        Sleep(waitMs);
+        if (waitMs) {
+            //guiCom << "info string Allowed=" + to_string(AllowedTimeMs) + "  thinking=" + to_string(thinkingTimeMs) + "  remaining=" + to_string(remainingMs) + "\n";
+            //guiCom << "info string Sleeping " + to_string(waitMs) + "\n";
+            Sleep(waitMs);
+            if (en.endtime2 && en.endtime2 - getTime() <= 0) {
+                en.stopLevel = ENGINESTOPIMMEDIATELY;
+                return true;
+            }
+            return false;
+        }
     }
 
     if (threadindex)
