@@ -68,6 +68,7 @@ inline bool chessposition::CheckForImmediateStop()
         // Limit nps
         if (en.stopLevel == ENGINESTOPIMMEDIATELY)
             return true;
+        nodesToNextCheck = 0;
         U64 now = getTime();
         int thinkingTimeMs = (int)((S64)(now - en.thinkstarttime) * 1000.0 / en.frequency);
         int AllowedTimeMs = (int)(nodes * 1000.0 / en.maxnodes);
@@ -91,7 +92,7 @@ inline bool chessposition::CheckForImmediateStop()
         // pondering... just continue searching
         return false;
 
-    if (!en.LimitNps && --nodesToNextCheck > 0)
+    if (--nodesToNextCheck > 0)
         return false;
 
     S64 remainingticks = en.endtime2 - getTime();
