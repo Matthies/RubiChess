@@ -60,8 +60,27 @@ void searchinit()
 
 inline bool chessposition::CheckForImmediateStop()
 {
-    if (en.maxnodes)
-        return (nodes >= en.maxnodes);
+    if (en.maxnodes) {
+        if (!en.LimitNps)
+            // go nodes
+            return (nodes >= en.maxnodes);
+        
+        // Limit nps
+        if (en.stopLevel == ENGINESTOPIMMEDIATELY)
+            return true;
+        nodesToNextCheck = 0;
+        U64 now = getTime();
+        int thinkingTimeMs = (int)((S64)(now - en.thinkstarttime) * 1000.0 / en.frequency);
+        int AllowedTimeMs = (int)(nodes * 1000.0 / en.maxnodes);
+        int waitMs = max(0, AllowedTimeMs - thinkingTimeMs);
+        if (en.endtime2) {
+            int remainingMs = (int)((S64)(en.endtime2 - now) * 1000.0 / en.frequency);
+            waitMs = max(0, min(remainingMs, waitMs));
+        }
+
+        if (waitMs)
+            Sleep(waitMs);
+    }
 
     if (threadindex)
         return false;
@@ -1341,7 +1360,7 @@ void mainSearch(searchthread *thr)
             break;
 
         // exit when max nodes reached
-        if (en.maxnodes && pos->nodes >= en.maxnodes)
+        if (en.maxnodes && !en.LimitNps && pos->nodes >= en.maxnodes)
             break;
 
         if (pos->pvtable[0][0])
@@ -1496,7 +1515,7 @@ void mainSearch(searchthread *thr)
         ss << "[TDEBUG] stop info last movetime: " << setprecision(3) << (nowtime - en.clockstarttime) / (double)en.frequency << "    full-it. / immediate:  " << en.t1stop << " / " << en.t2stop << "\n";
         guiCom.log(ss.str());
 #endif
-        if (en.maxnodes)
+        if (en.maxnodes && !en.LimitNps)
         {
             // Wait for helper threads to finish their nodes
             for (int i = 1; i < en.Threads; i++)
