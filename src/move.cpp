@@ -885,9 +885,6 @@ uint32_t MoveSelector::next()
     chessmove *m;
     switch (state)
     {
-    case INITSTATE:
-        state++;
-        // fall through
     case HASHMOVESTATE:
         state++;
         if (hashmove)
