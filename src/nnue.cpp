@@ -1474,7 +1474,7 @@ void NnueWriteNet(vector<string> args)
         {
             rescale = stoi(args[ci++]);
         }
-        if (args[ci] == "z")
+        else if (args[ci] == "z")
         {
             zExport = true;
             ci++;
