@@ -249,7 +249,7 @@ static void perftest(int maxdepth)
     while (ptr[i].fen != "")
     {
         en.sthread[0].pos.getFromFen(ptr[i].fen.c_str());
-        int j = 0;
+        int j = 1;
         while (ptr[i].nodes[j] > 0 && j <= maxdepth)
         {
             long long starttime = getTime();
