@@ -684,11 +684,11 @@ bool chessposition::playMove(uint32_t mc)
         // Here we can test the move for being legal
         if (isAttacked(kingpos[s2m], s2m))
         {
+            materialhash = movestack[ply].materialhash;
             // Move is illegal; just do the necessary subset of unplayMove
             if (fullplay) {
                 hash = movestack[ply].hash;
                 pawnhash = movestack[ply].pawnhash;
-                materialhash = movestack[ply].materialhash;
                 halfmovescounter = movestack[ply].halfmovescounter;
             }
             kingpos[s2m] = movestack[ply].kingpos[s2m];
