@@ -250,14 +250,14 @@ void chessposition::getRootMoves()
                                 // 3fold for opponent is possible
                                 moveTo3fold = m->code;
 
-                            unplayMove(followupmovelist.move[j].code);
+                            unplayMove<false>(followupmovelist.move[j].code);
                         }
                     }
                 }
             }
 
             rootmovelist.move[rootmovelist.length++] = *m;
-            unplayMove(m->code);
+            unplayMove<false>(m->code);
             if (bestval < m->value)
             {
                 defaultmove = m->code;
@@ -776,7 +776,7 @@ bool chessposition::playMove(uint32_t mc)
     return true;
 }
 
-
+template <bool PerfOnly>
 void chessposition::unplayMove(uint32_t mc)
 {
     ply--;
@@ -842,7 +842,8 @@ void chessposition::unplayMove(uint32_t mc)
                 BitboardSet(to, capture);
                 mailbox[to] = capture;
             }
-            piececount++;
+            if (!PerfOnly)
+                piececount++;
         }
         else {
             mailbox[to] = BLANK;
@@ -1336,3 +1337,4 @@ template <MoveType Mt> int chessposition::CreateMovelist(chessmove* mstart)
 template void chessposition::evaluateMoves<QUIET>(chessmovelist*);
 template void chessposition::evaluateMoves<CAPTURE>(chessmovelist*);
 template bool chessposition::playMove<true>(uint32_t);
+template void chessposition::unplayMove<true>(uint32_t);

@@ -294,7 +294,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         STATISTICSINC(qs_moves);
         legalMoves++;
         score = -getQuiescence<Pt>(-beta, -alpha, depth - 1);
-        unplayMove(mc);
+        unplayMove<false>(mc);
         if (score > bestscore)
         {
             bestscore = score;
@@ -607,7 +607,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
                 if (probcutscore >= rbeta)
                     probcutscore = -alphabeta<Pt>(-rbeta, -rbeta + 1, depth - 4, !cutnode);
 
-                unplayMove(mc);
+                unplayMove<false>(mc);
 
                 if (probcutscore >= rbeta)
                 {
@@ -836,7 +836,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
             SDEBUGDO(isDebugMove, pvadditionalinfo[ply-1] += "PVS(alpha=" + to_string(alpha)+ ",beta=" +to_string(beta) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
         }
         SDEBUGDO(isDebugMove, pvadditionalinfo[ply - 1] += "score=" + to_string(score) + "  "; );
-        unplayMove(mc);
+        unplayMove<false>(mc);
 
         if (en.stopLevel == ENGINESTOPIMMEDIATELY)
         {
@@ -1094,7 +1094,7 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
 
         SDEBUGDO(isDebugMove, pvabortscore[0] = score;)
 
-        unplayMove(m->code);
+        unplayMove<false>(m->code);
 
         nodespermove[(uint16_t)m->code] += nodes - nodesbeforemove;
 
@@ -1585,7 +1585,7 @@ void mainSearch(searchthread *thr)
             pos->playMove<true>(pos->bestmove);
             uint16_t pondershort = tp.getMoveCode(pos->hash);
             pos->pondermove = pos->shortMove2FullMove(pondershort);
-            pos->unplayMove(pos->bestmove);
+            pos->unplayMove<true>(pos->bestmove);
         }
 
         if (pos->pondermove)

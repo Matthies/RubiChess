@@ -141,7 +141,7 @@ U64 engine::perft(int depth, bool printsysteminfo)
         if (rootpos->playMove<true>(movelist.move[i].code))
         {
             U64 moveperft = perft(depth - 1);
-            rootpos->unplayMove(movelist.move[i].code);
+            rootpos->unplayMove<true>(movelist.move[i].code);
             retval += moveperft;
             if (printsysteminfo)
             {

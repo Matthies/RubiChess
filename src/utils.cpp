@@ -485,7 +485,7 @@ string chessposition::AlgebraicFromShort(string s)
             // test if the move is legal; otherwise we need to search further
             if (playMove<true>(ml.move[i].code))
             {
-                unplayMove(ml.move[i].code);
+                unplayMove<true>(ml.move[i].code);
                 retval = ml.move[i].toString();
                 break;
             }
