@@ -115,7 +115,8 @@ void generateEpd(string egn)
 
 U64 engine::perft(int depth, bool printsysteminfo)
 {
-    long long starttime, endtime;
+    long long starttime = 0;
+    long long endtime = 0;
     U64 retval = 0;
     chessposition *rootpos = &en.sthread[0].pos;
 
@@ -137,7 +138,7 @@ U64 engine::perft(int depth, bool printsysteminfo)
 
     for (int i = 0; i < movelist.length; i++)
     {
-        if (rootpos->playMove(movelist.move[i].code))
+        if (rootpos->playMove<true>(movelist.move[i].code))
         {
             U64 moveperft = perft(depth - 1);
             rootpos->unplayMove(movelist.move[i].code);

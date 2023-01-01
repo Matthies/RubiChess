@@ -1599,7 +1599,7 @@ public:
     void tbFilterRootMoves();
     void prepareStack();
     string movesOnStack();
-    bool playMove(uint32_t mc);
+    template <bool PerfOnly> bool playMove(uint32_t mc);
     void unplayMove(uint32_t mc);
     void playNullMove();
     void unplayNullMove();
@@ -1629,8 +1629,6 @@ public:
     void updatePvTable(uint32_t mc, bool recursive);
     void updateMultiPvTable(int pvindex, uint32_t mc);
     string getPv(uint32_t *table);
-    int applyPv(uint32_t* table);
-    void reapplyPv(uint32_t* table, int num);
     int getHistory(uint32_t code);
     int getTacticalHst(uint32_t code);
     void resetStats();
