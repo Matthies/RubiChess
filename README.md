@@ -1,7 +1,9 @@
 # RubiChess
 Just another UCI compliant chess engine. Have a look at the ChangeLog for a detailed feature list.
 
-This started in 2016 as a private hobby project to practise programming in C++ and to see the engine improving compared
+'UCI compliant' means that for best user experience you need a chess GUI like Arena, CuteChess or BanksiaGUI (just to name some free programs) and install RubiChess as an engine in this GUI.
+
+RubiChess development started in 2016 as a private hobby project to practise programming in C++ and to see the engine improving compared
 to earlier releases. Meanwhile some years later RubiChess got pretty competitive and is listed in most of the rankings and plays
 a lot of even big tournaments.
 
@@ -15,7 +17,7 @@ Ethereal, Stockfish, Pirarucu, Laser, Koivisto, Berserk, ...
 Thank you for the great list of engines at http://www.computerchess.org.uk/ccrl/4040/
 Not mentioned all the other documentation and tools freely available.
 
-Also a big thank you goes to the guys at http://chess.grantnet.us/ especially Andrew Grant for running and improving this testing framework and to Bojun Guo (noobpwnftw) for spending all the hardware ressources for testing.
+Also a big thank you goes to the guys at http://chess.grantnet.us/ especially Andrew Grant for running and improving this testing framework and to Bojun Guo (noobpwnftw) for spending all the hardware resources for testing.
 ## NNUE
 Starting with version 1.9 RubiChess supports evaluation using NNUE weight files. With version 2.0 NNUE evaluation becomes the default.
 
