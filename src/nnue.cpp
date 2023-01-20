@@ -301,6 +301,8 @@ public:
     uint32_t GetFileVersion() {
         if (NnueFtOutputdims == 512)
             return NNUEFILEVERSIONSFNNv5_512;
+        if (NnueFtOutputdims == 768)
+            return NNUEFILEVERSIONSFNNv5_768;
         if (NnueFtOutputdims == 1024)
             return NNUEFILEVERSIONSFNNv5_1024;
     }
@@ -1378,6 +1380,12 @@ bool NnueReadNet(NnueNetsource* nr)
         nt = NnueArchV5;
         buffer = (char*)allocalign64(sizeof(NnueArchitectureV5<512>));
         NnueCurrentArch = new(buffer) NnueArchitectureV5<512>;
+        break;
+    case NNUEFILEVERSIONSFNNv5_768:
+        bpz = false;
+        nt = NnueArchV5;
+        buffer = (char*)allocalign64(sizeof(NnueArchitectureV5<768>));
+        NnueCurrentArch = new(buffer) NnueArchitectureV5<768>;
         break;
     case NNUEFILEVERSIONSFNNv5_1024:
         bpz = false;
