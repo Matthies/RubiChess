@@ -1891,7 +1891,8 @@ public:
     int restSizeOfTp = 0;
     int sizeOfPh;
     int moveOverhead;
-    int maxMeasuredOverhead;
+    int maxMeasuredGuiOverhead;
+    int maxMeasuredEngineOverhead;
     int MultiPV;
     bool ponder;
     bool chess960;

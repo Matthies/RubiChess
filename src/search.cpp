@@ -1597,6 +1597,21 @@ void mainSearch(searchthread *thr)
         en.stopLevel = ENGINESTOPIMMEDIATELY;
         en.clockstoptime = getTime();
         en.lastmovetime = en.clockstoptime - en.clockstarttime;
+        if (en.endtime2)
+        {
+            int measuredOverhead = (int)((S64)(en.clockstoptime - en.endtime2) * 1000.0 / en.frequency);
+            if (measuredOverhead > en.maxMeasuredEngineOverhead) {
+                en.maxMeasuredEngineOverhead = measuredOverhead;
+                int engineOverhead = en.moveOverhead;
+                if (measuredOverhead > engineOverhead / 2)
+                {
+                    if (measuredOverhead > engineOverhead)
+                        guiCom << "info string Measured engine overhead is " + to_string(measuredOverhead) + "ms and time forfeits are very likely. Please increase Move_Overhead option!\n";
+                    else
+                        guiCom << "info string Measured engine overhead is " + to_string(measuredOverhead) + "ms (> 50% of allowed via Move_Overhead option).\n";
+                }
+            }
+        }
 
         // Save pondermove in rootposition for time management of following search
         en.rootposition.pondermove = pos->pondermove;
