@@ -743,7 +743,7 @@ U64 getTime()
 {
     timespec now;
     clock_gettime(CLOCK_REALTIME, &now);
-    return (U64)(1000000000LL * now.tv_sec + now.tv_nsec);
+    return (U64)((1000000000LL >> 9) * now.tv_sec + (now.tv_nsec >> 9));
 }
 
 void Sleep(long x)

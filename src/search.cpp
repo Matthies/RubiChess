@@ -1237,8 +1237,7 @@ static void uciScore(searchthread *thr, int inWindow, U64 thinktime, int score, 
     U64 nodes, tbhits;
     en.getNodesAndTbhits(&nodes, &tbhits);
 
-    if (nodes)
-        thr->nps = nodes / 1024 * en.frequency / (thinktime + 1) * 1024;  // lower resolution to avoid overflow under Linux in high performance systems
+    thr->nps = nodes * en.frequency / (thinktime + 1);
 
     if (!MATEDETECTED(score))
     {

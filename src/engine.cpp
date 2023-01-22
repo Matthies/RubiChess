@@ -169,7 +169,7 @@ engine::engine(compilerinfo *c)
     QueryPerformanceFrequency(&f);
     frequency = f.QuadPart;
 #else
-    frequency = 1000000000LL;
+    frequency = (1000000000LL >> 9);
 #endif
     rootposition.resetStats();
 }
