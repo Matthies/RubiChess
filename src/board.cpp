@@ -560,7 +560,6 @@ string chessposition::getPv(uint32_t *table)
     return s;
 }
 
-
 int chessposition::applyPv(uint32_t* table)
 {
     chessmove cm;

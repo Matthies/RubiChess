@@ -730,11 +730,10 @@ bool chessposition::playMove(uint32_t mc)
 
         // remove castle rights depending on from and to square
         state &= (castlerights[from] & castlerights[to]);
-        if (ptype == KING)
+        if (!LiteMode && ptype == KING)
         {
-            if (!LiteMode)
-                // Store king position in pawn hash
-                pawnhash ^= zb.boardtable[(from << 4) | pfrom] ^ zb.boardtable[(to << 4) | pfrom];
+            // Store king position in pawn hash
+            pawnhash ^= zb.boardtable[(from << 4) | pfrom] ^ zb.boardtable[(to << 4) | pfrom];
         }
     }
 
