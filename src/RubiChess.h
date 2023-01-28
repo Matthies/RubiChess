@@ -17,8 +17,8 @@
 
 #pragma once
 
-#define VERNUMLEGACY 2022
-#define NNUEDEFAULT nn-5e38b8ddf1-20221228.nnue
+#define VERNUMLEGACY 2023
+#define NNUEDEFAULT nn-0cea604698-20230119.nnue
 
 // enable this switch for faster SSE2 code using 16bit integers
 #define FASTSSE2
@@ -694,6 +694,7 @@ enum NnueType { NnueDisabled = 0, NnueArchV1, NnueArchV5 };
 #define NNUEFILEVERSIONNOBPZ        0x7AF32F17u
 #define NNUEFILEVERSIONSFNNv5_1024  0x7af32f20u
 #define NNUEFILEVERSIONSFNNv5_512   0x7af32f30u
+#define NNUEFILEVERSIONSFNNv5_768   0x7af32f31u
 #define NNUENETLAYERHASH            0xCC03DAE4u
 #define NNUECLIPPEDRELUHASH         0x538D24C7u
 #define NNUEFEATUREHASH_HalfKP      0x5D69D5B8u
@@ -1888,7 +1889,8 @@ public:
     int restSizeOfTp = 0;
     int sizeOfPh;
     int moveOverhead;
-    int maxMeasuredOverhead;
+    int maxMeasuredGuiOverhead;
+    int maxMeasuredEngineOverhead;
     int MultiPV;
     bool ponder;
     bool chess960;

@@ -176,6 +176,11 @@ engine::engine(compilerinfo *c)
 
 engine::~engine()
 {
+    if (maxMeasuredGuiOverhead || maxMeasuredEngineOverhead)
+    {
+        guiCom << "info string Maximum measured GUI overhead was " + to_string(maxMeasuredGuiOverhead) + "ms.\n";
+        guiCom << "info string Maximum measured engine overhead was " + to_string(maxMeasuredEngineOverhead) + "ms.\n";
+    }
     ucioptions.Set("SyzygyPath", "<empty>");
     ucioptions.Set("LogFile", "");
     Threads = 0;
@@ -323,15 +328,15 @@ void engine::measureOverhead(bool wasPondering)
         int guiTimeOfLastMove = lastmytime - mytime + myinc;
         double myTimeOfLastMove = lastmovetime * 1000.0 / frequency;
         int measuredOverhead = guiTimeOfLastMove - (int)myTimeOfLastMove;
-        if (measuredOverhead > maxMeasuredOverhead)
+        if (measuredOverhead > maxMeasuredGuiOverhead)
         {
-            maxMeasuredOverhead = measuredOverhead;
+            maxMeasuredGuiOverhead = measuredOverhead;
             if (measuredOverhead > moveOverhead / 2)
             {
                 if (measuredOverhead > moveOverhead)
-                    guiCom << "info string Measured move overhead is " + to_string(measuredOverhead) + "ms and time forfeits are very likely. Please increase Move_Overhead option!\n";
+                    guiCom << "info string Measured GUI overhead is " + to_string(measuredOverhead) + "ms and time forfeits are very likely. Please increase Move_Overhead option!\n";
                 else
-                    guiCom << "info string Measured move overhead is " + to_string(measuredOverhead) + "ms (> 50% of allowed via Move_Overhead option).\n";
+                    guiCom << "info string Measured GUI overhead is " + to_string(measuredOverhead) + "ms (> 50% of allowed via Move_Overhead option).\n";
             }
         }
     }

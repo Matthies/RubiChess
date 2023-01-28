@@ -1,7 +1,9 @@
 # RubiChess
 Just another UCI compliant chess engine. Have a look at the ChangeLog for a detailed feature list.
 
-This started in 2016 as a private hobby project to practise programming in C++ and to see the engine improving compared
+'UCI compliant' means that for best user experience you need a chess GUI like Arena, CuteChess or BanksiaGUI (just to name some free programs) and install RubiChess as an engine in this GUI.
+
+RubiChess development started in 2016 as a private hobby project to practise programming in C++ and to see the engine improving compared
 to earlier releases. Meanwhile some years later RubiChess got pretty competitive and is listed in most of the rankings and plays
 a lot of even big tournaments.
 
@@ -15,7 +17,7 @@ Ethereal, Stockfish, Pirarucu, Laser, Koivisto, Berserk, ...
 Thank you for the great list of engines at http://www.computerchess.org.uk/ccrl/4040/
 Not mentioned all the other documentation and tools freely available.
 
-Also a big thank you goes to the guys at http://chess.grantnet.us/ especially Andrew Grant for running and improving this testing framework and to Bojun Guo (noobpwnftw) for spending all the hardware ressources for testing.
+Also a big thank you goes to the guys at http://chess.grantnet.us/ especially Andrew Grant for running and improving this testing framework and to Bojun Guo (noobpwnftw) for spending all the hardware resources for testing.
 ## NNUE
 Starting with version 1.9 RubiChess supports evaluation using NNUE weight files. With version 2.0 NNUE evaluation becomes the default.
 
@@ -25,8 +27,7 @@ Use the 'NNUENetpath' option to switch to a different network weight file.
 
 You can download network files from my repository https://github.com/Matthies/NN and put it in the same folder as the executable.
 
-Default net for last official release is nn-cf8c56d366-20210326.nnue which is also included in Windows release package,
-default net for current master (and strongest one for now) is nn-fb50f1a2b1-20210705.nnue.
+Current default net will be downloaded automatically when compiling the engine and is also included in Windows release packages.
 
 ## Binaries and hints to build some
 I provide release binary packages for Windows x64 only. Depending on the type of your x86-64 CPU you can choose from
