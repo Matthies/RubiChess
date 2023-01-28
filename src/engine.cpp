@@ -459,7 +459,7 @@ void engine::communicate(string inputstring)
                         while (i--) {
                             uint32_t mc;
                             mc = rootposition.pvmovecode[i];
-                            rootposition.unplayMove(mc);
+                            rootposition.unplayMove<false>(mc);
                         }
                         prepareThreads();   // To copy the debug information to the threads position object
                     }

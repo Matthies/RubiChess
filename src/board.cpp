@@ -561,6 +561,33 @@ string chessposition::getPv(uint32_t *table)
 }
 
 
+int chessposition::applyPv(uint32_t* table)
+{
+    chessmove cm;
+    int i = 0;
+
+    while ((cm.code = table[i++]))
+    {
+        prepareStack();
+        if (!playMove<false>(cm.code))
+            printf("Alarm! Wrong move %s in PV.\n", cm.toString().c_str());
+    }
+
+    return i - 1;
+}
+
+void chessposition::reapplyPv(uint32_t* table, int num)
+{
+    chessmove cm;
+
+    while (num)
+    {
+        cm.code = table[--num];
+        unplayMove<false>(cm.code);
+    }
+}
+
+
 #ifdef SDEBUG
 bool chessposition::triggerDebug(chessmove* nextmove)
 {

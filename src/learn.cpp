@@ -521,7 +521,7 @@ bool chessposition::followsTo(chessposition *src, uint32_t mc)
     if (!mc)
         return false;
 
-    if (!src->playMove(mc))
+    if (!src->playMove<false>(mc))
     {
         // mc should always be possible in position src as it is the preferred move
         cout << "Alarm! Failed to play " << hex << mc << "(" << moveToString(mc) << ")" << endl;
@@ -656,7 +656,7 @@ int chessposition::getNextFromBinpack(Binpack *bp)
     }
     else {
         // play the last move
-        playMove(bp->fullmove);
+        playMove<false>(bp->fullmove);
         ply = 0;
         int Me = state & S2MMASK;
         fixEpt();
@@ -1150,7 +1150,7 @@ SKIP_SAVE:
                     }
                 }
 
-                bool legal = pos->playMove(nmc);
+                bool legal = pos->playMove<false>(nmc);
 
                 if (legal)
                     break;

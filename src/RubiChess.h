@@ -1630,6 +1630,8 @@ public:
     void updatePvTable(uint32_t mc, bool recursive);
     void updateMultiPvTable(int pvindex, uint32_t mc);
     string getPv(uint32_t *table);
+    int applyPv(uint32_t* table);
+    void reapplyPv(uint32_t* table, int num);
     int getHistory(uint32_t code);
     int getTacticalHst(uint32_t code);
     void resetStats();
