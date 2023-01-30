@@ -1474,6 +1474,7 @@ public:
     U64 piece00[14];        // copied from rootpos
     U64 attackedBy2[2];     // set in generalEval
     U64 attackedBy[2][7];   // copied from rootpos, but fixed 0xffffffffffffffff
+    uint8_t mailbox[BOARDSIZE];                         // copied from rootpos -- redundand for faster "which piece is on field x"
     U64 threats;            // copied from rootpos
 
     // The following block is mapped/copied to the movestack, so its important to keep the order
@@ -1489,16 +1490,9 @@ public:
     U64 kingPinned;         // copied from rootpos
     int lastnullmove;       // copied from rootpos
     unsigned int threatSquare;// copied from rootpos
-    int piececount;         // copied from rootpos
 
-    uint8_t mailbox[BOARDSIZE];                         // copied from rootpos -- redundand for faster "which piece is on field x"
-    chessmovestack prerootmovestack[PREROOTMOVES];      // copied from rootpos... hmmmm... maybe only copy up to prerootmovenum  -- moves before root since last halfmovescounter reset
-    chessmovestack movestack[MAXDEPTH];                 // no need for init
-    uint32_t prerootmovecode[PREROOTMOVES];             // copied from rootpos... hmmmm... maybe only copy up to prerootmovenum
-    uint32_t movecode[MAXDEPTH];                        // no need for init
-    uint16_t excludemovestack[MAXDEPTH];                // only excludemovestack[0] is init with 0 (and copied from rootpos)
-    int16_t staticevalstack[MAXDEPTH];                  // no need for init
 
+    int piececount;                 // copied from rootpos
     int prerootmovenum;             // copied from rootpos
     int seldepth;                   // no need for init
     int nullmoveside;               // init in prepare
@@ -1542,6 +1536,15 @@ public:
     uint32_t multipvtable[MAXMULTIPV][MAXDEPTH];                // no need for init
     uint32_t lastpv[MAXDEPTH];                                  // no need for init
     int CurrentMoveNum[MAXDEPTH];   // no need for init
+
+    chessmovestack prerootmovestack[PREROOTMOVES];      // copied from rootpos... hmmmm... maybe only copy up to prerootmovenum  -- moves before root since last halfmovescounter reset
+    chessmovestack movestack[MAXDEPTH];                 // no need for init
+    uint32_t prerootmovecode[PREROOTMOVES];             // copied from rootpos... hmmmm... maybe only copy up to prerootmovenum
+    uint32_t movecode[MAXDEPTH];                        // no need for init
+    uint16_t excludemovestack[MAXDEPTH];                // only excludemovestack[0] is init with 0 (and copied from rootpos)
+    int16_t staticevalstack[MAXDEPTH];                  // no need for init
+
+
     int he_threshold;
     U64 he_yes;
     U64 he_all;

@@ -257,9 +257,10 @@ void engine::allocThreads()
 
 void engine::prepareThreads()
 {
-    cout << "prepareThreads starts / prepared=" << prepared << "  copy-offset=" << offsetof(chessposition, history) << "\n";
+    //cout << "prepareThreads starts / prepared=" << prepared << "  copy-offset=" << offsetof(chessposition, history) << "\n";
     // master:  copy-offset=2463280
     // step1:   copy-offset=  32304
+    // step2:   copy-offset=   5168
     for (int i = 0; i < Threads; i++)
     {
         chessposition *pos = &sthread[i].pos;
@@ -275,17 +276,22 @@ void engine::prepareThreads()
         pos->nullmoveply = 0;
         pos->nullmoveside = 0;
         pos->nodesToNextCheck = 0;
-
+        pos->excludemovestack[0] = 0;
 
         pos->accumulator[0].computationState[WHITE] = false;
         pos->accumulator[0].computationState[BLACK] = false;
+
+        int framesToCopy = rootposition.prerootmovenum + 1; //include stack frame of ply 0
+        int startIndex = PREROOTMOVES - framesToCopy + 1;
+        memcpy(&pos->prerootmovestack[startIndex], &rootposition.prerootmovestack[startIndex], framesToCopy * sizeof(chessmovestack));
+        memcpy(&pos->prerootmovecode[startIndex], &rootposition.prerootmovecode[startIndex], framesToCopy * sizeof(uint32_t));
     }
     if (!prepared)
     {
         memset(&sthread[0].pos.nodespermove, 0, sizeof(chessposition::nodespermove));
         prepared = true;
     }
-    cout << "prepareThreads finished.  nodes=" << sthread[0].pos.nodes << "\n";
+    //cout << "prepareThreads finished.  nodes=" << sthread[0].pos.nodes << "\n";
 }
 
 
@@ -376,7 +382,7 @@ void engine::communicate(string inputstring)
         {
             if (pendingposition)
             {
-                cout << "Start pending position\n";
+                //cout << "Start pending position\n";
                 // new position first stops current search
                 if (stopLevel < ENGINESTOPIMMEDIATELY)
                 {
@@ -390,7 +396,7 @@ void engine::communicate(string inputstring)
                     rootposition.getFromFen(fen.c_str());
                     moves.clear();
                 }
-                cout << "Finished getFromFen\n";
+                //cout << "Finished getFromFen\n";
 
                 uint32_t lastopponentsmove = 0;
                 for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
@@ -412,12 +418,12 @@ void engine::communicate(string inputstring)
                 rootposition.lastnullmove = -rootposition.ply - 1;
                 rootposition.ply = 0;
                 rootposition.useTb = min(TBlargest, en.SyzygyProbeLimit);
-                cout << "Start getRootMoves\n";
+                //cout << "Start getRootMoves\n";
                 rootposition.getRootMoves();
-                cout << "Start tbFilterRootMoves\n";
+                //cout << "Start tbFilterRootMoves\n";
                 rootposition.tbFilterRootMoves();
                 prepareThreads();
-                cout << "Finished pendingposition\n";
+                //cout << "Finished pendingposition\n";
                 if (debug)
                 {
                     sthread[0].pos.print();
@@ -487,13 +493,13 @@ void engine::communicate(string inputstring)
                 break;
             case UCINEWGAME:
                 // invalidate hash and history
-                cout << "ucinewgame starts...\n";
+                //cout << "ucinewgame starts...\n";
                 tp.clean();
-                cout << "ucinewgame... Start resetStats\n";
+                //cout << "ucinewgame... Start resetStats\n";
                 resetStats();
                 sthread[0].pos.lastbestmovescore = NOSCORE;
                 pbook.currentDepth = 0;
-                cout << "ucinewgame... finish\n";
+                //cout << "ucinewgame... finish\n";
                 break;
             case SETOPTION:
                 if (en.stopLevel != ENGINETERMINATEDSEARCH)
