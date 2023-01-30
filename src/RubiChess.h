@@ -1470,6 +1470,7 @@ public:
     U64 nodes;  // init in prepare
     U64 tbhits; // init in prepare
     int ply;    // copied from rootpos, but fixed 0
+    int piececount;                 // copied from rootpos
 
     U64 piece00[14];        // copied from rootpos
     U64 attackedBy2[2];     // set in generalEval
@@ -1491,8 +1492,6 @@ public:
     int lastnullmove;       // copied from rootpos
     unsigned int threatSquare;// copied from rootpos
 
-
-    int piececount;                 // copied from rootpos
     int prerootmovenum;             // copied from rootpos
     int seldepth;                   // no need for init
     int nullmoveside;               // init in prepare
@@ -1523,14 +1522,17 @@ public:
 #endif
 
     // The following part of the chessposition object isn't copied from rootposition object to the threads positions
-    int16_t history[2][65][64][64];
-    int16_t counterhistory[14][64][14 * 64];
-    int16_t tacticalhst[7][64][6];
-    uint32_t countermove[14][64];
-    int16_t* prerootconthistptr[4];
-    int16_t* conthistptr[MAXDEPTH];
+    int16_t history[2][65][64][64];                 // init is resetStats
+    int16_t counterhistory[14][64][14 * 64];        // init is resetStats
+    int16_t tacticalhst[7][64][6];                  // init is resetStats
+    uint32_t countermove[14][64];                   // init is resetStats
+    int16_t* prerootconthistptr[4];                 // init is resetStats
+    int16_t* conthistptr[MAXDEPTH];                 // init is resetStats
+    int he_threshold;                               // init is resetStats
+    U64 he_yes;                                     // init is resetStats
+    U64 he_all;                                     // init is resetStats
 
-    U64 nodespermove[0x10000];
+    U64 nodespermove[0x10000];                      // init in prepare only for thread #0
     chessmovelist captureslist[MAXDEPTH];           // no need for init
     chessmovelist quietslist[MAXDEPTH];             // no need for init
     chessmovelist singularcaptureslist[MAXDEPTH];   // no need for init
@@ -1540,21 +1542,17 @@ public:
     uint32_t lastpv[MAXDEPTH];                      // no need for init
     int CurrentMoveNum[MAXDEPTH];                   // no need for init
 
-    chessmovestack prerootmovestack[PREROOTMOVES];      // copied from rootpos up to frame prerootmovenum including first frame of regular stack
+    chessmovestack prerootmovestack[PREROOTMOVES];      // explicit copy from rootpos up to frame prerootmovenum including first frame of regular stack
     chessmovestack movestack[MAXDEPTH];                 // frame 0 copied from rootpos
-    uint32_t prerootmovecode[PREROOTMOVES];             // copied from rootpos up to frame prerootmovenum including first regular movecode
+    uint32_t prerootmovecode[PREROOTMOVES];             // explicit copy from rootpos up to frame prerootmovenum including first regular movecode
     uint32_t movecode[MAXDEPTH];                        // no need for init
     uint16_t excludemovestack[MAXDEPTH];                // init in prepare only for excludemovestack[0]
     int16_t staticevalstack[MAXDEPTH];                  // no need for init
 
-    int he_threshold;                               // init is resetStats
-    U64 he_yes;                                     // init is resetStats
-    U64 he_all;                                     // init is resetStats
-
-    Materialhash mtrlhsh;                           // init in alloc
-    Pawnhash pwnhsh;                                // init in alloc
-    NnueAccumulator accumulator[MAXDEPTH];          // init of state in prepare
-    DirtyPiece dirtypiece[MAXDEPTH];                // no need for init
+    Materialhash mtrlhsh;                                   // init in alloc
+    Pawnhash pwnhsh;                                        // init in alloc
+    NnueAccumulator accumulator[MAXDEPTH];                  // init of state in prepare
+    DirtyPiece dirtypiece[MAXDEPTH];                        // no need for init
     uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];       // no need for init
     uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];    // no need for init
     alignas(64) MoveSelector moveSelector[MAXDEPTH];        // no need for init
