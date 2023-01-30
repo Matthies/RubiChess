@@ -1467,70 +1467,62 @@ enum PvAbortType {
 class chessposition
 {
 public:
-    U64 nodes;
-    U64 tbhits;
-    int ply;        // 0 at root position
+    U64 nodes;  // init in prepare
+    U64 tbhits; // init in prepare
+    int ply;    // copied from rootpos, but fixed 0
 
-    U64 piece00[14];
-    U64 attackedBy2[2];
-    U64 attackedBy[2][7];
-    U64 threats;
+    U64 piece00[14];        // copied from rootpos
+    U64 attackedBy2[2];     // set in generalEval
+    U64 attackedBy[2][7];   // copied from rootpos, but fixed 0xffffffffffffffff
+    U64 threats;            // copied from rootpos
 
     // The following block is mapped/copied to the movestack, so its important to keep the order
-    int state;
-    uint8_t ept;
-    uint8_t kingpos[2];
-    U64 hash;
-    U64 pawnhash;
-    U64 materialhash;
-    int halfmovescounter;
-    int fullmovescounter;
-    U64 isCheckbb;
-    U64 kingPinned;
-    int lastnullmove;
-    unsigned int threatSquare;
-    int piececount;
+    int state;              // copied from rootpos
+    uint8_t ept;            // copied from rootpos
+    uint8_t kingpos[2];     // copied from rootpos
+    U64 hash;               // copied from rootpos
+    U64 pawnhash;           // copied from rootpos
+    U64 materialhash;       // copied from rootpos
+    int halfmovescounter;   // copied from rootpos
+    int fullmovescounter;   // copied from rootpos
+    U64 isCheckbb;          // copied from rootpos
+    U64 kingPinned;         // copied from rootpos
+    int lastnullmove;       // copied from rootpos
+    unsigned int threatSquare;// copied from rootpos
+    int piececount;         // copied from rootpos
 
-    uint8_t mailbox[BOARDSIZE]; // redundand for faster "which piece is on field x"
-    chessmovestack prerootmovestack[PREROOTMOVES];   // moves before root since last halfmovescounter reset
-    chessmovestack movestack[MAXDEPTH];
-    uint32_t prerootmovecode[PREROOTMOVES];
-    uint32_t movecode[MAXDEPTH];
-    uint16_t excludemovestack[MAXDEPTH];
-    int16_t staticevalstack[MAXDEPTH];
+    uint8_t mailbox[BOARDSIZE];                         // copied from rootpos -- redundand for faster "which piece is on field x"
+    chessmovestack prerootmovestack[PREROOTMOVES];      // copied from rootpos... hmmmm... maybe only copy up to prerootmovenum  -- moves before root since last halfmovescounter reset
+    chessmovestack movestack[MAXDEPTH];                 // no need for init
+    uint32_t prerootmovecode[PREROOTMOVES];             // copied from rootpos... hmmmm... maybe only copy up to prerootmovenum
+    uint32_t movecode[MAXDEPTH];                        // no need for init
+    uint16_t excludemovestack[MAXDEPTH];                // only excludemovestack[0] is init with 0 (and copied from rootpos)
+    int16_t staticevalstack[MAXDEPTH];                  // no need for init
 
-    int prerootmovenum;
-    int seldepth;
-    int nullmoveside;
-    int nullmoveply = 0;
-    chessmovelist rootmovelist;
-    uint32_t bestmove;
-    int lastbestmovescore;
-    int bestmovescore[MAXMULTIPV];
-    uint32_t pondermove;
-    int CurrentMoveNum[MAXDEPTH];
-    uint32_t killer[MAXDEPTH][2];
-    uint32_t bestFailingLow;
-    int threadindex;
-    int psqval;
-    uint32_t pvtable[MAXDEPTH][MAXDEPTH];
-    uint32_t multipvtable[MAXMULTIPV][MAXDEPTH];
-    uint32_t lastpv[MAXDEPTH];
-    int phcount; // weighted number of pieces (0..24)
-    int sc; // to store scaling factor used for evaluation
-    int contempt;
-    int useTb;
-    int useRootmoveScore;
-    int tbPosition;
-    uint32_t defaultmove; // fallback if search in time trouble didn't finish a single iteration
-    chessmovelist captureslist[MAXDEPTH];
-    chessmovelist quietslist[MAXDEPTH];
-    chessmovelist singularcaptureslist[MAXDEPTH];   // extra move lists for singular testing
-    chessmovelist singularquietslist[MAXDEPTH];
-    int castlerights[64];
-    int castlerookfrom[4];
-    U64 castleblockers[4];
-    U64 castlekingwalk[4];
+    int prerootmovenum;             // copied from rootpos
+    int seldepth;                   // no need for init
+    int nullmoveside;               // init in prepare
+    int nullmoveply;                // init in prepare
+    chessmovelist rootmovelist;     // copied from rootpos
+    uint32_t bestmove;              // init in prepare
+    int lastbestmovescore;          // no need for init
+    int bestmovescore[MAXMULTIPV];  // init in prepare (only [0]; maybe better in search?)
+    uint32_t pondermove;            // init in prepare
+    uint32_t killer[MAXDEPTH][2];   // Hmmm. killer[0][] not initialized/reset to 0??
+    uint32_t bestFailingLow;        // Hmmm. bestFailingLow not initialized/reset to 0??
+    int threadindex;                // init in prepare (to signal that thread is alive)
+    int psqval;                     // copied from rootpos
+    int phcount;                                    // copied from rootpos -- weighted number of pieces (0..24)
+    int sc;                                         // no need for init -- to store scaling factor used for evaluation
+    int contempt;                                   // copied from rootpos
+    int useTb;                                      // copied from rootpos
+    int useRootmoveScore;                           // copied from rootpos
+    int tbPosition;                                 // copied from rootpos
+    uint32_t defaultmove;                           // copied from rootpos; only mainthread needs it  -- fallback if search in time trouble didn't finish a single iteration
+    int castlerights[64];                           // copied from rootpos
+    int castlerookfrom[4];                          // copied from rootpos
+    U64 castleblockers[4];                          // copied from rootpos
+    U64 castlekingwalk[4];                          // copied from rootpos
 #ifdef SDEBUG
     U64 debughash = 0;
     uint32_t pvmovecode[MAXDEPTH];
@@ -1542,6 +1534,14 @@ public:
     int16_t tacticalhst[7][64][6];
     uint32_t countermove[14][64];
     U64 nodespermove[0x10000];
+    chessmovelist captureslist[MAXDEPTH];           // no need for init
+    chessmovelist quietslist[MAXDEPTH];             // no need for init
+    chessmovelist singularcaptureslist[MAXDEPTH];   // no need for init
+    chessmovelist singularquietslist[MAXDEPTH];     // no need for init
+    uint32_t pvtable[MAXDEPTH][MAXDEPTH];                       // no need for init
+    uint32_t multipvtable[MAXMULTIPV][MAXDEPTH];                // no need for init
+    uint32_t lastpv[MAXDEPTH];                                  // no need for init
+    int CurrentMoveNum[MAXDEPTH];   // no need for init
     int he_threshold;
     U64 he_yes;
     U64 he_all;

@@ -177,6 +177,7 @@ int transposition::setSize(int sizeMb)
 
 void transposition::clean()
 {
+    cout << "tpclean starts...\n";
     size_t totalsize = size * sizeof(transpositioncluster);
     size_t sizePerThread = totalsize / en.Threads;
     thread tthread[MAXTHREADS];
@@ -192,6 +193,7 @@ void transposition::clean()
             tthread[i].join();
     }
     numOfSearchShiftTwo = 0;
+    cout << "tpclean finished\n";
 }
 
 
