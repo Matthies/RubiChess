@@ -1467,97 +1467,98 @@ enum PvAbortType {
 class chessposition
 {
 public:
-    int ply;    // copied from rootpos, but fixed 0
-    int piececount;                 // copied from rootpos
-
-    U64 piece00[14];        // copied from rootpos
-    U64 attackedBy2[2];     // set in generalEval
-    U64 attackedBy[2][7];   // copied from rootpos, but fixed 0xffffffffffffffff
-    uint8_t mailbox[BOARDSIZE];                         // copied from rootpos -- redundand for faster "which piece is on field x"
-    U64 threats;            // copied from rootpos
+    // everything up to member 'history' is copied from rootpos to every thread's position in engine::prepareThreads()
+    int ply;
+    int piececount;
+    U64 piece00[14];
+    U64 attackedBy2[2];
+    U64 attackedBy[2][7];
+    uint8_t mailbox[BOARDSIZE];
+    U64 threats;
 
     // The following block is mapped/copied to the movestack, so its important to keep the order
-    int state;              // copied from rootpos
-    uint8_t ept;            // copied from rootpos
-    uint8_t kingpos[2];     // copied from rootpos
-    U64 hash;               // copied from rootpos
-    U64 pawnhash;           // copied from rootpos
-    U64 materialhash;       // copied from rootpos
-    int halfmovescounter;   // copied from rootpos
-    int fullmovescounter;   // copied from rootpos
-    U64 isCheckbb;          // copied from rootpos
-    U64 kingPinned;         // copied from rootpos
-    int lastnullmove;       // copied from rootpos
-    unsigned int threatSquare;// copied from rootpos
+    int state;
+    uint8_t ept;
+    uint8_t kingpos[2];
+    U64 hash;
+    U64 pawnhash;
+    U64 materialhash;
+    int halfmovescounter;
+    int fullmovescounter;
+    U64 isCheckbb;
+    U64 kingPinned;
+    int lastnullmove;
+    unsigned int threatSquare;
 
-    int prerootmovenum;             // copied from rootpos
-    int seldepth;                   // no need for init
-    chessmovelist rootmovelist;     // copied from rootpos
-    uint32_t bestmove;              // init in prepare
-    int lastbestmovescore;          // no need for init
-    int bestmovescore[MAXMULTIPV];  // init in prepare (only [0]; maybe better in search?)
-    uint32_t pondermove;            // init in prepare
+    int prerootmovenum;
+    chessmovelist rootmovelist;
     uint32_t killer[MAXDEPTH][2];   // Hmmm. killer[0][] not initialized/reset to 0??
     uint32_t bestFailingLow;        // Hmmm. bestFailingLow not initialized/reset to 0??
-    int threadindex;                // init in prepare (to signal that thread is alive)
-    int psqval;                     // copied from rootpos
-    int phcount;                                    // copied from rootpos -- weighted number of pieces (0..24)
-    int sc;                                         // no need for init -- to store scaling factor used for evaluation
-    int contempt;                                   // copied from rootpos
-    int useTb;                                      // copied from rootpos
-    int useRootmoveScore;                           // copied from rootpos
-    int tbPosition;                                 // copied from rootpos
-    uint32_t defaultmove;                           // copied from rootpos; only mainthread needs it  -- fallback if search in time trouble didn't finish a single iteration
-    int castlerights[64];                           // copied from rootpos
-    int castlerookfrom[4];                          // copied from rootpos
-    U64 castleblockers[4];                          // copied from rootpos
-    U64 castlekingwalk[4];                          // copied from rootpos
+    int psqval;
+    int phcount;                    // weighted number of pieces (0..24)
+    int contempt;
+    int useTb;
+    int useRootmoveScore;
+    int tbPosition;
+    uint32_t defaultmove;           // only mainthread needs it  -- fallback if search in time trouble didn't finish a single iteration
+    int castlerights[64];
+    int castlerookfrom[4];
+    U64 castleblockers[4];
+    U64 castlekingwalk[4];
 #ifdef SDEBUG
     U64 debughash = 0;
     uint32_t pvmovecode[MAXDEPTH];
 #endif
 
-    // The following part of the chessposition object isn't copied from rootposition object to the threads positions
-    int16_t history[2][65][64][64];                 // init is resetStats
-    int16_t counterhistory[14][64][14 * 64];        // init is resetStats
-    int16_t tacticalhst[7][64][6];                  // init is resetStats
-    uint32_t countermove[14][64];                   // init is resetStats
-    int16_t* prerootconthistptr[4];                 // init is resetStats
-    int16_t* conthistptr[MAXDEPTH];                 // init is resetStats
-    int he_threshold;                               // init is resetStats
-    U64 he_yes;                                     // init is resetStats
-    U64 he_all;                                     // init is resetStats
+    // The following part of the chessposition object is reset via resetStats()
+    int16_t history[2][65][64][64];
+    int16_t counterhistory[14][64][14 * 64];
+    int16_t tacticalhst[7][64][6];
+    uint32_t countermove[14][64];
+    int16_t* prerootconthistptr[4];
+    int16_t* conthistptr[MAXDEPTH];
+    int he_threshold;
+    U64 he_yes;
+    U64 he_all;
 
-    U64 nodes;                                      // init in prepare
-    U64 tbhits;                                     // init in prepare
-    int nullmoveside;                               // init in prepare
-    int nullmoveply;                                // init in prepare
-    int nodesToNextCheck;                           // init in prepare
+    // The following members get an explicit init in engine::prepareThreads()
+    U64 nodes;
+    U64 tbhits;
+    int nullmoveside;
+    int nullmoveply;
+    int nodesToNextCheck;
+    uint32_t bestmove;
+    int threadindex;                                // to signal that thread is alive
+    int bestmovescore[MAXMULTIPV];                  // init only for [0]; maybe better in search?
+    uint32_t pondermove;
+
+    // The following members (almost) don't need an init
+    int seldepth;
+    int lastbestmovescore;
+    int sc;
     U64 nodespermove[0x10000];                      // init in prepare only for thread #0
-    chessmovelist captureslist[MAXDEPTH];           // no need for init
-    chessmovelist quietslist[MAXDEPTH];             // no need for init
-    chessmovelist singularcaptureslist[MAXDEPTH];   // no need for init
-    chessmovelist singularquietslist[MAXDEPTH];     // no need for init
-    uint32_t pvtable[MAXDEPTH][MAXDEPTH];           // no need for init
-    uint32_t multipvtable[MAXMULTIPV][MAXDEPTH];    // no need for init
-    uint32_t lastpv[MAXDEPTH];                      // no need for init
-    int CurrentMoveNum[MAXDEPTH];                   // no need for init
-
+    chessmovelist captureslist[MAXDEPTH];
+    chessmovelist quietslist[MAXDEPTH];
+    chessmovelist singularcaptureslist[MAXDEPTH];
+    chessmovelist singularquietslist[MAXDEPTH];
+    uint32_t pvtable[MAXDEPTH][MAXDEPTH];
+    uint32_t multipvtable[MAXMULTIPV][MAXDEPTH];
+    uint32_t lastpv[MAXDEPTH];
+    int CurrentMoveNum[MAXDEPTH];
     chessmovestack prerootmovestack[PREROOTMOVES];      // explicit copy from rootpos up to frame prerootmovenum including first frame of regular stack
     chessmovestack movestack[MAXDEPTH];                 // frame 0 copied from rootpos
     uint32_t prerootmovecode[PREROOTMOVES];             // explicit copy from rootpos up to frame prerootmovenum including first regular movecode
-    uint32_t movecode[MAXDEPTH];                        // no need for init
+    uint32_t movecode[MAXDEPTH];
     uint16_t excludemovestack[MAXDEPTH];                // init in prepare only for excludemovestack[0]
-    int16_t staticevalstack[MAXDEPTH];                      // no need for init
-
-    Materialhash mtrlhsh;                                   // init in alloc
-    Pawnhash pwnhsh;                                        // init in alloc
-    NnueAccumulator accumulator[MAXDEPTH];                  // init of state in prepare
-    DirtyPiece dirtypiece[MAXDEPTH];                        // no need for init
-    uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];       // no need for init
-    uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];    // no need for init
-    alignas(64) MoveSelector moveSelector[MAXDEPTH];        // no need for init
-    MoveSelector extensionMoveSelector[MAXDEPTH];           // no need for init
+    int16_t staticevalstack[MAXDEPTH];
+    Materialhash mtrlhsh;                               // init in alloc
+    Pawnhash pwnhsh;                                    // init in alloc
+    NnueAccumulator accumulator[MAXDEPTH];              // init of state in prepare
+    DirtyPiece dirtypiece[MAXDEPTH];
+    uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];
+    uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];
+    alignas(64) MoveSelector moveSelector[MAXDEPTH];
+    MoveSelector extensionMoveSelector[MAXDEPTH];
 #ifdef SDEBUG
     int pvmovevalue[MAXDEPTH];
     int pvalpha[MAXDEPTH];
