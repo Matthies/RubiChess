@@ -223,6 +223,7 @@ void engine::registerOptions()
 
 void engine::allocThreads()
 {
+    cout << "sizeof(chessposition): " << sizeof(chessposition) << "\n";
     // first cleanup the old searchthreads memory
     for (int i = 0; i < oldThreads; i++)
     {
@@ -232,6 +233,7 @@ void engine::allocThreads()
     }
 
     freealigned64(sthread);
+    prepared = false;
 
     oldThreads = Threads;
 
@@ -259,10 +261,10 @@ void engine::prepareThreads()
     for (int i = 0; i < Threads; i++)
     {
         chessposition *pos = &sthread[i].pos;
-        // copy new position to the threads copy but keep old history data
+        // copy essential board data from rootpos to thread's position
         memcpy((void*)pos, &rootposition, offsetof(chessposition, history));
-        pos->threadindex = i;
-        // early reset of variables that are important for bestmove selection
+        pos->threadindex = i;   // signal that the threas is (will be) alive
+        // reset of several variables that are not clean in rootpos
         pos->bestmovescore[0] = NOSCORE;
         pos->bestmove = 0;
         pos->pondermove = 0;
@@ -271,13 +273,20 @@ void engine::prepareThreads()
         pos->nullmoveply = 0;
         pos->nullmoveside = 0;
         pos->nodesToNextCheck = 0;
-
-
+        pos->excludemovestack[0] = 0;
         pos->accumulator[0].computationState[WHITE] = false;
         pos->accumulator[0].computationState[BLACK] = false;
+
+        int framesToCopy = rootposition.prerootmovenum + 1; //include stack frame of ply 0
+        int startIndex = PREROOTMOVES - framesToCopy + 1;
+        memcpy(&pos->prerootmovestack[startIndex], &rootposition.prerootmovestack[startIndex], framesToCopy * sizeof(chessmovestack));
+        memcpy(&pos->prerootmovecode[startIndex], &rootposition.prerootmovecode[startIndex], framesToCopy * sizeof(uint32_t));
     }
-    memset(&sthread[0].pos.nodespermove, 0, sizeof(chessposition::nodespermove));
-    prepared = true;
+    if (!prepared)
+    {
+        memset(&sthread[0].pos.nodespermove, 0, sizeof(chessposition::nodespermove));
+        prepared = true;
+    }
 }
 
 
@@ -861,6 +870,7 @@ void engine::searchStart()
     resetEndTime();
 
     moveoutput = false;
+    prepared = false;
 
     // increment generation counter for tt aging
     tp.nextSearch();
@@ -882,7 +892,6 @@ void engine::searchWaitStop(bool forceStop)
         if (sthread[tnum].thr.joinable())
             sthread[tnum].thr.join();
     stopLevel = ENGINETERMINATEDSEARCH;
-    prepared = false;
 }
 
 //
