@@ -1467,8 +1467,6 @@ enum PvAbortType {
 class chessposition
 {
 public:
-    U64 nodes;  // init in prepare
-    U64 tbhits; // init in prepare
     int ply;    // copied from rootpos, but fixed 0
     int piececount;                 // copied from rootpos
 
@@ -1494,8 +1492,6 @@ public:
 
     int prerootmovenum;             // copied from rootpos
     int seldepth;                   // no need for init
-    int nullmoveside;               // init in prepare
-    int nullmoveply;                // init in prepare
     chessmovelist rootmovelist;     // copied from rootpos
     uint32_t bestmove;              // init in prepare
     int lastbestmovescore;          // no need for init
@@ -1532,6 +1528,11 @@ public:
     U64 he_yes;                                     // init is resetStats
     U64 he_all;                                     // init is resetStats
 
+    U64 nodes;                                      // init in prepare
+    U64 tbhits;                                     // init in prepare
+    int nullmoveside;                               // init in prepare
+    int nullmoveply;                                // init in prepare
+    int nodesToNextCheck;                           // init in prepare
     U64 nodespermove[0x10000];                      // init in prepare only for thread #0
     chessmovelist captureslist[MAXDEPTH];           // no need for init
     chessmovelist quietslist[MAXDEPTH];             // no need for init
@@ -1547,7 +1548,7 @@ public:
     uint32_t prerootmovecode[PREROOTMOVES];             // explicit copy from rootpos up to frame prerootmovenum including first regular movecode
     uint32_t movecode[MAXDEPTH];                        // no need for init
     uint16_t excludemovestack[MAXDEPTH];                // init in prepare only for excludemovestack[0]
-    int16_t staticevalstack[MAXDEPTH];                  // no need for init
+    int16_t staticevalstack[MAXDEPTH];                      // no need for init
 
     Materialhash mtrlhsh;                                   // init in alloc
     Pawnhash pwnhsh;                                        // init in alloc
@@ -1557,7 +1558,6 @@ public:
     uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];    // no need for init
     alignas(64) MoveSelector moveSelector[MAXDEPTH];        // no need for init
     MoveSelector extensionMoveSelector[MAXDEPTH];           // no need for init
-    int nodesToNextCheck;
 #ifdef SDEBUG
     int pvmovevalue[MAXDEPTH];
     int pvalpha[MAXDEPTH];
