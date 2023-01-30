@@ -1527,37 +1527,38 @@ public:
     int16_t counterhistory[14][64][14 * 64];
     int16_t tacticalhst[7][64][6];
     uint32_t countermove[14][64];
+    int16_t* prerootconthistptr[4];
+    int16_t* conthistptr[MAXDEPTH];
+
     U64 nodespermove[0x10000];
     chessmovelist captureslist[MAXDEPTH];           // no need for init
     chessmovelist quietslist[MAXDEPTH];             // no need for init
     chessmovelist singularcaptureslist[MAXDEPTH];   // no need for init
     chessmovelist singularquietslist[MAXDEPTH];     // no need for init
-    uint32_t pvtable[MAXDEPTH][MAXDEPTH];                       // no need for init
-    uint32_t multipvtable[MAXMULTIPV][MAXDEPTH];                // no need for init
-    uint32_t lastpv[MAXDEPTH];                                  // no need for init
-    int CurrentMoveNum[MAXDEPTH];   // no need for init
+    uint32_t pvtable[MAXDEPTH][MAXDEPTH];           // no need for init
+    uint32_t multipvtable[MAXMULTIPV][MAXDEPTH];    // no need for init
+    uint32_t lastpv[MAXDEPTH];                      // no need for init
+    int CurrentMoveNum[MAXDEPTH];                   // no need for init
 
-    chessmovestack prerootmovestack[PREROOTMOVES];      // copied from rootpos... hmmmm... maybe only copy up to prerootmovenum  -- moves before root since last halfmovescounter reset
-    chessmovestack movestack[MAXDEPTH];                 // no need for init
-    uint32_t prerootmovecode[PREROOTMOVES];             // copied from rootpos... hmmmm... maybe only copy up to prerootmovenum
+    chessmovestack prerootmovestack[PREROOTMOVES];      // copied from rootpos up to frame prerootmovenum including first frame of regular stack
+    chessmovestack movestack[MAXDEPTH];                 // frame 0 copied from rootpos
+    uint32_t prerootmovecode[PREROOTMOVES];             // copied from rootpos up to frame prerootmovenum including first regular movecode
     uint32_t movecode[MAXDEPTH];                        // no need for init
-    uint16_t excludemovestack[MAXDEPTH];                // only excludemovestack[0] is init with 0 (and copied from rootpos)
+    uint16_t excludemovestack[MAXDEPTH];                // init in prepare only for excludemovestack[0]
     int16_t staticevalstack[MAXDEPTH];                  // no need for init
 
+    int he_threshold;                               // init is resetStats
+    U64 he_yes;                                     // init is resetStats
+    U64 he_all;                                     // init is resetStats
 
-    int he_threshold;
-    U64 he_yes;
-    U64 he_all;
-    Materialhash mtrlhsh;
-    Pawnhash pwnhsh;
-    NnueAccumulator accumulator[MAXDEPTH];
-    DirtyPiece dirtypiece[MAXDEPTH];
-    uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];
-    uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];
-    alignas(64) MoveSelector moveSelector[MAXDEPTH];
-    MoveSelector extensionMoveSelector[MAXDEPTH];
-    int16_t* prerootconthistptr[4];
-    int16_t* conthistptr[MAXDEPTH];
+    Materialhash mtrlhsh;                           // init in alloc
+    Pawnhash pwnhsh;                                // init in alloc
+    NnueAccumulator accumulator[MAXDEPTH];          // init of state in prepare
+    DirtyPiece dirtypiece[MAXDEPTH];                // no need for init
+    uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];       // no need for init
+    uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];    // no need for init
+    alignas(64) MoveSelector moveSelector[MAXDEPTH];        // no need for init
+    MoveSelector extensionMoveSelector[MAXDEPTH];           // no need for init
     int nodesToNextCheck;
 #ifdef SDEBUG
     int pvmovevalue[MAXDEPTH];

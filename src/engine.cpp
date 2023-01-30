@@ -223,6 +223,7 @@ void engine::registerOptions()
 
 void engine::allocThreads()
 {
+    cout << "sizeof(chessposition): " << sizeof(chessposition) << "\n";
     // first cleanup the old searchthreads memory
     for (int i = 0; i < oldThreads; i++)
     {
