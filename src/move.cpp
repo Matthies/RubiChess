@@ -152,7 +152,7 @@ uint32_t chessposition::applyMove(string s, bool resetMstop)
 
     prepareStack();
 
-    if (playMove(m.code))
+    if (playMove<false>(m.code))
     {
         if (resetMstop && halfmovescounter == 0)
         {
@@ -225,7 +225,7 @@ void chessposition::getRootMoves()
             if (en.searchmoves.find(strMove) == en.searchmoves.end())
                 continue;
         }
-        if (playMove(m->code))
+        if (playMove<false>(m->code))
         {
             if (tthit)
             {
@@ -244,20 +244,20 @@ void chessposition::getRootMoves()
                     followupmovelist.length = CreateMovelist<ALL>(&followupmovelist.move[0]);
                     for (int j = 0; j < followupmovelist.length; j++)
                     {
-                        if (playMove(followupmovelist.move[j].code))
+                        if (playMove<false>(followupmovelist.move[j].code))
                         {
                             if (testRepetition() >= 2)
                                 // 3fold for opponent is possible
                                 moveTo3fold = m->code;
 
-                            unplayMove(followupmovelist.move[j].code);
+                            unplayMove<false>(followupmovelist.move[j].code);
                         }
                     }
                 }
             }
 
             rootmovelist.move[rootmovelist.length++] = *m;
-            unplayMove(m->code);
+            unplayMove<false>(m->code);
             if (bestval < m->value)
             {
                 defaultmove = m->code;
@@ -521,19 +521,25 @@ void chessposition::unplayNullMove()
     myassert(ply >= 0, this, 1, ply);
 }
 
-
+// Do all updates for a move played
+// LiteMode: ommit updated for several things(*) when you don't need to evaluate position
+// (*): accumulator, dirtypiece, halfmovescounter, fullmovescounter, hash, pawnhash, piececount, conthistptr, nodes, updatePins()
+template <bool LiteMode>
 bool chessposition::playMove(uint32_t mc)
 {
     int s2m = state & S2MMASK;
     int eptnew = 0;
-    int oldcastle = (state & CASTLEMASK);
+    int oldcastle;
+    DirtyPiece* dp;
 
-    DirtyPiece* dp = &dirtypiece[ply + 1];
-    dp->dirtyNum = 0;
-    accumulator[ply + 1].computationState[WHITE] = false;
-    accumulator[ply + 1].computationState[BLACK] = false;
-
-    halfmovescounter++;
+    if (!LiteMode) {
+        oldcastle = (state & CASTLEMASK);
+        dp = &dirtypiece[ply + 1];
+        dp->dirtyNum = 0;
+        accumulator[ply + 1].computationState[WHITE] = false;
+        accumulator[ply + 1].computationState[BLACK] = false;
+        halfmovescounter++;
+    }
 
     // Castle has special play
     if (ISCASTLE(mc))
@@ -556,22 +562,26 @@ bool chessposition::playMove(uint32_t mc)
         {
             kingpos[s2m] = kingto;
             BitboardMove(kingfrom, kingto, kingpc);
-            hash ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
-            pawnhash ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
-            dp->pc[0] = kingpc;
-            dp->from[0] = kingfrom;
-            dp->to[0] = kingto;
-            dp->dirtyNum = 1;
+            if (!LiteMode) {
+                hash ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
+                pawnhash ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
+                dp->pc[0] = kingpc;
+                dp->from[0] = kingfrom;
+                dp->to[0] = kingto;
+                dp->dirtyNum = 1;
+            }
         }
         if (rookfrom != rookto)
         {
             BitboardMove(rookfrom, rookto, rookpc);
-            hash ^= zb.boardtable[(rookfrom << 4) | rookpc] ^ zb.boardtable[(rookto << 4) | rookpc];
-            int di = dp->dirtyNum;
-            dp->pc[di] = rookpc;
-            dp->from[di] = rookfrom;
-            dp->to[di] = rookto;
-            dp->dirtyNum++;
+            if (!LiteMode) {
+                hash ^= zb.boardtable[(rookfrom << 4) | rookpc] ^ zb.boardtable[(rookto << 4) | rookpc];
+                int di = dp->dirtyNum;
+                dp->pc[di] = rookpc;
+                dp->from[di] = rookfrom;
+                dp->to[di] = rookto;
+                dp->dirtyNum++;
+            }
         }
         state &= (s2m ? ~(BQCMASK | BKCMASK) : ~(WQCMASK | WKCMASK));
     }
@@ -584,10 +594,12 @@ bool chessposition::playMove(uint32_t mc)
         PieceCode promote = GETPROMOTION(mc);
         PieceCode capture = GETCAPTURE(mc);
 
-        dp->pc[0] = pfrom;
-        dp->from[0] = from;
-        dp->to[0] = to;
-        dp->dirtyNum = 1;
+        if (!LiteMode) {
+            dp->pc[0] = pfrom;
+            dp->from[0] = from;
+            dp->to[0] = to;
+            dp->dirtyNum = 1;
+        }
 
         myassert(!promote || (ptype == PAWN && RRANK(to, s2m) == 7), this, 4, promote, ptype, to, s2m);
         myassert(pfrom == mailbox[from], this, 3, pfrom, from, mailbox[from]);
@@ -596,17 +608,19 @@ bool chessposition::playMove(uint32_t mc)
         // Fix hash regarding capture
         if (capture != BLANK && !ISEPCAPTURE(mc))
         {
-            hash ^= zb.boardtable[(to << 4) | capture];
-            if ((capture >> 1) == PAWN)
-                pawnhash ^= zb.boardtable[(to << 4) | capture];
             BitboardClear(to, capture);
             materialhash ^= zb.boardtable[(POPCOUNT(piece00[capture]) << 4) | capture];
-            halfmovescounter = 0;
-            dp->pc[1] = capture;
-            dp->from[1] = to;
-            dp->to[1] = -1;
-            dp->dirtyNum = 2;
-            piececount--;
+            if (!LiteMode) {
+                hash ^= zb.boardtable[(to << 4) | capture];
+                if ((capture >> 1) == PAWN)
+                    pawnhash ^= zb.boardtable[(to << 4) | capture];
+                halfmovescounter = 0;
+                dp->pc[1] = capture;
+                dp->from[1] = to;
+                dp->to[1] = -1;
+                dp->dirtyNum = 2;
+                piececount--;
+            }
         }
 
         if (promote == BLANK)
@@ -620,42 +634,49 @@ bool chessposition::playMove(uint32_t mc)
             materialhash ^= zb.boardtable[(POPCOUNT(piece00[pfrom]) << 4) | pfrom];
             materialhash ^= zb.boardtable[(POPCOUNT(piece00[promote]) << 4) | promote];
             BitboardSet(to, promote);
-            // just double the hash-switch for target to make the pawn vanish
-            pawnhash ^= zb.boardtable[(to << 4) | promote];
-            int di = dp->dirtyNum;
-            dp->to[0] = -1; // remove promoting pawn;
-            dp->from[di] = -1;
-            dp->to[di] = to;
-            dp->pc[di] = promote;
-            dp->dirtyNum++;
+            if (!LiteMode) {
+                // just double the hash-switch for target to make the pawn vanish
+                pawnhash ^= zb.boardtable[(to << 4) | promote];
+                int di = dp->dirtyNum;
+                dp->to[0] = -1; // remove promoting pawn;
+                dp->from[di] = -1;
+                dp->to[di] = to;
+                dp->pc[di] = promote;
+                dp->dirtyNum++;
+            }
         }
 
-        hash ^= zb.boardtable[(to << 4) | mailbox[to]];
-        hash ^= zb.boardtable[(from << 4) | pfrom];
-
+        if (!LiteMode) {
+            hash ^= zb.boardtable[(to << 4) | mailbox[to]];
+            hash ^= zb.boardtable[(from << 4) | pfrom];
+        }
         mailbox[from] = BLANK;
 
         /* PAWN specials */
         if (ptype == PAWN)
         {
             eptnew = GETEPT(mc);
-            pawnhash ^= zb.boardtable[(to << 4) | mailbox[to]];
-            pawnhash ^= zb.boardtable[(from << 4) | pfrom];
-            halfmovescounter = 0;
+            if (!LiteMode) {
+                pawnhash ^= zb.boardtable[(to << 4) | mailbox[to]];
+                pawnhash ^= zb.boardtable[(from << 4) | pfrom];
+                halfmovescounter = 0;
+            }
 
             if (ept && to == ept)
             {
                 int epfield = (from & 0x38) | (to & 0x07);
                 BitboardClear(epfield, (pfrom ^ S2MMASK));
                 mailbox[epfield] = BLANK;
-                hash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
-                pawnhash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
                 materialhash ^= zb.boardtable[(POPCOUNT(piece00[(pfrom ^ S2MMASK)]) << 4) | (pfrom ^ S2MMASK)];
-                dp->pc[1] = (pfrom ^ S2MMASK);
-                dp->from[1] = epfield;
-                dp->to[1] = -1;
-                dp->dirtyNum++;
-                piececount--;
+                if (!LiteMode) {
+                    hash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
+                    pawnhash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
+                    dp->pc[1] = (pfrom ^ S2MMASK);
+                    dp->from[1] = epfield;
+                    dp->to[1] = -1;
+                    dp->dirtyNum++;
+                    piececount--;
+                }
             }
         }
 
@@ -665,12 +686,14 @@ bool chessposition::playMove(uint32_t mc)
         // Here we can test the move for being legal
         if (isAttacked(kingpos[s2m], s2m))
         {
-            // Move is illegal; just do the necessary subset of unplayMove
-            hash = movestack[ply].hash;
-            pawnhash = movestack[ply].pawnhash;
             materialhash = movestack[ply].materialhash;
+            // Move is illegal; just do the necessary subset of unplayMove
+            if (!LiteMode) {
+                hash = movestack[ply].hash;
+                pawnhash = movestack[ply].pawnhash;
+                halfmovescounter = movestack[ply].halfmovescounter;
+            }
             kingpos[s2m] = movestack[ply].kingpos[s2m];
-            halfmovescounter = movestack[ply].halfmovescounter;
             mailbox[from] = pfrom;
             if (promote != BLANK)
             {
@@ -696,7 +719,8 @@ bool chessposition::playMove(uint32_t mc)
                     BitboardSet(to, capture);
                     mailbox[to] = capture;
                 }
-                piececount++;
+                if (!LiteMode)
+                    piececount++;
             }
             else {
                 mailbox[to] = BLANK;
@@ -706,7 +730,7 @@ bool chessposition::playMove(uint32_t mc)
 
         // remove castle rights depending on from and to square
         state &= (castlerights[from] & castlerights[to]);
-        if (ptype == KING)
+        if (!LiteMode && ptype == KING)
         {
             // Store king position in pawn hash
             pawnhash ^= zb.boardtable[(from << 4) | pfrom] ^ zb.boardtable[(to << 4) | pfrom];
@@ -716,35 +740,44 @@ bool chessposition::playMove(uint32_t mc)
     state ^= S2MMASK;
     isCheckbb = isAttackedBy<OCCUPIED>(kingpos[s2m ^ S2MMASK], s2m);
 
-    hash ^= zb.s2m;
+    if (!LiteMode) {
+        hash ^= zb.s2m;
 
-    if (!(state & S2MMASK))
-        fullmovescounter++;
+        if (!(state & S2MMASK))
+            fullmovescounter++;
 
-    // Fix hash regarding ept
-    hash ^= zb.ept[ept];
+        // Fix hash regarding ept
+        hash ^= zb.ept[ept];
+    }
+
     ept = eptnew;
-    hash ^= zb.ept[ept];
 
-    // Fix hash regarding castle rights
-    oldcastle ^= (state & CASTLEMASK);
-    hash ^= zb.cstl[oldcastle];
+    if (!LiteMode) {
+        hash ^= zb.ept[ept];
 
-    PREFETCH(&tp.table[hash & tp.sizemask]);
+        // Fix hash regarding castle rights
+        oldcastle ^= (state & CASTLEMASK);
+        hash ^= zb.cstl[oldcastle];
 
-    conthistptr[ply] = (int16_t*)counterhistory[GETPIECE(mc)][GETCORRECTTO(mc)];
+        PREFETCH(&tp.table[hash & tp.sizemask]);
+
+        conthistptr[ply] = (int16_t*)counterhistory[GETPIECE(mc)][GETCORRECTTO(mc)];
+    }
     movecode[ply++] = mc;
     myassert(ply <= MAXDEPTH, this, 1, ply);
     myassert(piececount == POPCOUNT(occupied00[WHITE] | occupied00[BLACK]), this, 1, piececount);
     kingPinned = 0ULL;
-    updatePins<WHITE>();
-    updatePins<BLACK>();
-    nodes++;
+
+    if (!LiteMode) {
+        updatePins<WHITE>();
+        updatePins<BLACK>();
+        nodes++;
+    }
 
     return true;
 }
 
-
+template <bool LiteMode>
 void chessposition::unplayMove(uint32_t mc)
 {
     ply--;
@@ -810,7 +843,8 @@ void chessposition::unplayMove(uint32_t mc)
                 BitboardSet(to, capture);
                 mailbox[to] = capture;
             }
-            piececount++;
+            if (!LiteMode)
+                piececount++;
         }
         else {
             mailbox[to] = BLANK;
@@ -1303,3 +1337,5 @@ template <MoveType Mt> int chessposition::CreateMovelist(chessmove* mstart)
 // This avoids putting these definitions in header file
 template void chessposition::evaluateMoves<QUIET>(chessmovelist*);
 template void chessposition::evaluateMoves<CAPTURE>(chessmovelist*);
+template bool chessposition::playMove<true>(uint32_t);
+template void chessposition::unplayMove<true>(uint32_t);

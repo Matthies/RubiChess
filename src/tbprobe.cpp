@@ -358,12 +358,12 @@ int chessposition::probe_ab(int alpha, int beta, int *success)
         uint32_t mc = movelist.move[i].code;
         if (ISCAPTURE(mc) || ISPROMOTION(mc) || isCheckbb)
         {
-            if (playMove(mc))
+            if (playMove<true>(mc))
             {
                 //printf("probe_ab (ply=%d) testing capture/promotion/evasion move %s...\n", ply, moveToString(mc).c_str());
                 v = -probe_ab(-beta, -alpha, success);
                 //printf("probe_ab (ply=%d) tested  capture/promotion/evasion move %s... v=%d\n", ply, moveToString(mc).c_str(), v);
-                unplayMove(mc);
+                unplayMove<true>(mc);
                 if (*success == 0) return 0;
                 if (v > alpha) {
                     if (v >= beta)
@@ -415,12 +415,12 @@ int chessposition::probe_wdl(int *success)
         uint32_t mc = movelist.move[i].code;
         if (ISCAPTURE(mc))
         {
-            if (playMove(mc))
+            if (playMove<true>(mc))
             {
                 //printf("probe_wdl (ply=%d) testing capture/promotion/evasion move %s...\n", ply, moveToString(mc).c_str());
                 int v = -probe_ab(-2, -best_cap, success);
                 //printf("probe_wdl (ply=%d) tested  capture/promotion/evasion move %s... v=%d\n", ply, moveToString(mc).c_str(), v);
-                unplayMove(mc);
+                unplayMove<true>(mc);
                 if (*success == 0) return 0;
                 if (v > best_cap) {
                     if (v == 2) {
@@ -474,9 +474,9 @@ int chessposition::probe_wdl(int *success)
             if (ISEPCAPTURE(mc))
                 continue;
 
-            if (playMove(mc))
+            if (playMove<true>(mc))
             {
-                unplayMove(mc);
+                unplayMove<true>(mc);
                 break;
             }
         }
@@ -552,12 +552,12 @@ int chessposition::probe_dtz(int *success)
             if (ISCAPTURE(mc) || (GETPIECE(mc) >> 1) != PAWN)
                 continue;
 
-            if (playMove(mc))
+            if (playMove<true>(mc))
             {
                 //printf("probe_dtz (ply=%d)testing non-capture pawn move %s...\n", ply, moveToString(mc).c_str());
                 int v = -probe_wdl(success);
                 //printf("probe_dtz (ply=%d)tested  non-capture pawn move %s... v=%d\n", ply, moveToString(mc).c_str(), v);
-                unplayMove(mc);
+                unplayMove<true>(mc);
                 if (*success == 0)
                     return 0;
 
@@ -599,12 +599,12 @@ int chessposition::probe_dtz(int *success)
         if (ISCAPTURE(mc) || (GETPIECE(mc) >> 1) == PAWN)
             continue;
 
-        if (playMove(mc))
+        if (playMove<true>(mc))
         {
             //printf("probe_dtz (ply=%d) testing non-pawn non-capture %s... \n", ply, moveToString(mc).c_str());
             int v = -probe_dtz(success);
             //printf("probe_dtz (ply=%d) tested  non-pawn non-capture %s... v=%d\n", ply, moveToString(mc).c_str(), v);
-            unplayMove(mc);
+            unplayMove<true>(mc);
             if (*success == 0)
                 return 0;
 
@@ -651,7 +651,7 @@ int chessposition::root_probe_dtz()
     {
         chessmove *m = &rootmovelist.move[i];
         isBadMove = !see(m->code, 0);
-        playMove(m->code);
+        playMove<true>(m->code);
         //printf("info string root_probe_dtz (ply=%d) Testing move %s...\n", ply, m->toString().c_str());
         int v = 0;
         if (isCheckbb && dtz > 0) {
@@ -662,10 +662,10 @@ int chessposition::root_probe_dtz()
             for (int j = 0; j < nextmovelist.length; j++)
             {
                 uint32_t nmc = nextmovelist.move[j].code;
-                if (playMove(nmc))
+                if (playMove<true>(nmc))
                 {
                     foundevasion = true;
-                    unplayMove(nmc);
+                    unplayMove<true>(nmc);
                     break;
                 }
             }
@@ -689,7 +689,7 @@ int chessposition::root_probe_dtz()
         }
 
         //printf("info string root_probe_dtz (ply=%d) Tested  move %s... value=%d\n", ply, m->toString().c_str(), v);
-        unplayMove(m->code);
+        unplayMove<true>(m->code);
         if (!success)
             return 0;
 
@@ -816,11 +816,11 @@ int chessposition::root_probe_wdl()
     for (int i = 0; i < rootmovelist.length; i++)
     {
         chessmove *m = &rootmovelist.move[i];
-        playMove(m->code);
+        playMove<true>(m->code);
         //printf("info string root_probe_wdl (ply=%d) Testing move %s...\n", ply, m->toString().c_str());
         int v = -probe_wdl(&success);
         //printf("info string root_probe_wdl (ply=%d) Tested  move %s... value=%d\n", ply, m->toString().c_str(), v);
-        unplayMove(m->code);
+        unplayMove<true>(m->code);
         if (!success)
             return 0;
         if (!en.Syzygy50MoveRule)

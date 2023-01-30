@@ -115,11 +115,15 @@ void generateEpd(string egn)
 
 U64 engine::perft(int depth, bool printsysteminfo)
 {
+    long long starttime = 0;
+    long long endtime = 0;
     U64 retval = 0;
     chessposition *rootpos = &en.sthread[0].pos;
 
-    if (printsysteminfo)
+    if (printsysteminfo) {
+        starttime = getTime();
         guiCom << "Perft for depth " + to_string(maxdepth) + (en.chess960 ? "  Chess960" : "") + "\n";
+    }
 
     if (depth == 0)
         return 1;
@@ -134,10 +138,10 @@ U64 engine::perft(int depth, bool printsysteminfo)
 
     for (int i = 0; i < movelist.length; i++)
     {
-        if (rootpos->playMove(movelist.move[i].code))
+        if (rootpos->playMove<true>(movelist.move[i].code))
         {
             U64 moveperft = perft(depth - 1);
-            rootpos->unplayMove(movelist.move[i].code);
+            rootpos->unplayMove<true>(movelist.move[i].code);
             retval += moveperft;
             if (printsysteminfo)
             {
@@ -148,8 +152,13 @@ U64 engine::perft(int depth, bool printsysteminfo)
         }
     }
 
-    if (printsysteminfo)
+    if (printsysteminfo) {
+        endtime = getTime();
+        long long perftime = (long long)((endtime - starttime) * 1000.0 / frequency);
         guiCom << "Total nodes: " + to_string(retval) + "\n";
+        guiCom << "Time (ms):   " + to_string(perftime) + "\n";
+        guiCom << "NPS:         " + to_string((long long)(retval / (perftime / 1000.0))) + "\n";
+    }
 
     return retval;
 }
@@ -241,7 +250,7 @@ static void perftest(int maxdepth)
     while (ptr[i].fen != "")
     {
         en.sthread[0].pos.getFromFen(ptr[i].fen.c_str());
-        int j = 0;
+        int j = 1;
         while (ptr[i].nodes[j] > 0 && j <= maxdepth)
         {
             long long starttime = getTime();

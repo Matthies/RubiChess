@@ -1603,8 +1603,8 @@ public:
     void tbFilterRootMoves();
     void prepareStack();
     string movesOnStack();
-    bool playMove(uint32_t mc);
-    void unplayMove(uint32_t mc);
+    template <bool LiteMode> bool playMove(uint32_t mc);
+    template <bool LiteMode> void unplayMove(uint32_t mc);
     void playNullMove();
     void unplayNullMove();
     U64 nextHash(uint32_t mc);

@@ -483,9 +483,9 @@ string chessposition::AlgebraicFromShort(string s)
             && ((to & 0x40) || ((to & 0x07) == (GETTO(ml.move[i].code) & 0x07))))
         {
             // test if the move is legal; otherwise we need to search further
-            if (playMove(ml.move[i].code))
+            if (playMove<true>(ml.move[i].code))
             {
-                unplayMove(ml.move[i].code);
+                unplayMove<true>(ml.move[i].code);
                 retval = ml.move[i].toString();
                 break;
             }

@@ -568,7 +568,7 @@ int chessposition::applyPv(uint32_t* table)
     while ((cm.code = table[i++]))
     {
         prepareStack();
-        if (!playMove(cm.code))
+        if (!playMove<false>(cm.code))
             printf("Alarm! Wrong move %s in PV.\n", cm.toString().c_str());
     }
 
@@ -582,7 +582,7 @@ void chessposition::reapplyPv(uint32_t* table, int num)
     while (num)
     {
         cm.code = table[--num];
-        unplayMove(cm.code);
+        unplayMove<false>(cm.code);
     }
 }
 
