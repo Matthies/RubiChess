@@ -30,7 +30,7 @@
 //#define SDEBUG
 
 // Enable to debug the time management
-//#define TDEBUG
+#define TDEBUG
 
 // Enable this for texel tuning
 //#define EVALTUNE
@@ -668,7 +668,7 @@ vector<string> SplitString(const char* s);
 unsigned char AlgebraicToIndex(string s);
 string IndexToAlgebraic(int i);
 void BitboardDraw(U64 b);
-U64 getTime();
+U64 getTime(bool debug = false);
 string CurrentWorkingDir();
 #ifdef _WIN32
 void* my_large_malloc(size_t s);

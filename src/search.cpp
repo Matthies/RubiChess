@@ -70,6 +70,8 @@ inline bool chessposition::CheckForImmediateStop()
             return true;
         nodesToNextCheck = 0;
         U64 now = getTime();
+        if (now < en.thinkstarttime)
+            printf("");
         int thinkingTimeMs = (int)((S64)(now - en.thinkstarttime) * 1000.0 / en.frequency);
         int AllowedTimeMs = (int)(nodes * 1000.0 / en.maxnodes);
         int waitMs = max(0, AllowedTimeMs - thinkingTimeMs);
@@ -96,6 +98,9 @@ inline bool chessposition::CheckForImmediateStop()
         return false;
 
     S64 remainingticks = en.endtime2 - getTime();
+#ifdef TDEBUG
+    guiCom.log("[TDEBUG] CheckForImmediateStop - remainingticks: " + to_string(remainingticks) + "\n");
+#endif
 
     if (remainingticks <= 0)
     {
@@ -104,6 +109,9 @@ inline bool chessposition::CheckForImmediateStop()
     }
 
     U64 remainingMs = (U64)(remainingticks * 1000.0 / en.frequency);
+#ifdef TDEBUG
+    guiCom.log("[TDEBUG] CheckForImmediateStop - remaining ms: " + to_string(remainingMs) + "\n");
+#endif
     nodesToNextCheck = (remainingMs > 5000 ? 0x10000 : remainingMs > 500 ? 0x1000 : 0x100);
 
     return false;

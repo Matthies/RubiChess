@@ -168,8 +168,10 @@ engine::engine(compilerinfo *c)
     LARGE_INTEGER f;
     QueryPerformanceFrequency(&f);
     frequency = f.QuadPart;
+    // usually 10.000.000 ~ 0.1 microseconds resolution =>  nps overflow at 1.844.674.407.370 nodes (~5h at 100Mnps, ~32h at 16Mnps)
 #else
     frequency = (1000000000LL >> 9);
+    // fixed    1.953.125 ~ 0.5 microseconds resolution =>  nps overflow at 9.444.732.965.738 nodes (~26h at 100Mnps, ~163h at 16Mnps)
 #endif
     rootposition.resetStats();
 }
