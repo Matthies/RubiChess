@@ -643,23 +643,25 @@ int compilerinfo::GetProcessId()
     return _getpid();
 }
 
-U64 getTime(bool debug = false)
+U64 getTime(bool debug)
 {
     static U64 offset;
     static U64 last = 0;
     LARGE_INTEGER now;
     QueryPerformanceCounter(&now);
     if (!offset) {
-        offset = 0xffffffffffffffff - now.QuadPart - 20 * en.frequency;
-        guiCom << "info string offset = " << hex << offset << "\n";
+        offset = 0xffffffffffffffff - now.QuadPart - 10 * en.frequency;
+        if (debug)
+            guiCom.log("[TDEBUG] getTime offset = " + to_string(offset) + "\n");
     }
-    if (last > now.QuadPart + offset)
+    if (debug && last > now.QuadPart + offset)
     {
         guiCom.log("[TDEBUG] overflow\n");
     }
     last = now.QuadPart + offset;
 #ifdef TDEBUG
-    guiCom.log("[TDEBUG] Time from getTime: " + to_string(last) + "\n");
+if (debug)
+        guiCom.log("[TDEBUG] Time from getTime: " + to_string(last) + "\n");
 #endif
     return now.QuadPart + offset;
 }

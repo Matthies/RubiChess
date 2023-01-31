@@ -580,7 +580,6 @@ void engine::communicate(string inputstring)
                     binc = &myinc;
                 }
                 maxnodes = LimitNps / en.Threads;
-                infinite = false;
                 while (ci < cs)
                 {
                     if (commandargs[ci] == "searchmoves")
@@ -641,7 +640,7 @@ void engine::communicate(string inputstring)
                     }
                     else if (commandargs[ci] == "infinite")
                     {
-                        infinite = true;
+                        // just a dummy
                         ci++;
                     }
                     else if (commandargs[ci] == "ponder")
@@ -652,6 +651,7 @@ void engine::communicate(string inputstring)
                     else
                         ci++;
                 }
+                tmEnabled = (mytime || myinc);
                 if (!prepared)
                     prepareThreads();
                 measureOverhead(wasPondering);
@@ -836,6 +836,7 @@ void engine::resetEndTime(int constantRootMoves, int bestmovenodesratio)
     guiCom.log("[TDEBUG] Time from UCI: time=" + to_string(timetouse) + "  inc=" + to_string(timeinc) + "  overhead=" + to_string(overhead) + "  constance=" + to_string(constance) + "\n");
     ss << "[TDEBUG] Time for this move: " << setprecision(3) << (endtime1 - clockstarttime) / (double)frequency << " / " << (endtime2 - clockstarttime) / (double)frequency << "\n";
     guiCom.log(ss.str());
+    guiCom.log("[TDEBUG] Raw values:  endtime1 = " + to_string(endtime1) + "  endtime2 = " + to_string(endtime2) + "\n");
     if (timeinc) guiCom.log("[TDEBUG] Timefactor (use/inc): " + to_string(timetouse / timeinc) + "\n");
 #endif
 }
