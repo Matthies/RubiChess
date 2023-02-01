@@ -668,7 +668,7 @@ vector<string> SplitString(const char* s);
 unsigned char AlgebraicToIndex(string s);
 string IndexToAlgebraic(int i);
 void BitboardDraw(U64 b);
-U64 getTime(bool debug = true);
+U64 getTime();
 string CurrentWorkingDir();
 #ifdef _WIN32
 void* my_large_malloc(size_t s);
@@ -1686,7 +1686,7 @@ private:
     U64 logStartTime = 0ULL;
     U64 freq;
     string timestamp() {
-        U64 timeDiff = (getTime(false) - logStartTime) * 1000 / freq;
+        U64 timeDiff = (getTime() - logStartTime) * 1000 / freq;
         U64 ms = timeDiff % 1000;
         U64 s = (timeDiff / 1000);
         stringstream ts;
@@ -1723,7 +1723,7 @@ public:
         logstream.open(filename, om);
         if (!logstream)
             return false;
-        logStartTime = getTime(false);
+        logStartTime = getTime();
         freq = fr;
         auto now = chrono::system_clock::now();
         time_t now_time = chrono::system_clock::to_time_t(now);

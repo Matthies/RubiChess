@@ -833,11 +833,10 @@ void engine::resetEndTime(int constantRootMoves, int bestmovenodesratio)
 
 #ifdef TDEBUG
     stringstream ss;
-    guiCom.log("[TDEBUG] Time from UCI: time=" + to_string(timetouse) + "  inc=" + to_string(timeinc) + "  overhead=" + to_string(overhead) + "  constance=" + to_string(constance) + "\n");
-    ss << "[TDEBUG] Time for this move: " << setprecision(3) << (endtime1 - clockstarttime) / (double)frequency << " / " << (endtime2 - clockstarttime) / (double)frequency << "\n";
+    guiCom.log("[TDEBUG] Time from UCI: time=" + to_string(timetouse) + "  inc=" + to_string(timeinc) + "  overhead=" + to_string(overhead) + "  constance=" + to_string(constance) + "  bestmovenodesratio=" + to_string(bestmovenodesratio) + "\n");
+    ss << "[TDEBUG] Time for this move: " << fixed << setprecision(3) << (endtime1 - clockstarttime) / (double)frequency << " / " << (endtime2 - clockstarttime) / (double)frequency 
+        << "  (Stop at tick: " << to_string(endtime1) + " / " + to_string(endtime2) << ")\n";
     guiCom.log(ss.str());
-    guiCom.log("[TDEBUG] Raw values:  endtime1 = " + to_string(endtime1) + "  endtime2 = " + to_string(endtime2) + "\n");
-    if (timeinc) guiCom.log("[TDEBUG] Timefactor (use/inc): " + to_string(timetouse / timeinc) + "\n");
 #endif
 }
 
