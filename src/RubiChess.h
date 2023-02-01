@@ -1885,7 +1885,7 @@ public:
     int mytime, yourtime, myinc, yourinc, movestogo, mate, movetime, maxdepth;
     int lastmytime, lastmyinc;
     U64 maxnodes;
-    bool infinite;
+    bool tmEnabled;
     bool debug = false;
     bool evaldetails = false;
     bool moveoutput;

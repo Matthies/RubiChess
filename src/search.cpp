@@ -64,7 +64,7 @@ inline bool chessposition::CheckForImmediateStop()
         if (!en.LimitNps)
             // go nodes
             return (nodes >= en.maxnodes);
-        
+
         // Limit nps
         if (en.stopLevel == ENGINESTOPIMMEDIATELY)
             return true;
@@ -73,7 +73,7 @@ inline bool chessposition::CheckForImmediateStop()
         int thinkingTimeMs = (int)((S64)(now - en.thinkstarttime) * 1000.0 / en.frequency);
         int AllowedTimeMs = (int)(nodes * 1000.0 / en.maxnodes);
         int waitMs = max(0, AllowedTimeMs - thinkingTimeMs);
-        if (en.endtime2) {
+        if (en.tmEnabled) {
             int remainingMs = (int)((S64)(en.endtime2 - now) * 1000.0 / en.frequency);
             waitMs = max(0, min(remainingMs, waitMs));
         }
@@ -85,7 +85,7 @@ inline bool chessposition::CheckForImmediateStop()
     if (threadindex)
         return false;
 
-    if (!en.endtime2)
+    if (!en.tmEnabled)
         return false;
 
     if (en.pondersearch == PONDERING)
@@ -1232,13 +1232,13 @@ static void uciScore(searchthread *thr, int inWindow, U64 thinktime, int score, 
 {
     const string boundscore[] = { "upperbound ", "", "lowerbound " };
     chessposition *pos = &thr->pos;
-    
+
     string pvstring = pos->getPv(mpvIndex ? pos->multipvtable[mpvIndex] : pos->lastpv);
     U64 nodes, tbhits;
     en.getNodesAndTbhits(&nodes, &tbhits);
 
     if (nodes)
-        thr->nps = nodes / 1024 * en.frequency / (thinktime + 1) * 1024;  // lower resolution to avoid overflow under Linux in high performance systems
+        thr->nps = nodes * en.frequency / (thinktime + 1);
 
     if (!MATEDETECTED(score))
     {
@@ -1416,7 +1416,7 @@ void mainSearch(searchthread *thr)
                 if (!pos->bestmove && pos->rootmovelist.length > 0 && !isDraw)
                     pos->bestmove = pos->rootmovelist.move[0].code;
 
-                if (pos->rootmovelist.length == 1 && !pos->tbPosition && en.endtime1 && en.pondersearch != PONDERING && pos->lastbestmovescore != NOSCORE)
+                if (pos->rootmovelist.length == 1 && !pos->tbPosition && en.tmEnabled && en.pondersearch != PONDERING && pos->lastbestmovescore != NOSCORE)
                     // Don't report score of instamove; use the score of last position instead
                     pos->bestmovescore[0] = pos->lastbestmovescore;
 
@@ -1472,7 +1472,7 @@ void mainSearch(searchthread *thr)
                 constantRootMoves = 0;
             }
 
-            if (en.endtime1 && (inWindow == 1 || !constantRootMoves))
+            if (en.tmEnabled && (inWindow == 1 || !constantRootMoves))
             {
                 // Recalculate remaining time for next depth
                 int bestmovenodesratio = pos->nodes ? (int)(128 * (2.5 -  2 * (double)pos->nodespermove[(uint16_t)pos->bestmove] / pos->nodes)) : 128;
@@ -1480,7 +1480,7 @@ void mainSearch(searchthread *thr)
             }
 
             // Mate found; early exit
-            if (!isMultiPV && inWindow == 1 && en.endtime1 && thr->depth > SCOREWHITEWINS - abs(score) && en.pondersearch != PONDERING)
+            if (!isMultiPV && inWindow == 1 && en.tmEnabled && thr->depth > SCOREWHITEWINS - abs(score) && en.pondersearch != PONDERING)
                 break;
 
             // Exit when searching for mate and found it
@@ -1493,11 +1493,11 @@ void mainSearch(searchthread *thr)
             continue;
 
         // early exit in playing mode as there is exactly one possible move
-        if (pos->rootmovelist.length == 1 && en.endtime1 && !pos->useRootmoveScore)
+        if (pos->rootmovelist.length == 1 && en.tmEnabled && !pos->useRootmoveScore)
             break;
 
         // exit if STOPSOON is requested and we're in aspiration window
-        if (isMainThread && en.endtime1 && en.endtime1 && nowtime >= en.endtime1 && inWindow == 1 && constantRootMoves)
+        if (isMainThread && en.tmEnabled && (S64)(en.endtime1 - nowtime) < 0 && inWindow == 1 && constantRootMoves)
             break;
 
         // exit if max depth is reached
@@ -1597,7 +1597,7 @@ void mainSearch(searchthread *thr)
         en.stopLevel = ENGINESTOPIMMEDIATELY;
         en.clockstoptime = getTime();
         en.lastmovetime = en.clockstoptime - en.clockstarttime;
-        if (en.endtime2)
+        if (en.tmEnabled)
         {
             int measuredOverhead = (int)((S64)(en.clockstoptime - en.endtime2) * 1000.0 / en.frequency);
             if (measuredOverhead > en.maxMeasuredEngineOverhead) {

@@ -168,8 +168,10 @@ engine::engine(compilerinfo *c)
     LARGE_INTEGER f;
     QueryPerformanceFrequency(&f);
     frequency = f.QuadPart;
+    // usually 10.000.000 ~ 0.1 microseconds resolution =>  nps overflow at 1.844.674.407.370 nodes (~5h at 100Mnps, ~32h at 16Mnps)
 #else
-    frequency = 1000000000LL;
+    frequency = (1000000000LL >> 9);
+    // fixed    1.953.125 ~ 0.5 microseconds resolution =>  nps overflow at 9.444.732.965.738 nodes (~26h at 100Mnps, ~163h at 16Mnps)
 #endif
     rootposition.resetStats();
 }
@@ -587,7 +589,6 @@ void engine::communicate(string inputstring)
                     binc = &myinc;
                 }
                 maxnodes = LimitNps / en.Threads;
-                infinite = false;
                 while (ci < cs)
                 {
                     if (commandargs[ci] == "searchmoves")
@@ -648,7 +649,7 @@ void engine::communicate(string inputstring)
                     }
                     else if (commandargs[ci] == "infinite")
                     {
-                        infinite = true;
+                        // just a dummy
                         ci++;
                     }
                     else if (commandargs[ci] == "ponder")
@@ -659,6 +660,7 @@ void engine::communicate(string inputstring)
                     else
                         ci++;
                 }
+                tmEnabled = (mytime || myinc);
                 if (!prepared)
                     prepareThreads();
                 measureOverhead(wasPondering);
@@ -840,10 +842,10 @@ void engine::resetEndTime(int constantRootMoves, int bestmovenodesratio)
 
 #ifdef TDEBUG
     stringstream ss;
-    guiCom.log("[TDEBUG] Time from UCI: time=" + to_string(timetouse) + "  inc=" + to_string(timeinc) + "  overhead=" + to_string(overhead) + "  constance=" + to_string(constance) + "\n");
-    ss << "[TDEBUG] Time for this move: " << setprecision(3) << (endtime1 - clockstarttime) / (double)frequency << " / " << (endtime2 - clockstarttime) / (double)frequency << "\n";
+    guiCom.log("[TDEBUG] Time from UCI: time=" + to_string(timetouse) + "  inc=" + to_string(timeinc) + "  overhead=" + to_string(overhead) + "  constance=" + to_string(constance) + "  bestmovenodesratio=" + to_string(bestmovenodesratio) + "\n");
+    ss << "[TDEBUG] Time for this move: " << fixed << setprecision(3) << (endtime1 - clockstarttime) / (double)frequency << " / " << (endtime2 - clockstarttime) / (double)frequency 
+        << "  (Stop at tick: " << to_string(endtime1) + " / " + to_string(endtime2) << ")\n";
     guiCom.log(ss.str());
-    if (timeinc) guiCom.log("[TDEBUG] Timefactor (use/inc): " + to_string(timetouse / timeinc) + "\n");
 #endif
 }
 

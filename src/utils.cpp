@@ -647,7 +647,15 @@ U64 getTime()
 {
     LARGE_INTEGER now;
     QueryPerformanceCounter(&now);
+#if 0   // enable this to debug timer overflow after 10 seconds
+    static U64 offset;
+    if (!offset) {
+        offset = 0xffffffffffffffff - now.QuadPart - 10 * en.frequency;
+    }
+    return now.QuadPart + offset;
+#else
     return now.QuadPart;
+#endif
 }
 
 static int UseLargePages = -1;
@@ -743,7 +751,7 @@ U64 getTime()
 {
     timespec now;
     clock_gettime(CLOCK_REALTIME, &now);
-    return (U64)(1000000000LL * now.tv_sec + now.tv_nsec);
+    return (U64)((1000000000LL >> 9) * now.tv_sec + (now.tv_nsec >> 9));
 }
 
 void Sleep(long x)
