@@ -1594,10 +1594,11 @@ void mainSearch(searchthread *thr)
             guiStr += " ponder " + strPonder;
         }
         guiCom << guiStr + "\n";
+        bool bStoppedImmediately = (en.stopLevel == ENGINESTOPIMMEDIATELY);
         en.stopLevel = ENGINESTOPIMMEDIATELY;
         en.clockstoptime = getTime();
         en.lastmovetime = en.clockstoptime - en.clockstarttime;
-        if (en.tmEnabled)
+        if (bStoppedImmediately)
         {
             int measuredOverhead = (int)((S64)(en.clockstoptime - en.endtime2) * 1000.0 / en.frequency);
             if (measuredOverhead > en.maxMeasuredEngineOverhead) {
