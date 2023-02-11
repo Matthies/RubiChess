@@ -1598,7 +1598,7 @@ void mainSearch(searchthread *thr)
         en.stopLevel = ENGINESTOPIMMEDIATELY;
         en.clockstoptime = getTime();
         en.lastmovetime = en.clockstoptime - en.clockstarttime;
-        if (bStoppedImmediately)
+        if (bStoppedImmediately && en.tmEnabled)
         {
             int measuredOverhead = (int)((S64)(en.clockstoptime - en.endtime2) * 1000.0 / en.frequency);
             if (measuredOverhead > en.maxMeasuredEngineOverhead) {
