@@ -204,7 +204,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     pvtable[ply][0] = 0;
 
 #ifdef SDEBUG
-    chessmove debugMove;
+    uint16_t debugMove;
     bool isDebugPv = triggerDebug(&debugMove);
     SDEBUGDO(isDebugPv, pvaborttype[ply + 1] = PVA_UNKNOWN; pvdepth[ply] = depth; pvmovenum[ply] = -1;);
 #endif
@@ -418,7 +418,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
     U64 newhash = hash ^ excludeMove;
 
 #ifdef SDEBUG
-    chessmove debugMove;
+    uint16_t debugMove = 0;
     bool isDebugPv = !excludeMove && triggerDebug(&debugMove);
     bool debugMovePlayed = false;
     int isDebugPosition = tp.isDebugPosition(newhash);
@@ -440,7 +440,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
         STATISTICSINC(ab_tt);
 #ifdef SDEBUG
         uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
-        SDEBUGDO(isDebugPv, pvabortscore[ply] = hashscore; if (debugMove.code == fullhashmove) pvaborttype[ply] = PVA_FROMTT; else pvaborttype[ply] = PVA_DIFFERENTFROMTT; );
+        SDEBUGDO(isDebugPv, pvabortscore[ply] = hashscore; if (debugMove == hashmovecode) pvaborttype[ply] = PVA_FROMTT; else pvaborttype[ply] = PVA_DIFFERENTFROMTT; );
         SDEBUGDO(isDebugPv, pvadditionalinfo[ply] = "TT = " + chessmove(fullhashmove).toString() + "  " + tp.debugGetPv(newhash, ply); );
 #endif
         return hashscore;
@@ -649,7 +649,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
     while ((mc = ms->next()))
     {
 #ifdef SDEBUG
-        bool isDebugMove = (debugMove.code == mc);
+        bool isDebugMove = (debugMove == (mc & 0xffff));
         SDEBUGDO(isDebugMove, pvmovenum[ply] = legalMoves + 1; pvmovevalue[ply] = ms->value; );
         SDEBUGDO((isDebugPv && pvmovenum[ply] <= 0), pvmovenum[ply] = -(legalMoves + 1););
 #endif
@@ -960,7 +960,7 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
     }
 
 #ifdef SDEBUG
-    chessmove debugMove;
+    uint16_t debugMove;
     bool isDebugPv = triggerDebug(&debugMove);
     bool debugMovePlayed = false;
     SDEBUGDO(isDebugPv, pvaborttype[1] = PVA_UNKNOWN; pvdepth[0] = depth; pvalpha[0] = alpha; pvbeta[0] = beta; pvmovenum[0] = 0; pvadditionalinfo[0] = "";);
@@ -982,7 +982,7 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
             updatePvTable(fullhashmove, false);
             if (score > alpha) {
                 bestmovescore[0] = score;
-                SDEBUGDO(isDebugPv, pvabortscore[0] = score; if (debugMove.code == fullhashmove) pvaborttype[0] = PVA_FROMTT; else pvaborttype[0] = PVA_DIFFERENTFROMTT; );
+                SDEBUGDO(isDebugPv, pvabortscore[0] = score; if (debugMove == hashmovecode) pvaborttype[0] = PVA_FROMTT; else pvaborttype[0] = PVA_DIFFERENTFROMTT; );
                 SDEBUGDO(isDebugPv, pvadditionalinfo[0] = "PV = " + getPv(pvtable[0]) + "  " + tp.debugGetPv(hash, 0); );
                 *depthptr = newDepth;
                 return score;
@@ -1051,7 +1051,7 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
 
         m = &rootmovelist.move[i];
 #ifdef SDEBUG
-        bool isDebugMove = (debugMove.code == m->code);
+        bool isDebugMove = (debugMove == (m->code & 0xffff));
         SDEBUGDO(isDebugMove, pvmovenum[0] = i + 1; pvmovevalue[0] = rootmovelist.move[i].value; debugMovePlayed = true;)
         SDEBUGDO(pvmovenum[0] <= 0, pvmovenum[0] = -(i + 1););
 #endif

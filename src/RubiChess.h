@@ -1654,7 +1654,7 @@ public:
     int probe_dtz_table(int wdl, int* success);
     string AlgebraicFromShort(string s);
 #ifdef SDEBUG
-    bool triggerDebug(chessmove* nextmove);
+    bool triggerDebug(uint16_t* nextmove);
     void pvdebugout();
 #endif
     int testRepetition();

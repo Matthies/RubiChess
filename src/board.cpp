@@ -588,7 +588,7 @@ void chessposition::reapplyPv(uint32_t* table, int num)
 
 
 #ifdef SDEBUG
-bool chessposition::triggerDebug(chessmove* nextmove)
+bool chessposition::triggerDebug(uint16_t* nextmove)
 {
     if (pvmovecode[0] == 0)
         return false;
@@ -597,11 +597,11 @@ bool chessposition::triggerDebug(chessmove* nextmove)
 
     while (j < ply && pvmovecode[j])
     {
-        if (movecode[j] != pvmovecode[j])
+        if ((movecode[j] & 0xffff) != (pvmovecode[j] & 0xffff))
             return false;
         j++;
     }
-    nextmove->code = pvmovecode[j];
+    *nextmove = pvmovecode[j];
 
     return true;
 }
