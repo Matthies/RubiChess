@@ -877,6 +877,7 @@ public:
 
     NnueNetworkLayer(NnueLayer* prev) : NnueLayer(prev) {}
     bool ReadWeights(NnueNetsource* nr);
+    bool OverflowPossible();
     void WriteWeights(NnueNetsource* nr);
     uint32_t GetHash() {
         return (NNUENETLAYERHASH + outputdims) ^ (previous->GetHash() >> 1) ^ (previous->GetHash() << 31);

@@ -971,7 +971,93 @@ bool NnueNetworkLayer<inputdims, outputdims>::ReadWeights(NnueNetsource* nr)
 
     free(weightbuffer);
 
+    if (OverflowPossible())
+        guiCom << "Warning! The network evaluation in layer <" + to_string(inputdims) + "/" + to_string(outputdims) + "> can cause overflows in this build.\n";
+
     return okay;
+}
+
+template <unsigned int inputdims, unsigned int outputdims>
+bool NnueNetworkLayer<inputdims, outputdims>::OverflowPossible()
+{
+    bool possible = false;
+
+    if (paddedInputdims < 128)
+    {
+#if defined (USE_SSSE3)
+        if (outputdims % OutputSimdWidth == 0)
+        {
+            constexpr unsigned int numChunks = paddedInputdims / 4;
+
+            for (unsigned int i = 0; i < numChunks; i += 2)
+            {
+                const weight_t* col0 = &weight[(i + 0) * outputdims * 4];
+                const weight_t* col1 = &weight[(i + 1) * outputdims * 4];
+
+                for (unsigned int k = 0; k < NumOutputRegsSmall; ++k)
+                {
+                    for (unsigned int j = 0; j < InputSimdWidth; j += 2)
+                    {
+                        // Assuming input cannot be negative.
+                        const int worst_case_result =
+                            max(0, col0[k * InputSimdWidth + j + 0] * 127)
+                            + max(0, col0[k * InputSimdWidth + j + 1] * 127)
+                            + max(0, col1[k * InputSimdWidth + j + 0] * 127)
+                            + max(0, col1[k * InputSimdWidth + j + 1] * 127);
+
+                        if (worst_case_result > 32767)
+                        {
+                            cout << "Weights may cause saturation: "
+                                << (int)col0[k * InputSimdWidth + j + 0] << ", "
+                                << (int)col0[k * InputSimdWidth + j + 1] << ", "
+                                << (int)col1[k * InputSimdWidth + j + 0] << ", "
+                                << (int)col1[k * InputSimdWidth + j + 1] << "\n";
+                            possible = true;
+                        }
+                    }
+                }
+            }
+        }
+#endif
+    }
+
+    if (paddedInputdims >= 128)
+    {
+#if defined (USE_SSSE3) || defined (USE_NEON)
+        for (unsigned int bigBlock = 0; bigBlock < NumBigBlocks; ++bigBlock)
+        {
+            for (unsigned int smallBlock = 0; smallBlock < NumSmallBlocksPerOutput; smallBlock += 2)
+            {
+                const weight_t* w = (weight_t*)(weight + bigBlock * BigBlockSize + smallBlock * SmallBlockSize * NumOutputRegsBig);
+
+                for (unsigned int k = 0; k < NumOutputRegsBig; ++k)
+                {
+                    for (unsigned int i = 0; i < InputSimdWidth; i += 2)
+                    {
+                        // Assuming input cannot be negative.
+                        const int worst_case_result =
+                            max(0, w[k * InputSimdWidth + i + 0] * 127)
+                            + max(0, w[k * InputSimdWidth + i + 1] * 127)
+                            + max(0, w[(k + NumOutputRegsBig) * InputSimdWidth + i + 0] * 127)
+                            + max(0, w[(k + NumOutputRegsBig) * InputSimdWidth + i + 1] * 127);
+
+                        if (worst_case_result > 32767)
+                        {
+                            cout << "Weights may cause saturation: "
+                                << (int)w[k * InputSimdWidth + i + 0] << ", "
+                                << (int)w[k * InputSimdWidth + i + 1] << ", "
+                                << (int)w[(k + NumOutputRegsBig) * InputSimdWidth + i + 0] << ", "
+                                << (int)w[(k + NumOutputRegsBig) * InputSimdWidth + i + 1] << "\n";
+                            possible = true;
+                        }
+                    }
+                }
+            }
+        }
+#endif
+    }
+
+    return possible;
 }
 
 template <unsigned int inputdims, unsigned int outputdims>
@@ -995,7 +1081,7 @@ void NnueNetworkLayer<inputdims, outputdims>::Propagate(clipped_t* input, int32_
 #if defined (USE_SSSE3)
     {
         // Small Layer fast propagation
-        if (outputdims % 8 == 0)
+        if (outputdims % OutputSimdWidth == 0)
         {
             constexpr unsigned int numChunks = paddedInputdims / 4;
 
