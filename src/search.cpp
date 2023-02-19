@@ -738,7 +738,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
                 STATISTICSINC(extend_endgame);
                 extendMove = 1;
             }
-#if 0
+#if 1
             else if (!ISTACTICAL(mc))
             {
                 int pieceTo = pc * 64 + to;

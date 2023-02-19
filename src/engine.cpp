@@ -313,7 +313,7 @@ void chessposition::resetStats()
         prerootconthistptr[i] = counterhistory[0][0];
     he_yes = 0ULL;
     he_all = 0ULL;
-    he_threshold = 8100;
+    he_threshold = 7900;
 }
 
 
