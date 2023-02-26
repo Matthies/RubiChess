@@ -360,9 +360,9 @@ int chessposition::probe_ab(int alpha, int beta, int *success)
         {
             if (playMove<true>(mc))
             {
-                //printf("probe_ab (ply=%d) testing capture/promotion/evasion move %s...\n", ply, moveToString(mc).c_str());
+                TBDEBUGDO(3, printf("probe_ab (ply=%d) testing capture/promotion/evasion move %s...\n", ply, moveToString(mc).c_str());)
                 v = -probe_ab(-beta, -alpha, success);
-                //printf("probe_ab (ply=%d) tested  capture/promotion/evasion move %s... v=%d\n", ply, moveToString(mc).c_str(), v);
+                TBDEBUGDO(3, printf("probe_ab (ply=%d) tested  capture/promotion/evasion move %s... v=%d\n", ply, moveToString(mc).c_str(), v);)
                 unplayMove<true>(mc);
                 if (*success == 0) return 0;
                 if (v > alpha) {
@@ -417,9 +417,9 @@ int chessposition::probe_wdl(int *success)
         {
             if (playMove<true>(mc))
             {
-                //printf("probe_wdl (ply=%d) testing capture/promotion/evasion move %s...\n", ply, moveToString(mc).c_str());
+                TBDEBUGDO(2, printf("probe_wdl (ply=%d) testing capture/promotion/evasion move %s...\n", ply, moveToString(mc).c_str());)
                 int v = -probe_ab(-2, -best_cap, success);
-                //printf("probe_wdl (ply=%d) tested  capture/promotion/evasion move %s... v=%d\n", ply, moveToString(mc).c_str(), v);
+                TBDEBUGDO(2, printf("probe_wdl (ply=%d) tested  capture/promotion/evasion move %s... v=%d\n", ply, moveToString(mc).c_str(), v);)
                 unplayMove<true>(mc);
                 if (*success == 0) return 0;
                 if (v > best_cap) {
@@ -554,9 +554,9 @@ int chessposition::probe_dtz(int *success)
 
             if (playMove<true>(mc))
             {
-                //printf("probe_dtz (ply=%d)testing non-capture pawn move %s...\n", ply, moveToString(mc).c_str());
+                TBDEBUGDO(2, printf("probe_dtz (ply=%d)testing non-capture pawn move %s...\n", ply, moveToString(mc).c_str());)
                 int v = -probe_wdl(success);
-                //printf("probe_dtz (ply=%d)tested  non-capture pawn move %s... v=%d\n", ply, moveToString(mc).c_str(), v);
+                TBDEBUGDO(2, printf("probe_dtz (ply=%d)tested  non-capture pawn move %s... v=%d\n", ply, moveToString(mc).c_str(), v);)
                 unplayMove<true>(mc);
                 if (*success == 0)
                     return 0;
@@ -601,9 +601,9 @@ int chessposition::probe_dtz(int *success)
 
         if (playMove<true>(mc))
         {
-            //printf("probe_dtz (ply=%d) testing non-pawn non-capture %s... \n", ply, moveToString(mc).c_str());
+            TBDEBUGDO(2, printf("probe_dtz (ply=%d) testing non-pawn non-capture %s... \n", ply, moveToString(mc).c_str());)
             int v = -probe_dtz(success);
-            //printf("probe_dtz (ply=%d) tested  non-pawn non-capture %s... v=%d\n", ply, moveToString(mc).c_str(), v);
+            TBDEBUGDO(2, printf("probe_dtz (ply=%d) tested  non-pawn non-capture %s... v=%d\n", ply, moveToString(mc).c_str(), v);)
             unplayMove<true>(mc);
             if (*success == 0)
                 return 0;
@@ -645,14 +645,14 @@ int chessposition::root_probe_dtz()
         return 0;
 
     bool isBadMove;
+    bool isRepetingMove;
 
     // Probe each move.
     for (int i = 0; i < rootmovelist.length; i++)
     {
         chessmove *m = &rootmovelist.move[i];
         isBadMove = !see(m->code, 0);
-        playMove<true>(m->code);
-        //printf("info string root_probe_dtz (ply=%d) Testing move %s...\n", ply, m->toString().c_str());
+        playMove<false>(m->code);
         int v = 0;
         if (isCheckbb && dtz > 0) {
             chessmovelist nextmovelist;
@@ -685,11 +685,15 @@ int chessposition::root_probe_dtz()
 
             // Flag moves with good DTZ that sac a piece
             if (isBadMove && v > 0)
-                v += 0x10000;
+                v += 1000;
         }
 
-        //printf("info string root_probe_dtz (ply=%d) Tested  move %s... value=%d\n", ply, m->toString().c_str(), v);
-        unplayMove<true>(m->code);
+        // Flag moves that cause a repetition (bad if winning, good if losing)
+        isRepetingMove = (bool)testRepetition();
+        if (isRepetingMove)
+            v = v + 2000 * (dtz > 0 ? 1 : dtz < 0 ? -1 : 0);
+        TBDEBUGDO(1, printf("info string root_probe_dtz (ply=%d) Tested  move %s... value=%d\n", ply, m->toString().c_str(), v);)
+        unplayMove<false>(m->code);
         if (!success)
             return 0;
 
@@ -699,24 +703,10 @@ int chessposition::root_probe_dtz()
     // Obtain 50-move counter for the root position.
     int cnt50 = halfmovescounter;
 
-    // Test if there was any single repetition since last halfmove reset
-    bool hasRepetition = false;
-    for (int revply = 0, i = PREROOTMOVES; !hasRepetition &&  revply < prerootmovenum; revply++, i--) {
-        U64 h = prerootmovestack[i].hash;
-        int j = i - 4;
-        while (i - j + revply <= prerootmovenum) {
-            if (prerootmovestack[j].hash == h) {
-                hasRepetition = true;
-                break;
-            }
-            j = j - 2;
-        }
-    }
-    
     // Now be a bit smart about filtering out moves.
     int mi = 0;
     if (dtz > 0) { // winning (or 50-move rule draw)
-        int best = 0x1ffff;
+        int best =4000;
         for (int i = 0; i < rootmovelist.length; i++)
         {
             chessmove *m = &rootmovelist.move[i];
@@ -725,47 +715,61 @@ int chessposition::root_probe_dtz()
                 best = v;
         }
 
-        // If the current phase has not seen repetitions, then try all moves
-        // that stay safely within the 50-move budget, if there are any.
         while (mi < rootmovelist.length)
         {
             int v = rootmovelist.move[mi].value;
 
-            if (v <= 0 || ((hasRepetition || (v & 0xffff) + cnt50 >= 100) && (v & 0xffff) > best))
+            if (v <= 0
+                || (best < 2000 && v > 2000)
+                || (best < 1000 && v > 1000)
+                || (best + cnt50 < 100 && v + cnt50 >= 100))
             {
-                // delete moves that are known for not winning or not optimal and we already have a repetition
+                // delete moves that are known for not winning or causing a repetition or doing a bad sacrifice
                 rootmovelist.length--;
                 swap(rootmovelist.move[mi], rootmovelist.move[rootmovelist.length]);
             }
             else
             {
-                isBadMove = (v & 0x10000);
-                v = (v & 0xffff);
+                isRepetingMove = (v > 2000);
+                v -= isRepetingMove * 2000;
+                isBadMove = (v > 1000);
+                v -= isBadMove * 1000;
                 if (!en.Syzygy50MoveRule || v + cnt50 <= 100)
                     // win
-                    rootmovelist.move[mi].value = SCORETBWIN - v - (hasRepetition ? cnt50 : 0) - isBadMove * 0x100;
+                    rootmovelist.move[mi].value = SCORETBWIN - v - isBadMove * 1000 - isRepetingMove * 2000;
                 else
                     // cursed win = draw
                     rootmovelist.move[mi].value = SCOREDRAW;
-                //printf("info string root_probe_dtz (ply=%d) Final value for move %s... value=%d rep=%d\n", ply, rootmovelist.move[mi].toString().c_str(), rootmovelist.move[mi].value, hasRepetition);
+                TBDEBUGDO(1, printf("info string root_probe_dtz (ply=%d) Final value for move %s... value=%d\n", ply, rootmovelist.move[mi].toString().c_str(), rootmovelist.move[mi].value);)
                 mi++;
             }
         }
     }
     else if (dtz < 0) {
         int best = 0;
+        bool hasRepetingMove = false;
         for (int i = 0; i < rootmovelist.length; i++)
         {
             int v = rootmovelist.move[i].value;
+            if (v < -2000) {
+                // repeting move don't count for best but we will prefer it
+                hasRepetingMove = true;
+                v += 2000;
+            }
             if (v < best)
                 best = v;
         }
         while (mi < rootmovelist.length)
         {
             int v = rootmovelist.move[mi].value;
-            if (en.Syzygy50MoveRule && -best + cnt50 > 100 && -v + cnt50 <= 100)
+            isRepetingMove = (v < -2000);
+            v += isRepetingMove * 2000;
+
+            if ((en.Syzygy50MoveRule && -best + cnt50 > 100 && -v + cnt50 <= 100)
+                || (en.Syzygy50MoveRule && -best + cnt50 <= 100 && hasRepetingMove && !isRepetingMove))
             {
-                // We can reach a draw by 50-moves-rule so delete moves that don't preserve this
+                // We can reach a draw by 50-moves-rule so filter moves that don't preserve this
+                // Or we have a repeating move, then filter all moves that don't repeat
                 rootmovelist.length--;
                 swap(rootmovelist.move[mi], rootmovelist.move[rootmovelist.length]);
             }
@@ -773,11 +777,11 @@ int chessposition::root_probe_dtz()
             {
                 if (!en.Syzygy50MoveRule || -v + cnt50 <= 100)
                     // We will probably lose
-                    rootmovelist.move[mi].value = -SCORETBWIN - v;
+                    rootmovelist.move[mi].value = -SCORETBWIN - v + isRepetingMove * 2000;
                 else
                     // We can reach a draw by 50-moves-rule
                     rootmovelist.move[mi].value = SCOREDRAW;
-                //printf("info string root_probe_dtz (ply=%d) Final value for move %s... value=%d rep=%d\n", ply, rootmovelist.move[mi].toString().c_str(), rootmovelist.move[mi].value, hasRepetition);
+                TBDEBUGDO(1, printf("info string root_probe_dtz (ply=%d) Final value for move %s... value=%d\n", ply, rootmovelist.move[mi].toString().c_str(), rootmovelist.move[mi].value);)
                 mi++;
             }
         }
@@ -817,9 +821,9 @@ int chessposition::root_probe_wdl()
     {
         chessmove *m = &rootmovelist.move[i];
         playMove<true>(m->code);
-        //printf("info string root_probe_wdl (ply=%d) Testing move %s...\n", ply, m->toString().c_str());
+        TBDEBUGDO(1, printf("info string root_probe_wdl (ply=%d) Testing move %s...\n", ply, m->toString().c_str());)
         int v = -probe_wdl(&success);
-        //printf("info string root_probe_wdl (ply=%d) Tested  move %s... value=%d\n", ply, m->toString().c_str(), v);
+        TBDEBUGDO(1, printf("info string root_probe_wdl (ply=%d) Tested  move %s... value=%d\n", ply, m->toString().c_str(), v);)
         unplayMove<true>(m->code);
         if (!success)
             return 0;
@@ -839,12 +843,12 @@ int chessposition::root_probe_wdl()
         if (m->value < best)
         {
             // Delete non-optimal move
-            //printf("info string root_probe_wdl (ply=%d) Removing non-optimal move %s...\n", ply, m->toString().c_str());
+            TBDEBUGDO(1, printf("info string root_probe_wdl (ply=%d) Removing non-optimal move %s...\n", ply, m->toString().c_str());)
             rootmovelist.length--;
             swap(rootmovelist.move[mi], rootmovelist.move[rootmovelist.length]);
         }
         else {
-            //printf("info string root_probe_wdl (ply=%d) Optimal move %s gets value %d\n", ply, m->toString().c_str(), wdl_to_Value[m->value + 2]);
+            TBDEBUGDO(1, printf("info string root_probe_wdl (ply=%d) Optimal move %s gets value %d\n", ply, m->toString().c_str(), wdl_to_Value[m->value + 2]);)
             m->value = wdl_to_Value[m->value + 2];
             mi++;
         }
