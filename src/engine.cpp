@@ -778,7 +778,7 @@ GuiToken engine::parse(vector<string>* args, string ss)
 }
 
 
-void engine::resetEndTime(int constantRootMoves, int bestmovenodesratio)
+void engine::resetEndTime(U64 nowTime, int constantRootMoves, int bestmovenodesratio)
 {
     U64 clockStartTime = clockstarttime;
     U64 thinkStartTime = thinkstarttime;
@@ -838,6 +838,9 @@ void engine::resetEndTime(int constantRootMoves, int bestmovenodesratio)
     else {
         endtime1 = endtime2 = 0;
     }
+
+    if (endtime2 - nowTime <= 0)
+        guiCom << "info string Alarm. endtime2 < now\n";
 
 #ifdef TDEBUG
     stringstream ss;

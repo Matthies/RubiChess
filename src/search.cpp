@@ -1476,7 +1476,7 @@ void mainSearch(searchthread *thr)
             {
                 // Recalculate remaining time for next depth
                 int bestmovenodesratio = pos->nodes ? (int)(128 * (2.5 -  2 * (double)pos->nodespermove[(uint16_t)pos->bestmove] / pos->nodes)) : 128;
-                en.resetEndTime(constantRootMoves, bestmovenodesratio);
+                en.resetEndTime(nowtime, constantRootMoves, bestmovenodesratio);
             }
 
             // Mate found; early exit
@@ -1612,6 +1612,7 @@ void mainSearch(searchthread *thr)
                         guiCom << "info string Measured engine overhead is " + to_string(measuredOverhead) + "ms (> 50% of allowed via Move_Overhead option).\n";
                 }
             }
+            guiCom << "info string Debug Measured engine overhead is " + to_string(measuredOverhead) + "ms.\n";
         }
 
         // Save pondermove in rootposition for time management of following search
