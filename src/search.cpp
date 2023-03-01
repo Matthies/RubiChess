@@ -95,9 +95,7 @@ inline bool chessposition::CheckForImmediateStop()
     if (--nodesToNextCheck > 0)
         return false;
 
-    U64 now = getTime();
-    S64 remainingticks = en.endtime2 - now;
-
+    S64 remainingticks = en.endtime2 - getTime();
     if (remainingticks <= 0)
     {
         en.stopLevel = ENGINESTOPIMMEDIATELY;
