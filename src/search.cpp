@@ -95,11 +95,13 @@ inline bool chessposition::CheckForImmediateStop()
     if (--nodesToNextCheck > 0)
         return false;
 
-    S64 remainingticks = en.endtime2 - getTime();
+    U64 now = getTime();
+    S64 remainingticks = en.endtime2 - now;
 
     if (remainingticks <= 0)
     {
         en.stopLevel = ENGINESTOPIMMEDIATELY;
+        guiCom.log("CheckForImmediateStop: remainingticks = " + to_string(remainingticks) + "\n");
         return true;
     }
 
@@ -1475,7 +1477,7 @@ void mainSearch(searchthread *thr)
             if (en.tmEnabled && (inWindow == 1 || !constantRootMoves))
             {
                 // Recalculate remaining time for next depth
-                int bestmovenodesratio = pos->nodes ? (int)(128 * (2.5 -  2 * (double)pos->nodespermove[(uint16_t)pos->bestmove] / pos->nodes)) : 128;
+                int bestmovenodesratio = inWindow != 1 ? 256 : pos->nodes ? (int)(128 * (2.5 -  2 * (double)pos->nodespermove[(uint16_t)pos->bestmove] / pos->nodes)) : 128;
                 en.resetEndTime(nowtime, constantRootMoves, bestmovenodesratio);
             }
 

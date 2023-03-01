@@ -839,8 +839,8 @@ void engine::resetEndTime(U64 nowTime, int constantRootMoves, int bestmovenodesr
         endtime1 = endtime2 = 0;
     }
 
-    if (endtime2 - nowTime <= 0)
-        guiCom << "info string Alarm. endtime2 < now\n";
+    if ((S64)(endtime2 - nowTime) < 0)
+        guiCom.log("(resetEndTime) endtime2=" + to_string(endtime2) + " < now=" + to_string(nowTime) + "\n");
 
 #ifdef TDEBUG
     stringstream ss;
