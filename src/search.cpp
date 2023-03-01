@@ -96,7 +96,6 @@ inline bool chessposition::CheckForImmediateStop()
         return false;
 
     S64 remainingticks = en.endtime2 - getTime();
-
     if (remainingticks <= 0)
     {
         en.stopLevel = ENGINESTOPIMMEDIATELY;
@@ -1476,7 +1475,7 @@ void mainSearch(searchthread *thr)
             {
                 // Recalculate remaining time for next depth
                 int bestmovenodesratio = pos->nodes ? (int)(128 * (2.5 -  2 * (double)pos->nodespermove[(uint16_t)pos->bestmove] / pos->nodes)) : 128;
-                en.resetEndTime(constantRootMoves, bestmovenodesratio);
+                en.resetEndTime(nowtime, constantRootMoves, bestmovenodesratio);
             }
 
             // Mate found; early exit

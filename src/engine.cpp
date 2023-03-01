@@ -673,7 +673,7 @@ void engine::communicate(string inputstring)
                 break;
             case PONDERHIT:
                 startSearchTime(true);
-                resetEndTime();
+                resetEndTime(clockstarttime);
                 pondersearch = NO;
                 break;
             case STOP:
@@ -778,7 +778,7 @@ GuiToken engine::parse(vector<string>* args, string ss)
 }
 
 
-void engine::resetEndTime(int constantRootMoves, int bestmovenodesratio)
+void engine::resetEndTime(U64 nowTime, int constantRootMoves, int bestmovenodesratio)
 {
     U64 clockStartTime = clockstarttime;
     U64 thinkStartTime = thinkstarttime;
@@ -839,6 +839,10 @@ void engine::resetEndTime(int constantRootMoves, int bestmovenodesratio)
         endtime1 = endtime2 = 0;
     }
 
+    if ((S64)(endtime2 - nowTime) < 0)
+        // Fix endtime2 for engine delay measure
+        endtime2 = nowTime;
+
 #ifdef TDEBUG
     stringstream ss;
     guiCom.log("[TDEBUG] Time from UCI: time=" + to_string(timetouse) + "  inc=" + to_string(timeinc) + "  overhead=" + to_string(overhead) + "  constance=" + to_string(constance) + "  bestmovenodesratio=" + to_string(bestmovenodesratio) + "\n");
@@ -868,7 +872,7 @@ void engine::searchStart()
     }
 
     stopLevel = ENGINERUN;
-    resetEndTime();
+    resetEndTime(clockstarttime);
 
     moveoutput = false;
     prepared = false;
