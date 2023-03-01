@@ -840,10 +840,8 @@ void engine::resetEndTime(U64 nowTime, int constantRootMoves, int bestmovenodesr
     }
 
     if ((S64)(endtime2 - nowTime) < 0)
-    {
+        // Fix endtime2 for engine delay measure
         endtime2 = nowTime;
-        //guiCom.log("(resetEndTime) endtime2=" + to_string(endtime2) + " < now=" + to_string(nowTime) + "\n");
-    }
 
 #ifdef TDEBUG
     stringstream ss;

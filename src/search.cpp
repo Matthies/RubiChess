@@ -101,7 +101,6 @@ inline bool chessposition::CheckForImmediateStop()
     if (remainingticks <= 0)
     {
         en.stopLevel = ENGINESTOPIMMEDIATELY;
-        //guiCom.log("CheckForImmediateStop: remainingticks = " + to_string(remainingticks) + "\n");
         return true;
     }
 
@@ -1477,7 +1476,7 @@ void mainSearch(searchthread *thr)
             if (en.tmEnabled && (inWindow == 1 || !constantRootMoves))
             {
                 // Recalculate remaining time for next depth
-                int bestmovenodesratio = inWindow != 1 ? 256 : pos->nodes ? (int)(128 * (2.5 -  2 * (double)pos->nodespermove[(uint16_t)pos->bestmove] / pos->nodes)) : 128;
+                int bestmovenodesratio = pos->nodes ? (int)(128 * (2.5 -  2 * (double)pos->nodespermove[(uint16_t)pos->bestmove] / pos->nodes)) : 128;
                 en.resetEndTime(nowtime, constantRootMoves, bestmovenodesratio);
             }
 
@@ -1614,7 +1613,6 @@ void mainSearch(searchthread *thr)
                         guiCom << "info string Measured engine overhead is " + to_string(measuredOverhead) + "ms (> 50% of allowed via Move_Overhead option).\n";
                 }
             }
-            //guiCom << "info string Debug Measured engine overhead is " + to_string(measuredOverhead) + "ms.\n";
         }
 
         // Save pondermove in rootposition for time management of following search
