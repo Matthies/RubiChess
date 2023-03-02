@@ -2196,6 +2196,12 @@ public:
     U64 extend_endgame;         // total endgame extensions
     U64 extend_history;         // total history extensions
 
+    U64 nnue_accupdate_all;     // total number of calls to UpdateAccumulator
+    U64 nnue_accupdate_cache;   // total number of already up-to-date accumulators
+    U64 nnue_accupdate_inc;     // total number of incremental updates 
+    U64 nnue_accupdate_full;    // total number of full updates
+
+
 #define MAXSTATDEPTH 30
 #define MAXSTATMOVES 128
     U64 ms_n[2][MAXSTATDEPTH];                          // total instantiations of moveselector in depth n (0 -> QS, MAXSTATDEPTH-1: ProbCut)

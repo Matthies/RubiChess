@@ -883,6 +883,14 @@ void statistic::output(vector<string> args)
     sprintf(str, "[STATS] Extensions: %%singular: %7.4f   %%endgame: %7.4f   %%history: %7.4f\n", f0, f1, f2);
     guiCom << str;
 
+    // accumulator updates
+    n = nnue_accupdate_all;
+    f0 = 100.0 * nnue_accupdate_cache / NODBZ(n);
+    f1 = 100.0 * nnue_accupdate_inc / NODBZ(n);
+    f2 = 100.0 * nnue_accupdate_full / NODBZ(n);
+    sprintf(str, "[STATS] AccuUpdate:   %%Cached: %7.4f   %%Increm.: %7.4f      %%Full: %7.4f\n", f0, f1, f2);
+    guiCom << str;
+
     // Move selector
     int p, d, l;
     for (p = 0; p < 2; p++)
