@@ -703,27 +703,49 @@ int chessposition::root_probe_dtz()
     // Obtain 50-move counter for the root position.
     int cnt50 = halfmovescounter;
 
-    // Now be a bit smart about filtering out moves.
+    // Test if there was any single repetition since last halfmove reset
+    bool hasRepetition = false;
+    for (int revply = 0, i = PREROOTMOVES; !hasRepetition && revply < prerootmovenum; revply++, i--) {
+        U64 h = prerootmovestack[i].hash;
+        int j = i - 4;
+        while (i - j + revply <= prerootmovenum) {
+            if (prerootmovestack[j].hash == h) {
+                hasRepetition = true;
+                break;
+            }
+            j = j - 2;
+        }
+    }
+
+    bool bPlayBestDTZMove = false;  // let's try to be smart and avoid following DTZ by default
     int mi = 0;
     if (dtz > 0) { // winning (or 50-move rule draw)
-        int best =4096;
+        int best = 4096;
+        int bestdtz = 1023;
         for (int i = 0; i < rootmovelist.length; i++)
         {
             chessmove *m = &rootmovelist.move[i];
             int v = m->value;
-            if (v > 0 && v < best)
-                best = v;
+            int vdtz = v % 1024;
+            if (v > 0) {
+                if (v < best)
+                    best = v;
+                if (vdtz < bestdtz)
+                    bestdtz = vdtz;
+            }
         }
 
+        // We have to decide if we
+        // a. let the engine search for a good (fast mating) move and just filter the bad moves here or
+        // b. play the move with best DTZ by filtering every other move
+        bool bPlayBestDTZMove = hasRepetition || best + cnt50 > 90;
         while (mi < rootmovelist.length)
         {
             int v = rootmovelist.move[mi].value;
             int vdtz = v % 1024;
-
-            if (v <= 0                          // move is not winning; filter it
-                || (best + cnt50 < 100          // we have at least one move that is preserving the win and is neither a repetition or a bad capture and...
-                    && (v > 1024                // move is bad captures or repetitions; filter it
-                        || v + cnt50 >= 100)))  // move is not preserving the win; filter it
+            if (v <= 0                                          // move is not winning; filter it
+                || (bPlayBestDTZMove && vdtz > bestdtz)         // we need to play move with best dtz and it's not this one; filter it
+                || (!bPlayBestDTZMove  && v + cnt50 >= 100))    // no danger for running into a draw and this move is repeating/bad sac/losing win; filter it
             {
                 rootmovelist.length--;
                 swap(rootmovelist.move[mi], rootmovelist.move[rootmovelist.length]);
@@ -801,8 +823,13 @@ int chessposition::root_probe_dtz()
         }
     }
 
-    // Be fair and report the expected score in any case (even if the opponenmt has a hard job to save the win/draw
+    // Be fair and report the expected score in any case, even if the opponent has a hard job to save the win/draw
     useRootmoveScore = 1;
+
+    // if we play a move with best DTZ, shorten the list to force an instamove
+    if (bPlayBestDTZMove)
+        rootmovelist.length = 1;
+
     return 1;
 }
 

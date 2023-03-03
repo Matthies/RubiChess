@@ -1493,7 +1493,7 @@ void mainSearch(searchthread *thr)
             continue;
 
         // early exit in playing mode as there is exactly one possible move
-        if (pos->rootmovelist.length == 1 && en.tmEnabled && !pos->useRootmoveScore)
+        if (pos->rootmovelist.length == 1 && en.tmEnabled)
             break;
 
         // exit if STOPSOON is requested and we're in aspiration window
