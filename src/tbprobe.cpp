@@ -685,13 +685,13 @@ int chessposition::root_probe_dtz()
 
             // Flag moves with good DTZ that sac a piece
             if (isBadMove && v > 0)
-                v += 1000;
+                v += 1024;
         }
 
         // Flag moves that cause a repetition (bad if winning, good if losing)
         isRepetingMove = (bool)testRepetition();
         if (isRepetingMove)
-            v = v + 2000 * (dtz > 0 ? 1 : dtz < 0 ? -1 : 0);
+            v = v + 2048 * (dtz > 0 ? 1 : dtz < 0 ? -1 : 0);
         TBDEBUGDO(1, printf("info string root_probe_dtz (ply=%d) Tested  move %s... value=%d\n", ply, m->toString().c_str(), v);)
         unplayMove<false>(m->code);
         if (!success)
@@ -706,7 +706,7 @@ int chessposition::root_probe_dtz()
     // Now be a bit smart about filtering out moves.
     int mi = 0;
     if (dtz > 0) { // winning (or 50-move rule draw)
-        int best =4000;
+        int best =4096;
         for (int i = 0; i < rootmovelist.length; i++)
         {
             chessmove *m = &rootmovelist.move[i];
@@ -718,25 +718,25 @@ int chessposition::root_probe_dtz()
         while (mi < rootmovelist.length)
         {
             int v = rootmovelist.move[mi].value;
+            int vdtz = v % 1024;
 
-            if (v <= 0
-                || (best < 2000 && v > 2000)
-                || (best < 1000 && v > 1000)
-                || (best + cnt50 < 100 && v + cnt50 >= 100))
+            if (v <= 0                          // move is not winning; filter it
+                || (best + cnt50 < 100          // we have at least one move that is preserving the win and is neither a repetition or a bad capture and...
+                    && (v > 1024                // move is bad captures or repetitions; filter it
+                        || v + cnt50 >= 100)))  // move is not preserving the win; filter it
             {
-                // delete moves that are known for not winning or causing a repetition or doing a bad sacrifice
                 rootmovelist.length--;
                 swap(rootmovelist.move[mi], rootmovelist.move[rootmovelist.length]);
             }
             else
             {
-                isRepetingMove = (v > 2000);
-                v -= isRepetingMove * 2000;
-                isBadMove = (v > 1000);
-                v -= isBadMove * 1000;
+                isRepetingMove = (v > 2048);
+                v -= isRepetingMove * 2048;
+                isBadMove = (v > 1024);
+                v -= isBadMove * 1024;
                 if (!en.Syzygy50MoveRule || v + cnt50 <= 100)
                     // win
-                    rootmovelist.move[mi].value = SCORETBWIN - v - isBadMove * 1000 - isRepetingMove * 2000;
+                    rootmovelist.move[mi].value = SCORETBWIN - v - isBadMove * 1024 - isRepetingMove * 2048;
                 else
                     // cursed win = draw
                     rootmovelist.move[mi].value = SCOREDRAW;
@@ -751,10 +751,10 @@ int chessposition::root_probe_dtz()
         for (int i = 0; i < rootmovelist.length; i++)
         {
             int v = rootmovelist.move[i].value;
-            if (v < -2000) {
+            if (v < -2048) {
                 // repeting move don't count for best but we will prefer it
                 hasRepetingMove = true;
-                v += 2000;
+                v += 2048;
             }
             if (v < best)
                 best = v;
@@ -762,8 +762,8 @@ int chessposition::root_probe_dtz()
         while (mi < rootmovelist.length)
         {
             int v = rootmovelist.move[mi].value;
-            isRepetingMove = (v < -2000);
-            v += isRepetingMove * 2000;
+            isRepetingMove = (v < -2048);
+            v += isRepetingMove * 2048;
 
             if ((en.Syzygy50MoveRule && -best + cnt50 > 100 && -v + cnt50 <= 100)
                 || (en.Syzygy50MoveRule && -best + cnt50 <= 100 && hasRepetingMove && !isRepetingMove))
@@ -777,7 +777,7 @@ int chessposition::root_probe_dtz()
             {
                 if (!en.Syzygy50MoveRule || -v + cnt50 <= 100)
                     // We will probably lose
-                    rootmovelist.move[mi].value = -SCORETBWIN - v + isRepetingMove * 2000;
+                    rootmovelist.move[mi].value = -SCORETBWIN - v + isRepetingMove * 2048;
                 else
                     // We can reach a draw by 50-moves-rule
                     rootmovelist.move[mi].value = SCOREDRAW;
