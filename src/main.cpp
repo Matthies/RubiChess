@@ -443,7 +443,7 @@ void engine::bench(int constdepth, string epdfilename, int consttime, int startn
         bm->time = endtime - thinkstarttime;
         U64 tbhits;
         en.getNodesAndTbhits(&bm->nodes, &tbhits);
-        bm->score = en.rootposition.lastbestmovescore;
+        bm->score = en.lastbestmovescore;
         bm->depthAtExit = en.benchdepth;
         bm->move = en.benchmove;
         bm->solved = 2;
