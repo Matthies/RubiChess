@@ -398,7 +398,7 @@ void engine::communicate(string inputstring)
                     if (!(lastopponentsmove = rootposition.applyMove(*it)))
                         guiCom << "info string Alarm! Move " + (*it)  + "%s illegal (possible engine error)\n";
                 }
-                rootposition.contempt = S2MSIGN(rootposition.state & S2MMASK) * en.ResultingContempt * rootposition.phcount / 24;
+                rootposition.contempt = S2MSIGN(rootposition.state & S2MMASK) * ResultingContempt * rootposition.phcount / 24;
                 ponderhitbonus = 4 * (lastopponentsmove && lastopponentsmove == rootposition.pondermove);
                 // Preserve hashes of earlier position up to last halfmove counter reset for repetition detection
                 rootposition.prerootmovenum = rootposition.ply;
@@ -411,7 +411,7 @@ void engine::communicate(string inputstring)
                 }
                 rootposition.lastnullmove = -rootposition.ply - 1;
                 rootposition.ply = 0;
-                rootposition.useTb = min(TBlargest, en.SyzygyProbeLimit);
+                rootposition.useTb = min(TBlargest, SyzygyProbeLimit);
                 rootposition.getRootMoves();
                 rootposition.tbFilterRootMoves();
                 prepareThreads();
@@ -433,7 +433,7 @@ void engine::communicate(string inputstring)
             command = parse(&commandargs, inputstring);  // blocking!!
             ci = 0;
             cs = commandargs.size();
-            if (en.stopLevel == ENGINESTOPIMMEDIATELY)
+            if (stopLevel == ENGINESTOPIMMEDIATELY)
                 searchWaitStop();
             switch (command)
             {
@@ -486,13 +486,13 @@ void engine::communicate(string inputstring)
                 // invalidate hash and history
                 tp.clean();
                 resetStats();
-                sthread[0].pos.lastbestmovescore = NOSCORE;
+                lastbestmovescore = NOSCORE;
                 pbook.currentDepth = 0;
                 break;
             case SETOPTION:
-                if (en.stopLevel != ENGINETERMINATEDSEARCH)
+                if (stopLevel != ENGINETERMINATEDSEARCH)
                 {
-                    guiCom << "info string Changing option while searching is not supported. stopLevel = " + to_string(en.stopLevel) + "\n";
+                    guiCom << "info string Changing option while searching is not supported. stopLevel = " + to_string(stopLevel) + "\n";
                     break;
                 }
                 bGetName = bGetValue = false;
@@ -568,7 +568,7 @@ void engine::communicate(string inputstring)
                 pendingposition = (fen != "");
                 break;
             case GO:
-                if (en.usennue && !NnueReady)
+                if (usennue && !NnueReady)
                     break;
                 startSearchTime(false);
                 pondersearch = NO;
@@ -587,7 +587,7 @@ void engine::communicate(string inputstring)
                     btime = &mytime;
                     binc = &myinc;
                 }
-                maxnodes = LimitNps / en.Threads;
+                maxnodes = LimitNps / Threads;
                 while (ci < cs)
                 {
                     if (commandargs[ci] == "searchmoves")
@@ -634,7 +634,7 @@ void engine::communicate(string inputstring)
                     else if (commandargs[ci] == "nodes")
                     {
                         if (++ci < cs)
-                            maxnodes = stoull(commandargs[ci++]) / en.Threads;
+                            maxnodes = stoull(commandargs[ci++]) / Threads;
                     }
                     else if (commandargs[ci] == "mate")
                     {
@@ -663,7 +663,7 @@ void engine::communicate(string inputstring)
                 if (!prepared)
                     prepareThreads();
                 measureOverhead(wasPondering);
-                if (en.MultiPV == 1)
+                if (MultiPV == 1)
                     searchStart<SinglePVSearch>();
                 else
                     searchStart<MultiPVSearch>();
@@ -682,7 +682,7 @@ void engine::communicate(string inputstring)
                     stopLevel = ENGINESTOPIMMEDIATELY;
                 break;
             case EVAL:
-                en.evaldetails = (ci < cs && commandargs[ci] == "detail");
+                evaldetails = (ci < cs && commandargs[ci] == "detail");
                 sthread[0].pos.getEval<TRACE>();
                 break;
             case PERFT:

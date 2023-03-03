@@ -1534,7 +1534,6 @@ public:
 
     // The following members (almost) don't need an init
     int seldepth;
-    int lastbestmovescore;
     int sc;
     U64 nodespermove[0x10000];                      // init in prepare only for thread #0
     chessmovelist captureslist[MAXDEPTH];
@@ -1917,6 +1916,7 @@ public:
     ponderstate_t pondersearch;
     int ponderhitbonus;
     int lastReport;
+    int lastbestmovescore;
     int benchdepth;
     bool prepared;
     string benchmove;
