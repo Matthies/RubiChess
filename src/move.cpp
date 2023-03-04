@@ -538,8 +538,9 @@ bool chessposition::playMove(uint32_t mc)
         dp->dirtyNum = 0;
         accumulator[ply + 1].computationState[WHITE] = false;
         accumulator[ply + 1].computationState[BLACK] = false;
-        halfmovescounter++;
     }
+
+    halfmovescounter++;
 
     // Castle has special play
     if (ISCASTLE(mc))
@@ -614,13 +615,13 @@ bool chessposition::playMove(uint32_t mc)
                 hash ^= zb.boardtable[(to << 4) | capture];
                 if ((capture >> 1) == PAWN)
                     pawnhash ^= zb.boardtable[(to << 4) | capture];
-                halfmovescounter = 0;
                 dp->pc[1] = capture;
                 dp->from[1] = to;
                 dp->to[1] = -1;
                 dp->dirtyNum = 2;
                 piececount--;
             }
+            halfmovescounter = 0;
         }
 
         if (promote == BLANK)
@@ -659,8 +660,8 @@ bool chessposition::playMove(uint32_t mc)
             if (!LiteMode) {
                 pawnhash ^= zb.boardtable[(to << 4) | mailbox[to]];
                 pawnhash ^= zb.boardtable[(from << 4) | pfrom];
-                halfmovescounter = 0;
             }
+            halfmovescounter = 0;
 
             if (ept && to == ept)
             {
@@ -691,8 +692,8 @@ bool chessposition::playMove(uint32_t mc)
             if (!LiteMode) {
                 hash = movestack[ply].hash;
                 pawnhash = movestack[ply].pawnhash;
-                halfmovescounter = movestack[ply].halfmovescounter;
             }
+            halfmovescounter = movestack[ply].halfmovescounter;
             kingpos[s2m] = movestack[ply].kingpos[s2m];
             mailbox[from] = pfrom;
             if (promote != BLANK)

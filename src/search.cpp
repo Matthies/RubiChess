@@ -96,7 +96,6 @@ inline bool chessposition::CheckForImmediateStop()
         return false;
 
     S64 remainingticks = en.endtime2 - getTime();
-
     if (remainingticks <= 0)
     {
         en.stopLevel = ENGINESTOPIMMEDIATELY;
@@ -1416,9 +1415,9 @@ void mainSearch(searchthread *thr)
                 if (!pos->bestmove && pos->rootmovelist.length > 0 && !isDraw)
                     pos->bestmove = pos->rootmovelist.move[0].code;
 
-                if (pos->rootmovelist.length == 1 && !pos->tbPosition && en.tmEnabled && en.pondersearch != PONDERING && pos->lastbestmovescore != NOSCORE)
+                if (isMainThread && pos->rootmovelist.length == 1 && !pos->tbPosition && en.tmEnabled && en.pondersearch != PONDERING && en.lastbestmovescore != NOSCORE)
                     // Don't report score of instamove; use the score of last position instead
-                    pos->bestmovescore[0] = pos->lastbestmovescore;
+                    pos->bestmovescore[0] = en.lastbestmovescore;
 
                 if (pos->useRootmoveScore)
                 {
@@ -1476,7 +1475,7 @@ void mainSearch(searchthread *thr)
             {
                 // Recalculate remaining time for next depth
                 int bestmovenodesratio = pos->nodes ? (int)(128 * (2.5 -  2 * (double)pos->nodespermove[(uint16_t)pos->bestmove] / pos->nodes)) : 128;
-                en.resetEndTime(constantRootMoves, bestmovenodesratio);
+                en.resetEndTime(nowtime, constantRootMoves, bestmovenodesratio);
             }
 
             // Mate found; early exit
@@ -1557,7 +1556,7 @@ void mainSearch(searchthread *thr)
         }
 
         // remember score for next search in case of an instamove
-        en.rootposition.lastbestmovescore = pos->bestmovescore[0];
+        en.lastbestmovescore = pos->bestmovescore[0];
 
         if (uciNeedsReport || bestthr->index)
             uciScore(thr, inWindow, getTime() - en.thinkstarttime, inWindow == 1 ? pos->bestmovescore[0] : score);

@@ -521,10 +521,11 @@ typedef int16_t ft_vec_t;
 
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::UpdateAccumulator()
 {
+    STATISTICSINC(nnue_accupdate_all);
+
     int16_t* weight = NnueCurrentArch->GetFeatureWeight();
     int16_t* bias = NnueCurrentArch->GetFeatureBias();
     int32_t* psqtweight = NnueCurrentArch->GetFeaturePsqtWeight();
-
 
 #ifdef USE_SIMD
     constexpr unsigned int numRegs = (NUM_REGS > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : NUM_REGS);
@@ -549,9 +550,12 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 
     if (mslast >= 0 && accumulator[mslast].computationState[c])
     {
-        if (mslast == ply)
+        if (mslast == ply) {
+            STATISTICSINC(nnue_accupdate_cache);
             return;
+        }
 
+        STATISTICSINC(nnue_accupdate_inc);
         NnueIndexList removedIndices[2], addedIndices[2];
         removedIndices[0].size = removedIndices[1].size = 0;
         addedIndices[0].size = addedIndices[1].size = 0;
@@ -670,6 +674,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     }
     else {
         // Full update needed
+        STATISTICSINC(nnue_accupdate_full);
         NnueAccumulator* ac = &accumulator[ply];
         ac->computationState[c] = true;
         NnueIndexList activeIndices;

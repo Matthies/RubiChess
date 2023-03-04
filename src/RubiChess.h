@@ -1540,7 +1540,6 @@ public:
 
     // The following members (almost) don't need an init
     int seldepth;
-    int lastbestmovescore;
     int sc;
     U64 nodespermove[0x10000];                      // init in prepare only for thread #0
     chessmovelist captureslist[MAXDEPTH];
@@ -1923,6 +1922,7 @@ public:
     ponderstate_t pondersearch;
     int ponderhitbonus;
     int lastReport;
+    int lastbestmovescore;
     int benchdepth;
     bool prepared;
     string benchmove;
@@ -1993,7 +1993,7 @@ public:
     void measureOverhead(bool wasPondering);
     template <RootsearchType RT> void searchStart();
     void searchWaitStop(bool forceStop = true);
-    void resetEndTime(int constantRootMoves = 0, int bestmovenodesratio = 128);
+    void resetEndTime(U64 nowTime, int constantRootMoves = 0, int bestmovenodesratio = 128);
     void startSearchTime(bool ponderhit);
 };
 
@@ -2207,6 +2207,12 @@ public:
     U64 extend_singular;        // total singular extensions
     U64 extend_endgame;         // total endgame extensions
     U64 extend_history;         // total history extensions
+
+    U64 nnue_accupdate_all;     // total number of calls to UpdateAccumulator
+    U64 nnue_accupdate_cache;   // total number of already up-to-date accumulators
+    U64 nnue_accupdate_inc;     // total number of incremental updates 
+    U64 nnue_accupdate_full;    // total number of full updates
+
 
 #define MAXSTATDEPTH 30
 #define MAXSTATMOVES 128
