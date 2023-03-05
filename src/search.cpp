@@ -1581,10 +1581,11 @@ void mainSearch(searchthread *thr)
         if (!pos->pondermove)
         {
             // Get the ponder move from TT
-            pos->playMove<true>(pos->bestmove);
-            uint16_t pondershort = tp.getMoveCode(pos->hash);
-            pos->pondermove = pos->shortMove2FullMove(pondershort);
-            pos->unplayMove<true>(pos->bestmove);
+            if (pos->playMove<true>(pos->bestmove)) {
+                uint16_t pondershort = tp.getMoveCode(pos->hash);
+                pos->pondermove = pos->shortMove2FullMove(pondershort);
+                pos->unplayMove<true>(pos->bestmove);
+            }
         }
 
         if (pos->pondermove)

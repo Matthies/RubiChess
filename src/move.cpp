@@ -763,10 +763,10 @@ bool chessposition::playMove(uint32_t mc)
         PREFETCH(&tp.table[hash & tp.sizemask]);
 
         conthistptr[ply] = (int16_t*)counterhistory[GETPIECE(mc)][GETCORRECTTO(mc)];
+        myassert(piececount == POPCOUNT(occupied00[WHITE] | occupied00[BLACK]), this, 1, piececount);
     }
     movecode[ply++] = mc;
     myassert(ply <= MAXDEPTH, this, 1, ply);
-    myassert(piececount == POPCOUNT(occupied00[WHITE] | occupied00[BLACK]), this, 1, piececount);
     kingPinned = 0ULL;
 
     if (!LiteMode) {
