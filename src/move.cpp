@@ -871,7 +871,9 @@ void MoveSelector::SetPreferredMoves(chessposition *p)
     {
         onlyGoodCaptures = false;
         state = EVASIONINITSTATE;
+        margin = 0;
     }
+    hashmove = 0;   // FIXME: maybe worth to give a hashmove here?
     captures = &pos->captureslist[pos->ply];
     quiets = &pos->quietslist[pos->ply];
 }
@@ -882,6 +884,7 @@ void MoveSelector::SetPreferredMoves(chessposition* p, int m, int excludemove)
     pos = p;
     margin = m;
     onlyGoodCaptures = true;
+    hashmove = 0;
     state = TACTICALINITSTATE;
     if (!excludemove)
         captures = &pos->captureslist[pos->ply];
@@ -894,12 +897,9 @@ void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t k
 {
     pos = p;
     hashmove = p->shortMove2FullMove(hshm);
-    if (kllm1 != hashmove)
-        killermove1 = kllm1;
-    if (kllm2 != hashmove)
-        killermove2 = kllm2;
-    if (counter != hashmove && counter != kllm1 && counter != kllm2)
-        countermove = counter;
+    killermove1 = (kllm1 != hashmove ? kllm1 : 0);
+    killermove2 = (kllm2 != hashmove ? kllm2 : 0);
+    countermove = (counter != hashmove && counter != kllm1 && counter != kllm2 ? counter : 0);
     if (!excludemove)
     {
         captures = &pos->captureslist[pos->ply];
@@ -910,8 +910,9 @@ void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t k
         captures = &pos->singularcaptureslist[pos->ply];
         quiets = &pos->singularquietslist[pos->ply];
     }
-    if (p->isCheckbb)
-        state = EVASIONINITSTATE;
+    state = (p->isCheckbb ? EVASIONINITSTATE : HASHMOVESTATE);
+    onlyGoodCaptures = false;
+    margin = 0;
 }
 
 
