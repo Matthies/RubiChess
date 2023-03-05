@@ -1381,15 +1381,16 @@ class MoveSelector
 {
 public:
     chessposition *pos;
-    int state;
     chessmovelist* captures;
     chessmovelist* quiets;
+    int state;
+    bool onlyGoodCaptures;
     uint32_t hashmove;
     uint32_t killermove1;
     uint32_t killermove2;
     uint32_t countermove;
-    bool onlyGoodCaptures;
     int margin;
+    char padding[8];
 #ifdef SDEBUG
     int value;
 #endif
