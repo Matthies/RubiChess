@@ -758,11 +758,12 @@ int chessposition::root_probe_dtz()
                 v -= isBadMove * 1024;
                 if (!en.Syzygy50MoveRule || v + cnt50 <= 100)
                     // win
-                    rootmovelist.move[mi].value = SCORETBWIN - v - isBadMove * 1024 - isRepetingMove * 2048;
+                    rootmovelist.move[mi].value = SCORETBWIN - v;
                 else
                     // cursed win = draw
                     rootmovelist.move[mi].value = SCOREDRAW;
-                TBDEBUGDO(1, printf("info string root_probe_dtz (ply=%d) Final value for move %s... value=%d\n", ply, rootmovelist.move[mi].toString().c_str(), rootmovelist.move[mi].value);)
+                TBDEBUGDO(1, printf("info string root_probe_dtz (ply=%d) Final value for move %s... value=%d %s %s\n",
+                    ply, rootmovelist.move[mi].toString().c_str(), rootmovelist.move[mi].value, isRepetingMove ? " repeating" : " ", isBadMove ? " bad sac" : " ");)
                 mi++;
             }
         }
@@ -799,11 +800,12 @@ int chessposition::root_probe_dtz()
             {
                 if (!en.Syzygy50MoveRule || -v + cnt50 <= 100)
                     // We will probably lose
-                    rootmovelist.move[mi].value = -SCORETBWIN - v + isRepetingMove * 2048;
+                    rootmovelist.move[mi].value = -SCORETBWIN - v;
                 else
                     // We can reach a draw by 50-moves-rule
                     rootmovelist.move[mi].value = SCOREDRAW;
-                TBDEBUGDO(1, printf("info string root_probe_dtz (ply=%d) Final value for move %s... value=%d\n", ply, rootmovelist.move[mi].toString().c_str(), rootmovelist.move[mi].value);)
+                TBDEBUGDO(1, printf("info string root_probe_dtz (ply=%d) Final value for move %s... value=%d %s\n", 
+                    ply, rootmovelist.move[mi].toString().c_str(), rootmovelist.move[mi].value, isRepetingMove ? " repeating" : " ");)
                 mi++;
             }
         }
