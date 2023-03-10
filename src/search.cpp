@@ -266,7 +266,6 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     prepareStack();
 
     MoveSelector* ms = &moveSelector[ply];
-    memset(ms, 0, sizeof(MoveSelector));
     ms->SetPreferredMoves(this);
     STATISTICSINC(qs_loop_n);
     STATISTICSDO(ms->depth = 0);
@@ -592,7 +591,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
     if (!PVNode && depth >= sps.probcutmindepth && abs(beta) < SCOREWHITEWINS)
     {
         int rbeta = min(SCOREWHITEWINS, beta + sps.probcutmargin);
-        memset(ms, 0, sizeof(MoveSelector));
         ms->SetPreferredMoves(this, rbeta - staticeval, excludeMove);
         STATISTICSDO(ms->depth = MAXSTATDEPTH - 1);
         STATISTICSDO(ms->PvNode = 0);
@@ -635,7 +633,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
     // Reset killers for child ply
     killer[ply + 1][0] = killer[ply + 1][1] = 0;
 
-    memset(ms, 0, sizeof(MoveSelector));
     ms->SetPreferredMoves(this, hashmovecode, killer[ply][0], killer[ply][1], counter, excludeMove);
     STATISTICSINC(moves_loop_n);
     STATISTICSDO(ms->depth = min(MAXSTATDEPTH - 2, depth));
@@ -1581,10 +1578,11 @@ void mainSearch(searchthread *thr)
         if (!pos->pondermove)
         {
             // Get the ponder move from TT
-            pos->playMove<true>(pos->bestmove);
-            uint16_t pondershort = tp.getMoveCode(pos->hash);
-            pos->pondermove = pos->shortMove2FullMove(pondershort);
-            pos->unplayMove<true>(pos->bestmove);
+            if (pos->playMove<true>(pos->bestmove)) {
+                uint16_t pondershort = tp.getMoveCode(pos->hash);
+                pos->pondermove = pos->shortMove2FullMove(pondershort);
+                pos->unplayMove<true>(pos->bestmove);
+            }
         }
 
         if (pos->pondermove)
