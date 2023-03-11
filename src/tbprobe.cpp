@@ -738,7 +738,7 @@ int chessposition::root_probe_dtz()
         // We have to decide if we
         // a. let the engine search for a good (fast mating) move and just filter the bad moves here or
         // b. play the move with best DTZ by filtering every other move
-        bool bPlayBestDTZMove = hasRepetition || best + cnt50 > 90;
+        bPlayBestDTZMove = hasRepetition || best + cnt50 > 90;
         while (mi < rootmovelist.length)
         {
             int v = rootmovelist.move[mi].value;
