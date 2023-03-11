@@ -36,7 +36,7 @@
 // level 1: only root probing
 // level 2: probe_dtz, probe_wdl
 // level 3: everything
-#define TBDEBUG 1
+//#define TBDEBUG 1
 
 // Enable this for texel tuning
 //#define EVALTUNE
