@@ -1262,7 +1262,7 @@ void mainSearch(searchthread *thr)
     int delta = 8;
     int maxdepth;
     int inWindow = 1;
-    bool uciNeedsReport = true;
+    bool uciNeedsFinalReport = true;    // Flag to indicate that at immediate stop a last pv line should be written
 
 #ifdef TDEBUG
     en.bStopCount = false;
@@ -1335,12 +1335,12 @@ void mainSearch(searchthread *thr)
                 beta = min(SCOREWHITEWINS, beta + delta);
                 delta = min(SCOREWHITEWINS, delta + delta / sps.aspincratio + sps.aspincbase);
                 inWindow = 2;
-                uciNeedsReport = true;
+                uciNeedsFinalReport = true;
             }
             else
             {
                 inWindow = 1;
-                uciNeedsReport = true;
+                uciNeedsFinalReport = true;
                 thr->lastCompleteDepth = thr->depth;
                 if (thr->depth > 4 && !isMultiPV) {
                     // next depth with new aspiration window
@@ -1393,7 +1393,7 @@ void mainSearch(searchthread *thr)
                 if (uciScoreOutputNeeded(inWindow, thinkTime)) {
                     for (int i = 0; i < maxmoveindex; i++)
                         uciScore(thr, inWindow, thinkTime, pos->bestmovescore[i], i);
-                    uciNeedsReport = false;
+                    uciNeedsFinalReport = false;
                 }
             }
             else {
@@ -1419,6 +1419,7 @@ void mainSearch(searchthread *thr)
                 if (pos->useRootmoveScore)
                 {
                     // We have a tablebase score so report this and adjust the search window
+                    uciNeedsFinalReport = false;
                     int tbScore = pos->rootmovelist.move[0].value;
                     if ((tbScore > 0 && score > tbScore) || (tbScore < 0 && score < tbScore))
                         // TB win/loss but we even found a mate; use the correct score
@@ -1432,7 +1433,7 @@ void mainSearch(searchthread *thr)
                     U64 thinkTime = nowtime - en.thinkstarttime;
                     if (uciScoreOutputNeeded(inWindow, thinkTime)) {
                         uciScore(thr, inWindow, thinkTime, inWindow == 1 ? pos->bestmovescore[0] : score);
-                        uciNeedsReport = false;
+                        uciNeedsFinalReport = false;
                     }
                 }
             }
@@ -1489,7 +1490,7 @@ void mainSearch(searchthread *thr)
             continue;
 
         // early exit in playing mode as there is exactly one possible move
-        if (pos->rootmovelist.length == 1 && en.tmEnabled && !pos->useRootmoveScore)
+        if (pos->rootmovelist.length == 1 && en.tmEnabled)
             break;
 
         // exit if STOPSOON is requested and we're in aspiration window
@@ -1555,7 +1556,7 @@ void mainSearch(searchthread *thr)
         // remember score for next search in case of an instamove
         en.lastbestmovescore = pos->bestmovescore[0];
 
-        if (uciNeedsReport || bestthr->index)
+        if (uciNeedsFinalReport || bestthr->index)
             uciScore(thr, inWindow, getTime() - en.thinkstarttime, inWindow == 1 ? pos->bestmovescore[0] : score);
 
         string strBestmove;

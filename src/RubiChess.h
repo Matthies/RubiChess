@@ -32,6 +32,12 @@
 // Enable to debug the time management
 //#define TDEBUG
 
+// Enable to debug tablebase probing
+// level 1: only root probing
+// level 2: probe_dtz, probe_wdl
+// level 3: everything
+//#define TBDEBUG 1
+
 // Enable this for texel tuning
 //#define EVALTUNE
 
@@ -877,6 +883,7 @@ public:
 
     NnueNetworkLayer(NnueLayer* prev) : NnueLayer(prev) {}
     bool ReadWeights(NnueNetsource* nr);
+    bool OverflowPossible();
     void WriteWeights(NnueNetsource* nr);
     uint32_t GetHash() {
         return (NNUENETLAYERHASH + outputdims) ^ (previous->GetHash() >> 1) ^ (previous->GetHash() << 31);
@@ -2144,6 +2151,12 @@ template <RootsearchType RT> void mainSearch(searchthread* thr);
 extern int TBlargest; // 5 if 5-piece tables, 6 if 6-piece tables were found.
 
 void init_tablebases(char *path);
+
+#ifdef TBDEBUG
+#define TBDEBUGDO(l,s) if ((l) <= TBDEBUG) {s}
+#else
+#define TBDEBUGDO(l,s)
+#endif
 
 
 //
