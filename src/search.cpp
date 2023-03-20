@@ -974,14 +974,13 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
     uint16_t hashmovecode = tpHit ? tte->movecode : 0;
     int staticeval = tpHit ? tte->staticeval : NOSCORE;
 
-    if (0 && !isMultiPV
+    if (!isMultiPV
         && !useRootmoveScore
         && tpHit
         && (newDepth = FIXDEPTHFROMTT(tte->depth)) >= depth
         && score != NOSCORE
-        && (tte->boundAndAge & (score >= beta ? HASHBETA : HASHALPHA)))
+        && (tte->boundAndAge & BOUNDMASK) == HASHEXACT)
     {
-        score = max(alpha, min(beta, score));
         // Hash is fixed regarding scores that don't see actual 3folds so we can trust the entry
         uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
         if (fullhashmove)
