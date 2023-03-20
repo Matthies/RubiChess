@@ -269,19 +269,20 @@ void transposition::addHash(U64 hash, int val, int16_t staticeval, int bound, in
 void transposition::addHash(ttentry* entry, U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode)
 {
     const hashupper_t hashupper = GETHASHUPPER(hash);
-    const int ttdepth = depth - TTDEPTH_OFFSET;
+    const uint8_t ttdepth = depth - TTDEPTH_OFFSET;
 
     // Don't overwrite an entry from the same position, unless we have
     // an exact bound or depth that is nearly as good as the old one
     if (bound == HASHEXACT
         || entry->hashupper != hashupper
-        || ttdepth >= entry->depth - 3)
+        || ttdepth + 3 >= entry->depth)
     {
         entry->hashupper = hashupper;
-        entry->depth = ttdepth;
-        entry->boundAndAge = bound | numOfSearchShiftTwo;
+        entry->depth = (uint8_t)ttdepth;
+        entry->boundAndAge = (uint8_t)(bound | numOfSearchShiftTwo);
         entry->movecode = movecode;
         entry->staticeval = staticeval;
+        entry->value = (int16_t)val;
     }
 #ifdef SDEBUG
     if (cluster->debugHash && (uint32_t)(cluster->debugHash >> 32) == leastValuableEntry->hashupper)
@@ -370,7 +371,7 @@ ttentry* transposition::probeHash(U64 hash, bool* bFound)
         }
     }
 
-    bFound = false;
+    *bFound = false;
     ttentry* leastValuableEntry = &(cluster->entry[0]);
 
     for (int i = 1; i < TTBUCKETNUM; i++)
