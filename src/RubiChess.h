@@ -974,11 +974,16 @@ void learn(vector<string> args);
 //
 // transposition stuff
 //
-#define BOUNDMASK   0x03
-#define HASHALPHA   0x01
-#define HASHBETA    0x02
-#define HASHUNKNOWN 0x03
-#define HASHEXACT   0x00
+#define BOUNDMASK       0x03
+#define HASHALPHA       0x01
+#define HASHBETA        0x02
+#define HASHUNKNOWN     0x00
+#define HASHEXACT       0x03
+#define AGESHIFT        2
+#define AGEINC          (1 << AGESHIFT)
+#define AGEMASK         ((0xff << AGESHIFT) & 0xff)
+#define AGECYCLE        (255 + AGEINC)
+#define TTDEPTH_OFFSET  -1  // we don't save negative depth to tt so -1 should be okay to detect free entries by testing depth == 0
 
 class zobrist
 {
@@ -1000,7 +1005,7 @@ public:
 typedef uint16_t hashupper_t;
 #define GETHASHUPPER(x) (hashupper_t)((x) >> (64 - sizeof(hashupper_t) * 8))
 
-struct transpositionentry {
+struct ttentry {
     hashupper_t hashupper;
     uint16_t movecode;
     int16_t value;
@@ -1010,8 +1015,8 @@ struct transpositionentry {
 };
 
 struct transpositioncluster {
-    transpositionentry entry[TTBUCKETNUM];
-    uint8_t padding[(64 - sizeof(transpositionentry) * TTBUCKETNUM) % 16];
+    ttentry entry[TTBUCKETNUM];
+    uint8_t padding[(64 - sizeof(ttentry) * TTBUCKETNUM) % 16];
 #ifdef SDEBUG
     U64 debugHash;
     int debugIndex;
@@ -1022,6 +1027,7 @@ struct transpositioncluster {
 
 #define FIXMATESCOREPROBE(v,p) (MATEFORME(v) ? (v) - p : (MATEFOROPPONENT(v) ? (v) + p : v))
 #define FIXMATESCOREADD(v,p) (MATEFORME(v) ? (v) + p : (MATEFOROPPONENT(v) ? (v) - p : v))
+#define FIXDEPTHFROMTT(d) (d + TTDEPTH_OFFSET)
 
 class transposition
 {
@@ -1029,16 +1035,18 @@ public:
     transpositioncluster *table;
     U64 size;
     U64 sizemask;
-    int numOfSearchShiftTwo;
+    uint8_t numOfSearchShiftTwo;
     ~transposition();
     int setSize(int sizeMb);    // returns the number of Mb not used by allignment
     void clean();
-    void addHash(U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode);
+    //void addHash(U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode);
+    void addHash(ttentry* entry, U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode);
     void printHashentry(U64 hash);
-    template <bool qsprobe> int probeHash(U64 hash, int *val, int *staticeval, uint16_t *movecode, int depth, int alpha, int beta, int ply);
+    //template <bool qsprobe> int probeHash(U64 hash, int *val, int *staticeval, uint16_t *movecode, int depth, int alpha, int beta, int ply);
+    template <bool qsprobe> ttentry* probeHash(U64 hash, bool *bFound);
     uint16_t getMoveCode(U64 hash);
     unsigned int getUsedinPermill();
-    void nextSearch() { numOfSearchShiftTwo = (numOfSearchShiftTwo + 4) & 0xfc; }
+    void nextSearch() { numOfSearchShiftTwo = (numOfSearchShiftTwo + AGEINC) & AGEMASK; }
 #ifdef SDEBUG
     void markDebugSlot(U64 h, int i) {
         table[h & sizemask].debugHash = h; table[h & sizemask].debugIndex = i;
