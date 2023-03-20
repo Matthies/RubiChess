@@ -270,7 +270,7 @@ void chessposition::getRootMoves()
     }
     if (moveTo3fold)
         // Hashmove triggers 3fold immediately or with following move; fix hash
-        tp.addHash(tte, hash, SCOREDRAW, tte->staticeval, bImmediate3fold ? HASHBETA : HASHALPHA, MAXDEPTH, moveTo3fold);
+        tp.addHash(tte, hash, SCOREDRAW, tte->staticeval, bImmediate3fold ? HASHBETA : HASHALPHA, 250 + TTDEPTH_OFFSET, moveTo3fold);
 }
 
 

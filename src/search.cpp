@@ -787,6 +787,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
             reduction -= PVNode;
 
             // even lesser reduction at PV nodes for all but bad hash moves
+            // FIXME: is this condition still valid with different tpHit logic now?
             reduction -= (PVNode && (!tpHit || hashmovecode != (uint16_t)mc || hashscore > alpha));
 
             // adjust reduction with opponents move number

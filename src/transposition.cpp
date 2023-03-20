@@ -378,7 +378,7 @@ ttentry* transposition::probeHash(U64 hash, bool* bFound)
     {
         e = &(cluster->entry[i]);
         if (e->depth - ((AGECYCLE + numOfSearchShiftTwo - e->boundAndAge) & AGEMASK) * 2
-            < leastValuableEntry->depth - ((AGECYCLE + numOfSearchShiftTwo - leastValuableEntry->boundAndAge) & 0xfc) * 2)
+            < leastValuableEntry->depth - ((AGECYCLE + numOfSearchShiftTwo - leastValuableEntry->boundAndAge) & AGEMASK) * 2)
         {
             // found a new less valuable entry
             leastValuableEntry = e;
