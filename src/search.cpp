@@ -1390,7 +1390,7 @@ void mainSearch(searchthread *thr)
 
                 U64 thinkTime = nowtime - en.thinkstarttime;
                 int maxmoveindex = min(en.MultiPV, pos->rootmovelist.length);
-                if (uciScoreOutputNeeded(inWindow, thinkTime)) {
+                if (!en.tmEnabled || uciScoreOutputNeeded(inWindow, thinkTime)) {
                     for (int i = 0; i < maxmoveindex; i++)
                         uciScore(thr, inWindow, thinkTime, pos->bestmovescore[i], i);
                     uciNeedsFinalReport = false;
@@ -1431,7 +1431,7 @@ void mainSearch(searchthread *thr)
 
                 if (en.pondersearch != PONDERING || thr->depth < maxdepth) {
                     U64 thinkTime = nowtime - en.thinkstarttime;
-                    if (uciScoreOutputNeeded(inWindow, thinkTime)) {
+                    if (!en.tmEnabled || uciScoreOutputNeeded(inWindow, thinkTime)) {
                         uciScore(thr, inWindow, thinkTime, inWindow == 1 ? pos->bestmovescore[0] : score);
                         uciNeedsFinalReport = false;
                     }
