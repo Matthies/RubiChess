@@ -180,6 +180,7 @@ inline void chessposition::updateTacticalHst(uint32_t code, int value)
 template <PruneType Pt>
 int chessposition::getQuiescence(int alpha, int beta, int depth)
 {
+    const bool PVNode = (alpha != beta - 1);
     int score;
     int bestscore = NOSCORE;
     bool myIsCheck = (bool)isCheckbb;
@@ -216,7 +217,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     int hashscore = tpHit ? FIXMATESCOREPROBE(tte->value, ply) : NOSCORE;
     uint16_t hashmovecode = tpHit ? tte->movecode : 0;
 
-    if (tpHit && hashscore != NOSCORE && (tte->boundAndAge & (hashscore >= beta ? HASHBETA : HASHALPHA)))
+    if (tpHit && !PVNode && hashscore != NOSCORE && (tte->boundAndAge & (hashscore >= beta ? HASHBETA : HASHALPHA)))
     {
         STATISTICSINC(qs_tt);
         return hashscore;
@@ -973,13 +974,14 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
     uint16_t hashmovecode = tpHit ? tte->movecode : 0;
     int staticeval = tpHit ? tte->staticeval : NOSCORE;
 
-    if (!isMultiPV
+    if (0 && !isMultiPV
         && !useRootmoveScore
         && tpHit
         && (newDepth = FIXDEPTHFROMTT(tte->depth)) >= depth
         && score != NOSCORE
         && (tte->boundAndAge & (score >= beta ? HASHBETA : HASHALPHA)))
     {
+        score = max(alpha, min(beta, score));
         // Hash is fixed regarding scores that don't see actual 3folds so we can trust the entry
         uint32_t fullhashmove = shortMove2FullMove(hashmovecode);
         if (fullhashmove)
