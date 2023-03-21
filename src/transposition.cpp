@@ -202,7 +202,7 @@ unsigned int transposition::getUsedinPermill()
     // Take 1000 samples
     for (int i = 0; i < 1000 / TTBUCKETNUM; i++)
         for (int j = 0; j < TTBUCKETNUM; j++)
-            if ((table[i].entry[j].boundAndAge & 0xfc) == numOfSearchShiftTwo)
+            if ((table[i].entry[j].boundAndAge & AGEMASK) == numOfSearchShiftTwo)
                 used++;
 
     return used;
