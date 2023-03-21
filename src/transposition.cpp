@@ -209,65 +209,12 @@ unsigned int transposition::getUsedinPermill()
 }
 
 
-#if 0
-void transposition::addHash(U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode)
+void transposition::addHash(ttentry* entry, U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode)
 {
 #ifdef EVALTUNE
     // don't use transposition table when tuning evaluation
     return;
 #endif
-    unsigned long long index = hash & sizemask;
-    transpositioncluster *cluster = &table[index];
-    transpositionentry *e;
-    transpositionentry *leastValuableEntry;
-
-    for (int i = 0; i < TTBUCKETNUM; i++)
-    {
-        // First try to find a free or matching entry
-        e = &(cluster->entry[i]);
-        if (cluster->entry[i].hashupper == GETHASHUPPER(hash) || !cluster->entry[i].hashupper)
-        {
-            leastValuableEntry = e;
-            break;
-        }
-
-        if (i == 0)
-        {
-            // initialize leastValuableEntry
-            leastValuableEntry = e;
-            continue;
-        }
-
-        if (e->depth - ((259 + numOfSearchShiftTwo - e->boundAndAge) & 0xfc) * 2
-            < leastValuableEntry->depth - ((259 + numOfSearchShiftTwo - leastValuableEntry->boundAndAge) & 0xfc) * 2)
-        {
-            // found a new less valuable entry
-            leastValuableEntry = e;
-        }
-    }
-
-    // Don't overwrite an entry from the same position, unless we have
-    // an exact bound or depth that is nearly as good as the old one
-    if (bound != HASHEXACT
-        &&  leastValuableEntry->hashupper == GETHASHUPPER(hash)
-        &&  depth < leastValuableEntry->depth - 3)
-        return;
-
-    leastValuableEntry->hashupper = GETHASHUPPER(hash);
-#ifdef SDEBUG
-    if (cluster->debugHash && (uint32_t)(cluster->debugHash >> 32) == leastValuableEntry->hashupper)
-        cluster->debugStoredBy = "";
-
-#endif
-    leastValuableEntry->depth = (uint8_t)depth;
-    leastValuableEntry->value = (short)val;
-    leastValuableEntry->boundAndAge = (uint8_t)(bound | numOfSearchShiftTwo);
-    leastValuableEntry->movecode = movecode;
-    leastValuableEntry->staticeval = staticeval;
-}
-#else
-void transposition::addHash(ttentry* entry, U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode)
-{
     const hashupper_t hashupper = GETHASHUPPER(hash);
     const uint8_t ttdepth = depth - TTDEPTH_OFFSET;
 
@@ -284,13 +231,7 @@ void transposition::addHash(ttentry* entry, U64 hash, int val, int16_t staticeva
         entry->staticeval = staticeval;
         entry->value = (int16_t)val;
     }
-#ifdef SDEBUG
-    if (cluster->debugHash && (uint32_t)(cluster->debugHash >> 32) == leastValuableEntry->hashupper)
-        cluster->debugStoredBy = "";
-
-#endif
 }
-#endif
 
 
 void transposition::printHashentry(U64 hash)
@@ -315,44 +256,6 @@ void transposition::printHashentry(U64 hash)
 }
 
 
-#if 0
-template <bool qsprobe>
-int transposition::probeHash(U64 hash, int *val, int *staticeval, uint16_t *movecode, int depth, int alpha, int beta, int ply)
-{
-#ifdef EVALTUNE
-    // don't use transposition table when tuning evaluation
-    return false;
-#endif
-    unsigned long long index = hash & sizemask;
-    transpositioncluster* data = &table[index];
-    for (int i = 0; i < TTBUCKETNUM; i++)
-    {
-        transpositionentry *e = &(data->entry[i]);
-        #### THIS logic needs to go to the calling functions in search.cpp or wherever ###
-        if (e->hashupper == GETHASHUPPER(hash))
-        {
-            *movecode = e->movecode;
-            *staticeval = e->staticeval;
-            int bound = (e->boundAndAge & BOUNDMASK);
-            int v = FIXMATESCOREPROBE(e->value, ply);
-            if (bound == HASHEXACT)
-                *val = v;
-            else if (bound == HASHALPHA && v <= alpha)
-                *val = alpha;
-            else if (bound == HASHBETA && v >= beta)
-                *val = beta;
-            else
-                // value outside boundary
-                return 0;
-            return (qsprobe ? 1 : (e->depth >= depth ? e->depth : 0));
-        }
-        ####################################################################################
-    }
-    // not found
-    return 0;
-}
-#else
-template <bool qsprobe>
 ttentry* transposition::probeHash(U64 hash, bool* bFound)
 {
     transpositioncluster* cluster = &table[hash & sizemask];
@@ -386,7 +289,6 @@ ttentry* transposition::probeHash(U64 hash, bool* bFound)
     }
     return leastValuableEntry;
 }
-#endif
 
 
 uint16_t transposition::getMoveCode(U64 hash)
@@ -470,8 +372,3 @@ bool  Materialhash::probeHash(U64 hash, Materialhashentry **entry)
 
 
 transposition tp;
-
-// Explicit template instantiation
-// This avoids putting these definitions in header file
-template ttentry* transposition::probeHash<true>(U64, bool*);
-template ttentry* transposition::probeHash<false>(U64, bool*);

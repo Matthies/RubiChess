@@ -213,7 +213,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     STATISTICSDO(if (depth < statistics.qs_mindepth) statistics.qs_mindepth = depth);
 
     bool tpHit;
-    ttentry* tte = tp.probeHash<true>(hash, &tpHit);
+    ttentry* tte = tp.probeHash(hash, &tpHit);
     int hashscore = tpHit ? FIXMATESCOREPROBE(tte->value, ply) : NOSCORE;
     uint16_t hashmovecode = tpHit ? tte->movecode : 0;
 
@@ -427,7 +427,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
 
     // TT lookup
     bool tpHit;
-    ttentry* tte = tp.probeHash<false>(newhash, &tpHit);
+    ttentry* tte = tp.probeHash(newhash, &tpHit);
     int hashscore = tpHit ? FIXMATESCOREPROBE(tte->value, ply) : NOSCORE;
     uint16_t hashmovecode = tpHit ? tte->movecode : 0;
     int staticeval = tpHit ? tte->staticeval : NOSCORE;
@@ -707,7 +707,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
             if ((mc & 0xffff) == hashmovecode
                 && depth >= sps.singularmindepth
                 && !excludeMove
-                //&& tp.probeHash<false>(newhash, &hashscore, &staticeval, &hashmovecode, depth - 3, alpha, beta, ply)  // FIXME: maybe needs hashscore = FIXMATESCOREPROBE(hashscore, ply);
                 && (tte->boundAndAge & HASHBETA)
                 && FIXDEPTHFROMTT(tte->depth) >= depth - 3
 #ifdef NNUELEARN
@@ -961,7 +960,7 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
     }
 
 #ifdef SDEBUG
-    uint16_t debugMove;
+    uint16_t debugMove = 0;
     bool isDebugPv = triggerDebug(&debugMove);
     bool debugMovePlayed = false;
     SDEBUGDO(isDebugPv, pvaborttype[1] = PVA_UNKNOWN; pvdepth[0] = depth; pvalpha[0] = alpha; pvbeta[0] = beta; pvmovenum[0] = 0; pvadditionalinfo[0] = "";);
@@ -969,7 +968,7 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
 
     bool tpHit;
     int newDepth;
-    ttentry* tte = tp.probeHash<false>(hash, &tpHit);
+    ttentry* tte = tp.probeHash(hash, &tpHit);
     int score = tpHit ? tte->value : NOSCORE;
     uint16_t hashmovecode = tpHit ? tte->movecode : 0;
     int staticeval = tpHit ? tte->staticeval : NOSCORE;
@@ -1416,8 +1415,7 @@ void mainSearch(searchthread *thr)
                 if (!pos->bestmove)
                 {
                     bool tpHit;
-                    ttentry* tte = tp.probeHash<false>(pos->hash, &tpHit);
-                    //tp.probeHash<false>(pos->hash, &score, &dummystaticeval, &mc, MAXDEPTH, alpha, beta, 0);
+                    ttentry* tte = tp.probeHash(pos->hash, &tpHit);
                     if (tpHit)
                     {
                         pos->bestmove = pos->shortMove2FullMove(tte->movecode);
@@ -1645,5 +1643,6 @@ void mainSearch(searchthread *thr)
 // Explicit template instantiation
 // This avoids putting these definitions in header file
 template int chessposition::alphabeta<NoPrune>(int alpha, int beta, int depth, bool cutnode);
+template int chessposition::rootsearch<MultiPVSearch>(int, int, int*, int, int);
 template void mainSearch<SinglePVSearch>(searchthread*);
 template void mainSearch<MultiPVSearch>(searchthread*);

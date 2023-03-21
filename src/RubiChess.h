@@ -1043,7 +1043,7 @@ public:
     void addHash(ttentry* entry, U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode);
     void printHashentry(U64 hash);
     //template <bool qsprobe> int probeHash(U64 hash, int *val, int *staticeval, uint16_t *movecode, int depth, int alpha, int beta, int ply);
-    template <bool qsprobe> ttentry* probeHash(U64 hash, bool *bFound);
+    ttentry* probeHash(U64 hash, bool *bFound);
     uint16_t getMoveCode(U64 hash);
     unsigned int getUsedinPermill();
     void nextSearch() { numOfSearchShiftTwo = (numOfSearchShiftTwo + AGEINC) & AGEMASK; }
@@ -1056,7 +1056,7 @@ public:
         transpositioncluster* data = &table[h & sizemask];
         for (int i = 0; i < TTBUCKETNUM; i++)
         {
-            transpositionentry *e = &(data->entry[i]);
+            ttentry *e = &(data->entry[i]);
             if (e->hashupper == GETHASHUPPER(h))
                 return "Depth=" + to_string(e->depth) + " Value=" + to_string(FIXMATESCOREPROBE(e->value, p)) + "(" + to_string(e->boundAndAge & BOUNDMASK) + ")  pv=" + data->debugStoredBy;
         }
@@ -2220,7 +2220,7 @@ public:
 
     U64 nnue_accupdate_all;     // total number of calls to UpdateAccumulator
     U64 nnue_accupdate_cache;   // total number of already up-to-date accumulators
-    U64 nnue_accupdate_inc;     // total number of incremental updates 
+    U64 nnue_accupdate_inc;     // total number of incremental updates
     U64 nnue_accupdate_full;    // total number of full updates
 
 
