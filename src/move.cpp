@@ -208,9 +208,9 @@ void chessposition::getRootMoves()
 
     uint16_t moveTo3fold = 0;
     bool bImmediate3fold = false;
-    int ttscore, tteval;
-    uint16_t tthashmovecode;
-    bool tthit = tp.probeHash<false>(hash, &ttscore, &tteval, &tthashmovecode, 0, SHRT_MIN + 1, SHRT_MAX, 0);
+
+    bool tthit;
+    ttentry* tte = tp.probeHash(hash, &tthit);
     bool bSearchmoves = (en.searchmoves.size() > 0);
 
     excludemovestack[0] = 0; // FIXME: Not very nice; is it worth to do do singular testing in root search?
@@ -236,7 +236,7 @@ void chessposition::getRootMoves()
                     bImmediate3fold = true;
                     moveTo3fold = m->code;
                 }
-                else if ((uint16_t)m->code == tthashmovecode)
+                else if ((uint16_t)m->code == tte->movecode)
                 {
                     // Test if this move makes a 3fold possible for opponent
                     prepareStack();
@@ -267,7 +267,7 @@ void chessposition::getRootMoves()
     }
     if (moveTo3fold)
         // Hashmove triggers 3fold immediately or with following move; fix hash
-        tp.addHash(hash, SCOREDRAW, tteval, bImmediate3fold ? HASHBETA : HASHALPHA, MAXDEPTH, moveTo3fold);
+        tp.addHash(tte, hash, SCOREDRAW, tte->staticeval, bImmediate3fold ? HASHBETA : HASHALPHA, 250 + TTDEPTH_OFFSET, moveTo3fold);
 }
 
 
