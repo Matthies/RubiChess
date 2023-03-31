@@ -1071,6 +1071,8 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
             guiCom << "info depth " + to_string(depth) + " currmove " + m->toString() + " currmovenumber " + to_string(i + 1) + "\n";
 #endif
         int reduction = 0;
+        CurrentMoveNum[1] = i + 1;
+
 
         // Late move reduction
         if (!ISTACTICAL(m->code))
