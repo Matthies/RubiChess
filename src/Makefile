@@ -28,6 +28,7 @@ bmi2 = no
 avx512 = no
 neon = no
 zlib = no
+debug = no
 
 PTHREADLIB=-pthread
 # Use workaround for weak symbols problem in pthreads; https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58909
@@ -47,8 +48,17 @@ ifeq ($(EXE),)
 	EXE=RubiChess
 endif
 
-CXXFLAGS=-std=c++11 -Wall -O3 -flto -pedantic -Wextra -Wshadow
-CFLAGS=-Wall -O3 -pedantic -Wextra -Wshadow
+CXXFLAGS=-std=c++11 -Wall -pedantic -Wextra -Wshadow
+CFLAGS=-Wall -pedantic -Wextra -Wshadow
+
+ifeq ($(debug),yes)
+	CXXFLAGS += -g -O0
+	CFLAGS += -g -O0
+else
+	CXXFLAGS += -O3 -flto
+	CFLAGS += -O3
+endif
+
 ifneq (, $(findstring MINGW64,$(UNAME_S)))
 	# Always do a static built with Mingw
 	LDFLAGS += -static
@@ -263,7 +273,9 @@ VERSION=$(MAJORVERSION)$(MINORVERSION)
 
 default: net arch
 	@$(MAKE) compile MESSAGE='Compiling standard build ...'
+ifneq ($(debug),yes)
 	@$(STRIP) $(EXE)$(EXEEXT)
+endif
 
 build: default
 
@@ -283,6 +295,7 @@ arch: libclean
 	@echo "sse2  : $(sse2)"
 	@echo "neon  : $(neon)"
 	@echo "zlib  : $(zlib)"
+	@echo "debug : $(debug)"
 
 net:
 ifeq ($(EVALFILE),$(filter $(EVALFILE),default))
@@ -343,7 +356,9 @@ endif
 	@$(RM) ./$(PROFEXE)
 	@$(MAKE) compile EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS=$(PGOEXTRALDFLAGS) MESSAGE='Compiling optimized build ...'
 	@$(MAKE) profileclean
+ifneq ($(debug),yes)
 	@$(STRIP) $(EXE)$(EXEEXT)
+endif
 	@echo Binary $(EXE) created successfully.
 
 profile-build: net
