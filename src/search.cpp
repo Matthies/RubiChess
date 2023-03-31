@@ -1073,7 +1073,6 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
         int reduction = 0;
         CurrentMoveNum[1] = i + 1;
 
-
         // Late move reduction
         if (!ISTACTICAL(m->code))
         {
