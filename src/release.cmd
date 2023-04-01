@@ -12,35 +12,44 @@ if exist C:\bin\SDE\sde.exe (
   echo Found SDE at C:\bin\SDE\sde.exe
 )
 
+set vcvarscmdicx="%ProgramFiles(x86)%\Intel\oneAPI\setvars.bat"
+set vcvarscmd22="%ProgramFiles%\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat"
+set vcvarscmd19="%ProgramFiles(x86)%\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat"
 
-
-set vcvarscmd=%ProgramFiles(x86)%\Intel\oneAPI\setvars.bat
-::if exist "%vcvarscmd%" goto buildicx
-
-set vcvarscmd=%ProgramFiles%\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat
-if exist "%vcvarscmd%" goto build
-
-set vcvarscmd=%ProgramFiles(x86)%\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat
-if exist "%vcvarscmd%" goto build
-
+set vcvarscmd=
+set vsver=
+if exist %vcvarscmd22% (
+  set vcvarscmd=%vcvarscmd22%
+  set vsver=vs2022
+  goto build
+)
+if exist %vcvarscmd19% (
+  set vcvarscmd=%vcvarscmd19%
+  set vsver=vs2019
+  goto build
+)
 echo No supported MSVC build tools found. Exit!
 goto end
 
 :build
-echo Found MSVC Build tools %vcvarscmd%
+::
+:: x64-64 buils
+::
+if exist %vcvarscmdicx% (
+  echo Found Intel ICX compiler %vcvarscmdicx%
+  call %vcvarscmdicx% intel64 %vsver%
+  nmake -c -f Makefile.clang release COMP=icx
+) else (
+  echo Found MSVC Build tools %vcvarscmd%
+  call %vcvarscmd% x64 -vcvars_ver=14.16
+  nmake -c -f Makefile.clang release COMP=clang
+)
 
-call "%vcvarscmd%" x64 -vcvars_ver=14.16
+::
+:: ARM64 build
+::
+call %vcvarscmd% x64_arm64 -vcvars_ver=14.16
 nmake -c -f Makefile.clang release COMP=clang
-
-call "%vcvarscmd%" x64_arm64 -vcvars_ver=14.16
-nmake -c -f Makefile.clang release COMP=clang
-goto end
-
-:buildicx
-echo Found Intel ICX compiler %vcvarscmd%
-
-call "%vcvarscmd%" intel64 vs2022
-nmake -c -f Makefile.clang release COMP=icx
 
 :end
 pause
