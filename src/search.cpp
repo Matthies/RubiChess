@@ -1108,8 +1108,11 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
 
         nodespermove[(uint16_t)m->code] += nodes - nodesbeforemove;
 
-        if (CheckForImmediateStop())
+        if (en.stopLevel == ENGINESTOPIMMEDIATELY)
+        {
+            // time is over; immediate stop requested
             return bestscore;
+        }
 
         if (!ISTACTICAL(m->code))
             quietMoves[0][quietsPlayed++] = m->code;
