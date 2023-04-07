@@ -148,7 +148,7 @@ CPUFLAGS = "$(shell ./$(CPUTEST))"
 endif
 
 # Common supported x64 and ARM architectures
-ifneq (,$(findstring x86-64,$(ARCH)))
+ifneq (,$(findstring x86-64-sse2,$(ARCH)))
 CPUFLAGS = "sse2"
 endif
 ifneq (,$(findstring x86-64-avx512,$(ARCH)))
@@ -380,6 +380,7 @@ release_x86:
 	@$(MAKE) pgo-rename  ARCH=x86-64-modern PTHREADLIB=$(PTHREADSTATICLIB)
 	@$(MAKE) pgo-rename  ARCH=x86-64-ssse3 PTHREADLIB=$(PTHREADSTATICLIB)
 	@$(MAKE) pgo-rename  ARCH=x86-64-sse3-popcnt PTHREADLIB=$(PTHREADSTATICLIB)
+	@$(MAKE) pgo-rename  ARCH=x86-64-sse2 PTHREADLIB=$(PTHREADSTATICLIB)
 	@$(MAKE) pgo-rename  ARCH=x86-64 PTHREADLIB=$(PTHREADSTATICLIB)
 
 release_arm64:
