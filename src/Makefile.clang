@@ -127,7 +127,7 @@ CPUFLAGS=popcnt ssse3 sse2
 CPUFLAGS=ssse3 sse2
 !ELSEIF "$(ARCH)" == "x86-64-sse3-popcnt"
 CPUFLAGS=popcnt sse2
-!ELSEIF "$(ARCH)" == "x86-64"
+!ELSEIF "$(ARCH)" == "x86-64-sse2"
 CPUFLAGS=sse2
 !ELSEIF "$(ARCH)" == "arm64-neon"
 CPUFLAGS=neon
@@ -264,6 +264,7 @@ releaseversion:
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-modern
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-ssse3
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-sse3-popcnt
+	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-sse2
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64
 !ENDIF
 !IF "$(VSCMD_ARG_TGT_ARCH)" == "arm64"
