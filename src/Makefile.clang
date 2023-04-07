@@ -67,18 +67,18 @@ SDE=$(SDEDEFAULT)
 # compilercheck
 !IF !DEFINED(CCHECK)
 !MESSAGE Compiler and Tools:
-!IF !EXIST($(CXX)) && [$(CXX) --version > nul 2>&1] != 0
-!ERROR Compiler $(CXX) not found. Exit!
+!IF [$(CXX) --version > nul 2>&1] != 0
+!ERROR Compiler $(CXX) not found or not working. Exit!
 !ELSE
 !MESSAGE Found Compiler $(CXX).
 !ENDIF
-!IF !EXIST($(LD)) && [$(LD) --version > nul 2>&1] != 0
-!ERROR Linker $(LD) not found. Exit!
+!IF [$(LD) --version > nul 2>&1] != 0
+!ERROR Linker $(LD) not found or not working. Exit!
 !ELSE
 !MESSAGE Found Linker $(LD).
 !ENDIF
-!IF !EXIST($(PROFDATATOOLEXE)) && [$(PROFDATATOOLEXE) merge --version > nul 2>&1] != 0
-!ERROR Profiling tool $(PROFDATATOOLEXE) not found. Exit!
+!IF [$(PROFDATATOOLEXE) --help > nul 2>&1] != 0
+!ERROR Profiling tool $(PROFDATATOOLEXE) not found or not working. Exit!
 !ELSE
 !MESSAGE Found Profiling tool $(PROFDATATOOLEXE).
 !ENDIF
