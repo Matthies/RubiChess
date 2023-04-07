@@ -1,17 +1,22 @@
 #
 # Start MSVC Command prompt for x64 native tools and
-# nmake /f Makefile.clang release [SDE="c:\..\sde.exe"]	to build all binaries for release package in subfolder Release-clang using the Intel emulator where necessary
-# nmake /f Makefile.clang build [ARCH=...]				to build fast binary
-# nmake /f Makefile.clang profile-build [ARCH=...]		to build even faster binary
+# nmake /f Makefile.clang <target> [COMP=icx|clang] [SDE="c:\..\sde.exe"] [ARCH=...]
+# <target> can be
+# release		to build all binaries for release package in subfolder Release-clang using the Intel emulator where necessary
+# build			to build fast binary
+# profile-build to build even faster binary
+# release-arm64	to cross-compile for ARCH arm64-neon (needs shell with cross-plattform settings)
 # ARCH can be one of x86-64-avx512, x86-64-bmi2, x86-64-avx2, x86-64-modern, x86-64-ssse3, x86-64-sse3-popcnt, x86-64
 # If ARCH is omitted the CPU features are auto-detected
-# nmake /f Makefile.clang release-arm64					to cross-compile for ARCH arm64-neon (needs shell with cross-plattform settings)
-
+#
 # General settings
-# For best Windows x64 builds install LLVM version 9 from https://releases.llvm.org/9.0.0/LLVM-9.0.0-win64.exe
-# in folder C:\Program Files\LLVM9
+# For best Windows x64 builds install
+# a. Intel ICX compiler from https://www.intel.com/content/www/us/en/developer/articles/tool/oneapi-standalone-components.html#dpcpp-cpp in default folder C:\Program Files (x86)\Intel\oneAPI or
+# b. LLVM version 9 from https://releases.llvm.org/9.0.0/LLVM-9.0.0-win64.exe in folder C:\Program Files\LLVM9
 # For profiling a not supported platform (like avx512 in my case) set SDE to the Intel Software Development Emulator https://software.intel.com/content/www/us/en/develop/articles/intel-software-development-emulator.html
 # and define EMU when calling pgo-rename
+
+!IF !DEFINED(COMP) || "$(COMP)" == "clang"
 !IF !DEFINED(CLANGVER)
 CLANGVER=9
 !ENDIF
@@ -19,6 +24,17 @@ LLVMInstallDir=C:\Program Files\LLVM$(CLANGVER)
 CXX="$(LLVMInstallDir)\bin\clang-cl.exe"
 LD="$(LLVMInstallDir)\bin\lld-link.exe"
 PROFDATATOOLEXE="$(LLVMInstallDir)\bin\llvm-profdata.exe"
+PROFLIB="$(LLVMInstallDir)\lib\clang\$(CLANGVER).0.0\lib\windows\clang_rt.profile-x86_64.lib"
+!ELSEIF "$(COMP)" == "icx"
+ICXInstallDir=C:\Program Files (x86)\Intel\oneAPI\compiler\latest\windows
+CXX="$(ICXInstallDir)\bin\icx-cl.exe"
+LD="$(ICXInstallDir)\bin-llvm\lld-link.exe"
+PROFDATATOOLEXE="$(ICXInstallDir)\bin-llvm\llvm-profdata.exe"
+PROFLIB="$(ICXInstallDir)\lib\clang\16.0.0\lib\windows\clang_rt.profile-x86_64.lib"
+!ELSE
+!ERROR Not supported compiler $(COMP)
+!ENDIF
+
 SOURCE=*.cpp
 OBJ=*.obj
 RELDIR=Release-clang
@@ -51,18 +67,18 @@ SDE=$(SDEDEFAULT)
 # compilercheck
 !IF !DEFINED(CCHECK)
 !MESSAGE Compiler and Tools:
-!IF !EXIST($(CXX))
-!ERROR Compiler $(CXX) not found. Exit!
+!IF [$(CXX) --version > nul 2>&1] != 0
+!ERROR Compiler $(CXX) not found or not working. Exit!
 !ELSE
 !MESSAGE Found Compiler $(CXX).
 !ENDIF
-!IF !EXIST($(LD))
-!ERROR Linker $(LD) not found. Exit!
+!IF [$(LD) --version > nul 2>&1] != 0
+!ERROR Linker $(LD) not found or not working. Exit!
 !ELSE
 !MESSAGE Found Linker $(LD).
 !ENDIF
-!IF !EXIST($(PROFDATATOOLEXE))
-!ERROR Profiling tool $(PROFDATATOOLEXE) not found. Exit!
+!IF [$(PROFDATATOOLEXE) --help > nul 2>&1] != 0
+!ERROR Profiling tool $(PROFDATATOOLEXE) not found or not working. Exit!
 !ELSE
 !MESSAGE Found Profiling tool $(PROFDATATOOLEXE).
 !ENDIF
@@ -207,17 +223,17 @@ compile: $(ZLIBDIR)\zlib.lib
 	@FOR /F "tokens=2" %A IN ('cmd /c "($(GIT) show --name-only --abbrev-commit || echo commit unknown) | findstr /r /c:"^commit"" ') DO @(set GITID=%A&& nmake -f Makefile.clang $* /$(MAKEFLAGS) && exit /B)
 !ELSE
 	@$(CXX) $(CXXFLAGS) $(ARCHFLAGS) $(SOURCE) $(PROFILEFLAGS) -D GITVER=\"$(GITVER)\" -D GITID=\"$(GITID)\"
-!IFDEF PROFLIB
-	@$(LD) $(LDFLAGS) /OUT:$(PROFEXE).exe $(OBJ) "$(PROFLIB)"
+!IFDEF USEPROFLIB
+	@$(LD) $(LDFLAGS) /OUT:$(PROFEXE).exe $(OBJ) "$(USEPROFLIB)"
 !ELSE
-	@$(LD) $(LDFLAGS) /OUT:$(RELDIR)\$(EXE).exe $(OBJ) "$(PROFLIB)"
+	@$(LD) $(LDFLAGS) /OUT:$(RELDIR)\$(EXE).exe $(OBJ)
 !ENDIF
 !ENDIF
 !ENDIF
 
 pgo: printarch
 	@echo Compiling instrumented binary...
-	@nmake -c -f Makefile.clang compile PROFILEFLAGS=-fprofile-instr-generate=$(PROFEXE).clangprof-raw PROFLIB="$(LLVMInstallDir)\lib\clang\$(CLANGVER).0.0\lib\windows\clang_rt.profile-x86_64.lib"
+	@nmake -c -f Makefile.clang compile PROFILEFLAGS=-fprofile-instr-generate=$(PROFEXE).clangprof-raw USEPROFLIB=$(PROFLIB)
 	@echo Bench to generate profiling data...
 	@($(PROFEXE) -bench >nul || (if exist $(SDE) ( @echo Using Intels Software Development Emulator... && $(SDE) -- $(PROFEXE) -bench >nul) else (@echo Intels Software Development Emulator needed but not found at $(SDE). Performance will be poor.)))
 	@$(PROFDATATOOLEXE) merge -output=$(PROFEXE).clangprof $(PROFEXE).clangprof-raw

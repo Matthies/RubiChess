@@ -49,7 +49,8 @@ ifeq ($(EXE),)
 endif
 
 CXXFLAGS=-std=c++11 -Wall -pedantic -Wextra -Wshadow
-CFLAGS=-Wall -pedantic -Wextra -Wshadow
+CFLAGS=-Wall -pedantic -Wextra -Wshadow -Wno-implicit-function-declaration
+
 
 ifeq ($(debug),yes)
 	CXXFLAGS += -g -O0
@@ -74,9 +75,13 @@ ifeq ($(COMP),$(filter $(COMP),gcc))
 	PROFMERGE=
 endif
 
-ifeq ($(COMP),$(filter $(COMP), clang ndk))
+ifeq ($(COMP),$(filter $(COMP), clang ndk icx))
 	CXX=clang++
 	MYCC=clang
+ifeq ($(COMP),$(filter $(COMP), icx))
+	CXX=icpx
+	MYCC=icx
+endif
 	LDFLAGS += $(shell type lld 1>/dev/null 2>/dev/null && echo "-fuse-ld=lld")
 	INSTRUMENTEDEXTRACXXFLAGS='-fprofile-instr-generate=$(EXE).clangprof-raw'
 	INSTRUMENTEDEXTRALDFLAGS=
