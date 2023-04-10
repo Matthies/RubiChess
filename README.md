@@ -17,7 +17,7 @@ Ethereal, Stockfish, Pirarucu, Laser, Koivisto, Berserk, ...
 Thank you for the great list of engines at http://www.computerchess.org.uk/ccrl/4040/
 Not mentioned all the other documentation and tools freely available.
 
-Also a big thank you goes to the guys at http://chess.grantnet.us/ especially Andrew Grant for running and improving this testing framework and to Bojun Guo (noobpwnftw) for spending all the hardware resources for testing.
+Also a big thank you goes to the guys at http://chess.grantnet.us/ especially to Andrew Grant for running and improving this testing framework and to Bojun Guo (noobpwnftw) for spending all the hardware resources for testing.
 ## NNUE
 Starting with version 1.9 RubiChess supports evaluation using NNUE weight files. With version 2.0 NNUE evaluation becomes the default.
 
