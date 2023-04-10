@@ -355,7 +355,10 @@ ifeq ($(COMP),ndk)
 	@if test -f $(EXE).clangprof-raw; then echo "$(RUBINET) already exists."; else echo "Downloading $(RUBINET)..."; $(WGETCMD) $(NETURL)$(RUBINET) > $(RUBINET); fi;
 	@adb emu kill
 else
-	@./$(PROFEXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo "Running bench to generate profiling data... successful!") || (echo "Running bench to generate profiling data... failed! Profiling with native build..." && $(MAKE) profileclean && $(MAKE) compile ARCH=native EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Compiling instrumented build ...' && ./$(PROFEXE) -bench 1>/dev/null)
+	# @./$(PROFEXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo "Running bench to generate profiling data... successful!") || (echo "Running bench to generate profiling data... failed! Profiling with native build..." && $(MAKE) profileclean && $(MAKE) compile ARCH=native EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Compiling instrumented build ...' && ./$(PROFEXE) -bench 1>/dev/null)
+	@echo "Running bench to generate profiling data..." && ./$(PROFEXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo " Profiling successful!") \
+	|| (echo " Profiling failed! Trying to use SDE..." && $(SDE) -icx -- ./$(PROFEXE) -bench 1>/dev/null && [ $$? -eq 0 ] && echo " Profiling successful!") \
+	|| (echo " Profiling with SDE failed! Profiling with native build..." && $(MAKE) profileclean && $(MAKE) compile ARCH=native EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Compiling instrumented build ...' && ./$(PROFEXE) -bench 1>/dev/null)
 endif
 	@$(PROFMERGE)
 	@$(RM) ./$(PROFEXE)
