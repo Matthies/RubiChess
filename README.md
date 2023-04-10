@@ -72,3 +72,4 @@ Some more notes about compiling (for me and maybe others):
 
 ```make release COMP=icx SDE=~/sde-external-9.14.0-2022-10-25-lin/sde```
 
+- The Wiki has some additional informations about compiling RubiChess for Android: https://github.com/Matthies/RubiChess/wiki/Compiling-RubiChess-for-Android
