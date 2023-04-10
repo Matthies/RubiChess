@@ -625,7 +625,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
     }
 
     // No hashmove reduction
-    if (PVNode && !hashmovecode && depth >= sps.nohashreductionmindepth)
+    if (!hashmovecode && depth >= sps.nohashreductionmindepth + 2 * cutnode)
         // PV node and no best move from hash
         // Instead of iid the idea of Ed Schroeder to just decrease depth works well
         depth--;
