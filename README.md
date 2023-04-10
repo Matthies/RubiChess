@@ -31,26 +31,44 @@ Current default net will be downloaded automatically when compiling the engine a
 
 ## Binaries and hints to build some
 I provide release binary packages for Windows x64 only. Depending on the type of your x86-64 CPU you can choose from
-1. RubiChess-x86-64-avx512: For best performance on new Intel CPUs supporting the AVX512 extensions.
-2. RubiChess-x86-64-bmi2: For best performance on modern intel CPUs and probably also AMD Ryzen beginning from Zen3/5?00X CPU
-3. RubiChess-x86-64-avx2: For best performance on modern AMD Ryzen Zen/Zen2
-4. RubiChess-x86-64-modern: For older CPUs that support POPCNT but no AVX2
-5. RubiChess-x86-64-ssse3: For even older CPUs with SSSE3 but no POPCNT
-6. RubiChess-x86-64-sse3-popcount: For old AMD CPUs supporting POPCNT and SSE3 but no SSSE3 like Phenom II
-7. RubiChess-x86-64: For very old x86-64 CPU with just SSE2 support
+- __RubiChess-x86-64-avx512__: For best performance on new Intel CPUs supporting the AVX512 extensions.
+- __RubiChess-x86-64-bmi2__: For best performance on modern Intel CPUs and AMD Ryzen starting from Zen3/5?00X CPU
+- __RubiChess-x86-64-avx2__: For best performance on modern AMD Ryzen Zen/Zen2
+- __RubiChess-x86-64-modern__: For older CPUs that support POPCNT but no AVX2
+- __RubiChess-x86-64-ssse3__: For even older CPUs with SSSE3 but no POPCNT
+- __RubiChess-x86-64-sse3-popcount__: For old AMD CPUs supporting POPCNT and SSE3 but no SSSE3 like Phenom II
+- __RubiChess-x86-64-sse2__: This should run on even oldest x86-64 CPU
+- __RubiChess-x86-64__: Native and slowest build without SIMD support, just for debugging purposes
 
 You will get a warning at startup if the selected binary doesn't match your CPU or it will just crash.
 
 RubiChess should build successfully on any x64 Linux, on MacOS (x64 and ARM64/M1) and on Raspbian (at least up to Raspi 3 and 4 which I own and tested) using ```make``` from inside the src subfolder.
 
-For fastest binaries you should use the Clang compiler and the following build command
+For fastest binaries you should use the Intel icx compiler (based on Clang/LLVM but with Intel's optimizations) and the following build command
+
+```make profile-build COMP=icx```
+
+or native Clang which is a little bit slower:
 
 ```make profile-build COMP=clang```
 
-You may need to install some additional packages like clang, lld and llvm to make this work.
+You may need to install some additional packages like the Intel compiler (https://www.intel.com/content/www/us/en/developer/articles/tool/oneapi-standalone-components.html#dpcpp-cpp) or clang, lld and llvm and add bin paths of compiler and profiler to your PATH to make this work.
+
 You can also use the (default) gcc/g++ compiler ```make profile-build``` which probably works without additional packages but the binaries will be a little bit slower.
 
-Note 1: For a profile-build in MacOS (Darwin) you have to include the folder containing the llvm-profdata tool in your PATH:
+Some more notes about compiling (for me and maybe others):
+
+- For a profile-build in MacOS (Darwin) you have to include the folder containing the llvm-profdata tool in your PATH:
+
 ```export PATH=$PATH:/Library/Developer/CommandLineTools/usr/bin/```
 
-Note 2: By default a 'native' binary is compiled by detecting the CPU features of the computer. If you want to create a binary with a special set of CPU features, append ARCH=x86-64-... parameter to make. For a list of supported archs looks above.
+- For a build using the Intel icx compiler (unzipped to your home folder) add two folders to your path
+
+```export PATH=~/intel/oneapi/compiler/latest/linux/bin/:~/intel/oneapi/compiler/latest/linux/bin-llvm/:$PATH```
+
+- By default a 'native' binary is compiled by detecting the CPU features of the computer. If you want to create a binary with a special set of CPU features, append ARCH=x86-64-... parameter to make. For a list of supported archs look above.
+
+- For profiling an arch not supported by your CPU (like x86-64-avx512 in my case), you can use Intel's SDE by giving SDE=/path/to/sde to the make process:
+
+```make release COMP=icx SDE=~/sde-external-9.14.0-2022-10-25-lin/sde```
+
