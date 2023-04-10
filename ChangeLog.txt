@@ -1,5 +1,17 @@
 ChangeLog
 =========
+20230410 (release 2023-04-10) :
+    - New option 'LimitNps' to limit speed (and strength) of the engine
+    - New default network nn-fdccaaabd3-20230314.nnue
+    - Fix performance problem reading big tablebase files in Linux
+    - Some fixes to avoid blunders in won (TB-)endgames using many threads
+    - TT access now uses a pointer to entry instead of direct read
+    - Measure and log delay of engine and communication with GUI
+    - Some small improvements in search (history extension, no tt move reduction)
+    - perft is now 50% faster
+    - Additional native x64 binary is now built avoiding even SSE2 code (for debugging purpose)
+    - Support for Intel icx compiler which creates builds even faster than Clang
+
 20221203 (release 2022-12-03) :
     - Bugfix for MultiPV which was completely broken in 20221120
 
