@@ -1001,22 +1001,22 @@ bool NnueNetworkLayer<inputdims, outputdims>::OverflowPossible()
 
                 for (unsigned int k = 0; k < NumOutputRegsSmall; ++k)
                 {
-                    for (unsigned int j = 0; j < InputSimdWidth; j += 2)
+                    for (unsigned int j = 0; j < SimdWidth; j += 2)
                     {
                         // Assuming input cannot be negative.
                         const int worst_case_result =
-                            max(0, col0[k * InputSimdWidth + j + 0] * 127)
-                            + max(0, col0[k * InputSimdWidth + j + 1] * 127)
-                            + max(0, col1[k * InputSimdWidth + j + 0] * 127)
-                            + max(0, col1[k * InputSimdWidth + j + 1] * 127);
+                            max(0, col0[k * SimdWidth + j + 0] * 127)
+                            + max(0, col0[k * SimdWidth + j + 1] * 127)
+                            + max(0, col1[k * SimdWidth + j + 0] * 127)
+                            + max(0, col1[k * SimdWidth + j + 1] * 127);
 
                         if (worst_case_result > 32767)
                         {
                             cout << "Weights may cause saturation: "
-                                << (int)col0[k * InputSimdWidth + j + 0] << ", "
-                                << (int)col0[k * InputSimdWidth + j + 1] << ", "
-                                << (int)col1[k * InputSimdWidth + j + 0] << ", "
-                                << (int)col1[k * InputSimdWidth + j + 1] << "\n";
+                                << (int)col0[k * SimdWidth + j + 0] << ", "
+                                << (int)col0[k * SimdWidth + j + 1] << ", "
+                                << (int)col1[k * SimdWidth + j + 0] << ", "
+                                << (int)col1[k * SimdWidth + j + 1] << "\n";
                             possible = true;
                         }
                     }
