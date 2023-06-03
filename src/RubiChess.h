@@ -54,7 +54,7 @@
 //#define NNUELEARN
 
 // Enable this to enable NNUE debug output
-//#define NNUEDEBUG
+#define NNUEDEBUG
 
 
 #ifdef FINDMEMORYLEAKS
@@ -739,13 +739,6 @@ typedef struct {
 } DirtyPiece;
 
 
-extern NnueType NnueReady;
-
-#ifdef NNUEINCLUDED
-extern const char  _binary_net_nnue_start;
-extern const char  _binary_net_nnue_end;
-#endif
-
 class NnueNetsource {
 public:
     ~NnueNetsource() {
@@ -761,6 +754,37 @@ public:
     bool write(unsigned char* source, size_t writesize);
     bool endOfNet();
 };
+
+
+class NnueArchitecture
+{
+public:
+    virtual bool ReadFeatureWeights(NnueNetsource* nr, bool bpz) = 0;
+    virtual bool ReadWeights(NnueNetsource* nr, uint32_t nethash) = 0;
+    virtual void WriteFeatureWeights(NnueNetsource* nr, bool bpz) = 0;
+    virtual void WriteWeights(NnueNetsource* nr, uint32_t nethash) = 0;
+    virtual void RescaleLastLayer(int ratio64) = 0;
+    virtual string GetArchName() = 0;
+    virtual string GetArchDescription() = 0;
+    virtual uint32_t GetFtHash() = 0;
+    virtual uint32_t GetHash() = 0;
+    virtual int GetEval(chessposition* pos) = 0;
+    virtual int16_t* GetFeatureWeight() = 0;
+    virtual int16_t* GetFeatureBias() = 0;
+    virtual int32_t* GetFeaturePsqtWeight() = 0;
+    virtual uint32_t GetFileVersion() = 0;
+    virtual int16_t* CreateAccumulationStack() = 0;
+    virtual int32_t* CreatePsqtAccumulationStack() = 0;
+};
+
+
+extern NnueType NnueReady;
+extern NnueArchitecture* NnueCurrentArch;
+
+#ifdef NNUEINCLUDED
+extern const char  _binary_net_nnue_start;
+extern const char  _binary_net_nnue_end;
+#endif
 
 
 class NnueLayer
@@ -917,15 +941,18 @@ public:
     }
 };
 
-class NnueAccumulator
+#if 1
+class NnueAccumulation
 {
 public:
     // use maximum size for supported archs (input layer: 1024 neurons, 8 buckets by piece number)
-    alignas(64) int16_t accumulation[2][MAXINPUTLAYER];
-    int32_t psqtAccumulation[2][MAXBUCKETNUM];
-    bool computationState[2];
+    int16_t* accumulation;
+    int32_t* psqtAccumulation;
+    //bool computationState[2];
+    //NnueAccumulation();
+    //~NnueAccumulation();
 };
-
+#endif
 
 void NnueInit();
 void NnueRemove();
@@ -1566,7 +1593,9 @@ public:
     int16_t staticevalstack[MAXDEPTH];
     Materialhash mtrlhsh;                               // init in alloc
     Pawnhash pwnhsh;                                    // init in alloc
-    NnueAccumulator accumulator[MAXDEPTH];              // init of state in prepare
+    //NnueAccumulator accumulator[MAXDEPTH];              // init of state in prepare
+    bool computationState[MAXDEPTH][2];
+    NnueAccumulation accumulator;
     DirtyPiece dirtypiece[MAXDEPTH];
     uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];

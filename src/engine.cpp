@@ -249,8 +249,11 @@ void engine::allocThreads()
     for (int i = 0; i < Threads; i++)
     {
         sthread[i].index = i;
-        sthread[i].pos.pwnhsh.setSize(sizeOfPh);
-        sthread[i].pos.mtrlhsh.init();
+        chessposition* pos = &sthread[i].pos;
+        pos->pwnhsh.setSize(sizeOfPh);
+        pos->mtrlhsh.init();
+        pos->accumulator.accumulation = NnueCurrentArch->CreateAccumulationStack();
+        pos->accumulator.psqtAccumulation = NnueCurrentArch->CreatePsqtAccumulationStack();
     }
     prepareThreads();
     resetStats();
@@ -275,8 +278,8 @@ void engine::prepareThreads()
         pos->nullmoveside = 0;
         pos->nodesToNextCheck = 0;
         pos->excludemovestack[0] = 0;
-        pos->accumulator[0].computationState[WHITE] = false;
-        pos->accumulator[0].computationState[BLACK] = false;
+        pos->computationState[0][WHITE] = false;
+        pos->computationState[0][BLACK] = false;
 
         int framesToCopy = rootposition.prerootmovenum + 1; //include stack frame of ply 0
         int startIndex = PREROOTMOVES - framesToCopy + 1;
