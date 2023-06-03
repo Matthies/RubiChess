@@ -713,8 +713,8 @@ enum NnueType { NnueDisabled = 0, NnueArchV1, NnueArchV5 };
 #define MULTIPLEOFN(i,n) (((i) + (n - 1)) / n * n)
 
 // Some limits for static arrays
-#define MAXBUCKETNUM    8
-#define MAXINPUTLAYER   1536
+//#define MAXBUCKETNUM    8
+//#define MAXINPUTLAYER   1536
 
 #if defined(USE_SSE2) && !defined(USE_SSSE3) && defined FASTSSE2
 // for native SSE2 platforms we have faster intrinsics for 16bit integers
@@ -776,6 +776,8 @@ public:
     virtual uint32_t GetFileVersion() = 0;
     virtual int16_t* CreateAccumulationStack() = 0;
     virtual int32_t* CreatePsqtAccumulationStack() = 0;
+    virtual unsigned int GetAccumulationSize() = 0;
+    virtual unsigned int GetPsqtAccumulationSize() = 0;
 };
 
 

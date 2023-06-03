@@ -80,12 +80,12 @@ class NnueArchitectureV1 : public NnueArchitecture {
 public:
     static constexpr unsigned int NnueFtHalfdims = 256;
     static constexpr unsigned int NnueFtOutputdims = NnueFtHalfdims * 2;
-    static_assert(NnueFtOutputdims <= MAXINPUTLAYER, "Accumulator not big enough");
+    //static_assert(NnueFtOutputdims <= MAXINPUTLAYER, "Accumulator not big enough");
     static constexpr unsigned int NnueFtInputdims = 64 * 10 * 64;   // (kingsquare x piecetype x piecesquare)
     static constexpr unsigned int NnueHidden1Dims = 32;
     static constexpr unsigned int NnueHidden2Dims = 32;
     static constexpr unsigned int NnuePsqtBuckets = 0;
-    static_assert(NnuePsqtBuckets <= MAXBUCKETNUM, "Accumulator not big enough");
+    //static_assert(NnuePsqtBuckets <= MAXBUCKETNUM, "Accumulator not big enough");
     static constexpr unsigned int NnueLayerStacks = 1;
     static constexpr unsigned int NnueClippingShift = 6;
 
@@ -170,17 +170,23 @@ public:
         return NNUEFILEVERSIONNOBPZ;    // always write networks without BPZ
     }
     int16_t* CreateAccumulationStack() {
-        return nullptr;
+        return(int16_t*)allocalign64(MAXDEPTH * 2 * NnueFtOutputdims * sizeof(int16_t));
     }
     int32_t* CreatePsqtAccumulationStack() {
         return nullptr;
+    }
+    unsigned int GetAccumulationSize() {
+        return NnueFtOutputdims;
+    }
+    unsigned int GetPsqtAccumulationSize() {
+        return 0;
     }
 };
 
 template <unsigned int NnueFtOutputdims>
 class NnueArchitectureV5 : public NnueArchitecture {
 public:
-    static_assert(NnueFtOutputdims <= MAXINPUTLAYER, "Accumulator not big enough");
+    //static_assert(NnueFtOutputdims <= MAXINPUTLAYER, "Accumulator not big enough");
     static constexpr unsigned int NnueFtHalfdims = NnueFtOutputdims;
     static constexpr unsigned int NnueFtInputdims = 64 * 11 * 64 / 2;
     static constexpr unsigned int NnueHidden1Dims = 16;
@@ -188,7 +194,7 @@ public:
     static constexpr unsigned int NnueHidden2Dims = 32;
     static constexpr unsigned int NnueClippingShift = 6;
     static constexpr unsigned int NnuePsqtBuckets = 8;
-    static_assert(NnuePsqtBuckets <= MAXBUCKETNUM, "Accumulator not big enough");
+    //static_assert(NnuePsqtBuckets <= MAXBUCKETNUM, "Accumulator not big enough");
     static constexpr unsigned int NnueLayerStacks = 8;
 
     static constexpr size_t networkfilesize =   // expected number of bytes remaining after architecture string
@@ -315,6 +321,12 @@ public:
     }
     int32_t* CreatePsqtAccumulationStack() {
         return (int32_t*)allocalign64(MAXDEPTH * 2 * NnuePsqtBuckets * sizeof(int32_t));
+    }
+    unsigned int GetAccumulationSize() {
+        return NnueFtOutputdims;
+    }
+    unsigned int GetPsqtAccumulationSize() {
+        return NnuePsqtBuckets;
     }
 };
 
@@ -1453,7 +1465,12 @@ void NnueRemove()
 
 bool NnueReadNet(NnueNetsource* nr)
 {
+    NnueType oldnt = NnueReady;
+    unsigned int oldaccumulationsize = (NnueCurrentArch ? NnueCurrentArch->GetAccumulationSize() : 0);
+    unsigned int oldpsqtaccumulationsize = (NnueCurrentArch ? NnueCurrentArch->GetPsqtAccumulationSize() : 0);
+    
     NnueReady = NnueDisabled;
+
     NnueRemove();
 
     uint32_t version, hash, size;
@@ -1562,6 +1579,14 @@ bool NnueReadNet(NnueNetsource* nr)
         return false;
 
     NnueReady = nt;
+
+    if (oldnt != NnueReady
+        || oldaccumulationsize != NnueCurrentArch->GetAccumulationSize()
+        || oldpsqtaccumulationsize != NnueCurrentArch->GetPsqtAccumulationSize())
+    {
+        en.allocThreads();
+    }
+
 
     return true;
 }
