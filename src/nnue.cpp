@@ -681,8 +681,6 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 #else
         for (unsigned int l = 0; pos2update[l] >= 0; l++)
         {
-            int16_t* acmlast = accumulator.accumulation + (mslast * 2 + c) * NnueFtHalfdims;
-
             memcpy(accumulator.accumulation + (pos2update[l] * 2 + c) * NnueFtHalfdims, accumulator.accumulation + (mslast * 2 + c) * NnueFtHalfdims, NnueFtHalfdims * sizeof(int16_t));
             memcpy(accumulator.psqtAccumulation + (pos2update[l] * 2 + c) * NnuePsqtBuckets, accumulator.psqtAccumulation + (mslast * 2 + c) * NnuePsqtBuckets, NnuePsqtBuckets * sizeof(int32_t));
 
