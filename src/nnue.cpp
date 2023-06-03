@@ -88,6 +88,18 @@ public:
     //static_assert(NnuePsqtBuckets <= MAXBUCKETNUM, "Accumulator not big enough");
     static constexpr unsigned int NnueLayerStacks = 1;
     static constexpr unsigned int NnueClippingShift = 6;
+    static constexpr size_t networkfilesize =   // expected number of bytes remaining after architecture string
+        sizeof(uint32_t)                                        // Ft hash
+        + NnueFtHalfdims * sizeof(int16_t)                      // bias of feature layer
+        + NnueFtInputdims * NnueFtHalfdims * sizeof(int16_t)    // weights of feature layer
+        + sizeof(uint32_t)                                      // Network layer hash
+        + NnueHidden1Dims * sizeof(int32_t)                     // bias of hidden layer 1
+        + NnueFtOutputdims * NnueHidden1Dims * sizeof(int8_t)   // weights of hidden layer 1
+        + NnueHidden2Dims * sizeof(int32_t)                     // bias of hidden layer 2
+        + NnueHidden1Dims * NnueHidden2Dims * sizeof(int8_t)    // weights of hidden layer 2
+        + 1 * sizeof(int32_t)                                   // bias of output layer
+        + NnueHidden2Dims * 1 * sizeof(int8_t);                 // weights of output layer
+
 
     NnueFeatureTransformer<NnueFtHalfdims, NnueFtInputdims, NnuePsqtBuckets> NnueFt;
     class NnueLayerStack {
@@ -181,6 +193,9 @@ public:
     unsigned int GetPsqtAccumulationSize() {
         return 0;
     }
+    size_t GetNetworkFilesize() {
+        return networkfilesize;
+    }
 };
 
 template <unsigned int NnueFtOutputdims>
@@ -196,7 +211,6 @@ public:
     static constexpr unsigned int NnuePsqtBuckets = 8;
     //static_assert(NnuePsqtBuckets <= MAXBUCKETNUM, "Accumulator not big enough");
     static constexpr unsigned int NnueLayerStacks = 8;
-
     static constexpr size_t networkfilesize =   // expected number of bytes remaining after architecture string
         sizeof(uint32_t)                                            // Ft hash
         + NnueFtOutputdims * sizeof(int16_t)                        // bias of feature layer
@@ -308,12 +322,14 @@ public:
         return NnueFt.psqtWeights;
     }
     uint32_t GetFileVersion() {
+#if 0
         if (NnueFtOutputdims == 512)
             return NNUEFILEVERSIONSFNNv5_512;
         if (NnueFtOutputdims == 768)
             return NNUEFILEVERSIONSFNNv5_768;
         if (NnueFtOutputdims == 1024)
             return NNUEFILEVERSIONSFNNv5_1024;
+#endif
         return NNUEFILEVERSIONSFNNv5_1024;
     }
     int16_t* CreateAccumulationStack() {
@@ -327,6 +343,9 @@ public:
     }
     unsigned int GetPsqtAccumulationSize() {
         return NnuePsqtBuckets;
+    }
+    size_t GetNetworkFilesize() {
+        return networkfilesize;
     }
 };
 
@@ -1587,7 +1606,6 @@ bool NnueReadNet(NnueNetsource* nr)
         en.allocThreads();
     }
 
-
     return true;
 }
 
@@ -1663,9 +1681,6 @@ void NnueWriteNet(vector<string> args)
         }
     }
 
-    NnueNetsource nr;
-    nr.readbuffer = (unsigned char*)allocalign64(1024*1024);
-    nr.next = nr.readbuffer;
 #ifdef USE_ZLIB
 #endif // USE_ZLIB
     ofstream os;
@@ -1689,6 +1704,11 @@ void NnueWriteNet(vector<string> args)
     string sarchitecture = NnueCurrentArch->GetArchDescription();
     uint32_t size = (uint32_t)sarchitecture.size();
 
+    NnueNetsource nr;
+    nr.readbuffersize = 3 * sizeof(uint32_t) + size + NnueCurrentArch->GetNetworkFilesize();
+    nr.readbuffer = (unsigned char*)allocalign64(nr.readbuffersize);
+    nr.next = nr.readbuffer;
+
     nr.write((unsigned char*)&version, sizeof(uint32_t));
     nr.write((unsigned char*)&filehash, sizeof(uint32_t));
     nr.write((unsigned char*)&size, sizeof(uint32_t));
@@ -1701,21 +1721,17 @@ void NnueWriteNet(vector<string> args)
     size_t insize = nr.next - nr.readbuffer;
 
 #ifdef USE_ZLIB
-    unsigned char* deflatebuffer;
+    unsigned char* deflatebuffer = nullptr;
     size_t deflatesize = 0;
-    if (zExport) {
-        deflatebuffer = (unsigned char*)allocalign64(1024 * 1024);
-        if (!deflatebuffer) {
-            guiCom << "Cannot alloc buffer for compression.\n";
-            zExport = false;
-        }
-    }
     if (zExport) {
         if (xFlate(true, nr.readbuffer, &deflatebuffer, insize, &deflatesize) == Z_OK) {
             memcpy(nr.readbuffer, deflatebuffer, deflatesize);
             insize = deflatesize;
         }
-        freealigned64(deflatebuffer);
+        else {
+            guiCom << "Cannot alloc buffer for compression.\n";
+        }
+        free(deflatebuffer);
     }
 #endif
     os.write((char*)nr.readbuffer, insize);
@@ -1745,7 +1761,7 @@ bool NnueNetsource::open()
 
 #if USE_ZLIB
     int ret;
-    unsigned char* inflatebuffer;
+    unsigned char* inflatebuffer = nullptr;
     size_t inflatesize = 0;
 #endif
 

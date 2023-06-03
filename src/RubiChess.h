@@ -778,6 +778,7 @@ public:
     virtual int32_t* CreatePsqtAccumulationStack() = 0;
     virtual unsigned int GetAccumulationSize() = 0;
     virtual unsigned int GetPsqtAccumulationSize() = 0;
+    virtual size_t GetNetworkFilesize() = 0;
 };
 
 
