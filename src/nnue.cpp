@@ -69,9 +69,6 @@ static constexpr int KingBucket[64] = {
 //
 NnueType NnueReady = NnueDisabled;
 eval NnueValueScale = 64;
-
-
-
 NnueArchitecture* NnueCurrentArch;
 
 
@@ -80,12 +77,10 @@ class NnueArchitectureV1 : public NnueArchitecture {
 public:
     static constexpr unsigned int NnueFtHalfdims = 256;
     static constexpr unsigned int NnueFtOutputdims = NnueFtHalfdims * 2;
-    //static_assert(NnueFtOutputdims <= MAXINPUTLAYER, "Accumulator not big enough");
     static constexpr unsigned int NnueFtInputdims = 64 * 10 * 64;   // (kingsquare x piecetype x piecesquare)
     static constexpr unsigned int NnueHidden1Dims = 32;
     static constexpr unsigned int NnueHidden2Dims = 32;
     static constexpr unsigned int NnuePsqtBuckets = 0;
-    //static_assert(NnuePsqtBuckets <= MAXBUCKETNUM, "Accumulator not big enough");
     static constexpr unsigned int NnueLayerStacks = 1;
     static constexpr unsigned int NnueClippingShift = 6;
     static constexpr size_t networkfilesize =   // expected number of bytes remaining after architecture string
@@ -201,7 +196,6 @@ public:
 template <unsigned int NnueFtOutputdims>
 class NnueArchitectureV5 : public NnueArchitecture {
 public:
-    //static_assert(NnueFtOutputdims <= MAXINPUTLAYER, "Accumulator not big enough");
     static constexpr unsigned int NnueFtHalfdims = NnueFtOutputdims;
     static constexpr unsigned int NnueFtInputdims = 64 * 11 * 64 / 2;
     static constexpr unsigned int NnueHidden1Dims = 16;
@@ -209,7 +203,6 @@ public:
     static constexpr unsigned int NnueHidden2Dims = 32;
     static constexpr unsigned int NnueClippingShift = 6;
     static constexpr unsigned int NnuePsqtBuckets = 8;
-    //static_assert(NnuePsqtBuckets <= MAXBUCKETNUM, "Accumulator not big enough");
     static constexpr unsigned int NnueLayerStacks = 8;
     static constexpr size_t networkfilesize =   // expected number of bytes remaining after architecture string
         sizeof(uint32_t)                                            // Ft hash
@@ -237,8 +230,6 @@ public:
         NnueNetworkLayer<NnueHidden2Dims, 1> NnueOut;
         NnueLayerStack() : NnueHd1(nullptr), NnueSqrCl(&NnueHd1), NnueCl1(&NnueHd1), NnueHd2(&NnueCl1), NnueCl2(&NnueHd2), NnueOut(&NnueCl2) {}
     } LayerStack[NnueLayerStacks];
-    alignas(64) int16_t accumulation[MAXDEPTH][2][NnueFtOutputdims];
-    alignas(64) int32_t psqtAccumulation[MAXDEPTH][2][8];
 
     NnueArchitectureV5() {
         for (unsigned int i = 0; i < NnueLayerStacks; i++)
@@ -322,14 +313,6 @@ public:
         return NnueFt.psqtWeights;
     }
     uint32_t GetFileVersion() {
-#if 0
-        if (NnueFtOutputdims == 512)
-            return NNUEFILEVERSIONSFNNv5_512;
-        if (NnueFtOutputdims == 768)
-            return NNUEFILEVERSIONSFNNv5_768;
-        if (NnueFtOutputdims == 1024)
-            return NNUEFILEVERSIONSFNNv5_1024;
-#endif
         return NNUEFILEVERSIONSFNNv5_1024;
     }
     int16_t* CreateAccumulationStack() {
@@ -612,7 +595,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 #ifdef USE_SIMD
         for (unsigned int i = 0; i < NnueFtHalfdims / tileHeight; i++)
         {
-            ft_vec_t* accTile = (ft_vec_t*)(accumulator.accumulation + (mslast * 2 + c) * NnueFtHalfdims + i * tileHeight);
+            ft_vec_t* accTile = (ft_vec_t*)(accumulation + (mslast * 2 + c) * NnueFtHalfdims + i * tileHeight);
             for (unsigned int j = 0; j < numRegs; j++)
                 acc[j] = accTile[j];
             for (unsigned int l = 0; pos2update[l] >= 0; l++)
@@ -637,13 +620,13 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
                         acc[j] = vec_add_16(acc[j], column[j]);
                 }
 
-                accTile = (ft_vec_t*)(accumulator.accumulation + (pos2update[l] * 2 + c) * NnueFtHalfdims + i * tileHeight);
+                accTile = (ft_vec_t*)(accumulation + (pos2update[l] * 2 + c) * NnueFtHalfdims + i * tileHeight);
                 for (unsigned int j = 0; j < numRegs; j++)
                     accTile[j] = acc[j];
             }
         }
 
-        int32_t* psqtacm = accumulator.psqtAccumulation + (mslast * 2 + c) * NnuePsqtBuckets;
+        int32_t* psqtacm = psqtAccumulation + (mslast * 2 + c) * NnuePsqtBuckets;
         for (unsigned int i = 0; i < NnuePsqtBuckets / PSQT_TILE_HEIGHT; i++)
         {
             psqt_vec_t* accTilePsqt = (psqt_vec_t*)(psqtacm + i * PSQT_TILE_HEIGHT);
@@ -671,7 +654,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
                         psqt[j] = vec_add_psqt_32(psqt[j], columnPsqt[j]);
                 }
 
-                psqtacm = accumulator.psqtAccumulation + (pos2update[l] * 2 + c) * NnuePsqtBuckets;
+                psqtacm = psqtAccumulation + (pos2update[l] * 2 + c) * NnuePsqtBuckets;
                 accTilePsqt = (psqt_vec_t*)(psqtacm + i * PSQT_TILE_HEIGHT);
                 for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
                     vec_store_psqt(&accTilePsqt[j], psqt[j]);
@@ -681,13 +664,12 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 #else
         for (unsigned int l = 0; pos2update[l] >= 0; l++)
         {
-            memcpy(accumulator.accumulation + (pos2update[l] * 2 + c) * NnueFtHalfdims, accumulator.accumulation + (mslast * 2 + c) * NnueFtHalfdims, NnueFtHalfdims * sizeof(int16_t));
-            memcpy(accumulator.psqtAccumulation + (pos2update[l] * 2 + c) * NnuePsqtBuckets, accumulator.psqtAccumulation + (mslast * 2 + c) * NnuePsqtBuckets, NnuePsqtBuckets * sizeof(int32_t));
+            memcpy(accumulation + (pos2update[l] * 2 + c) * NnueFtHalfdims, accumulation + (mslast * 2 + c) * NnueFtHalfdims, NnueFtHalfdims * sizeof(int16_t));
+            memcpy(psqtAccumulation + (pos2update[l] * 2 + c) * NnuePsqtBuckets, psqtAccumulation + (mslast * 2 + c) * NnuePsqtBuckets, NnuePsqtBuckets * sizeof(int32_t));
 
             mslast = pos2update[l];
-            //NnueAccumulator* ac = &accumulator[mslast];
-            int16_t* acm = accumulator.accumulation + (mslast * 2 + c) * NnueFtHalfdims;
-            int32_t* psqtacm = accumulator.psqtAccumulation + (mslast * 2 + c) * NnuePsqtBuckets;
+            int16_t* acm = accumulation + (mslast * 2 + c) * NnueFtHalfdims;
+            int32_t* psqtacm = psqtAccumulation + (mslast * 2 + c) * NnuePsqtBuckets;
             // Difference calculation for the deactivated features
             for (unsigned int k = 0; k < removedIndices[l].size; k++)
             {
@@ -719,10 +701,9 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     else {
     // Full update needed
         STATISTICSINC(nnue_accupdate_full);
-        //NnueAccumulator* ac = &accumulator[ply];
         computationState[ply][c] = true;
-        int16_t* acm = accumulator.accumulation + (ply * 2 + c) * NnueFtHalfdims;
-        int32_t* psqtacm = accumulator.psqtAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
+        int16_t* acm = accumulation + (ply * 2 + c) * NnueFtHalfdims;
+        int32_t* psqtacm = psqtAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
         NnueIndexList activeIndices;
         activeIndices.size = 0;
         HalfkpAppendActiveIndices<Nt, c>(&activeIndices);
@@ -768,8 +749,8 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
             }
 
 #else
-        acm = accumulator.accumulation + (ply * 2 + c) * NnueFtHalfdims;
-        psqtacm = accumulator.psqtAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
+        acm = accumulation + (ply * 2 + c) * NnueFtHalfdims;
+        psqtacm = psqtAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
         memcpy(acm, bias, NnueFtHalfdims * sizeof(int16_t));
         memset(psqtacm, 0, NnuePsqtBuckets * sizeof(int32_t));
 
@@ -788,8 +769,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     }
 
 #ifdef NNUEDEBUG
-    int16_t* acm = accumulator.accumulation + (ply * 2 + c) * NnueFtHalfdims;
-    //NnueAccumulator* ac = &accumulator[ply];
+    int16_t* acm = accumulation + (ply * 2 + c) * NnueFtHalfdims;
     cout << "\naccumulation (c=" << c << "):\n";
     for (unsigned int i = 0; i < NnueFtHalfdims; i++) {
         cout << hex << setfill('0') << setw(4) << (short)*(acm + i) << " ";
@@ -800,7 +780,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     if (!NnuePsqtBuckets)
         return;
 
-    int32_t* psqtacm = accumulator.psqtAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
+    int32_t* psqtacm = psqtAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
     cout << "\npsqtaccumulation (c=" << c << "):\n";
     for (unsigned int i = 0; i < NnuePsqtBuckets; i++)
     {
@@ -819,8 +799,8 @@ int chessposition::Transform(clipped_t *output, int bucket)
     UpdateAccumulator<Nt, WHITE, NnueFtHalfdims, NnuePsqtBuckets>();
     UpdateAccumulator<Nt, BLACK, NnueFtHalfdims, NnuePsqtBuckets>();
 
-    int16_t* acm = accumulator.accumulation + ply * 2 * NnueFtHalfdims;
-    int32_t* psqtacm = accumulator.psqtAccumulation + ply * 2 * NnuePsqtBuckets;
+    int16_t* acm = accumulation + ply * 2 * NnueFtHalfdims;
+    int32_t* psqtacm = psqtAccumulation + ply * 2 * NnuePsqtBuckets;
 
     const int perspectives[2] = { state & S2MMASK, !(state & S2MMASK) };
     for (int p = 0; p < 2; p++)
@@ -1524,26 +1504,6 @@ bool NnueReadNet(NnueNetsource* nr)
         buffer = (char*)allocalign64(sizeof(NnueArchitectureV1));
         NnueCurrentArch = new(buffer) NnueArchitectureV1;
         break;
-#if 0
-    case NNUEFILEVERSIONSFNNv5_512:
-        bpz = false;
-        nt = NnueArchV5;
-        buffer = (char*)allocalign64(sizeof(NnueArchitectureV5<512>));
-        NnueCurrentArch = new(buffer) NnueArchitectureV5<512>;
-        break;
-    case NNUEFILEVERSIONSFNNv5_768:
-        bpz = false;
-        nt = NnueArchV5;
-        buffer = (char*)allocalign64(sizeof(NnueArchitectureV5<768>));
-        NnueCurrentArch = new(buffer) NnueArchitectureV5<768>;
-        break;
-    case NNUEFILEVERSIONSFNNv5_1024:
-        bpz = false;
-        nt = NnueArchV5;
-        buffer = (char*)allocalign64(sizeof(NnueArchitectureV5<1024>));
-        NnueCurrentArch = new(buffer) NnueArchitectureV5<1024>;
-        break;
-#endif
     case NNUEFILEVERSIONSFNNv5_512:
     case NNUEFILEVERSIONSFNNv5_768:
     case NNUEFILEVERSIONSFNNv5_1024:
@@ -1615,8 +1575,6 @@ bool NnueReadNet(NnueNetsource* nr)
 //
 // Implementation of NNUE network reader including embedded networks and zipped networks
 //
-
-//#define MAXNNUEFILESIZE (50 * 1024 * 1024)
 
 #ifdef USE_ZLIB
 

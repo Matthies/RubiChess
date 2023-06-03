@@ -712,10 +712,6 @@ enum NnueType { NnueDisabled = 0, NnueArchV1, NnueArchV5 };
 #define HMORIENT(c,i,k) (i ^ (bool(c) * 56) ^ ((FILE(k) < 4) * 7))
 #define MULTIPLEOFN(i,n) (((i) + (n - 1)) / n * n)
 
-// Some limits for static arrays
-//#define MAXBUCKETNUM    8
-//#define MAXINPUTLAYER   1536
-
 #if defined(USE_SSE2) && !defined(USE_SSSE3) && defined FASTSSE2
 // for native SSE2 platforms we have faster intrinsics for 16bit integers
 #define USE_FASTSSE2
@@ -945,18 +941,6 @@ public:
     }
 };
 
-#if 1
-class NnueAccumulation
-{
-public:
-    // use maximum size for supported archs (input layer: 1024 neurons, 8 buckets by piece number)
-    int16_t* accumulation;
-    int32_t* psqtAccumulation;
-    //bool computationState[2];
-    //NnueAccumulation();
-    //~NnueAccumulation();
-};
-#endif
 
 void NnueInit();
 void NnueRemove();
@@ -1597,9 +1581,9 @@ public:
     int16_t staticevalstack[MAXDEPTH];
     Materialhash mtrlhsh;                               // init in alloc
     Pawnhash pwnhsh;                                    // init in alloc
-    //NnueAccumulator accumulator[MAXDEPTH];              // init of state in prepare
     bool computationState[MAXDEPTH][2];
-    NnueAccumulation accumulator;
+    int16_t* accumulation;
+    int32_t* psqtAccumulation;
     DirtyPiece dirtypiece[MAXDEPTH];
     uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];

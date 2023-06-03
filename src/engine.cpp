@@ -232,8 +232,8 @@ void engine::allocThreads()
         pos->mtrlhsh.remove();
         pos->pwnhsh.remove();
         pos->~chessposition();
-        freealigned64(pos->accumulator.accumulation);
-        freealigned64(pos->accumulator.psqtAccumulation);
+        freealigned64(pos->accumulation);
+        freealigned64(pos->psqtAccumulation);
     }
 
     freealigned64(sthread);
@@ -255,8 +255,8 @@ void engine::allocThreads()
         chessposition* pos = &sthread[i].pos;
         pos->pwnhsh.setSize(sizeOfPh);
         pos->mtrlhsh.init();
-        pos->accumulator.accumulation = NnueCurrentArch->CreateAccumulationStack();
-        pos->accumulator.psqtAccumulation = NnueCurrentArch->CreatePsqtAccumulationStack();
+        pos->accumulation = NnueCurrentArch->CreateAccumulationStack();
+        pos->psqtAccumulation = NnueCurrentArch->CreatePsqtAccumulationStack();
     }
     prepareThreads();
     resetStats();
