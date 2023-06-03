@@ -1727,7 +1727,7 @@ bool NnueNetsource::open()
 
 #ifdef NNUEINCLUDED
     inbuffer = (unsigned char*)&_binary_net_nnue_start;
-    insize = _binary_net_nnue_end - _binary_net_nnue_start;
+    insize = (unsigned char*)&_binary_net_nnue_end - (unsigned char*)&_binary_net_nnue_start;
 #else
     filenames.push_back(NnueNetPath);
     if (en.ExecPath != "")
@@ -1778,7 +1778,7 @@ bool NnueNetsource::open()
     // Finally locate buffer for the NnueNetsource object, copy the network data and free the temporary buffers
     readbuffer = (unsigned char*)allocalign64(insize);
     if (!readbuffer) {
-        guiCom << "info string Cannot alloc buffer for network file.\n";
+        guiCom << "info string Cannot alloc read buffer for network file.\n";
         goto cleanup;
     }
     memcpy(readbuffer, sourcebuffer, insize);
