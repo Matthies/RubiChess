@@ -87,6 +87,7 @@
 #include <math.h>
 #include <regex>
 #include <set>
+#include <sys/stat.h>
 #ifdef USE_ZLIB
 #include "zlib/zlib.h"
 #endif

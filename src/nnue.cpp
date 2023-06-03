@@ -1719,6 +1719,9 @@ bool NnueNetsource::open()
     string NnueNetPath = en.GetNnueNetPath();
 
 #if USE_ZLIB
+    int ret;
+    unsigned char* inflatebuffer;
+    size_t inflatesize = 0;
 #endif
 
 #ifdef NNUEINCLUDED
@@ -1747,8 +1750,7 @@ bool NnueNetsource::open()
         }
 
         is.read((char*)inbuffer, insize);
-        insize = is.gcount();
-        if (insize != is.gcount()) {
+        if (insize != (size_t)is.gcount()) {
             guiCom << "info string Buffer too small for file " << filenames[i] << "\n";
             goto cleanup;
         }
@@ -1765,10 +1767,6 @@ bool NnueNetsource::open()
 
 #if USE_ZLIB
     // Now test if the input is compressed
-    int ret;
-    unsigned char* inflatebuffer;// = (unsigned char*)allocalign64(MAXNNUEFILESIZE);
-    size_t inflatesize = 0;
-
     ret = xFlate(false, inbuffer, &inflatebuffer, insize, &inflatesize);
     if (ret == Z_OK) {
         sourcebuffer = inflatebuffer;
