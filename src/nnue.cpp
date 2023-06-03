@@ -199,11 +199,25 @@ public:
     static constexpr unsigned int NnueHidden1Dims = 16;
     static constexpr unsigned int NnueHidden1Out = 15;
     static constexpr unsigned int NnueHidden2Dims = 32;
-    static constexpr unsigned int NnueHidden2Out = 32;
     static constexpr unsigned int NnueClippingShift = 6;
     static constexpr unsigned int NnuePsqtBuckets = 8;
     static_assert(NnuePsqtBuckets <= MAXBUCKETNUM, "Accumulator not big enough");
     static constexpr unsigned int NnueLayerStacks = 8;
+
+    static constexpr size_t networkfilesize =   // expected number of bytes remaining after architecture string
+        sizeof(uint32_t)                                            // Ft hash
+        + NnueFtOutputdims * sizeof(int16_t)                        // bias of feature layer
+        + NnueFtOutputdims * NnueFtInputdims * sizeof(int16_t)      // weights of feature layer
+        + NnueFtInputdims * NnuePsqtBuckets * sizeof(int32_t)       // psqt bucket weights
+        + NnueLayerStacks * (
+            sizeof(uint32_t)                                        // Network layer hash
+            + NnueHidden1Dims * sizeof(int32_t)                     // bias of hidden layer 1
+            + NnueFtOutputdims * NnueHidden1Dims * sizeof(int8_t)   // weights of hidden layer 1
+            + NnueHidden2Dims * sizeof(int32_t)                     // bias of hidden layer 2
+            + NnueHidden1Dims * 2 * NnueHidden2Dims * sizeof(int8_t) // weights of hidden layer 2
+            + 1 * sizeof(int32_t)                                   // bias of output layer
+            + NnueHidden2Dims * 1 * sizeof(int8_t)                  // weights of output layer
+            );
 
     NnueFeatureTransformer<NnueFtHalfdims, NnueFtInputdims, NnuePsqtBuckets> NnueFt;
     class NnueLayerStack {
@@ -305,6 +319,7 @@ public:
             return NNUEFILEVERSIONSFNNv5_768;
         if (NnueFtOutputdims == 1024)
             return NNUEFILEVERSIONSFNNv5_1024;
+        return NNUEFILEVERSIONSFNNv5_1024;
     }
 };
 
@@ -1450,6 +1465,8 @@ bool NnueReadNet(NnueNetsource* nr)
     if (!nr->read((unsigned char*)&sarchitecture[0], size))
         return false;
 
+    size_t remainingfilesize = nr->readbuffersize - (nr->next - nr->readbuffer);
+
     NnueType nt;
     bool bpz;
     char* buffer;
@@ -1466,6 +1483,7 @@ bool NnueReadNet(NnueNetsource* nr)
         buffer = (char*)allocalign64(sizeof(NnueArchitectureV1));
         NnueCurrentArch = new(buffer) NnueArchitectureV1;
         break;
+#if 0
     case NNUEFILEVERSIONSFNNv5_512:
         bpz = false;
         nt = NnueArchV5;
@@ -1483,6 +1501,33 @@ bool NnueReadNet(NnueNetsource* nr)
         nt = NnueArchV5;
         buffer = (char*)allocalign64(sizeof(NnueArchitectureV5<1024>));
         NnueCurrentArch = new(buffer) NnueArchitectureV5<1024>;
+        break;
+#endif
+    case NNUEFILEVERSIONSFNNv5_512:
+    case NNUEFILEVERSIONSFNNv5_768:
+    case NNUEFILEVERSIONSFNNv5_1024:
+        nt = NnueArchV5;
+        bpz = false;
+        switch (remainingfilesize) {
+        case NnueArchitectureV5<512>::networkfilesize:
+            buffer = (char*)allocalign64(sizeof(NnueArchitectureV5<512>));
+            NnueCurrentArch = new(buffer) NnueArchitectureV5<512>;
+            break;
+        case NnueArchitectureV5<768>::networkfilesize:
+            buffer = (char*)allocalign64(sizeof(NnueArchitectureV5<768>));
+            NnueCurrentArch = new(buffer) NnueArchitectureV5<768>;
+            break;
+        case NnueArchitectureV5<1024>::networkfilesize:
+            buffer = (char*)allocalign64(sizeof(NnueArchitectureV5<1024>));
+            NnueCurrentArch = new(buffer) NnueArchitectureV5<1024>;
+            break;
+        case NnueArchitectureV5<1536>::networkfilesize:
+            buffer = (char*)allocalign64(sizeof(NnueArchitectureV5<1536>));
+            NnueCurrentArch = new(buffer) NnueArchitectureV5<1536>;
+            break;
+        default:
+            break;
+        }
         break;
     default:
         return false;
@@ -1523,13 +1568,13 @@ bool NnueReadNet(NnueNetsource* nr)
 // Implementation of NNUE network reader including embedded networks and zipped networks
 //
 
-#define MAXNNUEFILESIZE (50 * 1024 * 1024)
+//#define MAXNNUEFILESIZE (50 * 1024 * 1024)
 
 #ifdef USE_ZLIB
 
 // (De)Compress input buffer using zlib
 // code taken from zlib example zpipe.c
-static int xFlate(bool compress, unsigned char* in, unsigned char* out, size_t insize, size_t* outsize)
+static int xFlate(bool compress, unsigned char* in, unsigned char** out, size_t insize, size_t* outsize)
 {
     int ret;
     z_stream strm;
@@ -1544,10 +1589,20 @@ static int xFlate(bool compress, unsigned char* in, unsigned char* out, size_t i
 
     strm.avail_in = (uInt)insize;
     strm.next_in = in;
-    strm.avail_out = MAXNNUEFILESIZE;
-    strm.next_out = out;
-    ret = (compress ? deflate(&strm, Z_FINISH) : inflate(&strm, Z_NO_FLUSH));
-    *outsize = MAXNNUEFILESIZE - strm.avail_out;
+    *out = (unsigned char*)malloc(insize);
+    int chunks = 1;
+    while (1) {
+        strm.next_out = *out + (chunks - 1) * insize;
+        strm.avail_out = (uInt)insize;
+        ret = (compress ? deflate(&strm, Z_FINISH) : inflate(&strm, Z_NO_FLUSH));
+        if (strm.avail_out > 0)
+        {
+            *outsize = chunks * insize - strm.avail_out;
+            break;
+        }
+        chunks++;
+        *out = (unsigned char*)realloc(*out, chunks * insize);
+    }
     /* clean up and return */
     if (compress)
         deflateEnd(&strm);
@@ -1581,18 +1636,9 @@ void NnueWriteNet(vector<string> args)
     }
 
     NnueNetsource nr;
-    nr.readbuffer = (unsigned char*)allocalign64(MAXNNUEFILESIZE);
+    nr.readbuffer = (unsigned char*)allocalign64(1024*1024);
     nr.next = nr.readbuffer;
 #ifdef USE_ZLIB
-    unsigned char* deflatebuffer = nullptr;
-    size_t deflatesize = 0;
-    if (zExport) {
-        deflatebuffer = (unsigned char*)allocalign64(MAXNNUEFILESIZE);
-        if (!deflatebuffer) {
-            guiCom << "Cannot alloc buffer for compression.\n";
-            zExport = false;
-        }
-    }
 #endif // USE_ZLIB
     ofstream os;
     os.open(NnueNetPath, ios::binary);
@@ -1627,8 +1673,17 @@ void NnueWriteNet(vector<string> args)
     size_t insize = nr.next - nr.readbuffer;
 
 #ifdef USE_ZLIB
+    unsigned char* deflatebuffer;
+    size_t deflatesize = 0;
     if (zExport) {
-        if (xFlate(true, nr.readbuffer, deflatebuffer, insize, &deflatesize) == Z_OK) {
+        deflatebuffer = (unsigned char*)allocalign64(1024 * 1024);
+        if (!deflatebuffer) {
+            guiCom << "Cannot alloc buffer for compression.\n";
+            zExport = false;
+        }
+    }
+    if (zExport) {
+        if (xFlate(true, nr.readbuffer, &deflatebuffer, insize, &deflatesize) == Z_OK) {
             memcpy(nr.readbuffer, deflatebuffer, deflatesize);
             insize = deflatesize;
         }
@@ -1654,7 +1709,6 @@ bool NnueNetsource::open()
 {
     size_t insize = 0;
     bool openOk = false;
-    bool inflatePossible = false;
     vector<string> filenames;
     unsigned char* inbuffer = nullptr;
     unsigned char* sourcebuffer = nullptr;
@@ -1662,25 +1716,12 @@ bool NnueNetsource::open()
     string NnueNetPath = en.GetNnueNetPath();
 
 #if USE_ZLIB
-    int ret;
-    unsigned char* inflatebuffer = (unsigned char*)allocalign64(MAXNNUEFILESIZE);
-    if (!inflatebuffer) {
-        guiCom << "info string Cannot alloc buffer for decompression.\n";
-    } else {
-        inflatePossible = true;
-    }
-    size_t inflatesize = 0;
 #endif
 
 #ifdef NNUEINCLUDED
     inbuffer = (unsigned char*)&_binary_net_nnue_start;
     insize = _binary_net_nnue_end - _binary_net_nnue_start;
 #else
-    inbuffer = (unsigned char*)allocalign64(MAXNNUEFILESIZE);
-    if (!inbuffer) {
-        guiCom << "info string Cannot alloc buffer for network file.\n";
-        goto cleanup;
-    }
     filenames.push_back(NnueNetPath);
     if (en.ExecPath != "")
         filenames.push_back(en.ExecPath + NnueNetPath);
@@ -1689,9 +1730,22 @@ bool NnueNetsource::open()
         is.open(filenames[i], ios::binary);
         if (!is)
             continue;
-        is.read((char*)inbuffer, MAXNNUEFILESIZE);
+
+        struct stat stat_buf;
+        if (stat(filenames[i].c_str(), &stat_buf) != 0) {
+            guiCom << "info string Cannot get size of network file.\n";
+            goto cleanup;
+        }
+        insize = stat_buf.st_size;
+        inbuffer = (unsigned char*)allocalign64(insize);
+        if (!inbuffer) {
+            guiCom << "info string Cannot alloc buffer for network file.\n";
+            goto cleanup;
+        }
+
+        is.read((char*)inbuffer, insize);
         insize = is.gcount();
-        if (insize == MAXNNUEFILESIZE) {
+        if (insize != is.gcount()) {
             guiCom << "info string Buffer too small for file " << filenames[i] << "\n";
             goto cleanup;
         }
@@ -1708,12 +1762,14 @@ bool NnueNetsource::open()
 
 #if USE_ZLIB
     // Now test if the input is compressed
-    if (inflatePossible) {
-        ret = xFlate(false, inbuffer, inflatebuffer, insize, &inflatesize);
-        if (ret == Z_OK) {
-            sourcebuffer = inflatebuffer;
-            insize = inflatesize;
-        }
+    int ret;
+    unsigned char* inflatebuffer;// = (unsigned char*)allocalign64(MAXNNUEFILESIZE);
+    size_t inflatesize = 0;
+
+    ret = xFlate(false, inbuffer, &inflatebuffer, insize, &inflatesize);
+    if (ret == Z_OK) {
+        sourcebuffer = inflatebuffer;
+        insize = inflatesize;
     }
 #endif // USE_ZLIB
 
@@ -1739,7 +1795,7 @@ cleanup:
     freealigned64(inbuffer);
 #endif
 #if USE_ZLIB
-    freealigned64(inflatebuffer);
+    free(inflatebuffer);
 #endif
 
     return openOk;
