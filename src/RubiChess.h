@@ -54,7 +54,7 @@
 //#define NNUELEARN
 
 // Enable this to enable NNUE debug output
-#define NNUEDEBUG
+//#define NNUEDEBUG
 
 
 #ifdef FINDMEMORYLEAKS

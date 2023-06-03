@@ -577,12 +577,11 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
         computationState[ply][c] = true;
 
         int pos2update[3] = { mslast + 1, mslast + 1 == ply ? -1 : ply, -1 };
-        int16_t* acm = accumulator.accumulation + (mslast * 2 + c) * NnueFtHalfdims;
 
 #ifdef USE_SIMD
         for (unsigned int i = 0; i < NnueFtHalfdims / tileHeight; i++)
         {
-            ft_vec_t* accTile = (ft_vec_t*)(acm + i * tileHeight);
+            ft_vec_t* accTile = (ft_vec_t*)(accumulator.accumulation + (mslast * 2 + c) * NnueFtHalfdims + i * tileHeight);
             for (unsigned int j = 0; j < numRegs; j++)
                 acc[j] = accTile[j];
             for (unsigned int l = 0; pos2update[l] >= 0; l++)
@@ -607,8 +606,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
                         acc[j] = vec_add_16(acc[j], column[j]);
                 }
 
-                acm = acm = accumulator.accumulation + (pos2update[l] * 2 + c) * NnueFtHalfdims;
-                accTile = (ft_vec_t*)(acm + i * tileHeight);
+                accTile = (ft_vec_t*)(accumulator.accumulation + (pos2update[l] * 2 + c) * NnueFtHalfdims + i * tileHeight);
                 for (unsigned int j = 0; j < numRegs; j++)
                     accTile[j] = acc[j];
             }
@@ -688,7 +686,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 #endif
     }
     else {
-        // Full update needed
+    // Full update needed
         STATISTICSINC(nnue_accupdate_full);
         //NnueAccumulator* ac = &accumulator[ply];
         computationState[ply][c] = true;
