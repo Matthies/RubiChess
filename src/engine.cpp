@@ -228,9 +228,12 @@ void engine::allocThreads()
     // first cleanup the old searchthreads memory
     for (int i = 0; i < oldThreads; i++)
     {
-        sthread[i].pos.mtrlhsh.remove();
-        sthread[i].pos.pwnhsh.remove();
-        sthread[i].pos.~chessposition();
+        chessposition* pos = &sthread[i].pos;
+        pos->mtrlhsh.remove();
+        pos->pwnhsh.remove();
+        pos->~chessposition();
+        freealigned64(pos->accumulator.accumulation);
+        freealigned64(pos->accumulator.psqtAccumulation);
     }
 
     freealigned64(sthread);
