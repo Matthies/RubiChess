@@ -1,5 +1,4 @@
 #
-#
 # Makefile to compile RubiChess in a standard GNU/Makefile environment
 #
 
