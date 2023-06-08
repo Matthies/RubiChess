@@ -699,7 +699,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 #endif
     }
     else {
-    // Full update needed
+        // Full update needed
         STATISTICSINC(nnue_accupdate_full);
         computationState[ply][c] = true;
         int16_t* acm = accumulation + (ply * 2 + c) * NnueFtHalfdims;
@@ -859,7 +859,6 @@ int chessposition::Transform(clipped_t *output, int bucket)
         if (Nt == NnueArchV1)
         {
             for (unsigned int i = 0; i < NnueFtHalfdims; i++) {
-                
                 int16_t sum = *(acm + perspectives[p] * NnueFtHalfdims + i);
                 output[offset + i] = (clipped_t)max<int16_t>(0, min<int16_t>(127, sum));
             }
@@ -1469,7 +1468,7 @@ bool NnueReadNet(NnueNetsource* nr)
     NnueType oldnt = NnueReady;
     unsigned int oldaccumulationsize = (NnueCurrentArch ? NnueCurrentArch->GetAccumulationSize() : 0);
     unsigned int oldpsqtaccumulationsize = (NnueCurrentArch ? NnueCurrentArch->GetPsqtAccumulationSize() : 0);
-    
+
     NnueReady = NnueDisabled;
 
     NnueRemove();
