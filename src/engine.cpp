@@ -231,9 +231,9 @@ void engine::allocThreads()
         chessposition* pos = &sthread[i].pos;
         pos->mtrlhsh.remove();
         pos->pwnhsh.remove();
-        pos->~chessposition();
         freealigned64(pos->accumulation);
         freealigned64(pos->psqtAccumulation);
+        pos->~chessposition();
     }
 
     freealigned64(sthread);
@@ -852,7 +852,7 @@ void engine::resetEndTime(U64 nowTime, int constantRootMoves, int bestmovenodesr
 #ifdef TDEBUG
     stringstream ss;
     guiCom.log("[TDEBUG] Time from UCI: time=" + to_string(timetouse) + "  inc=" + to_string(timeinc) + "  overhead=" + to_string(overhead) + "  constance=" + to_string(constance) + "  bestmovenodesratio=" + to_string(bestmovenodesratio) + "\n");
-    ss << "[TDEBUG] Time for this move: " << fixed << setprecision(3) << (endtime1 - clockstarttime) / (double)frequency << " / " << (endtime2 - clockstarttime) / (double)frequency 
+    ss << "[TDEBUG] Time for this move: " << fixed << setprecision(3) << (endtime1 - clockstarttime) / (double)frequency << " / " << (endtime2 - clockstarttime) / (double)frequency
         << "  (Stop at tick: " << to_string(endtime1) + " / " + to_string(endtime2) << ")\n";
     guiCom.log(ss.str());
 #endif
