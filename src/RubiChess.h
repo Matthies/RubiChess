@@ -87,6 +87,7 @@
 #include <math.h>
 #include <regex>
 #include <set>
+#include <sys/stat.h>
 #ifdef USE_ZLIB
 #include "zlib/zlib.h"
 #endif
@@ -711,10 +712,6 @@ enum NnueType { NnueDisabled = 0, NnueArchV1, NnueArchV5 };
 #define HMORIENT(c,i,k) (i ^ (bool(c) * 56) ^ ((FILE(k) < 4) * 7))
 #define MULTIPLEOFN(i,n) (((i) + (n - 1)) / n * n)
 
-// Some limits for static arrays
-#define MAXBUCKETNUM    8
-#define MAXINPUTLAYER   1024
-
 #if defined(USE_SSE2) && !defined(USE_SSSE3) && defined FASTSSE2
 // for native SSE2 platforms we have faster intrinsics for 16bit integers
 #define USE_FASTSSE2
@@ -739,13 +736,6 @@ typedef struct {
 } DirtyPiece;
 
 
-extern NnueType NnueReady;
-
-#ifdef NNUEINCLUDED
-extern const char  _binary_net_nnue_start;
-extern const char  _binary_net_nnue_end;
-#endif
-
 class NnueNetsource {
 public:
     ~NnueNetsource() {
@@ -761,6 +751,40 @@ public:
     bool write(unsigned char* source, size_t writesize);
     bool endOfNet();
 };
+
+
+class NnueArchitecture
+{
+public:
+    virtual bool ReadFeatureWeights(NnueNetsource* nr, bool bpz) = 0;
+    virtual bool ReadWeights(NnueNetsource* nr, uint32_t nethash) = 0;
+    virtual void WriteFeatureWeights(NnueNetsource* nr, bool bpz) = 0;
+    virtual void WriteWeights(NnueNetsource* nr, uint32_t nethash) = 0;
+    virtual void RescaleLastLayer(int ratio64) = 0;
+    virtual string GetArchName() = 0;
+    virtual string GetArchDescription() = 0;
+    virtual uint32_t GetFtHash() = 0;
+    virtual uint32_t GetHash() = 0;
+    virtual int GetEval(chessposition* pos) = 0;
+    virtual int16_t* GetFeatureWeight() = 0;
+    virtual int16_t* GetFeatureBias() = 0;
+    virtual int32_t* GetFeaturePsqtWeight() = 0;
+    virtual uint32_t GetFileVersion() = 0;
+    virtual int16_t* CreateAccumulationStack() = 0;
+    virtual int32_t* CreatePsqtAccumulationStack() = 0;
+    virtual unsigned int GetAccumulationSize() = 0;
+    virtual unsigned int GetPsqtAccumulationSize() = 0;
+    virtual size_t GetNetworkFilesize() = 0;
+};
+
+
+extern NnueType NnueReady;
+extern NnueArchitecture* NnueCurrentArch;
+
+#ifdef NNUEINCLUDED
+extern const char  _binary_net_nnue_start;
+extern const char  _binary_net_nnue_end;
+#endif
 
 
 class NnueLayer
@@ -915,15 +939,6 @@ public:
                 + rest;
         }
     }
-};
-
-class NnueAccumulator
-{
-public:
-    // use maximum size for supported archs (input layer: 1024 neurons, 8 buckets by piece number)
-    alignas(64) int16_t accumulation[2][MAXINPUTLAYER];
-    int32_t psqtAccumulation[2][MAXBUCKETNUM];
-    bool computationState[2];
 };
 
 
@@ -1566,7 +1581,9 @@ public:
     int16_t staticevalstack[MAXDEPTH];
     Materialhash mtrlhsh;                               // init in alloc
     Pawnhash pwnhsh;                                    // init in alloc
-    NnueAccumulator accumulator[MAXDEPTH];              // init of state in prepare
+    bool computationState[MAXDEPTH][2];
+    int16_t* accumulation;
+    int32_t* psqtAccumulation;
     DirtyPiece dirtypiece[MAXDEPTH];
     uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];

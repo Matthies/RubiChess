@@ -228,9 +228,12 @@ void engine::allocThreads()
     // first cleanup the old searchthreads memory
     for (int i = 0; i < oldThreads; i++)
     {
-        sthread[i].pos.mtrlhsh.remove();
-        sthread[i].pos.pwnhsh.remove();
-        sthread[i].pos.~chessposition();
+        chessposition* pos = &sthread[i].pos;
+        pos->mtrlhsh.remove();
+        pos->pwnhsh.remove();
+        freealigned64(pos->accumulation);
+        freealigned64(pos->psqtAccumulation);
+        pos->~chessposition();
     }
 
     freealigned64(sthread);
@@ -249,8 +252,11 @@ void engine::allocThreads()
     for (int i = 0; i < Threads; i++)
     {
         sthread[i].index = i;
-        sthread[i].pos.pwnhsh.setSize(sizeOfPh);
-        sthread[i].pos.mtrlhsh.init();
+        chessposition* pos = &sthread[i].pos;
+        pos->pwnhsh.setSize(sizeOfPh);
+        pos->mtrlhsh.init();
+        pos->accumulation = NnueCurrentArch->CreateAccumulationStack();
+        pos->psqtAccumulation = NnueCurrentArch->CreatePsqtAccumulationStack();
     }
     prepareThreads();
     resetStats();
@@ -275,8 +281,8 @@ void engine::prepareThreads()
         pos->nullmoveside = 0;
         pos->nodesToNextCheck = 0;
         pos->excludemovestack[0] = 0;
-        pos->accumulator[0].computationState[WHITE] = false;
-        pos->accumulator[0].computationState[BLACK] = false;
+        pos->computationState[0][WHITE] = false;
+        pos->computationState[0][BLACK] = false;
 
         int framesToCopy = rootposition.prerootmovenum + 1; //include stack frame of ply 0
         int startIndex = PREROOTMOVES - framesToCopy + 1;
@@ -846,7 +852,7 @@ void engine::resetEndTime(U64 nowTime, int constantRootMoves, int bestmovenodesr
 #ifdef TDEBUG
     stringstream ss;
     guiCom.log("[TDEBUG] Time from UCI: time=" + to_string(timetouse) + "  inc=" + to_string(timeinc) + "  overhead=" + to_string(overhead) + "  constance=" + to_string(constance) + "  bestmovenodesratio=" + to_string(bestmovenodesratio) + "\n");
-    ss << "[TDEBUG] Time for this move: " << fixed << setprecision(3) << (endtime1 - clockstarttime) / (double)frequency << " / " << (endtime2 - clockstarttime) / (double)frequency 
+    ss << "[TDEBUG] Time for this move: " << fixed << setprecision(3) << (endtime1 - clockstarttime) / (double)frequency << " / " << (endtime2 - clockstarttime) / (double)frequency
         << "  (Stop at tick: " << to_string(endtime1) + " / " + to_string(endtime2) << ")\n";
     guiCom.log(ss.str());
 #endif

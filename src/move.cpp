@@ -507,8 +507,9 @@ void chessposition::playNullMove()
     DirtyPiece* dp = &dirtypiece[ply];
     dp->dirtyNum = 0;
     dp->pc[0] = 0; // don't break search for updatable positions on stack
-    accumulator[ply].computationState[WHITE] = false;
-    accumulator[ply].computationState[BLACK] = false;
+    computationState[ply][WHITE] = false;
+    computationState[ply][BLACK] = false;
+    
 }
 
 
@@ -536,8 +537,8 @@ bool chessposition::playMove(uint32_t mc)
         oldcastle = (state & CASTLEMASK);
         dp = &dirtypiece[ply + 1];
         dp->dirtyNum = 0;
-        accumulator[ply + 1].computationState[WHITE] = false;
-        accumulator[ply + 1].computationState[BLACK] = false;
+        computationState[ply + 1][WHITE] = false;
+        computationState[ply + 1][BLACK] = false;
     }
 
     halfmovescounter++;
