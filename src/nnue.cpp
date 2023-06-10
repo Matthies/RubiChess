@@ -1640,8 +1640,6 @@ void NnueWriteNet(vector<string> args)
         }
     }
 
-#ifdef USE_ZLIB
-#endif // USE_ZLIB
     ofstream os;
     os.open(NnueNetPath, ios::binary);
     if (!os && en.ExecPath != "")
