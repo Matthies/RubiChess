@@ -54,7 +54,7 @@
 //#define NNUELEARN
 
 // Enable this to enable NNUE debug output
-//#define NNUEDEBUG
+#define NNUEDEBUG
 
 
 #ifdef FINDMEMORYLEAKS
@@ -913,6 +913,7 @@ public:
         return (NNUENETLAYERHASH + outputdims) ^ (previous->GetHash() >> 1) ^ (previous->GetHash() << 31);
     }
     void Propagate(clipped_t *input, int32_t *output);
+    void SparsePropagate(clipped_t* input, int32_t* output);
     void PropagateNative(clipped_t* input, int32_t* output);
     inline unsigned int shuffleWeightIndex(unsigned int idx)
     {

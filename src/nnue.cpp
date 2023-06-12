@@ -156,7 +156,7 @@ public:
         } network;
 
         pos->Transform<NnueArchV1, NnueFtHalfdims, NnuePsqtBuckets>(network.input);
-        LayerStack[0].NnueHd1.Propagate(network.input, network.hidden1_values);
+        LayerStack[0].NnueHd1.SparsePropagate(network.input, network.hidden1_values);
         LayerStack[0].NnueCl1.Propagate(network.hidden1_values, network.hidden1_clipped);
         LayerStack[0].NnueHd2.Propagate(network.hidden1_clipped, network.hidden2_values);
         LayerStack[0].NnueCl1.Propagate(network.hidden2_values, network.hidden2_clipped);
@@ -879,8 +879,8 @@ int chessposition::Transform(clipped_t *output, int bucket)
     cout << "\ninput layer:\n";
     for (unsigned int i = 0; i < NnueFtHalfdims; i++) {
         cout << hex << setfill('0') << setw(2) << (int)output[i] << " ";
-        if (i % 16 == 15)
-            cout << "   " << hex << setfill('0') << setw(3) << (int)(i / 16 * 16) << "\n";
+        if (i % 32 == 31)
+            cout << "   " << hex << setfill('0') << setw(3) << (int)(i / 32 * 32) << "\n";
     }
     cout << dec;
 #endif
@@ -1211,7 +1211,12 @@ void NnueNetworkLayer<inputdims, outputdims>::Propagate(clipped_t* input, int32_
     }
     cout << dec;
 #endif
+}
 
+
+template <unsigned int inputdims, unsigned int outputdims>
+void NnueNetworkLayer<inputdims, outputdims>::SparsePropagate(clipped_t* input, int32_t* output)
+{
 }
 
 
