@@ -156,7 +156,7 @@ public:
         } network;
 
         pos->Transform<NnueArchV1, NnueFtHalfdims, NnuePsqtBuckets>(network.input);
-        LayerStack[0].NnueHd1.SparsePropagate(network.input, network.hidden1_values);
+        LayerStack[0].NnueHd1.Propagate(network.input, network.hidden1_values);
         LayerStack[0].NnueCl1.Propagate(network.hidden1_values, network.hidden1_clipped);
         LayerStack[0].NnueHd2.Propagate(network.hidden1_clipped, network.hidden2_values);
         LayerStack[0].NnueCl1.Propagate(network.hidden2_values, network.hidden2_clipped);
@@ -289,7 +289,7 @@ public:
 
         int bucket = (POPCOUNT(pos->occupied00[WHITE] | pos->occupied00[BLACK]) - 1) / 4;
         int psqt = pos->Transform<NnueArchV5, NnueFtHalfdims, NnuePsqtBuckets>(network.input, bucket);
-        LayerStack[bucket].NnueHd1.Propagate(network.input, network.hidden1_values);
+        LayerStack[bucket].NnueHd1.SparsePropagate(network.input, network.hidden1_values);
         memset(network.hidden1_sqrclipped, 0, sizeof(network.hidden1_sqrclipped));  // FIXME: is this needed?
         LayerStack[bucket].NnueSqrCl.Propagate(network.hidden1_values, network.hidden1_sqrclipped);
         LayerStack[bucket].NnueCl1.Propagate(network.hidden1_values, network.hidden1_clipped);
@@ -435,6 +435,7 @@ inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define vec_sub_psqt_32(a,b) _mm256_sub_epi32(a,b)
 #define vec_load_psqt(a) _mm256_load_si256(a)
 #define vec_store_psqt(a,b) _mm256_store_si256(a,b)
+#define vec_nnz(a) _mm512_cmpgt_epi32_mask(a, _mm512_setzero_si512())
 
 #elif defined(USE_AVX2)
 #define NUM_REGS 16
@@ -464,6 +465,7 @@ inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define vec_sub_psqt_32(a,b) _mm256_sub_epi32(a,b)
 #define vec_load_psqt(a) _mm256_load_si256(a)
 #define vec_store_psqt(a,b) _mm256_store_si256(a,b)
+#define vec_nnz(a) _mm256_movemask_ps(_mm256_castsi256_ps(_mm256_cmpgt_epi32(a, _mm256_setzero_si256())))
 
 #elif defined(USE_SSE2)
 #define NUM_REGS 16
@@ -492,6 +494,7 @@ typedef __m128i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, bias_v
 #define vec_add_dpbusd_32x2_large Simd::m128_add_dpbusd_32x2
 #define vec_haddx4_large Simd::m128_haddx4
 #define vec_hadd_large Simd::m128_hadd
+#define vec_nnz(a) _mm_movemask_ps((__m128)_mm_cmpgt_epi32(a, _mm_setzero_si128()))
 #else // USE_SSSE3
 #define vec_clip_8(a,b) _mm_subs_epi8(_mm_adds_epi8(_mm_packs_epi16(a, b), _mm_set1_epi8(-128)), _mm_set1_epi8(-128))
 #define vec_clip_16(a) _mm_min_epi16(_mm_max_epi16(a,_mm_setzero_si128()),_mm_set1_epi16(127))
@@ -1213,10 +1216,101 @@ void NnueNetworkLayer<inputdims, outputdims>::Propagate(clipped_t* input, int32_
 #endif
 }
 
+#if defined(USE_SSSE3)
+alignas(64) static const std::array<std::array<std::uint16_t, 8>, 256> lookup_indices = []() {
+    std::array<std::array<std::uint16_t, 8>, 256> v{};
+    for (int i = 0; i < 256; ++i)
+    {
+        int j = i;
+        int k = 0;
+        while (j)
+        {
+            unsigned int lsbIndex;
+            GETLSB32(lsbIndex, j);
+            j &= j - 1;
+            v[i][k] = lsbIndex;
+            ++k;
+        }
+    }
+    return v;
+}();
+alignas(64) static const std::array<unsigned, 256> lookup_count = []() {
+    std::array<unsigned, 256> v;
+    for (int i = 0; i < 256; ++i)
+    {
+        int j = i;
+        int k = 0;
+        while (j)
+        {
+            j &= j - 1;
+            ++k;
+        }
+        v[i] = k;
+    }
+    return v;
+}();
+#endif
+
 
 template <unsigned int inputdims, unsigned int outputdims>
 void NnueNetworkLayer<inputdims, outputdims>::SparsePropagate(clipped_t* input, int32_t* output)
 {
+    static constexpr unsigned int ChunkSize = 4;
+    static constexpr unsigned int OutputSimdWidth = sizeof(in_vec_t) / sizeof(int32_t);
+    constexpr unsigned int NumChunks = MULTIPLEOFN(inputdims, 8) / ChunkSize;
+    constexpr unsigned int NumRegs = outputdims / OutputSimdWidth;
+    uint16_t nnz[NumChunks];
+    unsigned int count = 0;
+    const int32_t* input32 = (int32_t*)input;
+    const in_vec_t* inputVector = (const in_vec_t*)input;
+
+
+    // Find indices of nonzero 32bit blocks
+    constexpr unsigned int InputSimdWidth = sizeof(in_vec_t) / sizeof(std::int32_t);
+    // Inputs are processed InputSimdWidth at a time and outputs are processed 8 at a time so we process in chunks of max(InputSimdWidth, 8)
+    constexpr unsigned int InternalChunkSize = max(InputSimdWidth, 8);
+    constexpr unsigned int NumInternalChunks = NumChunks / InternalChunkSize;
+    constexpr unsigned int InputsPerInternalChunk = InternalChunkSize / InputSimdWidth;
+    constexpr unsigned int OutputsPerInternalChunk = InternalChunkSize / 8;
+
+    __m128i base = _mm_set1_epi16(0);
+    __m128i increment = _mm_set1_epi16(8);
+    for (unsigned int i = 0; i < NumInternalChunks; ++i)
+    {
+        // bitmask of nonzero values in this chunk
+        unsigned int internalnnz = 0;
+        for (unsigned int j = 0; j < InputsPerInternalChunk; ++j)
+        {
+            const in_vec_t inputChunk = inputVector[i * InputsPerInternalChunk + j];
+            internalnnz |= (unsigned)vec_nnz(inputChunk) << (j * InputSimdWidth);
+        }
+        for (unsigned int j = 0; j < OutputsPerInternalChunk; ++j)
+        {
+            const unsigned int lookup = (internalnnz >> (j * 8)) & 0xFF;
+            const __m128i offsets = _mm_loadu_si128((__m128i*)(&lookup_indices[lookup]));
+            _mm_storeu_si128((__m128i*)(nnz + count), _mm_add_epi16(base, offsets));
+            count += lookup_count[lookup];
+            base = _mm_add_epi16(base, increment);
+        }
+    }
+
+    const in_vec_t* biasvec = (const in_vec_t*)bias;
+    in_vec_t acc[NumRegs];
+    for (unsigned int k = 0; k < NumRegs; ++k)
+        acc[k] = biasvec[k];
+
+    for (unsigned int j = 0; j < count; ++j)
+    {
+        const uint16_t i = nnz[j];
+        const in_vec_t in = vec_set_32(input32[i]);
+        const in_vec_t* col = (const in_vec_t*)&weight[i * outputdims * ChunkSize];
+        for (unsigned int k = 0; k < NumRegs; ++k)
+            vec_add_dpbusd_32(acc[k], in, col[k]);
+    }
+
+    in_vec_t* outptr = (in_vec_t*)output;
+    for (unsigned int k = 0; k < NumRegs; ++k)
+        outptr[k] = acc[k];
 }
 
 

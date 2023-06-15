@@ -54,7 +54,7 @@
 //#define NNUELEARN
 
 // Enable this to enable NNUE debug output
-#define NNUEDEBUG
+//#define NNUEDEBUG
 
 
 #ifdef FINDMEMORYLEAKS
@@ -199,6 +199,7 @@ typedef unsigned int PieceType;
 #ifdef USE_BMI1
 #include <immintrin.h>
 #define GETLSB(i,x) (i =(int) _tzcnt_u64(x))
+#define GETLSB32(i,x) (i =(int) _tzcnt_u32(x))
 inline int pullLsb(U64* x) {
     int i;
     i = (int)_tzcnt_u64(*x);
@@ -917,7 +918,7 @@ public:
     void PropagateNative(clipped_t* input, int32_t* output);
     inline unsigned int shuffleWeightIndex(unsigned int idx)
     {
-        if (paddedInputdims < 128)
+        if ( 0 && paddedInputdims < 128)
 #ifdef USE_SSSE3
             return   (idx / 4) % (paddedInputdims / 4) * outputdims * 4 +
             idx / paddedInputdims * 4 +
