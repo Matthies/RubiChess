@@ -289,7 +289,7 @@ public:
 
         int bucket = (POPCOUNT(pos->occupied00[WHITE] | pos->occupied00[BLACK]) - 1) / 4;
         int psqt = pos->Transform<NnueArchV5, NnueFtHalfdims, NnuePsqtBuckets>(network.input, bucket);
-        LayerStack[bucket].NnueHd1.SparsePropagate(network.input, network.hidden1_values);
+        LayerStack[bucket].NnueHd1.Propagate(network.input, network.hidden1_values);
         memset(network.hidden1_sqrclipped, 0, sizeof(network.hidden1_sqrclipped));  // FIXME: is this needed?
         LayerStack[bucket].NnueSqrCl.Propagate(network.hidden1_values, network.hidden1_sqrclipped);
         LayerStack[bucket].NnueCl1.Propagate(network.hidden1_values, network.hidden1_clipped);
@@ -387,8 +387,8 @@ template <NnueType Nt, Color c> void chessposition::HalfkpAppendChangedIndices(D
 #if defined (USE_AVX2)
 typedef __m256i sml_vec_t;
 #define vec_setzero _mm256_setzero_si256
-#define vec_set_32 _mm256_set1_epi32
-#define vec_add_dpbusd_32 Simd::m256_add_dpbusd_32
+#define vec_setsml_32 _mm256_set1_epi32
+#define vec_addsml_dpbusd_32 Simd::m256_add_dpbusd_32
 #define vec_add_dpbusd_32x2 Simd::m256_add_dpbusd_32x2
 #define vec_hadd Simd::m256_hadd
 #define vec_haddx4 Simd::m256_haddx4
@@ -396,8 +396,8 @@ typedef __m256i sml_vec_t;
 #elif defined (USE_SSSE3)
 typedef __m128i sml_vec_t;
 #define vec_setzero _mm_setzero_si128
-#define vec_set_32 _mm_set1_epi32
-#define vec_add_dpbusd_32 Simd::m128_add_dpbusd_32
+#define vec_setsml_32 _mm_set1_epi32
+#define vec_addsml_dpbusd_32 Simd::m128_add_dpbusd_32
 #define vec_add_dpbusd_32x2 Simd::m128_add_dpbusd_32x2
 #define vec_add_dpbusd_32x4 Simd::m128_add_dpbusd_epi32x4
 #define vec_hadd Simd::m128_hadd
@@ -436,6 +436,8 @@ inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define vec_load_psqt(a) _mm256_load_si256(a)
 #define vec_store_psqt(a,b) _mm256_store_si256(a,b)
 #define vec_nnz(a) _mm512_cmpgt_epi32_mask(a, _mm512_setzero_si512())
+#define vec_set_32 _mm512_set1_epi32
+#define vec_add_dpbusd_32 Simd::m512_add_dpbusd_32
 
 #elif defined(USE_AVX2)
 #define NUM_REGS 16
@@ -466,6 +468,8 @@ inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define vec_load_psqt(a) _mm256_load_si256(a)
 #define vec_store_psqt(a,b) _mm256_store_si256(a,b)
 #define vec_nnz(a) _mm256_movemask_ps(_mm256_castsi256_ps(_mm256_cmpgt_epi32(a, _mm256_setzero_si256())))
+#define vec_set_32 _mm256_set1_epi32
+#define vec_add_dpbusd_32 Simd::m256_add_dpbusd_32
 
 #elif defined(USE_SSE2)
 #define NUM_REGS 16
@@ -494,7 +498,10 @@ typedef __m128i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, bias_v
 #define vec_add_dpbusd_32x2_large Simd::m128_add_dpbusd_32x2
 #define vec_haddx4_large Simd::m128_haddx4
 #define vec_hadd_large Simd::m128_hadd
-#define vec_nnz(a) _mm_movemask_ps((__m128)_mm_cmpgt_epi32(a, _mm_setzero_si128()))
+#define vec_nnz(a) _mm_movemask_ps(_mm_castsi128_ps(_mm_cmpgt_epi32(a, _mm_setzero_si128())))
+#define vec_set_32 _mm_set1_epi32
+#define vec_add_dpbusd_32 Simd::m128_add_dpbusd_32
+
 #else // USE_SSSE3
 #define vec_clip_8(a,b) _mm_subs_epi8(_mm_adds_epi8(_mm_packs_epi16(a, b), _mm_set1_epi8(-128)), _mm_set1_epi8(-128))
 #define vec_clip_16(a) _mm_min_epi16(_mm_max_epi16(a,_mm_setzero_si128()),_mm_set1_epi16(127))
@@ -540,9 +547,44 @@ inline  ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 typedef int16_t ft_vec_t;
 #endif
 
-
 #ifdef USE_SIMD
 #define PSQT_TILE_HEIGHT (NUM_PSQT_REGS * sizeof(psqt_vec_t) / 4)
+#endif
+
+#if defined(USE_SSSE3)
+alignas(64) static const array<array<uint16_t, 8>, 256> lookup_indices = []() {
+    array<array<uint16_t, 8>, 256> v{};
+    for (int i = 0; i < 256; ++i)
+    {
+        int j = i;
+        int k = 0;
+        while (j)
+        {
+            unsigned int lsbIndex;
+            GETLSB32(lsbIndex, j);
+            j &= j - 1;
+            v[i][k] = lsbIndex;
+            ++k;
+        }
+    }
+    return v;
+}();
+
+alignas(64) static const array<unsigned, 256> lookup_count = []() {
+    array<unsigned, 256> v;
+    for (int i = 0; i < 256; ++i)
+    {
+        int j = i;
+        int k = 0;
+        while (j)
+        {
+            j &= j - 1;
+            ++k;
+        }
+        v[i] = k;
+    }
+    return v;
+}();
 #endif
 
 
@@ -1115,95 +1157,22 @@ void NnueNetworkLayer<inputdims, outputdims>::WriteWeights(NnueNetsource* nr)
 template <unsigned int inputdims, unsigned int outputdims>
 void NnueNetworkLayer<inputdims, outputdims>::Propagate(clipped_t* input, int32_t* output)
 {
-    if (paddedInputdims < 128)
-#if defined (USE_SSSE3)
-    {
-        // Small Layer fast propagation
-        if (outputdims % OutputSimdWidth == 0)
-        {
-            constexpr unsigned int numChunks = paddedInputdims / 4;
-
-            const int32_t* input32 = (int32_t*)input;
-            const sml_vec_t* biasvec = (sml_vec_t*)bias;
-            sml_vec_t acc[NumOutputRegsSmall];
-            for (unsigned int k = 0; k < NumOutputRegsSmall; ++k)
-                acc[k] = biasvec[k];
-
-            for (unsigned int i = 0; i < numChunks; i += 2)
-            {
-                const sml_vec_t in0 = vec_set_32(input32[i + 0]);
-                const sml_vec_t in1 = vec_set_32(input32[i + 1]);
-                const sml_vec_t* col0 = (sml_vec_t*)(&weight[(i + 0) * outputdims * 4]);
-                const sml_vec_t* col1 = (sml_vec_t*)(&weight[(i + 1) * outputdims * 4]);
-                for (unsigned int k = 0; k < NumOutputRegsSmall; ++k)
-                    vec_add_dpbusd_32x2(acc[k], in0, col0[k], in1, col1[k]);
-            }
-
-            sml_vec_t* outptr = (sml_vec_t*)output;
-            for (unsigned int k = 0; k < NumOutputRegsSmall; ++k)
-                outptr[k] = acc[k];
-}
-        else {
-            constexpr unsigned int numChunks = paddedInputdims / SimdWidth;
-            const sml_vec_t* inputVector = (sml_vec_t*)input;
-
-            sml_vec_t sum0 = vec_setzero();
-            sml_vec_t* row0 = (sml_vec_t*)&weight[0];
-
-            for (int j = 0; j < (int)numChunks; ++j)
-            {
-                const sml_vec_t in = inputVector[j];
-                vec_add_dpbusd_32(sum0, in, row0[j]);
-            }
-            output[0] = vec_hadd(sum0, bias[0]);
-        }
-    }
-#else
-        PropagateNative(input, output);
+#ifdef USE_PROPAGATESPARSE
+    if (useSparsePropagation)
+        PropagateSparse(input, output);
+    else
 #endif
-    if (paddedInputdims >= 128)
-#if  defined (USE_SSSE3) || defined(USE_NEON)
-    {
-        // Big Layer fast propagation
-        const in_vec_t* invec = (in_vec_t*)input;
-        for (unsigned int bigBlock = 0; bigBlock < NumBigBlocks; ++bigBlock)
-        {
-            acc_vec_t acc[NumOutputRegsBig] = { vec_zero() };
-
-            for (unsigned int smallBlock = 0; smallBlock < NumSmallBlocksPerOutput; smallBlock += 2)
-            {
-                const weight_vec_t* weightvec = (weight_vec_t*)(weight + bigBlock * BigBlockSize + smallBlock * SmallBlockSize * NumOutputRegsBig);
-                const in_vec_t in0 = invec[smallBlock + 0];
-                const in_vec_t in1 = invec[smallBlock + 1];
-
-                for (unsigned int k = 0; k < NumOutputRegsBig; ++k)
-                    vec_add_dpbusd_32x2_large(acc[k], in0, weightvec[k], in1, weightvec[k + NumOutputRegsBig]);
-            }
-
-            if (NumOutputRegsBig % 4 == 0)
-            {
-                bias_vec_t* outputvec = (bias_vec_t*)output;
-                const bias_vec_t* biasvec = (bias_vec_t*)bias;
-
-                for (unsigned int k = 0; k < NumOutputRegsBig; k += 4)
-                {
-                    const unsigned int idx = (bigBlock * NumOutputRegsBig + k) / 4;
-                    outputvec[idx] = vec_haddx4_large(acc[k + 0], acc[k + 1], acc[k + 2], acc[k + 3], biasvec[idx]);
-                }
-            }
-            else
-            {
-                for (unsigned int k = 0; k < NumOutputRegsBig; ++k)
-                {
-                    const unsigned int idx = (bigBlock * NumOutputRegsBig + k);
-                    output[idx] = vec_hadd_large(acc[k], bias[idx]);
-                }
-            }
-        }
-    }
-#else
-        PropagateNative(input, output);
+#ifdef USE_PROPAGATESMALL
+    if (useSmallLayerPropagation)
+        PropagateSmallLayerFast(input, output);
+    else
 #endif
+#ifdef USE_PROPAGATEBIG
+    if (useBigLayerPropagation)
+        PropagateBigLayer(input, output);
+    else
+#endif
+        PropagateNative(input, output);
 
 #ifdef NNUEDEBUG
     cout << "\nnetwork layer:\n";
@@ -1216,63 +1185,120 @@ void NnueNetworkLayer<inputdims, outputdims>::Propagate(clipped_t* input, int32_
 #endif
 }
 
-#if defined(USE_SSSE3)
-alignas(64) static const std::array<std::array<std::uint16_t, 8>, 256> lookup_indices = []() {
-    std::array<std::array<std::uint16_t, 8>, 256> v{};
-    for (int i = 0; i < 256; ++i)
+
+#ifdef USE_PROPAGATESMALL
+template <unsigned int inputdims, unsigned int outputdims>
+inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSmallLayerFast(clipped_t* input, int32_t* output)
+{
+    // Small Layer fast propagation
+    if (outputdims % OutputSimdWidth == 0)
     {
-        int j = i;
-        int k = 0;
-        while (j)
+        constexpr unsigned int numChunks = paddedInputdims / 4;
+
+        const int32_t* input32 = (int32_t*)input;
+        const sml_vec_t* biasvec = (sml_vec_t*)bias;
+        sml_vec_t acc[NumOutputRegsSmall];
+        for (unsigned int k = 0; k < NumOutputRegsSmall; ++k)
+            acc[k] = biasvec[k];
+
+        for (unsigned int i = 0; i < numChunks; i += 2)
         {
-            unsigned int lsbIndex;
-            GETLSB32(lsbIndex, j);
-            j &= j - 1;
-            v[i][k] = lsbIndex;
-            ++k;
+            const sml_vec_t in0 = vec_setsml_32(input32[i + 0]);
+            const sml_vec_t in1 = vec_setsml_32(input32[i + 1]);
+            const sml_vec_t* col0 = (sml_vec_t*)(&weight[(i + 0) * outputdims * 4]);
+            const sml_vec_t* col1 = (sml_vec_t*)(&weight[(i + 1) * outputdims * 4]);
+            for (unsigned int k = 0; k < NumOutputRegsSmall; ++k)
+                vec_add_dpbusd_32x2(acc[k], in0, col0[k], in1, col1[k]);
         }
+
+        sml_vec_t* outptr = (sml_vec_t*)output;
+        for (unsigned int k = 0; k < NumOutputRegsSmall; ++k)
+            outptr[k] = acc[k];
     }
-    return v;
-}();
-alignas(64) static const std::array<unsigned, 256> lookup_count = []() {
-    std::array<unsigned, 256> v;
-    for (int i = 0; i < 256; ++i)
-    {
-        int j = i;
-        int k = 0;
-        while (j)
+    else {
+        constexpr unsigned int numChunks = paddedInputdims / SimdWidth;
+        const sml_vec_t* inputVector = (sml_vec_t*)input;
+
+        sml_vec_t sum0 = vec_setzero();
+        sml_vec_t* row0 = (sml_vec_t*)&weight[0];
+
+        for (int j = 0; j < (int)numChunks; ++j)
         {
-            j &= j - 1;
-            ++k;
+            const sml_vec_t in = inputVector[j];
+            vec_addsml_dpbusd_32(sum0, in, row0[j]);
         }
-        v[i] = k;
+        output[0] = vec_hadd(sum0, bias[0]);
     }
-    return v;
-}();
+}
 #endif
 
 
+#ifdef USE_PROPAGATEBIG
 template <unsigned int inputdims, unsigned int outputdims>
-void NnueNetworkLayer<inputdims, outputdims>::SparsePropagate(clipped_t* input, int32_t* output)
+inline void NnueNetworkLayer<inputdims, outputdims>::PropagateBigLayer(clipped_t* input, int32_t* output)
 {
+    // Big Layer fast propagation
+    const in_vec_t* invec = (in_vec_t*)input;
+    for (unsigned int bigBlock = 0; bigBlock < NumBigBlocks; ++bigBlock)
+    {
+        acc_vec_t acc[NumOutputRegsBig] = { vec_zero() };
+
+        for (unsigned int smallBlock = 0; smallBlock < NumSmallBlocksPerOutput; smallBlock += 2)
+        {
+            const weight_vec_t* weightvec = (weight_vec_t*)(weight + bigBlock * BigBlockSize + smallBlock * SmallBlockSize * NumOutputRegsBig);
+            const in_vec_t in0 = invec[smallBlock + 0];
+            const in_vec_t in1 = invec[smallBlock + 1];
+
+            for (unsigned int k = 0; k < NumOutputRegsBig; ++k)
+                vec_add_dpbusd_32x2_large(acc[k], in0, weightvec[k], in1, weightvec[k + NumOutputRegsBig]);
+        }
+
+        if (NumOutputRegsBig % 4 == 0)
+        {
+            bias_vec_t* outputvec = (bias_vec_t*)output;
+            const bias_vec_t* biasvec = (bias_vec_t*)bias;
+
+            for (unsigned int k = 0; k < NumOutputRegsBig; k += 4)
+            {
+                const unsigned int idx = (bigBlock * NumOutputRegsBig + k) / 4;
+                outputvec[idx] = vec_haddx4_large(acc[k + 0], acc[k + 1], acc[k + 2], acc[k + 3], biasvec[idx]);
+            }
+        }
+        else
+        {
+            for (unsigned int k = 0; k < NumOutputRegsBig; ++k)
+            {
+                const unsigned int idx = (bigBlock * NumOutputRegsBig + k);
+                output[idx] = vec_hadd_large(acc[k], bias[idx]);
+            }
+        }
+    }
+}
+#endif
+
+
+#ifdef USE_PROPAGATESPARSE
+template <unsigned int inputdims, unsigned int outputdims>
+inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* input, int32_t* output)
+{
+    //static_assert(outputdims > OutputSimdWidth)
     static constexpr unsigned int ChunkSize = 4;
-    static constexpr unsigned int OutputSimdWidth = sizeof(in_vec_t) / sizeof(int32_t);
     constexpr unsigned int NumChunks = MULTIPLEOFN(inputdims, 8) / ChunkSize;
-    constexpr unsigned int NumRegs = outputdims / OutputSimdWidth;
+    constexpr unsigned int NumRegs = outputdims > OutputSimdWidth ? outputdims / OutputSimdWidth : 1;
     uint16_t nnz[NumChunks];
     unsigned int count = 0;
     const int32_t* input32 = (int32_t*)input;
     const in_vec_t* inputVector = (const in_vec_t*)input;
 
 
-    // Find indices of nonzero 32bit blocks
-    constexpr unsigned int InputSimdWidth = sizeof(in_vec_t) / sizeof(std::int32_t);
-    // Inputs are processed InputSimdWidth at a time and outputs are processed 8 at a time so we process in chunks of max(InputSimdWidth, 8)
-    constexpr unsigned int InternalChunkSize = max(InputSimdWidth, 8);
+    constexpr unsigned int InternalInputSimdWidth = sizeof(in_vec_t) / sizeof(std::int32_t);
+    // Inputs are processed InternalInputSimdWidth at a time and outputs are processed 8 at a time so we process in chunks of max(InputSimdWidth, 8)
+    constexpr unsigned int InternalChunkSize = InternalInputSimdWidth > 8 ? InternalInputSimdWidth : 8;
     constexpr unsigned int NumInternalChunks = NumChunks / InternalChunkSize;
-    constexpr unsigned int InputsPerInternalChunk = InternalChunkSize / InputSimdWidth;
+    constexpr unsigned int InputsPerInternalChunk = InternalChunkSize / InternalInputSimdWidth;
     constexpr unsigned int OutputsPerInternalChunk = InternalChunkSize / 8;
 
+    // Step 1: Find indices of nonzero 32bit blocks
     __m128i base = _mm_set1_epi16(0);
     __m128i increment = _mm_set1_epi16(8);
     for (unsigned int i = 0; i < NumInternalChunks; ++i)
@@ -1282,7 +1308,7 @@ void NnueNetworkLayer<inputdims, outputdims>::SparsePropagate(clipped_t* input, 
         for (unsigned int j = 0; j < InputsPerInternalChunk; ++j)
         {
             const in_vec_t inputChunk = inputVector[i * InputsPerInternalChunk + j];
-            internalnnz |= (unsigned)vec_nnz(inputChunk) << (j * InputSimdWidth);
+            internalnnz |= (unsigned)vec_nnz(inputChunk) << (j * InternalInputSimdWidth);
         }
         for (unsigned int j = 0; j < OutputsPerInternalChunk; ++j)
         {
@@ -1294,6 +1320,7 @@ void NnueNetworkLayer<inputdims, outputdims>::SparsePropagate(clipped_t* input, 
         }
     }
 
+    // Step 2: Process the collected nonzero blocks
     const in_vec_t* biasvec = (const in_vec_t*)bias;
     in_vec_t acc[NumRegs];
     for (unsigned int k = 0; k < NumRegs; ++k)
@@ -1312,6 +1339,7 @@ void NnueNetworkLayer<inputdims, outputdims>::SparsePropagate(clipped_t* input, 
     for (unsigned int k = 0; k < NumRegs; ++k)
         outptr[k] = acc[k];
 }
+#endif
 
 
 template <unsigned int inputdims, unsigned int outputdims>
