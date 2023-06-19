@@ -24,7 +24,7 @@
 #define FASTSSE2
 
 // Enable to get statistical values about various search features
-//#define STATISTICS
+#define STATISTICS
 
 // Enable to debug the search against a gives pv
 //#define SDEBUG
@@ -54,7 +54,7 @@
 //#define NNUELEARN
 
 // Enable this to enable NNUE debug output
-//#define NNUEDEBUG
+#define NNUEDEBUG
 
 
 #ifdef FINDMEMORYLEAKS
@@ -780,6 +780,9 @@ public:
     virtual unsigned int GetAccumulationSize() = 0;
     virtual unsigned int GetPsqtAccumulationSize() = 0;
     virtual size_t GetNetworkFilesize() = 0;
+#ifdef STATISTICS
+    virtual void SwapInputNeurons(unsigned int i1, unsigned int i2) = 0;
+#endif
 };
 
 
@@ -837,6 +840,15 @@ public:
     uint32_t GetHash() {
         return NNUEINPUTSLICEHASH ^ (ftdims * 2);
     };
+#ifdef STATISTICS
+    void SwapWeights(unsigned int i1, unsigned int i2) {
+        int16_t bias_temp = bias[i1];
+        bias[i1] = bias[i2];
+        bias[i2] = bias_temp;
+        int16_t weight_temp[inputdims];
+        memcpy(weight_temp, &weight[i1 * inputdims], inputdims)
+    }
+#endif
 };
 
 template <unsigned int dims, unsigned int clippingshift>
@@ -926,6 +938,10 @@ class NnueNetworkLayer : public NnueLayer
 public:
     alignas(64)int32_t bias[outputdims];
     alignas(64)weight_t weight[paddedInputdims * outputdims];
+#ifdef STATISTICS
+    U64 nonzeroevals[paddedInputdims] = { 0 };
+    void SwapWeights(unsigned int i1, unsigned int i2);
+#endif
 
     NnueNetworkLayer(NnueLayer* prev) : NnueLayer(prev) {}
     bool ReadWeights(NnueNetsource* nr);

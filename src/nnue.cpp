@@ -191,6 +191,9 @@ public:
     size_t GetNetworkFilesize() {
         return networkfilesize;
     }
+    void SwapInputNeurons(unsigned int i1, unsigned int i2) {
+        // not supported for V1
+    }
 };
 
 template <unsigned int NnueFtOutputdims>
@@ -330,6 +333,12 @@ public:
     size_t GetNetworkFilesize() {
         return networkfilesize;
     }
+    void SwapInputNeurons(unsigned int i1, unsigned int i2) {
+        NnueFt.SwapWeights(i1, i2);
+        for (int i = 0; i < NnueLayerStacks; i++)
+            LayerStack[i].NnueHd1.SwapWeights(i1, i2);
+    }
+
 };
 
 
@@ -1281,7 +1290,6 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateBigLayer(clipped_t
 template <unsigned int inputdims, unsigned int outputdims>
 inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* input, int32_t* output)
 {
-    //static_assert(outputdims > OutputSimdWidth)
     static constexpr unsigned int ChunkSize = 4;
     constexpr unsigned int NumChunks = MULTIPLEOFN(inputdims, 8) / ChunkSize;
     constexpr unsigned int NumRegs = outputdims > OutputSimdWidth ? outputdims / OutputSimdWidth : 1;
@@ -1308,7 +1316,22 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
         for (unsigned int j = 0; j < InputsPerInternalChunk; ++j)
         {
             const in_vec_t inputChunk = inputVector[i * InputsPerInternalChunk + j];
-            internalnnz |= (unsigned)vec_nnz(inputChunk) << (j * InternalInputSimdWidth);
+            unsigned int newnnz = vec_nnz(inputChunk);
+            internalnnz |= newnnz << (j * InternalInputSimdWidth);
+#ifdef STATISTICS
+            int k = (i * InputsPerInternalChunk + j) * InternalInputSimdWidth * ChunkSize;
+            while (newnnz)
+            {
+                if (newnnz & 1)
+                {
+                    for (unsigned int l = 0; l < ChunkSize; l++)
+                        if (input[k + l])
+                            nonzeroevals[k + l]++;
+                }
+                k += ChunkSize;
+                newnnz = newnnz >> 1;
+            }
+#endif
         }
         for (unsigned int j = 0; j < OutputsPerInternalChunk; ++j)
         {
