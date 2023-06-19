@@ -194,6 +194,9 @@ public:
     void SwapInputNeurons(unsigned int i1, unsigned int i2) {
         // not supported for V1
     }
+    void Statistics(bool verbose, bool sort) {
+        // not supported for V1
+    }
 };
 
 template <unsigned int NnueFtOutputdims>
@@ -334,11 +337,60 @@ public:
         return networkfilesize;
     }
     void SwapInputNeurons(unsigned int i1, unsigned int i2) {
-        NnueFt.SwapWeights(i1, i2);
-        for (int i = 0; i < NnueLayerStacks; i++)
-            LayerStack[i].NnueHd1.SwapWeights(i1, i2);
+        if (i1 >= NnueFtHalfdims / 2 || i2 >= NnueFtHalfdims / 2) {
+            cout << "Alarm! Bad index for neuron swapping.\n";
+            return;
+        }
+        for (int p = 0; p < 2; p++) {
+            int offset = p * NnueFtHalfdims / 2;
+            NnueFt.SwapWeights(offset + i1, offset + i2);
+            for (int i = 0; i < NnueLayerStacks; i++)
+                LayerStack[i].NnueHd1.SwapWeights(offset + i1, offset + i2);
+        }
     }
-
+    void Statistics(bool verbose, bool sort) {
+        char str[512];
+        sprintf(str, "");
+        U64 total_n = 0;
+        U64 total_count = 0;
+        U64 total_nonzeroevals[NnueFtOutputdims / 2] = { 0 };
+        for (int i = 0; i < NnueLayerStacks; i++) {
+            total_n += LayerStack[i].NnueHd1.total_evals;
+        }
+        for (int i = 0; i < NnueLayerStacks; i++) {
+            U64 n = LayerStack[i].NnueHd1.total_evals;
+            U64 c = LayerStack[i].NnueHd1.total_count;
+            total_count += c;
+            double counts_per_eval = c / (double)n;
+            double f1 = 100.0 * n / total_n;
+            sprintf(str, "%s  L#%d %4.1f%% Avrg.:%6.2f ", str, i, f1, counts_per_eval);
+        }
+        sprintf(str, "%s  total Avrg.:%6.2f ", str, (double)total_count / total_n);
+        guiCom << string("[STATS] NNUE: ") + str + "\n";
+        for (int j = 0; j < NnueFtOutputdims / 2; j++) {
+            sprintf(str, "%4d: ", j);
+            for (int i = 0; i < NnueLayerStacks; i++) {
+                U64 n1 = LayerStack[i].NnueHd1.nonzeroevals[j];
+                U64 n2 = LayerStack[i].NnueHd1.nonzeroevals[j + NnueFtOutputdims / 2];
+                total_nonzeroevals[j] += n1 + n2;
+                sprintf(str, "%s   (%9lld/%9lld) ", str, n1, n2);
+            }
+            sprintf(str, "%s   %9lld", str, total_nonzeroevals[j]);
+            if (verbose)
+                guiCom << string("[STATS] ") + str + "\n";
+        }
+        if (sort)
+        {
+            for (int i1 = 0; i1 < NnueFtOutputdims / 2; i1++)
+                for (int i2 = i1 + 1; i2 < NnueFtOutputdims / 2; i2++)
+                    if (total_nonzeroevals[i1] < total_nonzeroevals[i2]) {
+                        U64 temp_nnz = total_nonzeroevals[i1];
+                        total_nonzeroevals[i1] = total_nonzeroevals[i2];
+                        total_nonzeroevals[i2] = temp_nnz;
+                        SwapInputNeurons(i1, i2);
+                    }
+        }
+    }
 };
 
 
@@ -803,8 +855,6 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
             }
 
 #else
-        acm = accumulation + (ply * 2 + c) * NnueFtHalfdims;
-        psqtacm = psqtAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
         memcpy(acm, bias, NnueFtHalfdims * sizeof(int16_t));
         memset(psqtacm, 0, NnuePsqtBuckets * sizeof(int32_t));
 
@@ -1343,6 +1393,11 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
         }
     }
 
+#ifdef STATISTICS
+    total_evals++;
+    total_count += count;
+#endif
+
     // Step 2: Process the collected nonzero blocks
     const in_vec_t* biasvec = (const in_vec_t*)bias;
     in_vec_t acc[NumRegs];
@@ -1717,6 +1772,7 @@ bool NnueReadNet(NnueNetsource* nr)
         en.allocThreads();
     }
 
+    NnueCurrentArch->SwapInputNeurons(0, 5);
     return true;
 }
 
@@ -1775,6 +1831,7 @@ void NnueWriteNet(vector<string> args)
     string NnueNetPath = "export.nnue";
     int rescale = 0;
     bool zExport = false;
+    bool sort = false;
     if (ci < cs)
         NnueNetPath = args[ci++];
 
@@ -1788,7 +1845,19 @@ void NnueWriteNet(vector<string> args)
             zExport = true;
             ci++;
         }
+        else if (args[ci] == "sort")
+        {
+            sort = true;
+            ci++;
+        }
     }
+
+    if (sort)
+#ifdef STATISTICS
+        NnueCurrentArch->Statistics(false, true);
+#else
+        cout << "Cannot sort input features. This needs STATISTICS collection enabled.\n";
+#endif
 
     ofstream os;
     os.open(NnueNetPath, ios::binary);

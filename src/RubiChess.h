@@ -24,7 +24,7 @@
 #define FASTSSE2
 
 // Enable to get statistical values about various search features
-#define STATISTICS
+//#define STATISTICS
 
 // Enable to debug the search against a gives pv
 //#define SDEBUG
@@ -54,7 +54,7 @@
 //#define NNUELEARN
 
 // Enable this to enable NNUE debug output
-#define NNUEDEBUG
+//#define NNUEDEBUG
 
 
 #ifdef FINDMEMORYLEAKS
@@ -782,6 +782,7 @@ public:
     virtual size_t GetNetworkFilesize() = 0;
 #ifdef STATISTICS
     virtual void SwapInputNeurons(unsigned int i1, unsigned int i2) = 0;
+    virtual void Statistics(bool verbose, bool sort) = 0;
 #endif
 };
 
@@ -845,8 +846,13 @@ public:
         int16_t bias_temp = bias[i1];
         bias[i1] = bias[i2];
         bias[i2] = bias_temp;
-        int16_t weight_temp[inputdims];
-        memcpy(weight_temp, &weight[i1 * inputdims], inputdims)
+        for (unsigned int i = 0; i < inputdims; i++)
+        {
+            int offset = i * ftdims;
+            int16_t weight_temp = weight[offset + i1];
+            weight[offset + i1] = weight[offset + i2];
+            weight[offset + i2] = weight_temp;
+        }
     }
 #endif
 };
@@ -940,7 +946,17 @@ public:
     alignas(64)weight_t weight[paddedInputdims * outputdims];
 #ifdef STATISTICS
     U64 nonzeroevals[paddedInputdims] = { 0 };
-    void SwapWeights(unsigned int i1, unsigned int i2);
+    U64 total_evals = 0;
+    U64 total_count = 0;
+    void SwapWeights(unsigned int i1, unsigned int i2) {
+        for (int i = 0; i < outputdims; i++)
+        {
+            int offset = i * inputdims;
+            weight_t weight_temp = weight[shuffleWeightIndex(offset + i1)];
+            weight[shuffleWeightIndex(offset + i1)] = weight[shuffleWeightIndex(offset + i2)];
+            weight[shuffleWeightIndex(offset + i2)] = weight_temp;
+        }
+    }
 #endif
 
     NnueNetworkLayer(NnueLayer* prev) : NnueLayer(prev) {}

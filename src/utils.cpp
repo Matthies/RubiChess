@@ -952,6 +952,7 @@ void statistic::output(vector<string> args)
             guiCom << lengthStr + "\n";
         }
     }
+    NnueCurrentArch->Statistics(true, false);
     guiCom << "[STATS] ==================================================================================================================================================================\n";
     outputDone = true;
 }
