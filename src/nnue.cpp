@@ -193,9 +193,13 @@ public:
     }
     void SwapInputNeurons(unsigned int i1, unsigned int i2) {
         // not supported for V1
+        (void)i1;
+        (void)i2;
     }
     void Statistics(bool verbose, bool sort) {
         // not supported for V1
+        (void)verbose;
+        (void)sort;
     }
 };
 
@@ -1223,7 +1227,7 @@ void NnueNetworkLayer<inputdims, outputdims>::Propagate(clipped_t* input, int32_
 #endif
 #ifdef USE_PROPAGATESMALL
     if (useSmallLayerPropagation)
-        PropagateSmallLayerFast(input, output);
+        PropagateSmallLayer(input, output);
     else
 #endif
 #ifdef USE_PROPAGATEBIG
@@ -1247,7 +1251,7 @@ void NnueNetworkLayer<inputdims, outputdims>::Propagate(clipped_t* input, int32_
 
 #ifdef USE_PROPAGATESMALL
 template <unsigned int inputdims, unsigned int outputdims>
-inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSmallLayerFast(clipped_t* input, int32_t* output)
+inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSmallLayer(clipped_t* input, int32_t* output)
 {
     // Small Layer fast propagation
     if (outputdims % OutputSimdWidth == 0)
@@ -1350,7 +1354,6 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
 
 
     constexpr unsigned int InternalInputSimdWidth = sizeof(in_vec_t) / sizeof(std::int32_t);
-    // Inputs are processed InternalInputSimdWidth at a time and outputs are processed 8 at a time so we process in chunks of max(InputSimdWidth, 8)
     constexpr unsigned int InternalChunkSize = InternalInputSimdWidth > 8 ? InternalInputSimdWidth : 8;
     constexpr unsigned int NumInternalChunks = NumChunks / InternalChunkSize;
     constexpr unsigned int InputsPerInternalChunk = InternalChunkSize / InternalInputSimdWidth;

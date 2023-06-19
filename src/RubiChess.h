@@ -240,7 +240,6 @@ inline int pullLsb(U64* x) {
     *x = _blsr_u64(*x);
     return i;
 }
-
 #define GETMSB(i,x) (i = (63 ^ _lzcnt_u64(x)))
 inline int pullMsb(U64* x) {
     int i = 63 ^ _lzcnt_u64(*x);
@@ -966,14 +965,13 @@ public:
     uint32_t GetHash() {
         return (NNUENETLAYERHASH + outputdims) ^ (previous->GetHash() >> 1) ^ (previous->GetHash() << 31);
     }
-
     void Propagate(clipped_t *input, int32_t *output);
     void PropagateBigLayer(clipped_t* input, int32_t* output);
-    void PropagateSmallLayerFast(clipped_t* input, int32_t* output);
+    void PropagateSmallLayer(clipped_t* input, int32_t* output);
     void PropagateNative(clipped_t* input, int32_t* output);
     inline unsigned int shuffleWeightIndex(unsigned int idx)
     {
-        if (!useSparsePropagation && paddedInputdims >= 128)
+        if (useBigLayerPropagation)
         {
             const int smallBlock = (idx / SmallBlockSize) % NumSmallBlocksInBigBlock;
             const int smallBlockCol = smallBlock / NumSmallBlocksPerOutput;
