@@ -1772,7 +1772,6 @@ bool NnueReadNet(NnueNetsource* nr)
         en.allocThreads();
     }
 
-    NnueCurrentArch->SwapInputNeurons(0, 5);
     return true;
 }
 
