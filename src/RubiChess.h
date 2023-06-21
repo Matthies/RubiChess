@@ -18,7 +18,7 @@
 #pragma once
 
 #define VERNUMLEGACY 2023
-#define NNUEDEFAULT nn-d901a1822f-20230606.nnue
+#define NNUEDEFAULT nn-1701a2eb23-20230619.nnue
 
 // enable this switch for faster SSE2 code using 16bit integers
 #define FASTSSE2
@@ -199,6 +199,7 @@ typedef unsigned int PieceType;
 #ifdef USE_BMI1
 #include <immintrin.h>
 #define GETLSB(i,x) (i =(int) _tzcnt_u64(x))
+#define GETLSB32(i,x) (i =(int) _tzcnt_u32(x))
 inline int pullLsb(U64* x) {
     int i;
     i = (int)_tzcnt_u64(*x);
@@ -214,6 +215,7 @@ inline int pullMsb(U64* x) {
 }
 #else
 #define GETLSB(i,x) _BitScanForward64((DWORD*)&(i), (x))
+#define GETLSB32(i,x) _BitScanForward((DWORD*)&(i), (x))
 inline int pullLsb(U64* x) {
     DWORD i;
     _BitScanForward64(&i, *x);
@@ -232,6 +234,7 @@ inline int pullMsb(U64* x) {
 #else
 #ifdef USE_BMI1
 #define GETLSB(i,x) (i =  _tzcnt_u64(x))
+#define GETLSB32(i,x) (i =(int) _tzcnt_u32(x))
 inline int pullLsb(U64* x) {
     int i = _tzcnt_u64(*x);
     *x = _blsr_u64(*x);
@@ -245,6 +248,7 @@ inline int pullMsb(U64* x) {
 }
 #else
 #define GETLSB(i,x) (i = __builtin_ctzll(x))
+#define GETLSB32(i,x) (i =(int) __builtin_ctz(x))
 inline int pullLsb(U64* x) {
     int i = __builtin_ctzll(*x);
     *x &= *x - 1;
@@ -775,6 +779,10 @@ public:
     virtual unsigned int GetAccumulationSize() = 0;
     virtual unsigned int GetPsqtAccumulationSize() = 0;
     virtual size_t GetNetworkFilesize() = 0;
+#ifdef STATISTICS
+    virtual void SwapInputNeurons(unsigned int i1, unsigned int i2) = 0;
+    virtual void Statistics(bool verbose, bool sort) = 0;
+#endif
 };
 
 
@@ -832,6 +840,20 @@ public:
     uint32_t GetHash() {
         return NNUEINPUTSLICEHASH ^ (ftdims * 2);
     };
+#ifdef STATISTICS
+    void SwapWeights(unsigned int i1, unsigned int i2) {
+        int16_t bias_temp = bias[i1];
+        bias[i1] = bias[i2];
+        bias[i2] = bias_temp;
+        for (unsigned int i = 0; i < inputdims; i++)
+        {
+            int offset = i * ftdims;
+            int16_t weight_temp = weight[offset + i1];
+            weight[offset + i1] = weight[offset + i2];
+            weight[offset + i2] = weight_temp;
+        }
+    }
+#endif
 };
 
 template <unsigned int dims, unsigned int clippingshift>
@@ -901,9 +923,40 @@ class NnueNetworkLayer : public NnueLayer
     static constexpr unsigned int NumBigBlocks = outputdims / NumOutputRegsBig;
     static constexpr unsigned int OutputSimdWidth = SimdWidth / 4;
 
+#ifdef USE_SSSE3
+#define USE_PROPAGATESPARSE
+#define USE_PROPAGATESMALL
+    static constexpr bool useSparsePropagation = (paddedInputdims >= 512);
+    static constexpr bool useSmallLayerPropagation = (paddedInputdims < 128);
+    void PropagateSparse(clipped_t* input, int32_t* output);
+#else
+    static constexpr bool useSmallLayerPropagation = false;
+    static constexpr bool useSparsePropagation = false;
+#endif
+#if  defined (USE_SSSE3) || defined(USE_NEON)
+#define USE_PROPAGATEBIG
+    static constexpr bool useBigLayerPropagation = (!useSparsePropagation && paddedInputdims >= 128);
+#else
+    static constexpr bool useBigLayerPropagation = false;
+#endif
+
 public:
     alignas(64)int32_t bias[outputdims];
     alignas(64)weight_t weight[paddedInputdims * outputdims];
+#ifdef STATISTICS
+    U64 nonzeroevals[paddedInputdims] = { 0 };
+    U64 total_evals = 0;
+    U64 total_count = 0;
+    void SwapWeights(unsigned int i1, unsigned int i2) {
+        for (int i = 0; i < outputdims; i++)
+        {
+            int offset = i * inputdims;
+            weight_t weight_temp = weight[shuffleWeightIndex(offset + i1)];
+            weight[shuffleWeightIndex(offset + i1)] = weight[shuffleWeightIndex(offset + i2)];
+            weight[shuffleWeightIndex(offset + i2)] = weight_temp;
+        }
+    }
+#endif
 
     NnueNetworkLayer(NnueLayer* prev) : NnueLayer(prev) {}
     bool ReadWeights(NnueNetsource* nr);
@@ -913,19 +966,12 @@ public:
         return (NNUENETLAYERHASH + outputdims) ^ (previous->GetHash() >> 1) ^ (previous->GetHash() << 31);
     }
     void Propagate(clipped_t *input, int32_t *output);
+    void PropagateBigLayer(clipped_t* input, int32_t* output);
+    void PropagateSmallLayer(clipped_t* input, int32_t* output);
     void PropagateNative(clipped_t* input, int32_t* output);
     inline unsigned int shuffleWeightIndex(unsigned int idx)
     {
-        if (paddedInputdims < 128)
-#ifdef USE_SSSE3
-            return   (idx / 4) % (paddedInputdims / 4) * outputdims * 4 +
-            idx / paddedInputdims * 4 +
-            idx % 4;
-#else
-            return idx;
-#endif
-
-        if (paddedInputdims >= 128)
+        if (useBigLayerPropagation)
         {
             const int smallBlock = (idx / SmallBlockSize) % NumSmallBlocksInBigBlock;
             const int smallBlockCol = smallBlock / NumSmallBlocksPerOutput;
@@ -938,6 +984,14 @@ public:
                 + smallBlockCol * SmallBlockSize
                 + rest;
         }
+        else
+#ifdef USE_SSSE3
+            return   (idx / 4) % (paddedInputdims / 4) * outputdims * 4 +
+            idx / paddedInputdims * 4 +
+            idx % 4;
+#else
+            return idx;
+#endif
     }
 };
 
@@ -2309,6 +2363,12 @@ namespace Simd {
 
 #if USE_AVX512
     // 512bit intrinsics
+    inline void m512_add_dpbusd_32(__m512i& acc, __m512i a, __m512i b) {
+        __m512i product0 = _mm512_maddubs_epi16(a, b);
+        product0 = _mm512_madd_epi16(product0, _mm512_set1_epi16(1));
+        acc = _mm512_add_epi32(acc, product0);
+    }
+
     inline void m512_add_dpbusd_32x2(__m512i& acc, __m512i a0, __m512i b0,  __m512i a1, __m512i b1) {
 #if defined (USE_VNNI)
         acc = _mm512_dpbusd_epi32(acc, a0, b0);

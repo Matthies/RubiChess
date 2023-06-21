@@ -191,6 +191,18 @@ public:
     size_t GetNetworkFilesize() {
         return networkfilesize;
     }
+#ifdef STATISTICS
+    void SwapInputNeurons(unsigned int i1, unsigned int i2) {
+        // not supported for V1
+        (void)i1;
+        (void)i2;
+    }
+    void Statistics(bool verbose, bool sort) {
+        // not supported for V1
+        (void)verbose;
+        (void)sort;
+    }
+#endif
 };
 
 template <unsigned int NnueFtOutputdims>
@@ -330,6 +342,63 @@ public:
     size_t GetNetworkFilesize() {
         return networkfilesize;
     }
+#ifdef STATISTICS
+    void SwapInputNeurons(unsigned int i1, unsigned int i2) {
+        if (i1 >= NnueFtHalfdims / 2 || i2 >= NnueFtHalfdims / 2) {
+            cout << "Alarm! Bad index for neuron swapping.\n";
+            return;
+        }
+        for (int p = 0; p < 2; p++) {
+            int offset = p * NnueFtHalfdims / 2;
+            NnueFt.SwapWeights(offset + i1, offset + i2);
+            for (int i = 0; i < NnueLayerStacks; i++)
+                LayerStack[i].NnueHd1.SwapWeights(offset + i1, offset + i2);
+        }
+    }
+    void Statistics(bool verbose, bool sort) {
+        char str[512];
+        sprintf(str, "");
+        U64 total_n = 0;
+        U64 total_count = 0;
+        U64 total_nonzeroevals[NnueFtOutputdims / 2] = { 0 };
+        for (int i = 0; i < NnueLayerStacks; i++) {
+            total_n += LayerStack[i].NnueHd1.total_evals;
+        }
+        for (int i = 0; i < NnueLayerStacks; i++) {
+            U64 n = LayerStack[i].NnueHd1.total_evals;
+            U64 c = LayerStack[i].NnueHd1.total_count;
+            total_count += c;
+            double counts_per_eval = c / (double)n;
+            double f1 = 100.0 * n / total_n;
+            sprintf(str, "%s  L#%d %4.1f%% Avrg.:%6.2f ", str, i, f1, counts_per_eval);
+        }
+        sprintf(str, "%s  total Avrg.:%6.2f ", str, (double)total_count / total_n);
+        guiCom << string("[STATS] NNUE: ") + str + "\n";
+        for (int j = 0; j < NnueFtOutputdims / 2; j++) {
+            sprintf(str, "%4d: ", j);
+            for (int i = 0; i < NnueLayerStacks; i++) {
+                U64 n1 = LayerStack[i].NnueHd1.nonzeroevals[j];
+                U64 n2 = LayerStack[i].NnueHd1.nonzeroevals[j + NnueFtOutputdims / 2];
+                total_nonzeroevals[j] += n1 + n2;
+                sprintf(str, "%s   (%9lld/%9lld) ", str, n1, n2);
+            }
+            sprintf(str, "%s   %9lld", str, total_nonzeroevals[j]);
+            if (verbose)
+                guiCom << string("[STATS] ") + str + "\n";
+        }
+        if (sort)
+        {
+            for (int i1 = 0; i1 < NnueFtOutputdims / 2; i1++)
+                for (int i2 = i1 + 1; i2 < NnueFtOutputdims / 2; i2++)
+                    if (total_nonzeroevals[i1] < total_nonzeroevals[i2]) {
+                        U64 temp_nnz = total_nonzeroevals[i1];
+                        total_nonzeroevals[i1] = total_nonzeroevals[i2];
+                        total_nonzeroevals[i2] = temp_nnz;
+                        SwapInputNeurons(i1, i2);
+                    }
+        }
+    }
+#endif
 };
 
 
@@ -387,8 +456,8 @@ template <NnueType Nt, Color c> void chessposition::HalfkpAppendChangedIndices(D
 #if defined (USE_AVX2)
 typedef __m256i sml_vec_t;
 #define vec_setzero _mm256_setzero_si256
-#define vec_set_32 _mm256_set1_epi32
-#define vec_add_dpbusd_32 Simd::m256_add_dpbusd_32
+#define vec_setsml_32 _mm256_set1_epi32
+#define vec_addsml_dpbusd_32 Simd::m256_add_dpbusd_32
 #define vec_add_dpbusd_32x2 Simd::m256_add_dpbusd_32x2
 #define vec_hadd Simd::m256_hadd
 #define vec_haddx4 Simd::m256_haddx4
@@ -396,8 +465,8 @@ typedef __m256i sml_vec_t;
 #elif defined (USE_SSSE3)
 typedef __m128i sml_vec_t;
 #define vec_setzero _mm_setzero_si128
-#define vec_set_32 _mm_set1_epi32
-#define vec_add_dpbusd_32 Simd::m128_add_dpbusd_32
+#define vec_setsml_32 _mm_set1_epi32
+#define vec_addsml_dpbusd_32 Simd::m128_add_dpbusd_32
 #define vec_add_dpbusd_32x2 Simd::m128_add_dpbusd_32x2
 #define vec_add_dpbusd_32x4 Simd::m128_add_dpbusd_epi32x4
 #define vec_hadd Simd::m128_hadd
@@ -435,6 +504,9 @@ inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define vec_sub_psqt_32(a,b) _mm256_sub_epi32(a,b)
 #define vec_load_psqt(a) _mm256_load_si256(a)
 #define vec_store_psqt(a,b) _mm256_store_si256(a,b)
+#define vec_nnz(a) _mm512_cmpgt_epi32_mask(a, _mm512_setzero_si512())
+#define vec_set_32 _mm512_set1_epi32
+#define vec_add_dpbusd_32 Simd::m512_add_dpbusd_32
 
 #elif defined(USE_AVX2)
 #define NUM_REGS 16
@@ -464,6 +536,9 @@ inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define vec_sub_psqt_32(a,b) _mm256_sub_epi32(a,b)
 #define vec_load_psqt(a) _mm256_load_si256(a)
 #define vec_store_psqt(a,b) _mm256_store_si256(a,b)
+#define vec_nnz(a) _mm256_movemask_ps(_mm256_castsi256_ps(_mm256_cmpgt_epi32(a, _mm256_setzero_si256())))
+#define vec_set_32 _mm256_set1_epi32
+#define vec_add_dpbusd_32 Simd::m256_add_dpbusd_32
 
 #elif defined(USE_SSE2)
 #define NUM_REGS 16
@@ -492,6 +567,10 @@ typedef __m128i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, bias_v
 #define vec_add_dpbusd_32x2_large Simd::m128_add_dpbusd_32x2
 #define vec_haddx4_large Simd::m128_haddx4
 #define vec_hadd_large Simd::m128_hadd
+#define vec_nnz(a) _mm_movemask_ps(_mm_castsi128_ps(_mm_cmpgt_epi32(a, _mm_setzero_si128())))
+#define vec_set_32 _mm_set1_epi32
+#define vec_add_dpbusd_32 Simd::m128_add_dpbusd_32
+
 #else // USE_SSSE3
 #define vec_clip_8(a,b) _mm_subs_epi8(_mm_adds_epi8(_mm_packs_epi16(a, b), _mm_set1_epi8(-128)), _mm_set1_epi8(-128))
 #define vec_clip_16(a) _mm_min_epi16(_mm_max_epi16(a,_mm_setzero_si128()),_mm_set1_epi16(127))
@@ -537,9 +616,43 @@ inline  ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 typedef int16_t ft_vec_t;
 #endif
 
-
 #ifdef USE_SIMD
 #define PSQT_TILE_HEIGHT (NUM_PSQT_REGS * sizeof(psqt_vec_t) / 4)
+#endif
+
+#if defined(USE_SSSE3)
+alignas(64) static const array<array<uint16_t, 8>, 256> lookup_indices = []() {
+    array<array<uint16_t, 8>, 256> v{};
+    for (int i = 0; i < 256; ++i)
+    {
+        int j = i;
+        int k = 0;
+        while (j)
+        {
+            unsigned int lsbIndex;
+            GETLSB32(lsbIndex, j);
+            j &= j - 1;
+            v[i][k++] = lsbIndex;
+        }
+    }
+    return v;
+}();
+
+alignas(64) static const array<unsigned, 256> lookup_count = []() {
+    array<unsigned, 256> v;
+    for (int i = 0; i < 256; ++i)
+    {
+        int j = i;
+        int k = 0;
+        while (j)
+        {
+            j &= j - 1;
+            ++k;
+        }
+        v[i] = k;
+    }
+    return v;
+}();
 #endif
 
 
@@ -749,8 +862,6 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
             }
 
 #else
-        acm = accumulation + (ply * 2 + c) * NnueFtHalfdims;
-        psqtacm = psqtAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
         memcpy(acm, bias, NnueFtHalfdims * sizeof(int16_t));
         memset(psqtacm, 0, NnuePsqtBuckets * sizeof(int32_t));
 
@@ -879,8 +990,8 @@ int chessposition::Transform(clipped_t *output, int bucket)
     cout << "\ninput layer:\n";
     for (unsigned int i = 0; i < NnueFtHalfdims; i++) {
         cout << hex << setfill('0') << setw(2) << (int)output[i] << " ";
-        if (i % 16 == 15)
-            cout << "   " << hex << setfill('0') << setw(3) << (int)(i / 16 * 16) << "\n";
+        if (i % 32 == 31)
+            cout << "   " << hex << setfill('0') << setw(3) << (int)(i / 32 * 32) << "\n";
     }
     cout << dec;
 #endif
@@ -1112,95 +1223,22 @@ void NnueNetworkLayer<inputdims, outputdims>::WriteWeights(NnueNetsource* nr)
 template <unsigned int inputdims, unsigned int outputdims>
 void NnueNetworkLayer<inputdims, outputdims>::Propagate(clipped_t* input, int32_t* output)
 {
-    if (paddedInputdims < 128)
-#if defined (USE_SSSE3)
-    {
-        // Small Layer fast propagation
-        if (outputdims % OutputSimdWidth == 0)
-        {
-            constexpr unsigned int numChunks = paddedInputdims / 4;
-
-            const int32_t* input32 = (int32_t*)input;
-            const sml_vec_t* biasvec = (sml_vec_t*)bias;
-            sml_vec_t acc[NumOutputRegsSmall];
-            for (unsigned int k = 0; k < NumOutputRegsSmall; ++k)
-                acc[k] = biasvec[k];
-
-            for (unsigned int i = 0; i < numChunks; i += 2)
-            {
-                const sml_vec_t in0 = vec_set_32(input32[i + 0]);
-                const sml_vec_t in1 = vec_set_32(input32[i + 1]);
-                const sml_vec_t* col0 = (sml_vec_t*)(&weight[(i + 0) * outputdims * 4]);
-                const sml_vec_t* col1 = (sml_vec_t*)(&weight[(i + 1) * outputdims * 4]);
-                for (unsigned int k = 0; k < NumOutputRegsSmall; ++k)
-                    vec_add_dpbusd_32x2(acc[k], in0, col0[k], in1, col1[k]);
-            }
-
-            sml_vec_t* outptr = (sml_vec_t*)output;
-            for (unsigned int k = 0; k < NumOutputRegsSmall; ++k)
-                outptr[k] = acc[k];
-}
-        else {
-            constexpr unsigned int numChunks = paddedInputdims / SimdWidth;
-            const sml_vec_t* inputVector = (sml_vec_t*)input;
-
-            sml_vec_t sum0 = vec_setzero();
-            sml_vec_t* row0 = (sml_vec_t*)&weight[0];
-
-            for (int j = 0; j < (int)numChunks; ++j)
-            {
-                const sml_vec_t in = inputVector[j];
-                vec_add_dpbusd_32(sum0, in, row0[j]);
-            }
-            output[0] = vec_hadd(sum0, bias[0]);
-        }
-    }
-#else
-        PropagateNative(input, output);
+#ifdef USE_PROPAGATESPARSE
+    if (useSparsePropagation)
+        PropagateSparse(input, output);
+    else
 #endif
-    if (paddedInputdims >= 128)
-#if  defined (USE_SSSE3) || defined(USE_NEON)
-    {
-        // Big Layer fast propagation
-        const in_vec_t* invec = (in_vec_t*)input;
-        for (unsigned int bigBlock = 0; bigBlock < NumBigBlocks; ++bigBlock)
-        {
-            acc_vec_t acc[NumOutputRegsBig] = { vec_zero() };
-
-            for (unsigned int smallBlock = 0; smallBlock < NumSmallBlocksPerOutput; smallBlock += 2)
-            {
-                const weight_vec_t* weightvec = (weight_vec_t*)(weight + bigBlock * BigBlockSize + smallBlock * SmallBlockSize * NumOutputRegsBig);
-                const in_vec_t in0 = invec[smallBlock + 0];
-                const in_vec_t in1 = invec[smallBlock + 1];
-
-                for (unsigned int k = 0; k < NumOutputRegsBig; ++k)
-                    vec_add_dpbusd_32x2_large(acc[k], in0, weightvec[k], in1, weightvec[k + NumOutputRegsBig]);
-            }
-
-            if (NumOutputRegsBig % 4 == 0)
-            {
-                bias_vec_t* outputvec = (bias_vec_t*)output;
-                const bias_vec_t* biasvec = (bias_vec_t*)bias;
-
-                for (unsigned int k = 0; k < NumOutputRegsBig; k += 4)
-                {
-                    const unsigned int idx = (bigBlock * NumOutputRegsBig + k) / 4;
-                    outputvec[idx] = vec_haddx4_large(acc[k + 0], acc[k + 1], acc[k + 2], acc[k + 3], biasvec[idx]);
-                }
-            }
-            else
-            {
-                for (unsigned int k = 0; k < NumOutputRegsBig; ++k)
-                {
-                    const unsigned int idx = (bigBlock * NumOutputRegsBig + k);
-                    output[idx] = vec_hadd_large(acc[k], bias[idx]);
-                }
-            }
-        }
-    }
-#else
-        PropagateNative(input, output);
+#ifdef USE_PROPAGATESMALL
+    if (useSmallLayerPropagation)
+        PropagateSmallLayer(input, output);
+    else
 #endif
+#ifdef USE_PROPAGATEBIG
+    if (useBigLayerPropagation)
+        PropagateBigLayer(input, output);
+    else
+#endif
+        PropagateNative(input, output);
 
 #ifdef NNUEDEBUG
     cout << "\nnetwork layer:\n";
@@ -1211,8 +1249,181 @@ void NnueNetworkLayer<inputdims, outputdims>::Propagate(clipped_t* input, int32_
     }
     cout << dec;
 #endif
-
 }
+
+
+#ifdef USE_PROPAGATESMALL
+template <unsigned int inputdims, unsigned int outputdims>
+inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSmallLayer(clipped_t* input, int32_t* output)
+{
+    // Small Layer fast propagation
+    if (outputdims % OutputSimdWidth == 0)
+    {
+        constexpr unsigned int numChunks = paddedInputdims / 4;
+
+        const int32_t* input32 = (int32_t*)input;
+        const sml_vec_t* biasvec = (sml_vec_t*)bias;
+        sml_vec_t acc[NumOutputRegsSmall];
+        for (unsigned int k = 0; k < NumOutputRegsSmall; ++k)
+            acc[k] = biasvec[k];
+
+        for (unsigned int i = 0; i < numChunks; i += 2)
+        {
+            const sml_vec_t in0 = vec_setsml_32(input32[i + 0]);
+            const sml_vec_t in1 = vec_setsml_32(input32[i + 1]);
+            const sml_vec_t* col0 = (sml_vec_t*)(&weight[(i + 0) * outputdims * 4]);
+            const sml_vec_t* col1 = (sml_vec_t*)(&weight[(i + 1) * outputdims * 4]);
+            for (unsigned int k = 0; k < NumOutputRegsSmall; ++k)
+                vec_add_dpbusd_32x2(acc[k], in0, col0[k], in1, col1[k]);
+        }
+
+        sml_vec_t* outptr = (sml_vec_t*)output;
+        for (unsigned int k = 0; k < NumOutputRegsSmall; ++k)
+            outptr[k] = acc[k];
+    }
+    else {
+        constexpr unsigned int numChunks = paddedInputdims / SimdWidth;
+        const sml_vec_t* inputVector = (sml_vec_t*)input;
+
+        sml_vec_t sum0 = vec_setzero();
+        sml_vec_t* row0 = (sml_vec_t*)&weight[0];
+
+        for (int j = 0; j < (int)numChunks; ++j)
+        {
+            const sml_vec_t in = inputVector[j];
+            vec_addsml_dpbusd_32(sum0, in, row0[j]);
+        }
+        output[0] = vec_hadd(sum0, bias[0]);
+    }
+}
+#endif
+
+
+#ifdef USE_PROPAGATEBIG
+template <unsigned int inputdims, unsigned int outputdims>
+inline void NnueNetworkLayer<inputdims, outputdims>::PropagateBigLayer(clipped_t* input, int32_t* output)
+{
+    // Big Layer fast propagation
+    const in_vec_t* invec = (in_vec_t*)input;
+    for (unsigned int bigBlock = 0; bigBlock < NumBigBlocks; ++bigBlock)
+    {
+        acc_vec_t acc[NumOutputRegsBig] = { vec_zero() };
+
+        for (unsigned int smallBlock = 0; smallBlock < NumSmallBlocksPerOutput; smallBlock += 2)
+        {
+            const weight_vec_t* weightvec = (weight_vec_t*)(weight + bigBlock * BigBlockSize + smallBlock * SmallBlockSize * NumOutputRegsBig);
+            const in_vec_t in0 = invec[smallBlock + 0];
+            const in_vec_t in1 = invec[smallBlock + 1];
+
+            for (unsigned int k = 0; k < NumOutputRegsBig; ++k)
+                vec_add_dpbusd_32x2_large(acc[k], in0, weightvec[k], in1, weightvec[k + NumOutputRegsBig]);
+        }
+
+        if (NumOutputRegsBig % 4 == 0)
+        {
+            bias_vec_t* outputvec = (bias_vec_t*)output;
+            const bias_vec_t* biasvec = (bias_vec_t*)bias;
+
+            for (unsigned int k = 0; k < NumOutputRegsBig; k += 4)
+            {
+                const unsigned int idx = (bigBlock * NumOutputRegsBig + k) / 4;
+                outputvec[idx] = vec_haddx4_large(acc[k + 0], acc[k + 1], acc[k + 2], acc[k + 3], biasvec[idx]);
+            }
+        }
+        else
+        {
+            for (unsigned int k = 0; k < NumOutputRegsBig; ++k)
+            {
+                const unsigned int idx = (bigBlock * NumOutputRegsBig + k);
+                output[idx] = vec_hadd_large(acc[k], bias[idx]);
+            }
+        }
+    }
+}
+#endif
+
+
+#ifdef USE_PROPAGATESPARSE
+template <unsigned int inputdims, unsigned int outputdims>
+inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* input, int32_t* output)
+{
+    static constexpr unsigned int ChunkSize = 4;
+    constexpr unsigned int NumChunks = MULTIPLEOFN(inputdims, 8) / ChunkSize;
+    constexpr unsigned int NumRegs = outputdims > OutputSimdWidth ? outputdims / OutputSimdWidth : 1;
+    uint16_t nnz[NumChunks];
+    unsigned int count = 0;
+    const int32_t* input32 = (int32_t*)input;
+    const in_vec_t* inputVector = (const in_vec_t*)input;
+
+
+    constexpr unsigned int InternalInputSimdWidth = sizeof(in_vec_t) / sizeof(std::int32_t);
+    constexpr unsigned int InternalChunkSize = InternalInputSimdWidth > 8 ? InternalInputSimdWidth : 8;
+    constexpr unsigned int NumInternalChunks = NumChunks / InternalChunkSize;
+    constexpr unsigned int InputsPerInternalChunk = InternalChunkSize / InternalInputSimdWidth;
+    constexpr unsigned int OutputsPerInternalChunk = InternalChunkSize / 8;
+
+    // Step 1: Find indices of nonzero 32bit blocks
+    __m128i base = _mm_set1_epi16(0);
+    __m128i increment = _mm_set1_epi16(8);
+    for (unsigned int i = 0; i < NumInternalChunks; ++i)
+    {
+        // bitmask of nonzero values in this chunk
+        unsigned int internalnnz = 0;
+        for (unsigned int j = 0; j < InputsPerInternalChunk; ++j)
+        {
+            const in_vec_t inputChunk = inputVector[i * InputsPerInternalChunk + j];
+            unsigned int newnnz = vec_nnz(inputChunk);
+            internalnnz |= newnnz << (j * InternalInputSimdWidth);
+#ifdef STATISTICS
+            int k = (i * InputsPerInternalChunk + j) * InternalInputSimdWidth * ChunkSize;
+            while (newnnz)
+            {
+                if (newnnz & 1)
+                {
+                    for (unsigned int l = 0; l < ChunkSize; l++)
+                        if (input[k + l])
+                            nonzeroevals[k + l]++;
+                }
+                k += ChunkSize;
+                newnnz = newnnz >> 1;
+            }
+#endif
+        }
+        for (unsigned int j = 0; j < OutputsPerInternalChunk; ++j)
+        {
+            const unsigned int lookup = (internalnnz >> (j * 8)) & 0xFF;
+            const __m128i offsets = _mm_loadu_si128((__m128i*)(&lookup_indices[lookup]));
+            _mm_storeu_si128((__m128i*)(nnz + count), _mm_add_epi16(base, offsets));
+            count += lookup_count[lookup];
+            base = _mm_add_epi16(base, increment);
+        }
+    }
+
+#ifdef STATISTICS
+    total_evals++;
+    total_count += count;
+#endif
+
+    // Step 2: Process the collected nonzero blocks
+    const in_vec_t* biasvec = (const in_vec_t*)bias;
+    in_vec_t acc[NumRegs];
+    for (unsigned int k = 0; k < NumRegs; ++k)
+        acc[k] = biasvec[k];
+
+    for (unsigned int j = 0; j < count; ++j)
+    {
+        const uint16_t i = nnz[j];
+        const in_vec_t in = vec_set_32(input32[i]);
+        const in_vec_t* col = (const in_vec_t*)&weight[i * outputdims * ChunkSize];
+        for (unsigned int k = 0; k < NumRegs; ++k)
+            vec_add_dpbusd_32(acc[k], in, col[k]);
+    }
+
+    in_vec_t* outptr = (in_vec_t*)output;
+    for (unsigned int k = 0; k < NumRegs; ++k)
+        outptr[k] = acc[k];
+}
+#endif
 
 
 template <unsigned int inputdims, unsigned int outputdims>
@@ -1625,6 +1836,7 @@ void NnueWriteNet(vector<string> args)
     string NnueNetPath = "export.nnue";
     int rescale = 0;
     bool zExport = false;
+    bool sort = false;
     if (ci < cs)
         NnueNetPath = args[ci++];
 
@@ -1638,7 +1850,19 @@ void NnueWriteNet(vector<string> args)
             zExport = true;
             ci++;
         }
+        else if (args[ci] == "sort")
+        {
+            sort = true;
+            ci++;
+        }
     }
+
+    if (sort)
+#ifdef STATISTICS
+        NnueCurrentArch->Statistics(false, true);
+#else
+        cout << "Cannot sort input features. This needs STATISTICS collection enabled.\n";
+#endif
 
     ofstream os;
     os.open(NnueNetPath, ios::binary);
