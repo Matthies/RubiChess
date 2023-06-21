@@ -255,8 +255,8 @@ void engine::allocThreads()
         chessposition* pos = &sthread[i].pos;
         pos->pwnhsh.setSize(sizeOfPh);
         pos->mtrlhsh.init();
-        pos->accumulation = NnueCurrentArch->CreateAccumulationStack();
-        pos->psqtAccumulation = NnueCurrentArch->CreatePsqtAccumulationStack();
+        pos->accumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
+        pos->psqtAccumulation = NnueCurrentArch ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr;
     }
     prepareThreads();
     resetStats();
