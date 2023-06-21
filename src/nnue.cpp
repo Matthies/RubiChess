@@ -191,6 +191,7 @@ public:
     size_t GetNetworkFilesize() {
         return networkfilesize;
     }
+#ifdef STATISTICS
     void SwapInputNeurons(unsigned int i1, unsigned int i2) {
         // not supported for V1
         (void)i1;
@@ -201,6 +202,7 @@ public:
         (void)verbose;
         (void)sort;
     }
+#endif
 };
 
 template <unsigned int NnueFtOutputdims>
@@ -340,6 +342,7 @@ public:
     size_t GetNetworkFilesize() {
         return networkfilesize;
     }
+#ifdef STATISTICS
     void SwapInputNeurons(unsigned int i1, unsigned int i2) {
         if (i1 >= NnueFtHalfdims / 2 || i2 >= NnueFtHalfdims / 2) {
             cout << "Alarm! Bad index for neuron swapping.\n";
@@ -395,6 +398,7 @@ public:
                     }
         }
     }
+#endif
 };
 
 
@@ -628,8 +632,7 @@ alignas(64) static const array<array<uint16_t, 8>, 256> lookup_indices = []() {
             unsigned int lsbIndex;
             GETLSB32(lsbIndex, j);
             j &= j - 1;
-            v[i][k] = lsbIndex;
-            ++k;
+            v[i][k++] = lsbIndex;
         }
     }
     return v;
