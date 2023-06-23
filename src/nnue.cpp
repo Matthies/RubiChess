@@ -1404,6 +1404,9 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
     total_count += count;
 #endif
 
+#ifdef NNUEDEBUG
+    cout << "\nSparse propagation:\n";
+#endif
     // Step 2: Process the collected nonzero blocks
     const in_vec_t* biasvec = (const in_vec_t*)bias;
     in_vec_t acc[NumRegs];
@@ -1417,6 +1420,13 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
         const in_vec_t* col = (const in_vec_t*)&weight[i * outputdims * ChunkSize];
         for (unsigned int k = 0; k < NumRegs; ++k)
             vec_add_dpbusd_32(acc[k], in, col[k]);
+#ifdef NNUEDEBUG
+        cout << hex << setfill('0') << setw(2) << nnz[j] << " " << setw(8) << input32[i] << "  ";
+        if (j % 8 == 7)
+            cout << "   " << hex << setfill('0') << setw(3) << (int)(j / 8 * 8) << "\n";
+        if (j + 1 == count)
+            cout << dec << "\n";
+#endif
     }
 
     in_vec_t* outptr = (in_vec_t*)output;
