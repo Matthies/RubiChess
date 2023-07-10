@@ -127,8 +127,8 @@ public:
             && LayerStack[0].NnueOut.ReadWeights(nr);
         return okay;
     }
-    void WriteFeatureWeights(NnueNetsource* nr, bool bpz) {
-        NnueFt.WriteFeatureWeights(nr, bpz);
+    void WriteFeatureWeights(NnueNetsource* nr, bool leb128) {
+        NnueFt.WriteFeatureWeights(nr, leb128);
     }
     void WriteWeights(NnueNetsource* nr, uint32_t nethash) {
         nr->write((unsigned char*)&nethash, sizeof(uint32_t));
@@ -266,8 +266,8 @@ public:
         }
         return okay;
     }
-    void WriteFeatureWeights(NnueNetsource* nr, bool bpz) {
-        NnueFt.WriteFeatureWeights(nr, bpz);
+    void WriteFeatureWeights(NnueNetsource* nr, bool leb128) {
+        NnueFt.WriteFeatureWeights(nr, leb128);
     }
     void WriteWeights(NnueNetsource* nr, uint32_t nethash) {
         for (unsigned int i = 0; i < NnueLayerStacks; i++) {
@@ -1015,70 +1015,165 @@ int chessposition::NnueGetEval()
 // FeatureTransformer
 //
 
+constexpr const char Leb128MagicString[] = "COMPRESSED_LEB128";
+constexpr const size_t Leb128MagicStringSize = sizeof(Leb128MagicString) - 1;
+
+static bool testLeb128(NnueNetsource* nr)
+{
+    if (strncmp(Leb128MagicString, (const char*)nr->next, Leb128MagicStringSize) == 0)
+    {
+        nr->next += Leb128MagicStringSize;
+        return true;
+    }
+    return false;
+}
+
+
+template <typename IntType>
+bool readLeb128(NnueNetsource* nr, IntType *out, size_t count)
+{
+    const uint32_t BUF_SIZE = 4096;
+    uint8_t buf[BUF_SIZE];
+    uint32_t bytes_left = 0;
+    bool okay = nr->read((unsigned char*)&bytes_left, sizeof(uint32_t));
+
+    uint32_t buf_pos = BUF_SIZE;
+    for (size_t i = 0; i < count; ++i)
+    {
+        IntType result = 0;
+        size_t shift = 0;
+        do
+        {
+            if (buf_pos == BUF_SIZE)
+            {
+                okay = okay && nr->read((unsigned char*)buf, min(bytes_left, BUF_SIZE));
+                buf_pos = 0;
+            }
+
+            uint8_t nextbyte = buf[buf_pos++];
+            bytes_left--;
+            result |= (nextbyte & 0x7f) << shift;
+            shift += 7;
+
+            if ((nextbyte & 0x80) == 0)
+            {
+                out[i] = (sizeof(IntType) * 8 <= shift || (nextbyte & 0x40) == 0) ? result : result | ~((1 << shift) - 1);
+                break;
+            }
+        } while (shift < sizeof(IntType) * 8);
+    }
+
+    return okay && (bytes_left == 0);
+}
+
+
 template <int ftdims, int inputdims, int psqtbuckets>
 bool NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::ReadFeatureWeights(NnueNetsource* nr, bool bpz)
 {
-    int i, j;
+    int i;
     bool okay = true;
-    for (i = 0; i < ftdims; ++i)
-        okay = okay && nr->read((unsigned char*)&bias[i], sizeof(int16_t));
 
-    int weightsRead = 0;
-    for (i = 0; i < inputdims; i++)
-    {
-        if (bpz && i % (10 * 64) == 0) {
-            int16_t dummyweight;
-            for (j = 0; j < ftdims; ++j)
-                okay = okay && nr->read((unsigned char*)&dummyweight, sizeof(int16_t));
-        }
-        for (j = 0; j < ftdims; ++j) {
-            okay = okay && nr->read((unsigned char*)&weight[weightsRead], sizeof(int16_t));
-            weightsRead++;
+    int16_t* src_16 = (int16_t*)calloc(inputdims * ftdims, sizeof(int16_t));
+    int32_t* src_32 = (int32_t*)calloc(inputdims * psqtbuckets, sizeof(int32_t));
+    if (!src_16 || !src_32)
+        return false;
+
+    // read bias
+    bool isLeb128 = testLeb128(nr);
+    if (isLeb128)
+        okay = okay && readLeb128(nr, src_16, ftdims);
+    else
+        okay = okay && nr->read((unsigned char*)src_16, ftdims * sizeof(int16_t));
+
+    memcpy(bias, src_16, ftdims * sizeof(int16_t));
+
+    // read weights
+    isLeb128 = testLeb128(nr);
+    if (isLeb128) {
+        okay = okay && readLeb128(nr, src_16, inputdims * ftdims);
+    }
+    else {
+        // Handle bpz
+        int weightsRead = 0;
+        int16_t dummyweight[ftdims];
+        for (i = 0; i < inputdims; i++) {
+            if (bpz && i % (10 * 64) == 0)
+                okay = okay && nr->read((unsigned char*)dummyweight, ftdims * sizeof(int16_t));
+            okay = okay && nr->read((unsigned char*)(src_16 + weightsRead), ftdims * sizeof(int16_t));
+            weightsRead += ftdims;
         }
     }
+    
+    memcpy(weight, src_16, inputdims * ftdims * sizeof(int16_t));
 
-    weightsRead = 0;
-    for (i = 0; i < inputdims; i++)
+    // read psqt weights
+    isLeb128 = testLeb128(nr);
+    if (isLeb128)
+        okay = okay && readLeb128(nr, src_32, inputdims * psqtbuckets);
+    else
+        okay = okay && nr->read((unsigned char*)src_32, inputdims * psqtbuckets * sizeof(int32_t));
+
+    memcpy(psqtWeights, src_32, inputdims * psqtbuckets * sizeof(int32_t));
+
+    free(src_16);
+    free(src_32);
+    return okay;
+}
+
+
+template <typename IntType>
+bool writeLeb128(NnueNetsource* nr, IntType* in, size_t count)
+{
+    nr->write((unsigned char*)Leb128MagicString, Leb128MagicStringSize);
+
+    // How many bytes after compression?
+    uint32_t byte_count = 0;
+    for (size_t i = 0; i < count; ++i)
     {
-        for (j = 0; j < psqtbuckets; j++)
+        IntType value = in[i];
+        uint8_t nextbyte;
+        do
         {
-            okay = okay && nr->read((unsigned char*)&psqtWeights[weightsRead], sizeof(int32_t));
-            weightsRead++;
+            nextbyte = value & 0x7f;
+            value >>= 7;
+            byte_count++;
+        } while ((nextbyte & 0x40) == 0 ? value != 0 : value != -1);
+    }
+    bool okay = nr->write((unsigned char*)&byte_count, sizeof(uint32_t));
+
+    for (size_t i = 0; i < count; ++i)
+    {
+        IntType value = in[i];
+        while (true)
+        {
+            uint8_t nextbyte = value & 0x7f;
+            value >>= 7;
+            if ((nextbyte & 0x40) == 0 ? value == 0 : value == -1)
+            {
+                okay = okay && nr->write((unsigned char*)&nextbyte, sizeof(uint8_t));
+                break;
+            }
+            nextbyte |= 0x80;
+            okay = okay && nr->write((unsigned char*)&nextbyte, sizeof(uint8_t));
         }
     }
 
     return okay;
 }
 
+
 template <int ftdims, int inputdims, int psqtbuckets>
-void NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::WriteFeatureWeights(NnueNetsource* nr, bool bpz)
+void NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::WriteFeatureWeights(NnueNetsource* nr, bool leb128)
 {
-    int i, j;
-    for (i = 0; i < ftdims; ++i)
-        nr->write((unsigned char*)&bias[i], sizeof(int16_t));
-
-    int weightsRead = 0;
-    for (i = 0; i < inputdims; i++)
-    {
-        if (bpz && i % (10 * 64) == 0) {
-            int16_t dummyweight = 0;
-            for (j = 0; j < ftdims; ++j)
-                nr->write((unsigned char*)&dummyweight, sizeof(int16_t));
-        }
-        for (j = 0; j < ftdims; ++j) {
-            nr->write((unsigned char*)&weight[weightsRead], sizeof(int16_t));
-            weightsRead++;
-        }
+    if (leb128) {
+        writeLeb128(nr, bias, ftdims);
+        writeLeb128(nr, weight, inputdims * ftdims);
+        writeLeb128(nr, psqtWeights, inputdims * psqtbuckets);
     }
-
-    weightsRead = 0;
-    for (i = 0; i < inputdims; i++)
-    {
-        for (j = 0; j < psqtbuckets; j++)
-        {
-            nr->write((unsigned char*)&psqtWeights[weightsRead], sizeof(int32_t));
-            weightsRead++;
-        }
+    else {
+        nr->write((unsigned char*)bias, ftdims * sizeof(int16_t));
+        nr->write((unsigned char*)weight, inputdims * ftdims * sizeof(int16_t));
+        nr->write((unsigned char*)psqtWeights, inputdims * psqtbuckets * sizeof(int32_t));
     }
 }
 
@@ -1694,7 +1789,7 @@ bool NnueReadNet(NnueNetsource* nr)
 
     NnueRemove();
 
-    uint32_t version, hash, size;
+    uint32_t version, hash, fthash, nethash, filehash, size;
     string sarchitecture;
 
     if (!nr->read((unsigned char*)&version, sizeof(uint32_t))
@@ -1710,6 +1805,7 @@ bool NnueReadNet(NnueNetsource* nr)
 
     NnueType nt;
     bool bpz;
+    int leb128dim = 0;
     char* buffer;
     switch (version) {
     case NNUEFILEVERSIONROTATE:
@@ -1747,6 +1843,10 @@ bool NnueReadNet(NnueNetsource* nr)
             NnueCurrentArch = new(buffer) NnueArchitectureV5<1536>;
             break;
         default:
+            // We have a leb128 compressed feature transformer and don't know the input dimension yet but at least 1024
+            buffer = (char*)allocalign64(sizeof(NnueArchitectureV5<1024>));
+            NnueCurrentArch = new(buffer) NnueArchitectureV5<1024>;
+            leb128dim = 1024;
             break;
         }
         break;
@@ -1754,16 +1854,31 @@ bool NnueReadNet(NnueNetsource* nr)
         return false;
     }
 
-    if (!NnueCurrentArch)
-        return false;
+    while (1) {
+        fthash = NnueCurrentArch->GetFtHash();
+        nethash = NnueCurrentArch->GetHash();
+        filehash = (fthash ^ nethash);
 
-    uint32_t fthash = NnueCurrentArch->GetFtHash();
-    uint32_t nethash = NnueCurrentArch->GetHash();
-    uint32_t filehash = (fthash ^ nethash);
+        if (hash == filehash)
+            break;
 
-    if (hash != filehash) {
         NnueRemove();
-        return false;
+
+        // Try the next dimension for leb128 compressed feature transformer
+        switch (leb128dim) {
+        case 1024:
+            buffer = (char*)allocalign64(sizeof(NnueArchitectureV5<1536>));
+            NnueCurrentArch = new(buffer) NnueArchitectureV5<1536>;
+            leb128dim = 1536; // next dimensions to test
+            break;
+        case 1536:
+            buffer = (char*)allocalign64(sizeof(NnueArchitectureV5<2048>));
+            NnueCurrentArch = new(buffer) NnueArchitectureV5<2048>;
+            leb128dim = 0; // no more dimensions to test
+            break;
+        default:
+            return false;
+        }
     }
 
     // Read the weights of the feature transformer
@@ -1846,6 +1961,7 @@ void NnueWriteNet(vector<string> args)
     string NnueNetPath = "export.nnue";
     int rescale = 0;
     bool zExport = false;
+    bool leb128 = false;
     bool sort = false;
     if (ci < cs)
         NnueNetPath = args[ci++];
@@ -1854,6 +1970,11 @@ void NnueWriteNet(vector<string> args)
         if (args[ci] == "rescale" && ++ci < cs)
         {
             rescale = stoi(args[ci++]);
+        }
+        else if (args[ci] == "l")
+        {
+            leb128 = true;
+            ci++;
         }
         else if (args[ci] == "z")
         {
@@ -1906,7 +2027,7 @@ void NnueWriteNet(vector<string> args)
     nr.write((unsigned char*)&sarchitecture[0], size);
     nr.write((unsigned char*)&fthash, sizeof(uint32_t));
 
-    NnueCurrentArch->WriteFeatureWeights(&nr, false);
+    NnueCurrentArch->WriteFeatureWeights(&nr, leb128);
     NnueCurrentArch->WriteWeights(&nr, nethash);
 
     size_t insize = nr.next - nr.readbuffer;
