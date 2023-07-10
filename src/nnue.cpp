@@ -312,6 +312,11 @@ public:
 
         int fwdout = network.hidden1_values[NnueHidden1Out] * (600 * 1024 / NnueValueScale) / (127 * (1 << NnueClippingShift));
         int positional = network.out_value + fwdout;
+#ifdef NNUEDEBUG
+        cout << "\npsqt eval       : " << setfill(' ') << setw(5) << fwdout;
+        cout << "\npositional eval : " << setfill(' ') << setw(5) << positional;
+        cout << "\ntotal nnue      : " << setfill(' ') << setw(5) << (psqt + positional) << "\n\n";
+#endif
 
         return (psqt + positional) * NnueValueScale / 1024;
     }
@@ -1516,7 +1521,7 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
         for (unsigned int k = 0; k < NumRegs; ++k)
             vec_add_dpbusd_32(acc[k], in, col[k]);
 #ifdef NNUEDEBUG
-        cout << hex << setfill('0') << setw(2) << nnz[j] << " " << setw(8) << input32[i] << "  ";
+        cout << hex << setfill('0') << setw(3) << nnz[j] << " " << setw(8) << input32[i] << "  ";
         if (j % 8 == 7)
             cout << "   " << hex << setfill('0') << setw(3) << (int)(j / 8 * 8) << "\n";
         if (j + 1 == count)
