@@ -974,6 +974,11 @@ void ucioptions_t::Set(string n, string v, bool force)
         catch (...) {}
         break;
     case ucistring:
+        // Remove surrounding quotes
+        if ((v.front() == '"' and v.back() == '"') || (v.front() == '\'' and v.back() == '\'')) {
+            v.erase(v.begin());
+            v.erase(v.end() - 1);
+        }
         if ((bChanged = (force || v != *(string*)op->enginevar)))
             *(string*)op->enginevar = v;
         break;
