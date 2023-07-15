@@ -407,7 +407,7 @@ string moveToString(uint32_t mc)
         to = GETTO(mc);
     promotion = GETPROMOTION(mc);
 
-    sprintf_s(s, "%c%d%c%d", (from & 0x7) + 'a', ((from >> 3) & 0x7) + 1, (to & 0x7) + 'a', ((to >> 3) & 0x7) + 1);
+    snprintf(s, 4, "%c%d%c%d", (from & 0x7) + 'a', ((from >> 3) & 0x7) + 1, (to & 0x7) + 'a', ((to >> 3) & 0x7) + 1);
     if (promotion)
     {
         string ps(1, PieceChar(promotion, true));

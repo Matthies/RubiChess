@@ -260,7 +260,7 @@ static void perftest(int maxdepth)
 
             perftlasttime = getTime();
             df = float(perftlasttime - starttime) / (float) en.frequency;
-            sprintf(str, "Perft %d depth %d  : %*llu  %*f sec.  %*d nps   %s\n", i + 1, j, 10, result, 10, df,
+            snprintf(str, 255, "Perft %d depth %d  : %*llu  %*f sec.  %*d nps   %s\n", i + 1, j, 10, result, 10, df,
                 8, (int)(df > 0.0 ? (double)result / df : 0), (result == ptr[i].nodes[j] ? "OK" : "Wrong!"));
             guiCom << str;
             j++;
@@ -270,7 +270,7 @@ static void perftest(int maxdepth)
     }
     df = float(perftlasttime - perftstarttime) / (float)en.frequency;
     guiCom << "========================================================================\n";
-    sprintf(str, "Total:             %*llu  %*f sec.  %*d nps \n", 10, totalresult, 10, df, 8, (int)(df > 0.0 ? (double)totalresult / df : 0));
+    snprintf(str, 255, "Total:             %*llu  %*f sec.  %*d nps \n", 10, totalresult, 10, df, 8, (int)(df > 0.0 ? (double)totalresult / df : 0));
     guiCom << str;
 }
 
@@ -313,7 +313,7 @@ static void benchTableItem(bool bToErr, int i, benchmarkstruct *bm)
         score = score + "M" + to_string(abs(MATEIN(bm->score)));
     }
         
-    sprintf(str, "Bench # %3d (%14s / %2d): %s  %6s%9s %3d ply %10f sec. %10lld nodes %10lld nps\n", i, bm->name.c_str(), bm->depth, solvedstr[bm->solved].c_str(), bm->move.c_str(), score.c_str(), bm->depthAtExit, (float)bm->time / (float)en.frequency, bm->nodes, bm->nodes * en.frequency / bm->time);
+    snprintf(str, 255, "Bench # %3d (%14s / %2d): %s  %6s%9s %3d ply %10f sec. %10lld nodes %10lld nps\n", i, bm->name.c_str(), bm->depth, solvedstr[bm->solved].c_str(), bm->move.c_str(), score.c_str(), bm->depthAtExit, (float)bm->time / (float)en.frequency, bm->nodes, bm->nodes * en.frequency / bm->time);
     guiCom << str;
     if (bToErr)
         guiCom.switchStream();
@@ -327,7 +327,7 @@ static void benchTableFooder(bool bToErr, long long totaltime, long long totalno
     double fSolved = totaltests ? 100.0 * totalsolved[1] / (double)totaltests : 0.0;
     guiCom << "=============================================================================================================\n";
     char str[256];
-    sprintf(str, "Overall:                  %4d/%3d = %4.1f%%                    %10f sec. %10lld nodes %*lld nps\n",
+    snprintf(str, 255, "Overall:                  %4d/%3d = %4.1f%%                    %10f sec. %10lld nodes %*lld nps\n",
         totalsolved[1], totaltests, fSolved, ((float)totaltime / (float)en.frequency), totalnodes, 10, totalnodes * en.frequency / totaltime);
     guiCom << str;
     if (bToErr)
