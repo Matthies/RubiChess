@@ -269,8 +269,8 @@ int chessposition::getFromSfen(PackedSfen* sfen)
     lastnullmove = -1;
     ply = 0;
     piececount = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]);
-    accumulator[0].computationState[WHITE] = false;
-    accumulator[0].computationState[BLACK] = false;
+    computationState[0][WHITE] = false;
+    computationState[0][BLACK] = false;
     threatSquare = 64;
     return 0;
 }
@@ -617,8 +617,8 @@ int chessposition::getNextFromBinpack(Binpack *bp)
         ept = 0;
         threatSquare = 64;
         lastnullmove = -1;
-        accumulator[0].computationState[WHITE] = false;
-        accumulator[0].computationState[BLACK] = false;
+        computationState[0][WHITE] = false;
+        computationState[0][BLACK] = false;
         // get the pieces
         getPosFromBinpack(bp);
         hash = zb.getHash(this);
