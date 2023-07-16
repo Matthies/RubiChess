@@ -407,7 +407,7 @@ string moveToString(uint32_t mc)
         to = GETTO(mc);
     promotion = GETPROMOTION(mc);
 
-    sprintf_s(s, "%c%d%c%d", (from & 0x7) + 'a', ((from >> 3) & 0x7) + 1, (to & 0x7) + 'a', ((to >> 3) & 0x7) + 1);
+    snprintf(s, 8, "%c%d%c%d", (from & 0x7) + 'a', ((from >> 3) & 0x7) + 1, (to & 0x7) + 'a', ((to >> 3) & 0x7) + 1);
     if (promotion)
     {
         string ps(1, PieceChar(promotion, true));
@@ -824,7 +824,7 @@ void statistic::output(vector<string> args)
     f4 = i3 / NODBZ(qs_loop_n);
     f5 = 100.0 * qs_move_delta / NODBZ(i3);
     f6 = 100.0 * qs_moves_fh / NODBZ(qs_moves);
-    sprintf(str, "[STATS] QSearch: %12lld   %%InCheck:  %5.2f   %%TT-Hits:  %5.2f   %%Std.Pat: %5.2f   %%DeltaPr: %5.2f   Mvs/Lp: %5.2f   %%DlPrM: %5.2f   %%FailHi: %5.2f   mindepth: %3lld\n", n, f0, f1, f2, f3, f4, f5, f6, i4);
+    snprintf(str, 512, "[STATS] QSearch: %12lld   %%InCheck:  %5.2f   %%TT-Hits:  %5.2f   %%Std.Pat: %5.2f   %%DeltaPr: %5.2f   Mvs/Lp: %5.2f   %%DlPrM: %5.2f   %%FailHi: %5.2f   mindepth: %3lld\n", n, f0, f1, f2, f3, f4, f5, f6, i4);
     guiCom << str;
 
     // general aplhabeta statistics
@@ -834,7 +834,7 @@ void statistic::output(vector<string> args)
     f2 = 100.0 * ab_tb / NODBZ(n);
     f3 = 100.0 * ab_qs / NODBZ(n);
     f4 = 100.0 * ab_draw_or_win / NODBZ(n);
-    sprintf(str, "[STATS] Total AB:%12lld   %%PV-Nodes: %5.2f   %%TT-Hits:  %5.2f   %%TB-Hits: %5.2f   %%QSCalls: %5.2f   %%Draw/Mates: %5.2f\n", n, f0, f1, f2, f3, f4);
+    snprintf(str, 512, "[STATS] Total AB:%12lld   %%PV-Nodes: %5.2f   %%TT-Hits:  %5.2f   %%TB-Hits: %5.2f   %%QSCalls: %5.2f   %%Draw/Mates: %5.2f\n", n, f0, f1, f2, f3, f4);
     guiCom << str;
 
     // node pruning
@@ -844,7 +844,7 @@ void statistic::output(vector<string> args)
     f3 = 100.0 * prune_multicut / NODBZ(n);
     f4 = 100.0 * prune_threat / NODBZ(n);
     f5 = 100.0 * (prune_futility + prune_nm + prune_probcut + prune_multicut + prune_threat) / (double)n;
-    sprintf(str, "[STATS] Node pruning            %%Futility: %5.2f   %%NullMove: %5.2f   %%ProbeC.: %5.2f   %%MultiC.: %7.5f   %%Threat.: %7.5f Total:  %5.2f\n", f0, f1, f2, f3, f4, f5);
+    snprintf(str, 512, "[STATS] Node pruning            %%Futility: %5.2f   %%NullMove: %5.2f   %%ProbeC.: %5.2f   %%MultiC.: %7.5f   %%Threat.: %7.5f Total:  %5.2f\n", f0, f1, f2, f3, f4, f5);
     guiCom << str;
 
     // move statistics
@@ -860,7 +860,7 @@ void statistic::output(vector<string> args)
     i3 = moves_played[0] + moves_played[1];
     f6 = 100.0 * moves_fail_high / NODBZ(i3);
     f7 = 100.0 * moves_bad_hash / NODBZ(i2);
-    sprintf(str, "[STATS] Moves:   %12lld   %%Quiet-M.: %5.2f   %%Tact.-M.: %5.2f   %%BadHshM: %5.2f   %%LMP-M.:  %5.2f   %%FutilM.: %5.2f   %%BadSEE: %5.2f  Mvs/Lp: %5.2f   %%FailHi: %5.2f\n", n, f0, f1, f7, f2, f3, f4, f5, f6);
+    snprintf(str, 512, "[STATS] Moves:   %12lld   %%Quiet-M.: %5.2f   %%Tact.-M.: %5.2f   %%BadHshM: %5.2f   %%LMP-M.:  %5.2f   %%FutilM.: %5.2f   %%BadSEE: %5.2f  Mvs/Lp: %5.2f   %%FailHi: %5.2f\n", n, f0, f1, f7, f2, f3, f4, f5, f6);
     guiCom << str;
 
     // late move reduction statistics
@@ -873,14 +873,14 @@ void statistic::output(vector<string> args)
     f3 = red_pv / NODBZ(red_n);
     f4 = red_correction / NODBZ(red_n);
     f5 = red_total / NODBZ(red_n);
-    sprintf(str, "[STATS] Reduct.  %12lld   lmr[0]: %4.2f   lmr[1]: %4.2f   lmr: %4.2f   hist: %4.2f   |hst|:%4.2f   pv: %4.2f   corr: %4.2f   total: %4.2f\n", red_n, f10, f11, f1, f2, f6, f3, f4, f5);
+    snprintf(str, 512, "[STATS] Reduct.  %12lld   lmr[0]: %4.2f   lmr[1]: %4.2f   lmr: %4.2f   hist: %4.2f   |hst|:%4.2f   pv: %4.2f   corr: %4.2f   total: %4.2f\n", red_n, f10, f11, f1, f2, f6, f3, f4, f5);
     guiCom << str;
 
     // extensions
     f0 = 100.0 * extend_singular / NODBZ(n);
     f1 = 100.0 * extend_endgame / NODBZ(n);
     f2 = 100.0 * extend_history / NODBZ(n);
-    sprintf(str, "[STATS] Extensions: %%singular: %7.4f   %%endgame: %7.4f   %%history: %7.4f\n", f0, f1, f2);
+    snprintf(str, 512, "[STATS] Extensions: %%singular: %7.4f   %%endgame: %7.4f   %%history: %7.4f\n", f0, f1, f2);
     guiCom << str;
 
     // accumulator updates
@@ -888,7 +888,7 @@ void statistic::output(vector<string> args)
     f0 = 100.0 * nnue_accupdate_cache / NODBZ(n);
     f1 = 100.0 * nnue_accupdate_inc / NODBZ(n);
     f2 = 100.0 * nnue_accupdate_full / NODBZ(n);
-    sprintf(str, "[STATS] AccuUpdate:   Cached: %10lld (%7.4f%%)   Increm.: %10lld (%7.4f%%)      Full: %10lld (%7.4f%%)\n", nnue_accupdate_cache, f0, nnue_accupdate_inc, f1, nnue_accupdate_full, f2);
+    snprintf(str, 512, "[STATS] AccuUpdate:   Cached: %10lld (%7.4f%%)   Increm.: %10lld (%7.4f%%)      Full: %10lld (%7.4f%%)\n", nnue_accupdate_cache, f0, nnue_accupdate_inc, f1, nnue_accupdate_full, f2);
     guiCom << str;
 
     // Move selector
@@ -904,7 +904,7 @@ void statistic::output(vector<string> args)
             if (ms_n[p][d] == 0)
                 continue;
             string depthStr = (d == 0 ? "QSearch " : d == MAXSTATDEPTH - 1 ? "ProbCut " : "Depth#" + (d < 10 ? string(" ") : "") + to_string(d));
-            sprintf(str, "n=%12lld   (%6.2f%%)  %%TctStg:%5.1f Mvs:%4.1f  %%SpcStg:%5.1f Mvs:%4.1f  %%QteStg:%5.1f Mvs:%4.1f  %%BdTStg:%5.1f Mvs:%4.1f  %%EvsStg:%5.1f Mvs:%4.1f\n",
+            snprintf(str, 512, "n=%12lld   (%6.2f%%)  %%TctStg:%5.1f Mvs:%4.1f  %%SpcStg:%5.1f Mvs:%4.1f  %%QteStg:%5.1f Mvs:%4.1f  %%BdTStg:%5.1f Mvs:%4.1f  %%EvsStg:%5.1f Mvs:%4.1f\n",
                 ms_n[p][d], 100.0 * ms_n[p][d] / NODBZ(n),
                 100.0 * ms_tactic_stage[p][d][0] / NODBZ(ms_n[p][d]), ms_tactic_moves[p][d][0] / NODBZ(ms_tactic_stage[p][d][0]),
                 100.0 * ms_spcl_stage[p][d] / NODBZ(ms_n[p][d]), ms_spcl_moves[p][d] / NODBZ(ms_spcl_stage[p][d]),
@@ -924,7 +924,7 @@ void statistic::output(vector<string> args)
             i10 += ms_evasion_stage[p][d][0];
             i11 += ms_evasion_moves[p][d][0];
         }
-        sprintf(str, "n=%12lld   (%6.2f%%)  %%TctStg:%5.1f Mvs:%4.1f  %%SpcStg:%5.1f Mvs:%4.1f  %%QteStg:%5.1f Mvs:%4.1f  %%BdTStg:%5.1f Mvs:%4.1f  %%EvsStg:%5.1f Mvs:%4.1f\n",
+        snprintf(str, 512, "n=%12lld   (%6.2f%%)  %%TctStg:%5.1f Mvs:%4.1f  %%SpcStg:%5.1f Mvs:%4.1f  %%QteStg:%5.1f Mvs:%4.1f  %%BdTStg:%5.1f Mvs:%4.1f  %%EvsStg:%5.1f Mvs:%4.1f\n",
             i1, 100.0 * i1 / NODBZ(n),
             100.0 * i2 / NODBZ(n), i3 / NODBZ(i2),
             100.0 * i4 / NODBZ(n), i5 / NODBZ(i4),
@@ -943,10 +943,10 @@ void statistic::output(vector<string> args)
             }
             if (i1 == 0)
                 continue;
-            sprintf(str, "length %2d  n=%12lld   Total MvsAvg:%4.1f   ", l, i1, i2 / NODBZ(i1));
+            snprintf(str, 512, "length %2d  n=%12lld   Total MvsAvg:%4.1f   ", l, i1, i2 / NODBZ(i1));
             string lengthStr = string("[STATS] ") + str;
             for (d = 1; d < MAXSTATDEPTH && ms_quiet_stage[p][d][0]; d++) {
-                sprintf(str, "  %4.1f (%2d)", ms_quiet_moves[p][d][l] / NODBZ(ms_quiet_stage[p][d][l]), d);
+                snprintf(str, 512, "  %4.1f (%2d)", ms_quiet_moves[p][d][l] / NODBZ(ms_quiet_stage[p][d][l]), d);
                 lengthStr += str;
             }
             guiCom << lengthStr + "\n";

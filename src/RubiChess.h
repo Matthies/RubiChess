@@ -124,7 +124,6 @@
 #else //_WIN32
 
 #define myassert(expression, pos, num, ...) (void)(0)
-#define sprintf_s sprintf
 void Sleep(long x);
 #if defined(__ANDROID__) or defined(__APPLE__)
 #define allocalign64(x) malloc(x)
