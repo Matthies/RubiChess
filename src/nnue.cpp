@@ -362,7 +362,7 @@ public:
     }
     void Statistics(bool verbose, bool sort) {
         char str[512];
-        sprintf(str, "");
+        snprintf(str, 512, "");
         U64 total_n = 0;
         U64 total_count = 0;
         U64 total_nonzeroevals[NnueFtOutputdims / 2] = { 0 };
@@ -375,19 +375,19 @@ public:
             total_count += c;
             double counts_per_eval = c / (double)n;
             double f1 = 100.0 * n / total_n;
-            sprintf(str, "%s  L#%d %4.1f%% Avrg.:%6.2f ", str, i, f1, counts_per_eval);
+            snprintf(str, 512, "%s  L#%d %4.1f%% Avrg.:%6.2f ", str, i, f1, counts_per_eval);
         }
-        sprintf(str, "%s  total Avrg.:%6.2f ", str, (double)total_count / total_n);
+        snprintf(str, 512, "%s  total Avrg.:%6.2f ", str, (double)total_count / total_n);
         guiCom << string("[STATS] NNUE: ") + str + "\n";
         for (int j = 0; j < NnueFtOutputdims / 2; j++) {
-            sprintf(str, "%4d: ", j);
+            snprintf(str, 512, "%4d: ", j);
             for (int i = 0; i < NnueLayerStacks; i++) {
                 U64 n1 = LayerStack[i].NnueHd1.nonzeroevals[j];
                 U64 n2 = LayerStack[i].NnueHd1.nonzeroevals[j + NnueFtOutputdims / 2];
                 total_nonzeroevals[j] += n1 + n2;
-                sprintf(str, "%s   (%9lld/%9lld) ", str, n1, n2);
+                snprintf(str, 512, "%s   (%9lld/%9lld) ", str, n1, n2);
             }
-            sprintf(str, "%s   %9lld", str, total_nonzeroevals[j]);
+            snprintf(str, 512, "%s   %9lld", str, total_nonzeroevals[j]);
             if (verbose)
                 guiCom << string("[STATS] ") + str + "\n";
         }
