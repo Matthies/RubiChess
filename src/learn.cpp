@@ -1409,7 +1409,8 @@ class sfenreader {
     size_t inbufferreserve;
     size_t nextinbuffersize;
     size_t restdata;
-    int chunknum;
+    int lastreadchunknum;
+    int writechunknum;
     Binpack inbp;
     char* inbptr = nullptr;
 
@@ -1418,7 +1419,8 @@ public:
     ~sfenreader();
     void init(conversion_t* cv);
     chessposition* getPos() { return pos; }
-    int getChunknum() { return chunknum; }
+    int getReadChunknum() { return lastreadchunknum; }
+    int getWriteChunknum() { return writechunknum; }
     bool testAndAllocateBuffer(conversion_t* cv);
     bool endOfFile(conversion_t* cv) { return restdata == 0 && cv->is->peek() == ios::traits_type::eof(); }
     bool endOfBuffer() { return (inbptr >= inbuffer + restdata); }
@@ -1479,13 +1481,14 @@ void sfenreader::init(conversion_t* cv)
 
 bool sfenreader::testAndAllocateBuffer(conversion_t* cv)
 {
+    writechunknum = lastreadchunknum;
     if (cv->is->peek() == ios::traits_type::eof()) {
         cv->endofinputfile = true;
         cout << "endofinput detected.\n";
     }
     if (cv->endofinputfile)
     {
-        chunknum = -1;
+        lastreadchunknum = -1;
         return true;
     }
 
@@ -1526,7 +1529,7 @@ bool sfenreader::testAndAllocateBuffer(conversion_t* cv)
     cv->is->read((char*)inbuffer + inbufferreserve, inbuffersize);
     restdata = cv->is->gcount();
 
-    chunknum = cv->numInChunks++;
+    lastreadchunknum = cv->numInChunks++;
     if (cv->numInChunks <= cv->skipChunks)
         restdata = 0;
 
@@ -1656,6 +1659,10 @@ static void convertthread(searchthread* thr, conversion_t* cv)
     while (true)
     {
         cv->mtin.lock();
+
+        if (!inreader->testAndAllocateBuffer(cv))
+            return;
+
         if (!cv->okay || cv->stoprequest || cv->endofinputfile)
         {
             cerr << "Thread#" << thr->index << ": Not okay or stoprequest or endofinputfile; break\n";
@@ -1663,20 +1670,16 @@ static void convertthread(searchthread* thr, conversion_t* cv)
             break;
         }
 
-
-        if (!inreader->testAndAllocateBuffer(cv))
-            return;
-
         if (cmpreader && !cmpreader->testAndAllocateBuffer(cv))
             return;
 
         cv->mtin.unlock();
 
-        if (inreader->getChunknum() < 0)
+        if (inreader->getReadChunknum() < 0)
             // no more data in input file
             break;
 
-        cerr << "Thread#" << thr->index << " has got chunk#" << inreader->getChunknum() << " with " << inreader->getRestData() << " bytes\n";
+        cerr << "Thread#" << thr->index << " has got chunk#" << inreader->getReadChunknum() << " with " << inreader->getRestData() << " bytes\n";
 
         while (cv->okay && (cv->informat == plain || !inreader->endOfBuffer()))
         {
@@ -1718,8 +1721,8 @@ static void convertthread(searchthread* thr, conversion_t* cv)
                     if (*outbp.data > outbuffer)
                     {
                         // Wait for correct order
-                        while (cv->preserveChunks && inreader->getChunknum() >= 0 && inreader->getChunknum() != cv->chunksWritten) {
-                            cerr << "Thread#" << thr->index << " wants to write chunk#" << inreader->getChunknum() << " and waiting for chunk#" << cv->chunksWritten << "\n";
+                        while (cv->preserveChunks && inreader->getWriteChunknum() >= 0 && inreader->getWriteChunknum() != cv->chunksWritten) {
+                            cerr << "Thread#" << thr->index << " wants to write chunk#" << inreader->getWriteChunknum() << " and waiting for chunk#" << cv->chunksWritten << "\n";
                             Sleep(5000);
                         }
                         // flush chunk
@@ -1770,6 +1773,7 @@ static void convertthread(searchthread* thr, conversion_t* cv)
                 if (cv->preserveChunks && inreader->endOfBuffer()) {
                     prepareNextBinpackPosition(&outbp);
                     outbp.flushAt = *outbp.data;
+                    cerr << "Thread#" << thr->index << ": flushAt gesetzt\n";
                 }
 
                 if (outbp.debug())
@@ -1802,8 +1806,8 @@ static void convertthread(searchthread* thr, conversion_t* cv)
         prepareNextBinpackPosition(&outbp);
         if (*outbp.data > outbuffer)
         {
-            while (cv->preserveChunks && inreader->getChunknum() >= 0 && inreader->getChunknum() != cv->chunksWritten) {
-                cerr << "Thread#" << thr->index << " wants to write last chunk#" << inreader->getChunknum() << " and waiting to write chunk#" << cv->chunksWritten << "\n";
+            while (cv->preserveChunks && inreader->getWriteChunknum() >= 0 && inreader->getWriteChunknum() != cv->chunksWritten) {
+                cerr << "Thread#" << thr->index << " wants to write last chunk#" << inreader->getWriteChunknum() << " and waiting to write chunk#" << cv->chunksWritten << "\n";
                 Sleep(5000);
             }
             // flush chunk
