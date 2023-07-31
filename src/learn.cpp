@@ -1354,10 +1354,12 @@ struct conversion_t {
     ofstream ofs;
     SfenFormat outformat;
     SfenFormat informat;
+    SfenFormat cmpformat;
     int rescoreDepth;
     ifstream *is;
+    ifstream *cmps;
     ostream *os;
-    mutex mtin, mtout;
+    mutex mtin, mtout, mtcmp;
     bool okay;
     bool stoprequest;
     atomic<unsigned long long> numPositions;
@@ -1391,46 +1393,244 @@ bool openOutputFile(conversion_t* cv)
 }
 
 
-static void convertthread(searchthread* thr, conversion_t* cv)
-{
-    chessposition* inpos = (chessposition*)allocalign64(sizeof(chessposition));
-    inpos->pwnhsh.setSize(1);
-    inpos->mtrlhsh.init();
+struct trainingdata {
+    int16_t score;
+    int8_t result;
+    uint32_t move;  // movecode in Rubi long format
+    uint16_t gameply;
+};
 
-    chessposition* outpos = nullptr;
-    chessposition* pos = inpos;
+
+class sfenreader {
+    chessposition* pos;
+    char* inbuffer;
+    size_t inbuffersize;
+    size_t inbufferreserve;
+    size_t nextinbuffersize;
+    size_t restdata;
+    Binpack inbp;
+    char* inbptr = nullptr;
+
+public:
+    sfenreader();
+    ~sfenreader();
+    void init(conversion_t* cv);
+    chessposition* getPos() { return pos; }
+    bool testAndAllocateBuffer(conversion_t* cv);
+    bool endOfFile(conversion_t* cv) { return restdata == 0 && cv->is->peek() == ios::traits_type::eof(); }
+    bool endOfBuffer() { return (inbptr >= inbuffer + restdata); }
+    bool getTrainingData(conversion_t* cv, trainingdata* td);
+};
+
+
+sfenreader::sfenreader()
+{
     int rookfiles[2][2] = { { 0 , 7 }, {0 , 7} };
     int kingfile[2] = { 4, 4 };
+    pos = (chessposition*)allocalign64(sizeof(chessposition));
+    pos->pwnhsh.setSize(1);
+    pos->mtrlhsh.init();
     pos->initCastleRights(rookfiles, kingfile);
     pos->resetStats();
     memset(pos->prerootmovestack, 0xff, sizeof(chessposition::prerootmovestack));
     memset(pos->movestack, 0, sizeof(chessposition::movestack));
     pos->prerootmovenum = 0;
     pos->prerootmovecode[PREROOTMOVES - 1] = 0x00000001; // satisfy 'no nullmove eval available' and 'unused countermove within bounds'
+    inbuffer = nullptr;
+}
 
-    char* buffer = nullptr;
-    char* outbuffer = nullptr;
-    size_t buffersize;
-    size_t bufferreserve;
-    Binpack bp; // input
-    Binpack outbp; // output
-    char* bptr = nullptr;
-    char* outbptr = nullptr;
 
+sfenreader::~sfenreader()
+{
+    pos->pwnhsh.remove();
+    pos->mtrlhsh.remove();
+    freealigned64(inbuffer);
+    freealigned64(pos);
+}
+
+
+void sfenreader::init(conversion_t* cv)
+{
     if (cv->informat == bin)
     {
-        buffersize = sfenchunknums * sfenchunksize * sizeof(PackedSfenValue);
-        bufferreserve = 0;
+        inbuffersize = sfenchunknums * sfenchunksize * sizeof(PackedSfenValue);
+        inbufferreserve = 0;
     }
     else if (cv->informat == binpack)
     {
-        buffersize = 0;
-        bufferreserve = 0;
-    } else  // informat == plain
-    {
-        buffersize = 0;
-        bufferreserve = 0;
+        inbuffersize = 0;
+        inbufferreserve = 0;
     }
+    else  // informat == plain
+    {
+        inbuffersize = 0;
+        inbufferreserve = 0;
+    }
+    nextinbuffersize = inbuffersize;
+}
+
+
+bool sfenreader::testAndAllocateBuffer(conversion_t* cv)
+{
+    if (cv->informat == binpack)
+    {
+        char hd[8];
+        cv->is->read(hd, 8);
+        if (strncmp(hd, "BINP", 4) != 0)
+        {
+            cout << "BINP Header missing. Exit." << endl;
+            cv->mtin.unlock();
+            return false;
+        }
+        nextinbuffersize = *(uint32_t*)&hd[4];
+    }
+
+    if (nextinbuffersize != inbuffersize)
+    {
+        if (inbuffer)
+        {
+            freealigned64(inbuffer);
+            inbuffer = nullptr;
+        }
+        inbuffersize = nextinbuffersize;
+    }
+
+    if (!inbuffer)
+    {
+        inbuffer = (char*)allocalign64(inbuffersize + inbufferreserve);
+        inbptr = inbuffer + inbufferreserve;
+    }
+    else {
+        size_t bytesleft = inbuffer + inbuffersize + inbufferreserve - inbptr;
+        memcpy(inbuffer + inbufferreserve - bytesleft, inbptr, bytesleft);
+        inbptr -= inbuffersize;
+    }
+
+    restdata = inbuffersize;
+    cv->is->read((char*)inbuffer + inbufferreserve, inbuffersize);
+    if (cv->is->eof())
+        restdata = cv->is->gcount();
+
+    if (!cv->is || cv->is->peek() == ios::traits_type::eof())
+        cv->stoprequest = true;
+
+    cv->numInChunks++;
+    if (cv->numInChunks <= cv->skipChunks)
+        restdata = 0;
+
+    return true;
+}
+
+
+bool sfenreader::getTrainingData(conversion_t* cv, trainingdata* td)
+{
+    bool found = true;
+    if (cv->informat == bin)
+    {
+        PackedSfenValue* psv = (PackedSfenValue*)inbptr;
+        pos->getFromSfen(&psv->sfen);
+        td->score = psv->score;
+        td->result = psv->game_result;
+        td->move = rubiFromSf(pos, psv->move);
+        td->gameply = psv->gamePly;
+        inbptr += sizeof(PackedSfenValue);
+    }
+    else if (cv->informat == binpack)
+    {
+        if (!inbp.data)
+        {
+            inbp.data = &inbptr;
+            inbp.consumedBits = 0;
+        }
+        if (pos->getNextFromBinpack(&inbp) != 0)
+            cv->okay = false;
+        td->score = inbp.score;
+        td->result = inbp.gameResult;
+        td->move = inbp.fullmove;
+        td->gameply = inbp.gamePly;
+        pos->fixEpt();
+    }
+    else // informat == plain
+    {
+        string key;
+        string value;
+        td->move = 0;
+        td->gameply = 0;
+        td->result = 0;
+        td->score = 0;
+        found = false;
+        while (true) {
+            if (cv->is->peek() == ios::traits_type::eof())
+                break;
+            *cv->is >> key;
+            if (key == "e")
+            {
+                found = true;
+                break;
+            }
+            *cv->is >> ws;
+            getline(*cv->is, value);
+            if (key == "fen")
+                if (pos->getFromFen(value.c_str()) != 0)
+                    cv->okay = false;
+            if (key == "result")
+                td->result = stoi(value);
+            if (key == "score")
+                td->score = stoi(value);
+            if (key == "ply")
+                td->gameply = stoi(value);
+            if (key == "move" && value.size() >= 4)
+            {
+                uint16_t mc = 0;
+                int from = AlgebraicToIndex(&value[0]);
+                int to = AlgebraicToIndex(&value[2]);
+                int pc = pos->mailbox[from];
+                int s2m = pc & S2MMASK;
+                if ((pc >> 1) == KING && ((from ^ to) & 3) == 2)
+                    // castle
+                    to = (to > from ? to + 1 : to - 2);
+                else if ((pc >> 1) == PAWN && RRANK(from, s2m) == 6)
+                    // promotion
+                    mc = ((GetPieceType(value[4]) << 1) | s2m) << 12;
+                mc |= (from << 6) | to;
+                td->move = pos->shortMove2FullMove(mc);
+            }
+        }
+    }
+
+    if (found && cv->rescoreDepth)
+    {
+        int newscore;
+        if (cv->disable_prune)
+            newscore = pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, cv->rescoreDepth, false);
+        else
+            newscore = pos->alphabeta<Prune>(SCOREBLACKWINS, SCOREWHITEWINS, cv->rescoreDepth, false);
+        //cout << "score = " << score << "   newscore = " << newscore << endl;
+        td->score = newscore;
+    }
+
+    return found;
+}
+
+
+static void convertthread(searchthread* thr, conversion_t* cv)
+{
+    sfenreader* inreader;
+    sfenreader* cmpreader = nullptr;
+    char* outbuffer = nullptr;
+    char* outbptr = nullptr;
+    Binpack outbp; // output
+
+    inreader = new sfenreader();
+    inreader->init(cv);
+
+    if (cv->cmps)
+    {
+        cmpreader = new sfenreader();
+        cmpreader->init(cv);
+    }
+
+    chessposition* outpos = nullptr;
 
     if (cv->outformat == binpack)
     {
@@ -1438,18 +1638,11 @@ static void convertthread(searchthread* thr, conversion_t* cv)
         outbp.base = outbuffer;
         outbp.data = &outbptr;
         outbp.consumedBits = 0;
-        outbp.inpos = inpos;
+        outbp.inpos = inreader->getPos();
     }
-
-    size_t nextbuffersize = buffersize;
 
     while (true)
     {
-        int16_t score;
-        int8_t result;
-        uint32_t move;  // movecode in Rubi long format
-        uint16_t gameply;
-
         // Preserve order
         while (cv->informat == binpack && !cv->stoprequest && cv->numInChunks % en.Threads != thr->index)
             Sleep(100);
@@ -1461,158 +1654,45 @@ static void convertthread(searchthread* thr, conversion_t* cv)
             break;
         }
 
-        if (cv->informat == binpack)
+        if (!inreader->testAndAllocateBuffer(cv))
+            return;
+
+        if (cmpreader && !cmpreader->testAndAllocateBuffer(cv))
+            return;
+
+        if (inreader->endOfFile(cv))
         {
-            char hd[8];
-            cv->is->read(hd, 8);
-            if (strncmp(hd, "BINP", 4) != 0)
-            {
-                cout << "BINP Header missing. Exit." << endl;
-                cv->mtin.unlock();
-                return;
-            }
-            nextbuffersize = *(uint32_t*)&hd[4];
-        }
-
-        if (nextbuffersize != buffersize)
-        {
-            if (buffer)
-            {
-                freealigned64(buffer);
-                buffer = nullptr;
-            }
-            buffersize = nextbuffersize;
-        }
-
-        if (!buffer)
-        {
-            buffer = (char*)allocalign64(buffersize + bufferreserve);
-            bptr = buffer + bufferreserve;
-        } else {
-            size_t bytesleft = buffer + buffersize + bufferreserve - bptr;
-            memcpy(buffer + bufferreserve - bytesleft, bptr, bytesleft);
-            bptr -= buffersize;
-        }
-
-        size_t restdata = buffersize;
-        cv->is->read((char*)buffer + bufferreserve, buffersize);
-        if (cv->is->eof())
-            restdata = cv->is->gcount();
-
-        if (!cv->is || cv->is->peek() == ios::traits_type::eof())
-            cv->stoprequest = true;
-
-        cv->numInChunks++;
-        if (cv->numInChunks <= cv->skipChunks)
-            restdata = 0;
-
-        if (restdata == 0 && cv->is->peek() == ios::traits_type::eof())
-        {
+            // no more data in input file
             cv->mtin.unlock();
             break;
         }
 
         cv->mtin.unlock();
 
-        while (cv->okay && (cv->informat == plain || bptr < buffer + restdata))
+        while (cv->okay && (cv->informat == plain || !inreader->endOfBuffer()))
         {
-            bool found = true;
-            if (cv->informat == bin)
-            {
-                PackedSfenValue* psv = (PackedSfenValue*)bptr;
-                pos->getFromSfen(&psv->sfen);
-                score = psv->score;
-                result = psv->game_result;
-                move = rubiFromSf(pos, psv->move);
-                gameply = psv->gamePly;
-                bptr += sizeof(PackedSfenValue);
-            }
-            else if (cv->informat == binpack)
-            {
-                if (!bp.data)
-                {
-                    bp.data = &bptr;
-                    bp.consumedBits = 0;
-                }
-                if (pos->getNextFromBinpack(&bp) != 0)
-                    cv->okay = false;
-                score = bp.score;
-                result = bp.gameResult;
-                move = bp.fullmove;
-                gameply = bp.gamePly;
-            }
-            else // informat == plain
-            {
-                found = false;
-                string key;
-                string value;
-                move = 0;
-                gameply = 0;
-                result = 0;
-                score = 0;
-                while (true) {
-                    if (cv->is->peek() == ios::traits_type::eof())
-                        break;
-                    *cv->is >> key;
-                    if (key == "e")
-                    {
-                        found = true;
-                        break;
-                    }
-                    *cv->is >> ws;
-                    getline(*cv->is, value);
-                    if (key == "fen")
-                        if (pos->getFromFen(value.c_str()) != 0)
-                            cv->okay = false;
-                    if (key == "result")
-                        result = stoi(value);
-                    if (key == "score")
-                        score = stoi(value);
-                    if (key == "ply")
-                        gameply = stoi(value);
-                    if (key == "move" && value.size() >= 4)
-                    {
-                        uint16_t mc = 0;
-                        int from = AlgebraicToIndex(&value[0]);
-                        int to = AlgebraicToIndex(&value[2]);
-                        int pc = pos->mailbox[from];
-                        int s2m = pc & S2MMASK;
-                        if ((pc >> 1) == KING && ((from ^ to) & 3) == 2)
-                            // castle
-                            to = (to > from ? to + 1 : to - 2);
-                        else if ((pc >> 1) == PAWN && RRANK(from, s2m) == 6)
-                            // promotion
-                            mc = ((GetPieceType(value[4]) << 1) | s2m) << 12;
-                        mc |= (from << 6) | to;
-                        move = pos->shortMove2FullMove(mc);
-                    }
-                }
-            }
+            trainingdata intraining;
+            trainingdata cmptraining;
+
+            bool found = inreader->getTrainingData(cv, &intraining);
 
             if (!found)
                 break;
 
-            pos->fixEpt();
-            if (cv->rescoreDepth)
-            {
-                int newscore;
-                if (cv->disable_prune)
-                    newscore = pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, cv->rescoreDepth, false);
-                else
-                    newscore = pos->alphabeta<Prune>(SCOREBLACKWINS, SCOREWHITEWINS, cv->rescoreDepth, false);
-                //cout << "score = " << score << "   newscore = " << newscore << endl;
-                score = newscore;
+            if (cmpreader) {
+                bool cmpfound = cmpreader->getTrainingData(cv, &cmptraining);
             }
 
+            chessposition* inpos = inreader->getPos();
             if (cv->outformat == bin)
             {
                 PackedSfenValue psv;
-                psv.score = score;
-                psv.game_result = result;
-                psv.gamePly = gameply;
-                psv.move = sfFromRubi(move);
+                psv.score = intraining.score;
+                psv.game_result = intraining.result;
+                psv.gamePly = intraining.gameply;
+                psv.move = sfFromRubi(intraining.move);
                 psv.padding = 0xff;
-                pos->toSfen(&psv.sfen);
+                inpos->toSfen(&psv.sfen);
                 cv->mtout.lock();
                 cv->os->write((char*)&psv, sizeof(PackedSfenValue));
                 cv->mtout.unlock();
@@ -1646,30 +1726,30 @@ static void convertthread(searchthread* thr, conversion_t* cv)
 
                 if (outbp.debug())
                 {
-                cout << "fen " << pos->toFen() << endl;
-                cout << "move " << moveToString(move) << endl;
-                cout << "score " << score << endl;
-                cout << "ply " << to_string(gameply) << endl;
-                cout << "result " << to_string(result) << endl;
-                cout << "e" << endl;
+                    cout << "fen " << inpos->toFen() << endl;
+                    cout << "move " << moveToString(intraining.move) << endl;
+                    cout << "score " << intraining.score << endl;
+                    cout << "ply " << to_string(intraining.gameply) << endl;
+                    cout << "result " << to_string(intraining.result) << endl;
+                    cout << "e" << endl;
                 }
                 if (!outpos)
                 {
                     outpos = outbp.outpos = (chessposition*)allocalign64(sizeof(chessposition));
                     inpos->copyToLight(outpos);
-                    memcpy(outbp.outpos->castlerights, pos->castlerights, sizeof(pos->castlerights));
+                    memcpy(outbp.outpos->castlerights, inpos->castlerights, sizeof(inpos->castlerights));
                 }
 
                 outbp.lastFullmove = outbp.fullmove;
-                outbp.fullmove = move;
+                outbp.fullmove = intraining.move;
                 outbp.lastScore = -outbp.score;
-                outbp.score = score;
-                outbp.gamePly = gameply;
-                outbp.gameResult = result;
+                outbp.score = intraining.score;
+                outbp.gamePly = intraining.gameply;
+                outbp.gameResult = intraining.result;
 
                 outpos->nextToBinpack(&outbp);
 
-                if (cv->preserveChunks && bptr >= buffer + restdata) {
+                if (cv->preserveChunks && inreader->endOfBuffer()) {
                     prepareNextBinpackPosition(&outbp);
                     outbp.flushAt = *outbp.data;
                 }
@@ -1680,16 +1760,16 @@ static void convertthread(searchthread* thr, conversion_t* cv)
                     cout << "Current offset: " << hex << offset << dec << endl;
                 }
 
-                outbp.fullmove = move;
+                outbp.fullmove = intraining.move;
             }
             else if (cv->outformat == plain)
             {
                 cv->mtout.lock();
-                *cv->os << "fen " << pos->toFen() << endl;
-                *cv->os << "move " << moveToString(move) << endl;
-                *cv->os << "score " << score << endl;
-                *cv->os << "ply " << to_string(gameply) << endl;
-                *cv->os << "result " << to_string(result) << endl;
+                *cv->os << "fen " << inpos->toFen() << endl;
+                *cv->os << "move " << moveToString(intraining.move) << endl;
+                *cv->os << "score " << intraining.score << endl;
+                *cv->os << "ply " << to_string(intraining.gameply) << endl;
+                *cv->os << "result " << to_string(intraining.result) << endl;
                 *cv->os << "e" << endl;
                 cv->mtout.unlock();
             }
@@ -1717,12 +1797,11 @@ static void convertthread(searchthread* thr, conversion_t* cv)
         cv->numOutChunks++;
     }
 
-    inpos->pwnhsh.remove();
-    inpos->mtrlhsh.remove();
-    freealigned64(buffer);
+    delete inreader;
+    if (cmpreader)
+        delete cmpreader;
     if (outbuffer)
         freealigned64(outbuffer);
-    freealigned64(inpos);
     if (outpos)
         freealigned64(outpos);
 
@@ -1733,6 +1812,7 @@ static void convertthread(searchthread* thr, conversion_t* cv)
 void convert(vector<string> args)
 {
     string inputfile;
+    string comparefile = "";
     string outputfile = "";
     size_t cs = args.size();
     size_t ci = 0;
@@ -1763,6 +1843,11 @@ void convert(vector<string> args)
         {
             outputfile = (unnamedParams == ci ? args[ci - 1] : args[ci++]);
             outputfile.erase(remove(outputfile.begin(), outputfile.end(), '\"'), outputfile.end());
+        }
+        else if (cmd == "compare_file_name" && ci < cs)
+        {
+            comparefile = args[ci++];
+            comparefile.erase(remove(comparefile.begin(), comparefile.end(), '\"'), comparefile.end());
         }
         else if (cmd == "output_format" && ci < cs)
         {
@@ -1797,17 +1882,26 @@ void convert(vector<string> args)
     }
 
     conv.informat = (inputfile.find(".binpack") != string::npos ? binpack : inputfile.find(".bin") != string::npos ? bin : plain);
-    ifstream ifs(inputfile, conv.informat != plain ? ios::binary : ios_base::in);
-    if (!ifs)
+    conv.is = new ifstream(inputfile, conv.informat != plain ? ios::binary : ios_base::in);
+    if (!conv.is)
     {
         cout << "Cannot open input file " << inputfile << endl;
         return;
     }
 
+    conv.cmps = nullptr;
+    if (comparefile != "")
+    {
+        conv.cmpformat = (comparefile.find(".binpack") != string::npos ? binpack : comparefile.find(".bin") != string::npos ? bin : plain);
+        conv.cmps = new ifstream(comparefile, conv.cmpformat != plain ? ios::binary : ios_base::in);
+        if (!conv.cmps)
+        {
+            cout << "Cannot open compare file " << comparefile << endl;
+            return;
+        }
+    }
 
     conv.os = &cout;
-    conv.is = &ifs;
-    //ofstream ofs;
     if (outputfile != "")
     {
         size_t iExt = outputfile.find_last_of(".");
@@ -1858,6 +1952,10 @@ void convert(vector<string> args)
     cerr << endl << "Finished converting " << inputfile << ". " << conv.numPositions << " positions found." << endl;
     if (conv.numOutChunks)
         cerr << "Chunks written:  " << conv.chunksWritten << endl << "Last read chunk: " << conv.numInChunks << endl;
+
+    delete conv.is;
+    if (conv.cmps)
+        delete conv.cmps;
 }
 
 
