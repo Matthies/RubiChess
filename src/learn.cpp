@@ -1362,6 +1362,7 @@ struct conversion_t {
     mutex mtin, mtout, mtcmp;
     bool okay;
     bool stoprequest;
+    bool endofinputfile;
     atomic<unsigned long long> numPositions;
     atomic<int> numInChunks;
     atomic<int> numOutChunks;
@@ -1408,6 +1409,7 @@ class sfenreader {
     size_t inbufferreserve;
     size_t nextinbuffersize;
     size_t restdata;
+    int chunknum;
     Binpack inbp;
     char* inbptr = nullptr;
 
@@ -1416,10 +1418,12 @@ public:
     ~sfenreader();
     void init(conversion_t* cv);
     chessposition* getPos() { return pos; }
+    int getChunknum() { return chunknum; }
     bool testAndAllocateBuffer(conversion_t* cv);
     bool endOfFile(conversion_t* cv) { return restdata == 0 && cv->is->peek() == ios::traits_type::eof(); }
     bool endOfBuffer() { return (inbptr >= inbuffer + restdata); }
     bool getTrainingData(conversion_t* cv, trainingdata* td);
+    size_t getRestData() { return restdata; }
 };
 
 
@@ -1427,10 +1431,13 @@ sfenreader::sfenreader()
 {
     int rookfiles[2][2] = { { 0 , 7 }, {0 , 7} };
     int kingfile[2] = { 4, 4 };
+    memset((void*)&inbp, 0, sizeof(inbp));
     pos = (chessposition*)allocalign64(sizeof(chessposition));
     pos->pwnhsh.setSize(1);
     pos->mtrlhsh.init();
     pos->initCastleRights(rookfiles, kingfile);
+    pos->accumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
+    pos->psqtAccumulation = NnueCurrentArch ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr;
     pos->resetStats();
     memset(pos->prerootmovestack, 0xff, sizeof(chessposition::prerootmovestack));
     memset(pos->movestack, 0, sizeof(chessposition::movestack));
@@ -1472,6 +1479,16 @@ void sfenreader::init(conversion_t* cv)
 
 bool sfenreader::testAndAllocateBuffer(conversion_t* cv)
 {
+    if (cv->is->peek() == ios::traits_type::eof()) {
+        cv->endofinputfile = true;
+        cout << "endofinput detected.\n";
+    }
+    if (cv->endofinputfile)
+    {
+        chunknum = -1;
+        return true;
+    }
+
     if (cv->informat == binpack)
     {
         char hd[8];
@@ -1506,15 +1523,10 @@ bool sfenreader::testAndAllocateBuffer(conversion_t* cv)
         inbptr -= inbuffersize;
     }
 
-    restdata = inbuffersize;
     cv->is->read((char*)inbuffer + inbufferreserve, inbuffersize);
-    if (cv->is->eof())
-        restdata = cv->is->gcount();
+    restdata = cv->is->gcount();
 
-    if (!cv->is || cv->is->peek() == ios::traits_type::eof())
-        cv->stoprequest = true;
-
-    cv->numInChunks++;
+    chunknum = cv->numInChunks++;
     if (cv->numInChunks <= cv->skipChunks)
         restdata = 0;
 
@@ -1643,16 +1655,14 @@ static void convertthread(searchthread* thr, conversion_t* cv)
 
     while (true)
     {
-        // Preserve order
-        while (cv->informat == binpack && !cv->stoprequest && cv->numInChunks % en.Threads != thr->index)
-            Sleep(100);
-
         cv->mtin.lock();
-        if (!cv->okay || cv->stoprequest)
+        if (!cv->okay || cv->stoprequest || cv->endofinputfile)
         {
+            cerr << "Thread#" << thr->index << ": Not okay or stoprequest or endofinputfile; break\n";
             cv->mtin.unlock();
             break;
         }
+
 
         if (!inreader->testAndAllocateBuffer(cv))
             return;
@@ -1660,14 +1670,13 @@ static void convertthread(searchthread* thr, conversion_t* cv)
         if (cmpreader && !cmpreader->testAndAllocateBuffer(cv))
             return;
 
-        if (inreader->endOfFile(cv))
-        {
-            // no more data in input file
-            cv->mtin.unlock();
-            break;
-        }
-
         cv->mtin.unlock();
+
+        if (inreader->getChunknum() < 0)
+            // no more data in input file
+            break;
+
+        cerr << "Thread#" << thr->index << " has got chunk#" << inreader->getChunknum() << " with " << inreader->getRestData() << " bytes\n";
 
         while (cv->okay && (cv->informat == plain || !inreader->endOfBuffer()))
         {
@@ -1676,11 +1685,17 @@ static void convertthread(searchthread* thr, conversion_t* cv)
 
             bool found = inreader->getTrainingData(cv, &intraining);
 
-            if (!found)
+            if (!found) {
+                cerr << "Thread#" << thr->index << ": No training data found. Break!\n";
                 break;
+            }
 
             if (cmpreader) {
                 bool cmpfound = cmpreader->getTrainingData(cv, &cmptraining);
+
+                // now do some comparison
+                cout << intraining.gameply << " " << intraining.move << " " << intraining.result << " " << intraining.score << "\n";
+                cout << cmptraining.gameply << " " << cmptraining.move << " " << cmptraining.result << " " << cmptraining.score << "\n";
             }
 
             chessposition* inpos = inreader->getPos();
@@ -1700,18 +1715,21 @@ static void convertthread(searchthread* thr, conversion_t* cv)
             else if (cv->outformat == binpack)
             {
                 if (outbp.flushAt) {
-                    // Wait for correct order
-                    while (cv->numOutChunks % en.Threads != thr->index)
-                        Sleep(100);
                     if (*outbp.data > outbuffer)
                     {
+                        // Wait for correct order
+                        while (cv->preserveChunks && inreader->getChunknum() >= 0 && inreader->getChunknum() != cv->chunksWritten) {
+                            cerr << "Thread#" << thr->index << " wants to write chunk#" << inreader->getChunknum() << " and waiting for chunk#" << cv->chunksWritten << "\n";
+                            Sleep(5000);
+                        }
                         // flush chunk
                         cv->mtout.lock();
                         flushBinpack(cv->os, outbuffer, &outbp);
                         if (cv->splitChunks && cv->numOutChunks % cv->splitChunks == 0)
                             openOutputFile(cv);
-                        cv->mtout.unlock();
+                        cerr << "Thread#" << thr->index << " has written chunk#" << cv->chunksWritten << "\n";
                         cv->chunksWritten++;
+                        cv->mtout.unlock();
                     }
                     cv->numOutChunks++;
                 }
@@ -1775,24 +1793,27 @@ static void convertthread(searchthread* thr, conversion_t* cv)
             }
 
             cv->numPositions++;
-            if (cv->numPositions % (cv->rescoreDepth ? 0x2000 : 0x20000) == 0) cerr << ".";
+            //if (cv->numPositions % (cv->rescoreDepth ? 0x2000 : 0x20000) == 0) cerr << ".";
         }
     }
 
     if (cv->outformat == binpack)
     {
         prepareNextBinpackPosition(&outbp);
-        while (cv->numOutChunks % en.Threads != thr->index)
-            Sleep(100);
         if (*outbp.data > outbuffer)
         {
+            while (cv->preserveChunks && inreader->getChunknum() >= 0 && inreader->getChunknum() != cv->chunksWritten) {
+                cerr << "Thread#" << thr->index << " wants to write last chunk#" << inreader->getChunknum() << " and waiting to write chunk#" << cv->chunksWritten << "\n";
+                Sleep(5000);
+            }
             // flush chunk
             cv->mtout.lock();
             flushBinpack(cv->os, outbuffer, &outbp);
             if (cv->splitChunks && cv->numOutChunks % cv->splitChunks == 0)
                 openOutputFile(cv);
-            cv->mtout.unlock();
+            cerr << "Thread#" << thr->index << " has written his last chunk#" << cv->chunksWritten << "\n";
             cv->chunksWritten++;
+            cv->mtout.unlock();
         }
         cv->numOutChunks++;
     }
@@ -1888,6 +1909,7 @@ void convert(vector<string> args)
         cout << "Cannot open input file " << inputfile << endl;
         return;
     }
+    conv.endofinputfile = false;
 
     conv.cmps = nullptr;
     if (comparefile != "")
