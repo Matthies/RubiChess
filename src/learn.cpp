@@ -1484,7 +1484,6 @@ bool sfenreader::testAndAllocateBuffer(conversion_t* cv)
     writechunknum = lastreadchunknum;
     if (cv->is->peek() == ios::traits_type::eof()) {
         cv->endofinputfile = true;
-        cout << "endofinput detected.\n";
     }
     if (cv->endofinputfile)
     {
@@ -1620,7 +1619,6 @@ bool sfenreader::getTrainingData(conversion_t* cv, trainingdata* td)
             newscore = pos->alphabeta<NoPrune>(SCOREBLACKWINS, SCOREWHITEWINS, cv->rescoreDepth, false);
         else
             newscore = pos->alphabeta<Prune>(SCOREBLACKWINS, SCOREWHITEWINS, cv->rescoreDepth, false);
-        //cout << "score = " << score << "   newscore = " << newscore << endl;
         td->score = newscore;
     }
 
@@ -1665,7 +1663,6 @@ static void convertthread(searchthread* thr, conversion_t* cv)
 
         if (!cv->okay || cv->stoprequest || cv->endofinputfile)
         {
-            cerr << "Thread#" << thr->index << ": Not okay or stoprequest or endofinputfile; break\n";
             cv->mtin.unlock();
             break;
         }
@@ -1697,8 +1694,8 @@ static void convertthread(searchthread* thr, conversion_t* cv)
                 bool cmpfound = cmpreader->getTrainingData(cv, &cmptraining);
 
                 // now do some comparison
-                cout << intraining.gameply << " " << intraining.move << " " << intraining.result << " " << intraining.score << "\n";
-                cout << cmptraining.gameply << " " << cmptraining.move << " " << cmptraining.result << " " << cmptraining.score << "\n";
+                cout << "Input file:   " <<  intraining.gameply << " " << intraining.move << " " << intraining.result << " " << intraining.score << "\n";
+                cout << "Compare file: " << cmptraining.gameply << " " << cmptraining.move << " " << cmptraining.result << " " << cmptraining.score << "\n";
             }
 
             chessposition* inpos = inreader->getPos();
@@ -1721,16 +1718,13 @@ static void convertthread(searchthread* thr, conversion_t* cv)
                     if (*outbp.data > outbuffer)
                     {
                         // Wait for correct order
-                        while (cv->preserveChunks && inreader->getWriteChunknum() >= 0 && inreader->getWriteChunknum() != cv->chunksWritten) {
-                            cerr << "Thread#" << thr->index << " wants to write chunk#" << inreader->getWriteChunknum() << " and waiting for chunk#" << cv->chunksWritten << "\n";
-                            Sleep(5000);
-                        }
+                        while (cv->preserveChunks && inreader->getWriteChunknum() >= 0 && inreader->getWriteChunknum() != cv->chunksWritten)
+                            Sleep(100);
                         // flush chunk
                         cv->mtout.lock();
                         flushBinpack(cv->os, outbuffer, &outbp);
                         if (cv->splitChunks && cv->numOutChunks % cv->splitChunks == 0)
                             openOutputFile(cv);
-                        cerr << "Thread#" << thr->index << " has written chunk#" << cv->chunksWritten << "\n";
                         cv->chunksWritten++;
                         cv->mtout.unlock();
                     }
@@ -1773,7 +1767,6 @@ static void convertthread(searchthread* thr, conversion_t* cv)
                 if (cv->preserveChunks && inreader->endOfBuffer()) {
                     prepareNextBinpackPosition(&outbp);
                     outbp.flushAt = *outbp.data;
-                    cerr << "Thread#" << thr->index << ": flushAt gesetzt\n";
                 }
 
                 if (outbp.debug())
@@ -1797,7 +1790,7 @@ static void convertthread(searchthread* thr, conversion_t* cv)
             }
 
             cv->numPositions++;
-            //if (cv->numPositions % (cv->rescoreDepth ? 0x2000 : 0x20000) == 0) cerr << ".";
+            if (cv->numPositions % (cv->rescoreDepth ? 0x2000 : 0x20000) == 0) cerr << ".";
         }
     }
 
@@ -1806,16 +1799,13 @@ static void convertthread(searchthread* thr, conversion_t* cv)
         prepareNextBinpackPosition(&outbp);
         if (*outbp.data > outbuffer)
         {
-            while (cv->preserveChunks && inreader->getWriteChunknum() >= 0 && inreader->getWriteChunknum() != cv->chunksWritten) {
-                cerr << "Thread#" << thr->index << " wants to write last chunk#" << inreader->getWriteChunknum() << " and waiting to write chunk#" << cv->chunksWritten << "\n";
-                Sleep(5000);
-            }
+            while (cv->preserveChunks && inreader->getWriteChunknum() >= 0 && inreader->getWriteChunknum() != cv->chunksWritten)
+                Sleep(100);
             // flush chunk
             cv->mtout.lock();
             flushBinpack(cv->os, outbuffer, &outbp);
             if (cv->splitChunks && cv->numOutChunks % cv->splitChunks == 0)
                 openOutputFile(cv);
-            cerr << "Thread#" << thr->index << " has written his last chunk#" << cv->chunksWritten << "\n";
             cv->chunksWritten++;
             cv->mtout.unlock();
         }
