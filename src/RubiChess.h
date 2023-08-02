@@ -48,10 +48,10 @@
 //#define SEARCHOPTIONS
 
 // Enable this to find memory leaks with the MSVC debug build
-#define FINDMEMORYLEAKS
+//#define FINDMEMORYLEAKS
 
 // Enable this to enable NNUE training code
-#define NNUELEARN
+//#define NNUELEARN
 
 // Enable this to enable NNUE debug output
 //#define NNUEDEBUG
@@ -582,6 +582,9 @@ void initBitmaphelper();
 #define SCALE_OCB 32
 
 enum EvalType { NOTRACE, TRACE };
+
+const int uciscorescaling = 446;    // = 2^16 / (score in cp of 50%-win-prob. which can be calculated with https://github.com/vondele/WLD_model )
+#define UCISCORE(v) (((v) * uciscorescaling * 100) >> 16)
 
 
 //

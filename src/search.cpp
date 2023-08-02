@@ -1254,7 +1254,7 @@ static void uciScore(searchthread *thr, int inWindow, U64 thinktime, int score, 
     if (!MATEDETECTED(score))
     {
         guiCom << "info depth " + to_string(thr->depth) + " seldepth " + to_string(pos->seldepth) + " multipv " + to_string(mpvIndex + 1) + " time " + to_string(thinktime * 1000 / en.frequency)
-            + " score cp " + to_string(score) + " " + boundscore[inWindow] + "nodes " + to_string(nodes) + " nps " + to_string(thr->nps) + " tbhits " + to_string(tbhits)
+            + " score cp " + to_string(UCISCORE(score)) + " " + boundscore[inWindow] + "nodes " + to_string(nodes) + " nps " + to_string(thr->nps) + " tbhits " + to_string(tbhits)
             + " hashfull " + to_string(tp.getUsedinPermill()) + " pv " + pvstring + "\n";
     }
     else
