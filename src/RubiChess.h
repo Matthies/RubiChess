@@ -1907,11 +1907,12 @@ enum ponderstate_t { NO, PONDERING };
 #define CPUAVX2     (1 << 5)
 #define CPUBMI2     (1 << 6)
 #define CPUAVX512   (1 << 7)
-#define CPUNEON     (1 << 8)
+#define CPUVNNI     (1 << 8)
+#define CPUNEON     (1 << 9)
 
 class compilerinfo
 {
-    const string strCpuFeatures[9] = { "sse2","ssse3","popcnt","lzcnt","bmi1","avx2","bmi2", "avx512", "neon" };
+    const string strCpuFeatures[10] = { "sse2","ssse3","popcnt","lzcnt","bmi1","avx2","bmi2", "avx512", "vnni", "neon" };
 public:
     const U64 binarySupports = 0ULL
 #ifdef USE_POPCNT
@@ -1934,6 +1935,9 @@ public:
 #endif
 #ifdef USE_AVX512
         | CPUAVX512
+#endif
+#ifdef USE_VNNI
+        | CPUVNNI
 #endif
 #ifdef USE_NEON
         | CPUNEON
@@ -2363,12 +2367,16 @@ extern polybook pbook;
 
 namespace Simd {
 
-#if USE_AVX512
+#ifdef USE_AVX512
     // 512bit intrinsics
     inline void m512_add_dpbusd_32(__m512i& acc, __m512i a, __m512i b) {
+# if defined (USE_VNNI)
+        acc = _mm512_dpbusd_epi32(acc, a, b);
+# else
         __m512i product0 = _mm512_maddubs_epi16(a, b);
         product0 = _mm512_madd_epi16(product0, _mm512_set1_epi16(1));
         acc = _mm512_add_epi32(acc, product0);
+#endif
     }
 
     inline void m512_add_dpbusd_32x2(__m512i& acc, __m512i a0, __m512i b0,  __m512i a1, __m512i b1) {
