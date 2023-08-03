@@ -1676,8 +1676,6 @@ static void convertthread(searchthread* thr, conversion_t* cv)
             // no more data in input file
             break;
 
-        cerr << "Thread#" << thr->index << " has got chunk#" << inreader->getReadChunknum() << " with " << inreader->getRestData() << " bytes\n";
-
         while (cv->okay && (cv->informat == plain || !inreader->endOfBuffer()))
         {
             trainingdata intraining;
