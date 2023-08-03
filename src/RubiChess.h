@@ -18,7 +18,7 @@
 #pragma once
 
 #define VERNUMLEGACY 2023
-#define NNUEDEFAULT nn-8add7b5546-202300619.nnue
+#define NNUEDEFAULT nn-eb5456adef-20230801.nnue
 
 // enable this switch for faster SSE2 code using 16bit integers
 #define FASTSSE2
@@ -582,6 +582,9 @@ void initBitmaphelper();
 #define SCALE_OCB 32
 
 enum EvalType { NOTRACE, TRACE };
+
+const int uciscorescaling = 285;    // = 2^16 / (score in cp of 50%-win-prob. which can be calculated with https://github.com/vondele/WLD_model )
+#define UCISCORE(v) (((v) * uciscorescaling * 100) >> 16)
 
 
 //
