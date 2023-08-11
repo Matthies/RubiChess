@@ -26,6 +26,8 @@ lzcnt = no
 avx2 = no
 bmi2 = no
 avx512 = no
+vnni512 = no
+avxvnni = no
 neon = no
 zlib = no
 debug = no
@@ -151,6 +153,12 @@ endif
 ifneq (,$(findstring x86-64-sse2,$(ARCH)))
 CPUFLAGS = "sse2"
 endif
+ifneq (,$(findstring x86-64-vnni512,$(ARCH)))
+CPUFLAGS = "vnni512 avx512 bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2"
+endif
+ifneq (,$(findstring x86-64-avxvnni,$(ARCH)))
+CPUFLAGS = "avxvnni bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2"
+endif
 ifneq (,$(findstring x86-64-avx512,$(ARCH)))
 CPUFLAGS = "avx512 bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2"
 endif
@@ -178,8 +186,14 @@ endif
 endif
 
 
+ifneq (,$(findstring vnni512,$(CPUFLAGS)))
+	vnni512 = yes
+endif
 ifneq (,$(findstring avx512,$(CPUFLAGS)))
 	avx512 = yes
+endif
+ifneq (,$(findstring avxvnni,$(CPUFLAGS)))
+	avxvnni = yes
 endif
 ifneq (,$(findstring bmi2,$(CPUFLAGS)))
 	bmi2 = yes
@@ -207,6 +221,12 @@ ifneq (,$(findstring neon,$(CPUFLAGS)))
 endif
 
 ARCHFLAGS=
+ifeq ($(vnni512),yes)
+	ARCHFLAGS += -DUSE_VNNI512 -mavx512vnni -mavx512dq -mavx512vl -mprefer-vector-width=512
+endif
+ifeq ($(avxvnni),yes)
+	ARCHFLAGS += -DUSE_VNNI -DUSE_AVXVNNI -mavxvnni
+endif
 ifeq ($(avx512),yes)
 	ARCHFLAGS += -DUSE_AVX512 -mavx512f -mavx512bw
 endif
@@ -290,7 +310,9 @@ arch: libclean
 	@echo "Arch: $(ARCH)"
 	@echo "CPU features:"
 	@echo "============="
+	@echo "vnni512: $(vnni512)"
 	@echo "avx512: $(avx512)"
+	@echo "avxvnni: $(avxvnni)"
 	@echo "bmi2  : $(bmi2)"
 	@echo "avx2  : $(avx2)"
 	@echo "bmi1  : $(bmi1)"
@@ -356,7 +378,7 @@ ifeq ($(COMP),ndk)
 	@adb emu kill
 else
 	@echo "Running bench to generate profiling data..." && ./$(PROFEXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo " Profiling successful!") \
-	|| (echo " Profiling failed!" && [ "$(SDE)" != "" ] && echo " Trying to use SDE..." && $(SDE) -icx -- ./$(PROFEXE) -bench 1>/dev/null && [ $$? -eq 0 ] && echo " Profiling successful!") \
+	|| (echo " Profiling failed!" && [ "$(SDE)" != "" ] && echo " Trying to use SDE..." && $(SDE) -future -- ./$(PROFEXE) -bench 1>/dev/null && [ $$? -eq 0 ] && echo " Profiling successful!") \
 	|| (echo " SDE not available or profiling with SDE failed! Profiling with native build..." && $(MAKE) profileclean && $(MAKE) compile ARCH=native EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Compiling instrumented build ...' && ./$(PROFEXE) -bench 1>/dev/null)
 endif
 	@$(PROFMERGE)
@@ -376,6 +398,8 @@ pgo-rename: pgo
 	@echo Successfully created $(EXE)-$(VERSION)_$(ARCH)
 
 release_x86:
+	@$(MAKE) pgo-rename  ARCH=x86-64-avxvnni PTHREADLIB=$(PTHREADSTATICLIB)
+	@$(MAKE) pgo-rename  ARCH=x86-64-vnni512 PTHREADLIB=$(PTHREADSTATICLIB)
 	@$(MAKE) pgo-rename  ARCH=x86-64-avx512 PTHREADLIB=$(PTHREADSTATICLIB)
 	@$(MAKE) pgo-rename  ARCH=x86-64-bmi2 PTHREADLIB=$(PTHREADSTATICLIB)
 	@$(MAKE) pgo-rename  ARCH=x86-64-avx2 PTHREADLIB=$(PTHREADSTATICLIB)

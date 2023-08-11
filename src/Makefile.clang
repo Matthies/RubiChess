@@ -114,10 +114,12 @@ ARCH=native
 !ENDIF
 
 cpuflags: lib-clean
-!IF "$(ARCH)" == "x86-64-avx512-vnni"
-CPUFLAGS=vnni avx512 bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2
+!IF "$(ARCH)" == "x86-64-vnni512"
+CPUFLAGS=vnni512 avx512 bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2
 !ELSEIF "$(ARCH)" == "x86-64-avx512"
 CPUFLAGS=avx512 bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2
+!ELSEIF "$(ARCH)" == "x86-64-avxvnni"
+CPUFLAGS=avxvnni bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2
 !ELSEIF "$(ARCH)" == "x86-64-bmi2"
 CPUFLAGS=bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2
 !ELSEIF "$(ARCH)" == "x86-64-avx2"
@@ -134,13 +136,18 @@ CPUFLAGS=sse2
 CPUFLAGS=neon
 !ENDIF
 
-VNNI=no
+AVXVNNI=no
+!IF [@echo $(CPUFLAGS) | find "avxvnni" > nul] == 0 || [type $(NATIVEFLAGS) 2>nul | find "avxvnni" > nul] == 0
+AVXVNNI=yes
+ARCHFLAGS=$(ARCHFLAGS) -DUSE_VNNI -DUSE_AVXVNNI -mavxvnni
+!ENDIF
+VNNI512=no
 !IF [@echo $(CPUFLAGS) | find "avx512" > nul] == 0 || [type $(NATIVEFLAGS) 2>nul | find "avx512" > nul] == 0
 AVX512=yes
 ARCHFLAGS=$(ARCHFLAGS) -DUSE_AVX512 -mavx512f -mavx512bw
-!IF [@echo $(CPUFLAGS) | find "vnni" > nul] == 0 || [type $(NATIVEFLAGS) 2>nul | find "vnni" > nul] == 0
-VNNI=yes
-ARCHFLAGS=$(ARCHFLAGS) -DUSE_VNNI -mavx512vnni
+!IF [@echo $(CPUFLAGS) | find "vnni512" > nul] == 0 || [type $(NATIVEFLAGS) 2>nul | find "vnni512" > nul] == 0
+VNNI512=yes
+ARCHFLAGS=$(ARCHFLAGS) -DUSE_VNNI512 -mavx512vnni -mavx512dq -mavx512vl -mprefer-vector-width=512
 !ENDIF
 !ELSE
 AVX512=no
@@ -197,15 +204,16 @@ printarch: cpuflags
 	@echo Arch: $(ARCH)
 	@echo CPU features:
 	@echo =============
-	@echo avx512: $(AVX512)
-	@echo vnni__: $(VNNI)
-	@echo bmi2__: $(BMI2)
-	@echo avx2__: $(AVX2)
-	@echo bmi1__: $(BMI1)
-	@echo popcnt: $(POPCNT)
-	@echo ssse3_: $(SSSE3)
-	@echo sse2__: $(SSE2)
-	@echo neon__: $(NEON)
+	@echo avx512_: $(AVX512)
+	@echo vnni512: $(VNNI512)
+	@echo avxvnni: $(AVXVNNI)
+	@echo bmi2___: $(BMI2)
+	@echo avx2___: $(AVX2)
+	@echo bmi1___: $(BMI1)
+	@echo popcnt_: $(POPCNT)
+	@echo ssse3__: $(SSSE3)
+	@echo sse2___: $(SSE2)
+	@echo neon___: $(NEON)
 
 buildandarch: printarch compile
 
@@ -269,7 +277,8 @@ build-rename: build
 releaseversion:
 	@echo Version: $(VERSION)
 !IF "$(VSCMD_ARG_TGT_ARCH)" == "x64"
-	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-avx512-vnni
+	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-vnni512
+	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-avxvnni
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-avx512
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-bmi2
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-avx2

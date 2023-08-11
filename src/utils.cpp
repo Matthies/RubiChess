@@ -509,13 +509,15 @@ string compilerinfo::PrintCpuFeatures(U64 f, bool onlyHighest)
 #if defined _MSC_VER && !defined(__clang_major__)
 #include <intrin.h>
 #define CPUID(x,i) __cpuid(x, i)
+#define CPUIDEX(x,i,j) __cpuidex(x, i, j)
 #endif
 
 #if defined(__MINGW64__) || defined(__gnu_linux__) || defined(__clang_major__) || defined(__GNUC__)
 #include <cpuid.h>
 #define CPUID(x,i) cpuid(x, i)
-static void cpuid(int32_t out[4], int32_t x) {
-    __cpuid_count(x, 0, out[0], out[1], out[2], out[3]);
+#define CPUIDEX(x,i,j) cpuid(x, i, j)
+static void cpuid(int32_t out[4], int32_t i, int32_t j = 0) {
+    __cpuid_count(i, j, out[0], out[1], out[2], out[3]);
 }
 #endif
 
@@ -550,6 +552,7 @@ void compilerinfo::GetSystemInfo()
     nIds = CPUInfo[0];
 
     // Get the information associated with each valid Id
+    // https://en.wikipedia.org/wiki/CPUID
     // https://www.sandpile.org/x86/cpuid.htm
     // https://en.wikichip.org/wiki/amd/cpuid
     // https://en.wikichip.org/wiki/intel/cpuid
@@ -572,7 +575,9 @@ void compilerinfo::GetSystemInfo()
             if (CPUInfo[1] & (1 <<  8)) machineSupports |= CPUBMI2;
             if (CPUInfo[1] & (1 <<  5)) machineSupports |= CPUAVX2;
             if (CPUInfo[1] & ((1 << 16) | (1 << 30))) machineSupports |= CPUAVX512; // AVX512F + AVX512BW needed
-            if (CPUInfo[3] & (1 << 11)) machineSupports |= CPUVNNI;
+            if (CPUInfo[2] & (1 << 11)) machineSupports |= CPUVNNI512;
+            CPUIDEX(CPUInfo, i, 1);
+            if (CPUInfo[0] & (1 <<  4)) machineSupports |= CPUAVXVNNI;
         }
     }
 
@@ -606,7 +611,7 @@ void compilerinfo::GetSystemInfo()
     if (notSupported)
     {
         cout << "info string Error! Binary is not compatible with this machine. Missing cpu features: " + PrintCpuFeatures(notSupported) + ". Please use correct binary.\n";
-        exit(-1);
+        // exit(-1);
     }
 
     if (cpuVendor == CPUVENDORAMD && cpuFamily < 25 && (machineSupports & CPUBMI2))

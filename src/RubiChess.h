@@ -95,7 +95,7 @@
 #define USE_SIMD
 #if defined(USE_SSE2)
 #include <immintrin.h>
-#ifdef USE_VNNI
+#ifdef USE_VNNI512
 #include <avx512vnniintrin.h>
 #endif
 #elif defined(USE_NEON)
@@ -1910,12 +1910,13 @@ enum ponderstate_t { NO, PONDERING };
 #define CPUAVX2     (1 << 5)
 #define CPUBMI2     (1 << 6)
 #define CPUAVX512   (1 << 7)
-#define CPUVNNI     (1 << 8)
-#define CPUNEON     (1 << 9)
+#define CPUVNNI512  (1 << 8)
+#define CPUAVXVNNI  (1 << 9)
+#define CPUNEON     (1 << 10)
 
 class compilerinfo
 {
-    const string strCpuFeatures[10] = { "sse2","ssse3","popcnt","lzcnt","bmi1","avx2","bmi2", "avx512", "vnni", "neon" };
+    const string strCpuFeatures[11] = { "sse2","ssse3","popcnt","lzcnt","bmi1","avx2","bmi2", "avx512", "vnni512", "avxvnni", "neon" };
 public:
     const U64 binarySupports = 0ULL
 #ifdef USE_POPCNT
@@ -1939,8 +1940,11 @@ public:
 #ifdef USE_AVX512
         | CPUAVX512
 #endif
-#ifdef USE_VNNI
-        | CPUVNNI
+#ifdef USE_VNNI512
+        | CPUVNNI512
+#endif
+#ifdef USE_AVXVNNI
+        | CPUAVXVNNI
 #endif
 #ifdef USE_NEON
         | CPUNEON
@@ -2425,17 +2429,26 @@ namespace Simd {
 #ifdef USE_AVX2
     // 256bit intrinsics
     inline void m256_add_dpbusd_32(__m256i& acc, __m256i a, __m256i b) {
+#if defined (USE_VNNI)
+        acc = _mm256_dpbusd_epi32(acc, a, b);
+#else
         __m256i product0 = _mm256_maddubs_epi16(a, b);
         product0 = _mm256_madd_epi16(product0, _mm256_set1_epi16(1));
         acc = _mm256_add_epi32(acc, product0);
+#endif
     }
 
     inline void m256_add_dpbusd_32x2(__m256i& acc, __m256i a0, __m256i b0, __m256i a1, __m256i b1) {
+# if defined (USE_VNNI)
+        acc = _mm256_dpbusd_epi32(acc, a0, b0);
+        acc = _mm256_dpbusd_epi32(acc, a1, b1);
+# else
         __m256i product0 = _mm256_maddubs_epi16(a0, b0);
         __m256i product1 = _mm256_maddubs_epi16(a1, b1);
         product0 = _mm256_adds_epi16(product0, product1);
         product0 = _mm256_madd_epi16(product0, _mm256_set1_epi16(1));
         acc = _mm256_add_epi32(acc, product0);
+#endif
     }
 
     inline int m256_hadd(__m256i sum, int bias) {
