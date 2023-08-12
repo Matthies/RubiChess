@@ -204,8 +204,8 @@ printarch: cpuflags
 	@echo Arch: $(ARCH)
 	@echo CPU features:
 	@echo =============
-	@echo avx512_: $(AVX512)
 	@echo vnni512: $(VNNI512)
+	@echo avx512_: $(AVX512)
 	@echo avxvnni: $(AVXVNNI)
 	@echo bmi2___: $(BMI2)
 	@echo avx2___: $(AVX2)
@@ -219,8 +219,8 @@ buildandarch: printarch compile
 
 $(ZLIBDIR)\zlib.lib:
 	@cd $(ZLIBDIR)
-	$(CXX) $(CXXFLAGS) $(ARCHFLAGS) -w /c *.c
-	$(LD) /lib /OUT:zlib.lib $(OBJ)
+	@$(CXX) $(CXXFLAGS) $(ARCHFLAGS) -w /c *.c
+	@$(LD) /lib /OUT:zlib.lib $(OBJ)
 	@cd ..
 
 build: cpuflags
@@ -237,11 +237,11 @@ compile: $(ZLIBDIR)\zlib.lib
 !IFNDEF GITID
 	@FOR /F "tokens=2" %A IN ('cmd /c "($(GIT) show --name-only --abbrev-commit || echo commit unknown) | findstr /r /c:"^commit"" ') DO @(set GITID=%A&& nmake -f Makefile.clang $* /$(MAKEFLAGS) && exit /B)
 !ELSE
-	$(CXX) $(CXXFLAGS) $(ARCHFLAGS) $(SOURCE) $(PROFILEFLAGS) -D GITVER=\"$(GITVER)\" -D GITID=\"$(GITID)\"
+	@$(CXX) $(CXXFLAGS) $(ARCHFLAGS) $(SOURCE) $(PROFILEFLAGS) -D GITVER=\"$(GITVER)\" -D GITID=\"$(GITID)\"
 !IFDEF USEPROFLIB
-	$(LD) $(LDFLAGS) /OUT:$(PROFEXE).exe $(OBJ) "$(USEPROFLIB)"
+	@$(LD) $(LDFLAGS) /OUT:$(PROFEXE).exe $(OBJ) "$(USEPROFLIB)"
 !ELSE
-	$(LD) $(LDFLAGS) /OUT:$(RELDIR)\$(EXE).exe $(OBJ)
+	@$(LD) $(LDFLAGS) /OUT:$(RELDIR)\$(EXE).exe $(OBJ)
 !ENDIF
 !ENDIF
 !ENDIF
