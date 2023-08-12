@@ -222,7 +222,7 @@ endif
 
 ARCHFLAGS=
 ifeq ($(vnni512),yes)
-	ARCHFLAGS += -DUSE_VNNI512 -mavx512vnni -mavx512dq -mavx512vl -mprefer-vector-width=512
+	ARCHFLAGS += -DUSE_VNNI512 -mavx512vnni -mavx512dq -mavx512vl
 endif
 ifeq ($(avxvnni),yes)
 	ARCHFLAGS += -DUSE_VNNI -DUSE_AVXVNNI -mavxvnni
@@ -398,9 +398,9 @@ pgo-rename: pgo
 	@echo Successfully created $(EXE)-$(VERSION)_$(ARCH)
 
 release_x86:
-	@$(MAKE) pgo-rename  ARCH=x86-64-avxvnni PTHREADLIB=$(PTHREADSTATICLIB)
 	@$(MAKE) pgo-rename  ARCH=x86-64-vnni512 PTHREADLIB=$(PTHREADSTATICLIB)
 	@$(MAKE) pgo-rename  ARCH=x86-64-avx512 PTHREADLIB=$(PTHREADSTATICLIB)
+	@$(MAKE) pgo-rename  ARCH=x86-64-avxvnni PTHREADLIB=$(PTHREADSTATICLIB)
 	@$(MAKE) pgo-rename  ARCH=x86-64-bmi2 PTHREADLIB=$(PTHREADSTATICLIB)
 	@$(MAKE) pgo-rename  ARCH=x86-64-avx2 PTHREADLIB=$(PTHREADSTATICLIB)
 	@$(MAKE) pgo-rename  ARCH=x86-64-modern PTHREADLIB=$(PTHREADSTATICLIB)

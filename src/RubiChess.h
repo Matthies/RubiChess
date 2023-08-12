@@ -95,9 +95,6 @@
 #define USE_SIMD
 #if defined(USE_SSE2)
 #include <immintrin.h>
-#ifdef USE_VNNI512
-#include <avx512vnniintrin.h>
-#endif
 #elif defined(USE_NEON)
 #include <arm_neon.h>
 #else

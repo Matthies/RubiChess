@@ -147,7 +147,7 @@ AVX512=yes
 ARCHFLAGS=$(ARCHFLAGS) -DUSE_AVX512 -mavx512f -mavx512bw
 !IF [@echo $(CPUFLAGS) | find "vnni512" > nul] == 0 || [type $(NATIVEFLAGS) 2>nul | find "vnni512" > nul] == 0
 VNNI512=yes
-ARCHFLAGS=$(ARCHFLAGS) -DUSE_VNNI512 -mavx512vnni -mavx512dq -mavx512vl -mprefer-vector-width=512
+ARCHFLAGS=$(ARCHFLAGS) -DUSE_VNNI512 -mavx512vnni -mavx512dq -mavx512vl
 !ENDIF
 !ELSE
 AVX512=no
@@ -278,8 +278,8 @@ releaseversion:
 	@echo Version: $(VERSION)
 !IF "$(VSCMD_ARG_TGT_ARCH)" == "x64"
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-vnni512
-	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-avxvnni
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-avx512
+	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-avxvnni
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-bmi2
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-avx2
 	@nmake -c -f Makefile.clang pgo-rename ARCH=x86-64-modern
