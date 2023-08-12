@@ -2430,7 +2430,11 @@ namespace Simd {
     // 256bit intrinsics
     inline void m256_add_dpbusd_32(__m256i& acc, __m256i a, __m256i b) {
 #if defined (USE_VNNI)
+#if defined (USE_AVXVNNI)
+        acc = _mm256_dpbusd_avx_epi32(acc, a, b);
+#else
         acc = _mm256_dpbusd_epi32(acc, a, b);
+#endif
 #else
         __m256i product0 = _mm256_maddubs_epi16(a, b);
         product0 = _mm256_madd_epi16(product0, _mm256_set1_epi16(1));
@@ -2439,10 +2443,15 @@ namespace Simd {
     }
 
     inline void m256_add_dpbusd_32x2(__m256i& acc, __m256i a0, __m256i b0, __m256i a1, __m256i b1) {
-# if defined (USE_VNNI)
+#if defined (USE_VNNI)
+#if defined (USE_AVXVNNI)
+        acc = _mm256_dpbusd_avx_epi32(acc, a0, b0);
+        acc = _mm256_dpbusd_avx_epi32(acc, a1, b1);
+#else
         acc = _mm256_dpbusd_epi32(acc, a0, b0);
         acc = _mm256_dpbusd_epi32(acc, a1, b1);
-# else
+#endif
+#else
         __m256i product0 = _mm256_maddubs_epi16(a0, b0);
         __m256i product1 = _mm256_maddubs_epi16(a1, b1);
         product0 = _mm256_adds_epi16(product0, product1);
