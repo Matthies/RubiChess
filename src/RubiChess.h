@@ -925,7 +925,7 @@ class NnueNetworkLayer : public NnueLayer
     static constexpr unsigned int NumBigBlocks = outputdims / NumOutputRegsBig;
     static constexpr unsigned int OutputSimdWidth = SimdWidth / 4;
 
-#ifdef USE_SSSE3
+#if (USE_SSSE3 | USE_NEON)
 #define USE_PROPAGATESPARSE
 #define USE_PROPAGATESMALL
     static constexpr bool useSparsePropagation = (paddedInputdims >= 512);

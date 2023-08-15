@@ -613,6 +613,8 @@ inline  ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define vec_add_psqt_32(a,b) vaddq_s32(a,b)
 #define vec_sub_psqt_32(a,b) vsubq_s32(a,b)
 #define vec_zero_psqt() psqt_vec_t{0}
+static const uint32_t NnzMask[4] = { 1, 2, 4, 8 };
+#define vec_nnz(a) vaddvq_u32(vandq_u32(vtstq_u32(a, a), vld1q_u32(NnzMask)))
 
 #else
 #define NUM_REGS 1
@@ -621,11 +623,28 @@ inline  ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 typedef int16_t ft_vec_t;
 #endif
 
+// sparse propagation macros
+#if defined(USE_SSSE3)
+typedef __m128i vec128_t;
+#define vec128_zero _mm_setzero_si128()
+#define vec128_set_16(n) _mm_set1_epi16(n)
+#define vec128_load(a) _mm_load_si128(a)
+#define vec128_storeu(a, b) _mm_storeu_si128(a, b)
+#define vec128_add(a, b) _mm_add_epi16(a, b)
+#elif defined(USE_NEON)
+typedef int16x8_t vec128_t;
+#define vec128_zero vdupq_n_u16(0)
+#define vec128_set_16(n) vdupq_n_u16(a)
+#define vec128_load(a) vld1q_u16((uint16_t*)(a))
+#define vec128_storeu(a, b) vst1q_u16((uint16_t*)(a), b)
+#define vec128_add(a, b) vaddq_u16(a, b)
+#endif
+
 #ifdef USE_SIMD
 #define PSQT_TILE_HEIGHT (NUM_PSQT_REGS * sizeof(psqt_vec_t) / 4)
 #endif
 
-#if defined(USE_SSSE3)
+#if defined(USE_PROPAGATESPARSE)
 alignas(64) static const array<array<uint16_t, 8>, 256> lookup_indices = []() {
     array<array<uint16_t, 8>, 256> v{};
     for (int i = 0; i < 256; ++i)
@@ -643,6 +662,7 @@ alignas(64) static const array<array<uint16_t, 8>, 256> lookup_indices = []() {
     return v;
 }();
 
+#if 0
 alignas(64) static const array<unsigned, 256> lookup_count = []() {
     array<unsigned, 256> v;
     for (int i = 0; i < 256; ++i)
@@ -658,6 +678,7 @@ alignas(64) static const array<unsigned, 256> lookup_count = []() {
     }
     return v;
 }();
+#endif
 #endif
 
 
@@ -1463,8 +1484,8 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
     constexpr unsigned int OutputsPerInternalChunk = InternalChunkSize / 8;
 
     // Step 1: Find indices of nonzero 32bit blocks
-    __m128i base = _mm_set1_epi16(0);
-    __m128i increment = _mm_set1_epi16(8);
+    vec128_t base = vec128_zero;
+    vec128_t increment = vec128_set_16(8);
     for (unsigned int i = 0; i < NumInternalChunks; ++i)
     {
         // bitmask of nonzero values in this chunk
@@ -1492,10 +1513,10 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
         for (unsigned int j = 0; j < OutputsPerInternalChunk; ++j)
         {
             const unsigned int lookup = (internalnnz >> (j * 8)) & 0xFF;
-            const __m128i offsets = _mm_loadu_si128((__m128i*)(&lookup_indices[lookup]));
-            _mm_storeu_si128((__m128i*)(nnz + count), _mm_add_epi16(base, offsets));
-            count += lookup_count[lookup];
-            base = _mm_add_epi16(base, increment);
+            const vec128_t offsets = vec128_load((vec128_t*)(&lookup_indices[lookup]));
+            vec128_storeu((vec128_t*)(nnz + count), vec128_add(base, offsets));
+            count += POPCOUNT(lookup);
+            base = vec128_add(base, increment);
         }
     }
 
