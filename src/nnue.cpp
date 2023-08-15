@@ -485,7 +485,7 @@ typedef __m128i sml_vec_t;
 #define NUM_PSQT_REGS 1
 #define SIMD_WIDTH 512
 #define MAXCHUNKSIZE 64
-typedef __m512i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, ft_vec_t, svec_t;
+typedef __m512i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, ft_vec_t, svec_t, sprsin_vec_t;
 typedef __m256i psqt_vec_t;
 typedef __m128i bias_vec_t;
 #define vec_zero() _mm512_setzero_si512()
@@ -518,7 +518,7 @@ inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define NUM_PSQT_REGS 1
 #define SIMD_WIDTH 256
 #define MAXCHUNKSIZE 32
-typedef __m256i ft_vec_t, ftout_vec_t, psqt_vec_t, in_vec_t, acc_vec_t, weight_vec_t, svec_t;
+typedef __m256i ft_vec_t, ftout_vec_t, psqt_vec_t, in_vec_t, acc_vec_t, weight_vec_t, svec_t, sprsin_vec_t;;
 typedef __m128i bias_vec_t;
 #define vec_zero() _mm256_setzero_si256()
 #define vec_set_16(a) _mm256_set1_epi16(a)
@@ -567,7 +567,7 @@ typedef __m128i ft_vec_t, ftout_vec_t, psqt_vec_t;
 #define vec_store_psqt(a,b) *(a)=(b)
 
 #if defined(USE_SSSE3)
-typedef __m128i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, bias_vec_t, svec_t;
+typedef __m128i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, bias_vec_t, svec_t, sprsin_vec_t;
 #define vec_clip_8(a,b) vec_packs(_mm_max_epi16(a,_mm_setzero_si128()),_mm_max_epi16(b,_mm_setzero_si128()))
 #define vec_add_dpbusd_32x2_large Simd::m128_add_dpbusd_32x2
 #define vec_haddx4_large Simd::m128_haddx4
@@ -591,6 +591,7 @@ typedef int16x8_t ft_vec_t;
 typedef int16x8_t ftout_vec_t;
 typedef int32x4_t acc_vec_t, bias_vec_t, psqt_vec_t;
 typedef uint32x4_t svec_t;
+typedef int8x16_t sprsin_vec_t;
 #define vec_zero() {0}
 #define vec_set_16(a) vdupq_n_s16(a)
 #define vec_max_16(a,b) vmaxq_s16(a,b)
@@ -1533,16 +1534,16 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
     cout << "\nSparse propagation:\n";
 #endif
     // Step 2: Process the collected nonzero blocks
-    const in_vec_t* biasvec = (const in_vec_t*)bias;
-    in_vec_t acc[NumRegs];
+    const acc_vec_t* biasvec = (const acc_vec_t*)bias;
+    acc_vec_t acc[NumRegs];
     for (unsigned int k = 0; k < NumRegs; ++k)
         acc[k] = biasvec[k];
 
     for (unsigned int j = 0; j < count; ++j)
     {
         const uint16_t i = nnz[j];
-        const in_vec_t in = vec_set_32(input32[i]);
-        const in_vec_t* col = (const in_vec_t*)&weight[i * outputdims * ChunkSize];
+        const sprsin_vec_t in = vec_set_32(input32[i]);
+        const sprsin_vec_t* col = (const sprsin_vec_t*)&weight[i * outputdims * ChunkSize];
         for (unsigned int k = 0; k < NumRegs; ++k)
             vec_add_dpbusd_32(acc[k], in, col[k]);
 #ifdef NNUEDEBUG
@@ -1554,7 +1555,7 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
 #endif
     }
 
-    in_vec_t* outptr = (in_vec_t*)output;
+    acc_vec_t* outptr = (acc_vec_t*)output;
     for (unsigned int k = 0; k < NumRegs; ++k)
         outptr[k] = acc[k];
 }
