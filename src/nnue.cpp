@@ -637,11 +637,12 @@ typedef __m128i vec128_t;
 #define vec128_storeu(a, b) _mm_storeu_si128(a, b)
 #define vec128_add(a, b) _mm_add_epi16(a, b)
 #elif defined(USE_NEON)
-typedef int16x8_t vec128_t;
+typedef uint16x8_t vec128_t;
 #define vec128_zero vdupq_n_u16(0)
 #define vec128_set_16(a) vdupq_n_u16(a)
 #define vec128_load(a) vld1q_u16((uint16_t*)a)
 #define vec128_storeu(a, b) vst1q_u16((uint16_t*)a, b)
+//#define vec128_add(a, b) vaddq_u16(vreinterpretq_u16_s16(a), vreinterpretq_u16_s16(b))
 #define vec128_add(a, b) vaddq_u16(a, b)
 #endif
 
