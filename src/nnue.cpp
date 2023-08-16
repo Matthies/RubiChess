@@ -485,7 +485,7 @@ typedef __m128i sml_vec_t;
 #define NUM_PSQT_REGS 1
 #define SIMD_WIDTH 512
 #define MAXCHUNKSIZE 64
-typedef __m512i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, ft_vec_t, svec_t, sprsin_vec_t;
+typedef __m512i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, ft_vec_t, uvec_t, sprsin_vec_t;
 typedef __m256i psqt_vec_t;
 typedef __m128i bias_vec_t;
 #define vec_zero() _mm512_setzero_si512()
@@ -518,7 +518,7 @@ inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define NUM_PSQT_REGS 1
 #define SIMD_WIDTH 256
 #define MAXCHUNKSIZE 32
-typedef __m256i ft_vec_t, ftout_vec_t, psqt_vec_t, in_vec_t, acc_vec_t, weight_vec_t, svec_t, sprsin_vec_t;;
+typedef __m256i ft_vec_t, ftout_vec_t, psqt_vec_t, in_vec_t, acc_vec_t, weight_vec_t, uvec_t, sprsin_vec_t;;
 typedef __m128i bias_vec_t;
 #define vec_zero() _mm256_setzero_si256()
 #define vec_set_16(a) _mm256_set1_epi16(a)
@@ -567,7 +567,7 @@ typedef __m128i ft_vec_t, ftout_vec_t, psqt_vec_t;
 #define vec_store_psqt(a,b) *(a)=(b)
 
 #if defined(USE_SSSE3)
-typedef __m128i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, bias_vec_t, svec_t, sprsin_vec_t;
+typedef __m128i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, bias_vec_t, uvec_t, sprsin_vec_t;
 #define vec_clip_8(a,b) vec_packs(_mm_max_epi16(a,_mm_setzero_si128()),_mm_max_epi16(b,_mm_setzero_si128()))
 #define vec_add_dpbusd_32x2_large Simd::m128_add_dpbusd_32x2
 #define vec_haddx4_large Simd::m128_haddx4
@@ -590,7 +590,7 @@ typedef int8x8_t in_vec_t, weight_vec_t;
 typedef int16x8_t ft_vec_t;
 typedef int16x8_t ftout_vec_t;
 typedef int32x4_t acc_vec_t, bias_vec_t, psqt_vec_t;
-typedef uint32x4_t svec_t;
+typedef uint32x4_t uvec_t;
 typedef int8x16_t sprsin_vec_t;
 #define vec_zero() {0}
 #define vec_set_16(a) vdupq_n_s16(a)
@@ -618,7 +618,7 @@ inline  ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 static const uint32_t NnzMask[4] = { 1, 2, 4, 8 };
 #define vec_nnz(a) vaddvq_u32(vandq_u32(vtstq_u32(a, a), vld1q_u32(NnzMask)))
 #define vec_set_32(a) vreinterpretq_s8_u32(vdupq_n_u32(a))
-#define vec_add_dpbusd_32 Simd::neon_m128_add_dpbusd_32
+#define vec_add_dpbusd_32 Simd::dotprod_m128_add_dpbusd_32
 
 
 #else
@@ -1480,10 +1480,10 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
     uint16_t nnz[NumChunks];
     unsigned int count = 0;
     const int32_t* input32 = (int32_t*)input;
-    const svec_t* inputVector = (const svec_t*)input;
+    const uvec_t* inputVector = (const uvec_t*)input;
 
 
-    constexpr unsigned int InternalInputSimdWidth = sizeof(svec_t) / sizeof(std::int32_t);
+    constexpr unsigned int InternalInputSimdWidth = sizeof(uvec_t) / sizeof(std::int32_t);
     constexpr unsigned int InternalChunkSize = InternalInputSimdWidth > 8 ? InternalInputSimdWidth : 8;
     constexpr unsigned int NumInternalChunks = NumChunks / InternalChunkSize;
     constexpr unsigned int InputsPerInternalChunk = InternalChunkSize / InternalInputSimdWidth;
@@ -1498,7 +1498,7 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
         unsigned int internalnnz = 0;
         for (unsigned int j = 0; j < InputsPerInternalChunk; ++j)
         {
-            const svec_t inputChunk = inputVector[i * InputsPerInternalChunk + j];
+            const uvec_t inputChunk = inputVector[i * InputsPerInternalChunk + j];
             unsigned int newnnz = vec_nnz(inputChunk);
             internalnnz |= newnnz << (j * InternalInputSimdWidth);
 #ifdef STATISTICS

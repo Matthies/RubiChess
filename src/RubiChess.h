@@ -1916,10 +1916,11 @@ enum ponderstate_t { NO, PONDERING };
 #define CPUBMI2     (1 << 6)
 #define CPUAVX512   (1 << 7)
 #define CPUNEON     (1 << 8)
+#define CPUARM64    (1 << 9)
 
 class compilerinfo
 {
-    const string strCpuFeatures[9] = { "sse2","ssse3","popcnt","lzcnt","bmi1","avx2","bmi2", "avx512", "neon" };
+    const string strCpuFeatures[10] = { "sse2","ssse3","popcnt","lzcnt","bmi1","avx2","bmi2", "avx512", "neon", "arm64"};
 public:
     const U64 binarySupports = 0ULL
 #ifdef USE_POPCNT
@@ -1945,6 +1946,9 @@ public:
 #endif
 #ifdef USE_NEON
         | CPUNEON
+#endif
+#ifdef USE_ARM64
+        | CPUARM64
 #endif
         ;
 
@@ -2489,6 +2493,10 @@ namespace Simd {
         int16x8_t sum = vpaddq_s16(product0, product1);
         acc = vpadalq_s16(acc, sum);
     }
+    inline void dotprod_m128_add_dpbusd_32(int32x4_t& acc, int8x16_t a, int8x16_t b) {
+        acc = vdotq_s32(acc, a, b);
+    }
+
 
     inline int neon_m128_reduce_add_epi32(int32x4_t s) {
         return s[0] + s[1] + s[2] + s[3];

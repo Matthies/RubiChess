@@ -624,11 +624,14 @@ void compilerinfo::GetSystemInfo()
 #else
 void compilerinfo::GetSystemInfo()
 {
-#if defined(__ARM_NEON__) || defined(__ARM_NEON)
-    system = "ARM platform supprting NEON";
-    machineSupports = CPUNEON | CPUPOPCNT;
+#if defined(__arm__)
+    system = "ArmV7 platform supprting NEON";
+    machineSupports = CPUNEON;
+#elif defined(__aarch64__) 
+    system = "ArmV8 (AArch64) platform supprting NEON";
+    machineSupports = CPUNEON | CPUARM64;
 #else
-    system = "Some non-x86-64 platform.";
+    system = "Some non-x86-64-non-arm platform.";
     machineSupports = 0ULL;
 #endif
 }
