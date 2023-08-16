@@ -453,9 +453,6 @@ template <NnueType Nt, Color c> void chessposition::HalfkpAppendChangedIndices(D
     }
 }
 
-#ifdef USE_SSE2
-#define vec_clip_8_128(a,b) _mm_subs_epi8(_mm_adds_epi8(_mm_packs_epi16(a, b), _mm_set1_epi8(-128)), _mm_set1_epi8(-128))
-#endif
 
 // Macros for propagation of small layers
 #if defined (USE_AVX2)
@@ -1777,14 +1774,14 @@ void NnueSqrClippedRelu<dims>::Propagate(int32_t* input, clipped_t* output)
         _mm_store_si128(&out[2 * i], _mm_min_epi16(words0, _mm_set1_epi16(127)));
         _mm_store_si128(&out[2 * i + 1], _mm_min_epi16(words1, _mm_set1_epi16(127)));
 #else
-        _mm_store_si128(&out[i], vec_clip_8_128(words0, words1));
+        _mm_store_si128(&out[i], _mm_packs_epi16(words0, words1));
 #endif
     }
 #else
 
     const unsigned int start = 0;
     for (unsigned int i = start; i < dims; ++i) {
-        output[i] = (clipped_t)max(0LL, min(127LL, (((long long)input[i] * input[i]) >> (2 * 6)) / 128));
+        output[i] = (clipped_t)min(127LL, (((long long)input[i] * input[i]) >> (2 * 6)) / 128);
     }
 #endif
 
