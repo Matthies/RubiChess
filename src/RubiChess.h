@@ -54,7 +54,7 @@
 //#define NNUELEARN
 
 // Enable this to enable NNUE debug output
-#define NNUEDEBUG
+//#define NNUEDEBUG
 
 
 #ifdef FINDMEMORYLEAKS
@@ -940,9 +940,16 @@ class NnueNetworkLayer : public NnueLayer
 #endif
 #if  defined (USE_SSSE3) || defined(USE_NEON)
 #define USE_PROPAGATEBIG
+#if defined (USE_SSSE3)
+    static constexpr bool useShuffledWeights = true;
+#else
+    static constexpr bool useShuffledWeights = useSparsePropagation;
+#endif
     static constexpr bool useBigLayerPropagation = (!useSparsePropagation && paddedInputdims >= 128);
 #else
     static constexpr bool useBigLayerPropagation = false;
+    static constexpr bool useShuffledWeights = false;
+
 #endif
 
 public:
@@ -989,14 +996,12 @@ public:
                 + smallBlockCol * SmallBlockSize
                 + rest;
         }
-        else
-#ifdef USE_SSSE3
-            return   (idx / 4) % (paddedInputdims / 4) * outputdims * 4 +
-            idx / paddedInputdims * 4 +
-            idx % 4;
-#else
-            return idx;
-#endif
+        else {
+            if (useShuffledWeights)
+                return (idx / 4) % (paddedInputdims / 4) * outputdims * 4 + idx / paddedInputdims * 4 + idx % 4;
+            else
+                return idx;
+        }
     }
 };
 
