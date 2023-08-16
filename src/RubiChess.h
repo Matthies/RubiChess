@@ -2487,16 +2487,18 @@ namespace Simd {
 #endif
 
 #ifdef USE_NEON
+#ifdef USE_ARM64
     inline void neon_m128_add_dpbusd_32(int32x4_t& acc, int8x16_t a, int8x16_t b) {
         int16x8_t product0 = vmull_s8(vget_low_s8(a), vget_low_s8(b));
         int16x8_t product1 = vmull_high_s8(a, b);
         int16x8_t sum = vpaddq_s16(product0, product1);
         acc = vpadalq_s16(acc, sum);
     }
-#ifdef USE_ARM64
+#ifdef USE_DOTPROD
     inline void dotprod_m128_add_dpbusd_32(int32x4_t& acc, int8x16_t a, int8x16_t b) {
         acc = vdotq_s32(acc, a, b);
     }
+#endif
 #endif
 
     inline int neon_m128_reduce_add_epi32(int32x4_t s) {
