@@ -925,7 +925,7 @@ class NnueNetworkLayer : public NnueLayer
     static constexpr unsigned int NumBigBlocks = outputdims / NumOutputRegsBig;
     static constexpr unsigned int OutputSimdWidth = SimdWidth / 4;
 
-#if defined(USE_SSSE3) || defined(USE_NEON)
+#if defined(USE_SSSE3) || defined(USE_ARM64)
 #define USE_PROPAGATESPARSE
     static constexpr bool useSparsePropagation = (paddedInputdims >= 512);
     void PropagateSparse(clipped_t* input, int32_t* output);
@@ -2496,7 +2496,6 @@ namespace Simd {
     inline void dotprod_m128_add_dpbusd_32(int32x4_t& acc, int8x16_t a, int8x16_t b) {
         acc = vdotq_s32(acc, a, b);
     }
-
 
     inline int neon_m128_reduce_add_epi32(int32x4_t s) {
         return s[0] + s[1] + s[2] + s[3];
