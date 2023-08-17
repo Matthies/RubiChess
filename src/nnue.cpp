@@ -615,7 +615,7 @@ inline  ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 static const uint32_t NnzMask[4] = { 1, 2, 4, 8 };
 #define vec_nnz(a) vaddvq_u32(vandq_u32(vtstq_u32(a, a), vld1q_u32(NnzMask)))
 #define vec_set_32(a) vreinterpretq_s8_u32(vdupq_n_u32(a))
-#ifdef USE_DOTPROD // not implemented for now
+#ifdef USE_DOTPROD // FIXME: waits to be implemented
 #define vec_add_dpbusd_32 Simd::dotprod_m128_add_dpbusd_32
 #else
 #define vec_add_dpbusd_32 Simd::neon_m128_add_dpbusd_32
@@ -643,7 +643,6 @@ typedef uint16x8_t vec128_t;
 #define vec128_set_16(a) vdupq_n_u16(a)
 #define vec128_load(a) vld1q_u16((uint16_t*)a)
 #define vec128_storeu(a, b) vst1q_u16((uint16_t*)a, b)
-//#define vec128_add(a, b) vaddq_u16(vreinterpretq_u16_s16(a), vreinterpretq_u16_s16(b))
 #define vec128_add(a, b) vaddq_u16(a, b)
 #endif
 
