@@ -668,24 +668,6 @@ alignas(64) static const array<array<uint16_t, 8>, 256> lookup_indices = []() {
     }
     return v;
 }();
-
-#if 0
-alignas(64) static const array<unsigned, 256> lookup_count = []() {
-    array<unsigned, 256> v;
-    for (int i = 0; i < 256; ++i)
-    {
-        int j = i;
-        int k = 0;
-        while (j)
-        {
-            j &= j - 1;
-            ++k;
-        }
-        v[i] = k;
-    }
-    return v;
-}();
-#endif
 #endif
 
 
