@@ -639,6 +639,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
     // Reset killers for child ply
     killer[ply + 1][0] = killer[ply + 1][1] = 0;
 
+    // Reset fail high stats for my next ply
+    failhighcount[ply + 2] = 0;
+
     ms->SetPreferredMoves(this, hashmovecode, killer[ply][0], killer[ply][1], counter, excludeMove);
     STATISTICSINC(moves_loop_n);
     STATISTICSDO(ms->depth = min(MAXSTATDEPTH - 2, depth));
@@ -793,6 +796,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
             // adjust reduction with opponents move number
             reduction -= (CurrentMoveNum[ply - 1] >= sps.lmropponentmovecount);
 
+            // more reduction if next ply already
+            reduction += (failhighcount[ply] >= 4);
+
             STATISTICSINC(red_pi[positionImproved]);
             STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, legalMoves + 1)]);
             STATISTICSADD(red_history, -stats / (sps.lmrstatsratio * 8));
@@ -884,6 +890,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
                         for (int i = 0; i < tacticalPlayed; i++)
                             updateTacticalHst(tacticalMoves[ply][i], -(depth * depth));
                     }
+
+                    failhighcount[ply] += (!hashmovecode + 1);
 
                     STATISTICSINC(moves_fail_high);
 
@@ -1049,6 +1057,12 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
 
     int quietsPlayed = 0;
     int tacticalPlayed = 0;
+
+    // Reset killers for child ply
+    killer[1][0] = killer[1][1] = 0;
+
+    // Reset fail high stats for my next ply
+    failhighcount[2] = 0;
 
     for (int i = 0; i < rootmovelist.length; i++)
     {

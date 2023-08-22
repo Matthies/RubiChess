@@ -1579,6 +1579,7 @@ public:
     chessmovelist rootmovelist;
     uint32_t killer[MAXDEPTH][2];   // Hmmm. killer[0][] not initialized/reset to 0??
     uint32_t bestFailingLow;        // Hmmm. bestFailingLow not initialized/reset to 0??
+    int failhighcount[MAXDEPTH];
     int psqval;
     int phcount;                    // weighted number of pieces (0..24)
     int contempt;
