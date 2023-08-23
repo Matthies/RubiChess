@@ -796,7 +796,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
             // adjust reduction with opponents move number
             reduction -= (CurrentMoveNum[ply - 1] >= sps.lmropponentmovecount);
 
-            // more reduction if next ply already
+            // less reduction if next ply had few fail highs
             reduction -= (failhighcount[ply] < 4);
 
             STATISTICSINC(red_pi[positionImproved]);
