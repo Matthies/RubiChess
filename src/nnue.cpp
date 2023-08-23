@@ -453,9 +453,6 @@ template <NnueType Nt, Color c> void chessposition::HalfkpAppendChangedIndices(D
     }
 }
 
-#ifdef USE_SSE2
-#define vec_clip_8_128(a,b) _mm_subs_epi8(_mm_adds_epi8(_mm_packs_epi16(a, b), _mm_set1_epi8(-128)), _mm_set1_epi8(-128))
-#endif
 
 // Macros for propagation of small layers
 #if defined (USE_AVX2)
@@ -485,7 +482,7 @@ typedef __m128i sml_vec_t;
 #define NUM_PSQT_REGS 1
 #define SIMD_WIDTH 512
 #define MAXCHUNKSIZE 64
-typedef __m512i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, ft_vec_t;
+typedef __m512i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, ft_vec_t, uvec_t, sprsin_vec_t;
 typedef __m256i psqt_vec_t;
 typedef __m128i bias_vec_t;
 #define vec_zero() _mm512_setzero_si512()
@@ -518,7 +515,7 @@ inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define NUM_PSQT_REGS 1
 #define SIMD_WIDTH 256
 #define MAXCHUNKSIZE 32
-typedef __m256i ft_vec_t, ftout_vec_t, psqt_vec_t, in_vec_t, acc_vec_t, weight_vec_t;
+typedef __m256i ft_vec_t, ftout_vec_t, psqt_vec_t, in_vec_t, acc_vec_t, weight_vec_t, uvec_t, sprsin_vec_t;;
 typedef __m128i bias_vec_t;
 #define vec_zero() _mm256_setzero_si256()
 #define vec_set_16(a) _mm256_set1_epi16(a)
@@ -567,7 +564,7 @@ typedef __m128i ft_vec_t, ftout_vec_t, psqt_vec_t;
 #define vec_store_psqt(a,b) *(a)=(b)
 
 #if defined(USE_SSSE3)
-typedef __m128i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, bias_vec_t;
+typedef __m128i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, bias_vec_t, uvec_t, sprsin_vec_t;
 #define vec_clip_8(a,b) vec_packs(_mm_max_epi16(a,_mm_setzero_si128()),_mm_max_epi16(b,_mm_setzero_si128()))
 #define vec_add_dpbusd_32x2_large Simd::m128_add_dpbusd_32x2
 #define vec_haddx4_large Simd::m128_haddx4
@@ -590,6 +587,8 @@ typedef int8x8_t in_vec_t, weight_vec_t;
 typedef int16x8_t ft_vec_t;
 typedef int16x8_t ftout_vec_t;
 typedef int32x4_t acc_vec_t, bias_vec_t, psqt_vec_t;
+typedef uint32x4_t uvec_t;
+typedef int8x16_t sprsin_vec_t;
 #define vec_zero() {0}
 #define vec_set_16(a) vdupq_n_s16(a)
 #define vec_max_16(a,b) vmaxq_s16(a,b)
@@ -613,6 +612,15 @@ inline  ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define vec_add_psqt_32(a,b) vaddq_s32(a,b)
 #define vec_sub_psqt_32(a,b) vsubq_s32(a,b)
 #define vec_zero_psqt() psqt_vec_t{0}
+static const uint32_t NnzMask[4] = { 1, 2, 4, 8 };
+#define vec_nnz(a) vaddvq_u32(vandq_u32(vtstq_u32(a, a), vld1q_u32(NnzMask)))
+#define vec_set_32(a) vreinterpretq_s8_u32(vdupq_n_u32(a))
+#ifdef USE_DOTPROD // FIXME: waits to be implemented
+#define vec_add_dpbusd_32 Simd::dotprod_m128_add_dpbusd_32
+#else
+#define vec_add_dpbusd_32 Simd::neon_m128_add_dpbusd_32
+#endif
+
 
 #else
 #define NUM_REGS 1
@@ -621,11 +629,28 @@ inline  ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 typedef int16_t ft_vec_t;
 #endif
 
+// sparse propagation macros
+#if defined(USE_SSSE3)
+typedef __m128i vec128_t;
+#define vec128_zero _mm_setzero_si128()
+#define vec128_set_16(a) _mm_set1_epi16(a)
+#define vec128_load(a) _mm_load_si128(a)
+#define vec128_storeu(a, b) _mm_storeu_si128(a, b)
+#define vec128_add(a, b) _mm_add_epi16(a, b)
+#elif defined(USE_NEON)
+typedef uint16x8_t vec128_t;
+#define vec128_zero vdupq_n_u16(0)
+#define vec128_set_16(a) vdupq_n_u16(a)
+#define vec128_load(a) vld1q_u16((uint16_t*)a)
+#define vec128_storeu(a, b) vst1q_u16((uint16_t*)a, b)
+#define vec128_add(a, b) vaddq_u16(a, b)
+#endif
+
 #ifdef USE_SIMD
 #define PSQT_TILE_HEIGHT (NUM_PSQT_REGS * sizeof(psqt_vec_t) / 4)
 #endif
 
-#if defined(USE_SSSE3)
+#if defined(USE_PROPAGATESPARSE)
 alignas(64) static const array<array<uint16_t, 8>, 256> lookup_indices = []() {
     array<array<uint16_t, 8>, 256> v{};
     for (int i = 0; i < 256; ++i)
@@ -639,22 +664,6 @@ alignas(64) static const array<array<uint16_t, 8>, 256> lookup_indices = []() {
             j &= j - 1;
             v[i][k++] = lsbIndex;
         }
-    }
-    return v;
-}();
-
-alignas(64) static const array<unsigned, 256> lookup_count = []() {
-    array<unsigned, 256> v;
-    for (int i = 0; i < 256; ++i)
-    {
-        int j = i;
-        int k = 0;
-        while (j)
-        {
-            j &= j - 1;
-            ++k;
-        }
-        v[i] = k;
     }
     return v;
 }();
@@ -1453,25 +1462,25 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
     uint16_t nnz[NumChunks];
     unsigned int count = 0;
     const int32_t* input32 = (int32_t*)input;
-    const in_vec_t* inputVector = (const in_vec_t*)input;
+    const uvec_t* inputVector = (const uvec_t*)input;
 
 
-    constexpr unsigned int InternalInputSimdWidth = sizeof(in_vec_t) / sizeof(std::int32_t);
+    constexpr unsigned int InternalInputSimdWidth = sizeof(uvec_t) / sizeof(std::int32_t);
     constexpr unsigned int InternalChunkSize = InternalInputSimdWidth > 8 ? InternalInputSimdWidth : 8;
     constexpr unsigned int NumInternalChunks = NumChunks / InternalChunkSize;
     constexpr unsigned int InputsPerInternalChunk = InternalChunkSize / InternalInputSimdWidth;
     constexpr unsigned int OutputsPerInternalChunk = InternalChunkSize / 8;
 
     // Step 1: Find indices of nonzero 32bit blocks
-    __m128i base = _mm_set1_epi16(0);
-    __m128i increment = _mm_set1_epi16(8);
+    vec128_t base = vec128_zero;
+    vec128_t increment = vec128_set_16(8);
     for (unsigned int i = 0; i < NumInternalChunks; ++i)
     {
         // bitmask of nonzero values in this chunk
         unsigned int internalnnz = 0;
         for (unsigned int j = 0; j < InputsPerInternalChunk; ++j)
         {
-            const in_vec_t inputChunk = inputVector[i * InputsPerInternalChunk + j];
+            const uvec_t inputChunk = inputVector[i * InputsPerInternalChunk + j];
             unsigned int newnnz = vec_nnz(inputChunk);
             internalnnz |= newnnz << (j * InternalInputSimdWidth);
 #ifdef STATISTICS
@@ -1492,10 +1501,10 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
         for (unsigned int j = 0; j < OutputsPerInternalChunk; ++j)
         {
             const unsigned int lookup = (internalnnz >> (j * 8)) & 0xFF;
-            const __m128i offsets = _mm_loadu_si128((__m128i*)(&lookup_indices[lookup]));
-            _mm_storeu_si128((__m128i*)(nnz + count), _mm_add_epi16(base, offsets));
-            count += lookup_count[lookup];
-            base = _mm_add_epi16(base, increment);
+            const vec128_t offsets = vec128_load((vec128_t*)(&lookup_indices[lookup]));
+            vec128_storeu((vec128_t*)(nnz + count), vec128_add(base, offsets));
+            count += POPCOUNT(lookup);
+            base = vec128_add(base, increment);
         }
     }
 
@@ -1508,20 +1517,21 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
     cout << "\nSparse propagation:\n";
 #endif
     // Step 2: Process the collected nonzero blocks
-    const in_vec_t* biasvec = (const in_vec_t*)bias;
-    in_vec_t acc[NumRegs];
+    const acc_vec_t* biasvec = (const acc_vec_t*)bias;
+    acc_vec_t acc[NumRegs];
     for (unsigned int k = 0; k < NumRegs; ++k)
         acc[k] = biasvec[k];
 
     for (unsigned int j = 0; j < count; ++j)
     {
         const uint16_t i = nnz[j];
-        const in_vec_t in = vec_set_32(input32[i]);
-        const in_vec_t* col = (const in_vec_t*)&weight[i * outputdims * ChunkSize];
+        const sprsin_vec_t in = vec_set_32(input32[i]);
+        const sprsin_vec_t* col = (const sprsin_vec_t*)&weight[i * outputdims * ChunkSize];
         for (unsigned int k = 0; k < NumRegs; ++k)
             vec_add_dpbusd_32(acc[k], in, col[k]);
 #ifdef NNUEDEBUG
         cout << hex << setfill('0') << setw(3) << nnz[j] << " " << setw(8) << input32[i] << "  ";
+        cout << "in: " << ((uint64_t*)&in)[0] << " col: " << ((uint64_t*)col)[0] << " ";
         if (j % 8 == 7)
             cout << "   " << hex << setfill('0') << setw(3) << (int)(j / 8 * 8) << "\n";
         if (j + 1 == count)
@@ -1529,7 +1539,7 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
 #endif
     }
 
-    in_vec_t* outptr = (in_vec_t*)output;
+    acc_vec_t* outptr = (acc_vec_t*)output;
     for (unsigned int k = 0; k < NumRegs; ++k)
         outptr[k] = acc[k];
 }
@@ -1745,14 +1755,14 @@ void NnueSqrClippedRelu<dims>::Propagate(int32_t* input, clipped_t* output)
         _mm_store_si128(&out[2 * i], _mm_min_epi16(words0, _mm_set1_epi16(127)));
         _mm_store_si128(&out[2 * i + 1], _mm_min_epi16(words1, _mm_set1_epi16(127)));
 #else
-        _mm_store_si128(&out[i], vec_clip_8_128(words0, words1));
+        _mm_store_si128(&out[i], _mm_packs_epi16(words0, words1));
 #endif
     }
 #else
 
     const unsigned int start = 0;
     for (unsigned int i = start; i < dims; ++i) {
-        output[i] = (clipped_t)max(0LL, min(127LL, (((long long)input[i] * input[i]) >> (2 * 6)) / 128));
+        output[i] = (clipped_t)min(127LL, (((long long)input[i] * input[i]) >> (2 * 6)) / 128);
     }
 #endif
 

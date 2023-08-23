@@ -27,6 +27,7 @@ avx2 = no
 bmi2 = no
 avx512 = no
 neon = no
+arm64 = no
 zlib = no
 debug = no
 
@@ -169,11 +170,11 @@ endif
 ifneq (,$(findstring x86-64-sse3-popcnt,$(ARCH)))
 CPUFLAGS = "popcnt sse2"
 endif
-ifneq (,$(findstring neon,$(ARCH)))
+ifneq (,$(findstring armv7,$(ARCH)))
 CPUFLAGS = "popcnt neon"
 endif
-ifneq (,$(findstring arm,$(ARCH)))
-CPUFLAGS = "popcnt neon"
+ifneq (,$(findstring armv8,$(ARCH)))
+CPUFLAGS = "popcnt neon arm64"
 endif
 endif
 
@@ -205,6 +206,9 @@ endif
 ifneq (,$(findstring neon,$(CPUFLAGS)))
 	neon = yes
 endif
+ifneq (,$(findstring arm64,$(CPUFLAGS)))
+	arm64 = yes
+endif
 
 ARCHFLAGS=
 ifeq ($(avx512),yes)
@@ -230,6 +234,9 @@ ifeq ($(sse2),yes)
 endif
 ifeq ($(neon),yes)
 	ARCHFLAGS += -DUSE_NEON
+endif
+ifeq ($(arm64),yes)
+	ARCHFLAGS += -DUSE_ARM64
 endif
 ifeq ($(zlib),yes)
 	CXXFLAGS += -DUSE_ZLIB
@@ -299,6 +306,7 @@ arch: libclean
 	@echo "ssse3 : $(ssse3)"
 	@echo "sse2  : $(sse2)"
 	@echo "neon  : $(neon)"
+	@echo "arm64 : $(arm64)"
 	@echo "zlib  : $(zlib)"
 	@echo "debug : $(debug)"
 
@@ -386,10 +394,10 @@ release_x86:
 	@$(MAKE) pgo-rename  ARCH=x86-64 PTHREADLIB=$(PTHREADSTATICLIB)
 
 release_arm64:
-	@$(MAKE) pgo-rename  ARCH=arm64_neon PTHREADLIB=$(PTHREADSTATICLIB)
+	@$(MAKE) pgo-rename  ARCH=armv8 PTHREADLIB=$(PTHREADSTATICLIB)
 
 release_arm32:
-	@$(MAKE) pgo-rename  ARCH=arm32_neon PTHREADLIB=$(PTHREADSTATICLIB)
+	@$(MAKE) pgo-rename  ARCH=armv7 PTHREADLIB=$(PTHREADSTATICLIB)
 
 release_android:
 	@$(MAKE) pgo-rename  ARCH=armv8 COMP=$(COMP)
