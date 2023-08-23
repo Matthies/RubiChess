@@ -194,6 +194,15 @@ typedef unsigned int PieceType;
 #define BITSET(x) (1ULL << (x))
 #define MORETHANONE(x) ((x) & ((x) - 1))
 #define ONEORZERO(x) (!MORETHANONE(x))
+
+template  <typename T> int popcount_legacy(T v)
+{
+    v = v - ((v >> 1) & (T)~(T)0 / 3);                           // temp
+    v = (v & (T)~(T)0 / 15 * 3) + ((v >> 2) & (T)~(T)0 / 15 * 3);      // temp
+    v = (v + (v >> 4)) & (T)~(T)0 / 255 * 15;                      // temp
+    return  (T)(v * ((T)~(T)0 / 255)) >> (sizeof(T) - 1) * CHAR_BIT; // count
+}
+
 #if defined(_MSC_VER)
 #ifdef USE_BMI1
 #include <immintrin.h>
@@ -229,7 +238,11 @@ inline int pullMsb(U64* x) {
     return i;
 }
 #endif
+#if !defined(__clang_major__) && (defined(_M_ARM) || defined(_M_ARM64))
+#define POPCOUNT(x) popcount_legacy(x)
+#else
 #define POPCOUNT(x) (int)(__popcnt64(x))
+#endif
 #else
 #ifdef USE_BMI1
 #define GETLSB(i,x) (i =  _tzcnt_u64(x))
@@ -2503,20 +2516,31 @@ namespace Simd {
 #endif
 
     inline int neon_m128_reduce_add_epi32(int32x4_t s) {
+#if !defined(__clang_major__) && (defined(_M_ARM) || defined(_M_ARM64))
+        return s.n128_i32[0] + s.n128_i32[1] + s.n128_i32[2] + s.n128_i32[3];
+#else
         return s[0] + s[1] + s[2] + s[3];
+#endif
     }
     inline int neon_m128_hadd(int32x4_t sum, int bias) {
         return neon_m128_reduce_add_epi32(sum) + bias;
     }
 
     inline int32x4_t neon_m128_haddx4(int32x4_t sum0, int32x4_t sum1, int32x4_t sum2, int32x4_t sum3, int32x4_t bias) {
+#if !defined(__clang_major__) && (defined(_M_ARM) || defined(_M_ARM64))
+        int32x4_t hsums;
+        hsums.n128_i32[0] = neon_m128_reduce_add_epi32(sum0);
+        hsums.n128_i32[1] = neon_m128_reduce_add_epi32(sum1);
+        hsums.n128_i32[2] = neon_m128_reduce_add_epi32(sum2);
+        hsums.n128_i32[3] = neon_m128_reduce_add_epi32(sum3);
+#else
         int32x4_t hsums{
           neon_m128_reduce_add_epi32(sum0),
           neon_m128_reduce_add_epi32(sum1),
           neon_m128_reduce_add_epi32(sum2),
           neon_m128_reduce_add_epi32(sum3)
       };
-
+#endif
         return vaddq_s32(hsums, bias);
     }
 
