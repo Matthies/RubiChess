@@ -131,6 +131,7 @@ ifeq ($(COMP),ndk)
 		CXX=i686-linux-android21-clang++
 		MYCC=i686-linux-android21-clang
 		CPUFLAGS = "ssse3 sse2"
+		bits = 32
 	endif
 	ifeq ($(ARCH),x86-64)
 		CXX=x86_64-linux-android21-clang++
@@ -157,9 +158,6 @@ endif
 # Common supported x86 and ARM architectures
 ifeq ($(findstring x86-32,$(ARCH)),x86-32)
 bits = 32
-endif
-ifeq ($(findstring x86-64,$(ARCH)),x86-64)
-bits = 64
 endif
 ifneq (,$(findstring -sse2,$(ARCH)))
 CPUFLAGS = "sse2"
