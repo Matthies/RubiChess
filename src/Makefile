@@ -127,12 +127,12 @@ ifeq ($(COMP),ndk)
 		CXX=aarch64-linux-android21-clang++
 		MYCC=aarch64-linux-android21-clang
 	endif
-	ifeq ($(ARCH),x86)
+	ifeq ($(ARCH),x86-32)
 		CXX=i686-linux-android21-clang++
 		MYCC=i686-linux-android21-clang
 		CPUFLAGS = "ssse3 sse2"
 	endif
-	ifeq ($(ARCH),x86_64)
+	ifeq ($(ARCH),x86-64)
 		CXX=x86_64-linux-android21-clang++
 		MYCC=x86_64-linux-android21-clang
 		CPUFLAGS = "popcnt ssse3 sse2"
@@ -420,8 +420,8 @@ release_arm32:
 release_android:
 	@$(MAKE) pgo-rename  ARCH=armv8 COMP=$(COMP)
 	@$(MAKE) pgo-rename  ARCH=armv7 COMP=$(COMP)
-	@$(MAKE) pgo-rename  ARCH=x86_64 COMP=$(COMP)
-	@$(MAKE) pgo-rename  ARCH=x86 COMP=$(COMP)
+	@$(MAKE) pgo-rename  ARCH=x86-64 COMP=$(COMP)
+	@$(MAKE) pgo-rename  ARCH=x86-32 COMP=$(COMP)
 
 release: net
 	@$(MAKE) release_$(ARCHFAMILY)
