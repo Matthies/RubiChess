@@ -23,7 +23,7 @@
 // Define DECOMP64 when compiling for a 64-bit platform.
 // 32-bit is only supported for 5-piece tables, because tables are mmap()ed
 // into memory.
-#define IS_64BIT
+
 #ifdef IS_64BIT
 #define DECOMP64
 #endif

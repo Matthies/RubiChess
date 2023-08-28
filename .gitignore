@@ -275,4 +275,3 @@ __pycache__/
 /src/cputest
 *.lib
 *.a
-/src/Win32/Release with assert

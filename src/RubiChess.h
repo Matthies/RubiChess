@@ -206,8 +206,9 @@ template  <typename T> int popcount_legacy(T v)
 #if defined(_MSC_VER)
 #ifdef USE_BMI1
 #include <immintrin.h>
-#define GETLSB(i,x) (i =(int) _tzcnt_u64(x))
 #define GETLSB32(i,x) (i =(int) _tzcnt_u32(x))
+#ifdef _M_X64
+#define GETLSB(i,x) (i =(int) _tzcnt_u64(x))
 inline int pullLsb(U64* x) {
     int i;
     i = (int)_tzcnt_u64(*x);
@@ -221,6 +222,22 @@ inline int pullMsb(U64* x) {
     *x ^= (1ULL << i);
     return i;
 }
+#else
+#define GETLSB(i,x) (i =(int) ((x) & 0xffffffff ?  _tzcnt_u32((x) & 0xffffffff) : _tzcnt_u32((x) >> 32) + 32))
+inline int pullLsb(U64* x) {
+    int i;
+    i = (int)(*(x) & 0xffffffff ? _tzcnt_u32(*(x) & 0xffffffff) : _tzcnt_u32(*(x) >> 32) + 32);
+    *x ^= (1ULL << i);
+    return i;
+}
+#define GETMSB(i,x) (i = 63 ^ (int) ((x) >> 32 ? _lzcnt_u32((x) >> 32) : _lzcnt_u32((x) & 0xffffffff) + 32))
+inline int pullMsb(U64* x) {
+    int i;
+    i = 63 ^ (int)((*(x) >> 32) ? _lzcnt_u32(*(x) >> 32) : _lzcnt_u32(*(x) & 0xffffffff) + 32);
+    *x ^= (1ULL << i);
+    return i;
+}
+#endif
 #else
 #define GETLSB(i,x) _BitScanForward64((DWORD*)&(i), (x))
 #define GETLSB32(i,x) _BitScanForward((DWORD*)&(i), (x))
@@ -241,12 +258,19 @@ inline int pullMsb(U64* x) {
 #if !defined(__clang_major__) && (defined(_M_ARM) || defined(_M_ARM64))
 #define POPCOUNT(x) popcount_legacy(x)
 #else
+#ifdef _M_X64
 #define POPCOUNT(x) (int)(__popcnt64(x))
+#define POPCOUNT32(x) __popcnt(x)
+#else
+#define POPCOUNT(x) (int)(__popcnt((unsigned int)((x) >> 32)) + __popcnt((unsigned int)((x) & 0xffffffff)))
+#define POPCOUNT32(x) __popcnt(x)
+#endif
 #endif
 #else
 #ifdef USE_BMI1
-#define GETLSB(i,x) (i =  _tzcnt_u64(x))
 #define GETLSB32(i,x) (i =(int) _tzcnt_u32(x))
+#ifdef IS_64BIT
+#define GETLSB(i,x) (i =  _tzcnt_u64(x))
 inline int pullLsb(U64* x) {
     int i = _tzcnt_u64(*x);
     *x = _blsr_u64(*x);
@@ -258,6 +282,22 @@ inline int pullMsb(U64* x) {
     *x ^= (1ULL << i);
     return i;
 }
+#else // IS_64BIT
+#define GETLSB(i,x) (i =(int) ((x) & 0xffffffff ?  _tzcnt_u32((x) & 0xffffffff) : _tzcnt_u32((x) >> 32) + 32))
+inline int pullLsb(U64* x) {
+    int i;
+    i = (int)(*(x) & 0xffffffff ? _tzcnt_u32(*(x) & 0xffffffff) : _tzcnt_u32(*(x) >> 32) + 32);
+    *x ^= (1ULL << i);
+    return i;
+}
+#define GETMSB(i,x) (i = 63 ^ (int) ((x) >> 32 ? _lzcnt_u32((x) >> 32) : _lzcnt_u32((x) & 0xffffffff) + 32))
+inline int pullMsb(U64* x) {
+    int i;
+    i = 63 ^ (int)((*(x) >> 32) ? _lzcnt_u32(*(x) >> 32) : _lzcnt_u32(*(x) & 0xffffffff) + 32);
+    *x ^= (1ULL << i);
+    return i;
+}
+#endif
 #else
 #define GETLSB(i,x) (i = __builtin_ctzll(x))
 #define GETLSB32(i,x) (i =(int) __builtin_ctz(x))
@@ -274,6 +314,7 @@ inline int pullMsb(U64* x) {
 }
 #endif
 #define POPCOUNT(x) __builtin_popcountll(x)
+#define POPCOUNT32(x) __builtin_popcount(x)
 #endif
 
 enum Color { WHITE, BLACK };

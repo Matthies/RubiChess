@@ -1503,7 +1503,7 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
             const unsigned int lookup = (internalnnz >> (j * 8)) & 0xFF;
             const vec128_t offsets = vec128_load((vec128_t*)(&lookup_indices[lookup]));
             vec128_storeu((vec128_t*)(nnz + count), vec128_add(base, offsets));
-            count += POPCOUNT(lookup);
+            count += POPCOUNT32(lookup);
             base = vec128_add(base, increment);
         }
     }

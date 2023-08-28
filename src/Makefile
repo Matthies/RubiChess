@@ -64,6 +64,12 @@ endif
 ifneq (, $(findstring MINGW64,$(UNAME_S)))
 	# Always do a static built with Mingw
 	LDFLAGS += -static
+	bits = 64
+endif
+ifneq (, $(findstring MINGW32,$(UNAME_S)))
+	# Always do a static built with Mingw
+	LDFLAGS += -static
+	bits = 32
 endif
 ifeq ($(COMP),$(filter $(COMP),gcc))
 	CXX=g++
@@ -148,33 +154,41 @@ endif
 CPUFLAGS = "$(shell ./$(CPUTEST))"
 endif
 
-# Common supported x64 and ARM architectures
-ifneq (,$(findstring x86-64-sse2,$(ARCH)))
+# Common supported x86 and ARM architectures
+ifeq ($(findstring x86-32,$(ARCH)),x86-32)
+bits = 32
+endif
+ifeq ($(findstring x86-64,$(ARCH)),x86-64)
+bits = 64
+endif
+ifneq (,$(findstring -sse2,$(ARCH)))
 CPUFLAGS = "sse2"
 endif
-ifneq (,$(findstring x86-64-avx512,$(ARCH)))
+ifneq (,$(findstring -avx512,$(ARCH)))
 CPUFLAGS = "avx512 bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2"
 endif
-ifneq (,$(findstring x86-64-bmi2,$(ARCH)))
+ifneq (,$(findstring -bmi2,$(ARCH)))
 CPUFLAGS = "bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2"
 endif
-ifneq (,$(findstring x86-64-avx2,$(ARCH)))
+ifneq (,$(findstring -avx2,$(ARCH)))
 CPUFLAGS = "avx2 bmi1 lzcnt popcnt ssse3 sse2"
 endif
-ifneq (,$(findstring x86-64-modern,$(ARCH)))
+ifneq (,$(findstring -modern,$(ARCH)))
 CPUFLAGS = "popcnt ssse3 sse2"
 endif
-ifneq (,$(findstring x86-64-ssse3,$(ARCH)))
+ifneq (,$(findstring -ssse3,$(ARCH)))
 CPUFLAGS = "ssse3 sse2"
 endif
-ifneq (,$(findstring x86-64-sse3-popcnt,$(ARCH)))
+ifneq (,$(findstring -sse3-popcnt,$(ARCH)))
 CPUFLAGS = "popcnt sse2"
 endif
 ifneq (,$(findstring armv7,$(ARCH)))
 CPUFLAGS = "popcnt neon"
+bits = 32
 endif
 ifneq (,$(findstring armv8,$(ARCH)))
 CPUFLAGS = "popcnt neon arm64"
+bits = 64
 endif
 endif
 
@@ -210,7 +224,11 @@ ifneq (,$(findstring arm64,$(CPUFLAGS)))
 	arm64 = yes
 endif
 
-ARCHFLAGS=
+ARCHFLAGS = -m$(bits)
+ifeq ($(bits),64)
+	CXXFLAGS += -DIS_64BIT
+endif
+
 ifeq ($(avx512),yes)
 	ARCHFLAGS += -DUSE_AVX512 -mavx512f -mavx512bw
 endif
