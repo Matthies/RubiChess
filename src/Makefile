@@ -30,6 +30,7 @@ neon = no
 arm64 = no
 zlib = no
 debug = no
+bits = 64
 
 PTHREADLIB=-pthread
 # Use workaround for weak symbols problem in pthreads; https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58909
@@ -64,7 +65,6 @@ endif
 ifneq (, $(findstring MINGW64,$(UNAME_S)))
 	# Always do a static built with Mingw
 	LDFLAGS += -static
-	bits = 64
 endif
 ifneq (, $(findstring MINGW32,$(UNAME_S)))
 	# Always do a static built with Mingw
