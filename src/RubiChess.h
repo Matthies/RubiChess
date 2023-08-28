@@ -197,10 +197,10 @@ typedef unsigned int PieceType;
 
 template  <typename T> int popcount_legacy(T v)
 {
-    v = v - ((v >> 1) & (T)~(T)0 / 3);                           // temp
-    v = (v & (T)~(T)0 / 15 * 3) + ((v >> 2) & (T)~(T)0 / 15 * 3);      // temp
-    v = (v + (v >> 4)) & (T)~(T)0 / 255 * 15;                      // temp
-    return  (T)(v * ((T)~(T)0 / 255)) >> (sizeof(T) - 1) * CHAR_BIT; // count
+    v = v - ((v >> 1) & (T)~(T)0 / 3);
+    v = (v & (T)~(T)0 / 15 * 3) + ((v >> 2) & (T)~(T)0 / 15 * 3);
+    v = (v + (v >> 4)) & (T)~(T)0 / 255 * 15;
+    return  (T)(v * ((T)~(T)0 / 255)) >> (sizeof(T) - 1) * CHAR_BIT;
 }
 
 #if defined(_MSC_VER)
@@ -257,6 +257,7 @@ inline int pullMsb(U64* x) {
 #endif
 #if !defined(__clang_major__) && (defined(_M_ARM) || defined(_M_ARM64))
 #define POPCOUNT(x) popcount_legacy(x)
+#define POPCOUNT32(x) popcount_legacy(x)
 #else
 #ifdef _M_X64
 #define POPCOUNT(x) (int)(__popcnt64(x))
