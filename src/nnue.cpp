@@ -1621,15 +1621,14 @@ void NnueNetworkLayer<inputdims, outputdims>::PropagateNative(clipped_t* input, 
         sum = _mm_add_epi32(sum, sum_second_32);
         output[i] = _mm_cvtsi128_si32(sum);
 #elif defined(USE_NEON)
-        int32x4_t sum = { bias[i] };
+        int32x4_t sum = { 0 };
         const int8x8_t* row = (int8x8_t*)&weight[offset];
         for (unsigned int j = 0; j < numChunks; ++j) {
             int16x8_t product = vmull_s8(inVec[j * 2], row[j * 2]);
             product = vmlal_s8(product, inVec[j * 2 + 1], row[j * 2 + 1]);
             sum = vpadalq_s16(sum, product);
         }
-        //output[i] = sum[0] + sum[1] + sum[2] + sum[3];
-        output[i] = Simd::neon_m128_reduce_add_epi32(sum);
+        output[i] = Simd::neon_m128_reduce_add_epi32(sum) + bias[i];
 #else
         int32_t sum = bias[i];
         for (unsigned int j = 0; j < inputdims; ++j) {

@@ -624,10 +624,10 @@ void compilerinfo::GetSystemInfo()
 #else
 void compilerinfo::GetSystemInfo()
 {
-#if defined(__arm__)
+#if defined(__arm__) || (defined(USE_NEON) && !defined(USE_ARM64))
     system = "ArmV7 platform supprting NEON";
     machineSupports = CPUNEON;
-#elif defined(__aarch64__) 
+#elif defined(__aarch64__) || defined(USE_ARM64)
     system = "ArmV8 (AArch64) platform supprting NEON";
     machineSupports = CPUNEON | CPUARM64;
 #else
