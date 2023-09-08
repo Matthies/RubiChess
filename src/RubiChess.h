@@ -226,7 +226,7 @@ inline int pullMsb(U64* x) {
     *x ^= (1ULL << i);
     return i;
 }
-#else
+#else // _M_X64
 #define GETLSB(i,x) (i =(int) ((x) & 0xffffffff ?  _tzcnt_u32((x) & 0xffffffff) : _tzcnt_u32((x) >> 32) + 32))
 inline int pullLsb(U64* x) {
     int i;
@@ -242,9 +242,11 @@ inline int pullMsb(U64* x) {
     return i;
 }
 #endif
-#else
-#define GETLSB(i,x) _BitScanForward64((DWORD*)&(i), (x))
+#else // USE_BMI1
+
 #define GETLSB32(i,x) _BitScanForward((DWORD*)&(i), (x))
+#if defined(_M_X64) || defined(_M_ARM64)
+#define GETLSB(i,x) _BitScanForward64((DWORD*)&(i), (x))
 inline int pullLsb(U64* x) {
     DWORD i;
     _BitScanForward64(&i, *x);
@@ -258,6 +260,25 @@ inline int pullMsb(U64* x) {
     *x ^= (1ULL << i);
     return i;
 }
+#else // _M_X64 || _M_ARM64
+#define GETLSB(i,x) ((x) & 0xffffffff ? _BitScanForward((DWORD*)&(i), (x) & 0xffffffff) : (_BitScanForward((DWORD*)&(i), (x) >> 32), i += 32))
+inline int pullLsb(U64* x) {
+    DWORD i;
+    (*(x) & 0xffffffff ? _BitScanForward(&i, *(x) & 0xffffffff) : (_BitScanForward(&i, *(x) >> 32), i += 32));
+    *x ^= (1ULL << i);
+    return i;
+}
+#define GETMSB(i,x) (((x) >> 32) ? (_BitScanReverse((DWORD*)&i, (x) >> 32), (i) += 32) : _BitScanReverse((DWORD*)&i, (x) & 0xffffffff))
+inline int pullMsb(U64* x) {
+    DWORD i;
+    (*(x) >> 32 ? _BitScanReverse(&i, *(x) >> 32) : (_BitScanReverse(&i, *(x) & 0xffffffff), i += 32));
+    *x ^= (1ULL << i);
+    return i;
+}
+
+
+
+#endif
 #endif
 #if !defined(__clang_major__) && (defined(_M_ARM) || defined(_M_ARM64))
 #define POPCOUNT(x) popcount_legacy(x)
@@ -271,7 +292,7 @@ inline int pullMsb(U64* x) {
 #define POPCOUNT32(x) __popcnt(x)
 #endif
 #endif
-#else
+#else // _MSC_VER
 #ifdef USE_BMI1
 #define GETLSB32(i,x) (i =(int) _tzcnt_u32(x))
 #ifdef IS_64BIT
@@ -1171,8 +1192,8 @@ class transposition
 {
 public:
     transpositioncluster *table;
-    U64 size;
-    U64 sizemask;
+    size_t size;
+    size_t sizemask;
     uint8_t numOfSearchShiftTwo;
     ~transposition();
     int setSize(int sizeMb);    // returns the number of Mb not used by allignment
