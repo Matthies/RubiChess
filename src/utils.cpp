@@ -718,10 +718,7 @@ void* my_large_malloc(size_t s)
         mem = _aligned_malloc(s, 64);
 
     if (!mem)
-    {
         cerr << "Cannot allocate memory (" << s << " bytes)\n";
-        exit(-1);
-    }
 
     return mem;
 }

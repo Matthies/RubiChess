@@ -370,7 +370,7 @@ bool polybook::Open(string filename)
         return false;
     }
 
-    size_t size = ifs.tellg();
+    size_t size = (size_t) ifs.tellg();
     entrynum = size / sizeof(bookentry);
     if (!entrynum)
     {
