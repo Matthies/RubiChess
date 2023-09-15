@@ -172,7 +172,7 @@ int transposition::setSize(int sizeMb)
     if (!table) {
         // alloc failed, back to old size
         size = 0;
-        sizeMb = ((sizemask + 1) * clustersize) >> 20;
+        sizeMb = (int)(((sizemask + 1) * clustersize) >> 20);
         cerr << "Keeping " << sizeMb << "MByte Hash.\n";
         return setSize(sizeMb);
     }
