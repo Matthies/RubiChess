@@ -612,6 +612,7 @@ inline  ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define vec_add_psqt_32(a,b) vaddq_s32(a,b)
 #define vec_sub_psqt_32(a,b) vsubq_s32(a,b)
 #define vec_zero_psqt() psqt_vec_t{0}
+#ifdef USE_ARM64
 static const uint32_t NnzMask[4] = { 1, 2, 4, 8 };
 #define vec_nnz(a) vaddvq_u32(vandq_u32(vtstq_u32(a, a), vld1q_u32(NnzMask)))
 #define vec_set_32(a) vreinterpretq_s8_u32(vdupq_n_u32(a))
@@ -619,6 +620,7 @@ static const uint32_t NnzMask[4] = { 1, 2, 4, 8 };
 #define vec_add_dpbusd_32 Simd::dotprod_m128_add_dpbusd_32
 #else
 #define vec_add_dpbusd_32 Simd::neon_m128_add_dpbusd_32
+#endif
 #endif
 
 
@@ -1503,7 +1505,7 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
             const unsigned int lookup = (internalnnz >> (j * 8)) & 0xFF;
             const vec128_t offsets = vec128_load((vec128_t*)(&lookup_indices[lookup]));
             vec128_storeu((vec128_t*)(nnz + count), vec128_add(base, offsets));
-            count += POPCOUNT(lookup);
+            count += POPCOUNT32(lookup);
             base = vec128_add(base, increment);
         }
     }
@@ -1619,14 +1621,14 @@ void NnueNetworkLayer<inputdims, outputdims>::PropagateNative(clipped_t* input, 
         sum = _mm_add_epi32(sum, sum_second_32);
         output[i] = _mm_cvtsi128_si32(sum);
 #elif defined(USE_NEON)
-        int32x4_t sum = { bias[i] };
+        int32x4_t sum = { 0 };
         const int8x8_t* row = (int8x8_t*)&weight[offset];
         for (unsigned int j = 0; j < numChunks; ++j) {
             int16x8_t product = vmull_s8(inVec[j * 2], row[j * 2]);
             product = vmlal_s8(product, inVec[j * 2 + 1], row[j * 2 + 1]);
             sum = vpadalq_s16(sum, product);
         }
-        output[i] = sum[0] + sum[1] + sum[2] + sum[3];
+        output[i] = Simd::neon_m128_reduce_add_epi32(sum) + bias[i];
 #else
         int32_t sum = bias[i];
         for (unsigned int j = 0; j < inputdims; ++j) {

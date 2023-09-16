@@ -154,7 +154,6 @@ int transposition::setSize(int sizeMb)
     GETMSB(msb, maxsize);
     size = (1ULL << msb);
     restMb = (int)(((maxsize ^ size) >> 20) * clustersize);  // return rest for pawnhash
-    sizemask = size - 1;
     size_t allocsize = (size_t)(size * sizeof(transpositioncluster));
 
 #if defined(__linux__) && !defined(__ANDROID__) // Many thanks to Sami Kiminki for advise on the huge page theory and for this patch
@@ -170,7 +169,15 @@ int transposition::setSize(int sizeMb)
 #else
     table = (transpositioncluster*)my_large_malloc(allocsize);
 #endif
+    if (!table) {
+        // alloc failed, back to old size
+        size = 0;
+        sizeMb = (int)(((sizemask + 1) * clustersize) >> 20);
+        cerr << "Keeping " << sizeMb << "MByte Hash.\n";
+        return setSize(sizeMb);
+    }
 
+    sizemask = size - 1;
     clean();
     return restMb;
 }

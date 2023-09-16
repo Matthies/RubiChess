@@ -55,7 +55,7 @@ struct TBHashEntry;
 #ifdef DECOMP64
 typedef uint64_t base_t;
 #else
-typedef uint32 base_t;
+typedef uint32_t base_t;
 #endif
 
 struct PairsData {

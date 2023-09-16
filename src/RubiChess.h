@@ -47,14 +47,18 @@
 // Enable this to expose the search parameters as UCI options
 //#define SEARCHOPTIONS
 
-// Enable this to find memory leaks with the MSVC debug build
-//#define FINDMEMORYLEAKS
-
 // Enable this to enable NNUE training code
 //#define NNUELEARN
 
 // Enable this to enable NNUE debug output
 //#define NNUEDEBUG
+
+// Enable this to compile support for asserts including stack trace
+// MSVC only, link with DbgHelp.lib
+//#define STACKDEBUG
+
+// Enable this to find memory leaks with the MSVC debug build
+//#define FINDMEMORYLEAKS
 
 
 #ifdef FINDMEMORYLEAKS
@@ -194,11 +198,21 @@ typedef unsigned int PieceType;
 #define BITSET(x) (1ULL << (x))
 #define MORETHANONE(x) ((x) & ((x) - 1))
 #define ONEORZERO(x) (!MORETHANONE(x))
+
+template  <typename T> int popcount_legacy(T v)
+{
+    v = v - ((v >> 1) & (T)~(T)0 / 3);
+    v = (v & (T)~(T)0 / 15 * 3) + ((v >> 2) & (T)~(T)0 / 15 * 3);
+    v = (v + (v >> 4)) & (T)~(T)0 / 255 * 15;
+    return  (T)(v * ((T)~(T)0 / 255)) >> (sizeof(T) - 1) * CHAR_BIT;
+}
+
 #if defined(_MSC_VER)
 #ifdef USE_BMI1
 #include <immintrin.h>
-#define GETLSB(i,x) (i =(int) _tzcnt_u64(x))
 #define GETLSB32(i,x) (i =(int) _tzcnt_u32(x))
+#ifdef _M_X64
+#define GETLSB(i,x) (i =(int) _tzcnt_u64(x))
 inline int pullLsb(U64* x) {
     int i;
     i = (int)_tzcnt_u64(*x);
@@ -212,9 +226,27 @@ inline int pullMsb(U64* x) {
     *x ^= (1ULL << i);
     return i;
 }
-#else
-#define GETLSB(i,x) _BitScanForward64((DWORD*)&(i), (x))
+#else // _M_X64
+#define GETLSB(i,x) (i =(int) ((x) & 0xffffffff ?  _tzcnt_u32((x) & 0xffffffff) : _tzcnt_u32((x) >> 32) + 32))
+inline int pullLsb(U64* x) {
+    int i;
+    i = (int)(*(x) & 0xffffffff ? _tzcnt_u32(*(x) & 0xffffffff) : _tzcnt_u32(*(x) >> 32) + 32);
+    *x ^= (1ULL << i);
+    return i;
+}
+#define GETMSB(i,x) (i = 63 ^ (int) ((x) >> 32 ? _lzcnt_u32((x) >> 32) : _lzcnt_u32((x) & 0xffffffff) + 32))
+inline int pullMsb(U64* x) {
+    int i;
+    i = 63 ^ (int)((*(x) >> 32) ? _lzcnt_u32(*(x) >> 32) : _lzcnt_u32(*(x) & 0xffffffff) + 32);
+    *x ^= (1ULL << i);
+    return i;
+}
+#endif
+#else // USE_BMI1
+
 #define GETLSB32(i,x) _BitScanForward((DWORD*)&(i), (x))
+#if defined(_M_X64) || defined(_M_ARM64)
+#define GETLSB(i,x) _BitScanForward64((DWORD*)&(i), (x))
 inline int pullLsb(U64* x) {
     DWORD i;
     _BitScanForward64(&i, *x);
@@ -228,12 +260,43 @@ inline int pullMsb(U64* x) {
     *x ^= (1ULL << i);
     return i;
 }
+#else // _M_X64 || _M_ARM64
+#define GETLSB(i,x) ((x) & 0xffffffff ? _BitScanForward((DWORD*)&(i), (x) & 0xffffffff) : (_BitScanForward((DWORD*)&(i), (x) >> 32), i += 32))
+inline int pullLsb(U64* x) {
+    DWORD i;
+    (*(x) & 0xffffffff ? _BitScanForward(&i, *(x) & 0xffffffff) : (_BitScanForward(&i, *(x) >> 32), i += 32));
+    *x ^= (1ULL << i);
+    return i;
+}
+#define GETMSB(i,x) (((x) >> 32) ? (_BitScanReverse((DWORD*)&i, (x) >> 32), (i) += 32) : _BitScanReverse((DWORD*)&i, (x) & 0xffffffff))
+inline int pullMsb(U64* x) {
+    DWORD i;
+    (*(x) >> 32 ? _BitScanReverse(&i, *(x) >> 32) : (_BitScanReverse(&i, *(x) & 0xffffffff), i += 32));
+    *x ^= (1ULL << i);
+    return i;
+}
+
+
+
 #endif
-#define POPCOUNT(x) (int)(__popcnt64(x))
+#endif
+#if !defined(__clang_major__) && (defined(_M_ARM) || defined(_M_ARM64))
+#define POPCOUNT(x) popcount_legacy(x)
+#define POPCOUNT32(x) popcount_legacy(x)
 #else
+#ifdef _M_X64
+#define POPCOUNT(x) (int)(__popcnt64(x))
+#define POPCOUNT32(x) __popcnt(x)
+#else
+#define POPCOUNT(x) (int)(__popcnt((unsigned int)((x) >> 32)) + __popcnt((unsigned int)((x) & 0xffffffff)))
+#define POPCOUNT32(x) __popcnt(x)
+#endif
+#endif
+#else // _MSC_VER
 #ifdef USE_BMI1
-#define GETLSB(i,x) (i =  _tzcnt_u64(x))
 #define GETLSB32(i,x) (i =(int) _tzcnt_u32(x))
+#ifdef IS_64BIT
+#define GETLSB(i,x) (i =  _tzcnt_u64(x))
 inline int pullLsb(U64* x) {
     int i = _tzcnt_u64(*x);
     *x = _blsr_u64(*x);
@@ -245,6 +308,22 @@ inline int pullMsb(U64* x) {
     *x ^= (1ULL << i);
     return i;
 }
+#else // IS_64BIT
+#define GETLSB(i,x) (i =(int) ((x) & 0xffffffff ?  _tzcnt_u32((x) & 0xffffffff) : _tzcnt_u32((x) >> 32) + 32))
+inline int pullLsb(U64* x) {
+    int i;
+    i = (int)(*(x) & 0xffffffff ? _tzcnt_u32(*(x) & 0xffffffff) : _tzcnt_u32(*(x) >> 32) + 32);
+    *x ^= (1ULL << i);
+    return i;
+}
+#define GETMSB(i,x) (i = 63 ^ (int) ((x) >> 32 ? _lzcnt_u32((x) >> 32) : _lzcnt_u32((x) & 0xffffffff) + 32))
+inline int pullMsb(U64* x) {
+    int i;
+    i = 63 ^ (int)((*(x) >> 32) ? _lzcnt_u32(*(x) >> 32) : _lzcnt_u32(*(x) & 0xffffffff) + 32);
+    *x ^= (1ULL << i);
+    return i;
+}
+#endif
 #else
 #define GETLSB(i,x) (i = __builtin_ctzll(x))
 #define GETLSB32(i,x) (i =(int) __builtin_ctz(x))
@@ -261,6 +340,7 @@ inline int pullMsb(U64* x) {
 }
 #endif
 #define POPCOUNT(x) __builtin_popcountll(x)
+#define POPCOUNT32(x) __builtin_popcount(x)
 #endif
 
 enum Color { WHITE, BLACK };
@@ -1112,8 +1192,8 @@ class transposition
 {
 public:
     transpositioncluster *table;
-    U64 size;
-    U64 sizemask;
+    size_t size;
+    size_t sizemask;
     uint8_t numOfSearchShiftTwo;
     ~transposition();
     int setSize(int sizeMb);    // returns the number of Mb not used by allignment
@@ -2503,20 +2583,31 @@ namespace Simd {
 #endif
 
     inline int neon_m128_reduce_add_epi32(int32x4_t s) {
+#if !defined(__clang_major__) && (defined(_M_ARM) || defined(_M_ARM64))
+        return s.n128_i32[0] + s.n128_i32[1] + s.n128_i32[2] + s.n128_i32[3];
+#else
         return s[0] + s[1] + s[2] + s[3];
+#endif
     }
     inline int neon_m128_hadd(int32x4_t sum, int bias) {
         return neon_m128_reduce_add_epi32(sum) + bias;
     }
 
     inline int32x4_t neon_m128_haddx4(int32x4_t sum0, int32x4_t sum1, int32x4_t sum2, int32x4_t sum3, int32x4_t bias) {
+#if !defined(__clang_major__) && (defined(_M_ARM) || defined(_M_ARM64))
+        int32x4_t hsums;
+        hsums.n128_i32[0] = neon_m128_reduce_add_epi32(sum0);
+        hsums.n128_i32[1] = neon_m128_reduce_add_epi32(sum1);
+        hsums.n128_i32[2] = neon_m128_reduce_add_epi32(sum2);
+        hsums.n128_i32[3] = neon_m128_reduce_add_epi32(sum3);
+#else
         int32x4_t hsums{
           neon_m128_reduce_add_epi32(sum0),
           neon_m128_reduce_add_epi32(sum1),
           neon_m128_reduce_add_epi32(sum2),
           neon_m128_reduce_add_epi32(sum3)
       };
-
+#endif
         return vaddq_s32(hsums, bias);
     }
 
