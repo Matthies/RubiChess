@@ -1,5 +1,15 @@
 ChangeLog
 =========
+
+20230917 (release 2023-09-17) :
+    - Allows to play various NNUE architectures and input dimensions
+    - Reads and writes LEB128 compressed network files
+    - New network resulting from adding latest and removing old training material
+    - Some fixes on the training material generator
+    - LMR tweak based on fails high of child nodes
+    - Score output scaling based on stats processed with https://github.com/vondele/WLD_model
+    - Compiles for x86-32 now
+
 20230410 (release 2023-04-10) :
     - New option 'LimitNps' to limit speed (and strength) of the engine
     - New default network nn-fdccaaabd3-20230314.nnue

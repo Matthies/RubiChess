@@ -2099,8 +2099,18 @@ bool NnueNetsource::open()
     insize = (unsigned char*)&_binary_net_nnue_end - (unsigned char*)&_binary_net_nnue_start;
 #else
     filenames.push_back(NnueNetPath);
-    if (en.ExecPath != "")
-        filenames.push_back(en.ExecPath + NnueNetPath);
+    if (en.ExecPath != "") {
+        string pathToSearch = en.ExecPath;
+        char sep = pathToSearch.back();
+        size_t seppos;
+        while(1) {
+            filenames.push_back(pathToSearch + NnueNetPath);
+            seppos = pathToSearch.find_last_of(sep, pathToSearch.length() - 2);
+            if (seppos == string::npos)
+                break;
+            pathToSearch = pathToSearch.substr(0, seppos + 1);
+        }
+    }
     for (unsigned int i = 0; i < filenames.size(); i++) {
         ifstream is;
         is.open(filenames[i], ios::binary);

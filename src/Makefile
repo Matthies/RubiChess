@@ -33,8 +33,7 @@ debug = no
 bits = 64
 
 PTHREADLIB=-pthread
-# Use workaround for weak symbols problem in pthreads; https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58909
-PTHREADSTATICLIB="-static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
+
 UNAME_S=$(shell uname -s)
 
 ifeq ($(UNAME_S),Darwin)
@@ -136,7 +135,7 @@ ifeq ($(COMP),ndk)
 	ifeq ($(ARCH),x86-64)
 		CXX=x86_64-linux-android21-clang++
 		MYCC=x86_64-linux-android21-clang
-		CPUFLAGS = "popcnt ssse3 sse2"
+		CPUFLAGS = "popcnt lzcnt ssse3 sse2"
 	endif
 	LDFLAGS += -static-libstdc++
 endif
@@ -158,6 +157,9 @@ endif
 # Common supported x86 and ARM architectures
 ifeq ($(findstring x86-32,$(ARCH)),x86-32)
 bits = 32
+endif
+ifeq ($(findstring x86-64,$(ARCH)),x86-64)
+bits = 64
 endif
 ifneq (,$(findstring -sse2,$(ARCH)))
 CPUFLAGS = "sse2"
@@ -181,11 +183,11 @@ ifneq (,$(findstring -sse3-popcnt,$(ARCH)))
 CPUFLAGS = "popcnt sse2"
 endif
 ifneq (,$(findstring armv7,$(ARCH)))
-CPUFLAGS = "popcnt neon"
+CPUFLAGS = "neon"
 bits = 32
 endif
 ifneq (,$(findstring armv8,$(ARCH)))
-CPUFLAGS = "popcnt neon arm64"
+CPUFLAGS = "neon arm64"
 bits = 64
 endif
 endif
@@ -366,7 +368,7 @@ pgo: arch
 	@$(MAKE) compile EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Compiling instrumented build ...'
 ifeq ($(COMP),ndk)
 	@if !(test -f $(ANDROIDEMU)); then echo "Android emulator not found at $(ANDROIDEMU). Exit!"; exit 1; fi
-	@$(ANDROIDEMU) -avd $(ARCH) -no-snapshot-load 1>/dev/null &
+	@$(ANDROIDEMU) -avd $(ARCH) -no-snapshot-load -no-qt 1>/dev/null &
 	@echo Wait 60 seconds for emulator startup...
 	@sleep 60
 	@adb shell "rm -rf /data/RubiChess"
@@ -400,20 +402,20 @@ pgo-rename: pgo
 	@echo Successfully created $(EXE)-$(VERSION)_$(ARCH)
 
 release_x86:
-	@$(MAKE) pgo-rename  ARCH=x86-64-avx512 PTHREADLIB=$(PTHREADSTATICLIB)
-	@$(MAKE) pgo-rename  ARCH=x86-64-bmi2 PTHREADLIB=$(PTHREADSTATICLIB)
-	@$(MAKE) pgo-rename  ARCH=x86-64-avx2 PTHREADLIB=$(PTHREADSTATICLIB)
-	@$(MAKE) pgo-rename  ARCH=x86-64-modern PTHREADLIB=$(PTHREADSTATICLIB)
-	@$(MAKE) pgo-rename  ARCH=x86-64-ssse3 PTHREADLIB=$(PTHREADSTATICLIB)
-	@$(MAKE) pgo-rename  ARCH=x86-64-sse3-popcnt PTHREADLIB=$(PTHREADSTATICLIB)
-	@$(MAKE) pgo-rename  ARCH=x86-64-sse2 PTHREADLIB=$(PTHREADSTATICLIB)
-	@$(MAKE) pgo-rename  ARCH=x86-64 PTHREADLIB=$(PTHREADSTATICLIB)
+	@$(MAKE) pgo-rename  ARCH=x86-$(bits)-avx512
+	@$(MAKE) pgo-rename  ARCH=x86-$(bits)-bmi2
+	@$(MAKE) pgo-rename  ARCH=x86-$(bits)-avx2
+	@$(MAKE) pgo-rename  ARCH=x86-$(bits)-modern
+	@$(MAKE) pgo-rename  ARCH=x86-$(bits)-ssse3
+	@$(MAKE) pgo-rename  ARCH=x86-$(bits)-sse3-popcnt
+	@$(MAKE) pgo-rename  ARCH=x86-$(bits)-sse2
+	@$(MAKE) pgo-rename  ARCH=x86-$(bits)
 
 release_arm64:
-	@$(MAKE) pgo-rename  ARCH=armv8 PTHREADLIB=$(PTHREADSTATICLIB)
+	@$(MAKE) pgo-rename  ARCH=armv8
 
 release_arm32:
-	@$(MAKE) pgo-rename  ARCH=armv7 PTHREADLIB=$(PTHREADSTATICLIB)
+	@$(MAKE) pgo-rename  ARCH=armv7
 
 release_android:
 	@$(MAKE) pgo-rename  ARCH=armv8 COMP=$(COMP)

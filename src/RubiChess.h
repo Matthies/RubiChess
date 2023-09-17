@@ -148,6 +148,9 @@ typedef unsigned int PieceType;
 
 
 #ifdef _MSC_VER
+#if defined(_M_X64) || defined(_M_ARM64)
+#define IS_64BIT
+#endif
 #ifdef EVALTUNE
 #define PREFETCH(a) (void)(0)
 #else
@@ -190,7 +193,7 @@ typedef unsigned int PieceType;
 #endif
 #define ENGINEVER "RubiChess " VERSION
 #ifdef GITID
-#define BUILD __DATE__ " " __TIME__ " commit " GITID " " COMPILER
+#define BUILD "commit " GITID " " COMPILER
 #else
 #define BUILD __DATE__ " " __TIME__ " " COMPILER
 #endif
@@ -1598,7 +1601,7 @@ extern SMagic mRookTbl[64];
 #define BISHOPINDEXBITS 9
 #define ROOKINDEXBITS 12
 
-#ifdef USE_BMI2
+#if defined(USE_BMI2) && (defined(_M_X64) || defined(IS_64BIT))
 #include <immintrin.h>
 #define BISHOPINDEX(occ,i) (int)(_pext_u64(occ, mBishopTbl[i].mask))
 #define ROOKINDEX(occ,i) (int)(_pext_u64(occ, mRookTbl[i].mask))
@@ -2153,6 +2156,11 @@ public:
 
         string sNnue = "";
         if (NnueReady) sNnue = " NN-" + NnueSha256FromName();
+#ifdef IS_64BIT
+        sbinary += " 64Bit";
+#else
+        sbinary += " 32Bit";
+#endif
         return string(ENGINEVER) + sNnue +  sbinary;
     };
     GuiToken parse(vector<string>*, string ss);
