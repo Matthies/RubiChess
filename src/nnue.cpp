@@ -2105,7 +2105,8 @@ bool NnueNetsource::open()
         size_t seppos;
         while(1) {
             filenames.push_back(pathToSearch + NnueNetPath);
-            seppos = pathToSearch.find_last_of(sep, pathToSearch.length() - 2);
+            pathToSearch.pop_back();
+            seppos = pathToSearch.find_last_of(sep);
             if (seppos == string::npos)
                 break;
             pathToSearch = pathToSearch.substr(0, seppos + 1);
