@@ -313,6 +313,7 @@ arch: libclean
 	@echo
 	@echo "Compiler: $(COMP)"
 	@echo "Arch: $(ARCH)"
+	@echo "Bits: $(bits)"
 	@echo "CPU features:"
 	@echo "============="
 	@echo "avx512: $(avx512)"
