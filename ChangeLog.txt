@@ -1,10 +1,10 @@
 ChangeLog
 =========
 
-20230917 (release 2023-09-17) :
+20230918 (release 2023-09-18) :
     - Allows to play various NNUE architectures and input dimensions
     - Reads and writes LEB128 compressed network files
-    - New network resulting from adding latest and removing old training material
+    - New network nn-c257b2ebf1-20230812.nnue
     - Some fixes on the training material generator
     - LMR tweak based on fails high of child nodes
     - Score output scaling based on stats processed with https://github.com/vondele/WLD_model
