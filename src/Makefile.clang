@@ -176,7 +176,7 @@ SSE2=no
 !ENDIF
 !IF [@echo $(CPUFLAGS) | find "neon" > nul] == 0 || [type $(NATIVEFLAGS) 2>nul | find "neon" > nul] == 0
 NEON=yes
-ARCHFLAGS=$(ARCHFLAGS) -DUSE_NEON --target=arm64-pc-windows-msvc
+ARCHFLAGS=$(ARCHFLAGS) -DUSE_NEON -DUSE_ARM64 --target=arm64-pc-windows-msvc
 !ELSE
 NEON=no
 !ENDIF
