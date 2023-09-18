@@ -224,7 +224,9 @@ ifneq (,$(findstring arm64,$(CPUFLAGS)))
 	arm64 = yes
 endif
 
-ARCHFLAGS = -m$(bits)
+ifeq ($(neon),no)
+	ARCHFLAGS = -m$(bits)
+endif
 ifeq ($(bits),64)
 	CXXFLAGS += -DIS_64BIT
 endif
