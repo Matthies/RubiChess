@@ -1069,5 +1069,6 @@ int main(int argc, char* argv[])
 #ifdef EVALTUNE
     tuneCleanup();
 #endif
+    en.searchWaitStop();
     return 0;
 }
