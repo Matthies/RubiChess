@@ -478,7 +478,7 @@ typedef __m128i sml_vec_t;
 
 // Macros for propagation of big layers and feature transformation
 #ifdef USE_AVX512
-#define NUM_REGS 32
+#define NUM_REGS 16
 #define NUM_PSQT_REGS 1
 #define SIMD_WIDTH 512
 #define MAXCHUNKSIZE 64
