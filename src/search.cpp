@@ -1364,12 +1364,12 @@ void mainSearch(searchthread *thr)
                 beta = min(SCOREWHITEWINS, beta + delta);
                 delta = min(SCOREWHITEWINS, delta + delta / sps.aspincratio + sps.aspincbase);
                 inWindow = 2;
-                uciNeedsFinalReport = true;
+                uciNeedsFinalReport = !isMultiPV;
             }
             else
             {
                 inWindow = 1;
-                uciNeedsFinalReport = true;
+                uciNeedsFinalReport = !isMultiPV;
                 thr->lastCompleteDepth = thr->depth;
                 if (thr->depth > 4 && !isMultiPV) {
                     // next depth with new aspiration window
