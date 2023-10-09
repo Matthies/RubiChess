@@ -18,6 +18,10 @@
 
 #include "RubiChess.h"
 
+using namespace rubichess;
+
+namespace rubichess {
+
 // Evaluation stuff
 
 // static values for the search/pruning/material stuff
@@ -38,6 +42,9 @@ void initPsqtable()
         }
     }
 }
+
+} // namespace rubichess
+
 
 
 #ifdef EVALTUNE
@@ -99,6 +106,8 @@ static void registertuner(chessposition* pos, eval* e, string name, int index1, 
     registerforoptions(e, name, index1, bound1, index2, bound2);
 #endif
 }
+
+namespace rubichess {
 
 const int maxmobility[4] = { 9, 14, 15, 28 }; // indexed by piece - 2
 
@@ -222,6 +231,9 @@ void registerallevals(chessposition *pos)
         for (j = 0; j < 64; j++)
             registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
 }
+
+} // namespace rubichess
+
 #endif
 
 struct traceeval {
@@ -261,31 +273,33 @@ static string splitvaluestring(int v[])
     return ss.str();
 }
 
+namespace rubichess {
+
 void traceEvalOut()
 {
     stringstream ss;
     ss << std::showpoint << std::noshowpos << std::fixed << std::setprecision(2)
-        << "              |    White    |    Black    |    Total   \n"
-        << "              |   MG    EG  |   MG    EG  |   MG    EG \n"
-        << " -------------+-------------+-------------+------------\n"
-        << "     Material | " << splitvaluestring(te.material)
-        << "       Minors | " << splitvaluestring(te.minors)
-        << "        Rooks | " << splitvaluestring(te.rooks)
-        << "        Pawns | " << splitvaluestring(te.pawns)
-        << "      Passers | " << splitvaluestring(te.ppawns)
-        << "     Mobility | " << splitvaluestring(te.mobility)
-        << "      Threats | " << splitvaluestring(te.threats)
-        << " King attacks | " << splitvaluestring(te.kingattackpower)
-        << "   Complexity | " << splitvaluestring(te.complexity)
-        << " -------------+-------------+-------------+------------\n"
-        << "        Total |  Ph=" << setw(3) << te.ph << "/256 |  Sc=" << setw(3) << te.sc << "/128 | " << splitvaluestring(te.total)
-        << " => " << cp(TAPEREDANDSCALEDEVAL(te.total, te.ph, te.sc)) << "\n"
-        << "        Tempo | " << splitvaluestring(te.tempo)
-        << "      Endgame | " << setw(5) << cp(te.endgame) << "\n"
-        << "    Resulting | " << setw(5) << cp(te.score) << "\n";
-
+    << "              |    White    |    Black    |    Total   \n"
+    << "              |   MG    EG  |   MG    EG  |   MG    EG \n"
+    << " -------------+-------------+-------------+------------\n"
+    << "     Material | " << splitvaluestring(te.material)
+    << "       Minors | " << splitvaluestring(te.minors)
+    << "        Rooks | " << splitvaluestring(te.rooks)
+    << "        Pawns | " << splitvaluestring(te.pawns)
+    << "      Passers | " << splitvaluestring(te.ppawns)
+    << "     Mobility | " << splitvaluestring(te.mobility)
+    << "      Threats | " << splitvaluestring(te.threats)
+    << " King attacks | " << splitvaluestring(te.kingattackpower)
+    << "   Complexity | " << splitvaluestring(te.complexity)
+    << " -------------+-------------+-------------+------------\n"
+    << "        Total |  Ph=" << setw(3) << te.ph << "/256 |  Sc=" << setw(3) << te.sc << "/128 | " << splitvaluestring(te.total)
+    << " => " << cp(TAPEREDANDSCALEDEVAL(te.total, te.ph, te.sc)) << "\n"
+    << "        Tempo | " << splitvaluestring(te.tempo)
+    << "      Endgame | " << setw(5) << cp(te.endgame) << "\n"
+    << "    Resulting | " << setw(5) << cp(te.score) << "\n";
+    
     cout << ss.str();
-
+    
 }
 
 #if 0  // this could be useful if endgames are preregistered
@@ -312,13 +326,15 @@ inline int KBNvK(chessposition *p)
     int bishopcol = p->piece00[WBISHOP + strongside] & WHITEBB ? WHITE : BLACK;
     int c1 = bishopcol == WHITE ? 7 : 0;  // lower corner of same color as bishop
     int c2 = bishopcol == WHITE ? 56 : 63;  // upper corner of same color as bishop
-
+    
     const double pw = 0.7;
     int kwcornerdistance = (int)(10.0 * min(pow(abs(FILE(c1) - FILE(kw)), pw) + pow(abs(RANK(c1) - RANK(kw)), pw),
-        pow(abs(FILE(c2) - FILE(kw)), pw) + pow(abs(RANK(c2) - RANK(kw)), pw)));
-
+                                            pow(abs(FILE(c2) - FILE(kw)), pw) + pow(abs(RANK(c2) - RANK(kw)), pw)));
+    
     return (1000 - kwcornerdistance * 10 - squareDistance[ks][kw] - p->testRepetition() * 50 - p->halfmovescounter) * S2MSIGN(strongside);
 }
+
+} // namespace rubichess
 
 
 // get psqt for eval tracing and tuning

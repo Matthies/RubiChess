@@ -18,6 +18,10 @@
 
 #include "RubiChess.h"
 
+using namespace rubichess;
+
+namespace rubichess {
+
 U64 knight_attacks[64];
 U64 king_attacks[64];
 U64 pawn_moves_to[64][2];          // bitboard of target square a pawn on index squares moves to
@@ -40,6 +44,7 @@ U64 lineMask[64][64];
 int squareDistance[64][64];  // decreased by 1 for directly indexing evaluation arrays
 alignas(64) int psqtable[14][64];
 
+}
 
 bool chessposition::w2m()
 {
@@ -635,6 +640,8 @@ void chessposition::pvdebugout()
 
 #endif
 
+namespace rubichess {
+
 // shameless copy from https://www.chessprogramming.org/Magic_Bitboards
 alignas(64) U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
 alignas(64) U64 mRookAttacks[64][1 << ROOKINDEXBITS];
@@ -874,6 +881,9 @@ void initBitmaphelper()
         }
     }
 }
+
+} // namespace rubichess
+
 
 
 void chessposition::BitboardSet(int index, PieceCode p)
@@ -1131,6 +1141,7 @@ int chessposition::getBestPossibleCapture()
 }
 
 
+namespace rubichess {
 
 // Some global objects
 alignas(64) compilerinfo cinfo;
@@ -1155,3 +1166,5 @@ template void chessposition::updatePins<WHITE>();
 template void chessposition::updatePins<BLACK>();
 template void chessposition::updateThreats<WHITE>();
 template void chessposition::updateThreats<BLACK>();
+
+}

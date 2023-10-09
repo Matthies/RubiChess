@@ -18,6 +18,10 @@
 
 #include "RubiChess.h"
 
+using namespace rubichess;
+
+namespace rubichess {
+
 void engineHeader()
 {
     guiCom << "========================================================================================\n";
@@ -29,6 +33,7 @@ void engineHeader()
     guiCom << "CPU-Features of binary: " + cinfo.PrintCpuFeatures(cinfo.binarySupports) + "\n";
     guiCom << "========================================================================================\n";
 }
+
 
 
 //
@@ -159,6 +164,9 @@ static void uciSetContempt()
         en.ResultingContempt = newResultingContempt;
     }
 }
+
+} // namespace rubichess
+
 
 
 engine::engine(compilerinfo *c)

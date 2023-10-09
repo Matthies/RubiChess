@@ -18,6 +18,7 @@
 
 #include "RubiChess.h"
 
+using namespace rubichess;
 
 void generateEpd(string egn)
 {

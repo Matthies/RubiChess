@@ -32,9 +32,15 @@
 #include "RubiChess.h"
 #include "tbcore.h"
 
+using namespace rubichess;
+
 #define SYZYGY2RUBI_PT(x) ((((x) & 0x7) << 1) | (((x) & 0x8) >> 3))
 
+namespace rubichess {
+
 int TBlargest = 0;
+
+} // namespace rubichess
 
 #include "tbcore.c"
 

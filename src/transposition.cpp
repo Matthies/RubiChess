@@ -23,6 +23,7 @@ static const size_t HashAlignBytes = 2ull << 20;
 #include <sys/mman.h> // madvise
 #endif
 
+using namespace rubichess;
 
 zobrist::zobrist()
 {
@@ -377,5 +378,7 @@ bool  Materialhash::probeHash(U64 hash, Materialhashentry **entry)
     return false;
 }
 
-
+namespace rubichess {
 transposition tp;
+}
+

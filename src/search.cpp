@@ -18,6 +18,11 @@
 
 #include "RubiChess.h"
 
+using namespace rubichess;
+
+namespace rubichess {
+
+
 #ifdef STATISTICS
 statistic statistics;
 #endif
@@ -57,6 +62,7 @@ void searchinit()
     searchtableinit();
 }
 
+} // namespace rubichess
 
 inline bool chessposition::CheckForImmediateStop()
 {
@@ -1241,6 +1247,7 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
     return alpha;
 }
 
+namespace rubichess {
 
 inline bool uciScoreOutputNeeded(int inWindow, U64 thinktime)
 {
@@ -1662,3 +1669,6 @@ template int chessposition::alphabeta<NoPrune>(int alpha, int beta, int depth, b
 template int chessposition::rootsearch<MultiPVSearch>(int, int, int*, int, int);
 template void mainSearch<SinglePVSearch>(searchthread*);
 template void mainSearch<MultiPVSearch>(searchthread*);
+
+
+} // namespace rubichess

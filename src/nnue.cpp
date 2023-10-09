@@ -24,6 +24,8 @@
 
 #include "RubiChess.h"
 
+using namespace rubichess;
+
 //
 // Some NNUE related constants and types
 //
@@ -64,6 +66,7 @@ static constexpr int KingBucket[64] = {
 };
 
 
+namespace rubichess {
 //
 // Global objects
 //
@@ -71,6 +74,7 @@ NnueType NnueReady = NnueDisabled;
 eval NnueValueScale = 64;
 NnueArchitecture* NnueCurrentArch;
 
+}
 
 // The network architecture V1
 class NnueArchitectureV1 : public NnueArchitecture {
@@ -1026,6 +1030,9 @@ int chessposition::NnueGetEval()
     return NnueCurrentArch->GetEval(this);
 }
 
+
+
+namespace rubichess {
 
 //
 // FeatureTransformer
@@ -2076,6 +2083,12 @@ void NnueRegisterEvals()
     en.ucioptions.Register(&NnueValueScale, "NnueValueScale", ucinnuebias, to_string(NnueValueScale), INT_MIN, INT_MAX, nullptr);
 }
 #endif
+
+
+} // namespace rubichess
+
+
+
 
 
 bool NnueNetsource::open()

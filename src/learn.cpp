@@ -22,6 +22,8 @@
 #include <atomic>
 #include <mutex>
 
+using namespace rubichess;
+
 /*
     Summary about different 16bit move encoding:
     Rubi:

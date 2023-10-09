@@ -18,6 +18,8 @@
 
 #include "RubiChess.h"
 
+using namespace rubichess;
+
 //
 // Support for polyglot opening books
 // http://hgm.nubati.net/book_format.html
@@ -462,6 +464,11 @@ uint32_t polybook::GetMove(chessposition* p)
     return p->shortMove2FullMove(shortmove);
 }
 
+namespace rubichess {
+
 // global object
 polybook pbook;
+
+}
+
 

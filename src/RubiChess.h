@@ -105,6 +105,11 @@
 #undef USE_SIMD
 #endif
 
+using namespace std;
+
+namespace rubichess {
+
+
 #ifdef _WIN32
 
 #include <conio.h>
@@ -138,7 +143,7 @@ void Sleep(long x);
 #endif
 #endif
 
-using namespace std;
+
 
 typedef unsigned long long U64;
 typedef signed long long S64;
@@ -453,6 +458,7 @@ public:
     void replace(int i, int16_t b) { if (!i) v = ((int32_t)((uint32_t)GETMGVAL(v) << 16) + b); else v = ((int32_t)((uint32_t)b << 16) + GETEGVAL(v)); }
     void replace(int16_t b) { v = b; }
 };
+
 
 
 #define VALUE(m, e) eval(m, e)
@@ -1858,8 +1864,9 @@ public:
 //
 // engine stuff
 //
-extern void uciSetLogFile();
-extern void engineHeader();
+void uciSetLogFile();
+void engineHeader();
+
 class GuiCommunication {
 private:
     ostream* myos;
@@ -2330,7 +2337,7 @@ template <RootsearchType RT> void mainSearch(searchthread* thr);
 //
 extern int TBlargest; // 5 if 5-piece tables, 6 if 6-piece tables were found.
 
-void init_tablebases(char *path);
+//void init_tablebases(char *path);
 
 #ifdef TBDEBUG
 #define TBDEBUGDO(l,s) if ((l) <= TBDEBUG) {s}
@@ -2627,3 +2634,9 @@ namespace Simd {
 
 #endif
 }
+
+
+} // namespace rubichess
+
+
+void init_tablebases(char *path);

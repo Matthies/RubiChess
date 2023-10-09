@@ -21,6 +21,8 @@
 
 #include "RubiChess.h"
 
+using namespace rubichess;
+
 #ifdef EVALTUNE
 
 alignas(64) evalparamset epsdefault;
