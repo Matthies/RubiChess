@@ -420,9 +420,6 @@ string moveToString(uint32_t mc)
     return s;
 }
 
-} // namespace rubichess
-
-
 
 string chessposition::AlgebraicFromShort(string s)
 {
@@ -645,8 +642,6 @@ void compilerinfo::GetSystemInfo()
 #endif
 
 
-namespace rubichess {
-
 
 #ifdef _WIN32
 #include <process.h>
@@ -786,8 +781,6 @@ string CurrentWorkingDir()
     free(cwd) ;
     return working_directory + kPathSeparator;
 }
-
-} // namespace rubichess
 
 
 #ifdef STATISTICS
@@ -1066,3 +1059,5 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
 
 }
 #endif
+} // namespace rubichess
+

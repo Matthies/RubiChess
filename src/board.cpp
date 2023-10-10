@@ -44,7 +44,6 @@ U64 lineMask[64][64];
 int squareDistance[64][64];  // decreased by 1 for directly indexing evaluation arrays
 alignas(64) int psqtable[14][64];
 
-}
 
 bool chessposition::w2m()
 {
@@ -640,7 +639,6 @@ void chessposition::pvdebugout()
 
 #endif
 
-namespace rubichess {
 
 // shameless copy from https://www.chessprogramming.org/Magic_Bitboards
 alignas(64) U64 mBishopAttacks[64][1 << BISHOPINDEXBITS];
@@ -881,9 +879,6 @@ void initBitmaphelper()
         }
     }
 }
-
-} // namespace rubichess
-
 
 
 void chessposition::BitboardSet(int index, PieceCode p)
@@ -1141,8 +1136,6 @@ int chessposition::getBestPossibleCapture()
 }
 
 
-namespace rubichess {
-
 // Some global objects
 alignas(64) compilerinfo cinfo;
 alignas(64) EPSCONST evalparamset eps;
@@ -1167,4 +1160,4 @@ template void chessposition::updatePins<BLACK>();
 template void chessposition::updateThreats<WHITE>();
 template void chessposition::updateThreats<BLACK>();
 
-}
+} // namespace rubichess

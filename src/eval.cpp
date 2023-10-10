@@ -43,8 +43,6 @@ void initPsqtable()
     }
 }
 
-} // namespace rubichess
-
 
 
 #ifdef EVALTUNE
@@ -107,7 +105,6 @@ static void registertuner(chessposition* pos, eval* e, string name, int index1, 
 #endif
 }
 
-namespace rubichess {
 
 const int maxmobility[4] = { 9, 14, 15, 28 }; // indexed by piece - 2
 
@@ -232,8 +229,6 @@ void registerallevals(chessposition *pos)
             registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
 }
 
-} // namespace rubichess
-
 #endif
 
 struct traceeval {
@@ -273,7 +268,6 @@ static string splitvaluestring(int v[])
     return ss.str();
 }
 
-namespace rubichess {
 
 void traceEvalOut()
 {
@@ -333,8 +327,6 @@ inline int KBNvK(chessposition *p)
     
     return (1000 - kwcornerdistance * 10 - squareDistance[ks][kw] - p->testRepetition() * 50 - p->halfmovescounter) * S2MSIGN(strongside);
 }
-
-} // namespace rubichess
 
 
 // get psqt for eval tracing and tuning
@@ -1023,3 +1015,6 @@ void chessposition::getScaling(Materialhashentry* mhentry)
 // This avoids putting these definitions in header file
 template int chessposition::getEval<NOTRACE>();
 template int chessposition::getEval<TRACE>();
+
+} // namespace rubichess
+

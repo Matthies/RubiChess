@@ -20,6 +20,8 @@
 
 using namespace rubichess;
 
+namespace rubichess {
+
 void generateEpd(string egn)
 {
     cout << "Writing fens to stderr. Redirect stderr to file for collecting the fens.\n";
@@ -862,7 +864,7 @@ static void testengine(string epdfilename, int startnum, string engineprgs, stri
 }
 
 #endif // _WIN32
-
+} // namespace rubichess
 
 int main(int argc, char* argv[])
 {

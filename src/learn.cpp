@@ -18,9 +18,12 @@
 
 #include "RubiChess.h"
 
+using namespace rubichess;
 #ifdef NNUELEARN
 #include <atomic>
 #include <mutex>
+
+namespace rubichess {
 
 using namespace rubichess;
 
@@ -1989,5 +1992,7 @@ void learn(vector<string> args)
         // ToDo...
     }
 }
+
+} // namespace rubichess
 
 #endif

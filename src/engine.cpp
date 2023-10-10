@@ -165,9 +165,6 @@ static void uciSetContempt()
     }
 }
 
-} // namespace rubichess
-
-
 
 engine::engine(compilerinfo *c)
 {
@@ -1087,3 +1084,5 @@ void ucioptions_t::Print()
 // This avoids putting these definitions in header file
 template void engine::searchStart <SinglePVSearch>();
 template void engine::searchStart <MultiPVSearch>();
+
+} //namespace rubichess

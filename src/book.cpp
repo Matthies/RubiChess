@@ -18,12 +18,15 @@
 
 #include "RubiChess.h"
 
+
 using namespace rubichess;
 
 //
 // Support for polyglot opening books
 // http://hgm.nubati.net/book_format.html
 //
+
+namespace rubichess {
 
 const U64 PolyglotRandoms[781] = {
   0x9D39247E33776D41ULL, 0x2AF7398005AAA5C7ULL, 0x44DB015024623547ULL,
@@ -289,8 +292,6 @@ const U64 PolyglotRandoms[781] = {
   0xF8D626AAAF278509ULL
 };
 
-#define POLYGLOTPIECE(x) (((x) - 2) ^ 1)
-
 U64 swap_be_64(U64 in)
 {
     return
@@ -331,7 +332,8 @@ U64 polybook::GetHash(chessposition* p)
     while (piecebb)
     {
         int square = pullLsb(&piecebb);
-        int pc = POLYGLOTPIECE(p->mailbox[square]);
+        int pc = (p->mailbox[square] - 2) ^ 1; // convert Rubi piece code to polyglot piece code
+
         int offset = 64 * pc + square;
         hash ^= PolyglotRandoms[offset];
     }
@@ -463,8 +465,6 @@ uint32_t polybook::GetMove(chessposition* p)
         shortmove = (shortmove & 0xfff) | (((pp + 1) * 2 + (p->state & S2MMASK)) << 24);
     return p->shortMove2FullMove(shortmove);
 }
-
-namespace rubichess {
 
 // global object
 polybook pbook;

@@ -20,6 +20,8 @@
 
 using namespace rubichess;
 
+namespace rubichess {
+
 chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece)
 {
     code = (piece << 28) | (ept << 20) | (capture << 16) | (promote << 12) | (from << 6) | to;
@@ -1344,3 +1346,5 @@ template void chessposition::evaluateMoves<QUIET>(chessmovelist*);
 template void chessposition::evaluateMoves<CAPTURE>(chessmovelist*);
 template bool chessposition::playMove<true>(uint32_t);
 template void chessposition::unplayMove<true>(uint32_t);
+
+} // namespace rubichess

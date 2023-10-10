@@ -96,6 +96,18 @@
 #include "zlib/zlib.h"
 #endif
 
+#ifdef _WIN32
+#include <conio.h>
+#include <AclAPI.h>
+#include <Windows.h>
+#ifdef STACKDEBUG
+#include <DbgHelp.h>
+#endif
+#ifdef FINDMEMORYLEAKS
+#include <crtdbg.h>
+#endif
+#endif
+
 #define USE_SIMD
 #if defined(USE_SSE2)
 #include <immintrin.h>
@@ -112,20 +124,12 @@ namespace rubichess {
 
 #ifdef _WIN32
 
-#include <conio.h>
-#include <AclAPI.h>
-#include <Windows.h>
-
 #ifdef STACKDEBUG
-#include <DbgHelp.h>
 #define myassert(expression, pos, num, ...) (void)((!!(expression)) ||   (GetStackWalk(pos, (const char*)(#expression), (const char*)(__FILE__), (int)(__LINE__), (num), ##__VA_ARGS__), 0))
 #else
 #define myassert(expression, pos, num, ...) (void)(0)
 #endif
 
-#ifdef FINDMEMORYLEAKS
-#include <crtdbg.h>
-#endif
 
 #define allocalign64(x) _aligned_malloc(x, 64)
 #define freealigned64(x) _aligned_free(x)

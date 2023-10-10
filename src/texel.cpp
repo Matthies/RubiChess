@@ -23,6 +23,8 @@
 
 using namespace rubichess;
 
+namespace rubichess {
+
 #ifdef EVALTUNE
 
 alignas(64) evalparamset epsdefault;
@@ -1438,3 +1440,5 @@ void tuneCleanup()
     pos.pwnhsh.remove();
 }
 #endif // EVALTUNE
+
+} // namespace rubichess

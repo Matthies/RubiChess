@@ -25,6 +25,8 @@ static const size_t HashAlignBytes = 2ull << 20;
 
 using namespace rubichess;
 
+namespace rubichess {
+
 zobrist::zobrist()
 {
     raninit(&rnd, 0);
@@ -378,7 +380,7 @@ bool  Materialhash::probeHash(U64 hash, Materialhashentry **entry)
     return false;
 }
 
-namespace rubichess {
-transposition tp;
-}
 
+transposition tp;
+
+} // namespace rubichess

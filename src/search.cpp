@@ -22,7 +22,6 @@ using namespace rubichess;
 
 namespace rubichess {
 
-
 #ifdef STATISTICS
 statistic statistics;
 #endif
@@ -62,7 +61,6 @@ void searchinit()
     searchtableinit();
 }
 
-} // namespace rubichess
 
 inline bool chessposition::CheckForImmediateStop()
 {
@@ -1247,7 +1245,6 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
     return alpha;
 }
 
-namespace rubichess {
 
 inline bool uciScoreOutputNeeded(int inWindow, U64 thinktime)
 {
