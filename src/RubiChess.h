@@ -39,7 +39,7 @@
 //#define TBDEBUG 1
 
 // Enable this for texel tuning
-//#define EVALTUNE
+#define EVALTUNE
 
 // Enable this to expose the evaluation and NNUE parameters as UCI options
 //#define EVALOPTIONS
@@ -1396,9 +1396,9 @@ public:
 };
 
 
-#define CASTLEFLAG    0x08000000
-#define EPCAPTUREFLAG 0x04000000
-#define BADSEEFLAG    0x02000000
+static constexpr U64 CASTLEFLAG     = 0x08000000;
+static constexpr U64 EPCAPTUREFLAG  = 0x04000000;
+static constexpr U64 BADSEEFLAG = 0x02000000;
 #define GETFROM(x) (((x) & 0x0fc0) >> 6)
 #define GETTO(x) ((x) & 0x003f)
 #define GETCORRECTTO(x) (ISCASTLE(x) ? castlekingto[GETCASTLEINDEX(x)] : GETTO(x))

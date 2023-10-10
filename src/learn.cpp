@@ -123,7 +123,7 @@ inline uint32_t rubiFromBinpack(chessposition* pos, uint16_t c)
 // Sfen/bin related code
 //
 
-#define GENSFEN_HASH_SIZE 0x1000000
+constexpr size_t GENSFEN_HASH_SIZE = 0x1000000;
 alignas(64) U64 sfenhash[GENSFEN_HASH_SIZE];
 
 const unsigned int sfenchunksize = 0x1000;
@@ -155,7 +155,9 @@ constexpr HuffmanedPiece huffman_table[] =
 };
 
 // FIXME: This is ugly but compatible with SF sfens
-#define HUFFMAN2RUBI(x) (((x) >> 3) | ((((x) & 7) + 1) * 2))
+inline uint8_t HUFFMAN2RUBI(uint8_t x) {
+    return (((x) >> 3) | ((((x) & 7) + 1) * 2));
+}
 
 inline void write_n_bit(uint8_t *buffer, uint8_t data, int n, int *totalbits)
 {
@@ -365,9 +367,16 @@ void flush_psv(int result, searchthread* thr)
 const size_t maxBinpackChunkSize = 1 * 1024 * 1024;
 size_t maxContinuationSize;
 
-#define SHORTFROMBIGENDIAN(c) ((uint8_t)(c)[1] | ((uint8_t)(c)[0] << 8))
-#define LONGLONGFROMBIGENDIAN(c) ((U64)((uint8_t)(c)[7]) | ((U64)((uint8_t)(c)[6]) << 8) | ((U64)((uint8_t)(c)[5]) << 16) | (((U64)((uint8_t)(c)[4])) << 24ULL) | ((U64)((uint8_t)(c)[3]) << 32) | ((U64)((uint8_t)(c)[2]) << 40) | ((U64)((uint8_t)(c)[1]) << 48) | ((U64)((uint8_t)(c)[0]) << 56))
-#define GETBITINDEX(b,i) (POPCOUNT((b) & (((BITSET(i) - 1) << 1) + 1)) - 1)
+inline uint16_t SHORTFROMBIGENDIAN(char* c) {
+    return ((uint8_t)(c)[1] | ((uint8_t)(c)[0] << 8));
+}
+inline U64 LONGLONGFROMBIGENDIAN(char* c) {
+    return  ((U64)((uint8_t)(c)[7]) | ((U64)((uint8_t)(c)[6]) << 8) | ((U64)((uint8_t)(c)[5]) << 16) | (((U64)((uint8_t)(c)[4])) << 24ULL) | ((U64)((uint8_t)(c)[3]) << 32) | ((U64)((uint8_t)(c)[2]) << 40) | ((U64)((uint8_t)(c)[1]) << 48) | ((U64)((uint8_t)(c)[0]) << 56));
+}
+
+inline int  GETBITINDEX(U64 b, int i) {
+    return (POPCOUNT((b) & (((BITSET(i) - 1) << 1) + 1)) - 1);
+}
 
 void drawBytes(char *b, int n)
 {

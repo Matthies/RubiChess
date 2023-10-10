@@ -34,11 +34,13 @@
 
 using namespace rubichess;
 
-#define SYZYGY2RUBI_PT(x) ((((x) & 0x7) << 1) | (((x) & 0x8) >> 3))
-
 #include "tbcore.c"
 
 namespace rubichess {
+
+inline int SYZYGY2RUBI_PT(int x) {
+    return ((((x) & 0x7) << 1) | (((x) & 0x8) >> 3));
+}
 
 int TBlargest = 0;
 

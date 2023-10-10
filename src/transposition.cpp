@@ -19,7 +19,6 @@
 #include "RubiChess.h"
 
 #if defined(__linux__) && !defined(__ANDROID__)
-static const size_t HashAlignBytes = 2ull << 20;
 #include <sys/mman.h> // madvise
 #endif
 
@@ -161,6 +160,7 @@ int transposition::setSize(int sizeMb)
 
 #if defined(__linux__) && !defined(__ANDROID__) // Many thanks to Sami Kiminki for advise on the huge page theory and for this patch
     // Round up hashSize to the next 2M for alignment
+    constexpr size_t HashAlignBytes = 2ull << 20;
     allocsize = ((allocsize + HashAlignBytes - 1u) / HashAlignBytes) * HashAlignBytes;
 
     table = (transpositioncluster*)aligned_alloc(HashAlignBytes, allocsize);
