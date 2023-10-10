@@ -19,6 +19,7 @@
 #include "RubiChess.h"
 
 using namespace rubichess;
+
 #ifdef NNUELEARN
 #include <atomic>
 #include <mutex>
