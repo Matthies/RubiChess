@@ -39,7 +39,7 @@
 //#define TBDEBUG 1
 
 // Enable this for texel tuning
-#define EVALTUNE
+//#define EVALTUNE
 
 // Enable this to expose the evaluation and NNUE parameters as UCI options
 //#define EVALOPTIONS
@@ -2340,8 +2340,6 @@ template <RootsearchType RT> void mainSearch(searchthread* thr);
 // TB stuff
 //
 extern int TBlargest; // 5 if 5-piece tables, 6 if 6-piece tables were found.
-
-//void init_tablebases(char *path);
 
 #ifdef TBDEBUG
 #define TBDEBUGDO(l,s) if ((l) <= TBDEBUG) {s}
