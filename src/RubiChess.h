@@ -96,6 +96,18 @@
 #include "zlib/zlib.h"
 #endif
 
+#ifdef _WIN32
+#include <conio.h>
+#include <AclAPI.h>
+#include <Windows.h>
+#ifdef STACKDEBUG
+#include <DbgHelp.h>
+#endif
+#ifdef FINDMEMORYLEAKS
+#include <crtdbg.h>
+#endif
+#endif
+
 #define USE_SIMD
 #if defined(USE_SSE2)
 #include <immintrin.h>
@@ -105,22 +117,19 @@
 #undef USE_SIMD
 #endif
 
+using namespace std;
+
+namespace rubichess {
+
+
 #ifdef _WIN32
 
-#include <conio.h>
-#include <AclAPI.h>
-#include <Windows.h>
-
 #ifdef STACKDEBUG
-#include <DbgHelp.h>
 #define myassert(expression, pos, num, ...) (void)((!!(expression)) ||   (GetStackWalk(pos, (const char*)(#expression), (const char*)(__FILE__), (int)(__LINE__), (num), ##__VA_ARGS__), 0))
 #else
 #define myassert(expression, pos, num, ...) (void)(0)
 #endif
 
-#ifdef FINDMEMORYLEAKS
-#include <crtdbg.h>
-#endif
 
 #define allocalign64(x) _aligned_malloc(x, 64)
 #define freealigned64(x) _aligned_free(x)
@@ -138,7 +147,7 @@ void Sleep(long x);
 #endif
 #endif
 
-using namespace std;
+
 
 typedef unsigned long long U64;
 typedef signed long long S64;
@@ -453,6 +462,7 @@ public:
     void replace(int i, int16_t b) { if (!i) v = ((int32_t)((uint32_t)GETMGVAL(v) << 16) + b); else v = ((int32_t)((uint32_t)b << 16) + GETEGVAL(v)); }
     void replace(int16_t b) { v = b; }
 };
+
 
 
 #define VALUE(m, e) eval(m, e)
@@ -1386,9 +1396,9 @@ public:
 };
 
 
-#define CASTLEFLAG    0x08000000
-#define EPCAPTUREFLAG 0x04000000
-#define BADSEEFLAG    0x02000000
+static constexpr U64 CASTLEFLAG     = 0x08000000;
+static constexpr U64 EPCAPTUREFLAG  = 0x04000000;
+static constexpr U64 BADSEEFLAG = 0x02000000;
 #define GETFROM(x) (((x) & 0x0fc0) >> 6)
 #define GETTO(x) ((x) & 0x003f)
 #define GETCORRECTTO(x) (ISCASTLE(x) ? castlekingto[GETCASTLEINDEX(x)] : GETTO(x))
@@ -1858,8 +1868,9 @@ public:
 //
 // engine stuff
 //
-extern void uciSetLogFile();
-extern void engineHeader();
+void uciSetLogFile();
+void engineHeader();
+
 class GuiCommunication {
 private:
     ostream* myos;
@@ -2330,8 +2341,6 @@ template <RootsearchType RT> void mainSearch(searchthread* thr);
 //
 extern int TBlargest; // 5 if 5-piece tables, 6 if 6-piece tables were found.
 
-void init_tablebases(char *path);
-
 #ifdef TBDEBUG
 #define TBDEBUGDO(l,s) if ((l) <= TBDEBUG) {s}
 #else
@@ -2627,3 +2636,9 @@ namespace Simd {
 
 #endif
 }
+
+
+} // namespace rubichess
+
+
+void init_tablebases(char *path);

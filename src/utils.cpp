@@ -18,6 +18,9 @@
 
 #include "RubiChess.h"
 
+using namespace rubichess;
+
+namespace rubichess {
 
 /* A small noncryptographic PRNG                       */
 /* http://www.burtleburtle.net/bob/rand/smallprng.html */
@@ -639,6 +642,7 @@ void compilerinfo::GetSystemInfo()
 #endif
 
 
+
 #ifdef _WIN32
 #include <process.h>
 int compilerinfo::GetProcessId()
@@ -668,7 +672,7 @@ void* my_large_malloc(size_t s)
 {
     void* mem = nullptr;
     bool allowlp = en.allowlargepages;
-
+    
     if (allowlp && UseLargePages < 0)
     {
         // Check and preparations for use of large pages... only once
@@ -676,7 +680,7 @@ void* my_large_malloc(size_t s)
         LUID luid{ };
         largePageSize = GetLargePageMinimum();
         UseLargePages = (bool)largePageSize;
-
+        
         // Activate SeLockMemoryPrivilege
         UseLargePages = UseLargePages && OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hProcessToken);
         UseLargePages = UseLargePages && LookupPrivilegeValue(NULL, SE_LOCK_MEMORY_NAME, &luid);
@@ -685,41 +689,41 @@ void* my_large_malloc(size_t s)
             TOKEN_PRIVILEGES  tokenPriv{ };
             TOKEN_PRIVILEGES prevTp{ };
             DWORD prevTpLen = 0;
-
+            
             tokenPriv.PrivilegeCount = 1;
             tokenPriv.Privileges[0].Luid = luid;
             tokenPriv.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-
+            
             // Try to enable SeLockMemoryPrivilege. Note that even if AdjustTokenPrivileges() succeeds,
             // we still need to query GetLastError() to ensure that the privileges were actually obtained.
             UseLargePages = UseLargePages && AdjustTokenPrivileges(hProcessToken, FALSE, &tokenPriv, sizeof(TOKEN_PRIVILEGES), &prevTp, &prevTpLen);
             UseLargePages = UseLargePages && (GetLastError() == ERROR_SUCCESS);
             CloseHandle(hProcessToken);
         }
-
+        
         guiCom << (UseLargePages ? "info string Allocation of memory uses large pages.\n" : "info string Allocation of memory: Large pages not available.\n");
     }
-
+    
     if (allowlp && UseLargePages)
     {
         // Round up size to full pages and allocate
         s = (s + largePageSize - 1) & ~size_t(largePageSize - 1);
         mem = VirtualAlloc(
-            NULL, s, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
-
+                           NULL, s, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
+        
         if (!mem)
         {
             UseLargePages = -1;
             guiCom << "info string Allocation of memory: Large pages not available for this size. Disabled for now.\n";
         }
     }
-
+    
     if (!mem)
         mem = _aligned_malloc(s, 64);
-
+    
     if (!mem)
         cerr << "Cannot allocate memory (" << s << " bytes)\n";
-
+    
     return mem;
 }
 
@@ -728,7 +732,7 @@ void my_large_free(void* m)
 {
     if (!m)
         return;
-
+    
     if (en.allowlargepages && UseLargePages > 0)
         VirtualFree(m, 0, MEM_RELEASE);
     else
@@ -746,6 +750,8 @@ int compilerinfo::GetProcessId()
 {
     return getpid();
 }
+
+
 
 U64 getTime()
 {
@@ -775,7 +781,6 @@ string CurrentWorkingDir()
     free(cwd) ;
     return working_directory + kPathSeparator;
 }
-
 
 
 #ifdef STATISTICS
@@ -1054,3 +1059,5 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
 
 }
 #endif
+} // namespace rubichess
+

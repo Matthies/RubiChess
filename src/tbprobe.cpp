@@ -32,11 +32,17 @@
 #include "RubiChess.h"
 #include "tbcore.h"
 
-#define SYZYGY2RUBI_PT(x) ((((x) & 0x7) << 1) | (((x) & 0x8) >> 3))
-
-int TBlargest = 0;
+using namespace rubichess;
 
 #include "tbcore.c"
+
+namespace rubichess {
+
+inline int SYZYGY2RUBI_PT(int x) {
+    return ((((x) & 0x7) << 1) | (((x) & 0x8) >> 3));
+}
+
+int TBlargest = 0;
 
 // Given a position with 6 or fewer pieces, produce a text string
 // of the form KQPvKRP, where "KQP" represents the white pieces if
@@ -885,3 +891,5 @@ int chessposition::root_probe_wdl()
 
     return (best <= 0); // When winning we need to search for the best move
 }
+
+} // namespace rubichess

@@ -18,6 +18,9 @@
 
 #include "RubiChess.h"
 
+using namespace rubichess;
+
+namespace rubichess {
 
 void generateEpd(string egn)
 {
@@ -861,7 +864,7 @@ static void testengine(string epdfilename, int startnum, string engineprgs, stri
 }
 
 #endif // _WIN32
-
+} // namespace rubichess
 
 int main(int argc, char* argv[])
 {

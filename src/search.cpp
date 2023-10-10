@@ -18,12 +18,16 @@
 
 #include "RubiChess.h"
 
+using namespace rubichess;
+
+namespace rubichess {
+
 #ifdef STATISTICS
 statistic statistics;
 #endif
 
 
-#define MAXPRUNINGDEPTH 8
+constexpr int MAXPRUNINGDEPTH = 8;
 int reductiontable[2][MAXDEPTH][64];
 int lmptable[2][MAXPRUNINGDEPTH + 1];
 
@@ -110,9 +114,9 @@ inline bool chessposition::CheckForImmediateStop()
 
 
 
-#define HISTORYMAXDEPTH 20
-#define HISTORYAGESHIFT 8
-#define HISTORYNEWSHIFT 5
+constexpr int HISTORYMAXDEPTH = 20;
+constexpr int HISTORYAGESHIFT = 8;
+constexpr int HISTORYNEWSHIFT = 5;
 
 
 inline int chessposition::getHistory(uint32_t code)
@@ -1662,3 +1666,6 @@ template int chessposition::alphabeta<NoPrune>(int alpha, int beta, int depth, b
 template int chessposition::rootsearch<MultiPVSearch>(int, int, int*, int, int);
 template void mainSearch<SinglePVSearch>(searchthread*);
 template void mainSearch<MultiPVSearch>(searchthread*);
+
+
+} // namespace rubichess

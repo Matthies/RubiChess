@@ -50,6 +50,9 @@
 
 #define TBHASHBITS 12
 
+namespace rubichess {
+
+
 struct TBHashEntry;
 
 #ifdef DECOMP64
@@ -162,6 +165,9 @@ struct DTZTableEntry {
   uint64_t key2;
   struct TBEntry *entry;
 };
+
+
+} // namespace rubichess
 
 #endif
 

@@ -18,6 +18,8 @@
 
 #include "RubiChess.h"
 
+using namespace rubichess;
+
 #ifdef CPUTEST
 
 #if defined(_M_X64) || defined(__amd64)

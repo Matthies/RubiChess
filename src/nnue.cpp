@@ -24,6 +24,10 @@
 
 #include "RubiChess.h"
 
+using namespace rubichess;
+
+namespace rubichess {
+
 //
 // Some NNUE related constants and types
 //
@@ -1025,6 +1029,7 @@ int chessposition::NnueGetEval()
 {
     return NnueCurrentArch->GetEval(this);
 }
+
 
 
 //
@@ -2078,6 +2083,7 @@ void NnueRegisterEvals()
 #endif
 
 
+
 bool NnueNetsource::open()
 {
     size_t insize = 0;
@@ -2206,3 +2212,5 @@ bool NnueNetsource::endOfNet()
 {
     return (next == readbuffer + readbuffersize);
 }
+
+} // namespace rubichess

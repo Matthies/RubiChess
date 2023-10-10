@@ -18,6 +18,10 @@
 
 #include "RubiChess.h"
 
+using namespace rubichess;
+
+namespace rubichess {
+
 void engineHeader()
 {
     guiCom << "========================================================================================\n";
@@ -29,6 +33,7 @@ void engineHeader()
     guiCom << "CPU-Features of binary: " + cinfo.PrintCpuFeatures(cinfo.binarySupports) + "\n";
     guiCom << "========================================================================================\n";
 }
+
 
 
 //
@@ -1079,3 +1084,5 @@ void ucioptions_t::Print()
 // This avoids putting these definitions in header file
 template void engine::searchStart <SinglePVSearch>();
 template void engine::searchStart <MultiPVSearch>();
+
+} //namespace rubichess

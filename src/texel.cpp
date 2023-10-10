@@ -21,7 +21,12 @@
 
 #include "RubiChess.h"
 
+using namespace rubichess;
+
 #ifdef EVALTUNE
+
+namespace rubichess {
+
 
 alignas(64) evalparamset epsdefault;
 
@@ -37,7 +42,7 @@ int ppg;
 tunerpool tpool;
 
 
-#define MAXFENS 256
+constexpr int MAXFENS = 256;
 string fenlines[MAXFENS];
 U64 fenhash[MAXFENS];
 int8_t fenresult[MAXFENS];
@@ -50,7 +55,7 @@ struct poshashentry {
 };
 
 
-#define POSHASHSIZEMB  1024 // max size for poshash in MB
+constexpr int POSHASHSIZEMB = 1024; // max size for poshash in MB
 U64 poshashsize;
 U64 poshashmask;
 poshashentry* poshash;
@@ -1435,4 +1440,6 @@ void tuneCleanup()
     pos.mtrlhsh.remove();
     pos.pwnhsh.remove();
 }
+
+} // namespace rubichess
 #endif // EVALTUNE

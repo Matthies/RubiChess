@@ -18,6 +18,10 @@
 
 #include "RubiChess.h"
 
+using namespace rubichess;
+
+namespace rubichess {
+
 // Evaluation stuff
 
 // static values for the search/pruning/material stuff
@@ -38,6 +42,7 @@ void initPsqtable()
         }
     }
 }
+
 
 
 #ifdef EVALTUNE
@@ -99,6 +104,7 @@ static void registertuner(chessposition* pos, eval* e, string name, int index1, 
     registerforoptions(e, name, index1, bound1, index2, bound2);
 #endif
 }
+
 
 const int maxmobility[4] = { 9, 14, 15, 28 }; // indexed by piece - 2
 
@@ -222,6 +228,7 @@ void registerallevals(chessposition *pos)
         for (j = 0; j < 64; j++)
             registertuner(pos, &eps.ePsqt[i][j], "ePsqt", j, 64, i, 7, tuneIt && (i >= KNIGHT || (i == PAWN && j >= 8 && j < 56)));
 }
+
 #endif
 
 struct traceeval {
@@ -261,31 +268,32 @@ static string splitvaluestring(int v[])
     return ss.str();
 }
 
+
 void traceEvalOut()
 {
     stringstream ss;
     ss << std::showpoint << std::noshowpos << std::fixed << std::setprecision(2)
-        << "              |    White    |    Black    |    Total   \n"
-        << "              |   MG    EG  |   MG    EG  |   MG    EG \n"
-        << " -------------+-------------+-------------+------------\n"
-        << "     Material | " << splitvaluestring(te.material)
-        << "       Minors | " << splitvaluestring(te.minors)
-        << "        Rooks | " << splitvaluestring(te.rooks)
-        << "        Pawns | " << splitvaluestring(te.pawns)
-        << "      Passers | " << splitvaluestring(te.ppawns)
-        << "     Mobility | " << splitvaluestring(te.mobility)
-        << "      Threats | " << splitvaluestring(te.threats)
-        << " King attacks | " << splitvaluestring(te.kingattackpower)
-        << "   Complexity | " << splitvaluestring(te.complexity)
-        << " -------------+-------------+-------------+------------\n"
-        << "        Total |  Ph=" << setw(3) << te.ph << "/256 |  Sc=" << setw(3) << te.sc << "/128 | " << splitvaluestring(te.total)
-        << " => " << cp(TAPEREDANDSCALEDEVAL(te.total, te.ph, te.sc)) << "\n"
-        << "        Tempo | " << splitvaluestring(te.tempo)
-        << "      Endgame | " << setw(5) << cp(te.endgame) << "\n"
-        << "    Resulting | " << setw(5) << cp(te.score) << "\n";
-
+    << "              |    White    |    Black    |    Total   \n"
+    << "              |   MG    EG  |   MG    EG  |   MG    EG \n"
+    << " -------------+-------------+-------------+------------\n"
+    << "     Material | " << splitvaluestring(te.material)
+    << "       Minors | " << splitvaluestring(te.minors)
+    << "        Rooks | " << splitvaluestring(te.rooks)
+    << "        Pawns | " << splitvaluestring(te.pawns)
+    << "      Passers | " << splitvaluestring(te.ppawns)
+    << "     Mobility | " << splitvaluestring(te.mobility)
+    << "      Threats | " << splitvaluestring(te.threats)
+    << " King attacks | " << splitvaluestring(te.kingattackpower)
+    << "   Complexity | " << splitvaluestring(te.complexity)
+    << " -------------+-------------+-------------+------------\n"
+    << "        Total |  Ph=" << setw(3) << te.ph << "/256 |  Sc=" << setw(3) << te.sc << "/128 | " << splitvaluestring(te.total)
+    << " => " << cp(TAPEREDANDSCALEDEVAL(te.total, te.ph, te.sc)) << "\n"
+    << "        Tempo | " << splitvaluestring(te.tempo)
+    << "      Endgame | " << setw(5) << cp(te.endgame) << "\n"
+    << "    Resulting | " << setw(5) << cp(te.score) << "\n";
+    
     cout << ss.str();
-
+    
 }
 
 #if 0  // this could be useful if endgames are preregistered
@@ -312,11 +320,11 @@ inline int KBNvK(chessposition *p)
     int bishopcol = p->piece00[WBISHOP + strongside] & WHITEBB ? WHITE : BLACK;
     int c1 = bishopcol == WHITE ? 7 : 0;  // lower corner of same color as bishop
     int c2 = bishopcol == WHITE ? 56 : 63;  // upper corner of same color as bishop
-
+    
     const double pw = 0.7;
     int kwcornerdistance = (int)(10.0 * min(pow(abs(FILE(c1) - FILE(kw)), pw) + pow(abs(RANK(c1) - RANK(kw)), pw),
-        pow(abs(FILE(c2) - FILE(kw)), pw) + pow(abs(RANK(c2) - RANK(kw)), pw)));
-
+                                            pow(abs(FILE(c2) - FILE(kw)), pw) + pow(abs(RANK(c2) - RANK(kw)), pw)));
+    
     return (1000 - kwcornerdistance * 10 - squareDistance[ks][kw] - p->testRepetition() * 50 - p->halfmovescounter) * S2MSIGN(strongside);
 }
 
@@ -770,27 +778,27 @@ int chessposition::getFrcCorrection()
 }
 
 
-#define MH_Kk    0x3679A3A322768AB5
-#define MH_KNk   0x83F6D94BCF81A7CE
-#define MH_KBk   0x6E56427061F09750
-#define MH_KNNk  0xA6D01BADBCD3304C
-#define MH_KNNkp 0xD91FCF5D7995A2F7
-#define MH_Kkn   0x764E7792D2A7E7A2
-#define MH_Kkb   0x8D7565C35C201DD8
-#define MH_Kknn  0x0BDEC92B4D5E8455
-#define MH_KPknn 0x3BBFD5FC105CD09B
-#define MH_KNkn  0xC3C10D7A3F50CAD9
-#define MH_KBkb  0xD55A84101FA6003D
-#define MH_KNkb  0x38FA1F2BB1D730A3
-#define MH_KBkn  0x2E6196419121FA47
-#define MH_KBPk  0x5E375EA73CF2C39E
-#define MH_KBPPk 0x6B50E60679111E9A
-#define MH_Kkbp  0xF2BAB13399668F63
-#define MH_Kkbpp 0xF843081EE1F63B4D
-#define MH_KBNk  0xDBD938988C07BA2B
-#define MH_Kkbn  0xCD42B1F2ACF170CF
-#define MH_KBNkp 0xA416EC6849412890
-#define MH_KPkbn 0xFD23AD25F1F32401
+constexpr U64 MH_Kk = 0x3679A3A322768AB5;
+constexpr U64 MH_KNk = 0x83F6D94BCF81A7CE;
+constexpr U64 MH_KBk = 0x6E56427061F09750;
+constexpr U64 MH_KNNk = 0xA6D01BADBCD3304C;
+constexpr U64 MH_KNNkp = 0xD91FCF5D7995A2F7;
+constexpr U64 MH_Kkn = 0x764E7792D2A7E7A2;
+constexpr U64 MH_Kkb = 0x8D7565C35C201DD8;
+constexpr U64 MH_Kknn = 0x0BDEC92B4D5E8455;
+constexpr U64 MH_KPknn = 0x3BBFD5FC105CD09B;
+constexpr U64 MH_KNkn = 0xC3C10D7A3F50CAD9;
+constexpr U64 MH_KBkb = 0xD55A84101FA6003D;
+constexpr U64 MH_KNkb = 0x38FA1F2BB1D730A3;
+constexpr U64 MH_KBkn = 0x2E6196419121FA47;
+constexpr U64 MH_KBPk = 0x5E375EA73CF2C39E;
+constexpr U64 MH_KBPPk = 0x6B50E60679111E9A;
+constexpr U64 MH_Kkbp = 0xF2BAB13399668F63;
+constexpr U64 MH_Kkbpp = 0xF843081EE1F63B4D;
+constexpr U64 MH_KBNk = 0xDBD938988C07BA2B;
+constexpr U64 MH_Kkbn = 0xCD42B1F2ACF170CF;
+constexpr U64 MH_KBNkp = 0xA416EC6849412890;
+constexpr U64 MH_KPkbn = 0xFD23AD25F1F32401;
 
 inline bool chessposition::isEndgame(int *score)
 {
@@ -1007,3 +1015,6 @@ void chessposition::getScaling(Materialhashentry* mhentry)
 // This avoids putting these definitions in header file
 template int chessposition::getEval<NOTRACE>();
 template int chessposition::getEval<TRACE>();
+
+} // namespace rubichess
+
