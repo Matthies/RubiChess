@@ -700,7 +700,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
         // search for position with computed accu on stack that leads to current position by differential updates
         // break at king move or if the dirty piece updates get too expensive
         DirtyPiece* dp = &dirtypiece[mslast];
-        if ((dp->pc[0] >> 1) == KING || (fullupdatecost -= dp->dirtyNum + 1) < 0)
+        if (dp->pc[0] == (WKING | c) || (fullupdatecost -= dp->dirtyNum + 1) < 0)
             break;
         mslast--;
     }
