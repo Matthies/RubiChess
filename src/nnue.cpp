@@ -1896,6 +1896,11 @@ bool NnueReadNet(NnueNetsource* nr)
         case 1536:
             buffer = (char*)allocalign64(sizeof(NnueArchitectureV5<2048>));
             NnueCurrentArch = new(buffer) NnueArchitectureV5<2048>;
+            leb128dim = 2048; // next dimensions to test
+            break;
+        case 2048:
+            buffer = (char*)allocalign64(sizeof(NnueArchitectureV5<2560>));
+            NnueCurrentArch = new(buffer) NnueArchitectureV5<2560>;
             leb128dim = 0; // no more dimensions to test
             break;
         default:
