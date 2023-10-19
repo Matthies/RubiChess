@@ -1849,10 +1849,7 @@ public:
     int testRepetition();
     template <NnueType Nt, Color c> void HalfkpAppendActiveIndices(NnueIndexList *active);
     template <NnueType Nt, Color c> void HalfkpAppendChangedIndices(DirtyPiece* dp, NnueIndexList *add, NnueIndexList *remove);
-    //template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void UpdateAccumulator();
-
-    template <NnueType Nt, Color c, int N> bool GetAcccumulatorUpdateArray(int* updaterequest);   // return true iff found a computed accumulator and return the array of following accumulators to compute with terminating -1
-    //template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void UpdateAccumulator();
+    template <NnueType Nt, Color c, int N> bool GetAcccumulatorUpdateArray(int* updaterequest);
     template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets, int N> void AccumulatorIncrementalUpdate(int* updaterequest);
     template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void AccumulatorRefresh();
     template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void AccumulatorUpdate();
@@ -2415,7 +2412,8 @@ public:
     U64 extend_endgame;         // total endgame extensions
     U64 extend_history;         // total history extensions
 
-    U64 nnue_accupdate_all;     // total number of calls to UpdateAccumulator
+    U64 nnue_accupdate_all;     // total number of accumulator updates (including speculative)
+    U64 nnue_accupdate_spec;    // total number of speculative accumulator updates
     U64 nnue_accupdate_cache;   // total number of already up-to-date accumulators
     U64 nnue_accupdate_inc;     // total number of incremental updates
     U64 nnue_accupdate_full;    // total number of full updates
