@@ -502,6 +502,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
 
     prepareStack();
 
+    if (excludeMove)
+        NnueSpeculativeEval();
+
     // get static evaluation of the position
     if (staticeval == NOSCORE)
     {
@@ -626,6 +629,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
                 }
             }
         }
+        // No cut or pruning so far, so we will stay here for a while. Make sure that we have incremental refresh for the accumulator from here
+        NnueSpeculativeEval();
     }
 
     // No hashmove reduction

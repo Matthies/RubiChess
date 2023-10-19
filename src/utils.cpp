@@ -893,7 +893,10 @@ void statistic::output(vector<string> args)
     f0 = 100.0 * nnue_accupdate_cache / NODBZ(n);
     f1 = 100.0 * nnue_accupdate_inc / NODBZ(n);
     f2 = 100.0 * nnue_accupdate_full / NODBZ(n);
-    snprintf(str, 512, "[STATS] AccuUpdate:   Cached: %10lld (%7.4f%%)   Increm.: %10lld (%7.4f%%)      Full: %10lld (%7.4f%%)\n", nnue_accupdate_cache, f0, nnue_accupdate_inc, f1, nnue_accupdate_full, f2);
+    f3 = 100.0 * nnue_accupdate_spec / NODBZ(n);
+
+    snprintf(str, 512, "[STATS] AccuUpdate:   Cached: %10lld (%7.4f%%)   Increm.: %10lld (%7.4f%%)      Full: %10lld (%7.4f%%)      Spec: %10lld (%7.4f%%)\n",
+        nnue_accupdate_cache, f0, nnue_accupdate_inc, f1, nnue_accupdate_full, f2, nnue_accupdate_spec, f3);
     guiCom << str;
 
     // Move selector
