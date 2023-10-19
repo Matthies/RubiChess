@@ -633,9 +633,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
         NnueSpeculativeEval();
     }
 
-
-
-
     // No hashmove reduction
     if (!hashmovecode && depth >= sps.nohashreductionmindepth + 2 * cutnode)
         // PV node and no best move from hash

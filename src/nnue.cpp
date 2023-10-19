@@ -641,7 +641,6 @@ static const uint32_t NnzMask[4] = { 1, 2, 4, 8 };
 #endif
 #endif
 
-
 #else
 #define NUM_REGS 1
 #define NUM_PSQT_REGS 1
@@ -748,7 +747,6 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 }
 
 
-
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::AccumulatorSpeculativeUpdate()
 {
     STATISTICSINC(nnue_accupdate_all);
@@ -765,7 +763,6 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     else
         AccumulatorRefresh< Nt, c, NnueFtHalfdims, NnuePsqtBuckets>();
 }
-
 
 
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets, int N> void chessposition::AccumulatorIncrementalUpdate(int* updaterequest)
@@ -947,8 +944,6 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 }
 
 
-
-
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::AccumulatorRefresh()
 {
     // Full update of accumulator
@@ -1061,15 +1056,12 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 #endif
 
 
-
 template <NnueType Nt, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets>
 void chessposition::SpeculativeTransform()
 {
     AccumulatorSpeculativeUpdate<Nt, WHITE, NnueFtHalfdims, NnuePsqtBuckets>();
     AccumulatorSpeculativeUpdate<Nt, BLACK, NnueFtHalfdims, NnuePsqtBuckets>();
 }
-
-
 
 
 template <NnueType Nt, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets>
@@ -1085,7 +1077,6 @@ int chessposition::Transform(clipped_t *output, int bucket)
     for (int p = 0; p < 2; p++)
     {
         const unsigned int offset = (Nt == NnueArchV1 ? NnueFtHalfdims * p : NnueFtHalfdims / 2 * p);
-
 
 #ifdef USE_SIMD
         if (Nt == NnueArchV5)
@@ -1171,8 +1162,6 @@ int chessposition::Transform(clipped_t *output, int bucket)
 }
 
 
-
-
 int chessposition::NnueGetEval()
 {
     return NnueCurrentArch->GetEval(this);
@@ -1183,7 +1172,6 @@ void chessposition::NnueSpeculativeEval()
 {
     NnueCurrentArch->SpeculativeEval(this);
 }
-
 
 
 //
