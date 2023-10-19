@@ -1035,71 +1035,113 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     constexpr unsigned int tileHeight = numRegs * SIMD_WIDTH / 16;
     ft_vec_t acc[numRegs];
     psqt_vec_t psqt[NUM_PSQT_REGS];
-    for (unsigned int i = 0; i < NnueFtHalfdims / tileHeight; i++)
+    if (updaterequest[1] == -1
+        && (removedIndices[0].size == 1 || removedIndices[0].size == 2)
+        && addedIndices[0].size == 1)
     {
-        ft_vec_t* accTile = (ft_vec_t*)(accumulation + (lastcomputedply * 2 + c) * NnueFtHalfdims + i * tileHeight);
-        for (unsigned int j = 0; j < numRegs; j++)
-            acc[j] = accTile[j];
-        for (unsigned int l = 0; updaterequest[l] >= 0; l++)
+        ft_vec_t* accTileIn = (ft_vec_t*)(accumulation + (lastcomputedply * 2 + c) * NnueFtHalfdims);
+        ft_vec_t* accTileOut = (ft_vec_t*)(accumulation + (updaterequest[0] * 2 + c) * NnueFtHalfdims);
+        const unsigned int offR0 = NnueFtHalfdims * removedIndices[0].values[0];
+        ft_vec_t* colR0 = (ft_vec_t*)(weight + offR0);
+        const unsigned int offA0 = NnueFtHalfdims * addedIndices[0].values[0];
+        ft_vec_t* colA0 = (ft_vec_t*)(weight + offA0);
+        if (removedIndices[0].size == 1)
         {
-            // Difference calculation for the deactivated features
-            for (unsigned int k = 0; k < removedIndices[l].size; k++)
-            {
-                unsigned int index = removedIndices[l].values[k];
-                const unsigned int offset = NnueFtHalfdims * index + i * tileHeight;
-                ft_vec_t* column = (ft_vec_t*)(weight + offset);
-                for (unsigned int j = 0; j < numRegs; j++)
-                    acc[j] = vec_sub_16(acc[j], column[j]);
-            }
+            for (unsigned int k = 0; k < NnueFtHalfdims * sizeof(int16_t) / sizeof(ft_vec_t); k++)
+                accTileOut[k] = vec_add_16(vec_sub_16(accTileIn[k], colR0[k]), colA0[k]);
+        }
+        else {
+            const unsigned int offR1 = NnueFtHalfdims * removedIndices[0].values[1];
+            ft_vec_t* colR1 = (ft_vec_t*)(weight + offR1);
+            for (unsigned int k = 0; k < NnueFtHalfdims * sizeof(int16_t) / sizeof(ft_vec_t); k++)
+                accTileOut[k] = vec_sub_16(vec_add_16(accTileIn[k], colA0[k]), vec_add_16(colR0[k], colR1[k]));
+        }
 
-            // Difference calculation for the activated features
-            for (unsigned int k = 0; k < addedIndices[l].size; k++)
-            {
-                unsigned int index = addedIndices[l].values[k];
-                const unsigned int offset = NnueFtHalfdims * index + i * tileHeight;
-                ft_vec_t* column = (ft_vec_t*)(weight + offset);
-                for (unsigned int j = 0; j < numRegs; j++)
-                    acc[j] = vec_add_16(acc[j], column[j]);
-            }
-
-            accTile = (ft_vec_t*)(accumulation + (updaterequest[l] * 2 + c) * NnueFtHalfdims + i * tileHeight);
-            for (unsigned int j = 0; j < numRegs; j++)
-                accTile[j] = acc[j];
+        psqt_vec_t* accTilePsqtIn = (psqt_vec_t*)(psqtAccumulation + (lastcomputedply * 2 + c) * NnuePsqtBuckets);
+        psqt_vec_t* accTilePsqtOut = (psqt_vec_t*)(psqtAccumulation + (updaterequest[0] * 2 + c) * NnuePsqtBuckets);
+        const unsigned int offPsqtR0 = NnuePsqtBuckets * removedIndices[0].values[0];
+        psqt_vec_t* colPsqtR0 = (psqt_vec_t*)(psqtweight + offPsqtR0);
+        const unsigned int offPsqtA0 = NnuePsqtBuckets * addedIndices[0].values[0];
+        psqt_vec_t* colPsqtA0 = (psqt_vec_t*)(psqtweight + offPsqtA0);
+        if (removedIndices[0].size == 1)
+        {
+            for (unsigned int k = 0; k < NnuePsqtBuckets * sizeof(int32_t) / sizeof(psqt_vec_t); k++)
+                accTilePsqtOut[k] = vec_add_psqt_32(vec_sub_psqt_32(accTilePsqtIn[k], colPsqtR0[k]), colPsqtA0[k]);
+        }
+        else {
+            const unsigned int offPsqtR1 = NnuePsqtBuckets * removedIndices[0].values[1];
+            psqt_vec_t* colPsqtR1 = (psqt_vec_t*)(psqtweight + offPsqtR1);
+            for (unsigned int k = 0; k < NnuePsqtBuckets * sizeof(int32_t) / sizeof(psqt_vec_t); k++)
+                accTilePsqtOut[k] = vec_sub_psqt_32(vec_add_psqt_32(accTilePsqtIn[k], colPsqtA0[k]), vec_add_psqt_32(colPsqtR0[k], colPsqtR1[k]));
         }
     }
-
-    int32_t* psqtacm = psqtAccumulation + (lastcomputedply * 2 + c) * NnuePsqtBuckets;
-    for (unsigned int i = 0; i < NnuePsqtBuckets / PSQT_TILE_HEIGHT; i++)
-    {
-        psqt_vec_t* accTilePsqt = (psqt_vec_t*)(psqtacm + i * PSQT_TILE_HEIGHT);
-        for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
-            psqt[j] = vec_load_psqt(&accTilePsqt[j]);
-        for (unsigned int l = 0; updaterequest[l] >= 0; l++)
+    else  {
+        for (unsigned int i = 0; i < NnueFtHalfdims / tileHeight; i++)
         {
-            for (unsigned int k = 0; k < removedIndices[l].size; k++)
+            ft_vec_t* accTile = (ft_vec_t*)(accumulation + (lastcomputedply * 2 + c) * NnueFtHalfdims + i * tileHeight);
+            for (unsigned int j = 0; j < numRegs; j++)
+                acc[j] = accTile[j];
+            for (unsigned int l = 0; updaterequest[l] >= 0; l++)
             {
-                unsigned int index = removedIndices[l].values[k];
-                unsigned int offset = NnuePsqtBuckets * index + i * PSQT_TILE_HEIGHT;
-                psqt_vec_t* columnPsqt = (psqt_vec_t*)(psqtweight + offset);
+                // Difference calculation for the deactivated features
+                for (unsigned int k = 0; k < removedIndices[l].size; k++)
+                {
+                    unsigned int index = removedIndices[l].values[k];
+                    const unsigned int offset = NnueFtHalfdims * index + i * tileHeight;
+                    ft_vec_t* column = (ft_vec_t*)(weight + offset);
+                    for (unsigned int j = 0; j < numRegs; j++)
+                        acc[j] = vec_sub_16(acc[j], column[j]);
+                }
 
-                for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
-                    psqt[j] = vec_sub_psqt_32(psqt[j], columnPsqt[j]);
+                // Difference calculation for the activated features
+                for (unsigned int k = 0; k < addedIndices[l].size; k++)
+                {
+                    unsigned int index = addedIndices[l].values[k];
+                    const unsigned int offset = NnueFtHalfdims * index + i * tileHeight;
+                    ft_vec_t* column = (ft_vec_t*)(weight + offset);
+                    for (unsigned int j = 0; j < numRegs; j++)
+                        acc[j] = vec_add_16(acc[j], column[j]);
+                }
+
+                accTile = (ft_vec_t*)(accumulation + (updaterequest[l] * 2 + c) * NnueFtHalfdims + i * tileHeight);
+                for (unsigned int j = 0; j < numRegs; j++)
+                    accTile[j] = acc[j];
             }
+        }
 
-            for (unsigned int k = 0; k < addedIndices[l].size; k++)
-            {
-                unsigned int index = addedIndices[l].values[k];
-                unsigned int offset = NnuePsqtBuckets * index + i * PSQT_TILE_HEIGHT;
-                psqt_vec_t* columnPsqt = (psqt_vec_t*)(psqtweight + offset);
-
-                for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
-                    psqt[j] = vec_add_psqt_32(psqt[j], columnPsqt[j]);
-            }
-
-            psqtacm = psqtAccumulation + (updaterequest[l] * 2 + c) * NnuePsqtBuckets;
-            accTilePsqt = (psqt_vec_t*)(psqtacm + i * PSQT_TILE_HEIGHT);
+        int32_t* psqtacm = psqtAccumulation + (lastcomputedply * 2 + c) * NnuePsqtBuckets;
+        for (unsigned int i = 0; i < NnuePsqtBuckets / PSQT_TILE_HEIGHT; i++)
+        {
+            psqt_vec_t* accTilePsqt = (psqt_vec_t*)(psqtacm + i * PSQT_TILE_HEIGHT);
             for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
-                vec_store_psqt(&accTilePsqt[j], psqt[j]);
+                psqt[j] = vec_load_psqt(&accTilePsqt[j]);
+            for (unsigned int l = 0; updaterequest[l] >= 0; l++)
+            {
+                for (unsigned int k = 0; k < removedIndices[l].size; k++)
+                {
+                    unsigned int index = removedIndices[l].values[k];
+                    unsigned int offset = NnuePsqtBuckets * index + i * PSQT_TILE_HEIGHT;
+                    psqt_vec_t* columnPsqt = (psqt_vec_t*)(psqtweight + offset);
+
+                    for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
+                        psqt[j] = vec_sub_psqt_32(psqt[j], columnPsqt[j]);
+                }
+
+                for (unsigned int k = 0; k < addedIndices[l].size; k++)
+                {
+                    unsigned int index = addedIndices[l].values[k];
+                    unsigned int offset = NnuePsqtBuckets * index + i * PSQT_TILE_HEIGHT;
+                    psqt_vec_t* columnPsqt = (psqt_vec_t*)(psqtweight + offset);
+
+                    for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
+                        psqt[j] = vec_add_psqt_32(psqt[j], columnPsqt[j]);
+                }
+
+                psqtacm = psqtAccumulation + (updaterequest[l] * 2 + c) * NnuePsqtBuckets;
+                accTilePsqt = (psqt_vec_t*)(psqtacm + i * PSQT_TILE_HEIGHT);
+                for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
+                    vec_store_psqt(&accTilePsqt[j], psqt[j]);
+            }
         }
     }
 #else
