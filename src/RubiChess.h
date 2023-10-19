@@ -865,6 +865,7 @@ public:
     virtual uint32_t GetFtHash() = 0;
     virtual uint32_t GetHash() = 0;
     virtual int GetEval(chessposition* pos) = 0;
+    virtual void SpeculativeEval(chessposition* pos) = 0;
     virtual int16_t* GetFeatureWeight() = 0;
     virtual int16_t* GetFeatureBias() = 0;
     virtual int32_t* GetFeaturePsqtWeight() = 0;
@@ -1848,9 +1849,24 @@ public:
     int testRepetition();
     template <NnueType Nt, Color c> void HalfkpAppendActiveIndices(NnueIndexList *active);
     template <NnueType Nt, Color c> void HalfkpAppendChangedIndices(DirtyPiece* dp, NnueIndexList *add, NnueIndexList *remove);
-    template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void UpdateAccumulator();
+    //template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void UpdateAccumulator();
+
+    template <NnueType Nt, Color c, int N> bool GetAcccumulatorUpdateArray(int* updaterequest);   // return true iff found a computed accumulator and return the array of following accumulators to compute with terminating -1
+    //template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void UpdateAccumulator();
+    template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets, int N> void AccumulatorIncrementalUpdate(int* updaterequest);
+    template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void AccumulatorRefresh();
+    template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void AccumulatorUpdate();
+    template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void AccumulatorSpeculativeUpdate();
+#ifdef NNUEDEBUG
+    template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void AccumulatorDebug();
+#endif
+
     template <NnueType Nt, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> int Transform(clipped_t *output, int bucket = 0);
+
+    template <NnueType Nt, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void SpeculativeTransform();
     int NnueGetEval();
+    void NnueSpeculativeEval();
+
 #ifdef NNUELEARN
     void toSfen(PackedSfen *sfen);
     int getFromSfen(PackedSfen* sfen);
