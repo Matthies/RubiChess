@@ -884,11 +884,6 @@ public:
 extern NnueType NnueReady;
 extern NnueArchitecture* NnueCurrentArch;
 
-#ifdef NNUEINCLUDED
-extern const char  _binary_net_nnue_start;
-extern const char  _binary_net_nnue_end;
-#endif
-
 
 class NnueLayer
 {
@@ -2642,3 +2637,7 @@ namespace Simd {
 
 
 void init_tablebases(char *path);
+#ifdef NNUEINCLUDED
+extern const char  _binary_net_nnue_start;
+extern const char  _binary_net_nnue_end;
+#endif
