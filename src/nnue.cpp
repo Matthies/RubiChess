@@ -974,7 +974,7 @@ template <NnueType Nt, Color c, int N> bool chessposition::GetAcccumulatorUpdate
 
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::AccumulatorUpdate()
 {
-    STATISTICSINC(nnue_accupdate_eval);
+    STATISTICSINC(nnue_accupdate_all);
 
     int updatechain[4];
     if (computationState[ply][c]) {
@@ -992,7 +992,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::AccumulatorSpeculativeUpdate()
 {
-    STATISTICSINC(nnue_accupdate_spec);
+    //STATISTICSINC(nnue_accupdate_spec);
 
     int updatechain[3];
     if (computationState[ply][c]) {
