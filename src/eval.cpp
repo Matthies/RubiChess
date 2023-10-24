@@ -778,15 +778,16 @@ int chessposition::getFrcCorrection()
 }
 
 
+//
+// printf("constexpr U64 MH_Kk = 0x%016llX\n", calc_key_from_str("KvK"));
+//
 constexpr U64 MH_Kk = 0x3679A3A322768AB5;
 constexpr U64 MH_KNk = 0x83F6D94BCF81A7CE;
 constexpr U64 MH_KBk = 0x6E56427061F09750;
 constexpr U64 MH_KNNk = 0xA6D01BADBCD3304C;
-constexpr U64 MH_KNNkp = 0xD91FCF5D7995A2F7;
 constexpr U64 MH_Kkn = 0x764E7792D2A7E7A2;
 constexpr U64 MH_Kkb = 0x8D7565C35C201DD8;
 constexpr U64 MH_Kknn = 0x0BDEC92B4D5E8455;
-constexpr U64 MH_KPknn = 0x3BBFD5FC105CD09B;
 constexpr U64 MH_KNkn = 0xC3C10D7A3F50CAD9;
 constexpr U64 MH_KBkb = 0xD55A84101FA6003D;
 constexpr U64 MH_KNkb = 0x38FA1F2BB1D730A3;
@@ -797,31 +798,9 @@ constexpr U64 MH_Kkbp = 0xF2BAB13399668F63;
 constexpr U64 MH_Kkbpp = 0xF843081EE1F63B4D;
 constexpr U64 MH_KBNk = 0xDBD938988C07BA2B;
 constexpr U64 MH_Kkbn = 0xCD42B1F2ACF170CF;
-constexpr U64 MH_KBNkp = 0xA416EC6849412890;
-constexpr U64 MH_KPkbn = 0xFD23AD25F1F32401;
 
 inline bool chessposition::isEndgame(int *score)
 {
-#if 0
-    printf("#define MH_Kk    0x%016llX\n", calc_key_from_str("KvK"));
-    printf("#define MH_KNk   0x%016llX\n", calc_key_from_str("KNvK"));
-    printf("#define MH_KBk   0x%016llX\n", calc_key_from_str("KBvK"));
-    printf("#define MH_KNNk  0x%016llX\n", calc_key_from_str("KNNvK"));
-    printf("#define MH_Kkn   0x%016llX\n", calc_key_from_str("KvKN"));
-    printf("#define MH_Kkb   0x%016llX\n", calc_key_from_str("KvKB"));
-    printf("#define MH_Kknn  0x%016llX\n", calc_key_from_str("KvKNN"));
-    printf("#define MH_KNkn  0x%016llX\n", calc_key_from_str("KNvKN"));
-    printf("#define MH_KBkb  0x%016llX\n", calc_key_from_str("KBvKB"));
-    printf("#define MH_KNkb  0x%016llX\n", calc_key_from_str("KNvKB"));
-    printf("#define MH_KBkn  0x%016llX\n", calc_key_from_str("KBvKN"));
-    printf("#define MH_KBPk  0x%016llX\n", calc_key_from_str("KBPvK"));
-    printf("#define MH_KBPPk 0x%016llX\n", calc_key_from_str("KBPPvK"));
-    printf("#define MH_Kkbp  0x%016llX\n", calc_key_from_str("KvKBP"));
-    printf("#define MH_Kkbpp 0x%016llX\n", calc_key_from_str("KvKBPP"));
-    printf("#define MH_KBNk  0x%016llX\n", calc_key_from_str("KBNvK"));
-    printf("#define MH_Kkbn  0x%016llX\n", calc_key_from_str("KvKBN"));
-#endif // 0
-
     switch(materialhash) {
     case MH_Kk:
     case MH_KNk:
