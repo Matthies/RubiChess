@@ -710,8 +710,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
 
         int stats = !ISTACTICAL(mc) ? getHistory(mc) : getTacticalHst(mc);
         int extendMove = 0;
-        int pc = GETPIECE(mc);
-        int to = GETCORRECTTO(mc);
+        //int pc = GETPIECE(mc);
+        //int to = GETCORRECTTO(mc);
 
         if (Pt != MatePrune)
         {
@@ -752,6 +752,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
                 STATISTICSINC(extend_endgame);
                 extendMove = 1;
             }
+#if 0
             else if (!ISTACTICAL(mc))
             {
                 int pieceTo = pc * 64 + to;
@@ -778,6 +779,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
                     }
                 }
             }
+#endif
         }
 
         if (!playMove<false>(mc))
