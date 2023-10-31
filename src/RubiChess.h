@@ -1700,11 +1700,10 @@ public:
     uint32_t countermove[14][64];
     int16_t* prerootconthistptr[4];
     int16_t* conthistptr[MAXDEPTH];
-#if 0
     int he_threshold;
     U64 he_yes;
     U64 he_all;
-#endif
+
     // The following members get an explicit init in engine::prepareThreads()
     U64 nodes;
     U64 tbhits;
