@@ -266,7 +266,7 @@ endif
 DEPS = RubiChess.h
 
 GITVER = $(shell 2>/dev/null git show --name-only --abbrev-commit --date=format:%Y%m%d | grep -i "date:" | grep -o -E '[0-9]+')
-GITID = $(shell 2>/dev/null git show --name-only --abbrev-commit | grep -i -o -E "ommit[[:blank:]]+[0-9a-f]+" | grep -o -E '[0-9a-f]+')
+GITID = $(shell 2>/dev/null git show --name-only --abbrev-commit | grep -i -o -E "ommit[[:blank:]]+[0-9a-f]{6}" | grep -o -E '[0-9a-f]+')
 ifneq ($(GITVER),)
 	GITDEFINE = -D GITVER=\"$(GITVER)\"
 endif
