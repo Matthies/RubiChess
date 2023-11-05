@@ -179,6 +179,8 @@ int chessposition::getFromFen(const char* sFen)
         return -1;
     if (squareDistance[kingpos[WHITE]][kingpos[BLACK]] < 1)
         return -1;
+    if (POPCOUNT(occupied00[WHITE] | occupied00[BLACK]) > 32)
+        return -1;
 
     state = 0;
     /* side to move */
