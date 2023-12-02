@@ -133,23 +133,31 @@ uint32_t chessmovelist::getAndRemoveNextMove()
 uint32_t chessposition::applyMove(string s, bool resetMstop)
 {
     int from, to;
-    PieceType promtype;
-    PieceCode promotion;
+    PieceCode promotion = BLANK;
 
-    if (s.size() < 4)
-        return 0;
+    size_t slen = s.size();
 
-    from = AlgebraicToIndex(s);
-    to = AlgebraicToIndex(&s[2]);
+    if (s[0] == 'O' || s[0] == '0') {
+        if (slen >= 3 && s[0] == s[2] && (slen < 5 || s[0] == s[4])) {
+            guiCom << "info string Warning! Your GUI uses wrong encoding " + s + " for castle move. But I am gracious for now.\n";
+            int col = state & S2MMASK;
+            from = kingpos[col];
+            to = castlerookfrom[col * 2 + (slen == 3)];
+        }
+    }
+    else {
+        if (slen < 4 || slen > 5)
+            return 0;
 
-    if (s.size() > 4 && (promtype = GetPieceType(s[4])) != BLANKTYPE)
-        promotion = (PieceCode)((promtype << 1) | (state & S2MMASK));
-    else
-        promotion = BLANK;
+        from = AlgebraicToIndex(s);
+        to = AlgebraicToIndex(&s[2]);
+        if (slen == 5)
+            promotion = (PieceCode)((GetPieceType(s[4]) << 1) | (state & S2MMASK));
 
-    // Change normal castle moves (e.g. e1g1) to the more general chess960 format "king captures rook" (e1h1)
-    if ((mailbox[from] >> 1) == KING && mailbox[to] == BLANK && abs(from - to) == 2)
-        to = to > from ? to + 1 : to - 2;
+        // Change normal castle moves (e.g. e1g1) to the more general chess960 format "king captures rook" (e1h1)
+        if ((mailbox[from] >> 1) == KING && mailbox[to] == BLANK && abs(from - to) == 2)
+            to = to > from ? to + 1 : to - 2;
+    }
 
     chessmove m = chessmove(from, to, promotion, BLANK, BLANK);
     m.code = shortMove2FullMove((uint16_t)m.code);

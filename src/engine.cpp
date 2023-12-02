@@ -407,7 +407,7 @@ void engine::communicate(string inputstring)
                 for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
                 {
                     if (!(lastopponentsmove = rootposition.applyMove(*it)))
-                        guiCom << "info string Alarm! Move " + (*it)  + "%s illegal (possible engine error)\n";
+                        guiCom << "info string Alarm! Move " + (*it)  + " illegal (possible engine error)\n";
                 }
                 rootposition.contempt = S2MSIGN(rootposition.state & S2MMASK) * ResultingContempt * rootposition.phcount / 24;
                 ponderhitbonus = 4 * (lastopponentsmove && lastopponentsmove == rootposition.pondermove);
