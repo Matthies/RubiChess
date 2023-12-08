@@ -144,6 +144,9 @@ uint32_t chessposition::applyMove(string s, bool resetMstop)
             from = kingpos[col];
             to = castlerookfrom[col * 2 + (slen == 3)];
         }
+        else {
+            return 0;
+        }
     }
     else {
         if (slen < 4 || slen > 5)
