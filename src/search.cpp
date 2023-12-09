@@ -1545,6 +1545,20 @@ void mainSearch(searchthread *thr)
         if (thr->depth > maxdepth)
             break;
 
+#ifdef STATISTICS
+        static U64 lastdepthnodes = 0;
+        U64 thisdepthnodes, dummytbhits;
+        if (isMainThread && inWindow == 1 && en.stopLevel != ENGINESTOPIMMEDIATELY) {
+            en.getNodesAndTbhits(&thisdepthnodes, &dummytbhits);
+
+            if (thr->depth > 8 && lastdepthnodes > 1000 && thr->depth < MAXSTATDEPTH) {
+                statistics.ebf_per_depth_n[thr->depth]++;
+                statistics.ebf_per_depth_sum[thr->depth] += thisdepthnodes / (double)lastdepthnodes;
+            }
+            lastdepthnodes = thisdepthnodes;
+        }
+#endif
+
     } while (1);
 
     if (isMainThread)

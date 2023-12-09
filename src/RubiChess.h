@@ -2413,7 +2413,6 @@ public:
     U64 nnue_accupdate_inc;     // total number of incremental updates
     U64 nnue_accupdate_full;    // total number of full updates
 
-
 #define MAXSTATDEPTH 30
 #define MAXSTATMOVES 128
     U64 ms_n[2][MAXSTATDEPTH];                          // total instantiations of moveselector in depth n (0 -> QS, MAXSTATDEPTH-1: ProbCut)
@@ -2428,6 +2427,9 @@ public:
     U64 ms_badtactic_moves[2][MAXSTATDEPTH];            // total number of special quiet moves delivered in depth n
     U64 ms_evasion_stage[2][MAXSTATDEPTH][MAXSTATMOVES];// how many times was the evasion stage entered with a move list of length m
     U64 ms_evasion_moves[2][MAXSTATDEPTH][MAXSTATMOVES];// total number of evasion moves delivered in depth n with a move list of length m
+
+    double ebf_per_depth_sum[MAXSTATDEPTH];
+    U64 ebf_per_depth_n[MAXSTATDEPTH];
 
     bool outputDone = false;
 
