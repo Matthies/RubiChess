@@ -899,8 +899,23 @@ void statistic::output(vector<string> args)
         nnue_accupdate_cache, f0, nnue_accupdate_inc, f1, nnue_accupdate_full, f2, nnue_accupdate_spec, f3);
     guiCom << str;
 
-    // Move selector
     int p, d, l;
+    // effective branching factor
+    f0 = 0;
+    n = 0;
+    string ebfstr = "";
+    for (p = 9; p < MAXSTATDEPTH; p++)
+    {
+        f0 += ebf_per_depth_sum[p];
+        n += ebf_per_depth_n[p];
+        snprintf(str, 512, "dp=%02d  n=%lld  ebf=%3.2f   ", p, ebf_per_depth_n[p], ebf_per_depth_sum[p] / NODBZ(ebf_per_depth_n[p]));
+        ebfstr = ebfstr + str;
+    }
+    snprintf(str, 512, "total:  n=%lld  ebf=%3.2f   ", n, f0 / NODBZ(n));
+    ebfstr = "[STATS] EBF:  " + string(str) + ebfstr;
+    guiCom << ebfstr + "\n";
+
+    // Move selector
     for (p = 0; p < 2; p++)
     {
         n = i1 = i2 = i3 = i4 = i5 = i6 = i7 = i8 = i9 = i10 = i11 = 0ULL;
