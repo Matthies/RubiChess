@@ -197,7 +197,7 @@ void chessposition::evaluateMoves(chessmovelist *ml)
             int to = GETCORRECTTO(mc);
             ml->move[i].value = history[piece & S2MMASK][threatSquare][GETFROM(mc)][to];
             int pieceTo = piece * 64 + to;
-            ml->move[i].value += (conthistptr[ply - 1][pieceTo] + conthistptr[ply - 2][pieceTo] + conthistptr[ply - 4][pieceTo]);
+            ml->move[i].value += (conthistptr[ply - 1][pieceTo] + conthistptr[ply - 2][pieceTo] + (conthistptr[ply - 4][pieceTo] + conthistptr[ply - 6][pieceTo]) / 2);
         }
         if (GETPROMOTION(mc))
             ml->move[i].value += mvv[GETPROMOTION(mc) >> 1] - mvv[PAWN];

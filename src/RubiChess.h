@@ -1698,7 +1698,7 @@ public:
     int16_t counterhistory[14][64][14 * 64];
     int16_t tacticalhst[7][64][6];
     uint32_t countermove[14][64];
-    int16_t* prerootconthistptr[4];
+    int16_t* prerootconthistptr[6];
     int16_t* conthistptr[MAXDEPTH];
     int he_threshold;
     U64 he_yes;
