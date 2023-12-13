@@ -317,6 +317,7 @@ void chessposition::resetStats()
 {
     memset(history, 0, sizeof(chessposition::history));
     memset(tacticalhst, 0, sizeof(chessposition::tacticalhst));
+    memset(pawnhistory, 0, sizeof(chessposition::pawnhistory));
     memset(counterhistory, 0, sizeof(chessposition::counterhistory));
     memset(countermove, 0, sizeof(chessposition::countermove));
     memset(conthistptr, 0, sizeof(chessposition::conthistptr));
