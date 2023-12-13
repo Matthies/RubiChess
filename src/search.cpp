@@ -147,9 +147,9 @@ inline void chessposition::updateHistory(uint32_t code, int value)
     history[s2m][threatSquare][from][to] += delta;
 
     int pwnhshindex = pawnhash & 0x1ff;
-    delta = value * (1 << HISTORYNEWSHIFT) - pawnhistory[pwnhshindex][pc][to] * abs(value) / (1 << HISTORYAGESHIFT);
-    myassert(pawnhistory[pwnhshindex][pc][to] + delta < MAXINT16 && pawnhistory[pwnhshindex][pc][to] + delta > MININT16, this, 2, pwnhshindex][pc][to], delta);
-    pawnhistory[pwnhshindex][pc][to] += delta;
+    delta = value * (1 << HISTORYNEWSHIFT) - pawnhistory[pwnhshindex][pc >> 1][to] * abs(value) / (1 << HISTORYAGESHIFT);
+    myassert(pawnhistory[pwnhshindex][pc][to] + delta < MAXINT16 && pawnhistory[pwnhshindex][pc >> 1][to] + delta > MININT16, this, 2, pwnhshindex][pc >> 1][to], delta);
+    pawnhistory[pwnhshindex][pc >> 1][to] += delta;
 
     int pieceTo = pc * 64 + to;
     const int maxplies = min(4, ply);
@@ -1050,7 +1050,7 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
             else if (GETCAPTURE(m->code) != BLANK)
                 m->value = (m->code & BADSEEFLAG ? -1 : 1) * (mvv[GETCAPTURE(m->code) >> 1] | lva[GETPIECE(m->code) >> 1]);
             else
-                m->value = history[state & S2MMASK][threatSquare][GETFROM(m->code)][GETCORRECTTO(m->code)] + pawnhistory[pawnhash & 0x1ff][GETPIECE(m->code)][GETCORRECTTO(m->code)];
+                m->value = history[state & S2MMASK][threatSquare][GETFROM(m->code)][GETCORRECTTO(m->code)] + pawnhistory[pawnhash & 0x1ff][GETPIECE(m->code) >> 1][GETCORRECTTO(m->code)];
             if (isMultiPV) {
                 if (multipvtable[0][0] == m->code)
                     m->value = PVVAL;

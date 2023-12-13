@@ -1697,7 +1697,7 @@ public:
     int16_t history[2][65][64][64];
     int16_t counterhistory[14][64][14 * 64];
     int16_t tacticalhst[7][64][6];
-    int16_t pawnhistory[512][14][64];
+    int16_t pawnhistory[512][7][64];
     uint32_t countermove[14][64];
     int16_t* prerootconthistptr[6];
     int16_t* conthistptr[MAXDEPTH];
