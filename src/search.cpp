@@ -554,7 +554,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
 
     // futility pruning
     bool futility = false;
-    if (Pt != NoPrune && depth <= MAXPRUNINGDEPTH)
+    if (Pt == Prune && depth <= MAXPRUNINGDEPTH)
     {
         // reverse futility pruning
         if (!isCheckbb && POPCOUNT(threats) < 2 && staticeval - depth * (sps.futilityreversedepthfactor - sps.futilityreverseimproved * positionImproved) > beta)
