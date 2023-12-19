@@ -810,7 +810,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
             reduction -= (CurrentMoveNum[ply - 1] >= sps.lmropponentmovecount);
 
             // less reduction if next ply had few fail highs
-            reduction -= (failhighcount[ply] < 4);
+            if (failhighcount[ply] < 4)
+                reduction -= (5 - failhighcount[ply]) / 2;
 
             STATISTICSINC(red_pi[positionImproved]);
             STATISTICSADD(red_lmr[positionImproved], reductiontable[positionImproved][depth][min(63, legalMoves + 1)]);
