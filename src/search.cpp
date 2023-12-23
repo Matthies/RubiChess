@@ -485,6 +485,13 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
                 tp.addHash(tte, hash, score, staticeval, bound, MAXDEPTH - 1, 0);
                 return score;
             }
+
+            if (PVNode && bound == HASHBETA)
+            {
+                bestscore = score;
+                alpha = max(alpha, bestscore);
+            }
+
         }
     }
 
