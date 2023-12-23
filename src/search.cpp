@@ -531,7 +531,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
     bool positionImproved = (ply >= 2  && staticevalstack[ply] > staticevalstack[ply - 2]);
 
     // Razoring
-    if (Pt != MatePrune && !PVNode && !isCheckbb && depth <= 2)
+    if (!PVNode && !isCheckbb && depth <= 2)
     {
         const int ralpha = alpha - sps.razormargin - depth * sps.razordepthfactor;
         if (staticeval < ralpha)
@@ -1367,7 +1367,7 @@ void mainSearch(searchthread *thr)
             }
 #endif
             // Open aspiration window for winning scores
-            if (abs(score) > 5000)
+            if (abs(score) > SCORETBWININMAXPLY)
                 delta = SCOREWHITEWINS;
 
             // new aspiration window
