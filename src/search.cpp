@@ -1464,7 +1464,7 @@ void mainSearch(searchthread *thr)
                 if (pos->useRootmoveScore)
                 {
                     // We have a tablebase score so report this and adjust the search window
-                    //uciNeedsFinalReport = false;
+                    uciNeedsFinalReport = true;
                     int tbScore = pos->rootmovelist.move[0].value;
                     if ((tbScore > 0 && score > tbScore) || (tbScore < 0 && score < tbScore))
                         // TB win/loss but we even found a mate; use the correct score
