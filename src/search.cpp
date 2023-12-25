@@ -464,6 +464,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
         int success;
         int v = probe_wdl(&success);
         if (success) {
+            STATISTICSINC(ab_tb);
             tbhits++;
             nodesToNextCheck = 0;
             int bound;
@@ -482,9 +483,15 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
             if (bound == HASHEXACT || (bound == HASHALPHA ? (score <= alpha) : (score >= beta)))
             {
                 tp.addHash(tte, hash, score, staticeval, bound, MAXDEPTH - 1, 0);
+                return score;
             }
-            STATISTICSINC(ab_tb);
-            return score;
+
+            if (PVNode && bound == HASHBETA)
+            {
+                bestscore = score;
+                alpha = max(alpha, bestscore);
+            }
+
         }
     }
 
@@ -554,7 +561,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
 
     // futility pruning
     bool futility = false;
-    if (Pt != NoPrune && depth <= MAXPRUNINGDEPTH)
+    if (Pt == Prune && depth <= MAXPRUNINGDEPTH)
     {
         // reverse futility pruning
         if (!isCheckbb && POPCOUNT(threats) < 2 && staticeval - depth * (sps.futilityreversedepthfactor - sps.futilityreverseimproved * positionImproved) > beta)
@@ -969,7 +976,7 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
 
     const bool isMultiPV = (RT == MultiPVSearch);
 
-    bool mateprune = (en.mate > 0 || alpha > SCORETBWININMAXPLY || beta < -SCORETBWININMAXPLY);
+    const bool mateprune = (en.mate > 0 || alpha > SCORETBWININMAXPLY || beta < -SCORETBWININMAXPLY);
 
     // reset pv
     pvtable[0][0] = 0;
@@ -1114,13 +1121,13 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
         if (i > 0)
         {
             // LMR search; test against alpha
-            score = -alphabeta<Prune>(-alpha - 1, -alpha, effectiveDepth - 1, true);
+            score = (mateprune ? - alphabeta<MatePrune>(-alpha - 1, -alpha, effectiveDepth - 1, true) : -alphabeta<Prune>(-alpha - 1, -alpha, effectiveDepth - 1, true));
             SDEBUGDO(isDebugMove, pvadditionalinfo[0] += "PVS(alpha=" + to_string(alpha) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
             if (reduction && score > alpha)
             {
                 // research without reduction
                 effectiveDepth += reduction;
-                score = -alphabeta<Prune>(-alpha - 1, -alpha, effectiveDepth - 1, true);
+                score = (mateprune ? - alphabeta<MatePrune>(-alpha - 1, -alpha, effectiveDepth - 1, true) : -alphabeta<Prune>(-alpha - 1, -alpha, effectiveDepth - 1, true));
                 SDEBUGDO(isDebugMove, pvadditionalinfo[0] += "PVS(alpha=" + to_string(alpha) + "/depth=" + to_string(effectiveDepth - 1) + ");score=" + to_string(score) + "..."; );
             }
         }
@@ -1464,7 +1471,7 @@ void mainSearch(searchthread *thr)
                 if (pos->useRootmoveScore)
                 {
                     // We have a tablebase score so report this and adjust the search window
-                    uciNeedsFinalReport = false;
+                    uciNeedsFinalReport = true;
                     int tbScore = pos->rootmovelist.move[0].value;
                     if ((tbScore > 0 && score > tbScore) || (tbScore < 0 && score < tbScore))
                         // TB win/loss but we even found a mate; use the correct score
@@ -1535,7 +1542,7 @@ void mainSearch(searchthread *thr)
             continue;
 
         // early exit in playing mode as there is exactly one possible move
-        if (pos->rootmovelist.length == 1 && en.tmEnabled)
+        if (pos->rootmovelist.length == 1 && en.tmEnabled && thr->depth > 4)
             break;
 
         // exit if STOPSOON is requested and we're in aspiration window
