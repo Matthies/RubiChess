@@ -1367,7 +1367,7 @@ void mainSearch(searchthread *thr)
             }
 #endif
             // Open aspiration window for winning scores
-            if (abs(score) > SCORETBWININMAXPLY)
+            if (abs(score) > 5000)
                 delta = SCOREWHITEWINS;
 
             // new aspiration window
