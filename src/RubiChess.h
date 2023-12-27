@@ -45,7 +45,7 @@
 //#define EVALOPTIONS
 
 // Enable this to expose the search parameters as UCI options
-//#define SEARCHOPTIONS
+#define SEARCHOPTIONS
 
 // Enable this to enable NNUE training code
 //#define NNUELEARN
@@ -1944,7 +1944,7 @@ enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME
 
 const map<string, GuiToken> GuiCommandMap = {
     { "export", EXPORT },
-#ifdef EVALTUNE
+#if defined(EVALTUNE) || defined(SEARCHOPTIONS)
     { "tune", TUNE },
 #endif
 #ifdef NNUELEARN
@@ -1995,7 +1995,7 @@ class ucioptions_t
 public:
     void Register(void *e, string n, ucioptiontype t, string d, int mi = 0, int ma = 0, void(*setop)() = nullptr, string v = ""); //engine*, ucioption_t*
     void Set(string n, string v, bool force = false);
-    void Print();
+    void Print(bool bTune = false);
 };
 
 typedef map<string, ucioption_t>::iterator optionmapiterator;
@@ -2241,82 +2241,86 @@ extern GuiCommunication guiCom;
 void searchtableinit();
 class searchparam {
 public:
-    int val;
+    int val, minval, maxval;
     string name;
 
     searchparam(const char* c) {
         string s(c);
-        size_t i = s.find('/');
-        val = stoi(s.substr(i + 1));
-        name = "S_" + s.substr(0, i);
-        en.ucioptions.Register((void*)&val, name, ucisearch, to_string(val), 0, 0, searchtableinit);
+        size_t i1 = s.find('/');
+        size_t i2 = i1 + 1 + s.substr(i1 + 1).find('/');
+        size_t i3 = i2 + 1 + s.substr(i2 + 1).find('/');
+        val = stoi(s.substr(i1 + 1, i2 - i1));
+        minval = stoi(s.substr(i2 + 1, i3 - i2));
+        maxval = stoi(s.substr(i3 + 1));
+        name = "S_" + s.substr(0, i1);
+        en.ucioptions.Register((void*)&val, name, ucisearch, to_string(val), minval, maxval, searchtableinit);
     }
     operator int() const { return val; }
 };
 
-#define SP(x,y) x = #x "/" #y
+#define SP(x,y,m,n) x = #x "/" #y "/" #m "/" #n
 
 #else // SEARCHOPTIONS
 #define SPSCONST const
 typedef const int searchparam;
-#define SP(x,y) x = y
+#define SP(x,y,m,n) x = y
 #endif
 
 struct searchparamset {
 #ifdef EVALTUNE
-    searchparam SP(deltapruningmargin, 4000);
+    searchparam SP(deltapruningmargin, 4000, 0, 8000);
 #else
-    searchparam SP(deltapruningmargin, 160);
+    searchparam SP(deltapruningmargin, 160, 40, 300);
 #endif
     // LMR table
-    searchparam SP(lmrlogf0, 150);
-    searchparam SP(lmrf0, 60);
-    searchparam SP(lmrlogf1, 150);
-    searchparam SP(lmrf1, 43);
-    searchparam SP(lmrmindepth, 3);
-    searchparam SP(lmrstatsratio, 870);
-    searchparam SP(lmropponentmovecount, 15);
+    searchparam SP(lmrlogf0, 150, 50, 300);
+    searchparam SP(lmrf0, 60, 20, 150);
+    searchparam SP(lmrlogf1, 150, 50, 300);
+    searchparam SP(lmrf1, 43, 10, 150);
+    searchparam SP(lmrmindepth, 3, 1, 10);
+    searchparam SP(lmrstatsratio, 870, 200, 2000);
+    searchparam SP(lmropponentmovecount, 15, 5, 40);
     // LMP table
-    searchparam SP(lmpf0, 59);
-    searchparam SP(lmppow0, 48);
-    searchparam SP(lmpf1, 74);
-    searchparam SP(lmppow1, 170);
+    searchparam SP(lmpf0, 59, 10, 200);
+    searchparam SP(lmppow0, 48, 10, 200);
+    searchparam SP(lmpf1, 74, 10, 250);
+    searchparam SP(lmppow1, 170, 10, 400);
     // Razoring
-    searchparam SP(razormargin, 250);
-    searchparam SP(razordepthfactor, 50);
+    searchparam SP(razormargin, 250, 50, 500);
+    searchparam SP(razordepthfactor, 50, 10, 200);
     //futility pruning
-    searchparam SP(futilityreversedepthfactor, 70);
-    searchparam SP(futilityreverseimproved, 20);
-    searchparam SP(futilitymargin, 10);
-    searchparam SP(futilitymarginperdepth, 59);
+    searchparam SP(futilityreversedepthfactor, 70, 10, 150);
+    searchparam SP(futilityreverseimproved, 20, 1, 60);
+    searchparam SP(futilitymargin, 10, 1, 30);
+    searchparam SP(futilitymarginperdepth, 59, 10, 120);
     // null move
-    searchparam SP(nmmindepth, 2);
-    searchparam SP(nmmredbase, 4);
-    searchparam SP(nmmreddepthratio, 6);
-    searchparam SP(nmmredevalratio, 150);
-    searchparam SP(nmmredpvfactor, 2);
-    searchparam SP(nmverificationdepth, 12);
+    searchparam SP(nmmindepth, 2, 1, 6);
+    searchparam SP(nmmredbase, 4, 1, 20);
+    searchparam SP(nmmreddepthratio, 6, 1, 20);
+    searchparam SP(nmmredevalratio, 150, 40, 250);
+    searchparam SP(nmmredpvfactor, 2, 1, 5);
+    searchparam SP(nmverificationdepth, 12, 4, 20);
     //Probcut
-    searchparam SP(probcutmindepth, 5);
-    searchparam SP(probcutmargin, 100);
+    searchparam SP(probcutmindepth, 5, 2, 10);
+    searchparam SP(probcutmargin, 100, 20, 200);
     // Threat pruning
-    searchparam SP(threatprunemargin, 30);
-    searchparam SP(threatprunemarginimprove, 0);
+    searchparam SP(threatprunemargin, 30, 10, 150);
+    searchparam SP(threatprunemarginimprove, 0, 0, 20);
 
     // No hashmovereduction
-    searchparam SP(nohashreductionmindepth, 3);
+    searchparam SP(nohashreductionmindepth, 3, 1, 8);
     // SEE prune
-    searchparam SP(seeprunemarginperdepth, -20);
-    searchparam SP(seeprunequietfactor, 4);
+    searchparam SP(seeprunemarginperdepth, -20, -100, 0);
+    searchparam SP(seeprunequietfactor, 4, 1, 8);
     // Singular extension
-    searchparam SP(singularmindepth, 8);
-    searchparam SP(singularmarginperdepth, 2);
+    searchparam SP(singularmindepth, 8, 2, 16);
+    searchparam SP(singularmarginperdepth, 2, 0, 20);
     // History extension
-    searchparam SP(histextminthreshold, 9);
-    searchparam SP(histextmaxthreshold, 15);
-    searchparam SP(aspincratio, 4);
-    searchparam SP(aspincbase, 2);
-    searchparam SP(aspinitialdelta, 8);
+    searchparam SP(histextminthreshold, 9, 6, 11);
+    searchparam SP(histextmaxthreshold, 15, 12, 17);
+    searchparam SP(aspincratio, 4, 1, 10);
+    searchparam SP(aspincbase, 2, 1, 10);
+    searchparam SP(aspinitialdelta, 8, 1, 20);
 };
 
 extern SPSCONST searchparamset sps;
