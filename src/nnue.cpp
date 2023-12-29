@@ -622,11 +622,7 @@ inline  ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define vec_sub_16(a,b) vsubq_s16(a,b)
 #define vec_packs(a,b) vcombine_s8(vqmovn_s16(a),vqmovn_s16(b))
 #define vec_clip_8(a,b) vmaxq_s8(vec_packs(a,b),vdupq_n_s8(0))
-#ifdef USE_DOTPROD
-#define vec_add_dpbusd_32x2_large Simd::dotprod_m128_add_dpbusd_epi32x2
-#else
 #define vec_add_dpbusd_32x2_large Simd::neon_m128_add_dpbusd_epi32x2
-#endif
 #define vec_hadd_large Simd::neon_m128_hadd
 #define vec_haddx4_large Simd::neon_m128_haddx4
 #define vec_load_psqt(a) (*(a))
