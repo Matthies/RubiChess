@@ -20,7 +20,6 @@
 
 using namespace rubichess;
 
-#ifdef CPUTEST
 
 #if defined(_M_X64) || defined(__amd64)
 
@@ -130,7 +129,7 @@ void compilerinfo::GetSystemInfo()
     machineSupports = CPUNEON;
 #elif defined(__aarch64__)
 #ifdef __ARM_FEATURE_DOTPROD
-    system = "ArmV8.4-DotProd (AArch64) platform supprting NEON";
+    system = "ArmV8.2+DotProd (AArch64) platform supprting NEON";
     machineSupports = CPUNEON | CPUARM64 | CPUDOTPROD;
 #else
     system = "ArmV8 (AArch64) platform supprting NEON";
@@ -154,6 +153,7 @@ string compilerinfo::PrintCpuFeatures(U64 f, bool onlyHighest)
 }
 
 
+#ifdef CPUTEST
 
 int main()
 {

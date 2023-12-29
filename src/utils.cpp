@@ -497,6 +497,9 @@ string chessposition::AlgebraicFromShort(string s)
     return retval;
 }
 
+
+#if 0
+
 string compilerinfo::PrintCpuFeatures(U64 f, bool onlyHighest)
 {
     string s = "";
@@ -505,7 +508,6 @@ string compilerinfo::PrintCpuFeatures(U64 f, bool onlyHighest)
 
     return s;
 }
-
 
 #if defined(_M_X64) || defined(__amd64) || defined(_M_IX86) || defined(__i386)
 
@@ -641,6 +643,7 @@ void compilerinfo::GetSystemInfo()
 
 #endif
 
+#endif
 
 
 #ifdef _WIN32
