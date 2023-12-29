@@ -2644,6 +2644,12 @@ namespace Simd {
         product = vmlal_s8(product, a1, b1);
         acc = vpadalq_s16(acc, product);
     }
+#ifdef USE_DOTPROD
+    inline void dotprod_m128_add_dpbusd_epi32x2(int32x4_t& acc, int8x16_t a0, int8x16_t b0, int8x16_t a1, int8x16_t b1) {
+        acc = vdotq_s32(acc, a0, b0);
+        acc = vdotq_s32(acc, a1, b1);
+}
+#endif
 
 #endif
 }
