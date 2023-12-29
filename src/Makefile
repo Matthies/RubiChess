@@ -194,6 +194,7 @@ endif
 ifneq (,$(findstring -dotprod,$(ARCH)))
 CPUFLAGS += " dotprod"
 endif
+endif
 
 ifneq (,$(findstring avx512,$(CPUFLAGS)))
 	avx512 = yes
