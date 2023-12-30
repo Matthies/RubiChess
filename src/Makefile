@@ -28,6 +28,7 @@ bmi2 = no
 avx512 = no
 neon = no
 arm64 = no
+dotprod = no
 zlib = no
 debug = no
 bits = 64
@@ -190,8 +191,10 @@ ifneq (,$(findstring armv8,$(ARCH)))
 CPUFLAGS = "neon arm64"
 bits = 64
 endif
+ifneq (,$(findstring -dotprod,$(ARCH)))
+CPUFLAGS += " dotprod"
 endif
-
+endif
 
 ifneq (,$(findstring avx512,$(CPUFLAGS)))
 	avx512 = yes
@@ -222,6 +225,9 @@ ifneq (,$(findstring neon,$(CPUFLAGS)))
 endif
 ifneq (,$(findstring arm64,$(CPUFLAGS)))
 	arm64 = yes
+endif
+ifneq (,$(findstring dotprod,$(CPUFLAGS)))
+	dotprod = yes
 endif
 
 ifeq ($(neon),no)
@@ -257,6 +263,9 @@ ifeq ($(neon),yes)
 endif
 ifeq ($(arm64),yes)
 	ARCHFLAGS += -DUSE_ARM64
+endif
+ifeq ($(dotprod),yes)
+	ARCHFLAGS += -DUSE_DOTPROD
 endif
 ifeq ($(zlib),yes)
 	CXXFLAGS += -DUSE_ZLIB
@@ -318,18 +327,19 @@ arch: libclean
 	@echo "Bits: $(bits)"
 	@echo "CPU features:"
 	@echo "============="
-	@echo "avx512: $(avx512)"
-	@echo "bmi2  : $(bmi2)"
-	@echo "avx2  : $(avx2)"
-	@echo "bmi1  : $(bmi1)"
-	@echo "lzcnt : $(lzcnt)"
-	@echo "popcnt: $(popcnt)"
-	@echo "ssse3 : $(ssse3)"
-	@echo "sse2  : $(sse2)"
-	@echo "neon  : $(neon)"
-	@echo "arm64 : $(arm64)"
-	@echo "zlib  : $(zlib)"
-	@echo "debug : $(debug)"
+	@echo "avx512 : $(avx512)"
+	@echo "bmi2   : $(bmi2)"
+	@echo "avx2   : $(avx2)"
+	@echo "bmi1   : $(bmi1)"
+	@echo "lzcnt  : $(lzcnt)"
+	@echo "popcnt : $(popcnt)"
+	@echo "ssse3  : $(ssse3)"
+	@echo "sse2   : $(sse2)"
+	@echo "neon   : $(neon)"
+	@echo "arm64  : $(arm64)"
+	@echo "dotprod: $(dotprod)"
+	@echo "zlib   : $(zlib)"
+	@echo "debug  : $(debug)"
 
 net:
 ifeq ($(EVALFILE),$(filter $(EVALFILE),default))

@@ -2020,10 +2020,11 @@ enum ponderstate_t { NO, PONDERING };
 #define CPUAVX512   (1 << 7)
 #define CPUNEON     (1 << 8)
 #define CPUARM64    (1 << 9)
+#define CPUDOTPROD  (1 << 10)
 
 class compilerinfo
 {
-    const string strCpuFeatures[10] = { "sse2","ssse3","popcnt","lzcnt","bmi1","avx2","bmi2", "avx512", "neon", "arm64"};
+    const string strCpuFeatures[11] = { "sse2","ssse3","popcnt","lzcnt","bmi1","avx2","bmi2", "avx512", "neon", "arm64", "dotprod"};
 public:
     const U64 binarySupports = 0ULL
 #ifdef USE_POPCNT
@@ -2052,6 +2053,9 @@ public:
 #endif
 #ifdef USE_ARM64
         | CPUARM64
+#endif
+#ifdef USE_DOTPROD
+        | CPUDOTPROD
 #endif
         ;
 
@@ -2644,7 +2648,6 @@ namespace Simd {
         product = vmlal_s8(product, a1, b1);
         acc = vpadalq_s16(acc, product);
     }
-
 #endif
 }
 

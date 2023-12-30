@@ -20,7 +20,6 @@
 
 using namespace rubichess;
 
-#ifdef CPUTEST
 
 #if defined(_M_X64) || defined(__amd64)
 
@@ -118,8 +117,29 @@ void compilerinfo::GetSystemInfo()
     system = CPUBrandString;
     system += "  Family: " + to_string(cpuFamily) + "  Model: " + to_string(cpuModel);
 
+#ifndef CPUTEST
+    U64 notSupported = binarySupports & ~machineSupports;
+
+    if (notSupported)
+    {
+        cout << "info string Error! Binary is not compatible with this machine. Missing cpu features: " + PrintCpuFeatures(notSupported) + ". Please use correct binary.\n";
+        exit(-1);
+    }
+#endif
+
     if (cpuVendor == CPUVENDORAMD && cpuFamily < 25 && (machineSupports & CPUBMI2))
+    {
+        // No real BMI2 support on AMD cpu before Zen3
         machineSupports ^= CPUBMI2;
+        if (binarySupports & CPUBMI2)
+            cout << "info string Warning! You are running the BMI2 binary on an AMD cpu which is known for bad performance. Please use avx2 binary for best performance.\n";
+    }
+
+#ifndef CPUTEST
+    U64 supportedButunused = machineSupports & ~binarySupports;
+    if (supportedButunused)
+        cout << "info string Warning! Binary not optimal for this machine. Unused cpu features: " + PrintCpuFeatures(supportedButunused) + ". Please use correct binary for best performance.\n";
+#endif
 }
 
 #else
@@ -128,9 +148,14 @@ void compilerinfo::GetSystemInfo()
 #if defined(__arm__)
     system = "ArmV7 platform supprting NEON";
     machineSupports = CPUNEON;
-#elif defined(__aarch64__) 
+#elif defined(__aarch64__)
+#ifdef __ARM_FEATURE_DOTPROD
+    system = "ArmV8.2+DotProd (AArch64) platform supprting NEON";
+    machineSupports = CPUNEON | CPUARM64 | CPUDOTPROD;
+#else
     system = "ArmV8 (AArch64) platform supprting NEON";
     machineSupports = CPUNEON | CPUARM64;
+#endif
 #else
     system = "Some non-x86-64-non-arm platform.";
     machineSupports = 0ULL;
@@ -149,6 +174,7 @@ string compilerinfo::PrintCpuFeatures(U64 f, bool onlyHighest)
 }
 
 
+#ifdef CPUTEST
 
 int main()
 {
