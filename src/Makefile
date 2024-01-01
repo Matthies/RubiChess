@@ -101,20 +101,23 @@ endif
 
 ifeq ($(UNAME_M),armv6l)
 	# FIXME: Find better flags
-	CXXFLAGS += -mthumb -mcpu=native
+	CXXFLAGS += -mcpu=native
 	ARCHFAMILY=arm32
+	bits = 32
 endif
 
 ifeq ($(UNAME_M),armv7l)
 	# FIXME: Hardcoded -mfpu=neon for Neon support
 	CXXFLAGS += -mthumb -march=armv7-a -mfpu=neon
 	ARCHFAMILY=arm32
+	bits = 32
 endif
 
 ifeq ($(UNAME_M),aarch64)
 	# ARM64... any better flags that work with gcc and clang??
 	CXXFLAGS += -mcpu=native
 	ARCHFAMILY=arm64
+	bits = 64
 endif
 
 ifeq ($(UNAME_M),x86_64)
@@ -193,11 +196,11 @@ CPUFLAGS = "popcnt sse2"
 endif
 ifneq (,$(findstring armv6,$(ARCH)))
 CPUFLAGS = ""
-bits = 0
+bits = 32
 endif
 ifneq (,$(findstring armv7,$(ARCH)))
 CPUFLAGS = "neon"
-bits = 0
+bits = 32
 endif
 ifneq (,$(findstring armv8,$(ARCH)))
 CPUFLAGS = "neon arm64"
