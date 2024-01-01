@@ -36,6 +36,7 @@ bits = 64
 PTHREADLIB=-pthread
 
 UNAME_S=$(shell uname -s)
+UNAME_M=$(shell uname -m)
 
 ifeq ($(UNAME_S),Darwin)
 	# Use clang compiler for MacOS
@@ -97,19 +98,26 @@ endif
 	PROFMERGE=llvm-profdata merge -output=$(EXE).profdata $(EXE).clangprof-raw
 endif
 
-ifeq ($(shell uname -m),armv7l)
+
+ifeq ($(UNAME_M),armv6l)
+	# FIXME: Find better flags
+	CXXFLAGS += -mthumb -mcpu=native
+	ARCHFAMILY=arm32
+endif
+
+ifeq ($(UNAME_M),armv7l)
 	# FIXME: Hardcoded -mfpu=neon for Neon support
 	CXXFLAGS += -mthumb -march=armv7-a -mfpu=neon
 	ARCHFAMILY=arm32
 endif
 
-ifeq ($(shell uname -m),aarch64)
+ifeq ($(UNAME_M),aarch64)
 	# ARM64... any better flags that work with gcc and clang??
 	CXXFLAGS += -mcpu=native
 	ARCHFAMILY=arm64
 endif
 
-ifeq ($(shell uname -m),x86_64)
+ifeq ($(UNAME_M),x86_64)
 	ARCHFAMILY=x86
 endif
 
@@ -183,9 +191,13 @@ endif
 ifneq (,$(findstring -sse3-popcnt,$(ARCH)))
 CPUFLAGS = "popcnt sse2"
 endif
+ifneq (,$(findstring armv6,$(ARCH)))
+CPUFLAGS = ""
+bits = 0
+endif
 ifneq (,$(findstring armv7,$(ARCH)))
 CPUFLAGS = "neon"
-bits = 32
+bits = 0
 endif
 ifneq (,$(findstring armv8,$(ARCH)))
 CPUFLAGS = "neon arm64"
@@ -231,7 +243,9 @@ ifneq (,$(findstring dotprod,$(CPUFLAGS)))
 endif
 
 ifeq ($(neon),no)
+ifeq (,$(findstring armv,$(UNAME_M)))
 	ARCHFLAGS = -m$(bits)
+endif
 endif
 ifeq ($(bits),64)
 	CXXFLAGS += -DIS_64BIT
