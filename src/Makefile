@@ -335,7 +335,7 @@ VERSION=$(MAJORVERSION)$(MINORVERSION)
 .PHONY: clean profile-build gcc-profile-make clang-profile-make net arch compile profilebench instrumentedcompile pgo profile-build pgo-rename release_x86 release_arm32 release_arm64 release
 
 default: net
-	@$(MAKE) pgo MESSAGE='Compiling pgo build ...'
+	@$(MAKE) -j1 pgo MESSAGE='Compiling pgo build ...'
 ifneq ($(debug),yes)
 	@$(STRIP) $(EXE)$(EXEEXT)
 endif
@@ -437,7 +437,7 @@ endif
 	@echo Binary $(EXE) created successfully.
 
 profile-build: net
-	@$(MAKE) pgo
+	@$(MAKE) -j1 pgo
 
 pgo-rename: pgo
 	@mv $(EXE) $(EXE)-$(VERSION)_$(ARCH)
