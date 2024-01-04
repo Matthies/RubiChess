@@ -18,7 +18,6 @@ endif
 CPUTEST = cputest
 ARCH = native
 PROFDIR = OPT
-PROFEXE = RubiChess
 STRIP = strip
 
 sse2 = no
@@ -335,8 +334,8 @@ VERSION=$(MAJORVERSION)$(MINORVERSION)
 
 .PHONY: clean profile-build gcc-profile-make clang-profile-make net arch compile profilebench instrumentedcompile pgo profile-build pgo-rename release_x86 release_arm32 release_arm64 release
 
-default: net arch
-	@$(MAKE) compile MESSAGE='Compiling standard build ...'
+default: net
+	@$(MAKE) pgo MESSAGE='Compiling pgo build ...'
 ifneq ($(debug),yes)
 	@$(STRIP) $(EXE)$(EXEEXT)
 endif
@@ -389,7 +388,7 @@ compile: $(ZLIBDIR)/libz.a
 	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(LDFLAGS) $(PTHREADLIB) $(EXTRALDFLAGS) $(GITDEFINE) $(NETDEF) $(NETOBJ) -o $(EXE)
 
 objclean:
-	@$(RM) *.o $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(PROFEXE) $(CPUTEST) $(NETBIN) || @echo $(RM) not available.
+	@$(RM) *.o $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(CPUTEST) $(NETBIN) || @echo $(RM) not available.
 
 libclean:
 	@$(RM) zlib/*.o zlib/*.a || @echo $(RM) not available.
@@ -402,21 +401,21 @@ clean: objclean profileclean
 
 profilebench:
 ifneq ($(COMP),ndk)
-	@echo "Running bench to generate profiling data..." && ./$(PROFEXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo " Profiling successful!") \
-	|| (echo " Profiling failed!" && [ "$(SDE)" != "" ] && echo " Trying to use SDE..." && $(SDE) -icx -- ./$(PROFEXE) -bench 1>/dev/null && [ $$? -eq 0 ] && echo " Profiling successful!") \
-	|| (echo " SDE not available or profiling with SDE failed! Profiling with native build..." && $(MAKE) profileclean && $(MAKE) compile ARCH=native EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Compiling instrumented build ...' && ./$(PROFEXE) -bench 1>/dev/null)
+	@echo "Running bench to generate profiling data..." && ./$(EXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo " Profiling successful!") \
+	|| (echo " Profiling failed!" && [ "$(SDE)" != "" ] && echo " Trying to use SDE..." && $(SDE) -icx -- ./$(EXE) -bench 1>/dev/null && [ $$? -eq 0 ] && echo " Profiling successful!") \
+	|| (echo " SDE not available or profiling with SDE failed! Profiling with native build..." && $(MAKE) profileclean && $(MAKE) compile ARCH=native EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) MESSAGE='Compiling instrumented build ...' && ./$(EXE) -bench 1>/dev/null)
 else
 	@([ "$(ANDROIDDEVICE)" != "" ] && adb disconnect 1>/dev/null && adb connect $(ANDROIDDEVICE) && adb root 1>/dev/null && adb shell "rm -rf /data/RubiChess;mkdir /data/RubiChess" \
 	&& echo "Running bench on $(ANDROIDDEVICE) to generate profiling data..." \
-	&& adb push $(PROFEXE) $(RUBINET) /data/RubiChess 1>/dev/null \
-	&& adb shell "cd /data/RubiChess && ./$(PROFEXE) -bench 1>/dev/null" \
+	&& adb push $(EXE) $(RUBINET) /data/RubiChess 1>/dev/null \
+	&& adb shell "cd /data/RubiChess && ./$(EXE) -bench 1>/dev/null" \
 	&& adb pull /data/RubiChess/$(EXE).clangprof-raw .  1>/dev/null \
 	&& echo " Profiling successful!") \
 	|| ([ "$(ANDROIDEMU)" != "" ] && adb disconnect 1>/dev/null && ($(ANDROIDEMU) -avd $(ARCH) -no-snapshot-load -no-qt 1>/dev/null 2>&1 &) \
 	&& echo "Wait 60 seconds for emulator startup..." && sleep 60 && adb root 1>/dev/null && adb shell "rm -rf /data/RubiChess;mkdir /data/RubiChess" \
 	&& echo "Running bench on emulator $(ARCH) to generate profiling data..." \
-	&& adb push $(PROFEXE) $(RUBINET) /data/RubiChess 1>/dev/null \
-	&& adb shell "cd /data/RubiChess && ./$(PROFEXE) -bench 1>/dev/null" \
+	&& adb push $(EXE) $(RUBINET) /data/RubiChess 1>/dev/null \
+	&& adb shell "cd /data/RubiChess && ./$(EXE) -bench 1>/dev/null" \
 	&& adb pull /data/RubiChess/$(EXE).clangprof-raw .  1>/dev/null \
 	&& adb emu kill 1>/dev/null 2>&1 \
 	&& echo " Profiling successful!") \
@@ -425,11 +424,11 @@ else
 endif
 
 instrumentedcompile:
-	@$(MAKE) compile EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Compiling instrumented build ...'
+	@$(MAKE) compile EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) MESSAGE='Compiling instrumented build ...'
 
 pgo: arch instrumentedcompile profilebench
 	@$(PROFMERGE)
-	@$(RM) ./$(PROFEXE)
+	@$(RM) ./$(EXE)
 	@$(MAKE) compile EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS=$(PGOEXTRALDFLAGS) MESSAGE='Compiling optimized build ...'
 	@$(MAKE) profileclean
 ifneq ($(debug),yes)
@@ -475,8 +474,8 @@ help:
 	@echo "Compile RubiChess with following command:"
 	@echo "make target [ARCH=arch] [COMP=compiler] [EVALFILE=networkfile|default]"
 	@echo "Supported targets:"
-	@echo "build             standard build (default target)"
-	@echo "profile-build     profiling optimized build (pgo)"
+	@echo "build             standard build (use if profile-build fails for siome reason)"
+	@echo "profile-build     profiling optimized build, the default build target"
 	@echo "release           build all pgo optimized binaries CPU family"
 	@echo ""
 	@echo "ARCH should only be set when building a binary for a hardware different from the host"
