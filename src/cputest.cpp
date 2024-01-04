@@ -145,16 +145,24 @@ void compilerinfo::GetSystemInfo()
 #else
 void compilerinfo::GetSystemInfo()
 {
-#if defined(__arm__)
-    system = "ArmV7 platform supprting NEON";
+#if defined(__ARM_ARCH)
+#if __ARM_ARCH <= 6
+    system = "ArmV6 or older platform not supporting any SIMD";
+    machineSupports = 0;
+#elif __ARM_ARCH == 7
+    system = "ArmV7 platform supporting NEON";
     machineSupports = CPUNEON;
 #elif defined(__aarch64__)
 #ifdef __ARM_FEATURE_DOTPROD
-    system = "ArmV8.2+DotProd (AArch64) platform supprting NEON";
+    system = "ArmV8.2+DotProd (AArch64) platform supporting NEON";
     machineSupports = CPUNEON | CPUARM64 | CPUDOTPROD;
 #else
-    system = "ArmV8 (AArch64) platform supprting NEON";
+    system = "ArmV8 (AArch64) platform supporting NEON";
     machineSupports = CPUNEON | CPUARM64;
+#endif
+#else
+    system = "ArmV8 32bit platform supporting NEON"; // does this exist??
+    machineSupports = CPUNEON;
 #endif
 #else
     system = "Some non-x86-64-non-arm platform.";
