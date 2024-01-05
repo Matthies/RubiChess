@@ -1684,8 +1684,9 @@ public:
     int useRootmoveScore;
     int tbPosition;
     uint32_t defaultmove;           // only mainthread needs it  -- fallback if search in time trouble didn't finish a single iteration
-    int castlerights[64];
+    char padding[4];
     int castlerookfrom[4];
+    int castlerights[64];
     U64 castleblockers[4];
     U64 castlekingwalk[4];
 #ifdef SDEBUG
@@ -1694,7 +1695,7 @@ public:
 #endif
 
     // The following part of the chessposition object is reset via resetStats()
-    alignas(64) int16_t history[2][65][64][64];
+    int16_t history[2][65][64][64];
     int16_t counterhistory[14][64][14 * 64];
     int16_t tacticalhst[7][64][6];
     uint32_t countermove[14][64];
