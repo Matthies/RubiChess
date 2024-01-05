@@ -474,7 +474,7 @@ help:
 	@echo "Compile RubiChess with following command:"
 	@echo "make target [ARCH=arch] [COMP=compiler] [EVALFILE=networkfile|default]"
 	@echo "Supported targets:"
-	@echo "build             standard build (use if profile-build fails for siome reason)"
+	@echo "build             standard build (use if profile-build fails for some reason)"
 	@echo "profile-build     profiling optimized build, the default build target"
 	@echo "release           build all pgo optimized binaries CPU family"
 	@echo ""
