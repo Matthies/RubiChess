@@ -4,7 +4,10 @@
 
 MAKEFLAGS += --no-print-directory
 
+# Some variables for my private build system
 ANDROIDEMU = ~/Android/Sdk/emulator/emulator
+ANDROIDDEVICE = 192.168.1.167:5555
+SDE = ~/sde/sde
 
 ifeq ($(OS), Windows_NT)
 	EXEEXT=.exe
@@ -15,7 +18,6 @@ endif
 CPUTEST = cputest
 ARCH = native
 PROFDIR = OPT
-PROFEXE = RubiChess
 STRIP = strip
 
 sse2 = no
@@ -28,6 +30,7 @@ bmi2 = no
 avx512 = no
 neon = no
 arm64 = no
+dotprod = no
 zlib = no
 debug = no
 bits = 64
@@ -35,6 +38,7 @@ bits = 64
 PTHREADLIB=-pthread
 
 UNAME_S=$(shell uname -s)
+UNAME_M=$(shell uname -m)
 
 ifeq ($(UNAME_S),Darwin)
 	# Use clang compiler for MacOS
@@ -96,19 +100,29 @@ endif
 	PROFMERGE=llvm-profdata merge -output=$(EXE).profdata $(EXE).clangprof-raw
 endif
 
-ifeq ($(shell uname -m),armv7l)
+
+ifeq ($(UNAME_M),armv6l)
+	# FIXME: Find better flags
+	CXXFLAGS += -mcpu=native
+	ARCHFAMILY=arm32
+	bits = 32
+endif
+
+ifeq ($(UNAME_M),armv7l)
 	# FIXME: Hardcoded -mfpu=neon for Neon support
 	CXXFLAGS += -mthumb -march=armv7-a -mfpu=neon
 	ARCHFAMILY=arm32
+	bits = 32
 endif
 
-ifeq ($(shell uname -m),aarch64)
+ifeq ($(UNAME_M),aarch64)
 	# ARM64... any better flags that work with gcc and clang??
 	CXXFLAGS += -mcpu=native
 	ARCHFAMILY=arm64
+	bits = 64
 endif
 
-ifeq ($(shell uname -m),x86_64)
+ifeq ($(UNAME_M),x86_64)
 	ARCHFAMILY=x86
 endif
 
@@ -122,9 +136,12 @@ ifeq ($(COMP),ndk)
 		MYCC=armv7a-linux-androideabi19-clang
 		CXXFLAGS += -mthumb -march=armv7-a -mfloat-abi=softfp -mfpu=neon
 	endif
-	ifeq ($(ARCH),armv8)
+	ifneq (,$(findstring armv8,$(ARCH)))
 		CXX=aarch64-linux-android21-clang++
 		MYCC=aarch64-linux-android21-clang
+		ifneq (,$(findstring -dotprod,$(ARCH)))
+			CXXFLAGS += -mcpu=cortex-a53+dotprod
+		endif
 	endif
 	ifeq ($(ARCH),x86-32)
 		CXX=i686-linux-android21-clang++
@@ -182,6 +199,10 @@ endif
 ifneq (,$(findstring -sse3-popcnt,$(ARCH)))
 CPUFLAGS = "popcnt sse2"
 endif
+ifneq (,$(findstring armv6,$(ARCH)))
+CPUFLAGS = ""
+bits = 32
+endif
 ifneq (,$(findstring armv7,$(ARCH)))
 CPUFLAGS = "neon"
 bits = 32
@@ -190,8 +211,10 @@ ifneq (,$(findstring armv8,$(ARCH)))
 CPUFLAGS = "neon arm64"
 bits = 64
 endif
+ifneq (,$(findstring -dotprod,$(ARCH)))
+CPUFLAGS += " dotprod"
 endif
-
+endif
 
 ifneq (,$(findstring avx512,$(CPUFLAGS)))
 	avx512 = yes
@@ -223,9 +246,14 @@ endif
 ifneq (,$(findstring arm64,$(CPUFLAGS)))
 	arm64 = yes
 endif
+ifneq (,$(findstring dotprod,$(CPUFLAGS)))
+	dotprod = yes
+endif
 
 ifeq ($(neon),no)
+ifeq (,$(findstring armv,$(UNAME_M)))
 	ARCHFLAGS = -m$(bits)
+endif
 endif
 ifeq ($(bits),64)
 	CXXFLAGS += -DIS_64BIT
@@ -257,6 +285,9 @@ ifeq ($(neon),yes)
 endif
 ifeq ($(arm64),yes)
 	ARCHFLAGS += -DUSE_ARM64
+endif
+ifeq ($(dotprod),yes)
+	ARCHFLAGS += -DUSE_DOTPROD
 endif
 ifeq ($(zlib),yes)
 	CXXFLAGS += -DUSE_ZLIB
@@ -301,10 +332,10 @@ endif
 MINORVERSION = ""
 VERSION=$(MAJORVERSION)$(MINORVERSION)
 
-.PHONY: clean profile-build gcc-profile-make clang-profile-make net arch compile pgo profile-build pgo-rename release_x86 release_arm32 release_arm64 release
+.PHONY: clean profile-build gcc-profile-make clang-profile-make net arch compile profilebench instrumentedcompile pgo profile-build pgo-rename release_x86 release_arm32 release_arm64 release
 
-default: net arch
-	@$(MAKE) compile MESSAGE='Compiling standard build ...'
+default: net
+	@$(MAKE) -j1 pgo MESSAGE='Compiling pgo build ...'
 ifneq ($(debug),yes)
 	@$(STRIP) $(EXE)$(EXEEXT)
 endif
@@ -318,18 +349,19 @@ arch: libclean
 	@echo "Bits: $(bits)"
 	@echo "CPU features:"
 	@echo "============="
-	@echo "avx512: $(avx512)"
-	@echo "bmi2  : $(bmi2)"
-	@echo "avx2  : $(avx2)"
-	@echo "bmi1  : $(bmi1)"
-	@echo "lzcnt : $(lzcnt)"
-	@echo "popcnt: $(popcnt)"
-	@echo "ssse3 : $(ssse3)"
-	@echo "sse2  : $(sse2)"
-	@echo "neon  : $(neon)"
-	@echo "arm64 : $(arm64)"
-	@echo "zlib  : $(zlib)"
-	@echo "debug : $(debug)"
+	@echo "avx512 : $(avx512)"
+	@echo "bmi2   : $(bmi2)"
+	@echo "avx2   : $(avx2)"
+	@echo "bmi1   : $(bmi1)"
+	@echo "lzcnt  : $(lzcnt)"
+	@echo "popcnt : $(popcnt)"
+	@echo "ssse3  : $(ssse3)"
+	@echo "sse2   : $(sse2)"
+	@echo "neon   : $(neon)"
+	@echo "arm64  : $(arm64)"
+	@echo "dotprod: $(dotprod)"
+	@echo "zlib   : $(zlib)"
+	@echo "debug  : $(debug)"
 
 net:
 ifeq ($(EVALFILE),$(filter $(EVALFILE),default))
@@ -356,7 +388,7 @@ compile: $(ZLIBDIR)/libz.a
 	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(LDFLAGS) $(PTHREADLIB) $(EXTRALDFLAGS) $(GITDEFINE) $(NETDEF) $(NETOBJ) -o $(EXE)
 
 objclean:
-	@$(RM) *.o $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(PROFEXE) $(CPUTEST) $(NETBIN) || @echo $(RM) not available.
+	@$(RM) *.o $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(CPUTEST) $(NETBIN) || @echo $(RM) not available.
 
 libclean:
 	@$(RM) zlib/*.o zlib/*.a || @echo $(RM) not available.
@@ -367,29 +399,36 @@ profileclean: libclean
 
 clean: objclean profileclean
 
-pgo: arch
-	@$(MAKE) compile EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Compiling instrumented build ...'
-ifeq ($(COMP),ndk)
-	@if !(test -f $(ANDROIDEMU)); then echo "Android emulator not found at $(ANDROIDEMU). Exit!"; exit 1; fi
-	@$(ANDROIDEMU) -avd $(ARCH) -no-snapshot-load -no-qt 1>/dev/null &
-	@echo Wait 60 seconds for emulator startup...
-	@sleep 60
-	@adb shell "rm -rf /data/RubiChess"
-	@adb shell "mkdir /data/RubiChess"
-	@adb push $(PROFEXE) /data/RubiChess 1>/dev/null
-	@adb push $(RUBINET) /data/RubiChess 1>/dev/null
-	@echo "Running bench on emulator to generate profiling data..."
-	@adb shell "cd /data/RubiChess && ./$(PROFEXE) -bench 1>/dev/null"
-	@adb pull /data/RubiChess/$(EXE).clangprof-raw .  1>/dev/null
-	@if test -f $(EXE).clangprof-raw; then echo "$(RUBINET) already exists."; else echo "Downloading $(RUBINET)..."; $(WGETCMD) $(NETURL)$(RUBINET) > $(RUBINET); fi;
-	@adb emu kill
+profilebench:
+ifneq ($(COMP),ndk)
+	@echo "Running bench to generate profiling data..." && ./$(EXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo " Profiling successful!") \
+	|| (echo " Profiling failed!" && [ "$(SDE)" != "" ] && echo " Trying to use SDE..." && $(SDE) -icx -- ./$(EXE) -bench 1>/dev/null && [ $$? -eq 0 ] && echo " Profiling successful!") \
+	|| (echo " SDE not available or profiling with SDE failed! Profiling with native build..." && $(MAKE) profileclean && $(MAKE) compile ARCH=native EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) MESSAGE='Compiling instrumented build ...' && ./$(EXE) -bench 1>/dev/null)
 else
-	@echo "Running bench to generate profiling data..." && ./$(PROFEXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo " Profiling successful!") \
-	|| (echo " Profiling failed!" && [ "$(SDE)" != "" ] && echo " Trying to use SDE..." && $(SDE) -icx -- ./$(PROFEXE) -bench 1>/dev/null && [ $$? -eq 0 ] && echo " Profiling successful!") \
-	|| (echo " SDE not available or profiling with SDE failed! Profiling with native build..." && $(MAKE) profileclean && $(MAKE) compile ARCH=native EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Compiling instrumented build ...' && ./$(PROFEXE) -bench 1>/dev/null)
+	@([ "$(ANDROIDDEVICE)" != "" ] && adb disconnect 1>/dev/null && adb connect $(ANDROIDDEVICE) && adb root 1>/dev/null && adb shell "rm -rf /data/RubiChess;mkdir /data/RubiChess" \
+	&& echo "Running bench on $(ANDROIDDEVICE) to generate profiling data..." \
+	&& adb push $(EXE) $(RUBINET) /data/RubiChess 1>/dev/null \
+	&& adb shell "cd /data/RubiChess && ./$(EXE) -bench 1>/dev/null" \
+	&& adb pull /data/RubiChess/$(EXE).clangprof-raw .  1>/dev/null \
+	&& echo " Profiling successful!") \
+	|| ([ "$(ANDROIDEMU)" != "" ] && adb disconnect 1>/dev/null && ($(ANDROIDEMU) -avd $(ARCH) -no-snapshot-load -no-qt 1>/dev/null 2>&1 &) \
+	&& echo "Wait 60 seconds for emulator startup..." && sleep 60 && adb root 1>/dev/null && adb shell "rm -rf /data/RubiChess;mkdir /data/RubiChess" \
+	&& echo "Running bench on emulator $(ARCH) to generate profiling data..." \
+	&& adb push $(EXE) $(RUBINET) /data/RubiChess 1>/dev/null \
+	&& adb shell "cd /data/RubiChess && ./$(EXE) -bench 1>/dev/null" \
+	&& adb pull /data/RubiChess/$(EXE).clangprof-raw .  1>/dev/null \
+	&& adb emu kill 1>/dev/null 2>&1 \
+	&& echo " Profiling successful!") \
+	|| echo " Profiling failed!"
+	@[ "$(ANDROIDEMU)" != "" ] && (adb emu kill 1>/dev/null 2>&1 || adb disconnect)
 endif
+
+instrumentedcompile:
+	@$(MAKE) compile EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) MESSAGE='Compiling instrumented build ...'
+
+pgo: arch instrumentedcompile profilebench
 	@$(PROFMERGE)
-	@$(RM) ./$(PROFEXE)
+	@$(RM) ./$(EXE)
 	@$(MAKE) compile EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS=$(PGOEXTRALDFLAGS) MESSAGE='Compiling optimized build ...'
 	@$(MAKE) profileclean
 ifneq ($(debug),yes)
@@ -398,7 +437,7 @@ endif
 	@echo Binary $(EXE) created successfully.
 
 profile-build: net
-	@$(MAKE) pgo
+	@$(MAKE) -j1 pgo
 
 pgo-rename: pgo
 	@mv $(EXE) $(EXE)-$(VERSION)_$(ARCH)
@@ -421,6 +460,7 @@ release_arm32:
 	@$(MAKE) pgo-rename  ARCH=armv7
 
 release_android:
+	@$(MAKE) pgo-rename  ARCH=armv8-dotprod COMP=$(COMP)
 	@$(MAKE) pgo-rename  ARCH=armv8 COMP=$(COMP)
 	@$(MAKE) pgo-rename  ARCH=armv7 COMP=$(COMP)
 	@$(MAKE) pgo-rename  ARCH=x86-64 COMP=$(COMP)
@@ -434,8 +474,8 @@ help:
 	@echo "Compile RubiChess with following command:"
 	@echo "make target [ARCH=arch] [COMP=compiler] [EVALFILE=networkfile|default]"
 	@echo "Supported targets:"
-	@echo "build             standard build (default target)"
-	@echo "profile-build     profiling optimized build (pgo)"
+	@echo "build             standard build (use if profile-build fails for some reason)"
+	@echo "profile-build     profiling optimized build, the default build target"
 	@echo "release           build all pgo optimized binaries CPU family"
 	@echo ""
 	@echo "ARCH should only be set when building a binary for a hardware different from the host"

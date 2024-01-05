@@ -2021,10 +2021,11 @@ enum ponderstate_t { NO, PONDERING };
 #define CPUAVX512   (1 << 7)
 #define CPUNEON     (1 << 8)
 #define CPUARM64    (1 << 9)
+#define CPUDOTPROD  (1 << 10)
 
 class compilerinfo
 {
-    const string strCpuFeatures[10] = { "sse2","ssse3","popcnt","lzcnt","bmi1","avx2","bmi2", "avx512", "neon", "arm64"};
+    const string strCpuFeatures[11] = { "sse2","ssse3","popcnt","lzcnt","bmi1","avx2","bmi2", "avx512", "neon", "arm64", "dotprod"};
 public:
     const U64 binarySupports = 0ULL
 #ifdef USE_POPCNT
@@ -2053,6 +2054,9 @@ public:
 #endif
 #ifdef USE_ARM64
         | CPUARM64
+#endif
+#ifdef USE_DOTPROD
+        | CPUDOTPROD
 #endif
         ;
 
@@ -2267,57 +2271,57 @@ struct searchparamset {
 #ifdef EVALTUNE
     searchparam SP(deltapruningmargin, 4000);
 #else
-    searchparam SP(deltapruningmargin, 160);
+    searchparam SP(deltapruningmargin, 171);
 #endif
     // LMR table
-    searchparam SP(lmrlogf0, 150);
-    searchparam SP(lmrf0, 60);
-    searchparam SP(lmrlogf1, 150);
-    searchparam SP(lmrf1, 43);
+    searchparam SP(lmrlogf0, 166);
+    searchparam SP(lmrf0, 44);
+    searchparam SP(lmrlogf1, 131);
+    searchparam SP(lmrf1, 30);
     searchparam SP(lmrmindepth, 3);
-    searchparam SP(lmrstatsratio, 870);
-    searchparam SP(lmropponentmovecount, 15);
+    searchparam SP(lmrstatsratio, 821);
+    searchparam SP(lmropponentmovecount, 17);
     // LMP table
-    searchparam SP(lmpf0, 59);
-    searchparam SP(lmppow0, 48);
-    searchparam SP(lmpf1, 74);
-    searchparam SP(lmppow1, 170);
+    searchparam SP(lmpf0, 43);
+    searchparam SP(lmppow0, 44);
+    searchparam SP(lmpf1, 67);
+    searchparam SP(lmppow1, 161);
     // Razoring
-    searchparam SP(razormargin, 250);
-    searchparam SP(razordepthfactor, 50);
+    searchparam SP(razormargin, 282);
+    searchparam SP(razordepthfactor, 51);
     //futility pruning
-    searchparam SP(futilityreversedepthfactor, 70);
-    searchparam SP(futilityreverseimproved, 20);
-    searchparam SP(futilitymargin, 10);
+    searchparam SP(futilityreversedepthfactor, 68);
+    searchparam SP(futilityreverseimproved, 18);
+    searchparam SP(futilitymargin, 12);
     searchparam SP(futilitymarginperdepth, 59);
     // null move
     searchparam SP(nmmindepth, 2);
-    searchparam SP(nmmredbase, 4);
+    searchparam SP(nmmredbase, 2);
     searchparam SP(nmmreddepthratio, 6);
-    searchparam SP(nmmredevalratio, 150);
-    searchparam SP(nmmredpvfactor, 2);
+    searchparam SP(nmmredevalratio, 130);
+    searchparam SP(nmmredpvfactor, 3);
     searchparam SP(nmverificationdepth, 12);
     //Probcut
-    searchparam SP(probcutmindepth, 5);
-    searchparam SP(probcutmargin, 100);
+    searchparam SP(probcutmindepth, 6);
+    searchparam SP(probcutmargin, 105);
     // Threat pruning
-    searchparam SP(threatprunemargin, 30);
-    searchparam SP(threatprunemarginimprove, 0);
+    searchparam SP(threatprunemargin, 20);
+    searchparam SP(threatprunemarginimprove, 1);
 
     // No hashmovereduction
     searchparam SP(nohashreductionmindepth, 3);
     // SEE prune
-    searchparam SP(seeprunemarginperdepth, -20);
-    searchparam SP(seeprunequietfactor, 4);
+    searchparam SP(seeprunemarginperdepth, -14);
+    searchparam SP(seeprunequietfactor, 3);
     // Singular extension
     searchparam SP(singularmindepth, 8);
-    searchparam SP(singularmarginperdepth, 2);
+    searchparam SP(singularmarginperdepth, 0);
     // History extension
-    searchparam SP(histextminthreshold, 9);
-    searchparam SP(histextmaxthreshold, 15);
+    searchparam SP(histextminthreshold, 8);
+    searchparam SP(histextmaxthreshold, 14);
     searchparam SP(aspincratio, 4);
     searchparam SP(aspincbase, 2);
-    searchparam SP(aspinitialdelta, 8);
+    searchparam SP(aspinitialdelta, 11);
 };
 
 extern SPSCONST searchparamset sps;
@@ -2645,7 +2649,6 @@ namespace Simd {
         product = vmlal_s8(product, a1, b1);
         acc = vpadalq_s16(acc, product);
     }
-
 #endif
 }
 

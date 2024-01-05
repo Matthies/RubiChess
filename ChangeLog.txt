@@ -1,5 +1,12 @@
 ChangeLog
 =========
+202401xx (release 2024-01-xx) :
+    - Tuned all search parameters with OpenBench's spsa option
+    - Various speed improvements by fixing and refining accumulator updates
+    - Improve mate finding with and without using tablebases
+    - Fix output of MultiPV mode
+    - Some few search improvements
+    - ARMv6 and ARMv8.2+dotprod now supported
 
 20230918 (release 2023-09-18) :
     - Allows to play various NNUE architectures and input dimensions
