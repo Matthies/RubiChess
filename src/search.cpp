@@ -1058,7 +1058,7 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
             else if (GETCAPTURE(m->code) != BLANK)
                 m->value = (m->code & BADSEEFLAG ? -1 : 1) * (mvv[GETCAPTURE(m->code) >> 1] | lva[GETPIECE(m->code) >> 1]);
             else
-                m->value = history[state & S2MMASK][threatSquare][GETFROM(m->code)][GETCORRECTTO(m->code)] + pawnhistory[pawnhash & 0x1ff][GETPIECE(m->code) >> 1][GETCORRECTTO(m->code)] / 4;
+                m->value = history[state & S2MMASK][threatSquare][GETFROM(m->code)][GETCORRECTTO(m->code)] + pawnhistory[pawnhash & 0x1ff][GETPIECE(m->code) >> 1][GETCORRECTTO(m->code)] * 4;
             if (isMultiPV) {
                 if (multipvtable[0][0] == m->code)
                     m->value = PVVAL;
