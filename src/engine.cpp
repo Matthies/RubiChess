@@ -733,6 +733,12 @@ void engine::communicate(string inputstring)
             case TUNE:
                 parseTune(commandargs);
                 break;
+#else
+#ifdef SEARCHOPTIONS
+            case TUNE:
+                ucioptions.Print(true);;
+                break;
+#endif
 #endif
             case EXPORT:
                 NnueWriteNet(commandargs);
@@ -1038,11 +1044,14 @@ void ucioptions_t::Set(string n, string v, bool force)
 }
 
 
-void ucioptions_t::Print()
+void ucioptions_t::Print(bool bTune)
 {
     for (optionmapiterator it = optionmap.begin(); it != optionmap.end(); it++)
     {
         ucioption_t *op = &(it->second);
+        if (bTune && op->type != ucisearch)
+            continue;
+
         string optionStr = "option name " + op->name + " type ";
 
         switch (op->type)
@@ -1068,7 +1077,13 @@ void ucioptions_t::Print()
 #endif
 #ifdef SEARCHOPTIONS
         case ucisearch:
-            guiCom << optionStr + "string default " + op->def << "\n";
+            if (!bTune) {
+                guiCom << optionStr + "string default " + op->def << "\n";
+            }
+            else {
+                double c_end = max(0.5, (op->max - op->min) / 20.0);
+                guiCom << op->name << ", int, " << fixed << setprecision(1) << setw(1) << op->def << ".0, " << (double)op->min << ", " << (double)op->max << ", " << std::setprecision(2) << c_end << ", 0.002\n";
+            }
             break;
 #endif
         case ucicombo:
