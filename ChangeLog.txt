@@ -1,7 +1,7 @@
 ChangeLog
 =========
-202401xx (release 2024-01-xx) :
-    - Tuned all search parameters with OpenBench's spsa option
+20240112 (release 2024-01-12) :
+    - Improved search parameters with OpenBench's spsa tuner
     - Various speed improvements by fixing and refining accumulator updates
     - Improve mate finding with and without using tablebases
     - Fix output of MultiPV mode
