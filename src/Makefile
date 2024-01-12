@@ -132,8 +132,8 @@ ifeq ($(COMP),ndk)
 	AR=llvm-ar
 	EXEEXT=
 	ifeq ($(ARCH),armv7)
-		CXX=armv7a-linux-androideabi19-clang++
-		MYCC=armv7a-linux-androideabi19-clang
+		CXX=armv7a-linux-androideabi21-clang++
+		MYCC=armv7a-linux-androideabi21-clang
 		CXXFLAGS += -mthumb -march=armv7-a -mfloat-abi=softfp -mfpu=neon
 	endif
 	ifneq (,$(findstring armv8,$(ARCH)))
