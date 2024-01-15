@@ -340,7 +340,8 @@ ifneq ($(debug),yes)
 	@$(STRIP) $(EXE)$(EXEEXT)
 endif
 
-build: default
+build: net arch
+	@$(MAKE) compile MESSAGE='Compiling standard build ...'
 
 arch: libclean
 	@echo
