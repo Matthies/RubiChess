@@ -456,6 +456,9 @@ release_x86:
 
 release_arm64:
 	@$(MAKE) pgo-rename  ARCH=armv8
+ifeq ($(dotprod),yes)
+	@$(MAKE) pgo-rename  ARCH=armv8-dotprod
+endif
 
 release_arm32:
 	@$(MAKE) pgo-rename  ARCH=armv7
