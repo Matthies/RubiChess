@@ -1522,6 +1522,7 @@ extern int squareDistance[64][64];
 struct chessmovestack
 {
     int state;
+    uint8_t doubleextensions;
     uint8_t ept;
     uint8_t kingpos[2];
     U64 hash;
@@ -1660,6 +1661,7 @@ public:
 
     // The following block is mapped/copied to the movestack, so its important to keep the order
     int state;
+    uint8_t doubleextensions;
     uint8_t ept;
     uint8_t kingpos[2];
     U64 hash;
