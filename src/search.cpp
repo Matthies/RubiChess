@@ -742,7 +742,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
                     // Move is singular
                     STATISTICSINC(extend_singular);
 
-                    if (!PVNode  && redScore < sBeta - 20 && doubleextensions <= 6) {
+                    if (!PVNode  && redScore < sBeta - sps.singularmarginfor2 && doubleextensions <= 6) {
                         doubleextensions++;
                         extendMove = 2;
                     }
