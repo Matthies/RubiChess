@@ -1522,6 +1522,7 @@ extern int squareDistance[64][64];
 struct chessmovestack
 {
     int state;
+    uint8_t doubleextensions;
     uint8_t ept;
     uint8_t kingpos[2];
     U64 hash;
@@ -1660,6 +1661,7 @@ public:
 
     // The following block is mapped/copied to the movestack, so its important to keep the order
     int state;
+    uint8_t doubleextensions;
     uint8_t ept;
     uint8_t kingpos[2];
     U64 hash;
@@ -2319,6 +2321,7 @@ struct searchparamset {
     // Singular extension
     searchparam SP(singularmindepth, 7, 2, 16);
     searchparam SP(singularmarginperdepth, 0, 0, 20);
+    searchparam SP(singularmarginfor2, 20, 0, 80);
     // History extension
     searchparam SP(histextminthreshold, 9, 6, 11);
     searchparam SP(histextmaxthreshold, 15, 12, 17);
