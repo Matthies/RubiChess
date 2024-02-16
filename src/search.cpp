@@ -743,7 +743,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
                     STATISTICSINC(extend_singular);
                     if (!PVNode && doubleextensions <= 6)
                     {
-                        if (redScore < sBeta - sps.singularmarginfor3) {
+                        if (redScore < sBeta - sps.singularmarginfor3 && !ISCAPTURE(mc)) {
                             doubleextensions++;
                             extendMove = 3;
                         }
