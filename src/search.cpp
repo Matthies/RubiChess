@@ -741,6 +741,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
                 {
                     // Move is singular
                     STATISTICSINC(extend_singular);
+                    extendMove = 1;
                     if (!PVNode && doubleextensions <= 6)
                     {
                         if (redScore < sBeta - sps.singularmarginfor3 && !ISCAPTURE(mc)) {
@@ -751,9 +752,6 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
                             doubleextensions++;
                             extendMove = 2;
                         }
-                    }
-                    else {
-                        extendMove = 1;
                     }
                 }
                 else if (bestknownscore >= beta && sBeta >= beta)
