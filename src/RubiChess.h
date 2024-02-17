@@ -2321,7 +2321,7 @@ struct searchparamset {
     // Singular extension
     searchparam SP(singularmindepth, 7, 2, 16);
     searchparam SP(singularmarginperdepth, 0, 0, 20);
-    searchparam SP(singularmarginfor2, 25, 0, 80);
+    searchparam SP(singularmarginfor2, 35, 0, 80);
     // History extension
     searchparam SP(histextminthreshold, 9, 6, 11);
     searchparam SP(histextmaxthreshold, 15, 12, 17);
