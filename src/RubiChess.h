@@ -1631,7 +1631,7 @@ enum AttackType { FREE, OCCUPIED, OCCUPIEDANDKING };
 struct positioneval {
     pawnhashentry *phentry;
     Materialhashentry *mhentry;
-    int kingattackpiececount[2][7] = { { 0 } };
+    int kingattackpiececount[2][8] = { { 0 } };
     int kingringattacks[2] = { 0 };
     int kingattackers[2];
 };
@@ -1653,9 +1653,9 @@ public:
     // everything up to member 'history' is copied from rootpos to every thread's position in engine::prepareThreads()
     int ply;
     int piececount;
-    U64 piece00[14];
+    U64 piece00[16];
     U64 attackedBy2[2];
-    U64 attackedBy[2][7];
+    U64 attackedBy[2][8];
     uint8_t mailbox[BOARDSIZE];
     U64 threats;
 
@@ -1697,9 +1697,9 @@ public:
 
     // The following part of the chessposition object is reset via resetStats()
     int16_t history[2][65][64][64];
-    int16_t counterhistory[14][64][14 * 64];
-    int16_t tacticalhst[7][64][6];
-    uint32_t countermove[14][64];
+    int16_t counterhistory[16][64][16 * 64];
+    int16_t tacticalhst[8][64][8];
+    uint32_t countermove[16][64];
     int16_t* prerootconthistptr[6];
     int16_t* conthistptr[MAXDEPTH];
     int he_threshold;
