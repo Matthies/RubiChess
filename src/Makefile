@@ -54,7 +54,7 @@ ifeq ($(EXE),)
 	EXE=RubiChess
 endif
 
-CXXFLAGS=-std=c++11 -Wall -pedantic -Wextra -Wshadow
+CXXFLAGS=-std=c++20 -Wall -pedantic -Wextra -Wshadow
 CFLAGS=-Wall -pedantic -Wextra -Wshadow -Wno-implicit-function-declaration
 
 

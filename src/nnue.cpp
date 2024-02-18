@@ -672,14 +672,14 @@ typedef uint16x8_t vec128_t;
 #if defined(USE_PROPAGATESPARSE)
 alignas(64) static const array<array<uint16_t, 8>, 256> lookup_indices = []() {
     array<array<uint16_t, 8>, 256> v{};
-    for (int i = 0; i < 256; ++i)
+    for (unsigned int i = 0; i < 256; ++i)
     {
-        int j = i;
+        unsigned int j = i;
         int k = 0;
         while (j)
         {
             unsigned int lsbIndex;
-            GETLSB32(lsbIndex, j);
+            GETLSB(lsbIndex, j);
             j &= j - 1;
             v[i][k++] = lsbIndex;
         }
