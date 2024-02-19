@@ -228,7 +228,7 @@ inline int pullMsb(U64* x) {
 inline int pullLsb(U64* x) {
     unsigned int i;
     GETLSB(i, *x);
-    *x ^= BITSET(i);
+    *x &= *x - 1;
     return i;
 }
 
