@@ -25,10 +25,20 @@ CXX="$(CompilerBaseDir)\bin\clang-cl.exe"
 LD="$(CompilerBaseDir)\bin\lld-link.exe"
 PROFDATATOOLEXE="$(CompilerBaseDir)\bin\llvm-profdata.exe"
 !ELSEIF "$(COMP)" == "icx"
-CompilerBaseDir=C:\Program Files (x86)\Intel\oneAPI\compiler\latest\windows
+CompilerBaseDir=C:\Program Files (x86)\Intel\oneAPI\compiler\latest
+!IF EXIST("$(CompilerBaseDir)\windows")				# Path up to Intel oneAPI 2023.1
+CompilerBaseDir=$(CompilerBaseDir)\windows
+!ENDIF
 CXX="$(CompilerBaseDir)\bin\icx-cl.exe"
-LD="$(CompilerBaseDir)\bin-llvm\lld-link.exe"
-PROFDATATOOLEXE="$(CompilerBaseDir)\bin-llvm\llvm-profdata.exe"
+!IF EXISTS("$(CompilerBaseDir)\bin-llvm")			# Path up to Intel oneAPI 2023.1
+CompilerClangDir=$(CompilerBaseDir)\bin-llvm
+!ELSEIF EXISTS("$(CompilerBaseDir)\bin\compiler")	# Path of Intel oneAPI 2024.0
+CompilerClangDir=$(CompilerBaseDir)\bin\compiler
+!ELSE
+!ERROR Folder with Linker tools not found.
+!ENDIF
+LD="$(CompilerClangDir)\lld-link.exe"
+PROFDATATOOLEXE="$(CompilerClangDir)\llvm-profdata.exe"
 !ELSE
 !ERROR Not supported compiler $(COMP)
 !ENDIF
@@ -38,7 +48,11 @@ OBJ=*.obj
 RELDIR=Release-clang
 ZLIBDIR=zlib
 CXXFLAGS=/EHsc /O2 /Oi /Ot /c -flto -fuse-ld=lld
+!IF "$(COMP)" == "clang"
+CPPFLAGS=/std:c++20
+!ELSE
 CPPFLAGS=-Qstd=c++20
+!ENDIF
 LDFLAGS=/OPT:REF /OPT:ICF advapi32.lib
 PROFEXE=RubiChess-WinProf
 NETURL=https://github.com/Matthies/NN/raw/main/
@@ -104,7 +118,7 @@ ARCH=native
 
 # nativeflags
 !IF "$(ARCH)"=="native" && !EXIST($(NATIVEFLAGS)) && "$(VSCMD_ARG_HOST_ARCH)"=="$(VSCMD_ARG_TGT_ARCH)"
-!IF [$(CXX) -Qstd=c++20 /GX -DCPUTEST $(CPUTEST).cpp -o $(CPUTEST) && @$(CPUTEST) > $(NATIVEFLAGS)] != 0
+!IF [$(CXX) $(CPPFLAGS) /GX -DCPUTEST $(CPUTEST).cpp -o $(CPUTEST) && @$(CPUTEST) > $(NATIVEFLAGS)] != 0
 !ERROR Cannot compile and/or run $(CPUTEST) to determine cpu flags on this machine!
 !ENDIF
 !ENDIF
