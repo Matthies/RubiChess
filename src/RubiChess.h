@@ -2328,6 +2328,10 @@ struct searchparamset {
     searchparam SP(aspincratio, 5, 1, 10);
     searchparam SP(aspincbase, 1, 1, 10);
     searchparam SP(aspinitialdelta, 11, 1, 20);
+    // Extension guard
+    searchparam SP(extguarddoubleext, 6, 1, 15);
+    searchparam SP(extguardcheckext, 6, 1, 15);
+
 };
 
 extern SPSCONST searchparamset sps;

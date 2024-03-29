@@ -496,7 +496,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
     }
 
     // Check extension
-    if (isCheckbb && extensionguard < 6 * 16)
+    if (isCheckbb && extensionguard < sps.extguardcheckext * 16)
     {
         extensionguard += 16;
         extendall = 1;
@@ -743,7 +743,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
                     // Move is singular
                     STATISTICSINC(extend_singular);
 
-                    if (!PVNode  && redScore < sBeta - sps.singularmarginfor2 && (extensionguard & 0xf) <= 6) {
+                    if (!PVNode  && redScore < sBeta - sps.singularmarginfor2 && (extensionguard & 0xf) <= sps.extguarddoubleext) {
                         extensionguard++;
                         extendMove = 2;
                     }
