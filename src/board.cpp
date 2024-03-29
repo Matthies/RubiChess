@@ -273,7 +273,7 @@ int chessposition::getFromFen(const char* sFen)
     lastnullmove = -1;
     ply = 0;
     piececount = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]);
-    doubleextensions = 0;
+    extensionguard = 0;
     return 0;
 }
 
