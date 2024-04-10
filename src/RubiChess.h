@@ -906,6 +906,45 @@ public:
 template <int ftdims, int inputdims, int psqtbuckets>
 class NnueFeatureTransformer : public NnueLayer
 {
+#ifdef USE_AVX512
+    static constexpr unsigned int di = 16;
+#else
+    static constexpr unsigned int di = 8;
+#endif
+
+    static constexpr void order_packs(uint64_t* v) {
+#if defined(USE_AVX512) // _mm512_packs_epi16 ordering
+        uint64_t tmp0 = v[2];
+        uint64_t tmp1 = v[3];
+        v[2] = v[8], v[3] = v[9];
+        v[8] = v[4], v[9] = v[5];
+        v[4] = tmp0, v[5] = tmp1;
+        tmp0 = v[6], tmp1 = v[7];
+        v[6] = v[10], v[7] = v[11];
+        v[10] = v[12], v[11] = v[13];
+        v[12] = tmp0, v[13] = tmp1;
+#elif defined(USE_AVX2) // _mm256_packs_epi16 ordering
+        swap(v[2], v[4]);
+        swap(v[3], v[5]);
+#endif
+    }
+
+    static constexpr void inverse_order_packs(uint64_t* v) {
+#if defined(USE_AVX512) // Inverse _mm512_packs_epi16 ordering
+        uint64_t tmp0 = v[2];
+        uint64_t tmp1 = v[3];
+        v[2] = v[4], v[3] = v[5];
+        v[4] = v[8], v[5] = v[9];
+        v[8] = tmp0, v[9] = tmp1;
+        tmp0 = v[6], tmp1 = v[7];
+        v[6] = v[12], v[7] = v[13];
+        v[12] = v[10], v[13] = v[11];
+        v[10] = tmp0, v[11] = tmp1;
+#elif defined(USE_AVX2) // Inverse _mm256_packs_epi16 ordering
+        swap(v[2], v[4]);
+        swap(v[3], v[5]);
+#endif
+    }
 public:
     alignas(64) int16_t bias[ftdims];
     alignas(64) int16_t weight[ftdims * inputdims];
@@ -922,6 +961,24 @@ public:
         if (previous)
             previous->WriteWeights(nr);
     }
+    void PermuteBias(int16_t* src, void (*order_fn)(uint64_t*)) {
+#ifdef USE_AVX2
+        uint64_t* b = (uint64_t*)&src[0];
+        for (unsigned int i = 0; i < ftdims * sizeof(int16_t) / sizeof(uint64_t); i += di)
+            order_fn(&b[i]);
+#endif
+    }
+    void PermuteWeight(int16_t* src, void (*order_fn)(uint64_t*)) {
+#ifdef USE_AVX2
+        for (unsigned int j = 0; j < inputdims; ++j)
+        {
+            uint64_t* w = (uint64_t*)&src[j * ftdims];
+            for (unsigned int i = 0; i < ftdims * sizeof(int16_t) / sizeof(uint64_t); i += di)
+                order_fn(&w[i]);
+        }
+#endif
+    }
+
     uint32_t GetFtHash(NnueType nt) {
         if (nt == NnueArchV5)
             return NNUEFEATUTEHASH_HalfKAv2_hm;

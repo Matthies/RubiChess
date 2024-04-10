@@ -502,10 +502,7 @@ typedef __m128i bias_vec_t;
 #define vec_max_16(a,b) _mm512_max_epi16(a,b)
 #define vec_min_16(a,b) _mm512_min_epi16(a,b)
 #define vec_mul_16(a,b) _mm512_mullo_epi16(a,b)
-inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
-    ft_vec_t compacted = _mm512_packs_epi16(_mm512_srli_epi16(a, 7), _mm512_srli_epi16(b, 7));
-    return _mm512_permutexvar_epi64(_mm512_setr_epi64(0, 2, 4, 6, 1, 3, 5, 7), compacted);
-}
+#define vec_msb_pack_16(a,b) _mm512_packs_epi16(_mm512_srli_epi16(a, 7), _mm512_srli_epi16(b, 7))
 #define vec_add_16(a,b) _mm512_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm512_sub_epi16(a,b)
 #define vec_packs(a,b) _mm512_packs_epi16(a,b)
@@ -536,10 +533,7 @@ typedef __m128i bias_vec_t;
 #define vec_max_16(a,b) _mm256_max_epi16(a,b)
 #define vec_min_16(a,b) _mm256_min_epi16(a,b)
 #define vec_mul_16(a,b) _mm256_mullo_epi16(a,b)
-inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
-    ft_vec_t compacted = _mm256_packs_epi16(_mm256_srli_epi16(a, 7), _mm256_srli_epi16(b, 7));
-    return _mm256_permute4x64_epi64(compacted, 0xd8);
-}
+#define vec_msb_pack_16(a,b) _mm256_packs_epi16(_mm256_srli_epi16(a, 7), _mm256_srli_epi16(b, 7))
 #define vec_add_16(a,b) _mm256_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm256_sub_epi16(a,b)
 #define vec_packs(a,b) _mm256_packs_epi16(a,b)
@@ -1082,8 +1076,8 @@ int chessposition::Transform(clipped_t *output, int bucket)
         if (Nt == NnueArchV5)
         {
             const unsigned int numChunks = NnueFtHalfdims / 2 / MAXCHUNKSIZE;
-            ft_vec_t Zero = vec_zero();
-            ft_vec_t One = vec_set_16(127);
+            const ft_vec_t Zero = vec_zero();
+            const ft_vec_t One = vec_set_16(127);
 
             const ft_vec_t* in0 = (ft_vec_t*)(acm + perspectives[p] * NnueFtHalfdims);
             const ft_vec_t* in1 = (ft_vec_t*)(acm + perspectives[p] * NnueFtHalfdims + NnueFtHalfdims / 2);
@@ -1248,6 +1242,7 @@ bool NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::ReadFeatureWeights(
     else
         okay = okay && nr->read((unsigned char*)src_16, ftdims * sizeof(int16_t));
 
+    PermuteBias(src_16, inverse_order_packs);
     memcpy(bias, src_16, ftdims * sizeof(int16_t));
 
     // read weights
@@ -1267,6 +1262,7 @@ bool NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::ReadFeatureWeights(
         }
     }
     
+    PermuteWeight(src_16, inverse_order_packs);
     memcpy(weight, src_16, inputdims * ftdims * sizeof(int16_t));
 
     // read psqt weights
@@ -1328,16 +1324,23 @@ bool writeLeb128(NnueNetsource* nr, IntType* in, size_t count)
 template <int ftdims, int inputdims, int psqtbuckets>
 void NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::WriteFeatureWeights(NnueNetsource* nr, bool leb128)
 {
+    PermuteBias(bias, order_packs);
+    PermuteWeight(weight, order_packs);
+
     if (leb128) {
         writeLeb128(nr, bias, ftdims);
         writeLeb128(nr, weight, inputdims * ftdims);
         writeLeb128(nr, psqtWeights, inputdims * psqtbuckets);
     }
     else {
+
         nr->write((unsigned char*)bias, ftdims * sizeof(int16_t));
         nr->write((unsigned char*)weight, inputdims * ftdims * sizeof(int16_t));
         nr->write((unsigned char*)psqtWeights, inputdims * psqtbuckets * sizeof(int32_t));
     }
+
+    PermuteBias(bias, inverse_order_packs);
+    PermuteWeight(weight, inverse_order_packs);
 }
 
 
