@@ -269,6 +269,12 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
             tp.addHash(tte, hash, bestExpectableScore, staticeval, HASHALPHA, 0, hashmovecode);
             return staticeval;
         }
+
+        if (Pt != NoPrune && extensionguard > sps.extguardcheckext * 16)
+            return staticeval;
+    }
+    else {
+        extensionguard += 16;
     }
 
     prepareStack();
