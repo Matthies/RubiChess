@@ -55,7 +55,7 @@
 //#define NNUELEARN
 
 // Enable this to enable NNUE debug output
-#define NNUEDEBUG
+//#define NNUEDEBUG
 
 // Enable this to compile support for asserts including stack trace
 // MSVC only, link with DbgHelp.lib
@@ -1648,6 +1648,11 @@ enum PvAbortType {
 };
 #endif
 
+struct AccumulatorCache {
+    U64 piece00[14][32];
+    int16_t* accumulation[32];
+};
+
 // Replace the occupied bitboards with the first two so far unused piece bitboards
 #define occupied00 piece00
 
@@ -1742,9 +1747,9 @@ public:
     Materialhash mtrlhsh;                               // init in alloc
     Pawnhash pwnhsh;                                    // init in alloc
     bool computationState[MAXDEPTH][2];
-    int kingbucket[MAXDEPTH][2];
     int16_t* accumulation;
     int32_t* psqtAccumulation;
+    //AccumulatorCache accucache[2];
     DirtyPiece dirtypiece[MAXDEPTH];
     uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];

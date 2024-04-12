@@ -705,23 +705,8 @@ template <NnueType Nt, Color c, int N> bool chessposition::GetAcccumulatorUpdate
         // search for position with computed accu on stack that leads to current position by differential updates
         // break at king move or if the dirty piece updates get too expensive
         DirtyPiece* dp = &dirtypiece[mslast];
-        if (dp->pc[0] == (WKING | c)) {
-            int k0 = movestack[mslast - 1].kingpos[c];
-            int k1 = kingpos[c];
-            if (dp->dirtyNum < 1)
-                printf("Alarm dp\n");
-
-            if ((dp->to[0] ^ dp->from[0]) != 7)
-                break;
-            if (k0 == k1)
-                printf("Alarm2\n");
-            cout << "c=" << c << " dpcount:" << dp->dirtyNum << " lastkingpos : " << k0 << " thiskingpos : " << k1 << "\n";
-            break;  // this is for original behaviour
-
-        }
-        if ((fullupdatecost -= dp->dirtyNum + 1) < 0)
+        if (dp->pc[0] == (WKING | c) || (fullupdatecost -= dp->dirtyNum + 1) < 0)
             break;
-
         mslast--;
     }
 
@@ -782,9 +767,6 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets, int N> void chessposition::AccumulatorIncrementalUpdate(int* updaterequest)
 {
-#ifdef NNUEDEBUG
-    cout << "\nAccu Incremental Update (c=" << c << "):\n";
-#endif
     STATISTICSINC(nnue_accupdate_inc);
     myassert(updaterequest[N - 1] == -1, this, 1, updaterequest[N - 1]);
     NnueIndexList removedIndices[N - 1], addedIndices[N - 1];
@@ -964,9 +946,6 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::AccumulatorRefresh()
 {
-#ifdef NNUEDEBUG
-    cout << "\nAccu Full Refresh (c=" << c << "):\n";
-#endif
     // Full update of accumulator
     STATISTICSINC(nnue_accupdate_full);
     computationState[ply][c] = true;
