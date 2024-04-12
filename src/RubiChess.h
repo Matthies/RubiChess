@@ -24,7 +24,11 @@
 #define FASTSSE2
 
 // Enable to get statistical values about various search features
-//#define STATISTICS
+#define STATISTICS
+//
+// Stats for master and bench 20:
+// [STATS] AccuUpdate:   Cached:    5193477 ( 7.1373%)   Increm.:   58437749 (80.3101%)      Full:    9133878 (12.5526%)      Spec:   11827694 (16.2546%)
+//
 
 // Enable to debug the search against a gives pv
 //#define SDEBUG
@@ -51,7 +55,7 @@
 //#define NNUELEARN
 
 // Enable this to enable NNUE debug output
-//#define NNUEDEBUG
+#define NNUEDEBUG
 
 // Enable this to compile support for asserts including stack trace
 // MSVC only, link with DbgHelp.lib
@@ -1738,6 +1742,7 @@ public:
     Materialhash mtrlhsh;                               // init in alloc
     Pawnhash pwnhsh;                                    // init in alloc
     bool computationState[MAXDEPTH][2];
+    int kingbucket[MAXDEPTH][2];
     int16_t* accumulation;
     int32_t* psqtAccumulation;
     DirtyPiece dirtypiece[MAXDEPTH];
