@@ -55,7 +55,7 @@
 //#define NNUELEARN
 
 // Enable this to enable NNUE debug output
-//#define NNUEDEBUG
+#define NNUEDEBUG
 
 // Enable this to compile support for asserts including stack trace
 // MSVC only, link with DbgHelp.lib
@@ -876,6 +876,7 @@ public:
     virtual uint32_t GetFileVersion() = 0;
     virtual int16_t* CreateAccumulationStack() = 0;
     virtual int32_t* CreatePsqtAccumulationStack() = 0;
+    virtual void CreateAccumulationCache(chessposition* p) = 0;
     virtual unsigned int GetAccumulationSize() = 0;
     virtual unsigned int GetPsqtAccumulationSize() = 0;
     virtual size_t GetNetworkFilesize() = 0;
@@ -1649,8 +1650,8 @@ enum PvAbortType {
 #endif
 
 struct AccumulatorCache {
-    U64 piece00[14][32];
-    int16_t* accumulation[32];
+    U64 piece00[64][14];
+    int16_t* accumulation;
 };
 
 // Replace the occupied bitboards with the first two so far unused piece bitboards
@@ -1749,7 +1750,7 @@ public:
     bool computationState[MAXDEPTH][2];
     int16_t* accumulation;
     int32_t* psqtAccumulation;
-    //AccumulatorCache accucache[2];
+    AccumulatorCache accucache[2];
     DirtyPiece dirtypiece[MAXDEPTH];
     uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];

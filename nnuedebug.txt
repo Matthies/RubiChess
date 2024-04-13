@@ -1,0 +1,212 @@
+eval master:
+=============
+
+accumulation (c=0):
+0085 00b8 0063 003c 003d 01dd 0036 003c 0079 0038 0012 fffd 0059 0027 005e 003c    000
+0022 000c 0051 0086 ffce 0032 ffee 006e 0016 ff91 00d1 002f 0011 ffd4 ffd1 006a    010
+ffc3 ffe3 ffed 0058 003e fffa ffe3 005f 00b7 001f 003d 005d ff2b fffd ffff fffa    020
+004b fff9 017d ffca 0000 0057 012e 0034 fff4 ff99 0019 fffe 0026 0060 0020 0004    030
+0038 0005 0001 000d ffd2 ffdb ffee 003f 0008 007f 001d ff89 002b ffdb ffde 001b    040
+ff76 ffbb ffc0 ffeb ff8f 0000 fffd ffd9 0097 0004 003d 010b ffd4 ff70 fe7f 0014    050
+009a ffe2 0079 0002 00aa 0115 fffa 0025 0019 ffd9 005a 00c4 ff58 ffb1 0026 ff96    060
+0008 0012 ff63 0026 003b ffd4 ffea ff75 001b ff40 ff44 003f 0047 fff5 0063 ffef    070
+000a ffd4 ff70 fffa 005d ffef 0078 ffa1 fff1 ffba 007d 0013 ffb4 ff23 0015 0020    080
+ffba ffd2 ffba ffdb 000e ffaf 00b5 001d 007d ffdf 003c ff7d 005f fff0 ffb2 ff8e    090
+0057 0041 ffbf 002a 0092 000c ff18 ff54 0017 ffb3 ffee 0010 ff9a ff5b 0038 0032    0a0
+ff47 ff22 001e ffd9 ff4a ff76 fff6 0046 007e fe3d 002f fed0 ff90 0001 ffbb fff1    0b0
+ff74 000e ff6b 007a ff18 ffc8 ffd6 005a ff6e ffe4 ff32 ffe5 ff68 0036 ffed ffde    0c0
+0111 ff75 ff81 0002 ffb3 ff20 ffe1 0014 ffb5 ffa3 002d ff4a 007b 0044 ffe5 0001    0d0
+fff4 ff7d ff7b ffce fec1 ff96 0046 fdb3 ffbf fff0 ff9a ffb3 fff2 ff42 ffdb ffa3    0e0
+ffc2 ff6d 00bf 005c ff5c ff41 0131 ff80 ff2a 0091 ffb5 fff2 0113 00c4 0037 ffaa    0f0
+0043 ffaf ffc6 ff33 ffdc ff54 ff83 ffb1 ffe5 ffcb 0039 0027 ff4f 000f ffa9 001c    100
+ffcb ffe2 0050 003a ff9c ffc2 019f ff20 ffc0 ff96 002d ff5b ff74 ffd4 ff46 ff83    110
+ff8d 003a 0068 0052 ff20 ffe2 0080 ffc1 fe56 ff6a ff8a 02dc ffad feaf ff9e fff1    120
+ff5b ff7f 001c ff5e 0037 ff86 ffea ff6e ffeb ff94 ff67 ff3e ffbe 026a 0033 ff94    130
+ff83 0025 ffdf ffd7 000e fec6 fdb4 ff98 fef9 ffd7 ff0b ff98 ffa7 feb1 fef6 ffe2    140
+fd9d ffd6 fffc 01b3 ff9d ffe4 fe0f ffbf 00bc 031f ffa5 001a ff28 ff24 0057 0072    150
+ff66 ffd3 fe51 ffc9 ff72 fee9 ff4c 0013 ff5d ff67 0080 00f9 ffba ff3d 006a ff4a    160
+0164 fe92 feff 01d2 fef7 fef1 ffd5 ff11 ff7c ffc3 ffb1 ffe5 000d fdfb ffb8 ffcd    170
+ff87 00a8 ff00 ff32 0027 0006 ff97 ffab ffec 0046 ff38 fef2 feea fe7a ff0e 0085    180
+ffd6 fe8c ff3e ff38 001d ff0c ff84 0111 fe75 ff5f feee ff81 01ce ff4e ffe9 0156    190
+ff29 ff9c ff8c ffe2 ff2b 0151 fed7 006c ff58 ff9f feaa 0073 ffa5 ff70 fe75 ffae    1a0
+0085 ff45 ff24 ff0b ff7d ff3e fe3d ff6f 0038 fe1f fe56 ff6d ff7e ff26 fdbf ff6c    1b0
+ff29 ff78 fe87 fee3 0022 fd9d fdc0 009e ff6e fe42 ffb5 001f 0246 fe54 feca ffd9    1c0
+fe37 ff38 0003 ff47 ffd5 0013 ff22 fb40 fd98 fd6d ff93 fbe8 ffce fff6 ff4b fdbf    1d0
+fec4 fe7d fe92 fefc fe9c fccc ff02 fd5a fd2f ff35 ff21 ff12 ff5c fe48 fe6f fe3d    1e0
+fc84 fd88 fe5d fd83 ff58 fec7 fc04 ff37 fea9 feaa fe9c fe3c fd13 fcaf fdf0 fa98    1f0
+009b 0027 0058 0170 00b3 000d 0063 0032 0012 0040 0046 004e 002d 000a fff3 0029    200
+006e 0032 001b ffdb 0052 00a9 006e fff7 0088 0018 ffdc 002d 001d 0071 fff4 0015    210
+013c 0039 002a fff6 00bc 001c 0052 0042 fffc 0017 000e 0054 feb1 0004 004f 0035    220
+000c 0025 0028 0013 0051 000b ffe1 0017 002d ffb2 0045 00e5 0010 0032 0042 0005    230
+003e 005d ffee 000a 018d 0011 006c ffb6 ffb9 ffb9 0001 ff2c fff7 ffee ffc7 ffdc    240
+002c 002d ff98 fff6 fefe ff8d ffcb ffb1 fff2 00a1 003b ff3d 0120 ff9b 00a4 0072    250
+ffdc fff2 000a fff5 fffa ff75 003d 006b ffe0 fff7 ffc7 fea9 0188 00c3 ffed ff80    260
+ffe4 ffa9 ffe3 fec1 0077 fffd 0084 0044 ff6a 00d9 fff3 ffee ffec fff8 ffe7 0005    270
+0013 002f ff6e 0011 ffea ffd6 ffd7 fffe 000f fffb ff77 ff69 ff91 ff83 006c ff57    280
+ff98 005d ffe2 ffee ffaf 0008 ffad ffd0 0018 001d fff0 ffb4 fffd 00bd 0001 ff2a    290
+ffcf 001d ffc8 ffb3 ffd9 ffd1 0054 ff7e ffd2 ffd0 0042 ff4c 00e4 0047 ff76 ffd4    2a0
+ff81 fe9c ffe6 ffff ff7a ffcf feff fff5 ff9d ff62 ffa6 ffee ff5a ff66 ff43 ffeb    2b0
+ffd3 fef7 ff94 ffe6 ff84 ff1b ff78 ffbc ff04 008c fee9 fff4 ffd5 fff7 000a 007d    2c0
+ff7f ffc7 0059 0076 ff65 ff5f ffe3 ffaf fec4 00df fffd fe7e ffe3 fea4 ffc8 fe7d    2d0
+ff4d 001f 004d ffdd ff27 00b1 ffbf fed8 ff9e 0029 ff34 ff98 ffa5 00a7 000a ff54    2e0
+ff8f ffbc ffd6 ff5e fec4 ffa8 ff82 ff3a 0001 ff1a 0044 ffb4 fee7 ffcc ff55 0108    2f0
+ffe5 ff2a ffb3 0035 ffa8 ffc5 ffbe ff9a ffa4 ffdb ff28 0000 010d ffb6 ff6d ffba    300
+fe9b ff7c fef2 ff4b 006e ffde ff41 ff8b 0051 fff4 ff42 ffef ff22 fecf ff7b ffc3    310
+0051 ff92 fffe ff8a ffe2 00af fecb 0017 fee7 ff53 ff58 ff41 ffee ff85 0016 ff91    320
+ff75 fe9c ffed fe9e fea2 0048 fff3 0005 ff07 001f ffbc ffbe 01e8 ff9b ff82 006d    330
+ff85 fe5a ff3e ff80 fdd7 ff20 ff5e ff07 fe4f ff41 ffd3 0067 001c ff73 ff1b ff32    340
+fedc fff9 ff33 fef7 ffdc ff8b fddf fe92 ff93 ff2b ffca ffdf 0008 0007 ff8f ff47    350
+0024 ff12 fe85 ffce febc ff2c ff42 fed1 ffe0 ffcc ff84 ff6c ffd2 ff69 ff6c fe91    360
+ff22 ffe0 ffc2 ffb7 00bb ffcc ffd9 0068 0015 ffe5 ff97 ffa8 ff76 ff9b ffec ffde    370
+fffa feaf ff96 fff2 ffba ff49 ff9e ff59 ff91 ffab fffa ffe2 0074 fefc fff6 fe9c    380
+fd90 ffef fff7 003c ff7b fef7 ff38 ff4e ff1c fefb 005a ff9a fecf 0244 ff48 feae    390
+fee6 004a fef5 fef4 fda3 ff0c ffb7 ffae ffc0 fe9d ffed ff5b 0009 febd fe60 ffb7    3a0
+fec8 ff4b ffaa ffa3 ff1a 02bb ff5d fda4 fd87 ff44 ff3a ff10 fef8 ff76 ff82 ffd8    3b0
+003d fef3 fee3 fe65 fe74 005a fee5 ff54 00d9 ffd4 fec6 fed0 feff 011e fd91 fe9c    3c0
+fec7 000d fec7 fc79 ff42 fded fff7 fdb5 fee3 00ba fee9 fe1e ff83 ff79 ff2b fc91    3d0
+fd8c fe50 fefd fee2 ff16 fd35 fd25 fcdb fecc fe6e fc40 fcc9 fec0 fbf0 fca2 fd53    3e0
+fd5f fdf3 fe05 ff19 fd85 ff88 0118 fdbc fda4 fc4b fa84 fe3d fadd fd8a fddf fc93    3f0
+
+psqtaccumulation (c=0):
+ 19622    496   3409  13519  12703   6233   3832    632    000
+
+accumulation (c=1):
+0085 00b8 0063 003c 003d 01dd 0036 003c 0079 0038 0012 fffd 0059 0027 005e 003c    000
+0022 000c 0051 0086 ffce 0032 ffee 006e 0016 ff91 00d1 002f 0011 ffd4 ffd1 006a    010
+ffc3 ffe3 ffed 0058 003e fffa ffe3 005f 00b7 001f 003d 005d ff2b fffd ffff fffa    020
+004b fff9 017d ffca 0000 0057 012e 0034 fff4 ff99 0019 fffe 0026 0060 0020 0004    030
+0038 0005 0001 000d ffd2 ffdb ffee 003f 0008 007f 001d ff89 002b ffdb ffde 001b    040
+ff76 ffbb ffc0 ffeb ff8f 0000 fffd ffd9 0097 0004 003d 010b ffd4 ff70 fe7f 0014    050
+009a ffe2 0079 0002 00aa 0115 fffa 0025 0019 ffd9 005a 00c4 ff58 ffb1 0026 ff96    060
+0008 0012 ff63 0026 003b ffd4 ffea ff75 001b ff40 ff44 003f 0047 fff5 0063 ffef    070
+000a ffd4 ff70 fffa 005d ffef 0078 ffa1 fff1 ffba 007d 0013 ffb4 ff23 0015 0020    080
+ffba ffd2 ffba ffdb 000e ffaf 00b5 001d 007d ffdf 003c ff7d 005f fff0 ffb2 ff8e    090
+0057 0041 ffbf 002a 0092 000c ff18 ff54 0017 ffb3 ffee 0010 ff9a ff5b 0038 0032    0a0
+ff47 ff22 001e ffd9 ff4a ff76 fff6 0046 007e fe3d 002f fed0 ff90 0001 ffbb fff1    0b0
+ff74 000e ff6b 007a ff18 ffc8 ffd6 005a ff6e ffe4 ff32 ffe5 ff68 0036 ffed ffde    0c0
+0111 ff75 ff81 0002 ffb3 ff20 ffe1 0014 ffb5 ffa3 002d ff4a 007b 0044 ffe5 0001    0d0
+fff4 ff7d ff7b ffce fec1 ff96 0046 fdb3 ffbf fff0 ff9a ffb3 fff2 ff42 ffdb ffa3    0e0
+ffc2 ff6d 00bf 005c ff5c ff41 0131 ff80 ff2a 0091 ffb5 fff2 0113 00c4 0037 ffaa    0f0
+0043 ffaf ffc6 ff33 ffdc ff54 ff83 ffb1 ffe5 ffcb 0039 0027 ff4f 000f ffa9 001c    100
+ffcb ffe2 0050 003a ff9c ffc2 019f ff20 ffc0 ff96 002d ff5b ff74 ffd4 ff46 ff83    110
+ff8d 003a 0068 0052 ff20 ffe2 0080 ffc1 fe56 ff6a ff8a 02dc ffad feaf ff9e fff1    120
+ff5b ff7f 001c ff5e 0037 ff86 ffea ff6e ffeb ff94 ff67 ff3e ffbe 026a 0033 ff94    130
+ff83 0025 ffdf ffd7 000e fec6 fdb4 ff98 fef9 ffd7 ff0b ff98 ffa7 feb1 fef6 ffe2    140
+fd9d ffd6 fffc 01b3 ff9d ffe4 fe0f ffbf 00bc 031f ffa5 001a ff28 ff24 0057 0072    150
+ff66 ffd3 fe51 ffc9 ff72 fee9 ff4c 0013 ff5d ff67 0080 00f9 ffba ff3d 006a ff4a    160
+0164 fe92 feff 01d2 fef7 fef1 ffd5 ff11 ff7c ffc3 ffb1 ffe5 000d fdfb ffb8 ffcd    170
+ff87 00a8 ff00 ff32 0027 0006 ff97 ffab ffec 0046 ff38 fef2 feea fe7a ff0e 0085    180
+ffd6 fe8c ff3e ff38 001d ff0c ff84 0111 fe75 ff5f feee ff81 01ce ff4e ffe9 0156    190
+ff29 ff9c ff8c ffe2 ff2b 0151 fed7 006c ff58 ff9f feaa 0073 ffa5 ff70 fe75 ffae    1a0
+0085 ff45 ff24 ff0b ff7d ff3e fe3d ff6f 0038 fe1f fe56 ff6d ff7e ff26 fdbf ff6c    1b0
+ff29 ff78 fe87 fee3 0022 fd9d fdc0 009e ff6e fe42 ffb5 001f 0246 fe54 feca ffd9    1c0
+fe37 ff38 0003 ff47 ffd5 0013 ff22 fb40 fd98 fd6d ff93 fbe8 ffce fff6 ff4b fdbf    1d0
+fec4 fe7d fe92 fefc fe9c fccc ff02 fd5a fd2f ff35 ff21 ff12 ff5c fe48 fe6f fe3d    1e0
+fc84 fd88 fe5d fd83 ff58 fec7 fc04 ff37 fea9 feaa fe9c fe3c fd13 fcaf fdf0 fa98    1f0
+009b 0027 0058 0170 00b3 000d 0063 0032 0012 0040 0046 004e 002d 000a fff3 0029    200
+006e 0032 001b ffdb 0052 00a9 006e fff7 0088 0018 ffdc 002d 001d 0071 fff4 0015    210
+013c 0039 002a fff6 00bc 001c 0052 0042 fffc 0017 000e 0054 feb1 0004 004f 0035    220
+000c 0025 0028 0013 0051 000b ffe1 0017 002d ffb2 0045 00e5 0010 0032 0042 0005    230
+003e 005d ffee 000a 018d 0011 006c ffb6 ffb9 ffb9 0001 ff2c fff7 ffee ffc7 ffdc    240
+002c 002d ff98 fff6 fefe ff8d ffcb ffb1 fff2 00a1 003b ff3d 0120 ff9b 00a4 0072    250
+ffdc fff2 000a fff5 fffa ff75 003d 006b ffe0 fff7 ffc7 fea9 0188 00c3 ffed ff80    260
+ffe4 ffa9 ffe3 fec1 0077 fffd 0084 0044 ff6a 00d9 fff3 ffee ffec fff8 ffe7 0005    270
+0013 002f ff6e 0011 ffea ffd6 ffd7 fffe 000f fffb ff77 ff69 ff91 ff83 006c ff57    280
+ff98 005d ffe2 ffee ffaf 0008 ffad ffd0 0018 001d fff0 ffb4 fffd 00bd 0001 ff2a    290
+ffcf 001d ffc8 ffb3 ffd9 ffd1 0054 ff7e ffd2 ffd0 0042 ff4c 00e4 0047 ff76 ffd4    2a0
+ff81 fe9c ffe6 ffff ff7a ffcf feff fff5 ff9d ff62 ffa6 ffee ff5a ff66 ff43 ffeb    2b0
+ffd3 fef7 ff94 ffe6 ff84 ff1b ff78 ffbc ff04 008c fee9 fff4 ffd5 fff7 000a 007d    2c0
+ff7f ffc7 0059 0076 ff65 ff5f ffe3 ffaf fec4 00df fffd fe7e ffe3 fea4 ffc8 fe7d    2d0
+ff4d 001f 004d ffdd ff27 00b1 ffbf fed8 ff9e 0029 ff34 ff98 ffa5 00a7 000a ff54    2e0
+ff8f ffbc ffd6 ff5e fec4 ffa8 ff82 ff3a 0001 ff1a 0044 ffb4 fee7 ffcc ff55 0108    2f0
+ffe5 ff2a ffb3 0035 ffa8 ffc5 ffbe ff9a ffa4 ffdb ff28 0000 010d ffb6 ff6d ffba    300
+fe9b ff7c fef2 ff4b 006e ffde ff41 ff8b 0051 fff4 ff42 ffef ff22 fecf ff7b ffc3    310
+0051 ff92 fffe ff8a ffe2 00af fecb 0017 fee7 ff53 ff58 ff41 ffee ff85 0016 ff91    320
+ff75 fe9c ffed fe9e fea2 0048 fff3 0005 ff07 001f ffbc ffbe 01e8 ff9b ff82 006d    330
+ff85 fe5a ff3e ff80 fdd7 ff20 ff5e ff07 fe4f ff41 ffd3 0067 001c ff73 ff1b ff32    340
+fedc fff9 ff33 fef7 ffdc ff8b fddf fe92 ff93 ff2b ffca ffdf 0008 0007 ff8f ff47    350
+0024 ff12 fe85 ffce febc ff2c ff42 fed1 ffe0 ffcc ff84 ff6c ffd2 ff69 ff6c fe91    360
+ff22 ffe0 ffc2 ffb7 00bb ffcc ffd9 0068 0015 ffe5 ff97 ffa8 ff76 ff9b ffec ffde    370
+fffa feaf ff96 fff2 ffba ff49 ff9e ff59 ff91 ffab fffa ffe2 0074 fefc fff6 fe9c    380
+fd90 ffef fff7 003c ff7b fef7 ff38 ff4e ff1c fefb 005a ff9a fecf 0244 ff48 feae    390
+fee6 004a fef5 fef4 fda3 ff0c ffb7 ffae ffc0 fe9d ffed ff5b 0009 febd fe60 ffb7    3a0
+fec8 ff4b ffaa ffa3 ff1a 02bb ff5d fda4 fd87 ff44 ff3a ff10 fef8 ff76 ff82 ffd8    3b0
+003d fef3 fee3 fe65 fe74 005a fee5 ff54 00d9 ffd4 fec6 fed0 feff 011e fd91 fe9c    3c0
+fec7 000d fec7 fc79 ff42 fded fff7 fdb5 fee3 00ba fee9 fe1e ff83 ff79 ff2b fc91    3d0
+fd8c fe50 fefd fee2 ff16 fd35 fd25 fcdb fecc fe6e fc40 fcc9 fec0 fbf0 fca2 fd53    3e0
+fd5f fdf3 fe05 ff19 fd85 ff88 0118 fdbc fda4 fc4b fa84 fe3d fadd fd8a fddf fc93    3f0
+
+psqtaccumulation (c=1):
+ 19622    496   3409  13519  12703   6233   3832    632    000
+
+input layer:
+7e 26 44 3b 3c 0c 29 17 11 1c 09 00 1f 03 00 13 1d 04 11 00 00 31 00 00 15 00 00 10 03 00 00 11    000
+00 00 00 00 3d 00 00 30 00 05 06 3d 00 00 00 00 07 00 27 00 00 07 00 09 00 00 0d 00 04 25 10 00    020
+1b 03 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 03 1c 00 00 00 00 11    040
+00 00 09 00 00 00 00 1e 00 00 00 00 00 00 00 00 00 00 00 00 36 00 00 00 00 00 00 00 00 00 00 00    060
+01 00 00 00 00 00 00 00 00 00 00 00 00 00 11 00 00 00 00 00 00 00 00 00 17 00 00 00 00 00 00 00    080
+00 0e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    0a0
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00    0c0
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    0e0
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    100
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    120
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    140
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    160
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    180
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    1a0
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    1c0
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    1e0
+7e 26 44 3b 3c 0c 29 17 11 1c 09 00 1f 03 00 13 1d 04 11 00 00 31 00 00 15 00 00 10 03 00 00 11    200
+00 00 00 00 3d 00 00 30 00 05 06 3d 00 00 00 00 07 00 27 00 00 07 00 09 00 00 0d 00 04 25 10 00    220
+1b 03 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 03 1c 00 00 00 00 11    240
+00 00 09 00 00 00 00 1e 00 00 00 00 00 00 00 00 00 00 00 00 36 00 00 00 00 00 00 00 00 00 00 00    260
+01 00 00 00 00 00 00 00 00 00 00 00 00 00 11 00 00 00 00 00 00 00 00 00 17 00 00 00 00 00 00 00    280
+00 0e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    2a0
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00    2c0
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    2e0
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    300
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    320
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    340
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    360
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    380
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    3a0
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    3c0
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    3e0
+
+Sparse propagation:
+000 3b44267e  in: 3b44267e3b44267e col: 40600fc03ff06fa 001 17290c3c  in: 17290c3c17290c3c col: fd08fcfd00f9fdfd 002 00091c11  in: 91c1100091c11 col: fbf80003fbfcfdec 003 1300031f  in: 1300031f1300031f col: f5fa01ff0800f802 004 0011041d  in: 11041d0011041d col: 301f702fa040102 005 00003100  in: 310000003100 col: f70200f901fbff02 006 10000015  in: 1000001510000015 col: fffe07050002 007 11000003  in: 1100000311000003 col: 3fdfff5fdfdfffa    000
+009 3000003d  in: 3000003d3000003d col: 3f9fe0602faff 00a 3d060500  in: 3d0605003d060500 col: 7f8ff0006ff00ff 00c 00270007  in: 27000700270007 col: fb01fd00fffeff 00d 09000700  in: 900070009000700 col: 20200f7050202 00e 000d0000  in: d0000000d0000 col: 1fbfd01fff6060b 00f 00102504  in: 10250400102504 col: 1fe01fcfcf7fefd 010 0100031b  in: 100031b0100031b col: 3fb010105050002 016 001c0300  in: 1c0300001c0300 col: fb020101fc070300    008
+017 11000000  in: 1100000011000000 col: e0102ff0bff05fc 018 00090000  in: 9000000090000 col: fefffd02fb060802 019 1e000000  in: 1e0000001e000000 col: 202fffffd040504 01d 00000036  in: 3600000036 col: ff01070402030601 020 00000001  in: 100000001 col: fffc00f8f6fefd04 023 00110000  in: 11000000110000 col: fe00070b00fe0208 026 00000017  in: 1700000017 col: fd03fb08fafd04fb 028 00000e00  in: e0000000e00 col: 5fe05ff010bfefe    010
+034 01000000  in: 100000001000000 col: fefc0001100002fa 080 3b44267e  in: 3b44267e3b44267e col: bfbee05f804ff00 081 17290c3c  in: 17290c3c17290c3c col: 4ff01fb03fb06f4 082 00091c11  in: 91c1100091c11 col: 20702f50302f3f4 083 1300031f  in: 1300031f1300031f col: 8fe08020aff06f8 084 0011041d  in: 11041d0011041d col: fd00fcfa05fa02fb 085 00003100  in: 310000003100 col: d0001000802ff06 086 10000015  in: 1000001510000015 col: fe02ffff080202fd    018
+087 11000003  in: 1100000311000003 col: f2fc0202070001fc 089 3000003d  in: 3000003d3000003d col: fbf900fefefdfb 08a 3d060500  in: 3d0605003d060500 col: 1050502fd01fd05 08c 00270007  in: 27000700270007 col: 902f7ff0001fe 08d 09000700  in: 900070009000700 col: 1fefdfdfe03fc02 08e 000d0000  in: d0000000d0000 col: ff0300fffe0704fc 08f 00102504  in: 10250400102504 col: f60afc0608090302 090 0100031b  in: 100031b0100031b col: fddef80dfbfcff01    020
+096 001c0300  in: 1c0300001c0300 col: ff05fcf9f3f9f7fc 097 11000000  in: 1100000011000000 col: 7030301fc00fdfe 098 00090000  in: 9000000090000 col: 301fdff07fbfefe 099 1e000000  in: 1e0000001e000000 col: 100fdf803fc00fc 09d 00000036  in: 3600000036 col: 3f8ff04f2fb02ff 0a0 00000001  in: 100000001 col: 40301fb0705f1fe 0a3 00110000  in: 11000000110000 col: 1050301f30701fa 0a6 00000017  in: 1700000017 col: fa05fd080205ff06    028
+0a8 00000e00  in: e0000000e00 col: f80402ff0501ff00 0b4 01000000  in: 100000001000000 col: fdf8fffaf6fdfeff
+
+network layer:
+ -1831   1258  -1739  -1656  -1497  -2213   2466   4611   1236  12070  -4319   3853  -3843   2504  -6514   1099    000
+
+sqrclipped relu:
+06 03 05 05 04 09 0b 28 02 7f 23 1c 1c 0b 50 02    000
+
+clipped relu:
+00 13 00 00 00 00 26 48 13 7f 00 3c 00 27 00 11    000
+
+network layer:
+ -2911   2404   -191  -7564   2665  -7455  -2741  -1703  -2414 -15802  -6639  -1661   -668  -4589  -2392    988    000
+ -2476  -6224   1428   -790  -1273  -1642  -7346    338    150  -1016  -1442   1603  -5130    513    528   1469    010
+
+clipped relu:
+00 25 00 00 29 00 00 00 00 00 00 00 00 00 00 0f    000
+00 00 16 00 00 00 00 05 02 00 00 19 00 08 08 16    010
+
+network layer:
+  -246    000
+
+psqt eval       :  1298
+positional eval :  1052
+total nnue      :  1052
+
+Raw NNUE eval:  65
+Phased scaled:  71
+Tempo:          20
+Total:          91

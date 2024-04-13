@@ -262,6 +262,8 @@ void engine::allocThreads()
         pos->mtrlhsh.init();
         pos->accumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
         pos->psqtAccumulation = NnueCurrentArch ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr;
+        if (NnueCurrentArch)
+            NnueCurrentArch->CreateAccumulationCache(pos);
     }
     prepareThreads();
     resetStats();
