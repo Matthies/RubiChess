@@ -523,7 +523,7 @@ inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define vec_add_dpbusd_32 Simd::m512_add_dpbusd_32
 
 #elif defined(USE_AVX2)
-#define NUM_REGS 16
+#define NUM_REGS 8
 #define NUM_PSQT_REGS 1
 #define SIMD_WIDTH 256
 #define MAXCHUNKSIZE 32
@@ -767,6 +767,9 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets, int N> void chessposition::AccumulatorIncrementalUpdate(int* updaterequest)
 {
+#ifdef NNUEDEBUG
+    cout << "\nAccumulatorIncrementalUpdate\n";
+#endif
     STATISTICSINC(nnue_accupdate_inc);
     myassert(updaterequest[N - 1] == -1, this, 1, updaterequest[N - 1]);
     NnueIndexList removedIndices[N - 1], addedIndices[N - 1];
@@ -946,6 +949,9 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::AccumulatorRefresh()
 {
+#ifdef NNUEDEBUG
+    cout << "\AccumulatorRefresh\n";
+#endif
     // Full update of accumulator
     STATISTICSINC(nnue_accupdate_full);
     computationState[ply][c] = true;
