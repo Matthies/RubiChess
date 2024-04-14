@@ -295,6 +295,8 @@ void engine::prepareThreads()
         int startIndex = PREROOTMOVES - framesToCopy + 1;
         memcpy(&pos->prerootmovestack[startIndex], &rootposition.prerootmovestack[startIndex], framesToCopy * sizeof(chessmovestack));
         memcpy(&pos->prerootmovecode[startIndex], &rootposition.prerootmovecode[startIndex], framesToCopy * sizeof(uint32_t));
+        if (NnueCurrentArch)
+            NnueCurrentArch->ResetAccumulationCache(pos);
     }
     if (!prepared)
     {
