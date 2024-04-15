@@ -982,20 +982,16 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 #ifdef NNUEDEBUG
     cout << "AccumulatorRefresh\n";
 #endif
-    // Full update of accumulator using Finny tables
+    // Full update of accumulator using Finny tables cache
     STATISTICSINC(nnue_accupdate_full);
     computationState[ply][c] = true;
 
-#if 1
-    //
-    // Finny tables here...
-    //
     const int ksq = kingpos[c];
     const int oksq = (Nt == NnueArchV1 ? ORIENT(c, ksq) : HMORIENT(c, ksq, ksq));
     U64* cachedpiece00 = (U64*) & (accucache[c].piece00[ksq]);
     int16_t* cacheaccumulation = accucache[c].accumulation + ksq * NnueFtHalfdims;
     int32_t* cachepsqtaccumulation = accucache[c].psqtaccumulation + ksq * NnuePsqtBuckets;
-    int index;
+    unsigned int index;
     NnueIndexList addedIndices, removedIndices;
     addedIndices.size = removedIndices.size = 0;
     for (int p = WPAWN; p <= (Nt == NnueArchV1 ? BQUEEN : BKING); p++)
@@ -1025,7 +1021,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     int16_t* weight = NnueCurrentArch->GetFeatureWeight();
     int32_t* psqtweight = NnueCurrentArch->GetFeaturePsqtWeight();
 
-//#ifdef USE_SIMD
+#ifdef USE_SIMD
     constexpr unsigned int numRegs = (NUM_REGS > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : NUM_REGS);
     constexpr unsigned int tileHeight = numRegs * SIMD_WIDTH / 16;
     ft_vec_t acc[numRegs];
@@ -1040,7 +1036,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
         // Difference calculation for the deactivated features
         for (unsigned int k = 0; k < removedIndices.size; k++)
         {
-            unsigned int index = removedIndices.values[k];
+            index = removedIndices.values[k];
             const unsigned int offset = NnueFtHalfdims * index + i * tileHeight;
             ft_vec_t* column = (ft_vec_t*)(weight + offset);
             for (unsigned int j = 0; j < numRegs; j++)
@@ -1050,7 +1046,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
         // Difference calculation for the activated features
         for (unsigned int k = 0; k < addedIndices.size; k++)
         {
-            unsigned int index = addedIndices.values[k];
+            index = addedIndices.values[k];
             const unsigned int offset = NnueFtHalfdims * index + i * tileHeight;
             ft_vec_t* column = (ft_vec_t*)(weight + offset);
             for (unsigned int j = 0; j < numRegs; j++)
@@ -1061,9 +1057,6 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
             vec_store(&accTile[j], acc[j]);
     }
 
-    int16_t* acm = accumulation + (ply * 2 + c) * NnueFtHalfdims;
-    memcpy(acm, cacheaccumulation, NnueFtHalfdims * sizeof(int16_t));
-
     for (unsigned int i = 0; i < NnuePsqtBuckets / PSQT_TILE_HEIGHT; i++)
     {
         psqt_vec_t* accTilePsqt = (psqt_vec_t*)(cachepsqtaccumulation + i * PSQT_TILE_HEIGHT);
@@ -1072,7 +1065,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 
         for (unsigned int k = 0; k < removedIndices.size; k++)
         {
-            unsigned int index = removedIndices.values[k];
+            index = removedIndices.values[k];
             unsigned int offset = NnuePsqtBuckets * index + i * PSQT_TILE_HEIGHT;
             psqt_vec_t* columnPsqt = (psqt_vec_t*)(psqtweight + offset);
 
@@ -1082,7 +1075,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 
         for (unsigned int k = 0; k < addedIndices.size; k++)
         {
-            unsigned int index = addedIndices.values[k];
+            index = addedIndices.values[k];
             unsigned int offset = NnuePsqtBuckets * index + i * PSQT_TILE_HEIGHT;
             psqt_vec_t* columnPsqt = (psqt_vec_t*)(psqtweight + offset);
 
@@ -1093,86 +1086,39 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
         for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
             vec_store_psqt(&accTilePsqt[j], psqt[j]);
     }
-
-        int32_t* psqtacm = psqtAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
-        memcpy(psqtacm, cachepsqtaccumulation, NnuePsqtBuckets * sizeof(int32_t));
-    
-#else
-    int16_t* acm = accumulation + (ply * 2 + c) * NnueFtHalfdims;
-    int32_t* psqtacm = psqtAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
-    NnueIndexList activeIndices;
-    activeIndices.size = 0;
-    HalfkpAppendActiveIndices<Nt, c>(&activeIndices);
-
-    int16_t* weight = NnueCurrentArch->GetFeatureWeight();
-    int16_t* bias = NnueCurrentArch->GetFeatureBias();
-    int32_t* psqtweight = NnueCurrentArch->GetFeaturePsqtWeight();
-
-#ifdef USE_SIMD
-    constexpr unsigned int numRegs = (NUM_REGS > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : NUM_REGS);
-    constexpr unsigned int tileHeight = numRegs * SIMD_WIDTH / 16;
-    ft_vec_t acc[numRegs];
-    psqt_vec_t psqt[NUM_PSQT_REGS];
-
-    for (unsigned int i = 0; i < NnueFtHalfdims / tileHeight; i++)
+#else // USE_SIMD
+    // Difference calculation for the deactivated features
+    for (unsigned int k = 0; k < removedIndices.size; k++)
     {
-        ft_vec_t* ft_biases_tile = (ft_vec_t*)(bias + i * tileHeight);
-        for (unsigned int j = 0; j < numRegs; j++)
-            acc[j] = vec_load(&ft_biases_tile[j]);
-
-        for (unsigned int k = 0; k < activeIndices.size; k++)
-        {
-            unsigned int index = activeIndices.values[k];
-            unsigned int offset = NnueFtHalfdims * index + i * tileHeight;
-            ft_vec_t* column = (ft_vec_t*)(weight + offset);
-            for (unsigned int j = 0; j < numRegs; j++)
-                acc[j] = vec_add_16(acc[j], column[j]);
-        }
-
-        ft_vec_t* accTile = (ft_vec_t*)(acm + i * tileHeight);
-        for (unsigned int j = 0; j < numRegs; j++)
-            vec_store(&accTile[j], acc[j]);
-    }
-
-    for (unsigned int i = 0; i < NnuePsqtBuckets / PSQT_TILE_HEIGHT; i++)
-    {
-        for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
-            psqt[j] = vec_zero_psqt();
-
-        for (unsigned int k = 0; k < activeIndices.size; k++)
-        {
-            unsigned int index = activeIndices.values[k];
-            unsigned int offset = NnuePsqtBuckets * index + i * PSQT_TILE_HEIGHT;
-            psqt_vec_t* columnPsqt = (psqt_vec_t*)(psqtweight + offset);
-
-            for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
-                psqt[j] = vec_add_psqt_32(psqt[j], columnPsqt[j]);
-        }
-
-        psqt_vec_t* accTilePsqt = (psqt_vec_t*)(psqtacm + i * PSQT_TILE_HEIGHT);
-        for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
-            vec_store_psqt(&accTilePsqt[j], psqt[j]);
-    }
-
-#else
-    acm = accumulation + (ply * 2 + c) * NnueFtHalfdims;
-    psqtacm = psqtAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
-    memcpy(acm, bias, NnueFtHalfdims * sizeof(int16_t));
-    memset(psqtacm, 0, NnuePsqtBuckets * sizeof(int32_t));
-
-    for (unsigned int k = 0; k < activeIndices.size; k++)
-    {
-        unsigned int index = activeIndices.values[k];
-        unsigned int offset = NnueFtHalfdims * index;
+        index = removedIndices.values[k];
+        const unsigned int offset = NnueFtHalfdims * index;
 
         for (unsigned int j = 0; j < NnueFtHalfdims; j++)
-            *(acm + j) += weight[offset + j];
+            *(cacheaccumulation + j) -= weight[offset + j];
 
         for (unsigned int i = 0; i < NnuePsqtBuckets; i++)
-            *(psqtacm + i) += psqtweight[index * NnuePsqtBuckets + i];
+            *(cachepsqtaccumulation + i) -= psqtweight[index * NnuePsqtBuckets + i];
+    }
+
+    // Difference calculation for the activated features
+    for (unsigned int k = 0; k < addedIndices.size; k++)
+    {
+        index = addedIndices.values[k];
+        const unsigned int offset = NnueFtHalfdims * index;
+
+        for (unsigned int j = 0; j < NnueFtHalfdims; j++)
+            *(cacheaccumulation + j) += weight[offset + j];
+
+        for (unsigned int i = 0; i < NnuePsqtBuckets; i++)
+            *(cachepsqtaccumulation + i) += psqtweight[index * NnuePsqtBuckets + i];
     }
 #endif
-#endif  // #if 0
+
+    int16_t* acm = accumulation + (ply * 2 + c) * NnueFtHalfdims;
+    memcpy(acm, cacheaccumulation, NnueFtHalfdims * sizeof(int16_t));
+
+    int32_t* psqtacm = psqtAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
+    memcpy(psqtacm, cachepsqtaccumulation, NnuePsqtBuckets * sizeof(int32_t));
 
 #ifdef NNUEDEBUG
     AccumulatorDebug<Nt, c, NnueFtHalfdims, NnuePsqtBuckets>();
