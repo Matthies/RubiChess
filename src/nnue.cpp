@@ -977,6 +977,9 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::AccumulatorRefresh()
 {
+#ifdef NNUEDEBUG
+    cout << "AccumulatorRefresh\n";
+#endif
     // Full update of accumulator
     STATISTICSINC(nnue_accupdate_full);
     computationState[ply][c] = true;
@@ -986,8 +989,6 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     // Finny tables here...
     //
     const int ksq = kingpos[c];
-    if (ksq == 5)
-        printf("");
     const int oksq = (Nt == NnueArchV1 ? ORIENT(c, ksq) : HMORIENT(c, ksq, ksq));
     U64* cachedpiece00 = (U64*) & (accucache[c].piece00[ksq]);
     int16_t* cacheaccumulation = accucache[c].accumulation + ksq * NnueFtHalfdims;
@@ -1011,9 +1012,9 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
         {
             index = pullLsb(&removedbb);
             if (Nt == NnueArchV1)
-                removedIndices.values[removedIndices.size++] = ORIENT(c, index) + PieceToIndex[c][mailbox[index]] + PS_KPEND * oksq;
+                removedIndices.values[removedIndices.size++] = ORIENT(c, index) + PieceToIndex[c][p] + PS_KPEND * oksq;
             else
-                removedIndices.values[removedIndices.size++] = HMORIENT(c, index, ksq) + PieceToIndex[c][mailbox[index]] + PS_KAEND * KingBucket[oksq];
+                removedIndices.values[removedIndices.size++] = HMORIENT(c, index, ksq) + PieceToIndex[c][p] + PS_KAEND * KingBucket[oksq];
         }
     }
 
@@ -1023,7 +1024,6 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     // copy of differential update...
     //
     int16_t* weight = NnueCurrentArch->GetFeatureWeight();
-    int16_t* bias = NnueCurrentArch->GetFeatureBias();
     int32_t* psqtweight = NnueCurrentArch->GetFeaturePsqtWeight();
 
 //#ifdef USE_SIMD
@@ -1065,7 +1065,6 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     int16_t* acm = accumulation + (ply * 2 + c) * NnueFtHalfdims;
     memcpy(acm, cacheaccumulation, NnueFtHalfdims * sizeof(int16_t));
 
-
     for (unsigned int i = 0; i < NnuePsqtBuckets / PSQT_TILE_HEIGHT; i++)
     {
         psqt_vec_t* accTilePsqt = (psqt_vec_t*)(cachepsqtaccumulation + i * PSQT_TILE_HEIGHT);
@@ -1098,9 +1097,6 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 
     int32_t* psqtacm = psqtAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
     memcpy(psqtacm, cachepsqtaccumulation, NnuePsqtBuckets * sizeof(int32_t));
-#ifdef NNUEDEBUG
-    cout << "AccumulatorRefresh ksq=" << ksq << " removed:" << removedIndices.size << " added:" << addedIndices.size << "\n";
-#endif
 
 #else
     int16_t* acm = accumulation + (ply * 2 + c) * NnueFtHalfdims;
