@@ -192,6 +192,8 @@ public:
     void CreateAccumulationCache(chessposition* p) {
         p->accucache[0].accumulation = (int16_t*)allocalign64(64 * NnueFtOutputdims * sizeof(int16_t));
         p->accucache[1].accumulation = (int16_t*)allocalign64(64 * NnueFtOutputdims * sizeof(int16_t));
+        p->accucache[0].psqtaccumulation = nullptr;
+        p->accucache[1].psqtaccumulation = nullptr;
     }
     void ResetAccumulationCache(chessposition* p) {
         memset(p->accucache[0].piece00, 0, sizeof(p->accucache[0].piece00));

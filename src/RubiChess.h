@@ -25,10 +25,6 @@
 
 // Enable to get statistical values about various search features
 //#define STATISTICS
-//
-// Stats for master and bench 20:
-// [STATS] AccuUpdate:   Cached:    5193477 ( 7.1373%)   Increm.:   58437749 (80.3101%)      Full:    9133878 (12.5526%)      Spec:   11827694 (16.2546%)
-//
 
 // Enable to debug the search against a gives pv
 //#define SDEBUG

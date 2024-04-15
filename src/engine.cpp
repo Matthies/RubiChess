@@ -238,6 +238,12 @@ void engine::allocThreads()
         pos->pwnhsh.remove();
         freealigned64(pos->accumulation);
         freealigned64(pos->psqtAccumulation);
+        freealigned64(pos->accucache[0].accumulation);
+        freealigned64(pos->accucache[1].accumulation);
+        if (pos->accucache[0].psqtaccumulation)
+            freealigned64(pos->accucache[0].psqtaccumulation);
+        if (pos->accucache[1].psqtaccumulation)
+            freealigned64(pos->accucache[1].psqtaccumulation);
         pos->~chessposition();
     }
 
