@@ -184,14 +184,14 @@ public:
         return NNUEFILEVERSIONNOBPZ;    // always write networks without BPZ
     }
     int16_t* CreateAccumulationStack() {
-        return(int16_t*)allocalign64(MAXDEPTH * 2 * NnueFtOutputdims * sizeof(int16_t));
+        return(int16_t*)allocalign64(MAXDEPTH * 2 * NnueFtHalfdims * sizeof(int16_t));
     }
     int32_t* CreatePsqtAccumulationStack() {
         return nullptr;
     }
     void CreateAccumulationCache(chessposition* p) {
-        p->accucache[0].accumulation = (int16_t*)allocalign64(64 * NnueFtOutputdims * sizeof(int16_t));
-        p->accucache[1].accumulation = (int16_t*)allocalign64(64 * NnueFtOutputdims * sizeof(int16_t));
+        p->accucache[0].accumulation = (int16_t*)allocalign64(64 * NnueFtHalfdims * sizeof(int16_t));
+        p->accucache[1].accumulation = (int16_t*)allocalign64(64 * NnueFtHalfdims * sizeof(int16_t));
         p->accucache[0].psqtaccumulation = nullptr;
         p->accucache[1].psqtaccumulation = nullptr;
     }
@@ -199,8 +199,8 @@ public:
         memset(p->accucache[0].piece00, 0, sizeof(p->accucache[0].piece00));
         memset(p->accucache[1].piece00, 0, sizeof(p->accucache[1].piece00));
         for (int i = 0; i < 64; i++) {
-            memcpy(p->accucache[0].accumulation + i * NnueFtOutputdims, NnueFt.bias, NnueFtOutputdims * sizeof(int16_t));
-            memcpy(p->accucache[1].accumulation + i * NnueFtOutputdims, NnueFt.bias, NnueFtOutputdims * sizeof(int16_t));
+            memcpy(p->accucache[0].accumulation + i * NnueFtHalfdims, NnueFt.bias, NnueFtHalfdims * sizeof(int16_t));
+            memcpy(p->accucache[1].accumulation + i * NnueFtHalfdims, NnueFt.bias, NnueFtHalfdims * sizeof(int16_t));
         }
     }
     unsigned int GetAccumulationSize() {
@@ -357,14 +357,14 @@ public:
         return NNUEFILEVERSIONSFNNv5_1024;
     }
     int16_t* CreateAccumulationStack() {
-        return(int16_t*) allocalign64(MAXDEPTH * 2 * NnueFtOutputdims * sizeof(int16_t));
+        return(int16_t*) allocalign64(MAXDEPTH * 2 * NnueFtHalfdims * sizeof(int16_t));
     }
     int32_t* CreatePsqtAccumulationStack() {
         return (int32_t*)allocalign64(MAXDEPTH * 2 * NnuePsqtBuckets * sizeof(int32_t));
     }
     void CreateAccumulationCache(chessposition* p) {
-        p->accucache[0].accumulation = (int16_t*)allocalign64(64 * NnueFtOutputdims * sizeof(int16_t));
-        p->accucache[1].accumulation = (int16_t*)allocalign64(64 * NnueFtOutputdims * sizeof(int16_t));
+        p->accucache[0].accumulation = (int16_t*)allocalign64(64 * NnueFtHalfdims * sizeof(int16_t));
+        p->accucache[1].accumulation = (int16_t*)allocalign64(64 * NnueFtHalfdims * sizeof(int16_t));
         p->accucache[0].psqtaccumulation = (int32_t*)allocalign64(64 * NnuePsqtBuckets * sizeof(int32_t));
         p->accucache[1].psqtaccumulation = (int32_t*)allocalign64(64 * NnuePsqtBuckets * sizeof(int32_t));
     }
@@ -372,8 +372,8 @@ public:
         memset(p->accucache[0].piece00, 0, sizeof(p->accucache[0].piece00));
         memset(p->accucache[1].piece00, 0, sizeof(p->accucache[1].piece00));
         for (int i = 0; i < 64; i++) {
-            memcpy(p->accucache[0].accumulation + i * NnueFtOutputdims, NnueFt.bias, NnueFtOutputdims * sizeof(int16_t));
-            memcpy(p->accucache[1].accumulation + i * NnueFtOutputdims, NnueFt.bias, NnueFtOutputdims * sizeof(int16_t));
+            memcpy(p->accucache[0].accumulation + i * NnueFtHalfdims, NnueFt.bias, NnueFtHalfdims * sizeof(int16_t));
+            memcpy(p->accucache[1].accumulation + i * NnueFtHalfdims, NnueFt.bias, NnueFtHalfdims * sizeof(int16_t));
             memset(p->accucache[0].psqtaccumulation + i * NnuePsqtBuckets, 0, NnuePsqtBuckets * sizeof(int32_t));
             memset(p->accucache[1].psqtaccumulation + i * NnuePsqtBuckets, 0, NnuePsqtBuckets * sizeof(int32_t));
         }
@@ -982,7 +982,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 #ifdef NNUEDEBUG
     cout << "AccumulatorRefresh\n";
 #endif
-    // Full update of accumulator
+    // Full update of accumulator using Finny tables
     STATISTICSINC(nnue_accupdate_full);
     computationState[ply][c] = true;
 
@@ -998,7 +998,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     int index;
     NnueIndexList addedIndices, removedIndices;
     addedIndices.size = removedIndices.size = 0;
-    for (int p = WPAWN; p <= BKING; p++)
+    for (int p = WPAWN; p <= (Nt == NnueArchV1 ? BQUEEN : BKING); p++)
     {
         U64 addedbb = piece00[p] & ~cachedpiece00[p];
         while (addedbb)
@@ -1022,9 +1022,6 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 
     memcpy(cachedpiece00, piece00, sizeof(piece00));
 
-    //
-    // copy of differential update...
-    //
     int16_t* weight = NnueCurrentArch->GetFeatureWeight();
     int32_t* psqtweight = NnueCurrentArch->GetFeaturePsqtWeight();
 
@@ -1097,9 +1094,9 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
             vec_store_psqt(&accTilePsqt[j], psqt[j]);
     }
 
-    int32_t* psqtacm = psqtAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
-    memcpy(psqtacm, cachepsqtaccumulation, NnuePsqtBuckets * sizeof(int32_t));
-
+        int32_t* psqtacm = psqtAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
+        memcpy(psqtacm, cachepsqtaccumulation, NnuePsqtBuckets * sizeof(int32_t));
+    
 #else
     int16_t* acm = accumulation + (ply * 2 + c) * NnueFtHalfdims;
     int32_t* psqtacm = psqtAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
