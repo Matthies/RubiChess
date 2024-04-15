@@ -190,17 +190,13 @@ public:
         return nullptr;
     }
     void CreateAccumulationCache(chessposition* p) {
-        p->accucache[0].accumulation = (int16_t*)allocalign64(64 * NnueFtHalfdims * sizeof(int16_t));
-        p->accucache[1].accumulation = (int16_t*)allocalign64(64 * NnueFtHalfdims * sizeof(int16_t));
-        p->accucache[0].psqtaccumulation = nullptr;
-        p->accucache[1].psqtaccumulation = nullptr;
+        p->accucache.accumulation = (int16_t*)allocalign64(2 * 64 * NnueFtHalfdims * sizeof(int16_t));
+        p->accucache.psqtaccumulation = nullptr;
     }
     void ResetAccumulationCache(chessposition* p) {
-        memset(p->accucache[0].piece00, 0, sizeof(p->accucache[0].piece00));
-        memset(p->accucache[1].piece00, 0, sizeof(p->accucache[1].piece00));
-        for (int i = 0; i < 64; i++) {
-            memcpy(p->accucache[0].accumulation + i * NnueFtHalfdims, NnueFt.bias, NnueFtHalfdims * sizeof(int16_t));
-            memcpy(p->accucache[1].accumulation + i * NnueFtHalfdims, NnueFt.bias, NnueFtHalfdims * sizeof(int16_t));
+        memset(p->accucache.piece00, 0, sizeof(p->accucache.piece00));
+        for (int i = 0; i < 2 * 64; i++) {
+            memcpy(p->accucache.accumulation + i * NnueFtHalfdims, NnueFt.bias, NnueFtHalfdims * sizeof(int16_t));
         }
     }
     unsigned int GetAccumulationSize() {
@@ -363,20 +359,15 @@ public:
         return (int32_t*)allocalign64(MAXDEPTH * 2 * NnuePsqtBuckets * sizeof(int32_t));
     }
     void CreateAccumulationCache(chessposition* p) {
-        p->accucache[0].accumulation = (int16_t*)allocalign64(64 * NnueFtHalfdims * sizeof(int16_t));
-        p->accucache[1].accumulation = (int16_t*)allocalign64(64 * NnueFtHalfdims * sizeof(int16_t));
-        p->accucache[0].psqtaccumulation = (int32_t*)allocalign64(64 * NnuePsqtBuckets * sizeof(int32_t));
-        p->accucache[1].psqtaccumulation = (int32_t*)allocalign64(64 * NnuePsqtBuckets * sizeof(int32_t));
+        p->accucache.accumulation = (int16_t*)allocalign64(2 * 64 * NnueFtHalfdims * sizeof(int16_t));
+        p->accucache.psqtaccumulation = (int32_t*)allocalign64(2 * 64 * NnuePsqtBuckets * sizeof(int32_t));
     }
     void ResetAccumulationCache(chessposition* p) {
-        memset(p->accucache[0].piece00, 0, sizeof(p->accucache[0].piece00));
-        memset(p->accucache[1].piece00, 0, sizeof(p->accucache[1].piece00));
-        for (int i = 0; i < 64; i++) {
-            memcpy(p->accucache[0].accumulation + i * NnueFtHalfdims, NnueFt.bias, NnueFtHalfdims * sizeof(int16_t));
-            memcpy(p->accucache[1].accumulation + i * NnueFtHalfdims, NnueFt.bias, NnueFtHalfdims * sizeof(int16_t));
-            memset(p->accucache[0].psqtaccumulation + i * NnuePsqtBuckets, 0, NnuePsqtBuckets * sizeof(int32_t));
-            memset(p->accucache[1].psqtaccumulation + i * NnuePsqtBuckets, 0, NnuePsqtBuckets * sizeof(int32_t));
-        }
+        memset(p->accucache.piece00, 0, 2 * sizeof(p->accucache.piece00[WHITE]));
+        for (int i = 0; i < 2 * 64; i++)
+            memcpy(p->accucache.accumulation + i * NnueFtHalfdims, NnueFt.bias, NnueFtHalfdims * sizeof(int16_t));
+            
+        memset(p->accucache.psqtaccumulation, 0, 2 * 64 * NnuePsqtBuckets * sizeof(int32_t));
     }
     unsigned int GetAccumulationSize() {
         return NnueFtOutputdims;
@@ -988,9 +979,9 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 
     const int ksq = kingpos[c];
     const int oksq = (Nt == NnueArchV1 ? ORIENT(c, ksq) : HMORIENT(c, ksq, ksq));
-    U64* cachedpiece00 = (U64*) & (accucache[c].piece00[ksq]);
-    int16_t* cacheaccumulation = accucache[c].accumulation + ksq * NnueFtHalfdims;
-    int32_t* cachepsqtaccumulation = accucache[c].psqtaccumulation + ksq * NnuePsqtBuckets;
+    U64* cachedpiece00 = (U64*) & (accucache.piece00[c][ksq]);
+    int16_t* cacheaccumulation = accucache.accumulation + (c * 64 + ksq) * NnueFtHalfdims;
+    int32_t* cachepsqtaccumulation = accucache.psqtaccumulation + (c * 64 + ksq) * NnuePsqtBuckets;
     unsigned int index;
     NnueIndexList addedIndices, removedIndices;
     addedIndices.size = removedIndices.size = 0;

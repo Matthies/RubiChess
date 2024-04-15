@@ -1647,7 +1647,7 @@ enum PvAbortType {
 #endif
 
 struct AccumulatorCache {
-    U64 piece00[64][14];
+    U64 piece00[2][64][14];
     int16_t* accumulation;
     int32_t* psqtaccumulation;
 };
@@ -1748,7 +1748,7 @@ public:
     bool computationState[MAXDEPTH][2];
     int16_t* accumulation;
     int32_t* psqtAccumulation;
-    AccumulatorCache accucache[2];
+    AccumulatorCache accucache;
     DirtyPiece dirtypiece[MAXDEPTH];
     uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];
