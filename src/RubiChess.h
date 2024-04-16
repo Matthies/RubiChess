@@ -872,6 +872,8 @@ public:
     virtual uint32_t GetFileVersion() = 0;
     virtual int16_t* CreateAccumulationStack() = 0;
     virtual int32_t* CreatePsqtAccumulationStack() = 0;
+    virtual void CreateAccumulationCache(chessposition* p) = 0;
+    virtual void ResetAccumulationCache(chessposition* p) = 0;
     virtual unsigned int GetAccumulationSize() = 0;
     virtual unsigned int GetPsqtAccumulationSize() = 0;
     virtual size_t GetNetworkFilesize() = 0;
@@ -1644,6 +1646,12 @@ enum PvAbortType {
 };
 #endif
 
+struct AccumulatorCache {
+    U64 piece00[2][64][14];
+    int16_t* accumulation;
+    int32_t* psqtaccumulation;
+};
+
 // Replace the occupied bitboards with the first two so far unused piece bitboards
 #define occupied00 piece00
 
@@ -1740,6 +1748,7 @@ public:
     bool computationState[MAXDEPTH][2];
     int16_t* accumulation;
     int32_t* psqtAccumulation;
+    AccumulatorCache accucache;
     DirtyPiece dirtypiece[MAXDEPTH];
     uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];

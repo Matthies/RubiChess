@@ -238,6 +238,9 @@ void engine::allocThreads()
         pos->pwnhsh.remove();
         freealigned64(pos->accumulation);
         freealigned64(pos->psqtAccumulation);
+        freealigned64(pos->accucache.accumulation);
+        if (pos->accucache.psqtaccumulation)
+            freealigned64(pos->accucache.psqtaccumulation);
         pos->~chessposition();
     }
 
@@ -262,6 +265,8 @@ void engine::allocThreads()
         pos->mtrlhsh.init();
         pos->accumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
         pos->psqtAccumulation = NnueCurrentArch ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr;
+        if (NnueCurrentArch)
+            NnueCurrentArch->CreateAccumulationCache(pos);
     }
     prepareThreads();
     resetStats();
@@ -293,6 +298,8 @@ void engine::prepareThreads()
         int startIndex = PREROOTMOVES - framesToCopy + 1;
         memcpy(&pos->prerootmovestack[startIndex], &rootposition.prerootmovestack[startIndex], framesToCopy * sizeof(chessmovestack));
         memcpy(&pos->prerootmovecode[startIndex], &rootposition.prerootmovecode[startIndex], framesToCopy * sizeof(uint32_t));
+        if (NnueCurrentArch)
+            NnueCurrentArch->ResetAccumulationCache(pos);
     }
     if (!prepared)
     {
