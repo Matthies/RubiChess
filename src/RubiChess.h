@@ -2292,7 +2292,7 @@ struct searchparamset {
     searchparam SP(lmrf0, 37, 20, 150);
     searchparam SP(lmrlogf1, 186, 50, 300);
     searchparam SP(lmrf1, 27, 10, 150);
-    searchparam SP(lmrmindepth, 1, 1, 10);
+    searchparam SP(lmrmindepth, 2, 1, 10);
     searchparam SP(lmrstatsratio, 801, 200, 2000);
     searchparam SP(lmropponentmovecount, 24, 5, 40);
     // LMP table
