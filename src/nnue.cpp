@@ -1105,11 +1105,11 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     }
 #endif
 
-    int16_t* acm = accumulation + (ply * 2 + c) * NnueFtHalfdims;
-    memcpy(acm, cacheaccumulation, NnueFtHalfdims * sizeof(int16_t));
-
     int32_t* psqtacm = psqtAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
     memcpy(psqtacm, cachepsqtaccumulation, NnuePsqtBuckets * sizeof(int32_t));
+
+    int16_t* acm = accumulation + (ply * 2 + c) * NnueFtHalfdims;
+    memcpy(acm, cacheaccumulation, NnueFtHalfdims * sizeof(int16_t));
 
 #ifdef NNUEDEBUG
     AccumulatorDebug<Nt, c, NnueFtHalfdims, NnuePsqtBuckets>();
