@@ -221,7 +221,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     int hashscore = tpHit ? FIXMATESCOREPROBE(tte->value, ply) : NOSCORE;
     uint16_t hashmovecode = tpHit ? tte->movecode : 0;
 
-    if (tpHit && !PVNode && hashscore != NOSCORE && (tte->boundAndAge & (hashscore >= beta ? HASHBETA : HASHALPHA)))
+    if (tpHit && !PVNode && hashscore != NOSCORE && (tte->boundPvAge & (hashscore >= beta ? HASHBETA : HASHALPHA)))
     {
         STATISTICSINC(qs_tt);
         return hashscore;
@@ -436,7 +436,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
     uint16_t hashmovecode = tpHit ? tte->movecode : 0;
     int staticeval = tpHit ? tte->staticeval : NOSCORE;
 
-    if (tpHit && !rep && !PVNode && FIXDEPTHFROMTT(tte->depth) >= depth && hashscore != NOSCORE && (tte->boundAndAge & (hashscore >= beta ? HASHBETA : HASHALPHA)))
+    if (tpHit && !rep && !PVNode && FIXDEPTHFROMTT(tte->depth) >= depth && hashscore != NOSCORE && (tte->boundPvAge & (hashscore >= beta ? HASHBETA : HASHALPHA)))
     {
         if (hashscore >= beta && hashmovecode && !mailbox[GETTO(hashmovecode)])
         {
@@ -725,7 +725,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
             if ((mc & 0xffff) == hashmovecode
                 && depth >= sps.singularmindepth
                 && !excludeMove
-                && (tte->boundAndAge & HASHBETA)
+                && (tte->boundPvAge & HASHBETA)
                 && FIXDEPTHFROMTT(tte->depth) >= depth - 3
 #ifdef NNUELEARN
                 // No singular extension in root of gensfen
@@ -1015,7 +1015,7 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
         && tpHit
         && (newDepth = FIXDEPTHFROMTT(tte->depth)) >= depth
         && score != NOSCORE
-        && (tte->boundAndAge & BOUNDMASK) == HASHEXACT)
+        && (tte->boundPvAge & BOUNDMASK) == HASHEXACT)
     {
         // Hash is fixed regarding scores that don't see actual 3folds so we can trust the entry
         uint32_t fullhashmove = shortMove2FullMove(hashmovecode);

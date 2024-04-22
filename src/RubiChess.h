@@ -1149,9 +1149,11 @@ void learn(vector<string> args);
 #define HASHBETA        0x02
 #define HASHUNKNOWN     0x00
 #define HASHEXACT       0x03
+#define PVSHIFT         2
 #define AGESHIFT        3
 #define AGEINC          (1 << AGESHIFT)
 #define AGEMASK         ((0xff << AGESHIFT) & 0xff)
+#define PVMASK          (1 << PVSHIFT)
 #define AGECYCLE        (255 + AGEINC)
 #define TTDEPTH_OFFSET  -1  // we don't save negative depth to tt so -1 should be okay to detect free entries by testing depth == 0
 
@@ -1181,7 +1183,7 @@ struct ttentry {
     int16_t value;
     int16_t staticeval;
     uint8_t depth;
-    uint8_t boundAndAge;
+    uint8_t boundPvAge;
 };
 
 struct transpositioncluster {
@@ -1205,7 +1207,7 @@ public:
     transpositioncluster *table;
     size_t size;
     size_t sizemask;
-    uint8_t numOfSearchShiftTwo;
+    uint8_t numOfSearchShifted;
     ~transposition();
     int setSize(int sizeMb);    // returns the number of Mb not used by allignment
     void clean();
@@ -1214,7 +1216,7 @@ public:
     ttentry* probeHash(U64 hash, bool *bFound);
     uint16_t getMoveCode(U64 hash);
     unsigned int getUsedinPermill();
-    void nextSearch() { numOfSearchShiftTwo = (numOfSearchShiftTwo + AGEINC) & AGEMASK; }
+    void nextSearch() { numOfSearchShifted = (numOfSearchShifted + AGEINC) & AGEMASK; }
 #ifdef SDEBUG
     void markDebugSlot(U64 h, int i) {
         table[h & sizemask].debugHash = h; table[h & sizemask].debugIndex = i;

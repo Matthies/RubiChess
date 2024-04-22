@@ -201,7 +201,7 @@ void transposition::clean()
         if (tthread[i].joinable())
             tthread[i].join();
     }
-    numOfSearchShiftTwo = 0;
+    numOfSearchShifted = 0;
 }
 
 
@@ -212,7 +212,7 @@ unsigned int transposition::getUsedinPermill()
     // Take 1000 samples
     for (int i = 0; i < 1000 / TTBUCKETNUM; i++)
         for (int j = 0; j < TTBUCKETNUM; j++)
-            if ((table[i].entry[j].boundAndAge & AGEMASK) == numOfSearchShiftTwo)
+            if ((table[i].entry[j].boundPvAge & AGEMASK) == numOfSearchShifted)
                 used++;
 
     return used;
@@ -236,7 +236,7 @@ void transposition::addHash(ttentry* entry, U64 hash, int val, int16_t staticeva
     {
         entry->hashupper = hashupper;
         entry->depth = (uint8_t)ttdepth;
-        entry->boundAndAge = (uint8_t)(bound | numOfSearchShiftTwo | (pv << (AGESHIFT - 1)));
+        entry->boundPvAge = (uint8_t)(bound | numOfSearchShifted | (pv << PVSHIFT));
         entry->movecode = movecode;
         entry->staticeval = staticeval;
         entry->value = (int16_t)val;
@@ -258,7 +258,7 @@ void transposition::printHashentry(U64 hash)
             printf("Depth:     %d\n", data->entry[i].depth);
             printf("Value:     %d\n", data->entry[i].value);
             printf("Eval:      %d\n", data->entry[i].staticeval);
-            printf("BoundAge:  %d\n", data->entry[i].boundAndAge);
+            printf("BoundAge:  %d\n", data->entry[i].boundPvAge);
             return;
         }
     }
@@ -279,7 +279,7 @@ ttentry* transposition::probeHash(U64 hash, bool* bFound)
         if (e->hashupper == hashupper || !e->depth)
         {
             *bFound = (bool)e->depth;
-            e->boundAndAge = (e->boundAndAge & BOUNDMASK) | numOfSearchShiftTwo;
+            e->boundPvAge = (e->boundPvAge & (BOUNDMASK | PVMASK)) | numOfSearchShifted;
             return e;
         }
     }
@@ -290,8 +290,8 @@ ttentry* transposition::probeHash(U64 hash, bool* bFound)
     for (int i = 1; i < TTBUCKETNUM; i++)
     {
         e = &(cluster->entry[i]);
-        if (e->depth - ((AGECYCLE + numOfSearchShiftTwo - e->boundAndAge) & AGEMASK) * 2
-            < leastValuableEntry->depth - ((AGECYCLE + numOfSearchShiftTwo - leastValuableEntry->boundAndAge) & AGEMASK) * 2)
+        if (e->depth - ((AGECYCLE + numOfSearchShifted - e->boundPvAge) & AGEMASK)
+            < leastValuableEntry->depth - ((AGECYCLE + numOfSearchShifted - leastValuableEntry->boundPvAge) & AGEMASK))
         {
             // found a new less valuable entry
             leastValuableEntry = e;
