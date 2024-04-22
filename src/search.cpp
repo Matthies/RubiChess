@@ -248,7 +248,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         if (staticeval >= beta)
         {
             STATISTICSINC(qs_pat);
-            tp.addHash(tte, hash, staticeval, staticeval, HASHBETA, 0, hashmovecode);
+            tp.addHash(tte, hash, staticeval, staticeval, HASHBETA, 0, hashmovecode, PVNode);
 
             return staticeval;
         }
@@ -266,7 +266,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         if (Pt != NoPrune && bestExpectableScore < alpha)
         {
             STATISTICSINC(qs_delta);
-            tp.addHash(tte, hash, bestExpectableScore, staticeval, HASHALPHA, 0, hashmovecode);
+            tp.addHash(tte, hash, bestExpectableScore, staticeval, HASHALPHA, 0, hashmovecode, PVNode);
             return staticeval;
         }
     }
@@ -308,7 +308,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
             if (score >= beta)
             {
                 STATISTICSINC(qs_moves_fh);
-                tp.addHash(tte, hash, score, staticeval, HASHBETA, 0, (uint16_t)bestcode);
+                tp.addHash(tte, hash, score, staticeval, HASHBETA, 0, (uint16_t)bestcode, PVNode);
                 return score;
             }
             if (score > alpha)
@@ -332,7 +332,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         // It's a mate
         return SCOREBLACKWINS + ply;
 
-    tp.addHash(tte, hash, alpha, staticeval, eval_type, 0, (uint16_t)bestcode);
+    tp.addHash(tte, hash, alpha, staticeval, eval_type, 0, (uint16_t)bestcode, PVNode);
     return bestscore;
 }
 
@@ -482,7 +482,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
             }
             if (bound == HASHEXACT || (bound == HASHALPHA ? (score <= alpha) : (score >= beta)))
             {
-                tp.addHash(tte, hash, score, staticeval, bound, MAXDEPTH - 1, 0);
+                tp.addHash(tte, hash, score, staticeval, bound, MAXDEPTH - 1, 0, PVNode);
                 return score;
             }
 
@@ -522,7 +522,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
         else
             staticeval = getEval<NOTRACE>();
 
-        tp.addHash(tte, hash, staticeval, staticeval, HASHUNKNOWN, 0, hashmovecode);
+        tp.addHash(tte, hash, staticeval, staticeval, HASHUNKNOWN, 0, hashmovecode, PVNode);
     }
     staticevalstack[ply] = staticeval;
 
@@ -632,7 +632,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
                     // ProbCut off
                     STATISTICSINC(prune_probcut);
                     SDEBUGDO(isDebugPv, pvabortscore[ply] = probcutscore; pvaborttype[ply] = PVA_PROBCUTPRUNED; pvadditionalinfo[ply] = "pruned by " + moveToString(mc););
-                    tp.addHash(tte, hash, probcutscore, staticeval, HASHBETA, depth - 3, mc);
+                    tp.addHash(tte, hash, probcutscore, staticeval, HASHBETA, depth - 3, mc, false);
                     return probcutscore;
                 }
             }
@@ -925,7 +925,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
                     STATISTICSINC(moves_fail_high);
 
                     if (!excludeMove)
-                        tp.addHash(tte, newhash, FIXMATESCOREADD(score, ply), staticeval, HASHBETA, effectiveDepth, (uint16_t)bestcode);
+                        tp.addHash(tte, newhash, FIXMATESCOREADD(score, ply), staticeval, HASHBETA, effectiveDepth, (uint16_t)bestcode, PVNode);
 
                     SDEBUGDO(isDebugPv, pvaborttype[ply] = isDebugMove ? PVA_BETACUT : debugMovePlayed ? PVA_NOTBESTMOVE : PVA_OMITTED;);
                     SDEBUGDO(isDebugPv || debugTransposition, tp.debugSetPv(newhash, movesOnStack() + " " + (debugTransposition ? "(transposition)" : "") + " effectiveDepth=" + to_string(effectiveDepth)););
@@ -964,7 +964,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
 
     if (bestcode && !excludeMove)
     {
-        tp.addHash(tte, newhash, FIXMATESCOREADD(bestscore, ply), staticeval, eval_type, depth, (uint16_t)bestcode);
+        tp.addHash(tte, newhash, FIXMATESCOREADD(bestscore, ply), staticeval, eval_type, depth, (uint16_t)bestcode, PVNode);
         SDEBUGDO(isDebugPv || debugTransposition, tp.debugSetPv(newhash, movesOnStack() + " " + (debugTransposition ? "(transposition)" : "") + " depth=" + to_string(depth)););
     }
 
@@ -1251,7 +1251,7 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
                         updateTacticalHst(tacticalMoves[0][t], -(depth * depth));
 
                 }
-                tp.addHash(tte, hash, beta, staticeval, HASHBETA, effectiveDepth, (uint16_t)m->code);
+                tp.addHash(tte, hash, beta, staticeval, HASHBETA, effectiveDepth, (uint16_t)m->code, true);
                 SDEBUGDO(isDebugPv, pvaborttype[0] = isDebugMove ? PVA_BETACUT : debugMovePlayed ? PVA_NOTBESTMOVE : PVA_OMITTED;);
                 SDEBUGDO(isDebugPv, tp.debugSetPv(hash, movesOnStack() + " effectiveDepth=" + to_string(effectiveDepth)););
                 return beta;   // fail hard beta-cutoff
@@ -1265,7 +1265,7 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
         }
     }
 
-    tp.addHash(tte, hash, alpha, staticeval, eval_type, depth, (uint16_t)bestmove);
+    tp.addHash(tte, hash, alpha, staticeval, eval_type, depth, (uint16_t)bestmove, true);
     SDEBUGDO(isDebugPv, tp.debugSetPv(hash, movesOnStack() + " depth=" + to_string(depth)););
     return alpha;
 }

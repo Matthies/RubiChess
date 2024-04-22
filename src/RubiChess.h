@@ -1149,7 +1149,7 @@ void learn(vector<string> args);
 #define HASHBETA        0x02
 #define HASHUNKNOWN     0x00
 #define HASHEXACT       0x03
-#define AGESHIFT        2
+#define AGESHIFT        3
 #define AGEINC          (1 << AGESHIFT)
 #define AGEMASK         ((0xff << AGESHIFT) & 0xff)
 #define AGECYCLE        (255 + AGEINC)
@@ -1209,7 +1209,7 @@ public:
     ~transposition();
     int setSize(int sizeMb);    // returns the number of Mb not used by allignment
     void clean();
-    void addHash(ttentry* entry, U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode);
+    void addHash(ttentry* entry, U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode, bool pv);
     void printHashentry(U64 hash);
     ttentry* probeHash(U64 hash, bool *bFound);
     uint16_t getMoveCode(U64 hash);

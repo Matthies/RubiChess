@@ -219,7 +219,7 @@ unsigned int transposition::getUsedinPermill()
 }
 
 
-void transposition::addHash(ttentry* entry, U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode)
+void transposition::addHash(ttentry* entry, U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode, bool pv)
 {
 #ifdef EVALTUNE
     // don't use transposition table when tuning evaluation
@@ -236,7 +236,7 @@ void transposition::addHash(ttentry* entry, U64 hash, int val, int16_t staticeva
     {
         entry->hashupper = hashupper;
         entry->depth = (uint8_t)ttdepth;
-        entry->boundAndAge = (uint8_t)(bound | numOfSearchShiftTwo);
+        entry->boundAndAge = (uint8_t)(bound | numOfSearchShiftTwo | (pv << (AGESHIFT - 1)));
         entry->movecode = movecode;
         entry->staticeval = staticeval;
         entry->value = (int16_t)val;
