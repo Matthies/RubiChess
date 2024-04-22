@@ -308,6 +308,7 @@ void chessposition::prepareStack()
     myassert(ply >= 0 && ply < MAXDEPTH, this, 1, ply);
     // copy stack related data directly to stack
     memcpy(&movestack[ply], &state, sizeof(chessmovestack));
+    //cout << "Stacksize: " << sizeof(chessmovestack) << "\n";
 }
 
 

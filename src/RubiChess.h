@@ -1535,7 +1535,8 @@ struct chessmovestack
     U64 isCheckbb;
     U64 kingPinned;
     int lastnullmove;
-    unsigned int threatSquare;
+    uint16_t threatSquare;
+    uint16_t isPv;
 };
 
 #define MAXMOVELISTLENGTH 256   // for lists of possible pseudo-legal moves
@@ -1680,7 +1681,8 @@ public:
     U64 isCheckbb;
     U64 kingPinned;
     int lastnullmove;
-    unsigned int threatSquare;
+    uint16_t threatSquare;
+    uint16_t isPv;
 
     int prerootmovenum;
     chessmovelist rootmovelist;
@@ -1728,7 +1730,12 @@ public:
     // The following members (almost) don't need an init
     int seldepth;
     int sc;
-    U64 nodespermove[0x10000];                      // init in prepare only for thread #0
+    Materialhash mtrlhsh;                               // init in alloc
+    Pawnhash pwnhsh;                                    // init in alloc
+    int16_t* accumulation;
+    int32_t* psqtAccumulation;
+    AccumulatorCache accucache;
+    alignas(64) U64 nodespermove[0x10000];                      // init in prepare only for thread #0
     chessmovelist captureslist[MAXDEPTH];
     chessmovelist quietslist[MAXDEPTH];
     chessmovelist singularcaptureslist[MAXDEPTH];
@@ -1743,12 +1750,7 @@ public:
     uint32_t movecode[MAXDEPTH];
     uint16_t excludemovestack[MAXDEPTH];                // init in prepare only for excludemovestack[0]
     int16_t staticevalstack[MAXDEPTH];
-    Materialhash mtrlhsh;                               // init in alloc
-    Pawnhash pwnhsh;                                    // init in alloc
     bool computationState[MAXDEPTH][2];
-    int16_t* accumulation;
-    int32_t* psqtAccumulation;
-    AccumulatorCache accucache;
     DirtyPiece dirtypiece[MAXDEPTH];
     uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];
