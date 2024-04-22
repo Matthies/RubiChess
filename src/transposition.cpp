@@ -290,8 +290,8 @@ ttentry* transposition::probeHash(U64 hash, bool* bFound)
     for (int i = 1; i < TTBUCKETNUM; i++)
     {
         e = &(cluster->entry[i]);
-        if (e->depth - ((AGECYCLE + numOfSearchShiftTwo - e->boundAndAge) & AGEMASK) * 2
-            < leastValuableEntry->depth - ((AGECYCLE + numOfSearchShiftTwo - leastValuableEntry->boundAndAge) & AGEMASK) * 2)
+        if (e->depth - ((AGECYCLE + numOfSearchShiftTwo - e->boundAndAge) & AGEMASK) * 4
+            < leastValuableEntry->depth - ((AGECYCLE + numOfSearchShiftTwo - leastValuableEntry->boundAndAge) & AGEMASK) * 4)
         {
             // found a new less valuable entry
             leastValuableEntry = e;
