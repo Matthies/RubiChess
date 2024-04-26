@@ -966,7 +966,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
     }
 
     if (bestscore <= alpha)
-        isPv = isPv || (movestack[ply - 1].isPv && depth > 3);
+        movestack[ply].isPv = isPv = isPv || (movestack[ply - 1].isPv && depth > 3);
 
     if (!excludeMove)
     {
