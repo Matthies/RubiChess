@@ -236,12 +236,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 #else
         // get static evaluation of the position
         if (staticeval == NOSCORE)
-        {
-            if (movecode[ply - 1] == 0)
-                staticeval = -staticevalstack[ply - 1] + CEVAL(eps.eTempo, 2);
-            else
-                staticeval = getEval<NOTRACE>();
-        }
+            staticeval = getEval<NOTRACE>();
 #endif
 
         bestscore = staticeval;
