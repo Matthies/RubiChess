@@ -962,7 +962,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
         }
     }
 
-    if (bestcode && !excludeMove)
+    if (!excludeMove)
     {
         tp.addHash(tte, newhash, FIXMATESCOREADD(bestscore, ply), staticeval, eval_type, depth, (uint16_t)bestcode);
         SDEBUGDO(isDebugPv || debugTransposition, tp.debugSetPv(newhash, movesOnStack() + " " + (debugTransposition ? "(transposition)" : "") + " depth=" + to_string(depth)););
@@ -1705,6 +1705,5 @@ template int chessposition::alphabeta<NoPrune>(int alpha, int beta, int depth, b
 template int chessposition::rootsearch<MultiPVSearch>(int, int, int*, int, int);
 template void mainSearch<SinglePVSearch>(searchthread*);
 template void mainSearch<MultiPVSearch>(searchthread*);
-
 
 } // namespace rubichess
