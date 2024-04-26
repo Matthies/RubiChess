@@ -818,7 +818,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
             reduction -= stats / (sps.lmrstatsratio * 8);
 
             // less reduction at PV nodes
-            reduction -= PVNode;
+            reduction -= isPv;
 
             // even lesser reduction at PV nodes for all but bad hash moves
             // FIXME: is this condition still valid with different tpHit logic now?
@@ -964,6 +964,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
             return SCOREDRAW;
         }
     }
+
+    if (bestscore <= alpha)
+        isPv = isPv || (movestack[ply - 1].isPv && depth > 3);
 
     if (!excludeMove)
     {
