@@ -962,7 +962,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
         }
     }
 
-    if (bestcode && !excludeMove)
+    if (!excludeMove)
     {
         tp.addHash(tte, newhash, FIXMATESCOREADD(bestscore, ply), staticeval, eval_type, depth, (uint16_t)bestcode);
         SDEBUGDO(isDebugPv || debugTransposition, tp.debugSetPv(newhash, movesOnStack() + " " + (debugTransposition ? "(transposition)" : "") + " depth=" + to_string(depth)););
