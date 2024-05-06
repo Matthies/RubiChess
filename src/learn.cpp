@@ -1455,6 +1455,10 @@ sfenreader::sfenreader()
     pos->initCastleRights(rookfiles, kingfile);
     pos->accumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
     pos->psqtAccumulation = NnueCurrentArch ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr;
+    if (NnueCurrentArch) {
+        NnueCurrentArch->CreateAccumulationCache(pos);
+        NnueCurrentArch->ResetAccumulationCache(pos);
+    }
     pos->resetStats();
     memset(pos->prerootmovestack, 0xff, sizeof(chessposition::prerootmovestack));
     memset(pos->movestack, 0, sizeof(chessposition::movestack));
