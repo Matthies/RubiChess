@@ -1155,7 +1155,7 @@ SKIP_SAVE:
                         pos->getRootMoves();
                         int cur_multi_pv = min(pos->rootmovelist.length, (ply < random_opening_ply ? 8 : random_multi_pv));
                         int cur_multi_pv_diff = (ply < random_opening_ply ? 100 : random_multi_pv_diff);
-                        pos->rootsearch<MultiPVSearch>(SCOREBLACKWINS, SCOREWHITEWINS, &random_multi_pv_depth, 1, cur_multi_pv);
+                        pos->rootsearch<MultiPVSearch>(SCOREBLACKWINS, SCOREWHITEWINS, random_multi_pv_depth, 1, cur_multi_pv);
                         int s = min(pos->rootmovelist.length, cur_multi_pv);
                         // Exclude moves with score outside of allowed margin
                         while (cur_multi_pv_diff && pos->bestmovescore[0] > pos->bestmovescore[s - 1] + cur_multi_pv_diff)

@@ -974,9 +974,8 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
 
 
 template <RootsearchType RT>
-int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLast, int maxmoveindex)
+int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, int maxmoveindex)
 {
-    int depth = *depthptr;
     int bestscore = NOSCORE;
     int eval_type = HASHALPHA;
     chessmove *m;
@@ -1026,13 +1025,6 @@ int chessposition::rootsearch(int alpha, int beta, int *depthptr, int inWindowLa
                 pondermove = 0;
             }
             updatePvTable(fullhashmove, false);
-            if (score > alpha) {
-                bestmovescore[0] = score;
-                SDEBUGDO(isDebugPv, pvabortscore[0] = score; if (debugMove == hashmovecode) pvaborttype[0] = PVA_FROMTT; else pvaborttype[0] = PVA_DIFFERENTFROMTT; );
-                SDEBUGDO(isDebugPv, pvadditionalinfo[0] = "PV = " + getPv(pvtable[0]) + "  " + tp.debugGetPv(hash, 0); );
-                *depthptr = newDepth;
-                return score;
-            }
         }
     }
 
@@ -1366,7 +1358,7 @@ void mainSearch(searchthread *thr)
         }
         else
         {
-            score = pos->rootsearch<RT>(alpha, beta, &thr->depth, inWindow);
+            score = pos->rootsearch<RT>(alpha, beta, thr->depth, inWindow);
 #ifdef TDEBUG
             if (en.stopLevel == ENGINESTOPIMMEDIATELY && isMainThread)
             {
@@ -1702,7 +1694,7 @@ void mainSearch(searchthread *thr)
 // Explicit template instantiation
 // This avoids putting these definitions in header file
 template int chessposition::alphabeta<NoPrune>(int alpha, int beta, int depth, bool cutnode);
-template int chessposition::rootsearch<MultiPVSearch>(int, int, int*, int, int);
+template int chessposition::rootsearch<MultiPVSearch>(int, int, int, int, int);
 template void mainSearch<SinglePVSearch>(searchthread*);
 template void mainSearch<MultiPVSearch>(searchthread*);
 
