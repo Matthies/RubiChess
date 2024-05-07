@@ -986,6 +986,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
     const bool mateprune = (en.mate > 0 || alpha > SCORETBWININMAXPLY || beta < -SCORETBWININMAXPLY);
 
     // reset pv
+    uint32_t lastbestmove = pvtable[0][0];
     pvtable[0][0] = 0;
 
     if (isMultiPV)
@@ -1040,7 +1041,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
             m = &rootmovelist.move[i];
 
             //PV moves gets top score
-            if (hashmovecode == (m->code & 0xffff))
+            if (lastbestmove == m->code)
                 m->value = PVVAL;
             else if (bestFailingLow == m->code)
                 m->value = KILLERVAL2 - 1;
