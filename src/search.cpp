@@ -1340,6 +1340,7 @@ void mainSearch(searchthread *thr)
     en.lastReport = -1;
     U64 nowtime = 0;
     pos->lastpv[0] = 0;
+    pos->pvtable[0][0] = 0;
     bool isDraw = (pos->testRepetition() >= 2) || (pos->halfmovescounter >= 100);
     do
     {
