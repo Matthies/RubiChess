@@ -810,6 +810,7 @@ void engine::resetEndTime(U64 nowTime, int constantRootMoves, int bestmovenodesr
     int timetouse = mytime;
     int overhead = moveOverhead;
     int constance = constantRootMoves * 2 + ponderhitbonus;
+    bool firstmovebonus = (lastbestmovescore == NOSCORE);
 
     // main goal is to let the search stop at endtime1 (full iterations) most times and get only few stops at endtime2 (interrupted iteration)
     // constance: ponder hit and/or onstance of best move in the last iteration lower the time within a given interval
@@ -820,8 +821,8 @@ void engine::resetEndTime(U64 nowTime, int constantRootMoves, int bestmovenodesr
         // f2: stop immediately at 1.9...3.1 x average movetime
         // movevariation: many moves to go decrease f1 (stop soon)
         int movevariation = min(32, movestogo) * 3 / 32;
-        U64 f1 = max(9 - movevariation, 21 - movevariation - constance) * bestmovenodesratio;
-        U64 f2 = max(19, 31 - constance) * bestmovenodesratio;
+        U64 f1 = (max(9 - movevariation, 21 - movevariation - constance) * bestmovenodesratio) << firstmovebonus;
+        U64 f2 = (max(19, 31 - constance) * bestmovenodesratio) << firstmovebonus;
         int timeforallmoves = timetouse + movestogo * timeinc;
         const int mtg_1 = movestogo + 1;
 
@@ -836,8 +837,8 @@ void engine::resetEndTime(U64 nowTime, int constantRootMoves, int bestmovenodesr
             // f1: stop soon after 5..17 timeslot
             // f2: stop immediately after 15..27 timeslots
             int ph = (sthread[0].pos.getPhase() + min(255, sthread[0].pos.fullmovescounter * 6)) / 2;
-            U64 f1 = max(5, 17 - constance) * bestmovenodesratio;
-            U64 f2 = max(15, 27 - constance) * bestmovenodesratio;
+            U64 f1 = (max(5, 17 - constance) * bestmovenodesratio) << firstmovebonus;
+            U64 f2 = (max(15, 27 - constance) * bestmovenodesratio) << firstmovebonus;
             timetouse = max(timeinc, timetouse); // workaround for Arena bug
 
             endtime1 = thinkStartTime + max(timeinc, (int)(f1 * (timetouse + timeinc) / 128 / (256 - ph))) * frequency / 1000;
@@ -847,8 +848,8 @@ void engine::resetEndTime(U64 nowTime, int constantRootMoves, int bestmovenodesr
             // sudden death without increment; play for another x;y moves
             // f1: stop soon at 1/30...1/42 time slot
             // f2: stop immediately at 1/10...1/22 time slot
-            int f1 = min(42, 30 + constance);
-            int f2 = min(22, 10 + constance);
+            int f1 = min(42, 30 + constance) << firstmovebonus;
+            int f2 = min(22, 10 + constance) << firstmovebonus;
 
             endtime1 = thinkStartTime + timetouse / f1 * frequency * bestmovenodesratio / 128 / 1000;
             endtime2 = clockStartTime + min(max(0, timetouse - overhead), timetouse / f2 * bestmovenodesratio / 128) * frequency / 1000;
