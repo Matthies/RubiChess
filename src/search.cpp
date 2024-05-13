@@ -976,7 +976,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
 template <RootsearchType RT>
 int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, int maxmoveindex)
 {
-    int bestscore = alpha;
+    int bestscore = NOSCORE;
     int eval_type = HASHALPHA;
     chessmove *m;
     int lastmoveindex;
@@ -1371,7 +1371,7 @@ void mainSearch(searchthread *thr)
                 delta = SCOREWHITEWINS;
 
             // new aspiration window
-            if (score == alpha)
+            if (score <= alpha)
             {
                 // research with lower alpha and reduced beta
                 beta = (alpha + beta) / 2;
