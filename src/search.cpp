@@ -976,7 +976,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
 template <RootsearchType RT>
 int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, int maxmoveindex)
 {
-    int bestscore = NOSCORE;
+    int bestscore = alpha;
     int eval_type = HASHALPHA;
     chessmove *m;
     int lastmoveindex;
