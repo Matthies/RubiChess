@@ -524,7 +524,7 @@ void chessposition::playNullMove()
     dp->pc[0] = 0; // don't break search for updatable positions on stack
     computationState[ply][WHITE] = false;
     computationState[ply][BLACK] = false;
-    
+
 }
 
 
@@ -1357,5 +1357,7 @@ template void chessposition::evaluateMoves<QUIET>(chessmovelist*);
 template void chessposition::evaluateMoves<CAPTURE>(chessmovelist*);
 template bool chessposition::playMove<true>(uint32_t);
 template void chessposition::unplayMove<true>(uint32_t);
+template bool chessposition::playMove<false>(uint32_t);
+template void chessposition::unplayMove<false>(uint32_t);
 
 } // namespace rubichess

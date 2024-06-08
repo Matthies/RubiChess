@@ -366,7 +366,7 @@ public:
         memset(p->accucache.piece00, 0, 2 * sizeof(p->accucache.piece00[WHITE]));
         for (int i = 0; i < 2 * 64; i++)
             memcpy(p->accucache.accumulation + i * NnueFtHalfdims, NnueFt.bias, NnueFtHalfdims * sizeof(int16_t));
-            
+
         memset(p->accucache.psqtaccumulation, 0, 2 * 64 * NnuePsqtBuckets * sizeof(int32_t));
     }
     unsigned int GetAccumulationSize() {
@@ -1048,6 +1048,9 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
             vec_store(&accTile[j], acc[j]);
     }
 
+    int16_t* acm = accumulation + (ply * 2 + c) * NnueFtHalfdims;
+    memcpy(acm, cacheaccumulation, NnueFtHalfdims * sizeof(int16_t));
+
     for (unsigned int i = 0; i < NnuePsqtBuckets / PSQT_TILE_HEIGHT; i++)
     {
         psqt_vec_t* accTilePsqt = (psqt_vec_t*)(cachepsqtaccumulation + i * PSQT_TILE_HEIGHT);
@@ -1077,6 +1080,10 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
         for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
             vec_store_psqt(&accTilePsqt[j], psqt[j]);
     }
+
+    int32_t* psqtacm = psqtAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
+    memcpy(psqtacm, cachepsqtaccumulation, NnuePsqtBuckets * sizeof(int32_t));
+
 #else // USE_SIMD
     // Difference calculation for the deactivated features
     for (unsigned int k = 0; k < removedIndices.size; k++)
@@ -1103,13 +1110,13 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
         for (unsigned int i = 0; i < NnuePsqtBuckets; i++)
             *(cachepsqtaccumulation + i) += psqtweight[index * NnuePsqtBuckets + i];
     }
-#endif
 
     int16_t* acm = accumulation + (ply * 2 + c) * NnueFtHalfdims;
     memcpy(acm, cacheaccumulation, NnueFtHalfdims * sizeof(int16_t));
 
     int32_t* psqtacm = psqtAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
     memcpy(psqtacm, cachepsqtaccumulation, NnuePsqtBuckets * sizeof(int32_t));
+#endif
 
 #ifdef NNUEDEBUG
     AccumulatorDebug<Nt, c, NnueFtHalfdims, NnuePsqtBuckets>();
@@ -1353,7 +1360,7 @@ bool NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::ReadFeatureWeights(
             weightsRead += ftdims;
         }
     }
-    
+
     memcpy(weight, src_16, inputdims * ftdims * sizeof(int16_t));
 
     // read psqt weights
