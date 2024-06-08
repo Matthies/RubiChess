@@ -94,9 +94,9 @@ ifeq ($(COMP),$(filter $(COMP), icx))
 	MYCC=icx
 endif
 	LDFLAGS += $(shell type lld 1>/dev/null 2>/dev/null && echo "-fuse-ld=lld")
-	INSTRUMENTEDEXTRACXXFLAGS='-fprofile-generate=$(EXE).clangprof-raw'
+	INSTRUMENTEDEXTRACXXFLAGS='-fprofile-instr-generate=$(EXE).clangprof-raw'
 	INSTRUMENTEDEXTRALDFLAGS=
-	PGOEXTRACXXFLAGS='-fprofile-use=$(EXE).profdata'
+	PGOEXTRACXXFLAGS='-fprofile-instr-use=$(EXE).profdata'
 	PGOEXTRALDFLAGS=
 	PROFMERGE=llvm-profdata merge -output=$(EXE).profdata $(EXE).clangprof-raw
 endif
