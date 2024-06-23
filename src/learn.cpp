@@ -1650,14 +1650,17 @@ bool sfenreader::getTrainingData(conversion_t* cv, trainingdata* td)
 
 static void convertthread(searchthread* thr, conversion_t* cv)
 {
-    sfenreader* inreader;
+    sfenreader* inreader[MAXSHUFFLE];
     sfenreader* cmpreader = nullptr;
     char* outbuffer = nullptr;
     char* outbptr = nullptr;
     Binpack outbp; // output
 
-    inreader = new sfenreader();
-    inreader->init(cv);
+    for (int i = 0; i < cv->shuffle; i++)
+    {
+        inreader[i] = new sfenreader();
+        inreader[i]->init(cv);
+    }
 
     if (cv->cmps)
     {
@@ -1924,22 +1927,6 @@ void convert(vector<string> args)
 
     conv.informat = (inputfile.find(".binpack") != string::npos ? binpack : inputfile.find(".bin") != string::npos ? bin : plain);
 
-    // The following is Windows-only; FIXME: C++--17 offers portable filesystem handling
-    WIN32_FIND_DATA fd;
-    HANDLE inputhandle = FindFirstFile(inputfile.c_str(), &fd);
-    if (inputhandle == INVALID_HANDLE_VALUE)
-    {
-        cout << "Cannot open input file " << inputfile << endl;
-        return;
-    }
-
-
-    conv.is[0] = new ifstream(inputfile, conv.informat != plain ? ios::binary : ios_base::in);
-#if 0
-    if (!conv.is)
-    {
-    }
-#endif
     conv.endofinputfile = false;
 
     conv.cmps = nullptr;
@@ -1969,11 +1956,49 @@ void convert(vector<string> args)
 
     maxContinuationSize = (conv.preserveChunks ? maxBinpackChunkSize : 10 * 1024);
 
-    for (int tnum = 0; tnum < en.Threads; tnum++)
+    string folderpath = filesystem::path(inputfile).parent_path().string();
+    string filepattern = filesystem::path(inputfile).filename().string();
+    cout << folderpath << "  " << filepattern << "\n";
+
+    cout << filesystem::path(inputfile) << " " << filesystem::path(inputfile).parent_path() << "\n";
+    cout << "is_directory: " << filesystem::is_directory(folderpath) << "\n";
+    filesystem::directory_iterator di(folderpath);
+    filesystem::directory_entry de;
+    int shuffleindex = 0;
+    while (true)
     {
-        en.sthread[tnum].index = tnum;
-        en.sthread[tnum].thr = thread(&convertthread, &en.sthread[tnum], &conv);
+        if (di == filesystem::directory_iterator())
+            cout << " this is the end (The Doors)\n";
+        de = *(di++);
+        // ToDo: Filter files that don't match pattern
+        conv.is[shuffleindex++] = new ifstream(de.path(), conv.informat != plain ? ios::binary : ios_base::in);
+        if (shuffleindex == conv.shuffle)
+        {
+            while (true)
+            {
+                Sleep(100);
+                if (_kbhit())
+                {
+                    char c = _getch();
+                    if (c == 'q') {
+                        conv.stoprequest = true;
+                        cerr << "Stopping after current chunks";
+                    }
+                }
+                for (int tnum = 0; tnum < en.Threads; tnum++)
+                {
+                    if (en.sthread[tnum].index < 0)
+                    {
+                        en.sthread[tnum].index = tnum;
+                        en.sthread[tnum].thr = thread(&convertthread, &en.sthread[tnum], &conv);
+                    }
+                }
+            }
+        }
+
     }
+
+
 
     // Loop over input files / grouped by shuffle
 

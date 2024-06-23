@@ -91,6 +91,7 @@
 #include <math.h>
 #include <regex>
 #include <set>
+#include <filesystem>
 #include <sys/stat.h>
 #ifdef USE_ZLIB
 #include "zlib/zlib.h"
