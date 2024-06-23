@@ -119,6 +119,7 @@ inline uint32_t rubiFromBinpack(chessposition* pos, uint16_t c)
     return fullmove;
 }
 
+#define MAXSHUFFLE 128
 
 //
 // Sfen/bin related code
@@ -1371,7 +1372,7 @@ struct conversion_t {
     SfenFormat informat;
     SfenFormat cmpformat;
     int rescoreDepth;
-    ifstream *is;
+    ifstream *is[MAXSHUFFLE];
     ifstream *cmps;
     ostream *os;
     mutex mtin, mtout, mtcmp;
@@ -1386,6 +1387,7 @@ struct conversion_t {
     int splitChunks;
     int disable_prune;
     int preserveChunks;
+    int shuffle;
 } conv;
 
 
@@ -1419,6 +1421,7 @@ struct trainingdata {
 
 class sfenreader {
     chessposition* pos;
+    ifstream* is;
     char* inbuffer;
     size_t inbuffersize;
     size_t inbufferreserve;
@@ -1437,7 +1440,7 @@ public:
     int getReadChunknum() { return lastreadchunknum; }
     int getWriteChunknum() { return writechunknum; }
     bool testAndAllocateBuffer(conversion_t* cv);
-    bool endOfFile(conversion_t* cv) { return restdata == 0 && cv->is->peek() == ios::traits_type::eof(); }
+    //bool endOfFile(conversion_t* cv) { return restdata == 0 && cv->is->peek() == ios::traits_type::eof(); }
     bool endOfBuffer() { return (inbptr >= inbuffer + restdata); }
     bool getTrainingData(conversion_t* cv, trainingdata* td);
     size_t getRestData() { return restdata; }
@@ -1501,7 +1504,7 @@ void sfenreader::init(conversion_t* cv)
 bool sfenreader::testAndAllocateBuffer(conversion_t* cv)
 {
     writechunknum = lastreadchunknum;
-    if (cv->is->peek() == ios::traits_type::eof()) {
+    if (is->peek() == ios::traits_type::eof()) {
         cv->endofinputfile = true;
     }
     if (cv->endofinputfile)
@@ -1513,7 +1516,7 @@ bool sfenreader::testAndAllocateBuffer(conversion_t* cv)
     if (cv->informat == binpack)
     {
         char hd[8];
-        cv->is->read(hd, 8);
+        is->read(hd, 8);
         if (strncmp(hd, "BINP", 4) != 0)
         {
             cout << "BINP Header missing. Exit." << endl;
@@ -1544,8 +1547,8 @@ bool sfenreader::testAndAllocateBuffer(conversion_t* cv)
         inbptr -= inbuffersize;
     }
 
-    cv->is->read((char*)inbuffer + inbufferreserve, inbuffersize);
-    restdata = cv->is->gcount();
+    is->read((char*)inbuffer + inbufferreserve, inbuffersize);
+    restdata = is->gcount();
 
     lastreadchunknum = cv->numInChunks++;
     if (cv->numInChunks <= cv->skipChunks)
@@ -1593,16 +1596,16 @@ bool sfenreader::getTrainingData(conversion_t* cv, trainingdata* td)
         td->score = 0;
         found = false;
         while (true) {
-            if (cv->is->peek() == ios::traits_type::eof())
+            if (is->peek() == ios::traits_type::eof())
                 break;
-            *cv->is >> key;
+            *is >> key;
             if (key == "e")
             {
                 found = true;
                 break;
             }
-            *cv->is >> ws;
-            getline(*cv->is, value);
+            *is >> ws;
+            getline(*is, value);
             if (key == "fen")
                 if (pos->getFromFen(value.c_str()) != 0)
                     cv->okay = false;
@@ -1861,6 +1864,7 @@ void convert(vector<string> args)
     conv.preserveChunks = 0;
     conv.stoprequest = false;
     conv.okay = true;
+    conv.shuffle = 1;
 
     size_t unnamedParams = 0;
     while (ci < cs)
@@ -1906,6 +1910,10 @@ void convert(vector<string> args)
         {
             conv.preserveChunks = stoi(args[ci++]);
         }
+        else if (cmd == "shuffle" && ci < cs)
+        {
+            conv.shuffle = stoi(args[ci++]);
+        }
         else
         {
             unnamedParams++;
@@ -1913,13 +1921,25 @@ void convert(vector<string> args)
         }
     }
 
+
     conv.informat = (inputfile.find(".binpack") != string::npos ? binpack : inputfile.find(".bin") != string::npos ? bin : plain);
-    conv.is = new ifstream(inputfile, conv.informat != plain ? ios::binary : ios_base::in);
-    if (!conv.is)
+
+    // The following is Windows-only; FIXME: C++--17 offers portable filesystem handling
+    WIN32_FIND_DATA fd;
+    HANDLE inputhandle = FindFirstFile(inputfile.c_str(), &fd);
+    if (inputhandle == INVALID_HANDLE_VALUE)
     {
         cout << "Cannot open input file " << inputfile << endl;
         return;
     }
+
+
+    conv.is[0] = new ifstream(inputfile, conv.informat != plain ? ios::binary : ios_base::in);
+#if 0
+    if (!conv.is)
+    {
+    }
+#endif
     conv.endofinputfile = false;
 
     conv.cmps = nullptr;
@@ -1954,6 +1974,8 @@ void convert(vector<string> args)
         en.sthread[tnum].index = tnum;
         en.sthread[tnum].thr = thread(&convertthread, &en.sthread[tnum], &conv);
     }
+
+    // Loop over input files / grouped by shuffle
 
     int threadsToStop = en.Threads;
     while (threadsToStop)

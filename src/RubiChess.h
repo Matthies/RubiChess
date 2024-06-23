@@ -48,7 +48,7 @@
 //#define SEARCHOPTIONS
 
 // Enable this to enable NNUE training code
-//#define NNUELEARN
+#define NNUELEARN
 
 // Enable this to enable NNUE debug output
 //#define NNUEDEBUG
