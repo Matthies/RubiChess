@@ -1655,6 +1655,7 @@ static void convertthread(searchthread* thr, conversion_t* cv)
     char* outbuffer = nullptr;
     char* outbptr = nullptr;
     Binpack outbp; // output
+    int shufflecurrent = 0;
 
     for (int i = 0; i < cv->shuffle; i++)
     {
@@ -1676,14 +1677,14 @@ static void convertthread(searchthread* thr, conversion_t* cv)
         outbp.base = outbuffer;
         outbp.data = &outbptr;
         outbp.consumedBits = 0;
-        outbp.inpos = inreader->getPos();
+        outbp.inpos = inreader[shufflecurrent]->getPos();
     }
 
     while (true)
     {
         cv->mtin.lock();
 
-        if (!inreader->testAndAllocateBuffer(cv))
+        if (!inreader[shufflecurrent]->testAndAllocateBuffer(cv))
             return;
 
         if (!cv->okay || cv->stoprequest || cv->endofinputfile)
@@ -1697,16 +1698,16 @@ static void convertthread(searchthread* thr, conversion_t* cv)
 
         cv->mtin.unlock();
 
-        if (inreader->getReadChunknum() < 0)
+        if (inreader[shufflecurrent]->getReadChunknum() < 0)
             // no more data in input file
             break;
 
-        while (cv->okay && (cv->informat == plain || !inreader->endOfBuffer()))
+        while (cv->okay && (cv->informat == plain || !inreader[shufflecurrent]->endOfBuffer()))
         {
             trainingdata intraining;
             trainingdata cmptraining;
 
-            bool found = inreader->getTrainingData(cv, &intraining);
+            bool found = inreader[shufflecurrent]->getTrainingData(cv, &intraining);
 
             if (!found) {
                 cerr << "Thread#" << thr->index << ": No training data found. Break!\n";
@@ -1721,7 +1722,7 @@ static void convertthread(searchthread* thr, conversion_t* cv)
                 cout << "Compare file: " << cmptraining.gameply << " " << cmptraining.move << " " << cmptraining.result << " " << cmptraining.score << "\n";
             }
 
-            chessposition* inpos = inreader->getPos();
+            chessposition* inpos = inreader[shufflecurrent]->getPos();
             if (cv->outformat == bin)
             {
                 PackedSfenValue psv;
@@ -1741,7 +1742,7 @@ static void convertthread(searchthread* thr, conversion_t* cv)
                     if (*outbp.data > outbuffer)
                     {
                         // Wait for correct order
-                        while (cv->preserveChunks && inreader->getWriteChunknum() >= 0 && inreader->getWriteChunknum() != cv->chunksWritten)
+                        while (cv->preserveChunks && inreader[shufflecurrent]->getWriteChunknum() >= 0 && inreader[shufflecurrent]->getWriteChunknum() != cv->chunksWritten)
                             Sleep(100);
                         // flush chunk
                         cv->mtout.lock();
@@ -1787,7 +1788,7 @@ static void convertthread(searchthread* thr, conversion_t* cv)
 
                 outpos->nextToBinpack(&outbp);
 
-                if (cv->preserveChunks && inreader->endOfBuffer()) {
+                if (cv->preserveChunks && inreader[shufflecurrent]->endOfBuffer()) {
                     prepareNextBinpackPosition(&outbp);
                     outbp.flushAt = *outbp.data;
                 }
@@ -1822,7 +1823,7 @@ static void convertthread(searchthread* thr, conversion_t* cv)
         prepareNextBinpackPosition(&outbp);
         if (*outbp.data > outbuffer)
         {
-            while (cv->preserveChunks && inreader->getWriteChunknum() >= 0 && inreader->getWriteChunknum() != cv->chunksWritten)
+            while (cv->preserveChunks && inreader[shufflecurrent]->getWriteChunknum() >= 0 && inreader[shufflecurrent]->getWriteChunknum() != cv->chunksWritten)
                 Sleep(100);
             // flush chunk
             cv->mtout.lock();
