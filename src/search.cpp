@@ -196,7 +196,7 @@ inline int chessposition::correctEvalByHistory(int v)
 {
     int us = state & S2MMASK;
     int index = pawnhash & (CORRHISTSIZE - 1);
-    int cv = v + correctionhistory[us][index] / 512;
+    int cv = v + correctionhistory[us][index] / 64;
     return max(-SCORETBWININMAXPLY, min(cv, SCORETBWININMAXPLY));
 }
 
