@@ -949,7 +949,15 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
                     STATISTICSINC(moves_fail_high);
 
                     if (!excludeMove)
+                    {
+                        if (!ISCAPTURE(bestmove) && !isCheckbb && !(bestscore < staticeval))
+                        {
+                            int bonus = max(-256, min(256, (bestscore - staticeval) * depth / 4));
+                            updateCorrectionHst(bonus);
+                        }
+
                         tp.addHash(tte, newhash, FIXMATESCOREADD(score, ply), rawstaticeval, HASHBETA, effectiveDepth, (uint16_t)bestcode);
+                    }
 
                     SDEBUGDO(isDebugPv, pvaborttype[ply] = isDebugMove ? PVA_BETACUT : debugMovePlayed ? PVA_NOTBESTMOVE : PVA_OMITTED;);
                     SDEBUGDO(isDebugPv || debugTransposition, tp.debugSetPv(newhash, movesOnStack() + " " + (debugTransposition ? "(transposition)" : "") + " effectiveDepth=" + to_string(effectiveDepth)););
@@ -988,9 +996,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
 
     if (!excludeMove)
     {
-        if (!ISCAPTURE(bestmove) && !isCheckbb && eval_type == HASHEXACT)
+        if (!ISCAPTURE(bestmove) && !isCheckbb && !(eval_type == HASHALPHA && bestscore > staticeval))
         {
-            int bonus = max(-256, min(256, (alpha - staticeval) * depth / 4));
+            int bonus = max(-256, min(256, (bestscore - staticeval) * depth / 4));
             updateCorrectionHst(bonus);
         }
 
