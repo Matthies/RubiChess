@@ -988,6 +988,12 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
 
     if (!excludeMove)
     {
+        if (!ISCAPTURE(bestmove) && !isCheckbb && eval_type == HASHEXACT)
+        {
+            int bonus = max(-256, min(256, (alpha - staticeval) * depth / 4));
+            updateCorrectionHst(bonus);
+        }
+
         tp.addHash(tte, newhash, FIXMATESCOREADD(bestscore, ply), rawstaticeval, eval_type, depth, (uint16_t)bestcode);
         SDEBUGDO(isDebugPv || debugTransposition, tp.debugSetPv(newhash, movesOnStack() + " " + (debugTransposition ? "(transposition)" : "") + " depth=" + to_string(depth)););
     }
@@ -1283,11 +1289,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
 
     tp.addHash(tte, hash, alpha, staticeval, eval_type, depth, (uint16_t)bestmove);
     SDEBUGDO(isDebugPv, tp.debugSetPv(hash, movesOnStack() + " depth=" + to_string(depth)););
-    if (!ISCAPTURE(bestmove))
-    {
-        int bonus = max(-256, min(256, (alpha - staticeval) * depth / 4));
-        updateCorrectionHst(bonus);
-    }
     return alpha;
 }
 
