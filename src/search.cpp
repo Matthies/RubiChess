@@ -537,12 +537,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
     // get static evaluation of the position
     if (rawstaticeval == NOSCORE)
     {
-        if (0)//movecode[ply - 1] == 0)
-            // just reverse the staticeval before the null move respecting the tempo
-            rawstaticeval = -staticevalstack[ply - 1] + CEVAL(eps.eTempo, 2);
-        else
-            rawstaticeval = getEval<NOTRACE>();
-
+        rawstaticeval = getEval<NOTRACE>();
         tp.addHash(tte, hash, rawstaticeval, rawstaticeval, HASHUNKNOWN, 0, hashmovecode);
     }
     int staticeval = correctEvalByHistory(rawstaticeval);
@@ -949,9 +944,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
                     if (!excludeMove)
                     {
                         if (!ISCAPTURE(bestcode) && !isCheckbb && !(bestscore < staticeval))
-                        {
                             updateCorrectionHst(bestscore - staticeval, depth);
-                        }
 
                         tp.addHash(tte, newhash, FIXMATESCOREADD(score, ply), rawstaticeval, HASHBETA, effectiveDepth, (uint16_t)bestcode);
                     }
@@ -994,9 +987,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
     if (!excludeMove)
     {
         if (!ISCAPTURE(bestcode) && !isCheckbb && !(eval_type == HASHALPHA && bestscore > staticeval))
-        {
             updateCorrectionHst(bestscore - staticeval, depth);
-        }
 
         tp.addHash(tte, newhash, FIXMATESCOREADD(bestscore, ply), rawstaticeval, eval_type, depth, (uint16_t)bestcode);
         SDEBUGDO(isDebugPv || debugTransposition, tp.debugSetPv(newhash, movesOnStack() + " " + (debugTransposition ? "(transposition)" : "") + " depth=" + to_string(depth)););
