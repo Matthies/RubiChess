@@ -189,7 +189,7 @@ inline void chessposition::updateCorrectionHst(int value, int depth)
     int scaledvalue = value * 256;
     int weight = min(1 + depth, 16);
 
-    correctionhistory[us][index] = max(MININT16, min(MAXINT16,  (correctionhistory[us][index] * (256 - weight) + scaledvalue * weight) / 256));
+    correctionhistory[us][index] = max(-8192, min(8192,  (correctionhistory[us][index] * (256 - weight) + scaledvalue * weight) / 256));
 }
 
 inline int chessposition::correctEvalByHistory(int v)
