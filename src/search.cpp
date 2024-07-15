@@ -181,6 +181,29 @@ inline void chessposition::updateTacticalHst(uint32_t code, int value)
 }
 
 
+inline void chessposition::updateCorrectionHst(int value)
+{
+    int us = state & S2MMASK;
+    int index = pawnhash & (CORRHISTSIZE - 1);
+
+    value = max(-1024, min(1024, value));
+
+    int delta = value - correctionhistory[us][index] * abs(value) / 1024;
+    myassert(correctionhistory[us][index] + delta < MAXINT16 && correctionhistory[us][index] + delta > MININT16, this, 2, correctionhistory[us][index], delta);
+
+    correctionhistory[us][index] += delta;
+}
+
+inline int chessposition::correctEvalByHistory(int v)
+{
+    int us = state & S2MMASK;
+    int index = pawnhash & (CORRHISTSIZE - 1);
+    int cv = v + correctionhistory[us][index];
+    return max(-SCORETBWININMAXPLY, min(cv, SCORETBWININMAXPLY));
+}
+
+
+
 template <PruneType Pt>
 int chessposition::getQuiescence(int alpha, int beta, int depth)
 {
@@ -434,7 +457,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
     ttentry* tte = tp.probeHash(newhash, &tpHit);
     int hashscore = tpHit ? FIXMATESCOREPROBE(tte->value, ply) : NOSCORE;
     uint16_t hashmovecode = tpHit ? tte->movecode : 0;
-    int staticeval = tpHit ? tte->staticeval : NOSCORE;
+    int rawstaticeval = tpHit ? tte->staticeval : NOSCORE;
 
     if (tpHit && !rep && !PVNode && FIXDEPTHFROMTT(tte->depth) >= depth && hashscore != NOSCORE && (tte->boundAndAge & (hashscore >= beta ? HASHBETA : HASHALPHA)))
     {
@@ -482,7 +505,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
             }
             if (bound == HASHEXACT || (bound == HASHALPHA ? (score <= alpha) : (score >= beta)))
             {
-                tp.addHash(tte, hash, score, staticeval, bound, MAXDEPTH - 1, 0);
+                tp.addHash(tte, hash, score, rawstaticeval, bound, MAXDEPTH - 1, 0);
                 return score;
             }
 
@@ -514,16 +537,17 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
         NnueSpeculativeEval();
 
     // get static evaluation of the position
-    if (staticeval == NOSCORE)
+    if (rawstaticeval == NOSCORE)
     {
         if (movecode[ply - 1] == 0)
             // just reverse the staticeval before the null move respecting the tempo
-            staticeval = -staticevalstack[ply - 1] + CEVAL(eps.eTempo, 2);
+            rawstaticeval = -staticevalstack[ply - 1] + CEVAL(eps.eTempo, 2);
         else
-            staticeval = getEval<NOTRACE>();
+            rawstaticeval = getEval<NOTRACE>();
 
-        tp.addHash(tte, hash, staticeval, staticeval, HASHUNKNOWN, 0, hashmovecode);
+        tp.addHash(tte, hash, rawstaticeval, rawstaticeval, HASHUNKNOWN, 0, hashmovecode);
     }
+    int staticeval = correctEvalByHistory(rawstaticeval);
     staticevalstack[ply] = staticeval;
 
     if (Pt == MatePrune && depth <= 0)
@@ -632,7 +656,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
                     // ProbCut off
                     STATISTICSINC(prune_probcut);
                     SDEBUGDO(isDebugPv, pvabortscore[ply] = probcutscore; pvaborttype[ply] = PVA_PROBCUTPRUNED; pvadditionalinfo[ply] = "pruned by " + moveToString(mc););
-                    tp.addHash(tte, hash, probcutscore, staticeval, HASHBETA, depth - 3, mc);
+                    tp.addHash(tte, hash, probcutscore, rawstaticeval, HASHBETA, depth - 3, mc);
                     return probcutscore;
                 }
             }
@@ -925,7 +949,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
                     STATISTICSINC(moves_fail_high);
 
                     if (!excludeMove)
-                        tp.addHash(tte, newhash, FIXMATESCOREADD(score, ply), staticeval, HASHBETA, effectiveDepth, (uint16_t)bestcode);
+                        tp.addHash(tte, newhash, FIXMATESCOREADD(score, ply), rawstaticeval, HASHBETA, effectiveDepth, (uint16_t)bestcode);
 
                     SDEBUGDO(isDebugPv, pvaborttype[ply] = isDebugMove ? PVA_BETACUT : debugMovePlayed ? PVA_NOTBESTMOVE : PVA_OMITTED;);
                     SDEBUGDO(isDebugPv || debugTransposition, tp.debugSetPv(newhash, movesOnStack() + " " + (debugTransposition ? "(transposition)" : "") + " effectiveDepth=" + to_string(effectiveDepth)););
@@ -964,7 +988,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
 
     if (!excludeMove)
     {
-        tp.addHash(tte, newhash, FIXMATESCOREADD(bestscore, ply), staticeval, eval_type, depth, (uint16_t)bestcode);
+        tp.addHash(tte, newhash, FIXMATESCOREADD(bestscore, ply), rawstaticeval, eval_type, depth, (uint16_t)bestcode);
         SDEBUGDO(isDebugPv || debugTransposition, tp.debugSetPv(newhash, movesOnStack() + " " + (debugTransposition ? "(transposition)" : "") + " depth=" + to_string(depth)););
     }
 
@@ -1259,6 +1283,11 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
 
     tp.addHash(tte, hash, alpha, staticeval, eval_type, depth, (uint16_t)bestmove);
     SDEBUGDO(isDebugPv, tp.debugSetPv(hash, movesOnStack() + " depth=" + to_string(depth)););
+    if (!ISCAPTURE(bestmove))
+    {
+        int bonus = max(-256, min(256, (alpha - staticeval) * depth / 4));
+        updateCorrectionHst(bonus);
+    }
     return alpha;
 }
 

@@ -394,6 +394,7 @@ struct pawnhashentry;
 #define MAXTHREADS  256
 #define MAXHASH     0x100000  // 1TB ... never tested
 #define DEFAULTHASH 16
+#define CORRHISTSIZE 0x4000
 
 #define MAXDEPTH 256
 #define MOVESTACKRESERVE 48     // to avoid checking for height reaching MAXDEPTH in probe_wds and getQuiescence
@@ -1708,6 +1709,7 @@ public:
     int16_t counterhistory[14][64][14 * 64];
     int16_t tacticalhst[7][64][6];
     uint32_t countermove[14][64];
+    int16_t correctionhistory[2][CORRHISTSIZE];
     int16_t* prerootconthistptr[6];
     int16_t* conthistptr[MAXDEPTH];
     int he_threshold;
@@ -1825,6 +1827,7 @@ public:
     template <PruneType Pt> int getQuiescence(int alpha, int beta, int depth);
     void updateHistory(uint32_t code, int value);
     void updateTacticalHst(uint32_t code, int value);
+    void updateCorrectionHst(int value);
     void updatePvTable(uint32_t mc, bool recursive);
     void updateMultiPvTable(int pvindex, uint32_t mc);
     string getPv(uint32_t *table);
@@ -1832,6 +1835,7 @@ public:
     void reapplyPv(uint32_t* table, int num);
     int getHistory(uint32_t code);
     int getTacticalHst(uint32_t code);
+    int correctEvalByHistory(int v);
     void resetStats();
     inline bool CheckForImmediateStop();
     int CreateEvasionMovelist(chessmove* mstart);
