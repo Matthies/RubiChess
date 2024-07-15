@@ -950,7 +950,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
 
                     if (!excludeMove)
                     {
-                        if (!ISCAPTURE(bestmove) && !isCheckbb && !(bestscore < staticeval))
+                        if (!ISCAPTURE(bestcode) && !isCheckbb && !(bestscore < staticeval))
                         {
                             int bonus = max(-256, min(256, (bestscore - staticeval) * depth / 4));
                             updateCorrectionHst(bonus);
@@ -996,7 +996,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
 
     if (!excludeMove)
     {
-        if (!ISCAPTURE(bestmove) && !isCheckbb && !(eval_type == HASHALPHA && bestscore > staticeval))
+        if (!ISCAPTURE(bestcode) && !isCheckbb && !(eval_type == HASHALPHA && bestscore > staticeval))
         {
             int bonus = max(-256, min(256, (bestscore - staticeval) * depth / 4));
             updateCorrectionHst(bonus);
