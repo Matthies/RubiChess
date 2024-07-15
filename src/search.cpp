@@ -539,7 +539,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
     // get static evaluation of the position
     if (rawstaticeval == NOSCORE)
     {
-        if (movecode[ply - 1] == 0)
+        if (0)//movecode[ply - 1] == 0)
             // just reverse the staticeval before the null move respecting the tempo
             rawstaticeval = -staticevalstack[ply - 1] + CEVAL(eps.eTempo, 2);
         else
