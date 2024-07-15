@@ -181,24 +181,22 @@ inline void chessposition::updateTacticalHst(uint32_t code, int value)
 }
 
 
-inline void chessposition::updateCorrectionHst(int value)
+inline void chessposition::updateCorrectionHst(int value, int depth)
 {
     int us = state & S2MMASK;
     int index = pawnhash & (CORRHISTSIZE - 1);
 
-    value = max(-1024, min(1024, value));
+    int scaledvalue = value * 256;
+    int weight = min(1 + depth, 16);
 
-    int delta = value - correctionhistory[us][index] * abs(value) / 1024;
-    myassert(correctionhistory[us][index] + delta < MAXINT16 && correctionhistory[us][index] + delta > MININT16, this, 2, correctionhistory[us][index], delta);
-
-    correctionhistory[us][index] += delta;
+    correctionhistory[us][index] = max(MININT16, min(MAXINT16,  (correctionhistory[us][index] * (256 - weight) + scaledvalue * weight) / 256));
 }
 
 inline int chessposition::correctEvalByHistory(int v)
 {
     int us = state & S2MMASK;
     int index = pawnhash & (CORRHISTSIZE - 1);
-    int cv = v + correctionhistory[us][index];
+    int cv = v + correctionhistory[us][index] / 256;
     return max(-SCORETBWININMAXPLY, min(cv, SCORETBWININMAXPLY));
 }
 
@@ -952,8 +950,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
                     {
                         if (!ISCAPTURE(bestcode) && !isCheckbb && !(bestscore < staticeval))
                         {
-                            int bonus = max(-256, min(256, (bestscore - staticeval) * depth / 4));
-                            updateCorrectionHst(bonus);
+                            updateCorrectionHst(bestscore - staticeval, depth);
                         }
 
                         tp.addHash(tte, newhash, FIXMATESCOREADD(score, ply), rawstaticeval, HASHBETA, effectiveDepth, (uint16_t)bestcode);
@@ -998,8 +995,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
     {
         if (!ISCAPTURE(bestcode) && !isCheckbb && !(eval_type == HASHALPHA && bestscore > staticeval))
         {
-            int bonus = max(-256, min(256, (bestscore - staticeval) * depth / 4));
-            updateCorrectionHst(bonus);
+            updateCorrectionHst(bestscore - staticeval, depth);
         }
 
         tp.addHash(tte, newhash, FIXMATESCOREADD(bestscore, ply), rawstaticeval, eval_type, depth, (uint16_t)bestcode);

@@ -1827,7 +1827,7 @@ public:
     template <PruneType Pt> int getQuiescence(int alpha, int beta, int depth);
     void updateHistory(uint32_t code, int value);
     void updateTacticalHst(uint32_t code, int value);
-    void updateCorrectionHst(int value);
+    void updateCorrectionHst(int value, int depth);
     void updatePvTable(uint32_t mc, bool recursive);
     void updateMultiPvTable(int pvindex, uint32_t mc);
     string getPv(uint32_t *table);
