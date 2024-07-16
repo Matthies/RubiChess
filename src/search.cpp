@@ -189,14 +189,14 @@ inline void chessposition::updateCorrectionHst(int value, int depth)
     int scaledvalue = value * 256;
     int weight = min(1 + depth, 16);
 
-    correctionhistory[us][index] = max(-16384, min(16384,  (correctionhistory[us][index] * (256 - weight) + scaledvalue * weight) / 256));
+    correctionhistory[us][index] = max(-8192, min(8192,  (correctionhistory[us][index] * (256 - weight) + scaledvalue * weight) / 256));
 }
 
 inline int chessposition::correctEvalByHistory(int v)
 {
     int us = state & S2MMASK;
     int index = pawnhash & (CORRHISTSIZE - 1);
-    int cv = v + correctionhistory[us][index] / 128;
+    int cv = v + correctionhistory[us][index] / 96;
     return max(-SCORETBWININMAXPLY, min(cv, SCORETBWININMAXPLY));
 }
 
