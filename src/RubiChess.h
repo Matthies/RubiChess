@@ -2325,7 +2325,6 @@ struct searchparamset {
     // Threat pruning
     searchparam SP(threatprunemargin, 36, 10, 150);
     searchparam SP(threatprunemarginimprove, 4, 0, 20);
-
     // No hashmovereduction
     searchparam SP(nohashreductionmindepth, 1, 1, 8);
     // SEE prune
@@ -2344,7 +2343,8 @@ struct searchparamset {
     // Extension guard
     searchparam SP(extguarddoubleext, 6, 1, 15);
     searchparam SP(extguardcheckext, 5, 1, 15);
-
+    // Correction history
+    searchparam SP(correctionhistoryratio, 128, 64, 192);
 };
 
 extern SPSCONST searchparamset sps;
