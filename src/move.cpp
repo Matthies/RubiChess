@@ -909,13 +909,12 @@ void MoveSelector::SetPreferredMoves(chessposition* p, int m, int excludemove)
 }
 
 // Constructor for alphabeta search
-void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, uint32_t counter, int excludemove)
+void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t counter, int excludemove)
 {
     pos = p;
     hashmove = p->shortMove2FullMove(hshm);
     killermove1 = (kllm1 != hashmove ? kllm1 : 0);
-    killermove2 = (kllm2 != hashmove ? kllm2 : 0);
-    countermove = (counter != hashmove && counter != kllm1 && counter != kllm2 ? counter : 0);
+    countermove = (counter != hashmove && counter != kllm1  ? counter : 0);
     if (!excludemove)
     {
         captures = &pos->captureslist[pos->ply];
@@ -983,15 +982,6 @@ uint32_t MoveSelector::next()
             return killermove1;
         }
         // fall through
-    case KILLERMOVE2STATE:
-        state++;
-        if (pos->moveIsPseudoLegal(killermove2))
-        {
-            SDEBUGDO(true, value = KILLERVAL2;)
-            STATISTICSINC(ms_spcl_moves[PvNode][depth]);
-            return killermove2;
-        }
-        // fall through
     case COUNTERMOVESTATE:
         state++;
         if (pos->moveIsPseudoLegal(countermove))
@@ -1015,7 +1005,6 @@ uint32_t MoveSelector::next()
             SDEBUGDO(true, value = quiets->lastvalue;);
             if (mc != hashmove
                 && mc != killermove1
-                && mc != killermove2
                 && mc != countermove)
             {
                 STATISTICSINC(ms_quiet_moves[PvNode][depth][numOfQuiets]);

@@ -1358,7 +1358,6 @@ const int mvv[] = { 0U << 27, 1U << 27, 2U << 27, 2U << 27, 3U << 27, 4U << 27, 
 const int lva[] = { 5 << 24, 4 << 24, 3 << 24, 3 << 24, 2 << 24, 1 << 24, 0 << 24 };
 #define PVVAL (7 << 27)
 #define KILLERVAL1 (1 << 26)
-#define KILLERVAL2 (KILLERVAL1 - 1)
 #define NMREFUTEVAL (1 << 25)
 #define BADTACTICALFLAG (1 << 31)
 
@@ -1559,7 +1558,7 @@ public:
 };
 
 
-enum MoveSelector_State { HASHMOVESTATE, TACTICALINITSTATE, TACTICALSTATE, KILLERMOVE1STATE, KILLERMOVE2STATE,
+enum MoveSelector_State { HASHMOVESTATE, TACTICALINITSTATE, TACTICALSTATE, KILLERMOVE1STATE,
     COUNTERMOVESTATE, QUIETINITSTATE, QUIETSTATE, BADTACTICALSTATE, BADTACTICALEND, EVASIONINITSTATE, EVASIONSTATE };
 
 class MoveSelector
@@ -1572,7 +1571,6 @@ public:
     bool onlyGoodCaptures;
     uint32_t hashmove;
     uint32_t killermove1;
-    uint32_t killermove2;
     uint32_t countermove;
     int margin;
     char padding[8];
@@ -1588,7 +1586,7 @@ public:
 #endif
     void SetPreferredMoves(chessposition *p);  // for quiescence move selector
     void SetPreferredMoves(chessposition *p, int m, int excludemove);  // for probcut move selector
-    void SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t kllm2, uint32_t counter, int excludemove);
+    void SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t kllm1, uint32_t counter, int excludemove);
     uint32_t next();
 };
 
@@ -1685,7 +1683,7 @@ public:
 
     int prerootmovenum;
     chessmovelist rootmovelist;
-    uint32_t killer[MAXDEPTH][2];   // Hmmm. killer[0][] not initialized/reset to 0??
+    uint32_t killer[MAXDEPTH];      // Hmmm. killer[0][] not initialized/reset to 0??
     uint32_t bestFailingLow;        // Hmmm. bestFailingLow not initialized/reset to 0??
     int failhighcount[MAXDEPTH];
     int psqval;

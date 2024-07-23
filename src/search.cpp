@@ -671,12 +671,12 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
         counter = countermove[GETPIECE(lastmove)][GETCORRECTTO(lastmove)];
 
     // Reset killers for child ply
-    killer[ply + 1][0] = killer[ply + 1][1] = 0;
+    killer[ply + 1] = 0;
 
     // Reset fail high stats for my next ply
     failhighcount[ply + 2] = 0;
 
-    ms->SetPreferredMoves(this, hashmovecode, killer[ply][0], killer[ply][1], counter, excludeMove);
+    ms->SetPreferredMoves(this, hashmovecode, killer[ply], counter, excludeMove);
     STATISTICSINC(moves_loop_n);
     STATISTICSDO(ms->depth = min(MAXSTATDEPTH - 2, depth));
     STATISTICSDO(ms->PvNode = PVNode);
@@ -920,10 +920,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
                             updateHistory(quietMoves[ply][i], -(depth * depth));
 
                         // Killermove
-                        if (killer[ply][0] != mc)
+                        if (killer[ply] != mc)
                         {
-                            killer[ply][1] = killer[ply][0];
-                            killer[ply][0] = mc;
+                            killer[ply] = mc;
                         }
 
                         // save countermove
@@ -1068,12 +1067,10 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
             if (hashmovecode == (m->code & 0xffff))
                 m->value = PVVAL;
             else if (bestFailingLow == m->code)
-                m->value = KILLERVAL2 - 1;
+                m->value = KILLERVAL1 - 1;
             // killermoves gets score better than other quiets
-            else if (killer[0][0] == m->code)
+            else if (killer[0] == m->code)
                 m->value = KILLERVAL1;
-            else if (killer[0][1] == m->code)
-                m->value = KILLERVAL2;
             else if (GETCAPTURE(m->code) != BLANK)
                 m->value = (m->code & BADSEEFLAG ? -1 : 1) * (mvv[GETCAPTURE(m->code) >> 1] | lva[GETPIECE(m->code) >> 1]);
             else
@@ -1105,7 +1102,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
     int tacticalPlayed = 0;
 
     // Reset killers for child ply
-    killer[1][0] = killer[1][1] = 0;
+    killer[1] = 0;
 
     // Reset fail high stats for my next ply
     failhighcount[2] = 0;
@@ -1255,10 +1252,9 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
                     for (int q = 0; q < quietsPlayed - 1; q++)
                         updateHistory(quietMoves[0][q], -(depth * depth));
 
-                    if (killer[0][0] != m->code)
+                    if (killer[0] != m->code)
                     {
-                        killer[0][1] = killer[0][0];
-                        killer[0][0] = m->code;
+                        killer[0] = m->code;
                     }
                 }
                 else

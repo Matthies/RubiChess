@@ -945,6 +945,8 @@ int main(int argc, char* argv[])
             en.ExecPath = execPath.substr(0, si + 1);
     }
 
+    if (!(sizeof(MoveSelector) % 64))
+        cout << "Alarm. MoveSelector not well aligned.\n";
     initBitmaphelper();
     NnueInit();
 
