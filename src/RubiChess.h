@@ -1573,7 +1573,7 @@ public:
     uint32_t killermove1;
     uint32_t countermove;
     int margin;
-    char padding[8];
+    char padding[16];
 #ifdef SDEBUG
     int value;
 #endif
