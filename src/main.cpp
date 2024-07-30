@@ -952,7 +952,6 @@ int main(int argc, char* argv[])
 
 #ifdef EVALOPTIONS
     registerallevals();
-    NnueRegisterEvals();
 #endif
 
 #ifdef EVALTUNE

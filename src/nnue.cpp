@@ -72,7 +72,6 @@ static constexpr int KingBucket[64] = {
 // Global objects
 //
 NnueType NnueReady = NnueDisabled;
-eval NnueValueScale = 64;
 NnueArchitecture* NnueCurrentArch;
 
 
@@ -139,9 +138,9 @@ public:
         LayerStack[0].NnueOut.WriteWeights(nr);
     }
     void RescaleLastLayer(int ratio64) {
-        LayerStack[0].NnueOut.bias[0] = (int32_t)round(LayerStack[0].NnueOut.bias[0] * ratio64 / NnueValueScale);
+        LayerStack[0].NnueOut.bias[0] = (int32_t)round(LayerStack[0].NnueOut.bias[0] * ratio64 / sps.nnuevaluescale);
         for (unsigned int i = 0; i < NnueHidden2Dims; i++)
-            LayerStack[0].NnueOut.weight[i] = (int32_t)round(LayerStack[0].NnueOut.weight[i] * ratio64 / NnueValueScale);
+            LayerStack[0].NnueOut.weight[i] = (int32_t)round(LayerStack[0].NnueOut.weight[i] * ratio64 / sps.nnuevaluescale);
     }
     string GetArchName() {
         return "V1";
@@ -166,7 +165,7 @@ public:
         LayerStack[0].NnueCl1.Propagate(network.hidden2_values, network.hidden2_clipped);
         LayerStack[0].NnueOut.Propagate(network.hidden2_clipped, &network.out_value);
 
-        return network.out_value * NnueValueScale / 1024;
+        return network.out_value * sps.nnuevaluescale / 1024;
     }
     void SpeculativeEval(chessposition* pos) {
         pos->SpeculativeTransform<NnueArchV1, NnueFtHalfdims, NnuePsqtBuckets>();
@@ -294,9 +293,9 @@ public:
     }
     void RescaleLastLayer(int ratio64) {
         for (unsigned int b = 0; b < NnueLayerStacks; b++) {
-            LayerStack[b].NnueOut.bias[0] = (int32_t)round(LayerStack[b].NnueOut.bias[0] * ratio64 / NnueValueScale);
+            LayerStack[b].NnueOut.bias[0] = (int32_t)round(LayerStack[b].NnueOut.bias[0] * ratio64 / sps.nnuevaluescale);
             for (unsigned int i = 0; i < NnueHidden2Dims; i++)
-                LayerStack[b].NnueOut.weight[i] = (int32_t)round(LayerStack[b].NnueOut.weight[i] * ratio64 / NnueValueScale);
+                LayerStack[b].NnueOut.weight[i] = (int32_t)round(LayerStack[b].NnueOut.weight[i] * ratio64 / sps.nnuevaluescale);
         }
     }
     string GetArchName() {
@@ -327,7 +326,7 @@ public:
         LayerStack[bucket].NnueCl2.Propagate(network.hidden2_values, network.hidden2_clipped);
         LayerStack[bucket].NnueOut.Propagate(network.hidden2_clipped, &network.out_value);
 
-        int fwdout = network.hidden1_values[NnueHidden1Out] * (600 * 1024 / NnueValueScale) / (127 * (1 << NnueClippingShift));
+        int fwdout = network.hidden1_values[NnueHidden1Out] * (600 * 1024 / sps.nnuevaluescale) / (127 * (1 << NnueClippingShift));
         int positional = network.out_value + fwdout;
 #ifdef NNUEDEBUG
         cout << "\npsqt eval       : " << setfill(' ') << setw(5) << fwdout;
@@ -335,7 +334,7 @@ public:
         cout << "\ntotal nnue      : " << setfill(' ') << setw(5) << (psqt + positional) << "\n\n";
 #endif
 
-        return (psqt + positional) * NnueValueScale / 1024;
+        return (psqt + positional) * sps.nnuevaluescale / 1024;
     }
     void SpeculativeEval(chessposition* pos) {
         pos->SpeculativeTransform<NnueArchV5, NnueFtHalfdims, NnuePsqtBuckets>();
@@ -2307,15 +2306,6 @@ void NnueWriteNet(vector<string> args)
 
     cout << "Network written to file " << NnueNetPath << "\n";
 }
-
-#ifdef EVALOPTIONS
-void NnueRegisterEvals()
-{
-    // Expose weights and bias of ouput layer as UCI options for tuning
-    en.ucioptions.Register(&NnueValueScale, "NnueValueScale", ucinnuebias, to_string(NnueValueScale), INT_MIN, INT_MAX, nullptr);
-}
-#endif
-
 
 
 bool NnueNetsource::open()

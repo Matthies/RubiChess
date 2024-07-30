@@ -2345,6 +2345,8 @@ struct searchparamset {
     searchparam SP(extguardcheckext, 5, 1, 15);
     // Correction history
     searchparam SP(correctionhistoryratio, 128, 64, 192);
+    // NNUE eval scale
+    searchparam SP(nnuevaluescale, 64, 48, 96);
 };
 
 extern SPSCONST searchparamset sps;
