@@ -17,9 +17,6 @@
 # and define EMU when calling pgo-rename
 
 !IF !DEFINED(COMP) || "$(COMP)" == "clang"
-!IF !DEFINED(CLANGVER)
-CLANGVER=9
-!ENDIF
 CompilerBaseDir=C:\Program Files\LLVM$(CLANGVER)
 CXX="$(CompilerBaseDir)\bin\clang-cl.exe"
 LD="$(CompilerBaseDir)\bin\lld-link.exe"
