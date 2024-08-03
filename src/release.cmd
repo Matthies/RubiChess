@@ -63,7 +63,7 @@ if exist %vcvarscmdicx% (
   nmake -c -f Makefile.clang release COMP=icx
 ) else (
   echo Found MSVC Build tools %vcvarscmd%
-  call %vcvarscmd% x64 -vcvars_ver=14.16
+  call %vcvarscmd% x64
   nmake -c -f Makefile.clang release COMP=clang
 )
 
@@ -71,7 +71,7 @@ if exist %vcvarscmdicx% (
 ::
 :: ARM64 build
 ::
-call %vcvarscmd% x64_arm64 -vcvars_ver=14.16
+call %vcvarscmd% x64_arm64
 nmake -c -f Makefile.clang release COMP=clang
 
 :end
