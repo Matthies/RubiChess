@@ -504,7 +504,7 @@ struct evalparamset {
     eval eComplexpawnflanksbonus =  EVALUE(  66);
     eval eComplexonlypawnsbonus =  EVALUE(  71);
     eval eComplexadjust =  EVALUE(-100);
-    eval eTempo =  CVALUE(  20);
+    eval eTempo =  CVALUE(  0);
     eval eKingpinpenalty[6] = {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  38, -74), VALUE(  65, -61), VALUE( -29,  68), VALUE( -44, 163)  };
     eval ePawnstormblocked[4][5] = {
         {  VALUE(   0,   0), VALUE(   0,   0), VALUE(  -6,  -4), VALUE(  26, -11), VALUE(  30, -11)  },
