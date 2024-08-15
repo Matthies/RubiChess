@@ -2289,42 +2289,42 @@ struct searchparamset {
 #ifdef EVALTUNE
     searchparam SP(deltapruningmargin, 4000, 0, 8000);
 #else
-    searchparam SP(deltapruningmargin, 292, 40, 300);
+    searchparam SP(deltapruningmargin, 290, 40, 300);
 #endif
     // LMR table
-    searchparam SP(lmrlogf0, 147, 50, 300);
-    searchparam SP(lmrf0, 42, 20, 150);
-    searchparam SP(lmrlogf1, 195, 50, 300);
-    searchparam SP(lmrf1, 25, 10, 150);
+    searchparam SP(lmrlogf0, 144, 50, 300);
+    searchparam SP(lmrf0, 40, 20, 150);
+    searchparam SP(lmrlogf1, 191, 50, 300);
+    searchparam SP(lmrf1, 26, 10, 150);
     searchparam SP(lmrmindepth, 2, 1, 10);
-    searchparam SP(lmrstatsratio, 892, 200, 2000);
+    searchparam SP(lmrstatsratio, 884, 200, 2000);
     searchparam SP(lmropponentmovecount, 25, 5, 40);
     // LMP table
-    searchparam SP(lmpf0, 44, 10, 200);
-    searchparam SP(lmppow0, 59, 10, 200);
+    searchparam SP(lmpf0, 41, 10, 200);
+    searchparam SP(lmppow0, 56, 10, 200);
     searchparam SP(lmpf1, 63, 10, 250);
-    searchparam SP(lmppow1, 176, 10, 400);
+    searchparam SP(lmppow1, 174, 10, 400);
     // Razoring
-    searchparam SP(razormargin, 340, 50, 500);
-    searchparam SP(razordepthfactor, 51, 10, 200);
+    searchparam SP(razormargin, 347, 50, 500);
+    searchparam SP(razordepthfactor, 53, 10, 200);
     //futility pruning
     searchparam SP(futilityreversedepthfactor, 53, 10, 150);
     searchparam SP(futilityreverseimproved, 8, 1, 60);
     searchparam SP(futilitymargin, 9, 1, 30);
-    searchparam SP(futilitymarginperdepth, 70, 10, 120);
+    searchparam SP(futilitymarginperdepth, 69, 10, 120);
     // null move
     searchparam SP(nmmindepth, 4, 1, 6);
     searchparam SP(nmmredbase, 1, 1, 20);
     searchparam SP(nmmreddepthratio, 5, 1, 20);
-    searchparam SP(nmmredevalratio, 125, 40, 250);
+    searchparam SP(nmmredevalratio, 130, 40, 250);
     searchparam SP(nmmredpvfactor, 3, 1, 5);
-    searchparam SP(nmverificationdepth, 11, 4, 20);
+    searchparam SP(nmverificationdepth, 10, 4, 20);
     //Probcut
-    searchparam SP(probcutmindepth, 6, 2, 10);
+    searchparam SP(probcutmindepth, 7, 2, 10);
     searchparam SP(probcutmargin, 110, 20, 200);
     // Threat pruning
-    searchparam SP(threatprunemargin, 44, 10, 150);
-    searchparam SP(threatprunemarginimprove, 4, 0, 20);
+    searchparam SP(threatprunemargin, 43, 10, 150);
+    searchparam SP(threatprunemarginimprove, 3, 0, 20);
     // No hashmovereduction
     searchparam SP(nohashreductionmindepth, 1, 1, 8);
     // SEE prune
@@ -2333,7 +2333,7 @@ struct searchparamset {
     // Singular extension
     searchparam SP(singularmindepth, 8, 2, 16);
     searchparam SP(singularmarginperdepth, 0, 0, 20);
-    searchparam SP(singularmarginfor2, 24, 0, 80);
+    searchparam SP(singularmarginfor2, 23, 0, 80);
     // History extension
     searchparam SP(histextminthreshold, 9, 6, 11);
     searchparam SP(histextmaxthreshold, 16, 12, 17);
@@ -2341,10 +2341,10 @@ struct searchparamset {
     searchparam SP(aspincbase, 1, 1, 10);
     searchparam SP(aspinitialdelta, 13, 1, 20);
     // Extension guard
-    searchparam SP(extguarddoubleext, 7, 1, 15);
+    searchparam SP(extguarddoubleext, 8, 1, 15);
     searchparam SP(extguardcheckext, 3, 1, 15);
     // Correction history
-    searchparam SP(correctionhistoryratio, 103, 64, 192);
+    searchparam SP(correctionhistoryratio, 106, 64, 192);
     // NNUE eval scale
     searchparam SP(nnuevaluescale, 61, 48, 96);
 };
