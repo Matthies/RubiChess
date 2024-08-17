@@ -1,5 +1,14 @@
 ChangeLog
 =========
+
+20240817 (release 2024-08-17) :
+    - Another improvement for search parameters with OpenBench's spsa tuner
+    - New network nn-bc638d5ec9-20240730.nnue
+    - Introduce correction history for better static eval
+    - Introduce cache (Finny tables) for faster accumulator updates
+    - Double extensions for very singukar moves
+    - Some fixes
+
 20240112 (release 2024-01-12) :
     - Improved search parameters with OpenBench's spsa tuner
     - Various speed improvements by fixing and refining accumulator updates
