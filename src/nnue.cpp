@@ -1448,7 +1448,7 @@ bool NnueNetworkLayer<inputdims, outputdims>::ReadWeights(NnueNetsource* nr)
     {
         currentlayer = (currentlayer + 1) % 8;
         string sDef =  to_string(bias[0]);
-        en.ucioptions.Register((void*)&bias[0], "bias_" + to_string(currentlayer), ucinnuebias, sDef, -32768, 32767, NULL);
+        en.ucioptions.Register((void*)&bias[0], "bias_" + to_string(currentlayer), ucinnuebias, sDef, -1000, 1000, NULL);
     }
 #endif
 
