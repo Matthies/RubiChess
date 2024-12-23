@@ -741,12 +741,11 @@ void engine::communicate(string inputstring)
             case TUNE:
                 parseTune(commandargs);
                 break;
-#else
+#endif
 #ifdef SEARCHOPTIONS
             case TUNE:
-                ucioptions.Print(true);;
+                ucioptions.Print(true);
                 break;
-#endif
 #endif
             case EXPORT:
                 NnueWriteNet(commandargs);
@@ -1057,15 +1056,25 @@ void ucioptions_t::Print(bool bTune)
     for (optionmapiterator it = optionmap.begin(); it != optionmap.end(); it++)
     {
         ucioption_t *op = &(it->second);
-        if (bTune && op->type != ucisearch)
+        if (bTune && op->type < ucisearch)
             continue;
 
         string optionStr = "option name " + op->name + " type ";
 
         switch (op->type)
         {
+#ifdef EVALOPTIONS
         case ucinnuebias:
         case ucinnueweight:
+            if (!bTune) {
+                guiCom << optionStr + "spin default " + op->def + " min " + to_string(op->min) + " max " + to_string(op->max) + "\n";
+            }
+            else {
+                double c_end = max(0.5, (op->max - op->min) / 20.0);
+                guiCom << op->name << ", int, " << fixed << setprecision(1) << setw(1) << op->def << ".0, " << (double)op->min << ", " << (double)op->max << ", " << std::setprecision(2) << c_end << ", 0.002\n";
+            }
+            break;
+#endif
         case ucispin:
             guiCom << optionStr + "spin default " + op->def + " min " + to_string(op->min) + " max " + to_string(op->max) + "\n";
             break;
