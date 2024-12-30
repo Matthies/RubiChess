@@ -756,6 +756,19 @@ void engine::communicate(string inputstring)
                 break;
 #endif
             default:
+#ifdef SEARCHOPTIONS
+                // Try to consume output of SPSA tune "name, value"
+                if (ci <= cs - 2)
+                {
+                    sName = commandargs[ci++];
+                    sValue = commandargs[ci++];
+                    if (sName.back() == ',')
+                    {
+                        sName.pop_back();
+                        ucioptions.Set(sName, sValue);
+                    }
+                }
+#endif
                 break;
             }
         }
@@ -792,6 +805,12 @@ GuiToken engine::parse(vector<string>* args, string ss)
                 result = GuiCommandMap.find(s.c_str())->second;
                 firsttoken = true;
             }
+#ifdef SEARCHOPTIONS
+            // Leave unknown commands on the input stack for raw parameter input
+            else {
+                args->push_back(s);
+            }
+#endif
         }
         else {
             args->push_back(s);
@@ -1070,8 +1089,7 @@ void ucioptions_t::Print(bool bTune)
                 guiCom << optionStr + "spin default " + op->def + " min " + to_string(op->min) + " max " + to_string(op->max) + "\n";
             }
             else {
-                double c_end = max(0.5, (op->max - op->min) / 20.0);
-                guiCom << op->name << ", int, " << fixed << setprecision(1) << setw(1) << op->def << ".0, " << (double)op->min << ", " << (double)op->max << ", " << std::setprecision(2) << c_end << ", 0.002\n";
+                guiCom << op->name << ", int, " << fixed << setprecision(1) << setw(1) << op->def << ".0, " << (double)op->min << ", " << (double)op->max << ", " << std::setprecision(2) << (op->type == ucinnueweight ? 3.0 : 20.0) << ", 0.002\n";
             }
             break;
 #endif
