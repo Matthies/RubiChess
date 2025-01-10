@@ -741,12 +741,11 @@ void engine::communicate(string inputstring)
             case TUNE:
                 parseTune(commandargs);
                 break;
-#else
+#endif
 #ifdef SEARCHOPTIONS
             case TUNE:
-                ucioptions.Print(true);;
+                ucioptions.Print(true);
                 break;
-#endif
 #endif
             case EXPORT:
                 NnueWriteNet(commandargs);
@@ -757,6 +756,19 @@ void engine::communicate(string inputstring)
                 break;
 #endif
             default:
+#ifdef SEARCHOPTIONS
+                // Try to consume output of SPSA tune "name, value"
+                if (ci <= cs - 2)
+                {
+                    sName = commandargs[ci++];
+                    sValue = commandargs[ci++];
+                    if (sName.back() == ',')
+                    {
+                        sName.pop_back();
+                        ucioptions.Set(sName, sValue);
+                    }
+                }
+#endif
                 break;
             }
         }
@@ -793,6 +805,12 @@ GuiToken engine::parse(vector<string>* args, string ss)
                 result = GuiCommandMap.find(s.c_str())->second;
                 firsttoken = true;
             }
+#ifdef SEARCHOPTIONS
+            // Leave unknown commands on the input stack for raw parameter input
+            else {
+                args->push_back(s);
+            }
+#endif
         }
         else {
             args->push_back(s);
@@ -1057,15 +1075,24 @@ void ucioptions_t::Print(bool bTune)
     for (optionmapiterator it = optionmap.begin(); it != optionmap.end(); it++)
     {
         ucioption_t *op = &(it->second);
-        if (bTune && op->type != ucisearch)
+        if (bTune && op->type < ucisearch)
             continue;
 
         string optionStr = "option name " + op->name + " type ";
 
         switch (op->type)
         {
+#ifdef EVALOPTIONS
         case ucinnuebias:
         case ucinnueweight:
+            if (!bTune) {
+                guiCom << optionStr + "spin default " + op->def + " min " + to_string(op->min) + " max " + to_string(op->max) + "\n";
+            }
+            else {
+                guiCom << op->name << ", int, " << fixed << setprecision(1) << setw(1) << op->def << ".0, " << (double)op->min << ", " << (double)op->max << ", " << std::setprecision(2) << (op->type == ucinnueweight ? 3.0 : 20.0) << ", 0.002\n";
+            }
+            break;
+#endif
         case ucispin:
             guiCom << optionStr + "spin default " + op->def + " min " + to_string(op->min) + " max " + to_string(op->max) + "\n";
             break;

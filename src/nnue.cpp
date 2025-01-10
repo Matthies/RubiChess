@@ -74,7 +74,6 @@ static constexpr int KingBucket[64] = {
 NnueType NnueReady = NnueDisabled;
 NnueArchitecture* NnueCurrentArch;
 
-
 // The network architecture V1
 class NnueArchitectureV1 : public NnueArchitecture {
 public:
@@ -1442,6 +1441,17 @@ bool NnueNetworkLayer<inputdims, outputdims>::ReadWeights(NnueNetsource* nr)
     for (unsigned int i = 0; i < outputdims; ++i)
         okay = okay && nr->read((unsigned char*)&bias[i], sizeof(int32_t));
 
+#ifdef EVALOPTIONS
+    static int currentlayer = -1;
+
+    if (outputdims == 1)
+    {
+        currentlayer = (currentlayer + 1) % 8;
+        string sDef =  to_string(bias[0]);
+        en.ucioptions.Register((void*)&bias[0], "bias_" + to_string(currentlayer), ucinnuebias, sDef, -1000, 1000, NULL);
+    }
+#endif
+
     size_t buffersize = outputdims * paddedInputdims;
     char* weightbuffer = (char*)calloc(buffersize, sizeof(char));
 
@@ -1457,6 +1467,13 @@ bool NnueNetworkLayer<inputdims, outputdims>::ReadWeights(NnueNetsource* nr)
             unsigned int idx = r * paddedInputdims + c;
             idx = shuffleWeightIndex(idx);
             weight[idx] = *w++;
+#ifdef EVALOPTIONS
+            if (outputdims == 1)
+            {
+                string sDef =  to_string(weight[idx]);
+                en.ucioptions.Register((void*)&weight[idx], "weight_" + to_string(currentlayer) + "_" + to_string(idx), ucinnueweight, sDef, -128, 127, NULL);
+            }
+#endif
         }
 
     free(weightbuffer);
