@@ -17,8 +17,8 @@
 
 #pragma once
 
-#define VERNUMLEGACY 2024
-#define NNUEDEFAULT nn-bc638d5ec9-20240730.nnue
+#define VERNUMLEGACY 2025
+#define NNUEDEFAULT nn-6627982c33-20250106.nnue
 
 // enable this switch for faster SSE2 code using 16bit integers
 #define FASTSSE2
@@ -42,10 +42,10 @@
 //#define EVALTUNE
 
 // Enable this to expose the evaluation and NNUE parameters as UCI options
-#define EVALOPTIONS
+//#define EVALOPTIONS
 
 // Enable this to expose the search parameters as UCI options
-#define SEARCHOPTIONS
+//#define SEARCHOPTIONS
 
 // Enable this to enable NNUE training code
 //#define NNUELEARN
