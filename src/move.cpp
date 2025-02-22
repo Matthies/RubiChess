@@ -482,6 +482,10 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
                 return false;
         }
     }
+
+    if (kingPinned & BITSET(from) && !(BITSET(to) & lineMask[kingpos[piececol]][from]))
+        return false;
+
     return true;
 }
 
