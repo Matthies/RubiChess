@@ -946,7 +946,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
                         if (!ISCAPTURE(bestcode) && !isCheckbb && !(bestscore < staticeval))
                             updateCorrectionHst(bestscore - staticeval, depth);
 
-                        tp.addHash(tte, newhash, FIXMATESCOREADD(score, ply), rawstaticeval, HASHBETA, effectiveDepth, (uint16_t)bestcode);
+                        tp.addHash(tte, newhash, FIXMATESCOREADD(score, ply), rawstaticeval, HASHBETA, depth, (uint16_t)bestcode);
                     }
 
                     SDEBUGDO(isDebugPv, pvaborttype[ply] = isDebugMove ? PVA_BETACUT : debugMovePlayed ? PVA_NOTBESTMOVE : PVA_OMITTED;);
@@ -1268,7 +1268,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
                         updateTacticalHst(tacticalMoves[0][t], -(depth * depth));
 
                 }
-                tp.addHash(tte, hash, beta, staticeval, HASHBETA, effectiveDepth, (uint16_t)m->code);
+                tp.addHash(tte, hash, beta, staticeval, HASHBETA, depth, (uint16_t)m->code);
                 SDEBUGDO(isDebugPv, pvaborttype[0] = isDebugMove ? PVA_BETACUT : debugMovePlayed ? PVA_NOTBESTMOVE : PVA_OMITTED;);
                 SDEBUGDO(isDebugPv, tp.debugSetPv(hash, movesOnStack() + " effectiveDepth=" + to_string(effectiveDepth)););
                 return beta;   // fail hard beta-cutoff
