@@ -391,7 +391,7 @@ struct pawnhashentry;
 
 // some general constants
 #define MAXMULTIPV 64
-#define MAXTHREADS  256
+#define MAXTHREADS  1024
 #define MAXHASH     0x100000  // 1TB ... never tested
 #define DEFAULTHASH 16
 #define CORRHISTSIZE 0x4000
