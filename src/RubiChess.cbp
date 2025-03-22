@@ -51,7 +51,7 @@
 		</Build>
 		<Compiler>
 			<Add option="-Wall" />
-			<Add option="-std=c++11" />
+			<Add option="-std=c++20" />
 			<Add option="-fexceptions" />
 			<Add option="-march=znver1" />
 			<Add option="-DUSE_AVX2" />
