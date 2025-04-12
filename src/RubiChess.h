@@ -68,7 +68,6 @@
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
 #endif
-#include <iostream>
 #include <iomanip>
 #include <stdarg.h>
 #include <time.h>
@@ -76,7 +75,6 @@
 #include <iostream>
 #include <fstream>
 #include <list>
-#include <string>
 #include <string.h>
 #include <sstream>
 #include <vector>
@@ -84,9 +82,9 @@
 #include <iterator>
 #include <thread>
 #include <map>
-#include <time.h>
 #include <array>
 #include <bitset>
+#include <chrono>
 #include <limits.h>
 #include <math.h>
 #include <regex>
