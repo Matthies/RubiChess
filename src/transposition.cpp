@@ -70,9 +70,10 @@ unsigned long long zobrist::getRnd()
 }
 
 
-void zobrist::getAllHashes(chessposition* pos)
+void zobrist::getAllHashes(chessposition* pos, bool bTest)
 {
-    pos->hash = pos->pawnhash = pos->materialhash = 0;
+    U64 hash = 0, pawnhash = 0, nonpawnhash[2] = {0}, materialhash = 0;
+
     int i;
     int state = pos->state;
     for (i = WPAWN; i <= BKING; i++)
@@ -82,17 +83,19 @@ void zobrist::getAllHashes(chessposition* pos)
         while (pmask)
         {
             index = pullLsb(&pmask);
-            pos->hash ^= boardtable[(index << 4) | i];
+            hash ^= boardtable[(index << 4) | i];
             if (i <= BPAWN)
-                pos->pawnhash ^= boardtable[(index << 4) | i];
+                pawnhash ^= boardtable[(index << 4) | i];
+            else
+                nonpawnhash[i & S2MMASK] ^= boardtable[(index << 4) | i];
         }
     }
 
     if (state & S2MMASK)
-        pos->hash ^= s2m;
+        hash ^= s2m;
 
-    pos->hash ^= cstl[state & CASTLEMASK];
-    pos->hash ^= ept[pos->ept];
+    hash ^= cstl[state & CASTLEMASK];
+    hash ^= ept[pos->ept];
 
     for (PieceCode pc = WPAWN; pc <= BKING; pc++)
     {
@@ -100,10 +103,25 @@ void zobrist::getAllHashes(chessposition* pos)
         for (int j = 0; j < BOARDSIZE; j++)
         {
             if (pos->mailbox[j] == pc)
-                pos->materialhash ^= boardtable[(count++ << 4) | pc];
+                materialhash ^= boardtable[(count++ << 4) | pc];
         }
     }
 
+    if (bTest)
+    {
+        if (pos->hash != hash
+            || pos->pawnhash != pawnhash
+            || pos->nonpawnhash[WHITE] != nonpawnhash[WHITE]
+            || pos->nonpawnhash[BLACK] != nonpawnhash[BLACK]
+                || pos->materialhash != materialhash)
+            cout << "Panic!!! Wrong Hash!" << "\n";
+    }
+
+    pos->hash = hash;
+    pos->pawnhash = pawnhash;
+    pos->nonpawnhash[WHITE] = nonpawnhash[WHITE];
+    pos->nonpawnhash[BLACK] = nonpawnhash[BLACK];
+    pos->materialhash = materialhash;
 }
 
 U64 zobrist::getPawnKingHash(chessposition* pos)

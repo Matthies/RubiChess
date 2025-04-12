@@ -1164,7 +1164,7 @@ public:
     ranctx rnd;
     zobrist();
     U64 getRnd();
-    void getAllHashes(chessposition* pos);
+    void getAllHashes(chessposition* pos, bool bTest = false);
     U64 getPawnKingHash(chessposition* pos);
 #if 0
     U64 getHash(chessposition *pos);
@@ -1532,6 +1532,7 @@ struct chessmovestack
     uint8_t kingpos[2];
     U64 hash;
     U64 pawnhash;
+    U64 nonpawnhash[2];
     U64 materialhash;
     int halfmovescounter;
     int fullmovescounter;
@@ -1677,6 +1678,7 @@ public:
     uint8_t kingpos[2];
     U64 hash;
     U64 pawnhash;
+    U64 nonpawnhash[2];
     U64 materialhash;
     int halfmovescounter;
     int fullmovescounter;
@@ -1712,7 +1714,7 @@ public:
     int16_t tacticalhst[7][64][6];
     uint32_t countermove[14][64];
     int16_t pawncorrectionhistory[2][CORRHISTSIZE];
-    //int16_t nonpawncorrectionhistory[2][CORRHISTSIZE];
+    int16_t nonpawncorrectionhistory[2][CORRHISTSIZE];
     int16_t* prerootconthistptr[6];
     int16_t* conthistptr[MAXDEPTH];
     int he_threshold;
