@@ -581,7 +581,7 @@ bool chessposition::playMove(uint32_t mc)
             BitboardMove(kingfrom, kingto, kingpc);
             if (!LiteMode) {
                 hash ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
-                pawnhash ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
+                //pawnkinghash ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
                 dp->pc[0] = kingpc;
                 dp->from[0] = kingfrom;
                 dp->to[0] = kingto;

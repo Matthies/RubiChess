@@ -327,7 +327,8 @@ void chessposition::resetStats()
     memset(counterhistory, 0, sizeof(chessposition::counterhistory));
     memset(countermove, 0, sizeof(chessposition::countermove));
     memset(conthistptr, 0, sizeof(chessposition::conthistptr));
-    memset(correctionhistory, 0, sizeof(chessposition::correctionhistory));
+    memset(pawncorrectionhistory, 0, sizeof(chessposition::pawncorrectionhistory));
+    //memset(nonpawncorrectionhistory, 0, sizeof(chessposition::nonpawncorrectionhistory));
     for (int i = 0; i < 6; i++)
         prerootconthistptr[i] = counterhistory[0][0];
     he_yes = 0ULL;

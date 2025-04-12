@@ -881,7 +881,7 @@ int chessposition::getEval()
     if (!hashexist)
         getScaling(pe.mhentry);
 
-    hashexist = pwnhsh.probeHash(pawnhash, &pe.phentry);
+    hashexist = pwnhsh.probeHash(zb.getPawnKingHash(this), &pe.phentry);
     if (bTrace || !hashexist)
     {
         if (bTrace) pe.phentry->value = 0;
