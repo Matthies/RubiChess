@@ -184,7 +184,7 @@ inline void chessposition::updateTacticalHst(uint32_t code, int value)
 inline void chessposition::updateCorrectionHst(int value, int depth)
 {
     int us = state & S2MMASK;
-    int index = zb.getPawnKingHash(this) & (CORRHISTSIZE - 1);
+    int index = pawnhash & (CORRHISTSIZE - 1);
 
     int scaledvalue = value * 256;
     int weight = min(1 + depth, 16);
@@ -195,7 +195,7 @@ inline void chessposition::updateCorrectionHst(int value, int depth)
 inline int chessposition::correctEvalByHistory(int v)
 {
     int us = state & S2MMASK;
-    int index = zb.getPawnKingHash(this) & (CORRHISTSIZE - 1);
+    int index = pawnhash & (CORRHISTSIZE - 1);
     int cv = v + pawncorrectionhistory[us][index] / sps.pawncorrectionhistoryratio;
     return max(-SCORETBWININMAXPLY, min(cv, SCORETBWININMAXPLY));
 }
