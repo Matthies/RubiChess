@@ -801,6 +801,7 @@ constexpr U64 MH_Kkbn = 0xCD42B1F2ACF170CF;
 
 inline bool chessposition::isEndgame(int *score)
 {
+    U64 materialhash = zb.getMaterialHash(this);
     switch(materialhash) {
     case MH_Kk:
     case MH_KNk:
@@ -877,11 +878,12 @@ int chessposition::getEval()
     memset(attackedBy, 0, sizeof(attackedBy));
 
     positioneval pe;
+#if 0
     bool hashexist = mtrlhsh.probeHash(materialhash, &pe.mhentry);
     if (!hashexist)
         getScaling(pe.mhentry);
-
-    hashexist = pwnhsh.probeHash(pawnhash, &pe.phentry);
+#endif
+    bool hashexist = pwnhsh.probeHash(pawnhash, &pe.phentry);
     if (bTrace || !hashexist)
     {
         if (bTrace) pe.phentry->value = 0;
@@ -903,11 +905,11 @@ int chessposition::getEval()
 
     int sideToScale = GETEGVAL(totalEval) > SCOREDRAW ? WHITE : BLACK;
 
-    sc = pe.mhentry->scale[sideToScale];
+    sc = SCALE_NORMAL;// pe.mhentry->scale[sideToScale];
     if (!bTrace && sc == SCALE_DRAW)
         return SCOREDRAW;
 
-    int complexity = getComplexity(totalEval, pe.phentry, pe.mhentry);
+    int complexity = getComplexity(totalEval, pe.phentry);// , pe.mhentry);
     totalEval += complexity;
 
     if (bTrace)
@@ -932,13 +934,13 @@ int chessposition::getEval()
 }
 
 
-int chessposition::getComplexity(int val, pawnhashentry *phentry, Materialhashentry *mhentry)
+int chessposition::getComplexity(int val, pawnhashentry *phentry)//, Materialhashentry *mhentry)
 {
         int evaleg = GETEGVAL(val);
         int sign = (evaleg > 0) - (evaleg < 0);
-        int complexity = EEVAL(eps.eComplexpawnsbonus, mhentry->numOfPawns);
+        int complexity = EEVAL(eps.eComplexpawnsbonus, POPCOUNT(piece00[WPAWN] | piece00[BPAWN]));
         complexity += EEVAL(eps.eComplexpawnflanksbonus, phentry->bothFlanks);
-        complexity += EEVAL(eps.eComplexonlypawnsbonus, mhentry->onlyPawns);
+        complexity += EEVAL(eps.eComplexonlypawnsbonus, ((piece00[0] | piece00[1]) ^ (piece00[WPAWN] | piece00[BPAWN] | piece00[WKING] | piece00[BKING])) == 0);
         complexity += EEVAL(eps.eComplexadjust, 1);
 
         return sign * max(complexity, -abs(evaleg));

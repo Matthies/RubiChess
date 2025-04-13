@@ -193,7 +193,7 @@ engine::~engine()
     Threads = 0;
     allocThreads();
     rootposition.pwnhsh.remove();
-    rootposition.mtrlhsh.remove();
+    //rootposition.mtrlhsh.remove();
     NnueRemove();
 }
 
@@ -234,7 +234,7 @@ void engine::allocThreads()
     for (int i = 0; i < oldThreads; i++)
     {
         chessposition* pos = &sthread[i].pos;
-        pos->mtrlhsh.remove();
+        //pos->mtrlhsh.remove();
         pos->pwnhsh.remove();
         freealigned64(pos->accumulation);
         freealigned64(pos->psqtAccumulation);
@@ -262,7 +262,7 @@ void engine::allocThreads()
         sthread[i].index = i;
         chessposition* pos = &sthread[i].pos;
         pos->pwnhsh.setSize(sizeOfPh);
-        pos->mtrlhsh.init();
+        //pos->mtrlhsh.init();
         pos->accumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
         pos->psqtAccumulation = NnueCurrentArch ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr;
         if (NnueCurrentArch)

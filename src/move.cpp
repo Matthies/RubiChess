@@ -555,7 +555,7 @@ bool chessposition::playMove(uint32_t mc)
         computationState[ply + 1][WHITE] = false;
         computationState[ply + 1][BLACK] = false;
     }
-
+    int oldhalfmovecounter = halfmovescounter;
     halfmovescounter++;
 
     // Castle has special play
@@ -626,7 +626,7 @@ bool chessposition::playMove(uint32_t mc)
         if (capture != BLANK && !ISEPCAPTURE(mc))
         {
             BitboardClear(to, capture);
-            materialhash ^= zb.boardtable[(POPCOUNT(piece00[capture]) << 4) | capture];
+            //materialhash ^= zb.boardtable[(POPCOUNT(piece00[capture]) << 4) | capture];
             if (!LiteMode) {
                 hash ^= zb.boardtable[(to << 4) | capture];
                 if ((capture >> 1) == PAWN)
@@ -648,8 +648,8 @@ bool chessposition::playMove(uint32_t mc)
         else {
             mailbox[to] = promote;
             BitboardClear(from, pfrom);
-            materialhash ^= zb.boardtable[(POPCOUNT(piece00[pfrom]) << 4) | pfrom];
-            materialhash ^= zb.boardtable[(POPCOUNT(piece00[promote]) << 4) | promote];
+            //materialhash ^= zb.boardtable[(POPCOUNT(piece00[pfrom]) << 4) | pfrom];
+            //materialhash ^= zb.boardtable[(POPCOUNT(piece00[promote]) << 4) | promote];
             BitboardSet(to, promote);
             if (!LiteMode) {
                 // just double the hash-switch for target to make the pawn vanish
@@ -684,7 +684,7 @@ bool chessposition::playMove(uint32_t mc)
                 int epfield = (from & 0x38) | (to & 0x07);
                 BitboardClear(epfield, (pfrom ^ S2MMASK));
                 mailbox[epfield] = BLANK;
-                materialhash ^= zb.boardtable[(POPCOUNT(piece00[(pfrom ^ S2MMASK)]) << 4) | (pfrom ^ S2MMASK)];
+                //materialhash ^= zb.boardtable[(POPCOUNT(piece00[(pfrom ^ S2MMASK)]) << 4) | (pfrom ^ S2MMASK)];
                 if (!LiteMode) {
                     hash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
                     pawnhash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
@@ -703,13 +703,13 @@ bool chessposition::playMove(uint32_t mc)
         // Here we can test the move for being legal
         if (isAttacked(kingpos[s2m], s2m))
         {
-            materialhash = movestack[ply].materialhash;
+            //materialhash = movestack[ply].materialhash;
             // Move is illegal; just do the necessary subset of unplayMove
             if (!LiteMode) {
                 hash = movestack[ply].hash;
                 pawnhash = movestack[ply].pawnhash;
             }
-            halfmovescounter = movestack[ply].halfmovescounter;
+            halfmovescounter = oldhalfmovecounter;
             kingpos[s2m] = movestack[ply].kingpos[s2m];
             mailbox[from] = pfrom;
             if (promote != BLANK)

@@ -1272,6 +1272,7 @@ struct Materialhashentry {
 };
 
 
+#if 0
 class Materialhash
 {
 public:
@@ -1280,7 +1281,7 @@ public:
     void remove();
     bool probeHash(U64 hash, Materialhashentry **entry);
 };
-
+#endif
 
 extern zobrist zb;
 extern transposition tp;
@@ -1528,9 +1529,9 @@ struct chessmovestack
     uint8_t kingpos[2];
     U64 hash;
     U64 pawnhash;
-    U64 materialhash;
-    int halfmovescounter;
-    int fullmovescounter;
+    U64 dummy1;// materialhash;
+    U64 dummy2;// int halfmovescounter;
+    //int fullmovescounter;
     U64 isCheckbb;
     U64 kingPinned;
     int lastnullmove;
@@ -1631,7 +1632,7 @@ enum AttackType { FREE, OCCUPIED, OCCUPIEDANDKING };
 
 struct positioneval {
     pawnhashentry *phentry;
-    Materialhashentry *mhentry;
+    //Materialhashentry *mhentry;
     int kingattackpiececount[2][7] = { { 0 } };
     int kingringattacks[2] = { 0 };
     int kingattackers[2];
@@ -1673,14 +1674,16 @@ public:
     uint8_t kingpos[2];
     U64 hash;
     U64 pawnhash;
-    U64 materialhash;
-    int halfmovescounter;
-    int fullmovescounter;
+    U64 dummy1;// materialhash;
+    U64 dummy2;// int halfmovescounter;
+    //int fullmovescounter;
     U64 isCheckbb;
     U64 kingPinned;
     int lastnullmove;
     unsigned int threatSquare;
 
+    int halfmovescounter;
+    int fullmovescounter;
     int prerootmovenum;
     chessmovelist rootmovelist;
     uint32_t killer[MAXDEPTH][2];   // Hmmm. killer[0][] not initialized/reset to 0??
@@ -1743,7 +1746,7 @@ public:
     uint32_t movecode[MAXDEPTH];
     uint16_t excludemovestack[MAXDEPTH];                // init in prepare only for excludemovestack[0]
     int16_t staticevalstack[MAXDEPTH];
-    Materialhash mtrlhsh;                               // init in alloc
+    //Materialhash mtrlhsh;                               // init in alloc
     Pawnhash pwnhsh;                                    // init in alloc
     bool computationState[MAXDEPTH][2];
     int16_t* accumulation;
@@ -1818,7 +1821,7 @@ public:
     template <EvalType Et, int Me> void getPawnAndKingEval(pawnhashentry *entry);
     template <EvalType Et> int getEval();
     void getScaling(Materialhashentry *mhentry);
-    int getComplexity(int eval, pawnhashentry *phentry, Materialhashentry *mhentry);
+    int getComplexity(int eval, pawnhashentry* phentry);// , Materialhashentry* mhentry);
 
     template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth, int inWindowLast, int maxmoveindex = 0);
     template <PruneType Pt> int alphabeta(int alpha, int beta, int depth, bool cutnode);

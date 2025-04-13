@@ -98,7 +98,7 @@ void generateEpd(string egn)
                 continue;
             pos->hash = zb.getHash(pos);
             pos->pawnhash = zb.getPawnHash(pos);
-            pos->materialhash = zb.getMaterialHash(pos);
+            //pos->materialhash = zb.getMaterialHash(pos);
 
             string sFen = pos->toFen();
 

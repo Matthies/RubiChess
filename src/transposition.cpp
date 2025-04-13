@@ -357,7 +357,7 @@ bool Pawnhash::probeHash(U64 hash, pawnhashentry **entry)
     return false;
 }
 
-
+#if 0
 void Materialhash::init()
 {
     size_t tablesize = (size_t)MATERIALHASHSIZE * sizeof(Materialhashentry);
@@ -379,7 +379,7 @@ bool  Materialhash::probeHash(U64 hash, Materialhashentry **entry)
     (*entry)->hash = hash;
     return false;
 }
-
+#endif
 
 transposition tp;
 

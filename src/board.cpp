@@ -269,7 +269,7 @@ int chessposition::getFromFen(const char* sFen)
 
     hash = zb.getHash(this);
     pawnhash = zb.getPawnHash(this);
-    materialhash = zb.getMaterialHash(this);
+    //materialhash = zb.getMaterialHash(this);
     lastnullmove = -1;
     ply = 0;
     piececount = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]);
@@ -409,7 +409,7 @@ void chessposition::print(ostream* os)
     *os << "Fullmoves: " + to_string(fullmovescounter) + "\n";
     *os << "Hash: 0x" << hex << hash << " (should be 0x" << hex << zb.getHash(this) << ")\n";
     *os << "Pawn Hash: 0x" << hex << pawnhash << " (should be 0x" << hex << zb.getPawnHash(this) << ")\n";
-    *os << "Material Hash: 0x" << hex << materialhash << " (should be 0x" << hex << zb.getMaterialHash(this) << ")\n";
+    //*os << "Material Hash: 0x" << hex << materialhash << " (should be 0x" << hex << zb.getMaterialHash(this) << ")\n";
     *os << "Value: " + to_string(getEval<NOTRACE>()) + "\n";
     *os << "Repetitions: " + to_string(testRepetition()) + "\n";
     *os << "Phase: " + to_string(phcount) + "\n";
