@@ -801,6 +801,8 @@ void chessposition::unplayMove(uint32_t mc)
     myassert(ply >= 0, this, 1, ply);
     // copy data from stack back to position
     memcpy(&state, &movestack[ply], sizeof(chessmovestack));
+    if (state & S2MMASK)
+        fullmovescounter--;
 
     // Castle has special undo
     if (ISCASTLE(mc))
