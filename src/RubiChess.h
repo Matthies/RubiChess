@@ -1632,7 +1632,7 @@ enum AttackType { FREE, OCCUPIED, OCCUPIEDANDKING };
 
 struct positioneval {
     pawnhashentry *phentry;
-    //Materialhashentry *mhentry;
+    Materialhashentry *mhentry;
     int kingattackpiececount[2][7] = { { 0 } };
     int kingringattacks[2] = { 0 };
     int kingattackers[2];
@@ -1820,7 +1820,7 @@ public:
     template <EvalType Et, int Me> int getLateEval(positioneval *pe);
     template <EvalType Et, int Me> void getPawnAndKingEval(pawnhashentry *entry);
     template <EvalType Et> int getEval();
-    void getScaling(Materialhashentry *mhentry);
+    void getScaling(Materialhashentry *mhentry, int me);
     int getComplexity(int eval, pawnhashentry* phentry);// , Materialhashentry* mhentry);
 
     template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth, int inWindowLast, int maxmoveindex = 0);

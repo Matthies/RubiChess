@@ -905,7 +905,9 @@ int chessposition::getEval()
 
     int sideToScale = GETEGVAL(totalEval) > SCOREDRAW ? WHITE : BLACK;
 
-    sc = SCALE_NORMAL;// pe.mhentry->scale[sideToScale];
+    Materialhashentry mhe;
+    getScaling(&mhe, sideToScale);
+    sc = mhe.scale[sideToScale];
     if (!bTrace && sc == SCALE_DRAW)
         return SCOREDRAW;
 
@@ -934,7 +936,7 @@ int chessposition::getEval()
 }
 
 
-int chessposition::getComplexity(int val, pawnhashentry *phentry)//, Materialhashentry *mhentry)
+int chessposition::getComplexity(int val, pawnhashentry *phentry)// Materialhashentry *mhentry)
 {
         int evaleg = GETEGVAL(val);
         int sign = (evaleg > 0) - (evaleg < 0);
@@ -947,7 +949,7 @@ int chessposition::getComplexity(int val, pawnhashentry *phentry)//, Materialhas
 }
 
 
-void chessposition::getScaling(Materialhashentry* mhentry)
+void chessposition::getScaling(Materialhashentry* mhentry, int me)
 {
     // Calculate scaling for endgames with special material
     const int pawns[2] = { POPCOUNT(piece00[WPAWN]), POPCOUNT(piece00[BPAWN]) };
@@ -970,7 +972,7 @@ void chessposition::getScaling(Materialhashentry* mhentry)
     mhentry->scale[WHITE] = mhentry->scale[BLACK] = SCALE_NORMAL;
 
     // Check for insufficient material using simnple heuristic from chessprogramming site
-    for (int me = WHITE; me <= BLACK; me++)
+    //for (int me = WHITE; me <= BLACK; me++)
     {
         int you = me ^ S2MMASK;
 
