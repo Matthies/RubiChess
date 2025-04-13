@@ -184,19 +184,26 @@ inline void chessposition::updateTacticalHst(uint32_t code, int value)
 inline void chessposition::updateCorrectionHst(int value, int depth)
 {
     int us = state & S2MMASK;
-    int index = pawnhash & (CORRHISTSIZE - 1);
+    int index;
 
     int scaledvalue = value * 256;
     int weight = min(1 + depth, 16);
 
+    index = pawnhash & (CORRHISTSIZE - 1);
     pawncorrectionhistory[us][index] = max(-8192, min(8192,  (pawncorrectionhistory[us][index] * (256 - weight) + scaledvalue * weight) / 256));
+    index = nonpawnhash[WHITE] & (CORRHISTSIZE - 1);
+    nonpawncorrectionhistory[WHITE][us][index] = max(-8192, min(8192, (nonpawncorrectionhistory[WHITE][us][index] * (256 - weight) + scaledvalue * weight) / 256));
+    index = nonpawnhash[BLACK] & (CORRHISTSIZE - 1);
+    nonpawncorrectionhistory[BLACK][us][index] = max(-8192, min(8192, (nonpawncorrectionhistory[BLACK][us][index] * (256 - weight) + scaledvalue * weight) / 256));
 }
 
 inline int chessposition::correctEvalByHistory(int v)
 {
     int us = state & S2MMASK;
-    int index = pawnhash & (CORRHISTSIZE - 1);
-    int cv = v + pawncorrectionhistory[us][index] / sps.pawncorrectionhistoryratio;
+    int cv = v
+        + pawncorrectionhistory[us][pawnhash & (CORRHISTSIZE - 1)] / sps.pawncorrectionhistoryratio
+        + nonpawncorrectionhistory[WHITE][us][nonpawnhash[WHITE] & (CORRHISTSIZE - 1)] / sps.nonpawncorrectionhistoryratio
+        + nonpawncorrectionhistory[BLACK][us][nonpawnhash[BLACK] & (CORRHISTSIZE - 1)] / sps.nonpawncorrectionhistoryratio;
     return max(-SCORETBWININMAXPLY, min(cv, SCORETBWININMAXPLY));
 }
 

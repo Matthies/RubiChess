@@ -1714,7 +1714,7 @@ public:
     int16_t tacticalhst[7][64][6];
     uint32_t countermove[14][64];
     int16_t pawncorrectionhistory[2][CORRHISTSIZE];
-    int16_t nonpawncorrectionhistory[2][CORRHISTSIZE];
+    int16_t nonpawncorrectionhistory[2][2][CORRHISTSIZE];
     int16_t* prerootconthistptr[6];
     int16_t* conthistptr[MAXDEPTH];
     int he_threshold;
@@ -2350,6 +2350,7 @@ struct searchparamset {
     searchparam SP(extguardcheckext, 3, 1, 15);
     // Correction history
     searchparam SP(pawncorrectionhistoryratio, 106, 64, 192);
+    searchparam SP(nonpawncorrectionhistoryratio, 106, 64, 192);
     // NNUE eval scale
     searchparam SP(nnuevaluescale, 61, 48, 96);
 };
