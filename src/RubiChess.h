@@ -45,7 +45,7 @@
 //#define EVALOPTIONS
 
 // Enable this to expose the search parameters as UCI options
-//#define SEARCHOPTIONS
+#define SEARCHOPTIONS
 
 // Enable this to enable NNUE training code
 //#define NNUELEARN
