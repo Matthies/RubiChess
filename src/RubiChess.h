@@ -1660,6 +1660,13 @@ public:
     int16_t halfmovescounter;
     unsigned int threatSquare;
 
+    chessmovestack prerootmovestack[PREROOTMOVES];      // explicit copy from rootpos up to frame prerootmovenum including first frame of regular stack
+    chessmovestack movestack[MAXDEPTH];                 // frame 0 copied from rootpos
+    uint32_t prerootmovecode[PREROOTMOVES];             // explicit copy from rootpos up to frame prerootmovenum including first regular movecode
+    uint32_t movecode[MAXDEPTH];
+    uint16_t excludemovestack[MAXDEPTH];                // init in prepare only for excludemovestack[0]
+    int16_t staticevalstack[MAXDEPTH];
+
     int fullmovescounter;
     int prerootmovenum;
     chessmovelist rootmovelist;
@@ -1718,12 +1725,6 @@ public:
     uint32_t multipvtable[MAXMULTIPV][MAXDEPTH];
     uint32_t lastpv[MAXDEPTH];
     int CurrentMoveNum[MAXDEPTH];
-    chessmovestack prerootmovestack[PREROOTMOVES];      // explicit copy from rootpos up to frame prerootmovenum including first frame of regular stack
-    chessmovestack movestack[MAXDEPTH];                 // frame 0 copied from rootpos
-    uint32_t prerootmovecode[PREROOTMOVES];             // explicit copy from rootpos up to frame prerootmovenum including first regular movecode
-    uint32_t movecode[MAXDEPTH];
-    uint16_t excludemovestack[MAXDEPTH];                // init in prepare only for excludemovestack[0]
-    int16_t staticevalstack[MAXDEPTH];
     Pawnhash pwnhsh;                                    // init in alloc
     bool computationState[MAXDEPTH][2];
     int16_t* accumulation;
