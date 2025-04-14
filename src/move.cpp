@@ -555,7 +555,6 @@ bool chessposition::playMove(uint32_t mc)
         computationState[ply + 1][WHITE] = false;
         computationState[ply + 1][BLACK] = false;
     }
-    int oldhalfmovecounter = halfmovescounter;
     halfmovescounter++;
 
     // Castle has special play
@@ -709,7 +708,7 @@ bool chessposition::playMove(uint32_t mc)
                 hash = movestack[ply].hash;
                 pawnhash = movestack[ply].pawnhash;
             }
-            halfmovescounter = oldhalfmovecounter;
+            halfmovescounter = movestack[ply].halfmovescounter;
             kingpos[s2m] = movestack[ply].kingpos[s2m];
             mailbox[from] = pfrom;
             if (promote != BLANK)
@@ -803,8 +802,6 @@ void chessposition::unplayMove(uint32_t mc)
     memcpy(&state, &movestack[ply], sizeof(chessmovestack));
     if (state & S2MMASK)
         fullmovescounter--;
-    if (halfmovescounter)
-        halfmovescounter--;
 
     // Castle has special undo
     if (ISCASTLE(mc))

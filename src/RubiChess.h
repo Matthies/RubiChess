@@ -1534,7 +1534,8 @@ struct chessmovestack
     //int fullmovescounter;
     U64 isCheckbb;
     U64 kingPinned;
-    int lastnullmove;
+    int16_t lastnullmove;
+    int16_t halfmovescounter;
     unsigned int threatSquare;
 };
 
@@ -1679,10 +1680,10 @@ public:
     //int fullmovescounter;
     U64 isCheckbb;
     U64 kingPinned;
-    int lastnullmove;
+    int16_t lastnullmove;
+    int16_t halfmovescounter;
     unsigned int threatSquare;
 
-    int halfmovescounter;
     int fullmovescounter;
     int prerootmovenum;
     chessmovelist rootmovelist;
