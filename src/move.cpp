@@ -803,6 +803,8 @@ void chessposition::unplayMove(uint32_t mc)
     memcpy(&state, &movestack[ply], sizeof(chessmovestack));
     if (state & S2MMASK)
         fullmovescounter--;
+    if (halfmovescounter)
+        halfmovescounter--;
 
     // Castle has special undo
     if (ISCASTLE(mc))
