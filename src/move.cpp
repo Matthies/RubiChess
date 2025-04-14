@@ -627,7 +627,6 @@ bool chessposition::playMove(uint32_t mc)
         if (capture != BLANK && !ISEPCAPTURE(mc))
         {
             BitboardClear(to, capture);
-            materialhash ^= zb.boardtable[(POPCOUNT(piece00[capture]) << 4) | capture];
             if (!LiteMode) {
                 hash ^= zb.boardtable[(to << 4) | capture];
                 if ((capture >> 1) == PAWN)
@@ -651,8 +650,6 @@ bool chessposition::playMove(uint32_t mc)
         else {
             mailbox[to] = promote;
             BitboardClear(from, pfrom);
-            materialhash ^= zb.boardtable[(POPCOUNT(piece00[pfrom]) << 4) | pfrom];
-            materialhash ^= zb.boardtable[(POPCOUNT(piece00[promote]) << 4) | promote];
             BitboardSet(to, promote);
             if (!LiteMode) {
                 // just double the hash-switch for target to make the pawn vanish
@@ -688,7 +685,6 @@ bool chessposition::playMove(uint32_t mc)
                 int epfield = (from & 0x38) | (to & 0x07);
                 BitboardClear(epfield, (pfrom ^ S2MMASK));
                 mailbox[epfield] = BLANK;
-                materialhash ^= zb.boardtable[(POPCOUNT(piece00[(pfrom ^ S2MMASK)]) << 4) | (pfrom ^ S2MMASK)];
                 if (!LiteMode) {
                     hash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
                     pawnhash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
@@ -711,7 +707,6 @@ bool chessposition::playMove(uint32_t mc)
         // Here we can test the move for being legal
         if (isAttacked(kingpos[s2m], s2m))
         {
-            materialhash = movestack[ply].materialhash;
             // Move is illegal; just do the necessary subset of unplayMove
             if (!LiteMode) {
                 hash = movestack[ply].hash;
@@ -813,6 +808,9 @@ void chessposition::unplayMove(uint32_t mc)
     myassert(ply >= 0, this, 1, ply);
     // copy data from stack back to position
     memcpy(&state, &movestack[ply], sizeof(chessmovestack));
+
+    if (state & S2MMASK)
+        fullmovescounter--;
 
     // Castle has special undo
     if (ISCASTLE(mc))

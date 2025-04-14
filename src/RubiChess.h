@@ -45,7 +45,7 @@
 //#define EVALOPTIONS
 
 // Enable this to expose the search parameters as UCI options
-#define SEARCHOPTIONS
+//#define SEARCHOPTIONS
 
 // Enable this to enable NNUE training code
 //#define NNUELEARN
@@ -1164,13 +1164,9 @@ public:
     ranctx rnd;
     zobrist();
     U64 getRnd();
-    void getAllHashes(chessposition* pos, bool bTest = false);
+    void getAllHashes(chessposition* pos);
     U64 getPawnKingHash(chessposition* pos);
-#if 0
-    U64 getHash(chessposition *pos);
-    U64 getPawnHash(chessposition *pos);
-    U64 getMaterialHash(chessposition *pos);
-#endif
+    U64 getMaterialHash(chessposition* pos);
 };
 
 #define TTBUCKETNUM 3
@@ -1266,24 +1262,6 @@ public:
 
 #define MATERIALHASHSIZE 0x10000
 #define MATERIALHASHMASK (MATERIALHASHSIZE - 1)
-
-
-struct Materialhashentry {
-    U64 hash;
-    int scale[2];
-    bool onlyPawns;
-    int numOfPawns;
-};
-
-
-class Materialhash
-{
-public:
-    Materialhashentry *table;
-    void init();
-    void remove();
-    bool probeHash(U64 hash, Materialhashentry **entry);
-};
 
 
 extern zobrist zb;
@@ -1533,12 +1511,10 @@ struct chessmovestack
     U64 hash;
     U64 pawnhash;
     U64 nonpawnhash[2];
-    U64 materialhash;
-    int halfmovescounter;
-    int fullmovescounter;
     U64 isCheckbb;
     U64 kingPinned;
-    int lastnullmove;
+    int16_t lastnullmove;
+    int16_t halfmovescounter;
     unsigned int threatSquare;
 };
 
@@ -1636,7 +1612,6 @@ enum AttackType { FREE, OCCUPIED, OCCUPIEDANDKING };
 
 struct positioneval {
     pawnhashentry *phentry;
-    Materialhashentry *mhentry;
     int kingattackpiececount[2][7] = { { 0 } };
     int kingringattacks[2] = { 0 };
     int kingattackers[2];
@@ -1679,14 +1654,13 @@ public:
     U64 hash;
     U64 pawnhash;
     U64 nonpawnhash[2];
-    U64 materialhash;
-    int halfmovescounter;
-    int fullmovescounter;
     U64 isCheckbb;
     U64 kingPinned;
-    int lastnullmove;
+    int16_t lastnullmove;
+    int16_t halfmovescounter;
     unsigned int threatSquare;
 
+    int fullmovescounter;
     int prerootmovenum;
     chessmovelist rootmovelist;
     uint32_t killer[MAXDEPTH][2];   // Hmmm. killer[0][] not initialized/reset to 0??
@@ -1750,7 +1724,6 @@ public:
     uint32_t movecode[MAXDEPTH];
     uint16_t excludemovestack[MAXDEPTH];                // init in prepare only for excludemovestack[0]
     int16_t staticevalstack[MAXDEPTH];
-    Materialhash mtrlhsh;                               // init in alloc
     Pawnhash pwnhsh;                                    // init in alloc
     bool computationState[MAXDEPTH][2];
     int16_t* accumulation;
@@ -1824,8 +1797,8 @@ public:
     template <EvalType Et, int Me> int getLateEval(positioneval *pe);
     template <EvalType Et, int Me> void getPawnAndKingEval(pawnhashentry *entry);
     template <EvalType Et> int getEval();
-    void getScaling(Materialhashentry *mhentry);
-    int getComplexity(int eval, pawnhashentry *phentry, Materialhashentry *mhentry);
+    int getScaling(int me);
+    int getComplexity(int eval, pawnhashentry *phentry);
 
     template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth, int inWindowLast, int maxmoveindex = 0);
     template <PruneType Pt> int alphabeta(int alpha, int beta, int depth, bool cutnode);

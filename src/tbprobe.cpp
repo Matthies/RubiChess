@@ -99,7 +99,7 @@ int chessposition::probe_wdl_table(int *success)
     int p[TBPIECES];
 
     // Obtain the position's material signature key.
-    key = materialhash;
+    key = zb.getMaterialHash(this);
 
     // Test for KvK.
     if (key == (zb.boardtable[WKING] ^ zb.boardtable[BKING]))
@@ -210,7 +210,7 @@ int chessposition::probe_dtz_table(int wdl, int *success)
     int p[TBPIECES];
 
     // Obtain the position's material signature key.
-    uint64_t key = materialhash;
+    uint64_t key = zb.getMaterialHash(this);
 
     if (DTZ_table[0].key1 != key && DTZ_table[0].key2 != key) {
         for (i = 1; i < DTZ_ENTRIES; i++)
