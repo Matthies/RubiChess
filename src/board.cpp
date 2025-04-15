@@ -267,11 +267,6 @@ int chessposition::getFromFen(const char* sFen)
     updatePins<WHITE>();
     updatePins<BLACK>();
 
-#if 0
-    hash = zb.getHash(this);
-    pawnkinghash = zb.getPawnHash(this);
-    materialhash = zb.getMaterialHash(this);
-#endif
     zb.getAllHashes(this);
     lastnullmove = -1;
     ply = 0;

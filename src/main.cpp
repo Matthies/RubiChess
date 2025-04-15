@@ -96,11 +96,7 @@ void generateEpd(string egn)
             pos->getRootMoves();
             if (pos->rootmovelist.length == 0)
                 continue;
-#if 0
-            pos->hash = zb.getHash(pos);
-            pos->pawnhash = zb.getPawnHash(pos);
-            pos->materialhash = zb.getMaterialHash(pos);
-#endif
+
             zb.getAllHashes(pos);
 
             string sFen = pos->toFen();
