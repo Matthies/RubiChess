@@ -1301,6 +1301,10 @@ extern transposition tp;
 #define WKING 12
 #define BKING 13
 
+// Test for piece class (including king for correction history hashing)
+#define ISMINOR(x)  (x & 0x4)
+#define ISMAJOR(x)  (x & 0x8)
+
 // My son wants this in binary :-) but -pendantic claims that it's not C11 standard :-(
 #define S2MMASK     0x01
 #define WQCMASK     0x02
@@ -1511,6 +1515,8 @@ struct chessmovestack
     U64 hash;
     U64 pawnhash;
     U64 nonpawnhash[2];
+    U64 majorshash;
+    U64 minorshash;
     U64 isCheckbb;
     U64 kingPinned;
     int16_t lastnullmove;
@@ -1654,6 +1660,8 @@ public:
     U64 hash;
     U64 pawnhash;
     U64 nonpawnhash[2];
+    U64 majorshash;
+    U64 minorshash;
     U64 isCheckbb;
     U64 kingPinned;
     int16_t lastnullmove;
@@ -1696,6 +1704,8 @@ public:
     uint32_t countermove[14][64];
     int16_t pawncorrectionhistory[2][CORRHISTSIZE];
     int16_t nonpawncorrectionhistory[2][2][CORRHISTSIZE];
+    int16_t minorscorrectionhistory[2][CORRHISTSIZE];
+    int16_t majorscorrectionhistory[2][CORRHISTSIZE];
     int16_t* prerootconthistptr[6];
     int16_t* conthistptr[MAXDEPTH];
     int he_threshold;
@@ -2325,6 +2335,8 @@ struct searchparamset {
     // Correction history
     searchparam SP(pawncorrectionhistoryratio, 106, 64, 192);
     searchparam SP(nonpawncorrectionhistoryratio, 106, 64, 192);
+    searchparam SP(minorscorrectionhistoryratio, 106, 64, 192);
+    searchparam SP(majorscorrectionhistoryratio, 106, 64, 192);
     // NNUE eval scale
     searchparam SP(nnuevaluescale, 61, 48, 96);
 };

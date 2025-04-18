@@ -74,6 +74,7 @@ unsigned long long zobrist::getRnd()
 void zobrist::getAllHashes(chessposition* pos)
 {
     U64 hash = 0, pawnhash = 0, nonpawnhash[2] = {0}, materialhash = 0;
+    U64 majorshash = 0, minorshash = 0;
 
     int i;
     int state = pos->state;
@@ -89,6 +90,11 @@ void zobrist::getAllHashes(chessposition* pos)
                 pawnhash ^= boardtable[(index << 4) | i];
             else
                 nonpawnhash[i & S2MMASK] ^= boardtable[(index << 4) | i];
+
+            if (ISMINOR(i))
+                minorshash ^= boardtable[(index << 4) | i];
+            if (ISMAJOR(i))
+                majorshash ^= boardtable[(index << 4) | i];
         }
     }
 
@@ -112,6 +118,8 @@ void zobrist::getAllHashes(chessposition* pos)
     pos->pawnhash = pawnhash;
     pos->nonpawnhash[WHITE] = nonpawnhash[WHITE];
     pos->nonpawnhash[BLACK] = nonpawnhash[BLACK];
+    pos->minorshash = minorshash;
+    pos->majorshash = majorshash;
 }
 
 

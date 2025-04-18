@@ -195,6 +195,10 @@ inline void chessposition::updateCorrectionHst(int value, int depth)
     nonpawncorrectionhistory[WHITE][us][index] = max(-8192, min(8192, (nonpawncorrectionhistory[WHITE][us][index] * (256 - weight) + scaledvalue * weight) / 256));
     index = nonpawnhash[BLACK] & (CORRHISTSIZE - 1);
     nonpawncorrectionhistory[BLACK][us][index] = max(-8192, min(8192, (nonpawncorrectionhistory[BLACK][us][index] * (256 - weight) + scaledvalue * weight) / 256));
+    index = minorshash & (CORRHISTSIZE - 1);
+    minorscorrectionhistory[us][index] = max(-8192, min(8192, (minorscorrectionhistory[us][index] * (256 - weight) + scaledvalue * weight) / 256));
+    index = majorshash & (CORRHISTSIZE - 1);
+    majorscorrectionhistory[us][index] = max(-8192, min(8192, (majorscorrectionhistory[us][index] * (256 - weight) + scaledvalue * weight) / 256));
 }
 
 inline int chessposition::correctEvalByHistory(int v)
@@ -203,8 +207,10 @@ inline int chessposition::correctEvalByHistory(int v)
     int cv = v
         + pawncorrectionhistory[us][pawnhash & (CORRHISTSIZE - 1)] / sps.pawncorrectionhistoryratio
         + nonpawncorrectionhistory[WHITE][us][nonpawnhash[WHITE] & (CORRHISTSIZE - 1)] / sps.nonpawncorrectionhistoryratio
-        + nonpawncorrectionhistory[BLACK][us][nonpawnhash[BLACK] & (CORRHISTSIZE - 1)] / sps.nonpawncorrectionhistoryratio;
-    return max(-SCORETBWININMAXPLY, min(cv, SCORETBWININMAXPLY));
+        + nonpawncorrectionhistory[BLACK][us][nonpawnhash[BLACK] & (CORRHISTSIZE - 1)] / sps.nonpawncorrectionhistoryratio
+        + minorscorrectionhistory[us][minorshash & (CORRHISTSIZE - 1)] / sps.minorscorrectionhistoryratio
+        + majorscorrectionhistory[us][majorshash & (CORRHISTSIZE - 1)] / sps.majorscorrectionhistoryratio;
+        return max(-SCORETBWININMAXPLY, min(cv, SCORETBWININMAXPLY));
 }
 
 

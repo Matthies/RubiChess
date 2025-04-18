@@ -580,8 +580,10 @@ bool chessposition::playMove(uint32_t mc)
             kingpos[s2m] = kingto;
             BitboardMove(kingfrom, kingto, kingpc);
             if (!LiteMode) {
-                hash ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
-                nonpawnhash[s2m] ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
+                U64 kingmovehash = zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
+                hash ^= kingmovehash;
+                nonpawnhash[s2m] ^= kingmovehash;
+                majorshash ^= kingmovehash;
                 dp->pc[0] = kingpc;
                 dp->from[0] = kingfrom;
                 dp->to[0] = kingto;
@@ -592,8 +594,10 @@ bool chessposition::playMove(uint32_t mc)
         {
             BitboardMove(rookfrom, rookto, rookpc);
             if (!LiteMode) {
-                hash ^= zb.boardtable[(rookfrom << 4) | rookpc] ^ zb.boardtable[(rookto << 4) | rookpc];
-                nonpawnhash[s2m] ^= zb.boardtable[(rookfrom << 4) | rookpc] ^ zb.boardtable[(rookto << 4) | rookpc];
+                U64 rookmovehash = zb.boardtable[(rookfrom << 4) | rookpc] ^ zb.boardtable[(rookto << 4) | rookpc];
+                hash ^= rookmovehash;
+                nonpawnhash[s2m] ^= rookmovehash;
+                majorshash ^= rookmovehash;
                 int di = dp->dirtyNum;
                 dp->pc[di] = rookpc;
                 dp->from[di] = rookfrom;
@@ -628,11 +632,16 @@ bool chessposition::playMove(uint32_t mc)
         {
             BitboardClear(to, capture);
             if (!LiteMode) {
+                U64 capturehash = zb.boardtable[(to << 4) | capture];
                 hash ^= zb.boardtable[(to << 4) | capture];
                 if ((capture >> 1) == PAWN)
-                    pawnhash ^= zb.boardtable[(to << 4) | capture];
+                    pawnhash ^= capturehash;
                 else
-                    nonpawnhash[s2m ^ S2MMASK] ^= zb.boardtable[(to << 4) | capture];
+                    nonpawnhash[s2m ^ S2MMASK] ^= capturehash;
+                if (ISMINOR(capture))
+                    minorshash ^= capturehash;
+                if (ISMAJOR(capture))
+                    majorshash ^= capturehash;
                 dp->pc[1] = capture;
                 dp->from[1] = to;
                 dp->to[1] = -1;
@@ -652,9 +661,14 @@ bool chessposition::playMove(uint32_t mc)
             BitboardClear(from, pfrom);
             BitboardSet(to, promote);
             if (!LiteMode) {
+                U64 promotehash = zb.boardtable[(to << 4) | promote];
                 // just double the hash-switch for target to make the pawn vanish
-                pawnhash ^= zb.boardtable[(to << 4) | promote];
-                nonpawnhash[s2m] ^= zb.boardtable[(to << 4) | promote];
+                pawnhash ^= promotehash;
+                nonpawnhash[s2m] ^= promotehash;
+                if (ISMINOR(promote))
+                    minorshash ^= promotehash;
+                if (ISMAJOR(promote))
+                    majorshash ^= promotehash;
                 int di = dp->dirtyNum;
                 dp->to[0] = -1; // remove promoting pawn;
                 dp->from[di] = -1;
@@ -664,20 +678,20 @@ bool chessposition::playMove(uint32_t mc)
             }
         }
 
-        if (!LiteMode) {
-            hash ^= zb.boardtable[(to << 4) | mailbox[to]];
-            hash ^= zb.boardtable[(from << 4) | pfrom];
-        }
+        U64 fromhash = zb.boardtable[(from << 4) | pfrom];
+        U64 tohash = zb.boardtable[(to << 4) | mailbox[to]];
+        if (!LiteMode)
+            hash ^= fromhash ^ tohash;
+
         mailbox[from] = BLANK;
 
         /* PAWN specials */
         if (ptype == PAWN)
         {
             eptnew = GETEPT(mc);
-            if (!LiteMode) {
-                pawnhash ^= zb.boardtable[(to << 4) | mailbox[to]];
-                pawnhash ^= zb.boardtable[(from << 4) | pfrom];
-            }
+            if (!LiteMode)
+                pawnhash ^= fromhash ^ tohash;
+
             halfmovescounter = 0;
 
             if (ept && to == ept)
@@ -697,8 +711,14 @@ bool chessposition::playMove(uint32_t mc)
             }
         }
         else {
-            nonpawnhash[s2m] ^= zb.boardtable[(to << 4) | mailbox[to]];
-            nonpawnhash[s2m] ^= zb.boardtable[(from << 4) | pfrom];
+            if (!LiteMode)
+            {
+                nonpawnhash[s2m] ^= fromhash ^ tohash;
+                if (ISMINOR(pfrom))
+                    minorshash ^= fromhash ^ tohash;
+                if (ISMAJOR(pfrom))
+                    majorshash ^= fromhash ^ tohash;
+            }
         }
 
         if (ptype == KING)
@@ -713,6 +733,9 @@ bool chessposition::playMove(uint32_t mc)
                 pawnhash = movestack[ply].pawnhash;
                 nonpawnhash[WHITE] = movestack[ply].nonpawnhash[WHITE];
                 nonpawnhash[BLACK] = movestack[ply].nonpawnhash[BLACK];
+                minorshash = movestack[ply].minorshash;
+                majorshash = movestack[ply].majorshash;
+
             }
             halfmovescounter = movestack[ply].halfmovescounter;
             kingpos[s2m] = movestack[ply].kingpos[s2m];
