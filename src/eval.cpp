@@ -801,6 +801,7 @@ constexpr U64 MH_Kkbn = 0xCD42B1F2ACF170CF;
 
 inline bool chessposition::isEndgame(int *score)
 {
+    U64 materialhash = zb.getMaterialHash(this);
     switch(materialhash) {
     case MH_Kk:
     case MH_KNk:
@@ -877,11 +878,7 @@ int chessposition::getEval()
     memset(attackedBy, 0, sizeof(attackedBy));
 
     positioneval pe;
-    bool hashexist = mtrlhsh.probeHash(materialhash, &pe.mhentry);
-    if (!hashexist)
-        getScaling(pe.mhentry);
-
-    hashexist = pwnhsh.probeHash(pawnhash, &pe.phentry);
+    bool hashexist = pwnhsh.probeHash(zb.getPawnKingHash(this), &pe.phentry);
     if (bTrace || !hashexist)
     {
         if (bTrace) pe.phentry->value = 0;
@@ -902,12 +899,11 @@ int chessposition::getEval()
     int totalEval = psqval + pawnEval + generalEval + piecesEval + lateEval;
 
     int sideToScale = GETEGVAL(totalEval) > SCOREDRAW ? WHITE : BLACK;
-
-    sc = pe.mhentry->scale[sideToScale];
+    sc = getScaling(sideToScale);
     if (!bTrace && sc == SCALE_DRAW)
         return SCOREDRAW;
 
-    int complexity = getComplexity(totalEval, pe.phentry, pe.mhentry);
+    int complexity = getComplexity(totalEval, pe.phentry);
     totalEval += complexity;
 
     if (bTrace)
@@ -932,20 +928,21 @@ int chessposition::getEval()
 }
 
 
-int chessposition::getComplexity(int val, pawnhashentry *phentry, Materialhashentry *mhentry)
+int chessposition::getComplexity(int val, pawnhashentry *phentry)
 {
         int evaleg = GETEGVAL(val);
         int sign = (evaleg > 0) - (evaleg < 0);
-        int complexity = EEVAL(eps.eComplexpawnsbonus, mhentry->numOfPawns);
+        bool onlypawns = (((piece00[0] | piece00[1]) ^ (piece00[WPAWN] | piece00[BPAWN] | piece00[WKING] | piece00[BKING])) == 0);
+        int complexity = EEVAL(eps.eComplexpawnsbonus, POPCOUNT(piece00[WPAWN] | piece00[BPAWN]));
         complexity += EEVAL(eps.eComplexpawnflanksbonus, phentry->bothFlanks);
-        complexity += EEVAL(eps.eComplexonlypawnsbonus, mhentry->onlyPawns);
+        complexity += EEVAL(eps.eComplexonlypawnsbonus, onlypawns);
         complexity += EEVAL(eps.eComplexadjust, 1);
 
         return sign * max(complexity, -abs(evaleg));
 }
 
 
-void chessposition::getScaling(Materialhashentry* mhentry)
+int chessposition::getScaling(int me)
 {
     // Calculate scaling for endgames with special material
     const int pawns[2] = { POPCOUNT(piece00[WPAWN]), POPCOUNT(piece00[BPAWN]) };
@@ -965,29 +962,25 @@ void chessposition::getScaling(Materialhashentry* mhentry)
     };
 
     // Default scaling
-    mhentry->scale[WHITE] = mhentry->scale[BLACK] = SCALE_NORMAL;
+    int scale = SCALE_NORMAL;
 
     // Check for insufficient material using simnple heuristic from chessprogramming site
-    for (int me = WHITE; me <= BLACK; me++)
-    {
-        int you = me ^ S2MMASK;
+    int you = me ^ S2MMASK;
 
-        if (pawns[me] == 0 && nonpawnvalue[me] - nonpawnvalue[you] <= materialvalue[BISHOP])
-            mhentry->scale[me] = nonpawnvalue[me] < materialvalue[ROOK] ? SCALE_DRAW : SCALE_HARDTOWIN;
+    if (pawns[me] == 0 && nonpawnvalue[me] - nonpawnvalue[you] <= materialvalue[BISHOP])
+        scale = nonpawnvalue[me] < materialvalue[ROOK] ? SCALE_DRAW : SCALE_HARDTOWIN;
 
-        if (pawns[me] == 1 && nonpawnvalue[me] - nonpawnvalue[you] <= materialvalue[BISHOP])
-            mhentry->scale[me] = SCALE_ONEPAWN;
-    }
+    if (pawns[me] == 1 && nonpawnvalue[me] - nonpawnvalue[you] <= materialvalue[BISHOP])
+        scale = SCALE_ONEPAWN;
 
     U64 bishopsbb = (piece00[WBISHOP] | piece00[BBISHOP]);
     if (bishops[WHITE] == 1 && bishops[BLACK] == 1
         && (bishopsbb & WHITEBB) && (bishopsbb & BLACKBB)
         && nonpawnvalue[WHITE] <= materialvalue[BISHOP]
         && nonpawnvalue[BLACK] <= materialvalue[BISHOP])
-        mhentry->scale[WHITE] = mhentry->scale[BLACK] = SCALE_OCB;
+        scale = SCALE_OCB;
 
-    mhentry->onlyPawns = (nonpawnvalue[0] + nonpawnvalue[1] == 0);
-    mhentry->numOfPawns = pawns[0] + pawns[1];
+    return scale;
 }
 
 // Explicit template instantiation

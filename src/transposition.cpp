@@ -64,15 +64,17 @@ zobrist::zobrist()
     s2m = getRnd();
 }
 
+
 unsigned long long zobrist::getRnd()
 {
     return ranval(&rnd);
 }
 
 
-U64 zobrist::getHash(chessposition *pos)
+void zobrist::getAllHashes(chessposition* pos)
 {
-    U64 hash = 0;
+    U64 hash = 0, pawnhash = 0, nonpawnhash[2] = {0}, materialhash = 0;
+
     int i;
     int state = pos->state;
     for (i = WPAWN; i <= BKING; i++)
@@ -83,6 +85,10 @@ U64 zobrist::getHash(chessposition *pos)
         {
             index = pullLsb(&pmask);
             hash ^= boardtable[(index << 4) | i];
+            if (i <= BPAWN)
+                pawnhash ^= boardtable[(index << 4) | i];
+            else
+                nonpawnhash[i & S2MMASK] ^= boardtable[(index << 4) | i];
         }
     }
 
@@ -92,42 +98,41 @@ U64 zobrist::getHash(chessposition *pos)
     hash ^= cstl[state & CASTLEMASK];
     hash ^= ept[pos->ept];
 
-    return hash;
-}
-
-U64 zobrist::getPawnHash(chessposition *pos)
-{
-    U64 hash = 0;
-    for (int i = WPAWN; i <= BPAWN; i++)
-    {
-        U64 pmask = pos->piece00[i];
-        unsigned int index;
-        while (pmask)
-        {
-            index = pullLsb(&pmask);
-            hash ^= boardtable[(index << 4) | i];
-        }
-    }
-    // Store also kings position in pawn hash
-    hash ^= boardtable[(pos->kingpos[0] << 4) | WKING] ^ boardtable[(pos->kingpos[1] << 4) | BKING];
-    return hash;
-}
-
-
-U64 zobrist::getMaterialHash(chessposition *pos)
-{
-    U64 hash = 0;
     for (PieceCode pc = WPAWN; pc <= BKING; pc++)
     {
         int count = 0;
         for (int j = 0; j < BOARDSIZE; j++)
         {
-                if (pos->mailbox[j] == pc)
-                    hash ^= zb.boardtable[(count++ << 4) | pc];
+            if (pos->mailbox[j] == pc)
+                materialhash ^= boardtable[(count++ << 4) | pc];
         }
+    }
+
+    pos->hash = hash;
+    pos->pawnhash = pawnhash;
+    pos->nonpawnhash[WHITE] = nonpawnhash[WHITE];
+    pos->nonpawnhash[BLACK] = nonpawnhash[BLACK];
+}
+
+
+U64 zobrist::getPawnKingHash(chessposition* pos)
+{
+    return pos->pawnhash ^ boardtable[(pos->kingpos[0] << 4) | WKING] ^ boardtable[(pos->kingpos[1] << 4) | BKING];
+}
+
+
+U64 zobrist::getMaterialHash(chessposition* pos)
+{
+    U64 hash = 0;
+    for (PieceCode pc = WPAWN; pc <= BKING; pc++)
+    {
+        int count = POPCOUNT(pos->piece00[pc]);
+        for (int i = 0; i < count; i++)
+            hash ^= zb.boardtable[(i << 4) | pc];
     }
     return hash;
 }
+
 
 
 transposition::~transposition()
@@ -354,29 +359,6 @@ bool Pawnhash::probeHash(U64 hash, pawnhashentry **entry)
     (*entry)->attacked[0] = (*entry)->attacked[1] = 0ULL;
     (*entry)->attackedBy2[0] = (*entry)->attackedBy2[1] = 0ULL;
 
-    return false;
-}
-
-
-void Materialhash::init()
-{
-    size_t tablesize = (size_t)MATERIALHASHSIZE * sizeof(Materialhashentry);
-    table = (Materialhashentry*)allocalign64(tablesize);
-    memset(table, 0, tablesize);
-}
-
-void Materialhash::remove()
-{
-    freealigned64(table);
-}
-
-bool  Materialhash::probeHash(U64 hash, Materialhashentry **entry)
-{
-    *entry = &table[hash & MATERIALHASHMASK];
-    if ((*entry)->hash == hash)
-        return true;
-
-    (*entry)->hash = hash;
     return false;
 }
 
