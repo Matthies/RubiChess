@@ -2324,7 +2324,7 @@ struct searchparamset {
     searchparam SP(extguardcheckext, 3, 1, 15);
     // Correction history
     searchparam SP(pawncorrectionhistoryratio, 106, 64, 192);
-    searchparam SP(nonpawncorrectionhistoryratio, 100, 64, 192);
+    searchparam SP(nonpawncorrectionhistoryratio, 106, 64, 192);
     // NNUE eval scale
     searchparam SP(nnuevaluescale, 61, 48, 96);
 };
