@@ -1505,7 +1505,7 @@ extern int squareDistance[64][64];
 struct chessmovestack
 {
     int state;
-    uint8_t extensionlimit;
+    uint8_t extensionguard;
     uint8_t ept;
     uint8_t kingpos[2];
     U64 hash;
@@ -1646,6 +1646,7 @@ public:
     uint8_t mailbox[BOARDSIZE];
     U64 threats;
 
+#if 0
     // The following block is mapped/copied to the movestack, so its important to keep the order
     int state;
     uint8_t extensionguard;     // lower 4 bits for double extensions, higher 4 bits for check extensions
@@ -1659,13 +1660,15 @@ public:
     int16_t lastnullmove;
     int16_t halfmovescounter;
     unsigned int threatSquare;
-
+#endif
     chessmovestack prerootmovestack[PREROOTMOVES];      // explicit copy from rootpos up to frame prerootmovenum including first frame of regular stack
     chessmovestack movestack[MAXDEPTH];                 // frame 0 copied from rootpos
     uint32_t prerootmovecode[PREROOTMOVES];             // explicit copy from rootpos up to frame prerootmovenum including first regular movecode
     uint32_t movecode[MAXDEPTH];
     uint16_t excludemovestack[MAXDEPTH];                // init in prepare only for excludemovestack[0]
     int16_t staticevalstack[MAXDEPTH];
+
+    chessmovestack* sp;
 
     int fullmovescounter;
     int prerootmovenum;

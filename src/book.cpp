@@ -338,14 +338,14 @@ U64 polybook::GetHash(chessposition* p)
         hash ^= PolyglotRandoms[offset];
     }
 
-    if (p->state & WKCMASK) hash ^= PolyglotRandoms[768];
-    if (p->state & WQCMASK) hash ^= PolyglotRandoms[769];
-    if (p->state & BKCMASK) hash ^= PolyglotRandoms[770];
-    if (p->state & BQCMASK) hash ^= PolyglotRandoms[771];
+    if (p->sp->state & WKCMASK) hash ^= PolyglotRandoms[768];
+    if (p->sp->state & WQCMASK) hash ^= PolyglotRandoms[769];
+    if (p->sp->state & BKCMASK) hash ^= PolyglotRandoms[770];
+    if (p->sp->state & BQCMASK) hash ^= PolyglotRandoms[771];
 
-    if (p->ept) hash ^= PolyglotRandoms[772 + FILE(p->ept)];
+    if (p->sp->ept) hash ^= PolyglotRandoms[772 + FILE(p->sp->ept)];
 
-    if (!(p->state & S2MMASK)) hash ^= PolyglotRandoms[780];
+    if (!(p->sp->state & S2MMASK)) hash ^= PolyglotRandoms[780];
 
     return hash;
 }
@@ -462,7 +462,7 @@ uint32_t polybook::GetMove(chessposition* p)
     int pp;
     if ((pp = ((shortmove & 0x7000) >> 24)))
         // Fix promotion info
-        shortmove = (shortmove & 0xfff) | (((pp + 1) * 2 + (p->state & S2MMASK)) << 24);
+        shortmove = (shortmove & 0xfff) | (((pp + 1) * 2 + (p->sp->state & S2MMASK)) << 24);
     return p->shortMove2FullMove(shortmove);
 }
 

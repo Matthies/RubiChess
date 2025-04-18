@@ -415,7 +415,7 @@ void engine::communicate(string inputstring)
                     if (!(lastopponentsmove = rootposition.applyMove(*it)))
                         guiCom << "info string Alarm! Move " + (*it)  + " illegal (possible engine error)\n";
                 }
-                rootposition.contempt = S2MSIGN(rootposition.state & S2MMASK) * ResultingContempt * rootposition.phcount / 24;
+                rootposition.contempt = S2MSIGN(rootposition.sp->state & S2MMASK) * ResultingContempt * rootposition.phcount / 24;
                 ponderhitbonus = 4 * (lastopponentsmove && lastopponentsmove == rootposition.pondermove);
                 // Preserve hashes of earlier position up to last halfmove counter reset for repetition detection
                 rootposition.prerootmovenum = rootposition.ply;
@@ -426,7 +426,7 @@ void engine::communicate(string inputstring)
                     rootposition.prerootmovecode[j] = rootposition.movecode[i];
                     rootposition.prerootmovestack[j++] = rootposition.movestack[i++];
                 }
-                rootposition.lastnullmove = -rootposition.ply - 1;
+                rootposition.sp->lastnullmove = -rootposition.ply - 1;
                 rootposition.ply = 0;
                 rootposition.useTb = min(TBlargest, SyzygyProbeLimit);
                 rootposition.getRootMoves();

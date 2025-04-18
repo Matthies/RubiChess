@@ -444,7 +444,7 @@ string chessposition::AlgebraicFromShort(string s)
     if (castle0 >= 2)
     {
         pt = KING;
-        from = kingpos[state & S2MMASK];
+        from = sp->kingpos[sp->state & S2MMASK];
         to = (from & 0x38) | castlerookfrom[castle0 == 2];
     }
     if (i >= 0 && s[i] >= 'A')

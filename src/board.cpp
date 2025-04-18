@@ -47,7 +47,7 @@ alignas(64) int psqtable[14][64];
 
 bool chessposition::w2m()
 {
-    return !(state & S2MMASK);
+    return !(sp->state & S2MMASK);
 }
 
 
@@ -91,6 +91,8 @@ int chessposition::getFromFen(const char* sFen)
     memset(piece00, 0, sizeof(piece00));
     memset(mailbox, 0, sizeof(mailbox));
 
+    sp = &movestack[0];
+
     // At least two token are needed
     if (numToken < 2)
         return -1;
@@ -115,7 +117,7 @@ int chessposition::getFromFen(const char* sFen)
         {
         case 'k':
             p = BKING;
-            kingpos[1] = index;
+            sp->kingpos[1] = index;
             break;
         case 'q':
             p = BQUEEN;
@@ -134,7 +136,7 @@ int chessposition::getFromFen(const char* sFen)
             break;
         case 'K':
             p = WKING;
-            kingpos[0] = index;
+            sp->kingpos[0] = index;
             break;
         case 'Q':
             p = WQUEEN;
@@ -177,19 +179,19 @@ int chessposition::getFromFen(const char* sFen)
         return -1;
     if (POPCOUNT(piece00[WKING]) != 1 || POPCOUNT(piece00[BKING]) != 1)
         return -1;
-    if (squareDistance[kingpos[WHITE]][kingpos[BLACK]] < 1)
+    if (squareDistance[sp->kingpos[WHITE]][sp->kingpos[BLACK]] < 1)
         return -1;
     if (POPCOUNT(occupied00[WHITE] | occupied00[BLACK]) > 32)
         return -1;
 
-    state = 0;
+    sp->state = 0;
     /* side to move */
     if (token[1] == "b")
-        state |= S2MMASK;
+        sp->state |= S2MMASK;
 
     /* castle rights */
     int rookfiles[2][2] = {{ -1, -1 }, { -1, -1 }};
-    int kingfile[2] = { FILE(kingpos[0]), FILE(kingpos[1]) };
+    int kingfile[2] = { FILE(sp->kingpos[0]), FILE(sp->kingpos[1]) };
     s = token[2];
     const string usualcastles = "QKqk";
     const string castles960 = "ABCDEFGHabcdefgh";
@@ -215,12 +217,12 @@ int chessposition::getFromFen(const char* sFen)
         {
             col = (int)castleindex / 8;
             rookfile = castleindex % 8;
-            gCastle = (rookfile > FILE(kingpos[col]));
+            gCastle = (rookfile > FILE(sp->kingpos[col]));
             castleindex = col * 2 + gCastle;
         }
         if (rookfile >= 0)
         {
-            state |= SETCASTLEFILE(rookfile, castleindex);
+            sp->state |= SETCASTLEFILE(rookfile, castleindex);
             // FIXME: Maybe some sanity check if castle flag fits to rook placement
             rookfiles[col][gCastle] = rookfile;
             // Set chess960 if non-standard rook/king setup is found
@@ -231,23 +233,23 @@ int chessposition::getFromFen(const char* sFen)
     initCastleRights(rookfiles, kingfile);
 
     /* en passant target */
-    ept = 0;
+    sp->ept = 0;
     s = token[3];
     if (s.length() == 2)
     {
         int i = AlgebraicToIndex(s);
         if (i < 64)
         {
-            ept = i;
+            sp->ept = i;
         }
     }
 
     /* half moves */
-    halfmovescounter = 0;
+    sp->halfmovescounter = 0;
     if (numToken > 4)
     {
         try {
-            halfmovescounter = stoi(token[4]);
+            sp->halfmovescounter = stoi(token[4]);
         }
         catch (...) {}
     }
@@ -262,16 +264,16 @@ int chessposition::getFromFen(const char* sFen)
         catch (...) {}
     }
 
-    isCheckbb = isAttackedBy<OCCUPIED>(kingpos[state & S2MMASK], (state & S2MMASK) ^ S2MMASK);
-    kingPinned = 0ULL;
+    sp->isCheckbb = isAttackedBy<OCCUPIED>(sp->kingpos[sp->state & S2MMASK], (sp->state & S2MMASK) ^ S2MMASK);
+    sp->kingPinned = 0ULL;
     updatePins<WHITE>();
     updatePins<BLACK>();
 
     zb.getAllHashes(this);
-    lastnullmove = -1;
+    sp->lastnullmove = -1;
     ply = 0;
     piececount = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]);
-    extensionguard = 0;
+    sp->extensionguard = 0;
     return 0;
 }
 
@@ -282,11 +284,11 @@ int chessposition::getFromFen(const char* sFen)
 int chessposition::testRepetition()
 {
     int hit = 0;
-    int lastrepply = max(ply - halfmovescounter, lastnullmove + 1);
+    int lastrepply = max(ply - sp->halfmovescounter, sp->lastnullmove + 1);
     int i = ply - 4;
     while (i >= lastrepply)
     {
-        if (hash == (&movestack[0] + i)->hash)
+        if (sp->hash == (&movestack[0] + i)->hash)
         {
             hit++;
             if (i > 0)
@@ -305,7 +307,7 @@ void chessposition::prepareStack()
 {
     myassert(ply >= 0 && ply < MAXDEPTH, this, 1, ply);
     // copy stack related data directly to stack
-    memcpy(&movestack[ply], &state, sizeof(chessmovestack));
+    memcpy(&movestack[ply], sp, sizeof(chessmovestack));
 }
 
 
@@ -325,7 +327,7 @@ template <int Me> bool chessposition::sliderAttacked(int index, U64 occ)
 template <int Me> void chessposition::updatePins()
 {
     const int You = Me ^ S2MMASK;
-    int k = kingpos[Me];
+    int k = sp->kingpos[Me];
     U64 occ = occupied00[You];
     U64 attackers = ROOKATTACKS(occ, k) & (piece00[WROOK | You] | piece00[WQUEEN | You]);
     attackers |= BISHOPATTACKS(occ, k) & (piece00[WBISHOP | You] | piece00[WQUEEN | You]);
@@ -335,7 +337,7 @@ template <int Me> void chessposition::updatePins()
         int index = pullLsb(&attackers);
         U64 potentialPinners = betweenMask[index][k] & occupied00[Me];
         if (ONEORZERO(potentialPinners))
-            kingPinned |= potentialPinners;
+            sp->kingPinned |= potentialPinners;
     }
     // 'Reset' attack vector to make getBestPossibleCapture work even if evaluation was skipped
     attackedBy[Me][0] = 0xffffffffffffffff;
@@ -371,9 +373,9 @@ template <int Me> void chessposition::updateThreats()
 
     threats = threatsByPawns | threatsByMinors | threatsByRooks;
     if (threats)
-        GETLSB(threatSquare, threats);
+        GETLSB(sp->threatSquare, threats);
     else
-        threatSquare = 64;
+        sp->threatSquare = 64;
 }
 
 
@@ -401,12 +403,12 @@ void chessposition::print(ostream* os)
     chessmovelist pseudolegalmoves;
     pseudolegalmoves.length = CreateMovelist<ALL>(&pseudolegalmoves.move[0]);
     *os << "\nFEN: " + toFen() + "\n";
-    *os << "State: " << std::hex << state << "\n";
-    *os << "EPT: " + to_string(ept) + "\n";
-    *os << "Halfmoves: " + to_string(halfmovescounter) + "\n";
+    *os << "State: " << std::hex << sp->state << "\n";
+    *os << "EPT: " + to_string(sp->ept) + "\n";
+    *os << "Halfmoves: " + to_string(sp->halfmovescounter) + "\n";
     *os << "Fullmoves: " + to_string(fullmovescounter) + "\n";
-    *os << "Hash: 0x" << hex << hash << "\n";
-    *os << "Pawn Hash: 0x" << hex << pawnhash << "\n";
+    *os << "Hash: 0x" << hex << sp->hash << "\n";
+    *os << "Pawn Hash: 0x" << hex << sp->pawnhash << "\n";
     *os << "Value: " + to_string(getEval<NOTRACE>()) + "\n";
     *os << "Repetitions: " + to_string(testRepetition()) + "\n";
     *os << "Phase: " + to_string(phcount) + "\n";
@@ -489,32 +491,32 @@ string chessposition::toFen()
     s += " ";
 
     // side 2 move
-    s += ((state & S2MMASK) ? "b " : "w ");
+    s += ((sp->state & S2MMASK) ? "b " : "w ");
 
     // castle rights
-    if (!(state & CASTLEMASK))
+    if (!(sp->state & CASTLEMASK))
         s += "-";
     else
     {
-        if (state & WKCMASK)
-            s += en.chess960 ? 'A' + GETCASTLEFILE(state, 1) : 'K';
-        if (state & WQCMASK)
-            s += en.chess960 ? 'A' + GETCASTLEFILE(state, 0) : 'Q';
-        if (state & BKCMASK)
-            s += en.chess960 ? 'a' + GETCASTLEFILE(state, 3) : 'k';
-        if (state & BQCMASK)
-            s += en.chess960 ? 'a' + GETCASTLEFILE(state, 2) : 'q';
+        if (sp->state & WKCMASK)
+            s += en.chess960 ? 'A' + GETCASTLEFILE(sp->state, 1) : 'K';
+        if (sp->state & WQCMASK)
+            s += en.chess960 ? 'A' + GETCASTLEFILE(sp->state, 0) : 'Q';
+        if (sp->state & BKCMASK)
+            s += en.chess960 ? 'a' + GETCASTLEFILE(sp->state, 3) : 'k';
+        if (sp->state & BQCMASK)
+            s += en.chess960 ? 'a' + GETCASTLEFILE(sp->state, 2) : 'q';
     }
     s += " ";
 
     // EPT
-    if (!ept)
+    if (!sp->ept)
         s += "-";
     else
-        s += IndexToAlgebraic(ept);
+        s += IndexToAlgebraic(sp->ept);
 
     // halfmove and fullmove counter
-    s += " " + to_string(halfmovescounter) + " " + to_string(fullmovescounter);
+    s += " " + to_string(sp->halfmovescounter) + " " + to_string(fullmovescounter);
     return s;
 }
 
@@ -932,7 +934,7 @@ void chessposition::BitboardPrint(U64 b)
 
 U64 chessposition::nextHash(uint32_t mc)
 {
-    U64 newhash = hash;
+    U64 newhash = sp->hash;
     int from = GETFROM(mc);
     int to = GETTO(mc);
     int pc = GETPIECE(mc);
@@ -958,7 +960,7 @@ U64 chessposition::movesTo(PieceCode pc, int from)
     {
     case PAWN:
         return ((pawn_moves_to[from][s2m] | pawn_moves_to_double[from][s2m]) & ~occ)
-                | (pawn_attacks_to[from][s2m] & (occ | (ept ? BITSET(ept) : 0ULL)));
+                | (pawn_attacks_to[from][s2m] & (occ | (sp->ept ? BITSET(sp->ept) : 0ULL)));
     case KNIGHT:
         return knight_attacks[from];
     case BISHOP:
@@ -1015,7 +1017,7 @@ bool chessposition::isAttacked(int index, int Me)
 
     return knight_attacks[index] & piece00[WKNIGHT | opponent]
         || king_attacks[index] & piece00[WKING | opponent]
-        || pawn_attacks_to[index][state & S2MMASK] & piece00[(PAWN << 1) | opponent]
+        || pawn_attacks_to[index][sp->state & S2MMASK] & piece00[(PAWN << 1) | opponent]
         || ROOKATTACKS(occupied00[0] | occupied00[1], index) & (piece00[WROOK | opponent] | piece00[WQUEEN | opponent])
         || BISHOPATTACKS(occupied00[0] | occupied00[1], index) & (piece00[WBISHOP | opponent] | piece00[WQUEEN | opponent]);
 }
@@ -1067,7 +1069,7 @@ bool chessposition::see(uint32_t move, int threshold)
     // Get attackers excluding the already moved piece
     U64 attacker = attackedByBB(to, seeOccupied) & seeOccupied;
 
-    int s2m = (state & S2MMASK) ^ S2MMASK;
+    int s2m = (sp->state & S2MMASK) ^ S2MMASK;
 
     while (true)
     {
@@ -1103,14 +1105,14 @@ bool chessposition::see(uint32_t move, int threshold)
             break;
     }
 
-    return (s2m ^ (state & S2MMASK));
+    return (s2m ^ (sp->state & S2MMASK));
 }
 
 
 
 int chessposition::getBestPossibleCapture()
 {
-    int me = state & S2MMASK;
+    int me = sp->state & S2MMASK;
     int you = me ^ S2MMASK;
     int captureval = 0;
     U64 msk;

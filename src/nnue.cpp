@@ -459,7 +459,7 @@ template <NnueType Nt, Color c> void chessposition::HalfkpAppendActiveIndices(Nn
 
 template <NnueType Nt, Color c> void chessposition::HalfkpAppendChangedIndices(DirtyPiece* dp, NnueIndexList* add, NnueIndexList* remove)
 {
-    const int ksq = kingpos[c];
+    const int ksq = sp->kingpos[c];
     const int oksq = (Nt == NnueArchV1 ? ORIENT(c, ksq) : HMORIENT(c, ksq, ksq));
     for (int i = 0; i < dp->dirtyNum; i++) {
         PieceCode pc = dp->pc[i];
@@ -975,7 +975,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     STATISTICSINC(nnue_accupdate_full);
     computationState[ply][c] = true;
 
-    const int ksq = kingpos[c];
+    const int ksq = sp->kingpos[c];
     const int oksq = (Nt == NnueArchV1 ? ORIENT(c, ksq) : HMORIENT(c, ksq, ksq));
     U64* cachedpiece00 = (U64*) & (accucache.piece00[c][ksq]);
     int16_t* cacheaccumulation = accucache.accumulation + (c * 64 + ksq) * NnueFtHalfdims;
@@ -1158,7 +1158,7 @@ int chessposition::Transform(clipped_t *output, int bucket)
     int16_t* acm = accumulation + ply * 2 * NnueFtHalfdims;
     int32_t* psqtacm = psqtAccumulation + ply * 2 * NnuePsqtBuckets;
 
-    const int perspectives[2] = { state & S2MMASK, !(state & S2MMASK) };
+    const int perspectives[2] = { sp->state & S2MMASK, !(sp->state & S2MMASK) };
     for (int p = 0; p < 2; p++)
     {
         const unsigned int offset = (Nt == NnueArchV1 ? NnueFtHalfdims * p : NnueFtHalfdims / 2 * p);

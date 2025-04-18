@@ -315,8 +315,8 @@ void register_endgame(string gamesignature, int(*endgame)(chessposition*))
 inline int KBNvK(chessposition *p)
 {
     int strongside = p->piece00[WBISHOP] ? WHITE : BLACK;
-    int ks = p->kingpos[strongside];
-    int kw = p->kingpos[strongside ^ S2MMASK];
+    int ks = p->sp->kingpos[strongside];
+    int kw = p->sp->kingpos[strongside ^ S2MMASK];
     int bishopcol = p->piece00[WBISHOP + strongside] & WHITEBB ? WHITE : BLACK;
     int c1 = bishopcol == WHITE ? 7 : 0;  // lower corner of same color as bishop
     int c2 = bishopcol == WHITE ? 56 : 63;  // upper corner of same color as bishop
@@ -325,7 +325,7 @@ inline int KBNvK(chessposition *p)
     int kwcornerdistance = (int)(10.0 * min(pow(abs(FILE(c1) - FILE(kw)), pw) + pow(abs(RANK(c1) - RANK(kw)), pw),
                                             pow(abs(FILE(c2) - FILE(kw)), pw) + pow(abs(RANK(c2) - RANK(kw)), pw)));
     
-    return (1000 - kwcornerdistance * 10 - squareDistance[ks][kw] - p->testRepetition() * 50 - p->halfmovescounter) * S2MSIGN(strongside);
+    return (1000 - kwcornerdistance * 10 - squareDistance[ks][kw] - p->testRepetition() * 50 - p->sp->halfmovescounter) * S2MSIGN(strongside);
 }
 
 
@@ -367,8 +367,8 @@ void chessposition::getPawnAndKingEval(pawnhashentry *entryptr)
     int index;
 
     // kingshield safety
-    entryptr->value += EVAL(eps.eKingshieldbonus, S2MSIGN(Me) * POPCOUNT(piece00[WPAWN | Me] & kingshieldMask[kingpos[Me]][Me]));
-    if (bTrace) te.kingattackpower[You] += EVAL(eps.eKingshieldbonus, S2MSIGN(Me) * POPCOUNT(piece00[WPAWN | Me] & kingshieldMask[kingpos[Me]][Me]));
+    entryptr->value += EVAL(eps.eKingshieldbonus, S2MSIGN(Me) * POPCOUNT(piece00[WPAWN | Me] & kingshieldMask[sp->kingpos[Me]][Me]));
+    if (bTrace) te.kingattackpower[You] += EVAL(eps.eKingshieldbonus, S2MSIGN(Me) * POPCOUNT(piece00[WPAWN | Me] & kingshieldMask[sp->kingpos[Me]][Me]));
 
     const U64 yourPawns = piece00[pc ^ S2MMASK];
     const U64 myPawns = piece00[pc];
@@ -386,8 +386,8 @@ void chessposition::getPawnAndKingEval(pawnhashentry *entryptr)
         {
             // passed pawn
             entryptr->passedpawnbb[Me] |= BITSET(index);
-            int mykingdistance = squareDistance[index][kingpos[Me]];
-            int yourkingdistance = squareDistance[index][kingpos[You]];
+            int mykingdistance = squareDistance[index][sp->kingpos[Me]];
+            int yourkingdistance = squareDistance[index][sp->kingpos[You]];
             entryptr->value += EVAL(eps.eKingsupportspasserbonus[mykingdistance][RRANK(index, Me)], S2MSIGN(Me));
             if (bTrace) te.pawns[Me] += EVAL(eps.eKingsupportspasserbonus[mykingdistance][RRANK(index, Me)], S2MSIGN(Me));
             entryptr->value += EVAL(eps.eKingdefendspasserpenalty[yourkingdistance][RRANK(index, Me)], S2MSIGN(Me));
@@ -462,7 +462,7 @@ void chessposition::getPawnAndKingEval(pawnhashentry *entryptr)
     if (bTrace) te.pawns[Me] += EVAL(eps.eDoublepawnpenalty, S2MSIGN(Me) * POPCOUNT(piece00[WPAWN | Me] & (Me ? piece00[WPAWN | Me] >> 8 : piece00[WPAWN | Me] << 8)));
 
     // Pawn storm evaluation
-    int ki = kingpos[Me];
+    int ki = sp->kingpos[Me];
     int kf = FILE(ki);
     int kr = RANK(ki);
     for (int f = max(0, kf - 1), j = ki + f - kf; f <= min(kf + 1, 7); f++, j++)
@@ -519,7 +519,7 @@ int chessposition::getPieceEval(positioneval *pe)
     int index;
     const U64 myRammedPawns = piece00[WPAWN | Me] & PAWNPUSH(You, piece00[WPAWN | You]);
     U64 occupied = occupied00[0] | occupied00[1];
-    U64 kingdangerarea = kingdangerMask[kingpos[You]][You];
+    U64 kingdangerarea = kingdangerMask[sp->kingpos[You]][You];
     U64 xrayrookoccupied = occupied ^ (piece00[WROOK + Me] | piece00[WQUEEN + Me]);
     U64 xraybishopoccupied = occupied ^ (piece00[WBISHOP + Me] | piece00[WQUEEN + Me]);
     U64 goodMobility = ~((piece00[WPAWN + Me] & (RANK2(Me) | RANK3(Me))) | attackedBy[You][PAWN] | piece00[WKING + Me]);
@@ -538,7 +538,7 @@ int chessposition::getPieceEval(positioneval *pe)
                     result += EVAL(eps.eSlideronfreefilebonus[bool(pe->phentry->semiopen[You] & BITSET(FILE(index)))], S2MSIGN(Me));
                     if (bTrace) te.rooks[Me] += EVAL(eps.eSlideronfreefilebonus[bool(pe->phentry->semiopen[You] & BITSET(FILE(index)))], S2MSIGN(Me));
                 }
-                else if (!GETCASTLERIGHTS(Me, state))
+                else if (!GETCASTLERIGHTS(Me, sp->state))
                 {
                     result += EVAL(eps.eNocastlepenalty, S2MSIGN(Me));
                     if (bTrace) te.rooks[Me] += EVAL(eps.eNocastlepenalty, S2MSIGN(Me));
@@ -608,7 +608,7 @@ int chessposition::getPieceEval(positioneval *pe)
         U64 mobility = attack & goodMobility;
 
         // Penalty for a piece pinned in front of the king
-        if (kingPinned & (BITSET(index)))
+        if (sp->kingPinned & (BITSET(index)))
         {
             result += EVAL(eps.eKingpinpenalty[Pt], S2MSIGN(Me));
             if (bTrace) te.mobility[Me] += EVAL(eps.eKingpinpenalty[Pt], S2MSIGN(Me));
@@ -654,7 +654,7 @@ int chessposition::getLateEval(positioneval *pe)
     }
 
     // King safety; calculate the danger for my king
-    int kingdanger = SQEVAL(eps.eKingringattack[POPCOUNT(kingdangerMask[kingpos[Me]][Me]) - 4], pe->kingringattacks[You], You);
+    int kingdanger = SQEVAL(eps.eKingringattack[POPCOUNT(kingdangerMask[sp->kingpos[Me]][Me]) - 4], pe->kingringattacks[You], You);
 
     // My attacked and poorly defended squares
     U64 myweaksquares = attackedBy[You][0]
@@ -665,20 +665,20 @@ int chessposition::getLateEval(positioneval *pe)
     U64 yoursafetargets = (~attackedBy[Me][0] | (myweaksquares & attackedBy2[You])) & ~occupied00[You];
 
     // penalty for weak squares in our king ring
-    kingdanger += SQEVAL(eps.eWeakkingringpenalty, POPCOUNT(myweaksquares & kingdangerMask[kingpos[Me]][Me]), You);
+    kingdanger += SQEVAL(eps.eWeakkingringpenalty, POPCOUNT(myweaksquares & kingdangerMask[sp->kingpos[Me]][Me]), You);
 
     // Safe checks and attacks to king area
     kingdanger += SQEVAL(eps.eKingattackweight[KNIGHT], pe->kingattackpiececount[You][KNIGHT] * pe->kingattackers[You], You);
-    if (pieceMovesTo<KNIGHT>(kingpos[Me]) & attackedBy[You][KNIGHT] & yoursafetargets)
+    if (pieceMovesTo<KNIGHT>(sp->kingpos[Me]) & attackedBy[You][KNIGHT] & yoursafetargets)
         kingdanger += SQEVAL(eps.eSafecheckbonus[KNIGHT], 1, You);
     kingdanger += SQEVAL(eps.eKingattackweight[BISHOP], pe->kingattackpiececount[You][BISHOP] * pe->kingattackers[You], You);
-    if (pieceMovesTo<BISHOP>(kingpos[Me]) & attackedBy[You][BISHOP] & yoursafetargets)
+    if (pieceMovesTo<BISHOP>(sp->kingpos[Me]) & attackedBy[You][BISHOP] & yoursafetargets)
         kingdanger += SQEVAL(eps.eSafecheckbonus[BISHOP], 1, You);
     kingdanger += SQEVAL(eps.eKingattackweight[ROOK], pe->kingattackpiececount[You][ROOK] * pe->kingattackers[You], You);
-    if (pieceMovesTo<ROOK>(kingpos[Me]) & attackedBy[You][ROOK] & yoursafetargets)
+    if (pieceMovesTo<ROOK>(sp->kingpos[Me]) & attackedBy[You][ROOK] & yoursafetargets)
         kingdanger += SQEVAL(eps.eSafecheckbonus[ROOK], 1, You);
     kingdanger += SQEVAL(eps.eKingattackweight[QUEEN], pe->kingattackpiececount[You][QUEEN] * pe->kingattackers[You], You);
-    if (pieceMovesTo<QUEEN>(kingpos[Me]) & attackedBy[You][QUEEN] & yoursafetargets)
+    if (pieceMovesTo<QUEEN>(sp->kingpos[Me]) & attackedBy[You][QUEEN] & yoursafetargets)
         kingdanger += SQEVAL(eps.eSafecheckbonus[QUEEN], 1, You);
 
     kingdanger += SQEVAL(eps.eKingdangerbyqueen, !piece00[WQUEEN | You], You);
@@ -734,13 +734,13 @@ int chessposition::getGeneralEval(positioneval *pe)
     const bool bTrace = (Et == TRACE);
     const int You = Me ^ S2MMASK;
 
-    attackedBy[Me][KING] = king_attacks[kingpos[Me]];
+    attackedBy[Me][KING] = king_attacks[sp->kingpos[Me]];
     attackedBy2[Me] = pe->phentry->attackedBy2[Me] | (attackedBy[Me][KING] & pe->phentry->attacked[Me]);
     attackedBy[Me][0] = attackedBy[Me][KING] | pe->phentry->attacked[Me];
 
     attackedBy[Me][PAWN] = pe->phentry->attacked[Me];
 
-    pe->kingattackers[Me] = POPCOUNT(attackedBy[Me][PAWN] & kingdangerMask[kingpos[You]][You]);
+    pe->kingattackers[Me] = POPCOUNT(attackedBy[Me][PAWN] & kingdangerMask[sp->kingpos[You]][You]);
 
     // bonus for double bishop
     int result = EVAL(eps.eDoublebishopbonus, S2MSIGN(Me) * (POPCOUNT(piece00[WBISHOP | Me]) >= 2));
@@ -774,7 +774,7 @@ int chessposition::getFrcCorrection()
     if (mailbox[63] == BBISHOP && mailbox[54] == BPAWN)
         correction += mailbox[46] ? FrcCorneredBishopPenalty * 4 : FrcCorneredBishopPenalty * 3;
 
-    return S2MSIGN(state & S2MMASK) * correction;
+    return S2MSIGN(sp->state & S2MMASK) * correction;
 }
 
 
@@ -818,15 +818,15 @@ inline bool chessposition::isEndgame(int *score)
     case MH_KBPk:
     case MH_KBPPk:
         if (piece00[WBISHOP] & WHITEBB)
-            return !(piece00[WPAWN] & ~FILEHBB) && squareDistance[kingpos[BLACK]][63] <= 0;
+            return !(piece00[WPAWN] & ~FILEHBB) && squareDistance[sp->kingpos[BLACK]][63] <= 0;
         else
-            return !(piece00[WPAWN] & ~FILEABB) && squareDistance[kingpos[BLACK]][56] <= 0;
+            return !(piece00[WPAWN] & ~FILEABB) && squareDistance[sp->kingpos[BLACK]][56] <= 0;
     case MH_Kkbp:
     case MH_Kkbpp:
         if (piece00[BBISHOP] & WHITEBB)
-            return !(piece00[BPAWN] & ~FILEABB) && squareDistance[kingpos[WHITE]][0] <= 0;
+            return !(piece00[BPAWN] & ~FILEABB) && squareDistance[sp->kingpos[WHITE]][0] <= 0;
         else
-            return !(piece00[BPAWN] & ~FILEHBB) && squareDistance[kingpos[WHITE]][7] <= 0;
+            return !(piece00[BPAWN] & ~FILEHBB) && squareDistance[sp->kingpos[WHITE]][7] <= 0;
     case MH_KBNk:
     case MH_Kkbn:
         *score = KBNvK(this);
@@ -853,22 +853,22 @@ int chessposition::getEval()
     int score = SCOREDRAW;
 
     if (piececount <= 5 && isEndgame(&score))
-        return S2MSIGN(state & S2MMASK) * score;
+        return S2MSIGN(sp->state & S2MMASK) * score;
 
     if (NnueReady && abs(GETEGVAL(psqval)) < NnuePsqThreshold)
     {
         int frcCorrection = (en.chess960 ? getFrcCorrection() : 0);
         score = NnueGetEval();
-        score += S2MSIGN(state & S2MMASK) * contempt;
+        score += S2MSIGN(sp->state & S2MMASK) * contempt;
         int phscaled = score * (116 + phcount) / 128;
 
         if (bTrace) {
-            cout << "Raw NNUE eval:  " << S2MSIGN(state & S2MMASK) * score << endl;
-            cout << "Phased scaled:  " << S2MSIGN(state & S2MMASK) * phscaled << endl;
+            cout << "Raw NNUE eval:  " << S2MSIGN(sp->state & S2MMASK) * score << endl;
+            cout << "Phased scaled:  " << S2MSIGN(sp->state & S2MMASK) * phscaled << endl;
             if (frcCorrection)
-                cout << "FRC correction: " << S2MSIGN(state & S2MMASK) * frcCorrection << endl;
-            cout << "Tempo:          " << S2MSIGN(state & S2MMASK) * eps.eTempo << endl;
-            cout << "Total:          " << S2MSIGN(state & S2MMASK) * phscaled + frcCorrection + eps.eTempo << endl;
+                cout << "FRC correction: " << S2MSIGN(sp->state & S2MMASK) * frcCorrection << endl;
+            cout << "Tempo:          " << S2MSIGN(sp->state & S2MMASK) * eps.eTempo << endl;
+            cout << "Total:          " << S2MSIGN(sp->state & S2MMASK) * phscaled + frcCorrection + eps.eTempo << endl;
         }
 
         return phscaled + frcCorrection + eps.eTempo;
@@ -908,11 +908,11 @@ int chessposition::getEval()
 
     if (bTrace)
     {
-        te.tempo[state & S2MMASK] += CEVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
+        te.tempo[sp->state & S2MMASK] += CEVAL(eps.eTempo, S2MSIGN(sp->state & S2MMASK));
         te.complexity[complexity < 0] += complexity;
     }
 
-    score = TAPEREDANDSCALEDEVAL(totalEval, getPhase(), sc) + CEVAL(eps.eTempo, S2MSIGN(state & S2MMASK));
+    score = TAPEREDANDSCALEDEVAL(totalEval, getPhase(), sc) + CEVAL(eps.eTempo, S2MSIGN(sp->state & S2MMASK));
 
     if (bTrace)
     {
@@ -924,7 +924,7 @@ int chessposition::getEval()
         traceEvalOut();
     }
 
-    return S2MSIGN(state & S2MMASK) * score;
+    return S2MSIGN(sp->state & S2MMASK) * score;
 }
 
 

@@ -140,8 +140,8 @@ uint32_t chessposition::applyMove(string s, bool resetMstop)
     if (s[0] == 'O' || s[0] == '0') {
         if (slen >= 3 && s[0] == s[2] && (slen < 5 || s[0] == s[4])) {
             guiCom << "info string Warning! Your GUI uses wrong encoding " + s + " for castle move. But I am gracious for now.\n";
-            int col = state & S2MMASK;
-            from = kingpos[col];
+            int col = sp->state & S2MMASK;
+            from = sp->kingpos[col];
             to = castlerookfrom[col * 2 + (slen == 3)];
         }
         else {
@@ -155,7 +155,7 @@ uint32_t chessposition::applyMove(string s, bool resetMstop)
         from = AlgebraicToIndex(s);
         to = AlgebraicToIndex(&s[2]);
         if (slen == 5)
-            promotion = (PieceCode)((GetPieceType(s[4]) << 1) | (state & S2MMASK));
+            promotion = (PieceCode)((GetPieceType(s[4]) << 1) | (sp->state & S2MMASK));
 
         // Change normal castle moves (e.g. e1g1) to the more general chess960 format "king captures rook" (e1h1)
         if ((mailbox[from] >> 1) == KING && mailbox[to] == BLANK && abs(from - to) == 2)
@@ -169,7 +169,7 @@ uint32_t chessposition::applyMove(string s, bool resetMstop)
 
     if (playMove<false>(m.code))
     {
-        if (resetMstop && halfmovescounter == 0)
+        if (resetMstop && sp->halfmovescounter == 0)
         {
             // Keep the list short, we have to keep below MAXMOVELISTLENGTH
             ply = 0;
@@ -195,7 +195,7 @@ void chessposition::evaluateMoves(chessmovelist *ml)
         if (Mt == QUIET || (Mt == ALL && !GETCAPTURE(mc)))
         {
             int to = GETCORRECTTO(mc);
-            ml->move[i].value = history[piece & S2MMASK][threatSquare][GETFROM(mc)][to];
+            ml->move[i].value = history[piece & S2MMASK][sp->threatSquare][GETFROM(mc)][to];
             int pieceTo = piece * 64 + to;
             ml->move[i].value += (conthistptr[ply - 1][pieceTo] + conthistptr[ply - 2][pieceTo] + (conthistptr[ply - 4][pieceTo] + conthistptr[ply - 6][pieceTo]) / 2);
         }
@@ -209,7 +209,10 @@ void chessposition::getRootMoves()
 {
     chessmovelist movelist;
 
-    if (state & S2MMASK)
+    if (!sp)
+        return;
+
+    if (sp->state & S2MMASK)
         updateThreats<BLACK>();
     else
         updateThreats<WHITE>();
@@ -225,7 +228,7 @@ void chessposition::getRootMoves()
     bool bImmediate3fold = false;
 
     bool tthit;
-    ttentry* tte = tp.probeHash(hash, &tthit);
+    ttentry* tte = tp.probeHash(sp->hash, &tthit);
     bool bSearchmoves = (en.searchmoves.size() > 0);
 
     excludemovestack[0] = 0; // FIXME: Not very nice; is it worth to do do singular testing in root search?
@@ -282,7 +285,7 @@ void chessposition::getRootMoves()
     }
     if (moveTo3fold)
         // Hashmove triggers 3fold immediately or with following move; fix hash
-        tp.addHash(tte, hash, SCOREDRAW, tte->staticeval, bImmediate3fold ? HASHBETA : HASHALPHA, 250 + TTDEPTH_OFFSET, moveTo3fold);
+        tp.addHash(tte, sp->hash, SCOREDRAW, tte->staticeval, bImmediate3fold ? HASHBETA : HASHALPHA, 250 + TTDEPTH_OFFSET, moveTo3fold);
 }
 
 
@@ -395,7 +398,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
     // special test for castles; FIXME: This code is almost duplicate to the move generation
     if (ISCASTLE(c))
     {
-        int s2m = state & S2MMASK;
+        int s2m = sp->state & S2MMASK;
 
         // king in check => castle is illegal
         if (isAttacked(from, s2m))
@@ -412,7 +415,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
             return false;
 
         // test for castle right
-        if (!(state & (WQCMASK << cstli)))
+        if (!(sp->state & (WQCMASK << cstli)))
             return false;
 
         // test if path to target is occupied
@@ -447,7 +450,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
         return false;
 
     // correct s2m?
-    if (piececol != (state & S2MMASK))
+    if (piececol != (sp->state & S2MMASK))
         return false;
 
     // only pawn can promote
@@ -474,7 +477,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
         else
         {
             // wrong ep capture
-            if (ISEPCAPTURE(c) && ept != to)
+            if (ISEPCAPTURE(c) && sp->ept != to)
                 return false;
 
             // missing promotion
@@ -496,7 +499,7 @@ bool chessposition::moveGivesCheck(uint32_t c)
 
     int me = pc & S2MMASK;
     int you = me ^ S2MMASK;
-    int yourKing = kingpos[you];
+    int yourKing = sp->kingpos[you];
 
     // test if moving piece gives check
     if (movesTo(pc, GETTO(c)) & BITSET(yourKing))
@@ -512,12 +515,12 @@ bool chessposition::moveGivesCheck(uint32_t c)
 
 void chessposition::playNullMove()
 {
-    lastnullmove = ply;
+    sp->lastnullmove = ply;
     conthistptr[ply] = (int16_t*)counterhistory[0][0];
     movecode[ply++] = 0;
-    state ^= S2MMASK;
-    hash ^= zb.s2m ^ zb.ept[ept];
-    ept = 0;
+    sp->state ^= S2MMASK;
+    sp->hash ^= zb.s2m ^ zb.ept[sp->ept];
+    sp->ept = 0;
     myassert(ply <= MAXDEPTH, this, 1, ply);
     DirtyPiece* dp = &dirtypiece[ply];
     dp->dirtyNum = 0;
@@ -530,10 +533,15 @@ void chessposition::playNullMove()
 
 void chessposition::unplayNullMove()
 {
-    state ^= S2MMASK;
-    lastnullmove = movestack[--ply].lastnullmove;
-    ept = movestack[ply].ept;
-    hash ^= zb.s2m^ zb.ept[ept];
+#if 0
+    sp->state ^= S2MMASK;
+    sp->lastnullmove = movestack[--ply].lastnullmove;
+    sp->ept = movestack[ply].ept;
+    sp->hash ^= zb.s2m^ zb.ept[ept];
+#else
+    sp--;
+    ply--;
+#endif
     myassert(ply >= 0, this, 1, ply);
 }
 
@@ -543,20 +551,20 @@ void chessposition::unplayNullMove()
 template <bool LiteMode>
 bool chessposition::playMove(uint32_t mc)
 {
-    int s2m = state & S2MMASK;
+    int s2m = sp->state & S2MMASK;
     int eptnew = 0;
     int oldcastle;
     DirtyPiece* dp;
 
     if (!LiteMode) {
-        oldcastle = (state & CASTLEMASK);
+        oldcastle = (sp->state & CASTLEMASK);
         dp = &dirtypiece[ply + 1];
         dp->dirtyNum = 0;
         computationState[ply + 1][WHITE] = false;
         computationState[ply + 1][BLACK] = false;
     }
 
-    halfmovescounter++;
+    sp->halfmovescounter++;
 
     // Castle has special play
     if (ISCASTLE(mc))
@@ -577,11 +585,11 @@ bool chessposition::playMove(uint32_t mc)
 
         if (kingfrom != kingto)
         {
-            kingpos[s2m] = kingto;
+            sp->kingpos[s2m] = kingto;
             BitboardMove(kingfrom, kingto, kingpc);
             if (!LiteMode) {
-                hash ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
-                nonpawnhash[s2m] ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
+                sp->hash ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
+                sp->nonpawnhash[s2m] ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
                 dp->pc[0] = kingpc;
                 dp->from[0] = kingfrom;
                 dp->to[0] = kingto;
@@ -592,8 +600,8 @@ bool chessposition::playMove(uint32_t mc)
         {
             BitboardMove(rookfrom, rookto, rookpc);
             if (!LiteMode) {
-                hash ^= zb.boardtable[(rookfrom << 4) | rookpc] ^ zb.boardtable[(rookto << 4) | rookpc];
-                nonpawnhash[s2m] ^= zb.boardtable[(rookfrom << 4) | rookpc] ^ zb.boardtable[(rookto << 4) | rookpc];
+                sp->hash ^= zb.boardtable[(rookfrom << 4) | rookpc] ^ zb.boardtable[(rookto << 4) | rookpc];
+                sp->nonpawnhash[s2m] ^= zb.boardtable[(rookfrom << 4) | rookpc] ^ zb.boardtable[(rookto << 4) | rookpc];
                 int di = dp->dirtyNum;
                 dp->pc[di] = rookpc;
                 dp->from[di] = rookfrom;
@@ -601,7 +609,7 @@ bool chessposition::playMove(uint32_t mc)
                 dp->dirtyNum++;
             }
         }
-        state &= (s2m ? ~(BQCMASK | BKCMASK) : ~(WQCMASK | WKCMASK));
+        sp->state &= (s2m ? ~(BQCMASK | BKCMASK) : ~(WQCMASK | WKCMASK));
     }
     else
     {
@@ -628,18 +636,18 @@ bool chessposition::playMove(uint32_t mc)
         {
             BitboardClear(to, capture);
             if (!LiteMode) {
-                hash ^= zb.boardtable[(to << 4) | capture];
+                sp->hash ^= zb.boardtable[(to << 4) | capture];
                 if ((capture >> 1) == PAWN)
-                    pawnhash ^= zb.boardtable[(to << 4) | capture];
+                    sp->pawnhash ^= zb.boardtable[(to << 4) | capture];
                 else
-                    nonpawnhash[s2m ^ S2MMASK] ^= zb.boardtable[(to << 4) | capture];
+                    sp->nonpawnhash[s2m ^ S2MMASK] ^= zb.boardtable[(to << 4) | capture];
                 dp->pc[1] = capture;
                 dp->from[1] = to;
                 dp->to[1] = -1;
                 dp->dirtyNum = 2;
                 piececount--;
             }
-            halfmovescounter = 0;
+            sp->halfmovescounter = 0;
         }
 
         if (promote == BLANK)
@@ -653,8 +661,8 @@ bool chessposition::playMove(uint32_t mc)
             BitboardSet(to, promote);
             if (!LiteMode) {
                 // just double the hash-switch for target to make the pawn vanish
-                pawnhash ^= zb.boardtable[(to << 4) | promote];
-                nonpawnhash[s2m] ^= zb.boardtable[(to << 4) | promote];
+                sp->pawnhash ^= zb.boardtable[(to << 4) | promote];
+                sp->nonpawnhash[s2m] ^= zb.boardtable[(to << 4) | promote];
                 int di = dp->dirtyNum;
                 dp->to[0] = -1; // remove promoting pawn;
                 dp->from[di] = -1;
@@ -665,8 +673,8 @@ bool chessposition::playMove(uint32_t mc)
         }
 
         if (!LiteMode) {
-            hash ^= zb.boardtable[(to << 4) | mailbox[to]];
-            hash ^= zb.boardtable[(from << 4) | pfrom];
+            sp->hash ^= zb.boardtable[(to << 4) | mailbox[to]];
+            sp->hash ^= zb.boardtable[(from << 4) | pfrom];
         }
         mailbox[from] = BLANK;
 
@@ -675,19 +683,19 @@ bool chessposition::playMove(uint32_t mc)
         {
             eptnew = GETEPT(mc);
             if (!LiteMode) {
-                pawnhash ^= zb.boardtable[(to << 4) | mailbox[to]];
-                pawnhash ^= zb.boardtable[(from << 4) | pfrom];
+                sp->pawnhash ^= zb.boardtable[(to << 4) | mailbox[to]];
+                sp->pawnhash ^= zb.boardtable[(from << 4) | pfrom];
             }
-            halfmovescounter = 0;
+            sp->halfmovescounter = 0;
 
-            if (ept && to == ept)
+            if (sp->ept && to == sp->ept)
             {
                 int epfield = (from & 0x38) | (to & 0x07);
                 BitboardClear(epfield, (pfrom ^ S2MMASK));
                 mailbox[epfield] = BLANK;
                 if (!LiteMode) {
-                    hash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
-                    pawnhash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
+                    sp->hash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
+                    sp->pawnhash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
                     dp->pc[1] = (pfrom ^ S2MMASK);
                     dp->from[1] = epfield;
                     dp->to[1] = -1;
@@ -697,25 +705,18 @@ bool chessposition::playMove(uint32_t mc)
             }
         }
         else {
-            nonpawnhash[s2m] ^= zb.boardtable[(to << 4) | mailbox[to]];
-            nonpawnhash[s2m] ^= zb.boardtable[(from << 4) | pfrom];
+            sp->nonpawnhash[s2m] ^= zb.boardtable[(to << 4) | mailbox[to]];
+            sp->nonpawnhash[s2m] ^= zb.boardtable[(from << 4) | pfrom];
         }
 
         if (ptype == KING)
-            kingpos[s2m] = to;
+            sp->kingpos[s2m] = to;
 
         // Here we can test the move for being legal
-        if (isAttacked(kingpos[s2m], s2m))
+        if (isAttacked(sp->kingpos[s2m], s2m))
         {
+            //sp--;
             // Move is illegal; just do the necessary subset of unplayMove
-            if (!LiteMode) {
-                hash = movestack[ply].hash;
-                pawnhash = movestack[ply].pawnhash;
-                nonpawnhash[WHITE] = movestack[ply].nonpawnhash[WHITE];
-                nonpawnhash[BLACK] = movestack[ply].nonpawnhash[BLACK];
-            }
-            halfmovescounter = movestack[ply].halfmovescounter;
-            kingpos[s2m] = movestack[ply].kingpos[s2m];
             mailbox[from] = pfrom;
             if (promote != BLANK)
             {
@@ -728,7 +729,7 @@ bool chessposition::playMove(uint32_t mc)
 
             if (capture != BLANK)
             {
-                if (ept && to == ept)
+                if (sp->ept && to == sp->ept)
                 {
                     // special ep capture
                     int epfield = (from & 0x38) | (to & 0x07);
@@ -751,39 +752,39 @@ bool chessposition::playMove(uint32_t mc)
         }
 
         // remove castle rights depending on from and to square
-        state &= (castlerights[from] & castlerights[to]);
+        sp->state &= (castlerights[from] & castlerights[to]);
     }
 
-    state ^= S2MMASK;
-    isCheckbb = isAttackedBy<OCCUPIED>(kingpos[s2m ^ S2MMASK], s2m);
+    sp->state ^= S2MMASK;
+    sp->isCheckbb = isAttackedBy<OCCUPIED>(sp->kingpos[s2m ^ S2MMASK], s2m);
 
     if (!LiteMode) {
-        hash ^= zb.s2m;
+        sp->hash ^= zb.s2m;
 
-        if (!(state & S2MMASK))
+        if (!(sp->state & S2MMASK))
             fullmovescounter++;
 
         // Fix hash regarding ept
-        hash ^= zb.ept[ept];
+        sp->hash ^= zb.ept[sp->ept];
     }
 
-    ept = eptnew;
+    sp->ept = eptnew;
 
     if (!LiteMode) {
-        hash ^= zb.ept[ept];
+        sp->hash ^= zb.ept[sp->ept];
 
         // Fix hash regarding castle rights
-        oldcastle ^= (state & CASTLEMASK);
-        hash ^= zb.cstl[oldcastle];
+        oldcastle ^= (sp->state & CASTLEMASK);
+        sp->hash ^= zb.cstl[oldcastle];
 
-        PREFETCH(&tp.table[hash & tp.sizemask]);
+        PREFETCH(&tp.table[sp->hash & tp.sizemask]);
 
         conthistptr[ply] = (int16_t*)counterhistory[GETPIECE(mc)][GETCORRECTTO(mc)];
         myassert(piececount == POPCOUNT(occupied00[WHITE] | occupied00[BLACK]), this, 1, piececount);
     }
     movecode[ply++] = mc;
     myassert(ply <= MAXDEPTH, this, 1, ply);
-    kingPinned = 0ULL;
+    sp->kingPinned = 0ULL;
 
     if (!LiteMode) {
         updatePins<WHITE>();
@@ -800,9 +801,10 @@ void chessposition::unplayMove(uint32_t mc)
     ply--;
     myassert(ply >= 0, this, 1, ply);
     // copy data from stack back to position
-    memcpy(&state, &movestack[ply], sizeof(chessmovestack));
+    sp--;
+    //memcpy(&state, &movestack[ply], sizeof(chessmovestack));
 
-    if (state & S2MMASK)
+    if (sp->state & S2MMASK)
         fullmovescounter--;
 
     // Castle has special undo
@@ -850,7 +852,7 @@ void chessposition::unplayMove(uint32_t mc)
 
         if (capture != BLANK)
         {
-            if (ept && to == ept)
+            if (sp->ept && to == sp->ept)
             {
                 // special ep capture
                 int epfield = (from & 0x38) | (to & 0x07);
@@ -880,7 +882,7 @@ void chessposition::unplayMove(uint32_t mc)
 void MoveSelector::SetPreferredMoves(chessposition *p)
 {
     pos = p;
-    if (!p->isCheckbb)
+    if (!p->sp->isCheckbb)
     {
         onlyGoodCaptures = true;
         state = TACTICALINITSTATE;
@@ -929,7 +931,7 @@ void MoveSelector::SetPreferredMoves(chessposition *p, uint16_t hshm, uint32_t k
         captures = &pos->singularcaptureslist[pos->ply];
         quiets = &pos->singularquietslist[pos->ply];
     }
-    state = (p->isCheckbb ? EVASIONINITSTATE : HASHMOVESTATE);
+    state = (p->sp->isCheckbb ? EVASIONINITSTATE : HASHMOVESTATE);
     onlyGoodCaptures = false;
     margin = 0;
 }
@@ -1116,7 +1118,7 @@ template <PieceType Pt, Color me> int chessposition::CreateMovelistPiece(chessmo
 
 template <Color me> inline int chessposition::CreateMovelistCastle(chessmove* mstart)
 {
-    if (isCheckbb)
+    if (sp->isCheckbb)
         return 0;
 
     chessmove *m = mstart;
@@ -1124,9 +1126,9 @@ template <Color me> inline int chessposition::CreateMovelistCastle(chessmove* ms
 
     for (int cstli = me * 2; cstli < 2 * me + 2; cstli++)
     {
-        if ((state & (WQCMASK << cstli)) == 0)
+        if ((sp->state & (WQCMASK << cstli)) == 0)
             continue;
-        const int kingfrom = kingpos[me];
+        const int kingfrom = sp->kingpos[me];
         const int rookfrom = castlerookfrom[cstli];
         if (castleblockers[cstli] & (occupiedbits ^ BITSET(rookfrom) ^ BITSET(kingfrom)))
             continue;
@@ -1196,13 +1198,13 @@ template <MoveType Mt, Color me> inline int chessposition::CreateMovelistPawn(ch
                 appendMoveToList(&m, from, to, pc, mailbox[to]);
             }
         }
-        if (ept)
+        if (sp->ept)
         {
-            frombits = piece00[pc] & pawn_attacks_to[ept][you];
+            frombits = piece00[pc] & pawn_attacks_to[sp->ept][you];
             while (frombits)
             {
                 from = pullLsb(&frombits);
-                appendMoveToList(&m, from, ept, pc, WPAWN | you);
+                appendMoveToList(&m, from, sp->ept, pc, WPAWN | you);
                 (m - 1)->code |= EPCAPTUREFLAG;
             }
 
@@ -1235,13 +1237,13 @@ template <MoveType Mt, Color me> inline int chessposition::CreateMovelistPawn(ch
 int chessposition::CreateEvasionMovelist(chessmove* mstart)
 {
     chessmove* m = mstart;
-    int me = state & S2MMASK;
+    int me = sp->state & S2MMASK;
     int you = me ^ S2MMASK;
     U64 targetbits;
     U64 frombits;
     int from, to;
     PieceCode pc;
-    int king = kingpos[me];
+    int king = sp->kingpos[me];
     U64 occupiedbits = (occupied00[0] | occupied00[1]);
 
     // moving the king is alway a possibe evasion
@@ -1255,15 +1257,15 @@ int chessposition::CreateEvasionMovelist(chessmove* mstart)
         }
     }
 
-    if (POPCOUNT(isCheckbb) == 1)
+    if (POPCOUNT(sp->isCheckbb) == 1)
     {
         // only one attacker => capture or block the attacker is a possible evasion
         int attacker;
-        GETLSB(attacker, isCheckbb);
+        GETLSB(attacker, sp->isCheckbb);
         // special case: attacker is pawn and can be captured enpassant
-        if (ept && ept == attacker + S2MSIGN(me) * 8)
+        if (sp->ept && sp->ept == attacker + S2MSIGN(me) * 8)
         {
-            frombits = pawn_attacks_from[ept][me] & piece00[WPAWN | me];
+            frombits = pawn_attacks_from[sp->ept][me] & piece00[WPAWN | me];
             while (frombits)
             {
                 from = pullLsb(&frombits);
@@ -1279,7 +1281,7 @@ int chessposition::CreateEvasionMovelist(chessmove* mstart)
         targetbits = betweenMask[king][attacker];
         while (true)
         {
-            frombits = frombits & ~kingPinned;
+            frombits = frombits & ~sp->kingPinned;
             while (frombits)
             {
                 from = pullLsb(&frombits);
@@ -1317,7 +1319,7 @@ int chessposition::CreateEvasionMovelist(chessmove* mstart)
 
 template <MoveType Mt> int chessposition::CreateMovelist(chessmove* mstart)
 {
-    int me = state & S2MMASK;
+    int me = sp->state & S2MMASK;
     U64 occupiedbits = (occupied00[0] | occupied00[1]);
     U64 emptybits = ~occupiedbits;
     U64 targetbits = 0ULL;

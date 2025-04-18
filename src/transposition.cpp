@@ -76,7 +76,7 @@ void zobrist::getAllHashes(chessposition* pos)
     U64 hash = 0, pawnhash = 0, nonpawnhash[2] = {0}, materialhash = 0;
 
     int i;
-    int state = pos->state;
+    int state = pos->sp->state;
     for (i = WPAWN; i <= BKING; i++)
     {
         U64 pmask = pos->piece00[i];
@@ -96,7 +96,7 @@ void zobrist::getAllHashes(chessposition* pos)
         hash ^= s2m;
 
     hash ^= cstl[state & CASTLEMASK];
-    hash ^= ept[pos->ept];
+    hash ^= ept[pos->sp->ept];
 
     for (PieceCode pc = WPAWN; pc <= BKING; pc++)
     {
@@ -108,16 +108,16 @@ void zobrist::getAllHashes(chessposition* pos)
         }
     }
 
-    pos->hash = hash;
-    pos->pawnhash = pawnhash;
-    pos->nonpawnhash[WHITE] = nonpawnhash[WHITE];
-    pos->nonpawnhash[BLACK] = nonpawnhash[BLACK];
+    pos->sp->hash = hash;
+    pos->sp->pawnhash = pawnhash;
+    pos->sp->nonpawnhash[WHITE] = nonpawnhash[WHITE];
+    pos->sp->nonpawnhash[BLACK] = nonpawnhash[BLACK];
 }
 
 
 U64 zobrist::getPawnKingHash(chessposition* pos)
 {
-    return pos->pawnhash ^ boardtable[(pos->kingpos[0] << 4) | WKING] ^ boardtable[(pos->kingpos[1] << 4) | BKING];
+    return pos->sp->pawnhash ^ boardtable[(pos->sp->kingpos[0] << 4) | WKING] ^ boardtable[(pos->sp->kingpos[1] << 4) | BKING];
 }
 
 

@@ -362,7 +362,7 @@ int chessposition::probe_ab(int alpha, int beta, int *success)
     for (int i = 0; i < movelist.length; i++)
     {
         uint32_t mc = movelist.move[i].code;
-        if (ISCAPTURE(mc) || ISPROMOTION(mc) || isCheckbb)
+        if (ISCAPTURE(mc) || ISPROMOTION(mc) || sp->isCheckbb)
         {
             if (playMove<true>(mc))
             {
@@ -660,7 +660,7 @@ int chessposition::root_probe_dtz()
         isBadMove = !see(m->code, 0);
         playMove<false>(m->code);
         int v = 0;
-        if (isCheckbb && dtz > 0) {
+        if (sp->isCheckbb && dtz > 0) {
             chessmovelist nextmovelist;
             prepareStack();
             nextmovelist.length = CreateMovelist<ALL>(&nextmovelist.move[0]);
@@ -679,7 +679,7 @@ int chessposition::root_probe_dtz()
                 v = 1;
         }
         if (!v) {
-            if (halfmovescounter != 0) {
+            if (sp->halfmovescounter != 0) {
                 v = -probe_dtz(&success);
                 if (v > 0) v++;
                 else if (v < 0) v--;
@@ -707,7 +707,7 @@ int chessposition::root_probe_dtz()
     }
 
     // Obtain 50-move counter for the root position.
-    int cnt50 = halfmovescounter;
+    int cnt50 = sp->halfmovescounter;
 
     // Test if there was any single repetition since last halfmove reset
     bool hasRepetition = false;

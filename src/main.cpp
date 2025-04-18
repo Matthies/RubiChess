@@ -58,7 +58,8 @@ void generateEpd(string egn)
         eg = egn.substr(0, si);
     }
 
-    pos->halfmovescounter = pos->ept = 0;
+    pos->sp = &pos->movestack[0];
+    pos->sp->halfmovescounter = pos->sp->ept = 0;
     pos->fullmovescounter = 1;
     pos->ply = 0;
     int i = 0;
@@ -69,7 +70,7 @@ void generateEpd(string egn)
         memset(pos->mailbox, 0, sizeof(pos->mailbox));
         memset(pos->piece00, 0, sizeof(pos->piece00));
         pos->psqval = 0;
-        pos->state = rand() % 2;
+        pos->sp->state = rand() % 2;
         for (int p = PAWN; p <= KING; p++)
             for (int c = WHITE; c <= BLACK; c++)
             {
@@ -83,14 +84,14 @@ void generateEpd(string egn)
                         pos->mailbox[sq] = p * 2 + c;
                         pos->BitboardSet(sq, p * 2 + c);
                         if (p == KING)
-                            pos->kingpos[c] = sq;
+                            pos->sp->kingpos[c] = sq;
                         pcs[pi]--;
                     }
                 }
             }
         // Check if position is legal
-        bool isLegal = !pos->isAttackedBy<OCCUPIED>(pos->kingpos[pos->state ^ S2MMASK], pos->state)
-            && squareDistance[pos->kingpos[0]][pos->kingpos[1]] > 0;
+        bool isLegal = !pos->isAttackedBy<OCCUPIED>(pos->sp->kingpos[pos->sp->state ^ S2MMASK], pos->sp->state)
+            && squareDistance[pos->sp->kingpos[0]][pos->sp->kingpos[1]] > 0;
         if (isLegal)
         {
             pos->getRootMoves();
@@ -131,7 +132,7 @@ U64 engine::perft(int depth, bool printsysteminfo)
         return 1;
 
     chessmovelist movelist;
-    if (rootpos->isCheckbb)
+    if (rootpos->sp->isCheckbb)
         movelist.length = rootpos->CreateEvasionMovelist(&movelist.move[0]);
     else
         movelist.length = rootpos->CreateMovelist<ALL>(&movelist.move[0]);
@@ -730,7 +731,7 @@ static void testengine(string epdfilename, int startnum, string engineprgs, stri
             {
                 // Skip positions with check
                 en.sthread[0].pos.getFromFen(fenstr.c_str());
-                if (en.sthread[0].pos.isCheckbb)
+                if (en.sthread[0].pos.sp->isCheckbb)
                     continue;
                 fenstr = en.sthread[0].pos.toFen();
             }
