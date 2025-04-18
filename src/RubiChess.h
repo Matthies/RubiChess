@@ -45,7 +45,7 @@
 //#define EVALOPTIONS
 
 // Enable this to expose the search parameters as UCI options
-#define SEARCHOPTIONS
+//#define SEARCHOPTIONS
 
 // Enable this to enable NNUE training code
 //#define NNUELEARN
@@ -2333,10 +2333,10 @@ struct searchparamset {
     searchparam SP(extguarddoubleext, 8, 1, 15);
     searchparam SP(extguardcheckext, 3, 1, 15);
     // Correction history
-    searchparam SP(pawncorrectionhistoryratio, 106, 64, 192);
-    searchparam SP(nonpawncorrectionhistoryratio, 106, 64, 192);
-    searchparam SP(minorscorrectionhistoryratio, 106, 64, 192);
-    searchparam SP(majorscorrectionhistoryratio, 106, 64, 192);
+    searchparam SP(pawncorrectionhistoryratio, 107, 64, 192);
+    searchparam SP(nonpawncorrectionhistoryratio, 108, 64, 192);
+    searchparam SP(minorscorrectionhistoryratio, 111, 64, 192);
+    searchparam SP(majorscorrectionhistoryratio, 103, 64, 192);
     // NNUE eval scale
     searchparam SP(nnuevaluescale, 61, 48, 96);
 };
