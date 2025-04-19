@@ -83,8 +83,8 @@ SDE=$(SDEDEFAULT)
 !ELSE
 !MESSAGE Found Linker $(LD).
 !ENDIF
-!IF [$(PROFDATATOOLEXE) --help > nul 2>&1] != 0
-!ERROR Profiling tool $(PROFDATATOOLEXE) not found or not working. Exit!
+!IF !EXIST($(PROFDATATOOLEXE))
+!ERROR Profiling tool $(PROFDATATOOLEXE) not found. Exit!
 !ELSE
 !MESSAGE Found Profiling tool $(PROFDATATOOLEXE).
 !ENDIF
