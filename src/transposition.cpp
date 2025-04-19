@@ -73,7 +73,7 @@ unsigned long long zobrist::getRnd()
 
 void zobrist::getAllHashes(chessposition* pos)
 {
-    U64 hash = 0, pawnhash = 0, nonpawnhash[2] = {0}, materialhash = 0;
+    U64 hash = 0, pawnhash = 0, nonpawnhash[2] = {0};
 
     int i;
     int state = pos->state;
@@ -97,16 +97,6 @@ void zobrist::getAllHashes(chessposition* pos)
 
     hash ^= cstl[state & CASTLEMASK];
     hash ^= ept[pos->ept];
-
-    for (PieceCode pc = WPAWN; pc <= BKING; pc++)
-    {
-        int count = 0;
-        for (int j = 0; j < BOARDSIZE; j++)
-        {
-            if (pos->mailbox[j] == pc)
-                materialhash ^= boardtable[(count++ << 4) | pc];
-        }
-    }
 
     pos->hash = hash;
     pos->pawnhash = pawnhash;
