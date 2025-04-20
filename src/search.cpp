@@ -187,15 +187,15 @@ inline void chessposition::updateCorrectionHst(int value, int depth)
     int index;
 
     int scaledvalue = value * 256;
-    int weight = min(1 + depth, 24);
+    int weight = min(1 + depth, 16);
 
     index = pawnhash & (CORRHISTSIZE - 1);
     int16_t oldph = pawncorrectionhistory[us][index];
-    pawncorrectionhistory[us][index] = max(-16384, min(16384,  (pawncorrectionhistory[us][index] * (256 - weight) + scaledvalue * weight) / 256));
+    pawncorrectionhistory[us][index] = max(-4096, min(4096,  (pawncorrectionhistory[us][index] * (256 - weight) + scaledvalue * weight) / 256));
     index = nonpawnhash[WHITE] & (CORRHISTSIZE - 1);
-    nonpawncorrectionhistory[WHITE][us][index] = max(-16384, min(16384, (nonpawncorrectionhistory[WHITE][us][index] * (256 - weight) + scaledvalue * weight) / 256));
+    nonpawncorrectionhistory[WHITE][us][index] = max(-4096, min(4096, (nonpawncorrectionhistory[WHITE][us][index] * (256 - weight) + scaledvalue * weight) / 256));
     index = nonpawnhash[BLACK] & (CORRHISTSIZE - 1);
-    nonpawncorrectionhistory[BLACK][us][index] = max(-16384, min(16384, (nonpawncorrectionhistory[BLACK][us][index] * (256 - weight) + scaledvalue * weight) / 256));
+    nonpawncorrectionhistory[BLACK][us][index] = max(-4096, min(4096, (nonpawncorrectionhistory[BLACK][us][index] * (256 - weight) + scaledvalue * weight) / 256));
 }
 
 inline int chessposition::correctEvalByHistory(int v)
