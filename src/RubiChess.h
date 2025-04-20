@@ -2333,10 +2333,10 @@ struct searchparamset {
     searchparam SP(extguarddoubleext, 8, 1, 15);
     searchparam SP(extguardcheckext, 3, 1, 15);
     // Correction history
-    searchparam SP(pawncorrectionhistoryratio, 105, 64, 192);
-    searchparam SP(nonpawncorrectionhistoryratio, 113, 64, 192);
-    searchparam SP(minorscorrectionhistoryratio, 113, 64, 192);
-    searchparam SP(majorscorrectionhistoryratio, 105, 64, 192);
+    searchparam SP(pawncorrectionhistoryratio, 104, 64, 192);
+    searchparam SP(nonpawncorrectionhistoryratio, 114, 64, 192);
+    searchparam SP(minorscorrectionhistoryratio, 115, 64, 192);
+    searchparam SP(majorscorrectionhistoryratio, 104, 64, 192);
     // NNUE eval scale
     searchparam SP(nnuevaluescale, 61, 48, 96);
 };
