@@ -255,28 +255,31 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         return hashscore;
     }
 
-    int staticeval = tpHit ? tte->staticeval : NOSCORE;
+    int rawstaticeval = tpHit ? tte->staticeval : NOSCORE;
+    int staticeval;
 
     if (!myIsCheck)
     {
 #ifdef EVALTUNE
-        staticeval = getEval<NOTRACE>();
+        rawstaticeval = getEval<NOTRACE>();
 #else
         // get static evaluation of the position
-        if (staticeval == NOSCORE)
+        if (rawstaticeval == NOSCORE)
         {
             if (movecode[ply - 1] == 0)
-                staticeval = -staticevalstack[ply - 1] + CEVAL(eps.eTempo, 2);
+                rawstaticeval = -staticevalstack[ply - 1] + CEVAL(eps.eTempo, 2);
             else
-                staticeval = getEval<NOTRACE>();
+                rawstaticeval = getEval<NOTRACE>();
         }
 #endif
+
+        staticeval = correctEvalByHistory(rawstaticeval);
 
         bestscore = staticeval;
         if (staticeval >= beta)
         {
             STATISTICSINC(qs_pat);
-            tp.addHash(tte, hash, staticeval, staticeval, HASHBETA, 0, hashmovecode);
+            tp.addHash(tte, hash, staticeval, rawstaticeval, HASHBETA, 0, hashmovecode);
 
             return staticeval;
         }
@@ -294,7 +297,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         if (Pt != NoPrune && bestExpectableScore < alpha)
         {
             STATISTICSINC(qs_delta);
-            tp.addHash(tte, hash, bestExpectableScore, staticeval, HASHALPHA, 0, hashmovecode);
+            tp.addHash(tte, hash, bestExpectableScore, rawstaticeval, HASHALPHA, 0, hashmovecode);
             return staticeval;
         }
     }
@@ -336,7 +339,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
             if (score >= beta)
             {
                 STATISTICSINC(qs_moves_fh);
-                tp.addHash(tte, hash, score, staticeval, HASHBETA, 0, (uint16_t)bestcode);
+                tp.addHash(tte, hash, score, rawstaticeval, HASHBETA, 0, (uint16_t)bestcode);
                 return score;
             }
             if (score > alpha)
@@ -360,7 +363,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
         // It's a mate
         return SCOREBLACKWINS + ply;
 
-    tp.addHash(tte, hash, alpha, staticeval, eval_type, 0, (uint16_t)bestcode);
+    tp.addHash(tte, hash, alpha, rawstaticeval, eval_type, 0, (uint16_t)bestcode);
     return bestscore;
 }
 
