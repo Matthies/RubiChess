@@ -256,7 +256,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
     }
 
     int rawstaticeval = tpHit ? tte->staticeval : NOSCORE;
-    int staticeval;
+    int staticeval = NOSCORE;
 
     if (!myIsCheck)
     {
@@ -265,12 +265,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
 #else
         // get static evaluation of the position
         if (rawstaticeval == NOSCORE)
-        {
-            if (movecode[ply - 1] == 0)
-                rawstaticeval = -staticevalstack[ply - 1] + CEVAL(eps.eTempo, 2);
-            else
-                rawstaticeval = getEval<NOTRACE>();
-        }
+            rawstaticeval = getEval<NOTRACE>();
 #endif
 
         staticeval = correctEvalByHistory(rawstaticeval);
