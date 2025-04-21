@@ -289,6 +289,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
             alpha = staticeval;
         }
 
+#if 0
         // Delta pruning
         int bestExpectableScore = staticeval + sps.deltapruningmargin + getBestPossibleCapture();
         if (Pt != NoPrune && bestExpectableScore < alpha)
@@ -297,6 +298,7 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
             tp.addHash(tte, hash, bestExpectableScore, staticeval, HASHALPHA, 0, hashmovecode);
             return staticeval;
         }
+#endif
     }
 
     prepareStack();
