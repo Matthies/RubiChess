@@ -204,6 +204,7 @@ inline int chessposition::correctEvalByHistory(int v)
         + pawncorrectionhistory[us][pawnhash & (CORRHISTSIZE - 1)] / sps.pawncorrectionhistoryratio
         + nonpawncorrectionhistory[WHITE][us][nonpawnhash[WHITE] & (CORRHISTSIZE - 1)] / sps.nonpawncorrectionhistoryratio
         + nonpawncorrectionhistory[BLACK][us][nonpawnhash[BLACK] & (CORRHISTSIZE - 1)] / sps.nonpawncorrectionhistoryratio;
+    cv = cv * (100 - halfmovescounter) / 100;
     return max(-SCORETBWININMAXPLY, min(cv, SCORETBWININMAXPLY));
 }
 
