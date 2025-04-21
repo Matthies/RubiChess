@@ -1107,7 +1107,7 @@ bool chessposition::see(uint32_t move, int threshold)
 }
 
 
-
+#if 0
 int chessposition::getBestPossibleCapture()
 {
     int me = state & S2MMASK;
@@ -1134,7 +1134,7 @@ int chessposition::getBestPossibleCapture()
 
     return captureval;
 }
-
+#endif
 
 // Some global objects
 alignas(64) compilerinfo cinfo;

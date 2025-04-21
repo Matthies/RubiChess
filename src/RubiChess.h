@@ -1774,7 +1774,7 @@ public:
     U64 attackedByBB(int index, U64 occ);  // returns bitboard of all pieces of both colors attacking index square
     template <AttackType At> U64 isAttackedBy(int index, int col);    // returns the bitboard of cols pieces attacking the index square; At controls if pawns are moved to block or capture
     bool see(uint32_t move, int threshold);
-    int getBestPossibleCapture();
+    //int getBestPossibleCapture();
     void getRootMoves();
     void tbFilterRootMoves();
     void prepareStack();
@@ -2268,7 +2268,7 @@ struct searchparamset {
 #ifdef EVALTUNE
     searchparam SP(deltapruningmargin, 4000, 0, 8000);
 #else
-    searchparam SP(deltapruningmargin, 285, 40, 300);
+    searchparam SP(deltapruningmargin, 295, 40, 300);
 #endif
     // LMR table
     searchparam SP(lmrlogf0, 144, 50, 300);
