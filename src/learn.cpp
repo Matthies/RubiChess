@@ -271,9 +271,7 @@ int chessposition::getFromSfen(PackedSfen* sfen)
     updatePins<WHITE>();
     updatePins<BLACK>();
 
-    hash = zb.getHash(this);
-    pawnhash = zb.getPawnHash(this);
-    materialhash = zb.getMaterialHash(this);
+    zb.getAllHashes(this);
     lastnullmove = -1;
     ply = 0;
     piececount = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]);
@@ -636,9 +634,7 @@ int chessposition::getNextFromBinpack(Binpack *bp)
         computationState[0][BLACK] = false;
         // get the pieces
         getPosFromBinpack(bp);
-        hash = zb.getHash(this);
-        pawnhash = zb.getPawnHash(this);
-        materialhash = zb.getMaterialHash(this);
+        zb.getAllHashes(this);
         isCheckbb = isAttackedBy<OCCUPIED>(kingpos[state & S2MMASK], (state & S2MMASK) ^ S2MMASK);
         kingPinned = 0ULL;
         updatePins<WHITE>();
@@ -1451,7 +1447,6 @@ sfenreader::sfenreader()
     memset((void*)&inbp, 0, sizeof(inbp));
     pos = (chessposition*)allocalign64(sizeof(chessposition));
     pos->pwnhsh.setSize(1);
-    pos->mtrlhsh.init();
     pos->initCastleRights(rookfiles, kingfile);
     pos->accumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
     pos->psqtAccumulation = NnueCurrentArch ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr;
@@ -1471,7 +1466,6 @@ sfenreader::sfenreader()
 sfenreader::~sfenreader()
 {
     pos->pwnhsh.remove();
-    pos->mtrlhsh.remove();
     freealigned64(inbuffer);
     freealigned64(pos);
 }
