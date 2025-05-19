@@ -30,7 +30,7 @@
 //#define SDEBUG
 
 // Enable to debug the time management
-//#define TDEBUG
+#define TDEBUG
 
 // Enable to debug tablebase probing
 // level 1: only root probing
