@@ -2240,24 +2240,16 @@ void NnueWriteNet(vector<string> args)
 
     while (ci < cs) {
         if (args[ci] == "rescale" && ++ci < cs)
-        {
-            rescale = stoi(args[ci++]);
-        }
+            rescale = stoi(args[ci]);
         else if (args[ci] == "l")
-        {
             leb128 = true;
-            ci++;
-        }
         else if (args[ci] == "z")
-        {
             zExport = true;
-            ci++;
-        }
         else if (args[ci] == "sort")
-        {
             sort = true;
-            ci++;
-        }
+        else
+            cout << "Unknown parameter " << args[ci] << "\n";
+        ci++;
     }
 
     if (sort)
