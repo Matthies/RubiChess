@@ -309,7 +309,7 @@ static void benchTableItem(bool bToErr, int i, benchmarkstruct *bm)
         guiCom.switchStream();
     char str[256];
     int sc = bm->score;
-    string score = to_string(bm->score) + " cp";
+    string score = to_string(UCISCORE(sc)) + " cp";
     if (MATEDETECTED(sc)) {
         score = (sc < 0 ? "-" : " ");
         score = score + "M" + to_string(abs(MATEIN(bm->score)));

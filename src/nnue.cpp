@@ -1322,8 +1322,7 @@ bool NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::ReadFeatureWeights(
     bool okay = true;
 
     int16_t* src_16 = (int16_t*)calloc(inputdims * ftdims, sizeof(int16_t));
-    int32_t* src_32 = (int32_t*)calloc(inputdims * psqtbuckets, sizeof(int32_t));
-    if (!src_16 || !src_32)
+    if (!src_16)
         return false;
 
     // read bias
@@ -1353,18 +1352,25 @@ bool NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::ReadFeatureWeights(
     }
     
     memcpy(weight, src_16, inputdims * ftdims * sizeof(int16_t));
-
-    // read psqt weights
-    isLeb128 = testLeb128(nr);
-    if (isLeb128)
-        okay = okay && readLeb128(nr, src_32, inputdims * psqtbuckets);
-    else
-        okay = okay && nr->read((unsigned char*)src_32, inputdims * psqtbuckets * sizeof(int32_t));
-
-    memcpy(psqtWeights, src_32, inputdims * psqtbuckets * sizeof(int32_t));
-
     free(src_16);
-    free(src_32);
+
+    if (psqtbuckets)
+    {
+        // read psqt weights
+        size_t psqt_size = inputdims * psqtbuckets;
+        int32_t* src_32 = (int32_t*)calloc(psqt_size, sizeof(int32_t));
+        if (!src_32)
+            return false;
+
+        isLeb128 = testLeb128(nr);
+        if (isLeb128)
+            okay = okay && readLeb128(nr, src_32, inputdims * psqtbuckets);
+        else
+            okay = okay && nr->read((unsigned char*)src_32, inputdims * psqtbuckets * sizeof(int32_t));
+
+        memcpy(psqtWeights, src_32, inputdims * psqtbuckets * sizeof(int32_t));
+        free(src_32);
+    }
     return okay;
 }
 
@@ -2240,24 +2246,16 @@ void NnueWriteNet(vector<string> args)
 
     while (ci < cs) {
         if (args[ci] == "rescale" && ++ci < cs)
-        {
-            rescale = stoi(args[ci++]);
-        }
+            rescale = stoi(args[ci]);
         else if (args[ci] == "l")
-        {
             leb128 = true;
-            ci++;
-        }
         else if (args[ci] == "z")
-        {
             zExport = true;
-            ci++;
-        }
         else if (args[ci] == "sort")
-        {
             sort = true;
-            ci++;
-        }
+        else
+            cout << "Unknown parameter " << args[ci] << "\n";
+        ci++;
     }
 
     if (sort)
