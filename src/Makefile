@@ -40,6 +40,7 @@ PTHREADLIB=-pthread
 
 UNAME_S=$(shell uname -s)
 UNAME_M=$(shell uname -m)
+UNAME_O=$(shell uname -o)
 
 ifeq ($(UNAME_S),Darwin)
 	# Use clang compiler for MacOS
@@ -64,6 +65,10 @@ ifeq ($(debug),yes)
 else
 	CXXFLAGS += -O3 -flto
 	CFLAGS += -O3
+endif
+
+ifeq ($(UNAME_O),Android)
+	LDFLAGS += -static-libstdc++
 endif
 
 ifneq (, $(findstring MINGW64,$(UNAME_S)))
@@ -472,7 +477,7 @@ release_android:
 	@$(MAKE) pgo-rename  ARCH=x86-32 COMP=$(COMP)
 
 release: net
-	@LDFLAGS=-static-libstdc++ $(MAKE) release_$(ARCHFAMILY)
+	$(MAKE) release_$(ARCHFAMILY)
 
 help:
 	@echo ""
