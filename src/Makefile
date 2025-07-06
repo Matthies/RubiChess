@@ -477,7 +477,7 @@ release_android:
 	@$(MAKE) pgo-rename  ARCH=x86-32 COMP=$(COMP)
 
 release: net
-	$(MAKE) release_$(ARCHFAMILY)
+	@$(MAKE) release_$(ARCHFAMILY)
 
 help:
 	@echo ""
