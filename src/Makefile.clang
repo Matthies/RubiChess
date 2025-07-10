@@ -44,7 +44,7 @@ SOURCE=*.cpp
 OBJ=*.obj
 RELDIR=Release-clang
 ZLIBDIR=zlib
-CXXFLAGS=/EHsc /O2 /Oi /Ot /c -flto -fuse-ld=lld
+CXXFLAGS=/EHsc /O3 -ffast-math /Ot /c -flto -ftree-vectorize -funroll-loops -fuse-ld=lld
 LDFLAGS=/OPT:REF /OPT:ICF advapi32.lib
 PROFEXE=RubiChess-WinProf
 NETURL=https://github.com/Matthies/NN/raw/main/

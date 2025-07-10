@@ -55,14 +55,14 @@ ifeq ($(EXE),)
 endif
 
 CXXFLAGS=-std=c++11 -Wall -pedantic -Wextra -Wshadow
-CFLAGS=-Wall -pedantic -Wextra -Wshadow -Wno-implicit-function-declaration
+CFLAGS=-Wall -pedantic -Wextra -Wshadow -Wno-implicit-function-declaration -static-libgcc -static-libstdc++ -fno-rtti -fstrict-aliasing -fomit-frame-pointer 
 
 
 ifeq ($(debug),yes)
 	CXXFLAGS += -g -O0
 	CFLAGS += -g -O0
 else
-	CXXFLAGS += -O3 -flto
+	CXXFLAGS += -O3 -flto -ffast-math -ftree-vectorize -funroll-loops -finline-functions -pipe
 	CFLAGS += -O3
 endif
 
