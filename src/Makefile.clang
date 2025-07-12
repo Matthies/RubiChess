@@ -44,7 +44,7 @@ SOURCE=*.cpp
 OBJ=*.obj
 RELDIR=Release-clang
 ZLIBDIR=zlib
-CXXFLAGS=/EHsc /O3 -ffast-math /Ot /c -flto -ftree-vectorize -funroll-loops -fuse-ld=lld
+CXXFLAGS=/EHsc /O3 -ffast-math /Ot /c -flto -fuse-ld=lld
 LDFLAGS=/OPT:REF /OPT:ICF advapi32.lib
 PROFEXE=RubiChess-WinProf
 NETURL=https://github.com/Matthies/NN/raw/main/
@@ -153,7 +153,7 @@ BMI2=no
 !ENDIF
 !IF [@echo $(CPUFLAGS) | find "avx2" > nul] == 0 || [type $(NATIVEFLAGS) 2>nul | find "avx2" > nul] == 0
 AVX2=yes
-ARCHFLAGS=$(ARCHFLAGS) -DUSE_AVX2 -mavx2
+ARCHFLAGS=$(ARCHFLAGS) -DUSE_AVX2 -mavx2  -mavx -march=znver2 -mtune=znver2
 !ELSE
 AVX2=no
 !ENDIF
