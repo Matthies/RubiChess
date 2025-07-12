@@ -166,7 +166,6 @@ endif
 
 ZLIBDIR=zlib
 CXXFLAGS += -Izlib
-LDFLAGS += -Lzlib
 zlib = yes
 
 ifeq (,$(CPUFLAGS))
@@ -297,7 +296,6 @@ ifeq ($(dotprod),yes)
 endif
 ifeq ($(zlib),yes)
 	CXXFLAGS += -DUSE_ZLIB
-	LDFLAGS += -lz
 endif
 
 DEPS = RubiChess.h
@@ -392,7 +390,7 @@ $(ZLIBDIR)/libz.a:
 
 compile: $(ZLIBDIR)/libz.a
 	@echo $(MESSAGE)
-	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(LDFLAGS) $(PTHREADLIB) $(EXTRALDFLAGS) $(GITDEFINE) $(NETDEF) $(NETOBJ) -o $(EXE)
+	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(ZLIBDIR)/libz.a $(LDFLAGS) $(PTHREADLIB) $(EXTRALDFLAGS) $(GITDEFINE) $(NETDEF) $(NETOBJ) -o $(EXE)
 
 objclean:
 	@$(RM) *.o $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(PROFEXE) $(CPUTEST) $(NETBIN) || @echo $(RM) not available.
