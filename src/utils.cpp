@@ -627,6 +627,33 @@ void Sleep(long x)
 #define MYCWD(x,y) getcwd(x,y)
 const char kPathSeparator = '/';
 
+void* my_large_malloc(size_t s)
+{
+    void* mem = nullptr;
+
+#if defined(__linux__) && !defined(__ANDROID__)
+    // Many thanks to Sami Kiminki for advise on the huge page theory and for this code
+    // Round up hashSize to the next 2M for alignment
+    constexpr size_t HashAlignBytes = 2ull << 20;
+    s = ((s + HashAlignBytes - 1u) / HashAlignBytes) * HashAlignBytes;
+
+    mem = aligned_alloc(HashAlignBytes, s);
+
+    // Linux-specific call to request huge pages, in case the aligned_alloc()
+    // call above doesn't already trigger them (depends on transparent huge page
+    // settings)
+    madvise(mem, s, MADV_HUGEPAGE);
+#else
+    mem = (transpositioncluster*)allocalign64(s);
+#endif
+    return mem;
+}
+
+void my_large_free(void* m)
+{
+    freealigned64(m);
+}
+
 #endif
 
 

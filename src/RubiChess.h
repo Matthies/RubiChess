@@ -133,6 +133,9 @@ namespace rubichess {
 #define freealigned64(x) _aligned_free(x)
 
 #else //_WIN32
+#if defined(__linux__) && !defined(__ANDROID__)
+#include <sys/mman.h> // madvise
+#endif
 
 #define myassert(expression, pos, num, ...) (void)(0)
 void Sleep(long x);
@@ -775,13 +778,8 @@ string IndexToAlgebraic(int i);
 void BitboardDraw(U64 b);
 U64 getTime();
 string CurrentWorkingDir();
-#ifdef _WIN32
 void* my_large_malloc(size_t s);
-void my_large_free(void *m);
-#else
-#define my_large_malloc(x) allocalign64(x)
-#define my_large_free(m) freealigned64(m)
-#endif
+void my_large_free(void* m);
 #ifdef STACKDEBUG
 void GetStackWalk(chessposition *pos, const char* message, const char* _File, int Line, int num, ...);
 #endif
@@ -909,10 +907,12 @@ class NnueFeatureTransformer : public NnueLayer
 {
 public:
     alignas(64) int16_t bias[ftdims];
-    alignas(64) int16_t weight[ftdims * inputdims];
     alignas(64) int32_t psqtWeights[psqtbuckets ? psqtbuckets * inputdims : 1];    // hack to avoid zero-sized array
+    int16_t* weight;
 
-    NnueFeatureTransformer() : NnueLayer(NULL) {}
+    NnueFeatureTransformer() : NnueLayer(NULL) {
+        weight = (int16_t*)my_large_malloc(ftdims * inputdims * sizeof(int16_t));
+    }
     bool ReadFeatureWeights(NnueNetsource* nr, bool bpz);
     bool ReadWeights(NnueNetsource* nr) {
         if (previous) return previous->ReadWeights(nr);

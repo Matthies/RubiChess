@@ -2047,6 +2047,7 @@ void NnueInit()
 void NnueRemove()
 {
     if (NnueCurrentArch) {
+        my_large_free(NnueCurrentArch->GetFeatureWeight());
         freealigned64(NnueCurrentArch);
         NnueCurrentArch = nullptr;
     }

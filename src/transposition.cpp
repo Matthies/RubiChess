@@ -18,9 +18,6 @@
 
 #include "RubiChess.h"
 
-#if defined(__linux__) && !defined(__ANDROID__)
-#include <sys/mman.h> // madvise
-#endif
 
 using namespace rubichess;
 
@@ -152,21 +149,8 @@ int transposition::setSize(int sizeMb)
     size = (1ULL << msb);
     restMb = (int)(((maxsize ^ size) >> 20) * clustersize);  // return rest for pawnhash
     size_t allocsize = (size_t)(size * sizeof(transpositioncluster));
-
-#if defined(__linux__) && !defined(__ANDROID__) // Many thanks to Sami Kiminki for advise on the huge page theory and for this patch
-    // Round up hashSize to the next 2M for alignment
-    constexpr size_t HashAlignBytes = 2ull << 20;
-    allocsize = ((allocsize + HashAlignBytes - 1u) / HashAlignBytes) * HashAlignBytes;
-
-    table = (transpositioncluster*)aligned_alloc(HashAlignBytes, allocsize);
-
-    // Linux-specific call to request huge pages, in case the aligned_alloc()
-    // call above doesn't already trigger them (depends on transparent huge page
-    // settings)
-    madvise(table, allocsize, MADV_HUGEPAGE);
-#else
     table = (transpositioncluster*)my_large_malloc(allocsize);
-#endif
+
     if (!table) {
         // alloc failed, back to old size
         size = 0;

@@ -199,14 +199,14 @@ engine::~engine()
 
 void engine::registerOptions()
 {
+#ifdef _WIN32
+    ucioptions.Register(&allowlargepages, "Allow Large Pages", ucicheck, "true", 0, 0, uciAllowLargePages);
+#endif
 #ifndef NNUEINCLUDED
     ucioptions.Register(&NnueNetpath, "NNUENetpath", ucistring, "<Default>", 0, 0, uciSetNnuePath);
 #endif
     ucioptions.Register(&usennue, "Use_NNUE", ucicheck, "true", 0, 0, uciSetNnuePath);
     ucioptions.Register(&LogFile, "LogFile", ucistring, "", 0, 0, uciSetLogFile);
-#ifdef _WIN32
-    ucioptions.Register(&allowlargepages, "Allow Large Pages", ucicheck, "true", 0, 0, uciAllowLargePages);
-#endif
     ucioptions.Register(&Threads, "Threads", ucispin, "1", 1, MAXTHREADS, uciSetThreads);  // order is important as the pawnhash depends on Threads > 0
     ucioptions.Register(&Hash, "Hash", ucispin, to_string(DEFAULTHASH), 1, MAXHASH, uciSetHash);
     ucioptions.Register(&moveOverhead, "Move_Overhead", ucispin, "100", 0, 5000, nullptr);
