@@ -40,7 +40,7 @@ PTHREADLIB=-pthread
 
 UNAME_S=$(shell uname -s)
 UNAME_M=$(shell uname -m)
-UNAME_O=$(shell uname -o)
+UNAME_O=$(shell uname -o 2>/dev/null)
 
 ifeq ($(UNAME_S),Darwin)
 	# Use clang compiler for MacOS
