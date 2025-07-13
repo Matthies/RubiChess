@@ -18,6 +18,10 @@
 
 #include "RubiChess.h"
 
+#if defined(__linux__) && !defined(__ANDROID__)
+#include <sys/mman.h> // madvise
+#endif
+
 using namespace rubichess;
 
 namespace rubichess {

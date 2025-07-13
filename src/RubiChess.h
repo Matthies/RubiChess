@@ -133,9 +133,6 @@ namespace rubichess {
 #define freealigned64(x) _aligned_free(x)
 
 #else //_WIN32
-#if defined(__linux__) && !defined(__ANDROID__)
-#include <sys/mman.h> // madvise
-#endif
 
 #define myassert(expression, pos, num, ...) (void)(0)
 void Sleep(long x);
