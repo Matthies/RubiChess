@@ -40,6 +40,7 @@ PTHREADLIB=-pthread
 
 UNAME_S=$(shell uname -s)
 UNAME_M=$(shell uname -m)
+UNAME_O=$(shell uname -o 2>/dev/null)
 
 ifeq ($(UNAME_S),Darwin)
 	# Use clang compiler for MacOS
@@ -64,6 +65,10 @@ ifeq ($(debug),yes)
 else
 	CXXFLAGS += -O3 -flto
 	CFLAGS += -O3
+endif
+
+ifeq ($(UNAME_O),Android)
+	LDFLAGS += -static-libstdc++
 endif
 
 ifneq (, $(findstring MINGW64,$(UNAME_S)))
@@ -161,7 +166,6 @@ endif
 
 ZLIBDIR=zlib
 CXXFLAGS += -Izlib
-LDFLAGS += -Lzlib
 zlib = yes
 
 ifeq (,$(CPUFLAGS))
@@ -292,7 +296,6 @@ ifeq ($(dotprod),yes)
 endif
 ifeq ($(zlib),yes)
 	CXXFLAGS += -DUSE_ZLIB
-	LDFLAGS += -lz
 endif
 
 DEPS = RubiChess.h
@@ -387,7 +390,7 @@ $(ZLIBDIR)/libz.a:
 
 compile: $(ZLIBDIR)/libz.a
 	@echo $(MESSAGE)
-	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(LDFLAGS) $(PTHREADLIB) $(EXTRALDFLAGS) $(GITDEFINE) $(NETDEF) $(NETOBJ) -o $(EXE)
+	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(ZLIBDIR)/libz.a $(LDFLAGS) $(PTHREADLIB) $(EXTRALDFLAGS) $(GITDEFINE) $(NETDEF) $(NETOBJ) -o $(EXE)
 
 objclean:
 	@$(RM) *.o $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(PROFEXE) $(CPUTEST) $(NETBIN) || @echo $(RM) not available.
