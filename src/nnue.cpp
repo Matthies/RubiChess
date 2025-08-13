@@ -206,6 +206,13 @@ public:
     size_t GetNetworkFilesize() {
         return networkfilesize;
     }
+    int GetFtWeightUpscale() {
+        return 1;
+    }
+    int GetPermutedWeightIndex(int i, bool reverse = false) {
+        return i;
+    }
+
 #ifdef STATISTICS
     void SwapInputNeurons(unsigned int i1, unsigned int i2) {
         // not supported for V1
@@ -375,6 +382,25 @@ public:
     }
     size_t GetNetworkFilesize() {
         return networkfilesize;
+    }
+    int GetFtWeightUpscale() {
+        return 2;
+    }
+    int GetPermutedWeightIndex(int i, bool reverse = false) {
+#if defined(USE_AVX512)
+        const int permuteindex[] = { 0, 4, 1, 5, 2, 6, 3, 7 };
+        const int reversepermuteindex[] = { 0, 2, 4, 6, 1, 3, 5, 7 };
+#elif defined(USE_AVX2)
+        const int permuteindex[] = { 0, 2, 1, 3, 4, 6, 5, 7 };
+        const int reversepermuteindex[] = { 0, 2, 1, 3, 4, 6, 5, 7 };
+#else
+        const int permuteindex[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+        const int reversepermuteindex[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+#endif
+        int block = (i / 64) * 64;
+        int chunk = (i % 64) / 8;
+        int permutedindex = (reverse ? reversepermuteindex[chunk] : permuteindex[chunk]) * 8 + (i % 8);
+        return block + permutedindex;
     }
 #ifdef STATISTICS
     void SwapInputNeurons(unsigned int i1, unsigned int i2) {
@@ -1329,7 +1355,7 @@ bool NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::ReadFeatureWeights(
 
     // Scale and permute
     for (i = 0; i < ftdims; i++)
-        bias[permutedWeightIndex(i)] = src_16[i] * 2;
+        bias[NnueCurrentArch->GetPermutedWeightIndex(i)] = src_16[i] * NnueCurrentArch->GetFtWeightUpscale();
 
     // read weights
     isLeb128 = testLeb128(nr);
@@ -1350,9 +1376,7 @@ bool NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::ReadFeatureWeights(
     
     // Scale and permute
     for (i = 0; i < inputdims * ftdims; i++)
-    {
-        weight[permutedWeightIndex(i)] = src_16[i] * 2;
-    }
+        weight[NnueCurrentArch->GetPermutedWeightIndex(i)] = src_16[i] * NnueCurrentArch->GetFtWeightUpscale();
 
     free(src_16);
 
@@ -1430,9 +1454,9 @@ void NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::WriteFeatureWeights
     // Scale and permute
     int i;
     for (i = 0; i < ftdims; i++)
-        scaledbias[permutedWeightIndex(i, true)] = bias[i] / 2;
+        scaledbias[NnueCurrentArch->GetPermutedWeightIndex(i, true)] = bias[i] / NnueCurrentArch->GetFtWeightUpscale();
     for (i = 0; i < inputdims * ftdims; i++)
-        scaledweight[permutedWeightIndex(i, true)] = weight[i] / 2;
+        scaledweight[NnueCurrentArch->GetPermutedWeightIndex(i, true)] = weight[i] / NnueCurrentArch->GetFtWeightUpscale();
 
     if (leb128) {
         writeLeb128(nr, scaledbias, ftdims);

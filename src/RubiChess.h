@@ -51,7 +51,7 @@
 //#define NNUELEARN
 
 // Enable this to enable NNUE debug output
-//#define NNUEDEBUG
+#define NNUEDEBUG
 
 // Enable this to compile support for asserts including stack trace
 // MSVC only, link with DbgHelp.lib
@@ -876,6 +876,9 @@ public:
     virtual unsigned int GetAccumulationSize() = 0;
     virtual unsigned int GetPsqtAccumulationSize() = 0;
     virtual size_t GetNetworkFilesize() = 0;
+    virtual int GetFtWeightUpscale() = 0;
+    virtual int GetPermutedWeightIndex(int i, bool reverse = false) = 0;
+
 #ifdef STATISTICS
     virtual void SwapInputNeurons(unsigned int i1, unsigned int i2) = 0;
     virtual void Statistics(bool verbose, bool sort) = 0;
@@ -932,23 +935,6 @@ public:
     uint32_t GetHash() {
         return NNUEINPUTSLICEHASH ^ (ftdims * 2);
     };
-    int permutedWeightIndex(int i, bool reverse = false)
-    {
-#if defined(USE_AVX512)
-        const int permuteindex[] = { 0, 4, 1, 5, 2, 6, 3, 7 };
-        const int reversepermuteindex[] = { 0, 2, 4, 6, 1, 3, 5, 7 };
-#elif defined(USE_AVX2)
-        const int permuteindex[] = {0, 2, 1, 3, 4, 6, 5, 7};
-        const int reversepermuteindex[] = { 0, 2, 1, 3, 4, 6, 5, 7 };
-#else
-        const int permuteindex[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
-        const int reversepermuteindex[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
-#endif
-        int block = (i / 64) * 64;
-        int chunk = (i % 64) / 8;
-        int permutedindex = (reverse ? reversepermuteindex[chunk] : permuteindex[chunk]) * 8 + (i % 8);
-        return block + permutedindex;
-    }
 #ifdef STATISTICS
     void SwapWeights(unsigned int i1, unsigned int i2) {
         int16_t bias_temp = bias[i1];
