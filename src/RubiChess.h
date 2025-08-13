@@ -21,7 +21,7 @@
 #define NNUEDEFAULT nn-f05142b28f-20250520.nnue
 
 // enable this switch for faster SSE2 code using 16bit integers
-#define FASTSSE2
+//#define FASTSSE2
 
 // Enable to get statistical values about various search features
 //#define STATISTICS

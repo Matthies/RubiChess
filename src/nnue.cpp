@@ -520,11 +520,15 @@ typedef __m128i bias_vec_t;
 #define vec_set_16(a) _mm512_set1_epi16(a)
 #define vec_max_16(a,b) _mm512_max_epi16(a,b)
 #define vec_min_16(a,b) _mm512_min_epi16(a,b)
-#define vec_mul_16(a,b) _mm512_mullo_epi16(a,b)
+#define vec_mulhi_16(a,b) _mm512_mulhi_epi16(a,b)
+#define vec_slli_16(a,b) _mm512_slli_epi16(a,b)
+#define vec_packus_16(a,b) _mm512_packus_epi16(a,b)
+#if 0
 inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
     ft_vec_t compacted = _mm512_packs_epi16(_mm512_srli_epi16(a, 7), _mm512_srli_epi16(b, 7));
     return _mm512_permutexvar_epi64(_mm512_setr_epi64(0, 2, 4, 6, 1, 3, 5, 7), compacted);
 }
+#endif
 #define vec_add_16(a,b) _mm512_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm512_sub_epi16(a,b)
 #define vec_packs(a,b) _mm512_packs_epi16(a,b)
@@ -554,11 +558,15 @@ typedef __m128i bias_vec_t;
 #define vec_set_16(a) _mm256_set1_epi16(a)
 #define vec_max_16(a,b) _mm256_max_epi16(a,b)
 #define vec_min_16(a,b) _mm256_min_epi16(a,b)
-#define vec_mul_16(a,b) _mm256_mullo_epi16(a,b)
+#define vec_mulhi_16(a,b) _mm256_mulhi_epi16(a,b)
+#define vec_slli_16(a,b) _mm256_slli_epi16(a,b)
+#define vec_packus_16(a,b) _mm256_packus_epi16(a,b)
+#if 0
 inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
     ft_vec_t compacted = _mm256_packs_epi16(_mm256_srli_epi16(a, 7), _mm256_srli_epi16(b, 7));
     return _mm256_permute4x64_epi64(compacted, 0xd8);
 }
+#endif
 #define vec_add_16(a,b) _mm256_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm256_sub_epi16(a,b)
 #define vec_packs(a,b) _mm256_packs_epi16(a,b)
@@ -1168,13 +1176,14 @@ int chessposition::Transform(clipped_t *output, int bucket)
         {
             const unsigned int numChunks = NnueFtHalfdims / 2 / MAXCHUNKSIZE;
             ft_vec_t Zero = vec_zero();
-            ft_vec_t One = vec_set_16(127);
+            ft_vec_t One = vec_set_16(127 * 2);
 
             const ft_vec_t* in0 = (ft_vec_t*)(acm + perspectives[p] * NnueFtHalfdims);
             const ft_vec_t* in1 = (ft_vec_t*)(acm + perspectives[p] * NnueFtHalfdims + NnueFtHalfdims / 2);
             ftout_vec_t* out = (ftout_vec_t*)&output[offset];
             for (unsigned int i = 0; i < numChunks; i++)
             {
+#if 0
                 const ft_vec_t sum0a = vec_max_16(vec_min_16(in0[i * 2 + 0], One), Zero);
                 const ft_vec_t sum0b = vec_max_16(vec_min_16(in0[i * 2 + 1], One), Zero);
                 const ft_vec_t sum1a = vec_max_16(vec_min_16(in1[i * 2 + 0], One), Zero);
@@ -1190,6 +1199,23 @@ int chessposition::Transform(clipped_t *output, int bucket)
                 out[i * 2 + 1] = shftb;
 #else
                 out[i] = vec_msb_pack_16(pa, pb);
+#endif
+#else
+#ifdef USE_SSE2
+                const int shift = 7;
+#else // NEON
+                const int shift = 6;
+#endif
+                const ft_vec_t sum0a = vec_slli_16(vec_max_16(vec_min_16(in0[i * 2 + 0], One), Zero), shift);
+                const ft_vec_t sum0b = vec_slli_16(vec_max_16(vec_min_16(in0[i * 2 + 1], One), Zero), shift);
+                const ft_vec_t sum1a = vec_min_16(in1[i * 2 + 0], One);
+                const ft_vec_t sum1b = vec_min_16(in1[i * 2 + 1], One);
+
+                const ft_vec_t pa = vec_mulhi_16(sum0a, sum1a);
+                const ft_vec_t pb = vec_mulhi_16(sum0b, sum1b);
+
+                out[i] = vec_packus_16(pa, pb);
+
 #endif
             }
         }
@@ -1332,7 +1358,9 @@ bool NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::ReadFeatureWeights(
     else
         okay = okay && nr->read((unsigned char*)src_16, ftdims * sizeof(int16_t));
 
-    memcpy(bias, src_16, ftdims * sizeof(int16_t));
+    //memcpy(bias, src_16, ftdims * sizeof(int16_t));
+    for (i = 0; i < ftdims; i++)
+        bias[i] = src_16[i] * 2;
 
     // read weights
     isLeb128 = testLeb128(nr);
@@ -1351,7 +1379,10 @@ bool NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::ReadFeatureWeights(
         }
     }
     
-    memcpy(weight, src_16, inputdims * ftdims * sizeof(int16_t));
+    //memcpy(weight, src_16, inputdims * ftdims * sizeof(int16_t));
+    for (i = 0; i < inputdims * ftdims; i++)
+        weight[i] = src_16[i] * 2;
+
     free(src_16);
 
     if (psqtbuckets)
