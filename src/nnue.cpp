@@ -595,11 +595,13 @@ typedef __m128i ft_vec_t, ftout_vec_t, psqt_vec_t;
 #define vec_set_16(a) _mm_set1_epi16(a)
 #define vec_max_16(a,b) _mm_max_epi16(a,b)
 #define vec_min_16(a,b) _mm_min_epi16(a,b)
-#define vec_mul_16(a,b) _mm_mullo_epi16(a,b)
+#define vec_mulhi_16(a,b) _mm_mulhi_epi16(a,b)
+#define vec_slli_16(a,b) _mm_slli_epi16(a,b)
+#define vec_packus_16(a,b) _mm_packus_epi16(a,b)
 #define vec_add_16(a,b) _mm_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm_sub_epi16(a,b)
 #define vec_packs(a,b) _mm_packs_epi16(a,b)
-#define vec_msb_pack_16(a,b) _mm_packs_epi16(_mm_srli_epi16(a,7),_mm_srli_epi16(b,7))
+//#define vec_msb_pack_16(a,b) _mm_packs_epi16(_mm_srli_epi16(a,7),_mm_srli_epi16(b,7))
 #define vec_zero_psqt() _mm_setzero_si128()
 #define vec_add_psqt_32(a,b) _mm_add_epi32(a,b)
 #define vec_sub_psqt_32(a,b) _mm_sub_epi32(a,b)
@@ -1248,9 +1250,9 @@ int chessposition::Transform(clipped_t *output, int bucket)
             for (unsigned int i = 0; i < NnueFtHalfdims / 2; i++) {
                 int16_t sum0 = *(acm + perspectives[p] * NnueFtHalfdims + i);
                 int16_t sum1 = *(acm + perspectives[p] * NnueFtHalfdims + NnueFtHalfdims / 2 + i);
-                sum0 = max((int16_t)0, min((int16_t)127, sum0));
-                sum1 = max((int16_t)0, min((int16_t)127, sum1));
-                output[offset + i] = sum0 * sum1 / 128;
+                sum0 = max((int16_t)0, min((int16_t)(127 * 2), sum0));
+                sum1 = max((int16_t)0, min((int16_t)(127 * 2), sum1));
+                output[offset + i] = sum0 * sum1 / 512;
             }
         }
 #endif
@@ -1452,16 +1454,32 @@ bool writeLeb128(NnueNetsource* nr, IntType* in, size_t count)
 template <int ftdims, int inputdims, int psqtbuckets>
 void NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::WriteFeatureWeights(NnueNetsource* nr, bool leb128)
 {
+    // we need some buffers for unscaled and unpermuted weights written to network file
+    int16_t* scaledweight = (int16_t*)calloc(inputdims * ftdims, sizeof(int16_t));
+    int16_t* scaledbias = (int16_t*)calloc(ftdims, sizeof(int16_t));
+    if (!scaledweight || !scaledbias)
+        return;
+
+    // Scale and permute
+    int i;
+    for (i = 0; i < ftdims; i++)
+        scaledbias[permutedWeightIndex(i, true)] = bias[i] / 2;
+    for (i = 0; i < inputdims * ftdims; i++)
+        scaledweight[permutedWeightIndex(i, true)] = weight[i] / 2;
+
     if (leb128) {
-        writeLeb128(nr, bias, ftdims);
-        writeLeb128(nr, weight, inputdims * ftdims);
+        writeLeb128(nr, scaledbias, ftdims);
+        writeLeb128(nr, scaledweight, inputdims * ftdims);
         writeLeb128(nr, psqtWeights, inputdims * psqtbuckets);
     }
     else {
-        nr->write((unsigned char*)bias, ftdims * sizeof(int16_t));
-        nr->write((unsigned char*)weight, inputdims * ftdims * sizeof(int16_t));
+        nr->write((unsigned char*)scaledbias, ftdims * sizeof(int16_t));
+        nr->write((unsigned char*)scaledweight, inputdims * ftdims * sizeof(int16_t));
         nr->write((unsigned char*)psqtWeights, inputdims * psqtbuckets * sizeof(int32_t));
     }
+
+    free(scaledweight);
+    free(scaledbias);
 }
 
 
