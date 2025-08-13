@@ -1358,9 +1358,9 @@ bool NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::ReadFeatureWeights(
     else
         okay = okay && nr->read((unsigned char*)src_16, ftdims * sizeof(int16_t));
 
-    //memcpy(bias, src_16, ftdims * sizeof(int16_t));
+    // Scale and permute
     for (i = 0; i < ftdims; i++)
-        bias[i] = src_16[i] * 2;
+        bias[permutedWeightIndex(i)] = src_16[i] * 2;
 
     // read weights
     isLeb128 = testLeb128(nr);
@@ -1379,9 +1379,11 @@ bool NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::ReadFeatureWeights(
         }
     }
     
-    //memcpy(weight, src_16, inputdims * ftdims * sizeof(int16_t));
+    // Scale and permute
     for (i = 0; i < inputdims * ftdims; i++)
-        weight[i] = src_16[i] * 2;
+    {
+        weight[permutedWeightIndex(i)] = src_16[i] * 2;
+    }
 
     free(src_16);
 
