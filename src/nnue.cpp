@@ -523,12 +523,6 @@ typedef __m128i bias_vec_t;
 #define vec_mulhi_16(a,b) _mm512_mulhi_epi16(a,b)
 #define vec_slli_16(a,b) _mm512_slli_epi16(a,b)
 #define vec_packus_16(a,b) _mm512_packus_epi16(a,b)
-#if 0
-inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
-    ft_vec_t compacted = _mm512_packs_epi16(_mm512_srli_epi16(a, 7), _mm512_srli_epi16(b, 7));
-    return _mm512_permutexvar_epi64(_mm512_setr_epi64(0, 2, 4, 6, 1, 3, 5, 7), compacted);
-}
-#endif
 #define vec_add_16(a,b) _mm512_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm512_sub_epi16(a,b)
 #define vec_packs(a,b) _mm512_packs_epi16(a,b)
@@ -561,12 +555,6 @@ typedef __m128i bias_vec_t;
 #define vec_mulhi_16(a,b) _mm256_mulhi_epi16(a,b)
 #define vec_slli_16(a,b) _mm256_slli_epi16(a,b)
 #define vec_packus_16(a,b) _mm256_packus_epi16(a,b)
-#if 0
-inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
-    ft_vec_t compacted = _mm256_packs_epi16(_mm256_srli_epi16(a, 7), _mm256_srli_epi16(b, 7));
-    return _mm256_permute4x64_epi64(compacted, 0xd8);
-}
-#endif
 #define vec_add_16(a,b) _mm256_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm256_sub_epi16(a,b)
 #define vec_packs(a,b) _mm256_packs_epi16(a,b)
@@ -601,7 +589,6 @@ typedef __m128i ft_vec_t, ftout_vec_t, psqt_vec_t;
 #define vec_add_16(a,b) _mm_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm_sub_epi16(a,b)
 #define vec_packs(a,b) _mm_packs_epi16(a,b)
-//#define vec_msb_pack_16(a,b) _mm_packs_epi16(_mm_srli_epi16(a,7),_mm_srli_epi16(b,7))
 #define vec_zero_psqt() _mm_setzero_si128()
 #define vec_add_psqt_32(a,b) _mm_add_epi32(a,b)
 #define vec_sub_psqt_32(a,b) _mm_sub_epi32(a,b)
@@ -1185,24 +1172,6 @@ int chessposition::Transform(clipped_t *output, int bucket)
             ftout_vec_t* out = (ftout_vec_t*)&output[offset];
             for (unsigned int i = 0; i < numChunks; i++)
             {
-#if 0
-                const ft_vec_t sum0a = vec_max_16(vec_min_16(in0[i * 2 + 0], One), Zero);
-                const ft_vec_t sum0b = vec_max_16(vec_min_16(in0[i * 2 + 1], One), Zero);
-                const ft_vec_t sum1a = vec_max_16(vec_min_16(in1[i * 2 + 0], One), Zero);
-                const ft_vec_t sum1b = vec_max_16(vec_min_16(in1[i * 2 + 1], One), Zero);
-
-                const ft_vec_t pa = vec_mul_16(sum0a, sum1a);
-                const ft_vec_t pb = vec_mul_16(sum0b, sum1b);
-#ifdef USE_FASTSSE2
-                const ft_vec_t shfta =  _mm_srli_epi16(pa, 7);
-                const ft_vec_t shftb = _mm_srli_epi16(pb, 7);
-
-                out[i * 2] = shfta;
-                out[i * 2 + 1] = shftb;
-#else
-                out[i] = vec_msb_pack_16(pa, pb);
-#endif
-#else
 #ifdef USE_SSE2
                 const int shift = 7;
 #else // NEON
@@ -1217,8 +1186,6 @@ int chessposition::Transform(clipped_t *output, int bucket)
                 const ft_vec_t pb = vec_mulhi_16(sum0b, sum1b);
 
                 out[i] = vec_packus_16(pa, pb);
-
-#endif
             }
         }
         else {
