@@ -1210,8 +1210,12 @@ int chessposition::Transform(clipped_t *output, int bucket)
 
                 const ft_vec_t pa = vec_mulhi_16(sum0a, sum1a);
                 const ft_vec_t pb = vec_mulhi_16(sum0b, sum1b);
-
+#ifdef USE_FASTSSE2
+                out[i * 2] = _mm_max_epi16(pa, Zero);
+                out[i * 2 + 1] = _mm_max_epi16(pb, Zero);
+#else
                 out[i] = vec_packus_16(pa, pb);
+#endif
             }
         }
         else {
