@@ -210,7 +210,7 @@ public:
         return 1;
     }
     int GetPermutedWeightIndex(int i, bool reverse = false) {
-        return i;
+        return (reverse ? i : i);
     }
 
 #ifdef STATISTICS
