@@ -303,6 +303,9 @@ void engine::prepareThreads()
         memset(&sthread[0].pos.nodespermove, 0, sizeof(chessposition::nodespermove));
         prepared = true;
     }
+    // Simuliere Wartezeit
+    guiCom << "position takes some time...\n";
+    Sleep(2000);
 }
 
 
@@ -373,6 +376,56 @@ void engine::measureOverhead(bool wasPondering)
 }
 
 
+void engine::handlePendingPosition(string &fen/*, vector<string> &moves*/)
+{
+                    // new position first stops current search
+                if (stopLevel < ENGINESTOPIMMEDIATELY)
+                {
+                    stopLevel = ENGINESTOPIMMEDIATELY;
+                    searchWaitStop();
+                }
+                if (rootposition.getFromFen(fen.c_str()) < 0)
+                {
+                    guiCom << "info string Illegal FEN string " + fen + ". Startposition will be used instead.\n";
+                    fen = STARTFEN;
+                    rootposition.getFromFen(fen.c_str());
+                    //moves.clear();
+                }
+
+                uint32_t lastopponentsmove = 0;
+            #if 0
+                for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
+                {
+                    if (!(lastopponentsmove = rootposition.applyMove(*it)))
+                        guiCom << "info string Alarm! Move " + (*it)  + " illegal (possible engine error)\n";
+                }
+            #endif
+                rootposition.contempt = S2MSIGN(rootposition.state & S2MMASK) * ResultingContempt * rootposition.phcount / 24;
+                ponderhitbonus = 4 * (lastopponentsmove && lastopponentsmove == rootposition.pondermove);
+                // Preserve hashes of earlier position up to last halfmove counter reset for repetition detection
+                rootposition.prerootmovenum = rootposition.ply;
+                int i = 0;
+                int j = PREROOTMOVES - rootposition.ply;
+                while (i < rootposition.ply)
+                {
+                    rootposition.prerootmovecode[j] = rootposition.movecode[i];
+                    rootposition.prerootmovestack[j++] = rootposition.movestack[i++];
+                }
+                rootposition.lastnullmove = -rootposition.ply - 1;
+                rootposition.ply = 0;
+                rootposition.useTb = min(TBlargest, SyzygyProbeLimit);
+                rootposition.getRootMoves();
+                rootposition.tbFilterRootMoves();
+                prepareThreads();
+                if (debug)
+                {
+                    sthread[0].pos.print();
+                }
+                //*pendingposition = false;
+
+}
+
+
 void engine::communicate(string inputstring)
 {
     string fen;
@@ -395,48 +448,8 @@ void engine::communicate(string inputstring)
         {
             if (pendingposition)
             {
-                // new position first stops current search
-                if (stopLevel < ENGINESTOPIMMEDIATELY)
-                {
-                    stopLevel = ENGINESTOPIMMEDIATELY;
-                    searchWaitStop();
-                }
-                if (rootposition.getFromFen(fen.c_str()) < 0)
-                {
-                    guiCom << "info string Illegal FEN string " + fen + ". Startposition will be used instead.\n";
-                    fen = STARTFEN;
-                    rootposition.getFromFen(fen.c_str());
-                    moves.clear();
-                }
+                thread(handlePendingPosition, ref(fen)/*, moves, &pendingposition*/);
 
-                uint32_t lastopponentsmove = 0;
-                for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
-                {
-                    if (!(lastopponentsmove = rootposition.applyMove(*it)))
-                        guiCom << "info string Alarm! Move " + (*it)  + " illegal (possible engine error)\n";
-                }
-                rootposition.contempt = S2MSIGN(rootposition.state & S2MMASK) * ResultingContempt * rootposition.phcount / 24;
-                ponderhitbonus = 4 * (lastopponentsmove && lastopponentsmove == rootposition.pondermove);
-                // Preserve hashes of earlier position up to last halfmove counter reset for repetition detection
-                rootposition.prerootmovenum = rootposition.ply;
-                int i = 0;
-                int j = PREROOTMOVES - rootposition.ply;
-                while (i < rootposition.ply)
-                {
-                    rootposition.prerootmovecode[j] = rootposition.movecode[i];
-                    rootposition.prerootmovestack[j++] = rootposition.movestack[i++];
-                }
-                rootposition.lastnullmove = -rootposition.ply - 1;
-                rootposition.ply = 0;
-                rootposition.useTb = min(TBlargest, SyzygyProbeLimit);
-                rootposition.getRootMoves();
-                rootposition.tbFilterRootMoves();
-                prepareThreads();
-                if (debug)
-                {
-                    sthread[0].pos.print();
-                }
-                pendingposition = false;
             }
             if (pendingisready)
             {
