@@ -376,7 +376,7 @@ void engine::measureOverhead(bool wasPondering)
 }
 
 
-void engine::handlePendingPosition(string &fen/*, vector<string> &moves*/)
+void engine::handlePendingPosition(string fen, vector<string> moves, bool *preparing)
 {
                     // new position first stops current search
                 if (stopLevel < ENGINESTOPIMMEDIATELY)
@@ -393,13 +393,11 @@ void engine::handlePendingPosition(string &fen/*, vector<string> &moves*/)
                 }
 
                 uint32_t lastopponentsmove = 0;
-            #if 0
                 for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
                 {
                     if (!(lastopponentsmove = rootposition.applyMove(*it)))
                         guiCom << "info string Alarm! Move " + (*it)  + " illegal (possible engine error)\n";
                 }
-            #endif
                 rootposition.contempt = S2MSIGN(rootposition.state & S2MMASK) * ResultingContempt * rootposition.phcount / 24;
                 ponderhitbonus = 4 * (lastopponentsmove && lastopponentsmove == rootposition.pondermove);
                 // Preserve hashes of earlier position up to last halfmove counter reset for repetition detection
@@ -421,8 +419,7 @@ void engine::handlePendingPosition(string &fen/*, vector<string> &moves*/)
                 {
                     sthread[0].pos.print();
                 }
-                //*pendingposition = false;
-
+                *preparing = false;
 }
 
 
@@ -437,20 +434,35 @@ void engine::communicate(string inputstring)
     string sName, sValue;
     bool bMoves;
     bool pendingisready = false;
+    //enum pendingpositionstate_t { NoPosition, Pending, Preparing };
     bool pendingposition = false;
+    thread *preparepositionthread = nullptr;
+    bool preparingposition = false;
     do
     {
         if (stopLevel >= ENGINESTOPIMMEDIATELY)
         {
             searchWaitStop();
         }
+        if (preparepositionthread &&  !preparingposition)
+        {
+            preparepositionthread->join();
+            preparepositionthread = nullptr;
+        }
+
         if (pendingisready || pendingposition)
         {
-            if (pendingposition)
-            {
-                thread(handlePendingPosition, ref(fen)/*, moves, &pendingposition*/);
-
+            if (pendingposition) {
+                if (!preparepositionthread) {
+                    preparingposition = true;
+                    pendingposition = false;
+                    preparepositionthread = new thread(&engine::handlePendingPosition, this, fen, moves, &preparingposition);
+                } else {
+                    // Another position command; wait for thread finishing
+                    Sleep(1);
+                }
             }
+
             if (pendingisready)
             {
                 guiCom << "readyok\n";
@@ -690,6 +702,8 @@ void engine::communicate(string inputstring)
                         ci++;
                 }
                 tmEnabled = (mytime || myinc);
+                while (preparingposition)
+                    Sleep(1);
                 if (!prepared)
                     prepareThreads();
                 measureOverhead(wasPondering);

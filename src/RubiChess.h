@@ -2182,7 +2182,7 @@ public:
     };
     GuiToken parse(vector<string>*, string ss);
     void communicate(string inputstring);
-    void handlePendingPosition(string &fen/*, vector<string> moves*/);
+    void handlePendingPosition(string fen, vector<string> moves, bool *preparing);
     void allocThreads();
     void getNodesAndTbhits(U64 *nodes, U64 *tbhits);
     U64 perft(int depth, bool printsysteminfo = false);
