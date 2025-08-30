@@ -440,7 +440,8 @@ void engine::bench(int constdepth, string epdfilename, int consttime, int startn
         else
             guiCom << "No depth and no movetime. Skipping.\n";
 
-        searchWaitStop(false);
+        communicate("wait");
+        //searchWaitStop(false);
         endtime = getTime();
         bm->time = endtime - thinkstarttime;
         U64 tbhits;

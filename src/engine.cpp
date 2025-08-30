@@ -179,6 +179,7 @@ engine::engine(compilerinfo *c)
     // fixed    1.953.125 ~ 0.5 microseconds resolution =>  nps overflow at 9.444.732.965.738 nodes (~26h at 100Mnps, ~163h at 16Mnps)
 #endif
     rootposition.resetStats();
+    new thread(&engine::handleUciQueue, this);
 }
 
 engine::~engine()
@@ -376,51 +377,114 @@ void engine::measureOverhead(bool wasPondering)
 }
 
 
-void engine::handlePendingPosition(string fen, vector<string> moves, bool *preparing)
+void engine::handleUciQueue()
 {
-                    // new position first stops current search
-                if (stopLevel < ENGINESTOPIMMEDIATELY)
-                {
-                    stopLevel = ENGINESTOPIMMEDIATELY;
-                    searchWaitStop();
-                }
-                if (rootposition.getFromFen(fen.c_str()) < 0)
-                {
-                    guiCom << "info string Illegal FEN string " + fen + ". Startposition will be used instead.\n";
-                    fen = STARTFEN;
-                    rootposition.getFromFen(fen.c_str());
-                    //moves.clear();
-                }
+    do {
+        unique_lock<mutex> lock(uciqueue.mtx_worktodo);
+        uciqueue.worktodo.wait(lock, [this] { return uciqueue.somethingToDo(); });
+        guiCom << "handleUciQueue go!\n";
+        ucicommand_t* ucicmd = uciqueue.getCurrent();
+        guiCom << "CMD: " << ucicmd->type << "  timestamp: " << ucicmd->timestamp << "\n";
+        switch (ucicmd->type) {
+        case POSITION:
+        {
+            // new position first stops current search
+            searchWaitStop();
 
-                uint32_t lastopponentsmove = 0;
-                for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
-                {
-                    if (!(lastopponentsmove = rootposition.applyMove(*it)))
-                        guiCom << "info string Alarm! Move " + (*it)  + " illegal (possible engine error)\n";
-                }
-                rootposition.contempt = S2MSIGN(rootposition.state & S2MMASK) * ResultingContempt * rootposition.phcount / 24;
-                ponderhitbonus = 4 * (lastopponentsmove && lastopponentsmove == rootposition.pondermove);
-                // Preserve hashes of earlier position up to last halfmove counter reset for repetition detection
-                rootposition.prerootmovenum = rootposition.ply;
-                int i = 0;
-                int j = PREROOTMOVES - rootposition.ply;
-                while (i < rootposition.ply)
-                {
-                    rootposition.prerootmovecode[j] = rootposition.movecode[i];
-                    rootposition.prerootmovestack[j++] = rootposition.movestack[i++];
-                }
-                rootposition.lastnullmove = -rootposition.ply - 1;
-                rootposition.ply = 0;
-                rootposition.useTb = min(TBlargest, SyzygyProbeLimit);
-                rootposition.getRootMoves();
-                rootposition.tbFilterRootMoves();
+            ucipositiondata_t* data = (ucipositiondata_t*)ucicmd->data;
+            // new position first stops current search
+            if (stopLevel < ENGINESTOPIMMEDIATELY)
+            {
+                stopLevel = ENGINESTOPIMMEDIATELY;
+                searchWaitStop();
+            }
+            if (rootposition.getFromFen(data->fen.c_str()) < 0)
+            {
+                guiCom << "info string Illegal FEN string " + data->fen + ". Startposition will be used instead.\n";
+                data->fen = STARTFEN;
+                rootposition.getFromFen(data->fen.c_str());
+            }
+
+            uint32_t lastopponentsmove = 0;
+            for (vector<string>::iterator it = data->moves.begin(); it != data->moves.end(); ++it)
+            {
+                if (!(lastopponentsmove = rootposition.applyMove(*it)))
+                    guiCom << "info string Alarm! Move " + (*it) + " illegal (possible engine error)\n";
+            }
+            rootposition.contempt = S2MSIGN(rootposition.state & S2MMASK) * ResultingContempt * rootposition.phcount / 24;
+            ponderhitbonus = 4 * (lastopponentsmove && lastopponentsmove == rootposition.pondermove);
+            // Preserve hashes of earlier position up to last halfmove counter reset for repetition detection
+            rootposition.prerootmovenum = rootposition.ply;
+            int i = 0;
+            int j = PREROOTMOVES - rootposition.ply;
+            while (i < rootposition.ply)
+            {
+                rootposition.prerootmovecode[j] = rootposition.movecode[i];
+                rootposition.prerootmovestack[j++] = rootposition.movestack[i++];
+            }
+            rootposition.lastnullmove = -rootposition.ply - 1;
+            rootposition.ply = 0;
+            rootposition.useTb = min(TBlargest, SyzygyProbeLimit);
+            rootposition.getRootMoves();
+            rootposition.tbFilterRootMoves();
+            prepareThreads();
+            if (debug)
+            {
+                sthread[0].pos.print();
+            }
+        }
+        break;
+        case GO:
+        {
+            // new search first stops current search
+            searchWaitStop();
+
+            ucigodata_t* data = (ucigodata_t*)ucicmd->data;
+            bool wasPondering = (pondersearch == PONDERING);
+            if (rootposition.w2m())
+            {
+                mytime = data->wtime;
+                myinc = data->winc;
+                yourtime = data->btime;
+                yourinc = data->binc;
+            }
+            else {
+                mytime = data->btime;
+                myinc = data->binc;
+                yourtime = data->wtime;
+                yourinc = data->winc;
+            }
+            movestogo = data->movestogo;
+            mate = data->mate;
+            movetime = data->movetime;
+            maxdepth = data->maxdepth;
+            pondersearch = data->pondersearch;
+            maxnodes = data->maxnodes;
+
+            tmEnabled = (mytime || myinc);
+            if (!prepared)
                 prepareThreads();
-                if (debug)
-                {
-                    sthread[0].pos.print();
-                }
+            measureOverhead(wasPondering);
+            if (MultiPV == 1)
+                searchStart<SinglePVSearch>();
+            else
+                searchStart<MultiPVSearch>();
+        }
+        break;
+        default:
+            break;
+        }
+        Sleep(1000);
+        guiCom << "handleUciQueue done!\n";
+        uciqueue.takeFromQueue();
+
+    } while (1);
+}
+#if 0
                 *preparing = false;
 }
+#endif
+
 
 
 void engine::communicate(string inputstring)
@@ -428,7 +492,7 @@ void engine::communicate(string inputstring)
     string fen;
     vector<string> moves;
     vector<string> commandargs;
-    GuiToken command = UNKNOWN;
+    //GuiToken command = UNKNOWN;
     size_t ci, cs;
     bool bGetName, bGetValue;
     string sName, sValue;
@@ -438,8 +502,11 @@ void engine::communicate(string inputstring)
     bool pendingposition = false;
     thread *preparepositionthread = nullptr;
     bool preparingposition = false;
+
+    ucicommand_t* ucicmd;
     do
     {
+#if 0
         if (stopLevel >= ENGINESTOPIMMEDIATELY)
         {
             searchWaitStop();
@@ -469,16 +536,20 @@ void engine::communicate(string inputstring)
                 pendingisready = false;
             }
         }
-        else {
+        else
+#endif
+        {
             bool wasPondering = (pondersearch == PONDERING);
             commandargs.clear();
-            command = parse(&commandargs, inputstring);  // blocking!!
+            ucicmd = uciqueue.getNextFree();
+            ucicmd->type = parse(&commandargs, inputstring);  // blocking!!
+            ucicmd->timestamp = getTime();  // get best possible timestamp
             ci = 0;
             cs = commandargs.size();
             if (stopLevel == ENGINESTOPIMMEDIATELY)
                 searchWaitStop();
-            switch (command)
-            {
+
+            switch (ucicmd->type) {
             case UCIDEBUG:
                 if (ci < cs)
                 {
@@ -580,42 +651,122 @@ void engine::communicate(string inputstring)
             case POSITION:
                 if (cs == 0)
                     break;
-                bMoves = false;
-                moves.clear();
-                fen = "";
+                {
+                    ucipositiondata_t* ucipositiondata = new ucipositiondata_t;
+                    ucicmd->data = ucipositiondata;
+                    bMoves = false;
 
-                if (commandargs[ci] == "startpos")
-                {
-                    ci++;
-                    fen = STARTFEN;
-                }
-                else if (commandargs[ci] == "fen")
-                {
-                    while (++ci < cs && commandargs[ci] != "moves")
-                        fen = fen + commandargs[ci] + " ";
-                }
-                while (ci < cs)
-                {
-                    if (commandargs[ci] == "moves")
+                    if (commandargs[ci] == "startpos")
                     {
-                        bMoves = true;
+                        ci++;
+                        ucipositiondata->fen = STARTFEN;
                     }
-                    else if (bMoves)
+                    else if (commandargs[ci] == "fen")
                     {
-                        moves.push_back(commandargs[ci]);
+                        while (++ci < cs && commandargs[ci] != "moves")
+                            ucipositiondata->fen = ucipositiondata->fen + commandargs[ci] + " ";
                     }
-                    ci++;
-                }
+                    while (ci < cs)
+                    {
+                        if (commandargs[ci] == "moves")
+                        {
+                            bMoves = true;
+                        }
+                        else if (bMoves)
+                        {
+                            ucipositiondata->moves.push_back(commandargs[ci]);
+                        }
+                        ci++;
+                    }
 
-                pendingposition = (fen != "");
+                    if (ucipositiondata->fen != "")
+                        uciqueue.putToQueue();
+                }
                 break;
             case GO:
                 if (usennue && !NnueReady)
                     break;
-                startSearchTime(false);
-                pondersearch = NO;
-                searchmoves.clear();
-                mytime = yourtime = myinc = yourinc = movestogo = mate = maxdepth = 0;
+                startSearchTime(false);  // start the clock as soon as possible
+                {
+                    ucigodata_t* ucigodata = new ucigodata_t;
+                    ucicmd->data = ucigodata;
+                    ucigodata->maxnodes = LimitNps / Threads;
+
+                    while (ci < cs)
+                    {
+                        if (commandargs[ci] == "searchmoves")
+                        {
+                            while (++ci < cs && AlgebraicToIndex(commandargs[ci]) < 64 && AlgebraicToIndex(&commandargs[ci][2]) < 64)
+                                ucigodata->searchmoves.insert(commandargs[ci]);
+                            // Filter root moves again
+                            // FIXME: not here
+                            //rootposition.getRootMoves();
+                            //rootposition.tbFilterRootMoves();
+                            //prepareThreads();
+                        }
+                        else if (commandargs[ci] == "wtime")
+                        {
+                            if (++ci < cs)
+                                ucigodata->wtime = stoi(commandargs[ci++]);
+                        }
+                        else if (commandargs[ci] == "btime")
+                        {
+                            if (++ci < cs)
+                                ucigodata->btime = stoi(commandargs[ci++]);
+                        }
+                        else if (commandargs[ci] == "winc")
+                        {
+                            if (++ci < cs)
+                                ucigodata->winc = stoi(commandargs[ci++]);
+                        }
+                        else if (commandargs[ci] == "binc")
+                        {
+                            if (++ci < cs)
+                                ucigodata->binc = stoi(commandargs[ci++]);
+                        }
+                        else if (commandargs[ci] == "movetime")
+                        {
+                            mytime = yourtime = 0;
+                            if (++ci < cs)
+                                ucigodata->winc = ucigodata->binc = stoi(commandargs[ci++]);
+                        }
+                        else if (commandargs[ci] == "movestogo")
+                        {
+                            if (++ci < cs)
+                                ucigodata->movestogo = stoi(commandargs[ci++]);
+                        }
+                        else if (commandargs[ci] == "nodes")
+                        {
+                            if (++ci < cs)
+                                ucigodata->maxnodes = stoull(commandargs[ci++]) / Threads;
+                        }
+                        else if (commandargs[ci] == "mate")
+                        {
+                            if (++ci < cs)
+                                ucigodata->mate = stoi(commandargs[ci++]);
+                        }
+                        else if (commandargs[ci] == "depth")
+                        {
+                            if (++ci < cs)
+                                ucigodata->maxdepth = stoi(commandargs[ci++]);
+                        }
+                        else if (commandargs[ci] == "infinite")
+                        {
+                            // just a dummy
+                            ci++;
+                        }
+                        else if (commandargs[ci] == "ponder")
+                        {
+                            pondersearch = PONDERING;
+                            ci++;
+                        }
+                        else
+                            ci++;
+                    }
+                    uciqueue.putToQueue();
+                }
+#if 0
+                // FIXME: not here!!!
                 int *wtime, *btime, *winc, *binc;
                 if (rootposition.w2m())
                 {
@@ -629,78 +780,8 @@ void engine::communicate(string inputstring)
                     btime = &mytime;
                     binc = &myinc;
                 }
-                maxnodes = LimitNps / Threads;
-                while (ci < cs)
-                {
-                    if (commandargs[ci] == "searchmoves")
-                    {
-                        while (++ci < cs && AlgebraicToIndex(commandargs[ci]) < 64 && AlgebraicToIndex(&commandargs[ci][2]) < 64)
-                            searchmoves.insert(commandargs[ci]);
-                        // Filter root moves again
-                        rootposition.getRootMoves();
-                        rootposition.tbFilterRootMoves();
-                        prepareThreads();
-                    }
+                
 
-                    else if (commandargs[ci] == "wtime")
-                    {
-                        if (++ci < cs)
-                            *wtime = stoi(commandargs[ci++]);
-                    }
-                    else if (commandargs[ci] == "btime")
-                    {
-                        if (++ci < cs)
-                            *btime = stoi(commandargs[ci++]);
-                    }
-                    else if (commandargs[ci] == "winc")
-                    {
-                        if (++ci < cs)
-                            *winc = stoi(commandargs[ci++]);
-                    }
-                    else if (commandargs[ci] == "binc")
-                    {
-                        if (++ci < cs)
-                            *binc = stoi(commandargs[ci++]);
-                    }
-                    else if (commandargs[ci] == "movetime")
-                    {
-                        mytime = yourtime = 0;
-                        if (++ci < cs)
-                            myinc = yourinc = stoi(commandargs[ci++]);
-                    }
-                    else if (commandargs[ci] == "movestogo")
-                    {
-                        if (++ci < cs)
-                            movestogo = stoi(commandargs[ci++]);
-                    }
-                    else if (commandargs[ci] == "nodes")
-                    {
-                        if (++ci < cs)
-                            maxnodes = stoull(commandargs[ci++]) / Threads;
-                    }
-                    else if (commandargs[ci] == "mate")
-                    {
-                        if (++ci < cs)
-                            mate = stoi(commandargs[ci++]);
-                    }
-                    else if (commandargs[ci] == "depth")
-                    {
-                        if (++ci < cs)
-                            maxdepth = stoi(commandargs[ci++]);
-                    }
-                    else if (commandargs[ci] == "infinite")
-                    {
-                        // just a dummy
-                        ci++;
-                    }
-                    else if (commandargs[ci] == "ponder")
-                    {
-                        pondersearch = PONDERING;
-                        ci++;
-                    }
-                    else
-                        ci++;
-                }
                 tmEnabled = (mytime || myinc);
                 while (preparingposition)
                     Sleep(1);
@@ -711,6 +792,7 @@ void engine::communicate(string inputstring)
                     searchStart<SinglePVSearch>();
                 else
                     searchStart<MultiPVSearch>();
+#endif
                 break;
             case WAIT:
                 searchWaitStop(false);
@@ -797,8 +879,8 @@ void engine::communicate(string inputstring)
                 break;
             }
         }
-    } while (command != QUIT && (inputstring == "" || pendingposition));
-    if (command == QUIT) {
+    } while (ucicmd->type != QUIT && (inputstring == "" || pendingposition));
+    if (ucicmd->type == QUIT) {
         searchWaitStop();
 #ifdef STATISTICS
         // Output of statistics data before exit (e.g. when palying in a GUI)

@@ -89,6 +89,7 @@
 #include <math.h>
 #include <regex>
 #include <set>
+#include <condition_variable>
 #include <sys/stat.h>
 #ifdef USE_ZLIB
 #include "zlib/zlib.h"
@@ -2066,6 +2067,71 @@ public:
 };
 
 
+#define MAXUCIQUEUELENGTH 16
+
+// uci data types
+class ucipositiondata_t {
+public:
+    string fen;
+    vector<string> moves;
+};
+
+class ucigodata_t {
+public:
+    int wtime, winc, btime, binc, movestogo, mate, movetime, maxdepth;
+    ponderstate_t pondersearch;
+    U64 maxnodes;
+    set<string> searchmoves;
+    ucigodata_t() {
+        wtime = winc = btime = binc = movestogo = mate = movetime = maxdepth = 0;
+        pondersearch = NO;
+        searchmoves.clear();
+    }
+};
+
+struct ucicommand_t {
+    U64 timestamp;
+    GuiToken type;
+    void* data;
+};
+
+class uciqueue_t {
+    ucicommand_t cmd[MAXUCIQUEUELENGTH];
+    int current;
+    int nextfree;
+public:
+    condition_variable worktodo;
+    mutex mtx_worktodo;
+    void reset() {
+
+    }
+    ucicommand_t* getNextFree() {
+        delete cmd[nextfree].data;
+        return &cmd[nextfree];
+    }
+    // communicate() calls putToQueue() after cmd[nextfree] is filled with data of latest command
+    void putToQueue() {
+        int next = (nextfree + 1) % MAXUCIQUEUELENGTH;
+        while (next == current)
+            // should not happen
+            Sleep(1);
+        unique_lock<mutex> lock(mtx_worktodo);
+        nextfree = next;
+        worktodo.notify_one();
+        cout << "putToQueue was called. nextfree=" << nextfree << "\n";
+    }
+    ucicommand_t* getCurrent() {
+        return &cmd[current];
+    }
+    // handleUciQueue() calls takeFromQueue() after cmd[current] is processed
+    void takeFromQueue() {
+        current = (current + 1) % MAXUCIQUEUELENGTH;
+    }
+    bool somethingToDo() {
+        return current != nextfree;
+    }
+};
+
 
 class engine
 {
@@ -2119,6 +2185,7 @@ public:
     int lastbestmovescore;
     int benchdepth;
     bool prepared;
+    uciqueue_t uciqueue;
     string benchmove;
     string benchpondermove;
     ucioptions_t ucioptions;
@@ -2182,7 +2249,7 @@ public:
     };
     GuiToken parse(vector<string>*, string ss);
     void communicate(string inputstring);
-    void handlePendingPosition(string fen, vector<string> moves, bool *preparing);
+    void handleUciQueue();
     void allocThreads();
     void getNodesAndTbhits(U64 *nodes, U64 *tbhits);
     U64 perft(int depth, bool printsysteminfo = false);
