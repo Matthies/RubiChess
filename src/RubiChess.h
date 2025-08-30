@@ -58,10 +58,10 @@
 //#define STACKDEBUG
 
 // Enable this to find memory leaks with the MSVC debug build
-//#define FINDMEMORYLEAKS
+#define FINDMEMORYLEAKS
 
 
-#ifdef FINDMEMORYLEAKS
+#if defined(FINDMEMORYLEAKS) && defined(_MSC_VER)
 #define _CRTDBG_MAP_ALLOC
 #endif
 
@@ -2067,16 +2067,21 @@ public:
 };
 
 
-#define MAXUCIQUEUELENGTH 16
+#define MAXUCIQUEUELENGTH 4
 
 // uci data types
-class ucipositiondata_t {
+class ucidata_t {
+public:
+    virtual ~ucidata_t() {}
+};
+
+class ucipositiondata_t : public ucidata_t {
 public:
     string fen;
     vector<string> moves;
 };
 
-class ucigodata_t {
+class ucigodata_t : public ucidata_t {
 public:
     int wtime, winc, btime, binc, movestogo, mate, movetime, maxdepth;
     ponderstate_t pondersearch;
@@ -2092,43 +2097,53 @@ public:
 struct ucicommand_t {
     U64 timestamp;
     GuiToken type;
-    void* data;
+    ucidata_t* data;
 };
 
 class uciqueue_t {
     ucicommand_t cmd[MAXUCIQUEUELENGTH];
-    int current;
-    int nextfree;
+    int current = -1;       // index of command processed by handleUciQueue or -1
+    int pending = -1;       // index of next pending command 
+    int nextfree = 0;       // index of next free slot
 public:
-    condition_variable worktodo;
-    mutex mtx_worktodo;
-    void reset() {
-
+    void remove() {
+        for (int i = 0; i < MAXUCIQUEUELENGTH; i++)
+            delete cmd[i].data;
     }
+    // communicate() calls getNextFree() to get the next slot for new command
     ucicommand_t* getNextFree() {
+        if (pending == nextfree)
+            cout << "info string getNextFree is blocked\n";
+        while (pending == nextfree)
+            Sleep(1);
         delete cmd[nextfree].data;
+        cmd[nextfree].data = nullptr;
+        cout << "communicate  getNextFree:  Slot=" << nextfree << "\n";
         return &cmd[nextfree];
     }
     // communicate() calls putToQueue() after cmd[nextfree] is filled with data of latest command
     void putToQueue() {
+        cout << cmd[nextfree].timestamp << " communicate  putToQueue:  Slot=" << nextfree << "  cmd=" << cmd[nextfree].type << "\n";
         int next = (nextfree + 1) % MAXUCIQUEUELENGTH;
-        while (next == current)
-            // should not happen
-            Sleep(1);
-        unique_lock<mutex> lock(mtx_worktodo);
         nextfree = next;
-        worktodo.notify_one();
-        cout << "putToQueue was called. nextfree=" << nextfree << "\n";
     }
-    ucicommand_t* getCurrent() {
+    // handleUciQueue() calls getNextPending() for the next command to processed
+    ucicommand_t* getNextPending() {
+        current = (pending + 1) % MAXUCIQUEUELENGTH;
+        cout << "handleUciQueue getNextPending. Slot=" << current << "  cmd=" << cmd[current].type << "\n";
         return &cmd[current];
     }
     // handleUciQueue() calls takeFromQueue() after cmd[current] is processed
     void takeFromQueue() {
-        current = (current + 1) % MAXUCIQUEUELENGTH;
+        pending = (pending + 1) % MAXUCIQUEUELENGTH;
+        current = -1;
+        cout << "handleUciQueue takeFromQueue. NextSlot=" << pending << "\n";
     }
     bool somethingToDo() {
-        return current != nextfree;
+        bool std = ((pending + 1) % MAXUCIQUEUELENGTH != nextfree);
+        if (std)
+            cout << "handleUciQueue has something to do. Slot=" << (pending + 1) % MAXUCIQUEUELENGTH << "\n";
+        return std;
     }
 };
 
@@ -2186,6 +2201,7 @@ public:
     int benchdepth;
     bool prepared;
     uciqueue_t uciqueue;
+    thread ucihandler;
     string benchmove;
     string benchpondermove;
     ucioptions_t ucioptions;

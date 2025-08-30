@@ -920,7 +920,7 @@ int main(int argc, char* argv[])
         { NULL, NULL, NULL, 0, NULL }
     };
 
-#ifdef FINDMEMORYLEAKS
+#if defined(FINDMEMORYLEAKS) && defined(_MSC_VER)
     // Get current flag
     int tmpFlag = _CrtSetDbgFlag(_CRTDBG_REPORT_FLAG);
 
@@ -1071,6 +1071,6 @@ int main(int argc, char* argv[])
 #ifdef EVALTUNE
     tuneCleanup();
 #endif
-    en.searchWaitStop();
+    en.ucihandler.join();
     return 0;
 }

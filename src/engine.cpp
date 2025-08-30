@@ -179,7 +179,7 @@ engine::engine(compilerinfo *c)
     // fixed    1.953.125 ~ 0.5 microseconds resolution =>  nps overflow at 9.444.732.965.738 nodes (~26h at 100Mnps, ~163h at 16Mnps)
 #endif
     rootposition.resetStats();
-    new thread(&engine::handleUciQueue, this);
+    ucihandler = thread(&engine::handleUciQueue, this);
 }
 
 engine::~engine()
@@ -195,6 +195,7 @@ engine::~engine()
     allocThreads();
     rootposition.pwnhsh.remove();
     NnueRemove();
+    uciqueue.remove();
 }
 
 
@@ -305,8 +306,8 @@ void engine::prepareThreads()
         prepared = true;
     }
     // Simuliere Wartezeit
-    guiCom << "position takes some time...\n";
-    Sleep(2000);
+    //guiCom << "position takes some time...\n";
+    //Sleep(1000);
 }
 
 
@@ -379,12 +380,14 @@ void engine::measureOverhead(bool wasPondering)
 
 void engine::handleUciQueue()
 {
+    ucicommand_t* ucicmd;
     do {
-        unique_lock<mutex> lock(uciqueue.mtx_worktodo);
-        uciqueue.worktodo.wait(lock, [this] { return uciqueue.somethingToDo(); });
-        guiCom << "handleUciQueue go!\n";
-        ucicommand_t* ucicmd = uciqueue.getCurrent();
-        guiCom << "CMD: " << ucicmd->type << "  timestamp: " << ucicmd->timestamp << "\n";
+        //unique_lock<mutex> lock(uciqueue.mtx_worktodo);
+        while (!uciqueue.somethingToDo())
+            Sleep(1); // Hmmm. Is there somathing better like uciqueue.worktodo.wait(lock);
+        //uciqueue.worktodo.wait(lock, [this] { return uciqueue.somethingToDo(); });
+        ucicmd = uciqueue.getNextPending();
+        //guiCom << "handleUciQueue  cmd: " << ucicmd->type << "  timestamp: " << ucicmd->timestamp << "\n";
         switch (ucicmd->type) {
         case POSITION:
         {
@@ -471,14 +474,45 @@ void engine::handleUciQueue()
                 searchStart<MultiPVSearch>();
         }
         break;
+        case STOP:
+            if (stopLevel < ENGINESTOPIMMEDIATELY)
+                stopLevel = ENGINESTOPIMMEDIATELY;
+            break;
+        case PONDERHIT:
+            startSearchTime(true);
+            resetEndTime(clockstarttime);
+            pondersearch = NO;
+            break;
+        case UCINEWGAME:
+            // stop current search
+            searchWaitStop();
+            // invalidate hash and history
+            tp.clean();
+            resetStats();
+            lastbestmovescore = NOSCORE;
+            pbook.currentDepth = 0;
+            break;
+        case UCI:
+            guiCom << "id name " + name(false) + "\n";
+            guiCom << "id author " + author + "\n";
+            ucioptions.Print();
+            guiCom << "uciok\n";
+            break;
+        case ISREADY:
+            guiCom << "readyok\n";
+            break;
+        case WAIT:
+            searchWaitStop(false);
+            break;
         default:
             break;
         }
-        Sleep(1000);
-        guiCom << "handleUciQueue done!\n";
+        // Simulate some delay
+        //Sleep(100);
+        //guiCom << "handleUciQueue done!\n";
         uciqueue.takeFromQueue();
 
-    } while (1);
+    } while (ucicmd->type != QUIT);
 }
 #if 0
                 *preparing = false;
@@ -489,19 +523,22 @@ void engine::handleUciQueue()
 
 void engine::communicate(string inputstring)
 {
-    string fen;
-    vector<string> moves;
+    //string fen;
+    //vector<string> moves;
     vector<string> commandargs;
     //GuiToken command = UNKNOWN;
     size_t ci, cs;
     bool bGetName, bGetValue;
     string sName, sValue;
     bool bMoves;
-    bool pendingisready = false;
+    //bool pendingisready = false;
     //enum pendingpositionstate_t { NoPosition, Pending, Preparing };
     bool pendingposition = false;
-    thread *preparepositionthread = nullptr;
-    bool preparingposition = false;
+    //thread *preparepositionthread = nullptr;
+    //bool preparingposition = false;
+
+    if (inputstring != "")
+        cout << getTime() << "  communicate: " << inputstring << "\n";
 
     ucicommand_t* ucicmd;
     do
@@ -539,16 +576,19 @@ void engine::communicate(string inputstring)
         else
 #endif
         {
-            bool wasPondering = (pondersearch == PONDERING);
-            commandargs.clear();
+           // bool wasPondering = (pondersearch == PONDERING);
+            commandargs.clear();;
+            //guiCom << getTime() << "  communicate waiting for getNextFree...\n";
             ucicmd = uciqueue.getNextFree();
+            //guiCom << getTime() << " got it\n";
             ucicmd->type = parse(&commandargs, inputstring);  // blocking!!
             ucicmd->timestamp = getTime();  // get best possible timestamp
             ci = 0;
             cs = commandargs.size();
+#if 0
             if (stopLevel == ENGINESTOPIMMEDIATELY)
                 searchWaitStop();
-
+#endif
             switch (ucicmd->type) {
             case UCIDEBUG:
                 if (ci < cs)
@@ -590,17 +630,10 @@ void engine::communicate(string inputstring)
                 }
                 break;
             case UCI:
-                guiCom << "id name " + name(false) + "\n";
-                guiCom << "id author " + author + "\n";
-                ucioptions.Print();
-                guiCom << "uciok\n";
+                uciqueue.putToQueue();
                 break;
             case UCINEWGAME:
-                // invalidate hash and history
-                tp.clean();
-                resetStats();
-                lastbestmovescore = NOSCORE;
-                pbook.currentDepth = 0;
+                uciqueue.putToQueue();
                 break;
             case SETOPTION:
                 if (stopLevel != ENGINETERMINATEDSEARCH)
@@ -646,14 +679,15 @@ void engine::communicate(string inputstring)
                 ucioptions.Set(sName, sValue);
                 break;
             case ISREADY:
-                pendingisready = true;
+                uciqueue.putToQueue();
                 break;
             case POSITION:
                 if (cs == 0)
                     break;
                 {
+                    //ucipositiondata_t* ucipositiondata = new ucipositiondata_t;
                     ucipositiondata_t* ucipositiondata = new ucipositiondata_t;
-                    ucicmd->data = ucipositiondata;
+                    ucicmd->data = (ucidata_t*)ucipositiondata;
                     bMoves = false;
 
                     if (commandargs[ci] == "startpos")
@@ -689,7 +723,7 @@ void engine::communicate(string inputstring)
                 startSearchTime(false);  // start the clock as soon as possible
                 {
                     ucigodata_t* ucigodata = new ucigodata_t;
-                    ucicmd->data = ucigodata;
+                    ucicmd->data = (ucidata_t*)ucigodata;
                     ucigodata->maxnodes = LimitNps / Threads;
 
                     while (ci < cs)
@@ -795,17 +829,14 @@ void engine::communicate(string inputstring)
 #endif
                 break;
             case WAIT:
-                searchWaitStop(false);
+                uciqueue.putToQueue();
                 break;
             case PONDERHIT:
-                startSearchTime(true);
-                resetEndTime(clockstarttime);
-                pondersearch = NO;
+                uciqueue.putToQueue();
                 break;
             case STOP:
             case QUIT:
-                if (stopLevel < ENGINESTOPIMMEDIATELY)
-                    stopLevel = ENGINESTOPIMMEDIATELY;
+                uciqueue.putToQueue();
                 break;
             case EVAL:
                 evaldetails = (ci < cs && commandargs[ci] == "detail");
@@ -881,7 +912,7 @@ void engine::communicate(string inputstring)
         }
     } while (ucicmd->type != QUIT && (inputstring == "" || pendingposition));
     if (ucicmd->type == QUIT) {
-        searchWaitStop();
+        //searchWaitStop();
 #ifdef STATISTICS
         // Output of statistics data before exit (e.g. when palying in a GUI)
         if (!statistics.outputDone)
@@ -894,7 +925,6 @@ void engine::communicate(string inputstring)
 GuiToken engine::parse(vector<string>* args, string ss)
 {
     bool firsttoken = false;
-
     if (ss == "")
         getline(cin, ss);
 
