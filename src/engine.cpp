@@ -382,10 +382,8 @@ void engine::handleUciQueue()
 {
     ucicommand_t* ucicmd;
     do {
-        //unique_lock<mutex> lock(uciqueue.mtx_worktodo);
         while (!uciqueue.somethingToDo())
-            Sleep(1); // Hmmm. Is there somathing better like uciqueue.worktodo.wait(lock);
-        //uciqueue.worktodo.wait(lock, [this] { return uciqueue.somethingToDo(); });
+            Sleep(1); // Hmmm. Is there somathing better like conditional_variable.wait(lock);
         ucicmd = uciqueue.getNextPending();
         //guiCom << "handleUciQueue  cmd: " << ucicmd->type << "  timestamp: " << ucicmd->timestamp << "\n";
         switch (ucicmd->type) {
@@ -475,8 +473,12 @@ void engine::handleUciQueue()
         }
         break;
         case STOP:
+        case QUIT:
             if (stopLevel < ENGINESTOPIMMEDIATELY)
+            {
                 stopLevel = ENGINESTOPIMMEDIATELY;
+                searchWaitStop();
+            }
             break;
         case PONDERHIT:
             startSearchTime(true);
@@ -504,6 +506,17 @@ void engine::handleUciQueue()
         case WAIT:
             searchWaitStop(false);
             stopLevel = ENGINEWAITTERMINATION;
+            break;
+        case SETOPTION:
+            if (stopLevel < ENGINETERMINATEDSEARCH)
+            {
+                guiCom << "info string Changing option while searching is not supported. stopLevel = " + to_string(stopLevel) + "\n";
+                break;
+            }
+            {
+                ucisetoptiondata_t* data = (ucisetoptiondata_t*)ucicmd->data;
+                ucioptions.Set(data->name, data->value);
+            }
             break;
         default:
             break;
@@ -536,52 +549,13 @@ void engine::communicate(string inputstring)
     ucicommand_t* ucicmd;
     do
     {
-#if 0
-        if (stopLevel >= ENGINESTOPIMMEDIATELY)
         {
-            searchWaitStop();
-        }
-        if (preparepositionthread &&  !preparingposition)
-        {
-            preparepositionthread->join();
-            preparepositionthread = nullptr;
-        }
-
-        if (pendingisready || pendingposition)
-        {
-            if (pendingposition) {
-                if (!preparepositionthread) {
-                    preparingposition = true;
-                    pendingposition = false;
-                    preparepositionthread = new thread(&engine::handlePendingPosition, this, fen, moves, &preparingposition);
-                } else {
-                    // Another position command; wait for thread finishing
-                    Sleep(1);
-                }
-            }
-
-            if (pendingisready)
-            {
-                guiCom << "readyok\n";
-                pendingisready = false;
-            }
-        }
-        else
-#endif
-        {
-           // bool wasPondering = (pondersearch == PONDERING);
             commandargs.clear();;
-            //guiCom << getTime() << "  communicate waiting for getNextFree...\n";
             ucicmd = uciqueue.getNextFree();
-            //guiCom << getTime() << " got it\n";
             ucicmd->type = parse(&commandargs, inputstring);  // blocking!!
             ucicmd->timestamp = getTime();  // get best possible timestamp
             ci = 0;
             cs = commandargs.size();
-#if 0
-            if (stopLevel == ENGINESTOPIMMEDIATELY)
-                searchWaitStop();
-#endif
             switch (ucicmd->type) {
             case UCIDEBUG:
                 if (ci < cs)
@@ -629,6 +603,46 @@ void engine::communicate(string inputstring)
                 uciqueue.putToQueue();
                 break;
             case SETOPTION:
+            {
+                ucisetoptiondata_t* ucisetoptiondata = new ucisetoptiondata_t;
+                ucicmd->data = (ucidata_t*)ucisetoptiondata;
+                bGetName = bGetValue = false;
+                //sName = sValue = "";
+                while (ci < cs)
+                {
+                    string sLower = commandargs[ci];
+                    transform(sLower.begin(), sLower.end(), sLower.begin(), ::tolower);
+
+                    if (sLower == "name")
+                    {
+#if 0 // Why this?
+                        if (sName != "")
+                            ucioptions.Set(sName, sValue);
+#endif
+                        bGetName = true;
+                        bGetValue = false;
+                        ucisetoptiondata->name = "";
+                    }
+                    else if (sLower == "value")
+                    {
+                        bGetValue = true;
+                        bGetName = false;
+                        ucisetoptiondata->value = "";
+                    }
+                    else if (bGetName)
+                    {
+                        ucisetoptiondata->name += (ucisetoptiondata->name == "" ? "" : " ") + commandargs[ci];
+                    }
+                    else if (bGetValue)
+                    {
+                        ucisetoptiondata->value += (ucisetoptiondata->value == "" ? "" : " ") + commandargs[ci];
+                    }
+                    ci++;
+                }
+                uciqueue.putToQueue();
+            }
+            break;
+#if 0
                 if (stopLevel < ENGINETERMINATEDSEARCH)
                 {
                     guiCom << "info string Changing option while searching is not supported. stopLevel = " + to_string(stopLevel) + "\n";
@@ -671,6 +685,7 @@ void engine::communicate(string inputstring)
                 }
                 ucioptions.Set(sName, sValue);
                 break;
+#endif
             case ISREADY:
                 uciqueue.putToQueue();
                 break;
@@ -678,7 +693,6 @@ void engine::communicate(string inputstring)
                 if (cs == 0)
                     break;
                 {
-                    //ucipositiondata_t* ucipositiondata = new ucipositiondata_t;
                     ucipositiondata_t* ucipositiondata = new ucipositiondata_t;
                     ucicmd->data = (ucidata_t*)ucipositiondata;
                     bMoves = false;

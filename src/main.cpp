@@ -45,7 +45,11 @@ void generateEpd(string egn)
 
         return;
     }
+    int rookfiles[2][2] = { { -1, -1 }, { -1, -1 } };
+    int kingfile[2] = { 4, 4 };
     chessposition *pos = &en.sthread[0].pos;
+    pos->initCastleRights(rookfiles, kingfile);
+
     int pcs[16];
 
     int n = 1000;
@@ -1071,6 +1075,7 @@ int main(int argc, char* argv[])
 #ifdef EVALTUNE
     tuneCleanup();
 #endif
+    // terminate uci handler
     en.communicate("quit");
     en.ucihandler.join();
     return 0;

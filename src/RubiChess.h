@@ -2068,12 +2068,18 @@ public:
 };
 
 
-#define MAXUCIQUEUELENGTH 4
+#define MAXUCIQUEUELENGTH 4     // set to 32 when testing is finished
 
 // uci data types
 class ucidata_t {
 public:
     virtual ~ucidata_t() {}
+};
+
+class ucisetoptiondata_t : public ucidata_t {
+public:
+    string name;
+    string value;
 };
 
 class ucipositiondata_t : public ucidata_t {
