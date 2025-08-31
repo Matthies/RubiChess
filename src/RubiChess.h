@@ -2000,6 +2000,7 @@ typedef map<string, ucioption_t>::iterator optionmapiterator;
 #define ENGINEWANTSTOP 1
 #define ENGINESTOPIMMEDIATELY 2
 #define ENGINETERMINATEDSEARCH 3
+#define ENGINEWAITTERMINATION 4
 
 #define NODESPERCHECK 0xfff
 enum ponderstate_t { NO, PONDERING };
@@ -2102,9 +2103,9 @@ struct ucicommand_t {
 
 class uciqueue_t {
     ucicommand_t cmd[MAXUCIQUEUELENGTH];
-    int current = -1;       // index of command processed by handleUciQueue or -1
-    int pending = -1;       // index of next pending command 
-    int nextfree = 0;       // index of next free slot
+    int current = -1;                       // index of command processed by handleUciQueue or -1
+    int pending = MAXUCIQUEUELENGTH - 1;    // index of next pending command 
+    int nextfree = 0;                       // index of next free slot
 public:
     void remove() {
         for (int i = 0; i < MAXUCIQUEUELENGTH; i++)
@@ -2112,37 +2113,35 @@ public:
     }
     // communicate() calls getNextFree() to get the next slot for new command
     ucicommand_t* getNextFree() {
-        if (pending == nextfree)
-            cout << "info string getNextFree is blocked\n";
+        //if (pending == nextfree) cout << "info string getNextFree is blocked\n";
         while (pending == nextfree)
             Sleep(1);
         delete cmd[nextfree].data;
         cmd[nextfree].data = nullptr;
-        cout << "communicate  getNextFree:  Slot=" << nextfree << "\n";
+        //cout << "communicate  getNextFree:  Slot=" << nextfree << "\n";
         return &cmd[nextfree];
     }
     // communicate() calls putToQueue() after cmd[nextfree] is filled with data of latest command
     void putToQueue() {
-        cout << cmd[nextfree].timestamp << " communicate  putToQueue:  Slot=" << nextfree << "  cmd=" << cmd[nextfree].type << "\n";
+        //cout << cmd[nextfree].timestamp << " communicate  putToQueue:  Slot=" << nextfree << "  cmd=" << cmd[nextfree].type << "\n";
         int next = (nextfree + 1) % MAXUCIQUEUELENGTH;
         nextfree = next;
     }
     // handleUciQueue() calls getNextPending() for the next command to processed
     ucicommand_t* getNextPending() {
         current = (pending + 1) % MAXUCIQUEUELENGTH;
-        cout << "handleUciQueue getNextPending. Slot=" << current << "  cmd=" << cmd[current].type << "\n";
+        //cout << "handleUciQueue getNextPending. Slot=" << current << "  cmd=" << cmd[current].type << "\n";
         return &cmd[current];
     }
     // handleUciQueue() calls takeFromQueue() after cmd[current] is processed
     void takeFromQueue() {
         pending = (pending + 1) % MAXUCIQUEUELENGTH;
         current = -1;
-        cout << "handleUciQueue takeFromQueue. NextSlot=" << pending << "\n";
+        //cout << "handleUciQueue takeFromQueue. NextSlot=" << pending << "\n";
     }
     bool somethingToDo() {
         bool std = ((pending + 1) % MAXUCIQUEUELENGTH != nextfree);
-        if (std)
-            cout << "handleUciQueue has something to do. Slot=" << (pending + 1) % MAXUCIQUEUELENGTH << "\n";
+        //if (std) cout << "handleUciQueue has something to do. Slot=" << (pending + 1) % MAXUCIQUEUELENGTH << "\n";
         return std;
     }
 };

@@ -1071,6 +1071,7 @@ int main(int argc, char* argv[])
 #ifdef EVALTUNE
     tuneCleanup();
 #endif
+    en.communicate("quit");
     en.ucihandler.join();
     return 0;
 }

@@ -503,6 +503,7 @@ void engine::handleUciQueue()
             break;
         case WAIT:
             searchWaitStop(false);
+            stopLevel = ENGINEWAITTERMINATION;
             break;
         default:
             break;
@@ -523,22 +524,14 @@ void engine::handleUciQueue()
 
 void engine::communicate(string inputstring)
 {
-    //string fen;
-    //vector<string> moves;
     vector<string> commandargs;
-    //GuiToken command = UNKNOWN;
     size_t ci, cs;
     bool bGetName, bGetValue;
     string sName, sValue;
     bool bMoves;
-    //bool pendingisready = false;
-    //enum pendingpositionstate_t { NoPosition, Pending, Preparing };
     bool pendingposition = false;
-    //thread *preparepositionthread = nullptr;
-    //bool preparingposition = false;
 
-    if (inputstring != "")
-        cout << getTime() << "  communicate: " << inputstring << "\n";
+    //if (inputstring != "") cout << getTime() << "  communicate: " << inputstring << "\n";
 
     ucicommand_t* ucicmd;
     do
@@ -636,7 +629,7 @@ void engine::communicate(string inputstring)
                 uciqueue.putToQueue();
                 break;
             case SETOPTION:
-                if (stopLevel != ENGINETERMINATEDSEARCH)
+                if (stopLevel < ENGINETERMINATEDSEARCH)
                 {
                     guiCom << "info string Changing option while searching is not supported. stopLevel = " + to_string(stopLevel) + "\n";
                     break;
@@ -830,6 +823,10 @@ void engine::communicate(string inputstring)
                 break;
             case WAIT:
                 uciqueue.putToQueue();
+                // Wait for termination of search threads before continuing
+                while (stopLevel != ENGINEWAITTERMINATION)
+                    Sleep(1);
+                stopLevel = ENGINETERMINATEDSEARCH;
                 break;
             case PONDERHIT:
                 uciqueue.putToQueue();
