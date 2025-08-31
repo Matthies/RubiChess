@@ -386,6 +386,9 @@ void engine::handleUciQueue()
             Sleep(1); // Hmmm. Is there somathing better like conditional_variable.wait(lock);
         ucicmd = uciqueue.getNextPending();
         //guiCom << "handleUciQueue  cmd: " << ucicmd->type << "  timestamp: " << ucicmd->timestamp << "\n";
+        if (stopLevel == ENGINESTOPIMMEDIATELY)
+            cout << "handleUciQueue doing a searchwaitstop\n";
+
         switch (ucicmd->type) {
         case POSITION:
         {
@@ -615,10 +618,6 @@ void engine::communicate(string inputstring)
 
                     if (sLower == "name")
                     {
-#if 0 // Why this?
-                        if (sName != "")
-                            ucioptions.Set(sName, sValue);
-#endif
                         bGetName = true;
                         bGetValue = false;
                         ucisetoptiondata->name = "";
@@ -642,50 +641,6 @@ void engine::communicate(string inputstring)
                 uciqueue.putToQueue();
             }
             break;
-#if 0
-                if (stopLevel < ENGINETERMINATEDSEARCH)
-                {
-                    guiCom << "info string Changing option while searching is not supported. stopLevel = " + to_string(stopLevel) + "\n";
-                    break;
-                }
-                bGetName = bGetValue = false;
-                sName = sValue = "";
-                while (ci < cs)
-                {
-                    string sLower = commandargs[ci];
-                    transform(sLower.begin(), sLower.end(), sLower.begin(), ::tolower);
-
-                    if (sLower == "name")
-                    {
-                        if (sName != "")
-                            ucioptions.Set(sName, sValue);
-                        bGetName = true;
-                        bGetValue = false;
-                        sName = "";
-                    }
-                    else if (sLower == "value")
-                    {
-                        bGetValue = true;
-                        bGetName = false;
-                        sValue = "";
-                    }
-                    else if (bGetName)
-                    {
-                        if (sName != "")
-                            sName += " ";
-                        sName += commandargs[ci];
-                    }
-                    else if (bGetValue)
-                    {
-                        if (sValue != "")
-                            sValue += " ";
-                        sValue += commandargs[ci];
-                    }
-                    ci++;
-                }
-                ucioptions.Set(sName, sValue);
-                break;
-#endif
             case ISREADY:
                 uciqueue.putToQueue();
                 break;
@@ -806,34 +761,6 @@ void engine::communicate(string inputstring)
                     }
                     uciqueue.putToQueue();
                 }
-#if 0
-                // FIXME: not here!!!
-                int *wtime, *btime, *winc, *binc;
-                if (rootposition.w2m())
-                {
-                    wtime = &mytime;
-                    winc = &myinc;
-                    btime = &yourtime;
-                    binc = &yourinc;
-                } else {
-                    wtime = &yourtime;
-                    winc = &yourinc;
-                    btime = &mytime;
-                    binc = &myinc;
-                }
-                
-
-                tmEnabled = (mytime || myinc);
-                while (preparingposition)
-                    Sleep(1);
-                if (!prepared)
-                    prepareThreads();
-                measureOverhead(wasPondering);
-                if (MultiPV == 1)
-                    searchStart<SinglePVSearch>();
-                else
-                    searchStart<MultiPVSearch>();
-#endif
                 break;
             case WAIT:
                 uciqueue.putToQueue();
