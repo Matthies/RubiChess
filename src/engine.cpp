@@ -382,13 +382,11 @@ void engine::handleUciQueue()
 {
     ucicommand_t* ucicmd;
     do {
-        while (!uciqueue.somethingToDo())
-            Sleep(1); // Hmmm. Is there somathing better like conditional_variable.wait(lock);
+        {
+            unique_lock<mutex> mylock(ucimtx);
+            ucicv.wait(mylock, [this] { return ucihaswork; });
+        }
         ucicmd = uciqueue.getNextPending();
-        //guiCom << "handleUciQueue  cmd: " << ucicmd->type << "  timestamp: " << ucicmd->timestamp << "\n";
-        if (stopLevel == ENGINESTOPIMMEDIATELY)
-            cout << "handleUciQueue doing a searchwaitstop\n";
-
         switch (ucicmd->type) {
         case POSITION:
         {
@@ -527,14 +525,9 @@ void engine::handleUciQueue()
         // Simulate some delay
         //Sleep(100);
         //guiCom << "handleUciQueue done!\n";
-        uciqueue.takeFromQueue();
-
+        takeFromQueue();
     } while (ucicmd->type != QUIT);
 }
-#if 0
-                *preparing = false;
-}
-#endif
 
 
 
@@ -600,10 +593,10 @@ void engine::communicate(string inputstring)
                 }
                 break;
             case UCI:
-                uciqueue.putToQueue();
+                putToQueue();
                 break;
             case UCINEWGAME:
-                uciqueue.putToQueue();
+                putToQueue();
                 break;
             case SETOPTION:
             {
@@ -638,11 +631,11 @@ void engine::communicate(string inputstring)
                     }
                     ci++;
                 }
-                uciqueue.putToQueue();
+                putToQueue();
             }
             break;
             case ISREADY:
-                uciqueue.putToQueue();
+                putToQueue();
                 break;
             case POSITION:
                 if (cs == 0)
@@ -676,7 +669,7 @@ void engine::communicate(string inputstring)
                     }
 
                     if (ucipositiondata->fen != "")
-                        uciqueue.putToQueue();
+                        putToQueue();
                 }
                 break;
             case GO:
@@ -759,22 +752,22 @@ void engine::communicate(string inputstring)
                         else
                             ci++;
                     }
-                    uciqueue.putToQueue();
+                    putToQueue();
                 }
                 break;
             case WAIT:
-                uciqueue.putToQueue();
+                putToQueue();
                 // Wait for termination of search threads before continuing
                 while (stopLevel != ENGINEWAITTERMINATION)
                     Sleep(1);
                 stopLevel = ENGINETERMINATEDSEARCH;
                 break;
             case PONDERHIT:
-                uciqueue.putToQueue();
+                putToQueue();
                 break;
             case STOP:
             case QUIT:
-                uciqueue.putToQueue();
+                putToQueue();
                 break;
             case EVAL:
                 evaldetails = (ci < cs && commandargs[ci] == "detail");

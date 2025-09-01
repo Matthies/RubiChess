@@ -2108,11 +2108,11 @@ struct ucicommand_t {
 };
 
 class uciqueue_t {
+public:
     ucicommand_t cmd[MAXUCIQUEUELENGTH];
     int current = -1;                       // index of command processed by handleUciQueue or -1
     int pending = MAXUCIQUEUELENGTH - 1;    // index of next pending command 
     int nextfree = 0;                       // index of next free slot
-public:
     void remove() {
         for (int i = 0; i < MAXUCIQUEUELENGTH; i++)
             delete cmd[i].data;
@@ -2127,12 +2127,6 @@ public:
         //cout << "communicate  getNextFree:  Slot=" << nextfree << "\n";
         return &cmd[nextfree];
     }
-    // communicate() calls putToQueue() after cmd[nextfree] is filled with data of latest command
-    void putToQueue() {
-        //cout << cmd[nextfree].timestamp << " communicate  putToQueue:  Slot=" << nextfree << "  cmd=" << cmd[nextfree].type << "\n";
-        int next = (nextfree + 1) % MAXUCIQUEUELENGTH;
-        nextfree = next;
-    }
     // handleUciQueue() calls getNextPending() for the next command to processed
     ucicommand_t* getNextPending() {
         current = (pending + 1) % MAXUCIQUEUELENGTH;
@@ -2140,11 +2134,6 @@ public:
         return &cmd[current];
     }
     // handleUciQueue() calls takeFromQueue() after cmd[current] is processed
-    void takeFromQueue() {
-        pending = (pending + 1) % MAXUCIQUEUELENGTH;
-        current = -1;
-        //cout << "handleUciQueue takeFromQueue. NextSlot=" << pending << "\n";
-    }
     bool somethingToDo() {
         bool std = ((pending + 1) % MAXUCIQUEUELENGTH != nextfree);
         //if (std) cout << "handleUciQueue has something to do. Slot=" << (pending + 1) % MAXUCIQUEUELENGTH << "\n";
@@ -2207,6 +2196,9 @@ public:
     bool prepared;
     uciqueue_t uciqueue;
     thread ucihandler;
+    mutex ucimtx;
+    condition_variable ucicv;
+    bool ucihaswork = false;
     string benchmove;
     string benchpondermove;
     ucioptions_t ucioptions;
@@ -2283,6 +2275,22 @@ public:
     void searchWaitStop(bool forceStop = true);
     void resetEndTime(U64 nowTime, int constantRootMoves = 0, int bestmovenodesratio = 128);
     void startSearchTime(bool ponderhit);
+    // communicate() calls putToQueue() after cmd[nextfree] is filled with data of latest command
+    void putToQueue() {
+        //cout << cmd[nextfree].timestamp << " communicate  putToQueue:  Slot=" << nextfree << "  cmd=" << cmd[nextfree].type << "\n";
+        int next = (uciqueue.nextfree + 1) % MAXUCIQUEUELENGTH;
+        uciqueue.nextfree = next;
+        lock_guard<mutex> lock(ucimtx);
+        ucihaswork = true;
+        ucicv.notify_one();
+    }
+    void takeFromQueue() {
+        uciqueue.pending = (uciqueue.pending + 1) % MAXUCIQUEUELENGTH;
+        uciqueue.current = -1;
+        lock_guard<mutex> lock(ucimtx);
+        ucihaswork = uciqueue.somethingToDo();
+        //cout << "handleUciQueue takeFromQueue. NextSlot=" << pending << "\n";
+    }
 };
 
 PieceType GetPieceType(char c);
