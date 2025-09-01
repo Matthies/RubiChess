@@ -748,7 +748,7 @@ void engine::communicate(string inputstring)
                         }
                         else if (commandargs[ci] == "ponder")
                         {
-                            pondersearch = PONDERING;
+                            ucigodata->pondersearch = PONDERING;
                             ci++;
                         }
                         else
