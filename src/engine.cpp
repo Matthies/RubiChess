@@ -462,8 +462,15 @@ void engine::handleUciQueue()
             maxdepth = data->maxdepth;
             pondersearch = data->pondersearch;
             maxnodes = data->maxnodes;
-
             tmEnabled = (mytime || myinc);
+            if (!data->searchmoves.empty())
+            {
+                searchmoves = data->searchmoves;
+                // Filter root moves again
+                rootposition.getRootMoves();
+                rootposition.tbFilterRootMoves();
+                prepareThreads();
+            }
             if (!prepared)
                 prepareThreads();
             measureOverhead(wasPondering);
@@ -687,11 +694,6 @@ void engine::communicate(string inputstring)
                         {
                             while (++ci < cs && AlgebraicToIndex(commandargs[ci]) < 64 && AlgebraicToIndex(&commandargs[ci][2]) < 64)
                                 ucigodata->searchmoves.insert(commandargs[ci]);
-                            // Filter root moves again
-                            // FIXME: not here
-                            //rootposition.getRootMoves();
-                            //rootposition.tbFilterRootMoves();
-                            //prepareThreads();
                         }
                         else if (commandargs[ci] == "wtime")
                         {
