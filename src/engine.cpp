@@ -526,6 +526,32 @@ void engine::handleUciQueue()
                 ucioptions.Set(data->name, data->value);
             }
             break;
+        case UCIDEBUG:
+#ifdef SDEBUG
+        {
+            int i = 0;
+            ucipositiondata_t* data = (ucipositiondata_t*)ucicmd->data;
+            for (vector<string>::iterator it = data->moves.begin(); it != data->moves.end(); ++it)
+            {
+                if (!rootposition.applyMove(*it, false))
+                {
+                    printf("info string Alarm! Debug PV Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
+                    continue;
+                }
+                U64 h = rootposition.movestack[rootposition.ply - 1].hash;
+                tp.markDebugSlot(h, i);
+                rootposition.pvmovecode[i++] = rootposition.movecode[rootposition.ply - 1];
+            }
+            rootposition.pvmovecode[i] = 0;
+            while (i--) {
+                uint32_t mc;
+                mc = rootposition.pvmovecode[i];
+                rootposition.unplayMove<false>(mc);
+            }
+            prepareThreads();   // To copy the debug information to the threads position object
+        }
+#endif
+        break;
         default:
             break;
         }
@@ -575,29 +601,11 @@ void engine::communicate(string inputstring)
                     rootposition.debughash = rootposition.hash;
                 else if (commandargs[ci] == "pv")
                 {
-                    int i = 0;
-                    moves.clear();
+                    ucipositiondata_t* ucipositiondata = new ucipositiondata_t;
+                    ucicmd->data = (ucidata_t*)ucipositiondata;
                     while (++ci < cs)
-                        moves.push_back(commandargs[ci]);
-
-                    for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
-                    {
-                        if (!rootposition.applyMove(*it, false))
-                        {
-                            printf("info string Alarm! Debug PV Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
-                            continue;
-                        }
-                        U64 h = rootposition.movestack[rootposition.ply - 1].hash;
-                        tp.markDebugSlot(h, i);
-                        rootposition.pvmovecode[i++] = rootposition.movecode[rootposition.ply - 1];
-                    }
-                    rootposition.pvmovecode[i] = 0;
-                    while (i--) {
-                        uint32_t mc;
-                        mc = rootposition.pvmovecode[i];
-                        rootposition.unplayMove<false>(mc);
-                    }
-                    prepareThreads();   // To copy the debug information to the threads position object
+                        ucipositiondata->moves.push_back(commandargs[ci]);
+                    putToQueue();
                 }
 #endif
             }

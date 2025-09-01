@@ -2130,7 +2130,6 @@ public:
         //cout << "handleUciQueue getNextPending. Slot=" << current << "  cmd=" << cmd[current].type << "\n";
         return &cmd[current];
     }
-    // handleUciQueue() calls takeFromQueue() after cmd[current] is processed
     bool somethingToDo() {
         bool std = ((pending + 1) % MAXUCIQUEUELENGTH != nextfree);
         //if (std) cout << "handleUciQueue has something to do. Slot=" << (pending + 1) % MAXUCIQUEUELENGTH << "\n";
