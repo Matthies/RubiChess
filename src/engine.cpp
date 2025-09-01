@@ -552,296 +552,299 @@ void engine::communicate(string inputstring)
     ucicommand_t* ucicmd;
     do
     {
+        commandargs.clear();
         {
-            commandargs.clear();;
-            ucicmd = uciqueue.getNextFree();
-            ucicmd->type = parse(&commandargs, inputstring);  // blocking!!
-            ucicmd->timestamp = getTime();  // get best possible timestamp
-            ci = 0;
-            cs = commandargs.size();
-            switch (ucicmd->type) {
-            case UCIDEBUG:
-                if (ci < cs)
-                {
-                    if (commandargs[ci] == "on")
-                        debug = true;
-                    else if (commandargs[ci] == "off")
-                        debug = false;
-#ifdef SDEBUG
-                    else if (commandargs[ci] == "this")
-                        rootposition.debughash = rootposition.hash;
-                    else if (commandargs[ci] == "pv")
-                    {
-                        int i = 0;
-                        moves.clear();
-                        while (++ci < cs)
-                                moves.push_back(commandargs[ci]);
-
-                        for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
-                        {
-                            if (!rootposition.applyMove(*it, false))
-                            {
-                                printf("info string Alarm! Debug PV Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
-                                continue;
-                            }
-                            U64 h = rootposition.movestack[rootposition.ply - 1].hash;
-                            tp.markDebugSlot(h, i);
-                            rootposition.pvmovecode[i++] = rootposition.movecode[rootposition.ply - 1];
-                        }
-                        rootposition.pvmovecode[i] = 0;
-                        while (i--) {
-                            uint32_t mc;
-                            mc = rootposition.pvmovecode[i];
-                            rootposition.unplayMove<false>(mc);
-                        }
-                        prepareThreads();   // To copy the debug information to the threads position object
-                    }
-#endif
-                }
-                break;
-            case UCI:
-                putToQueue();
-                break;
-            case UCINEWGAME:
-                putToQueue();
-                break;
-            case SETOPTION:
+            unique_lock<mutex> mylock(ucimtx);
+            ucicv.wait(mylock, [this] { return !uciqueuefull; });
+        }
+        ucicmd = uciqueue.getNextFree();
+        ucicmd->type = parse(&commandargs, inputstring);  // blocking!!
+        ucicmd->timestamp = getTime();  // get best possible timestamp
+        ci = 0;
+        cs = commandargs.size();
+        switch (ucicmd->type) {
+        case UCIDEBUG:
+            if (ci < cs)
             {
-                ucisetoptiondata_t* ucisetoptiondata = new ucisetoptiondata_t;
-                ucicmd->data = (ucidata_t*)ucisetoptiondata;
-                bGetName = bGetValue = false;
-                //sName = sValue = "";
+                if (commandargs[ci] == "on")
+                    debug = true;
+                else if (commandargs[ci] == "off")
+                    debug = false;
+#ifdef SDEBUG
+                else if (commandargs[ci] == "this")
+                    rootposition.debughash = rootposition.hash;
+                else if (commandargs[ci] == "pv")
+                {
+                    int i = 0;
+                    moves.clear();
+                    while (++ci < cs)
+                        moves.push_back(commandargs[ci]);
+
+                    for (vector<string>::iterator it = moves.begin(); it != moves.end(); ++it)
+                    {
+                        if (!rootposition.applyMove(*it, false))
+                        {
+                            printf("info string Alarm! Debug PV Zug %s nicht anwendbar (oder Enginefehler)\n", (*it).c_str());
+                            continue;
+                        }
+                        U64 h = rootposition.movestack[rootposition.ply - 1].hash;
+                        tp.markDebugSlot(h, i);
+                        rootposition.pvmovecode[i++] = rootposition.movecode[rootposition.ply - 1];
+                    }
+                    rootposition.pvmovecode[i] = 0;
+                    while (i--) {
+                        uint32_t mc;
+                        mc = rootposition.pvmovecode[i];
+                        rootposition.unplayMove<false>(mc);
+                    }
+                    prepareThreads();   // To copy the debug information to the threads position object
+                }
+#endif
+            }
+            break;
+        case UCI:
+            putToQueue();
+            break;
+        case UCINEWGAME:
+            putToQueue();
+            break;
+        case SETOPTION:
+        {
+            ucisetoptiondata_t* ucisetoptiondata = new ucisetoptiondata_t;
+            ucicmd->data = (ucidata_t*)ucisetoptiondata;
+            bGetName = bGetValue = false;
+            //sName = sValue = "";
+            while (ci < cs)
+            {
+                string sLower = commandargs[ci];
+                transform(sLower.begin(), sLower.end(), sLower.begin(), ::tolower);
+
+                if (sLower == "name")
+                {
+                    bGetName = true;
+                    bGetValue = false;
+                    ucisetoptiondata->name = "";
+                }
+                else if (sLower == "value")
+                {
+                    bGetValue = true;
+                    bGetName = false;
+                    ucisetoptiondata->value = "";
+                }
+                else if (bGetName)
+                {
+                    ucisetoptiondata->name += (ucisetoptiondata->name == "" ? "" : " ") + commandargs[ci];
+                }
+                else if (bGetValue)
+                {
+                    ucisetoptiondata->value += (ucisetoptiondata->value == "" ? "" : " ") + commandargs[ci];
+                }
+                ci++;
+            }
+            putToQueue();
+        }
+        break;
+        case ISREADY:
+            putToQueue();
+            break;
+        case POSITION:
+            if (cs == 0)
+                break;
+            {
+                ucipositiondata_t* ucipositiondata = new ucipositiondata_t;
+                ucicmd->data = (ucidata_t*)ucipositiondata;
+                bMoves = false;
+
+                if (commandargs[ci] == "startpos")
+                {
+                    ci++;
+                    ucipositiondata->fen = STARTFEN;
+                }
+                else if (commandargs[ci] == "fen")
+                {
+                    while (++ci < cs && commandargs[ci] != "moves")
+                        ucipositiondata->fen = ucipositiondata->fen + commandargs[ci] + " ";
+                }
                 while (ci < cs)
                 {
-                    string sLower = commandargs[ci];
-                    transform(sLower.begin(), sLower.end(), sLower.begin(), ::tolower);
-
-                    if (sLower == "name")
+                    if (commandargs[ci] == "moves")
                     {
-                        bGetName = true;
-                        bGetValue = false;
-                        ucisetoptiondata->name = "";
+                        bMoves = true;
                     }
-                    else if (sLower == "value")
+                    else if (bMoves)
                     {
-                        bGetValue = true;
-                        bGetName = false;
-                        ucisetoptiondata->value = "";
-                    }
-                    else if (bGetName)
-                    {
-                        ucisetoptiondata->name += (ucisetoptiondata->name == "" ? "" : " ") + commandargs[ci];
-                    }
-                    else if (bGetValue)
-                    {
-                        ucisetoptiondata->value += (ucisetoptiondata->value == "" ? "" : " ") + commandargs[ci];
+                        ucipositiondata->moves.push_back(commandargs[ci]);
                     }
                     ci++;
+                }
+
+                if (ucipositiondata->fen != "")
+                    putToQueue();
+            }
+            break;
+        case GO:
+            if (usennue && !NnueReady)
+                break;
+            startSearchTime(false);  // start the clock as soon as possible
+            {
+                ucigodata_t* ucigodata = new ucigodata_t;
+                ucicmd->data = (ucidata_t*)ucigodata;
+                ucigodata->maxnodes = LimitNps / Threads;
+
+                while (ci < cs)
+                {
+                    if (commandargs[ci] == "searchmoves")
+                    {
+                        while (++ci < cs && AlgebraicToIndex(commandargs[ci]) < 64 && AlgebraicToIndex(&commandargs[ci][2]) < 64)
+                            ucigodata->searchmoves.insert(commandargs[ci]);
+                    }
+                    else if (commandargs[ci] == "wtime")
+                    {
+                        if (++ci < cs)
+                            ucigodata->wtime = stoi(commandargs[ci++]);
+                    }
+                    else if (commandargs[ci] == "btime")
+                    {
+                        if (++ci < cs)
+                            ucigodata->btime = stoi(commandargs[ci++]);
+                    }
+                    else if (commandargs[ci] == "winc")
+                    {
+                        if (++ci < cs)
+                            ucigodata->winc = stoi(commandargs[ci++]);
+                    }
+                    else if (commandargs[ci] == "binc")
+                    {
+                        if (++ci < cs)
+                            ucigodata->binc = stoi(commandargs[ci++]);
+                    }
+                    else if (commandargs[ci] == "movetime")
+                    {
+                        mytime = yourtime = 0;
+                        if (++ci < cs)
+                            ucigodata->winc = ucigodata->binc = stoi(commandargs[ci++]);
+                    }
+                    else if (commandargs[ci] == "movestogo")
+                    {
+                        if (++ci < cs)
+                            ucigodata->movestogo = stoi(commandargs[ci++]);
+                    }
+                    else if (commandargs[ci] == "nodes")
+                    {
+                        if (++ci < cs)
+                            ucigodata->maxnodes = stoull(commandargs[ci++]) / Threads;
+                    }
+                    else if (commandargs[ci] == "mate")
+                    {
+                        if (++ci < cs)
+                            ucigodata->mate = stoi(commandargs[ci++]);
+                    }
+                    else if (commandargs[ci] == "depth")
+                    {
+                        if (++ci < cs)
+                            ucigodata->maxdepth = stoi(commandargs[ci++]);
+                    }
+                    else if (commandargs[ci] == "infinite")
+                    {
+                        // just a dummy
+                        ci++;
+                    }
+                    else if (commandargs[ci] == "ponder")
+                    {
+                        ucigodata->pondersearch = PONDERING;
+                        ci++;
+                    }
+                    else
+                        ci++;
                 }
                 putToQueue();
             }
             break;
-            case ISREADY:
-                putToQueue();
-                break;
-            case POSITION:
-                if (cs == 0)
-                    break;
-                {
-                    ucipositiondata_t* ucipositiondata = new ucipositiondata_t;
-                    ucicmd->data = (ucidata_t*)ucipositiondata;
-                    bMoves = false;
-
-                    if (commandargs[ci] == "startpos")
-                    {
-                        ci++;
-                        ucipositiondata->fen = STARTFEN;
-                    }
-                    else if (commandargs[ci] == "fen")
-                    {
-                        while (++ci < cs && commandargs[ci] != "moves")
-                            ucipositiondata->fen = ucipositiondata->fen + commandargs[ci] + " ";
-                    }
-                    while (ci < cs)
-                    {
-                        if (commandargs[ci] == "moves")
-                        {
-                            bMoves = true;
-                        }
-                        else if (bMoves)
-                        {
-                            ucipositiondata->moves.push_back(commandargs[ci]);
-                        }
-                        ci++;
-                    }
-
-                    if (ucipositiondata->fen != "")
-                        putToQueue();
-                }
-                break;
-            case GO:
-                if (usennue && !NnueReady)
-                    break;
-                startSearchTime(false);  // start the clock as soon as possible
-                {
-                    ucigodata_t* ucigodata = new ucigodata_t;
-                    ucicmd->data = (ucidata_t*)ucigodata;
-                    ucigodata->maxnodes = LimitNps / Threads;
-
-                    while (ci < cs)
-                    {
-                        if (commandargs[ci] == "searchmoves")
-                        {
-                            while (++ci < cs && AlgebraicToIndex(commandargs[ci]) < 64 && AlgebraicToIndex(&commandargs[ci][2]) < 64)
-                                ucigodata->searchmoves.insert(commandargs[ci]);
-                        }
-                        else if (commandargs[ci] == "wtime")
-                        {
-                            if (++ci < cs)
-                                ucigodata->wtime = stoi(commandargs[ci++]);
-                        }
-                        else if (commandargs[ci] == "btime")
-                        {
-                            if (++ci < cs)
-                                ucigodata->btime = stoi(commandargs[ci++]);
-                        }
-                        else if (commandargs[ci] == "winc")
-                        {
-                            if (++ci < cs)
-                                ucigodata->winc = stoi(commandargs[ci++]);
-                        }
-                        else if (commandargs[ci] == "binc")
-                        {
-                            if (++ci < cs)
-                                ucigodata->binc = stoi(commandargs[ci++]);
-                        }
-                        else if (commandargs[ci] == "movetime")
-                        {
-                            mytime = yourtime = 0;
-                            if (++ci < cs)
-                                ucigodata->winc = ucigodata->binc = stoi(commandargs[ci++]);
-                        }
-                        else if (commandargs[ci] == "movestogo")
-                        {
-                            if (++ci < cs)
-                                ucigodata->movestogo = stoi(commandargs[ci++]);
-                        }
-                        else if (commandargs[ci] == "nodes")
-                        {
-                            if (++ci < cs)
-                                ucigodata->maxnodes = stoull(commandargs[ci++]) / Threads;
-                        }
-                        else if (commandargs[ci] == "mate")
-                        {
-                            if (++ci < cs)
-                                ucigodata->mate = stoi(commandargs[ci++]);
-                        }
-                        else if (commandargs[ci] == "depth")
-                        {
-                            if (++ci < cs)
-                                ucigodata->maxdepth = stoi(commandargs[ci++]);
-                        }
-                        else if (commandargs[ci] == "infinite")
-                        {
-                            // just a dummy
-                            ci++;
-                        }
-                        else if (commandargs[ci] == "ponder")
-                        {
-                            ucigodata->pondersearch = PONDERING;
-                            ci++;
-                        }
-                        else
-                            ci++;
-                    }
-                    putToQueue();
-                }
-                break;
-            case WAIT:
-                putToQueue();
-                // Wait for termination of search threads before continuing
-                while (stopLevel != ENGINEWAITTERMINATION)
-                    Sleep(1);
-                stopLevel = ENGINETERMINATEDSEARCH;
-                break;
-            case PONDERHIT:
-                putToQueue();
-                break;
-            case STOP:
-            case QUIT:
-                putToQueue();
-                break;
-            case EVAL:
-                evaldetails = (ci < cs && commandargs[ci] == "detail");
-                sthread[0].pos.getEval<TRACE>();
-                break;
-            case PERFT:
-                if (ci < cs) {
-                    try { maxdepth = stoi(commandargs[ci++]); } catch (...) {}
-                    perft(max(1, maxdepth), true);
-                }
-                break;
-            case BENCH:
-            {
-                maxdepth = 0;
-                mytime = 0;
-                string epdf = "";
-                if (ci < cs)
-                    try { maxdepth = stoi(commandargs[ci++]); }
+        case WAIT:
+            putToQueue();
+            // Wait for termination of search threads before continuing
+            while (stopLevel != ENGINEWAITTERMINATION)
+                Sleep(1);
+            stopLevel = ENGINETERMINATEDSEARCH;
+            break;
+        case PONDERHIT:
+            putToQueue();
+            break;
+        case STOP:
+        case QUIT:
+            putToQueue();
+            break;
+        case EVAL:
+            evaldetails = (ci < cs && commandargs[ci] == "detail");
+            sthread[0].pos.getEval<TRACE>();
+            break;
+        case PERFT:
+            if (ci < cs) {
+                try { maxdepth = stoi(commandargs[ci++]); }
                 catch (...) {}
-                if (ci < cs)
-                    try { mytime = stoi(commandargs[ci++]); }
-                catch (...) {}
-                if (ci < cs)
-                    epdf = commandargs[ci++];
-                bench(max(0, maxdepth), epdf, max(0, mytime), 1, true);
-                break;
+                perft(max(1, maxdepth), true);
             }
+            break;
+        case BENCH:
+        {
+            maxdepth = 0;
+            mytime = 0;
+            string epdf = "";
+            if (ci < cs)
+                try { maxdepth = stoi(commandargs[ci++]); }
+            catch (...) {}
+            if (ci < cs)
+                try { mytime = stoi(commandargs[ci++]); }
+            catch (...) {}
+            if (ci < cs)
+                epdf = commandargs[ci++];
+            bench(max(0, maxdepth), epdf, max(0, mytime), 1, true);
+            break;
+        }
 #ifdef NNUELEARN
-            case GENSFEN:
-                gensfen(commandargs);
-                break;
-            case CONVERT:
-                convert(commandargs);
-                break;
-            case LEARN:
-                learn(commandargs);
-                break;
+        case GENSFEN:
+            gensfen(commandargs);
+            break;
+        case CONVERT:
+            convert(commandargs);
+            break;
+        case LEARN:
+            learn(commandargs);
+            break;
 #endif
 #ifdef EVALTUNE
-            case TUNE:
-                parseTune(commandargs);
-                break;
+        case TUNE:
+            parseTune(commandargs);
+            break;
 #endif
 #ifdef SEARCHOPTIONS
-            case TUNE:
-                ucioptions.Print(true);
-                break;
+        case TUNE:
+            ucioptions.Print(true);
+            break;
 #endif
-            case EXPORT:
-                NnueWriteNet(commandargs);
-                break;
+        case EXPORT:
+            NnueWriteNet(commandargs);
+            break;
 #ifdef STATISTICS
-            case STATS:
-                statistics.output(commandargs);
-                break;
+        case STATS:
+            statistics.output(commandargs);
+            break;
 #endif
-            default:
+        default:
 #ifdef SEARCHOPTIONS
-                // Try to consume output of SPSA tune "name, value"
-                if (ci <= cs - 2)
+            // Try to consume output of SPSA tune "name, value"
+            if (ci <= cs - 2)
+            {
+                sName = commandargs[ci++];
+                sValue = commandargs[ci++];
+                if (sName.back() == ',')
                 {
-                    sName = commandargs[ci++];
-                    sValue = commandargs[ci++];
-                    if (sName.back() == ',')
-                    {
-                        sName.pop_back();
-                        ucioptions.Set(sName, sValue);
-                    }
+                    sName.pop_back();
+                    ucioptions.Set(sName, sValue);
                 }
-#endif
-                break;
             }
+#endif
+            break;
         }
     } while (ucicmd->type != QUIT && (inputstring == "" || pendingposition));
     if (ucicmd->type == QUIT) {

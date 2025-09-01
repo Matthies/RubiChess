@@ -58,7 +58,7 @@
 //#define STACKDEBUG
 
 // Enable this to find memory leaks with the MSVC debug build
-#define FINDMEMORYLEAKS
+//#define FINDMEMORYLEAKS
 
 
 #if defined(FINDMEMORYLEAKS) && defined(_MSC_VER)
@@ -2119,9 +2119,6 @@ public:
     }
     // communicate() calls getNextFree() to get the next slot for new command
     ucicommand_t* getNextFree() {
-        //if (pending == nextfree) cout << "info string getNextFree is blocked\n";
-        while (pending == nextfree)
-            Sleep(1);
         delete cmd[nextfree].data;
         cmd[nextfree].data = nullptr;
         //cout << "communicate  getNextFree:  Slot=" << nextfree << "\n";
@@ -2199,6 +2196,7 @@ public:
     mutex ucimtx;
     condition_variable ucicv;
     bool ucihaswork = false;
+    bool uciqueuefull = false;
     string benchmove;
     string benchpondermove;
     ucioptions_t ucioptions;
@@ -2281,14 +2279,22 @@ public:
         int next = (uciqueue.nextfree + 1) % MAXUCIQUEUELENGTH;
         uciqueue.nextfree = next;
         lock_guard<mutex> lock(ucimtx);
-        ucihaswork = true;
-        ucicv.notify_one();
+        uciqueuefull = (uciqueue.pending == uciqueue.nextfree);
+        if (!ucihaswork) {
+            ucihaswork = true;
+            ucicv.notify_one();
+        }
     }
+    // handleUciQueue() calls takeFromQueue() after cmd[current] is processed
     void takeFromQueue() {
         uciqueue.pending = (uciqueue.pending + 1) % MAXUCIQUEUELENGTH;
         uciqueue.current = -1;
         lock_guard<mutex> lock(ucimtx);
         ucihaswork = uciqueue.somethingToDo();
+        if (uciqueuefull) {
+            uciqueuefull = false;
+            ucicv.notify_one();
+        }
         //cout << "handleUciQueue takeFromQueue. NextSlot=" << pending << "\n";
     }
 };
