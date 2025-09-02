@@ -2186,7 +2186,7 @@ public:
     void getNodesAndTbhits(U64 *nodes, U64 *tbhits);
     U64 perft(int depth, bool printsysteminfo = false);
     void bench(int constdepth, string epdfilename, int consttime, int startnum, bool openbench);
-    void prepareThreads();
+    //void prepareThreads();
     void resetStats();
     void registerOptions();
     void measureOverhead(bool wasPondering);
