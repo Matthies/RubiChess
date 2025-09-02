@@ -243,7 +243,6 @@ void engine::allocThreads()
     }
 
     freealigned64(sthread);
-    prepared = false;
 
     oldThreads = Threads;
 
@@ -259,7 +258,6 @@ void engine::allocThreads()
     {
         // FIXME: Ev. hilft es, wenn das jeder thread selbst macht?
         sthread[i].index = i;
-        sthread[i].lastCompleteDepth = 0;
         chessposition* pos = &sthread[i].pos;
         pos->pwnhsh.setSize(sizeOfPh);
         pos->accumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
@@ -432,11 +430,11 @@ void engine::communicate(string inputstring)
                 rootposition.lastnullmove = -rootposition.ply - 1;
                 rootposition.ply = 0;
                 rootposition.useTb = min(TBlargest, SyzygyProbeLimit);
-                //rootposition.getRootMoves();
-                //rootposition.tbFilterRootMoves();
-                //prepareThreads();
                 if (debug)
                 {
+                    rootposition.getRootMoves();
+                    rootposition.tbFilterRootMoves();
+                    prepareSearch(&sthread[0].pos, &rootposition);
                     sthread[0].pos.print();
                 }
                 pendingposition = false;
@@ -614,10 +612,6 @@ void engine::communicate(string inputstring)
                     {
                         while (++ci < cs && AlgebraicToIndex(commandargs[ci]) < 64 && AlgebraicToIndex(&commandargs[ci][2]) < 64)
                             searchmoves.insert(commandargs[ci]);
-                        // Filter root moves again
-                        //rootposition.getRootMoves();
-                        //rootposition.tbFilterRootMoves();
-                        //prepareThreads();
                     }
 
                     else if (commandargs[ci] == "wtime")
@@ -680,8 +674,6 @@ void engine::communicate(string inputstring)
                         ci++;
                 }
                 tmEnabled = (mytime || myinc);
-                if (!prepared)
-                    ;// prepareThreads();
                 measureOverhead(wasPondering);
                 if (MultiPV == 1)
                     searchStart<SinglePVSearch>();
@@ -905,10 +897,8 @@ void engine::startSearchTime(bool ponderhit)
 }
 
 
-template <RootsearchType RT>
-void prepareAndStartSearch(searchthread* thr, chessposition *rootpos)
+void prepareSearch(chessposition* pos, chessposition* rootpos)
 {
-    chessposition* pos = &thr->pos;
     // copy essential board data from rootpos to thread's position
     memcpy((void*)pos, rootpos, offsetof(chessposition, history));
     // reset of several variables that are not clean in rootpos
@@ -929,9 +919,17 @@ void prepareAndStartSearch(searchthread* thr, chessposition *rootpos)
     memset(&pos->nodespermove, 0, sizeof(chessposition::nodespermove));
     memcpy(&pos->prerootmovestack[startIndex], &rootpos->prerootmovestack[startIndex], framesToCopy * sizeof(chessmovestack));
     memcpy(&pos->prerootmovecode[startIndex], &rootpos->prerootmovecode[startIndex], framesToCopy * sizeof(uint32_t));
+
     if (NnueCurrentArch)
         NnueCurrentArch->ResetAccumulationCache(pos);
+}
 
+
+template <RootsearchType RT>
+void prepareAndStartSearch(searchthread* thr, chessposition *rootpos)
+{
+    chessposition* pos = &thr->pos;
+    prepareSearch(pos, rootpos);
     mainSearch<RT>(thr);
 }
 
@@ -949,7 +947,6 @@ void engine::searchStart()
     resetEndTime(clockstarttime);
 
     moveoutput = false;
-    //prepared = false;
 
     // increment generation counter for tt aging
     tp.nextSearch();
@@ -974,10 +971,9 @@ void engine::searchWaitStop(bool forceStop)
     // Make the other threads stop now
     if (forceStop)
         stopLevel = ENGINESTOPIMMEDIATELY;
-    for (int tnum = 0; tnum < Threads; tnum++) {
+    for (int tnum = 0; tnum < Threads; tnum++)
         if (sthread[tnum].thr.joinable())
             sthread[tnum].thr.join();
-    }
     stopLevel = ENGINETERMINATEDSEARCH;
 }
 

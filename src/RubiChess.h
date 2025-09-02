@@ -2118,7 +2118,6 @@ public:
     int lastReport;
     int lastbestmovescore;
     int benchdepth;
-    bool prepared;
     string benchmove;
     string benchpondermove;
     ucioptions_t ucioptions;
@@ -2195,6 +2194,10 @@ public:
     void resetEndTime(U64 nowTime, int constantRootMoves = 0, int bestmovenodesratio = 128);
     void startSearchTime(bool ponderhit);
 };
+
+void prepareSearch(chessposition* pos, chessposition* rootpos);
+template <RootsearchType RT>
+void prepareAndStartSearch(searchthread* thr, chessposition* rootpos);
 
 PieceType GetPieceType(char c);
 char PieceChar(PieceCode c, bool lower = false);
