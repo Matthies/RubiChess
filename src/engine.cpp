@@ -259,6 +259,7 @@ void engine::allocThreads()
     {
         // FIXME: Ev. hilft es, wenn das jeder thread selbst macht?
         sthread[i].index = i;
+        sthread[i].lastCompleteDepth = 0;
         chessposition* pos = &sthread[i].pos;
         pos->pwnhsh.setSize(sizeOfPh);
         pos->accumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
@@ -955,11 +956,13 @@ void engine::searchStart()
     rootposition.getRootMoves();
     rootposition.tbFilterRootMoves();
 
-    for (int tnum = 0; tnum < Threads; tnum++)
-    {
-        sthread[tnum].pos.threadindex = tnum;   // signal that the threas is (will be) alive
-        sthread[tnum].thr = thread(prepareAndStartSearch<RT>, &sthread[tnum], &rootposition);
+    for (int tnum = 0; tnum < Threads; tnum++) {
+        sthread[tnum].pos.threadindex = tnum;   // signal that the thread is (will be) alive
+        sthread[tnum].lastCompleteDepth = 0;    // needs early reset to avoid thread voting with threads not started yet
     }
+
+    for (int tnum = 0; tnum < Threads; tnum++)
+        sthread[tnum].thr = thread(prepareAndStartSearch<RT>, &sthread[tnum], &rootposition);
 }
 
 
@@ -971,9 +974,10 @@ void engine::searchWaitStop(bool forceStop)
     // Make the other threads stop now
     if (forceStop)
         stopLevel = ENGINESTOPIMMEDIATELY;
-    for (int tnum = 0; tnum < Threads; tnum++)
+    for (int tnum = 0; tnum < Threads; tnum++) {
         if (sthread[tnum].thr.joinable())
             sthread[tnum].thr.join();
+    }
     stopLevel = ENGINETERMINATEDSEARCH;
 }
 

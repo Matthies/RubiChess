@@ -1355,7 +1355,6 @@ void mainSearch(searchthread *thr)
 
     chessposition *pos = &thr->pos;
 
-    thr->lastCompleteDepth = 0;
     thr->depth = 1;
     if (en.maxdepth > 0)
         maxdepth = en.maxdepth;
