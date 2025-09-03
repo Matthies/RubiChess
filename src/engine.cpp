@@ -79,11 +79,7 @@ static void uciClearHash()
 
 static void uciSetSyzygyParam()
 {
-    // Changing Syzygy related parameters may affect rootmoves filtering
     en.rootposition.useTb = min(TBlargest, en.SyzygyProbeLimit);
-    en.rootposition.getRootMoves();
-    en.rootposition.tbFilterRootMoves();
-    en.prepareThreads();
 }
 
 static void uciSetSyzygyPath()
@@ -243,7 +239,6 @@ void engine::allocThreads()
     }
 
     freealigned64(sthread);
-    prepared = false;
 
     oldThreads = Threads;
 
@@ -257,6 +252,7 @@ void engine::allocThreads()
     sthread = new (buf) searchthread[Threads];
     for (int i = 0; i < Threads; i++)
     {
+        // FIXME: Maybe a threadpool with sleeping threads that could do this job would be better
         sthread[i].index = i;
         chessposition* pos = &sthread[i].pos;
         pos->pwnhsh.setSize(sizeOfPh);
@@ -265,49 +261,13 @@ void engine::allocThreads()
         if (NnueCurrentArch)
             NnueCurrentArch->CreateAccumulationCache(pos);
     }
-    prepareThreads();
     resetStats();
-}
-
-
-void engine::prepareThreads()
-{
-    for (int i = 0; i < Threads; i++)
-    {
-        chessposition *pos = &sthread[i].pos;
-        // copy essential board data from rootpos to thread's position
-        memcpy((void*)pos, &rootposition, offsetof(chessposition, history));
-        pos->threadindex = i;   // signal that the threas is (will be) alive
-        // reset of several variables that are not clean in rootpos
-        pos->bestmovescore[0] = NOSCORE;
-        pos->bestmove = 0;
-        pos->pondermove = 0;
-        pos->nodes = 0;
-        pos->tbhits = 0;
-        pos->nullmoveply = 0;
-        pos->nullmoveside = 0;
-        pos->nodesToNextCheck = 0;
-        pos->excludemovestack[0] = 0;
-        pos->computationState[0][WHITE] = false;
-        pos->computationState[0][BLACK] = false;
-
-        int framesToCopy = rootposition.prerootmovenum + 1; //include stack frame of ply 0
-        int startIndex = PREROOTMOVES - framesToCopy + 1;
-        memcpy(&pos->prerootmovestack[startIndex], &rootposition.prerootmovestack[startIndex], framesToCopy * sizeof(chessmovestack));
-        memcpy(&pos->prerootmovecode[startIndex], &rootposition.prerootmovecode[startIndex], framesToCopy * sizeof(uint32_t));
-        if (NnueCurrentArch)
-            NnueCurrentArch->ResetAccumulationCache(pos);
-    }
-    if (!prepared)
-    {
-        memset(&sthread[0].pos.nodespermove, 0, sizeof(chessposition::nodespermove));
-        prepared = true;
-    }
 }
 
 
 void engine::resetStats()
 {
+    // FIXME: Maybe a threadpool with sleeping threads that could do this job would be better
     for (int i = 0; i < Threads; i++)
     {
         chessposition* pos = &sthread[i].pos;
@@ -429,11 +389,11 @@ void engine::communicate(string inputstring)
                 rootposition.lastnullmove = -rootposition.ply - 1;
                 rootposition.ply = 0;
                 rootposition.useTb = min(TBlargest, SyzygyProbeLimit);
-                rootposition.getRootMoves();
-                rootposition.tbFilterRootMoves();
-                prepareThreads();
                 if (debug)
                 {
+                    rootposition.getRootMoves();
+                    rootposition.tbFilterRootMoves();
+                    prepareSearch(&sthread[0].pos, &rootposition);
                     sthread[0].pos.print();
                 }
                 pendingposition = false;
@@ -488,7 +448,6 @@ void engine::communicate(string inputstring)
                             mc = rootposition.pvmovecode[i];
                             rootposition.unplayMove<false>(mc);
                         }
-                        prepareThreads();   // To copy the debug information to the threads position object
                     }
 #endif
                 }
@@ -611,10 +570,6 @@ void engine::communicate(string inputstring)
                     {
                         while (++ci < cs && AlgebraicToIndex(commandargs[ci]) < 64 && AlgebraicToIndex(&commandargs[ci][2]) < 64)
                             searchmoves.insert(commandargs[ci]);
-                        // Filter root moves again
-                        rootposition.getRootMoves();
-                        rootposition.tbFilterRootMoves();
-                        prepareThreads();
                     }
 
                     else if (commandargs[ci] == "wtime")
@@ -677,8 +632,6 @@ void engine::communicate(string inputstring)
                         ci++;
                 }
                 tmEnabled = (mytime || myinc);
-                if (!prepared)
-                    prepareThreads();
                 measureOverhead(wasPondering);
                 if (MultiPV == 1)
                     searchStart<SinglePVSearch>();
@@ -902,6 +855,42 @@ void engine::startSearchTime(bool ponderhit)
 }
 
 
+void prepareSearch(chessposition* pos, chessposition* rootpos)
+{
+    // copy essential board data from rootpos to thread's position
+    // cout << offsetof(chessposition, history) << "\n";
+    memcpy((void*)pos, rootpos, offsetof(chessposition, history));
+    // reset of several variables that are not clean in rootpos
+    pos->bestmovescore[0] = NOSCORE;
+    pos->bestmove = 0;
+    pos->pondermove = 0;
+    pos->nodes = 0;
+    pos->tbhits = 0;
+    pos->nullmoveply = 0;
+    pos->nullmoveside = 0;
+    pos->nodesToNextCheck = 0;
+    pos->excludemovestack[0] = 0;
+    pos->computationState[0][WHITE] = false;
+    pos->computationState[0][BLACK] = false;
+
+    int framesToCopy = rootpos->prerootmovenum + 1; //include stack frame of ply 0
+    int startIndex = PREROOTMOVES - framesToCopy + 1;
+    memcpy(&pos->prerootmovestack[startIndex], &rootpos->prerootmovestack[startIndex], framesToCopy * sizeof(chessmovestack));
+    memcpy(&pos->prerootmovecode[startIndex], &rootpos->prerootmovecode[startIndex], framesToCopy * sizeof(uint32_t));
+
+    if (NnueCurrentArch)
+        NnueCurrentArch->ResetAccumulationCache(pos);
+}
+
+
+template <RootsearchType RT>
+void prepareAndStartSearch(searchthread* thr, chessposition *rootpos)
+{
+    chessposition* pos = &thr->pos;
+    prepareSearch(pos, rootpos);
+    mainSearch<RT>(thr);
+}
+
 template <RootsearchType RT>
 void engine::searchStart()
 {
@@ -916,13 +905,20 @@ void engine::searchStart()
     resetEndTime(clockstarttime);
 
     moveoutput = false;
-    prepared = false;
 
     // increment generation counter for tt aging
     tp.nextSearch();
+    rootposition.getRootMoves();
+    rootposition.tbFilterRootMoves();
+    // init nodespermove for main thread
+    memset(&sthread[0].pos.nodespermove, 0, sizeof(chessposition::nodespermove));    
+    for (int tnum = 0; tnum < Threads; tnum++) {
+        sthread[tnum].pos.threadindex = tnum;   // signal that the thread is (will be) alive
+        sthread[tnum].lastCompleteDepth = 0;    // needs early reset to avoid thread voting with threads not started yet
+    }
 
     for (int tnum = 0; tnum < Threads; tnum++)
-        sthread[tnum].thr = thread(mainSearch<RT>, &sthread[tnum]);
+        sthread[tnum].thr = thread(prepareAndStartSearch<RT>, &sthread[tnum], &rootposition);
 }
 
 

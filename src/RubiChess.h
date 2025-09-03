@@ -1637,7 +1637,7 @@ struct AccumulatorCache {
 class chessposition
 {
 public:
-    // everything up to member 'history' is copied from rootpos to every thread's position in engine::prepareThreads()
+    // everything up to member 'history' is copied from rootpos to every thread's position in prepareSearch()
     int ply;
     int piececount;
     U64 piece00[14];
@@ -1660,13 +1660,6 @@ public:
     int16_t halfmovescounter;
     unsigned int threatSquare;
 
-    chessmovestack prerootmovestack[PREROOTMOVES];      // explicit copy from rootpos up to frame prerootmovenum including first frame of regular stack
-    chessmovestack movestack[MAXDEPTH];                 // frame 0 copied from rootpos
-    uint32_t prerootmovecode[PREROOTMOVES];             // explicit copy from rootpos up to frame prerootmovenum including first regular movecode
-    uint32_t movecode[MAXDEPTH];
-    uint16_t excludemovestack[MAXDEPTH];                // init in prepare only for excludemovestack[0]
-    int16_t staticevalstack[MAXDEPTH];
-
     int fullmovescounter;
     int prerootmovenum;
     chessmovelist rootmovelist;
@@ -1688,7 +1681,7 @@ public:
     U64 debughash = 0;
     uint32_t pvmovecode[MAXDEPTH];
 #endif
-
+    //                   <--------  Everything up to here is copied from rootposition to every thread's position object
     // The following part of the chessposition object is reset via resetStats()
     int16_t history[2][65][64][64];
     int16_t counterhistory[14][64][14 * 64];
@@ -1698,11 +1691,20 @@ public:
     int16_t nonpawncorrectionhistory[2][2][CORRHISTSIZE];
     int16_t* prerootconthistptr[6];
     int16_t* conthistptr[MAXDEPTH];
+
+    chessmovestack prerootmovestack[PREROOTMOVES];      // explicit copy from rootpos up to frame prerootmovenum including first frame of regular stack
+    chessmovestack movestack[MAXDEPTH];                 // frame 0 copied from rootpos
+    uint32_t prerootmovecode[PREROOTMOVES];             // explicit copy from rootpos up to frame prerootmovenum including first regular movecode
+    uint32_t movecode[MAXDEPTH];
+    uint16_t excludemovestack[MAXDEPTH];                // init in prepare only for excludemovestack[0]
+    int16_t staticevalstack[MAXDEPTH];
+
+
     int he_threshold;
     U64 he_yes;
     U64 he_all;
 
-    // The following members get an explicit init in engine::prepareThreads()
+    // The following members get an explicit init in prepareSearch()
     U64 nodes;
     U64 tbhits;
     int nullmoveside;
@@ -2118,7 +2120,6 @@ public:
     int lastReport;
     int lastbestmovescore;
     int benchdepth;
-    bool prepared;
     string benchmove;
     string benchpondermove;
     ucioptions_t ucioptions;
@@ -2186,7 +2187,6 @@ public:
     void getNodesAndTbhits(U64 *nodes, U64 *tbhits);
     U64 perft(int depth, bool printsysteminfo = false);
     void bench(int constdepth, string epdfilename, int consttime, int startnum, bool openbench);
-    void prepareThreads();
     void resetStats();
     void registerOptions();
     void measureOverhead(bool wasPondering);
@@ -2195,6 +2195,10 @@ public:
     void resetEndTime(U64 nowTime, int constantRootMoves = 0, int bestmovenodesratio = 128);
     void startSearchTime(bool ponderhit);
 };
+
+void prepareSearch(chessposition* pos, chessposition* rootpos);
+template <RootsearchType RT>
+void prepareAndStartSearch(searchthread* thr, chessposition* rootpos);
 
 PieceType GetPieceType(char c);
 char PieceChar(PieceCode c, bool lower = false);

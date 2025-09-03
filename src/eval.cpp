@@ -863,7 +863,7 @@ int chessposition::getEval()
         int phscaled = score * (116 + phcount) / 128;
 
         if (bTrace) {
-            cout << "Raw NNUE eval:  " << S2MSIGN(state & S2MMASK) * score << endl;
+            cout << dec << "Raw NNUE eval:  " << S2MSIGN(state & S2MMASK) * score << endl;
             cout << "Phased scaled:  " << S2MSIGN(state & S2MMASK) * phscaled << endl;
             if (frcCorrection)
                 cout << "FRC correction: " << S2MSIGN(state & S2MMASK) * frcCorrection << endl;
