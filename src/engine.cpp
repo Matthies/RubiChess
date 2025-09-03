@@ -858,6 +858,7 @@ void engine::startSearchTime(bool ponderhit)
 void prepareSearch(chessposition* pos, chessposition* rootpos)
 {
     // copy essential board data from rootpos to thread's position
+    // cout << offsetof(chessposition, history) << "\n";
     memcpy((void*)pos, rootpos, offsetof(chessposition, history));
     // reset of several variables that are not clean in rootpos
     pos->bestmovescore[0] = NOSCORE;
@@ -874,7 +875,6 @@ void prepareSearch(chessposition* pos, chessposition* rootpos)
 
     int framesToCopy = rootpos->prerootmovenum + 1; //include stack frame of ply 0
     int startIndex = PREROOTMOVES - framesToCopy + 1;
-    memset(&pos->nodespermove, 0, sizeof(chessposition::nodespermove));
     memcpy(&pos->prerootmovestack[startIndex], &rootpos->prerootmovestack[startIndex], framesToCopy * sizeof(chessmovestack));
     memcpy(&pos->prerootmovecode[startIndex], &rootpos->prerootmovecode[startIndex], framesToCopy * sizeof(uint32_t));
 
@@ -910,7 +910,8 @@ void engine::searchStart()
     tp.nextSearch();
     rootposition.getRootMoves();
     rootposition.tbFilterRootMoves();
-
+    // init nodespermove for main thread
+    memset(&sthread[0].pos.nodespermove, 0, sizeof(chessposition::nodespermove));    
     for (int tnum = 0; tnum < Threads; tnum++) {
         sthread[tnum].pos.threadindex = tnum;   // signal that the thread is (will be) alive
         sthread[tnum].lastCompleteDepth = 0;    // needs early reset to avoid thread voting with threads not started yet

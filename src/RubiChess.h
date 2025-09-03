@@ -1660,13 +1660,6 @@ public:
     int16_t halfmovescounter;
     unsigned int threatSquare;
 
-    chessmovestack prerootmovestack[PREROOTMOVES];      // explicit copy from rootpos up to frame prerootmovenum including first frame of regular stack
-    chessmovestack movestack[MAXDEPTH];                 // frame 0 copied from rootpos
-    uint32_t prerootmovecode[PREROOTMOVES];             // explicit copy from rootpos up to frame prerootmovenum including first regular movecode
-    uint32_t movecode[MAXDEPTH];
-    uint16_t excludemovestack[MAXDEPTH];                // init in prepare only for excludemovestack[0]
-    int16_t staticevalstack[MAXDEPTH];
-
     int fullmovescounter;
     int prerootmovenum;
     chessmovelist rootmovelist;
@@ -1688,7 +1681,7 @@ public:
     U64 debughash = 0;
     uint32_t pvmovecode[MAXDEPTH];
 #endif
-
+    //                   <--------  Everything up to here is copied from rootposition to every thread's position object
     // The following part of the chessposition object is reset via resetStats()
     int16_t history[2][65][64][64];
     int16_t counterhistory[14][64][14 * 64];
@@ -1698,6 +1691,15 @@ public:
     int16_t nonpawncorrectionhistory[2][2][CORRHISTSIZE];
     int16_t* prerootconthistptr[6];
     int16_t* conthistptr[MAXDEPTH];
+
+    chessmovestack prerootmovestack[PREROOTMOVES];      // explicit copy from rootpos up to frame prerootmovenum including first frame of regular stack
+    chessmovestack movestack[MAXDEPTH];                 // frame 0 copied from rootpos
+    uint32_t prerootmovecode[PREROOTMOVES];             // explicit copy from rootpos up to frame prerootmovenum including first regular movecode
+    uint32_t movecode[MAXDEPTH];
+    uint16_t excludemovestack[MAXDEPTH];                // init in prepare only for excludemovestack[0]
+    int16_t staticevalstack[MAXDEPTH];
+
+
     int he_threshold;
     U64 he_yes;
     U64 he_all;
