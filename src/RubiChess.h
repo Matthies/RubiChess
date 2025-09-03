@@ -1637,7 +1637,7 @@ struct AccumulatorCache {
 class chessposition
 {
 public:
-    // everything up to member 'history' is copied from rootpos to every thread's position in engine::prepareThreads()
+    // everything up to member 'history' is copied from rootpos to every thread's position in prepareSearch()
     int ply;
     int piececount;
     U64 piece00[14];
@@ -1702,7 +1702,7 @@ public:
     U64 he_yes;
     U64 he_all;
 
-    // The following members get an explicit init in engine::prepareThreads()
+    // The following members get an explicit init in prepareSearch()
     U64 nodes;
     U64 tbhits;
     int nullmoveside;
@@ -2185,7 +2185,6 @@ public:
     void getNodesAndTbhits(U64 *nodes, U64 *tbhits);
     U64 perft(int depth, bool printsysteminfo = false);
     void bench(int constdepth, string epdfilename, int consttime, int startnum, bool openbench);
-    //void prepareThreads();
     void resetStats();
     void registerOptions();
     void measureOverhead(bool wasPondering);

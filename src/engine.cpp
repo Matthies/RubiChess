@@ -79,11 +79,7 @@ static void uciClearHash()
 
 static void uciSetSyzygyParam()
 {
-    // Changing Syzygy related parameters may affect rootmoves filtering
     en.rootposition.useTb = min(TBlargest, en.SyzygyProbeLimit);
-    //en.rootposition.getRootMoves();
-    //en.rootposition.tbFilterRootMoves();
-    //en.prepareThreads();
 }
 
 static void uciSetSyzygyPath()
@@ -256,7 +252,7 @@ void engine::allocThreads()
     sthread = new (buf) searchthread[Threads];
     for (int i = 0; i < Threads; i++)
     {
-        // FIXME: Ev. hilft es, wenn das jeder thread selbst macht?
+        // FIXME: Maybe a threadpool with sleeping threads that could do this job would be better
         sthread[i].index = i;
         chessposition* pos = &sthread[i].pos;
         pos->pwnhsh.setSize(sizeOfPh);
@@ -265,50 +261,13 @@ void engine::allocThreads()
         if (NnueCurrentArch)
             NnueCurrentArch->CreateAccumulationCache(pos);
     }
-    //prepareThreads();
     resetStats();
 }
 
-#if 0
-void engine::prepareThreads()
-{
-    for (int i = 0; i < Threads; i++)
-    {
-        chessposition *pos = &sthread[i].pos;
-        // copy essential board data from rootpos to thread's position
-        memcpy((void*)pos, &rootposition, offsetof(chessposition, history));
-        pos->threadindex = i;   // signal that the threas is (will be) alive
-        // reset of several variables that are not clean in rootpos
-        pos->bestmovescore[0] = NOSCORE;
-        pos->bestmove = 0;
-        pos->pondermove = 0;
-        pos->nodes = 0;
-        pos->tbhits = 0;
-        pos->nullmoveply = 0;
-        pos->nullmoveside = 0;
-        pos->nodesToNextCheck = 0;
-        pos->excludemovestack[0] = 0;
-        pos->computationState[0][WHITE] = false;
-        pos->computationState[0][BLACK] = false;
-
-        int framesToCopy = rootposition.prerootmovenum + 1; //include stack frame of ply 0
-        int startIndex = PREROOTMOVES - framesToCopy + 1;
-        memcpy(&pos->prerootmovestack[startIndex], &rootposition.prerootmovestack[startIndex], framesToCopy * sizeof(chessmovestack));
-        memcpy(&pos->prerootmovecode[startIndex], &rootposition.prerootmovecode[startIndex], framesToCopy * sizeof(uint32_t));
-        if (NnueCurrentArch)
-            NnueCurrentArch->ResetAccumulationCache(pos);
-    }
-    if (!prepared)
-    {
-        memset(&sthread[0].pos.nodespermove, 0, sizeof(chessposition::nodespermove));
-        prepared = true;
-    }
-}
-#endif
 
 void engine::resetStats()
 {
-    // FIXME: Ev. hilft es, wenn das jeder thread selbst macht?
+    // FIXME: Maybe a threadpool with sleeping threads that could do this job would be better
     for (int i = 0; i < Threads; i++)
     {
         chessposition* pos = &sthread[i].pos;
@@ -489,7 +448,6 @@ void engine::communicate(string inputstring)
                             mc = rootposition.pvmovecode[i];
                             rootposition.unplayMove<false>(mc);
                         }
-                        prepareThreads();   // To copy the debug information to the threads position object
                     }
 #endif
                 }
