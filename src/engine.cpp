@@ -222,20 +222,40 @@ void engine::registerOptions()
     ucioptions.Register(&LimitNps, "LimitNps", ucispin, "0", 0, INT_MAX, nullptr);
 }
 
+void initThread(workingthread* thr)
+{
+    chessposition* pos = &thr->pos;
+    pos->pwnhsh.setSize(en.sizeOfPh);
+    pos->accumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
+    pos->psqtAccumulation = NnueCurrentArch ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr;
+    if (NnueCurrentArch)
+        NnueCurrentArch->CreateAccumulationCache(pos);
+
+}
+
+void cleanupThread(workingthread* thr)
+{
+    chessposition* pos = &thr->pos;
+    pos->pwnhsh.remove();
+    freealigned64(pos->accumulation);
+    freealigned64(pos->psqtAccumulation);
+    freealigned64(pos->accucache.accumulation);
+    if (pos->accucache.psqtaccumulation)
+        freealigned64(pos->accucache.psqtaccumulation);
+    pos->~chessposition();
+}
 
 void engine::allocThreads()
 {
     // first cleanup the old searchthreads memory
     for (int i = 0; i < oldThreads; i++)
+        sthread[i].run_job(cleanupThread);
+
+    // finally remove the threads  themself
+    for (int i = 0; i < oldThreads; i++)
     {
-        chessposition* pos = &sthread[i].pos;
-        pos->pwnhsh.remove();
-        freealigned64(pos->accumulation);
-        freealigned64(pos->psqtAccumulation);
-        freealigned64(pos->accucache.accumulation);
-        if (pos->accucache.psqtaccumulation)
-            freealigned64(pos->accucache.psqtaccumulation);
-        pos->~chessposition();
+        sthread[i].wait_for_work_finished();
+        sthread[i].remove();
     }
 
     freealigned64(sthread);
@@ -245,34 +265,33 @@ void engine::allocThreads()
     if (!Threads)
         return;
 
-    size_t size = Threads * sizeof(searchthread);
+    size_t size = Threads * sizeof(workingthread);
     myassert(size % 64 == 0, nullptr, 1, size % 64);
 
     char* buf = (char*)allocalign64(size);
-    sthread = new (buf) searchthread[Threads];
+    sthread = new (buf) workingthread[Threads];
     for (int i = 0; i < Threads; i++)
     {
-        // FIXME: Maybe a threadpool with sleeping threads that could do this job would be better
-        sthread[i].index = i;
-        chessposition* pos = &sthread[i].pos;
-        pos->pwnhsh.setSize(sizeOfPh);
-        pos->accumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
-        pos->psqtAccumulation = NnueCurrentArch ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr;
-        if (NnueCurrentArch)
-            NnueCurrentArch->CreateAccumulationCache(pos);
+        sthread[i].init(i, &rootposition);
+        sthread[i].run_job(initThread);
     }
     resetStats();
 }
 
 
+void resetPositionStats(workingthread* thr)
+{
+    thr->pos.resetStats();
+}
+
+
 void engine::resetStats()
 {
-    // FIXME: Maybe a threadpool with sleeping threads that could do this job would be better
     for (int i = 0; i < Threads; i++)
-    {
-        chessposition* pos = &sthread[i].pos;
-        pos->resetStats();
-    }
+        sthread[i].run_job(resetPositionStats);
+    for (int i = 0; i < Threads; i++)
+        sthread[i].wait_for_work_finished();
+
     lastmytime = lastmyinc = 0;
 }
 
@@ -884,10 +903,9 @@ void prepareSearch(chessposition* pos, chessposition* rootpos)
 
 
 template <RootsearchType RT>
-void prepareAndStartSearch(searchthread* thr, chessposition *rootpos)
+void prepareAndStartSearch(workingthread* thr)//, chessposition *rootpos)
 {
-    chessposition* pos = &thr->pos;
-    prepareSearch(pos, rootpos);
+    prepareSearch(&thr->pos, thr->rootpos);
     mainSearch<RT>(thr);
 }
 
@@ -918,7 +936,8 @@ void engine::searchStart()
     }
 
     for (int tnum = 0; tnum < Threads; tnum++)
-        sthread[tnum].thr = thread(prepareAndStartSearch<RT>, &sthread[tnum], &rootposition);
+        //sthread[tnum].thr = thread(prepareAndStartSearch<RT>, &sthread[tnum], &rootposition);
+        sthread[tnum].run_job(prepareAndStartSearch<RT>);
 }
 
 
@@ -931,8 +950,11 @@ void engine::searchWaitStop(bool forceStop)
     if (forceStop)
         stopLevel = ENGINESTOPIMMEDIATELY;
     for (int tnum = 0; tnum < Threads; tnum++)
+        sthread[tnum].wait_for_work_finished();
+#if 0
         if (sthread[tnum].thr.joinable())
             sthread[tnum].thr.join();
+#endif
     stopLevel = ENGINETERMINATEDSEARCH;
 }
 
