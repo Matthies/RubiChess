@@ -81,6 +81,8 @@
 #include <algorithm>
 #include <iterator>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 #include <map>
 #include <array>
 #include <bitset>
@@ -384,7 +386,7 @@ enum Color { WHITE, BLACK };
 // Forward definitions
 class transposition;
 class chessposition;
-class searchthread;
+class workingthread;
 struct pawnhashentry;
 
 // some general constants
@@ -2114,7 +2116,7 @@ public:
     chessposition rootposition;
     int Threads;
     int oldThreads;
-    searchthread *sthread;
+    workingthread *sthread;
     ponderstate_t pondersearch;
     int ponderhitbonus;
     int lastReport;
@@ -2198,7 +2200,7 @@ public:
 
 void prepareSearch(chessposition* pos, chessposition* rootpos);
 template <RootsearchType RT>
-void prepareAndStartSearch(searchthread* thr, chessposition* rootpos);
+void prepareAndStartSearch();// workingthread* thr, chessposition* rootpos);
 
 PieceType GetPieceType(char c);
 char PieceChar(PieceCode c, bool lower = false);
@@ -2335,12 +2337,22 @@ struct searchparamset {
 
 extern SPSCONST searchparamset sps;
 
-class searchthread
+void searchinit();
+template <RootsearchType RT> void mainSearch(workingthread* thr);
+
+
+class workingthread
 {
 public:
     uint64_t toppadding[8];
+    chessposition* rootpos;
     chessposition pos;
     thread thr;
+    mutex mtx;
+    condition_variable cv;
+    bool working = true;    // reset by idle_loop
+    bool exit = false;
+    void (*jobFunc)(workingthread*);
     int index;
     int depth;
     int lastCompleteDepth;
@@ -2352,11 +2364,57 @@ public:
     int chunkstate[2];
 #endif
     uint64_t bottompadding[8];
+    void idle_loop() {
+        while (true)
+        {
+            unique_lock<mutex> lk(mtx);
+            working = false;
+            //cout << "my workingthread index is " << index << "\n";
+            cv.notify_one();  // Wake up anyone waiting for search finished
+            cv.wait(lk, [this] { return working; });
+
+            if (exit)
+                return;
+
+            void(*jobToRun)(workingthread*) = jobFunc;
+            jobFunc = nullptr;
+
+            lk.unlock();
+
+            if (jobToRun)
+                (*jobToRun)(this);
+        }
+    }
+    void run_job(void(*job)(workingthread*))
+    {
+        {
+            unique_lock<mutex> lk(mtx);
+            cv.wait(lk, [this] { return !working; });
+            jobFunc = job;
+            working = true;
+        }
+        cv.notify_one();
+    }
+    void wait_for_work_finished() {
+
+        unique_lock<mutex> lk(mtx);
+        cv.wait(lk, [this] { return !working; });
+    }
+    void init(int i, chessposition* r)
+    {
+        index = i;
+        rootpos = r;
+        thr = thread(&workingthread::idle_loop, this);
+    }
+    void remove()
+    {
+        myassert(!working, &pos, 0);
+        exit = true;
+        run_job(mainSearch<SinglePVSearch>);
+        thr.join();
+    }
 };
 
-
-void searchinit();
-template <RootsearchType RT> void mainSearch(searchthread* thr);
 
 //
 // TB stuff

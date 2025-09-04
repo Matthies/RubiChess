@@ -1306,7 +1306,7 @@ inline bool uciScoreOutputNeeded(int inWindow, U64 thinktime)
     return true;
 }
 
-static void uciScore(searchthread *thr, int inWindow, U64 thinktime, int score, int mpvIndex = 0)
+static void uciScore(workingthread *thr, int inWindow, U64 thinktime, int score, int mpvIndex = 0)
 {
     const string boundscore[] = { "upperbound ", "", "lowerbound " };
     chessposition *pos = &thr->pos;
@@ -1337,7 +1337,7 @@ static void uciScore(searchthread *thr, int inWindow, U64 thinktime, int score, 
 
 
 template <RootsearchType RT>
-void mainSearch(searchthread *thr)
+void mainSearch(workingthread *thr)
 {
     int score;
     int alpha, beta;
@@ -1620,12 +1620,12 @@ void mainSearch(searchthread *thr)
         }
 
         // Output of best move
-        searchthread *bestthr = thr;
+        workingthread *bestthr = thr;
         int bestscore = bestthr->pos.bestmovescore[0];
         for (int i = 1; i < en.Threads; i++)
         {
             // search for a better score in the other threads
-            searchthread *hthr = &en.sthread[i];
+            workingthread *hthr = &en.sthread[i];
             if (hthr->lastCompleteDepth >= bestthr->lastCompleteDepth
                 && hthr->pos.bestmovescore[0] > bestscore)
             {
@@ -1726,7 +1726,7 @@ void mainSearch(searchthread *thr)
 // This avoids putting these definitions in header file
 template int chessposition::alphabeta<NoPrune>(int alpha, int beta, int depth, bool cutnode);
 template int chessposition::rootsearch<MultiPVSearch>(int, int, int, int, int);
-template void mainSearch<SinglePVSearch>(searchthread*);
-template void mainSearch<MultiPVSearch>(searchthread*);
+template void mainSearch<SinglePVSearch>(workingthread*);
+template void mainSearch<MultiPVSearch>(workingthread*);
 
 } // namespace rubichess
