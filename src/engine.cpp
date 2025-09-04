@@ -249,24 +249,14 @@ void engine::allocThreads()
 {
     // first cleanup the old searchthreads memory
     for (int i = 0; i < oldThreads; i++)
-#if 0
-        chessposition* pos = &sthread[i].pos;
-        pos->pwnhsh.remove();
-        freealigned64(pos->accumulation);
-        freealigned64(pos->psqtAccumulation);
-        freealigned64(pos->accucache.accumulation);
-        if (pos->accucache.psqtaccumulation)
-            freealigned64(pos->accucache.psqtaccumulation);
-        pos->~chessposition();
-#endif
         sthread[i].run_job(cleanupThread);
 
-        // finally remove the threads  themself
-        for (int i = 0; i < oldThreads; i++)
-        {
-            sthread[i].wait_for_work_finished();
-            sthread[i].remove();
-        }
+    // finally remove the threads  themself
+    for (int i = 0; i < oldThreads; i++)
+    {
+        sthread[i].wait_for_work_finished();
+        sthread[i].remove();
+    }
 
     freealigned64(sthread);
 
@@ -284,29 +274,24 @@ void engine::allocThreads()
     {
         sthread[i].init(i, &rootposition);
         sthread[i].run_job(initThread);
-#if 0
-        // FIXME: Maybe a threadpool with sleeping threads that could do this job would be better
-        //sthread[i].index = i;
-        chessposition* pos = &sthread[i].pos;
-        pos->pwnhsh.setSize(sizeOfPh);
-        pos->accumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
-        pos->psqtAccumulation = NnueCurrentArch ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr;
-        if (NnueCurrentArch)
-            NnueCurrentArch->CreateAccumulationCache(pos);
-#endif
     }
     resetStats();
 }
 
 
+void resetPositionStats(workingthread* thr)
+{
+    thr->pos.resetStats();
+}
+
+
 void engine::resetStats()
 {
-    // FIXME: Maybe a threadpool with sleeping threads that could do this job would be better
     for (int i = 0; i < Threads; i++)
-    {
-        chessposition* pos = &sthread[i].pos;
-        pos->resetStats();
-    }
+        sthread[i].run_job(resetPositionStats);
+    for (int i = 0; i < Threads; i++)
+        sthread[i].wait_for_work_finished();
+
     lastmytime = lastmyinc = 0;
 }
 

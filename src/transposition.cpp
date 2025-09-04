@@ -180,22 +180,22 @@ int transposition::setSize(int sizeMb)
     return restMb;
 }
 
+void cleanTranspositiontable(workingthread *thr)
+{
+    int i = thr->index;
+    size_t sizePerThread = tp.size / en.Threads;
+    void* start = (char*)(tp.table + i * sizePerThread);
+    size_t size = (i < en.Threads - 1 ? sizePerThread : tp.size - (en.Threads - 1) * sizePerThread);
+    memset(start, 0, size * sizeof(transpositioncluster));
+}
+
 void transposition::clean()
 {
-    size_t totalsize = size * sizeof(transpositioncluster);
-    size_t sizePerThread = totalsize / en.Threads;
-    thread tthread[MAXTHREADS];
     for (int i = 0; i < en.Threads; i++)
-    {
-        void *start = (char*)table + i * sizePerThread;
-        tthread[i] = thread(memset, start, 0, sizePerThread);
-    }
-    memset((char*)table + en.Threads * sizePerThread, 0, totalsize - en.Threads * sizePerThread);
+        en.sthread[i].run_job(cleanTranspositiontable);
     for (int i = 0; i < en.Threads; i++)
-    {
-        if (tthread[i].joinable())
-            tthread[i].join();
-    }
+        en.sthread[i].wait_for_work_finished();
+
     numOfSearchShiftTwo = 0;
 }
 

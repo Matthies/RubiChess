@@ -2339,7 +2339,7 @@ extern SPSCONST searchparamset sps;
 
 void searchinit();
 template <RootsearchType RT> void mainSearch(workingthread* thr);
-
+void cleanTranspositiontable(workingthread* thr);
 
 class workingthread
 {
@@ -2408,7 +2408,7 @@ public:
     }
     void remove()
     {
-        myassert(!working, &pos, 0);
+        myassert(!working, &pos, 1, working);
         exit = true;
         run_job(mainSearch<SinglePVSearch>);
         thr.join();
