@@ -2200,7 +2200,7 @@ public:
 
 void prepareSearch(chessposition* pos, chessposition* rootpos);
 template <RootsearchType RT>
-void prepareAndStartSearch();// workingthread* thr, chessposition* rootpos);
+void prepareAndStartSearch();
 
 PieceType GetPieceType(char c);
 char PieceChar(PieceCode c, bool lower = false);
@@ -2369,8 +2369,7 @@ public:
         {
             unique_lock<mutex> lk(mtx);
             working = false;
-            //cout << "my workingthread index is " << index << "\n";
-            cv.notify_one();  // Wake up anyone waiting for search finished
+            cv.notify_one();  // Wake up anyone waiting for work finished
             cv.wait(lk, [this] { return working; });
 
             if (exit)
