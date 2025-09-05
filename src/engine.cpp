@@ -410,8 +410,7 @@ void engine::communicate(string inputstring)
                 rootposition.useTb = min(TBlargest, SyzygyProbeLimit);
                 if (debug)
                 {
-                    rootposition.getRootMoves();
-                    rootposition.tbFilterRootMoves();
+                    rootposition.preparePosition();
                     prepareSearch(&sthread[0].pos, &rootposition);
                     sthread[0].pos.print();
                 }
@@ -419,6 +418,9 @@ void engine::communicate(string inputstring)
             }
             if (pendingisready)
             {
+                if (!rootposition.isPrepared)
+                    rootposition.preparePosition();
+
                 guiCom << "readyok\n";
                 pendingisready = false;
             }
@@ -926,8 +928,7 @@ void engine::searchStart()
 
     // increment generation counter for tt aging
     tp.nextSearch();
-    rootposition.getRootMoves();
-    rootposition.tbFilterRootMoves();
+    rootposition.preparePosition();
     // init nodespermove for main thread
     memset(&sthread[0].pos.nodespermove, 0, sizeof(chessposition::nodespermove));    
     for (int tnum = 0; tnum < Threads; tnum++) {

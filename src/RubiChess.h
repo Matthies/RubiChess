@@ -1675,6 +1675,7 @@ public:
     int useRootmoveScore;
     int tbPosition;
     uint32_t defaultmove;           // only mainthread needs it  -- fallback if search in time trouble didn't finish a single iteration
+    bool isPrepared;
     int castlerights[64];
     int castlerookfrom[4];
     U64 castleblockers[4];
@@ -1779,8 +1780,8 @@ public:
     template <AttackType At> U64 isAttackedBy(int index, int col);    // returns the bitboard of cols pieces attacking the index square; At controls if pawns are moved to block or capture
     bool see(uint32_t move, int threshold);
     int getBestPossibleCapture();
-    void getRootMoves();
-    void tbFilterRootMoves();
+    void preparePosition();
+    //void tbFilterRootMoves();
     void prepareStack();
     string movesOnStack();
     template <bool LiteMode> bool playMove(uint32_t mc);

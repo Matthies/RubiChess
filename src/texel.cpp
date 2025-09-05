@@ -128,7 +128,6 @@ bool PGNtoFEN(int depth)
 {
     pos.tps.count = 0;
     pos.pwnhsh.setSize(1);
-    pos.mtrlhsh.init();
 
     int gamescount = 0;
     fenWritten = 0ULL;
@@ -1425,7 +1424,6 @@ void parseTune(vector<string> commandargs)
 
 void tuneInit()
 {
-    pos.mtrlhsh.init();
     pos.pwnhsh.setSize(0);
     pos.tps.count = 0;
     pos.resetStats();
@@ -1437,7 +1435,6 @@ void tuneCleanup()
 {
     if (texelpts)
         free(texelpts);
-    pos.mtrlhsh.remove();
     pos.pwnhsh.remove();
 }
 

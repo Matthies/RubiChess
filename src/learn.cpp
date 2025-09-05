@@ -327,7 +327,7 @@ void chessposition::toSfen(PackedSfen *sfen)
 }
 
 
-void flush_psv(int result, searchthread* thr)
+void flush_psv(int result, workingthread* thr)
 {
     PackedSfenValue* p;
     int fullchunk = -1;
@@ -994,7 +994,7 @@ static void freeBookPositions()
 }
 
 
-static void gensfenthread(searchthread* thr, U64 rndseed)
+static void gensfenthread(workingthread* thr, U64 rndseed)
 {
     ranctx rnd;
     U64 key;
@@ -1148,7 +1148,7 @@ SKIP_SAVE:
                     else
                     {
                         // random multi pv
-                        pos->getRootMoves();
+                        pos->preparePosition();
                         int cur_multi_pv = min(pos->rootmovelist.length, (ply < random_opening_ply ? 8 : random_multi_pv));
                         int cur_multi_pv_diff = (ply < random_opening_ply ? 100 : random_multi_pv_diff);
                         pos->rootsearch<MultiPVSearch>(SCOREBLACKWINS, SCOREWHITEWINS, random_multi_pv_depth, 1, cur_multi_pv);
@@ -1278,7 +1278,7 @@ void gensfen(vector<string> args)
     const int minShowSec = 30;
     while (chunkswritten < chunksneeded)
     {
-        searchthread* thr = &en.sthread[tnum];
+        workingthread* thr = &en.sthread[tnum];
         Sleep(100);
         for (int i = 0; i < sfenchunknums; i++)
         {
@@ -1639,7 +1639,7 @@ bool sfenreader::getTrainingData(conversion_t* cv, trainingdata* td)
 }
 
 
-static void convertthread(searchthread* thr, conversion_t* cv)
+static void convertthread(workingthread* thr, conversion_t* cv)
 {
     sfenreader* inreader;
     sfenreader* cmpreader = nullptr;

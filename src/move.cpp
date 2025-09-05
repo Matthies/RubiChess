@@ -205,8 +205,11 @@ void chessposition::evaluateMoves(chessmovelist *ml)
 }
 
 
-void chessposition::getRootMoves()
+void chessposition::preparePosition()
 {
+    if (isPrepared)
+        return;
+
     chessmovelist movelist;
 
     if (state & S2MMASK)
@@ -283,13 +286,11 @@ void chessposition::getRootMoves()
     if (moveTo3fold)
         // Hashmove triggers 3fold immediately or with following move; fix hash
         tp.addHash(tte, hash, SCOREDRAW, tte->staticeval, bImmediate3fold ? HASHBETA : HASHALPHA, 250 + TTDEPTH_OFFSET, moveTo3fold);
-}
 
-
-void chessposition::tbFilterRootMoves()
-{
     tbPosition = 0;
     useRootmoveScore = 0;
+    isPrepared = true;
+
     if (!useTb || POPCOUNT(occupied00[0] | occupied00[1]) > useTb)
         return;
 
