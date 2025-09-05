@@ -876,6 +876,8 @@ void engine::startSearchTime(bool ponderhit)
 }
 
 
+
+// Preparation for search thread's position when rootpos is already setup
 void prepareSearch(chessposition* pos, chessposition* rootpos)
 {
     // copy essential board data from rootpos to thread's position
@@ -902,6 +904,28 @@ void prepareSearch(chessposition* pos, chessposition* rootpos)
     if (NnueCurrentArch)
         NnueCurrentArch->ResetAccumulationCache(pos);
 }
+
+#ifdef NNUELEARN
+// Preparation for search thread's position without rootpos
+void prepareSearch(chessposition* pos)
+{
+    memset((void*)pos, 0, offsetof(chessposition, history));
+
+    pos->bestmovescore[0] = NOSCORE;
+    pos->bestmove = 0;
+    pos->pondermove = 0;
+    pos->nodes = 0;
+    pos->tbhits = 0;
+    pos->nullmoveply = 0;
+    pos->nullmoveside = 0;
+    pos->nodesToNextCheck = 0;
+    pos->excludemovestack[0] = 0;
+    pos->computationState[0][WHITE] = false;
+    pos->computationState[0][BLACK] = false;
+    if (NnueCurrentArch)
+        NnueCurrentArch->ResetAccumulationCache(pos);
+}
+#endif
 
 
 template <RootsearchType RT>

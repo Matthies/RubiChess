@@ -994,13 +994,13 @@ static void freeBookPositions()
 }
 
 
-static void gensfenthread(workingthread* thr, U64 rndseed)
+static void gensfenthread(workingthread* thr)
 {
     ranctx rnd;
     U64 key;
     U64 hash_index;
     U64 key2;
-    raninit(&rnd, rndseed);
+    raninit(&rnd, thr->rndseed);
     chessmovelist movelist;
     U64 psvnums = 0;
     uint32_t nmc;
@@ -1014,6 +1014,7 @@ static void gensfenthread(workingthread* thr, U64 rndseed)
         if (gensfenstop)
             return;
 
+        prepareSearch(pos);
         string startfen = en.chess960 ? frcStartFen() : *bookfen[ranval(&rnd) % booklen];
         pos->getFromFen(startfen.c_str());
 
@@ -1261,7 +1262,8 @@ void gensfen(vector<string> args)
         en.sthread[tnum].chunkstate[0] = CHUNKINUSE;
         en.sthread[tnum].chunkstate[1] = CHUNKFREE;
         en.sthread[tnum].psvbuffer = (PackedSfenValue*)allocalign64(sfenchunknums * sfenchunksize * sizeof(PackedSfenValue));
-        en.sthread[tnum].thr = thread(&gensfenthread, &en.sthread[tnum], getTime() ^ zb.getRnd() );
+        en.sthread[tnum].rndseed = getTime() ^ zb.getRnd();
+        en.sthread[tnum].run_job(gensfenthread);
     }
 
     U64 chunkswritten = 0;
@@ -1324,10 +1326,8 @@ void gensfen(vector<string> args)
     }
     gensfenstop = true;
     for (tnum = 0; tnum < en.Threads; tnum++)
-    {
-        if (en.sthread[tnum].thr.joinable())
-            en.sthread[tnum].thr.join();
-    }
+        en.sthread[tnum].wait_for_work_finished();
+
     cout << "\n\ngensfen finished.\n";
     en.MultiPV = old_multipv;
 
@@ -1336,6 +1336,9 @@ void gensfen(vector<string> args)
         freealigned64(en.sthread[tnum].psvbuffer);
 }
 
+
+
+SHA256* sha256;
 
 static void flushBinpack(ostream *os, char *buffer, Binpack* bp)
 {
@@ -1347,6 +1350,7 @@ static void flushBinpack(ostream *os, char *buffer, Binpack* bp)
 
     *((uint32_t*)(buffer + 4)) = (uint32_t)size - 8;
     os->write(buffer, size);
+    sha256->update((const uint8_t *)buffer, size);
     if (bp->flushAt) {
         size_t wrappedbytes = *bp->data - bp->flushAt;
         memcpy(buffer + 8, bp->flushAt, wrappedbytes + 1);
@@ -1357,51 +1361,39 @@ static void flushBinpack(ostream *os, char *buffer, Binpack* bp)
     }
 }
 
-enum SfenFormat { no, bin, binpack, plain };
 
-struct conversion_t {
-    string outfilename;
-    string outfileext;
-    ofstream ofs;
-    SfenFormat outformat;
-    SfenFormat informat;
-    SfenFormat cmpformat;
-    int rescoreDepth;
-    ifstream *is;
-    ifstream *cmps;
-    ostream *os;
-    mutex mtin, mtout, mtcmp;
-    bool okay;
-    bool stoprequest;
-    bool endofinputfile;
-    atomic<unsigned long long> numPositions;
-    atomic<int> numInChunks;
-    atomic<int> numOutChunks;
-    atomic<int> chunksWritten;
-    int skipChunks;
-    int splitChunks;
-    int disable_prune;
-    int preserveChunks;
-} conv;
+conversion_t conv;
 
 
-bool openOutputFile(conversion_t* cv)
+bool openOutputFile(conversion_t* cv, bool last = false)
 {
     string filename;
-    if (cv->ofs)
-        cv->ofs.close();
-    if (cv->splitChunks)
+    if (cv->randomfilename)
+        filename = cv->outfilename + "tmpconv";
+    else if (cv->splitChunks)
         filename = cv->outfilename + "-" + to_string(cv->numOutChunks / cv->splitChunks) + cv->outfileext;
     else
         filename = cv->outfilename + cv->outfileext;
-    cv->ofs.open(filename, conv.outformat == plain ? ios::out : ios::binary);
-    if (!cv->ofs)
+    if (cv->ofs)
+        cv->ofs.close();
+    if (sha256) {
+        rename(filename.c_str(), (cv->outfilename + SHA256::toString(sha256->digest()) + cv->outfileext).c_str());
+        delete sha256;
+        sha256 = nullptr;
+    }
+    if (!last)
     {
-        cout << "Cannot open output file " << filename << endl;
-        return false;
-     }
-     cv->os = &cv->ofs;
-     return true;
+        cv->ofs.open(filename, conv.outformat == plain ? ios::out : ios::binary);
+        if (!cv->ofs)
+        {
+            cout << "Cannot open output file " << filename << endl;
+            return false;
+        }
+        cv->os = &cv->ofs;
+        if (cv->randomfilename)
+            sha256 = new SHA256;
+    }
+    return true;
 }
 
 
@@ -1639,14 +1631,14 @@ bool sfenreader::getTrainingData(conversion_t* cv, trainingdata* td)
 }
 
 
-static void convertthread(workingthread* thr, conversion_t* cv)
+static void convertthread(workingthread* thr)
 {
     sfenreader* inreader;
     sfenreader* cmpreader = nullptr;
     char* outbuffer = nullptr;
     char* outbptr = nullptr;
     Binpack outbp; // output
-
+    conversion_t* cv = thr->conv;
     inreader = new sfenreader();
     inreader->init(cv);
 
@@ -1726,6 +1718,7 @@ static void convertthread(workingthread* thr, conversion_t* cv)
             else if (cv->outformat == binpack)
             {
                 if (outbp.flushAt) {
+                    cv->numOutChunks++;
                     if (*outbp.data > outbuffer)
                     {
                         // Wait for correct order
@@ -1739,7 +1732,6 @@ static void convertthread(workingthread* thr, conversion_t* cv)
                         cv->chunksWritten++;
                         cv->mtout.unlock();
                     }
-                    cv->numOutChunks++;
                 }
 
                 if (outbptr == outbuffer)
@@ -1855,6 +1847,7 @@ void convert(vector<string> args)
     conv.preserveChunks = 0;
     conv.stoprequest = false;
     conv.okay = true;
+    conv.randomfilename = false;
 
     size_t unnamedParams = 0;
     while (ci < cs)
@@ -1900,6 +1893,10 @@ void convert(vector<string> args)
         {
             conv.preserveChunks = stoi(args[ci++]);
         }
+        else if (cmd == "random_filename")
+        {
+            conv.randomfilename = true;
+        }
         else
         {
             unnamedParams++;
@@ -1932,8 +1929,14 @@ void convert(vector<string> args)
     if (outputfile != "")
     {
         size_t iExt = outputfile.find_last_of(".");
-        conv.outfilename = outputfile.substr(0, iExt);
-        conv.outfileext = outputfile.substr(iExt);
+        if (iExt != string::npos) {
+            conv.outfilename = outputfile.substr(0, iExt);
+            conv.outfileext = outputfile.substr(iExt);
+        }
+        else {
+            conv.outfilename = outputfile;
+            conv.outfileext = ".binpack";
+        }
         if (conv.outformat == no)
             conv.outformat = (conv.outfileext.find(".binpack") != string::npos ? binpack : conv.outfileext.find(".bin") != string::npos ? bin : plain);
 
@@ -1946,11 +1949,12 @@ void convert(vector<string> args)
     for (int tnum = 0; tnum < en.Threads; tnum++)
     {
         en.sthread[tnum].index = tnum;
-        en.sthread[tnum].thr = thread(&convertthread, &en.sthread[tnum], &conv);
+        en.sthread[tnum].conv = &conv;
+        en.sthread[tnum].run_job(convertthread);
     }
 
-    int threadsToStop = en.Threads;
-    while (threadsToStop)
+    int threadsToStop;
+    do
     {
         Sleep(100);
         if (_kbhit())
@@ -1961,18 +1965,18 @@ void convert(vector<string> args)
                 cerr << "Stopping after current chunks";
             }
         }
+        threadsToStop = 0;
         for (int tnum = 0; tnum < en.Threads; tnum++)
         {
-            if (en.sthread[tnum].index < 0 && en.sthread[tnum].thr.joinable())
-            {
-                en.sthread[tnum].thr.join();
-                threadsToStop--;
-            }
+            if (en.sthread[tnum].index < 0)
+                en.sthread[tnum].wait_for_work_finished();
+            else
+                threadsToStop++;
         }
-    }
+    } while (threadsToStop);
 
     if (conv.ofs)
-        conv.ofs.close();
+        openOutputFile(&conv, true);
 
     if (!conv.okay)
         cerr << endl << "An error occured while reading input data." << endl;
