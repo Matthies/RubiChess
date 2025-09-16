@@ -2421,8 +2421,7 @@ public:
                 (*jobToRun)(this);
         }
     }
-    void run_job(void(*job)(workingthread*))
-    {
+    void run_job(void(*job)(workingthread*)) {
         {
             unique_lock<mutex> lk(mtx);
             cv.wait(lk, [this] { return !working; });
@@ -2432,18 +2431,15 @@ public:
         cv.notify_one();
     }
     void wait_for_work_finished() {
-
         unique_lock<mutex> lk(mtx);
         cv.wait(lk, [this] { return !working; });
     }
-    void init(int i, chessposition* r)
-    {
+    void init(int i, chessposition* r) {
         index = i;
         rootpos = r;
         thr = thread(&workingthread::idle_loop, this);
     }
-    void remove()
-    {
+    void remove() {
         myassert(!working, &pos, 1, working);
         exit = true;
         run_job(mainSearch<SinglePVSearch>);
@@ -2767,6 +2763,32 @@ extern const char  _binary_net_nnue_end;
 
 
 #ifdef NNUELEARN
+/*////////////////////////////////////////////////////////////////////////
+
+MIT License
+
+Copyright(c) 2021 Jérémy LAMBERT(SystemGlitch)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files(the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and /or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions :
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*////////////////////////////////////////////////////////////////////////////
+
 class SHA256 {
 
 public:
