@@ -1813,7 +1813,6 @@ public:
     bool see(uint32_t move, int threshold);
     int getBestPossibleCapture();
     void preparePosition();
-    //void tbFilterRootMoves();
     void prepareStack();
     string movesOnStack();
     template <bool LiteMode> bool playMove(uint32_t mc);

@@ -929,7 +929,7 @@ void prepareSearch(chessposition* pos)
 
 
 template <RootsearchType RT>
-void prepareAndStartSearch(workingthread* thr)//, chessposition *rootpos)
+void prepareAndStartSearch(workingthread* thr)
 {
     prepareSearch(&thr->pos, thr->rootpos);
     mainSearch<RT>(thr);
@@ -961,7 +961,6 @@ void engine::searchStart()
     }
 
     for (int tnum = 0; tnum < Threads; tnum++)
-        //sthread[tnum].thr = thread(prepareAndStartSearch<RT>, &sthread[tnum], &rootposition);
         sthread[tnum].run_job(prepareAndStartSearch<RT>);
 }
 
@@ -976,10 +975,6 @@ void engine::searchWaitStop(bool forceStop)
         stopLevel = ENGINESTOPIMMEDIATELY;
     for (int tnum = 0; tnum < Threads; tnum++)
         sthread[tnum].wait_for_work_finished();
-#if 0
-        if (sthread[tnum].thr.joinable())
-            sthread[tnum].thr.join();
-#endif
     stopLevel = ENGINETERMINATEDSEARCH;
 }
 

@@ -941,7 +941,7 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
 
 MIT License
 
-Copyright(c) 2021 Jérémy LAMBERT(SystemGlitch)
+Copyright(c) 2021 Jï¿½rï¿½my LAMBERT(SystemGlitch)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files(the "Software"), to deal
