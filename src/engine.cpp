@@ -222,20 +222,40 @@ void engine::registerOptions()
     ucioptions.Register(&LimitNps, "LimitNps", ucispin, "0", 0, INT_MAX, nullptr);
 }
 
+void initThread(workingthread* thr)
+{
+    chessposition* pos = &thr->pos;
+    pos->pwnhsh.setSize(en.sizeOfPh);
+    pos->accumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
+    pos->psqtAccumulation = NnueCurrentArch ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr;
+    if (NnueCurrentArch)
+        NnueCurrentArch->CreateAccumulationCache(pos);
+
+}
+
+void cleanupThread(workingthread* thr)
+{
+    chessposition* pos = &thr->pos;
+    pos->pwnhsh.remove();
+    freealigned64(pos->accumulation);
+    freealigned64(pos->psqtAccumulation);
+    freealigned64(pos->accucache.accumulation);
+    if (pos->accucache.psqtaccumulation)
+        freealigned64(pos->accucache.psqtaccumulation);
+    pos->~chessposition();
+}
 
 void engine::allocThreads()
 {
     // first cleanup the old searchthreads memory
     for (int i = 0; i < oldThreads; i++)
+        sthread[i].run_job(cleanupThread);
+
+    // finally remove the threads  themself
+    for (int i = 0; i < oldThreads; i++)
     {
-        chessposition* pos = &sthread[i].pos;
-        pos->pwnhsh.remove();
-        freealigned64(pos->accumulation);
-        freealigned64(pos->psqtAccumulation);
-        freealigned64(pos->accucache.accumulation);
-        if (pos->accucache.psqtaccumulation)
-            freealigned64(pos->accucache.psqtaccumulation);
-        pos->~chessposition();
+        sthread[i].wait_for_work_finished();
+        sthread[i].remove();
     }
 
     freealigned64(sthread);
@@ -245,34 +265,33 @@ void engine::allocThreads()
     if (!Threads)
         return;
 
-    size_t size = Threads * sizeof(searchthread);
+    size_t size = Threads * sizeof(workingthread);
     myassert(size % 64 == 0, nullptr, 1, size % 64);
 
     char* buf = (char*)allocalign64(size);
-    sthread = new (buf) searchthread[Threads];
+    sthread = new (buf) workingthread[Threads];
     for (int i = 0; i < Threads; i++)
     {
-        // FIXME: Maybe a threadpool with sleeping threads that could do this job would be better
-        sthread[i].index = i;
-        chessposition* pos = &sthread[i].pos;
-        pos->pwnhsh.setSize(sizeOfPh);
-        pos->accumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
-        pos->psqtAccumulation = NnueCurrentArch ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr;
-        if (NnueCurrentArch)
-            NnueCurrentArch->CreateAccumulationCache(pos);
+        sthread[i].init(i, &rootposition);
+        sthread[i].run_job(initThread);
     }
     resetStats();
 }
 
 
+void resetPositionStats(workingthread* thr)
+{
+    thr->pos.resetStats();
+}
+
+
 void engine::resetStats()
 {
-    // FIXME: Maybe a threadpool with sleeping threads that could do this job would be better
     for (int i = 0; i < Threads; i++)
-    {
-        chessposition* pos = &sthread[i].pos;
-        pos->resetStats();
-    }
+        sthread[i].run_job(resetPositionStats);
+    for (int i = 0; i < Threads; i++)
+        sthread[i].wait_for_work_finished();
+
     lastmytime = lastmyinc = 0;
 }
 
@@ -391,8 +410,7 @@ void engine::communicate(string inputstring)
                 rootposition.useTb = min(TBlargest, SyzygyProbeLimit);
                 if (debug)
                 {
-                    rootposition.getRootMoves();
-                    rootposition.tbFilterRootMoves();
+                    rootposition.preparePosition();
                     prepareSearch(&sthread[0].pos, &rootposition);
                     sthread[0].pos.print();
                 }
@@ -400,6 +418,9 @@ void engine::communicate(string inputstring)
             }
             if (pendingisready)
             {
+                if (!rootposition.isPrepared)
+                    rootposition.preparePosition();
+
                 guiCom << "readyok\n";
                 pendingisready = false;
             }
@@ -855,6 +876,8 @@ void engine::startSearchTime(bool ponderhit)
 }
 
 
+
+// Preparation for search thread's position when rootpos is already setup
 void prepareSearch(chessposition* pos, chessposition* rootpos)
 {
     // copy essential board data from rootpos to thread's position
@@ -882,12 +905,33 @@ void prepareSearch(chessposition* pos, chessposition* rootpos)
         NnueCurrentArch->ResetAccumulationCache(pos);
 }
 
+#ifdef NNUELEARN
+// Preparation for search thread's position without rootpos
+void prepareSearch(chessposition* pos)
+{
+    memset((void*)pos, 0, offsetof(chessposition, history));
+
+    pos->bestmovescore[0] = NOSCORE;
+    pos->bestmove = 0;
+    pos->pondermove = 0;
+    pos->nodes = 0;
+    pos->tbhits = 0;
+    pos->nullmoveply = 0;
+    pos->nullmoveside = 0;
+    pos->nodesToNextCheck = 0;
+    pos->excludemovestack[0] = 0;
+    pos->computationState[0][WHITE] = false;
+    pos->computationState[0][BLACK] = false;
+    if (NnueCurrentArch)
+        NnueCurrentArch->ResetAccumulationCache(pos);
+}
+#endif
+
 
 template <RootsearchType RT>
-void prepareAndStartSearch(searchthread* thr, chessposition *rootpos)
+void prepareAndStartSearch(workingthread* thr)
 {
-    chessposition* pos = &thr->pos;
-    prepareSearch(pos, rootpos);
+    prepareSearch(&thr->pos, thr->rootpos);
     mainSearch<RT>(thr);
 }
 
@@ -908,8 +952,7 @@ void engine::searchStart()
 
     // increment generation counter for tt aging
     tp.nextSearch();
-    rootposition.getRootMoves();
-    rootposition.tbFilterRootMoves();
+    rootposition.preparePosition();
     // init nodespermove for main thread
     memset(&sthread[0].pos.nodespermove, 0, sizeof(chessposition::nodespermove));    
     for (int tnum = 0; tnum < Threads; tnum++) {
@@ -918,7 +961,7 @@ void engine::searchStart()
     }
 
     for (int tnum = 0; tnum < Threads; tnum++)
-        sthread[tnum].thr = thread(prepareAndStartSearch<RT>, &sthread[tnum], &rootposition);
+        sthread[tnum].run_job(prepareAndStartSearch<RT>);
 }
 
 
@@ -931,8 +974,7 @@ void engine::searchWaitStop(bool forceStop)
     if (forceStop)
         stopLevel = ENGINESTOPIMMEDIATELY;
     for (int tnum = 0; tnum < Threads; tnum++)
-        if (sthread[tnum].thr.joinable())
-            sthread[tnum].thr.join();
+        sthread[tnum].wait_for_work_finished();
     stopLevel = ENGINETERMINATEDSEARCH;
 }
 

@@ -93,7 +93,7 @@ void generateEpd(string egn)
             && squareDistance[pos->kingpos[0]][pos->kingpos[1]] > 0;
         if (isLegal)
         {
-            pos->getRootMoves();
+            pos->preparePosition();
             if (pos->rootmovelist.length == 0)
                 continue;
 

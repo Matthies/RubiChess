@@ -81,6 +81,9 @@
 #include <algorithm>
 #include <iterator>
 #include <thread>
+#include <atomic>
+#include <mutex>
+#include <condition_variable>
 #include <map>
 #include <array>
 #include <bitset>
@@ -384,7 +387,7 @@ enum Color { WHITE, BLACK };
 // Forward definitions
 class transposition;
 class chessposition;
-class searchthread;
+class workingthread;
 struct pawnhashentry;
 
 // some general constants
@@ -1104,6 +1107,7 @@ void NnueWriteNet(vector<string> args);
 void NnueRegisterEvals();
 #endif
 
+#ifdef NNUELEARN
 struct PackedSfen { uint8_t data[32]; };
 
 struct PackedSfenValue
@@ -1136,9 +1140,39 @@ struct Binpack
     bool debug() { return false; /*size_t offset = *data - base; return numChunks == 3 && offset > 0x170 && offset < 0x200; */ }
 };
 
+enum SfenFormat { no, bin, binpack, plain };
+
+struct conversion_t {
+    string outfilename;
+    string outfileext;
+    ofstream ofs;
+    SfenFormat outformat;
+    SfenFormat informat;
+    SfenFormat cmpformat;
+    int rescoreDepth;
+    ifstream* is;
+    ifstream* cmps;
+    ostream* os;
+    mutex mtin, mtout, mtcmp;
+    bool okay;
+    bool stoprequest;
+    bool endofinputfile;
+    bool randomfilename;
+    atomic<unsigned long long> numPositions;
+    atomic<int> numInChunks;
+    atomic<int> numOutChunks;
+    atomic<int> chunksWritten;
+    int skipChunks;
+    int splitChunks;
+    int disable_prune;
+    int preserveChunks;
+};
+
+
 void gensfen(vector<string> args);
 void convert(vector<string> args);
 void learn(vector<string> args);
+#endif
 
 //
 // transposition stuff
@@ -1673,6 +1707,7 @@ public:
     int useRootmoveScore;
     int tbPosition;
     uint32_t defaultmove;           // only mainthread needs it  -- fallback if search in time trouble didn't finish a single iteration
+    bool isPrepared;
     int castlerights[64];
     int castlerookfrom[4];
     U64 castleblockers[4];
@@ -1777,8 +1812,7 @@ public:
     template <AttackType At> U64 isAttackedBy(int index, int col);    // returns the bitboard of cols pieces attacking the index square; At controls if pawns are moved to block or capture
     bool see(uint32_t move, int threshold);
     int getBestPossibleCapture();
-    void getRootMoves();
-    void tbFilterRootMoves();
+    void preparePosition();
     void prepareStack();
     string movesOnStack();
     template <bool LiteMode> bool playMove(uint32_t mc);
@@ -2114,7 +2148,7 @@ public:
     chessposition rootposition;
     int Threads;
     int oldThreads;
-    searchthread *sthread;
+    workingthread *sthread;
     ponderstate_t pondersearch;
     int ponderhitbonus;
     int lastReport;
@@ -2197,8 +2231,11 @@ public:
 };
 
 void prepareSearch(chessposition* pos, chessposition* rootpos);
+#ifdef NNUELEARN
+void prepareSearch(chessposition* pos);
+#endif
 template <RootsearchType RT>
-void prepareAndStartSearch(searchthread* thr, chessposition* rootpos);
+void prepareAndStartSearch();
 
 PieceType GetPieceType(char c);
 char PieceChar(PieceCode c, bool lower = false);
@@ -2335,12 +2372,22 @@ struct searchparamset {
 
 extern SPSCONST searchparamset sps;
 
-class searchthread
+void searchinit();
+template <RootsearchType RT> void mainSearch(workingthread* thr);
+void cleanTranspositiontable(workingthread* thr);
+
+class workingthread
 {
 public:
     uint64_t toppadding[8];
+    chessposition* rootpos;
     chessposition pos;
     thread thr;
+    mutex mtx;
+    condition_variable cv;
+    bool working = true;    // reset by idle_loop
+    bool exit = false;
+    void (*jobFunc)(workingthread*);
     int index;
     int depth;
     int lastCompleteDepth;
@@ -2348,15 +2395,58 @@ public:
 #ifdef NNUELEARN
     PackedSfenValue* psvbuffer;
     PackedSfenValue* psv;
+    conversion_t* conv;
     int totalchunks;
     int chunkstate[2];
+    U64 rndseed;
 #endif
     uint64_t bottompadding[8];
+    void idle_loop() {
+        while (true)
+        {
+            unique_lock<mutex> lk(mtx);
+            working = false;
+            cv.notify_one();  // Wake up anyone waiting for work finished
+            cv.wait(lk, [this] { return working; });
+
+            if (exit)
+                return;
+
+            void(*jobToRun)(workingthread*) = jobFunc;
+            jobFunc = nullptr;
+
+            lk.unlock();
+
+            if (jobToRun)
+                (*jobToRun)(this);
+        }
+    }
+    void run_job(void(*job)(workingthread*)) {
+        {
+            unique_lock<mutex> lk(mtx);
+            cv.wait(lk, [this] { return !working; });
+            jobFunc = job;
+            working = true;
+        }
+        cv.notify_one();
+    }
+    void wait_for_work_finished() {
+        unique_lock<mutex> lk(mtx);
+        cv.wait(lk, [this] { return !working; });
+    }
+    void init(int i, chessposition* r) {
+        index = i;
+        rootpos = r;
+        thr = thread(&workingthread::idle_loop, this);
+    }
+    void remove() {
+        myassert(!working, &pos, 1, working);
+        exit = true;
+        run_job(mainSearch<SinglePVSearch>);
+        thr.join();
+    }
 };
 
-
-void searchinit();
-template <RootsearchType RT> void mainSearch(searchthread* thr);
 
 //
 // TB stuff
@@ -2669,4 +2759,79 @@ void init_tablebases(char *path);
 #ifdef NNUEINCLUDED
 extern const char  _binary_net_nnue_start;
 extern const char  _binary_net_nnue_end;
+#endif
+
+
+#ifdef NNUELEARN
+/*////////////////////////////////////////////////////////////////////////
+
+MIT License
+
+Copyright(c) 2021 Jérémy LAMBERT(SystemGlitch)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files(the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and /or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions :
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*////////////////////////////////////////////////////////////////////////////
+
+class SHA256 {
+
+public:
+    SHA256();
+    void update(const uint8_t* data, size_t length);
+    void update(const std::string& data);
+    std::array<uint8_t, 32> digest();
+
+    static std::string toString(const std::array<uint8_t, 32>& digest);
+
+private:
+    uint8_t  m_data[64];
+    uint32_t m_blocklen;
+    uint64_t m_bitlen;
+    uint32_t m_state[8]; //A, B, C, D, E, F, G, H
+
+    static constexpr std::array<uint32_t, 64> K = {
+        0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,
+        0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+        0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,
+        0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+        0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,
+        0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+        0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,
+        0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+        0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,
+        0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+        0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,
+        0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+        0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,
+        0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+        0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,
+        0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+    };
+
+    static uint32_t rotr(uint32_t x, uint32_t n);
+    static uint32_t choose(uint32_t e, uint32_t f, uint32_t g);
+    static uint32_t majority(uint32_t a, uint32_t b, uint32_t c);
+    static uint32_t sig0(uint32_t x);
+    static uint32_t sig1(uint32_t x);
+    void transform();
+    void pad();
+    void revert(std::array<uint8_t, 32>& hash);
+};
+
 #endif
