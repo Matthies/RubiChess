@@ -367,19 +367,16 @@ void engine::communicate(string inputstring)
     do
     {
         if (stopLevel >= ENGINESTOPIMMEDIATELY)
-        {
             searchWaitStop();
-        }
+
         if (pendingisready || pendingposition)
         {
             if (pendingposition)
             {
                 // new position first stops current search
                 if (stopLevel < ENGINESTOPIMMEDIATELY)
-                {
-                    stopLevel = ENGINESTOPIMMEDIATELY;
                     searchWaitStop();
-                }
+
                 if (rootposition.getFromFen(fen.c_str()) < 0)
                 {
                     guiCom << "info string Illegal FEN string " + fen + ". Startposition will be used instead.\n";
@@ -431,8 +428,6 @@ void engine::communicate(string inputstring)
             command = parse(&commandargs, inputstring);  // blocking!!
             ci = 0;
             cs = commandargs.size();
-            if (stopLevel == ENGINESTOPIMMEDIATELY)
-                searchWaitStop();
             switch (command)
             {
             case UCIDEBUG:
@@ -480,6 +475,8 @@ void engine::communicate(string inputstring)
                 guiCom << "uciok\n";
                 break;
             case UCINEWGAME:
+                // stop current search
+                searchWaitStop();
                 // invalidate hash and history
                 tp.clean();
                 resetStats();
@@ -565,6 +562,8 @@ void engine::communicate(string inputstring)
                 pendingposition = (fen != "");
                 break;
             case GO:
+                // new search first stops current search
+                searchWaitStop();
                 if (usennue && !NnueReady)
                     break;
                 startSearchTime(false);
