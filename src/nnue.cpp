@@ -206,6 +206,13 @@ public:
     size_t GetNetworkFilesize() {
         return networkfilesize;
     }
+    int GetFtWeightUpscale() {
+        return 1;
+    }
+    int GetPermutedWeightIndex(int i, bool reverse = false) {
+        return (reverse ? i : i);
+    }
+
 #ifdef STATISTICS
     void SwapInputNeurons(unsigned int i1, unsigned int i2) {
         // not supported for V1
@@ -376,6 +383,25 @@ public:
     size_t GetNetworkFilesize() {
         return networkfilesize;
     }
+    int GetFtWeightUpscale() {
+        return 2;
+    }
+    int GetPermutedWeightIndex(int i, bool reverse = false) {
+#if defined(USE_AVX512)
+        const int permuteindex[] = { 0, 4, 1, 5, 2, 6, 3, 7 };
+        const int reversepermuteindex[] = { 0, 2, 4, 6, 1, 3, 5, 7 };
+#elif defined(USE_AVX2)
+        const int permuteindex[] = { 0, 2, 1, 3, 4, 6, 5, 7 };
+        const int reversepermuteindex[] = { 0, 2, 1, 3, 4, 6, 5, 7 };
+#else
+        const int permuteindex[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+        const int reversepermuteindex[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+#endif
+        int block = (i / 64) * 64;
+        int chunk = (i % 64) / 8;
+        int permutedindex = (reverse ? reversepermuteindex[chunk] : permuteindex[chunk]) * 8 + (i % 8);
+        return block + permutedindex;
+    }
 #ifdef STATISTICS
     void SwapInputNeurons(unsigned int i1, unsigned int i2) {
         if (i1 >= NnueFtHalfdims / 2 || i2 >= NnueFtHalfdims / 2) {
@@ -520,11 +546,9 @@ typedef __m128i bias_vec_t;
 #define vec_set_16(a) _mm512_set1_epi16(a)
 #define vec_max_16(a,b) _mm512_max_epi16(a,b)
 #define vec_min_16(a,b) _mm512_min_epi16(a,b)
-#define vec_mul_16(a,b) _mm512_mullo_epi16(a,b)
-inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
-    ft_vec_t compacted = _mm512_packs_epi16(_mm512_srli_epi16(a, 7), _mm512_srli_epi16(b, 7));
-    return _mm512_permutexvar_epi64(_mm512_setr_epi64(0, 2, 4, 6, 1, 3, 5, 7), compacted);
-}
+#define vec_mulhi_16(a,b) _mm512_mulhi_epi16(a,b)
+#define vec_slli_16(a,b) _mm512_slli_epi16(a,b)
+#define vec_packus_16(a,b) _mm512_packus_epi16(a,b)
 #define vec_add_16(a,b) _mm512_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm512_sub_epi16(a,b)
 #define vec_packs(a,b) _mm512_packs_epi16(a,b)
@@ -554,11 +578,9 @@ typedef __m128i bias_vec_t;
 #define vec_set_16(a) _mm256_set1_epi16(a)
 #define vec_max_16(a,b) _mm256_max_epi16(a,b)
 #define vec_min_16(a,b) _mm256_min_epi16(a,b)
-#define vec_mul_16(a,b) _mm256_mullo_epi16(a,b)
-inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
-    ft_vec_t compacted = _mm256_packs_epi16(_mm256_srli_epi16(a, 7), _mm256_srli_epi16(b, 7));
-    return _mm256_permute4x64_epi64(compacted, 0xd8);
-}
+#define vec_mulhi_16(a,b) _mm256_mulhi_epi16(a,b)
+#define vec_slli_16(a,b) _mm256_slli_epi16(a,b)
+#define vec_packus_16(a,b) _mm256_packus_epi16(a,b)
 #define vec_add_16(a,b) _mm256_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm256_sub_epi16(a,b)
 #define vec_packs(a,b) _mm256_packs_epi16(a,b)
@@ -587,11 +609,12 @@ typedef __m128i ft_vec_t, ftout_vec_t, psqt_vec_t;
 #define vec_set_16(a) _mm_set1_epi16(a)
 #define vec_max_16(a,b) _mm_max_epi16(a,b)
 #define vec_min_16(a,b) _mm_min_epi16(a,b)
-#define vec_mul_16(a,b) _mm_mullo_epi16(a,b)
+#define vec_mulhi_16(a,b) _mm_mulhi_epi16(a,b)
+#define vec_slli_16(a,b) _mm_slli_epi16(a,b)
+#define vec_packus_16(a,b) _mm_packus_epi16(a,b)
 #define vec_add_16(a,b) _mm_add_epi16(a,b)
 #define vec_sub_16(a,b) _mm_sub_epi16(a,b)
 #define vec_packs(a,b) _mm_packs_epi16(a,b)
-#define vec_msb_pack_16(a,b) _mm_packs_epi16(_mm_srli_epi16(a,7),_mm_srli_epi16(b,7))
 #define vec_zero_psqt() _mm_setzero_si128()
 #define vec_add_psqt_32(a,b) _mm_add_epi32(a,b)
 #define vec_sub_psqt_32(a,b) _mm_sub_epi32(a,b)
@@ -630,13 +653,9 @@ typedef int8x16_t sprsin_vec_t;
 #define vec_set_16(a) vdupq_n_s16(a)
 #define vec_max_16(a,b) vmaxq_s16(a,b)
 #define vec_min_16(a,b) vminq_s16(a,b)
-#define vec_mul_16(a,b) vmulq_s16(a,b)
-inline  ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
-    const int8x8_t shifta = vshrn_n_s16(a, 7);
-    const int8x8_t shiftb = vshrn_n_s16(b, 7);
-    const int8x16_t compacted = vcombine_s8(shifta, shiftb);
-    return *(ft_vec_t*)&compacted;
-}
+#define vec_mulhi_16(a,b) vqdmulhq_s16(a,b)
+#define vec_slli_16(a,b) vshlq_s16(a,vec_set_16(b))
+#define vec_packus_16(a,b) (ft_vec_t)(vcombine_u8(vqmovun_s16(a), vqmovun_s16(b)))
 #define vec_add_16(a,b) vaddq_s16(a,b)
 #define vec_sub_16(a,b) vsubq_s16(a,b)
 #define vec_packs(a,b) vcombine_s8(vqmovn_s16(a),vqmovn_s16(b))
@@ -1168,28 +1187,30 @@ int chessposition::Transform(clipped_t *output, int bucket)
         {
             const unsigned int numChunks = NnueFtHalfdims / 2 / MAXCHUNKSIZE;
             ft_vec_t Zero = vec_zero();
-            ft_vec_t One = vec_set_16(127);
+            ft_vec_t One = vec_set_16(127 * 2);
 
             const ft_vec_t* in0 = (ft_vec_t*)(acm + perspectives[p] * NnueFtHalfdims);
             const ft_vec_t* in1 = (ft_vec_t*)(acm + perspectives[p] * NnueFtHalfdims + NnueFtHalfdims / 2);
             ftout_vec_t* out = (ftout_vec_t*)&output[offset];
             for (unsigned int i = 0; i < numChunks; i++)
             {
-                const ft_vec_t sum0a = vec_max_16(vec_min_16(in0[i * 2 + 0], One), Zero);
-                const ft_vec_t sum0b = vec_max_16(vec_min_16(in0[i * 2 + 1], One), Zero);
-                const ft_vec_t sum1a = vec_max_16(vec_min_16(in1[i * 2 + 0], One), Zero);
-                const ft_vec_t sum1b = vec_max_16(vec_min_16(in1[i * 2 + 1], One), Zero);
+#ifdef USE_SSE2
+                const int shift = 7;
+#else // NEON
+                const int shift = 6;
+#endif
+                const ft_vec_t sum0a = vec_slli_16(vec_max_16(vec_min_16(in0[i * 2 + 0], One), Zero), shift);
+                const ft_vec_t sum0b = vec_slli_16(vec_max_16(vec_min_16(in0[i * 2 + 1], One), Zero), shift);
+                const ft_vec_t sum1a = vec_min_16(in1[i * 2 + 0], One);
+                const ft_vec_t sum1b = vec_min_16(in1[i * 2 + 1], One);
 
-                const ft_vec_t pa = vec_mul_16(sum0a, sum1a);
-                const ft_vec_t pb = vec_mul_16(sum0b, sum1b);
+                const ft_vec_t pa = vec_mulhi_16(sum0a, sum1a);
+                const ft_vec_t pb = vec_mulhi_16(sum0b, sum1b);
 #ifdef USE_FASTSSE2
-                const ft_vec_t shfta =  _mm_srli_epi16(pa, 7);
-                const ft_vec_t shftb = _mm_srli_epi16(pb, 7);
-
-                out[i * 2] = shfta;
-                out[i * 2 + 1] = shftb;
+                out[i * 2] = _mm_max_epi16(pa, Zero);
+                out[i * 2 + 1] = _mm_max_epi16(pb, Zero);
 #else
-                out[i] = vec_msb_pack_16(pa, pb);
+                out[i] = vec_packus_16(pa, pb);
 #endif
             }
         }
@@ -1222,9 +1243,9 @@ int chessposition::Transform(clipped_t *output, int bucket)
             for (unsigned int i = 0; i < NnueFtHalfdims / 2; i++) {
                 int16_t sum0 = *(acm + perspectives[p] * NnueFtHalfdims + i);
                 int16_t sum1 = *(acm + perspectives[p] * NnueFtHalfdims + NnueFtHalfdims / 2 + i);
-                sum0 = max((int16_t)0, min((int16_t)127, sum0));
-                sum1 = max((int16_t)0, min((int16_t)127, sum1));
-                output[offset + i] = sum0 * sum1 / 128;
+                sum0 = max((int16_t)0, min((int16_t)(127 * 2), sum0));
+                sum1 = max((int16_t)0, min((int16_t)(127 * 2), sum1));
+                output[offset + i] = sum0 * sum1 / 512;
             }
         }
 #endif
@@ -1332,7 +1353,9 @@ bool NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::ReadFeatureWeights(
     else
         okay = okay && nr->read((unsigned char*)src_16, ftdims * sizeof(int16_t));
 
-    memcpy(bias, src_16, ftdims * sizeof(int16_t));
+    // Scale and permute
+    for (i = 0; i < ftdims; i++)
+        bias[NnueCurrentArch->GetPermutedWeightIndex(i)] = src_16[i] * NnueCurrentArch->GetFtWeightUpscale();
 
     // read weights
     isLeb128 = testLeb128(nr);
@@ -1351,7 +1374,10 @@ bool NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::ReadFeatureWeights(
         }
     }
     
-    memcpy(weight, src_16, inputdims * ftdims * sizeof(int16_t));
+    // Scale and permute
+    for (i = 0; i < inputdims * ftdims; i++)
+        weight[NnueCurrentArch->GetPermutedWeightIndex(i)] = src_16[i] * NnueCurrentArch->GetFtWeightUpscale();
+
     free(src_16);
 
     if (psqtbuckets)
@@ -1419,16 +1445,32 @@ bool writeLeb128(NnueNetsource* nr, IntType* in, size_t count)
 template <int ftdims, int inputdims, int psqtbuckets>
 void NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::WriteFeatureWeights(NnueNetsource* nr, bool leb128)
 {
+    // we need some buffers for unscaled and unpermuted weights written to network file
+    int16_t* scaledweight = (int16_t*)calloc(inputdims * ftdims, sizeof(int16_t));
+    int16_t* scaledbias = (int16_t*)calloc(ftdims, sizeof(int16_t));
+    if (!scaledweight || !scaledbias)
+        return;
+
+    // Scale and permute
+    int i;
+    for (i = 0; i < ftdims; i++)
+        scaledbias[NnueCurrentArch->GetPermutedWeightIndex(i, true)] = bias[i] / NnueCurrentArch->GetFtWeightUpscale();
+    for (i = 0; i < inputdims * ftdims; i++)
+        scaledweight[NnueCurrentArch->GetPermutedWeightIndex(i, true)] = weight[i] / NnueCurrentArch->GetFtWeightUpscale();
+
     if (leb128) {
-        writeLeb128(nr, bias, ftdims);
-        writeLeb128(nr, weight, inputdims * ftdims);
+        writeLeb128(nr, scaledbias, ftdims);
+        writeLeb128(nr, scaledweight, inputdims * ftdims);
         writeLeb128(nr, psqtWeights, inputdims * psqtbuckets);
     }
     else {
-        nr->write((unsigned char*)bias, ftdims * sizeof(int16_t));
-        nr->write((unsigned char*)weight, inputdims * ftdims * sizeof(int16_t));
+        nr->write((unsigned char*)scaledbias, ftdims * sizeof(int16_t));
+        nr->write((unsigned char*)scaledweight, inputdims * ftdims * sizeof(int16_t));
         nr->write((unsigned char*)psqtWeights, inputdims * psqtbuckets * sizeof(int32_t));
     }
+
+    free(scaledweight);
+    free(scaledbias);
 }
 
 

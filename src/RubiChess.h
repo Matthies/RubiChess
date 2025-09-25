@@ -879,6 +879,9 @@ public:
     virtual unsigned int GetAccumulationSize() = 0;
     virtual unsigned int GetPsqtAccumulationSize() = 0;
     virtual size_t GetNetworkFilesize() = 0;
+    virtual int GetFtWeightUpscale() = 0;
+    virtual int GetPermutedWeightIndex(int i, bool reverse = false) = 0;
+
 #ifdef STATISTICS
     virtual void SwapInputNeurons(unsigned int i1, unsigned int i2) = 0;
     virtual void Statistics(bool verbose, bool sort) = 0;
