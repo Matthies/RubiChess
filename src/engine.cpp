@@ -270,6 +270,7 @@ void engine::allocThreads()
 
     char* buf = (char*)allocalign64(size);
     sthread = new (buf) workingthread[Threads];
+    //cout << "numa_avaliable: " << numa_available() << "\n";
     for (int i = 0; i < Threads; i++)
     {
         sthread[i].init(i, &rootposition);

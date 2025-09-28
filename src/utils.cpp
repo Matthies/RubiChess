@@ -498,6 +498,66 @@ string chessposition::AlgebraicFromShort(string s)
 }
 
 
+#ifdef USE_LIBNUMA
+//
+// Credits for this code go to Kieren Pearson / Halogen
+//
+vector<cpu_set_t> get_cpu_masks_per_numa_node()
+{
+    vector<cpu_set_t> node_cpu_masks;
+    if (numa_available() == -1)
+    {
+        cerr << "NUMA is not available on this system" << endl;
+        return node_cpu_masks;
+    }
+
+    const int max_node = numa_max_node();
+    for (int node = 0; node <= max_node; ++node)
+    {
+        struct bitmask* cpumask = numa_allocate_cpumask();
+        cout << "NUMA node #" << node << "  cpumsk size: " << cpumask->size << "  cpumsk: " << hex << *cpumask->maskp << dec << endl;
+        if (numa_node_to_cpus(node, cpumask) != 0)
+        {
+            cerr << "Failed to get CPUs for NUMA node: " << node << endl;
+            return node_cpu_masks;
+        }
+
+        cpu_set_t cpuset;
+        CPU_ZERO(&cpuset);
+
+        for (size_t cpu = 0; cpu < cpumask->size; ++cpu)
+            if (numa_bitmask_isbitset(cpumask, cpu))
+            {
+                CPU_SET(cpu, &cpuset);
+            }
+
+        numa_free_cpumask(cpumask);
+        node_cpu_masks.push_back(cpuset);
+    }
+
+    return node_cpu_masks;
+}
+
+void bind_thread(int index)
+{
+    static vector<cpu_set_t> mapping = get_cpu_masks_per_numa_node();
+    if (mapping.size() == 0)
+        return;
+
+    size_t node = index % mapping.size();
+    pthread_t handle = pthread_self();
+    cout << "pthread ID: " << handle << "\n";
+    pthread_setaffinity_np(handle, sizeof(cpu_set_t), &mapping[node]);
+}
+
+#else
+void bind_thread(int index)
+{
+
+}
+#endif
+
+
 
 #ifdef _WIN32
 #include <process.h>

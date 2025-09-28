@@ -148,6 +148,9 @@ void Sleep(long x);
 #endif
 #endif
 
+#ifdef USE_LIBNUMA
+#include <numa.h>
+#endif
 
 
 typedef unsigned long long U64;
@@ -777,6 +780,7 @@ unsigned char AlgebraicToIndex(string s);
 string IndexToAlgebraic(int i);
 void BitboardDraw(U64 b);
 U64 getTime();
+void bind_thread(int index);
 string CurrentWorkingDir();
 #ifdef _WIN32
 void* my_large_malloc(size_t s);
@@ -2402,6 +2406,7 @@ public:
 #endif
     uint64_t bottompadding[8];
     void idle_loop() {
+        bind_thread(index);
         while (true)
         {
             unique_lock<mutex> lk(mtx);
