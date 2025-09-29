@@ -1780,11 +1780,23 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
     for (unsigned int k = 0; k < NumRegs; ++k)
         acc[k] = biasvec[k];
 
+    uint16_t* start = nnz;
+    uint16_t* end = nnz + count;
+    weight_t* w_cp = weight;
+    while (start < end)
+    {
+        const ptrdiff_t i = *start;
+        start++;
+        const sprsin_vec_t in = vec_set_32(input32[i]);
+        const sprsin_vec_t* col = (const sprsin_vec_t*)&w_cp[i * outputdims * ChunkSize];
+
+#if 0
     for (unsigned int j = 0; j < count; ++j)
     {
         const uint16_t i = nnz[j];
         const sprsin_vec_t in = vec_set_32(input32[i]);
         const sprsin_vec_t* col = (const sprsin_vec_t*)&weight[i * outputdims * ChunkSize];
+#endif
         for (unsigned int k = 0; k < NumRegs; ++k)
             vec_add_dpbusd_32(acc[k], in, col[k]);
 #ifdef NNUEDEBUG
