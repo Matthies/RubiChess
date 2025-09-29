@@ -224,7 +224,7 @@ void engine::registerOptions()
 
 void initThread(workingthread* thr)
 {
-    chessposition* pos = &thr->pos;
+    chessposition* pos = thr->pos = (chessposition*)allocalign64(sizeof(chessposition));
     pos->pwnhsh.setSize(en.sizeOfPh);
     pos->accumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
     pos->psqtAccumulation = NnueCurrentArch ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr;
@@ -235,7 +235,7 @@ void initThread(workingthread* thr)
 
 void cleanupThread(workingthread* thr)
 {
-    chessposition* pos = &thr->pos;
+    chessposition* pos = thr->pos;
     pos->pwnhsh.remove();
     freealigned64(pos->accumulation);
     freealigned64(pos->psqtAccumulation);
@@ -256,6 +256,7 @@ void engine::allocThreads()
     {
         sthread[i].wait_for_work_finished();
         sthread[i].remove();
+        freealigned64(sthread[i].pos);
     }
 
     freealigned64(sthread);
@@ -267,6 +268,7 @@ void engine::allocThreads()
 
     size_t size = Threads * sizeof(workingthread);
     myassert(size % 64 == 0, nullptr, 1, size % 64);
+    cout << "workingthread size and alignment: "<< sizeof(workingthread) << " / " << sizeof(workingthread) % 64 << endl;
 
     char* buf = (char*)allocalign64(size);
     sthread = new (buf) workingthread[Threads];
@@ -282,7 +284,7 @@ void engine::allocThreads()
 
 void resetPositionStats(workingthread* thr)
 {
-    thr->pos.resetStats();
+    thr->pos->resetStats();
 }
 
 
@@ -319,8 +321,8 @@ void engine::getNodesAndTbhits(U64* nodes, U64* tbhits)
     U64 mynodes = 0;
     U64 mytbhits = 0;
     for (int i = 0; i < Threads; i++) {
-        mynodes += sthread[i].pos.nodes;
-        mytbhits += sthread[i].pos.tbhits;
+        mynodes += sthread[i].pos->nodes;
+        mytbhits += sthread[i].pos->tbhits;
     }
 
     *nodes = mynodes;
@@ -412,8 +414,8 @@ void engine::communicate(string inputstring)
                 if (debug)
                 {
                     rootposition.preparePosition();
-                    prepareSearch(&sthread[0].pos, &rootposition);
-                    sthread[0].pos.print();
+                    prepareSearch(sthread[0].pos, &rootposition);
+                    sthread[0].pos->print();
                 }
                 pendingposition = false;
             }
@@ -675,7 +677,7 @@ void engine::communicate(string inputstring)
                 break;
             case EVAL:
                 evaldetails = (ci < cs && commandargs[ci] == "detail");
-                sthread[0].pos.getEval<TRACE>();
+                sthread[0].pos->getEval<TRACE>();
                 break;
             case PERFT:
                 if (ci < cs) {
@@ -827,7 +829,7 @@ void engine::resetEndTime(U64 nowTime, int constantRootMoves, int bestmovenodesr
             // ph: phase of the game averaging material and move number
             // f1: stop soon after 5..17 timeslot
             // f2: stop immediately after 15..27 timeslots
-            int ph = (sthread[0].pos.getPhase() + min(255, sthread[0].pos.fullmovescounter * 6)) / 2;
+            int ph = (sthread[0].pos->getPhase() + min(255, sthread[0].pos->fullmovescounter * 6)) / 2;
             U64 f1 = max(5, 17 - constance) * bestmovenodesratio;
             U64 f2 = max(15, 27 - constance) * bestmovenodesratio;
             timetouse = max(timeinc, timetouse); // workaround for Arena bug
@@ -932,14 +934,14 @@ void prepareSearch(chessposition* pos)
 template <RootsearchType RT>
 void prepareAndStartSearch(workingthread* thr)
 {
-    prepareSearch(&thr->pos, thr->rootpos);
+    prepareSearch(thr->pos, thr->rootpos);
     mainSearch<RT>(thr);
 }
 
 template <RootsearchType RT>
 void engine::searchStart()
 {
-    uint32_t bm = pbook.GetMove(&sthread[0].pos);
+    uint32_t bm = pbook.GetMove(sthread[0].pos);
     if (bm)
     {
         guiCom << "bestmove " + moveToString(bm) + "\n";
@@ -955,9 +957,9 @@ void engine::searchStart()
     tp.nextSearch();
     rootposition.preparePosition();
     // init nodespermove for main thread
-    memset(&sthread[0].pos.nodespermove, 0, sizeof(chessposition::nodespermove));    
+    memset(&sthread[0].pos->nodespermove, 0, sizeof(chessposition::nodespermove));    
     for (int tnum = 0; tnum < Threads; tnum++) {
-        sthread[tnum].pos.threadindex = tnum;   // signal that the thread is (will be) alive
+        sthread[tnum].pos->threadindex = tnum;   // signal that the thread is (will be) alive
         sthread[tnum].lastCompleteDepth = 0;    // needs early reset to avoid thread voting with threads not started yet
     }
 

@@ -45,7 +45,7 @@ void generateEpd(string egn)
 
         return;
     }
-    chessposition *pos = &en.sthread[0].pos;
+    chessposition *pos = en.sthread[0].pos;
     int pcs[16];
 
     int n = 1000;
@@ -120,7 +120,7 @@ U64 engine::perft(int depth, bool printsysteminfo)
     long long starttime = 0;
     long long endtime = 0;
     U64 retval = 0;
-    chessposition *rootpos = &en.sthread[0].pos;
+    chessposition *rootpos = en.sthread[0].pos;
 
     if (printsysteminfo) {
         starttime = getTime();
@@ -251,7 +251,7 @@ static void perftest(int maxdepth)
 
     while (ptr[i].fen != "")
     {
-        en.sthread[0].pos.getFromFen(ptr[i].fen.c_str());
+        en.sthread[0].pos->getFromFen(ptr[i].fen.c_str());
         int j = 1;
         while (ptr[i].nodes[j] > 0 && j <= maxdepth)
         {

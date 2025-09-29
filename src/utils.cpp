@@ -217,7 +217,7 @@ void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am)
     for (int i = 0; i < min(4, (int)fv.size()); i++)
         f = f + fv[i] + " ";
 
-    chessposition *p = &en.sthread[0].pos;
+    chessposition *p = en.sthread[0].pos;
     if (p->getFromFen(f.c_str()) < 0)
         return;
 
