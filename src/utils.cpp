@@ -541,12 +541,13 @@ vector<cpu_set_t> get_cpu_masks_per_numa_node()
 void bind_thread(int index)
 {
     static vector<cpu_set_t> mapping = get_cpu_masks_per_numa_node();
+    static int randomOffset = getTime() % mapping.size();
     if (mapping.size() == 0)
         return;
 
-    size_t node = index % mapping.size();
+    size_t node = (index + randomOffset) % mapping.size();
     pthread_t handle = pthread_self();
-    cout << "pthread ID: " << handle << "\n";
+    cout << "node: " << node << "  pthread ID: " << handle << "\n";
     pthread_setaffinity_np(handle, sizeof(cpu_set_t), &mapping[node]);
 }
 
