@@ -143,7 +143,7 @@ void Sleep(long x);
 #define allocalign64(x) malloc(x)
 #define freealigned64(x) free(x)
 #else
-#ifdef USE_LIBNUMA
+#ifdef xxxUSE_LIBNUMA
 #define allocalign64(x) numa_alloc_local(x)
 #define freealigned64(x) numa_free(x, 1)
 #else
