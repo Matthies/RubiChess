@@ -143,13 +143,8 @@ void Sleep(long x);
 #define allocalign64(x) malloc(x)
 #define freealigned64(x) free(x)
 #else
-#ifdef xxxUSE_LIBNUMA
-#define allocalign64(x) numa_alloc_local(x)
-#define freealigned64(x) numa_free(x, 1)
-#else
 #define allocalign64(x) aligned_alloc(64, x)
 #define freealigned64(x) free(x)
-#endif
 #endif
 #endif
 
@@ -786,6 +781,7 @@ string IndexToAlgebraic(int i);
 void BitboardDraw(U64 b);
 U64 getTime();
 void bind_thread(int index);
+string numa_configuration();
 string CurrentWorkingDir();
 #ifdef _WIN32
 void* my_large_malloc(size_t s);

@@ -515,7 +515,6 @@ vector<cpu_set_t> get_cpu_masks_per_numa_node()
     for (int node = 0; node <= max_node; ++node)
     {
         struct bitmask* cpumask = numa_allocate_cpumask();
-        cout << "NUMA node #" << node << "  cpumsk size: " << cpumask->size << "  cpumsk: " << hex << *cpumask->maskp << dec << endl;
         if (numa_node_to_cpus(node, cpumask) != 0)
         {
             cerr << "Failed to get CPUs for NUMA node: " << node << endl;
@@ -541,20 +540,32 @@ vector<cpu_set_t> get_cpu_masks_per_numa_node()
 void bind_thread(int index)
 {
     static vector<cpu_set_t> mapping = get_cpu_masks_per_numa_node();
-    static int randomOffset = getTime() % mapping.size();
     if (mapping.size() == 0)
         return;
 
+    // Use a random start node for better distribution of multiple instances
+    static int randomOffset = getTime() % mapping.size();
     size_t node = (index + randomOffset) % mapping.size();
     pthread_t handle = pthread_self();
-    cout << "node: " << node << "  pthread ID: " << handle << "\n";
     pthread_setaffinity_np(handle, sizeof(cpu_set_t), &mapping[node]);
+}
+
+string numa_configuration()
+{
+    if (numa_available() == -1)
+        return "NUMA not available";
+    
+    return to_string(numa_max_node() + 1) + " NUMA node(s)";
 }
 
 #else
 void bind_thread(int index)
 {
+}
 
+string numa_configuration()
+{
+    return "";
 }
 #endif
 

@@ -28,7 +28,7 @@ void engineHeader()
     guiCom << en.name() + " (Build " + BUILD + ")\n";
     guiCom << "UCI compatible chess engine by " + en.author + "\n";
     guiCom << "----------------------------------------------------------------------------------------\n";
-    guiCom << "System: " + cinfo.SystemName() + "\n";
+    guiCom << "System: " + cinfo.SystemName() + "  " + numa_configuration() + "\n";
     guiCom << "CPU-Features of system: " + cinfo.PrintCpuFeatures(cinfo.machineSupports) + "\n";
     guiCom << "CPU-Features of binary: " + cinfo.PrintCpuFeatures(cinfo.binarySupports) + "\n";
     guiCom << "========================================================================================\n";
@@ -267,12 +267,10 @@ void engine::allocThreads()
         return;
 
     size_t size = Threads * sizeof(workingthread);
-    myassert(size % 64 == 0, nullptr, 1, size % 64);
-    cout << "workingthread size and alignment: "<< sizeof(workingthread) << " / " << sizeof(workingthread) % 64 << endl;
+    myassert(sizeof(workingthread) % 64 == 0, nullptr, 1, sizeof(workingthread) % 64);
 
     char* buf = (char*)allocalign64(size);
     sthread = new (buf) workingthread[Threads];
-    //cout << "numa_avaliable: " << numa_available() << "\n";
     for (int i = 0; i < Threads; i++)
     {
         sthread[i].init(i, &rootposition);

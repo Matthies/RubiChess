@@ -183,7 +183,6 @@ else
 HASLIBNUMA = no
 endif
 
-
 # Common supported x86 and ARM architectures
 ifeq ($(findstring x86-32,$(ARCH)),x86-32)
 bits = 32
