@@ -18,7 +18,7 @@ endif
 CPUTEST = cputest
 ARCH = native
 PROFDIR = OPT
-PROFEXE = RubiChess
+PROFEXE = RubiChess$(EXEEXT)
 STRIP = strip
 
 sse2 = no
@@ -57,7 +57,6 @@ endif
 
 CXXFLAGS=-std=c++11 -Wall -pedantic -Wextra -Wshadow
 CFLAGS=-Wall -pedantic -Wextra -Wshadow -Wno-implicit-function-declaration
-
 
 ifeq ($(debug),yes)
 	CXXFLAGS += -g -O0
@@ -170,10 +169,18 @@ zlib = yes
 
 ifeq (,$(CPUFLAGS))
 ifeq ($(ARCH),native)
-ifeq ($(wildcard ./$(CPUTEST)),)
+ifeq ($(wildcard $(CPUTEST)$(EXEEXT)),)
 $(shell $(CXX) $(CXXFLAGS) $(LDFLAGS) -DCPUTEST $(CPUTEST).cpp -o $(CPUTEST))
 endif
-CPUFLAGS = "$(shell ./$(CPUTEST))"
+CPUFLAGS = "$(shell ./$(CPUTEST)$(EXEEXT))"
+endif
+
+HASLIBNUMA = $(shell echo '#include "numa.h"' | $(CXX) -E - > /dev/null 2>&1 && echo 'yes')
+ifeq ($(HASLIBNUMA),yes)
+CXXFLAGS += -DUSE_LIBNUMA
+LDFLAGS += -lnuma
+else
+HASLIBNUMA = no
 endif
 
 # Common supported x86 and ARM architectures
@@ -367,6 +374,7 @@ arch: libclean
 	@echo "dotprod: $(dotprod)"
 	@echo "zlib   : $(zlib)"
 	@echo "debug  : $(debug)"
+	@echo "libnuma: $(HASLIBNUMA)"
 
 net:
 ifeq ($(EVALFILE),$(filter $(EVALFILE),default))

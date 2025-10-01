@@ -217,7 +217,7 @@ void getFenAndBmFromEpd(string input, string *fen, string *bm, string *am)
     for (int i = 0; i < min(4, (int)fv.size()); i++)
         f = f + fv[i] + " ";
 
-    chessposition *p = &en.sthread[0].pos;
+    chessposition *p = en.sthread[0].pos;
     if (p->getFromFen(f.c_str()) < 0)
         return;
 
@@ -496,6 +496,78 @@ string chessposition::AlgebraicFromShort(string s)
     }
     return retval;
 }
+
+
+#ifdef USE_LIBNUMA
+//
+// Credits for this code go to Kieren Pearson / Halogen
+//
+vector<cpu_set_t> get_cpu_masks_per_numa_node()
+{
+    vector<cpu_set_t> node_cpu_masks;
+    if (numa_available() == -1)
+    {
+        cerr << "NUMA is not available on this system" << endl;
+        return node_cpu_masks;
+    }
+
+    const int max_node = numa_max_node();
+    for (int node = 0; node <= max_node; ++node)
+    {
+        struct bitmask* cpumask = numa_allocate_cpumask();
+        if (numa_node_to_cpus(node, cpumask) != 0)
+        {
+            cerr << "Failed to get CPUs for NUMA node: " << node << endl;
+            return node_cpu_masks;
+        }
+
+        cpu_set_t cpuset;
+        CPU_ZERO(&cpuset);
+
+        for (size_t cpu = 0; cpu < cpumask->size; ++cpu)
+            if (numa_bitmask_isbitset(cpumask, cpu))
+            {
+                CPU_SET(cpu, &cpuset);
+            }
+
+        numa_free_cpumask(cpumask);
+        node_cpu_masks.push_back(cpuset);
+    }
+
+    return node_cpu_masks;
+}
+
+void bind_thread(int index)
+{
+    static vector<cpu_set_t> mapping = get_cpu_masks_per_numa_node();
+    if (mapping.size() == 0)
+        return;
+
+    // Use a random start node for better distribution of multiple instances
+    static int randomOffset = getTime() % mapping.size();
+    size_t node = (index + randomOffset) % mapping.size();
+    pthread_t handle = pthread_self();
+    pthread_setaffinity_np(handle, sizeof(cpu_set_t), &mapping[node]);
+}
+
+string numa_configuration()
+{
+    if (numa_available() == -1)
+        return "NUMA not available";
+    
+    return to_string(numa_max_node() + 1) + " NUMA node(s)";
+}
+
+#else
+void bind_thread(int index)
+{
+}
+
+string numa_configuration()
+{
+    return "";
+}
+#endif
 
 
 

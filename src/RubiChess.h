@@ -148,6 +148,9 @@ void Sleep(long x);
 #endif
 #endif
 
+#ifdef USE_LIBNUMA
+#include <numa.h>
+#endif
 
 
 typedef unsigned long long U64;
@@ -777,6 +780,8 @@ unsigned char AlgebraicToIndex(string s);
 string IndexToAlgebraic(int i);
 void BitboardDraw(U64 b);
 U64 getTime();
+void bind_thread(int index);
+string numa_configuration();
 string CurrentWorkingDir();
 #ifdef _WIN32
 void* my_large_malloc(size_t s);
@@ -2381,7 +2386,7 @@ class workingthread
 public:
     uint64_t toppadding[8];
     chessposition* rootpos;
-    chessposition pos;
+    chessposition* pos;
     thread thr;
     mutex mtx;
     condition_variable cv;
@@ -2400,8 +2405,9 @@ public:
     int chunkstate[2];
     U64 rndseed;
 #endif
-    uint64_t bottompadding[8];
+    uint64_t bottompadding[13];
     void idle_loop() {
+        bind_thread(index);
         while (true)
         {
             unique_lock<mutex> lk(mtx);
@@ -2440,7 +2446,7 @@ public:
         thr = thread(&workingthread::idle_loop, this);
     }
     void remove() {
-        myassert(!working, &pos, 1, working);
+        myassert(!working, pos, 1, working);
         exit = true;
         run_job(mainSearch<SinglePVSearch>);
         thr.join();

@@ -115,6 +115,7 @@ void compilerinfo::GetSystemInfo()
     }
 
     system = CPUBrandString;
+    system.erase(system.find_last_not_of(" \n\r\t") + 1);
     system += "  Family: " + to_string(cpuFamily) + "  Model: " + to_string(cpuModel);
 
 #ifndef CPUTEST

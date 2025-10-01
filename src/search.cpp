@@ -1309,7 +1309,7 @@ inline bool uciScoreOutputNeeded(int inWindow, U64 thinktime)
 static void uciScore(workingthread *thr, int inWindow, U64 thinktime, int score, int mpvIndex = 0)
 {
     const string boundscore[] = { "upperbound ", "", "lowerbound " };
-    chessposition *pos = &thr->pos;
+    chessposition *pos = thr->pos;
 
     string pvstring = pos->getPv(mpvIndex ? pos->multipvtable[mpvIndex] : pos->lastpv);
     U64 nodes, tbhits;
@@ -1353,7 +1353,7 @@ void mainSearch(workingthread *thr)
     const bool isMultiPV = (RT == MultiPVSearch);
     const bool isMainThread = (thr->index == 0);
 
-    chessposition *pos = &thr->pos;
+    chessposition *pos = thr->pos;
 
     thr->depth = 1;
     if (en.maxdepth > 0)
@@ -1614,39 +1614,39 @@ void mainSearch(workingthread *thr)
             // Wait for helper threads to finish their nodes
             for (int i = 1; i < en.Threads; i++)
             {
-                while (en.sthread[i].pos.threadindex)
+                while (en.sthread[i].pos->threadindex)
                     Sleep(1);
             }
         }
 
         // Output of best move
         workingthread *bestthr = thr;
-        int bestscore = bestthr->pos.bestmovescore[0];
+        int bestscore = bestthr->pos->bestmovescore[0];
         for (int i = 1; i < en.Threads; i++)
         {
             // search for a better score in the other threads
             workingthread *hthr = &en.sthread[i];
             if (hthr->lastCompleteDepth >= bestthr->lastCompleteDepth
-                && hthr->pos.bestmovescore[0] > bestscore)
+                && hthr->pos->bestmovescore[0] > bestscore)
             {
-                bestscore = hthr->pos.bestmovescore[0];
+                bestscore = hthr->pos->bestmovescore[0];
                 bestthr = hthr;
             }
         }
-        if (pos->bestmove != bestthr->pos.bestmove)
+        if (pos->bestmove != bestthr->pos->bestmove)
         {
             // copy best moves and score from best thread to thread 0
             int i = 0;
-            while (bestthr->pos.lastpv[i])
+            while (bestthr->pos->lastpv[i])
             {
-                pos->lastpv[i] = bestthr->pos.lastpv[i];
+                pos->lastpv[i] = bestthr->pos->lastpv[i];
                 i++;
                 if (i == MAXDEPTH - 1) break;
             }
             pos->lastpv[i] = 0;
-            pos->bestmove = bestthr->pos.bestmove;
-            pos->pondermove = bestthr->pos.pondermove;
-            pos->bestmovescore[0] = bestthr->pos.bestmovescore[0];
+            pos->bestmove = bestthr->pos->bestmove;
+            pos->pondermove = bestthr->pos->pondermove;
+            pos->bestmovescore[0] = bestthr->pos->bestmovescore[0];
             inWindow = 1;
         }
 
