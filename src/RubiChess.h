@@ -2446,7 +2446,7 @@ public:
         thr = thread(&workingthread::idle_loop, this);
     }
     void remove() {
-        myassert(!working, &pos, 1, working);
+        myassert(!working, pos, 1, working);
         exit = true;
         run_job(mainSearch<SinglePVSearch>);
         thr.join();

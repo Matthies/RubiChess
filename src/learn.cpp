@@ -1004,7 +1004,7 @@ static void gensfenthread(workingthread* thr)
     chessmovelist movelist;
     U64 psvnums = 0;
     uint32_t nmc;
-    chessposition* pos = &thr->pos;
+    chessposition* pos = thr->pos;
     pos->resetStats();
     const int depthvariance = max(1, depth2 - depth + 1);
     thr->totalchunks = 0;
