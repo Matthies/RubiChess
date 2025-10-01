@@ -729,10 +729,10 @@ static void testengine(string epdfilename, int startnum, string engineprgs, stri
             if (doEval)
             {
                 // Skip positions with check
-                en.sthread[0].pos.getFromFen(fenstr.c_str());
-                if (en.sthread[0].pos.isCheckbb)
+                en.sthread[0].pos->getFromFen(fenstr.c_str());
+                if (en.sthread[0].pos->isCheckbb)
                     continue;
-                fenstr = en.sthread[0].pos.toFen();
+                fenstr = en.sthread[0].pos->toFen();
             }
 
             // Get data from compare file
