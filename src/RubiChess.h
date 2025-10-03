@@ -2314,7 +2314,7 @@ struct searchparamset {
 #ifdef EVALTUNE
     searchparam SP(deltapruningmargin, 4000, 0, 8000);
 #else
-    searchparam SP(deltapruningmargin, 290, 40, 300);
+    searchparam SP(deltapruningmargin, 290, 40, 400);
 #endif
     // LMR table
     searchparam SP(lmrlogf0, 144, 50, 300);
@@ -2357,7 +2357,7 @@ struct searchparamset {
     searchparam SP(seeprunequietfactor, 2, 1, 8);
     // Singular extension
     searchparam SP(singularmindepth, 8, 2, 16);
-    searchparam SP(singularmarginperdepth, 0, 0, 20);
+    searchparam SP(singularmarginperdepth, 0, -10, 20);
     searchparam SP(singularmarginfor2, 23, 0, 80);
     // History extension
     searchparam SP(histextminthreshold, 9, 6, 11);
