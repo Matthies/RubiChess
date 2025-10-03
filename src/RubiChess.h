@@ -45,7 +45,7 @@
 //#define EVALOPTIONS
 
 // Enable this to expose the search parameters as UCI options
-//#define SEARCHOPTIONS
+#define SEARCHOPTIONS
 
 // Enable this to enable NNUE training code
 //#define NNUELEARN
@@ -2383,7 +2383,7 @@ struct searchparamset {
     searchparam SP(pawncorrectionhistoryratio, 106, 64, 192);
     searchparam SP(nonpawncorrectionhistoryratio, 106, 64, 192);
     // NNUE eval scale
-    searchparam SP(nnuevaluescale, 61, 48, 96);
+    searchparam SP(nnuevaluescale, 61, 32, 96);
 };
 
 extern SPSCONST searchparamset sps;
