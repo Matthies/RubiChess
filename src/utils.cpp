@@ -502,6 +502,14 @@ string chessposition::AlgebraicFromShort(string s)
 //
 // Credits for this code go to Kieren Pearson / Halogen
 //
+
+int GetNumOfNumaNodes()
+{
+    if (numa_available() == -1)
+        return 1;
+    return max(1, numa_max_node() + 1);
+}
+
 vector<cpu_set_t> get_cpu_masks_per_numa_node()
 {
     vector<cpu_set_t> node_cpu_masks;
@@ -537,15 +545,16 @@ vector<cpu_set_t> get_cpu_masks_per_numa_node()
     return node_cpu_masks;
 }
 
-void bind_thread(int index)
+void workingthread::bind_thread()
 {
-    static vector<cpu_set_t> mapping = get_cpu_masks_per_numa_node();
-    if (mapping.size() == 0)
+    int numanodes = en.numOfNumaNodes;
+    if (numanodes < 2)
         return;
 
+    static vector<cpu_set_t> mapping = get_cpu_masks_per_numa_node();
     // Use a random start node for better distribution of multiple instances
-    static int randomOffset = getTime() % mapping.size();
-    size_t node = (index + randomOffset) % mapping.size();
+    static int randomOffset = getTime() % numanodes;
+    size_t node = (index + randomOffset) % numanodes;
     pthread_t handle = pthread_self();
     pthread_setaffinity_np(handle, sizeof(cpu_set_t), &mapping[node]);
 }
@@ -559,13 +568,18 @@ string numa_configuration()
 }
 
 #else
-void bind_thread(int index)
+void workingthread::bind_thread()
 {
 }
 
 string numa_configuration()
 {
     return "";
+}
+
+int GetNumOfNumaNodes()
+{
+    return 1;
 }
 #endif
 
