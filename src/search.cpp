@@ -341,7 +341,6 @@ int chessposition::getQuiescence(int alpha, int beta, int depth)
             }
             if (score > alpha)
             {
-                updatePvTable(mc, true);
                 eval_type = HASHEXACT;
                 alpha = score;
 #ifdef EVALTUNE
