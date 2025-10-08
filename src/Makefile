@@ -175,7 +175,7 @@ endif
 CPUFLAGS = "$(shell ./$(CPUTEST)$(EXEEXT))"
 endif
 
-HASLIBNUMA = $(shell echo '#include "numa.h"' | $(CXX) -E - > /dev/null 2>&1 && echo 'yes')
+HASLIBNUMA = $(shell echo '\#include "numa.h"' | $(CXX) -E - >/dev/null 2>&1 && echo 'yes')
 ifeq ($(HASLIBNUMA),yes)
 CXXFLAGS += -DUSE_LIBNUMA
 LDFLAGS += -lnuma
