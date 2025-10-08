@@ -1397,37 +1397,40 @@ void mainSearch(workingthread *thr)
                 en.bStopCount = true;
             }
 #endif
-            // Open aspiration window for winning scores
-            if (abs(score) > 5000)
-                delta = SCOREWHITEWINS;
+            if (!pos->useRootmoveScore)
+            {
+                // Open aspiration window for winning scores
+                if (abs(score) > 1000)
+                    delta = SCOREWHITEWINS;
 
-            // new aspiration window
-            if (score == alpha)
-            {
-                // research with lower alpha and reduced beta
-                beta = (alpha + beta) / 2;
-                alpha = max(SCOREBLACKWINS, alpha - delta);
-                delta = min(SCOREWHITEWINS, delta + delta / sps.aspincratio + sps.aspincbase);
-                inWindow = 0;
-            }
-            else if (score == beta)
-            {
-                // research with higher beta
-                beta = min(SCOREWHITEWINS, beta + delta);
-                delta = min(SCOREWHITEWINS, delta + delta / sps.aspincratio + sps.aspincbase);
-                inWindow = 2;
-                uciNeedsFinalReport = !isMultiPV;
-            }
-            else
-            {
-                inWindow = 1;
-                uciNeedsFinalReport = !isMultiPV;
-                thr->lastCompleteDepth = thr->depth;
-                if (thr->depth > 4 && !isMultiPV) {
-                    // next depth with new aspiration window
-                    delta = sps.aspinitialdelta;
-                    alpha = score - delta;
-                    beta = score + delta;
+                // new aspiration window
+                if (score == alpha)
+                {
+                    // research with lower alpha and reduced beta
+                    beta = (alpha + beta) / 2;
+                    alpha = max(SCOREBLACKWINS, alpha - delta);
+                    delta = min(SCOREWHITEWINS, delta + delta / sps.aspincratio + sps.aspincbase);
+                    inWindow = 0;
+                }
+                else if (score == beta)
+                {
+                    // research with higher beta
+                    beta = min(SCOREWHITEWINS, beta + delta);
+                    delta = min(SCOREWHITEWINS, delta + delta / sps.aspincratio + sps.aspincbase);
+                    inWindow = 2;
+                    uciNeedsFinalReport = !isMultiPV;
+                }
+                else
+                {
+                    inWindow = 1;
+                    uciNeedsFinalReport = !isMultiPV;
+                    thr->lastCompleteDepth = thr->depth;
+                    if (thr->depth > 4 && !isMultiPV) {
+                        // next depth with new aspiration window
+                        delta = sps.aspinitialdelta;
+                        alpha = score - delta;
+                        beta = score + delta;
+                    }
                 }
             }
         }
