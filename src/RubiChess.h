@@ -2390,13 +2390,12 @@ public:
     thread thr;
     mutex mtx;
     condition_variable cv;
+    void (*jobFunc)(workingthread*);
     bool working = true;    // reset by idle_loop
     bool exit = false;
-    void (*jobFunc)(workingthread*);
     int index;
     int depth;
     int lastCompleteDepth;
-    U64 nps;
 #ifdef NNUELEARN
     PackedSfenValue* psvbuffer;
     PackedSfenValue* psv;
@@ -2405,7 +2404,7 @@ public:
     int chunkstate[2];
     U64 rndseed;
 #endif
-    uint64_t bottompadding[13];
+    uint64_t bottompadding[6];
     void idle_loop() {
         bind_thread(index);
         while (true)

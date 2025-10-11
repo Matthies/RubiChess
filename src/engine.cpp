@@ -888,8 +888,6 @@ void prepareSearch(chessposition* pos, chessposition* rootpos)
     pos->bestmovescore[0] = NOSCORE;
     pos->bestmove = 0;
     pos->pondermove = 0;
-    pos->nodes = 0;
-    pos->tbhits = 0;
     pos->nullmoveply = 0;
     pos->nullmoveside = 0;
     pos->nodesToNextCheck = 0;
@@ -957,7 +955,10 @@ void engine::searchStart()
     // init nodespermove for main thread
     memset(&sthread[0].pos->nodespermove, 0, sizeof(chessposition::nodespermove));    
     for (int tnum = 0; tnum < Threads; tnum++) {
-        sthread[tnum].pos->threadindex = tnum;   // signal that the thread is (will be) alive
+        chessposition* pos = sthread[tnum].pos;
+        pos->threadindex = tnum;   // signal that the thread is (will be) alive
+        pos->nodes = 0;
+        pos->tbhits = 0;
         sthread[tnum].lastCompleteDepth = 0;    // needs early reset to avoid thread voting with threads not started yet
     }
 

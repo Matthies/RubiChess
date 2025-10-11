@@ -1314,20 +1314,19 @@ static void uciScore(workingthread *thr, int inWindow, U64 thinktime, int score,
     U64 nodes, tbhits;
     en.getNodesAndTbhits(&nodes, &tbhits);
 
-    if (nodes)
-        thr->nps = nodes * en.frequency / (thinktime + 1);
+    U64 nps = (nodes ? nodes * en.frequency / (thinktime + 1) : 1000000);
 
     if (!MATEDETECTED(score))
     {
         guiCom << "info depth " + to_string(thr->depth) + " seldepth " + to_string(pos->seldepth) + " multipv " + to_string(mpvIndex + 1) + " time " + to_string(thinktime * 1000 / en.frequency)
-            + " score cp " + to_string(UCISCORE(score)) + " " + boundscore[inWindow] + "nodes " + to_string(nodes) + " nps " + to_string(thr->nps) + " tbhits " + to_string(tbhits)
+            + " score cp " + to_string(UCISCORE(score)) + " " + boundscore[inWindow] + "nodes " + to_string(nodes) + " nps " + to_string(nps) + " tbhits " + to_string(tbhits)
             + " hashfull " + to_string(tp.getUsedinPermill()) + " pv " + pvstring + "\n";
     }
     else
     {
         int matein = MATEIN(score);
         guiCom << "info depth " + to_string(thr->depth) + " seldepth " + to_string(pos->seldepth) + " multipv " + to_string(mpvIndex + 1) + " time " + to_string(thinktime * 1000 / en.frequency)
-            + " score mate " + to_string(matein) + " " + boundscore[inWindow] + "nodes " + to_string(nodes) + " nps " + to_string(thr->nps) + " tbhits " + to_string(tbhits)
+            + " score mate " + to_string(matein) + " " + boundscore[inWindow] + "nodes " + to_string(nodes) + " nps " + to_string(nps) + " tbhits " + to_string(tbhits)
             + " hashfull " + to_string(tp.getUsedinPermill()) + " pv " + pvstring + "\n";
     }
     SDEBUGDO(pos->pvmovecode[0], guiCom.log("[SDEBUG] Raw score: " + to_string(score) + "\n"););
