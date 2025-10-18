@@ -175,7 +175,9 @@ endif
 CPUFLAGS = "$(shell ./$(CPUTEST)$(EXEEXT))"
 endif
 
-HASLIBNUMA = $(shell echo '\#include "numa.h"' | $(CXX) -E - >/dev/null 2>&1 && echo 'yes')
+# Workaround for incompatibility of old make
+INCLUDENUMACMD = \#include \"numa.h\"
+HASLIBNUMA = $(shell echo "$(INCLUDENUMACMD)" | $(CXX) -E - >/dev/null 2>&1 && echo 'yes')
 ifeq ($(HASLIBNUMA),yes)
 CXXFLAGS += -DUSE_LIBNUMA
 LDFLAGS += -lnuma
