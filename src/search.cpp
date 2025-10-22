@@ -1314,7 +1314,7 @@ static void uciScore(workingthread *thr, int inWindow, U64 thinktime, int score,
     U64 nodes, tbhits;
     en.getNodesAndTbhits(&nodes, &tbhits);
 
-    U64 nps = (nodes ? nodes * en.frequency / (thinktime + 1) : 1000000);
+    U64 nps = nodes * en.frequency / (thinktime + 1);
 
     if (!MATEDETECTED(score))
     {
@@ -1455,73 +1455,76 @@ void mainSearch(workingthread *thr)
         }
 
         if (isMainThread)
+        {
             nowtime = getTime();
 
-        if (score > NOSCORE && isMainThread)
-        {
-            // Enable currentmove output after 3 seconds
-            if (!en.moveoutput && nowtime - en.thinkstarttime > 3 * en.frequency)
-                en.moveoutput = true;
-
-            // search was successfull
-            if (isMultiPV)
+            if (score > NOSCORE)
             {
-                // Avoid output of incomplete iterations
-                if (en.stopLevel == ENGINESTOPIMMEDIATELY)
-                    break;
+                // Enable currentmove output after 3 seconds
+                if (!en.moveoutput && nowtime - en.thinkstarttime > 3 * en.frequency)
+                    en.moveoutput = true;
 
-                U64 thinkTime = nowtime - en.thinkstarttime;
-                int maxmoveindex = min(en.MultiPV, pos->rootmovelist.length);
-                if (!en.tmEnabled || uciScoreOutputNeeded(inWindow, thinkTime)) {
-                    for (int i = 0; i < maxmoveindex; i++)
-                        uciScore(thr, inWindow, thinkTime, pos->bestmovescore[i], i);
-                    uciNeedsFinalReport = false;
-                }
-            }
-            else {
-                // The only two cases that bestmove is not set can happen if alphabeta hit the TP table or we are in TB
-                // so get bestmovecode from there or it was a TB hit so just get the first rootmove
-                if (!pos->bestmove)
+                // search was successfull
+                if (isMultiPV)
                 {
-                    bool tpHit;
-                    ttentry* tte = tp.probeHash(pos->hash, &tpHit);
-                    if (tpHit)
-                    {
-                        pos->bestmove = pos->shortMove2FullMove(tte->movecode);
-                        pos->pondermove = 0;
+                    // Avoid output of incomplete iterations
+                    if (en.stopLevel == ENGINESTOPIMMEDIATELY)
+                        break;
+
+                    U64 thinkTime = nowtime - en.thinkstarttime;
+                    int maxmoveindex = min(en.MultiPV, pos->rootmovelist.length);
+                    if (!en.tmEnabled || uciScoreOutputNeeded(inWindow, thinkTime)) {
+                        for (int i = 0; i < maxmoveindex; i++)
+                            uciScore(thr, inWindow, thinkTime, pos->bestmovescore[i], i);
+                        uciNeedsFinalReport = false;
                     }
                 }
+                else {
+                    // The only two cases that bestmove is not set can happen if alphabeta hit the TP table or we are in TB
+                    // so get bestmovecode from there or it was a TB hit so just get the first rootmove
+                    if (!pos->bestmove)
+                    {
+                        bool tpHit;
+                        ttentry* tte = tp.probeHash(pos->hash, &tpHit);
+                        if (tpHit)
+                        {
+                            pos->bestmove = pos->shortMove2FullMove(tte->movecode);
+                            pos->pondermove = 0;
+                        }
+                    }
 
-                // still no bestmove...
-                if (!pos->bestmove && pos->rootmovelist.length > 0 && !isDraw)
-                    pos->bestmove = pos->rootmovelist.move[0].code;
+                    // still no bestmove...
+                    if (!pos->bestmove && pos->rootmovelist.length > 0 && !isDraw)
+                        pos->bestmove = pos->rootmovelist.move[0].code;
 
-                if (isMainThread && pos->rootmovelist.length == 1 && !pos->tbPosition && en.tmEnabled && en.pondersearch != PONDERING && en.lastbestmovescore != NOSCORE)
-                    // Don't report score of instamove; use the score of last position instead
-                    pos->bestmovescore[0] = en.lastbestmovescore;
+                    if (isMainThread && pos->rootmovelist.length == 1 && !pos->tbPosition && en.tmEnabled && en.pondersearch != PONDERING && en.lastbestmovescore != NOSCORE)
+                        // Don't report score of instamove; use the score of last position instead
+                        pos->bestmovescore[0] = en.lastbestmovescore;
 
-                if (pos->useRootmoveScore)
-                {
-                    // We have a tablebase score so report this and adjust the search window
-                    uciNeedsFinalReport = true;
-                    int tbScore = pos->rootmovelist.move[0].value;
-                    if ((tbScore > 0 && score > tbScore) || (tbScore < 0 && score < tbScore))
-                        // TB win/loss but we even found a mate; use the correct score
-                        pos->bestmovescore[0] = score;
-                    else
-                        // otherwise use and report the tablebase score
-                        score = pos->bestmovescore[0] = tbScore;
-                }
+                    if (pos->useRootmoveScore)
+                    {
+                        // We have a tablebase score so report this and adjust the search window
+                        uciNeedsFinalReport = true;
+                        int tbScore = pos->rootmovelist.move[0].value;
+                        if ((tbScore > 0 && score > tbScore) || (tbScore < 0 && score < tbScore))
+                            // TB win/loss but we even found a mate; use the correct score
+                            pos->bestmovescore[0] = score;
+                        else
+                            // otherwise use and report the tablebase score
+                            score = pos->bestmovescore[0] = tbScore;
+                    }
 
-                if (en.pondersearch != PONDERING || thr->depth < maxdepth) {
-                    U64 thinkTime = nowtime - en.thinkstarttime;
-                    if (!en.tmEnabled || uciScoreOutputNeeded(inWindow, thinkTime)) {
-                        uciScore(thr, inWindow, thinkTime, inWindow == 1 ? pos->bestmovescore[0] : score);
-                        uciNeedsFinalReport = false;
+                    if (en.pondersearch != PONDERING || thr->depth < maxdepth) {
+                        U64 thinkTime = nowtime - en.thinkstarttime;
+                        if (!en.tmEnabled || uciScoreOutputNeeded(inWindow, thinkTime)) {
+                            uciScore(thr, inWindow, thinkTime, inWindow == 1 ? pos->bestmovescore[0] : score);
+                            uciNeedsFinalReport = false;
+                        }
                     }
                 }
             }
         }
+
         if (inWindow == 1)
         {
             if (lastiterationscore > pos->bestmovescore[0] + 10)
