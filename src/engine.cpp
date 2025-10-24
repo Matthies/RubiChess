@@ -224,13 +224,13 @@ void engine::registerOptions()
 
 void initThread(workingthread* thr)
 {
-    chessposition* pos = thr->pos = (chessposition*)allocalign64(sizeof(chessposition));
+    void* buffer = allocalign64(sizeof(chessposition));
+    chessposition* pos = thr->pos = new(buffer) chessposition;
     pos->pwnhsh.setSize(en.sizeOfPh);
     pos->accumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
     pos->psqtAccumulation = NnueCurrentArch ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr;
     if (NnueCurrentArch)
         NnueCurrentArch->CreateAccumulationCache(pos);
-
 }
 
 void cleanupThread(workingthread* thr)
