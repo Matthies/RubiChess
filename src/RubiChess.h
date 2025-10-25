@@ -399,6 +399,7 @@ struct pawnhashentry;
 #define MAXHASH     0x100000  // 1TB ... never tested
 #define DEFAULTHASH 16
 #define CORRHISTSIZE 0x4000
+#define SIZEOFPH 16           // Fixed size of pawn hash in MB
 
 #define MAXDEPTH 256
 #define MOVESTACKRESERVE 48     // to avoid checking for height reaching MAXDEPTH in probe_wds and getQuiescence
@@ -1245,7 +1246,7 @@ public:
     size_t sizemask;
     uint8_t numOfSearchShiftTwo;
     ~transposition();
-    int setSize(int sizeMb);    // returns the number of Mb not used by allignment
+    void setSize(int *sizeMb);
     void clean();
     void addHash(ttentry* entry, U64 hash, int val, int16_t staticeval, int bound, int depth, uint16_t movecode);
     void printHashentry(U64 hash);
@@ -1293,7 +1294,7 @@ class Pawnhash
 public:
     S_PAWNHASHENTRY *table;
     U64 sizemask;
-    void setSize(int sizeMb);
+    void setSize();
     void remove();
     bool probeHash(U64 hash, pawnhashentry **entry);
 };
@@ -2131,8 +2132,6 @@ public:
     bool moveoutput;
     int stopLevel = ENGINETERMINATEDSEARCH;
     int Hash;
-    int restSizeOfTp = 0;
-    int sizeOfPh;
     int moveOverhead;
     int maxMeasuredGuiOverhead;
     int maxMeasuredEngineOverhead;

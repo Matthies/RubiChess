@@ -131,9 +131,8 @@ transposition::~transposition()
         my_large_free(table);
 }
 
-int transposition::setSize(int sizeMb)
+void transposition::setSize(int *sizeMb)
 {
-    int restMb = 0;
     int msb = 0;
     if (size > 0)
         my_large_free(table);
@@ -142,15 +141,13 @@ int transposition::setSize(int sizeMb)
     // Don't use the debugging part of the cluster for calculation of size to get consistent search with non SDEBUG
     clustersize = offsetof(transpositioncluster, debugHash);
 #endif
-    U64 maxsize = ((U64)sizeMb << 20) / clustersize;
+    U64 maxsize = ((U64)*sizeMb << 20) / clustersize;
     if (!maxsize)
     {
         size = 0ULL;
-        return 0;
     }
     GETMSB(msb, maxsize);
     size = (1ULL << msb);
-    restMb = (int)(((maxsize ^ size) >> 20) * clustersize);  // return rest for pawnhash
     size_t allocsize = (size_t)(size * sizeof(transpositioncluster));
 
 #if defined(__linux__) && !defined(__ANDROID__) // Many thanks to Sami Kiminki for advise on the huge page theory and for this patch
@@ -170,14 +167,14 @@ int transposition::setSize(int sizeMb)
     if (!table) {
         // alloc failed, back to old size
         size = 0;
-        sizeMb = (int)(((sizemask + 1) * clustersize) >> 20);
-        cerr << "Keeping " << sizeMb << "MByte Hash.\n";
-        return setSize(sizeMb);
+        *sizeMb = (int)(((sizemask + 1) * clustersize) >> 20);
+        cerr << "Keeping " << *sizeMb << "MByte Hash.\n";
+        setSize(sizeMb);
+        return;
     }
 
     sizemask = size - 1;
     clean();
-    return restMb;
 }
 
 void cleanTranspositiontable(workingthread *thr)
@@ -309,11 +306,10 @@ uint16_t transposition::getMoveCode(U64 hash)
 }
 
 
-void Pawnhash::setSize(int sizeMb)
+void Pawnhash::setSize()
 {
     int msb = 0;
-    sizeMb = max(sizeMb, 16);
-    U64 size = ((U64)sizeMb << 20) / sizeof(S_PAWNHASHENTRY);
+    U64 size = ((U64)SIZEOFPH << 20) / sizeof(S_PAWNHASHENTRY);
     if (!size) return;
     GETMSB(msb, size);
     size = (1ULL << msb);

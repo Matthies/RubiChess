@@ -1438,7 +1438,7 @@ sfenreader::sfenreader()
     int kingfile[2] = { 4, 4 };
     memset((void*)&inbp, 0, sizeof(inbp));
     pos = (chessposition*)allocalign64(sizeof(chessposition));
-    pos->pwnhsh.setSize(1);
+    pos->pwnhsh.setSize();
     pos->initCastleRights(rookfiles, kingfile);
     pos->accumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
     pos->psqtAccumulation = NnueCurrentArch ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr;

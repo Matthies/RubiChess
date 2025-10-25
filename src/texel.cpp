@@ -127,7 +127,7 @@ const int maxPly = 200;
 bool PGNtoFEN(int depth)
 {
     pos.tps.count = 0;
-    pos.pwnhsh.setSize(1);
+    pos.pwnhsh.setSize();
 
     int gamescount = 0;
     fenWritten = 0ULL;
@@ -1424,7 +1424,7 @@ void parseTune(vector<string> commandargs)
 
 void tuneInit()
 {
-    pos.pwnhsh.setSize(0);
+    pos.pwnhsh.setSize();
     pos.tps.count = 0;
     pos.resetStats();
     registerallevals(&pos);
