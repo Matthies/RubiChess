@@ -52,24 +52,18 @@ static void uciAllowLargePages()
 
     // Now back to new value and allocate TT
     en.allowlargepages = !en.allowlargepages;
-    tp.setSize(en.Hash);
+    tp.setSize(&en.Hash);
 }
 #endif
 
 static void uciSetThreads()
 {
-    en.sizeOfPh = min(128, max(16, en.restSizeOfTp / en.Threads));
     en.allocThreads();
 }
 
 static void uciSetHash()
 {
-    int newRestSizeTp = tp.setSize(en.Hash);
-    if (en.restSizeOfTp != newRestSizeTp)
-    {
-        en.restSizeOfTp = newRestSizeTp;
-        uciSetThreads();
-    }
+    tp.setSize(&en.Hash);
 }
 
 static void uciClearHash()
@@ -226,7 +220,7 @@ void initThread(workingthread* thr)
 {
     void* buffer = allocalign64(sizeof(chessposition));
     chessposition* pos = thr->pos = new(buffer) chessposition;
-    pos->pwnhsh.setSize(en.sizeOfPh);
+    pos->pwnhsh.setSize();
     pos->accumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
     pos->psqtAccumulation = NnueCurrentArch ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr;
     if (NnueCurrentArch)
