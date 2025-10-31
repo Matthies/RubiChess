@@ -1346,7 +1346,7 @@ void mainSearch(workingthread *thr)
     en.bStopCount = false;
 #endif
 
-    const bool isMultiPV = (RT == MultiPVSearch);
+    constexpr bool isMultiPV = (RT == MultiPVSearch);
     const bool isMainThread = (thr->index == 0);
 
     chessposition *pos = thr->pos;
@@ -1385,7 +1385,9 @@ void mainSearch(workingthread *thr)
         }
         else
         {
-            const bool mateprune = (en.mate > 0 || ((score > SCORETBWININMAXPLY || score < -SCORETBWININMAXPLY) && thr->depth > 5));
+            const bool mateprune = (en.mate > 0
+                                    || (isMultiPV && (score > SCORETBWININMAXPLY || score < -SCORETBWININMAXPLY))
+                                    || (!isMultiPV && (alpha > SCORETBWININMAXPLY || beta < -SCORETBWININMAXPLY)));
             score = pos->rootsearch<RT>(alpha, beta, thr->depth, inWindow, mateprune);
 #ifdef TDEBUG
             if (en.stopLevel == ENGINESTOPIMMEDIATELY && isMainThread)
