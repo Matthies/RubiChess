@@ -1014,8 +1014,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
 
     const bool isMultiPV = (RT == MultiPVSearch);
 
-    //const bool mateprune = (en.mate > 0 || alpha > SCORETBWININMAXPLY || beta < -SCORETBWININMAXPLY || (isMultiPV && inWindowLast));
-
     // reset pv
     pvtable[0][0] = 0;
 
@@ -1387,7 +1385,7 @@ void mainSearch(workingthread *thr)
         }
         else
         {
-            const bool mateprune = (en.mate > 0 || score > SCORETBWININMAXPLY || score < -SCORETBWININMAXPLY);
+            const bool mateprune = (en.mate > 0 || ((score > SCORETBWININMAXPLY || score < -SCORETBWININMAXPLY) && thr->depth > 5));
             score = pos->rootsearch<RT>(alpha, beta, thr->depth, inWindow, mateprune);
 #ifdef TDEBUG
             if (en.stopLevel == ENGINESTOPIMMEDIATELY && isMainThread)
