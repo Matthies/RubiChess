@@ -1005,12 +1005,13 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
 
 
 template <RootsearchType RT>
-int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, bool mateprune, int maxmoveindex)
+int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, bool mateprune)
 {
     int bestscore = NOSCORE;
     int eval_type = HASHALPHA;
     chessmove *m;
     int lastmoveindex;
+    int maxmoveindex;
 
     const bool isMultiPV = (RT == MultiPVSearch);
 
@@ -1020,8 +1021,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
     if (isMultiPV)
     {
         lastmoveindex = 0;
-        if (!maxmoveindex)
-            maxmoveindex = min(en.MultiPV, rootmovelist.length);
+        maxmoveindex = min(en.MultiPV, rootmovelist.length);
     }
 
 #ifdef SDEBUG
@@ -1727,7 +1727,7 @@ void mainSearch(workingthread *thr)
 // Explicit template instantiation
 // This avoids putting these definitions in header file
 template int chessposition::alphabeta<NoPrune>(int alpha, int beta, int depth, bool cutnode);
-template int chessposition::rootsearch<MultiPVSearch>(int, int, int, int, bool, int);
+template int chessposition::rootsearch<MultiPVSearch>(int, int, int, int, bool);
 template void mainSearch<SinglePVSearch>(workingthread*);
 template void mainSearch<MultiPVSearch>(workingthread*);
 

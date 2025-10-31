@@ -1843,7 +1843,7 @@ public:
     int getScaling(int me);
     int getComplexity(int eval, pawnhashentry *phentry);
 
-    template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth, int inWindowLast, bool mateprune, int maxmoveindex = 0);
+    template <RootsearchType RT> int rootsearch(int alpha, int beta, int depth, int inWindowLast, bool mateprune);
     template <PruneType Pt> int alphabeta(int alpha, int beta, int depth, bool cutnode);
     template <PruneType Pt> int getQuiescence(int alpha, int beta, int depth);
     void updateHistory(uint32_t code, int value);
