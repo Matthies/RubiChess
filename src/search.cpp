@@ -1386,7 +1386,7 @@ void mainSearch(workingthread *thr)
         else
         {
             const bool mateprune = (en.mate > 0
-                                    || (isMultiPV && (score > SCORETBWININMAXPLY || score < -SCORETBWININMAXPLY))
+                                    || (isMultiPV && (pos->bestmovescore[0] > SCORETBWININMAXPLY || pos->bestmovescore[0] < -SCORETBWININMAXPLY))
                                     || (!isMultiPV && (alpha > SCORETBWININMAXPLY || beta < -SCORETBWININMAXPLY)));
             score = pos->rootsearch<RT>(alpha, beta, thr->depth, inWindow, mateprune);
 #ifdef TDEBUG
