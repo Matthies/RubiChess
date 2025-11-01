@@ -1005,16 +1005,15 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
 
 
 template <RootsearchType RT>
-int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, int maxmoveindex)
+int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, bool mateprune)
 {
     int bestscore = NOSCORE;
     int eval_type = HASHALPHA;
     chessmove *m;
     int lastmoveindex;
+    int maxmoveindex;
 
     const bool isMultiPV = (RT == MultiPVSearch);
-
-    const bool mateprune = (en.mate > 0 || alpha > SCORETBWININMAXPLY || beta < -SCORETBWININMAXPLY);
 
     // reset pv
     pvtable[0][0] = 0;
@@ -1022,8 +1021,7 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
     if (isMultiPV)
     {
         lastmoveindex = 0;
-        if (!maxmoveindex)
-            maxmoveindex = min(en.MultiPV, rootmovelist.length);
+        maxmoveindex = min(en.MultiPV, rootmovelist.length);
     }
 
 #ifdef SDEBUG
@@ -1337,7 +1335,7 @@ static void uciScore(workingthread *thr, int inWindow, U64 thinktime, int score,
 template <RootsearchType RT>
 void mainSearch(workingthread *thr)
 {
-    int score;
+    int score = 0;
     int alpha, beta;
     int delta = 8;
     int maxdepth;
@@ -1348,7 +1346,7 @@ void mainSearch(workingthread *thr)
     en.bStopCount = false;
 #endif
 
-    const bool isMultiPV = (RT == MultiPVSearch);
+    constexpr bool isMultiPV = (RT == MultiPVSearch);
     const bool isMainThread = (thr->index == 0);
 
     chessposition *pos = thr->pos;
@@ -1387,7 +1385,10 @@ void mainSearch(workingthread *thr)
         }
         else
         {
-            score = pos->rootsearch<RT>(alpha, beta, thr->depth, inWindow);
+            const bool mateprune = (en.mate > 0
+                                    || (isMultiPV && (pos->bestmovescore[0] > SCORETBWININMAXPLY || pos->bestmovescore[0] < -SCORETBWININMAXPLY))
+                                    || (!isMultiPV && (alpha > SCORETBWININMAXPLY || beta < -SCORETBWININMAXPLY)));
+            score = pos->rootsearch<RT>(alpha, beta, thr->depth, inWindow, mateprune);
 #ifdef TDEBUG
             if (en.stopLevel == ENGINESTOPIMMEDIATELY && isMainThread)
             {
@@ -1726,7 +1727,7 @@ void mainSearch(workingthread *thr)
 // Explicit template instantiation
 // This avoids putting these definitions in header file
 template int chessposition::alphabeta<NoPrune>(int alpha, int beta, int depth, bool cutnode);
-template int chessposition::rootsearch<MultiPVSearch>(int, int, int, int, int);
+template int chessposition::rootsearch<MultiPVSearch>(int, int, int, int, bool);
 template void mainSearch<SinglePVSearch>(workingthread*);
 template void mainSearch<MultiPVSearch>(workingthread*);
 
