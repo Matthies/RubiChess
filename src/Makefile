@@ -32,7 +32,6 @@ avx512 = no
 neon = no
 arm64 = no
 dotprod = no
-zlib = no
 debug = no
 bits = 64
 
@@ -165,7 +164,6 @@ endif
 
 ZLIBDIR=zlib
 CXXFLAGS += -Izlib
-zlib = yes
 
 ifeq (,$(CPUFLAGS))
 ifeq ($(ARCH),native)
@@ -303,9 +301,6 @@ endif
 ifeq ($(dotprod),yes)
 	ARCHFLAGS += -DUSE_DOTPROD
 endif
-ifeq ($(zlib),yes)
-	CXXFLAGS += -DUSE_ZLIB
-endif
 
 DEPS = RubiChess.h
 
@@ -374,7 +369,6 @@ arch: libclean
 	@echo "neon   : $(neon)"
 	@echo "arm64  : $(arm64)"
 	@echo "dotprod: $(dotprod)"
-	@echo "zlib   : $(zlib)"
 	@echo "debug  : $(debug)"
 	@echo "libnuma: $(HASLIBNUMA)"
 

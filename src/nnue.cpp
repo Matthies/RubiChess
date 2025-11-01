@@ -2188,9 +2188,6 @@ bool NnueReadNet(NnueNetsource* nr)
 //
 // Implementation of NNUE network reader including embedded networks and zipped networks
 //
-
-#ifdef USE_ZLIB
-
 // (De)Compress input buffer using zlib
 // code taken from zlib example zpipe.c
 static int xFlate(bool compress, unsigned char* in, unsigned char** out, size_t insize, size_t* outsize)
@@ -2229,7 +2226,6 @@ static int xFlate(bool compress, unsigned char* in, unsigned char** out, size_t 
         inflateEnd(&strm);
     return ret == Z_STREAM_END ? Z_OK : Z_DATA_ERROR;
 }
-#endif // USE_ZLIB
 
 
 void NnueWriteNet(vector<string> args)
@@ -2302,7 +2298,6 @@ void NnueWriteNet(vector<string> args)
 
     size_t insize = nr.next - nr.readbuffer;
 
-#ifdef USE_ZLIB
     unsigned char* deflatebuffer = nullptr;
     size_t deflatesize = 0;
     if (zExport) {
@@ -2315,7 +2310,7 @@ void NnueWriteNet(vector<string> args)
         }
         free(deflatebuffer);
     }
-#endif
+
     os.write((char*)nr.readbuffer, insize);
     os.close();
 
@@ -2332,12 +2327,9 @@ bool NnueNetsource::open()
     unsigned char* sourcebuffer = nullptr;
     readbuffer = nullptr;
     string NnueNetPath = en.GetNnueNetPath();
-
-#if USE_ZLIB
     int ret;
     unsigned char* inflatebuffer = nullptr;
     size_t inflatesize = 0;
-#endif
 
 #ifdef NNUEINCLUDED
     inbuffer = (unsigned char*)&_binary_net_nnue_start;
@@ -2392,14 +2384,12 @@ bool NnueNetsource::open()
 
     sourcebuffer = inbuffer;
 
-#if USE_ZLIB
     // Now test if the input is compressed
     ret = xFlate(false, inbuffer, &inflatebuffer, insize, &inflatesize);
     if (ret == Z_OK) {
         sourcebuffer = inflatebuffer;
         insize = inflatesize;
     }
-#endif // USE_ZLIB
 
     // Finally locate buffer for the NnueNetsource object, copy the network data and free the temporary buffers
     readbuffer = (unsigned char*)allocalign64(insize);
@@ -2422,9 +2412,7 @@ cleanup:
 #ifndef NNUEINCLUDED
     freealigned64(inbuffer);
 #endif
-#if USE_ZLIB
     free(inflatebuffer);
-#endif
 
     return openOk;
 }
