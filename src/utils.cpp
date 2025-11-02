@@ -1006,7 +1006,8 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
 }
 #endif
 
-// Debug functions used mainly to collect run-time statistics
+#ifdef SDEBUG
+// Debug functions taken from Stockfish to collect run-time statistics
 constexpr int MaxDebugSlots = 32;
 
     template<size_t N>
@@ -1130,7 +1131,7 @@ void dbg_clear() {
     correl.fill({});
     extremes.fill({});
 }
-
+#endif
 } // namespace rubichess
 
 

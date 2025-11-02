@@ -792,6 +792,7 @@ void my_large_free(void *m);
 #ifdef STACKDEBUG
 void GetStackWalk(chessposition *pos, const char* message, const char* _File, int Line, int num, ...);
 #endif
+#ifdef SDEBUG
 // Debug helpers taken from Stockfish
 void dbg_hit_on(bool cond, int slot = 0);
 void dbg_mean_of(int64_t value, int slot = 0);
@@ -800,7 +801,7 @@ void dbg_extremes_of(int64_t value, int slot = 0);
 void dbg_correl_of(int64_t value1, int64_t value2, int slot = 0);
 void dbg_print();
 void dbg_clear();
-
+#endif
 
 //
 // NNUE stuff
