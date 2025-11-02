@@ -488,6 +488,7 @@ void engine::bench(int constdepth, string epdfilename, int consttime, int startn
             guiCom << "NPS   : " + to_string(totalnodes * en.frequency / totaltime) + "\n";
         }
     }
+    dbg_print();
 }
 
 

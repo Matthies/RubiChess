@@ -761,6 +761,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
                 int redScore = alphabeta<Pt>(sBeta - 1, sBeta, depth / 2, cutnode);
                 excludemovestack[ply - 1] = 0;
 
+                //dbg_hit_on(redScore < sBeta);
                 if (redScore < sBeta)
                 {
                     // Move is singular
