@@ -779,8 +779,8 @@ unsigned char AlgebraicToIndex(string s);
 string IndexToAlgebraic(int i);
 void BitboardDraw(U64 b);
 U64 getTime();
-void bind_thread(int index);
 string numa_configuration();
+int GetNumOfNumaNodes();
 string CurrentWorkingDir();
 #ifdef _WIN32
 void* my_large_malloc(size_t s);
@@ -883,6 +883,7 @@ public:
     virtual unsigned int GetAccumulationSize() = 0;
     virtual unsigned int GetPsqtAccumulationSize() = 0;
     virtual size_t GetNetworkFilesize() = 0;
+    virtual NnueArchitecture* Clone() = 0;
 #ifdef STATISTICS
     virtual void SwapInputNeurons(unsigned int i1, unsigned int i2) = 0;
     virtual void Statistics(bool verbose, bool sort) = 0;
@@ -891,7 +892,6 @@ public:
 
 
 extern NnueType NnueReady;
-extern NnueArchitecture* NnueCurrentArch;
 
 
 class NnueLayer
@@ -1757,6 +1757,7 @@ public:
     // The following members (almost) don't need an init
     int seldepth;
     int sc;
+    NnueArchitecture* NnueArch;
     U64 nodespermove[0x10000];                      // init in prepare only for thread #0
     chessmovelist captureslist[MAXDEPTH];
     chessmovelist quietslist[MAXDEPTH];
@@ -2150,6 +2151,7 @@ public:
     chessposition rootposition;
     int Threads;
     int oldThreads;
+    int numOfNumaNodes;
     workingthread *sthread;
     ponderstate_t pondersearch;
     int ponderhitbonus;
@@ -2393,6 +2395,7 @@ public:
     int index;
     int depth;
     int lastCompleteDepth;
+    NnueArchitecture* NnueArch;
 #ifdef NNUELEARN
     PackedSfenValue* psvbuffer;
     PackedSfenValue* psv;
@@ -2401,9 +2404,10 @@ public:
     int chunkstate[2];
     U64 rndseed;
 #endif
-    uint64_t bottompadding[6];
+    uint64_t bottompadding[5];
+    void bind_thread();
     void idle_loop() {
-        bind_thread(index);
+        bind_thread();
         while (true)
         {
             unique_lock<mutex> lk(mtx);
