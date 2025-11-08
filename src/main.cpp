@@ -187,7 +187,13 @@ U64 engine::perft(int depth, bool printsysteminfo)
     int tnum = 0;
     for (int i = 0; i < rootpos->rootmovelist.length; i++)
     {
-        workingthread* wt = &sthread[tnum];
+        workingthread* wt;
+        while ((wt = &sthread[tnum]) && wt->working)
+        {
+            tnum = (tnum + 1) % en.Threads;
+            Sleep(1);
+            continue;
+        }
         wt->wait_for_work_finished();
         wt->index = i;
         wt->depth = depth;
