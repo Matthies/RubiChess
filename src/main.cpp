@@ -115,43 +115,90 @@ void generateEpd(string egn)
 }
 
 
+void perftjob(workingthread* thr)
+{
+    chessposition* pos = thr->pos;
+    if (!thr->lastCompleteDepth)
+    {
+        prepareSearch(pos, thr->rootpos);
+        thr->lastCompleteDepth = 1;
+        pos->tbhits = 0;
+    }
+
+    pos->prepareStack();
+    chessmovelist* ml;
+    int startmove = 0;
+    if (pos->ply == 0)
+    {
+        pos->nodes = 0;
+        ml = &pos->rootmovelist;
+        startmove = thr->index;
+        ml->length = startmove + 1;
+    }
+    else {
+        ml = &pos->quietslist[pos->ply];
+        if (pos->isCheckbb)
+            ml->length = pos->CreateEvasionMovelist(&ml->move[0]);
+        else
+           ml->length = pos->CreateMovelist<ALL>(&ml->move[0]);
+    }
+
+    uint32_t mc;
+    for (int i = startmove; i < ml->length; i++)
+    {
+        mc = ml->move[i].code;
+        if (pos->playMove<true>(mc))
+        {
+            if (thr->depth > pos->ply)
+                perftjob(thr);
+            else
+                pos->nodes++;
+
+            pos->unplayMove<true>(mc);
+        }
+    }
+    if (pos->ply == 0)
+    {
+        stringstream ss;
+        ss << setw(5) << left << moveToString(mc) << ": " << pos->nodes << "\n";
+        guiCom << ss.str();
+        // We use the tbhits field for counting total nodes
+        pos->tbhits += pos->nodes;
+    }
+}
+
 U64 engine::perft(int depth, bool printsysteminfo)
 {
     long long starttime = 0;
     long long endtime = 0;
     U64 retval = 0;
-    chessposition *rootpos = en.sthread[0].pos;
+    chessposition *rootpos = &en.rootposition;
 
     if (printsysteminfo) {
         starttime = getTime();
         guiCom << "Perft for depth " + to_string(maxdepth) + (en.chess960 ? "  Chess960" : "") + "\n";
     }
 
-    if (depth == 0)
-        return 1;
+    rootpos->rootmovelist.length = rootpos->CreateMovelist<ALL>(&rootpos->rootmovelist.move[0]);
 
-    chessmovelist movelist;
-    if (rootpos->isCheckbb)
-        movelist.length = rootpos->CreateEvasionMovelist(&movelist.move[0]);
-    else
-        movelist.length = rootpos->CreateMovelist<ALL>(&movelist.move[0]);
+    for (int i = 0; i < en.Threads; i++)
+        sthread[i].lastCompleteDepth = 0;
 
-    rootpos->prepareStack();
-
-    for (int i = 0; i < movelist.length; i++)
+    int tnum = 0;
+    for (int i = 0; i < rootpos->rootmovelist.length; i++)
     {
-        if (rootpos->playMove<true>(movelist.move[i].code))
-        {
-            U64 moveperft = perft(depth - 1);
-            rootpos->unplayMove<true>(movelist.move[i].code);
-            retval += moveperft;
-            if (printsysteminfo)
-            {
-                stringstream ss;
-                ss << setw(5) << left << moveToString(movelist.move[i].code) << ": " << moveperft << "\n";
-                guiCom << ss.str();
-            }
-        }
+        workingthread* wt = &sthread[tnum];
+        wt->wait_for_work_finished();
+        wt->index = i;
+        wt->depth = depth;
+        wt->run_job(perftjob);
+        tnum = (tnum + 1) % en.Threads;
+    }
+    for (int i = 0; i < min(en.Threads, rootpos->rootmovelist.length); i++)
+    {
+        workingthread* wt = &sthread[i];
+        wt->wait_for_work_finished();
+        retval += wt->pos->tbhits;
     }
 
     if (printsysteminfo) {
