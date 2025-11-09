@@ -118,10 +118,12 @@ void generateEpd(string egn)
 void perftjob(workingthread* thr)
 {
     chessposition* pos = thr->pos;
-    if (!thr->lastCompleteDepth)
+    if (thr->lastCompleteDepth & 1)
     {
-        prepareSearch(pos, thr->rootpos);
-        thr->lastCompleteDepth = 1;
+        memcpy((void*)pos, thr->rootpos, offsetof(chessposition, history));
+
+        //prepareSearch(pos, thr->rootpos);
+        thr->lastCompleteDepth ^= 1;
         pos->tbhits = 0;
     }
 
@@ -159,9 +161,12 @@ void perftjob(workingthread* thr)
     }
     if (pos->ply == 0)
     {
-        stringstream ss;
-        ss << setw(5) << left << moveToString(mc) << ": " << pos->nodes << "\n";
-        guiCom << ss.str();
+        if (thr->lastCompleteDepth & 2)
+        {
+            stringstream ss;
+            ss << setw(5) << left << moveToString(mc) << ": " << pos->nodes << "\n";
+            guiCom << ss.str();
+        }
         // We use the tbhits field for counting total nodes
         pos->tbhits += pos->nodes;
     }
@@ -181,8 +186,10 @@ U64 engine::perft(int depth, bool printsysteminfo)
 
     rootpos->rootmovelist.length = rootpos->CreateMovelist<ALL>(&rootpos->rootmovelist.move[0]);
 
-    for (int i = 0; i < en.Threads; i++)
-        sthread[i].lastCompleteDepth = 0;
+    for (int i = 0; i < en.Threads; i++) {
+        // lastCompleteDepth = (pos_needs_init) + (printsysteminfo * 2)
+        sthread[i].lastCompleteDepth = 1 + 2 * printsysteminfo;
+    }
 
     int tnum = 0;
     for (int i = 0; i < rootpos->rootmovelist.length; i++)
@@ -304,7 +311,7 @@ static void perftest(int maxdepth)
 
     while (ptr[i].fen != "")
     {
-        en.sthread[0].pos->getFromFen(ptr[i].fen.c_str());
+        en.rootposition.getFromFen(ptr[i].fen.c_str());
         int j = 1;
         while (ptr[i].nodes[j] > 0 && j <= maxdepth)
         {
