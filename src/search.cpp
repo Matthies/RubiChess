@@ -1423,7 +1423,6 @@ void mainSearch(workingthread *thr)
                 {
                     inWindow = 1;
                     uciNeedsFinalReport = !isMultiPV;
-                    thr->lastCompleteDepth = thr->depth;
                     if (thr->depth > 4 && !isMultiPV) {
                         // next depth with new aspiration window
                         delta = sps.aspinitialdelta;
@@ -1537,6 +1536,7 @@ void mainSearch(workingthread *thr)
 
             // Skip some depths depending on current depth and thread number using Laser's method
             int cycle = thr->index % 16;
+            thr->lastCompleteDepth = thr->depth;
             if (thr->index && (thr->depth + cycle) % SkipDepths[cycle] == 0)
                 thr->depth += SkipSize[cycle];
 
