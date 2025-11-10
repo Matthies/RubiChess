@@ -29,6 +29,7 @@ const int materialvalue[7] = { 0,  100,  314,  314,  483,  913, 32509 };  // som
 //eval NnuePsqThreshold = 760;
 eval FrcCorneredBishopPenalty = 25;
 
+#if 0
 void initPsqtable()
 {
     // initialize psqtable for faster evaluation
@@ -295,7 +296,7 @@ void traceEvalOut()
     cout << ss.str();
     
 }
-
+#endif
 #if 0  // this could be useful if endgames are preregistered
 void register_endgame(string gamesignature, int(*endgame)(chessposition*))
 {
@@ -329,6 +330,7 @@ inline int KBNvK(chessposition *p)
 }
 
 
+#if 0
 // get psqt for eval tracing and tuning
 int chessposition::getpsqval(bool showDetails)
 {
@@ -755,7 +757,7 @@ int chessposition::getGeneralEval(positioneval *pe)
 
     return result;
 }
-
+#endif
 
 
 int chessposition::getFrcCorrection()
@@ -843,8 +845,8 @@ inline bool chessposition::isEndgame(int *score)
 template <EvalType Et>
 int chessposition::getEval()
 {
-    const bool bTrace = (Et == TRACE);
-    if (bTrace) te = { { 0 }, { 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 }, 0, 0, 0, 0, 0 };
+    const bool bTrace = false;//(Et == TRACE);
+    //if (bTrace) te = { { 0 }, { 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 },{ 0 }, 0, 0, 0, 0, 0 };
 #ifdef EVALTUNE
     resetTuner();
     getpsqval();
@@ -860,7 +862,7 @@ int chessposition::getEval()
         int frcCorrection = (en.chess960 ? getFrcCorrection() : 0);
         score = NnueGetEval();
         score += S2MSIGN(state & S2MMASK) * contempt;
-        int phscaled = score * (116 + phcount) / 128;
+        int phscaled = score;// * (116 + phcount) / 128;
 
         if (bTrace) {
             cout << dec << "Raw NNUE eval:  " << S2MSIGN(state & S2MMASK) * score << endl;
@@ -929,7 +931,7 @@ int chessposition::getEval()
     return 0;
 }
 
-
+#if 0
 int chessposition::getComplexity(int val, pawnhashentry *phentry)
 {
         int evaleg = GETEGVAL(val);
@@ -984,7 +986,7 @@ int chessposition::getScaling(int me)
 
     return scale;
 }
-
+#endif
 // Explicit template instantiation
 // This avoids putting these definitions in header file
 template int chessposition::getEval<NOTRACE>();

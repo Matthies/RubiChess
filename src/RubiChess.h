@@ -1705,7 +1705,7 @@ public:
     uint32_t bestFailingLow;        // Hmmm. bestFailingLow not initialized/reset to 0??
     int failhighcount[MAXDEPTH];
     int psqvaldummy;
-    int phcount;                    // weighted number of pieces (0..24)
+    int phcountdummy;                    // weighted number of pieces (0..24)
     int contempt;
     int useTb;
     int useRootmoveScore;
@@ -1807,7 +1807,7 @@ public:
     string toFen();
     uint32_t applyMove(string s, bool resetMstop = true);
     void print(ostream* os = &cout);
-    int getPhase() { return (max(0, 24 - phcount) * 255 + 12) / 24; }
+    //int getPhase() { return (max(0, 24 - phcount) * 255 + 12) / 24; }
     U64 movesTo(PieceCode pc, int from);
     template <PieceType Pt> U64 pieceMovesTo(int from);
     bool isAttacked(int index, int me);

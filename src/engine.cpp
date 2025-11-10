@@ -389,7 +389,7 @@ void engine::communicate(string inputstring)
                     if (!(lastopponentsmove = rootposition.applyMove(*it)))
                         guiCom << "info string Alarm! Move " + (*it)  + " illegal (possible engine error)\n";
                 }
-                rootposition.contempt = S2MSIGN(rootposition.state & S2MMASK) * ResultingContempt * rootposition.phcount / 24;
+                rootposition.contempt = 0;//S2MSIGN(rootposition.state & S2MMASK) * ResultingContempt * rootposition.phcount / 24;
                 ponderhitbonus = 4 * (lastopponentsmove && lastopponentsmove == rootposition.pondermove);
                 // Preserve hashes of earlier position up to last halfmove counter reset for repetition detection
                 rootposition.prerootmovenum = rootposition.ply;
@@ -821,7 +821,7 @@ void engine::resetEndTime(U64 nowTime, int constantRootMoves, int bestmovenodesr
             // ph: phase of the game averaging material and move number
             // f1: stop soon after 5..17 timeslot
             // f2: stop immediately after 15..27 timeslots
-            int ph = (sthread[0].pos->getPhase() + min(255, sthread[0].pos->fullmovescounter * 6)) / 2;
+            int ph = 128;//(sthread[0].pos->getPhase() + min(255, sthread[0].pos->fullmovescounter * 6)) / 2;
             U64 f1 = max(5, 17 - constance) * bestmovenodesratio;
             U64 f2 = max(15, 27 - constance) * bestmovenodesratio;
             timetouse = max(timeinc, timetouse); // workaround for Arena bug

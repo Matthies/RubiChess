@@ -86,7 +86,7 @@ int chessposition::getFromFen(const char* sFen)
     int numToken = (int)token.size();
 
     //psqval = 0;
-    phcount = 0;
+    //phcount = 0;
 
     memset(piece00, 0, sizeof(piece00));
     memset(mailbox, 0, sizeof(mailbox));
@@ -410,7 +410,7 @@ void chessposition::print(ostream* os)
     *os << "Pawn Hash: 0x" << hex << pawnhash << "\n";
     *os << "Value: " + to_string(getEval<NOTRACE>()) + "\n";
     *os << "Repetitions: " + to_string(testRepetition()) + "\n";
-    *os << "Phase: " + to_string(phcount) + "\n";
+    //*os << "Phase: " + to_string(phcount) + "\n";
     *os << "Pseudo-legal Moves: " + pseudolegalmoves.toString() + "\n";
     *os << "Moves in current search: " + movesOnStack() + "\n";
     *os << "Ply: " + to_string(ply) + "\n";
@@ -711,7 +711,7 @@ void initBitmaphelper()
 {
     int to;
 
-    initPsqtable();
+    //initPsqtable();
     for (int from = 0; from < 64; from++)
     {
         king_attacks[from] = knight_attacks[from] = 0ULL;
@@ -890,7 +890,7 @@ void chessposition::BitboardSet(int index, PieceCode p)
     piece00[p] |= BITSET(index);
     occupied00[s2m] |= BITSET(index);
     //psqval += psqtable[p][index];
-    phcount += phasefactor[p >> 1];
+    //phcount += phasefactor[p >> 1];
 }
 
 
@@ -902,7 +902,7 @@ void chessposition::BitboardClear(int index, PieceCode p)
     piece00[p] ^= BITSET(index);
     occupied00[s2m] ^= BITSET(index);
     //psqval -= psqtable[p][index];
-    phcount -= phasefactor[p >> 1];
+    //phcount -= phasefactor[p >> 1];
 }
 
 
