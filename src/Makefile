@@ -175,7 +175,7 @@ endif
 
 # Workaround for incompatibility of old make
 INCLUDENUMACMD = \#include \"numa.h\"
-HASLIBNUMA = $(shell echo "$(INCLUDENUMACMD)" | $(CXX) -E - >/dev/null 2>&1 && echo 'yes')
+#HASLIBNUMA = $(shell echo "$(INCLUDENUMACMD)" | $(CXX) -E - >/dev/null 2>&1 && echo 'yes')
 ifeq ($(HASLIBNUMA),yes)
 CXXFLAGS += -DUSE_LIBNUMA
 LDFLAGS += -lnuma
