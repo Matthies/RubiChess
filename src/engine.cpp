@@ -821,7 +821,7 @@ void engine::resetEndTime(U64 nowTime, int constantRootMoves, int bestmovenodesr
             // ph: phase of the game averaging material and move number
             // f1: stop soon after 5..17 timeslot
             // f2: stop immediately after 15..27 timeslots
-            int ph = 128;//(sthread[0].pos->getPhase() + min(255, sthread[0].pos->fullmovescounter * 6)) / 2;
+            int ph = (128 + min(255, sthread[0].pos->fullmovescounter * 6)) / 2;
             U64 f1 = max(5, 17 - constance) * bestmovenodesratio;
             U64 f2 = max(15, 27 - constance) * bestmovenodesratio;
             timetouse = max(timeinc, timetouse); // workaround for Arena bug
