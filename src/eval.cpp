@@ -862,7 +862,7 @@ int chessposition::getEval()
         int frcCorrection = (en.chess960 ? getFrcCorrection() : 0);
         score = NnueGetEval();
         score += S2MSIGN(state & S2MMASK) * contempt;
-        int phscaled = score;// * (116 + phcount) / 128;
+        int phscaled = score * (112 + piececount) / 128;
 
         if (bTrace) {
             cout << dec << "Raw NNUE eval:  " << S2MSIGN(state & S2MMASK) * score << endl;
