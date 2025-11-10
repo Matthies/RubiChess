@@ -178,6 +178,9 @@ U64 engine::perft(int depth, bool printsysteminfo)
     long long endtime = 0;
     U64 retval = 0;
     chessposition *rootpos = &en.rootposition;
+    mutex mtx;
+    condition_variable cv;
+    int freethreads = en.Threads;
 
     if (printsysteminfo) {
         starttime = getTime();
@@ -194,11 +197,12 @@ U64 engine::perft(int depth, bool printsysteminfo)
     int tnum = 0;
     for (int i = 0; i < rootpos->rootmovelist.length; i++)
     {
+
         workingthread* wt;
-        while ((wt = &sthread[tnum]) && wt->working)
+        while ((wt = &sthread[tnum]) && en.Threads > 1 && wt->working)
         {
             tnum = (tnum + 1) % en.Threads;
-            Sleep(1);
+            //Sleep(1);
             continue;
         }
         wt->wait_for_work_finished();
