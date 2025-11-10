@@ -85,7 +85,7 @@ int chessposition::getFromFen(const char* sFen)
     vector<string> token = SplitString(sFen);
     int numToken = (int)token.size();
 
-    psqval = 0;
+    //psqval = 0;
     phcount = 0;
 
     memset(piece00, 0, sizeof(piece00));
@@ -889,7 +889,7 @@ void chessposition::BitboardSet(int index, PieceCode p)
     int s2m = p & 0x1;
     piece00[p] |= BITSET(index);
     occupied00[s2m] |= BITSET(index);
-    psqval += psqtable[p][index];
+    //psqval += psqtable[p][index];
     phcount += phasefactor[p >> 1];
 }
 
@@ -901,7 +901,7 @@ void chessposition::BitboardClear(int index, PieceCode p)
     int s2m = p & 0x1;
     piece00[p] ^= BITSET(index);
     occupied00[s2m] ^= BITSET(index);
-    psqval -= psqtable[p][index];
+    //psqval -= psqtable[p][index];
     phcount -= phasefactor[p >> 1];
 }
 
@@ -914,7 +914,7 @@ void chessposition::BitboardMove(int from, int to, PieceCode p)
     int s2m = p & 0x1;
     piece00[p] ^= (BITSET(from) | BITSET(to));
     occupied00[s2m] ^= (BITSET(from) | BITSET(to));
-    psqval += psqtable[p][to] - psqtable[p][from];
+    //psqval += psqtable[p][to] - psqtable[p][from];
 }
 
 

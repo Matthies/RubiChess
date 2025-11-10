@@ -68,7 +68,7 @@ void generateEpd(string egn)
         getPcsFromStr(eg.c_str(), pcs);
         memset(pos->mailbox, 0, sizeof(pos->mailbox));
         memset(pos->piece00, 0, sizeof(pos->piece00));
-        pos->psqval = 0;
+        //pos->psqval = 0;
         pos->state = rand() % 2;
         for (int p = PAWN; p <= KING; p++)
             for (int c = WHITE; c <= BLACK; c++)

@@ -26,7 +26,7 @@ namespace rubichess {
 
 // static values for the search/pruning/material stuff
 const int materialvalue[7] = { 0,  100,  314,  314,  483,  913, 32509 };  // some evaluation depends on bishop value >= knight value!!!
-eval NnuePsqThreshold = 760;
+//eval NnuePsqThreshold = 760;
 eval FrcCorneredBishopPenalty = 25;
 
 void initPsqtable()
@@ -855,7 +855,7 @@ int chessposition::getEval()
     if (piececount <= 5 && isEndgame(&score))
         return S2MSIGN(state & S2MMASK) * score;
 
-    if (NnueReady && abs(GETEGVAL(psqval)) < NnuePsqThreshold)
+    if (NnueReady)
     {
         int frcCorrection = (en.chess960 ? getFrcCorrection() : 0);
         score = NnueGetEval();
@@ -873,7 +873,7 @@ int chessposition::getEval()
 
         return phscaled + frcCorrection + eps.eTempo;
     }
-
+#if 0
     // reset the attackedBy information
     memset(attackedBy, 0, sizeof(attackedBy));
 
@@ -925,6 +925,8 @@ int chessposition::getEval()
     }
 
     return S2MSIGN(state & S2MMASK) * score;
+#endif
+    return 0;
 }
 
 
