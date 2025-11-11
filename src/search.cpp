@@ -786,9 +786,9 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
                     extendMove = -1;
                 }
             }
-#if 0
+#if 1
             // Extend captures that lead into endgame
-            else if (phcount < 6 && GETCAPTURE(mc) >= WKNIGHT)
+            else if (piececount < POPCOUNT(piece00[WPAWN] | piece00[BPAWN]) + 4 && GETCAPTURE(mc) >= WKNIGHT)
             {
                 STATISTICSINC(extend_endgame);
                 extendMove = 1;
