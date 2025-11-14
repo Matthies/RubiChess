@@ -121,8 +121,6 @@ void perftjob(workingthread* thr)
     if (thr->lastCompleteDepth & 1)
     {
         memcpy((void*)pos, thr->rootpos, offsetof(chessposition, history));
-
-        //prepareSearch(pos, thr->rootpos);
         thr->lastCompleteDepth ^= 1;
         pos->tbhits = 0;
     }
@@ -189,10 +187,9 @@ U64 engine::perft(int depth, bool printsysteminfo)
 
     rootpos->rootmovelist.length = rootpos->CreateMovelist<ALL>(&rootpos->rootmovelist.move[0]);
 
-    for (int i = 0; i < en.Threads; i++) {
-        // lastCompleteDepth = (pos_needs_init) + (printsysteminfo * 2)
+    for (int i = 0; i < en.Threads; i++)
+        // write "position needs init" and print flag to the thread
         sthread[i].lastCompleteDepth = 1 + 2 * printsysteminfo;
-    }
 
     int tnum = 0;
     for (int i = 0; i < rootpos->rootmovelist.length; i++)
@@ -202,7 +199,8 @@ U64 engine::perft(int depth, bool printsysteminfo)
         while ((wt = &sthread[tnum]) && en.Threads > 1 && wt->working)
         {
             tnum = (tnum + 1) % en.Threads;
-            //Sleep(1);
+            if (depth > 4 && tnum == 0)
+                Sleep(1);
             continue;
         }
         wt->wait_for_work_finished();
