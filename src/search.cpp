@@ -1513,20 +1513,6 @@ void mainSearch(workingthread *thr)
                     // Don't report score of instamove; use the score of last position instead
                     pos->bestmovescore[0] = en.lastbestmovescore;
 
-#if 0
-                if (pos->useRootmoveScore)
-                {
-                    // We have a tablebase score so report this and adjust the search window
-                    uciNeedsFinalReport = true;
-                    int tbScore = pos->rootmovelist.move[0].value;
-                    if ((tbScore > 0 && score > tbScore) || (tbScore < 0 && score < tbScore))
-                        // TB win/loss but we even found a mate; use the correct score
-                        pos->bestmovescore[0] = score;
-                    else
-                        // otherwise use and report the tablebase score
-                        score = pos->bestmovescore[0] = tbScore;
-                }
-#endif
                 if (en.pondersearch != PONDERING || thr->depth < maxdepth) {
                     U64 thinkTime = nowtime - en.thinkstarttime;
                     if (!en.tmEnabled || uciScoreOutputNeeded(inWindow, thinkTime)) {
