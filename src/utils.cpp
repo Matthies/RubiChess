@@ -561,6 +561,8 @@ string numa_configuration()
 #else
 void bind_thread(int index)
 {
+    // not implemented yet
+    (void)index;
 }
 
 string numa_configuration()

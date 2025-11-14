@@ -143,6 +143,9 @@ void perftjob(workingthread* thr)
            ml->length = pos->CreateMovelist<ALL>(&ml->move[0]);
     }
 
+    if (startmove >= ml->length)
+        return;
+
     uint32_t mc;
     for (int i = startmove; i < ml->length; i++)
     {
@@ -176,9 +179,6 @@ U64 engine::perft(int depth, bool printsysteminfo)
     long long endtime = 0;
     U64 retval = 0;
     chessposition *rootpos = &en.rootposition;
-    mutex mtx;
-    condition_variable cv;
-    int freethreads = en.Threads;
 
     if (printsysteminfo) {
         starttime = getTime();
