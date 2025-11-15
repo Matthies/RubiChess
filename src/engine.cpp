@@ -693,6 +693,11 @@ void engine::communicate(string inputstring)
                 bench(max(0, maxdepth), epdf, max(0, mytime), 1, true);
                 break;
             }
+            case SPEEDTEST:
+            {
+                speedtest();
+                break;
+            }
 #ifdef NNUELEARN
             case GENSFEN:
                 gensfen(commandargs);
