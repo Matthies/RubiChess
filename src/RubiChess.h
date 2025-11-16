@@ -1928,6 +1928,7 @@ private:
     ofstream logstream;
     U64 logStartTime = 0ULL;
     U64 freq;
+    ostream* nullos = new ostream(nullptr);
     string timestamp() {
         U64 timeDiff = (getTime() - logStartTime) * 1000 / freq;
         U64 ms = timeDiff % 1000;
@@ -1977,8 +1978,11 @@ public:
         if (freq)
             logstream << timestamp() << " < " << input;
     }
-    void switchStream() {
-        myos = (myos == &cout ? &cerr : &cout);
+    void switchStream(bool silent = false) {
+        if (silent)
+            myos = nullos;
+        else
+            myos = (myos == &cout ? &cerr : &cout);
     }
 };
 

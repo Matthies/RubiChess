@@ -743,6 +743,7 @@ struct speedtestsetup
 void speedtest()
 {
     int desiredTimeS = 150;
+    int warmupPos = 3;
     vector<string> commands;
 
     cout << "speedtest\n";
@@ -768,9 +769,33 @@ void speedtest()
             commands.emplace_back("position fen " + fen);
             int correctTime = (int)(timeScaleFactor * 50000.0 / ((double)(ply) + 15.0));
             commands.emplace_back("go movetime " + to_string(correctTime)); 
+            commands.emplace_back("wait");
             ply += 1;
         }
     }
+
+    // Now run all the commands
+
+    // disable move overhead and UCI outout
+    guiCom.switchStream(true);
+    int mo = en.moveOverhead;
+    en.moveOverhead = 0;
+    U64 nodes = 0;
+    U64 totalTestTime = 0;
+    U64 startTime = getTime();
+    for (string cmd : commands)
+    {
+        if (cmd.find("go ") != string::npos)
+            cout << cmd << endl;
+        en.communicate(cmd);
+    }
+    // restore move overhead and UCI outout
+    guiCom.switchStream();
+    en.moveOverhead = mo;
+
+    totalTestTime = (getTime() - startTime) * 1000 / en.frequency ;
+
+    cout << "speedtest ran for " << totalTestTime << "ms" << endl;
 
 }
 
