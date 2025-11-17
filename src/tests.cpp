@@ -746,7 +746,6 @@ void speedtest()
     int warmupPos = 3;
     vector<string> commands;
 
-    cout << "speedtest\n";
     double totalTime = 0;
     for (const auto& game : BenchmarkPositions)
     {
@@ -764,7 +763,7 @@ void speedtest()
     {
         commands.emplace_back("ucinewgame");
         int ply = 1;
-        for (const string fen : game)
+        for (const string &fen : game)
         {
             commands.emplace_back("position fen " + fen);
             int correctTime = (int)(timeScaleFactor * 50000.0 / ((double)(ply) + 15.0));
@@ -780,22 +779,40 @@ void speedtest()
     guiCom.switchStream(true);
     int mo = en.moveOverhead;
     en.moveOverhead = 0;
-    U64 nodes = 0;
+    U64 nodes, tbhits;
     U64 totalTestTime = 0;
-    U64 startTime = getTime();
+    U64 totalNodes = 0;
+    U64 startTime = 0;
+    int posnum = 0;
     for (string cmd : commands)
     {
         if (cmd.find("go ") != string::npos)
-            cout << cmd << endl;
+        {
+            posnum++;
+            if (posnum == warmupPos + 1)
+            {
+                totalNodes = totalTestTime = 0;
+                cout << " ... warmup finished" << endl;
+            }
+            cout << "\rPosition " << posnum;
+            startTime = getTime();
+        }
+        
         en.communicate(cmd);
+
+        if (cmd.find("wait") != string::npos)
+        {
+            totalTestTime += (getTime() - startTime) * 1000 / en.frequency;
+            en.getNodesAndTbhits(&nodes, &tbhits);
+            totalNodes += nodes;
+        }
     }
     // restore move overhead and UCI outout
     guiCom.switchStream();
     en.moveOverhead = mo;
 
-    totalTestTime = (getTime() - startTime) * 1000 / en.frequency ;
-
-    cout << "speedtest ran for " << totalTestTime << "ms" << endl;
+    cout << endl << "Speedtest ran for " << totalTestTime << "ms" << endl;
+    cout << "Total nps: " << (long long)(totalNodes / (totalTestTime / 1000.0)) << endl;
 
 }
 
