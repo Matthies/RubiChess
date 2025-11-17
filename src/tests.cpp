@@ -735,15 +735,11 @@ const vector<vector<string>> BenchmarkPositions = {
     }
 };
 
-struct speedtestsetup
-{
-};
-
 
 void speedtest()
 {
-    int desiredTimeS = 150;
-    int warmupPos = 3;
+    const int desiredTimeS = 150;
+    const int warmupPos = 3;
     vector<string> commands;
 
     double totalTime = 0;
@@ -773,7 +769,6 @@ void speedtest()
         }
     }
 
-    // Now run all the commands
 
     // disable move overhead and UCI outout
     guiCom.switchStream(true);
@@ -782,37 +777,59 @@ void speedtest()
     U64 nodes, tbhits;
     U64 totalTestTime = 0;
     U64 totalNodes = 0;
+    U64 ttfillSum = 0;
+    int ttfillNum = 0;
+    int ttfillMax = 0;
     U64 startTime = 0;
-    int posnum = 0;
-    for (string cmd : commands)
-    {
-        if (cmd.find("go ") != string::npos)
-        {
-            posnum++;
-            if (posnum == warmupPos + 1)
-            {
-                totalNodes = totalTestTime = 0;
-                cout << " ... warmup finished" << endl;
-            }
-            cout << "\rPosition " << posnum;
-            startTime = getTime();
-        }
-        
-        en.communicate(cmd);
 
-        if (cmd.find("wait") != string::npos)
+    // Now run all the commands first some warmup then for measuring
+    for (int phase = 0; phase < 2; phase++)
+    {
+        int posnum = 0;
+        for (string cmd : commands)
         {
-            totalTestTime += (getTime() - startTime) * 1000 / en.frequency;
-            en.getNodesAndTbhits(&nodes, &tbhits);
-            totalNodes += nodes;
+            if (cmd.find("go ") != string::npos)
+            {
+                posnum++;
+                if (phase == 0 && posnum == warmupPos + 1)
+                {
+                    totalNodes = totalTestTime = ttfillSum = 0;
+                    ttfillMax = ttfillNum = 0;
+                    cout << " ... warmup finished" << endl;
+                    break;
+                }
+                cout << "\rPosition " << posnum;
+                startTime = getTime();
+            }
+
+            en.communicate(cmd);
+
+            if (cmd.find("wait") != string::npos)
+            {
+                totalTestTime += (getTime() - startTime) * 1000 / en.frequency;
+                en.getNodesAndTbhits(&nodes, &tbhits);
+                totalNodes += nodes;
+                int ttfill = tp.getUsedinPermill();
+                ttfillSum += ttfill;
+                if (ttfillMax < ttfill)
+                    ttfillMax = ttfill;
+                ttfillNum++;
+            }
         }
     }
     // restore move overhead and UCI outout
     guiCom.switchStream();
     en.moveOverhead = mo;
 
-    cout << endl << "Speedtest ran for " << totalTestTime << "ms" << endl;
-    cout << "Total nps: " << (long long)(totalNodes / (totalTestTime / 1000.0)) << endl;
+    cout << endl;
+    //cout << "Large pages                : " << en.allowlargepages;
+    cout << "Thread count               : " << en.Threads << endl;
+    //cout << "Thread binding             : " << 
+    cout << "TT size[MiB]               : " << en.Hash << endl;
+    cout << "Hash max, avg [per mille]  : " << ttfillMax << ", " << ttfillSum / ttfillNum << endl;
+    cout << "Total nodes searched       : " << totalNodes << endl;
+    cout << "Total search time [s]      : " << totalTestTime / 1000.0 << endl;
+    cout << "Nodes/second               : " << (long long)(totalNodes / (totalTestTime / 1000.0)) << endl;
 
 }
 
