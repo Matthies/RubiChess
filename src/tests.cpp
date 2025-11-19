@@ -736,11 +736,20 @@ const vector<vector<string>> BenchmarkPositions = {
 };
 
 
-void speedtest()
+void speedtest(int threads, int hash, int time)
 {
-    const int desiredTimeS = 150;
+    int desiredTimeS = 150;
     const int warmupPos = 3;
     vector<string> commands;
+    int oldThreads = en.Threads;
+    int oldHash = en.Hash;
+
+    if (threads)
+        en.ucioptions.Set("Threads", to_string(threads));
+    if (hash)
+        en.ucioptions.Set("Hash", to_string(hash));
+    if (time)
+        desiredTimeS = time;
 
     double totalTime = 0;
     for (const auto& game : BenchmarkPositions)
@@ -768,7 +777,6 @@ void speedtest()
             ply += 1;
         }
     }
-
 
     // disable move overhead and UCI outout
     guiCom.switchStream(true);
@@ -831,6 +839,8 @@ void speedtest()
     cout << "Total search time [s]      : " << totalTestTime / 1000.0 << endl;
     cout << "Nodes/second               : " << (long long)(totalNodes / (totalTestTime / 1000.0)) << endl;
 
+    en.ucioptions.Set("Threads", to_string(oldThreads));
+    en.ucioptions.Set("Hash", to_string(oldHash));
 }
 
 #ifdef _WIN32

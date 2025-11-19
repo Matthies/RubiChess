@@ -695,7 +695,17 @@ void engine::communicate(string inputstring)
             }
             case SPEEDTEST:
             {
-                speedtest();
+                int threads = 0, hash = 0, time = 0;
+                if (ci < cs)
+                    try { threads = stoi(commandargs[ci++]); }
+                catch (...) {}
+                if (ci < cs)
+                    try { hash = stoi(commandargs[ci++]); }
+                catch (...) {}
+                if (ci < cs)
+                    try { time = stoi(commandargs[ci++]); }
+                catch (...) {}
+                speedtest(threads, hash, time);
                 break;
             }
 #ifdef NNUELEARN

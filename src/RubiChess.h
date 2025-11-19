@@ -766,7 +766,7 @@ typedef void(*initevalfunc)(void);
 // tests stuff
 //
 void perftest(int maxdepth);
-void speedtest();
+void speedtest(int threads, int hash, int time);
 void testengine(string epdfilename, int startnum, string engineprgs, string logfilename, string comparefilename, int maxtime, int flags);
 
 
