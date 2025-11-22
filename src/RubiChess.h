@@ -18,7 +18,7 @@
 #pragma once
 
 #define VERNUMLEGACY 2025
-#define NNUEDEFAULT nn-be4dcd7c83-20251031.nnue
+#define NNUEDEFAULT nn-a16b05530b-20251121.nnue
 
 // enable this switch for faster SSE2 code using 16bit integers
 #define FASTSSE2
