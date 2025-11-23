@@ -72,7 +72,6 @@ static constexpr int KingBucket[64] = {
 // Global objects
 //
 NnueType NnueReady = NnueDisabled;
-NnueArchitecture* NnueCurrentArch;
 
 // The network architecture V1
 class NnueArchitectureV1 : public NnueArchitecture {
@@ -206,6 +205,14 @@ public:
     size_t GetNetworkFilesize() {
         return networkfilesize;
     }
+    NnueArchitecture* Clone() {
+        char *buffer = (char*)allocalign64(sizeof(NnueArchitectureV1));
+        NnueArchitectureV1* NewNnueArch = new(buffer) NnueArchitectureV1;
+        NewNnueArch->NnueFt = NnueFt;
+        NewNnueArch->LayerStack[0] = LayerStack[0];
+        return NewNnueArch;
+    }
+
 #ifdef STATISTICS
     void SwapInputNeurons(unsigned int i1, unsigned int i2) {
         // not supported for V1
@@ -376,6 +383,15 @@ public:
     size_t GetNetworkFilesize() {
         return networkfilesize;
     }
+    NnueArchitecture* Clone() {
+        char* buffer = (char*)allocalign64(sizeof(NnueArchitectureV5<NnueFtOutputdims>));
+        NnueArchitectureV5<NnueFtOutputdims>* NewNnueArch = new(buffer) NnueArchitectureV5<NnueFtOutputdims>;
+        NewNnueArch->NnueFt = NnueFt;
+        for (unsigned int i = 0; i < NnueLayerStacks; i++)
+            NewNnueArch->LayerStack[i] = LayerStack[i];
+        return NewNnueArch;
+    }
+
 #ifdef STATISTICS
     void SwapInputNeurons(unsigned int i1, unsigned int i2) {
         if (i1 >= NnueFtHalfdims / 2 || i2 >= NnueFtHalfdims / 2) {
@@ -806,8 +822,8 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
         chainindex++;
     }
 
-    int16_t* weight = NnueCurrentArch->GetFeatureWeight();
-    int32_t* psqtweight = NnueCurrentArch->GetFeaturePsqtWeight();
+    int16_t* weight = NnueArch->GetFeatureWeight();
+    int32_t* psqtweight = NnueArch->GetFeaturePsqtWeight();
 
 #ifdef USE_SIMD
     constexpr unsigned int numRegs = (NUM_REGS > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : NUM_REGS);
@@ -1007,8 +1023,8 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 
     memcpy(cachedpiece00, piece00, sizeof(piece00));
 
-    int16_t* weight = NnueCurrentArch->GetFeatureWeight();
-    int32_t* psqtweight = NnueCurrentArch->GetFeaturePsqtWeight();
+    int16_t* weight = NnueArch->GetFeatureWeight();
+    int32_t* psqtweight = NnueArch->GetFeaturePsqtWeight();
 
 #ifdef USE_SIMD
     constexpr unsigned int numRegs = (NUM_REGS > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : NUM_REGS);
@@ -1249,13 +1265,13 @@ int chessposition::Transform(clipped_t *output, int bucket)
 
 int chessposition::NnueGetEval()
 {
-    return NnueCurrentArch->GetEval(this);
+    return NnueArch->GetEval(this);
 }
 
 
 void chessposition::NnueSpeculativeEval()
 {
-    NnueCurrentArch->SpeculativeEval(this);
+    NnueArch->SpeculativeEval(this);
 }
 
 
@@ -2041,22 +2057,22 @@ void NnueSqrClippedRelu<dims>::Propagate(int32_t* input, clipped_t* output)
 //
 void NnueInit()
 {
-    NnueCurrentArch = nullptr;
 }
 
 void NnueRemove()
 {
-    if (NnueCurrentArch) {
-        freealigned64(NnueCurrentArch);
-        NnueCurrentArch = nullptr;
+    if (en.rootposition.NnueArch) {
+        freealigned64(en.rootposition.NnueArch);
+        en.rootposition.NnueArch = nullptr;
     }
 }
 
 bool NnueReadNet(NnueNetsource* nr)
 {
     NnueType oldnt = NnueReady;
-    unsigned int oldaccumulationsize = (NnueCurrentArch ? NnueCurrentArch->GetAccumulationSize() : 0);
-    unsigned int oldpsqtaccumulationsize = (NnueCurrentArch ? NnueCurrentArch->GetPsqtAccumulationSize() : 0);
+    NnueArchitecture* NnueArch = en.rootposition.NnueArch;
+    unsigned int oldaccumulationsize = (NnueArch ? NnueArch->GetAccumulationSize() : 0);
+    unsigned int oldpsqtaccumulationsize = (NnueArch ? NnueArch->GetPsqtAccumulationSize() : 0);
 
     NnueReady = NnueDisabled;
 
@@ -2080,6 +2096,7 @@ bool NnueReadNet(NnueNetsource* nr)
     bool bpz;
     int leb128dim = 0;
     char* buffer;
+    NnueArchitecture* NnueCurrentArch;
     switch (version) {
     case NNUEFILEVERSIONROTATE:
         bpz = true;
@@ -2178,6 +2195,7 @@ bool NnueReadNet(NnueNetsource* nr)
         || oldaccumulationsize != NnueCurrentArch->GetAccumulationSize()
         || oldpsqtaccumulationsize != NnueCurrentArch->GetPsqtAccumulationSize())
     {
+        en.rootposition.NnueArch = NnueCurrentArch;
         en.allocThreads();
     }
 
@@ -2230,6 +2248,7 @@ static int xFlate(bool compress, unsigned char* in, unsigned char** out, size_t 
 
 void NnueWriteNet(vector<string> args)
 {
+    NnueArchitecture* NnueArch = en.rootposition.NnueArch;
     size_t ci = 0;
     size_t cs = args.size();
     string NnueNetPath = "export.nnue";
@@ -2256,7 +2275,7 @@ void NnueWriteNet(vector<string> args)
 
     if (sort)
 #ifdef STATISTICS
-        NnueCurrentArch->Statistics(false, true);
+        NnueArch->Statistics(false, true);
 #else
         cout << "Cannot sort input features. This needs STATISTICS collection enabled.\n";
 #endif
@@ -2272,18 +2291,18 @@ void NnueWriteNet(vector<string> args)
     }
 
     if (rescale)
-        NnueCurrentArch->RescaleLastLayer(rescale);
+        NnueArch->RescaleLastLayer(rescale);
 
-    uint32_t fthash = NnueCurrentArch->GetFtHash();
-    uint32_t nethash = NnueCurrentArch->GetHash();
+    uint32_t fthash = NnueArch->GetFtHash();
+    uint32_t nethash = NnueArch->GetHash();
     uint32_t filehash = (fthash ^ nethash);
 
-    uint32_t version = NnueCurrentArch->GetFileVersion();
-    string sarchitecture = NnueCurrentArch->GetArchDescription();
+    uint32_t version = NnueArch->GetFileVersion();
+    string sarchitecture = NnueArch->GetArchDescription();
     uint32_t size = (uint32_t)sarchitecture.size();
 
     NnueNetsource nr;
-    nr.readbuffersize = 3 * sizeof(uint32_t) + size + NnueCurrentArch->GetNetworkFilesize();
+    nr.readbuffersize = 3 * sizeof(uint32_t) + size + NnueArch->GetNetworkFilesize();
     nr.readbuffer = (unsigned char*)allocalign64(nr.readbuffersize);
     nr.next = nr.readbuffer;
 
@@ -2293,8 +2312,8 @@ void NnueWriteNet(vector<string> args)
     nr.write((unsigned char*)&sarchitecture[0], size);
     nr.write((unsigned char*)&fthash, sizeof(uint32_t));
 
-    NnueCurrentArch->WriteFeatureWeights(&nr, leb128);
-    NnueCurrentArch->WriteWeights(&nr, nethash);
+    NnueArch->WriteFeatureWeights(&nr, leb128);
+    NnueArch->WriteWeights(&nr, nethash);
 
     size_t insize = nr.next - nr.readbuffer;
 
@@ -2406,7 +2425,7 @@ bool NnueNetsource::open()
     if (!openOk)
         guiCom << "info string The network " + en.GetNnueNetPath() + " seems corrupted or format is not supported.\n";
     else
-        guiCom << "info string Reading network " + en.GetNnueNetPath() + " successful. Using NNUE (" + NnueCurrentArch->GetArchName() + ").\n";
+        guiCom << "info string Reading network " + en.GetNnueNetPath() + " successful. Using NNUE (" + en.rootposition.NnueArch->GetArchName() + ").\n";
 
 cleanup:
 #ifndef NNUEINCLUDED
