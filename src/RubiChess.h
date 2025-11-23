@@ -763,6 +763,14 @@ typedef void(*initevalfunc)(void);
 #endif
 
 //
+// tests stuff
+//
+void perftest(int maxdepth);
+void speedtest(int threads, int hash, int time);
+void testengine(string epdfilename, int startnum, string engineprgs, string logfilename, string comparefilename, int maxtime, int flags);
+
+
+//
 // utils stuff
 //
 typedef struct ranctx { U64 a; U64 b; U64 c; U64 d; } ranctx;
@@ -782,6 +790,7 @@ U64 getTime();
 void bind_thread(int index);
 string numa_configuration();
 string CurrentWorkingDir();
+void generateEpd(string egn);
 #ifdef _WIN32
 void* my_large_malloc(size_t s);
 void my_large_free(void *m);
@@ -1919,6 +1928,7 @@ private:
     ofstream logstream;
     U64 logStartTime = 0ULL;
     U64 freq;
+    ostream* nullos = new ostream(nullptr);
     string timestamp() {
         U64 timeDiff = (getTime() - logStartTime) * 1000 / freq;
         U64 ms = timeDiff % 1000;
@@ -1968,13 +1978,16 @@ public:
         if (freq)
             logstream << timestamp() << " < " << input;
     }
-    void switchStream() {
-        myos = (myos == &cout ? &cerr : &cout);
+    void switchStream(bool silent = false) {
+        if (silent)
+            myos = nullos;
+        else
+            myos = (myos == &cout ? &cerr : &cout);
     }
 };
 
 
-enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, WAIT, PONDERHIT, QUIT, EVAL, PERFT, BENCH, TUNE, GENSFEN, CONVERT, LEARN, EXPORT, STATS };
+enum GuiToken { UNKNOWN, UCI, UCIDEBUG, ISREADY, SETOPTION, REGISTER, UCINEWGAME, POSITION, GO, STOP, WAIT, PONDERHIT, QUIT, EVAL, PERFT, BENCH, SPEEDTEST, TUNE, GENSFEN, CONVERT, LEARN, EXPORT, STATS };
 
 const map<string, GuiToken> GuiCommandMap = {
     { "export", EXPORT },
@@ -2003,7 +2016,8 @@ const map<string, GuiToken> GuiCommandMap = {
     { "wait", WAIT },
     { "eval", EVAL },
     { "perft", PERFT },
-    { "bench", BENCH }
+    { "bench", BENCH },
+    { "speedtest", SPEEDTEST }
 };
 
 class engine;   //forward definition

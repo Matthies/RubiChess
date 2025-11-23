@@ -490,6 +490,7 @@
     <ClCompile Include="nnue.cpp" />
     <ClCompile Include="search.cpp" />
     <ClCompile Include="tbprobe.cpp" />
+    <ClCompile Include="tests.cpp" />
     <ClCompile Include="texel.cpp" />
     <ClCompile Include="transposition.cpp" />
     <ClCompile Include="utils.cpp" />

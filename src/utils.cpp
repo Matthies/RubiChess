@@ -713,6 +713,99 @@ string CurrentWorkingDir()
 }
 
 
+void generateEpd(string egn)
+{
+    cout << "Writing fens to stderr. Redirect stderr to file for collecting the fens.\n";
+    if (egn == "chess960" || egn == "frc" || egn == "dfrc")
+    {
+        for (int i = 0; i < 960; i++)
+        {
+#if 0   // Filter for corner bishop
+            if (!(i % 4 == 3 || (i / 4) % 4 == 0))
+                continue;
+#endif
+            if (egn == "dfrc")
+            {
+                for (int j = 0; j < 960; j++)
+                    cerr << frcStartFen(i, j) << "\n";
+            }
+            else {
+                cerr << frcStartFen(i, i) << "\n";
+            }
+        }
+
+        return;
+    }
+    chessposition* pos = en.sthread[0].pos;
+    int pcs[16];
+
+    int n = 1000;
+    string eg = egn;
+    size_t si = egn.find('/');
+    if (si != string::npos)
+    {
+        try { n = stoi(egn.substr(si + 1)); }
+        catch (const invalid_argument&) {}
+        eg = egn.substr(0, si);
+    }
+
+    pos->halfmovescounter = pos->ept = 0;
+    pos->fullmovescounter = 1;
+    pos->ply = 0;
+    int i = 0;
+    srand((unsigned)time(NULL));
+    while (i < n)
+    {
+        getPcsFromStr(eg.c_str(), pcs);
+        memset(pos->mailbox, 0, sizeof(pos->mailbox));
+        memset(pos->piece00, 0, sizeof(pos->piece00));
+        pos->psqval = 0;
+        pos->state = rand() % 2;
+        for (int p = PAWN; p <= KING; p++)
+            for (int c = WHITE; c <= BLACK; c++)
+            {
+                int pi = p + c * 8;
+                while (pcs[pi])
+                {
+                    int sq = rand() % 64;
+                    // Avoid pawns on rank 7
+                    if (!pos->mailbox[sq] && (p != PAWN || (RRANK(sq, c) > 0 && RRANK(sq, c) < 6)))
+                    {
+                        pos->mailbox[sq] = p * 2 + c;
+                        pos->BitboardSet(sq, p * 2 + c);
+                        if (p == KING)
+                            pos->kingpos[c] = sq;
+                        pcs[pi]--;
+                    }
+                }
+            }
+        // Check if position is legal
+        bool isLegal = !pos->isAttackedBy<OCCUPIED>(pos->kingpos[pos->state ^ S2MMASK], pos->state)
+            && squareDistance[pos->kingpos[0]][pos->kingpos[1]] > 0;
+        if (isLegal)
+        {
+            pos->preparePosition();
+            if (pos->rootmovelist.length == 0)
+                continue;
+
+            zb.getAllHashes(pos);
+
+            string sFen = pos->toFen();
+
+            MoveSelector* ms = &pos->moveSelector[1];
+            memset(ms, 0, sizeof(MoveSelector));
+            ms->SetPreferredMoves(pos);
+            bool isQuiet = !ms->next();
+            if (isQuiet)
+            {
+                i++;
+                cerr << sFen << "\n";
+            }
+        }
+    }
+}
+
+
 #ifdef STATISTICS
 #define NODBZ(x) (double)(max(1ULL, x))
 void statistic::output(vector<string> args)

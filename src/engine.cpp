@@ -693,6 +693,21 @@ void engine::communicate(string inputstring)
                 bench(max(0, maxdepth), epdf, max(0, mytime), 1, true);
                 break;
             }
+            case SPEEDTEST:
+            {
+                int threads = 0, hash = 0, time = 0;
+                if (ci < cs)
+                    try { threads = stoi(commandargs[ci++]); }
+                catch (...) {}
+                if (ci < cs)
+                    try { hash = stoi(commandargs[ci++]); }
+                catch (...) {}
+                if (ci < cs)
+                    try { time = stoi(commandargs[ci++]); }
+                catch (...) {}
+                speedtest(threads, hash, time);
+                break;
+            }
 #ifdef NNUELEARN
             case GENSFEN:
                 gensfen(commandargs);
