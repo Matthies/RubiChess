@@ -15,6 +15,12 @@ else
 	EXEEXT=
 endif
 
+SRCS = board.cpp book.cpp cputest.cpp engine.cpp eval.cpp learn.cpp \
+	main.cpp move.cpp nnue.cpp search.cpp tbprobe.cpp tests.cpp \
+	texel.cpp transposition.cpp utils.cpp
+
+OBJS = $(SRCS:.cpp=.o)
+
 CPUTEST = cputest
 ARCH = native
 PROFDIR = OPT
@@ -54,8 +60,9 @@ ifeq ($(EXE),)
 	EXE=RubiChess
 endif
 
-CXXFLAGS=-std=c++11 -Wall -pedantic -Wextra -Wshadow
+CXXFLAGS=-std=c++11 -Wall -pedantic -Wextra -Wshadow $(EXTRACXXFLAGS)
 CFLAGS=-Wall -pedantic -Wextra -Wshadow -Wno-implicit-function-declaration
+LDFLAGS = $(EXTRACXXFLAGS)
 
 ifeq ($(debug),yes)
 	CXXFLAGS += -g -O0
@@ -264,7 +271,7 @@ endif
 
 ifeq ($(neon),no)
 ifeq (,$(findstring armv,$(UNAME_M)))
-	ARCHFLAGS = -m$(bits)
+	CXXFLAGS += -m$(bits)
 endif
 endif
 ifeq ($(bits),64)
@@ -272,34 +279,34 @@ ifeq ($(bits),64)
 endif
 
 ifeq ($(avx512),yes)
-	ARCHFLAGS += -DUSE_AVX512 -mavx512f -mavx512bw
+	CXXFLAGS += -DUSE_AVX512 -mavx512f -mavx512bw
 endif
 ifeq ($(bmi2),yes)
-	ARCHFLAGS += -DUSE_BMI2 -mbmi2
+	CXXFLAGS += -DUSE_BMI2 -mbmi2
 endif
 ifeq ($(avx2),yes)
-	ARCHFLAGS += -DUSE_AVX2 -mavx2
+	CXXFLAGS += -DUSE_AVX2 -mavx2
 endif
 ifeq ($(bmi1)$(lzcnt),yesyes)
-	ARCHFLAGS += -DUSE_BMI1 -mbmi -mlzcnt
+	CXXFLAGS += -DUSE_BMI1 -mbmi -mlzcnt
 endif
 ifeq ($(popcnt),yes)
-	ARCHFLAGS += -DUSE_POPCNT -mpopcnt -msse3
+	CXXFLAGS += -DUSE_POPCNT -mpopcnt -msse3
 endif
 ifeq ($(ssse3),yes)
-	ARCHFLAGS += -DUSE_SSSE3 -mssse3
+	CXXFLAGS += -DUSE_SSSE3 -mssse3
 endif
 ifeq ($(sse2),yes)
-	ARCHFLAGS += -DUSE_SSE2 -msse2
+	CXXFLAGS += -DUSE_SSE2 -msse2
 endif
 ifeq ($(neon),yes)
-	ARCHFLAGS += -DUSE_NEON
+	CXXFLAGS += -DUSE_NEON
 endif
 ifeq ($(arm64),yes)
-	ARCHFLAGS += -DUSE_ARM64
+	CXXFLAGS += -DUSE_ARM64
 endif
 ifeq ($(dotprod),yes)
-	ARCHFLAGS += -DUSE_DOTPROD
+	CXXFLAGS += -DUSE_DOTPROD
 endif
 
 DEPS = RubiChess.h
@@ -349,7 +356,7 @@ ifneq ($(debug),yes)
 endif
 
 build: net arch
-	@$(MAKE) compile MESSAGE='Compiling standard build ...'
+	@$(MAKE) $(EXE) MESSAGE='Compiling standard build ...'
 
 arch: libclean
 	@echo
@@ -390,11 +397,15 @@ endif
 
 $(ZLIBDIR)/libz.a:
 	@echo Compiling zlib...
-	@cd $(ZLIBDIR); $(MYCC) $(CFLAGS) $(ARCHFLAGS) -w -c *.c; $(AR) rcs libz.a *.o; cd ..
+	@cd $(ZLIBDIR); $(MYCC) $(CFLAGS) -w -c *.c; $(AR) rcs libz.a *.o; cd ..
 
-compile: $(ZLIBDIR)/libz.a
+$(EXE): $(ZLIBDIR)/libz.a $(OBJS)
 	@echo $(MESSAGE)
-	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(ZLIBDIR)/libz.a $(LDFLAGS) $(PTHREADLIB) $(EXTRALDFLAGS) $(GITDEFINE) $(NETDEF) $(NETOBJ) -o $(EXE)
+	+$(CXX) -o $@ $(OBJS) $(LDFLAGS) $(ZLIBDIR)/libz.a
+
+#compile: $(ZLIBDIR)/libz.a
+#	@echo $(MESSAGE)
+#	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) *.cpp $(ZLIBDIR)/libz.a $(LDFLAGS) $(PTHREADLIB) $(EXTRALDFLAGS) $(GITDEFINE) $(NETDEF) $(NETOBJ) -o $(EXE)
 
 objclean:
 	@$(RM) *.o $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(PROFEXE) $(CPUTEST) $(NETBIN) || @echo $(RM) not available.
@@ -433,12 +444,13 @@ else
 endif
 
 instrumentedcompile:
-	@$(MAKE) compile EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Compiling instrumented build ...'
+	@$(MAKE) $(EXE) EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Compiling instrumented build ...'
 
-pgo: arch instrumentedcompile profilebench
+pgo:  objclean arch instrumentedcompile profilebench
 	@$(PROFMERGE)
 	@$(RM) ./$(PROFEXE)
-	@$(MAKE) compile EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS=$(PGOEXTRALDFLAGS) MESSAGE='Compiling optimized build ...'
+	@$(MAKE) objclean
+	@$(MAKE) $(EXE) EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS=$(PGOEXTRALDFLAGS) MESSAGE='Compiling optimized build ...'
 	@$(MAKE) profileclean
 ifneq ($(debug),yes)
 	@$(STRIP) $(EXE)$(EXEEXT)
