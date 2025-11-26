@@ -314,10 +314,10 @@ DEPS = RubiChess.h
 GITVER = $(shell 2>/dev/null git show --name-only --abbrev-commit --date=format:%Y%m%d | grep -i "date:" | grep -o -E '[0-9]+')
 GITID = $(shell 2>/dev/null git show --name-only --abbrev-commit | grep -i -o -E "ommit[[:blank:]]+[0-9a-f]{6}" | grep -o -E '[0-9a-f]+')
 ifneq ($(GITVER),)
-	GITDEFINE = -D GITVER=\"$(GITVER)\"
+	CXXFLAGS += -D GITVER=\"$(GITVER)\"
 endif
 ifneq ($(GITID),)
-	GITDEFINE += -D GITID=\"$(GITID)\"
+	CXXFLAGS += -D GITID=\"$(GITID)\"
 endif
 
 RUBINET = $(shell grep "NNUEDEFAULT " RubiChess.h | awk '{print $$3}')
@@ -335,8 +335,8 @@ ifeq ($(EVALFILE),default)
 else
 	EMBEDFILE = $(EVALFILE)
 endif
-	NETDEF = -DNNUEINCLUDED=$(EMBEDFILE)
-	NETOBJ = net.o
+	CXXFLAGS += -DNNUEINCLUDED=$(EMBEDFILE)
+	NETOBJ = net.obj
 endif
 
 ifeq ($(GITVER),)
@@ -397,18 +397,18 @@ endif
 
 $(ZLIBDIR)/libz.a:
 	@echo Compiling zlib...
-	@cd $(ZLIBDIR); $(MYCC) $(CFLAGS) -w -c *.c; $(AR) rcs libz.a *.o; cd ..
+	cd $(ZLIBDIR); $(MYCC) $(CFLAGS) -w -c *.c; $(AR) rcs libz.a *.o; cd ..
 
 $(EXE): $(ZLIBDIR)/libz.a $(OBJS)
 	@echo $(MESSAGE)
-	+$(CXX) -o $@ $(OBJS) $(LDFLAGS) $(ZLIBDIR)/libz.a
+	+$(CXX) -o $@ $(OBJS) $(LDFLAGS) $(ZLIBDIR)/libz.a $(NETOBJ)
 
 #compile: $(ZLIBDIR)/libz.a
 #	@echo $(MESSAGE)
 #	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) *.cpp $(ZLIBDIR)/libz.a $(LDFLAGS) $(PTHREADLIB) $(EXTRALDFLAGS) $(GITDEFINE) $(NETDEF) $(NETOBJ) -o $(EXE)
 
 objclean:
-	@$(RM) *.o $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(PROFEXE) $(CPUTEST) $(NETBIN) || @echo $(RM) not available.
+	@$(RM) *.o $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(PROFEXE) $(NETBIN) || @echo $(RM) not available.
 
 libclean:
 	@$(RM) zlib/*.o zlib/*.a || @echo $(RM) not available.
@@ -417,13 +417,16 @@ profileclean: libclean
 	@$(RM) -rf $(PROFDIR) || @echo $(RM) not available.
 	@$(RM) *.clangprof-raw *.profdata || @echo $(RM) not available.
 
-clean: objclean profileclean
+restclean:
+	@$(RM) $(NETOBJ) $(CPUTEST)$(EXEEXT) || @echo $(RM) not available.
+
+clean: objclean profileclean restclean
 
 profilebench:
 ifneq ($(COMP),ndk)
 	@echo "Running bench to generate profiling data..." && ./$(PROFEXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo " Profiling successful!") \
 	|| (echo " Profiling failed!" && [ "$(SDE)" != "" ] && echo " Trying to use SDE..." && $(SDE) -icx -- ./$(PROFEXE) -bench 1>/dev/null && [ $$? -eq 0 ] && echo " Profiling successful!") \
-	|| (echo " SDE not available or profiling with SDE failed! Profiling with native build..." && $(MAKE) profileclean && $(MAKE) compile ARCH=native EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Compiling instrumented build ...' && ./$(PROFEXE) -bench 1>/dev/null)
+	|| (echo " SDE not available or profiling with SDE failed! Profiling with native build..." && $(MAKE) profileclean && $(MAKE) objclean && $(MAKE) $(EXE) ARCH=native EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Compiling instrumented build ...' && ./$(PROFEXE) -bench 1>/dev/null)
 else
 	@([ "$(ANDROIDDEVICE)" != "" ] && adb disconnect 1>/dev/null && adb connect $(ANDROIDDEVICE) && adb root 1>/dev/null && adb shell "rm -rf /data/RubiChess;mkdir /data/RubiChess" \
 	&& echo "Running bench on $(ANDROIDDEVICE) to generate profiling data..." \
