@@ -62,7 +62,6 @@ endif
 
 CXXFLAGS=-std=c++11 -Wall -pedantic -Wextra -Wshadow $(EXTRACXXFLAGS)
 CFLAGS=-Wall -pedantic -Wextra -Wshadow -Wno-implicit-function-declaration
-LDFLAGS = $(EXTRACXXFLAGS)
 
 ifeq ($(debug),yes)
 	CXXFLAGS += -g -O0
@@ -71,6 +70,7 @@ else
 	CXXFLAGS += -O3 -flto
 	CFLAGS += -O3
 endif
+LDFLAGS = $(EXTRACXXFLAGS) $(CXXFLAGS)
 
 ifeq ($(UNAME_O),Android)
 	LDFLAGS += -static-libstdc++
