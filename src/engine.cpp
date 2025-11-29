@@ -669,6 +669,7 @@ void engine::communicate(string inputstring)
                 break;
             case EVAL:
                 evaldetails = (ci < cs && commandargs[ci] == "detail");
+                prepareSearch(sthread[0].pos, &rootposition);
                 sthread[0].pos->getEval<TRACE>();
                 break;
             case PERFT:
