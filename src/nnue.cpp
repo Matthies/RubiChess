@@ -1788,9 +1788,9 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
         for (unsigned int k = 0; k < NumRegs; ++k)
             vec_add_dpbusd_32(acc[k], in, col[k]);
 #ifdef NNUEDEBUG
-        cout << hex << setfill('0') << setw(3) << nnz[j] << " " << setw(8) << input32[i] << "  ";
-        cout << "in: " << ((uint64_t*)&in)[0] << " col: " << ((uint64_t*)col)[0] << " ";
-        if (j % 8 == 7)
+        cout << hex << setfill('0') << setw(3) << i << " " << setfill('0') << setw(8) << input32[i] << "  ";
+        cout << "in: " << setfill('0') << setw(16) << ((uint64_t*)&in)[0] << " col: " << setfill('0') << setw(16) << ((uint64_t*)col)[0] << " ";
+        if (j % 2)
             cout << "   " << hex << setfill('0') << setw(3) << (int)(j / 8 * 8) << "\n";
         if (j + 1 == count)
             cout << dec << "\n";
