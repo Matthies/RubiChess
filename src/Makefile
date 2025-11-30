@@ -114,7 +114,6 @@ endif
 
 ifeq ($(UNAME_M),armv6l)
 	# FIXME: Find better flags
-	CXXFLAGS += -mcpu=native
 	ARCHFAMILY=arm32
 	bits = 32
 endif
