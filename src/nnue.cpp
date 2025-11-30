@@ -23,7 +23,7 @@
 //
 
 #include "RubiChess.h"
-
+#include <arm_acle.h>
 using namespace rubichess;
 
 namespace rubichess {
@@ -1459,12 +1459,12 @@ bool NnueNetworkLayer<inputdims, outputdims>::ReadWeights(NnueNetsource* nr)
 #endif
 
     size_t buffersize = outputdims * paddedInputdims;
-    char* weightbuffer = (char*)calloc(buffersize, sizeof(char));
+    signed char* weightbuffer = (signed char*)calloc(buffersize, sizeof(char));
 
     if (!weightbuffer)
         return false;
 
-    char* w = weightbuffer;
+    signed char* w = weightbuffer;
     okay = okay && nr->read((unsigned char*)weightbuffer, buffersize);
 
     for (unsigned int r = 0; r < outputdims; r++)
@@ -1788,9 +1788,9 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
         for (unsigned int k = 0; k < NumRegs; ++k)
             vec_add_dpbusd_32(acc[k], in, col[k]);
 #ifdef NNUEDEBUG
-        cout << hex << setfill('0') << setw(3) << i << " " << setfill('0') << setw(8) << input32[i] << "  ";
-        cout << "in: " << setfill('0') << setw(16) << ((uint64_t*)&in)[0] << " col: " << setfill('0') << setw(16) << ((uint64_t*)col)[0] << " ";
-        if (j % 2)
+        cout << hex << setfill('0') << setw(3) << nnz[j] << " " << setw(8) << input32[i] << "  ";
+        cout << "in: " << ((uint64_t*)&in)[0] << " col: " << ((uint64_t*)col)[0] << " ";
+        if (j % 8 == 7)
             cout << "   " << hex << setfill('0') << setw(3) << (int)(j / 8 * 8) << "\n";
         if (j + 1 == count)
             cout << dec << "\n";
@@ -1807,7 +1807,8 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
 template <unsigned int inputdims, unsigned int outputdims>
 void NnueNetworkLayer<inputdims, outputdims>::PropagateNative(clipped_t* input, int32_t* output)
 {
-#ifdef USE_FASTSSE2
+//#ifdef USE_FASTSSE2
+#if 0
     if (outputdims % 4 == 0) {
         __m128i* outVec = (__m128i*)output;
         __m128i* biasVec = (__m128i*)bias;
@@ -1887,8 +1888,13 @@ void NnueNetworkLayer<inputdims, outputdims>::PropagateNative(clipped_t* input, 
         output[i] = Simd::neon_m128_reduce_add_epi32(sum) + bias[i];
 #else
         int32_t sum = bias[i];
-        for (unsigned int j = 0; j < inputdims; ++j) {
-            sum += weight[offset + j] * input[j];
+	//cout << "sum(bias) = " << sum << endl;
+	unsigned int* v1 = (unsigned int*)&weight[offset];
+	unsigned int* v2 = (unsigned int*)input;
+        for (unsigned int j = 0; j < inputdims / 2; j++) {
+            //sum += weight[offset + j] * input[j];
+            sum =  __smlad(v1[j], v2[j], sum);
+            //cout << setw(6) << j << "  weight: "  << hex << setw(8) << (uint32_t)*v1 << "  input: "  << setw(8) << (uint32_t)*v2 << "  new sum: " << sum << endl;
         }
         output[i] = sum;
 #endif

@@ -832,8 +832,8 @@ enum NnueType { NnueDisabled = 0, NnueArchV1, NnueArchV5 };
 typedef int16_t weight_t;
 typedef int16_t clipped_t;
 #else
-typedef int8_t weight_t;
-typedef int8_t clipped_t;
+typedef int16_t weight_t;
+typedef int16_t clipped_t;
 #endif
 
 // All pieces and both kings for HalfKA are inputs => 32 dimensions
