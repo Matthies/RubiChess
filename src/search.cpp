@@ -1289,18 +1289,6 @@ int chessposition::rootsearch(int alpha, int beta, int depth, int inWindowLast, 
     tp.addHash(tte, hash, alpha, staticeval, eval_type, depth, (uint16_t)bestmove);
     SDEBUGDO(isDebugPv, tp.debugSetPv(hash, movesOnStack() + " depth=" + to_string(depth)););
 
-    if (useRootmoveScore)
-    {
-        // We have a tablebase score so report this and adjust the search window
-        int tbScore = rootmovelist.move[0].value;
-        if ((tbScore > 0 && alpha > tbScore) || (tbScore < 0 && alpha < tbScore))
-            // TB win/loss but we even found a mate; use the correct score
-            bestmovescore[0] = alpha;
-        else
-            // otherwise use and report the tablebase score
-            alpha = bestmovescore[0] = tbScore;
-    }
-
     return alpha;
 }
 
@@ -1443,6 +1431,12 @@ void mainSearch(workingthread *thr)
                         beta = score + delta;
                     }
                 }
+            } else {
+                // We have a tablebase score so report this and adjust the search window
+                int tbScore = pos->rootmovelist.move[0].value;
+                if ((tbScore > 0 && score < tbScore) || (tbScore < 0 && score > tbScore))
+                    // Correct with tablebase score
+                    score = pos->bestmovescore[0] = tbScore;
             }
         }
 
