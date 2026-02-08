@@ -785,10 +785,10 @@ bool chessposition::playMove(uint32_t mc)
     movecode[ply++] = mc;
     myassert(ply <= MAXDEPTH, this, 1, ply);
     kingPinned = 0ULL;
+    updatePins<WHITE>();
+    updatePins<BLACK>();
 
     if (!LiteMode) {
-        updatePins<WHITE>();
-        updatePins<BLACK>();
         nodes++;
     }
 

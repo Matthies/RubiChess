@@ -66,6 +66,15 @@ void perftjob(workingthread* thr)
                 pos->nodes++;
 
             pos->unplayMove<true>(mc);
+        } else {
+            if (pos->isCheckbb) {
+                cerr << "illegal move in CreateEvasionMovelist: " << moveToString(mc) << hex << " " << mc   << endl;
+                pos->print();
+                cerr << "kingPinned:" << endl;
+                BitboardDraw(pos->kingPinned);
+                cerr << "checkers:" << endl;
+                BitboardDraw(pos->isCheckbb);
+            }
         }
     }
     if (pos->ply == 0)
