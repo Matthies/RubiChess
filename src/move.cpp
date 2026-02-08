@@ -217,7 +217,10 @@ void chessposition::preparePosition()
     else
         updateThreats<WHITE>();
     prepareStack();
-    movelist.length = CreateMovelist<ALL>(&movelist.move[0]);
+    if (isCheckbb)
+        movelist.length = CreateEvasionMovelist(&movelist.move[0]);
+    else
+        movelist.length = CreateMovelist<ALL>(&movelist.move[0]);
     evaluateMoves<ALL>(&movelist);
 
     int bestval = SCOREBLACKWINS;
@@ -789,7 +792,7 @@ bool chessposition::playMove(uint32_t mc)
     updatePins<BLACK>();
 
     if (!LiteMode) {
-        nodes++;
+        ;// nodes++;
     }
 
     return true;
@@ -1089,7 +1092,7 @@ inline void appendPromotionMove(chessmove **m, int from, int to, int col, PieceT
 template <PieceType Pt, Color me> int chessposition::CreateMovelistPiece(chessmove* mstart, U64 occ, U64 targets)
 {
     const PieceCode pc = (PieceCode)((Pt << 1) | me);
-    U64 frombits = piece00[pc];
+    U64 frombits = piece00[pc] & ~kingPinned;
     U64 tobits = 0ULL;
     chessmove *m = mstart;
 
@@ -1107,6 +1110,31 @@ template <PieceType Pt, Color me> int chessposition::CreateMovelistPiece(chessmo
         while (tobits)
         {
             int to = pullLsb(&tobits);
+            if (Pt == KING && isAttackedBy<OCCUPIED>(to, 1 - me))
+                continue;
+            appendMoveToList(&m, from, to, pc, mailbox[to]);
+        }
+    }
+
+    // now the pinned pieces
+    frombits = piece00[pc]  & kingPinned;
+    while (frombits)
+    {
+        int from = pullLsb(&frombits);
+        if (Pt == KNIGHT)
+            tobits = (knight_attacks[from] & targets);
+        if (Pt == BISHOP || Pt == QUEEN)
+            tobits |= (BISHOPATTACKS(occ, from) & targets);
+        if (Pt == ROOK || Pt == QUEEN)
+            tobits |= (ROOKATTACKS(occ, from) & targets);
+        if (Pt == KING)
+            tobits = (king_attacks[from] & targets);
+        tobits &= lineMask[kingpos[me]][from];
+        while (tobits)
+        {
+            int to = pullLsb(&tobits);
+            if (Pt == KING && isAttackedBy<OCCUPIED>(to, 1 - me))
+                continue;
             appendMoveToList(&m, from, to, pc, mailbox[to]);
         }
     }
@@ -1166,7 +1194,7 @@ template <MoveType Mt, Color me> inline int chessposition::CreateMovelistPawn(ch
     if (Mt & QUIET)
     {
         U64 push = PAWNPUSH(you, ~occ & ~PROMOTERANKBB);
-        U64 pushers = push & piece00[pc];
+        U64 pushers = push & (piece00[pc] & (~kingPinned | fileMask[kingpos[me]]));
         U64 doublepushers = PAWNPUSH(you, push) & (RANK2(me) & pushers);
         while (pushers)
         {
@@ -1184,9 +1212,13 @@ template <MoveType Mt, Color me> inline int chessposition::CreateMovelistPawn(ch
         }
     }
 
+    const U64 unpinnedPawns = piece00[pc] & ~kingPinned;
+    const U64 pinnedPawns = piece00[pc] & kingPinned;
+    const int myking = kingpos[me];
+    // first the unpinned pawn moves
     if (Mt & CAPTURE)
     {
-        frombits = piece00[pc] & ~RANK7(me);
+        frombits = unpinnedPawns & ~RANK7(me);
         while (frombits)
         {
             from = pullLsb(&frombits);
@@ -1199,7 +1231,7 @@ template <MoveType Mt, Color me> inline int chessposition::CreateMovelistPawn(ch
         }
         if (ept)
         {
-            frombits = piece00[pc] & pawn_attacks_to[ept][you];
+            frombits = unpinnedPawns & pawn_attacks_to[ept][you];
             while (frombits)
             {
                 from = pullLsb(&frombits);
@@ -1209,14 +1241,57 @@ template <MoveType Mt, Color me> inline int chessposition::CreateMovelistPawn(ch
 
         }
     }
-
     if (Mt & PROMOTE)
     {
-        frombits = piece00[pc] & RANK7(me);
+        frombits = unpinnedPawns & RANK7(me);
         while (frombits)
         {
             from = pullLsb(&frombits);
             tobits = (pawn_attacks_to[from][me] & occupied00[you]) | (pawn_moves_to[from][me] & ~occ);
+            while (tobits)
+            {
+                to = pullLsb(&tobits);
+                PieceCode cap = mailbox[to];
+                appendPromotionMove(&m, from, to, me, QUEEN, cap);
+                appendPromotionMove(&m, from, to, me, ROOK, cap);
+                appendPromotionMove(&m, from, to, me, BISHOP, cap);
+                appendPromotionMove(&m, from, to, me, KNIGHT, cap);
+            }
+        }
+    }
+    // now the moves of pinned pawns needing some more tests
+    if (Mt & CAPTURE)
+    {
+        frombits = pinnedPawns & ~RANK7(me);
+        while (frombits)
+        {
+            from = pullLsb(&frombits);
+            tobits = pawn_attacks_to[from][me] & occupied00[you] & lineMask[myking][from];
+            while (tobits)
+            {
+                to = pullLsb(&tobits);
+                appendMoveToList(&m, from, to, pc, mailbox[to]);
+            }
+        }
+        if (ept)
+        {
+            frombits = pinnedPawns & pawn_attacks_to[ept][you] & lineMask[myking][ept];
+            while (frombits)
+            {
+                from = pullLsb(&frombits);
+                appendMoveToList(&m, from, ept, pc, WPAWN | you);
+                (m - 1)->code |= EPCAPTUREFLAG;
+            }
+
+        }
+    }
+    if (Mt & PROMOTE)
+    {
+        frombits = pinnedPawns & RANK7(me);
+        while (frombits)
+        {
+            from = pullLsb(&frombits);
+            tobits = ((pawn_attacks_to[from][me] & occupied00[you]) | (pawn_moves_to[from][me] & ~occ)) & lineMask[myking][from];
             while (tobits)
             {
                 to = pullLsb(&tobits);
@@ -1323,6 +1398,8 @@ template <MoveType Mt> int chessposition::CreateMovelist(chessmove* mstart)
     U64 emptybits = ~occupiedbits;
     U64 targetbits = 0ULL;
     chessmove* m = mstart;
+    if (hash == 0xe9cba0b95ab290c9)
+        cerr << "this position!" << endl;
 
     if (Mt & QUIET)
         targetbits |= emptybits;

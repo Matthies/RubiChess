@@ -225,6 +225,7 @@ void initThread(workingthread* thr)
     pos->psqtAccumulation = NnueCurrentArch ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr;
     if (NnueCurrentArch)
         NnueCurrentArch->CreateAccumulationCache(pos);
+    //else 
 }
 
 void cleanupThread(workingthread* thr)

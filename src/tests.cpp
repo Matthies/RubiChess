@@ -58,22 +58,30 @@ void perftjob(workingthread* thr)
     for (int i = startmove; i < ml->length; i++)
     {
         mc = ml->move[i].code;
-        if (pos->playMove<true>(mc))
+        if (pos->playMove<false>(mc))
         {
             if (thr->depth > pos->ply)
                 perftjob(thr);
             else
                 pos->nodes++;
 
-            pos->unplayMove<true>(mc);
+            pos->unplayMove<false>(mc);
         } else {
-            if (pos->isCheckbb) {
+            if (1 || pos->isCheckbb) {
                 cerr << "illegal move in CreateEvasionMovelist: " << moveToString(mc) << hex << " " << mc   << endl;
                 pos->print();
                 cerr << "kingPinned:" << endl;
                 BitboardDraw(pos->kingPinned);
                 cerr << "checkers:" << endl;
                 BitboardDraw(pos->isCheckbb);
+/*
+FEN: 8/2p5/3p4/KP5r/1R2Pp1k/8/6P1/8 b - e3 0 1
+State: 1
+EPT: 20
+Halfmoves: 0
+Fullmoves: 1
+Hash: 0xe9d76f8d10d96451
+*/
             }
         }
     }
@@ -102,7 +110,11 @@ U64 engine::perft(int depth, bool printsysteminfo)
         guiCom << "Perft for depth " + to_string(maxdepth) + (en.chess960 ? "  Chess960" : "") + "\n";
     }
 
-    rootpos->rootmovelist.length = rootpos->CreateMovelist<ALL>(&rootpos->rootmovelist.move[0]);
+    if (rootpos->isCheckbb)
+        rootpos->rootmovelist.length = rootpos->CreateEvasionMovelist(&rootpos->rootmovelist.move[0]);
+    else
+        rootpos->rootmovelist.length = rootpos->CreateMovelist<ALL>(&rootpos->rootmovelist.move[0]);
+    
 
     for (int i = 0; i < en.Threads; i++)
         // write "position needs init" and print flag to the thread
@@ -153,6 +165,7 @@ void perftest(int maxdepth)
     };
     perftestresultstruct perftestresults[] =
     {
+#if 1
         {
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             { 1, 20, 400, 8902, 197281, 4865609, 119060324 }
@@ -165,6 +178,7 @@ void perftest(int maxdepth)
             "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
             { 1, 14, 191, 2812, 43238, 674624, 11030083, 178633661 }
         },
+#endif
         {
             "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
             { 1, 6, 264, 9467, 422333, 15833292, 706045033 }

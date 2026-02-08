@@ -1546,6 +1546,7 @@ extern U64 rankMask[64];
 // 00000000
 // 00000000
 extern U64 betweenMask[64][64];
+extern U64 lineMask[64][64];
 
 extern int squareDistance[64][64];
 
@@ -1674,8 +1675,8 @@ enum PvAbortType {
 
 struct AccumulatorCache {
     U64 piece00[2][64][14];
-    int16_t* accumulation;
-    int32_t* psqtaccumulation;
+    int16_t* accumulation = nullptr;
+    int32_t* psqtaccumulation = nullptr;
 };
 
 // Replace the occupied bitboards with the first two so far unused piece bitboards
