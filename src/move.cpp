@@ -22,38 +22,6 @@ using namespace rubichess;
 
 namespace rubichess {
 
-chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece)
-{
-    code = (piece << 28) | (ept << 20) | (capture << 16) | (promote << 12) | (from << 6) | to;
-}
-
-chessmove::chessmove(int from, int to, PieceCode promote, PieceCode capture, PieceCode piece)
-{
-    code = (piece << 28) | (capture << 16) | (promote << 12) | (from << 6) | to;
-}
-
-
-chessmove::chessmove(int from, int to, PieceCode piece)
-{
-    code = (piece << 28) | (from << 6) | to;
-}
-
-
-chessmove::chessmove(int from, int to, PieceCode capture, PieceCode piece)
-{
-    code = (piece << 28) | (capture << 16) | (from << 6) | to;
-}
-
-chessmove::chessmove()
-{
-    code = 0;
-}
-
-chessmove::chessmove(uint32_t c)
-{
-    code = c;
-}
-
 string chessmove::toString()
 {
     return moveToString(code);
@@ -64,11 +32,6 @@ void chessmove::print()
     guiCom << toString();
 }
 
-
-chessmovelist::chessmovelist()
-{
-    length = 0;
-}
 
 string chessmovelist::toString()
 {

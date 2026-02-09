@@ -1408,12 +1408,16 @@ public:
     uint32_t code;
     int value;
 
-    chessmove();
-    chessmove(uint32_t c);
-    chessmove(int from, int to, PieceCode piece);
-    chessmove(int from, int to, PieceCode capture, PieceCode piece);
-    chessmove(int from, int to, PieceCode promote, PieceCode capture, PieceCode piece);
-    chessmove(int from, int to, PieceCode promote, PieceCode capture, int ept, PieceCode piece);
+
+    chessmove() { code = 0; }
+    chessmove(int from, int to, PieceCode capture, PieceCode piece)
+    {
+        code = (piece << 28) | (capture << 16) | (from << 6) | to;
+    }
+    chessmove(int from, int to, PieceCode promote, PieceCode capture, PieceCode piece)
+    {
+        code = (piece << 28) | (capture << 16) | (promote << 12) | (from << 6) | to;
+    }
 
     bool operator<(const chessmove cm) const { return (value < cm.value); }
     bool operator>(const chessmove cm) const { return (value > cm.value); }
@@ -1577,7 +1581,7 @@ public:
 #ifdef SDEBUG
     int lastvalue;
 #endif
-	chessmovelist();
+	chessmovelist() { length = 0; }
 	string toString();
 	void print();
     chessmove* getNextMove(int minval = INT_MIN);
