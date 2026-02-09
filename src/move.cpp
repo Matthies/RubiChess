@@ -1206,7 +1206,7 @@ template <MoveType Mt, Color me> inline int chessposition::CreateMovelistPawn(ch
             from = pullLsb(&doublepushers);
             to = PAWNPUSHDOUBLEINDEX(me, from);
             appendMoveToList(&m, from, to, pc, BLANK);
-            if (epthelper[to] & piece00[WPAWN | you])
+            if (epthelper[to] & (piece00[WPAWN | you] & ~(kingPinned & fileMask[kingpos[you]])))
                 // EPT possible for opponent; set EPT field manually
                 (m - 1)->code |= ADDEPT(from, to);
         }
