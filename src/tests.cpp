@@ -62,14 +62,14 @@ void perftjob(workingthread* thr)
     for (int i = startmove; i < ml->length; i++)
     {
         mc = ml->move[i].code;
-        if (pos->playMove<false>(mc))
+        if (pos->playMove<true>(mc))
         {
             if (thr->depth > pos->ply)
                 perftjob(thr);
             else
                 pos->nodes++;
 
-            pos->unplayMove<false>(mc);
+            pos->unplayMove<true>(mc);
         } else {
             if (1 || pos->isCheckbb) {
                 cerr << "illegal move in CreateEvasionMovelist: " << moveToString(mc) << hex << " " << mc   << endl;

@@ -792,7 +792,7 @@ bool chessposition::playMove(uint32_t mc)
     updatePins<BLACK>();
 
     if (!LiteMode) {
-        ;// nodes++;
+        nodes++;
     }
 
     return true;
@@ -1110,7 +1110,7 @@ template <PieceType Pt, Color me> int chessposition::CreateMovelistPiece(chessmo
         while (tobits)
         {
             int to = pullLsb(&tobits);
-            if (Pt == KING && isAttackedBy<OCCUPIED>(to, 1 - me))
+            if (Pt == KING && isAttackedBy<OCCUPIEDANDKING>(to, 1 - me))
                 continue;
             appendMoveToList(&m, from, to, pc, mailbox[to]);
         }
@@ -1133,8 +1133,6 @@ template <PieceType Pt, Color me> int chessposition::CreateMovelistPiece(chessmo
         while (tobits)
         {
             int to = pullLsb(&tobits);
-            if (Pt == KING && isAttackedBy<OCCUPIED>(to, 1 - me))
-                continue;
             appendMoveToList(&m, from, to, pc, mailbox[to]);
         }
     }
