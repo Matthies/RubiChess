@@ -45,6 +45,10 @@ void perftjob(workingthread* thr)
     }
     else {
         ml = &pos->quietslist[pos->ply];
+#if 0
+        if (pos->hash == 0xf66c48a27d8a486)
+            cerr << "this position!" << endl;
+#endif
         if (pos->isCheckbb)
             ml->length = pos->CreateEvasionMovelist(&ml->move[0]);
         else
@@ -81,6 +85,13 @@ EPT: 20
 Halfmoves: 0
 Fullmoves: 1
 Hash: 0xe9d76f8d10d96451
+
+FEN: 8/2p5/3p4/KP3k1r/4Pp2/8/6P1/5R2 b - e3 0 3
+State: 1
+EPT: 20
+Halfmoves: 0
+Fullmoves: 3
+Hash: 0xf66c48a27d8a486
 */
             }
         }
@@ -174,11 +185,11 @@ void perftest(int maxdepth)
             "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
             { 1, 48,2039,97862, 4085603, 193690690 }
         },
+#endif
         {
             "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
             { 1, 14, 191, 2812, 43238, 674624, 11030083, 178633661 }
         },
-#endif
         {
             "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
             { 1, 6, 264, 9467, 422333, 15833292, 706045033 }

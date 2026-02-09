@@ -408,7 +408,7 @@ void chessposition::print(ostream* os)
     *os << "Fullmoves: " + to_string(fullmovescounter) + "\n";
     *os << "Hash: 0x" << hex << hash << "\n";
     *os << "Pawn Hash: 0x" << hex << pawnhash << "\n";
-    *os << "Value: " + to_string(getEval<NOTRACE>()) + "\n";
+    //*os << "Value: " + to_string(getEval<NOTRACE>()) + "\n";
     *os << "Repetitions: " + to_string(testRepetition()) + "\n";
     *os << "Phase: " + to_string(phcount) + "\n";
     *os << "Pseudo-legal Moves: " + pseudolegalmoves.toString() + "\n";

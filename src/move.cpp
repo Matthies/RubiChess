@@ -1206,7 +1206,16 @@ template <MoveType Mt, Color me> inline int chessposition::CreateMovelistPawn(ch
             from = pullLsb(&doublepushers);
             to = PAWNPUSHDOUBLEINDEX(me, from);
             appendMoveToList(&m, from, to, pc, BLANK);
-            if (epthelper[to] & (piece00[WPAWN | you] & ~(kingPinned & fileMask[kingpos[you]])))
+#if 0
+            if (epthelper[to] & piece00[WPAWN | you] & kingPinned) {
+                cerr << "setting ept needs check" << endl;
+                print();
+                BitboardDraw(kingPinned);
+                BitboardDraw()
+
+            }
+#endif
+            if (epthelper[to] & (piece00[WPAWN | you] & ~(kingPinned & rankMask[kingpos[you]])))
                 // EPT possible for opponent; set EPT field manually
                 (m - 1)->code |= ADDEPT(from, to);
         }
@@ -1343,9 +1352,13 @@ int chessposition::CreateEvasionMovelist(chessmove* mstart)
             while (frombits)
             {
                 from = pullLsb(&frombits);
-                // treat ep capture as normal move and correct code manually
-                appendMoveToList(&m, from, attacker + S2MSIGN(me) * 8, WPAWN | me, WPAWN | you);
-                (m - 1)->code |= EPCAPTUREFLAG;
+                to = attacker + S2MSIGN(me) * 8;
+                if ((BITSET(from) & ~kingPinned) || (lineMask[from][to] & BITSET(king)))
+                {
+                    // treat ep capture as normal move and correct code manually
+                    appendMoveToList(&m, from, to, WPAWN | me, WPAWN | you);
+                    (m - 1)->code |= EPCAPTUREFLAG;
+                }
             }
         }
         // now normal captures of the attacker
@@ -1398,8 +1411,6 @@ template <MoveType Mt> int chessposition::CreateMovelist(chessmove* mstart)
     U64 emptybits = ~occupiedbits;
     U64 targetbits = 0ULL;
     chessmove* m = mstart;
-    if (hash == 0xe9cba0b95ab290c9)
-        cerr << "this position!" << endl;
 
     if (Mt & QUIET)
         targetbits |= emptybits;
