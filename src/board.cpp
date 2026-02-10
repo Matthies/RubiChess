@@ -338,8 +338,6 @@ template <int Me> void chessposition::updatePins()
         if (ONEORZERO(potentialPinners))
             kingPinned |= potentialPinners;
     }
-    // 'Reset' attack vector to make getBestPossibleCapture work even if evaluation was skipped
-    attackedBy[Me][0] = 0xffffffffffffffff;
 }
 
 
