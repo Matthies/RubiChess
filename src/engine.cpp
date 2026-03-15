@@ -837,13 +837,16 @@ void engine::resetEndTime(U64 nowTime, int constantRootMoves, int bestmovenodesr
             // ph: phase of the game averaging material and move number
             // f1: stop soon after 5..17 timeslot
             // f2: stop immediately after 15..27 timeslots
-            int ph = (sthread[0].pos->getPhase() + min(255, sthread[0].pos->fullmovescounter * 6)) / 2;
+            int ph_factor = 256 - (sthread[0].pos->getPhase() + min(255, sthread[0].pos->fullmovescounter * 6)) / 2;
             U64 f1 = max(5, 17 - constance) * bestmovenodesratio;
             U64 f2 = max(15, 27 - constance) * bestmovenodesratio;
             timetouse = max(timeinc, timetouse); // workaround for Arena bug
 
-            endtime1 = thinkStartTime + max(timeinc, (int)(f1 * (timetouse + 128 * timeinc) / 256 / (256 - ph))) * frequency / 1000;
-            endtime2 = clockStartTime + min(max(0, timetouse - overhead), max(timeinc, (int)(f2 * (timetouse + 128 * timeinc) / 256 / (256 - ph)))) * frequency / 1000;
+            // 60+0.6:      60,6/128=0,473      136,8/256=0,534
+            // 20+0.6:      20,6/128=0,161       96,8/256=0,378
+            //  5+0.6:       5,6/128=0,044       81,8/256=0,320
+            endtime1 = thinkStartTime + max(timeinc, (int)(f1 * (timetouse + ph_factor * timeinc / 2) / 256 / ph_factor)) * frequency / 1000;
+            endtime2 = clockStartTime + min(max(0, timetouse - overhead), max(timeinc, (int)(f2 * (timetouse + ph_factor * timeinc / 2) / 256 / ph_factor))) * frequency / 1000;
         }
         else {
             // sudden death without increment; play for another x;y moves
