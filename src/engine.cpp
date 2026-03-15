@@ -845,8 +845,8 @@ void engine::resetEndTime(U64 nowTime, int constantRootMoves, int bestmovenodesr
             // 60+0.6:      60,6/128=0,473      136,8/256=0,534
             // 20+0.6:      20,6/128=0,161       96,8/256=0,378
             //  5+0.6:       5,6/128=0,044       81,8/256=0,320
-            endtime1 = thinkStartTime + max(timeinc, (int)(f1 * (timetouse + ph_factor * timeinc / 2) / 256 / ph_factor)) * frequency / 1000;
-            endtime2 = clockStartTime + min(max(0, timetouse - overhead), max(timeinc, (int)(f2 * (timetouse + ph_factor * timeinc / 2) / 256 / ph_factor))) * frequency / 1000;
+            endtime1 = thinkStartTime + max(timeinc, (int)(f1 * (timetouse + ph_factor * timeinc / 4) / 256 / ph_factor)) * frequency / 1000;
+            endtime2 = clockStartTime + min(max(0, timetouse - overhead), max(timeinc, (int)(f2 * (timetouse + ph_factor * timeinc / 4) / 256 / ph_factor))) * frequency / 1000;
         }
         else {
             // sudden death without increment; play for another x;y moves
