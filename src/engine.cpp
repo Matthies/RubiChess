@@ -842,8 +842,8 @@ void engine::resetEndTime(U64 nowTime, int constantRootMoves, int bestmovenodesr
             U64 f2 = max(15, 27 - constance) * bestmovenodesratio;
             timetouse = max(timeinc, timetouse); // workaround for Arena bug
 
-            endtime1 = thinkStartTime + max(timeinc, (int)(f1 * (timetouse + timeinc) / 128 / (256 - ph))) * frequency / 1000;
-            endtime2 = clockStartTime + min(max(0, timetouse - overhead), max(timeinc, (int)(f2 * (timetouse + timeinc) / 128 / (256 - ph)))) * frequency / 1000;
+            endtime1 = thinkStartTime + max(timeinc, (int)(f1 * (timetouse + 128 * timeinc) / 256 / (256 - ph))) * frequency / 1000;
+            endtime2 = clockStartTime + min(max(0, timetouse - overhead), max(timeinc, (int)(f2 * (timetouse + 128 * timeinc) / 256 / (256 - ph)))) * frequency / 1000;
         }
         else {
             // sudden death without increment; play for another x;y moves
