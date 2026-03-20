@@ -838,8 +838,8 @@ void engine::resetEndTime(U64 nowTime, int constantRootMoves, int bestmovenodesr
             // f1: stop soon after 5..17 timeslot
             // f2: stop immediately after 15..27 timeslots
             int ph_factor = 256 - (sthread[0].pos->getPhase() + min(255, sthread[0].pos->fullmovescounter * 6)) / 2;
-            U64 f1 = max(5, 17 - constance) * bestmovenodesratio;
-            U64 f2 = max(15, 27 - constance) * bestmovenodesratio;
+            U64 f1 = max(7, 17 - constance) * bestmovenodesratio;
+            U64 f2 = max(17, 27 - constance) * bestmovenodesratio;
             timetouse = max(timeinc, timetouse); // workaround for Arena bug
 
             // 60+0.6:      60,6/128=0,473      136,8/256=0,534
