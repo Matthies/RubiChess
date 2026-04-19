@@ -19,6 +19,13 @@
 #include "RubiChess.h"
 
 using namespace rubichess;
+#define UNIVERSAL_BINARY
+
+#ifdef UNIVERSAL_BINARY
+namespace rubichess {
+
+    int main(int argc, char* argv[]);
+#endif
 
 
 int main(int argc, char* argv[])
@@ -229,3 +236,8 @@ int main(int argc, char* argv[])
     en.searchWaitStop();
     return 0;
 }
+
+#ifdef UNIVERSAL_BINARY
+}
+#endif
+

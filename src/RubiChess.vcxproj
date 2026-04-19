@@ -493,6 +493,7 @@
     <ClCompile Include="tests.cpp" />
     <ClCompile Include="texel.cpp" />
     <ClCompile Include="transposition.cpp" />
+    <ClCompile Include="universal.cpp" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
