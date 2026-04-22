@@ -54,8 +54,17 @@ ifeq ($(EXE),)
 	EXE=RubiChess
 endif
 
-CXXFLAGS=-std=c++11 -Wall -pedantic -Wextra -Wshadow
+ifeq ($(MAKELEVEL),0)
+       export ENV_CXXFLAGS := $(CXXFLAGS)
+       export ENV_DEPENDFLAGS := $(DEPENDFLAGS)
+       export ENV_LDFLAGS := $(LDFLAGS)
+endif
+
+
+# CXXFLAGS=-std=c++11 -Wall -pedantic -Wextra -Wshadow
+CXXFLAGS=$(ENV_CXXFLAGS) -std=c++11 -Wall -pedantic -Wextra -Wshadow
 CFLAGS=-Wall -pedantic -Wextra -Wshadow -Wno-implicit-function-declaration
+LDFLAGS=$(ENV_LDFLAGS) $(EXTRALDFLAGS)
 
 ifeq ($(debug),yes)
 	CXXFLAGS += -g -O0
@@ -164,6 +173,12 @@ endif
 
 ZLIBDIR=zlib
 CXXFLAGS += -Izlib
+
+ifeq ($(ARCH), x86-64-universal)
+   UNIVERSAL_BUILD=true
+else
+   UNIVERSAL_BUILD=false
+endif
 
 ifeq (,$(CPUFLAGS))
 ifeq ($(ARCH),native)
@@ -340,6 +355,7 @@ endif
 MINORVERSION = ""
 VERSION=$(MAJORVERSION)$(MINORVERSION)
 
+
 .PHONY: clean profile-build gcc-profile-make clang-profile-make net arch compile profilebench instrumentedcompile pgo profile-build pgo-rename release_x86 release_arm32 release_arm64 release
 
 default: net
@@ -405,6 +421,9 @@ libclean:
 profileclean: libclean
 	@$(RM) -rf $(PROFDIR) || @echo $(RM) not available.
 	@$(RM) *.clangprof-raw *.profdata || @echo $(RM) not available.
+
+universalclean:
+	@rm -rf $(TEMP_DIR)
 
 clean: objclean profileclean
 
@@ -480,6 +499,109 @@ release_android:
 
 release: net
 	@$(MAKE) release_$(ARCHFAMILY)
+
+universal-object-nopgo: objclean universalclean
+	$(MAKE) compile ARCH=$(ARCH) COMP=$(COMP) ENV_LDFLAGS='-save-temps'
+	cp $(basename $(EXE)).ltrans0.ltrans.o RubiChess.o
+
+
+### ==========================================================================
+### Section 6. Universal binary driver
+### ==========================================================================
+#
+# Usage:
+#   make -j ARCH=x86-64-universal build          # non-PGO
+#   make -j ARCH=x86-64-universal profile-build  # PGO (use RUN_PREFIX for intel SDE)
+
+TEMP_DIR             := $(CURDIR)/temp_builds
+UNIVERSAL_EXE        := $(CURDIR)/$(EXE)
+
+ifeq ($(UNIVERSAL_BUILD),true)
+
+UNIVERSAL_ARCHES := x86-64 x86-64-avx2
+
+# GCC 15+ required for #embed
+GCC_MAJOR := $(shell $(CXX) -dumpversion 2>/dev/null | cut -d. -f1)
+ifneq ($(shell test "$(GCC_MAJOR)" -ge 15 2>/dev/null && echo ok),ok)
+$(error Universal build needs GCC 15+ for \#embed support; CXX=$(CXX) reports version '$(GCC_MAJOR)')
+endif
+
+UNIVERSAL_SRC_DIR    := $(CURDIR)/universal
+# NNUE_EMBED_OBJ       := $(TEMP_DIR)/nnue_embed.o
+UNIVERSAL_ENTRY_OBJ  := $(TEMP_DIR)/entry_x86.o
+# NET_SENTINEL         := $(TEMP_DIR)/.net-done
+
+# Top-level tracked items in src/ (directories and files)
+TRACKED_TOP := $(shell git -C $(CURDIR) ls-files 2>/dev/null | awk -F/ '{print $$1}' | sort -u)
+
+# Baseline x86-64 must come first in the final link (Windows --allow-multiple-definition
+# uses the first copy of inline duplicates)
+ARCH_OBJS := $(TEMP_DIR)/x86-64/RubiChess.o \
+             $(patsubst %,$(TEMP_DIR)/%/RubiChess.o,$(filter-out x86-64,$(UNIVERSAL_ARCHES)))
+
+UNIVERSAL_FINAL_FLAGS := -fno-exceptions -Os -static-libstdc++ -static-libgcc -Wno-c++26-extensions
+ifeq ($(KERNEL),Linux)
+    UNIVERSAL_FINAL_FLAGS += -lrt -lpthread
+else
+    UNIVERSAL_FINAL_FLAGS += -Wl,--allow-multiple-definition -static
+endif
+
+# $(call arch-namespace,x86-64-avx2) => Stockfish_x86_64_avx2
+arch-suffix     = $(subst -,_,$(1))
+arch-namespace  = rubichess_$(call arch-suffix,$(1))
+# Itanium ABI mangled name for Stockfish_<suffix>::main(int, char**)
+arch-mangled    = _ZN$(shell printf %s '$(call arch-namespace,$(1))' | wc -c)$(call arch-namespace,$(1))4mainEiPPc
+
+arch-cxxflags   = --embed-dir=$(CURDIR) -Drubichess=$(call arch-namespace,$(1)) -DUNIVERSAL_BINARY \
+                  -Wl,--defsym=main=$(call arch-mangled,$(1)) -Wno-c++26-extensions
+
+UOBJ_TGT ?= universal-object-pgo
+
+.PHONY: build profile-build universal-clean
+build:         UOBJ_TGT := universal-object-nopgo
+build:         $(UNIVERSAL_EXE)
+profile-build: UOBJ_TGT := universal-object-pgo
+profile-build: $(UNIVERSAL_EXE)
+
+$(TEMP_DIR):
+	@mkdir -p $@
+
+# Download nnue files once in src/ (reused by every sub-arch via --embed-dir).
+#$(NET_SENTINEL): | $(TEMP_DIR)
+#	@cd $(CURDIR) && $(SHELL) ../scripts/net.sh
+#	@touch $@
+
+#$(NNUE_EMBED_OBJ): $(UNIVERSAL_SRC_DIR)/nnue_embed.cpp $(NET_SENTINEL) | $(TEMP_DIR)
+#	$(CXX) -O2 -Wno-c++26-extensions --embed-dir=$(CURDIR) -c $< -o $@
+
+
+$(UNIVERSAL_ENTRY_OBJ): cputest.cpp | $(TEMP_DIR)
+	$(CXX) -O2 -c $< -o $@
+
+# Symlink tracked top-level items from src/ into temp_builds/<arch>/.
+$(TEMP_DIR)/%/.setup: | $(TEMP_DIR)
+	@rm -rf $(TEMP_DIR)/$*
+	@mkdir -p $(TEMP_DIR)/$*
+	@$(foreach f,$(TRACKED_TOP),ln -s $(CURDIR)/$(f) $(TEMP_DIR)/$*/$(f);)
+	@touch $@
+
+# Per-arch stockfish.o
+.SECONDARY: $(patsubst %,$(TEMP_DIR)/%/.setup,$(UNIVERSAL_ARCHES))
+
+$(TEMP_DIR)/%/RubiChess.o: $(TEMP_DIR)/%/.setup
+	+ENV_CXXFLAGS='$(ENV_CXXFLAGS) $(call arch-cxxflags,$*)' \
+	    $(MAKE) -C $(TEMP_DIR)/$* $(UOBJ_TGT) \
+	        ARCH=$* CXX=$(CXX)
+	objcopy --rename-section .init_array=$(call arch-suffix,$*)_init $@
+	objcopy --rename-section .ctors=$(call arch-suffix,$*)_init $@
+	objcopy --set-section-flags $(call arch-suffix,$*)_init=alloc,data $@
+
+$(UNIVERSAL_EXE): $(UNIVERSAL_ENTRY_OBJ) $(ARCH_OBJS)
+	$(CXX) -o $@ $(UNIVERSAL_ENTRY_OBJ) $(ARCH_OBJS) $(UNIVERSAL_FINAL_FLAGS)
+	@echo "Universal binary built: $@"
+
+endif  # UNIVERSAL_BUILD
+
 
 help:
 	@echo ""

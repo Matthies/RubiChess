@@ -19,7 +19,6 @@
 #include "RubiChess.h"
 
 using namespace rubichess;
-#define UNIVERSAL_BINARY
 
 #ifdef UNIVERSAL_BINARY
 namespace rubichess {
