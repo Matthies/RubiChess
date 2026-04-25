@@ -443,6 +443,8 @@ clean: objclean profileclean
 
 profilebench:
 ifneq ($(COMP),ndk)
+	@echo $(CURDIR)
+	@echo $(PWD)
 	@echo "Running bench to generate profiling data..." && ./$(PROFEXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo " Profiling successful!") \
 	|| (echo " Profiling failed!" && [ "$(SDE)" != "" ] && echo " Trying to use SDE..." && $(SDE) -icx -- ./$(PROFEXE) -bench 1>/dev/null && [ $$? -eq 0 ] && echo " Profiling successful!") \
 	|| (echo " SDE not available or profiling with SDE failed! Profiling with native build..." && $(MAKE) profileclean && $(MAKE) compile ARCH=native EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Compiling instrumented build ...' && ./$(PROFEXE) -bench 1>/dev/null)
@@ -511,6 +513,16 @@ release_android:
 release: net
 	@$(MAKE) release_$(ARCHFAMILY)
 
+universal-object-pgo: instrumentedcompile profilebench
+	@$(PROFMERGE)
+	@$(RM) ./$(PROFEXE)
+	@$(MAKE) compile ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS="$(PGOEXTRALDFLAGS) -save-temps" MESSAGE='Compiling optimized build ...'
+	cp $(basename $(EXE)).ltrans0.ltrans.o RubiChess.o
+ifneq ($(debug),yes)
+	@$(STRIP) $(EXE)$(EXEEXT)
+endif
+
+
 universal-object-nopgo: objclean universalclean
 	$(MAKE) compile ARCH=$(ARCH) COMP=$(COMP) ENV_LDFLAGS='-save-temps'
 	cp $(basename $(EXE)).ltrans0.ltrans.o RubiChess.o
@@ -533,7 +545,7 @@ UNIVERSAL_ARCHES := x86-64 x86-64-avx2 x86-64-bmi2
 
 # GCC 15+ required for #embed
 GCC_MAJOR := $(shell $(CXX) -dumpversion 2>/dev/null | cut -d. -f1)
-ifneq ($(shell test "$(GCC_MAJOR)" -ge 15 2>/dev/null && echo ok),ok)
+ifneq ($(shell test "$(GCC_MAJOR)" -ge 11 2>/dev/null && echo ok),ok)
 $(error Universal build needs GCC 15+ for \#embed support; CXX=$(CXX) reports version '$(GCC_MAJOR)')
 endif
 
@@ -547,7 +559,7 @@ TRACKED_TOP := $(shell git -C $(CURDIR) ls-files 2>/dev/null | awk -F/ '{print $
 
 # Baseline x86-64 must come first in the final link (Windows --allow-multiple-definition
 # uses the first copy of inline duplicates)
-ARCH_OBJS := $(TEMP_DIR)/x86-64/RubiChess.o \
+ARCH_OBJS := $(TEMP_DIR)/x86-64-avx512/RubiChess.o \
              $(patsubst %,$(TEMP_DIR)/%/RubiChess.o,$(filter-out x86-64,$(UNIVERSAL_ARCHES)))
 
 UNIVERSAL_FINAL_FLAGS := -fno-exceptions -Os -static-libstdc++ -static-libgcc -Wno-c++26-extensions
@@ -563,7 +575,7 @@ arch-namespace  = rubichess_$(call arch-suffix,$(1))
 # Itanium ABI mangled name for rubichess_<suffix>::main(int, char**)
 arch-mangled    = _ZN$(shell printf %s '$(call arch-namespace,$(1))' | wc -c)$(call arch-namespace,$(1))4mainEiPPc
 
-arch-cxxflags   = --embed-dir=$(CURDIR) -Drubichess=$(call arch-namespace,$(1)) -DUNIVERSAL_BINARY \
+arch-cxxflags   =  -Drubichess=$(call arch-namespace,$(1)) -DUNIVERSAL_BINARY \
                   -Wl,--defsym=main=$(call arch-mangled,$(1)) -Wno-c++26-extensions
 
 UOBJ_TGT ?= universal-object-pgo

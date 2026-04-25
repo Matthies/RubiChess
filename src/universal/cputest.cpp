@@ -37,10 +37,10 @@
         return rubichess_##x::main(argc, argv); \
     }
 
-DEFINE_BUILD(x86_64)
+//DEFINE_BUILD(x86_64)
 DEFINE_BUILD(x86_64_avx2)
 DEFINE_BUILD(x86_64_bmi2)
-
+DEFINE_BUILD(x86_64_avx512)
 
 #if defined(_M_X64) || defined(__amd64)
 
@@ -172,12 +172,14 @@ uint64_t GetSystemInfo_x86_64()
 int main(int argc, char* argv[]) {
     unsigned _;
     uint64_t machine = GetSystemInfo_x86_64();
-    
-    if (machine & CPUBMI2)
+
+    if (machine & CPUAVX512)
+        return entry_x86_64_avx512(argc, argv);
+    else if (machine & CPUBMI2)
         return entry_x86_64_bmi2(argc, argv);
     else if (machine & CPUAVX2)
         return entry_x86_64_avx2(argc, argv);
     else
-        return entry_x86_64(argc, argv);
+        return entry_x86_64_avx2(argc, argv);
 }
 

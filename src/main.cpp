@@ -101,6 +101,7 @@ int main(int argc, char* argv[])
     {
         // Get path of the executable
         string execPath = argv[0];
+        cerr << "argv[0]: " << execPath << "\n";
         size_t si;
         if ((si = execPath.rfind('/')) != string::npos || (si = execPath.rfind('\\')) != string::npos)
             en.ExecPath = execPath.substr(0, si + 1);

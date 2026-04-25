@@ -2338,6 +2338,7 @@ bool NnueNetsource::open()
     filenames.push_back(NnueNetPath);
     if (en.ExecPath != "") {
         string pathToSearch = en.ExecPath;
+        cerr << "Exec-Path: " << pathToSearch << "\n";
         char sep = pathToSearch.back();
         size_t seppos;
         while(1) {
@@ -2349,8 +2350,10 @@ bool NnueNetsource::open()
             pathToSearch = pathToSearch.substr(0, seppos + 1);
         }
         filenames.push_back(en.ExecPath + ".." + sep + NnueNetPath);
+        filenames.push_back(en.ExecPath + ".." + sep + ".." + sep + NnueNetPath);
     }
     for (unsigned int i = 0; i < filenames.size(); i++) {
+        cerr << "Testing " << filenames[i] << "\n";
         ifstream is;
         is.open(filenames[i], ios::binary);
         if (!is)
