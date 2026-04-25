@@ -67,7 +67,11 @@ CXXFLAGS=$(ENV_CXXFLAGS) -std=c++11 -Wall -pedantic -Wextra -Wshadow
 CXXFLAGS += -Wstack-usage=128000 -fno-ipa-cp-clone
 
 CFLAGS=-Wall -pedantic -Wextra -Wshadow -Wno-implicit-function-declaration
-LDFLAGS=$(ENV_LDFLAGS) $(EXTRALDFLAGS) -lrt -lpthread
+LDFLAGS=$(ENV_LDFLAGS) $(EXTRALDFLAGS)
+
+ifneq ($(OS), Windows_NT)
+	LDFLAGS += -lrt
+endif
 
 ifeq ($(debug),yes)
 	CXXFLAGS += -g -O0
@@ -547,11 +551,10 @@ ARCH_OBJS := $(TEMP_DIR)/x86-64/RubiChess.o \
              $(patsubst %,$(TEMP_DIR)/%/RubiChess.o,$(filter-out x86-64,$(UNIVERSAL_ARCHES)))
 
 UNIVERSAL_FINAL_FLAGS := -fno-exceptions -Os -static-libstdc++ -static-libgcc -Wno-c++26-extensions
-# ifeq ($(KERNEL),Linux)
-ifeq ($(KERNEL),)
-    UNIVERSAL_FINAL_FLAGS += -lrt -lpthread
-else
+ifeq ($(OS), Windows_NT)
     UNIVERSAL_FINAL_FLAGS += -Wl,--allow-multiple-definition -static
+else
+    UNIVERSAL_FINAL_FLAGS += -lrt -lpthread
 endif
 
 # $(call arch-namespace,x86-64-avx2) => rubichess_x86_64_avx2
