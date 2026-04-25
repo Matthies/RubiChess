@@ -20,9 +20,9 @@
 #include <cpuid.h>
 #include <stdio.h>
 #include <stdint.h>
-//#include <string>
-//#include <cstring>
-//#include <iostream>
+#include <string>
+#include <cstring>
+#include <iostream>
 
 #define DEFINE_BUILD(x) \
     namespace rubichess_##x { \
@@ -98,9 +98,15 @@ uint64_t GetSystemInfo_x86_64()
     memcpy(CPUString + 8, &CPUInfo[2], 4);
 #endif    
     if (CPUInfo[1] == 0x68747541 && CPUInfo[3] == 0x69746e65 && CPUInfo[2] == 0x444d4163)  // "AuthenticAMD"
+    {
+        std::cout << "detected AMD CPU" << std::endl;
         cpuVendor = CPUVENDORAMD;
+    }
     else if (CPUInfo[1] == 0x756e6547 && CPUInfo[3] == 0x49656e69 && CPUInfo[2] == 0x6c65746e)  // "GenuineIntel"
+    {
+        std::cout << "detected Intel CPU" << std::endl;
         cpuVendor = CPUVENDORINTEL;
+    }
     else
         cpuVendor = CPUVENDORUNKNOWN;
 

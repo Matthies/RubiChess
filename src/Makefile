@@ -369,8 +369,13 @@ ifneq ($(debug),yes)
 	@$(STRIP) $(EXE)$(EXEEXT)
 endif
 
+ifeq ($(UNIVERSAL_BUILD),false)
 build: net arch
 	@$(MAKE) compile MESSAGE='Compiling standard build ...'
+
+profile-build: net
+	@$(MAKE) -j1 pgo
+endif
 
 arch: libclean
 	@echo
@@ -469,9 +474,6 @@ ifneq ($(debug),yes)
 endif
 	@echo Binary $(EXE) created successfully.
 
-profile-build: net
-	@$(MAKE) -j1 pgo
-
 pgo-rename: pgo
 	@mv $(EXE) $(EXE)-$(VERSION)_$(ARCH)
 	@echo Successfully created $(EXE)-$(VERSION)_$(ARCH)
@@ -519,7 +521,7 @@ universal-object-nopgo: objclean universalclean
 #   make -j ARCH=x86-64-universal profile-build  # PGO (use RUN_PREFIX for intel SDE)
 
 TEMP_DIR             := $(CURDIR)/temp_builds
-UNIVERSAL_EXE        := $(CURDIR)/universal-$(EXE)
+UNIVERSAL_EXE        := $(CURDIR)/$(EXE)
 
 ifeq ($(UNIVERSAL_BUILD),true)
 
