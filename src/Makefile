@@ -63,16 +63,21 @@ endif
 
 # CXXFLAGS=-std=c++11 -Wall -pedantic -Wextra -Wshadow
 CXXFLAGS=$(ENV_CXXFLAGS) -std=c++11 -Wall -pedantic -Wextra -Wshadow
+
+CXXFLAGS += -Wstack-usage=128000 -fno-ipa-cp-clone
+
 CFLAGS=-Wall -pedantic -Wextra -Wshadow -Wno-implicit-function-declaration
-LDFLAGS=$(ENV_LDFLAGS) $(EXTRALDFLAGS)
+LDFLAGS=$(ENV_LDFLAGS) $(EXTRALDFLAGS) -lrt -lpthread
 
 ifeq ($(debug),yes)
-	CXXFLAGS += -g -O0 -flto
+	CXXFLAGS += -g -O0
 	CFLAGS += -g -O0
 else
-	CXXFLAGS += -O3 -flto
+	CXXFLAGS += -O3
 	CFLAGS += -O3
 endif
+CXXFLAGS += -flto -flto-partition=one
+LDFLAGS += $(CXXFLAGS) -flto=jobserver
 
 ifeq ($(UNAME_O),Android)
 	LDFLAGS += -static-libstdc++
@@ -514,11 +519,11 @@ universal-object-nopgo: objclean universalclean
 #   make -j ARCH=x86-64-universal profile-build  # PGO (use RUN_PREFIX for intel SDE)
 
 TEMP_DIR             := $(CURDIR)/temp_builds
-UNIVERSAL_EXE        := $(CURDIR)/$(EXE)
+UNIVERSAL_EXE        := $(CURDIR)/universal-$(EXE)
 
 ifeq ($(UNIVERSAL_BUILD),true)
 
-UNIVERSAL_ARCHES := x86-64 x86-64-avx2
+UNIVERSAL_ARCHES := x86-64 x86-64-avx2 x86-64-bmi2
 
 # GCC 15+ required for #embed
 GCC_MAJOR := $(shell $(CXX) -dumpversion 2>/dev/null | cut -d. -f1)
@@ -540,7 +545,8 @@ ARCH_OBJS := $(TEMP_DIR)/x86-64/RubiChess.o \
              $(patsubst %,$(TEMP_DIR)/%/RubiChess.o,$(filter-out x86-64,$(UNIVERSAL_ARCHES)))
 
 UNIVERSAL_FINAL_FLAGS := -fno-exceptions -Os -static-libstdc++ -static-libgcc -Wno-c++26-extensions
-ifeq ($(KERNEL),Linux)
+# ifeq ($(KERNEL),Linux)
+ifeq ($(KERNEL),)
     UNIVERSAL_FINAL_FLAGS += -lrt -lpthread
 else
     UNIVERSAL_FINAL_FLAGS += -Wl,--allow-multiple-definition -static
@@ -596,8 +602,8 @@ $(TEMP_DIR)/%/RubiChess.o: $(TEMP_DIR)/%/.setup
 	objcopy --rename-section .ctors=$(call arch-suffix,$*)_init $@
 	objcopy --set-section-flags $(call arch-suffix,$*)_init=alloc,data $@
 
-$(UNIVERSAL_EXE): $(UNIVERSAL_ENTRY_OBJ) $(ARCH_OBJS)
-	$(CXX) -o $@ $(UNIVERSAL_ENTRY_OBJ) $(ARCH_OBJS) $(UNIVERSAL_FINAL_FLAGS)
+$(UNIVERSAL_EXE): $(UNIVERSAL_ENTRY_OBJ) $(ARCH_OBJS) $(ZLIBDIR)/libz.a
+	$(CXX) -o $@ $(UNIVERSAL_ENTRY_OBJ) $(ARCH_OBJS) $(ZLIBDIR)/libz.a $(UNIVERSAL_FINAL_FLAGS)
 	@echo "Universal binary built: $@"
 
 endif  # UNIVERSAL_BUILD

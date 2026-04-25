@@ -17,14 +17,12 @@
 
 //#include "RubiChess.h"
 
-using namespace std;
-
 #include <cpuid.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <string>
-#include <cstring>
-#include <iostream>
+//#include <string>
+//#include <cstring>
+//#include <iostream>
 
 #define DEFINE_BUILD(x) \
     namespace rubichess_##x { \
@@ -41,6 +39,7 @@ using namespace std;
 
 DEFINE_BUILD(x86_64)
 DEFINE_BUILD(x86_64_avx2)
+DEFINE_BUILD(x86_64_bmi2)
 
 
 #if defined(_M_X64) || defined(__amd64)
@@ -56,6 +55,7 @@ DEFINE_BUILD(x86_64_avx2)
 static void cpuid(int32_t out[4], int32_t x) {
     __cpuid_count(x, 0, out[0], out[1], out[2], out[3]);
 }
+#endif
 #endif
 
 #define CPUVENDORUNKNOWN    0
@@ -78,7 +78,6 @@ static void cpuid(int32_t out[4], int32_t x) {
 uint64_t GetSystemInfo_x86_64()
 {
     uint64_t machineSupports = 0ULL;
-    string system;
     int cpuVendor;
     int cpuFamily = 0;
     int cpuModel = 0;
@@ -92,22 +91,20 @@ uint64_t GetSystemInfo_x86_64()
 
     CPUID(CPUInfo, 0);
 
+#if 0
     memset(CPUString, 0, sizeof(CPUString));
     memcpy(CPUString, &CPUInfo[1], 4);
     memcpy(CPUString + 4, &CPUInfo[3], 4);
     memcpy(CPUString + 8, &CPUInfo[2], 4);
-
-    string vendor = string(CPUString);
-
-    if (vendor == "GenuineIntel")
-        cpuVendor = CPUVENDORINTEL;
-    else if (vendor == "AuthenticAMD")
+#endif    
+    if (CPUInfo[1] == 0x68747541 && CPUInfo[3] == 0x69746e65 && CPUInfo[2] == 0x444d4163)  // "AuthenticAMD"
         cpuVendor = CPUVENDORAMD;
+    else if (CPUInfo[1] == 0x756e6547 && CPUInfo[3] == 0x49656e69 && CPUInfo[2] == 0x6c65746e)  // "GenuineIntel"
+        cpuVendor = CPUVENDORINTEL;
     else
         cpuVendor = CPUVENDORUNKNOWN;
 
     nIds = CPUInfo[0];
-
     // Get the information associated with each valid Id
     // https://www.sandpile.org/x86/cpuid.htm
     // https://en.wikichip.org/wiki/amd/cpuid
@@ -138,7 +135,7 @@ uint64_t GetSystemInfo_x86_64()
     // gets the number of valid extended IDs.
     CPUID(CPUInfo, 0x80000000);
     nExIds = CPUInfo[0];
-    memset(CPUBrandString, 0, sizeof(CPUBrandString));
+    //memset(CPUBrandString, 0, sizeof(CPUBrandString));
 
     // Get the information associated with each extended ID.
     for (i = 0x80000000; i <= nExIds; ++i)
@@ -149,16 +146,12 @@ uint64_t GetSystemInfo_x86_64()
             if (CPUInfo[2] & (1 << 5)) machineSupports |= CPULZCNT;
         // Interpret CPU brand string and cache information.
         if (i == 0x80000002)
-            memcpy(CPUBrandString, CPUInfo, sizeof(CPUInfo));
+            ;//memcpy(CPUBrandString, CPUInfo, sizeof(CPUInfo));
         else if (i == 0x80000003)
-            memcpy(CPUBrandString + 16, CPUInfo, sizeof(CPUInfo));
+            ;//memcpy(CPUBrandString + 16, CPUInfo, sizeof(CPUInfo));
         else if (i == 0x80000004)
-            memcpy(CPUBrandString + 32, CPUInfo, sizeof(CPUInfo));
+            ;//memcpy(CPUBrandString + 32, CPUInfo, sizeof(CPUInfo));
     }
-
-    system = CPUBrandString;
-    system.erase(system.find_last_not_of(" \n\r\t") + 1);
-    system += "  Family: " + to_string(cpuFamily) + "  Model: " + to_string(cpuModel);
 
     if (cpuVendor == CPUVENDORAMD && cpuFamily < 25 && (machineSupports & CPUBMI2))
     {
@@ -173,191 +166,12 @@ uint64_t GetSystemInfo_x86_64()
 int main(int argc, char* argv[]) {
     unsigned _;
     uint64_t machine = GetSystemInfo_x86_64();
-    cout << "machine: " << hex << machine << endl;
     
-    return entry_x86_64(argc, argv);
-}
-
-#else
-
-#include "RubiChess.h"
-
-
-using namespace rubichess;
-
-
-#if defined(_M_X64) || defined(__amd64)
-
-#if defined _MSC_VER && !defined(__clang_major__)
-#include <intrin.h>
-#define CPUID(x,i) __cpuid(x, i)
-#endif
-
-#if defined(__MINGW64__) || defined(__gnu_linux__) || defined(__clang_major__) || defined(__GNUC__)
-#include <cpuid.h>
-#define CPUID(x,i) cpuid(x, i)
-static void cpuid(int32_t out[4], int32_t x) {
-    __cpuid_count(x, 0, out[0], out[1], out[2], out[3]);
-}
-#endif
-
-
-void compilerinfo::GetSystemInfo()
-{
-    machineSupports = 0ULL;
-
-    // shameless copy from MSDN example explaining __cpuid
-    char CPUBrandString[0x40];
-    char CPUString[0x10];
-    int CPUInfo[4] = { -1 };
-
-    unsigned    nIds, nExIds, i;
-
-    CPUID(CPUInfo, 0);
-
-    memset(CPUString, 0, sizeof(CPUString));
-    memcpy(CPUString, &CPUInfo[1], 4);
-    memcpy(CPUString + 4, &CPUInfo[3], 4);
-    memcpy(CPUString + 8, &CPUInfo[2], 4);
-
-    string vendor = string(CPUString);
-
-    if (vendor == "GenuineIntel")
-        cpuVendor = CPUVENDORINTEL;
-    else if (vendor == "AuthenticAMD")
-        cpuVendor = CPUVENDORAMD;
+    if (machine & CPUBMI2)
+        return entry_x86_64_bmi2(argc, argv);
+    else if (machine & CPUAVX2)
+        return entry_x86_64_avx2(argc, argv);
     else
-        cpuVendor = CPUVENDORUNKNOWN;
-
-    nIds = CPUInfo[0];
-
-    // Get the information associated with each valid Id
-    // https://www.sandpile.org/x86/cpuid.htm
-    // https://en.wikichip.org/wiki/amd/cpuid
-    // https://en.wikichip.org/wiki/intel/cpuid
-    for (i = 0; i <= nIds; ++i)
-    {
-        CPUID(CPUInfo, i);
-        // Interpret CPU feature information.
-        if (i == 1)
-        {
-            cpuFamily = ((CPUInfo[0] & (0xf << 8)) >> 8) + ((CPUInfo[0] & (0xff << 20)) >> 20);
-            cpuModel = ((CPUInfo[0] & (0xf << 16)) >> 12) + ((CPUInfo[0] & (0xf << 4)) >> 4);
-            if (CPUInfo[3] & (1 << 26)) machineSupports |= CPUSSE2;
-            if (CPUInfo[2] & (1 << 23)) machineSupports |= CPUPOPCNT;
-            if (CPUInfo[2] & (1 << 9)) machineSupports |= CPUSSSE3;
-        }
-
-        if (i == 7)
-        {
-            if (CPUInfo[1] & (1 << 3)) machineSupports |= CPUBMI1;
-            if (CPUInfo[1] & (1 << 8)) machineSupports |= CPUBMI2;
-            if (CPUInfo[1] & (1 << 5)) machineSupports |= CPUAVX2;
-            if (CPUInfo[1] & ((1 << 16) | (1 << 30))) machineSupports |= CPUAVX512; // AVX512F + AVX512BW needed
-        }
-    }
-
-    // Calling __cpuid with 0x80000000 as the InfoType argument
-    // gets the number of valid extended IDs.
-    CPUID(CPUInfo, 0x80000000);
-    nExIds = CPUInfo[0];
-    memset(CPUBrandString, 0, sizeof(CPUBrandString));
-
-    // Get the information associated with each extended ID.
-    for (i = 0x80000000; i <= nExIds; ++i)
-    {
-        CPUID(CPUInfo, i);
-        // Extended CPU features
-        if (i == 0x80000001)
-            if (CPUInfo[2] & (1 << 5)) machineSupports |= CPULZCNT;
-        // Interpret CPU brand string and cache information.
-        if (i == 0x80000002)
-            memcpy(CPUBrandString, CPUInfo, sizeof(CPUInfo));
-        else if (i == 0x80000003)
-            memcpy(CPUBrandString + 16, CPUInfo, sizeof(CPUInfo));
-        else if (i == 0x80000004)
-            memcpy(CPUBrandString + 32, CPUInfo, sizeof(CPUInfo));
-    }
-
-    system = CPUBrandString;
-    system.erase(system.find_last_not_of(" \n\r\t") + 1);
-    system += "  Family: " + to_string(cpuFamily) + "  Model: " + to_string(cpuModel);
-
-#ifndef CPUTEST
-    U64 notSupported = binarySupports & ~machineSupports;
-
-    if (notSupported)
-    {
-        cout << "info string Error! Binary is not compatible with this machine. Missing cpu features: " + PrintCpuFeatures(notSupported) + ". Please use correct binary.\n";
-        exit(-1);
-    }
-#endif
-
-    if (cpuVendor == CPUVENDORAMD && cpuFamily < 25 && (machineSupports & CPUBMI2))
-    {
-        // No real BMI2 support on AMD cpu before Zen3
-        machineSupports ^= CPUBMI2;
-        if (binarySupports & CPUBMI2)
-            cout << "info string Warning! You are running the BMI2 binary on an AMD cpu which is known for bad performance. Please use avx2 binary for best performance.\n";
-    }
-
-#ifndef CPUTEST
-    U64 supportedButunused = machineSupports & ~binarySupports;
-    if (supportedButunused)
-        cout << "info string Warning! Binary not optimal for this machine. Unused cpu features: " + PrintCpuFeatures(supportedButunused) + ". Please use correct binary for best performance.\n";
-#endif
+        return entry_x86_64(argc, argv);
 }
 
-#else
-void compilerinfo::GetSystemInfo()
-{
-#if defined(__ARM_ARCH) || defined(_M_ARM64) || defined(_M_ARM)
-#if __ARM_ARCH == 6
-    system = "ArmV6 platform not supporting any SIMD";
-    machineSupports = 0;
-#elif __ARM_ARCH == 7 || defined(_M_ARM)
-    system = "ArmV7 platform supporting NEON";
-    machineSupports = CPUNEON;
-#elif defined(__aarch64__) || defined(_M_ARM64)
-#ifdef __ARM_FEATURE_DOTPROD
-    system = "ArmV8.2+DotProd (AArch64) platform supporting NEON";
-    machineSupports = CPUNEON | CPUARM64 | CPUDOTPROD;
-#else
-    system = "ArmV8 (AArch64) platform supporting NEON";
-    machineSupports = CPUNEON | CPUARM64;
-#endif
-#else
-    system = "ArmV8 32bit platform supporting NEON"; // does this exist??
-    machineSupports = CPUNEON;
-#endif
-#else
-    system = "Some non-x86-64-non-arm platform.";
-    machineSupports = 0ULL;
-#endif
-}
-
-#endif
-
-string compilerinfo::PrintCpuFeatures(U64 f, bool onlyHighest)
-{
-    string s = "";
-    for (int i = 0; f; i++, f = f >> 1)
-        if (f & 1) s = (onlyHighest ? "" : ((s != "") ? s + " " : "")) + strCpuFeatures[i];
-
-    return s;
-}
-
-
-#ifdef CPUTEST
-
-int main()
-{
-    compilerinfo ci;
-    ci.GetSystemInfo();
-    cout << ci.PrintCpuFeatures(ci.machineSupports) << "\n";
-
-}
-
-#endif
-
-#endif
