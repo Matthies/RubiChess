@@ -118,6 +118,16 @@
 
 using namespace std;
 
+#if 0
+extern uint64_t cpuMachineSupports;
+extern int cpuVendor;
+extern int cpuFamily;
+extern int cpuModel;
+extern string cpuSystem;
+void GetSystemInfo_x86_64();
+string PrintCpuFeatures(uint64_t features, bool onlyHighest = false);
+#endif
+
 namespace rubichess {
 
 
@@ -2120,7 +2130,12 @@ public:
     string PrintCpuFeatures(U64 features, bool onlyHighest = false);
     int GetProcessId();
 };
+
+
+
 #endif
+
+void GetSystemInfo_x86_64(uint64_t& cpuMachineSupports, int& cpuVendor, int& cpuFamily, int& cpuModel, std::string& cpuSystem);
 
 
 class engine
@@ -2176,6 +2191,14 @@ public:
     string benchpondermove;
     ucioptions_t ucioptions;
     //compilerinfo* compinfo;
+    uint64_t cpuMachineSupports;
+    int cpuVendor;
+    int cpuFamily;
+    int cpuModel;
+    string cpuSystem;
+    //void GetSystemInfo_x86_64();
+    string PrintCpuFeatures(uint64_t features, bool onlyHighest = false);
+
     string ExecPath;
     set<string> searchmoves;
 
@@ -2246,6 +2269,7 @@ public:
     void searchWaitStop(bool forceStop = true);
     void resetEndTime(U64 nowTime, int constantRootMoves = 0, int bestmovenodesratio = 128);
     void startSearchTime(bool ponderhit);
+    void engineHeader();
 };
 
 void prepareSearch(chessposition* pos, chessposition* rootpos);

@@ -57,7 +57,7 @@
     <ClCompile Include="tests.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="universal\cputest.cpp">
+    <ClCompile Include="cputest.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>

@@ -29,6 +29,8 @@ namespace rubichess {
 
 int main(int argc, char* argv[])
 {
+    //GetSystemInfo_x86_64();
+
     int startnum;
     int perfmaxdepth;
     bool verbose;
@@ -120,7 +122,7 @@ int main(int argc, char* argv[])
     tuneInit();
 #endif
 
-    engineHeader();
+    en.engineHeader();
     searchinit();
 
     cout.setf(ios_base::unitbuf);

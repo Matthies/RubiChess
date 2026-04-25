@@ -22,19 +22,6 @@ using namespace rubichess;
 
 namespace rubichess {
 
-void engineHeader()
-{
-    guiCom << "========================================================================================\n";
-    guiCom << en.name() + " (Build " + BUILD + ")\n";
-    guiCom << "UCI compatible chess engine by " + en.author + "\n";
-    guiCom << "----------------------------------------------------------------------------------------\n";
-    //guiCom << "System: " + cinfo.SystemName() + "  " + numa_configuration() + "\n";
-    //guiCom << "CPU-Features of system: " + cinfo.PrintCpuFeatures(cinfo.machineSupports) + "\n";
-    //guiCom << "CPU-Features of binary: " + cinfo.PrintCpuFeatures(cinfo.binarySupports) + "\n";
-    guiCom << "========================================================================================\n";
-}
-
-
 
 //
 // callbacks for ucioptions
@@ -117,7 +104,7 @@ void uciSetLogFile()
         return;
 
     sLogging = "Logging to " + fullpath + (bAppend ? string("  (appending log)") : string("  (new log)"));
-    engineHeader();
+    en.engineHeader();
     guiCom << "info string " + sLogging + "\n";
 }
 
@@ -158,6 +145,7 @@ static void uciSetContempt()
 
 engine::engine()
 {
+    GetSystemInfo_x86_64(cpuMachineSupports, cpuVendor, cpuFamily, cpuModel, cpuSystem);
 #ifdef _WIN32
     LARGE_INTEGER f;
     QueryPerformanceFrequency(&f);
@@ -184,6 +172,32 @@ engine::~engine()
     rootposition.pwnhsh.remove();
     NnueRemove();
 }
+
+
+void engine::engineHeader()
+{
+    guiCom << "========================================================================================\n";
+    guiCom << en.name() + " (Build " + BUILD + ")\n";
+    guiCom << "UCI compatible chess engine by " + en.author + "\n";
+    guiCom << "----------------------------------------------------------------------------------------\n";
+    guiCom << "System: " + cpuSystem + "  " + numa_configuration() + "\n";
+    guiCom << "CPU-Features of system: " + PrintCpuFeatures(cpuMachineSupports) + "\n";
+    guiCom << "CPU-Features of binary: " + PrintCpuFeatures(0) + "\n";
+    guiCom << "========================================================================================\n";
+}
+
+
+string engine::PrintCpuFeatures(uint64_t f, bool onlyHighest)
+{
+    const std::string strCpuFeatures[11] = { "sse2","ssse3","popcnt","lzcnt","bmi1","avx2","bmi2", "avx512", "neon", "arm64", "dotprod" };
+
+    std::string s = "";
+    for (int i = 0; f; i++, f = f >> 1)
+        if (f & 1) s = (onlyHighest ? "" : ((s != "") ? s + " " : "")) + strCpuFeatures[i];
+
+    return s;
+}
+
 
 
 void engine::registerOptions()

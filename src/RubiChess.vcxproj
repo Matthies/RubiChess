@@ -481,6 +481,7 @@
   <ItemGroup>
     <ClCompile Include="board.cpp" />
     <ClCompile Include="book.cpp" />
+    <ClCompile Include="cputest.cpp" />
     <ClCompile Include="engine.cpp" />
     <ClCompile Include="eval.cpp" />
     <ClCompile Include="learn.cpp" />
@@ -492,7 +493,6 @@
     <ClCompile Include="tests.cpp" />
     <ClCompile Include="texel.cpp" />
     <ClCompile Include="transposition.cpp" />
-    <ClCompile Include="universal\cputest.cpp" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>

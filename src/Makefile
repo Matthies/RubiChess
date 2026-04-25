@@ -598,14 +598,14 @@ $(TEMP_DIR):
 #	$(CXX) -O2 -Wno-c++26-extensions --embed-dir=$(CURDIR) -c $< -o $@
 
 
-$(UNIVERSAL_ENTRY_OBJ): $(CURDIR)/universal/cputest.cpp | $(TEMP_DIR)
+$(UNIVERSAL_ENTRY_OBJ): $(CURDIR)/cputest.cpp | $(TEMP_DIR)
 	$(CXX) -O2 -c $< -o $@
 
 # Symlink tracked top-level items from src/ into temp_builds/<arch>/.
 $(TEMP_DIR)/%/.setup: | $(TEMP_DIR)
 	@rm -rf $(TEMP_DIR)/$*
 	@mkdir -p $(TEMP_DIR)/$*
-	@ln -s $(CURDIR)/$(NETOBJ) $(TEMP_DIR)/$*/$(NETOBJ)
+	-@ln -s $(CURDIR)/$(NETOBJ) $(TEMP_DIR)/$*/$(NETOBJ)
 	@$(foreach f,$(TRACKED_TOP),ln -s $(CURDIR)/$(f) $(TEMP_DIR)/$*/$(f);)
 	@touch $@
 
