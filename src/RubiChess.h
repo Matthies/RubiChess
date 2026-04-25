@@ -789,6 +789,7 @@ void BitboardDraw(U64 b);
 U64 getTime();
 void bind_thread(int index);
 string numa_configuration();
+int GetProcessId();
 string CurrentWorkingDir();
 void generateEpd(string egn);
 #ifdef _WIN32
@@ -2070,6 +2071,7 @@ enum ponderstate_t { NO, PONDERING };
 #define CPUARM64    (1 << 9)
 #define CPUDOTPROD  (1 << 10)
 
+#if 0
 class compilerinfo
 {
     const string strCpuFeatures[11] = { "sse2","ssse3","popcnt","lzcnt","bmi1","avx2","bmi2", "avx512", "neon", "arm64", "dotprod"};
@@ -2118,13 +2120,13 @@ public:
     string PrintCpuFeatures(U64 features, bool onlyHighest = false);
     int GetProcessId();
 };
-
+#endif
 
 
 class engine
 {
 public:
-    engine(compilerinfo *c);
+    engine();
     ~engine();
     const string author = "Andreas Matthies";
     U64 thinkstarttime;
@@ -2173,7 +2175,7 @@ public:
     string benchmove;
     string benchpondermove;
     ucioptions_t ucioptions;
-    compilerinfo* compinfo;
+    //compilerinfo* compinfo;
     string ExecPath;
     set<string> searchmoves;
 
@@ -2217,7 +2219,7 @@ public:
     bool allowlargepages;
 #endif
     string name(bool full = true) {
-        string sbinary = compinfo->PrintCpuFeatures(compinfo->binarySupports, true);
+        string sbinary = "";//compinfo->PrintCpuFeatures(compinfo->binarySupports, true);
         sbinary = (sbinary != "" ? " (" + sbinary + ")" : "");
         if (!full)
             return string(ENGINEVER) + sbinary;
@@ -2276,7 +2278,7 @@ public:
 };
 
 extern engine en;
-extern compilerinfo cinfo;
+//extern compilerinfo cinfo;
 extern GuiCommunication guiCom;
 
 

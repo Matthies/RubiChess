@@ -575,7 +575,7 @@ string numa_configuration()
 
 #ifdef _WIN32
 #include <process.h>
-int compilerinfo::GetProcessId()
+int GetProcessId()
 {
     return _getpid();
 }
@@ -676,7 +676,7 @@ const char kPathSeparator = '\\';
 #else
 
 #include <unistd.h>
-int compilerinfo::GetProcessId()
+int GetProcessId()
 {
     return getpid();
 }

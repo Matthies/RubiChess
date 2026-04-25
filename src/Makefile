@@ -67,7 +67,7 @@ CFLAGS=-Wall -pedantic -Wextra -Wshadow -Wno-implicit-function-declaration
 LDFLAGS=$(ENV_LDFLAGS) $(EXTRALDFLAGS)
 
 ifeq ($(debug),yes)
-	CXXFLAGS += -g -O0
+	CXXFLAGS += -g -O0 -flto
 	CFLAGS += -g -O0
 else
 	CXXFLAGS += -O3 -flto
@@ -183,7 +183,7 @@ endif
 ifeq (,$(CPUFLAGS))
 ifeq ($(ARCH),native)
 ifeq ($(wildcard $(CPUTEST)$(EXEEXT)),)
-$(shell $(CXX) $(CXXFLAGS) $(LDFLAGS) -DCPUTEST $(CPUTEST).cpp -o $(CPUTEST))
+$(shell $(CXX) $(CXXFLAGS) $(LDFLAGS) -DCPUTEST universal/$(CPUTEST).cpp -o $(CPUTEST))
 endif
 CPUFLAGS = "$(shell ./$(CPUTEST)$(EXEEXT))"
 endif
@@ -546,10 +546,10 @@ else
     UNIVERSAL_FINAL_FLAGS += -Wl,--allow-multiple-definition -static
 endif
 
-# $(call arch-namespace,x86-64-avx2) => Stockfish_x86_64_avx2
+# $(call arch-namespace,x86-64-avx2) => rubichess_x86_64_avx2
 arch-suffix     = $(subst -,_,$(1))
 arch-namespace  = rubichess_$(call arch-suffix,$(1))
-# Itanium ABI mangled name for Stockfish_<suffix>::main(int, char**)
+# Itanium ABI mangled name for rubichess_<suffix>::main(int, char**)
 arch-mangled    = _ZN$(shell printf %s '$(call arch-namespace,$(1))' | wc -c)$(call arch-namespace,$(1))4mainEiPPc
 
 arch-cxxflags   = --embed-dir=$(CURDIR) -Drubichess=$(call arch-namespace,$(1)) -DUNIVERSAL_BINARY \
@@ -575,7 +575,7 @@ $(TEMP_DIR):
 #	$(CXX) -O2 -Wno-c++26-extensions --embed-dir=$(CURDIR) -c $< -o $@
 
 
-$(UNIVERSAL_ENTRY_OBJ): cputest.cpp | $(TEMP_DIR)
+$(UNIVERSAL_ENTRY_OBJ): $(CURDIR)/universal/cputest.cpp | $(TEMP_DIR)
 	$(CXX) -O2 -c $< -o $@
 
 # Symlink tracked top-level items from src/ into temp_builds/<arch>/.
@@ -585,7 +585,7 @@ $(TEMP_DIR)/%/.setup: | $(TEMP_DIR)
 	@$(foreach f,$(TRACKED_TOP),ln -s $(CURDIR)/$(f) $(TEMP_DIR)/$*/$(f);)
 	@touch $@
 
-# Per-arch stockfish.o
+# Per-arch RubiChess.o
 .SECONDARY: $(patsubst %,$(TEMP_DIR)/%/.setup,$(UNIVERSAL_ARCHES))
 
 $(TEMP_DIR)/%/RubiChess.o: $(TEMP_DIR)/%/.setup

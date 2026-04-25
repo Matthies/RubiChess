@@ -28,9 +28,9 @@ void engineHeader()
     guiCom << en.name() + " (Build " + BUILD + ")\n";
     guiCom << "UCI compatible chess engine by " + en.author + "\n";
     guiCom << "----------------------------------------------------------------------------------------\n";
-    guiCom << "System: " + cinfo.SystemName() + "  " + numa_configuration() + "\n";
-    guiCom << "CPU-Features of system: " + cinfo.PrintCpuFeatures(cinfo.machineSupports) + "\n";
-    guiCom << "CPU-Features of binary: " + cinfo.PrintCpuFeatures(cinfo.binarySupports) + "\n";
+    //guiCom << "System: " + cinfo.SystemName() + "  " + numa_configuration() + "\n";
+    //guiCom << "CPU-Features of system: " + cinfo.PrintCpuFeatures(cinfo.machineSupports) + "\n";
+    //guiCom << "CPU-Features of binary: " + cinfo.PrintCpuFeatures(cinfo.binarySupports) + "\n";
     guiCom << "========================================================================================\n";
 }
 
@@ -101,7 +101,7 @@ void uciSetLogFile()
     size_t nPid = filename.find("_pid");
     if (nPid != string::npos)
     {
-        int pid = cinfo.GetProcessId();
+        int pid = GetProcessId();
         filename.replace(nPid, 4, "_" + to_string(pid));
     }
     string sLogging;
@@ -156,9 +156,8 @@ static void uciSetContempt()
 }
 
 
-engine::engine(compilerinfo *c)
+engine::engine()
 {
-    compinfo = c;
 #ifdef _WIN32
     LARGE_INTEGER f;
     QueryPerformanceFrequency(&f);
