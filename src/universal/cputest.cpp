@@ -17,12 +17,13 @@
 
 //#include "RubiChess.h"
 
-#include <cpuid.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string>
 #include <cstring>
 #include <iostream>
+
+#ifdef UNIVERSAL_BUILD
 
 #define DEFINE_BUILD(x) \
     namespace rubichess_##x { \
@@ -41,6 +42,8 @@
 DEFINE_BUILD(x86_64_avx2)
 DEFINE_BUILD(x86_64_bmi2)
 DEFINE_BUILD(x86_64_avx512)
+
+#endif // UNIVERSAL_BUILD
 
 #if defined(_M_X64) || defined(__amd64)
 
@@ -168,7 +171,7 @@ uint64_t GetSystemInfo_x86_64()
 }
 
 
-
+#ifdef UNIVERSAL_BUILD
 int main(int argc, char* argv[]) {
     unsigned _;
     uint64_t machine = GetSystemInfo_x86_64();
@@ -182,4 +185,4 @@ int main(int argc, char* argv[]) {
     else
         return entry_x86_64_avx2(argc, argv);
 }
-
+#endif

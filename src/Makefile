@@ -353,7 +353,7 @@ else
 	EMBEDFILE = $(EVALFILE)
 endif
 	NETDEF = -DNNUEINCLUDED=$(EMBEDFILE)
-	NETOBJ = net.o
+	NETOBJ = netobject
 endif
 
 ifeq ($(GITVER),)
@@ -374,10 +374,10 @@ ifneq ($(debug),yes)
 endif
 
 ifeq ($(UNIVERSAL_BUILD),false)
-build: net arch
+build: $(CURDIR)/$(NETOBJ) arch
 	@$(MAKE) compile MESSAGE='Compiling standard build ...'
 
-profile-build: net
+profile-build: $(CURDIR)/$(NETOBJ)
 	@$(MAKE) -j1 pgo
 endif
 
@@ -402,7 +402,7 @@ arch: libclean
 	@echo "debug  : $(debug)"
 	@echo "libnuma: $(HASLIBNUMA)"
 
-net:
+$(CURDIR)/$(NETOBJ):
 ifeq ($(EVALFILE),$(filter $(EVALFILE),default))
 ifeq ($(RUBINET),)
 		echo "Network not found in header"
@@ -439,7 +439,7 @@ profileclean: libclean
 universalclean:
 	@rm -rf $(TEMP_DIR)
 
-clean: objclean profileclean
+clean: objclean profileclean universalclean $(NETOBJ)
 
 profilebench:
 ifneq ($(COMP),ndk)
@@ -510,7 +510,7 @@ release_android:
 	@$(MAKE) pgo-rename  ARCH=x86-64 COMP=$(COMP)
 	@$(MAKE) pgo-rename  ARCH=x86-32 COMP=$(COMP)
 
-release: net
+release: $(CURDIR)/$(NETOBJ)
 	@$(MAKE) release_$(ARCHFAMILY)
 
 universal-object-pgo: instrumentedcompile profilebench
@@ -541,7 +541,7 @@ UNIVERSAL_EXE        := $(CURDIR)/$(EXE)
 
 ifeq ($(UNIVERSAL_BUILD),true)
 
-UNIVERSAL_ARCHES := x86-64 x86-64-avx2 x86-64-bmi2
+UNIVERSAL_ARCHES := x86-64 x86-64-avx2 x86-64-bmi2 x86-64-avx512
 
 # GCC 15+ required for #embed
 GCC_MAJOR := $(shell $(CXX) -dumpversion 2>/dev/null | cut -d. -f1)
@@ -562,7 +562,7 @@ TRACKED_TOP := $(shell git -C $(CURDIR) ls-files 2>/dev/null | awk -F/ '{print $
 ARCH_OBJS := $(TEMP_DIR)/x86-64-avx512/RubiChess.o \
              $(patsubst %,$(TEMP_DIR)/%/RubiChess.o,$(filter-out x86-64,$(UNIVERSAL_ARCHES)))
 
-UNIVERSAL_FINAL_FLAGS := -fno-exceptions -Os -static-libstdc++ -static-libgcc -Wno-c++26-extensions
+UNIVERSAL_FINAL_FLAGS := -fno-exceptions -Os -static-libstdc++ -static-libgcc
 ifeq ($(OS), Windows_NT)
     UNIVERSAL_FINAL_FLAGS += -Wl,--allow-multiple-definition -static
 else
@@ -605,6 +605,7 @@ $(UNIVERSAL_ENTRY_OBJ): $(CURDIR)/universal/cputest.cpp | $(TEMP_DIR)
 $(TEMP_DIR)/%/.setup: | $(TEMP_DIR)
 	@rm -rf $(TEMP_DIR)/$*
 	@mkdir -p $(TEMP_DIR)/$*
+	@ln -s $(CURDIR)/$(NETOBJ) $(TEMP_DIR)/$*/$(NETOBJ)
 	@$(foreach f,$(TRACKED_TOP),ln -s $(CURDIR)/$(f) $(TEMP_DIR)/$*/$(f);)
 	@touch $@
 
@@ -619,8 +620,8 @@ $(TEMP_DIR)/%/RubiChess.o: $(TEMP_DIR)/%/.setup
 	objcopy --rename-section .ctors=$(call arch-suffix,$*)_init $@
 	objcopy --set-section-flags $(call arch-suffix,$*)_init=alloc,data $@
 
-$(UNIVERSAL_EXE): $(UNIVERSAL_ENTRY_OBJ) $(ARCH_OBJS) $(ZLIBDIR)/libz.a
-	$(CXX) -o $@ $(UNIVERSAL_ENTRY_OBJ) $(ARCH_OBJS) $(ZLIBDIR)/libz.a $(UNIVERSAL_FINAL_FLAGS)
+$(UNIVERSAL_EXE): $(ZLIBDIR)/libz.a $(CURDIR)/$(NETOBJ) $(UNIVERSAL_ENTRY_OBJ) $(ARCH_OBJS)
+	$(CXX) -o $@ $(UNIVERSAL_ENTRY_OBJ) $(ARCH_OBJS) $(ZLIBDIR)/libz.a $(UNIVERSAL_FINAL_FLAGS) $(NETDEF) $(NETOBJ)
 	@echo "Universal binary built: $@"
 
 endif  # UNIVERSAL_BUILD

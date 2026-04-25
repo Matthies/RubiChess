@@ -54,13 +54,10 @@
     <ClCompile Include="move.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="cputest.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="tests.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="universal.cpp">
+    <ClCompile Include="universal\cputest.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>
