@@ -516,11 +516,7 @@ universal-object-pgo: instrumentedcompile profilebench
 	@$(PROFMERGE)
 	@$(RM) ./$(PROFEXE)
 	@$(MAKE) compile ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS="$(PGOEXTRALDFLAGS) -save-temps" MESSAGE='Compiling optimized build ...'
-	cp $(basename $(EXE)).ltrans0.ltrans.o RubiChess.o
-ifneq ($(debug),yes)
-	@$(STRIP) $(EXE)$(EXEEXT)
-endif
-
+	mv $(basename $(EXE)).ltrans0.ltrans.o RubiChess.o
 
 universal-object-nopgo: objclean universalclean
 	$(MAKE) compile ARCH=$(ARCH) COMP=$(COMP) ENV_LDFLAGS='-save-temps'
@@ -541,17 +537,8 @@ UNIVERSAL_EXE        := $(CURDIR)/$(EXE)
 ifeq ($(UNIVERSAL_BUILD),true)
 
 UNIVERSAL_ARCHES := x86-64 x86-64-avx2 x86-64-bmi2 x86-64-avx512
-
-# GCC 15+ required for #embed
-GCC_MAJOR := $(shell $(CXX) -dumpversion 2>/dev/null | cut -d. -f1)
-ifneq ($(shell test "$(GCC_MAJOR)" -ge 11 2>/dev/null && echo ok),ok)
-$(error Universal build needs GCC 15+ for \#embed support; CXX=$(CXX) reports version '$(GCC_MAJOR)')
-endif
-
 UNIVERSAL_SRC_DIR    := $(CURDIR)/universal
-# NNUE_EMBED_OBJ       := $(TEMP_DIR)/nnue_embed.o
 UNIVERSAL_ENTRY_OBJ  := $(TEMP_DIR)/entry_x86.o
-# NET_SENTINEL         := $(TEMP_DIR)/.net-done
 
 # Top-level tracked items in src/ (directories and files)
 TRACKED_TOP := $(shell git -C $(CURDIR) ls-files 2>/dev/null | awk -F/ '{print $$1}' | sort -u)
@@ -573,7 +560,6 @@ arch-suffix     = $(subst -,_,$(1))
 arch-namespace  = rubichess_$(call arch-suffix,$(1))
 # Itanium ABI mangled name for rubichess_<suffix>::main(int, char**)
 arch-mangled    = _ZN$(shell printf %s '$(call arch-namespace,$(1))' | wc -c)$(call arch-namespace,$(1))4mainEiPPc
-
 arch-cxxflags   =  -Drubichess=$(call arch-namespace,$(1)) -DUNIVERSAL_BINARY -Wl,--defsym=main=$(call arch-mangled,$(1))
 
 UOBJ_TGT ?= universal-object-pgo
@@ -586,15 +572,6 @@ profile-build: $(UNIVERSAL_EXE)
 
 $(TEMP_DIR):
 	@mkdir -p $@
-
-# Download nnue files once in src/ (reused by every sub-arch via --embed-dir).
-#$(NET_SENTINEL): | $(TEMP_DIR)
-#	@cd $(CURDIR) && $(SHELL) ../scripts/net.sh
-#	@touch $@
-
-#$(NNUE_EMBED_OBJ): $(UNIVERSAL_SRC_DIR)/nnue_embed.cpp $(NET_SENTINEL) | $(TEMP_DIR)
-#	$(CXX) -O2 -Wno-c++26-extensions --embed-dir=$(CURDIR) -c $< -o $@
-
 
 $(UNIVERSAL_ENTRY_OBJ): $(CURDIR)/cputest.cpp | $(TEMP_DIR)
 	$(CXX) -DUNIVERSAL_BUILD -O2 -c $< -o $@
@@ -620,6 +597,9 @@ $(TEMP_DIR)/%/RubiChess.o: $(TEMP_DIR)/%/.setup
 
 $(UNIVERSAL_EXE): $(ZLIBDIR)/libz.a $(CURDIR)/$(NETOBJ) $(UNIVERSAL_ENTRY_OBJ) $(ARCH_OBJS)
 	$(CXX) -o $@ $(UNIVERSAL_ENTRY_OBJ) $(ARCH_OBJS) $(ZLIBDIR)/libz.a $(UNIVERSAL_FINAL_FLAGS) $(NETDEF) $(NETOBJ)
+ifneq ($(debug),yes)
+	@$(STRIP) $(UNIVERSAL_EXE)$(EXEEXT)
+endif
 	@echo "Universal binary built: $@"
 
 endif  # UNIVERSAL_BUILD
