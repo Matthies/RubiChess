@@ -211,18 +211,15 @@ namespace rubichess {
 
 #ifdef CPUTEST
 
-using namespace rubichess;
-using namespace std;
-
 int main()
 {
     uint64_t cpuMachineSupports;
     int cpuVendor;
     int cpuFamily;
     int cpuModel;
-    string cpuSystem;
-    GetSystemInfo_x86_64(cpuMachineSupports, cpuVendor, cpuFamily, cpuModel, cpuSystem);
-    std::cout << PrintCpuFeatures(cpuMachineSupports, false) << "\n";
+    std::string cpuSystem;
+    rubichess::GetSystemInfo_x86_64(cpuMachineSupports, cpuVendor, cpuFamily, cpuModel, cpuSystem);
+    std::cout << rubichess::PrintCpuFeatures(cpuMachineSupports, false) << "\n";
 
 }
 

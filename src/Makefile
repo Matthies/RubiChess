@@ -18,6 +18,7 @@ endif
 CPUTEST = cputest
 ARCH = native
 PROFDIR = OPT
+NETOBJECTFILE = netobject
 PROFEXE = RubiChess$(EXEEXT)
 STRIP = strip
 
@@ -64,7 +65,7 @@ endif
 # CXXFLAGS=-std=c++11 -Wall -pedantic -Wextra -Wshadow
 CXXFLAGS=$(ENV_CXXFLAGS) -std=c++11 -Wall -pedantic -Wextra -Wshadow
 
-CXXFLAGS += -Wstack-usage=128000 -fno-ipa-cp-clone
+# CXXFLAGS += -Wstack-usage=128000 -fno-ipa-cp-clone
 
 CFLAGS=-Wall -pedantic -Wextra -Wshadow -Wno-implicit-function-declaration
 LDFLAGS=$(ENV_LDFLAGS) $(EXTRALDFLAGS)
@@ -353,7 +354,7 @@ else
 	EMBEDFILE = $(EVALFILE)
 endif
 	NETDEF = -DNNUEINCLUDED=$(EMBEDFILE)
-	NETOBJ = netobject
+	NETOBJ = $(NETOBJECTFILE)
 endif
 
 ifeq ($(GITVER),)
@@ -430,7 +431,7 @@ objclean:
 	@$(RM) *.o $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(PROFEXE) $(CPUTEST) $(NETBIN) || @echo $(RM) not available.
 
 libclean:
-	@$(RM) zlib/*.o zlib/*.a || @echo $(RM) not available.
+	@$(RM) zlib/*.o zlib/*.a  $(NETOBJECTFILE) || @echo $(RM) not available.
 
 profileclean: libclean
 	@$(RM) -rf $(PROFDIR) || @echo $(RM) not available.
@@ -439,12 +440,10 @@ profileclean: libclean
 universalclean:
 	@rm -rf $(TEMP_DIR)
 
-clean: objclean profileclean universalclean $(NETOBJ)
+clean: objclean profileclean universalclean
 
 profilebench:
 ifneq ($(COMP),ndk)
-	@echo $(CURDIR)
-	@echo $(PWD)
 	@echo "Running bench to generate profiling data..." && ./$(PROFEXE) -bench 1>/dev/null && ([ $$? -eq 0 ] && echo " Profiling successful!") \
 	|| (echo " Profiling failed!" && [ "$(SDE)" != "" ] && echo " Trying to use SDE..." && $(SDE) -icx -- ./$(PROFEXE) -bench 1>/dev/null && [ $$? -eq 0 ] && echo " Profiling successful!") \
 	|| (echo " SDE not available or profiling with SDE failed! Profiling with native build..." && $(MAKE) profileclean && $(MAKE) compile ARCH=native EXTRACXXFLAGS=$(INSTRUMENTEDEXTRACXXFLAGS) EXTRALDFLAGS=$(INSTRUMENTEDEXTRALDFLAGS) EXE=$(PROFEXE) MESSAGE='Compiling instrumented build ...' && ./$(PROFEXE) -bench 1>/dev/null)
@@ -575,8 +574,7 @@ arch-namespace  = rubichess_$(call arch-suffix,$(1))
 # Itanium ABI mangled name for rubichess_<suffix>::main(int, char**)
 arch-mangled    = _ZN$(shell printf %s '$(call arch-namespace,$(1))' | wc -c)$(call arch-namespace,$(1))4mainEiPPc
 
-arch-cxxflags   =  -Drubichess=$(call arch-namespace,$(1)) -DUNIVERSAL_BINARY \
-                  -Wl,--defsym=main=$(call arch-mangled,$(1)) -Wno-c++26-extensions
+arch-cxxflags   =  -Drubichess=$(call arch-namespace,$(1)) -DUNIVERSAL_BINARY -Wl,--defsym=main=$(call arch-mangled,$(1))
 
 UOBJ_TGT ?= universal-object-pgo
 
@@ -605,7 +603,7 @@ $(UNIVERSAL_ENTRY_OBJ): $(CURDIR)/cputest.cpp | $(TEMP_DIR)
 $(TEMP_DIR)/%/.setup: | $(TEMP_DIR)
 	@rm -rf $(TEMP_DIR)/$*
 	@mkdir -p $(TEMP_DIR)/$*
-	-@ln -s $(CURDIR)/$(NETOBJ) $(TEMP_DIR)/$*/$(NETOBJ)
+	@[ "$(NETOBJ)" == "" ] || ln -s $(CURDIR)/$(NETOBJ) $(TEMP_DIR)/$*/$(NETOBJ)
 	@$(foreach f,$(TRACKED_TOP),ln -s $(CURDIR)/$(f) $(TEMP_DIR)/$*/$(f);)
 	@touch $@
 
