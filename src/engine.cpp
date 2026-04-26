@@ -182,7 +182,7 @@ void engine::engineHeader()
     guiCom << "----------------------------------------------------------------------------------------\n";
     guiCom << "System: " + cpuSystem + "  " + numa_configuration() + "\n";
     guiCom << "CPU-Features of system: " + PrintCpuFeatures(cpuMachineSupports) + "\n";
-    guiCom << "CPU-Features of binary: " + PrintCpuFeatures(0) + "\n";
+    guiCom << "CPU-Features of binary: " + PrintCpuFeatures(binarySupports) + "\n";
     guiCom << "========================================================================================\n";
 }
 

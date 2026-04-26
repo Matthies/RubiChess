@@ -15,12 +15,39 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #include <stdio.h>
 #include <stdint.h>
 #include <string>
 #include <cstring>
 #include <iostream>
+#include <map>
+
+#define CPUVENDORUNKNOWN    0
+#define CPUVENDORINTEL      1
+#define CPUVENDORAMD        2
+
+#define CPUSSE2     (1 << 0)
+#define CPUSSSE3    (1 << 1)
+#define CPUPOPCNT   (1 << 2)
+#define CPULZCNT    (1 << 3)
+#define CPUBMI1     (1 << 4)
+#define CPUAVX2     (1 << 5)
+#define CPUBMI2     (1 << 6)
+#define CPUAVX512   (1 << 7)
+#define CPUNEON     (1 << 8)
+#define CPUARM64    (1 << 9)
+#define CPUDOTPROD  (1 << 10)
+
+std::map<std::string, uint32_t> flagsOfArch = {
+    {  "x86_64_avx512", CPUAVX512 | CPUBMI2 | CPUAVX2 | CPUBMI1 | CPULZCNT | CPUSSSE3 | CPUPOPCNT | CPUSSE2 },
+    {  "x86_64_bmi2", CPUBMI2 | CPUAVX2 | CPUBMI1 | CPULZCNT | CPUSSSE3 | CPUPOPCNT | CPUSSE2 },
+    {  "x86_64_avx2", CPUAVX2 | CPUBMI1 | CPULZCNT | CPUSSSE3 | CPUPOPCNT | CPUSSE2 },
+    {  "x86_64_modern", CPUSSSE3 | CPUPOPCNT | CPUSSE2},
+    {  "x86_64_ssse3", CPUSSSE3 | CPUSSE2 },
+    {  "x86_64_sse3_popcnt", CPUPOPCNT | CPUSSE2 },
+    {  "x86_64_sse2", CPUSSE2 },
+    {  "x86_64", 0 }
+};
 
 
 #ifdef UNIVERSAL_BUILD
@@ -39,10 +66,13 @@
     }
 
 DEFINE_BUILD(x86_64)
+DEFINE_BUILD(x86_64_sse2)
+DEFINE_BUILD(x86_64_modern)
+DEFINE_BUILD(x86_64_ssse3)
+DEFINE_BUILD(x86_64_sse3_popcnt)
 DEFINE_BUILD(x86_64_avx2)
 DEFINE_BUILD(x86_64_bmi2)
 DEFINE_BUILD(x86_64_avx512)
-
 #endif // UNIVERSAL_BUILD
 
 #if defined(_M_X64) || defined(__amd64)
@@ -60,23 +90,6 @@ static void cpuid(int32_t out[4], int32_t x) {
 }
 #endif
 #endif
-
-#define CPUVENDORUNKNOWN    0
-#define CPUVENDORINTEL      1
-#define CPUVENDORAMD        2
-
-#define CPUSSE2     (1 << 0)
-#define CPUSSSE3    (1 << 1)
-#define CPUPOPCNT   (1 << 2)
-#define CPULZCNT    (1 << 3)
-#define CPUBMI1     (1 << 4)
-#define CPUAVX2     (1 << 5)
-#define CPUBMI2     (1 << 6)
-#define CPUAVX512   (1 << 7)
-#define CPUNEON     (1 << 8)
-#define CPUARM64    (1 << 9)
-#define CPUDOTPROD  (1 << 10)
-
 
 #ifndef UNIVERSAL_BUILD
 namespace rubichess {
@@ -98,7 +111,6 @@ namespace rubichess {
         unsigned    nIds, nExIds, i;
 
         CPUID(CPUInfo, 0);
-
 
         memset(CPUString, 0, sizeof(CPUString));
         memcpy(CPUString, &CPUInfo[1], 4);
@@ -182,8 +194,10 @@ namespace rubichess {
     }
 
 
-
 #ifdef UNIVERSAL_BUILD
+
+#define TESTARCH(x) if ((~cpuMachineSupports & flagsOfArch[#x]) == 0) return entry_##x(argc, argv);
+
     int main(int argc, char* argv[]) {
         uint64_t cpuMachineSupports = 0;
         int cpuVendor = 0;
@@ -193,14 +207,17 @@ namespace rubichess {
 
         GetSystemInfo_x86_64(cpuMachineSupports, cpuVendor, cpuFamily, cpuModel, cpuSystem);
 
-        if (cpuMachineSupports & CPUAVX512)
-            return entry_x86_64_avx512(argc, argv);
-        else if (cpuMachineSupports & CPUBMI2)
-            return entry_x86_64_bmi2(argc, argv);
-        else if (cpuMachineSupports & CPUAVX2)
-            return entry_x86_64_avx2(argc, argv);
-        else
-            return entry_x86_64_avx2(argc, argv);
+        TESTARCH(x86_64_avx512)
+        TESTARCH(x86_64_bmi2)
+        TESTARCH(x86_64_avx2)
+        TESTARCH(x86_64_modern)
+        TESTARCH(x86_64_ssse3)
+        TESTARCH(x86_64_sse3_popcnt)
+        TESTARCH(x86_64_sse2)
+        TESTARCH(x86_64)
+
+        std::cout << "No good arch found\n";
+        return -1;
     }
 #else
 

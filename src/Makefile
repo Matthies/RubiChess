@@ -536,7 +536,7 @@ UNIVERSAL_EXE        := $(CURDIR)/$(EXE)
 
 ifeq ($(UNIVERSAL_BUILD),true)
 
-UNIVERSAL_ARCHES := x86-64 x86-64-avx2 x86-64-bmi2 x86-64-avx512
+UNIVERSAL_ARCHES := x86-64 x86-64-sse2 x86-64-sse3-popcnt x86-64-ssse3 x86-64-modern x86-64-avx2 x86-64-bmi2 x86-64-avx512
 UNIVERSAL_SRC_DIR    := $(CURDIR)/universal
 UNIVERSAL_ENTRY_OBJ  := $(TEMP_DIR)/entry_x86.o
 

@@ -118,16 +118,6 @@
 
 using namespace std;
 
-#if 0
-extern uint64_t cpuMachineSupports;
-extern int cpuVendor;
-extern int cpuFamily;
-extern int cpuModel;
-extern string cpuSystem;
-void GetSystemInfo_x86_64();
-string PrintCpuFeatures(uint64_t features, bool onlyHighest = false);
-#endif
-
 namespace rubichess {
 
 
@@ -2196,9 +2186,38 @@ public:
     int cpuFamily;
     int cpuModel;
     string cpuSystem;
-    //void GetSystemInfo_x86_64();
-    //string PrintCpuFeatures(uint64_t features, bool onlyHighest = false);
-
+    const uint64_t binarySupports = 0ULL
+#ifdef USE_POPCNT
+        | CPUPOPCNT
+#endif
+#ifdef USE_SSE2
+        | CPUSSE2
+#endif
+#ifdef USE_SSSE3
+        | CPUSSSE3
+#endif
+#ifdef USE_AVX2
+        | CPUAVX2
+#endif
+#ifdef USE_BMI1
+        | CPUBMI1 | CPULZCNT
+#endif
+#ifdef USE_BMI2
+        | CPUBMI2
+#endif
+#ifdef USE_AVX512
+        | CPUAVX512
+#endif
+#ifdef USE_NEON
+        | CPUNEON
+#endif
+#ifdef USE_ARM64
+        | CPUARM64
+#endif
+#ifdef USE_DOTPROD
+        | CPUDOTPROD
+#endif
+        ;
     string ExecPath;
     set<string> searchmoves;
 
@@ -2242,7 +2261,7 @@ public:
     bool allowlargepages;
 #endif
     string name(bool full = true) {
-        string sbinary = "";//compinfo->PrintCpuFeatures(compinfo->binarySupports, true);
+        string sbinary = PrintCpuFeatures(binarySupports, true);
         sbinary = (sbinary != "" ? " (" + sbinary + ")" : "");
         if (!full)
             return string(ENGINEVER) + sbinary;
