@@ -15,7 +15,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//#include "RubiChess.h"
 
 #include <stdio.h>
 #include <stdint.h>
@@ -24,7 +23,7 @@
 #include <iostream>
 
 
-#ifdef UNIVERSAL_BINARY
+#ifdef UNIVERSAL_BUILD
 
 #define DEFINE_BUILD(x) \
     namespace rubichess_##x { \
@@ -39,12 +38,12 @@
         return rubichess_##x::main(argc, argv); \
     }
 
-//DEFINE_BUILD(x86_64)
+DEFINE_BUILD(x86_64)
 DEFINE_BUILD(x86_64_avx2)
 DEFINE_BUILD(x86_64_bmi2)
 DEFINE_BUILD(x86_64_avx512)
 
-#endif // UNIVERSAL_BINARY
+#endif // UNIVERSAL_BUILD
 
 #if defined(_M_X64) || defined(__amd64)
 
@@ -79,12 +78,17 @@ static void cpuid(int32_t out[4], int32_t x) {
 #define CPUDOTPROD  (1 << 10)
 
 
-#ifndef UNIVERSAL_BINARY
+#ifndef UNIVERSAL_BUILD
 namespace rubichess {
 #endif
 
     void GetSystemInfo_x86_64(uint64_t& cpuMachineSupports, int& cpuVendor, int& cpuFamily, int& cpuModel, std::string& cpuSystem)
     {
+        cpuMachineSupports = 0;
+        cpuVendor = CPUVENDORUNKNOWN;
+        cpuFamily = 0;
+        cpuModel = 0;
+        cpuSystem = "";
 
         // shameless copy from MSDN example explaining __cpuid
         char CPUBrandString[0x40];
@@ -102,18 +106,10 @@ namespace rubichess {
         memcpy(CPUString + 8, &CPUInfo[2], 4);
 
         if (CPUInfo[1] == 0x68747541 && CPUInfo[3] == 0x69746e65 && CPUInfo[2] == 0x444d4163)  // "AuthenticAMD"
-        {
-            std::cout << "detected AMD CPU" << std::endl;
             cpuVendor = CPUVENDORAMD;
-        }
         else if (CPUInfo[1] == 0x756e6547 && CPUInfo[3] == 0x49656e69 && CPUInfo[2] == 0x6c65746e)  // "GenuineIntel"
-        {
-            std::cout << "detected Intel CPU" << std::endl;
             cpuVendor = CPUVENDORINTEL;
-        }
-        else
-            cpuVendor = CPUVENDORUNKNOWN;
-
+ 
         nIds = CPUInfo[0];
         // Get the information associated with each valid Id
         // https://www.sandpile.org/x86/cpuid.htm
@@ -174,9 +170,20 @@ namespace rubichess {
         }
     }
 
+    std::string PrintCpuFeatures(uint64_t f, bool onlyHighest)
+    {
+        const std::string strCpuFeatures[11] = { "sse2","ssse3","popcnt","lzcnt","bmi1","avx2","bmi2", "avx512", "neon", "arm64", "dotprod" };
+
+        std::string s = "";
+        for (int i = 0; f; i++, f = f >> 1)
+            if (f & 1) s = (onlyHighest ? "" : ((s != "") ? s + " " : "")) + strCpuFeatures[i];
+
+        return s;
+    }
 
 
-#ifdef UNIVERSAL_BINARY
+
+#ifdef UNIVERSAL_BUILD
     int main(int argc, char* argv[]) {
         uint64_t cpuMachineSupports = 0;
         int cpuVendor = 0;
@@ -195,9 +202,28 @@ namespace rubichess {
         else
             return entry_x86_64_avx2(argc, argv);
     }
-
 #else
 
+
 } // namespace
+
+#endif
+
+#ifdef CPUTEST
+
+using namespace rubichess;
+using namespace std;
+
+int main()
+{
+    uint64_t cpuMachineSupports;
+    int cpuVendor;
+    int cpuFamily;
+    int cpuModel;
+    string cpuSystem;
+    GetSystemInfo_x86_64(cpuMachineSupports, cpuVendor, cpuFamily, cpuModel, cpuSystem);
+    std::cout << PrintCpuFeatures(cpuMachineSupports, false) << "\n";
+
+}
 
 #endif

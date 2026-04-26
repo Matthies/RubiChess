@@ -187,18 +187,6 @@ void engine::engineHeader()
 }
 
 
-string engine::PrintCpuFeatures(uint64_t f, bool onlyHighest)
-{
-    const std::string strCpuFeatures[11] = { "sse2","ssse3","popcnt","lzcnt","bmi1","avx2","bmi2", "avx512", "neon", "arm64", "dotprod" };
-
-    std::string s = "";
-    for (int i = 0; f; i++, f = f >> 1)
-        if (f & 1) s = (onlyHighest ? "" : ((s != "") ? s + " " : "")) + strCpuFeatures[i];
-
-    return s;
-}
-
-
 
 void engine::registerOptions()
 {

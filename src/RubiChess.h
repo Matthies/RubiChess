@@ -2136,7 +2136,7 @@ public:
 #endif
 
 void GetSystemInfo_x86_64(uint64_t& cpuMachineSupports, int& cpuVendor, int& cpuFamily, int& cpuModel, std::string& cpuSystem);
-
+string PrintCpuFeatures(uint64_t features, bool onlyHighest = false);
 
 class engine
 {
@@ -2197,7 +2197,7 @@ public:
     int cpuModel;
     string cpuSystem;
     //void GetSystemInfo_x86_64();
-    string PrintCpuFeatures(uint64_t features, bool onlyHighest = false);
+    //string PrintCpuFeatures(uint64_t features, bool onlyHighest = false);
 
     string ExecPath;
     set<string> searchmoves;

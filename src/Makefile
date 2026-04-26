@@ -192,7 +192,7 @@ endif
 ifeq (,$(CPUFLAGS))
 ifeq ($(ARCH),native)
 ifeq ($(wildcard $(CPUTEST)$(EXEEXT)),)
-$(shell $(CXX) $(CXXFLAGS) $(LDFLAGS) -DCPUTEST universal/$(CPUTEST).cpp -o $(CPUTEST))
+$(shell $(CXX) $(CXXFLAGS) $(LDFLAGS) -DCPUTEST $(CPUTEST).cpp -o $(CPUTEST))
 endif
 CPUFLAGS = "$(shell ./$(CPUTEST)$(EXEEXT))"
 endif
@@ -559,7 +559,7 @@ TRACKED_TOP := $(shell git -C $(CURDIR) ls-files 2>/dev/null | awk -F/ '{print $
 
 # Baseline x86-64 must come first in the final link (Windows --allow-multiple-definition
 # uses the first copy of inline duplicates)
-ARCH_OBJS := $(TEMP_DIR)/x86-64-avx512/RubiChess.o \
+ARCH_OBJS := $(TEMP_DIR)/x86-64/RubiChess.o \
              $(patsubst %,$(TEMP_DIR)/%/RubiChess.o,$(filter-out x86-64,$(UNIVERSAL_ARCHES)))
 
 UNIVERSAL_FINAL_FLAGS := -fno-exceptions -Os -static-libstdc++ -static-libgcc
@@ -599,7 +599,7 @@ $(TEMP_DIR):
 
 
 $(UNIVERSAL_ENTRY_OBJ): $(CURDIR)/cputest.cpp | $(TEMP_DIR)
-	$(CXX) -O2 -c $< -o $@
+	$(CXX) -DUNIVERSAL_BUILD -O2 -c $< -o $@
 
 # Symlink tracked top-level items from src/ into temp_builds/<arch>/.
 $(TEMP_DIR)/%/.setup: | $(TEMP_DIR)
