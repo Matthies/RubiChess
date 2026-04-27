@@ -81,8 +81,6 @@ else
 	CXXFLAGS += -O3
 	CFLAGS += -O3
 endif
-CXXFLAGS += -flto -flto-partition=one
-LDFLAGS += $(CXXFLAGS) -flto=jobserver
 
 ifeq ($(UNAME_O),Android)
 	LDFLAGS += -static-libstdc++
@@ -106,6 +104,8 @@ ifeq ($(COMP),$(filter $(COMP),gcc))
 	PGOEXTRACXXFLAGS='-fprofile-use=$(PROFDIR) -fno-peel-loops -fno-tracer -Wno-coverage-mismatch -fprofile-correction'
 	PGOEXTRALDFLAGS='-lgcov'
 	PROFMERGE=
+	CXXFLAGS += -flto -flto-partition=one
+	LDFLAGS += $(CXXFLAGS) -flto=jobserver
 endif
 
 ifeq ($(COMP),$(filter $(COMP), clang ndk icx))
@@ -121,6 +121,8 @@ endif
 	PGOEXTRACXXFLAGS='-fprofile-instr-use=$(EXE).profdata'
 	PGOEXTRALDFLAGS=
 	PROFMERGE=llvm-profdata merge -output=$(EXE).profdata $(EXE).clangprof-raw
+	CXXFLAGS += -flto=full
+	LDFLAGS += $(CXXFLAGS)
 endif
 
 
@@ -512,15 +514,23 @@ release_android:
 release: $(CURDIR)/$(NETOBJ)
 	@$(MAKE) release_$(ARCHFAMILY)
 
+ifeq ($(comp), clang)
+LTO_OBJ_SUFFIX := .lto.o
+SAVE_TEMPS := -Wl,--save-temps
+else
+LTO_OBJ_SUFFIX := .ltrans0.ltrans.o
+SAVE_TEMPS := -save-temps
+endif
+
 universal-object-pgo: instrumentedcompile profilebench
 	@$(PROFMERGE)
 	@$(RM) ./$(PROFEXE)
-	@$(MAKE) compile ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS="$(PGOEXTRALDFLAGS) -save-temps" MESSAGE='Compiling optimized build ...'
+	@$(MAKE) compile ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS="$(PGOEXTRALDFLAGS) $(SAVE_TEMPS)" MESSAGE='Compiling optimized build ...'
 	mv $(basename $(EXE)).ltrans0.ltrans.o RubiChess.o
 
 universal-object-nopgo: objclean universalclean
-	$(MAKE) compile ARCH=$(ARCH) COMP=$(COMP) ENV_LDFLAGS='-save-temps'
-	cp $(basename $(EXE)).ltrans0.ltrans.o RubiChess.o
+	$(MAKE) compile ARCH=$(ARCH) COMP=$(COMP) ENV_LDFLAGS="$(SAVE_TEMPS)"
+	cp $(basename $(EXE))$(LTO_OBJ_SUFFIX) RubiChess.o
 
 
 ### ==========================================================================
