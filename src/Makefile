@@ -514,7 +514,13 @@ release_android:
 release: $(CURDIR)/$(NETOBJ)
 	@$(MAKE) release_$(ARCHFAMILY)
 
-ifeq ($(comp), clang)
+# Support for building a universal x86-64 binary
+# All credits go to anematode who introduced this first in Stockfish
+
+TEMP_DIR             := $(CURDIR)/temp_builds
+UNIVERSAL_EXE        := $(CURDIR)/$(EXE)
+
+ifeq ($(COMP), clang)
 LTO_OBJ_SUFFIX := .lto.o
 SAVE_TEMPS := -Wl,--save-temps
 else
@@ -526,23 +532,11 @@ universal-object-pgo: instrumentedcompile profilebench
 	@$(PROFMERGE)
 	@$(RM) ./$(PROFEXE)
 	@$(MAKE) compile ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS="$(PGOEXTRALDFLAGS) $(SAVE_TEMPS)" MESSAGE='Compiling optimized build ...'
-	mv $(basename $(EXE)).ltrans0.ltrans.o RubiChess.o
+	mv $(basename $(EXE))$(LTO_OBJ_SUFFIX) RubiChess.o
 
 universal-object-nopgo: objclean universalclean
 	$(MAKE) compile ARCH=$(ARCH) COMP=$(COMP) ENV_LDFLAGS="$(SAVE_TEMPS)"
 	cp $(basename $(EXE))$(LTO_OBJ_SUFFIX) RubiChess.o
-
-
-### ==========================================================================
-### Section 6. Universal binary driver
-### ==========================================================================
-#
-# Usage:
-#   make -j ARCH=x86-64-universal build          # non-PGO
-#   make -j ARCH=x86-64-universal profile-build  # PGO (use RUN_PREFIX for intel SDE)
-
-TEMP_DIR             := $(CURDIR)/temp_builds
-UNIVERSAL_EXE        := $(CURDIR)/$(EXE)
 
 ifeq ($(UNIVERSAL_BUILD),true)
 
@@ -601,6 +595,7 @@ $(TEMP_DIR)/%/RubiChess.o: $(TEMP_DIR)/%/.setup
 	+ENV_CXXFLAGS='$(ENV_CXXFLAGS) $(call arch-cxxflags,$*)' \
 	    $(MAKE) -C $(TEMP_DIR)/$* $(UOBJ_TGT) \
 	        ARCH=$* CXX=$(CXX)
+	objcopy -R .group $@
 	objcopy --rename-section .init_array=$(call arch-suffix,$*)_init $@
 	objcopy --rename-section .ctors=$(call arch-suffix,$*)_init $@
 	objcopy --set-section-flags $(call arch-suffix,$*)_init=alloc,data $@
