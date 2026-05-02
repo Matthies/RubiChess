@@ -540,7 +540,7 @@ universal-object-nopgo: objclean universalclean
 
 ifeq ($(UNIVERSAL_BUILD),true)
 
-UNIVERSAL_ARCHES := x86-64 x86-64-sse2 x86-64-sse3-popcnt x86-64-ssse3 x86-64-modern x86-64-avx2 x86-64-bmi2 x86-64-avx512
+UNIVERSAL_ARCHES := x86-64-sse2 x86-64-sse3-popcnt x86-64-ssse3 x86-64-modern x86-64-avx2 x86-64-bmi2 x86-64-avx512
 UNIVERSAL_SRC_DIR    := $(CURDIR)/universal
 UNIVERSAL_ENTRY_OBJ  := $(TEMP_DIR)/entry_x86.o
 
@@ -549,8 +549,8 @@ TRACKED_TOP := $(shell git -C $(CURDIR) ls-files 2>/dev/null | awk -F/ '{print $
 
 # Baseline x86-64 must come first in the final link (Windows --allow-multiple-definition
 # uses the first copy of inline duplicates)
-ARCH_OBJS := $(TEMP_DIR)/x86-64/RubiChess.o \
-             $(patsubst %,$(TEMP_DIR)/%/RubiChess.o,$(filter-out x86-64,$(UNIVERSAL_ARCHES)))
+ARCH_OBJS := $(TEMP_DIR)/x86-64-sse2/RubiChess.o \
+             $(patsubst %,$(TEMP_DIR)/%/RubiChess.o,$(filter-out x86-64-sse2,$(UNIVERSAL_ARCHES)))
 
 UNIVERSAL_FINAL_FLAGS := -fno-exceptions -Os -static-libstdc++ -static-libgcc
 ifeq ($(OS), Windows_NT)

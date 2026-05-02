@@ -56,16 +56,16 @@ std::map<std::string, uint32_t> flagsOfArch = {
     namespace rubichess_##x { \
         extern int main(int argc, char* argv[]); \
     } \
-    extern "C" void (*__start_##x##_init[])(void); \
-    extern "C" void (*__stop_##x##_init[])(void); \
-    int entry_##x(int argc, char* argv[]) { \
+extern "C" void (*__start_##x##_init[])(void); \
+extern "C" void (*__stop_##x##_init[])(void); \
+int entry_##x(int argc, char* argv[]) { \
         unsigned count = __stop_##x##_init - __start_##x##_init; \
         for (unsigned i = 0; i < count; i++) \
             __start_##x##_init[i](); \
         return rubichess_##x::main(argc, argv); \
     }
 
-DEFINE_BUILD(x86_64)
+//DEFINE_BUILD(x86_64)
 DEFINE_BUILD(x86_64_sse2)
 DEFINE_BUILD(x86_64_modern)
 DEFINE_BUILD(x86_64_ssse3)
@@ -214,7 +214,7 @@ namespace rubichess {
         TESTARCH(x86_64_ssse3)
         TESTARCH(x86_64_sse3_popcnt)
         TESTARCH(x86_64_sse2)
-        TESTARCH(x86_64)
+        //TESTARCH(x86_64)
 
         std::cout << "No good arch found\n";
         return -1;
