@@ -63,7 +63,7 @@ endif
 
 
 # CXXFLAGS=-std=c++11 -Wall -pedantic -Wextra -Wshadow
-CXXFLAGS=$(ENV_CXXFLAGS) -std=c++11 -Wall -pedantic -Wextra -Wshadow
+CXXFLAGS=$(ENV_CXXFLAGS) -std=c++11 -Wall -pedantic -Wshadow
 
 # CXXFLAGS += -Wstack-usage=128000 -fno-ipa-cp-clone
 
@@ -78,8 +78,8 @@ ifeq ($(debug),yes)
 	CXXFLAGS += -g -O0
 	CFLAGS += -g -O0
 else
-	CXXFLAGS += -O3
-	CFLAGS += -O3
+	CXXFLAGS += -O3 -funroll-loops
+	CFLAGS += -O3 -funroll-loops
 endif
 
 ifeq ($(UNAME_O),Android)
