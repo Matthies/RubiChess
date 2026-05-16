@@ -436,6 +436,401 @@ public:
 };
 
 
+template <unsigned int NnueFtOutputdims>
+class NnueArchitectureV13 : public NnueArchitecture {
+public:
+    static constexpr unsigned int NnueFtHalfdims = NnueFtOutputdims;
+    static constexpr unsigned int NnueFtInputdims = 64 * 11 * 64 / 2;
+    static constexpr unsigned int NnueHidden1Dims = 32;
+    static constexpr unsigned int NnueHidden1Out = 31;
+    static constexpr unsigned int NnueHidden2Dims = 32;
+    static constexpr unsigned int NnueClippingShift = 6;
+    static constexpr unsigned int NnuePsqtBuckets = 8;
+    static constexpr unsigned int NnueLayerStacks = 8;
+    static constexpr size_t networkfilesize =   // expected number of bytes remaining after architecture string
+        sizeof(uint32_t)                                            // Ft hash
+        + NnueFtOutputdims * sizeof(int16_t)                        // bias of feature layer
+        + NnueFtOutputdims * NnueFtInputdims * sizeof(int16_t)      // weights of feature layer
+        + NnueFtInputdims * NnuePsqtBuckets * sizeof(int32_t)       // psqt bucket weights
+        + NnueLayerStacks * (
+            sizeof(uint32_t)                                        // Network layer hash
+            + NnueHidden1Dims * sizeof(int32_t)                     // bias of hidden layer 1
+            + NnueFtOutputdims * NnueHidden1Dims * sizeof(int8_t)   // weights of hidden layer 1
+            + NnueHidden2Dims * sizeof(int32_t)                     // bias of hidden layer 2
+            + NnueHidden1Dims * 2 * NnueHidden2Dims * sizeof(int8_t) // weights of hidden layer 2
+            + 1 * sizeof(int32_t)                                   // bias of output layer
+            + NnueHidden2Dims * 1 * sizeof(int8_t)                  // weights of output layer
+            );
+
+    NnueFeatureTransformer<NnueFtHalfdims, NnueFtInputdims, NnuePsqtBuckets> NnueFt;
+    class NnueLayerStack {
+    public:
+        NnueNetworkLayer<NnueFtOutputdims, NnueHidden1Dims> NnueHd1;
+        NnueSqrClippedRelu<NnueHidden1Dims> NnueSqrCl;
+        NnueClippedRelu<NnueHidden1Dims, NnueClippingShift> NnueCl1;
+        NnueNetworkLayer<NnueHidden1Out * 2, NnueHidden2Dims> NnueHd2;
+        NnueClippedRelu<NnueHidden2Dims, NnueClippingShift> NnueCl2;
+        NnueNetworkLayer<NnueHidden2Dims, 1> NnueOut;
+        NnueLayerStack() : NnueHd1(nullptr), NnueSqrCl(&NnueHd1), NnueCl1(&NnueHd1), NnueHd2(&NnueCl1), NnueCl2(&NnueHd2), NnueOut(&NnueCl2) {}
+    } LayerStack[NnueLayerStacks];
+
+    NnueArchitectureV13() {
+        for (unsigned int i = 0; i < NnueLayerStacks; i++)
+            LayerStack[i].NnueHd1.previous = &NnueFt;
+    }
+    uint32_t GetFtHash() {
+        return NnueFt.GetFtHash(NnueArchV13) ^ (NnueFtOutputdims * 2);
+    }
+    uint32_t GetHash() {
+        return LayerStack[0].NnueOut.GetHash();
+    }
+    bool ReadFeatureWeights(NnueNetsource* nr, bool bpz) {
+        return NnueFt.ReadFeatureWeights(nr, bpz);
+    }
+    bool ReadWeights(NnueNetsource* nr, uint32_t nethash) {
+        bool okay = true;
+        for (unsigned int i = 0; okay && i < NnueLayerStacks; i++) {
+            uint32_t hash;
+            okay = nr->read((unsigned char*)&hash, sizeof(uint32_t))
+                && hash == nethash
+                && LayerStack[i].NnueOut.ReadWeights(nr);
+        }
+        return okay;
+    }
+    void WriteFeatureWeights(NnueNetsource* nr, bool leb128) {
+        NnueFt.WriteFeatureWeights(nr, leb128);
+    }
+    void WriteWeights(NnueNetsource* nr, uint32_t nethash) {
+        for (unsigned int i = 0; i < NnueLayerStacks; i++) {
+            nr->write((unsigned char*)&nethash, sizeof(uint32_t));
+            LayerStack[i].NnueOut.WriteWeights(nr);
+        }
+    }
+    void RescaleLastLayer(int ratio64) {
+        for (unsigned int b = 0; b < NnueLayerStacks; b++) {
+            LayerStack[b].NnueOut.bias[0] = (int32_t)round(LayerStack[b].NnueOut.bias[0] * ratio64 / sps.nnuevaluescale);
+            for (unsigned int i = 0; i < NnueHidden2Dims; i++)
+                LayerStack[b].NnueOut.weight[i] = (int32_t)round(LayerStack[b].NnueOut.weight[i] * ratio64 / sps.nnuevaluescale);
+        }
+    }
+    string GetArchName() {
+        return "V5-" + to_string(NnueFtOutputdims);
+    }
+    string GetArchDescription() {
+        return "HalfKAv2_hm, " + to_string(NnueFtOutputdims) + "x16+16x32x1";
+    }
+    int GetEval(chessposition* pos) {
+        struct NnueNetwork {
+            alignas(64) clipped_t input[NnueFtOutputdims];
+            alignas(64)int32_t hidden1_values[NnueHidden1Dims];
+            alignas(64)int32_t hidden2_values[NnueHidden2Dims];
+            alignas(64)clipped_t hidden1_sqrclipped[MULTIPLEOFN(NnueHidden1Out, 32)];
+            alignas(64)clipped_t hidden1_clipped[NnueHidden1Dims];
+            alignas(64)clipped_t hidden2_clipped[NnueHidden2Dims];
+            alignas(64)int32_t out_value;
+        } network;
+
+        int bucket = (POPCOUNT(pos->occupied00[WHITE] | pos->occupied00[BLACK]) - 1) / 4;
+        int psqt = pos->Transform<NnueArchV5, NnueFtHalfdims, NnuePsqtBuckets>(network.input, bucket);
+        LayerStack[bucket].NnueHd1.Propagate(network.input, network.hidden1_values);
+        memset(network.hidden1_sqrclipped, 0, sizeof(network.hidden1_sqrclipped));  // FIXME: is this needed?
+        LayerStack[bucket].NnueSqrCl.Propagate(network.hidden1_values, network.hidden1_sqrclipped);
+        LayerStack[bucket].NnueCl1.Propagate(network.hidden1_values, network.hidden1_clipped);
+        memcpy(network.hidden1_sqrclipped + NnueHidden1Out, network.hidden1_clipped, NnueHidden1Out * sizeof(clipped_t));
+        LayerStack[bucket].NnueHd2.Propagate(network.hidden1_sqrclipped, network.hidden2_values);
+        LayerStack[bucket].NnueCl2.Propagate(network.hidden2_values, network.hidden2_clipped);
+        LayerStack[bucket].NnueOut.Propagate(network.hidden2_clipped, &network.out_value);
+
+        int fwdout = network.hidden1_values[NnueHidden1Out] * (600 * 1024 / sps.nnuevaluescale) / (127 * (1 << NnueClippingShift));
+        int positional = network.out_value + fwdout;
+#ifdef NNUEDEBUG
+        cout << "\npsqt eval       : " << setfill(' ') << setw(5) << fwdout;
+        cout << "\npositional eval : " << setfill(' ') << setw(5) << positional;
+        cout << "\ntotal nnue      : " << setfill(' ') << setw(5) << (psqt + positional) << "\n\n";
+#endif
+
+        return (psqt + positional) * sps.nnuevaluescale / 1024;
+    }
+    void SpeculativeEval(chessposition* pos) {
+        pos->SpeculativeTransform<NnueArchV5, NnueFtHalfdims, NnuePsqtBuckets>();
+    }
+    int16_t* GetFeatureWeight() {
+        return NnueFt.weight;
+    }
+    int16_t* GetFeatureBias() {
+        return NnueFt.bias;
+    }
+    int32_t* GetFeaturePsqtWeight() {
+        return NnueFt.psqtWeights;
+    }
+    uint32_t GetFileVersion() {
+        return NNUEFILEVERSIONSFNNv5_1024;
+    }
+    int16_t* CreateAccumulationStack() {
+        return(int16_t*)allocalign64(MAXDEPTH * 2 * NnueFtHalfdims * sizeof(int16_t));
+    }
+    int32_t* CreatePsqtAccumulationStack() {
+        return (int32_t*)allocalign64(MAXDEPTH * 2 * NnuePsqtBuckets * sizeof(int32_t));
+    }
+    void CreateAccumulationCache(chessposition* p) {
+        p->accucache.accumulation = (int16_t*)allocalign64(2 * 64 * NnueFtHalfdims * sizeof(int16_t));
+        p->accucache.psqtaccumulation = (int32_t*)allocalign64(2 * 64 * NnuePsqtBuckets * sizeof(int32_t));
+    }
+    void ResetAccumulationCache(chessposition* p) {
+        memset(p->accucache.piece00, 0, 2 * sizeof(p->accucache.piece00[WHITE]));
+        for (int i = 0; i < 2 * 64; i++)
+            memcpy(p->accucache.accumulation + i * NnueFtHalfdims, NnueFt.bias, NnueFtHalfdims * sizeof(int16_t));
+
+        memset(p->accucache.psqtaccumulation, 0, 2 * 64 * NnuePsqtBuckets * sizeof(int32_t));
+    }
+    unsigned int GetAccumulationSize() {
+        return NnueFtOutputdims;
+    }
+    unsigned int GetPsqtAccumulationSize() {
+        return NnuePsqtBuckets;
+    }
+    size_t GetNetworkFilesize() {
+        return networkfilesize;
+    }
+#ifdef STATISTICS
+    void SwapInputNeurons(unsigned int i1, unsigned int i2) {
+        if (i1 >= NnueFtHalfdims / 2 || i2 >= NnueFtHalfdims / 2) {
+            cout << "Alarm! Bad index for neuron swapping.\n";
+            return;
+        }
+        for (int p = 0; p < 2; p++) {
+            int offset = p * NnueFtHalfdims / 2;
+            NnueFt.SwapWeights(offset + i1, offset + i2);
+            for (int i = 0; i < NnueLayerStacks; i++)
+                LayerStack[i].NnueHd1.SwapWeights(offset + i1, offset + i2);
+        }
+    }
+    void Statistics(bool verbose, bool sort) {
+        char str[512];
+        snprintf(str, 512, "");
+        U64 total_n = 0;
+        U64 total_count = 0;
+        U64 total_nonzeroevals[NnueFtOutputdims / 2] = { 0 };
+        for (int i = 0; i < NnueLayerStacks; i++) {
+            total_n += LayerStack[i].NnueHd1.total_evals;
+        }
+        for (int i = 0; i < NnueLayerStacks; i++) {
+            U64 n = LayerStack[i].NnueHd1.total_evals;
+            U64 c = LayerStack[i].NnueHd1.total_count;
+            total_count += c;
+            double counts_per_eval = c / (double)n;
+            double f1 = 100.0 * n / total_n;
+            snprintf(str, 512, "%s  L#%d %4.1f%% Avrg.:%6.2f ", str, i, f1, counts_per_eval);
+        }
+        snprintf(str, 512, "%s  total Avrg.:%6.2f ", str, (double)total_count / total_n);
+        guiCom << string("[STATS] NNUE: ") + str + "\n";
+        for (int j = 0; j < NnueFtOutputdims / 2; j++) {
+            snprintf(str, 512, "%4d: ", j);
+            for (int i = 0; i < NnueLayerStacks; i++) {
+                U64 n1 = LayerStack[i].NnueHd1.nonzeroevals[j];
+                U64 n2 = LayerStack[i].NnueHd1.nonzeroevals[j + NnueFtOutputdims / 2];
+                total_nonzeroevals[j] += n1 + n2;
+                snprintf(str, 512, "%s   (%9lld/%9lld) ", str, n1, n2);
+            }
+            snprintf(str, 512, "%s   %9lld", str, total_nonzeroevals[j]);
+            if (verbose)
+                guiCom << string("[STATS] ") + str + "\n";
+        }
+        if (sort)
+        {
+            for (int i1 = 0; i1 < NnueFtOutputdims / 2; i1++)
+                for (int i2 = i1 + 1; i2 < NnueFtOutputdims / 2; i2++)
+                    if (total_nonzeroevals[i1] < total_nonzeroevals[i2]) {
+                        U64 temp_nnz = total_nonzeroevals[i1];
+                        total_nonzeroevals[i1] = total_nonzeroevals[i2];
+                        total_nonzeroevals[i2] = temp_nnz;
+                        SwapInputNeurons(i1, i2);
+                    }
+        }
+    }
+#endif
+};
+
+
+//
+// Threats Features stuff here
+//
+struct HelperOffsets {
+    int cumulativePieceOffset, cumulativeOffset;
+};
+
+int8_t AllPieces[12] = {
+  WPAWN, WKNIGHT, WBISHOP, WROOK, WQUEEN, WKING,
+  BPAWN, BKNIGHT, BBISHOP, BROOK, BQUEEN, BKING
+};
+
+template<PieceType PT>
+/*constexpr*/ auto make_piece_indices_type() {
+    //static_assert(PT != PieceType::PAWN);
+
+    std::array<std::array<uint8_t, 64>, 64> out{};
+
+    for (unsigned int from = 0; from < 64; ++from)
+    {
+        Bitboard attacks = PseudoAttacks[PT][from];
+
+        for (unsigned int to = SQ_A1; to <= SQ_H8; ++to)
+        {
+            out[from][to] = constexpr_popcount(((1ULL << to) - 1) & attacks);
+        }
+    }
+
+    return out;
+}
+
+template<PieceCode P>
+/*constexpr*/ auto make_piece_indices_piece() {
+    //static_assert(type_of(P) == PieceType::PAWN);
+
+    std::array<std::array<uint8_t, 64>, 64> out{};
+
+    /*constexpr*/ Color C = color_of(P);
+
+    for (unsigned int from = 0; from < 64; ++from)
+    {
+        Bitboard attacks = PawnPushOrAttacks[C][from];
+
+        for (unsigned int to = 0; to < 64; ++to)
+        {
+            out[from][to] = constexpr_popcount(((1ULL << to) - 1) & attacks);
+        }
+    }
+
+    return out;
+}
+
+    /*constexpr*/ auto index_lut2_array() {
+        /*constexpr*/ auto KNIGHT_ATTACKS = make_piece_indices_type<KNIGHT>();
+        /*constexpr*/ auto BISHOP_ATTACKS = make_piece_indices_type<BISHOP>();
+        /*constexpr*/ auto ROOK_ATTACKS = make_piece_indices_type<ROOK>();
+        /*constexpr*/ auto QUEEN_ATTACKS = make_piece_indices_type<QUEEN>();
+        /*constexpr*/ auto KING_ATTACKS = make_piece_indices_type<KING>();
+
+    std::array<std::array<std::array<uint8_t, 64>, 64>, 16> indices{};
+
+    indices[WPAWN] = make_piece_indices_piece<WPAWN>();
+    indices[BPAWN] = make_piece_indices_piece<BPAWN>();
+
+    indices[WKNIGHT] = KNIGHT_ATTACKS;
+    indices[BKNIGHT] = KNIGHT_ATTACKS;
+
+    indices[WBISHOP] = BISHOP_ATTACKS;
+    indices[BBISHOP] = BISHOP_ATTACKS;
+
+    indices[WROOK] = ROOK_ATTACKS;
+    indices[BROOK] = ROOK_ATTACKS;
+
+    indices[WQUEEN] = QUEEN_ATTACKS;
+    indices[BQUEEN] = QUEEN_ATTACKS;
+
+    indices[WKING] = KING_ATTACKS;
+    indices[BKING] = KING_ATTACKS;
+
+    return indices;
+}
+
+    /*constexpr*/ auto init_threat_offsets() {
+    std::array<HelperOffsets, 16>                    indices{};
+    std::array<std::array<unsigned int, 64>, 64> offsets{};
+
+    int cumulativeOffset = 0;
+    for (unsigned int piece : AllPieces)
+    {
+        int pieceIdx = piece;
+        int cumulativePieceOffset = 0;
+
+        for (unsigned int from = 0; from < 64; ++from)
+        {
+            offsets[pieceIdx][from] = cumulativePieceOffset;
+
+            if ((piece >> 1) != PAWN)
+            {
+                Bitboard attacks = PseudoAttacks[type_of(piece)][from];
+                cumulativePieceOffset += constexpr_popcount(attacks);
+            }
+
+            else if (from >= SQ_A2 && from <= SQ_H7)
+            {
+                Bitboard attacks =
+                    (pieceIdx < 8) ? PawnPushOrAttacks[WHITE][from] : PawnPushOrAttacks[BLACK][from];
+                cumulativePieceOffset += constexpr_popcount(attacks);
+            }
+        }
+
+        indices[pieceIdx] = { cumulativePieceOffset, cumulativeOffset };
+
+        cumulativeOffset += numValidTargets[pieceIdx] * cumulativePieceOffset;
+    }
+
+    return std::pair{ indices, offsets };
+}
+
+constexpr auto helper_offsets = init_threat_offsets().first;
+// Lookup array for indexing threats
+constexpr auto offsets = init_threat_offsets().second;
+
+constexpr auto init_index_luts() {
+    std::array<std::array<std::array<uint32_t, 2>, PIECE_NB>, PIECE_NB> indices{};
+
+    for (Piece attacker : AllPieces)
+    {
+        for (Piece attacked : AllPieces)
+        {
+            bool      enemy = (attacker ^ attacked) == 8;
+            PieceType attackerType = type_of(attacker);
+            PieceType attackedType = type_of(attacked);
+
+            int  map = FullThreats::map[attackerType - 1][attackedType - 1];
+            bool semi_excluded = attackerType == attackedType && (enemy || attackerType != PAWN);
+            IndexType feature = helper_offsets[attacker].cumulativeOffset
+                + (color_of(attacked) * (numValidTargets[attacker] / 2) + map)
+                * helper_offsets[attacker].cumulativePieceOffset;
+
+            bool excluded = map < 0;
+            indices[attacker][attacked][0] = excluded ? FullThreats::Dimensions : feature;
+            indices[attacker][attacked][1] =
+                excluded || semi_excluded ? FullThreats::Dimensions : feature;
+        }
+    }
+
+    return indices;
+}
+
+// The final index is calculated from summing data found in these two LUTs, as well
+// as offsets[attacker][from]
+
+// [attacker][attacked][from < to]
+constexpr auto index_lut1 = init_index_luts();
+// [attacker][from][to]
+constexpr auto index_lut2 = index_lut2_array();
+
+// Index of a feature for a given king position and another piece on some square
+inline sf_always_inline IndexType FullThreats::make_index(
+    Color perspective, Piece attacker, Square from, Square to, Piece attacked, Square ksq) {
+    const std::int8_t orientation = OrientTBL[ksq] ^ (56 * perspective);
+    unsigned          from_oriented = uint8_t(from) ^ orientation;
+    unsigned          to_oriented = uint8_t(to) ^ orientation;
+
+    std::int8_t swap = 8 * perspective;
+    unsigned    attacker_oriented = attacker ^ swap;
+    unsigned    attacked_oriented = attacked ^ swap;
+
+    return index_lut1[attacker_oriented][attacked_oriented][from_oriented < to_oriented]
+        + offsets[attacker_oriented][from_oriented]
+        + index_lut2[attacker_oriented][from_oriented][to_oriented];
+}
+
+//
+// Threats end
+//
+
+
+
 //
 // NNUE interface in chessposition
 //
@@ -2116,7 +2511,7 @@ bool NnueReadNet(NnueNetsource* nr)
             NnueCurrentArch = new(buffer) NnueArchitectureV5<1536>;
             break;
         default:
-            // We have a leb128 compressed feature transformer and don't know the input dimension yet but at least 1024
+            // We have a leb128 compressed feature transformer and don't know much more
             buffer = (char*)allocalign64(sizeof(NnueArchitectureV5<1024>));
             NnueCurrentArch = new(buffer) NnueArchitectureV5<1024>;
             leb128dim = 1024;
@@ -2152,7 +2547,12 @@ bool NnueReadNet(NnueNetsource* nr)
         case 2048:
             buffer = (char*)allocalign64(sizeof(NnueArchitectureV5<2560>));
             NnueCurrentArch = new(buffer) NnueArchitectureV5<2560>;
-            leb128dim = 0; // no more dimensions to test
+            leb128dim = 999; // switch to V13
+            break;
+        case 999:
+            buffer = (char*)allocalign64(sizeof(NnueArchitectureV13<1024>));
+            NnueCurrentArch = new(buffer) NnueArchitectureV13<1024>;
+            leb128dim = 0;
             break;
         default:
             return false;

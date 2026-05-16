@@ -808,7 +808,7 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
 //
 #define NNUEDEFAULTSTR TOSTRING(NNUEDEFAULT)
 
-enum NnueType { NnueDisabled = 0, NnueArchV1, NnueArchV5 };
+enum NnueType { NnueDisabled = 0, NnueArchV1, NnueArchV5, NnueArchV13 };
 
 // The following constants were introduced in original NNUE port from Shogi
 #define NNUEFILEVERSIONROTATE       0x7AF32F16u
@@ -820,6 +820,7 @@ enum NnueType { NnueDisabled = 0, NnueArchV1, NnueArchV5 };
 #define NNUECLIPPEDRELUHASH         0x538D24C7u
 #define NNUEFEATUREHASH_HalfKP      0x5D69D5B8u
 #define NNUEFEATUTEHASH_HalfKAv2_hm 0x7f234cb8u
+#define NNUEFEATUTEHASH_Threats     0x8f234cb8u
 #define NNUEINPUTSLICEHASH          0xEC42E90Du
 
 #define ORIENT(c,i) ((c) ? (i) ^ 0x3f : (i))
@@ -942,6 +943,8 @@ public:
     uint32_t GetFtHash(NnueType nt) {
         if (nt == NnueArchV5)
             return NNUEFEATUTEHASH_HalfKAv2_hm;
+        else if (nt == NnueArchV13)
+            return ((NNUEFEATUTEHASH_Threats << 1) | (NNUEFEATUTEHASH_Threats >> 31)) ^ NNUEFEATUTEHASH_HalfKAv2_hm;
         else
             return NNUEFEATUREHASH_HalfKP;
     }
