@@ -154,8 +154,8 @@ void Sleep(long x);
 typedef unsigned long long U64;
 typedef signed long long S64;
 
-typedef unsigned int PieceCode;
-typedef unsigned int PieceType;
+typedef uint8_t PieceCode;
+typedef uint8_t PieceType;
 
 
 #ifdef _MSC_VER
@@ -357,7 +357,7 @@ inline int pullMsb(U64* x) {
 #define POPCOUNT32(x) __builtin_popcount(x)
 #endif
 
-enum Color { WHITE, BLACK };
+enum Color : uint8_t { WHITE, BLACK };
 #define WHITEBB 0x55aa55aa55aa55aa
 #define BLACKBB 0xaa55aa55aa55aa55
 #define FLANKLEFT  0x0f0f0f0f0f0f0f0f
