@@ -655,26 +655,75 @@ public:
 //
 // Threats Features stuff here
 //
+
+static constexpr int numValidTargets[16] = { 0, 6, 10, 8, 8, 10, 0, 0,
+                                                  0, 6, 10, 8, 8, 10, 0, 0 };
+
 struct HelperOffsets {
     int cumulativePieceOffset, cumulativeOffset;
 };
 
+// We keep this order of pieces to stay compatible with SF feature order
 int8_t AllPieces[12] = {
   WPAWN, WKNIGHT, WBISHOP, WROOK, WQUEEN, WKING,
   BPAWN, BKNIGHT, BBISHOP, BROOK, BQUEEN, BKING
 };
 
+constexpr int constexpr_popcount(U64 b) {
+    b = b - ((b >> 1) & 0x5555555555555555ULL);
+    b = (b & 0x3333333333333333ULL) + ((b >> 2) & 0x3333333333333333ULL);
+    b = (b + (b >> 4)) & 0x0F0F0F0F0F0F0F0FULL;
+    return static_cast<int>((b * 0x0101010101010101ULL) >> 56);
+}
+
+template<Color C>
+constexpr U64 pawn_attacks_bb(U64 b) {
+    return C == WHITE ? ((b & ~FILEABB) << 7) | ((b & ~FILEHBB) << 9) : ((b & ~FILEABB) >> 9) | ((b & ~FILEHBB) >> 7);
+}
+
+
+/*constexpr*/ auto PseudoAttacks = []() /*constexpr*/ {
+    std::array<std::array<U64, 64>, 8> attacks{};
+
+    for (unsigned int s1 = 0; s1 < 64; ++s1)
+    {
+        attacks[WHITE][s1] = PAWNATTACK(WHITE, BITSET(s1));
+        attacks[BLACK][s1] = PAWNATTACK(BLACK, BITSET(s1));
+
+        attacks[KING][s1] = king_attacks[s1];
+        attacks[KNIGHT][s1] = knight_attacks[s1];
+        attacks[QUEEN][s1] = attacks[BISHOP][s1] = BISHOPATTACKS(0, s1);
+        attacks[QUEEN][s1] |= attacks[ROOK][s1] = ROOKATTACKS(0, s1);
+    }
+
+    return attacks;
+    }();
+
+/*constexpr*/ auto PawnPushOrAttacks = []() /*constexpr*/ {
+    std::array<std::array<U64, 64>, 2> attacks{};
+
+    for (unsigned int s1 = 0; s1 < 64; ++s1)
+    {
+        attacks[WHITE][s1] = (BITSET(s1) << 8) | PseudoAttacks[WHITE][s1];
+        attacks[BLACK][s1] = (BITSET(s1) >> 8) | PseudoAttacks[BLACK][s1];
+    }
+
+    return attacks;
+    }();
+
+
+
 template<PieceType PT>
-/*constexpr*/ auto make_piece_indices_type() {
+constexpr auto make_piece_indices_type() {
     //static_assert(PT != PieceType::PAWN);
 
     std::array<std::array<uint8_t, 64>, 64> out{};
 
     for (unsigned int from = 0; from < 64; ++from)
     {
-        Bitboard attacks = PseudoAttacks[PT][from];
+        U64 attacks = PseudoAttacks[PT][from];
 
-        for (unsigned int to = SQ_A1; to <= SQ_H8; ++to)
+        for (unsigned int to = 0; to < 64; ++to)
         {
             out[from][to] = constexpr_popcount(((1ULL << to) - 1) & attacks);
         }
@@ -689,11 +738,11 @@ template<PieceCode P>
 
     std::array<std::array<uint8_t, 64>, 64> out{};
 
-    /*constexpr*/ Color C = color_of(P);
+    /*constexpr*/ unsigned int C = (P & S2MMASK);
 
     for (unsigned int from = 0; from < 64; ++from)
     {
-        Bitboard attacks = PawnPushOrAttacks[C][from];
+        U64 attacks = PawnPushOrAttacks[C][from];
 
         for (unsigned int to = 0; to < 64; ++to)
         {
@@ -704,7 +753,7 @@ template<PieceCode P>
     return out;
 }
 
-    /*constexpr*/ auto index_lut2_array() {
+/*constexpr*/ auto index_lut2_array() {
         /*constexpr*/ auto KNIGHT_ATTACKS = make_piece_indices_type<KNIGHT>();
         /*constexpr*/ auto BISHOP_ATTACKS = make_piece_indices_type<BISHOP>();
         /*constexpr*/ auto ROOK_ATTACKS = make_piece_indices_type<ROOK>();
@@ -734,7 +783,8 @@ template<PieceCode P>
     return indices;
 }
 
-    /*constexpr*/ auto init_threat_offsets() {
+
+/*constexpr*/ pair<array<HelperOffsets, 16>, array<std::array<unsigned int, 64>, 64>> init_threat_offsets() {
     std::array<HelperOffsets, 16>                    indices{};
     std::array<std::array<unsigned int, 64>, 64> offsets{};
 
@@ -750,13 +800,13 @@ template<PieceCode P>
 
             if ((piece >> 1) != PAWN)
             {
-                Bitboard attacks = PseudoAttacks[type_of(piece)][from];
+                U64 attacks = PseudoAttacks[piece >> 1][from];
                 cumulativePieceOffset += constexpr_popcount(attacks);
             }
 
-            else if (from >= SQ_A2 && from <= SQ_H7)
+            else if (from >= 8 && from < 56)
             {
-                Bitboard attacks =
+                U64 attacks =
                     (pieceIdx < 8) ? PawnPushOrAttacks[WHITE][from] : PawnPushOrAttacks[BLACK][from];
                 cumulativePieceOffset += constexpr_popcount(attacks);
             }
@@ -767,34 +817,61 @@ template<PieceCode P>
         cumulativeOffset += numValidTargets[pieceIdx] * cumulativePieceOffset;
     }
 
-    return std::pair{ indices, offsets };
+    return pair<array<HelperOffsets, 16>, array<std::array<unsigned int, 64>, 64>>{ indices, offsets };
 }
 
-constexpr auto helper_offsets = init_threat_offsets().first;
+static constexpr int threatpiecetypemap[6][6] = {
+  { 0,  1, -1,  2, -1, -1},
+  { 0,  1,  2,  3,  4, -1},
+  { 0,  1,  2,  3, -1, -1},
+  { 0,  1,  2,  3, -1, -1},
+  { 0,  1,  2,  3,  4, -1},
+  {-1, -1, -1, -1, -1, -1}
+};
+
+// Orient a square according to perspective (rotates by 180 for black)
+#if 0
+static constexpr int8_t OrientTBL[64] = {
+    SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
+    SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
+    SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
+    SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
+    SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
+    SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
+    SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
+    SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
+};
+#else
+#define  ORIENTTBL(s) (s & 4 ? 7 : 0)
+#endif
+
+// Number of feature dimensions
+static constexpr uint32_t ThreatFeatureDimensions = 60720; // = 0xed30
+
+/*constexpr*/ auto helper_offsets = init_threat_offsets().first;
 // Lookup array for indexing threats
-constexpr auto offsets = init_threat_offsets().second;
+/*constexpr*/ auto offsets = init_threat_offsets().second;
 
 constexpr auto init_index_luts() {
-    std::array<std::array<std::array<uint32_t, 2>, PIECE_NB>, PIECE_NB> indices{};
+    array<array<array<uint32_t, 2>, 16>, 16> indices{};
 
-    for (Piece attacker : AllPieces)
+    for (unsigned int attacker : AllPieces)
     {
-        for (Piece attacked : AllPieces)
+        for (unsigned int attacked : AllPieces)
         {
             bool      enemy = (attacker ^ attacked) == 8;
-            PieceType attackerType = type_of(attacker);
-            PieceType attackedType = type_of(attacked);
+            PieceType attackerType = (attacker >> 1);
+            PieceType attackedType = (attacked >> 1);
 
-            int  map = FullThreats::map[attackerType - 1][attackedType - 1];
+            int  map = threatpiecetypemap[attackerType - 1][attackedType - 1];
             bool semi_excluded = attackerType == attackedType && (enemy || attackerType != PAWN);
-            IndexType feature = helper_offsets[attacker].cumulativeOffset
-                + (color_of(attacked) * (numValidTargets[attacker] / 2) + map)
+            uint32_t feature = helper_offsets[attacker].cumulativeOffset
+                + ((attacked & S2MMASK) * (numValidTargets[attacker] / 2) + map)
                 * helper_offsets[attacker].cumulativePieceOffset;
 
             bool excluded = map < 0;
-            indices[attacker][attacked][0] = excluded ? FullThreats::Dimensions : feature;
-            indices[attacker][attacked][1] =
-                excluded || semi_excluded ? FullThreats::Dimensions : feature;
+            indices[attacker][attacked][0] = excluded ? ThreatFeatureDimensions : feature;
+            indices[attacker][attacked][1] = excluded || semi_excluded ? ThreatFeatureDimensions : feature;
         }
     }
 
@@ -805,14 +882,14 @@ constexpr auto init_index_luts() {
 // as offsets[attacker][from]
 
 // [attacker][attacked][from < to]
-constexpr auto index_lut1 = init_index_luts();
+/*constexpr*/ auto index_lut1 = init_index_luts();
 // [attacker][from][to]
-constexpr auto index_lut2 = index_lut2_array();
+/*constexpr*/ auto index_lut2 = index_lut2_array();
 
 // Index of a feature for a given king position and another piece on some square
-inline sf_always_inline IndexType FullThreats::make_index(
-    Color perspective, Piece attacker, Square from, Square to, Piece attacked, Square ksq) {
-    const std::int8_t orientation = OrientTBL[ksq] ^ (56 * perspective);
+inline uint32_t fullthreats_make_index(
+    Color perspective, unsigned int attacker, unsigned int from, unsigned int to, unsigned int attacked, unsigned int ksq) {
+    const int8_t orientation = ORIENTTBL(ksq) ^ (56 * perspective);
     unsigned          from_oriented = uint8_t(from) ^ orientation;
     unsigned          to_oriented = uint8_t(to) ^ orientation;
 
