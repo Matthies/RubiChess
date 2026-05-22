@@ -921,13 +921,14 @@ public:
 };
 
 
-template <int ftdims, int inputdims, int psqtbuckets>
+template <int ftdims, int ftthreatdims, int outputdims, int psqtbuckets>
 class NnueFeatureTransformer : public NnueLayer
 {
 public:
-    alignas(64) int16_t bias[ftdims];
-    alignas(64) int16_t weight[ftdims * inputdims];
-    alignas(64) int32_t psqtWeights[psqtbuckets ? psqtbuckets * inputdims : 1];    // hack to avoid zero-sized array
+    alignas(64) int16_t bias[outputdims];
+    alignas(64) int8_t threatweights[ftthreatdims ? ftthreatdims * outputdims : 1];    // hack to avoid zero-sized array
+    alignas(64) int16_t weight[ftdims * outputdims];
+    alignas(64) int32_t psqtWeights[psqtbuckets ? psqtbuckets * outputdims : 1];    // hack to avoid zero-sized array
 
     NnueFeatureTransformer() : NnueLayer(NULL) {}
     bool ReadFeatureWeights(NnueNetsource* nr, bool bpz);

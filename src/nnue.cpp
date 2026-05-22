@@ -98,7 +98,7 @@ public:
         + NnueHidden2Dims * 1 * sizeof(int8_t);                 // weights of output layer
 
 
-    NnueFeatureTransformer<NnueFtHalfdims, NnueFtInputdims, NnuePsqtBuckets> NnueFt;
+    NnueFeatureTransformer<NnueFtInputdims, 0, NnueFtHalfdims, NnuePsqtBuckets> NnueFt;
     class NnueLayerStack {
     public:
         NnueNetworkLayer<NnueFtOutputdims, NnueHidden1Dims> NnueHd1;
@@ -246,7 +246,7 @@ public:
             + NnueHidden2Dims * 1 * sizeof(int8_t)                  // weights of output layer
             );
 
-    NnueFeatureTransformer<NnueFtHalfdims, NnueFtInputdims, NnuePsqtBuckets> NnueFt;
+    NnueFeatureTransformer<NnueFtInputdims, 0, NnueFtHalfdims, NnuePsqtBuckets> NnueFt;
     class NnueLayerStack {
     public:
         NnueNetworkLayer<NnueFtOutputdims, NnueHidden1Dims> NnueHd1;
@@ -441,6 +441,7 @@ class NnueArchitectureV13 : public NnueArchitecture {
 public:
     static constexpr unsigned int NnueFtHalfdims = NnueFtOutputdims;
     static constexpr unsigned int NnueFtInputdims = 64 * 11 * 64 / 2;
+    static constexpr unsigned int NnueThreatsFtInputdims = 0xed30;
     static constexpr unsigned int NnueHidden1Dims = 32;
     static constexpr unsigned int NnueHidden1Out = 31;
     static constexpr unsigned int NnueHidden2Dims = 32;
@@ -462,7 +463,7 @@ public:
             + NnueHidden2Dims * 1 * sizeof(int8_t)                  // weights of output layer
             );
 
-    NnueFeatureTransformer<NnueFtHalfdims, NnueFtInputdims, NnuePsqtBuckets> NnueFt;
+    NnueFeatureTransformer<NnueFtInputdims, NnueThreatsFtInputdims, NnueFtHalfdims, NnuePsqtBuckets> NnueFt;
     class NnueLayerStack {
     public:
         NnueNetworkLayer<NnueFtOutputdims, NnueHidden1Dims> NnueHd1;
@@ -1742,13 +1743,13 @@ bool readLeb128(NnueNetsource* nr, IntType *out, size_t count)
 }
 
 
-template <int ftdims, int inputdims, int psqtbuckets>
-bool NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::ReadFeatureWeights(NnueNetsource* nr, bool bpz)
+template <int ftdims, int ftthreatdims, int outputdims, int psqtbuckets>
+bool NnueFeatureTransformer<ftdims, ftthreatdims, outputdims, psqtbuckets>::ReadFeatureWeights(NnueNetsource* nr, bool bpz)
 {
     int i;
     bool okay = true;
 
-    int16_t* src_16 = (int16_t*)calloc(inputdims * ftdims, sizeof(int16_t));
+    int16_t* src_16 = (int16_t*)calloc(outputdims * ftdims, sizeof(int16_t));
     if (!src_16)
         return false;
 
@@ -1761,16 +1762,20 @@ bool NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::ReadFeatureWeights(
 
     memcpy(bias, src_16, ftdims * sizeof(int16_t));
 
+    // read threats feature weights
+    if (ftthreatdims)
+        okay = okay && nr->read((unsigned char*)threatweights, ftthreatdims * outputdims * sizeof(int8_t));
+
     // read weights
     isLeb128 = testLeb128(nr);
     if (isLeb128) {
-        okay = okay && readLeb128(nr, src_16, inputdims * ftdims);
+        okay = okay && readLeb128(nr, src_16, outputdims * ftdims);
     }
     else {
         // Handle bpz
         int weightsRead = 0;
         int16_t dummyweight[ftdims];
-        for (i = 0; i < inputdims; i++) {
+        for (i = 0; i < outputdims; i++) {
             if (bpz && i % (10 * 64) == 0)
                 okay = okay && nr->read((unsigned char*)dummyweight, ftdims * sizeof(int16_t));
             okay = okay && nr->read((unsigned char*)(src_16 + weightsRead), ftdims * sizeof(int16_t));
@@ -1778,24 +1783,24 @@ bool NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::ReadFeatureWeights(
         }
     }
     
-    memcpy(weight, src_16, inputdims * ftdims * sizeof(int16_t));
+    memcpy(weight, src_16, outputdims * ftdims * sizeof(int16_t));
     free(src_16);
 
     if (psqtbuckets)
     {
         // read psqt weights
-        size_t psqt_size = inputdims * psqtbuckets;
+        size_t psqt_size = outputdims * psqtbuckets;
         int32_t* src_32 = (int32_t*)calloc(psqt_size, sizeof(int32_t));
         if (!src_32)
             return false;
 
         isLeb128 = testLeb128(nr);
         if (isLeb128)
-            okay = okay && readLeb128(nr, src_32, inputdims * psqtbuckets);
+            okay = okay && readLeb128(nr, src_32, outputdims * psqtbuckets);
         else
-            okay = okay && nr->read((unsigned char*)src_32, inputdims * psqtbuckets * sizeof(int32_t));
+            okay = okay && nr->read((unsigned char*)src_32, outputdims * psqtbuckets * sizeof(int32_t));
 
-        memcpy(psqtWeights, src_32, inputdims * psqtbuckets * sizeof(int32_t));
+        memcpy(psqtWeights, src_32, outputdims * psqtbuckets * sizeof(int32_t));
         free(src_32);
     }
     return okay;
@@ -1843,18 +1848,18 @@ bool writeLeb128(NnueNetsource* nr, IntType* in, size_t count)
 }
 
 
-template <int ftdims, int inputdims, int psqtbuckets>
-void NnueFeatureTransformer<ftdims, inputdims, psqtbuckets>::WriteFeatureWeights(NnueNetsource* nr, bool leb128)
+template <int ftdims, int ftthreatdims, int outputdims, int psqtbuckets>
+void NnueFeatureTransformer<ftdims, ftthreatdims, outputdims, psqtbuckets>::WriteFeatureWeights(NnueNetsource* nr, bool leb128)
 {
     if (leb128) {
         writeLeb128(nr, bias, ftdims);
-        writeLeb128(nr, weight, inputdims * ftdims);
-        writeLeb128(nr, psqtWeights, inputdims * psqtbuckets);
+        writeLeb128(nr, weight, outputdims * ftdims);
+        writeLeb128(nr, psqtWeights, outputdims * psqtbuckets);
     }
     else {
         nr->write((unsigned char*)bias, ftdims * sizeof(int16_t));
-        nr->write((unsigned char*)weight, inputdims * ftdims * sizeof(int16_t));
-        nr->write((unsigned char*)psqtWeights, inputdims * psqtbuckets * sizeof(int32_t));
+        nr->write((unsigned char*)weight, outputdims * ftdims * sizeof(int16_t));
+        nr->write((unsigned char*)psqtWeights, outputdims * psqtbuckets * sizeof(int32_t));
     }
 }
 
