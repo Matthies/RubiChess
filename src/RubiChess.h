@@ -928,7 +928,7 @@ public:
     alignas(64) int16_t bias[outputdims];
     alignas(64) int8_t threatweights[ftthreatdims ? ftthreatdims * outputdims : 1];    // hack to avoid zero-sized array
     alignas(64) int16_t weight[ftdims * outputdims];
-    alignas(64) int32_t psqtWeights[psqtbuckets ? psqtbuckets * outputdims : 1];    // hack to avoid zero-sized array
+    alignas(64) int32_t psqtWeights[psqtbuckets ? psqtbuckets * ftdims : 1];    // hack to avoid zero-sized array
 
     NnueFeatureTransformer() : NnueLayer(NULL) {}
     bool ReadFeatureWeights(NnueNetsource* nr, bool bpz);
@@ -950,7 +950,7 @@ public:
             return NNUEFEATUREHASH_HalfKP;
     }
     uint32_t GetHash() {
-        return NNUEINPUTSLICEHASH ^ (ftdims * 2);
+        return NNUEINPUTSLICEHASH ^ (outputdims * 2);
     };
 #ifdef STATISTICS
     void SwapWeights(unsigned int i1, unsigned int i2) {

@@ -1756,11 +1756,11 @@ bool NnueFeatureTransformer<ftdims, ftthreatdims, outputdims, psqtbuckets>::Read
     // read bias
     bool isLeb128 = testLeb128(nr);
     if (isLeb128)
-        okay = okay && readLeb128(nr, src_16, ftdims);
+        okay = okay && readLeb128(nr, src_16, outputdims);
     else
-        okay = okay && nr->read((unsigned char*)src_16, ftdims * sizeof(int16_t));
+        okay = okay && nr->read((unsigned char*)src_16, outputdims * sizeof(int16_t));
 
-    memcpy(bias, src_16, ftdims * sizeof(int16_t));
+    memcpy(bias, src_16, outputdims * sizeof(int16_t));
 
     // read threats feature weights
     if (ftthreatdims)
@@ -1769,38 +1769,38 @@ bool NnueFeatureTransformer<ftdims, ftthreatdims, outputdims, psqtbuckets>::Read
     // read weights
     isLeb128 = testLeb128(nr);
     if (isLeb128) {
-        okay = okay && readLeb128(nr, src_16, outputdims * ftdims);
+        okay = okay && readLeb128(nr, src_16, ftdims * outputdims);
     }
     else {
         // Handle bpz
         int weightsRead = 0;
-        int16_t dummyweight[ftdims];
-        for (i = 0; i < outputdims; i++) {
+        int16_t dummyweight[outputdims];
+        for (i = 0; i < ftdims; i++) {
             if (bpz && i % (10 * 64) == 0)
-                okay = okay && nr->read((unsigned char*)dummyweight, ftdims * sizeof(int16_t));
-            okay = okay && nr->read((unsigned char*)(src_16 + weightsRead), ftdims * sizeof(int16_t));
-            weightsRead += ftdims;
+                okay = okay && nr->read((unsigned char*)dummyweight, outputdims * sizeof(int16_t));
+            okay = okay && nr->read((unsigned char*)(src_16 + weightsRead), outputdims * sizeof(int16_t));
+            weightsRead += outputdims;
         }
     }
     
-    memcpy(weight, src_16, outputdims * ftdims * sizeof(int16_t));
+    memcpy(weight, src_16, ftdims * outputdims * sizeof(int16_t));
     free(src_16);
 
     if (psqtbuckets)
     {
         // read psqt weights
-        size_t psqt_size = outputdims * psqtbuckets;
+        size_t psqt_size = psqtbuckets * ftdims;
         int32_t* src_32 = (int32_t*)calloc(psqt_size, sizeof(int32_t));
         if (!src_32)
             return false;
 
         isLeb128 = testLeb128(nr);
         if (isLeb128)
-            okay = okay && readLeb128(nr, src_32, outputdims * psqtbuckets);
+            okay = okay && readLeb128(nr, src_32, psqt_size);
         else
-            okay = okay && nr->read((unsigned char*)src_32, outputdims * psqtbuckets * sizeof(int32_t));
+            okay = okay && nr->read((unsigned char*)src_32, psqt_size * sizeof(int32_t));
 
-        memcpy(psqtWeights, src_32, outputdims * psqtbuckets * sizeof(int32_t));
+        memcpy(psqtWeights, src_32, psqt_size * sizeof(int32_t));
         free(src_32);
     }
     return okay;
