@@ -1789,7 +1789,7 @@ bool NnueFeatureTransformer<ftdims, ftthreatdims, outputdims, psqtbuckets>::Read
     if (psqtbuckets)
     {
         // read psqt weights
-        size_t psqt_size = psqtbuckets * ftdims;
+        size_t psqt_size = psqtbuckets * (ftthreatdims + ftdims);
         int32_t* src_32 = (int32_t*)calloc(psqt_size, sizeof(int32_t));
         if (!src_32)
             return false;
@@ -1800,7 +1800,8 @@ bool NnueFeatureTransformer<ftdims, ftthreatdims, outputdims, psqtbuckets>::Read
         else
             okay = okay && nr->read((unsigned char*)src_32, psqt_size * sizeof(int32_t));
 
-        memcpy(psqtWeights, src_32, psqt_size * sizeof(int32_t));
+        memcpy(threatpsqtWeights, src_32, psqtbuckets * ftthreatdims * sizeof(int32_t));
+        memcpy(psqtWeights, src_32 + psqtbuckets * ftthreatdims, psqtbuckets * ftdims * sizeof(int32_t));
         free(src_32);
     }
     return okay;

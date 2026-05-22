@@ -928,6 +928,7 @@ public:
     alignas(64) int16_t bias[outputdims];
     alignas(64) int8_t threatweights[ftthreatdims ? ftthreatdims * outputdims : 1];    // hack to avoid zero-sized array
     alignas(64) int16_t weight[ftdims * outputdims];
+    alignas(64) int32_t threatpsqtWeights[psqtbuckets * ftthreatdims ? psqtbuckets * ftthreatdims : 1];    // hack to avoid zero-sized array
     alignas(64) int32_t psqtWeights[psqtbuckets ? psqtbuckets * ftdims : 1];    // hack to avoid zero-sized array
 
     NnueFeatureTransformer() : NnueLayer(NULL) {}
