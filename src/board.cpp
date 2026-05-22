@@ -44,6 +44,9 @@ U64 lineMask[64][64];
 int squareDistance[64][64];  // decreased by 1 for directly indexing evaluation arrays
 alignas(64) int psqtable[14][64];
 
+// Threat feature stuff
+U64 pseudoattacks[8][64];
+U64 pawnpushorattacks[2][64];
 
 bool chessposition::w2m()
 {
@@ -878,6 +881,20 @@ void initBitmaphelper()
             if (RANK(from + 1) == RANK(from))
                 epthelper[from] |= BITSET(from + 1);
         }
+    }
+
+    // Threats feature stuff
+    for (int j = 0; j < 64; j++)
+    {
+        pseudoattacks[WHITE][j] = PAWNATTACK(WHITE, BITSET(j));
+        pseudoattacks[BLACK][j] = PAWNATTACK(BLACK, BITSET(j));
+
+        pseudoattacks[KING][j] = king_attacks[j];
+        pseudoattacks[KNIGHT][j] = knight_attacks[j];
+        pseudoattacks[QUEEN][j] = pseudoattacks[BISHOP][j] = BISHOPATTACKS(0, j);
+        pseudoattacks[QUEEN][j] |= pseudoattacks[ROOK][j] = ROOKATTACKS(0, j);
+        pawnpushorattacks[WHITE][j] = (BITSET(j) << 8) | pseudoattacks[WHITE][j];
+        pawnpushorattacks[BLACK][j] = (BITSET(j) >> 8) | pseudoattacks[BLACK][j];
     }
 }
 
