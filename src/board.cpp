@@ -992,6 +992,25 @@ U64 chessposition::movesTo(PieceCode pc, int from)
     }
 }
 
+U64 chessposition::movesTo(PieceType pt, int from, U64 occ) // not for pawns
+{
+    switch (pt)
+    {
+    case KNIGHT:
+        return knight_attacks[from];
+    case BISHOP:
+        return BISHOPATTACKS(occ, from);
+    case ROOK:
+        return ROOKATTACKS(occ, from);
+    case QUEEN:
+        return BISHOPATTACKS(occ, from) | ROOKATTACKS(occ, from);
+    case KING:
+        return king_attacks[from];
+    default:
+        return 0ULL;
+    }
+}
+
 
 template <PieceType Pt>
 U64 chessposition::pieceMovesTo(int from)

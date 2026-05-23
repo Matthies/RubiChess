@@ -515,10 +515,10 @@ public:
         }
     }
     string GetArchName() {
-        return "V5-" + to_string(NnueFtOutputdims);
+        return "V13-" + to_string(NnueFtOutputdims);
     }
     string GetArchDescription() {
-        return "HalfKAv2_hm, " + to_string(NnueFtOutputdims) + "x16+16x32x1";
+        return "FullThreats+HalfKAv2_hm, " + to_string(NnueFtOutputdims) + "x16+16x32x1";
     }
     int GetEval(chessposition* pos) {
         struct NnueNetwork {
@@ -532,7 +532,7 @@ public:
         } network;
 
         int bucket = (POPCOUNT(pos->occupied00[WHITE] | pos->occupied00[BLACK]) - 1) / 4;
-        int psqt = pos->Transform<NnueArchV5, NnueFtHalfdims, NnuePsqtBuckets>(network.input, bucket);
+        int psqt = pos->Transform<NnueArchV13, NnueFtHalfdims, NnuePsqtBuckets>(network.input, bucket);
         LayerStack[bucket].NnueHd1.Propagate(network.input, network.hidden1_values);
         memset(network.hidden1_sqrclipped, 0, sizeof(network.hidden1_sqrclipped));  // FIXME: is this needed?
         LayerStack[bucket].NnueSqrCl.Propagate(network.hidden1_values, network.hidden1_sqrclipped);
@@ -568,14 +568,14 @@ public:
         return NNUEFILEVERSIONSFNNv5_1024;
     }
     int16_t* CreateAccumulationStack() {
-        return(int16_t*)allocalign64(MAXDEPTH * 2 * NnueFtHalfdims * sizeof(int16_t));
+        return(int16_t*)allocalign64(MAXDEPTH * 4 * NnueFtHalfdims * sizeof(int16_t));
     }
     int32_t* CreatePsqtAccumulationStack() {
-        return (int32_t*)allocalign64(MAXDEPTH * 2 * NnuePsqtBuckets * sizeof(int32_t));
+        return (int32_t*)allocalign64(MAXDEPTH * 4 * NnuePsqtBuckets * sizeof(int32_t));
     }
     void CreateAccumulationCache(chessposition* p) {
-        p->accucache.accumulation = (int16_t*)allocalign64(2 * 64 * NnueFtHalfdims * sizeof(int16_t));
-        p->accucache.psqtaccumulation = (int32_t*)allocalign64(2 * 64 * NnuePsqtBuckets * sizeof(int32_t));
+        p->accucache.accumulation = (int16_t*)allocalign64(4 * 64 * NnueFtHalfdims * sizeof(int16_t));
+        p->accucache.psqtaccumulation = (int32_t*)allocalign64(4 * 64 * NnuePsqtBuckets * sizeof(int32_t));
     }
     void ResetAccumulationCache(chessposition* p) {
         memset(p->accucache.piece00, 0, 2 * sizeof(p->accucache.piece00[WHITE]));
@@ -691,41 +691,29 @@ constexpr U64 pawn_attacks_bb(U64 b) {
 
 template<PieceType PT>
 constexpr auto make_piece_indices_type() {
-    //static_assert(PT != PieceType::PAWN);
-
     array<array<uint8_t, 64>, 64> out{};
 
     for (unsigned int from = 0; from < 64; ++from)
     {
         U64 attacks = pseudoattacks[PT][from];
-
         for (unsigned int to = 0; to < 64; ++to)
-        {
             out[from][to] = constexpr_popcount(((1ULL << to) - 1) & attacks);
-        }
     }
-
     return out;
 }
 
 template<PieceCode P>
-/*constexpr*/ auto make_piece_indices_piece() {
-    //static_assert(type_of(P) == PieceType::PAWN);
-
+auto make_piece_indices_piece() {
     array<array<uint8_t, 64>, 64> out{};
 
-    /*constexpr*/ unsigned int C = (P & S2MMASK);
+    unsigned int C = (P & S2MMASK);
 
     for (unsigned int from = 0; from < 64; ++from)
     {
         U64 attacks = pawnpushorattacks[C][from];
-
         for (unsigned int to = 0; to < 64; ++to)
-        {
             out[from][to] = constexpr_popcount(((1ULL << to) - 1) & attacks);
-        }
     }
-
     return out;
 }
 
@@ -867,6 +855,7 @@ inline uint32_t fullthreats_make_index(
 //
 // NNUE interface in chessposition
 //
+#if 0  // wird nicht mehr benutzt
 template <NnueType Nt, Color c> void chessposition::HalfkpAppendActiveIndices(NnueIndexList *active)
 {
     const int ksq = kingpos[c];
@@ -883,7 +872,7 @@ template <NnueType Nt, Color c> void chessposition::HalfkpAppendActiveIndices(Nn
             active->values[active->size++] = HMORIENT(c, index, ksq) + PieceToIndex[c][mailbox[index]] + PS_KAEND * KingBucket[oksq];
     }
 }
-
+#endif
 
 template <NnueType Nt, Color c> void chessposition::HalfkpAppendChangedIndices(DirtyPiece* dp, NnueIndexList* add, NnueIndexList* remove)
 {
@@ -909,6 +898,100 @@ template <NnueType Nt, Color c> void chessposition::HalfkpAppendChangedIndices(D
         }
     }
 }
+
+template <Color perspective> void chessposition::ThreatsAppendActiveIndices(NnueIndexList* active)
+{
+    const unsigned ksq = kingpos[perspective];
+    const U64 occupied = occupied00[0] | occupied00[1];
+    const U64 pawns = piece00[WPAWN] | piece00[BPAWN];
+
+    for (unsigned color = WHITE; color <= BLACK; color++)
+    {
+        const unsigned c = (perspective ^ color);
+        {
+            const PieceCode attacker = PAWN + (c << 3);  // SF code
+            const PieceCode attackerRubi = WPAWN | c;
+            const U64 cPawns = piece00[attackerRubi];
+            // Set of pawns which are prevented from movement by a pawn in front of them
+            const U64 pushers = PAWNPUSH(~c, pawns) & cPawns;
+
+            auto process_pawn_attacks = [&](U64 attacks, int attkDir) {
+                while (attacks)
+                {
+                    unsigned to = pullLsb(&attacks);
+                    unsigned from = to - attkDir;
+                    PieceCode attackedRubi = mailbox[to];
+                    PieceCode attacked = (attackedRubi >> 1) + (attackedRubi & 1) * 8;
+                    uint32_t index = fullthreats_make_index(perspective, attacker, from, to, attacked, ksq);
+                    active->values[active->size] = index;
+                    active->size += (index < ThreatFeatureDimensions);
+                }
+            };
+
+            if (c == WHITE)
+            {
+                process_pawn_attacks(((cPawns & ~FILEHBB) << 9) & occupied, 9);
+                process_pawn_attacks(((cPawns & ~FILEABB) << 7) & occupied, 7);
+                process_pawn_attacks((cPawns << 8) & occupied, 8);
+            }
+            else
+            {
+                process_pawn_attacks(((cPawns & ~FILEABB) >> 9) & occupied, -9);
+                process_pawn_attacks(((cPawns & ~FILEHBB) >> 7) & occupied, -7);
+                process_pawn_attacks((cPawns >> 8) & occupied, -8);
+            }
+        }
+
+        for (PieceType pt = KNIGHT; pt < KING; ++pt)
+        {
+            PieceCode attacker = pt + (c << 3);     // SF code
+            PieceCode attackerRubi = pt * 2 + c;
+            U64 bb = piece00[attackerRubi];
+            while (bb)
+            {
+                unsigned from = pullLsb(&bb);
+                U64 attacks = movesTo(pt, from, occupied) & occupied;
+                while (attacks)
+                {
+                    unsigned to = pullLsb(&attacks);
+                    PieceCode attackedRubi = mailbox[to];
+                    PieceCode attacked = (attackedRubi >> 1) + (attackedRubi & 1) * 8;
+                    uint32_t index = fullthreats_make_index(perspective, attacker, from, to, attacked, ksq);
+                    active->values[active->size] = index;
+                    active->size += (index < ThreatFeatureDimensions);
+                }
+            }
+        }
+    }
+
+}
+
+#if 0
+template <NnueType Nt, Color c> void chessposition::ThreadsAppendChangedIndices(DirtyPiece* dp, NnueIndexList* add, NnueIndexList* remove)
+{
+    const int ksq = kingpos[c];
+    const int oksq = (Nt == NnueArchV1 ? ORIENT(c, ksq) : HMORIENT(c, ksq, ksq));
+    for (int i = 0; i < dp->dirtyNum; i++) {
+        PieceCode pc = dp->pc[i];
+        if (Nt == NnueArchV1 && (pc >> 1) == KING)
+            continue;
+        int sq = dp->from[i];
+        if (sq >= 0) {
+            if (Nt == NnueArchV1)
+                remove->values[remove->size++] = ORIENT(c, sq) + PieceToIndex[c][pc] + PS_KPEND * oksq;
+            else
+                remove->values[remove->size++] = HMORIENT(c, sq, ksq) + PieceToIndex[c][pc] + PS_KAEND * KingBucket[oksq];
+        }
+        sq = dp->to[i];
+        if (sq >= 0) {
+            if (Nt == NnueArchV1)
+                add->values[add->size++] = ORIENT(c, sq) + PieceToIndex[c][pc] + PS_KPEND * oksq;
+            else
+                add->values[add->size++] = HMORIENT(c, sq, ksq) + PieceToIndex[c][pc] + PS_KAEND * KingBucket[oksq];
+        }
+    }
+}
+#endif
 
 
 // Macros for propagation of small layers
@@ -1191,6 +1274,8 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
         AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 3>(updatechain);
     else
         AccumulatorRefresh< Nt, c, NnueFtHalfdims, NnuePsqtBuckets>();
+    if (Nt == NnueArchV13)
+        ThreatsAccumulatorRefresh<c, NnueFtHalfdims, NnuePsqtBuckets>();
 }
 
 
@@ -1211,11 +1296,25 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
         AccumulatorRefresh< Nt, c, NnueFtHalfdims, NnuePsqtBuckets>();
 }
 
+#ifdef NNUEDEBUG
+void FeaturesDebug(int c, NnueIndexList addedIndices, NnueIndexList removedIndices)
+{
+    cout << "Feature changes (c=" << c << ")\nFeatures added : " << addedIndices.size << "\n";
+    for (size_t i = 0; i < addedIndices.size; i++)
+        cout << hex << setfill(' ') << setw(4) << (int)addedIndices.values[i] << " ";
+    cout << "\nFeatures removed: " << removedIndices.size << "\n";
+    for (size_t i = 0; i < removedIndices.size; i++)
+        cout << hex << setfill(' ') << setw(4) << (int)removedIndices.values[i] << " ";
+    cout << "\n";
+}
+#endif
 
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets, int N> void chessposition::AccumulatorIncrementalUpdate(int* updaterequest)
 {
 #ifdef NNUEDEBUG
     cout << "\nAccumulatorIncrementalUpdate\n";
+    NnueIndexList removedIndicesDebug, addedIndicesDebug;
+    removedIndicesDebug.size = addedIndicesDebug.size = 0;
 #endif
     STATISTICSINC(nnue_accupdate_inc);
     myassert(updaterequest[N - 1] == -1, this, 1, updaterequest[N - 1]);
@@ -1233,6 +1332,15 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
         }
         chainindex++;
     }
+#ifdef NNUEDEBUG
+    for (unsigned i = 0; updaterequest[i] >= 0; i++)
+    {
+        for (size_t j = 0; j < addedIndices[i].size; j++)
+            addedIndicesDebug.values[addedIndicesDebug.size++] = addedIndices[i].values[j];
+        for (size_t j = 0; j < removedIndices[i].size; j++)
+            removedIndicesDebug.values[removedIndicesDebug.size++] = removedIndices[i].values[j];
+    }
+#endif
 
     int16_t* weight = NnueCurrentArch->GetFeatureWeight();
     int32_t* psqtweight = NnueCurrentArch->GetFeaturePsqtWeight();
@@ -1389,15 +1497,33 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 #endif
 
 #ifdef NNUEDEBUG
+    FeaturesDebug(c, addedIndicesDebug, removedIndicesDebug);
     AccumulatorDebug<Nt, c, NnueFtHalfdims, NnuePsqtBuckets>();
 #endif
+}
+
+template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::ThreatsAccumulatorRefresh()
+{
+#ifdef NNUEDEBUG
+    cout << "Threats AccumulatorRefresh\n";
+#endif
+    // Full update of threats feature accumulator
+    NnueIndexList activeIndices;
+    activeIndices.size = 0;
+    ThreatsAppendActiveIndices<c>(&activeIndices);
+
+
+#ifdef NNUEDEBUG
+    FeaturesDebug(c, activeIndices, NnueIndexList());
+#endif
+
 }
 
 
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::AccumulatorRefresh()
 {
 #ifdef NNUEDEBUG
-    cout << "AccumulatorRefresh\n";
+    cout << "Half KA V2 AccumulatorRefresh\n";
 #endif
     // Full update of accumulator using Finny tables cache
     STATISTICSINC(nnue_accupdate_full);
@@ -1538,6 +1664,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     memcpy(psqtacm, cachepsqtaccumulation, NnuePsqtBuckets * sizeof(int32_t));
 
 #ifdef NNUEDEBUG
+    FeaturesDebug(c, addedIndices, removedIndices);
     AccumulatorDebug<Nt, c, NnueFtHalfdims, NnuePsqtBuckets>();
 #endif
 }

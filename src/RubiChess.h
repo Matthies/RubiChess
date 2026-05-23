@@ -51,7 +51,7 @@
 //#define NNUELEARN
 
 // Enable this to enable NNUE debug output
-//#define NNUEDEBUG
+#define NNUEDEBUG
 
 // Enable this to compile support for asserts including stack trace
 // MSVC only, link with DbgHelp.lib
@@ -1825,6 +1825,7 @@ public:
     void print(ostream* os = &cout);
     int getPhase() { return (max(0, 24 - phcount) * 255 + 12) / 24; }
     U64 movesTo(PieceCode pc, int from);
+    U64 movesTo(PieceType pt, int from, U64 occ);
     template <PieceType Pt> U64 pieceMovesTo(int from);
     bool isAttacked(int index, int me);
     U64 isAttackedByMySlider(int index, U64 occ, int me);  // special simple version to detect giving check by removing blocker
@@ -1892,13 +1893,16 @@ public:
     void pvdebugout();
 #endif
     int testRepetition();
-    template <NnueType Nt, Color c> void HalfkpAppendActiveIndices(NnueIndexList *active);
+    //template <NnueType Nt, Color c> void HalfkpAppendActiveIndices(NnueIndexList *active);
     template <NnueType Nt, Color c> void HalfkpAppendChangedIndices(DirtyPiece* dp, NnueIndexList *add, NnueIndexList *remove);
+    template <Color perspective> void ThreatsAppendActiveIndices(NnueIndexList* active);
     template <NnueType Nt, Color c, int N> bool GetAcccumulatorUpdateArray(int* updaterequest);
     template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets, int N> void AccumulatorIncrementalUpdate(int* updaterequest);
     template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void AccumulatorRefresh();
     template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void AccumulatorUpdate();
     template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void AccumulatorSpeculativeUpdate();
+    template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void ThreatsAccumulatorRefresh();
+
 #ifdef NNUEDEBUG
     template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void AccumulatorDebug();
 #endif
