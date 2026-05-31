@@ -221,8 +221,10 @@ void initThread(workingthread* thr)
     void* buffer = allocalign64(sizeof(chessposition));
     chessposition* pos = thr->pos = new(buffer) chessposition;
     pos->pwnhsh.setSize();
-    pos->accumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
-    pos->psqtAccumulation = NnueCurrentArch ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr;
+    pos->halfkaaccumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
+    pos->psqthalfkaAccumulation = NnueCurrentArch ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr;
+    pos->threataccumulation = (NnueCurrentArch && NnueCurrentArch->GetFeatureThreatWeight() ? NnueCurrentArch->CreateAccumulationStack() : nullptr);
+    pos->psqtthreatAccumulation = (NnueCurrentArch && NnueCurrentArch->GetFeatureThreatPsqtWeight() ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr);
     if (NnueCurrentArch)
         NnueCurrentArch->CreateAccumulationCache(pos);
 }
@@ -231,8 +233,8 @@ void cleanupThread(workingthread* thr)
 {
     chessposition* pos = thr->pos;
     pos->pwnhsh.remove();
-    freealigned64(pos->accumulation);
-    freealigned64(pos->psqtAccumulation);
+    freealigned64(pos->halfkaaccumulation);
+    freealigned64(pos->psqthalfkaAccumulation);
     freealigned64(pos->accucache.accumulation);
     if (pos->accucache.psqtaccumulation)
         freealigned64(pos->accucache.psqtaccumulation);

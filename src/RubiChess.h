@@ -885,6 +885,8 @@ public:
     virtual int16_t* GetFeatureWeight() = 0;
     virtual int16_t* GetFeatureBias() = 0;
     virtual int32_t* GetFeaturePsqtWeight() = 0;
+    virtual int8_t* GetFeatureThreatWeight() = 0;
+    virtual int32_t* GetFeatureThreatPsqtWeight() = 0;
     virtual uint32_t GetFileVersion() = 0;
     virtual int16_t* CreateAccumulationStack() = 0;
     virtual int32_t* CreatePsqtAccumulationStack() = 0;
@@ -1784,8 +1786,10 @@ public:
     int CurrentMoveNum[MAXDEPTH];
     Pawnhash pwnhsh;                                    // init in alloc
     bool computationState[MAXDEPTH][2];
-    int16_t* accumulation;
-    int32_t* psqtAccumulation;
+    int16_t* halfkaaccumulation;
+    int16_t* threataccumulation;
+    int32_t* psqthalfkaAccumulation;
+    int32_t* psqtthreatAccumulation;
     AccumulatorCache accucache;
     DirtyPiece dirtypiece[MAXDEPTH];
     uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];
@@ -1904,7 +1908,7 @@ public:
     template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void ThreatsAccumulatorRefresh();
 
 #ifdef NNUEDEBUG
-    template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void AccumulatorDebug();
+    template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void AccumulatorDebug(int16_t* accumulation, int32_t* psqtAccumulation);
 #endif
 
     template <NnueType Nt, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> int Transform(clipped_t *output, int bucket = 0);
