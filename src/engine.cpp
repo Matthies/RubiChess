@@ -904,8 +904,10 @@ void prepareSearch(chessposition* pos, chessposition* rootpos)
     pos->nullmoveside = 0;
     pos->nodesToNextCheck = 0;
     pos->excludemovestack[0] = 0;
-    pos->computationState[0][WHITE] = false;
-    pos->computationState[0][BLACK] = false;
+    pos->halfkacomputationState[0][WHITE] = false;
+    pos->halfkacomputationState[0][BLACK] = false;
+    pos->threatcomputationState[0][WHITE] = false;
+    pos->threatcomputationState[0][BLACK] = false;
 
     int framesToCopy = rootpos->prerootmovenum + 1; //include stack frame of ply 0
     int startIndex = PREROOTMOVES - framesToCopy + 1;

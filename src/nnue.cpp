@@ -895,7 +895,7 @@ template <NnueType Nt, Color c> void chessposition::HalfkpAppendActiveIndices(Nn
 }
 #endif
 
-template <NnueType Nt, Color c> void chessposition::HalfkpAppendChangedIndices(DirtyPiece* dp, NnueIndexList* add, NnueIndexList* remove)
+template <NnueType Nt, Color c> void chessposition::HalfkaAppendChangedIndices(DirtyPiece* dp, NnueHalfkaIndexList* add, NnueHalfkaIndexList* remove)
 {
     const int ksq = kingpos[c];
     const int oksq = (Nt == NnueArchV1 ? ORIENT(c, ksq) : HMORIENT(c, ksq, ksq));
@@ -920,7 +920,7 @@ template <NnueType Nt, Color c> void chessposition::HalfkpAppendChangedIndices(D
     }
 }
 
-template <Color perspective> void chessposition::ThreatsAppendActiveIndices(NnueIndexList* active)
+template <Color perspective> void chessposition::ThreatsAppendActiveIndices(NnueThreatIndexList* active)
 {
     const unsigned ksq = kingpos[perspective];
     const U64 occupied = occupied00[0] | occupied00[1];
@@ -1245,13 +1245,13 @@ alignas(64) static const array<array<uint16_t, 8>, 256> lookup_indices = []() {
 // updaterequest[0..] will contain indices of accumulators that need to be computed
 // termination of list with updaterequest[n] = -1 (n < N-1)
 // return true iff found a computed accumulator and return the array of following accumulators to compute with terminating -1
-template <NnueType Nt, Color c, int N> bool chessposition::GetAcccumulatorUpdateArray(int* updaterequest)
+template <NnueType Nt, Color c, int N> bool chessposition::GetHalfkaAcccumulatorUpdateArray(int* updaterequest)
 {
     int mslast = ply;
     // A full update needs activation of all pieces (except kings for V1)
     int fullupdatecost = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]) - (Nt == NnueArchV1 ? 2 : 0);
 
-    while (mslast > 0 && !computationState[mslast][c])
+    while (mslast > 0 && !halfkacomputationState[mslast][c])
     {
         // search for position with computed accu on stack that leads to current position by differential updates
         // break at king move or if the dirty piece updates get too expensive
@@ -1261,7 +1261,7 @@ template <NnueType Nt, Color c, int N> bool chessposition::GetAcccumulatorUpdate
         mslast--;
     }
 
-    if (!computationState[mslast][c])
+    if (!halfkacomputationState[mslast][c])
         return false;
 
     updaterequest[N] = mslast;
@@ -1280,23 +1280,33 @@ template <NnueType Nt, Color c, int N> bool chessposition::GetAcccumulatorUpdate
     return true;
 }
 
+template <NnueType Nt, Color c, int N> bool chessposition::GetThreatAcccumulatorUpdateArray(int* updaterequest)
+{
+    return false;
+}
 
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::AccumulatorUpdate()
 {
     STATISTICSINC(nnue_accupdate_all);
 
     int updatechain[4];
-    if (computationState[ply][c]) {
-        STATISTICSINC(nnue_accupdate_cache);
-        return;
+    if (!halfkacomputationState[ply][c]) {
+        if (GetHalfkaAcccumulatorUpdateArray<Nt, c, 3>(updatechain))
+            AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 3>(updatechain);
+        else
+            HalfkaAccumulatorRefresh< Nt, c, NnueFtHalfdims, NnuePsqtBuckets>();
     }
 
-    if (GetAcccumulatorUpdateArray<Nt, c, 3>(updatechain))
-        AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 3>(updatechain);
-    else
-        AccumulatorRefresh< Nt, c, NnueFtHalfdims, NnuePsqtBuckets>();
     if (Nt == NnueArchV13)
-        ThreatsAccumulatorRefresh<c, NnueFtHalfdims, NnuePsqtBuckets>();
+    {
+        if (!threatcomputationState[ply][c]) {
+            if (GetThreatAcccumulatorUpdateArray<Nt, c, 3>(updatechain))
+                AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 3>(updatechain);
+            else
+                ThreatsAccumulatorRefresh<c, NnueFtHalfdims, NnuePsqtBuckets>();
+        }
+    }
+      
 }
 
 
@@ -1306,15 +1316,24 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     STATISTICSINC(nnue_accupdate_spec);
 
     int updatechain[3];
-    if (computationState[ply][c]) {
-        STATISTICSINC(nnue_accupdate_cache);
-        return;
+    if (!halfkacomputationState[ply][c]) {
+        if (GetHalfkaAcccumulatorUpdateArray<Nt, c, 2>(updatechain))
+            AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 2>(updatechain);
+        else
+            HalfkaAccumulatorRefresh< Nt, c, NnueFtHalfdims, NnuePsqtBuckets>();
     }
 
-    if (GetAcccumulatorUpdateArray<Nt, c, 2>(updatechain))
-        AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 2>(updatechain);
-    else
-        AccumulatorRefresh< Nt, c, NnueFtHalfdims, NnuePsqtBuckets>();
+    if (Nt == NnueArchV13)
+    {
+        if (!threatcomputationState[ply][c]) {
+            if (GetThreatAcccumulatorUpdateArray<Nt, c, 2>(updatechain))
+                AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 3>(updatechain);
+            else
+                ThreatsAccumulatorRefresh<c, NnueFtHalfdims, NnuePsqtBuckets>();
+        }
+    }
+
+
 }
 
 #ifdef NNUEDEBUG
@@ -1339,16 +1358,17 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 #endif
     STATISTICSINC(nnue_accupdate_inc);
     myassert(updaterequest[N - 1] == -1, this, 1, updaterequest[N - 1]);
-    NnueIndexList removedIndices[N - 1], addedIndices[N - 1];
+    // FIXME: Make this general for supporting NnueThreatIndexList
+    NnueHalfkaIndexList removedIndices[N - 1], addedIndices[N - 1];
     int lastcomputedply = updaterequest[N];
     int nextchangedply = lastcomputedply + 1;
     int nextcomputeply;
     int chainindex = 0;
     while ((nextcomputeply = updaterequest[chainindex]) >= 0) {
         removedIndices[chainindex].size = addedIndices[chainindex].size = 0;
-        computationState[nextcomputeply][c] = true;
+        halfkacomputationState[nextcomputeply][c] = true;
         while (nextchangedply <= nextcomputeply) {
-            HalfkpAppendChangedIndices<Nt, c>(&dirtypiece[nextchangedply], &addedIndices[chainindex], &removedIndices[chainindex]);
+            HalfkaAppendChangedIndices<Nt, c>(&dirtypiece[nextchangedply], &addedIndices[chainindex], &removedIndices[chainindex]);
             nextchangedply++;
         }
         chainindex++;
@@ -1529,7 +1549,7 @@ template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> vo
     cout << "Threats AccumulatorRefresh\n";
 #endif
     // Full update of threats feature accumulator
-    NnueIndexList addedIndices, removedIndices;
+    NnueThreatIndexList addedIndices, removedIndices;
     addedIndices.size = removedIndices.size = 0;
     ThreatsAppendActiveIndices<c>(&addedIndices);
 
@@ -1785,14 +1805,14 @@ template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> vo
 }
 
 
-template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::AccumulatorRefresh()
+template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::HalfkaAccumulatorRefresh()
 {
 #ifdef NNUEDEBUG
     cout << "Half KA V2 AccumulatorRefresh\n";
 #endif
     // Full update of accumulator using Finny tables cache
     STATISTICSINC(nnue_accupdate_full);
-    computationState[ply][c] = true;
+    halfkacomputationState[ply][c] = true;
 
     const int ksq = kingpos[c];
     const int oksq = (Nt == NnueArchV1 ? ORIENT(c, ksq) : HMORIENT(c, ksq, ksq));
@@ -1800,7 +1820,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     int16_t* cacheaccumulation = accucache.accumulation + (c * 64 + ksq) * NnueFtHalfdims;
     int32_t* cachepsqtaccumulation = accucache.psqtaccumulation + (c * 64 + ksq) * NnuePsqtBuckets;
     unsigned int index;
-    NnueIndexList addedIndices, removedIndices;
+    NnueHalfkaIndexList addedIndices, removedIndices;
     addedIndices.size = removedIndices.size = 0;
     for (int p = WPAWN; p <= (Nt == NnueArchV1 ? BQUEEN : BKING); p++)
     {
@@ -1934,6 +1954,13 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 #endif
 }
 
+
+template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::ThreatAccumulatorRefresh()
+{
+#ifdef NNUEDEBUG
+    cout << "Half KA V2 AccumulatorRefresh\n";
+#endif
+}
 
 #ifdef NNUEDEBUG
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::AccumulatorDebug(int16_t* accumulation, int32_t* psqtAccumulation)

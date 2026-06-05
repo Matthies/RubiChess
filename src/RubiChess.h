@@ -51,7 +51,7 @@
 //#define NNUELEARN
 
 // Enable this to enable NNUE debug output
-#define NNUEDEBUG
+//#define NNUEDEBUG
 
 // Enable this to compile support for asserts including stack trace
 // MSVC only, link with DbgHelp.lib
@@ -841,7 +841,7 @@ typedef int8_t clipped_t;
 typedef struct {
     size_t size;
     unsigned values[32];
-} NnueIndexList;
+} NnueHalfkaIndexList;
 
 typedef struct {
     int dirtyNum;
@@ -849,6 +849,13 @@ typedef struct {
     int from[3];
     int to[3];
 } DirtyPiece;
+
+// All pieces and both kings for HalfKA are inputs => 128 dimensions
+typedef struct {
+    size_t size;
+    unsigned values[128];
+} NnueThreatIndexList;
+
 
 
 class NnueNetsource {
@@ -1784,8 +1791,9 @@ public:
     uint32_t multipvtable[MAXMULTIPV][MAXDEPTH];
     uint32_t lastpv[MAXDEPTH];
     int CurrentMoveNum[MAXDEPTH];
-    Pawnhash pwnhsh;                                    // init in alloc
-    bool computationState[MAXDEPTH][2];
+    Pawnhash pwnhsh;                                   // init in alloc
+    bool halfkacomputationState[MAXDEPTH][2];
+    bool threatcomputationState[MAXDEPTH][2];
     int16_t* halfkaaccumulation;
     int16_t* threataccumulation;
     int32_t* psqthalfkaAccumulation;
@@ -1898,11 +1906,13 @@ public:
 #endif
     int testRepetition();
     //template <NnueType Nt, Color c> void HalfkpAppendActiveIndices(NnueIndexList *active);
-    template <NnueType Nt, Color c> void HalfkpAppendChangedIndices(DirtyPiece* dp, NnueIndexList *add, NnueIndexList *remove);
-    template <Color perspective> void ThreatsAppendActiveIndices(NnueIndexList* active);
-    template <NnueType Nt, Color c, int N> bool GetAcccumulatorUpdateArray(int* updaterequest);
+    template <NnueType Nt, Color c> void HalfkaAppendChangedIndices(DirtyPiece* dp, NnueHalfkaIndexList *add, NnueHalfkaIndexList *remove);
+    template <Color perspective> void ThreatsAppendActiveIndices(NnueThreatIndexList* active);
+    template <NnueType Nt, Color c, int N> bool GetHalfkaAcccumulatorUpdateArray(int* updaterequest);
+    template <NnueType Nt, Color c, int N> bool GetThreatAcccumulatorUpdateArray(int* updaterequest);
     template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets, int N> void AccumulatorIncrementalUpdate(int* updaterequest);
-    template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void AccumulatorRefresh();
+    template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void HalfkaAccumulatorRefresh();
+    template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void ThreatAccumulatorRefresh();
     template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void AccumulatorUpdate();
     template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void AccumulatorSpeculativeUpdate();
     template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void ThreatsAccumulatorRefresh();
