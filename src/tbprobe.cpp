@@ -701,9 +701,10 @@ int chessposition::root_probe_dtz()
         TBDEBUGDO(1, printf("info string root_probe_dtz (ply=%d) Tested  move %s... value=%d\n", ply, m->toString().c_str(), v);)
         unplayMove<false>(m->code);
         if (!success)
-            return 0;
-
-        m->value = v;
+            // probing was not successful, probably a missing TB file, so expect the worst
+            m->value = -1;
+        else
+            m->value = v;
     }
 
     // Obtain 50-move counter for the root position.
