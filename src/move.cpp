@@ -511,6 +511,125 @@ bool chessposition::moveGivesCheck(uint32_t c)
 }
 
 
+template<bool ComputeRay>
+void chessposition::update_piece_threats(unsigned pc, bool putPiece, unsigned s, DirtyThreats* dt, U64 noRaysContaining) {
+    const Bitboard occupied = pieces();
+    const Bitboard rookQueens = pieces(ROOK, QUEEN);
+    const Bitboard bishopQueens = pieces(BISHOP, QUEEN);
+    const Bitboard rAttacks = attacks_bb<ROOK>(s, occupied);
+    const Bitboard bAttacks = attacks_bb<BISHOP>(s, occupied);
+    const Bitboard kings = pieces(KING);
+    Bitboard       occupiedNoK = occupied ^ kings;
+
+    Bitboard sliders = (rookQueens & rAttacks) | (bishopQueens & bAttacks);
+    auto     process_sliders = [&](bool addDirectAttacks) {
+        while (sliders)
+        {
+            Square sliderSq = pop_lsb(sliders);
+            Piece  slider = piece_on(sliderSq);
+
+            const Bitboard ray = RayPassBB[sliderSq][s];
+            const Bitboard discovered = ray & (rAttacks | bAttacks) & occupiedNoK;
+
+            assert(!more_than_one(discovered));
+            if (discovered && (RayPassBB[sliderSq][s] & noRaysContaining) != noRaysContaining)
+            {
+                const Square threatenedSq = lsb(discovered);
+                const Piece  threatenedPc = piece_on(threatenedSq);
+                add_dirty_threat(dts, !putPiece, slider, threatenedPc, sliderSq, threatenedSq);
+            }
+
+            if (addDirectAttacks)
+                add_dirty_threat(dts, putPiece, slider, pc, sliderSq, s);
+        }
+        };
+
+    if (type_of(pc) == KING)
+    {
+        if constexpr (ComputeRay)
+            process_sliders(false);
+        return;
+    }
+
+
+    const Bitboard knights = pieces(KNIGHT);
+    const Bitboard whitePawns = pieces(WHITE, PAWN);
+    const Bitboard blackPawns = pieces(BLACK, PAWN);
+
+
+    Bitboard threatened = attacks_bb(pc, s, occupied) & occupiedNoK;
+    Bitboard incoming_threats =
+        (PseudoAttacks[KNIGHT][s] & knights) | (PseudoAttacks[KING][s] & kings);
+
+    // Compute both incoming and outgoing pawn threats. Incoming pawn pushers are only
+    // added if 'pc' is a pawn.
+    if (type_of(pc) == PAWN)
+    {
+        Bitboard whiteAttacks = PawnPushOrAttacks[WHITE][s];
+        Bitboard blackAttacks = PawnPushOrAttacks[BLACK][s];
+
+        threatened |= (color_of(pc) == WHITE ? whiteAttacks : blackAttacks) & pieces(PAWN);
+
+        incoming_threats |= whiteAttacks & blackPawns;
+        incoming_threats |= blackAttacks & whitePawns;
+    }
+    else
+    {
+        incoming_threats |=
+            (attacks_bb<PAWN>(s, WHITE) & blackPawns) | (attacks_bb<PAWN>(s, BLACK) & whitePawns);
+    }
+
+#ifdef USE_AVX512ICL
+    DirtyThreat dt_template{ pc, NO_PIECE, s, Square(0), putPiece };
+    write_multiple_dirties<DirtyThreat::ThreatenedSqOffset, DirtyThreat::ThreatenedPcOffset>(
+        *this, threatened, dt_template, dts);
+
+    Bitboard all_attackers = sliders | incoming_threats;
+
+    dt_template = { NO_PIECE, pc, Square(0), s, putPiece };
+    write_multiple_dirties<DirtyThreat::PcSqOffset, DirtyThreat::PcOffset>(*this, all_attackers,
+        dt_template, dts);
+#else
+    while (threatened)
+    {
+        Square threatenedSq = pop_lsb(threatened);
+        Piece  threatenedPc = piece_on(threatenedSq);
+
+        assert(threatenedSq != s);
+        assert(threatenedPc);
+
+        add_dirty_threat(dts, putPiece, pc, threatenedPc, s, threatenedSq);
+    }
+#endif
+
+    if constexpr (ComputeRay)
+    {
+#ifndef USE_AVX512ICL
+        process_sliders(true);
+#else  // for ICL, direct threats were processed earlier (all_attackers)
+        process_sliders(false);
+#endif
+    }
+    else
+    {
+        incoming_threats |= sliders;
+    }
+
+#ifndef USE_AVX512ICL
+    while (incoming_threats)
+    {
+        Square srcSq = pop_lsb(incoming_threats);
+        Piece  srcPc = piece_on(srcSq);
+
+        assert(srcSq != s);
+        assert(srcPc != NO_PIECE);
+
+        add_dirty_threat(dts, putPiece, srcPc, pc, srcSq, s);
+    }
+#endif
+}
+
+
 void chessposition::playNullMove()
 {
     lastnullmove = ply;
@@ -520,7 +639,7 @@ void chessposition::playNullMove()
     hash ^= zb.s2m ^ zb.ept[ept];
     ept = 0;
     myassert(ply <= MAXDEPTH, this, 1, ply);
-    DirtyPiece* dp = &dirtypiece[ply];
+    DirtyPieces* dp = &dirtypieces[ply];
     dp->dirtyNum = 0;
     dp->pc[0] = 0; // don't break search for updatable positions on stack
     halfkacomputationState[ply][WHITE] = false;
@@ -547,14 +666,18 @@ bool chessposition::playMove(uint32_t mc)
     int s2m = state & S2MMASK;
     int eptnew = 0;
     int oldcastle;
-    DirtyPiece* dp;
+    DirtyPieces* dp;
+    DirtyThreats* dt;
 
     if (!LiteMode) {
         oldcastle = (state & CASTLEMASK);
-        dp = &dirtypiece[ply + 1];
+        dp = &dirtypieces[ply + 1];
         dp->dirtyNum = 0;
         halfkacomputationState[ply + 1][WHITE] = false;
         halfkacomputationState[ply + 1][BLACK] = false;
+        dt = &dirtythreats[ply + 1];
+        dt->us = s2m;
+        dt->prevKsq = kingpos[s2m];
     }
 
     halfmovescounter++;
@@ -759,6 +882,8 @@ bool chessposition::playMove(uint32_t mc)
     isCheckbb = isAttackedBy<OCCUPIED>(kingpos[s2m ^ S2MMASK], s2m);
 
     if (!LiteMode) {
+        dt->ksq = kingpos[s2m];
+
         hash ^= zb.s2m;
 
         if (!(state & S2MMASK))

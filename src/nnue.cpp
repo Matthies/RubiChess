@@ -895,7 +895,7 @@ template <NnueType Nt, Color c> void chessposition::HalfkpAppendActiveIndices(Nn
 }
 #endif
 
-template <NnueType Nt, Color c> void chessposition::HalfkaAppendChangedIndices(DirtyPiece* dp, NnueHalfkaIndexList* add, NnueHalfkaIndexList* remove)
+template <NnueType Nt, Color c> void chessposition::HalfkaAppendChangedIndices(DirtyPieces* dp, NnueHalfkaIndexList* add, NnueHalfkaIndexList* remove)
 {
     const int ksq = kingpos[c];
     const int oksq = (Nt == NnueArchV1 ? ORIENT(c, ksq) : HMORIENT(c, ksq, ksq));
@@ -987,8 +987,8 @@ template <Color perspective> void chessposition::ThreatsAppendActiveIndices(Nnue
 
 }
 
-#if 0
-template <NnueType Nt, Color c> void chessposition::ThreadsAppendChangedIndices(DirtyPiece* dp, NnueIndexList* add, NnueIndexList* remove)
+
+template <NnueType Nt, Color c> void chessposition::ThreatsAppendChangedIndices(DirtyThreats* dp, NnueThreatIndexList* add, NnueThreatIndexList* remove)
 {
     const int ksq = kingpos[c];
     const int oksq = (Nt == NnueArchV1 ? ORIENT(c, ksq) : HMORIENT(c, ksq, ksq));
@@ -1012,7 +1012,70 @@ template <NnueType Nt, Color c> void chessposition::ThreadsAppendChangedIndices(
         }
     }
 }
+
+#if 0
+void FullThreats::append_changed_indices(Color                   perspective,
+    Square                  ksq,
+    const DiffType& diff,
+    IndexList& removed,
+    IndexList& added,
+    FusedUpdateData* fusedData,
+    bool                    first,
+    const ThreatWeightType* prefetchBase,
+    IndexType               prefetchStride) {
+
+    for (const auto& dirty : diff.list)
+    {
+        auto attacker = dirty.pc();
+        auto attacked = dirty.threatened_pc();
+        auto from = dirty.pc_sq();
+        auto to = dirty.threatened_sq();
+        auto add = dirty.add();
+
+        if (fusedData)
+        {
+            if (from == fusedData->dp2removed)
+            {
+                if (add)
+                {
+                    if (first)
+                    {
+                        fusedData->dp2removedOriginBoard |= to;
+                        continue;
+                    }
+                }
+                else if (fusedData->dp2removedOriginBoard & to)
+                    continue;
+            }
+            else if (to != SQ_NONE && to == fusedData->dp2removed)
+            {
+                if (add)
+                {
+                    if (first)
+                    {
+                        fusedData->dp2removedTargetBoard |= from;
+                        continue;
+                    }
+                }
+                else if (fusedData->dp2removedTargetBoard & from)
+                    continue;
+            }
+        }
+
+        auto& insert = add ? added : removed;
+        const IndexType index = make_index(perspective, attacker, from, to, attacked, ksq);
+
+        if (prefetchBase)
+            prefetch<PrefetchRw::READ, PrefetchLoc::LOW>(reinterpret_cast<const void*>(
+                reinterpret_cast<uintptr_t>(prefetchBase) + index * prefetchStride));
+        insert.push_back_if_lt(index, Dimensions);
+    }
+}
+
 #endif
+
+
+
 
 
 // Macros for propagation of small layers
@@ -1255,7 +1318,7 @@ template <NnueType Nt, Color c, int N> bool chessposition::GetHalfkaAcccumulator
     {
         // search for position with computed accu on stack that leads to current position by differential updates
         // break at king move or if the dirty piece updates get too expensive
-        DirtyPiece* dp = &dirtypiece[mslast];
+        DirtyPieces* dp = &dirtypieces[mslast];
         if (dp->pc[0] == (WKING | c) || (fullupdatecost -= dp->dirtyNum + 1) < 0)
             break;
         mslast--;
@@ -1368,7 +1431,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
         removedIndices[chainindex].size = addedIndices[chainindex].size = 0;
         halfkacomputationState[nextcomputeply][c] = true;
         while (nextchangedply <= nextcomputeply) {
-            HalfkaAppendChangedIndices<Nt, c>(&dirtypiece[nextchangedply], &addedIndices[chainindex], &removedIndices[chainindex]);
+            HalfkaAppendChangedIndices<Nt, c>(&dirtypieces[nextchangedply], &addedIndices[chainindex], &removedIndices[chainindex]);
             nextchangedply++;
         }
         chainindex++;
@@ -1386,7 +1449,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     int16_t* weight = NnueCurrentArch->GetFeatureWeight();
     int32_t* psqtweight = NnueCurrentArch->GetFeaturePsqtWeight();
 
-#ifdef USE_SIMD
+#ifdef xUSE_SIMD
     constexpr unsigned int numRegs = (NUM_REGS > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : NUM_REGS);
     constexpr unsigned int tileHeight = numRegs * SIMD_WIDTH / 16;
     ft_vec_t acc[numRegs];
@@ -1503,12 +1566,12 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 #else
     for (unsigned int l = 0; updaterequest[l] >= 0; l++)
     {
-        memcpy(accumulation + (updaterequest[l] * 2 + c) * NnueFtHalfdims, accumulation + (lastcomputedply * 2 + c) * NnueFtHalfdims, NnueFtHalfdims * sizeof(int16_t));
-        memcpy(psqtAccumulation + (updaterequest[l] * 2 + c) * NnuePsqtBuckets, psqtAccumulation + (lastcomputedply * 2 + c) * NnuePsqtBuckets, NnuePsqtBuckets * sizeof(int32_t));
+        memcpy(halfkaaccumulation + (updaterequest[l] * 2 + c) * NnueFtHalfdims, halfkaaccumulation + (lastcomputedply * 2 + c) * NnueFtHalfdims, NnueFtHalfdims * sizeof(int16_t));
+        memcpy(psqthalfkaAccumulation + (updaterequest[l] * 2 + c) * NnuePsqtBuckets, psqthalfkaAccumulation + (lastcomputedply * 2 + c) * NnuePsqtBuckets, NnuePsqtBuckets * sizeof(int32_t));
 
         lastcomputedply = updaterequest[l];
-        int16_t* acm = accumulation + (lastcomputedply * 2 + c) * NnueFtHalfdims;
-        int32_t* psqtacm = psqtAccumulation + (lastcomputedply * 2 + c) * NnuePsqtBuckets;
+        int16_t* acm = halfkaaccumulation + (lastcomputedply * 2 + c) * NnueFtHalfdims;
+        int32_t* psqtacm = psqthalfkaAccumulation + (lastcomputedply * 2 + c) * NnuePsqtBuckets;
         // Difference calculation for the deactivated features
         for (unsigned int k = 0; k < removedIndices[l].size; k++)
         {

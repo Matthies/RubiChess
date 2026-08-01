@@ -848,14 +848,19 @@ typedef struct {
     PieceCode pc[3];
     int from[3];
     int to[3];
-} DirtyPiece;
+} DirtyPieces;
 
-// All pieces and both kings for HalfKA are inputs => 128 dimensions
+// Max number of threats not bigger than 128
 typedef struct {
     size_t size;
     unsigned values[128];
 } NnueThreatIndexList;
 
+typedef struct {
+    uint32_t threatdata[96];
+    unsigned us;
+    unsigned prevKsq, ksq;
+} DirtyThreats;
 
 
 class NnueNetsource {
@@ -1799,7 +1804,8 @@ public:
     int32_t* psqthalfkaAccumulation;
     int32_t* psqtthreatAccumulation;
     AccumulatorCache accucache;
-    DirtyPiece dirtypiece[MAXDEPTH];
+    DirtyPieces dirtypieces[MAXDEPTH];
+    DirtyThreats dirtythreats[MAXDEPTH];
     uint32_t quietMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     uint32_t tacticalMoves[MAXDEPTH][MAXMOVELISTLENGTH];
     alignas(64) MoveSelector moveSelector[MAXDEPTH];
@@ -1848,6 +1854,7 @@ public:
     void preparePosition();
     void prepareStack();
     string movesOnStack();
+    template<bool ComputeRay = true> void update_piece_threats(unsigned pc, bool putPiece, unsigned s, DirtyThreats* dt, U64 noRaysContaining = -1ULL);
     template <bool LiteMode> bool playMove(uint32_t mc);
     template <bool LiteMode> void unplayMove(uint32_t mc);
     void playNullMove();
@@ -1906,7 +1913,8 @@ public:
 #endif
     int testRepetition();
     //template <NnueType Nt, Color c> void HalfkpAppendActiveIndices(NnueIndexList *active);
-    template <NnueType Nt, Color c> void HalfkaAppendChangedIndices(DirtyPiece* dp, NnueHalfkaIndexList *add, NnueHalfkaIndexList *remove);
+    template <NnueType Nt, Color c> void HalfkaAppendChangedIndices(DirtyPieces* dp, NnueHalfkaIndexList *add, NnueHalfkaIndexList *remove);
+    template <NnueType Nt, Color c> void ThreatsAppendChangedIndices(DirtyThreats* dp, NnueThreatIndexList* add, NnueThreatIndexList* remove);
     template <Color perspective> void ThreatsAppendActiveIndices(NnueThreatIndexList* active);
     template <NnueType Nt, Color c, int N> bool GetHalfkaAcccumulatorUpdateArray(int* updaterequest);
     template <NnueType Nt, Color c, int N> bool GetThreatAcccumulatorUpdateArray(int* updaterequest);
