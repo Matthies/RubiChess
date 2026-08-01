@@ -895,7 +895,6 @@ void prepareSearch(chessposition* pos, chessposition* rootpos)
     // cout << offsetof(chessposition, history) << "\n";
     memcpy((void*)pos, rootpos, offsetof(chessposition, history));
     // reset of several variables that are not clean in rootpos
-    pos->bestmovescore[0] = NOSCORE;
     pos->bestmove = 0;
     pos->pondermove = 0;
     pos->nullmoveply = 0;
@@ -969,7 +968,8 @@ void engine::searchStart()
         pos->threadindex = tnum;   // signal that the thread is (will be) alive
         pos->nodes = 0;
         pos->tbhits = 0;
-        sthread[tnum].lastCompleteDepth = 0;    // needs early reset to avoid thread voting with threads not started yet
+        pos->bestmovescore[0] = NOSCORE;
+        sthread[tnum].lastCompleteDepth = 0;    // these two need early reset to avoid thread voting with threads not started yet
     }
 
     for (int tnum = 0; tnum < Threads; tnum++)
