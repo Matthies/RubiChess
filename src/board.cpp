@@ -40,7 +40,10 @@ U64 kingdangerMask[64][2];
 U64 fileMask[64];
 U64 rankMask[64];
 U64 betweenMask[64][64];
+U64 betweenMasknew[64][64];
+U64 raypassMask[64][64];
 U64 lineMask[64][64];
+U64 lineMasknew[64][64];
 int squareDistance[64][64];  // decreased by 1 for directly indexing evaluation arrays
 alignas(64) int psqtable[14][64];
 
@@ -737,6 +740,7 @@ void initBitmaphelper()
             betweenMask[from][j] = 0ULL;
             lineMask[from][j] = 0ULL;
 
+
             if (abs(FILE(from) - FILE(j)) == 1)
             {
                 neighbourfilesMask[from] |= BITSET(j);
@@ -896,10 +900,19 @@ void initBitmaphelper()
         pawnpushorattacks[WHITE][j] = (BITSET(j) << 8) | pseudoattacks[WHITE][j];
         pawnpushorattacks[BLACK][j] = (BITSET(j) >> 8) | pseudoattacks[BLACK][j];
     }
+
+    for (int from = 0; from < 64; from++)
+        for (PieceType p = KNIGHT; p <= BISHOP; p++)
+            for (int to = 0; to < 64; to++)
+            {
+                if (pseudoattacks[p][from] & BITSET(to))
+                    raypassMask[from][to] = chessposition::movesTo(p, from, 0);
+                    
+            }
 }
 
 
-void chessposition::BitboardSet(int index, PieceCode p)
+void chessposition::BitboardSet(int index, PieceCode p, DirtyThreats* dt)
 {
     myassert(index >= 0 && index < 64, this, 1, index);
     myassert(p >= BLANK && p <= BKING, this, 1, p);
@@ -908,10 +921,12 @@ void chessposition::BitboardSet(int index, PieceCode p)
     occupied00[s2m] |= BITSET(index);
     psqval += psqtable[p][index];
     phcount += phasefactor[p >> 1];
+    if (dt)
+        update_piece_threats(p, true, index, dt);
 }
 
 
-void chessposition::BitboardClear(int index, PieceCode p)
+void chessposition::BitboardClear(int index, PieceCode p, DirtyThreats* dt)
 {
     myassert(index >= 0 && index < 64, this, 1, index);
     myassert(p >= BLANK && p <= BKING, this, 1, p);
@@ -923,7 +938,7 @@ void chessposition::BitboardClear(int index, PieceCode p)
 }
 
 
-void chessposition::BitboardMove(int from, int to, PieceCode p)
+void chessposition::BitboardMove(int from, int to, PieceCode p, DirtyThreats* dt)
 {
     myassert(from >= 0 && from < 64, this, 1, from);
     myassert(to >= 0 && to < 64, this, 1, to);
@@ -992,7 +1007,7 @@ U64 chessposition::movesTo(PieceCode pc, int from)
     }
 }
 
-U64 chessposition::movesTo(PieceType pt, int from, U64 occ) // not for pawns
+inline U64 movesTo(PieceType pt, int from, U64 occ) // not for pawns
 {
     switch (pt)
     {

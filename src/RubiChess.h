@@ -51,7 +51,7 @@
 //#define NNUELEARN
 
 // Enable this to enable NNUE debug output
-//#define NNUEDEBUG
+#define NNUEDEBUG
 
 // Enable this to compile support for asserts including stack trace
 // MSVC only, link with DbgHelp.lib
@@ -837,11 +837,27 @@ typedef int8_t weight_t;
 typedef int8_t clipped_t;
 #endif
 
+#define MAXHALFKAINDEX 32
+#define MAXTHREATINDEX 128
+
+template <int max>
+class NnueIndexList {
+public:
+    size_t size;
+    unsigned values[max];
+};
+
+typedef NnueIndexList<MAXHALFKAINDEX> NnueHalfkaIndexList;
+typedef NnueIndexList<MAXTHREATINDEX> NnueThreatIndexList;
+
+
+#if 0
 // All pieces and both kings for HalfKA are inputs => 32 dimensions
 typedef struct {
     size_t size;
     unsigned values[32];
 } NnueHalfkaIndexList;
+#endif
 
 typedef struct {
     int dirtyNum;
@@ -850,11 +866,13 @@ typedef struct {
     int to[3];
 } DirtyPieces;
 
+#if 0
 // Max number of threats not bigger than 128
 typedef struct {
     size_t size;
     unsigned values[128];
 } NnueThreatIndexList;
+#endif
 
 typedef struct {
     uint32_t threatdata[96];
@@ -1699,6 +1717,8 @@ struct AccumulatorCache {
     int32_t* psqtaccumulation;
 };
 
+U64 movesTo(PieceType pt, int from, U64 occ);
+
 // Replace the occupied bitboards with the first two so far unused piece bitboards
 #define occupied00 piece00
 
@@ -1832,9 +1852,9 @@ public:
     string getCoeffString();
 #endif
     bool w2m();
-    void BitboardSet(int index, PieceCode p);
-    void BitboardClear(int index, PieceCode p);
-    void BitboardMove(int from, int to, PieceCode p);
+    void BitboardSet(int index, PieceCode p, DirtyThreats* dt = nullptr);
+    void BitboardClear(int index, PieceCode p, DirtyThreats* dt = nullptr);
+    void BitboardMove(int from, int to, PieceCode p, DirtyThreats* dt = nullptr);
     void BitboardPrint(U64 b);
     int getFromFen(const char* sFen);
     void initCastleRights(int rookfiles[2][2], int kingfile[2]);
@@ -1843,7 +1863,6 @@ public:
     void print(ostream* os = &cout);
     int getPhase() { return (max(0, 24 - phcount) * 255 + 12) / 24; }
     U64 movesTo(PieceCode pc, int from);
-    U64 movesTo(PieceType pt, int from, U64 occ);
     template <PieceType Pt> U64 pieceMovesTo(int from);
     bool isAttacked(int index, int me);
     U64 isAttackedByMySlider(int index, U64 occ, int me);  // special simple version to detect giving check by removing blocker
@@ -1918,7 +1937,7 @@ public:
     template <Color perspective> void ThreatsAppendActiveIndices(NnueThreatIndexList* active);
     template <NnueType Nt, Color c, int N> bool GetHalfkaAcccumulatorUpdateArray(int* updaterequest);
     template <NnueType Nt, Color c, int N> bool GetThreatAcccumulatorUpdateArray(int* updaterequest);
-    template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets, int N> void AccumulatorIncrementalUpdate(int* updaterequest);
+    template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets, int N, int maxFeatures> void AccumulatorIncrementalUpdate(int* updaterequest);
     template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void HalfkaAccumulatorRefresh();
     template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void ThreatAccumulatorRefresh();
     template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void AccumulatorUpdate();

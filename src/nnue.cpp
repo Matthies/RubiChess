@@ -1355,7 +1355,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     int updatechain[4];
     if (!halfkacomputationState[ply][c]) {
         if (GetHalfkaAcccumulatorUpdateArray<Nt, c, 3>(updatechain))
-            AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 3>(updatechain);
+            AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 3, MAXHALFKAINDEX>(updatechain);
         else
             HalfkaAccumulatorRefresh< Nt, c, NnueFtHalfdims, NnuePsqtBuckets>();
     }
@@ -1364,7 +1364,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     {
         if (!threatcomputationState[ply][c]) {
             if (GetThreatAcccumulatorUpdateArray<Nt, c, 3>(updatechain))
-                AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 3>(updatechain);
+                AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 3, MAXTHREATINDEX>(updatechain);
             else
                 ThreatsAccumulatorRefresh<c, NnueFtHalfdims, NnuePsqtBuckets>();
         }
@@ -1381,7 +1381,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     int updatechain[3];
     if (!halfkacomputationState[ply][c]) {
         if (GetHalfkaAcccumulatorUpdateArray<Nt, c, 2>(updatechain))
-            AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 2>(updatechain);
+            AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 2, MAXHALFKAINDEX>(updatechain);
         else
             HalfkaAccumulatorRefresh< Nt, c, NnueFtHalfdims, NnuePsqtBuckets>();
     }
@@ -1390,7 +1390,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     {
         if (!threatcomputationState[ply][c]) {
             if (GetThreatAcccumulatorUpdateArray<Nt, c, 2>(updatechain))
-                AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 3>(updatechain);
+                AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 3, MAXTHREATINDEX>(updatechain);
             else
                 ThreatsAccumulatorRefresh<c, NnueFtHalfdims, NnuePsqtBuckets>();
         }
@@ -1400,7 +1400,8 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 }
 
 #ifdef NNUEDEBUG
-void FeaturesDebug(int c, NnueIndexList addedIndices, NnueIndexList removedIndices)
+template <int max>
+void FeaturesDebug(int c, NnueIndexList<max> addedIndices, NnueIndexList<max> removedIndices)
 {
     cout << dec << "Feature changes (c=" << c << ")\nFeatures added : " << addedIndices.size << "\n";
     for (size_t i = 0; i < addedIndices.size; i++)
@@ -1412,11 +1413,11 @@ void FeaturesDebug(int c, NnueIndexList addedIndices, NnueIndexList removedIndic
 }
 #endif
 
-template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets, int N> void chessposition::AccumulatorIncrementalUpdate(int* updaterequest)
+template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets, int N, int maxFeatures> void chessposition::AccumulatorIncrementalUpdate(int* updaterequest)
 {
 #ifdef NNUEDEBUG
     cout << "\nAccumulatorIncrementalUpdate\n";
-    NnueIndexList removedIndicesDebug, addedIndicesDebug;
+    NnueIndexList<maxFeatures> removedIndicesDebug, addedIndicesDebug;
     removedIndicesDebug.size = addedIndicesDebug.size = 0;
 #endif
     STATISTICSINC(nnue_accupdate_inc);
