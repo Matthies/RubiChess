@@ -511,40 +511,62 @@ bool chessposition::moveGivesCheck(uint32_t c)
 }
 
 
+inline void add_dirty_threat(DirtyThreats* dt, bool putPiece, PieceCode pc, PieceCode threatened, unsigned s, unsigned threatenedSq)
+{
+    dt->
+    struct DirtyThreat {
+        static constexpr int PcSqOffset = 0;
+        static constexpr int ThreatenedSqOffset = 8;
+        static constexpr int ThreatenedPcOffset = 16;
+        static constexpr int PcOffset = 20;
+
+        DirtyThreat() { /* don't initialize data */ }
+        DirtyThreat(uint32_t raw) :
+            data(raw) {
+        }
+        DirtyThreat(Piece pc, Piece threatened_pc, Square pc_sq, Square threatened_sq, bool add) {
+            data = (uint32_t(add) << 31) | (pc << PcOffset) | (threatened_pc << ThreatenedPcOffset)
+                | (threatened_sq << ThreatenedSqOffset) | (pc_sq << PcSqOffset);
+        }
+
+    dt->list.push_back({ pc, threatened, s, threatenedSq, putPiece });
+}
+
+
 template<bool ComputeRay>
 void chessposition::update_piece_threats(unsigned pc, bool putPiece, unsigned s, DirtyThreats* dt, U64 noRaysContaining) {
-    const U64 occupied = occupied00[WHITE] | occupied00[BLACK];
-    const U64 rookQueens = piece00[WROOK] | piece00[BROOK] | piece00[WQUEEN] | piece00[BQUEEN];
-    const U64 bishopQueens = piece00[WBISHOP] | piece00[BBISHOP] | piece00[WQUEEN] | piece00[BQUEEN];
-    const U64 rookAttacks = ROOKATTACKS(occupied, s);
-    const U64 bishopAttacks = BISHOPATTACKS(occupied, s);
-    const U64 kings = piece00[WKING] | piece00[BKING];
+    U64 occupied = occupied00[WHITE] | occupied00[BLACK];
+    U64 rookQueens = piece00[WROOK] | piece00[BROOK] | piece00[WQUEEN] | piece00[BQUEEN];
+    U64 bishopQueens = piece00[WBISHOP] | piece00[BBISHOP] | piece00[WQUEEN] | piece00[BQUEEN];
+    U64 rookAttacks = ROOKATTACKS(occupied, s);
+    U64 bishopAttacks = BISHOPATTACKS(occupied, s);
+    U64 kings = piece00[WKING] | piece00[BKING];
     U64 occupiedNoK = occupied ^ kings;
 
     U64 sliders = (rookQueens & rookAttacks) | (bishopQueens & bishopAttacks);
-    auto     process_sliders = [&](bool addDirectAttacks) {
+    auto process_sliders = [&](bool addDirectAttacks) {
         while (sliders)
         {
             int sliderSq = pullLsb(&sliders);
             int slider = mailbox[sliderSq];
 
-            const U64 ray = RayPassBB[sliderSq][s];
-            const Bitboard discovered = ray & (rAttacks | bAttacks) & occupiedNoK;
+            U64 ray = raypassMask[sliderSq][s];
+            U64 discovered = ray & (rookAttacks | bishopAttacks) & occupiedNoK;
 
-            assert(!more_than_one(discovered));
-            if (discovered && (RayPassBB[sliderSq][s] & noRaysContaining) != noRaysContaining)
+            //assert(!more_than_one(discovered));
+            if (discovered && (raypassMask[sliderSq][s] & noRaysContaining) != noRaysContaining)
             {
-                const Square threatenedSq = lsb(discovered);
-                const Piece  threatenedPc = piece_on(threatenedSq);
-                add_dirty_threat(dts, !putPiece, slider, threatenedPc, sliderSq, threatenedSq);
+                int threatenedSq = pullLsb(&discovered);
+                const PieceCode threatenedPc = mailbox[threatenedSq];
+                add_dirty_threat(dt, !putPiece, slider, threatenedPc, sliderSq, threatenedSq);
             }
 
             if (addDirectAttacks)
-                add_dirty_threat(dts, putPiece, slider, pc, sliderSq, s);
+                add_dirty_threat(dt, putPiece, slider, pc, sliderSq, s);
         }
-        };
+    };
 
-    if (type_of(pc) == KING)
+    if ((pc >> 1) == KING)
     {
         if constexpr (ComputeRay)
             process_sliders(false);
@@ -552,13 +574,12 @@ void chessposition::update_piece_threats(unsigned pc, bool putPiece, unsigned s,
     }
 
 
-    const Bitboard knights = pieces(KNIGHT);
-    const Bitboard whitePawns = pieces(WHITE, PAWN);
-    const Bitboard blackPawns = pieces(BLACK, PAWN);
+    const U64 knights = piece00[WKNIGHT] | piece00[BKNIGHT];
+    const U64 whitePawns = piece00[WPAWN];
+    const U64 blackPawns = piece00[BPAWN];
 
-
-    Bitboard threatened = attacks_bb(pc, s, occupied) & occupiedNoK;
-    Bitboard incoming_threats =
+    U64 threatened = attacks_bb(pc, s, occupied) & occupiedNoK;
+    U64 incoming_threats =
         (PseudoAttacks[KNIGHT][s] & knights) | (PseudoAttacks[KING][s] & kings);
 
     // Compute both incoming and outgoing pawn threats. Incoming pawn pushers are only
@@ -627,6 +648,7 @@ void chessposition::update_piece_threats(unsigned pc, bool putPiece, unsigned s,
         add_dirty_threat(dts, putPiece, srcPc, pc, srcSq, s);
     }
 #endif
+
 }
 
 

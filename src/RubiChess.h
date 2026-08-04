@@ -1583,6 +1583,7 @@ extern U64 rankMask[64];
 // 00000000
 // 00000000
 extern U64 betweenMask[64][64];
+extern U64 raypassMask[64][64];
 
 extern int squareDistance[64][64];
 
@@ -1717,7 +1718,7 @@ struct AccumulatorCache {
     int32_t* psqtaccumulation;
 };
 
-U64 movesTo(PieceType pt, int from, U64 occ);
+U64 pieceTargets(PieceType pt, int from, U64 occ);
 
 // Replace the occupied bitboards with the first two so far unused piece bitboards
 #define occupied00 piece00

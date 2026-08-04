@@ -922,9 +922,9 @@ template <NnueType Nt, Color c> void chessposition::HalfkaAppendChangedIndices(D
 
 template <Color perspective> void chessposition::ThreatsAppendActiveIndices(NnueThreatIndexList* active)
 {
-    const unsigned ksq = kingpos[perspective];
-    const U64 occupied = occupied00[0] | occupied00[1];
-    const U64 pawns = piece00[WPAWN] | piece00[BPAWN];
+    unsigned ksq = kingpos[perspective];
+    U64 occupied = occupied00[0] | occupied00[1];
+    U64 pawns = piece00[WPAWN] | piece00[BPAWN];
 
     for (unsigned color = WHITE; color <= BLACK; color++)
     {
@@ -971,7 +971,7 @@ template <Color perspective> void chessposition::ThreatsAppendActiveIndices(Nnue
             while (bb)
             {
                 unsigned from = pullLsb(&bb);
-                U64 attacks = movesTo(pt, from, occupied) & occupied;
+                U64 attacks = pieceTargets(pt, from, occupied) & occupied;
                 while (attacks)
                 {
                     unsigned to = pullLsb(&attacks);

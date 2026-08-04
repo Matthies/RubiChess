@@ -40,10 +40,9 @@ U64 kingdangerMask[64][2];
 U64 fileMask[64];
 U64 rankMask[64];
 U64 betweenMask[64][64];
-U64 betweenMasknew[64][64];
 U64 raypassMask[64][64];
-U64 lineMask[64][64];
-U64 lineMasknew[64][64];
+//U64 lineMask[64][64];
+//U64 lineMasknew[64][64];
 int squareDistance[64][64];  // decreased by 1 for directly indexing evaluation arrays
 alignas(64) int psqtable[14][64];
 
@@ -720,6 +719,7 @@ void initBitmaphelper()
     initPsqtable();
     for (int from = 0; from < 64; from++)
     {
+#if 0
         king_attacks[from] = knight_attacks[from] = 0ULL;
         pawn_moves_to[from][0] = pawn_attacks_to[from][0] = pawn_moves_to_double[from][0] = 0ULL;
         pawn_moves_to[from][1] = pawn_attacks_to[from][1] = pawn_moves_to_double[from][1] = 0ULL;
@@ -733,12 +733,12 @@ void initBitmaphelper()
         neighbourfilesMask[from] = 0ULL;
         fileMask[from] = 0ULL;
         rankMask[from] = 0ULL;
-
+#endif
         for (int j = 0; j < 64; j++)
         {
             squareDistance[from][j] = max(abs(RANK(from) - RANK(j)), abs(FILE(from) - FILE(j))) - 1;
-            betweenMask[from][j] = 0ULL;
-            lineMask[from][j] = 0ULL;
+            //betweenMask[from][j] = 0ULL;
+            //lineMask[from][j] = 0ULL;
 
 
             if (abs(FILE(from) - FILE(j)) == 1)
@@ -750,32 +750,26 @@ void initBitmaphelper()
             if (FILE(from) == FILE(j))
             {
                 fileMask[from] |= BITSET(j);
-                for (int i = min(RANK(from), RANK(j)) + 1; i < max(RANK(from), RANK(j)); i++)
-                    betweenMask[from][j] |= BITSET(INDEX(i, FILE(from)));
                 for (int i = 0; i < 8; i++)
-                    lineMask[from][j] |= BITSET(INDEX(i, FILE(from)));
+                    ;//lineMask[from][j] |= BITSET(INDEX(i, FILE(from)));
             }
             if (RANK(from) == RANK(j))
             {
                 rankMask[from] |= BITSET(j);
-                for (int i = min(FILE(from), FILE(j)) + 1; i < max(FILE(from), FILE(j)); i++)
-                    betweenMask[from][j] |= BITSET(INDEX(RANK(from), i));
                 for (int i = 0; i < 8; i++)
-                    lineMask[from][j] |= BITSET(INDEX(RANK(from), i));
+                    ;//lineMask[from][j] |= BITSET(INDEX(RANK(from), i));
             }
             if (from != j && abs(RANK(from) - RANK(j)) == abs(FILE(from) - FILE(j)))
             {
                 int dx = (FILE(from) < FILE(j) ? 1 : -1);
                 int dy = (RANK(from) < RANK(j) ? 1 : -1);
-                for (int i = 1; FILE(from) +  i * dx != FILE(j); i++)
-                    betweenMask[from][j] |= BITSET(INDEX(RANK(from) + i * dy, FILE(from) + i * dx));
 
                 for (int i = -7; i < 8; i++)
                 {
                     int r = RANK(from) + i * dy;
                     int f = FILE(from) + i * dx;
                     if (r >= 0 && r < 8 && f >= 0 && f < 8)
-                        lineMask[from][j] |= BITSET(INDEX(r, f));
+                        ;//lineMask[from][j] |= BITSET(INDEX(r, f));
                 }
             }
         }
@@ -902,12 +896,17 @@ void initBitmaphelper()
     }
 
     for (int from = 0; from < 64; from++)
-        for (PieceType p = KNIGHT; p <= BISHOP; p++)
+        for (PieceType p = BISHOP; p <= ROOK; p++)
             for (int to = 0; to < 64; to++)
             {
                 if (pseudoattacks[p][from] & BITSET(to))
-                    raypassMask[from][to] = chessposition::movesTo(p, from, 0);
-                    
+                {
+                    raypassMask[from][to] = pieceTargets(p, from, 0) & pieceTargets(p, to, BITSET(from));
+                    betweenMask[from][to] = pieceTargets(p, from, BITSET(to)) & pieceTargets(p, to, BITSET(from));
+                    ;// lineMasknew[from][to] = pieceTargets(p, from, 0) & pieceTargets(p, to, 0);
+                }
+                if (0)//p == ROOK && lineMask[from][to] != lineMasknew[from][to])
+                    printf("Alarm\n");
             }
 }
 
@@ -1007,7 +1006,7 @@ U64 chessposition::movesTo(PieceCode pc, int from)
     }
 }
 
-inline U64 movesTo(PieceType pt, int from, U64 occ) // not for pawns
+U64 pieceTargets(PieceType pt, int from, U64 occ) // not for pawns
 {
     switch (pt)
     {
