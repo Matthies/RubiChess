@@ -511,25 +511,9 @@ bool chessposition::moveGivesCheck(uint32_t c)
 }
 
 
-inline void add_dirty_threat(DirtyThreats* dt, bool putPiece, PieceCode pc, PieceCode threatened, unsigned s, unsigned threatenedSq)
+inline void add_dirty_threat(DirtyThreats* dt, bool add, PieceCode pc, PieceCode threatened, unsigned s, unsigned threatenedSq)
 {
-    dt->
-    struct DirtyThreat {
-        static constexpr int PcSqOffset = 0;
-        static constexpr int ThreatenedSqOffset = 8;
-        static constexpr int ThreatenedPcOffset = 16;
-        static constexpr int PcOffset = 20;
-
-        DirtyThreat() { /* don't initialize data */ }
-        DirtyThreat(uint32_t raw) :
-            data(raw) {
-        }
-        DirtyThreat(Piece pc, Piece threatened_pc, Square pc_sq, Square threatened_sq, bool add) {
-            data = (uint32_t(add) << 31) | (pc << PcOffset) | (threatened_pc << ThreatenedPcOffset)
-                | (threatened_sq << ThreatenedSqOffset) | (pc_sq << PcSqOffset);
-        }
-
-    dt->list.push_back({ pc, threatened, s, threatenedSq, putPiece });
+    dt->threatdata[dt->size++] = (uint32_t(add) << 31) | (pc << 20) | (threatened << 16) | (threatenedSq << 8) | s;
 }
 
 
@@ -542,6 +526,8 @@ void chessposition::update_piece_threats(unsigned pc, bool putPiece, unsigned s,
     U64 bishopAttacks = BISHOPATTACKS(occupied, s);
     U64 kings = piece00[WKING] | piece00[BKING];
     U64 occupiedNoK = occupied ^ kings;
+    PieceType pt = (pc >> 1);
+    unsigned int c = (pc & S2MMASK);
 
     U64 sliders = (rookQueens & rookAttacks) | (bishopQueens & bishopAttacks);
     auto process_sliders = [&](bool addDirectAttacks) {
@@ -566,89 +552,67 @@ void chessposition::update_piece_threats(unsigned pc, bool putPiece, unsigned s,
         }
     };
 
-    if ((pc >> 1) == KING)
+    if (pt == KING)
     {
         if constexpr (ComputeRay)
             process_sliders(false);
         return;
     }
 
-
     const U64 knights = piece00[WKNIGHT] | piece00[BKNIGHT];
     const U64 whitePawns = piece00[WPAWN];
     const U64 blackPawns = piece00[BPAWN];
 
-    U64 threatened = attacks_bb(pc, s, occupied) & occupiedNoK;
-    U64 incoming_threats =
-        (PseudoAttacks[KNIGHT][s] & knights) | (PseudoAttacks[KING][s] & kings);
+    U64 threatened = (pt == PAWN ? pawn_attacks_to[s][c] : pieceTargets(pt, s, occupied)) & occupiedNoK;    // FIXME: check if c or 1-c is correct
+    U64 incoming_threats = (knight_attacks[s] & knights) | (king_attacks[s] & kings);
 
     // Compute both incoming and outgoing pawn threats. Incoming pawn pushers are only
     // added if 'pc' is a pawn.
-    if (type_of(pc) == PAWN)
+    if (pt == PAWN)
     {
-        Bitboard whiteAttacks = PawnPushOrAttacks[WHITE][s];
-        Bitboard blackAttacks = PawnPushOrAttacks[BLACK][s];
+        U64 whiteAttacks = pawnpushorattacks[WHITE][s]; // FIXME: check if doublepushes are needed
+        U64 blackAttacks = pawnpushorattacks[BLACK][s];
 
-        threatened |= (color_of(pc) == WHITE ? whiteAttacks : blackAttacks) & pieces(PAWN);
+        threatened |= (c == WHITE ? whiteAttacks : blackAttacks) & (piece00[WPAWN] | piece00[BPAWN]);
 
         incoming_threats |= whiteAttacks & blackPawns;
         incoming_threats |= blackAttacks & whitePawns;
     }
     else
     {
-        incoming_threats |=
-            (attacks_bb<PAWN>(s, WHITE) & blackPawns) | (attacks_bb<PAWN>(s, BLACK) & whitePawns);
+        incoming_threats |= (pawn_attacks_to[s][WHITE] & blackPawns) | (pawn_attacks_to[s][BLACK] & whitePawns); // FIXME: Check if WHITE and BLACK are correct
     }
 
-#ifdef USE_AVX512ICL
-    DirtyThreat dt_template{ pc, NO_PIECE, s, Square(0), putPiece };
-    write_multiple_dirties<DirtyThreat::ThreatenedSqOffset, DirtyThreat::ThreatenedPcOffset>(
-        *this, threatened, dt_template, dts);
-
-    Bitboard all_attackers = sliders | incoming_threats;
-
-    dt_template = { NO_PIECE, pc, Square(0), s, putPiece };
-    write_multiple_dirties<DirtyThreat::PcSqOffset, DirtyThreat::PcOffset>(*this, all_attackers,
-        dt_template, dts);
-#else
     while (threatened)
     {
-        Square threatenedSq = pop_lsb(threatened);
-        Piece  threatenedPc = piece_on(threatenedSq);
+        int threatenedSq = pullLsb(&threatened);
+        PieceCode threatenedPc = mailbox[threatenedSq];
 
-        assert(threatenedSq != s);
-        assert(threatenedPc);
+        //assert(threatenedSq != s);
+        //assert(threatenedPc);
 
-        add_dirty_threat(dts, putPiece, pc, threatenedPc, s, threatenedSq);
+        add_dirty_threat(dt, putPiece, pc, threatenedPc, s, threatenedSq);
     }
-#endif
 
-    if constexpr (ComputeRay)
+    if (ComputeRay)
     {
-#ifndef USE_AVX512ICL
         process_sliders(true);
-#else  // for ICL, direct threats were processed earlier (all_attackers)
-        process_sliders(false);
-#endif
     }
     else
     {
         incoming_threats |= sliders;
     }
 
-#ifndef USE_AVX512ICL
     while (incoming_threats)
     {
-        Square srcSq = pop_lsb(incoming_threats);
-        Piece  srcPc = piece_on(srcSq);
+        int srcSq = pullLsb(&incoming_threats);
+        PieceCode srcPc = mailbox[srcSq];
 
-        assert(srcSq != s);
-        assert(srcPc != NO_PIECE);
+        //assert(srcSq != s);
+        //assert(srcPc != NO_PIECE);
 
-        add_dirty_threat(dts, putPiece, srcPc, pc, srcSq, s);
+        add_dirty_threat(dt, putPiece, srcPc, pc, srcSq, s);
     }
-#endif
-
 }
 
 
@@ -700,6 +664,7 @@ bool chessposition::playMove(uint32_t mc)
         dt = &dirtythreats[ply + 1];
         dt->us = s2m;
         dt->prevKsq = kingpos[s2m];
+        dt->size = 0;
     }
     else {
         dp = nullptr;
@@ -720,10 +685,10 @@ bool chessposition::playMove(uint32_t mc)
         PieceCode kingpc = (PieceCode)(WKING | s2m);
         PieceCode rookpc = (PieceCode)(WROOK | s2m);
 
-        mailbox[kingfrom] = BLANK;
-        mailbox[rookfrom] = BLANK;
-        mailbox[kingto] = kingpc;
-        mailbox[rookto] = rookpc;
+        //mailbox[kingfrom] = BLANK;
+        //mailbox[rookfrom] = BLANK;
+        //mailbox[kingto] = kingpc;
+        //mailbox[rookto] = rookpc;
 
         if (kingfrom != kingto)
         {
@@ -794,11 +759,11 @@ bool chessposition::playMove(uint32_t mc)
 
         if (promote == BLANK)
         {
-            mailbox[to] = pfrom;
+            //mailbox[to] = pfrom;
             BitboardMove(from, to, pfrom, dt);
         }
         else {
-            mailbox[to] = promote;
+            //mailbox[to] = promote;
             BitboardClear(from, pfrom, dt);
             BitboardSet(to, promote, dt);
             if (!LiteMode) {
@@ -818,7 +783,7 @@ bool chessposition::playMove(uint32_t mc)
             hash ^= zb.boardtable[(to << 4) | mailbox[to]];
             hash ^= zb.boardtable[(from << 4) | pfrom];
         }
-        mailbox[from] = BLANK;
+        //mailbox[from] = BLANK;
 
         /* PAWN specials */
         if (ptype == PAWN)
@@ -834,7 +799,7 @@ bool chessposition::playMove(uint32_t mc)
             {
                 int epfield = (from & 0x38) | (to & 0x07);
                 BitboardClear(epfield, (pfrom ^ S2MMASK), dt);
-                mailbox[epfield] = BLANK;
+                //mailbox[epfield] = BLANK;
                 if (!LiteMode) {
                     hash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
                     pawnhash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
@@ -866,7 +831,7 @@ bool chessposition::playMove(uint32_t mc)
             }
             halfmovescounter = movestack[ply].halfmovescounter;
             kingpos[s2m] = movestack[ply].kingpos[s2m];
-            mailbox[from] = pfrom;
+            //mailbox[from] = pfrom;
             if (promote != BLANK)
             {
                 BitboardClear(to, mailbox[to], dt);
@@ -883,19 +848,19 @@ bool chessposition::playMove(uint32_t mc)
                     // special ep capture
                     int epfield = (from & 0x38) | (to & 0x07);
                     BitboardSet(epfield, capture, dt);
-                    mailbox[epfield] = capture;
-                    mailbox[to] = BLANK;
+                    //mailbox[epfield] = capture;
+                    //mailbox[to] = BLANK;
                 }
                 else
                 {
                     BitboardSet(to, capture, dt);
-                    mailbox[to] = capture;
+                    //mailbox[to] = capture;
                 }
                 if (!LiteMode)
                     piececount++;
             }
             else {
-                mailbox[to] = BLANK;
+                //mailbox[to] = BLANK;
             }
             return false;
         }

@@ -901,7 +901,7 @@ void initBitmaphelper()
             {
                 if (pseudoattacks[p][from] & BITSET(to))
                 {
-                    raypassMask[from][to] = pieceTargets(p, from, 0) & pieceTargets(p, to, BITSET(from));
+                    raypassMask[from][to] = pieceTargets(p, from, 0) & (pieceTargets(p, to, BITSET(from)) | BITSET(to));
                     betweenMask[from][to] = pieceTargets(p, from, BITSET(to)) & pieceTargets(p, to, BITSET(from));
                     ;// lineMasknew[from][to] = pieceTargets(p, from, 0) & pieceTargets(p, to, 0);
                 }
@@ -916,6 +916,7 @@ void chessposition::BitboardSet(int index, PieceCode p, DirtyThreats* dt)
     myassert(index >= 0 && index < 64, this, 1, index);
     myassert(p >= BLANK && p <= BKING, this, 1, p);
     int s2m = p & 0x1;
+    mailbox[index] = p;
     piece00[p] |= BITSET(index);
     occupied00[s2m] |= BITSET(index);
     psqval += psqtable[p][index];
@@ -930,10 +931,13 @@ void chessposition::BitboardClear(int index, PieceCode p, DirtyThreats* dt)
     myassert(index >= 0 && index < 64, this, 1, index);
     myassert(p >= BLANK && p <= BKING, this, 1, p);
     int s2m = p & 0x1;
+    mailbox[index] = BLANK;
     piece00[p] ^= BITSET(index);
     occupied00[s2m] ^= BITSET(index);
     psqval -= psqtable[p][index];
     phcount -= phasefactor[p >> 1];
+    if (dt)
+        update_piece_threats(p, false, index, dt);
 }
 
 
@@ -942,10 +946,17 @@ void chessposition::BitboardMove(int from, int to, PieceCode p, DirtyThreats* dt
     myassert(from >= 0 && from < 64, this, 1, from);
     myassert(to >= 0 && to < 64, this, 1, to);
     myassert(p >= BLANK && p <= BKING, this, 1, p);
+    U64 fromto = BITSET(from) | BITSET(to);
     int s2m = p & 0x1;
+    if (dt)
+        update_piece_threats(p, false, from, dt, fromto);
+    mailbox[from] = BLANK;
+    mailbox[to] = p;
     piece00[p] ^= (BITSET(from) | BITSET(to));
     occupied00[s2m] ^= (BITSET(from) | BITSET(to));
     psqval += psqtable[p][to] - psqtable[p][from];
+    if (dt)
+        update_piece_threats(p, true, to, dt, fromto);
 }
 
 

@@ -876,6 +876,7 @@ typedef struct {
 
 typedef struct {
     uint32_t threatdata[96];
+    size_t size;
     unsigned us;
     unsigned prevKsq, ksq;
 } DirtyThreats;
