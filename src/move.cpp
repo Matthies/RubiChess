@@ -630,7 +630,8 @@ void chessposition::playNullMove()
     dp->pc[0] = 0; // don't break search for updatable positions on stack
     halfkacomputationState[ply][WHITE] = false;
     halfkacomputationState[ply][BLACK] = false;
-    
+    threatcomputationState[ply + 1][WHITE] = false;
+    threatcomputationState[ply + 1][BLACK] = false;
 }
 
 
@@ -659,12 +660,14 @@ bool chessposition::playMove(uint32_t mc)
         oldcastle = (state & CASTLEMASK);
         dp = &dirtypieces[ply + 1];
         dp->dirtyNum = 0;
-        halfkacomputationState[ply + 1][WHITE] = false;
-        halfkacomputationState[ply + 1][BLACK] = false;
         dt = &dirtythreats[ply + 1];
         dt->us = s2m;
         dt->prevKsq = kingpos[s2m];
         dt->size = 0;
+        halfkacomputationState[ply + 1][WHITE] = false;
+        halfkacomputationState[ply + 1][BLACK] = false;
+        threatcomputationState[ply + 1][WHITE] = false;
+        threatcomputationState[ply + 1][BLACK] = false;
     }
     else {
         dp = nullptr;

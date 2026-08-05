@@ -1345,7 +1345,37 @@ template <NnueType Nt, Color c, int N> bool chessposition::GetHalfkaAcccumulator
 
 template <NnueType Nt, Color c, int N> bool chessposition::GetThreatAcccumulatorUpdateArray(int* updaterequest)
 {
-    return false;
+    int mslast = ply;
+    // A full update needs activation of all pieces (except kings for V1)
+    //int fullupdatecost = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]) - (Nt == NnueArchV1 ? 2 : 0);
+
+    while (mslast > 0 && !threatcomputationState[mslast][c])
+    {
+        // search for position with computed accu on stack that leads to current position by differential updates
+        // break at king move or if the dirty piece updates get too expensive
+        DirtyThreats* dt = &dirtythreats[mslast];
+        if (dt->us == c && ((int8_t(dt->ksq) & 0b100) != (int8_t(dt->prevKsq) & 0b100)))
+            break;
+        mslast--;
+    }
+
+    if (!threatcomputationState[mslast][c])
+        return false;
+
+    updaterequest[N] = mslast;
+    if (N == 2) // speculative update: only update the current accumulator
+    {
+        updaterequest[0] = ply;
+        updaterequest[1] = -1;
+    }
+    if (N == 3) // update for evaluation: accumulator of current ply and accumulator following the last computed
+    {
+        updaterequest[0] = mslast + 1;
+        updaterequest[1] = mslast + 1 == ply ? -1 : ply;
+        updaterequest[2] = -1;
+    }
+
+    return true;
 }
 
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::AccumulatorUpdate()
@@ -1450,7 +1480,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     int16_t* weight = NnueCurrentArch->GetFeatureWeight();
     int32_t* psqtweight = NnueCurrentArch->GetFeaturePsqtWeight();
 
-#ifdef xUSE_SIMD
+#ifdef USE_SIMD
     constexpr unsigned int numRegs = (NUM_REGS > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : NUM_REGS);
     constexpr unsigned int tileHeight = numRegs * SIMD_WIDTH / 16;
     ft_vec_t acc[numRegs];
@@ -1613,6 +1643,7 @@ template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> vo
     cout << "Threats AccumulatorRefresh\n";
 #endif
     // Full update of threats feature accumulator
+    threatcomputationState[ply][c] = true;
     NnueThreatIndexList addedIndices, removedIndices;
     addedIndices.size = removedIndices.size = 0;
     ThreatsAppendActiveIndices<c>(&addedIndices);
