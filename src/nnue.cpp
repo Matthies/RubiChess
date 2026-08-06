@@ -895,7 +895,8 @@ template <NnueType Nt, Color c> void chessposition::HalfkpAppendActiveIndices(Nn
 }
 #endif
 
-template <NnueType Nt, Color c> void chessposition::HalfkaAppendChangedIndices(DirtyPieces* dp, NnueHalfkaIndexList* add, NnueHalfkaIndexList* remove)
+
+template <NnueType Nt, Color c> void chessposition::HalfkaAppendChangedIndices(DirtyPieces* dp, NnueIndexList* add, NnueIndexList* remove)
 {
     const int ksq = kingpos[c];
     const int oksq = (Nt == NnueArchV1 ? ORIENT(c, ksq) : HMORIENT(c, ksq, ksq));
@@ -920,9 +921,10 @@ template <NnueType Nt, Color c> void chessposition::HalfkaAppendChangedIndices(D
     }
 }
 
-template <Color perspective> void chessposition::ThreatsAppendActiveIndices(NnueThreatIndexList* active)
+
+template <Color perspective> void chessposition::ThreatsAppendActiveIndices(NnueIndexList* active)
 {
-    unsigned ksq = kingpos[perspective];
+    const unsigned ksq = kingpos[perspective];
     U64 occupied = occupied00[0] | occupied00[1];
     U64 pawns = piece00[WPAWN] | piece00[BPAWN];
 
@@ -984,95 +986,26 @@ template <Color perspective> void chessposition::ThreatsAppendActiveIndices(Nnue
             }
         }
     }
-
 }
 
 
-template <NnueType Nt, Color c> void chessposition::ThreatsAppendChangedIndices(DirtyThreats* dp, NnueThreatIndexList* add, NnueThreatIndexList* remove)
+template <NnueType Nt, Color c> void chessposition::ThreatsAppendChangedIndices(DirtyThreats* dt, NnueIndexList* add, NnueIndexList* remove)
 {
-    const int ksq = kingpos[c];
-    const int oksq = (Nt == NnueArchV1 ? ORIENT(c, ksq) : HMORIENT(c, ksq, ksq));
-    for (int i = 0; i < dp->dirtyNum; i++) {
-        PieceCode pc = dp->pc[i];
-        if (Nt == NnueArchV1 && (pc >> 1) == KING)
-            continue;
-        int sq = dp->from[i];
-        if (sq >= 0) {
-            if (Nt == NnueArchV1)
-                remove->values[remove->size++] = ORIENT(c, sq) + PieceToIndex[c][pc] + PS_KPEND * oksq;
-            else
-                remove->values[remove->size++] = HMORIENT(c, sq, ksq) + PieceToIndex[c][pc] + PS_KAEND * KingBucket[oksq];
-        }
-        sq = dp->to[i];
-        if (sq >= 0) {
-            if (Nt == NnueArchV1)
-                add->values[add->size++] = ORIENT(c, sq) + PieceToIndex[c][pc] + PS_KPEND * oksq;
-            else
-                add->values[add->size++] = HMORIENT(c, sq, ksq) + PieceToIndex[c][pc] + PS_KAEND * KingBucket[oksq];
-        }
+    const unsigned ksq = kingpos[c];
+    for (int i = 0; i < dt->size; i++) {
+        uint32_t data = dt->threatdata[i];
+        bool bAdd = data >> 31;
+        PieceCode attackerRubi = data >> 20 & 0xf;
+        PieceCode attacker = (attackerRubi >> 1) + (attackerRubi & 1) * 8;
+        PieceCode attackedRubi = data >> 16 & 0xf;
+        PieceCode attacked = (attackedRubi >> 1) + (attackedRubi & 1) * 8;
+        unsigned from = data & 0xff;
+        unsigned to = data >> 8 & 0xff;
+        uint32_t index = fullthreats_make_index(c, attacker, from, to, attacked, ksq);
+        NnueIndexList* insert = (bAdd ? add : remove);
+        insert->values[insert->size++] = index;
     }
 }
-
-#if 0
-void FullThreats::append_changed_indices(Color                   perspective,
-    Square                  ksq,
-    const DiffType& diff,
-    IndexList& removed,
-    IndexList& added,
-    FusedUpdateData* fusedData,
-    bool                    first,
-    const ThreatWeightType* prefetchBase,
-    IndexType               prefetchStride) {
-
-    for (const auto& dirty : diff.list)
-    {
-        auto attacker = dirty.pc();
-        auto attacked = dirty.threatened_pc();
-        auto from = dirty.pc_sq();
-        auto to = dirty.threatened_sq();
-        auto add = dirty.add();
-
-        if (fusedData)
-        {
-            if (from == fusedData->dp2removed)
-            {
-                if (add)
-                {
-                    if (first)
-                    {
-                        fusedData->dp2removedOriginBoard |= to;
-                        continue;
-                    }
-                }
-                else if (fusedData->dp2removedOriginBoard & to)
-                    continue;
-            }
-            else if (to != SQ_NONE && to == fusedData->dp2removed)
-            {
-                if (add)
-                {
-                    if (first)
-                    {
-                        fusedData->dp2removedTargetBoard |= from;
-                        continue;
-                    }
-                }
-                else if (fusedData->dp2removedTargetBoard & from)
-                    continue;
-            }
-        }
-
-        auto& insert = add ? added : removed;
-        const IndexType index = make_index(perspective, attacker, from, to, attacked, ksq);
-
-        if (prefetchBase)
-            prefetch<PrefetchRw::READ, PrefetchLoc::LOW>(reinterpret_cast<const void*>(
-                reinterpret_cast<uintptr_t>(prefetchBase) + index * prefetchStride));
-        insert.push_back_if_lt(index, Dimensions);
-    }
-}
-
-#endif
 
 
 
@@ -1385,7 +1318,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     int updatechain[4];
     if (!halfkacomputationState[ply][c]) {
         if (GetHalfkaAcccumulatorUpdateArray<Nt, c, 3>(updatechain))
-            AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 3, MAXHALFKAINDEX>(updatechain);
+            AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 3, NnueFeatuteHalfKa>(updatechain);
         else
             HalfkaAccumulatorRefresh< Nt, c, NnueFtHalfdims, NnuePsqtBuckets>();
     }
@@ -1394,7 +1327,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     {
         if (!threatcomputationState[ply][c]) {
             if (GetThreatAcccumulatorUpdateArray<Nt, c, 3>(updatechain))
-                AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 3, MAXTHREATINDEX>(updatechain);
+                AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 3, NnueFeatureThreat>(updatechain);
             else
                 ThreatsAccumulatorRefresh<c, NnueFtHalfdims, NnuePsqtBuckets>();
         }
@@ -1411,7 +1344,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     int updatechain[3];
     if (!halfkacomputationState[ply][c]) {
         if (GetHalfkaAcccumulatorUpdateArray<Nt, c, 2>(updatechain))
-            AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 2, MAXHALFKAINDEX>(updatechain);
+            AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 2, NnueFeatuteHalfKa>(updatechain);
         else
             HalfkaAccumulatorRefresh< Nt, c, NnueFtHalfdims, NnuePsqtBuckets>();
     }
@@ -1420,7 +1353,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     {
         if (!threatcomputationState[ply][c]) {
             if (GetThreatAcccumulatorUpdateArray<Nt, c, 2>(updatechain))
-                AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 3, MAXTHREATINDEX>(updatechain);
+                AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 2, NnueFeatureThreat>(updatechain);
             else
                 ThreatsAccumulatorRefresh<c, NnueFtHalfdims, NnuePsqtBuckets>();
         }
@@ -1430,8 +1363,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 }
 
 #ifdef NNUEDEBUG
-template <int max>
-void FeaturesDebug(int c, NnueIndexList<max> addedIndices, NnueIndexList<max> removedIndices)
+void FeaturesDebug(int c, NnueIndexList addedIndices, NnueIndexList removedIndices = {})
 {
     cout << dec << "Feature changes (c=" << c << ")\nFeatures added : " << addedIndices.size << "\n";
     for (size_t i = 0; i < addedIndices.size; i++)
@@ -1443,26 +1375,32 @@ void FeaturesDebug(int c, NnueIndexList<max> addedIndices, NnueIndexList<max> re
 }
 #endif
 
-template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets, int N, int maxFeatures> void chessposition::AccumulatorIncrementalUpdate(int* updaterequest)
+template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets, int N, NnueFeatureType Ft> void chessposition::AccumulatorIncrementalUpdate(int* updaterequest)
 {
 #ifdef NNUEDEBUG
     cout << "\nAccumulatorIncrementalUpdate\n";
-    NnueIndexList<maxFeatures> removedIndicesDebug, addedIndicesDebug;
+    NnueIndexList removedIndicesDebug, addedIndicesDebug;
     removedIndicesDebug.size = addedIndicesDebug.size = 0;
 #endif
     STATISTICSINC(nnue_accupdate_inc);
     myassert(updaterequest[N - 1] == -1, this, 1, updaterequest[N - 1]);
     // FIXME: Make this general for supporting NnueThreatIndexList
-    NnueHalfkaIndexList removedIndices[N - 1], addedIndices[N - 1];
+    NnueIndexList removedIndices[N - 1], addedIndices[N - 1];
     int lastcomputedply = updaterequest[N];
     int nextchangedply = lastcomputedply + 1;
     int nextcomputeply;
     int chainindex = 0;
     while ((nextcomputeply = updaterequest[chainindex]) >= 0) {
         removedIndices[chainindex].size = addedIndices[chainindex].size = 0;
-        halfkacomputationState[nextcomputeply][c] = true;
+        if (Ft == NnueFeatuteHalfKa)
+            halfkacomputationState[nextcomputeply][c] = true;
+        else
+            threatcomputationState[nextcomputeply][c] = true;
         while (nextchangedply <= nextcomputeply) {
-            HalfkaAppendChangedIndices<Nt, c>(&dirtypieces[nextchangedply], &addedIndices[chainindex], &removedIndices[chainindex]);
+            if (Ft == NnueFeatuteHalfKa)
+                HalfkaAppendChangedIndices<Nt, c>(&dirtypieces[nextchangedply], &addedIndices[chainindex], &removedIndices[chainindex]);
+            else
+                ThreatsAppendChangedIndices<Nt, c>(&dirtythreats[nextchangedply], &addedIndices[chainindex], &removedIndices[chainindex]);
             nextchangedply++;
         }
         chainindex++;
@@ -1477,8 +1415,8 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     }
 #endif
 
-    int16_t* weight = NnueCurrentArch->GetFeatureWeight();
-    int32_t* psqtweight = NnueCurrentArch->GetFeaturePsqtWeight();
+    int16_t* weight = (Ft == NnueFeatuteHalfKa ? NnueCurrentArch->GetFeatureWeight() : NnueCurrentArch->GetFeatureWeight()); //FIXME GetFeatureThreatWeight()
+    int32_t* psqtweight = (Ft == NnueFeatuteHalfKa ? NnueCurrentArch->GetFeaturePsqtWeight() : NnueCurrentArch->GetFeaturePsqtWeight());
 
 #ifdef USE_SIMD
     constexpr unsigned int numRegs = (NUM_REGS > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : NUM_REGS);
@@ -1633,6 +1571,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 
 #ifdef NNUEDEBUG
     FeaturesDebug(c, addedIndicesDebug, removedIndicesDebug);
+    //FeaturesDebug(c, addedIndices, removedIndices);
     AccumulatorDebug<Nt, c, NnueFtHalfdims, NnuePsqtBuckets>(halfkaaccumulation, psqthalfkaAccumulation);
 #endif
 }
@@ -1644,33 +1583,68 @@ template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> vo
 #endif
     // Full update of threats feature accumulator
     threatcomputationState[ply][c] = true;
-    NnueThreatIndexList addedIndices, removedIndices;
-    addedIndices.size = removedIndices.size = 0;
+    NnueIndexList addedIndices;
+    addedIndices.size = 0;
     ThreatsAppendActiveIndices<c>(&addedIndices);
 
     // FIXME make inference code independant from full update of features
-    int8_t* threatWeights = NnueCurrentArch->GetFeatureThreatWeight();
-    int32_t* threatpsqtWeights = NnueCurrentArch->GetFeatureThreatPsqtWeight();
-
+    int8_t* weight = NnueCurrentArch->GetFeatureThreatWeight();
+    int32_t* psqtweight = NnueCurrentArch->GetFeatureThreatPsqtWeight();
     int16_t* acm = threataccumulation + (ply * 2 + c) * NnueFtHalfdims;
     int32_t* psqtacm = psqtthreatAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
 
+
+#ifdef xUSE_SIMD
+    constexpr unsigned int numRegs = (NUM_REGS > NnueFtHalfdims * 8 / SIMD_WIDTH ? NnueFtHalfdims * 8 / SIMD_WIDTH : NUM_REGS);
+    constexpr unsigned int tileHeight = numRegs * SIMD_WIDTH / 8;
+    ft_vec_t acc[numRegs];
+    psqt_vec_t psqt[NUM_PSQT_REGS];
+    unsigned int index;
+
+    for (unsigned int i = 0; i < NnueFtHalfdims / tileHeight; i++)
+    {
+        ft_vec_t* accTile = (ft_vec_t*)(acm + i * tileHeight);
+        for (unsigned int j = 0; j < numRegs; j++)
+            acc[j] = vec_zero();
+
+        // Difference calculation for the activated features
+        for (unsigned int k = 0; k < addedIndices.size; k++)
+        {
+            index = addedIndices.values[k];
+            const unsigned int offset = NnueFtHalfdims * index + i * tileHeight;
+            ft_vec_t* column = (ft_vec_t*)(weight + offset);
+            for (unsigned int j = 0; j < numRegs; j++)
+                acc[j] = vec_add_16(acc[j], column[j]);
+        }
+
+        for (unsigned int j = 0; j < numRegs; j++)
+            vec_store(&accTile[j], acc[j]);
+    }
+
+    for (unsigned int i = 0; i < NnuePsqtBuckets / PSQT_TILE_HEIGHT; i++)
+    {
+        psqt_vec_t* accTilePsqt = (psqt_vec_t*)(psqtacm + i * PSQT_TILE_HEIGHT);
+        for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
+            psqt[j] = vec_zero_psqt();
+
+        for (unsigned int k = 0; k < addedIndices.size; k++)
+        {
+            index = addedIndices.values[k];
+            unsigned int offset = NnuePsqtBuckets * index + i * PSQT_TILE_HEIGHT;
+            psqt_vec_t* columnPsqt = (psqt_vec_t*)(psqtweight + offset);
+
+            for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
+                psqt[j] = vec_add_psqt_32(psqt[j], columnPsqt[j]);
+        }
+
+        for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
+            vec_store_psqt(&accTilePsqt[j], psqt[j]);
+    }
+
+#else
     // FIXME: For now we reset the threat accumulator
     memset(acm, 0, NnueFtHalfdims * sizeof(int16_t));
     memset(psqtacm, 0, NnuePsqtBuckets * sizeof(int32_t));
-
-    // Difference calculation for the deactivated features
-    for (unsigned int k = 0; k < removedIndices.size; k++)
-    {
-        unsigned int index = removedIndices.values[k];
-        const unsigned int offset = NnueFtHalfdims * index;
-
-        for (unsigned int j = 0; j < NnueFtHalfdims; j++)
-            *(acm + j) -= threatWeights[offset + j];
-
-        for (unsigned int i = 0; i < NnuePsqtBuckets; i++)
-            *(psqtacm + i) -= threatpsqtWeights[index * NnuePsqtBuckets + i];
-    }
 
     // Difference calculation for the activated features
     for (unsigned int k = 0; k < addedIndices.size; k++)
@@ -1679,12 +1653,12 @@ template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> vo
         const unsigned int offset = NnueFtHalfdims * index;
 
         for (unsigned int j = 0; j < NnueFtHalfdims; j++)
-            *(acm + j) += threatWeights[offset + j];
+            *(acm + j) += weight[offset + j];
 
         for (unsigned int i = 0; i < NnuePsqtBuckets; i++)
-            *(psqtacm + i) += threatpsqtWeights[index * NnuePsqtBuckets + i];
+            *(psqtacm + i) += psqtweight[index * NnuePsqtBuckets + i];
     }
-
+#endif
 
 #ifdef xUSE_SIMD
     constexpr unsigned int numRegs = (NUM_REGS > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : NUM_REGS);
@@ -1892,7 +1866,7 @@ template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> vo
 
 
 #ifdef NNUEDEBUG
-    FeaturesDebug(c, addedIndices, removedIndices);
+    FeaturesDebug(c, addedIndices);
     AccumulatorDebug<NnueArchV13, c, NnueFtHalfdims, NnuePsqtBuckets>(threataccumulation, psqtthreatAccumulation);
 
 #endif
@@ -1915,7 +1889,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     int16_t* cacheaccumulation = accucache.accumulation + (c * 64 + ksq) * NnueFtHalfdims;
     int32_t* cachepsqtaccumulation = accucache.psqtaccumulation + (c * 64 + ksq) * NnuePsqtBuckets;
     unsigned int index;
-    NnueHalfkaIndexList addedIndices, removedIndices;
+    NnueIndexList addedIndices, removedIndices;
     addedIndices.size = removedIndices.size = 0;
     for (int p = WPAWN; p <= (Nt == NnueArchV1 ? BQUEEN : BKING); p++)
     {
@@ -2050,12 +2024,6 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 }
 
 
-template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::ThreatAccumulatorRefresh()
-{
-#ifdef NNUEDEBUG
-    cout << "Half KA V2 AccumulatorRefresh\n";
-#endif
-}
 
 #ifdef NNUEDEBUG
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::AccumulatorDebug(int16_t* accumulation, int32_t* psqtAccumulation)
