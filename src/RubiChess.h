@@ -51,7 +51,7 @@
 //#define NNUELEARN
 
 // Enable this to enable NNUE debug output
-#define NNUEDEBUG
+//#define NNUEDEBUG
 
 // Enable this to compile support for asserts including stack trace
 // MSVC only, link with DbgHelp.lib
