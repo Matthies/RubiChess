@@ -564,9 +564,9 @@ public:
         cout << "\npositional eval : " << setfill(' ') << setw(5) << positional;
         cout << "\ntotal nnue      : " << setfill(' ') << setw(5) << (psqt + positional) << "\n\n";
 #endif
-
         return (psqt + positional) * sps.nnuevaluescale / 1024;
     }
+
     void SpeculativeEval(chessposition* pos) {
         pos->SpeculativeTransform<NnueArchV5, NnueFtHalfdims, NnuePsqtBuckets>();
     }
@@ -1103,6 +1103,9 @@ inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define vec_set_32 _mm256_set1_epi32
 #define vec_add_dpbusd_32 Simd::m256_add_dpbusd_32
 #define vec_convert_8_16 _mm256_cvtepi8_epi16
+#define vec_permutepackus_16(a,b) _mm256_permute4x64_epi64(_mm256_packus_epi16(a,b), 0xd8)
+#define vec_slli_16(a,b) _mm256_slli_epi16(a,b)
+#define vec_mulhi_16(a,b) _mm256_mulhi_epi16(a,b)
 
 #elif defined(USE_SSE2)
 #define NUM_REGS 16
@@ -1426,130 +1429,85 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     constexpr unsigned int tileHeight = numRegs * SIMD_WIDTH / 16;
     ft_vec_t acc[numRegs];
     psqt_vec_t psqt[NUM_PSQT_REGS];
-#if 0 // remove special case optimization
-    if (updaterequest[1] == -1
-        && (removedIndices[0].size == 1 || removedIndices[0].size == 2)
-        && addedIndices[0].size == 1)
+    for (unsigned int i = 0; i < NnueFtHalfdims / tileHeight; i++)
     {
-        ft_vec_t* accTileIn = (ft_vec_t*)(halfkaaccumulation + (lastcomputedply * 2 + c) * NnueFtHalfdims);
-        ft_vec_t* accTileOut = (ft_vec_t*)(halfkaaccumulation + (updaterequest[0] * 2 + c) * NnueFtHalfdims);
-        const unsigned int offR0 = NnueFtHalfdims * removedIndices[0].values[0];
-        ft_vec_t* colR0 = (ft_vec_t*)(weight + offR0);
-        const unsigned int offA0 = NnueFtHalfdims * addedIndices[0].values[0];
-        ft_vec_t* colA0 = (ft_vec_t*)(weight + offA0);
-        if (removedIndices[0].size == 1)
+        ft_vec_t* accTile = (ft_vec_t*)(acmbase + (lastcomputedply * 2 + c) * NnueFtHalfdims + i * tileHeight);
+        for (unsigned int j = 0; j < numRegs; j++)
+            acc[j] = vec_load(&accTile[j]);
+        for (unsigned int l = 0; updaterequest[l] >= 0; l++)
         {
-            for (unsigned int k = 0; k < NnueFtHalfdims * sizeof(int16_t) / sizeof(ft_vec_t); k++)
-                accTileOut[k] = vec_add_16(vec_sub_16(accTileIn[k], colR0[k]), colA0[k]);
-        }
-        else {
-            const unsigned int offR1 = NnueFtHalfdims * removedIndices[0].values[1];
-            ft_vec_t* colR1 = (ft_vec_t*)(weight + offR1);
-            for (unsigned int k = 0; k < NnueFtHalfdims * sizeof(int16_t) / sizeof(ft_vec_t); k++)
-                accTileOut[k] = vec_sub_16(vec_add_16(accTileIn[k], colA0[k]), vec_add_16(colR0[k], colR1[k]));
-        }
+            // Difference calculation for the deactivated features
+            for (unsigned int k = 0; k < removedIndices[l].size; k++)
+            {
+                unsigned int index = removedIndices[l].values[k];
+                const unsigned int offset = NnueFtHalfdims * index + i * tileHeight;
+                if (Ft == NnueFeatuteHalfKa) {
+                    ft_vec_t* column = (ft_vec_t*)(weight16 + offset);
+                    for (unsigned int j = 0; j < numRegs; j++)
+                        acc[j] = vec_sub_16(acc[j], column[j]);
+                }
+                else {
+                    vec_i8_t* column = (vec_i8_t*)(weight8 + offset);
+                    for (unsigned int j = 0; j < numRegs; j++)
+                        acc[j] = vec_sub_16(acc[j], vec_convert_8_16(column[j]));
+                }
+            }
 
-        psqt_vec_t* accTilePsqtIn = (psqt_vec_t*)(psqthalfkaAccumulation + (lastcomputedply * 2 + c) * NnuePsqtBuckets);
-        psqt_vec_t* accTilePsqtOut = (psqt_vec_t*)(psqthalfkaAccumulation + (updaterequest[0] * 2 + c) * NnuePsqtBuckets);
-        const unsigned int offPsqtR0 = NnuePsqtBuckets * removedIndices[0].values[0];
-        psqt_vec_t* colPsqtR0 = (psqt_vec_t*)(psqtweight + offPsqtR0);
-        const unsigned int offPsqtA0 = NnuePsqtBuckets * addedIndices[0].values[0];
-        psqt_vec_t* colPsqtA0 = (psqt_vec_t*)(psqtweight + offPsqtA0);
-        if (removedIndices[0].size == 1)
-        {
-            for (unsigned int k = 0; k < NnuePsqtBuckets * sizeof(int32_t) / sizeof(psqt_vec_t); k++)
-                accTilePsqtOut[k] = vec_add_psqt_32(vec_sub_psqt_32(accTilePsqtIn[k], colPsqtR0[k]), colPsqtA0[k]);
-        }
-        else {
-            const unsigned int offPsqtR1 = NnuePsqtBuckets * removedIndices[0].values[1];
-            psqt_vec_t* colPsqtR1 = (psqt_vec_t*)(psqtweight + offPsqtR1);
-            for (unsigned int k = 0; k < NnuePsqtBuckets * sizeof(int32_t) / sizeof(psqt_vec_t); k++)
-                accTilePsqtOut[k] = vec_sub_psqt_32(vec_add_psqt_32(accTilePsqtIn[k], colPsqtA0[k]), vec_add_psqt_32(colPsqtR0[k], colPsqtR1[k]));
+            // Difference calculation for the activated features
+            for (unsigned int k = 0; k < addedIndices[l].size; k++)
+            {
+                unsigned int index = addedIndices[l].values[k];
+                const unsigned int offset = NnueFtHalfdims * index + i * tileHeight;
+                if (Ft == NnueFeatuteHalfKa) {
+                    ft_vec_t* column = (ft_vec_t*)(weight16 + offset);
+                    for (unsigned int j = 0; j < numRegs; j++)
+                        acc[j] = vec_add_16(acc[j], column[j]);
+                }
+                else {
+                    vec_i8_t* column = (vec_i8_t*)(weight8 + offset);
+                    for (unsigned int j = 0; j < numRegs; j++)
+                        acc[j] = vec_add_16(acc[j], vec_convert_8_16(column[j]));
+                }
+            }
+
+            accTile = (ft_vec_t*)(acmbase + (updaterequest[l] * 2 + c) * NnueFtHalfdims + i * tileHeight);
+            for (unsigned int j = 0; j < numRegs; j++)
+                vec_store(&accTile[j], acc[j]);
         }
     }
-    else
-#endif
+
+    int32_t* psqtacm = psqtacmbase + (lastcomputedply * 2 + c) * NnuePsqtBuckets;
+    for (unsigned int i = 0; i < NnuePsqtBuckets / PSQT_TILE_HEIGHT; i++)
     {
-        for (unsigned int i = 0; i < NnueFtHalfdims / tileHeight; i++)
+        psqt_vec_t* accTilePsqt = (psqt_vec_t*)(psqtacm + i * PSQT_TILE_HEIGHT);
+        for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
+            psqt[j] = vec_load_psqt(&accTilePsqt[j]);
+        for (unsigned int l = 0; updaterequest[l] >= 0; l++)
         {
-            ft_vec_t* accTile = (ft_vec_t*)(acmbase + (lastcomputedply * 2 + c) * NnueFtHalfdims + i * tileHeight);
-            for (unsigned int j = 0; j < numRegs; j++)
-                acc[j] = vec_load(&accTile[j]);
-            for (unsigned int l = 0; updaterequest[l] >= 0; l++)
+            for (unsigned int k = 0; k < removedIndices[l].size; k++)
             {
-                // Difference calculation for the deactivated features
-                for (unsigned int k = 0; k < removedIndices[l].size; k++)
-                {
-                    unsigned int index = removedIndices[l].values[k];
-                    const unsigned int offset = NnueFtHalfdims * index + i * tileHeight;
-                    if (Ft == NnueFeatuteHalfKa) {
-                        ft_vec_t* column = (ft_vec_t*)(weight16 + offset);
-                        for (unsigned int j = 0; j < numRegs; j++)
-                            acc[j] = vec_sub_16(acc[j], column[j]);
-                    }
-                    else {
-                        vec_i8_t* column = (vec_i8_t*)(weight8 + offset);
-                        for (unsigned int j = 0; j < numRegs; j++)
-                            acc[j] = vec_sub_16(acc[j], vec_convert_8_16(column[j]));
-                    }
-                }
+                unsigned int index = removedIndices[l].values[k];
+                unsigned int offset = NnuePsqtBuckets * index + i * PSQT_TILE_HEIGHT;
+                psqt_vec_t* columnPsqt = (psqt_vec_t*)(psqtweight + offset);
 
-                // Difference calculation for the activated features
-                for (unsigned int k = 0; k < addedIndices[l].size; k++)
-                {
-                    unsigned int index = addedIndices[l].values[k];
-                    const unsigned int offset = NnueFtHalfdims * index + i * tileHeight;
-                    if (Ft == NnueFeatuteHalfKa) {
-                        ft_vec_t* column = (ft_vec_t*)(weight16 + offset);
-                        for (unsigned int j = 0; j < numRegs; j++)
-                            acc[j] = vec_add_16(acc[j], column[j]);
-                    }
-                    else {
-                        vec_i8_t* column = (vec_i8_t*)(weight8 + offset);
-                        for (unsigned int j = 0; j < numRegs; j++)
-                            acc[j] = vec_add_16(acc[j], vec_convert_8_16(column[j]));
-                    }
-                }
-
-                accTile = (ft_vec_t*)(acmbase + (updaterequest[l] * 2 + c) * NnueFtHalfdims + i * tileHeight);
-                for (unsigned int j = 0; j < numRegs; j++)
-                    vec_store(&accTile[j], acc[j]);
-            }
-        }
-
-        int32_t* psqtacm = psqtacmbase + (lastcomputedply * 2 + c) * NnuePsqtBuckets;
-        for (unsigned int i = 0; i < NnuePsqtBuckets / PSQT_TILE_HEIGHT; i++)
-        {
-            psqt_vec_t* accTilePsqt = (psqt_vec_t*)(psqtacm + i * PSQT_TILE_HEIGHT);
-            for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
-                psqt[j] = vec_load_psqt(&accTilePsqt[j]);
-            for (unsigned int l = 0; updaterequest[l] >= 0; l++)
-            {
-                for (unsigned int k = 0; k < removedIndices[l].size; k++)
-                {
-                    unsigned int index = removedIndices[l].values[k];
-                    unsigned int offset = NnuePsqtBuckets * index + i * PSQT_TILE_HEIGHT;
-                    psqt_vec_t* columnPsqt = (psqt_vec_t*)(psqtweight + offset);
-
-                    for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
-                        psqt[j] = vec_sub_psqt_32(psqt[j], columnPsqt[j]);
-                }
-
-                for (unsigned int k = 0; k < addedIndices[l].size; k++)
-                {
-                    unsigned int index = addedIndices[l].values[k];
-                    unsigned int offset = NnuePsqtBuckets * index + i * PSQT_TILE_HEIGHT;
-                    psqt_vec_t* columnPsqt = (psqt_vec_t*)(psqtweight + offset);
-
-                    for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
-                        psqt[j] = vec_add_psqt_32(psqt[j], columnPsqt[j]);
-                }
-
-                psqtacm = psqtacmbase + (updaterequest[l] * 2 + c) * NnuePsqtBuckets;
-                accTilePsqt = (psqt_vec_t*)(psqtacm + i * PSQT_TILE_HEIGHT);
                 for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
-                    vec_store_psqt(&accTilePsqt[j], psqt[j]);
+                    psqt[j] = vec_sub_psqt_32(psqt[j], columnPsqt[j]);
             }
+
+            for (unsigned int k = 0; k < addedIndices[l].size; k++)
+            {
+                unsigned int index = addedIndices[l].values[k];
+                unsigned int offset = NnuePsqtBuckets * index + i * PSQT_TILE_HEIGHT;
+                psqt_vec_t* columnPsqt = (psqt_vec_t*)(psqtweight + offset);
+
+                for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
+                    psqt[j] = vec_add_psqt_32(psqt[j], columnPsqt[j]);
+            }
+
+            psqtacm = psqtacmbase + (updaterequest[l] * 2 + c) * NnuePsqtBuckets;
+            accTilePsqt = (psqt_vec_t*)(psqtacm + i * PSQT_TILE_HEIGHT);
+            for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
+                vec_store_psqt(&accTilePsqt[j], psqt[j]);
         }
     }
 #else
@@ -1678,211 +1636,6 @@ template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> vo
             *(psqtacm + i) += psqtweight[index * NnuePsqtBuckets + i];
     }
 #endif
-
-#ifdef xUSE_SIMD
-    constexpr unsigned int numRegs = (NUM_REGS > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : NUM_REGS);
-    constexpr unsigned int tileHeight = numRegs * SIMD_WIDTH / 16;
-    ft_vec_t acc[numRegs];
-    psqt_vec_t psqt[NUM_PSQT_REGS];
-
-
-#else
-#if 0
-    for (unsigned int l = 0; updaterequest[l] >= 0; l++)
-    {
-        memcpy(accumulation + (updaterequest[l] * 2 + c) * NnueFtHalfdims, accumulation + (lastcomputedply * 2 + c) * NnueFtHalfdims, NnueFtHalfdims * sizeof(int16_t));
-        memcpy(psqtAccumulation + (updaterequest[l] * 2 + c) * NnuePsqtBuckets, psqtAccumulation + (lastcomputedply * 2 + c) * NnuePsqtBuckets, NnuePsqtBuckets * sizeof(int32_t));
-
-        lastcomputedply = updaterequest[l];
-        int16_t* acm = accumulation + (lastcomputedply * 2 + c) * NnueFtHalfdims;
-        int32_t* psqtacm = psqtAccumulation + (lastcomputedply * 2 + c) * NnuePsqtBuckets;
-        // Difference calculation for the deactivated features
-        for (unsigned int k = 0; k < removedIndices[l].size; k++)
-        {
-            unsigned int index = removedIndices[l].values[k];
-            const unsigned int offset = NnueFtHalfdims * index;
-
-            for (unsigned int j = 0; j < NnueFtHalfdims; j++)
-                *(acm + j) -= weight[offset + j];
-
-            for (unsigned int i = 0; i < NnuePsqtBuckets; i++)
-                *(psqtacm + i) -= psqtweight[index * NnuePsqtBuckets + i];
-        }
-
-        // Difference calculation for the activated features
-        for (unsigned int k = 0; k < addedIndices[l].size; k++)
-        {
-            unsigned int index = addedIndices[l].values[k];
-            const unsigned int offset = NnueFtHalfdims * index;
-
-            for (unsigned int j = 0; j < NnueFtHalfdims; j++)
-                *(acm + j) += weight[offset + j];
-
-            for (unsigned int i = 0; i < NnuePsqtBuckets; i++)
-                *(psqtacm + i) += psqtweight[index * NnuePsqtBuckets + i];
-        }
-    }
-
-    toAcc = fromAcc;
-    toPsqtAcc = fromPsqtAcc;
-
-    for (const auto index : removed)
-    {
-        const IndexType offset = Dimensions * index;
-
-        for (IndexType j = 0; j < Dimensions; ++j)
-            toAcc[j] -= featureTransformer.threatWeights[offset + j];
-
-        for (std::size_t k = 0; k < PSQTBuckets; ++k)
-            toPsqtAcc[k] -= featureTransformer.threatPsqtWeights[index * PSQTBuckets + k];
-    }
-
-    for (const auto index : added)
-    {
-        const IndexType offset = Dimensions * index;
-
-        for (IndexType j = 0; j < Dimensions; ++j)
-            toAcc[j] += featureTransformer.threatWeights[offset + j];
-
-        for (std::size_t k = 0; k < PSQTBuckets; ++k)
-            toPsqtAcc[k] += featureTransformer.threatPsqtWeights[index * PSQTBuckets + k];
-    }
-#endif
-#endif
-
-#if 0
-    constexpr IndexType Dimensions = FeatureTransformer::OutputDimensions;
-
-    const auto& fromAcc = from.accumulation[perspective];
-    auto& toAcc = to.accumulation[perspective];
-
-    const auto& fromPsqtAcc = from.psqtAccumulation[perspective];
-    auto& toPsqtAcc = to.psqtAccumulation[perspective];
-
-#ifdef USE_SIMD
-    using Tiling = SIMDTiling<Dimensions, Dimensions, PSQTBuckets>;
-
-    vec_t      acc[Tiling::NumRegs];
-    psqt_vec_t psqt[Tiling::NumPsqtRegs];
-
-    const auto* threatWeights = &featureTransformer.threatWeights[0];
-
-    for (IndexType j = 0; j < Dimensions / Tiling::TileHeight; ++j)
-    {
-        auto* fromTile = reinterpret_cast<const vec_t*>(&fromAcc[j * Tiling::TileHeight]);
-        auto* toTile = reinterpret_cast<vec_t*>(&toAcc[j * Tiling::TileHeight]);
-
-        for (IndexType k = 0; k < Tiling::NumRegs; ++k)
-            acc[k] = fromTile[k];
-
-        for (int i = 0; i < removed.ssize(); ++i)
-        {
-            size_t       index = removed[i];
-            const size_t offset = Dimensions * index;
-            auto* column = reinterpret_cast<const vec_i8_t*>(&threatWeights[offset]);
-
-#ifdef USE_NEON
-            for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
-            {
-                acc[k] = vsubw_s8(acc[k], vget_low_s8(column[k / 2]));
-                acc[k + 1] = vsubw_high_s8(acc[k + 1], column[k / 2]);
-            }
-#else
-            for (IndexType k = 0; k < Tiling::NumRegs; ++k)
-                acc[k] = vec_sub_16(acc[k], vec_convert_8_16(column[k]));
-#endif
-        }
-
-        for (int i = 0; i < added.ssize(); ++i)
-        {
-            size_t       index = added[i];
-            const size_t offset = Dimensions * index;
-            auto* column = reinterpret_cast<const vec_i8_t*>(&threatWeights[offset]);
-
-#ifdef USE_NEON
-            for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
-            {
-                acc[k] = vaddw_s8(acc[k], vget_low_s8(column[k / 2]));
-                acc[k + 1] = vaddw_high_s8(acc[k + 1], column[k / 2]);
-            }
-#else
-            for (IndexType k = 0; k < Tiling::NumRegs; ++k)
-                acc[k] = vec_add_16(acc[k], vec_convert_8_16(column[k]));
-#endif
-        }
-
-        for (IndexType k = 0; k < Tiling::NumRegs; k++)
-            vec_store(&toTile[k], acc[k]);
-
-        threatWeights += Tiling::TileHeight;
-    }
-
-    for (IndexType j = 0; j < PSQTBuckets / Tiling::PsqtTileHeight; ++j)
-    {
-        auto* fromTilePsqt =
-            reinterpret_cast<const psqt_vec_t*>(&fromPsqtAcc[j * Tiling::PsqtTileHeight]);
-        auto* toTilePsqt =
-            reinterpret_cast<psqt_vec_t*>(&toPsqtAcc[j * Tiling::PsqtTileHeight]);
-
-        for (IndexType k = 0; k < Tiling::NumPsqtRegs; ++k)
-            psqt[k] = fromTilePsqt[k];
-
-        for (int i = 0; i < removed.ssize(); ++i)
-        {
-            size_t       index = removed[i];
-            const size_t offset = PSQTBuckets * index + j * Tiling::PsqtTileHeight;
-            auto* columnPsqt = reinterpret_cast<const psqt_vec_t*>(
-                &featureTransformer.threatPsqtWeights[offset]);
-
-            for (std::size_t k = 0; k < Tiling::NumPsqtRegs; ++k)
-                psqt[k] = vec_sub_psqt_32(psqt[k], columnPsqt[k]);
-        }
-
-        for (int i = 0; i < added.ssize(); ++i)
-        {
-            size_t       index = added[i];
-            const size_t offset = PSQTBuckets * index + j * Tiling::PsqtTileHeight;
-            auto* columnPsqt = reinterpret_cast<const psqt_vec_t*>(
-                &featureTransformer.threatPsqtWeights[offset]);
-
-            for (std::size_t k = 0; k < Tiling::NumPsqtRegs; ++k)
-                psqt[k] = vec_add_psqt_32(psqt[k], columnPsqt[k]);
-        }
-
-        for (IndexType k = 0; k < Tiling::NumPsqtRegs; ++k)
-            vec_store_psqt(&toTilePsqt[k], psqt[k]);
-    }
-
-#else
-
-    toAcc = fromAcc;
-    toPsqtAcc = fromPsqtAcc;
-
-    for (const auto index : removed)
-    {
-        const IndexType offset = Dimensions * index;
-
-        for (IndexType j = 0; j < Dimensions; ++j)
-            toAcc[j] -= featureTransformer.threatWeights[offset + j];
-
-        for (std::size_t k = 0; k < PSQTBuckets; ++k)
-            toPsqtAcc[k] -= featureTransformer.threatPsqtWeights[index * PSQTBuckets + k];
-    }
-
-    for (const auto index : added)
-    {
-        const IndexType offset = Dimensions * index;
-
-        for (IndexType j = 0; j < Dimensions; ++j)
-            toAcc[j] += featureTransformer.threatWeights[offset + j];
-
-        for (std::size_t k = 0; k < PSQTBuckets; ++k)
-            toPsqtAcc[k] += featureTransformer.threatPsqtWeights[index * PSQTBuckets + k];
-    }
-
-#endif
-#endif
-
 
 #ifdef NNUEDEBUG
     FeaturesDebug(c, addedIndices);
@@ -2098,15 +1851,49 @@ int chessposition::Transform(clipped_t *output, int bucket)
     {
         const unsigned int offset = (Nt == NnueArchV1 ? NnueFtHalfdims * p : NnueFtHalfdims / 2 * p);
 
-#ifdef xUSE_SIMD
-        if (Nt == NnueArchV5)
+#ifdef USE_SIMD
+        if (Nt == NnueArchV13)
+        {
+            const unsigned int numChunks = NnueFtHalfdims / 2 / MAXCHUNKSIZE;
+            ft_vec_t Zero = vec_zero();
+            ft_vec_t One = vec_set_16(255);
+            constexpr int shift =
+#if defined(USE_SSE2)
+                7;
+#else
+                6;
+#endif
+            const ft_vec_t* in0 = (ft_vec_t*)(halfkaacm + perspectives[p] * NnueFtHalfdims);
+            const ft_vec_t* in1 = (ft_vec_t*)(halfkaacm + perspectives[p] * NnueFtHalfdims + NnueFtHalfdims / 2);
+            const ft_vec_t* tin0 = (ft_vec_t*)(threatacm + perspectives[p] * NnueFtHalfdims);
+            const ft_vec_t* tin1 = (ft_vec_t*)(threatacm + perspectives[p] * NnueFtHalfdims + NnueFtHalfdims / 2);
+            ftout_vec_t* out = (ftout_vec_t*)&output[offset];
+            for (unsigned int i = 0; i < numChunks; i++)
+            {
+                const ft_vec_t acc0a = vec_add_16(in0[i * 2 + 0], tin0[i * 2 + 0]);
+                const ft_vec_t acc0b = vec_add_16(in0[i * 2 + 1], tin0[i * 2 + 1]);
+                const ft_vec_t acc1a = vec_add_16(in1[i * 2 + 0], tin1[i * 2 + 0]);
+                const ft_vec_t acc1b = vec_add_16(in1[i * 2 + 1], tin1[i * 2 + 1]);
+
+                const ft_vec_t sum0a = vec_slli_16(vec_max_16(vec_min_16(acc0a, One), Zero), shift);
+                const ft_vec_t sum0b = vec_slli_16(vec_max_16(vec_min_16(acc0b, One), Zero), shift);
+                const ft_vec_t sum1a = vec_min_16(acc1a, One);
+                const ft_vec_t sum1b = vec_min_16(acc1b, One);
+
+                const ft_vec_t pa = vec_mulhi_16(sum0a, sum1a);
+                const ft_vec_t pb = vec_mulhi_16(sum0b, sum1b);
+
+                out[i] = vec_permutepackus_16(pa, pb); // FIXME: Pre-Permute weights to avoid _mm256_permute4x64_epi64
+            }
+        }
+        else if (Nt == NnueArchV5)
         {
             const unsigned int numChunks = NnueFtHalfdims / 2 / MAXCHUNKSIZE;
             ft_vec_t Zero = vec_zero();
             ft_vec_t One = vec_set_16(127);
 
-            const ft_vec_t* in0 = (ft_vec_t*)(acm + perspectives[p] * NnueFtHalfdims);
-            const ft_vec_t* in1 = (ft_vec_t*)(acm + perspectives[p] * NnueFtHalfdims + NnueFtHalfdims / 2);
+            const ft_vec_t* in0 = (ft_vec_t*)(halfkaacm + perspectives[p] * NnueFtHalfdims);
+            const ft_vec_t* in1 = (ft_vec_t*)(halfkaacm + perspectives[p] * NnueFtHalfdims + NnueFtHalfdims / 2);
             ftout_vec_t* out = (ftout_vec_t*)&output[offset];
             for (unsigned int i = 0; i < numChunks; i++)
             {
@@ -2128,8 +1915,8 @@ int chessposition::Transform(clipped_t *output, int bucket)
 #endif
             }
         }
-        else {
-            const ft_vec_t* acc = (ft_vec_t*)(acm + perspectives[p] * NnueFtHalfdims);
+        else { // NnueArchV1
+            const ft_vec_t* acc = (ft_vec_t*)(halfkaacm + perspectives[p] * NnueFtHalfdims);
             constexpr unsigned int numChunks = (16 * NnueFtHalfdims) / SIMD_WIDTH;
             ftout_vec_t* out = (ftout_vec_t*)&output[offset];
 #ifdef USE_FASTSSE2
