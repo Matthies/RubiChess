@@ -1393,9 +1393,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     int nextchangedply = lastcomputedply + 1;
     int nextcomputeply;
     int chainindex = 0;
-    cout << (Ft == NnueFeatuteHalfKa ? "HalfKA" : "Threats") << " last computed ply: " << lastcomputedply << "  Next compute ply:";
     while ((nextcomputeply = updaterequest[chainindex]) >= 0) {
-        cout << " " << nextcomputeply;
         removedIndices[chainindex].size = addedIndices[chainindex].size = 0;
         if (Ft == NnueFeatuteHalfKa)
             halfkacomputationState[nextcomputeply][c] = true;
@@ -1410,7 +1408,6 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
         }
         chainindex++;
     }
-    cout << "\n";
 #ifdef NNUEDEBUG
     for (unsigned i = 0; updaterequest[i] >= 0; i++)
     {
