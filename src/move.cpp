@@ -628,10 +628,15 @@ void chessposition::playNullMove()
     DirtyPieces* dp = &dirtypieces[ply];
     dp->dirtyNum = 0;
     dp->pc[0] = 0; // don't break search for updatable positions on stack
+    DirtyThreats* dt = &dirtythreats[ply];
+    //dt->us = s2m;  // FIXME: These two need further investigation
+    //dt->prevKsq = kingpos[s2m];
+    dt->size = 0;
+
     halfkacomputationState[ply][WHITE] = false;
     halfkacomputationState[ply][BLACK] = false;
-    threatcomputationState[ply + 1][WHITE] = false;
-    threatcomputationState[ply + 1][BLACK] = false;
+    threatcomputationState[ply][WHITE] = false;
+    threatcomputationState[ply][BLACK] = false;
 }
 
 
