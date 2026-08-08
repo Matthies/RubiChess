@@ -629,8 +629,7 @@ void chessposition::playNullMove()
     dp->dirtyNum = 0;
     dp->pc[0] = 0; // don't break search for updatable positions on stack
     DirtyThreats* dt = &dirtythreats[ply];
-    //dt->us = s2m;  // FIXME: These two need further investigation
-    //dt->prevKsq = kingpos[s2m];
+    dt->us = 2;  // easiest way to make the "needs update" test fail
     dt->size = 0;
 
     halfkacomputationState[ply][WHITE] = false;
@@ -943,10 +942,10 @@ void chessposition::unplayMove(uint32_t mc)
         PieceCode kingpc = (PieceCode)(WKING | s2m);
         PieceCode rookpc = (PieceCode)(WROOK | s2m);
 
-        mailbox[kingto] = BLANK;
-        mailbox[rookto] = BLANK;
-        mailbox[kingfrom] = kingpc;
-        mailbox[rookfrom] = rookpc;
+        //mailbox[kingto] = BLANK;
+        //mailbox[rookto] = BLANK;
+        //mailbox[kingfrom] = kingpc;
+        //mailbox[rookfrom] = rookpc;
 
         if (kingfrom != kingto)
             BitboardMove(kingto, kingfrom, kingpc);
@@ -963,7 +962,7 @@ void chessposition::unplayMove(uint32_t mc)
         PieceCode promote = GETPROMOTION(mc);
         PieceCode capture = GETCAPTURE(mc);
 
-        mailbox[from] = pfrom;
+        //mailbox[from] = pfrom;
         if (promote != BLANK)
         {
             BitboardClear(to, promote);
@@ -980,19 +979,19 @@ void chessposition::unplayMove(uint32_t mc)
                 // special ep capture
                 int epfield = (from & 0x38) | (to & 0x07);
                 BitboardSet(epfield, capture);
-                mailbox[epfield] = capture;
-                mailbox[to] = BLANK;
+                //mailbox[epfield] = capture;
+                //mailbox[to] = BLANK;
             }
             else
             {
                 BitboardSet(to, capture);
-                mailbox[to] = capture;
+                //mailbox[to] = capture;
             }
             if (!LiteMode)
                 piececount++;
         }
         else {
-            mailbox[to] = BLANK;
+            //mailbox[to] = BLANK;
         }
     }
 }

@@ -1285,7 +1285,7 @@ template <NnueType Nt, Color c, int N> bool chessposition::GetThreatAcccumulator
     int mslast = ply;
     // A full update needs activation of all pieces (except kings for V1)
     //int fullupdatecost = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]) - (Nt == NnueArchV1 ? 2 : 0);
-
+    
     while (mslast > 0 && !threatcomputationState[mslast][c])
     {
         // search for position with computed accu on stack that leads to current position by differential updates
