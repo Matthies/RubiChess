@@ -50,8 +50,8 @@
 // Enable this to enable NNUE training code
 //#define NNUELEARN
 
-// Enable this to enable NNUE debug output
-//#define NNUEDEBUG
+// Enable this to enable NNUE debug output 1=everything 2=only last layer
+//#define NNUEDEBUG 1
 
 // Enable this to compile support for asserts including stack trace
 // MSVC only, link with DbgHelp.lib

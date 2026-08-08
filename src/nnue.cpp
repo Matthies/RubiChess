@@ -334,6 +334,7 @@ public:
         int fwdout = network.hidden1_values[NnueHidden1Out] * (600 * 1024 / sps.nnuevaluescale) / (127 * (1 << NnueClippingShift));
         int positional = network.out_value + fwdout;
 #ifdef NNUEDEBUG
+        cout << "\nPosition        : " << pos->toFen();
         cout << "\npsqt eval       : " << setfill(' ') << setw(5) << fwdout;
         cout << "\npositional eval : " << setfill(' ') << setw(5) << positional;
         cout << "\ntotal nnue      : " << setfill(' ') << setw(5) << (psqt + positional) << "\n\n";
@@ -557,6 +558,7 @@ public:
         int fwdout = network.hidden1_values[NnueHidden1Out] * (600 * 16) / (127 * (1 << NnueClippingShift));
         int positional = network.out_value + fwdout;
 #ifdef NNUEDEBUG
+        cout << "\nPosition        : " << pos->toFen();
         cout << "\nfwdout          : " << setfill(' ') << setw(5) << fwdout;
         cout << "\nnetwork         : " << setfill(' ') << setw(5) << network.out_value;
         cout << "\ntotal           : " << setfill(' ') << setw(5) << positional;
@@ -936,7 +938,7 @@ template <Color perspective> void chessposition::ThreatsAppendActiveIndices(Nnue
             const PieceCode attackerRubi = WPAWN | c;
             const U64 cPawns = piece00[attackerRubi];
             // Set of pawns which are prevented from movement by a pawn in front of them
-            const U64 pushers = PAWNPUSH(~c, pawns) & cPawns;
+            const U64 pushers = PAWNPUSH(c ^ 1, pawns) & cPawns;
 
             auto process_pawn_attacks = [&](U64 attacks, int attkDir) {
                 while (attacks)
@@ -955,13 +957,13 @@ template <Color perspective> void chessposition::ThreatsAppendActiveIndices(Nnue
             {
                 process_pawn_attacks(((cPawns & ~FILEHBB) << 9) & occupied, 9);
                 process_pawn_attacks(((cPawns & ~FILEABB) << 7) & occupied, 7);
-                process_pawn_attacks((cPawns << 8) & occupied, 8);
+                process_pawn_attacks((pushers << 8), 8);
             }
             else
             {
                 process_pawn_attacks(((cPawns & ~FILEABB) >> 9) & occupied, -9);
                 process_pawn_attacks(((cPawns & ~FILEHBB) >> 7) & occupied, -7);
-                process_pawn_attacks((cPawns >> 8) & occupied, -8);
+                process_pawn_attacks((pushers >> 8), -8);
             }
         }
 
@@ -1366,7 +1368,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 
 }
 
-#ifdef NNUEDEBUG
+#if NNUEDEBUG == 1
 void FeaturesDebug(int c, NnueIndexList addedIndices, NnueIndexList removedIndices = {})
 {
     cout << dec << "Feature changes (c=" << c << ")\nFeatures added : " << addedIndices.size << "\n";
@@ -1381,7 +1383,7 @@ void FeaturesDebug(int c, NnueIndexList addedIndices, NnueIndexList removedIndic
 
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets, int N, NnueFeatureType Ft> void chessposition::AccumulatorIncrementalUpdate(int* updaterequest)
 {
-#ifdef NNUEDEBUG
+#if NNUEDEBUG == 1
     cout << "\nAccumulatorIncrementalUpdate (" << (Ft == NnueFeatuteHalfKa ? "HalfKA" : "Threats") << ")\n";
     NnueIndexList removedIndicesDebug, addedIndicesDebug;
     removedIndicesDebug.size = addedIndicesDebug.size = 0;
@@ -1408,7 +1410,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
         }
         chainindex++;
     }
-#ifdef NNUEDEBUG
+#if NNUEDEBUG == 1
     for (unsigned i = 0; updaterequest[i] >= 0; i++)
     {
         for (size_t j = 0; j < addedIndices[i].size; j++)
@@ -1547,7 +1549,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     }
 #endif
 
-#ifdef NNUEDEBUG
+#if NNUEDEBUG == 1
     FeaturesDebug(c, addedIndicesDebug, removedIndicesDebug);
     AccumulatorDebug<Nt, c, NnueFtHalfdims, NnuePsqtBuckets>(acmbase, psqtacmbase);
 #endif
@@ -1555,7 +1557,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 
 template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::ThreatsAccumulatorRefresh()
 {
-#ifdef NNUEDEBUG
+#if NNUEDEBUG == 1
     cout << "Threats AccumulatorRefresh\n";
 #endif
     // Full update of threats feature accumulator
@@ -1637,7 +1639,7 @@ template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> vo
     }
 #endif
 
-#ifdef NNUEDEBUG
+#if NNUEDEBUG == 1
     FeaturesDebug(c, addedIndices);
     AccumulatorDebug<NnueArchV13, c, NnueFtHalfdims, NnuePsqtBuckets>(threataccumulation, psqtthreatAccumulation);
 
@@ -1648,7 +1650,7 @@ template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> vo
 
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::HalfkaAccumulatorRefresh()
 {
-#ifdef NNUEDEBUG
+#if NNUEDEBUG == 1
     cout << "Half KA V2 AccumulatorRefresh\n";
 #endif
     // Full update of accumulator using Finny tables cache
@@ -1789,7 +1791,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     int32_t* psqtacm = psqthalfkaAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
     memcpy(psqtacm, cachepsqtaccumulation, NnuePsqtBuckets * sizeof(int32_t));
 
-#ifdef NNUEDEBUG
+#if NNUEDEBUG == 1
     FeaturesDebug(c, addedIndices, removedIndices);
     AccumulatorDebug<Nt, c, NnueFtHalfdims, NnuePsqtBuckets>(halfkaaccumulation, psqthalfkaAccumulation);
 #endif
@@ -1797,7 +1799,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 
 
 
-#ifdef NNUEDEBUG
+#if NNUEDEBUG == 1
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::AccumulatorDebug(int16_t* accumulation, int32_t* psqtAccumulation)
 {
     int16_t* acm = accumulation + (ply * 2 + c) * NnueFtHalfdims;
@@ -1961,7 +1963,7 @@ int chessposition::Transform(clipped_t *output, int bucket)
 #endif
     }
 
-#ifdef NNUEDEBUG
+#if NNUEDEBUG == 1
     cout << "\ninput layer:\n";
     for (unsigned int i = 0; i < NnueFtHalfdims; i++) {
         cout << hex << setfill('0') << setw(2) << (int)output[i] << " ";
@@ -2346,7 +2348,7 @@ void NnueNetworkLayer<inputdims, outputdims>::Propagate(clipped_t* input, int32_
 #endif
         PropagateNative(input, output);
 
-#ifdef NNUEDEBUG
+#if NNUEDEBUG == 1
     cout << "\nnetwork layer:\n";
     for (unsigned int i = 0; i < outputdims; i++) {
         cout << dec << setfill(' ') << setw(6) << (int)output[i] << " ";
@@ -2510,7 +2512,7 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
     total_count += count;
 #endif
 
-#ifdef NNUEDEBUG
+#if NNUEDEBUG == 1
     cout << "\nSparse propagation:\n";
 #endif
     // Step 2: Process the collected nonzero blocks
@@ -2526,7 +2528,7 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
         const sprsin_vec_t* col = (const sprsin_vec_t*)&weight[i * outputdims * ChunkSize];
         for (unsigned int k = 0; k < NumRegs; ++k)
             vec_add_dpbusd_32(acc[k], in, col[k]);
-#ifdef NNUEDEBUG
+#if NNUEDEBUG == 1
         cout << hex << setfill('0') << setw(3) << i << " " << setfill('0') << setw(8) << input32[i] << "  ";
         cout << "in: " << setfill('0') << setw(16) << ((uint64_t*)&in)[0] << " col: " << setfill('0') << setw(16) << ((uint64_t*)col)[0] << " ";
         if (j % 2)
@@ -2713,7 +2715,7 @@ void NnueClippedRelu<dims, clippingshift>::Propagate(int32_t *input, clipped_t *
         output[i] = max(0, min(127, input[i] >> clippingshift));
 #endif
 
-#ifdef NNUEDEBUG
+#if NNUEDEBUG == 1
     cout << "\nclipped relu:\n";
     for (unsigned int i = 0; i < dims; i++) {
         cout << hex << setfill('0') << setw(2) << (int)output[i] << " ";
@@ -2763,7 +2765,7 @@ void NnueSqrClippedRelu<dims>::Propagate(int32_t* input, clipped_t* output)
     }
 #endif
 
-#ifdef NNUEDEBUG
+#if NNUEDEBUG == 1
     cout << "\nsqrclipped relu:\n";
     for (unsigned int i = 0; i < dims; i++) {
         cout << hex << setfill('0') << setw(2) << (int)output[i] << " ";
