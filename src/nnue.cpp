@@ -555,7 +555,7 @@ public:
         LayerStack[bucket].NnueCl2.Propagate(network.hidden2_values, network.hidden2_clipped);
         LayerStack[bucket].NnueOut.Propagate(network.hidden2_clipped, &network.out_value);
 
-        int fwdout = network.hidden1_values[NnueHidden1Out] * (600 * 16) / (127 * (1 << NnueClippingShift));
+        int fwdout = network.hidden1_values[NnueHidden1Out] * (600 * 1024 / 64) / (127 * (1 << NnueClippingShift));
         int positional = network.out_value + fwdout;
 #ifdef NNUEDEBUG
         cout << "\nPosition        : " << pos->toFen();
@@ -1515,12 +1515,12 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 #else
     for (unsigned int l = 0; updaterequest[l] >= 0; l++)
     {
-        memcpy(halfkaaccumulation + (updaterequest[l] * 2 + c) * NnueFtHalfdims, halfkaaccumulation + (lastcomputedply * 2 + c) * NnueFtHalfdims, NnueFtHalfdims * sizeof(int16_t));
-        memcpy(psqthalfkaAccumulation + (updaterequest[l] * 2 + c) * NnuePsqtBuckets, psqthalfkaAccumulation + (lastcomputedply * 2 + c) * NnuePsqtBuckets, NnuePsqtBuckets * sizeof(int32_t));
+        memcpy(acmbase + (updaterequest[l] * 2 + c) * NnueFtHalfdims, acmbase + (lastcomputedply * 2 + c) * NnueFtHalfdims, NnueFtHalfdims * sizeof(int16_t));
+        memcpy(psqtacmbase + (updaterequest[l] * 2 + c) * NnuePsqtBuckets, psqtacmbase + (lastcomputedply * 2 + c) * NnuePsqtBuckets, NnuePsqtBuckets * sizeof(int32_t));
 
         lastcomputedply = updaterequest[l];
-        int16_t* acm = halfkaaccumulation + (lastcomputedply * 2 + c) * NnueFtHalfdims;
-        int32_t* psqtacm = psqthalfkaAccumulation + (lastcomputedply * 2 + c) * NnuePsqtBuckets;
+        int16_t* acm = acmbase + (lastcomputedply * 2 + c) * NnueFtHalfdims;
+        int32_t* psqtacm = psqtacmbase + (lastcomputedply * 2 + c) * NnuePsqtBuckets;
         // Difference calculation for the deactivated features
         for (unsigned int k = 0; k < removedIndices[l].size; k++)
         {
@@ -1528,7 +1528,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
             const unsigned int offset = NnueFtHalfdims * index;
 
             for (unsigned int j = 0; j < NnueFtHalfdims; j++)
-                *(acm + j) -= weight[offset + j];
+                *(acm + j) -= (Ft == NnueFeatuteHalfKa ? weight16[offset + j] : weight8[offset + j]);
 
             for (unsigned int i = 0; i < NnuePsqtBuckets; i++)
                 *(psqtacm + i) -= psqtweight[index * NnuePsqtBuckets + i];
@@ -1541,7 +1541,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
             const unsigned int offset = NnueFtHalfdims * index;
 
             for (unsigned int j = 0; j < NnueFtHalfdims; j++)
-                *(acm + j) += weight[offset + j];
+                *(acm + j) += (Ft == NnueFeatuteHalfKa ? weight16[offset + j] : weight8[offset + j]);
 
             for (unsigned int i = 0; i < NnuePsqtBuckets; i++)
                 *(psqtacm + i) += psqtweight[index * NnuePsqtBuckets + i];
