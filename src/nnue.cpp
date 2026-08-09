@@ -454,7 +454,7 @@ class NnueArchitectureV13 : public NnueArchitecture {
 public:
     static constexpr unsigned int NnueFtHalfdims = NnueFtOutputdims;
     static constexpr unsigned int NnueFtInputdims = 64 * 11 * 64 / 2;
-    static constexpr unsigned int NnueThreatsFtInputdims = 0xed30;
+    static constexpr unsigned int NnueThreatsFtInputdims = NUMTHREATSFEATURES;
     static constexpr unsigned int NnueHidden1Dims = 32;
     static constexpr unsigned int NnueHidden1Out = 31;
     static constexpr unsigned int NnueHidden2Dims = 32;
@@ -544,6 +544,9 @@ public:
             alignas(64)int32_t out_value;
         } network;
 
+#ifdef NNUEDEBUG
+        cout << "\nPosition        : " << pos->toFen();
+#endif
         int bucket = (POPCOUNT(pos->occupied00[WHITE] | pos->occupied00[BLACK]) - 1) / 4;
         int psqt = pos->Transform<NnueArchV13, NnueFtHalfdims, NnuePsqtBuckets>(network.input, bucket);
         LayerStack[bucket].NnueHd1.Propagate(network.input, network.hidden1_values);
@@ -558,12 +561,10 @@ public:
         int fwdout = network.hidden1_values[NnueHidden1Out] * (600 * 1024 / 64) / (127 * (1 << NnueClippingShift));
         int positional = network.out_value + fwdout;
 #ifdef NNUEDEBUG
-        cout << "\nPosition        : " << pos->toFen();
         cout << "\nfwdout          : " << setfill(' ') << setw(5) << fwdout;
         cout << "\nnetwork         : " << setfill(' ') << setw(5) << network.out_value;
         cout << "\ntotal           : " << setfill(' ') << setw(5) << positional;
         cout << "\npsqt eval       : " << setfill(' ') << setw(5) << psqt;
-        cout << "\npositional eval : " << setfill(' ') << setw(5) << positional;
         cout << "\ntotal nnue      : " << setfill(' ') << setw(5) << (psqt + positional) << "\n\n";
 #endif
         return (psqt + positional) * sps.nnuevaluescale / 1024;
@@ -864,9 +865,10 @@ inline uint32_t fullthreats_make_index(
     unsigned    attacker_oriented = attacker ^ swap;
     unsigned    attacked_oriented = attacked ^ swap;
 
-    return index_lut1[attacker_oriented][attacked_oriented][from_oriented < to_oriented]
+    uint32_t index = index_lut1[attacker_oriented][attacked_oriented][from_oriented < to_oriented]
         + offsets[attacker_oriented][from_oriented]
         + index_lut2[attacker_oriented][from_oriented][to_oriented];
+    return index;
 }
 
 //
@@ -1005,7 +1007,8 @@ template <NnueType Nt, Color c> void chessposition::ThreatsAppendChangedIndices(
         unsigned to = data >> 8 & 0xff;
         uint32_t index = fullthreats_make_index(c, attacker, from, to, attacked, ksq);
         NnueIndexList* insert = (bAdd ? add : remove);
-        insert->values[insert->size++] = index;
+        insert->values[insert->size] = index;
+        insert->size += (index < NUMTHREATSFEATURES);
     }
 }
 

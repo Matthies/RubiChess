@@ -807,6 +807,7 @@ void GetStackWalk(chessposition *pos, const char* message, const char* _File, in
 // NNUE stuff
 //
 #define NNUEDEFAULTSTR TOSTRING(NNUEDEFAULT)
+#define NUMTHREATSFEATURES 0xed30
 
 enum NnueType { NnueDisabled = 0, NnueArchV1, NnueArchV5, NnueArchV13 };
 
