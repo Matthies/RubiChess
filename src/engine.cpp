@@ -169,6 +169,7 @@ engine::engine(compilerinfo *c)
     // fixed    1.953.125 ~ 0.5 microseconds resolution =>  nps overflow at 9.444.732.965.738 nodes (~26h at 100Mnps, ~163h at 16Mnps)
 #endif
     rootposition.resetStats();
+    numOfNumaNodes = GetNumOfNumaNodes();
 }
 
 engine::~engine()
@@ -216,15 +217,21 @@ void engine::registerOptions()
     ucioptions.Register(&LimitNps, "LimitNps", ucispin, "0", 0, INT_MAX, nullptr);
 }
 
+
+void initNumaNetworks(workingthread* thr)
+{
+    thr->NnueArch = (thr->index < en.numOfNumaNodes ? thr->rootpos->NnueArch->Clone() : nullptr);
+}
+
 void initThread(workingthread* thr)
 {
     void* buffer = allocalign64(sizeof(chessposition));
     chessposition* pos = thr->pos = new(buffer) chessposition;
     pos->pwnhsh.setSize();
-    pos->accumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
-    pos->psqtAccumulation = NnueCurrentArch ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr;
-    if (NnueCurrentArch)
-        NnueCurrentArch->CreateAccumulationCache(pos);
+    pos->NnueArch = thr->NnueArch;
+    pos->accumulation = pos->NnueArch->CreateAccumulationStack();
+    pos->psqtAccumulation = pos->NnueArch->CreatePsqtAccumulationStack();
+    pos->NnueArch->CreateAccumulationCache(pos);
 }
 
 void cleanupThread(workingthread* thr)
@@ -237,6 +244,8 @@ void cleanupThread(workingthread* thr)
     if (pos->accucache.psqtaccumulation)
         freealigned64(pos->accucache.psqtaccumulation);
     pos->~chessposition();
+    if (thr->index < en.numOfNumaNodes)
+        freealigned64(thr->NnueArch);
 }
 
 void engine::allocThreads()
@@ -268,6 +277,13 @@ void engine::allocThreads()
     for (int i = 0; i < Threads; i++)
     {
         sthread[i].init(i, &rootposition);
+        sthread[i].run_job(initNumaNetworks);
+    }
+    for (int i = 0; i < Threads; i++)
+        sthread[i].wait_for_work_finished();
+    for (int i = 0; i < Threads; i++)
+    {
+        sthread[i].NnueArch = sthread[i % numOfNumaNodes].NnueArch;
         sthread[i].run_job(initThread);
     }
     resetStats();
@@ -908,9 +924,7 @@ void prepareSearch(chessposition* pos, chessposition* rootpos)
     int startIndex = PREROOTMOVES - framesToCopy + 1;
     memcpy(&pos->prerootmovestack[startIndex], &rootpos->prerootmovestack[startIndex], framesToCopy * sizeof(chessmovestack));
     memcpy(&pos->prerootmovecode[startIndex], &rootpos->prerootmovecode[startIndex], framesToCopy * sizeof(uint32_t));
-
-    if (NnueCurrentArch)
-        NnueCurrentArch->ResetAccumulationCache(pos);
+    pos->NnueArch->ResetAccumulationCache(pos);
 }
 
 #ifdef NNUELEARN
