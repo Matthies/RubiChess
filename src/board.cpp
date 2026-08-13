@@ -737,10 +737,6 @@ void initBitmaphelper()
         for (int j = 0; j < 64; j++)
         {
             squareDistance[from][j] = max(abs(RANK(from) - RANK(j)), abs(FILE(from) - FILE(j))) - 1;
-            //betweenMask[from][j] = 0ULL;
-            //lineMask[from][j] = 0ULL;
-
-
             if (abs(FILE(from) - FILE(j)) == 1)
             {
                 neighbourfilesMask[from] |= BITSET(j);
@@ -748,30 +744,9 @@ void initBitmaphelper()
                     phalanxMask[from] |= BITSET(j);
             }
             if (FILE(from) == FILE(j))
-            {
                 fileMask[from] |= BITSET(j);
-                for (int i = 0; i < 8; i++)
-                    ;//lineMask[from][j] |= BITSET(INDEX(i, FILE(from)));
-            }
             if (RANK(from) == RANK(j))
-            {
                 rankMask[from] |= BITSET(j);
-                for (int i = 0; i < 8; i++)
-                    ;//lineMask[from][j] |= BITSET(INDEX(RANK(from), i));
-            }
-            if (from != j && abs(RANK(from) - RANK(j)) == abs(FILE(from) - FILE(j)))
-            {
-                int dx = (FILE(from) < FILE(j) ? 1 : -1);
-                int dy = (RANK(from) < RANK(j) ? 1 : -1);
-
-                for (int i = -7; i < 8; i++)
-                {
-                    int r = RANK(from) + i * dy;
-                    int f = FILE(from) + i * dx;
-                    if (r >= 0 && r < 8 && f >= 0 && f < 8)
-                        ;//lineMask[from][j] |= BITSET(INDEX(r, f));
-                }
-            }
         }
 
         for (int j = 0; j < 8; j++)

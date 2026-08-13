@@ -18,7 +18,7 @@
 #pragma once
 
 #define VERNUMLEGACY 2026
-#define NNUEDEFAULT nn-b069721887-20260102.nnue
+#define NNUEDEFAULT nn-2fa6108676c0.nnue
 
 // enable this switch for faster SSE2 code using 16bit integers
 #define FASTSSE2
@@ -903,8 +903,8 @@ class NnueArchitecture
 public:
     virtual bool ReadFeatureWeights(NnueNetsource* nr, bool bpz) = 0;
     virtual bool ReadWeights(NnueNetsource* nr, uint32_t nethash) = 0;
-    virtual void WriteFeatureWeights(NnueNetsource* nr, bool bpz) = 0;
-    virtual void WriteWeights(NnueNetsource* nr, uint32_t nethash) = 0;
+    virtual bool WriteFeatureWeights(NnueNetsource* nr, bool bpz) = 0;
+    virtual bool WriteWeights(NnueNetsource* nr, uint32_t nethash) = 0;
     virtual void RescaleLastLayer(int ratio64) = 0;
     virtual string GetArchName() = 0;
     virtual string GetArchDescription() = 0;
@@ -948,7 +948,7 @@ public:
 
     NnueLayer(NnueLayer* prev) { previous = prev; }
     virtual bool ReadWeights(NnueNetsource* nr) = 0;
-    virtual void WriteWeights(NnueNetsource* nr) = 0;
+    virtual bool WriteWeights(NnueNetsource* nr) = 0;
     virtual uint32_t GetHash() = 0;
 };
 
@@ -969,10 +969,11 @@ public:
         if (previous) return previous->ReadWeights(nr);
         return true;
     }
-    void WriteFeatureWeights(NnueNetsource* nr, bool bpz);
-    void WriteWeights(NnueNetsource* nr) {
+    bool WriteFeatureWeights(NnueNetsource* nr, bool bpz);
+    bool WriteWeights(NnueNetsource* nr) {
         if (previous)
-            previous->WriteWeights(nr);
+            return previous->WriteWeights(nr);
+        return true;
     }
     uint32_t GetFtHash(NnueType nt) {
         if (nt == NnueArchV5)
@@ -1009,9 +1010,10 @@ public:
     bool ReadWeights(NnueNetsource* nr) {
         return (previous ? previous->ReadWeights(nr) : true);
     }
-    void WriteWeights(NnueNetsource* nr) {
+    bool WriteWeights(NnueNetsource* nr) {
         if (previous)
-            previous->WriteWeights(nr);
+            return previous->WriteWeights(nr);
+        return true;
     }
     uint32_t GetHash() {
         return NNUECLIPPEDRELUHASH + previous->GetHash();
@@ -1027,9 +1029,10 @@ public:
     bool ReadWeights(NnueNetsource* nr) {
         return (previous ? previous->ReadWeights(nr) : true);
     }
-    void WriteWeights(NnueNetsource* nr) {
+    bool WriteWeights(NnueNetsource* nr) {
         if (previous)
-            previous->WriteWeights(nr);
+            return previous->WriteWeights(nr);
+        return true;
     }
     uint32_t GetHash() {
         return NNUECLIPPEDRELUHASH + previous->GetHash();
@@ -1116,7 +1119,7 @@ public:
     NnueNetworkLayer(NnueLayer* prev) : NnueLayer(prev) {}
     bool ReadWeights(NnueNetsource* nr);
     bool OverflowPossible();
-    void WriteWeights(NnueNetsource* nr);
+    bool WriteWeights(NnueNetsource* nr);
     uint32_t GetHash() {
         return (NNUENETLAYERHASH + outputdims) ^ (previous->GetHash() >> 1) ^ (previous->GetHash() << 31);
     }
@@ -1152,7 +1155,7 @@ public:
 void NnueInit();
 void NnueRemove();
 bool NnueReadNet(NnueNetsource* nr);
-void NnueWriteNet(vector<string> args);
+bool NnueWriteNet(vector<string> args);
 #ifdef EVALOPTIONS
 void NnueRegisterEvals();
 #endif
@@ -1874,7 +1877,7 @@ public:
     void preparePosition();
     void prepareStack();
     string movesOnStack();
-    template<bool ComputeRay = true> void update_piece_threats(unsigned pc, bool putPiece, unsigned s, DirtyThreats* dt, U64 noRaysContaining = -1ULL);
+    template<bool ComputeRay = true> void update_piece_threats(unsigned pc, bool putPiece, unsigned s, DirtyThreats* dt, U64 noRaysContaining = 0xffffffffffffffff);
     template <bool LiteMode> bool playMove(uint32_t mc);
     template <bool LiteMode> void unplayMove(uint32_t mc);
     void playNullMove();

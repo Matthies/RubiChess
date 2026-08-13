@@ -554,7 +554,7 @@ void chessposition::update_piece_threats(unsigned pc, bool putPiece, unsigned s,
 
     if (pt == KING)
     {
-        if constexpr (ComputeRay)
+        if (ComputeRay)
             process_sliders(false);
         return;
     }

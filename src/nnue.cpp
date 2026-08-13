@@ -129,12 +129,12 @@ public:
             && LayerStack[0].NnueOut.ReadWeights(nr);
         return okay;
     }
-    void WriteFeatureWeights(NnueNetsource* nr, bool leb128) {
-        NnueFt.WriteFeatureWeights(nr, leb128);
+    bool WriteFeatureWeights(NnueNetsource* nr, bool leb128) {
+        return NnueFt.WriteFeatureWeights(nr, leb128);
     }
-    void WriteWeights(NnueNetsource* nr, uint32_t nethash) {
-        nr->write((unsigned char*)&nethash, sizeof(uint32_t));
-        LayerStack[0].NnueOut.WriteWeights(nr);
+    bool WriteWeights(NnueNetsource* nr, uint32_t nethash) {
+        return nr->write((unsigned char*)&nethash, sizeof(uint32_t))
+                && LayerStack[0].NnueOut.WriteWeights(nr);
     }
     void RescaleLastLayer(int ratio64) {
         LayerStack[0].NnueOut.bias[0] = (int32_t)round(LayerStack[0].NnueOut.bias[0] * ratio64 / sps.nnuevaluescale);
@@ -287,14 +287,16 @@ public:
         }
         return okay;
     }
-    void WriteFeatureWeights(NnueNetsource* nr, bool leb128) {
-        NnueFt.WriteFeatureWeights(nr, leb128);
+    bool WriteFeatureWeights(NnueNetsource* nr, bool leb128) {
+        return NnueFt.WriteFeatureWeights(nr, leb128);
     }
-    void WriteWeights(NnueNetsource* nr, uint32_t nethash) {
+    bool WriteWeights(NnueNetsource* nr, uint32_t nethash) {
+        bool okay = true;
         for (unsigned int i = 0; i < NnueLayerStacks; i++) {
-            nr->write((unsigned char*)&nethash, sizeof(uint32_t));
-            LayerStack[i].NnueOut.WriteWeights(nr);
+            okay = okay && nr->write((unsigned char*)&nethash, sizeof(uint32_t))
+                        && LayerStack[i].NnueOut.WriteWeights(nr);
         }
+        return okay;
     }
     void RescaleLastLayer(int ratio64) {
         for (unsigned int b = 0; b < NnueLayerStacks; b++) {
@@ -462,18 +464,19 @@ public:
     static constexpr unsigned int NnuePsqtBuckets = 8;
     static constexpr unsigned int NnueLayerStacks = 8;
     static constexpr size_t networkfilesize =   // expected number of bytes remaining after architecture string
-        sizeof(uint32_t)                                            // Ft hash
-        + NnueFtOutputdims * sizeof(int16_t)                        // bias of feature layer
-        + NnueFtOutputdims * NnueFtInputdims * sizeof(int16_t)      // weights of feature layer
-        + NnueFtInputdims * NnuePsqtBuckets * sizeof(int32_t)       // psqt bucket weights
+        sizeof(uint32_t)                                                                        // Ft hash
+        + NnueFtOutputdims * sizeof(int16_t)                                                    // bias of feature layer
+        + NnueFtOutputdims * NnueFtInputdims * sizeof(int16_t)                                  // weights of HalfKA features
+        + NnueFtOutputdims * NnueThreatsFtInputdims * sizeof(int8_t)                            // weights of threats featutes
+        + (NnueFtInputdims + NnueThreatsFtInputdims) * NnuePsqtBuckets * sizeof(int32_t)       // psqt bucket weights
         + NnueLayerStacks * (
-            sizeof(uint32_t)                                        // Network layer hash
-            + NnueHidden1Dims * sizeof(int32_t)                     // bias of hidden layer 1
-            + NnueFtOutputdims * NnueHidden1Dims * sizeof(int8_t)   // weights of hidden layer 1
-            + NnueHidden2Dims * sizeof(int32_t)                     // bias of hidden layer 2
-            + NnueHidden1Dims * 2 * NnueHidden2Dims * sizeof(int8_t) // weights of hidden layer 2
-            + 1 * sizeof(int32_t)                                   // bias of output layer
-            + NnueHidden2Dims * 1 * sizeof(int8_t)                  // weights of output layer
+            sizeof(uint32_t)                                                                    // Network layer hash
+            + NnueHidden1Dims * sizeof(int32_t)                                                 // bias of hidden layer 1
+            + NnueFtOutputdims * NnueHidden1Dims * sizeof(int8_t)                               // weights of hidden layer 1
+            + NnueHidden2Dims * sizeof(int32_t)                                                 // bias of hidden layer 2
+            + NnueHidden1Dims * 2 * NnueHidden2Dims * sizeof(int8_t)                            // weights of hidden layer 2
+            + 1 * sizeof(int32_t)                                                               // bias of output layer
+            + NnueHidden2Dims * 1 * sizeof(int8_t)                                              // weights of output layer
             );
 
     NnueFeatureTransformer<NnueFtInputdims, NnueThreatsFtInputdims, NnueFtHalfdims, NnuePsqtBuckets> NnueFt;
@@ -511,14 +514,16 @@ public:
         }
         return okay;
     }
-    void WriteFeatureWeights(NnueNetsource* nr, bool leb128) {
-        NnueFt.WriteFeatureWeights(nr, leb128);
+    bool WriteFeatureWeights(NnueNetsource* nr, bool leb128) {
+        return NnueFt.WriteFeatureWeights(nr, leb128);
     }
-    void WriteWeights(NnueNetsource* nr, uint32_t nethash) {
+    bool WriteWeights(NnueNetsource* nr, uint32_t nethash) {
+        bool okay = true;
         for (unsigned int i = 0; i < NnueLayerStacks; i++) {
-            nr->write((unsigned char*)&nethash, sizeof(uint32_t));
-            LayerStack[i].NnueOut.WriteWeights(nr);
+            okay = okay && nr->write((unsigned char*)&nethash, sizeof(uint32_t));
+            okay = okay && LayerStack[i].NnueOut.WriteWeights(nr);
         }
+        return okay;
     }
     void RescaleLastLayer(int ratio64) {
         for (unsigned int b = 0; b < NnueLayerStacks; b++) {
@@ -2161,18 +2166,32 @@ bool writeLeb128(NnueNetsource* nr, IntType* in, size_t count)
 
 
 template <int ftdims, int ftthreatdims, int outputdims, int psqtbuckets>
-void NnueFeatureTransformer<ftdims, ftthreatdims, outputdims, psqtbuckets>::WriteFeatureWeights(NnueNetsource* nr, bool leb128)
+bool NnueFeatureTransformer<ftdims, ftthreatdims, outputdims, psqtbuckets>::WriteFeatureWeights(NnueNetsource* nr, bool leb128)
 {
+    size_t psqt_size = psqtbuckets * (ftthreatdims + ftdims);
+    int32_t* src_32 = (int32_t*)calloc(psqt_size, sizeof(int32_t));
+    if (!src_32)
+        return false;
+    memcpy(src_32, threatpsqtWeights, psqtbuckets * ftthreatdims * sizeof(int32_t));
+    memcpy(src_32 + psqtbuckets * ftthreatdims, psqtWeights, psqtbuckets * ftdims * sizeof(int32_t));
+    bool okay = true;
     if (leb128) {
-        writeLeb128(nr, bias, ftdims);
-        writeLeb128(nr, weight, outputdims * ftdims);
-        writeLeb128(nr, psqtWeights, outputdims * psqtbuckets);
+        okay = okay && writeLeb128(nr, bias, outputdims);
+        if (ftthreatdims)
+            // Never use Leb128 for 8-bit weights
+            okay = okay && nr->write((unsigned char*)threatweights, ftthreatdims * outputdims * sizeof(int8_t));
+        okay = okay && writeLeb128(nr, weight, ftdims * outputdims);
+        okay = okay && writeLeb128(nr, src_32, psqt_size);
     }
     else {
-        nr->write((unsigned char*)bias, ftdims * sizeof(int16_t));
-        nr->write((unsigned char*)weight, outputdims * ftdims * sizeof(int16_t));
-        nr->write((unsigned char*)psqtWeights, outputdims * psqtbuckets * sizeof(int32_t));
+        okay = okay && nr->write((unsigned char*)bias, outputdims * sizeof(int16_t));
+        if (ftthreatdims)
+            okay = okay && nr->write((unsigned char*)threatweights, ftthreatdims * outputdims * sizeof(int8_t));
+        okay = okay && nr->write((unsigned char*)weight, ftdims * outputdims * sizeof(int16_t));
+        okay = okay && nr->write((unsigned char*)src_32, psqt_size * sizeof(int32_t));
     }
+    free(src_32);
+    return okay;
 }
 
 
@@ -2318,16 +2337,19 @@ bool NnueNetworkLayer<inputdims, outputdims>::OverflowPossible()
 }
 
 template <unsigned int inputdims, unsigned int outputdims>
-void NnueNetworkLayer<inputdims, outputdims>::WriteWeights(NnueNetsource* nr)
+bool NnueNetworkLayer<inputdims, outputdims>::WriteWeights(NnueNetsource* nr)
 {
+    bool okay = true;
     if (previous)
-        previous->WriteWeights(nr);
+        okay = previous->WriteWeights(nr);
 
     for (unsigned int i = 0; i < outputdims; ++i)
-        nr->write((unsigned char*)&bias[i], sizeof(int32_t));
+        okay = okay && nr->write((unsigned char*)&bias[i], sizeof(int32_t));
 
     for (unsigned int i = 0; i < outputdims * paddedInputdims; i++)
-            nr->write((unsigned char*)&weight[shuffleWeightIndex(i)], sizeof(char));
+        okay = okay && nr->write((unsigned char*)&weight[shuffleWeightIndex(i)], sizeof(char));
+
+    return okay;
 }
 
 
@@ -2978,7 +3000,7 @@ static int xFlate(bool compress, unsigned char* in, unsigned char** out, size_t 
 }
 
 
-void NnueWriteNet(vector<string> args)
+bool NnueWriteNet(vector<string> args)
 {
     size_t ci = 0;
     size_t cs = args.size();
@@ -3018,7 +3040,7 @@ void NnueWriteNet(vector<string> args)
 
     if (!os) {
         cout << "Cannot write file " << NnueNetPath << "\n";
-        return;
+        return false;
     }
 
     if (rescale)
@@ -3035,16 +3057,17 @@ void NnueWriteNet(vector<string> args)
     NnueNetsource nr;
     nr.readbuffersize = 3 * sizeof(uint32_t) + size + NnueCurrentArch->GetNetworkFilesize();
     nr.readbuffer = (unsigned char*)allocalign64(nr.readbuffersize);
+    if (!nr.readbuffer)
+        return false;
     nr.next = nr.readbuffer;
+    bool okay = nr.write((unsigned char*)&version, sizeof(uint32_t))
+                && nr.write((unsigned char*)&filehash, sizeof(uint32_t))
+                && nr.write((unsigned char*)&size, sizeof(uint32_t))
+                && nr.write((unsigned char*)&sarchitecture[0], size)
+                && nr.write((unsigned char*)&fthash, sizeof(uint32_t));
 
-    nr.write((unsigned char*)&version, sizeof(uint32_t));
-    nr.write((unsigned char*)&filehash, sizeof(uint32_t));
-    nr.write((unsigned char*)&size, sizeof(uint32_t));
-    nr.write((unsigned char*)&sarchitecture[0], size);
-    nr.write((unsigned char*)&fthash, sizeof(uint32_t));
-
-    NnueCurrentArch->WriteFeatureWeights(&nr, leb128);
-    NnueCurrentArch->WriteWeights(&nr, nethash);
+    okay = okay && NnueCurrentArch->WriteFeatureWeights(&nr, leb128);
+    okay = okay && NnueCurrentArch->WriteWeights(&nr, nethash);
 
     size_t insize = nr.next - nr.readbuffer;
 
@@ -3064,7 +3087,11 @@ void NnueWriteNet(vector<string> args)
     os.write((char*)nr.readbuffer, insize);
     os.close();
 
-    cout << "Network written to file " << NnueNetPath << "\n";
+    if (okay)
+        cout << "Network written to file " << NnueNetPath << "\n";
+    else
+        cout << "Something went wrong when writing network to file " << NnueNetPath << "\n";
+    return okay;
 }
 
 
