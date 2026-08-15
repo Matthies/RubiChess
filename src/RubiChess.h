@@ -18,7 +18,7 @@
 #pragma once
 
 #define VERNUMLEGACY 2026
-#define NNUEDEFAULT nn-2fa6108676c0.nnue
+#define NNUEDEFAULT nn-6b25a84c8a-20260809.nnue
 
 // enable this switch for faster SSE2 code using 16bit integers
 #define FASTSSE2
@@ -925,6 +925,7 @@ public:
     virtual unsigned int GetAccumulationSize() = 0;
     virtual unsigned int GetPsqtAccumulationSize() = 0;
     virtual size_t GetNetworkFilesize() = 0;
+    virtual int GetPermutedWeightIndex(int i, bool reverse = false) = 0;
 #ifdef STATISTICS
     virtual void SwapInputNeurons(unsigned int i1, unsigned int i2) = 0;
     virtual void Statistics(bool verbose, bool sort) = 0;

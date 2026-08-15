@@ -714,26 +714,9 @@ const U64 rookmagics[] = {
 
 void initBitmaphelper()
 {
-    int to;
-
     initPsqtable();
     for (int from = 0; from < 64; from++)
     {
-#if 0
-        king_attacks[from] = knight_attacks[from] = 0ULL;
-        pawn_moves_to[from][0] = pawn_attacks_to[from][0] = pawn_moves_to_double[from][0] = 0ULL;
-        pawn_moves_to[from][1] = pawn_attacks_to[from][1] = pawn_moves_to_double[from][1] = 0ULL;
-        pawn_moves_from[from][0] = pawn_attacks_from[from][0] = pawn_moves_from_double[from][0] = 0ULL;
-        pawn_moves_from[from][1] = pawn_attacks_from[from][1] = pawn_moves_from_double[from][1] = 0ULL;
-        passedPawnMask[from][0] = passedPawnMask[from][1] = 0ULL;
-        filebarrierMask[from][0] = filebarrierMask[from][1] = 0ULL;
-        phalanxMask[from] = 0ULL;
-        kingshieldMask[from][0] = kingshieldMask[from][1] = 0ULL;
-        kingdangerMask[from][0] = kingdangerMask[from][1] = 0ULL;
-        neighbourfilesMask[from] = 0ULL;
-        fileMask[from] = 0ULL;
-        rankMask[from] = 0ULL;
-#endif
         for (int j = 0; j < 64; j++)
         {
             squareDistance[from][j] = max(abs(RANK(from) - RANK(j)), abs(FILE(from) - FILE(j))) - 1;
@@ -752,7 +735,7 @@ void initBitmaphelper()
         for (int j = 0; j < 8; j++)
         {
             // King attacks
-            to = from + orthogonalanddiagonaloffset[j];
+            int to = from + orthogonalanddiagonaloffset[j];
             if (to >= 0 && to < 64 && abs(FILE(from) - FILE(to)) <= 1)
                 king_attacks[from] |= BITSET(to);
 
@@ -783,7 +766,7 @@ void initBitmaphelper()
             // Captures
             for (int d = -1; d <= 1; d++)
             {
-                to = from - S2MSIGN(s) * 8 + d;
+                int to = from - S2MSIGN(s) * 8 + d;
                 if (d && abs(FILE(from) - FILE(to)) <= 1 && to >= 0 && to < 64)
                     pawn_attacks_from[from][s] |= BITSET(to);
 
@@ -878,10 +861,7 @@ void initBitmaphelper()
                 {
                     raypassMask[from][to] = pieceTargets(p, from, 0) & (pieceTargets(p, to, BITSET(from)) | BITSET(to));
                     betweenMask[from][to] = pieceTargets(p, from, BITSET(to)) & pieceTargets(p, to, BITSET(from));
-                    ;// lineMasknew[from][to] = pieceTargets(p, from, 0) & pieceTargets(p, to, 0);
                 }
-                if (0)//p == ROOK && lineMask[from][to] != lineMasknew[from][to])
-                    printf("Alarm\n");
             }
 }
 

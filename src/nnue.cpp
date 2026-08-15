@@ -212,6 +212,9 @@ public:
     size_t GetNetworkFilesize() {
         return networkfilesize;
     }
+    int GetPermutedWeightIndex(int i, bool reverse = false) {
+        return (reverse ? i : i);
+    }
 #ifdef STATISTICS
     void SwapInputNeurons(unsigned int i1, unsigned int i2) {
         // not supported for V1
@@ -390,6 +393,9 @@ public:
     }
     size_t GetNetworkFilesize() {
         return networkfilesize;
+    }
+    int GetPermutedWeightIndex(int i, bool reverse = false) {
+        return (reverse ? i : i);
     }
 #ifdef STATISTICS
     void SwapInputNeurons(unsigned int i1, unsigned int i2) {
@@ -622,6 +628,22 @@ public:
     size_t GetNetworkFilesize() {
         return networkfilesize;
     }
+    int GetPermutedWeightIndex(int i, bool reverse = false) {
+#if defined(USE_AVX512)
+        const int permuteindex[] = { 0, 4, 1, 5, 2, 6, 3, 7 };
+        const int reversepermuteindex[] = { 0, 2, 4, 6, 1, 3, 5, 7 };
+#elif defined(USE_AVX2)
+        const int permuteindex[] = { 0, 2, 1, 3, 4, 6, 5, 7 };
+        const int reversepermuteindex[] = { 0, 2, 1, 3, 4, 6, 5, 7 };
+#else
+        const int permuteindex[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+        const int reversepermuteindex[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+#endif
+        int block = (i / 64) * 64;
+        int chunk = (i % 64) / 8;
+        int permutedindex = (reverse ? reversepermuteindex[chunk] : permuteindex[chunk]) * 8 + (i % 8);
+        return block + permutedindex;
+    }
 #ifdef STATISTICS
     void SwapInputNeurons(unsigned int i1, unsigned int i2) {
         if (i1 >= NnueFtHalfdims / 2 || i2 >= NnueFtHalfdims / 2) {
@@ -704,11 +726,11 @@ int8_t AllPieces[12] = {
 #endif
 };
 
-constexpr int constexpr_popcount(U64 b) {
+int constexpr_popcount(U64 b) {
     b = b - ((b >> 1) & 0x5555555555555555ULL);
     b = (b & 0x3333333333333333ULL) + ((b >> 2) & 0x3333333333333333ULL);
     b = (b + (b >> 4)) & 0x0F0F0F0F0F0F0F0FULL;
-    return static_cast<int>((b * 0x0101010101010101ULL) >> 56);
+    return (int)((b * 0x0101010101010101ULL) >> 56);
 }
 
 template<Color C>
@@ -719,7 +741,7 @@ constexpr U64 pawn_attacks_bb(U64 b) {
 
 
 template<PieceType PT>
-constexpr auto make_piece_indices_type() {
+array<array<uint8_t, 64>, 64> make_piece_indices_type() {
     array<array<uint8_t, 64>, 64> out{};
 
     for (unsigned int from = 0; from < 64; ++from)
@@ -732,7 +754,7 @@ constexpr auto make_piece_indices_type() {
 }
 
 template<PieceCode P>
-auto make_piece_indices_piece() {
+array<array<uint8_t, 64>, 64> make_piece_indices_piece() {
     array<array<uint8_t, 64>, 64> out{};
 
     unsigned int C = (P & S2MMASK);
@@ -772,13 +794,10 @@ static constexpr int8_t OrientTBL[64] = {
 #define  ORIENTTBL(s) (s & 4 ? 7 : 0)
 #endif
 
-// Number of feature dimensions
-static constexpr uint32_t ThreatFeatureDimensions = 60720; // = 0xed30
-
-HelperOffsets helper_offsets[16];
-unsigned int offsets[16][64];
-uint32_t index_lut1[16][16][2];
-array<array<array<uint8_t, 64>, 64>, 16> index_lut2;
+HelperOffsets tf_helper_offsets[16];
+unsigned int tf_offsets[16][64];
+uint32_t tf_index_lut1[16][16][2];
+array<array<array<uint8_t, 64>, 64>, 16> tf_index_lut2;
 
 
 void init_threat_indices()
@@ -792,7 +811,7 @@ void init_threat_indices()
 
         for (unsigned int from = 0; from < 64; ++from)
         {
-            offsets[pieceIdx][from] = cumulativePieceOffset;
+            tf_offsets[pieceIdx][from] = cumulativePieceOffset;
 
             if ((piece & 7) != PAWN)
             {
@@ -807,7 +826,7 @@ void init_threat_indices()
                 cumulativePieceOffset += constexpr_popcount(attacks);
             }
         }
-        helper_offsets[pieceIdx] = { cumulativePieceOffset, cumulativeOffset };
+        tf_helper_offsets[pieceIdx] = { cumulativePieceOffset, cumulativeOffset };
         cumulativeOffset += numValidTargets[pieceIdx] * cumulativePieceOffset;
     }
 
@@ -822,13 +841,13 @@ void init_threat_indices()
 
             int  map = threatpiecetypemap[attackerType - 1][attackedType - 1];
             bool semi_excluded = attackerType == attackedType && (enemy || attackerType != PAWN);
-            uint32_t feature = helper_offsets[attacker].cumulativeOffset
+            uint32_t feature = tf_helper_offsets[attacker].cumulativeOffset
                 + ((attacked >> 3) * (numValidTargets[attacker] / 2) + map)
-                * helper_offsets[attacker].cumulativePieceOffset;
+                * tf_helper_offsets[attacker].cumulativePieceOffset;
 
             bool excluded = map < 0;
-            index_lut1[attacker][attacked][0] = excluded ? ThreatFeatureDimensions : feature;
-            index_lut1[attacker][attacked][1] = excluded || semi_excluded ? ThreatFeatureDimensions : feature;
+            tf_index_lut1[attacker][attacked][0] = excluded ? NUMTHREATSFEATURES : feature;
+            tf_index_lut1[attacker][attacked][1] = excluded || semi_excluded ? NUMTHREATSFEATURES : feature;
         }
     }
 
@@ -839,23 +858,23 @@ void init_threat_indices()
     auto QUEEN_ATTACKS = make_piece_indices_type<QUEEN>();
     auto KING_ATTACKS = make_piece_indices_type<KING>();
 
-    index_lut2[1] = make_piece_indices_piece<WPAWN>();
-    index_lut2[9] = make_piece_indices_piece<BPAWN>();
+    tf_index_lut2[1] = make_piece_indices_piece<WPAWN>();
+    tf_index_lut2[9] = make_piece_indices_piece<BPAWN>();
 
-    index_lut2[2] = KNIGHT_ATTACKS;
-    index_lut2[10] = KNIGHT_ATTACKS;
+    tf_index_lut2[2] = KNIGHT_ATTACKS;
+    tf_index_lut2[10] = KNIGHT_ATTACKS;
 
-    index_lut2[3] = BISHOP_ATTACKS;
-    index_lut2[11] = BISHOP_ATTACKS;
+    tf_index_lut2[3] = BISHOP_ATTACKS;
+    tf_index_lut2[11] = BISHOP_ATTACKS;
 
-    index_lut2[4] = ROOK_ATTACKS;
-    index_lut2[12] = ROOK_ATTACKS;
+    tf_index_lut2[4] = ROOK_ATTACKS;
+    tf_index_lut2[12] = ROOK_ATTACKS;
 
-    index_lut2[5] = QUEEN_ATTACKS;
-    index_lut2[13] = QUEEN_ATTACKS;
+    tf_index_lut2[5] = QUEEN_ATTACKS;
+    tf_index_lut2[13] = QUEEN_ATTACKS;
 
-    index_lut2[6] = KING_ATTACKS;
-    index_lut2[14] = KING_ATTACKS;
+    tf_index_lut2[6] = KING_ATTACKS;
+    tf_index_lut2[14] = KING_ATTACKS;
 }
 
 
@@ -870,9 +889,9 @@ inline uint32_t fullthreats_make_index(
     unsigned    attacker_oriented = attacker ^ swap;
     unsigned    attacked_oriented = attacked ^ swap;
 
-    uint32_t index = index_lut1[attacker_oriented][attacked_oriented][from_oriented < to_oriented]
-        + offsets[attacker_oriented][from_oriented]
-        + index_lut2[attacker_oriented][from_oriented][to_oriented];
+    uint32_t index = tf_index_lut1[attacker_oriented][attacked_oriented][from_oriented < to_oriented]
+        + tf_offsets[attacker_oriented][from_oriented]
+        + tf_index_lut2[attacker_oriented][from_oriented][to_oriented];
     return index;
 }
 
@@ -885,25 +904,6 @@ inline uint32_t fullthreats_make_index(
 //
 // NNUE interface in chessposition
 //
-#if 0  // wird nicht mehr benutzt
-template <NnueType Nt, Color c> void chessposition::HalfkpAppendActiveIndices(NnueIndexList *active)
-{
-    const int ksq = kingpos[c];
-    const int oksq = (Nt == NnueArchV1 ? ORIENT(c, ksq) : HMORIENT(c, ksq, ksq));
-    U64 piecebb = (occupied00[0] | occupied00[1]);
-    if (Nt == NnueArchV1)
-        piecebb &= ~(piece00[WKING] | piece00[BKING]);
-    while (piecebb)
-    {
-        int index = pullLsb(&piecebb);
-        if (Nt == NnueArchV1)
-            active->values[active->size++] = ORIENT(c, index) + PieceToIndex[c][mailbox[index]] + PS_KPEND * oksq;
-        else
-            active->values[active->size++] = HMORIENT(c, index, ksq) + PieceToIndex[c][mailbox[index]] + PS_KAEND * KingBucket[oksq];
-    }
-}
-#endif
-
 
 template <NnueType Nt, Color c> void chessposition::HalfkaAppendChangedIndices(DirtyPieces* dp, NnueIndexList* add, NnueIndexList* remove)
 {
@@ -956,7 +956,7 @@ template <Color perspective> void chessposition::ThreatsAppendActiveIndices(Nnue
                     PieceCode attacked = (attackedRubi >> 1) + (attackedRubi & 1) * 8;
                     uint32_t index = fullthreats_make_index(perspective, attacker, from, to, attacked, ksq);
                     active->values[active->size] = index;
-                    active->size += (index < ThreatFeatureDimensions);
+                    active->size += (index < NUMTHREATSFEATURES);
                 }
             };
 
@@ -990,7 +990,7 @@ template <Color perspective> void chessposition::ThreatsAppendActiveIndices(Nnue
                     PieceCode attacked = (attackedRubi >> 1) + (attackedRubi & 1) * 8;
                     uint32_t index = fullthreats_make_index(perspective, attacker, from, to, attacked, ksq);
                     active->values[active->size] = index;
-                    active->size += (index < ThreatFeatureDimensions);
+                    active->size += (index < NUMTHREATSFEATURES);
                 }
             }
         }
@@ -1001,7 +1001,7 @@ template <Color perspective> void chessposition::ThreatsAppendActiveIndices(Nnue
 template <NnueType Nt, Color c> void chessposition::ThreatsAppendChangedIndices(DirtyThreats* dt, NnueIndexList* add, NnueIndexList* remove)
 {
     const unsigned ksq = kingpos[c];
-    for (int i = 0; i < dt->size; i++) {
+    for (unsigned int i = 0; i < dt->size; i++) {
         uint32_t data = dt->threatdata[i];
         bool bAdd = data >> 31;
         PieceCode attackerRubi = data >> 20 & 0xf;
@@ -1050,7 +1050,7 @@ typedef __m128i sml_vec_t;
 #define SIMD_WIDTH 512
 #define MAXCHUNKSIZE 64
 typedef __m512i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, ft_vec_t, uvec_t, sprsin_vec_t;
-typedef __m256i psqt_vec_t;
+typedef __m256i psqt_vec_t, vec_i8_t;
 typedef __m128i bias_vec_t;
 #define vec_zero() _mm512_setzero_si512()
 #define vec_load(a) _mm512_load_si512(a)
@@ -1076,8 +1076,13 @@ inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define vec_load_psqt(a) _mm256_load_si256(a)
 #define vec_store_psqt(a,b) _mm256_store_si256(a,b)
 #define vec_nnz(a) _mm512_cmpgt_epi32_mask(a, _mm512_setzero_si512())
-#define vec_set_32 _mm512_set1_epi32
+#define vec_set_32(a) _mm512_set1_epi32(a)
 #define vec_add_dpbusd_32 Simd::m512_add_dpbusd_32
+#define vec_convert_8_16(a)  _mm512_cvtepi8_epi16(a)
+#define vec_packus_16(a,b) _mm512_packus_epi16(a,b)
+#define vec_slli_16(a,b) _mm512_slli_epi16(a,b)
+#define vec_mulhi_16(a,b) _mm512_mulhi_epi16(a,b)
+
 
 #elif defined(USE_AVX2)
 #define NUM_REGS 16
@@ -1110,10 +1115,10 @@ inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define vec_load_psqt(a) _mm256_load_si256(a)
 #define vec_store_psqt(a,b) _mm256_store_si256(a,b)
 #define vec_nnz(a) _mm256_movemask_ps(_mm256_castsi256_ps(_mm256_cmpgt_epi32(a, _mm256_setzero_si256())))
-#define vec_set_32 _mm256_set1_epi32
+#define vec_set_32(a) _mm256_set1_epi32(a)
 #define vec_add_dpbusd_32 Simd::m256_add_dpbusd_32
-#define vec_convert_8_16 _mm256_cvtepi8_epi16
-#define vec_permutepackus_16(a,b) _mm256_permute4x64_epi64(_mm256_packus_epi16(a,b), 0xd8)
+#define vec_convert_8_16(a) _mm256_cvtepi8_epi16(a)
+#define vec_packus_16(a,b) _mm256_packus_epi16(a,b)
 #define vec_slli_16(a,b) _mm256_slli_epi16(a,b)
 #define vec_mulhi_16(a,b) _mm256_mulhi_epi16(a,b)
 
@@ -1123,6 +1128,7 @@ inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define SIMD_WIDTH 128
 #define MAXCHUNKSIZE 16
 typedef __m128i ft_vec_t, ftout_vec_t, psqt_vec_t;
+typedef uint64_t vec_i8_t;
 #define vec_zero() _mm_setzero_si128()
 #define vec_load(a) (*(a))
 #define vec_store(a,b)  *(a)=(b)
@@ -1139,6 +1145,16 @@ typedef __m128i ft_vec_t, ftout_vec_t, psqt_vec_t;
 #define vec_sub_psqt_32(a,b) _mm_sub_epi32(a,b)
 #define vec_load_psqt(a) (*(a))
 #define vec_store_psqt(a,b) *(a)=(b)
+//#define vec_convert_8_16(a)  _mm512_cvtepi8_epi16(a)
+#define vec_packus_16(a,b)_mm_packus_epi16(a,b)
+#define vec_slli_16(a,b) _mm_slli_epi16(a,b)
+#define vec_mulhi_16(a,b) _mm_mulhi_epi16(a,b)
+// Credit: Yoshie2000
+inline __m128i vec_convert_8_16(uint64_t x) {
+    __m128i v8 = _mm_cvtsi64_si128(static_cast<int64_t>(x));
+    __m128i sign = _mm_cmpgt_epi8(_mm_setzero_si128(), v8);
+    return _mm_unpacklo_epi8(v8, sign);
+}
 
 #if defined(USE_SSSE3)
 typedef __m128i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, bias_vec_t, uvec_t, sprsin_vec_t;
@@ -1301,7 +1317,7 @@ template <NnueType Nt, Color c, int N> bool chessposition::GetThreatAcccumulator
         // search for position with computed accu on stack that leads to current position by differential updates
         // break at king move or if the dirty piece updates get too expensive
         DirtyThreats* dt = &dirtythreats[mslast];
-        if (dt->us == c && ((int8_t(dt->ksq) & 0b100) != (int8_t(dt->prevKsq) & 0b100)))
+        if (dt->us == c && ((int8_t(dt->ksq) & 0x4) != (int8_t(dt->prevKsq) & 0x4)))
             break;
         mslast--;
     }
@@ -1893,7 +1909,7 @@ int chessposition::Transform(clipped_t *output, int bucket)
                 const ft_vec_t pa = vec_mulhi_16(sum0a, sum1a);
                 const ft_vec_t pb = vec_mulhi_16(sum0b, sum1b);
 
-                out[i] = vec_permutepackus_16(pa, pb); // FIXME: Pre-Permute weights to avoid _mm256_permute4x64_epi64
+                out[i] = vec_packus_16(pa, pb);
             }
         }
         else if (Nt == NnueArchV5)
@@ -2076,11 +2092,21 @@ bool NnueFeatureTransformer<ftdims, ftthreatdims, outputdims, psqtbuckets>::Read
     else
         okay = okay && nr->read((unsigned char*)src_16, outputdims * sizeof(int16_t));
 
-    memcpy(bias, src_16, outputdims * sizeof(int16_t));
+    // Permute the weights
+    for (i = 0; i < outputdims; i++)
+        bias[NnueCurrentArch->GetPermutedWeightIndex(i)] = src_16[i];
 
     // read threats feature weights
-    if (ftthreatdims)
-        okay = okay && nr->read((unsigned char*)threatweights, ftthreatdims * outputdims * sizeof(int8_t));
+    if (ftthreatdims > 0) {
+        int8_t* src_8 = (int8_t*)calloc(outputdims * max(1, ftthreatdims), sizeof(int8_t));  // avoid wrong warning in gcc
+        if (!src_8)
+            return false;
+        okay = okay && nr->read((unsigned char*)src_8, ftthreatdims * outputdims * sizeof(int8_t));
+        // Permute the weights
+        for (i = 0; i < ftthreatdims * outputdims; i++)
+            threatweights[NnueCurrentArch->GetPermutedWeightIndex(i)] = src_8[i];
+        free(src_8);
+    }
 
     // read weights
     isLeb128 = testLeb128(nr);
@@ -2099,7 +2125,9 @@ bool NnueFeatureTransformer<ftdims, ftthreatdims, outputdims, psqtbuckets>::Read
         }
     }
     
-    memcpy(weight, src_16, ftdims * outputdims * sizeof(int16_t));
+    // Permute the weights
+    for (i = 0; i < ftdims * outputdims; i++)
+        weight[NnueCurrentArch->GetPermutedWeightIndex(i)] = src_16[i];
     free(src_16);
 
     if (psqtbuckets)
@@ -2170,27 +2198,47 @@ bool NnueFeatureTransformer<ftdims, ftthreatdims, outputdims, psqtbuckets>::Writ
 {
     size_t psqt_size = psqtbuckets * (ftthreatdims + ftdims);
     int32_t* src_32 = (int32_t*)calloc(psqt_size, sizeof(int32_t));
-    if (!src_32)
+    int16_t* depermutedbias = (int16_t*)calloc(outputdims, sizeof(int16_t));
+    int16_t* depermutedweight = (int16_t*)calloc(outputdims * ftdims, sizeof(int16_t));
+    int8_t* depermutedthreatweight = nullptr;
+
+    if (!src_32 || !depermutedbias || !depermutedweight)
         return false;
     memcpy(src_32, threatpsqtWeights, psqtbuckets * ftthreatdims * sizeof(int32_t));
     memcpy(src_32 + psqtbuckets * ftthreatdims, psqtWeights, psqtbuckets * ftdims * sizeof(int32_t));
+    for (unsigned int i = 0; i < outputdims; i++)
+        depermutedbias[NnueCurrentArch->GetPermutedWeightIndex(i, true)] = bias[i];
+    for (unsigned int i = 0; i < outputdims * ftdims; i++)
+        depermutedweight[NnueCurrentArch->GetPermutedWeightIndex(i, true)] = weight[i];
+    if (ftthreatdims > 0)
+    {
+        depermutedthreatweight = (int8_t*)calloc(outputdims * max(1, ftthreatdims), sizeof(int8_t));  // avoid wrong warning in gcc
+        if (!depermutedthreatweight)
+            return false;
+    }
+    for (unsigned int i = 0; i < ftthreatdims * outputdims; i++)
+        depermutedthreatweight[NnueCurrentArch->GetPermutedWeightIndex(i, true)] = threatweights[i];
+
     bool okay = true;
     if (leb128) {
-        okay = okay && writeLeb128(nr, bias, outputdims);
+        okay = okay && writeLeb128(nr, depermutedbias, outputdims);
         if (ftthreatdims)
             // Never use Leb128 for 8-bit weights
-            okay = okay && nr->write((unsigned char*)threatweights, ftthreatdims * outputdims * sizeof(int8_t));
-        okay = okay && writeLeb128(nr, weight, ftdims * outputdims);
+            okay = okay && nr->write((unsigned char*)depermutedthreatweight, ftthreatdims * outputdims * sizeof(int8_t));
+        okay = okay && writeLeb128(nr, depermutedweight, ftdims * outputdims);
         okay = okay && writeLeb128(nr, src_32, psqt_size);
     }
     else {
-        okay = okay && nr->write((unsigned char*)bias, outputdims * sizeof(int16_t));
+        okay = okay && nr->write((unsigned char*)depermutedbias, outputdims * sizeof(int16_t));
         if (ftthreatdims)
-            okay = okay && nr->write((unsigned char*)threatweights, ftthreatdims * outputdims * sizeof(int8_t));
-        okay = okay && nr->write((unsigned char*)weight, ftdims * outputdims * sizeof(int16_t));
+            okay = okay && nr->write((unsigned char*)depermutedthreatweight, ftthreatdims * outputdims * sizeof(int8_t));
+        okay = okay && nr->write((unsigned char*)depermutedweight, ftdims * outputdims * sizeof(int16_t));
         okay = okay && nr->write((unsigned char*)src_32, psqt_size * sizeof(int32_t));
     }
     free(src_32);
+    free(depermutedbias);
+    free(depermutedweight);
+    free(depermutedthreatweight);
     return okay;
 }
 
