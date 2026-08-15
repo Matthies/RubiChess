@@ -1451,7 +1451,13 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     int32_t* psqtacmbase = (Ft == NnueFeatuteHalfKa ? psqthalfkaAccumulation : psqtthreatAccumulation);
 
 #ifdef USE_SIMD
-    constexpr unsigned int numRegs = (NUM_REGS > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : NUM_REGS);  // FIXME: 
+#if defined(USE_SSE2) && !defined(USE_AVX512)
+    // Avoid spilling the registers (thanks anematode); looks hacky, maybe find a better solution later
+    constexpr unsigned int maxParallelRegs = NUM_REGS / (1 + (Ft == NnueFeatureThreat));
+#else
+    constexpr unsigned int maxParallelRegs = NUM_REGS;
+#endif
+    constexpr unsigned int numRegs = (maxParallelRegs > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : maxParallelRegs);
     constexpr unsigned int tileHeight = numRegs * SIMD_WIDTH / 16;
     ft_vec_t acc[numRegs];
     psqt_vec_t psqt[NUM_PSQT_REGS];
