@@ -807,11 +807,12 @@ void init_threat_indices()
     for (unsigned int piece : AllPieces)
     {
         int pieceIdx = piece;
+        int pieceRubi = 2 * (piece & 7) + (piece >> 3);
         int cumulativePieceOffset = 0;
 
         for (unsigned int from = 0; from < 64; ++from)
         {
-            tf_offsets[pieceIdx][from] = cumulativePieceOffset;
+            tf_offsets[pieceRubi][from] = cumulativePieceOffset;
 
             if ((piece & 7) != PAWN)
             {
@@ -835,6 +836,8 @@ void init_threat_indices()
     {
         for (unsigned int attacked : AllPieces)
         {
+            unsigned int attackerRubi = 2 * (attacker & 7) + (attacker >> 3);
+            unsigned int attackedRubi = 2 * (attacked & 7) + (attacked >> 3);
             bool      enemy = (attacker ^ attacked) == 8;
             PieceType attackerType = (attacker & 7);
             PieceType attackedType = (attacked & 7);
@@ -846,8 +849,8 @@ void init_threat_indices()
                 * tf_helper_offsets[attacker].cumulativePieceOffset;
 
             bool excluded = map < 0;
-            tf_index_lut1[attacker][attacked][0] = excluded ? NUMTHREATSFEATURES : feature;
-            tf_index_lut1[attacker][attacked][1] = excluded || semi_excluded ? NUMTHREATSFEATURES : feature;
+            tf_index_lut1[attackerRubi][attackedRubi][0] = excluded ? NUMTHREATSFEATURES : feature;
+            tf_index_lut1[attackerRubi][attackedRubi][1] = excluded || semi_excluded ? NUMTHREATSFEATURES : feature;
         }
     }
 
@@ -858,23 +861,23 @@ void init_threat_indices()
     auto QUEEN_ATTACKS = make_piece_indices_type<QUEEN>();
     auto KING_ATTACKS = make_piece_indices_type<KING>();
 
-    tf_index_lut2[1] = make_piece_indices_piece<WPAWN>();
-    tf_index_lut2[9] = make_piece_indices_piece<BPAWN>();
+    tf_index_lut2[WPAWN] = make_piece_indices_piece<WPAWN>();
+    tf_index_lut2[BPAWN] = make_piece_indices_piece<BPAWN>();
 
-    tf_index_lut2[2] = KNIGHT_ATTACKS;
-    tf_index_lut2[10] = KNIGHT_ATTACKS;
+    tf_index_lut2[WKNIGHT] = KNIGHT_ATTACKS;
+    tf_index_lut2[BKNIGHT] = KNIGHT_ATTACKS;
 
-    tf_index_lut2[3] = BISHOP_ATTACKS;
-    tf_index_lut2[11] = BISHOP_ATTACKS;
+    tf_index_lut2[WBISHOP] = BISHOP_ATTACKS;
+    tf_index_lut2[BBISHOP] = BISHOP_ATTACKS;
 
-    tf_index_lut2[4] = ROOK_ATTACKS;
-    tf_index_lut2[12] = ROOK_ATTACKS;
+    tf_index_lut2[WROOK] = ROOK_ATTACKS;
+    tf_index_lut2[BROOK] = ROOK_ATTACKS;
 
-    tf_index_lut2[5] = QUEEN_ATTACKS;
-    tf_index_lut2[13] = QUEEN_ATTACKS;
+    tf_index_lut2[WQUEEN] = QUEEN_ATTACKS;
+    tf_index_lut2[BQUEEN] = QUEEN_ATTACKS;
 
-    tf_index_lut2[6] = KING_ATTACKS;
-    tf_index_lut2[14] = KING_ATTACKS;
+    tf_index_lut2[WKING] = KING_ATTACKS;
+    tf_index_lut2[BKING] = KING_ATTACKS;
 }
 
 
@@ -885,7 +888,7 @@ inline uint32_t fullthreats_make_index(
     unsigned          from_oriented = uint8_t(from) ^ orientation;
     unsigned          to_oriented = uint8_t(to) ^ orientation;
 
-    int8_t swap = 8 * perspective;
+    int8_t swap = perspective;
     unsigned    attacker_oriented = attacker ^ swap;
     unsigned    attacked_oriented = attacked ^ swap;
 
@@ -941,7 +944,6 @@ template <Color perspective> void chessposition::ThreatsAppendActiveIndices(Nnue
     {
         const unsigned c = (perspective ^ color);
         {
-            const PieceCode attacker = PAWN + (c << 3);  // SF code
             const PieceCode attackerRubi = WPAWN | c;
             const U64 cPawns = piece00[attackerRubi];
             // Set of pawns which are prevented from movement by a pawn in front of them
@@ -953,8 +955,7 @@ template <Color perspective> void chessposition::ThreatsAppendActiveIndices(Nnue
                     unsigned to = pullLsb(&attacks);
                     unsigned from = to - attkDir;
                     PieceCode attackedRubi = mailbox[to];
-                    PieceCode attacked = (attackedRubi >> 1) + (attackedRubi & 1) * 8;
-                    uint32_t index = fullthreats_make_index(perspective, attacker, from, to, attacked, ksq);
+                    uint32_t index = fullthreats_make_index(perspective, attackerRubi, from, to, attackedRubi, ksq);
                     active->values[active->size] = index;
                     active->size += (index < NUMTHREATSFEATURES);
                 }
@@ -976,7 +977,6 @@ template <Color perspective> void chessposition::ThreatsAppendActiveIndices(Nnue
 
         for (PieceType pt = KNIGHT; pt < KING; ++pt)
         {
-            PieceCode attacker = pt + (c << 3);     // SF code
             PieceCode attackerRubi = pt * 2 + c;
             U64 bb = piece00[attackerRubi];
             while (bb)
@@ -987,8 +987,7 @@ template <Color perspective> void chessposition::ThreatsAppendActiveIndices(Nnue
                 {
                     unsigned to = pullLsb(&attacks);
                     PieceCode attackedRubi = mailbox[to];
-                    PieceCode attacked = (attackedRubi >> 1) + (attackedRubi & 1) * 8;
-                    uint32_t index = fullthreats_make_index(perspective, attacker, from, to, attacked, ksq);
+                    uint32_t index = fullthreats_make_index(perspective, attackerRubi, from, to, attackedRubi, ksq);
                     active->values[active->size] = index;
                     active->size += (index < NUMTHREATSFEATURES);
                 }
@@ -1005,12 +1004,10 @@ template <NnueType Nt, Color c> void chessposition::ThreatsAppendChangedIndices(
         uint32_t data = dt->threatdata[i];
         bool bAdd = data >> 31;
         PieceCode attackerRubi = data >> 20 & 0xf;
-        PieceCode attacker = (attackerRubi >> 1) + (attackerRubi & 1) * 8;
         PieceCode attackedRubi = data >> 16 & 0xf;
-        PieceCode attacked = (attackedRubi >> 1) + (attackedRubi & 1) * 8;
         unsigned from = data & 0xff;
         unsigned to = data >> 8 & 0xff;
-        uint32_t index = fullthreats_make_index(c, attacker, from, to, attacked, ksq);
+        uint32_t index = fullthreats_make_index(c, attackerRubi, from, to, attackedRubi, ksq);
         NnueIndexList* insert = (bAdd ? add : remove);
         insert->values[insert->size] = index;
         insert->size += (index < NUMTHREATSFEATURES);
@@ -1145,7 +1142,6 @@ typedef uint64_t vec_i8_t;
 #define vec_sub_psqt_32(a,b) _mm_sub_epi32(a,b)
 #define vec_load_psqt(a) (*(a))
 #define vec_store_psqt(a,b) *(a)=(b)
-//#define vec_convert_8_16(a)  _mm512_cvtepi8_epi16(a)
 #define vec_packus_16(a,b)_mm_packus_epi16(a,b)
 #define vec_slli_16(a,b) _mm_slli_epi16(a,b)
 #define vec_mulhi_16(a,b) _mm_mulhi_epi16(a,b)
