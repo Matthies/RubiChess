@@ -828,16 +828,8 @@ enum NnueType { NnueDisabled = 0, NnueArchV1, NnueArchV5, NnueArchV13 };
 #define HMORIENT(c,i,k) (i ^ (bool(c) * 56) ^ ((FILE(k) < 4) * 7))
 #define MULTIPLEOFN(i,n) (((i) + (n - 1)) / n * n)
 
-#if defined(USE_SSE2) && !defined(USE_SSSE3) && defined FASTSSE2
-// for native SSE2 platforms we have faster intrinsics for 16bit integers
-#define USE_FASTSSE2
-typedef int16_t weight_t;
-typedef int16_t clipped_t;
-#else
 typedef int8_t weight_t;
 typedef int8_t clipped_t;
-#endif
-
 
 enum NnueFeatureType { NnueFeatuteHalfKa, NnueFeatureThreat };
 //#define MAXHALFKAINDEX 32
