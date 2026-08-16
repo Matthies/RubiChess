@@ -328,7 +328,7 @@ public:
         int bucket = (POPCOUNT(pos->occupied00[WHITE] | pos->occupied00[BLACK]) - 1) / 4;
         int psqt = pos->Transform<NnueArchV5, NnueFtHalfdims, NnuePsqtBuckets>(network.input, bucket);
         LayerStack[bucket].NnueHd1.Propagate(network.input, network.hidden1_values);
-        memset(network.hidden1_sqrclipped, 0, sizeof(network.hidden1_sqrclipped));  // FIXME: is this needed?
+        //memset(network.hidden1_sqrclipped, 0, sizeof(network.hidden1_sqrclipped));  // FIXME: is this needed?
         LayerStack[bucket].NnueSqrCl.Propagate(network.hidden1_values, network.hidden1_sqrclipped);
         LayerStack[bucket].NnueCl1.Propagate(network.hidden1_values, network.hidden1_clipped);
         memcpy(network.hidden1_sqrclipped + NnueHidden1Out, network.hidden1_clipped, NnueHidden1Out * sizeof(clipped_t));
@@ -561,7 +561,7 @@ public:
         int bucket = (POPCOUNT(pos->occupied00[WHITE] | pos->occupied00[BLACK]) - 1) / 4;
         int psqt = pos->Transform<NnueArchV13, NnueFtHalfdims, NnuePsqtBuckets>(network.input, bucket);
         LayerStack[bucket].NnueHd1.Propagate(network.input, network.hidden1_values);
-        memset(network.hidden1_sqrclipped, 0, sizeof(network.hidden1_sqrclipped));  // FIXME: is this needed?
+        //memset(network.hidden1_sqrclipped, 0, sizeof(network.hidden1_sqrclipped));  // FIXME: is this needed?
         LayerStack[bucket].NnueSqrCl.Propagate(network.hidden1_values, network.hidden1_sqrclipped);
         LayerStack[bucket].NnueCl1.Propagate(network.hidden1_values, network.hidden1_clipped);
         memcpy(network.hidden1_sqrclipped + NnueHidden1Out, network.hidden1_clipped, NnueHidden1Out * sizeof(clipped_t));
@@ -1656,7 +1656,6 @@ template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> vo
     }
 
 #else
-    // FIXME: For now we reset the threat accumulator
     memset(acm, 0, NnueFtHalfdims * sizeof(int16_t));
     memset(psqtacm, 0, NnuePsqtBuckets * sizeof(int32_t));
 
