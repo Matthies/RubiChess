@@ -1596,7 +1596,6 @@ template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> vo
     addedIndices.size = 0;
     ThreatsAppendActiveIndices<c>(&addedIndices);
 
-    // FIXME make inference code independant from full update of features
     int8_t* weight = NnueCurrentArch->GetFeatureThreatWeight();
     int32_t* psqtweight = NnueCurrentArch->GetFeatureThreatPsqtWeight();
     int16_t* acm = threataccumulation + (ply * 2 + c) * NnueFtHalfdims;
@@ -1604,7 +1603,13 @@ template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> vo
 
 
 #ifdef USE_SIMD
-    constexpr unsigned int numRegs = (NUM_REGS > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : NUM_REGS); // FIXME: vec_convert_8_16 needs temp register
+#if defined(USE_SSE2) && !defined(USE_AVX512)
+    // Avoid spilling the registers (thanks anematode); looks hacky, maybe find a better solution later
+    constexpr unsigned int maxParallelRegs = NUM_REGS / 2;
+#else
+    constexpr unsigned int maxParallelRegs = NUM_REGS;
+#endif
+    constexpr unsigned int numRegs = (maxParallelRegs > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : maxParallelRegs);
     constexpr unsigned int tileHeight = numRegs * SIMD_WIDTH / 16;
     ft_vec_t acc[numRegs];
     psqt_vec_t psqt[NUM_PSQT_REGS];
