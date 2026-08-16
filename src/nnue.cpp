@@ -717,13 +717,8 @@ struct HelperOffsets {
 
 // We keep this order of pieces to stay compatible with SF feature order
 int8_t AllPieces[12] = {
-#if 0
-  WPAWN, WKNIGHT, WBISHOP, WROOK, WQUEEN, WKING,
-  BPAWN, BKNIGHT, BBISHOP, BROOK, BQUEEN, BKING
-#else
     1,2,3,4,5,6,
     9,10,11,12,13,14
-#endif
 };
 
 int constexpr_popcount(U64 b) {
@@ -779,20 +774,7 @@ static constexpr int threatpiecetypemap[6][6] = {
 };
 
 // Orient a square according to perspective (rotates by 180 for black)
-#if 0
-static constexpr int8_t OrientTBL[64] = {
-    SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
-    SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
-    SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
-    SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
-    SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
-    SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
-    SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
-    SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
-};
-#else
 #define  ORIENTTBL(s) (s & 4 ? 7 : 0)
-#endif
 
 HelperOffsets tf_helper_offsets[16];
 unsigned int tf_offsets[16][64];
@@ -1177,7 +1159,7 @@ typedef int16x8_t ft_vec_t;
 typedef int16x8_t ftout_vec_t;
 typedef int32x4_t acc_vec_t, bias_vec_t, psqt_vec_t;
 typedef uint32x4_t uvec_t;
-typedef int8x16_t sprsin_vec_t;
+typedef int8x16_t sprsin_vec_t, vec_i8_t;
 #define vec_zero() {0}
 #define vec_load(a) (*(a))
 #define vec_store(a,b)  *(a)=(b)
@@ -1212,6 +1194,10 @@ static const uint32_t NnzMask[4] = { 1, 2, 4, 8 };
 #else
 #define vec_add_dpbusd_32 Simd::neon_m128_add_dpbusd_32
 #endif
+#define vec_convert_8_16(a)  _mm512_cvtepi8_epi16(a)
+#define vec_packus_16(a,b) vcombine_u8(vqmovun_s16(a), vqmovun_s16(b))
+#define vec_slli_16(a,b) vshlq_s16(a, vec_set_16(b))
+#define vec_mulhi_16(a,b) vqdmulhq_s16(a,b)
 #endif
 
 #else
@@ -1476,8 +1462,16 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
                 }
                 else {
                     vec_i8_t* column = (vec_i8_t*)(weight8 + offset);
+#ifdef USE_NEON
+                    for (unsigned int j = 0; j < numRegs; j += 2)
+                    {
+                        acc[j] = vsubw_s8(acc[j], vget_low_s8(column[j / 2]));
+                        acc[j + 1] = vsubw_high_s8(acc[j + 1], column[j / 2]);
+                    }
+#else
                     for (unsigned int j = 0; j < numRegs; j++)
                         acc[j] = vec_sub_16(acc[j], vec_convert_8_16(column[j]));
+#endif
                 }
             }
 
@@ -1493,8 +1487,16 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
                 }
                 else {
                     vec_i8_t* column = (vec_i8_t*)(weight8 + offset);
+#ifdef USE_NEON
+                    for (unsigned int j = 0; j < numRegs; j += 2)
+                    {
+                        acc[j] = vaddw_s8(acc[j], vget_low_s8(column[j / 2]));
+                        acc[j + 1] = vaddw_high_s8(acc[j + 1], column[j / 2]);
+                    }
+#else
                     for (unsigned int j = 0; j < numRegs; j++)
                         acc[j] = vec_add_16(acc[j], vec_convert_8_16(column[j]));
+#endif
                 }
             }
 
@@ -1623,8 +1625,16 @@ template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> vo
             index = addedIndices.values[k];
             const unsigned int offset = NnueFtHalfdims * index + i * tileHeight;
             vec_i8_t* column = (vec_i8_t*)(weight + offset);
+#ifdef USE_NEON
+            for (unsigned int j = 0; j < numRegs; j += 2)
+            {
+                acc[j] = vaddw_s8(acc[j], vget_low_s8(column[j / 2]));
+                acc[j + 1] = vaddw_high_s8(acc[j + 1], column[j / 2]);
+            }
+#else
             for (unsigned int j = 0; j < numRegs; j++)
                 acc[j] = vec_add_16(acc[j], vec_convert_8_16(column[j]));
+#endif
         }
 
         for (unsigned int j = 0; j < numRegs; j++)
