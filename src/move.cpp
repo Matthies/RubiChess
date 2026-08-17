@@ -539,7 +539,6 @@ void chessposition::update_piece_threats(unsigned pc, bool putPiece, unsigned s,
             U64 ray = raypassMask[sliderSq][s];
             U64 discovered = ray & (rookAttacks | bishopAttacks) & occupiedNoK;
 
-            //assert(!more_than_one(discovered));
             if (discovered && (raypassMask[sliderSq][s] & noRaysContaining) != noRaysContaining)
             {
                 int threatenedSq = pullLsb(&discovered);
@@ -563,14 +562,12 @@ void chessposition::update_piece_threats(unsigned pc, bool putPiece, unsigned s,
     const U64 whitePawns = piece00[WPAWN];
     const U64 blackPawns = piece00[BPAWN];
 
-    U64 threatened = (pt == PAWN ? pawn_attacks_to[s][c] : pieceTargets(pt, s, occupied)) & occupiedNoK;    // FIXME: check if c or 1-c is correct
+    U64 threatened = (pt == PAWN ? pawn_attacks_to[s][c] : pieceTargets(pt, s, occupied)) & occupiedNoK;
     U64 incoming_threats = (knight_attacks[s] & knights) | (king_attacks[s] & kings);
 
-    // Compute both incoming and outgoing pawn threats. Incoming pawn pushers are only
-    // added if 'pc' is a pawn.
     if (pt == PAWN)
     {
-        U64 whiteAttacks = pawnpushorattacks[WHITE][s]; // FIXME: check if doublepushes are needed
+        U64 whiteAttacks = pawnpushorattacks[WHITE][s];
         U64 blackAttacks = pawnpushorattacks[BLACK][s];
 
         threatened |= (c == WHITE ? whiteAttacks : blackAttacks) & (piece00[WPAWN] | piece00[BPAWN]);
@@ -580,37 +577,25 @@ void chessposition::update_piece_threats(unsigned pc, bool putPiece, unsigned s,
     }
     else
     {
-        incoming_threats |= (pawn_attacks_to[s][WHITE] & blackPawns) | (pawn_attacks_to[s][BLACK] & whitePawns); // FIXME: Check if WHITE and BLACK are correct
+        incoming_threats |= (pawn_attacks_to[s][WHITE] & blackPawns) | (pawn_attacks_to[s][BLACK] & whitePawns);
     }
 
     while (threatened)
     {
         int threatenedSq = pullLsb(&threatened);
         PieceCode threatenedPc = mailbox[threatenedSq];
-
-        //assert(threatenedSq != s);
-        //assert(threatenedPc);
-
         add_dirty_threat(dt, putPiece, pc, threatenedPc, s, threatenedSq);
     }
 
     if (ComputeRay)
-    {
         process_sliders(true);
-    }
     else
-    {
         incoming_threats |= sliders;
-    }
 
     while (incoming_threats)
     {
         int srcSq = pullLsb(&incoming_threats);
         PieceCode srcPc = mailbox[srcSq];
-
-        //assert(srcSq != s);
-        //assert(srcPc != NO_PIECE);
-
         add_dirty_threat(dt, putPiece, srcPc, pc, srcSq, s);
     }
 }
@@ -650,7 +635,7 @@ void chessposition::unplayNullMove()
 
 // Do all updates for a move played
 // LiteMode: ommit updated for several things(*) when you don't need to evaluate position
-// (*): accumulator, dirtypiece, halfmovescounter, fullmovescounter, hash, pawnhash, piececount, conthistptr, nodes, updatePins()
+// (*): accumulator, dirtypiece, dirtythreats, halfmovescounter, fullmovescounter, hash, pawnhash, piececount, conthistptr, nodes, updatePins()
 template <bool LiteMode>
 bool chessposition::playMove(uint32_t mc)
 {
@@ -691,11 +676,6 @@ bool chessposition::playMove(uint32_t mc)
         int rookto = castlerookto[cstli];
         PieceCode kingpc = (PieceCode)(WKING | s2m);
         PieceCode rookpc = (PieceCode)(WROOK | s2m);
-
-        //mailbox[kingfrom] = BLANK;
-        //mailbox[rookfrom] = BLANK;
-        //mailbox[kingto] = kingpc;
-        //mailbox[rookto] = rookpc;
 
         if (kingfrom != kingto)
         {
@@ -766,11 +746,9 @@ bool chessposition::playMove(uint32_t mc)
 
         if (promote == BLANK)
         {
-            //mailbox[to] = pfrom;
             BitboardMove(from, to, pfrom, dt);
         }
         else {
-            //mailbox[to] = promote;
             BitboardClear(from, pfrom, dt);
             BitboardSet(to, promote, dt);
             if (!LiteMode) {
@@ -790,7 +768,6 @@ bool chessposition::playMove(uint32_t mc)
             hash ^= zb.boardtable[(to << 4) | mailbox[to]];
             hash ^= zb.boardtable[(from << 4) | pfrom];
         }
-        //mailbox[from] = BLANK;
 
         /* PAWN specials */
         if (ptype == PAWN)
@@ -806,7 +783,6 @@ bool chessposition::playMove(uint32_t mc)
             {
                 int epfield = (from & 0x38) | (to & 0x07);
                 BitboardClear(epfield, (pfrom ^ S2MMASK), dt);
-                //mailbox[epfield] = BLANK;
                 if (!LiteMode) {
                     hash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
                     pawnhash ^= zb.boardtable[(epfield << 4) | (pfrom ^ S2MMASK)];
@@ -838,7 +814,6 @@ bool chessposition::playMove(uint32_t mc)
             }
             halfmovescounter = movestack[ply].halfmovescounter;
             kingpos[s2m] = movestack[ply].kingpos[s2m];
-            //mailbox[from] = pfrom;
             if (promote != BLANK)
             {
                 BitboardClear(to, mailbox[to], dt);
@@ -855,19 +830,13 @@ bool chessposition::playMove(uint32_t mc)
                     // special ep capture
                     int epfield = (from & 0x38) | (to & 0x07);
                     BitboardSet(epfield, capture, dt);
-                    //mailbox[epfield] = capture;
-                    //mailbox[to] = BLANK;
                 }
                 else
                 {
                     BitboardSet(to, capture, dt);
-                    //mailbox[to] = capture;
                 }
                 if (!LiteMode)
                     piececount++;
-            }
-            else {
-                //mailbox[to] = BLANK;
             }
             return false;
         }
@@ -942,11 +911,6 @@ void chessposition::unplayMove(uint32_t mc)
         PieceCode kingpc = (PieceCode)(WKING | s2m);
         PieceCode rookpc = (PieceCode)(WROOK | s2m);
 
-        //mailbox[kingto] = BLANK;
-        //mailbox[rookto] = BLANK;
-        //mailbox[kingfrom] = kingpc;
-        //mailbox[rookfrom] = rookpc;
-
         if (kingfrom != kingto)
             BitboardMove(kingto, kingfrom, kingpc);
 
@@ -962,7 +926,6 @@ void chessposition::unplayMove(uint32_t mc)
         PieceCode promote = GETPROMOTION(mc);
         PieceCode capture = GETCAPTURE(mc);
 
-        //mailbox[from] = pfrom;
         if (promote != BLANK)
         {
             BitboardClear(to, promote);
@@ -979,19 +942,13 @@ void chessposition::unplayMove(uint32_t mc)
                 // special ep capture
                 int epfield = (from & 0x38) | (to & 0x07);
                 BitboardSet(epfield, capture);
-                //mailbox[epfield] = capture;
-                //mailbox[to] = BLANK;
             }
             else
             {
                 BitboardSet(to, capture);
-                //mailbox[to] = capture;
             }
             if (!LiteMode)
                 piececount++;
-        }
-        else {
-            //mailbox[to] = BLANK;
         }
     }
 }

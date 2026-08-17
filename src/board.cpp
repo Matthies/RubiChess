@@ -41,8 +41,6 @@ U64 fileMask[64];
 U64 rankMask[64];
 U64 betweenMask[64][64];
 U64 raypassMask[64][64];
-//U64 lineMask[64][64];
-//U64 lineMasknew[64][64];
 int squareDistance[64][64];  // decreased by 1 for directly indexing evaluation arrays
 alignas(64) int psqtable[14][64];
 
@@ -844,7 +842,6 @@ void initBitmaphelper()
     {
         pseudoattacks[WHITE][j] = PAWNATTACK(WHITE, BITSET(j));
         pseudoattacks[BLACK][j] = PAWNATTACK(BLACK, BITSET(j));
-
         pseudoattacks[KING][j] = king_attacks[j];
         pseudoattacks[KNIGHT][j] = knight_attacks[j];
         pseudoattacks[QUEEN][j] = pseudoattacks[BISHOP][j] = BISHOPATTACKS(0, j);

@@ -328,7 +328,6 @@ public:
         int bucket = (POPCOUNT(pos->occupied00[WHITE] | pos->occupied00[BLACK]) - 1) / 4;
         int psqt = pos->Transform<NnueArchV5, NnueFtHalfdims, NnuePsqtBuckets>(network.input, bucket);
         LayerStack[bucket].NnueHd1.Propagate(network.input, network.hidden1_values);
-        //memset(network.hidden1_sqrclipped, 0, sizeof(network.hidden1_sqrclipped));  // FIXME: is this needed?
         LayerStack[bucket].NnueSqrCl.Propagate(network.hidden1_values, network.hidden1_sqrclipped);
         LayerStack[bucket].NnueCl1.Propagate(network.hidden1_values, network.hidden1_clipped);
         memcpy(network.hidden1_sqrclipped + NnueHidden1Out, network.hidden1_clipped, NnueHidden1Out * sizeof(clipped_t));
@@ -561,7 +560,6 @@ public:
         int bucket = (POPCOUNT(pos->occupied00[WHITE] | pos->occupied00[BLACK]) - 1) / 4;
         int psqt = pos->Transform<NnueArchV13, NnueFtHalfdims, NnuePsqtBuckets>(network.input, bucket);
         LayerStack[bucket].NnueHd1.Propagate(network.input, network.hidden1_values);
-        //memset(network.hidden1_sqrclipped, 0, sizeof(network.hidden1_sqrclipped));  // FIXME: is this needed?
         LayerStack[bucket].NnueSqrCl.Propagate(network.hidden1_values, network.hidden1_sqrclipped);
         LayerStack[bucket].NnueCl1.Propagate(network.hidden1_values, network.hidden1_clipped);
         memcpy(network.hidden1_sqrclipped + NnueHidden1Out, network.hidden1_clipped, NnueHidden1Out * sizeof(clipped_t));
@@ -582,7 +580,7 @@ public:
     }
 
     void SpeculativeEval(chessposition* pos) {
-        pos->SpeculativeTransform<NnueArchV5, NnueFtHalfdims, NnuePsqtBuckets>();
+        pos->SpeculativeTransform<NnueArchV5, NnueFtHalfdims, NnuePsqtBuckets>(); // FIXME... check if V13 is faster
     }
     int16_t* GetFeatureWeight() {
         return NnueFt.weight;
@@ -721,18 +719,11 @@ int8_t AllPieces[12] = {
     9,10,11,12,13,14
 };
 
-int constexpr_popcount(U64 b) {
-    b = b - ((b >> 1) & 0x5555555555555555ULL);
-    b = (b & 0x3333333333333333ULL) + ((b >> 2) & 0x3333333333333333ULL);
-    b = (b + (b >> 4)) & 0x0F0F0F0F0F0F0F0FULL;
-    return (int)((b * 0x0101010101010101ULL) >> 56);
-}
 
 template<Color C>
 constexpr U64 pawn_attacks_bb(U64 b) {
     return C == WHITE ? ((b & ~FILEABB) << 7) | ((b & ~FILEHBB) << 9) : ((b & ~FILEABB) >> 9) | ((b & ~FILEHBB) >> 7);
 }
-
 
 
 template<PieceType PT>
@@ -743,10 +734,11 @@ array<array<uint8_t, 64>, 64> make_piece_indices_type() {
     {
         U64 attacks = pseudoattacks[PT][from];
         for (unsigned int to = 0; to < 64; ++to)
-            out[from][to] = constexpr_popcount(((1ULL << to) - 1) & attacks);
+            out[from][to] = POPCOUNT(((1ULL << to) - 1) & attacks);
     }
     return out;
 }
+
 
 template<PieceCode P>
 array<array<uint8_t, 64>, 64> make_piece_indices_piece() {
@@ -758,7 +750,7 @@ array<array<uint8_t, 64>, 64> make_piece_indices_piece() {
     {
         U64 attacks = pawnpushorattacks[C][from];
         for (unsigned int to = 0; to < 64; ++to)
-            out[from][to] = constexpr_popcount(((1ULL << to) - 1) & attacks);
+            out[from][to] = POPCOUNT(((1ULL << to) - 1) & attacks);
     }
     return out;
 }
@@ -784,7 +776,6 @@ array<array<array<uint8_t, 64>, 64>, 16> tf_index_lut2;
 
 void init_threat_indices()
 {
-    // init_threat_offsets
     int cumulativeOffset = 0;
     for (unsigned int piece : AllPieces)
     {
@@ -799,21 +790,20 @@ void init_threat_indices()
             if ((piece & 7) != PAWN)
             {
                 U64 attacks = pseudoattacks[piece & 7][from];
-                cumulativePieceOffset += constexpr_popcount(attacks);
+                cumulativePieceOffset += POPCOUNT(attacks);
             }
 
             else if (from >= 8 && from < 56)
             {
                 U64 attacks =
                     (pieceIdx < 8) ? pawnpushorattacks[WHITE][from] : pawnpushorattacks[BLACK][from];
-                cumulativePieceOffset += constexpr_popcount(attacks);
+                cumulativePieceOffset += POPCOUNT(attacks);
             }
         }
         tf_helper_offsets[pieceIdx] = { cumulativePieceOffset, cumulativeOffset };
         cumulativeOffset += numValidTargets[pieceIdx] * cumulativePieceOffset;
     }
 
-    // init_index_luts
     for (unsigned int attacker : AllPieces)
     {
         for (unsigned int attacked : AllPieces)
@@ -836,7 +826,6 @@ void init_threat_indices()
         }
     }
 
-    // index_lut2_array
     auto KNIGHT_ATTACKS = make_piece_indices_type<KNIGHT>();
     auto BISHOP_ATTACKS = make_piece_indices_type<BISHOP>();
     auto ROOK_ATTACKS = make_piece_indices_type<ROOK>();
@@ -845,19 +834,14 @@ void init_threat_indices()
 
     tf_index_lut2[WPAWN] = make_piece_indices_piece<WPAWN>();
     tf_index_lut2[BPAWN] = make_piece_indices_piece<BPAWN>();
-
     tf_index_lut2[WKNIGHT] = KNIGHT_ATTACKS;
     tf_index_lut2[BKNIGHT] = KNIGHT_ATTACKS;
-
     tf_index_lut2[WBISHOP] = BISHOP_ATTACKS;
     tf_index_lut2[BBISHOP] = BISHOP_ATTACKS;
-
     tf_index_lut2[WROOK] = ROOK_ATTACKS;
     tf_index_lut2[BROOK] = ROOK_ATTACKS;
-
     tf_index_lut2[WQUEEN] = QUEEN_ATTACKS;
     tf_index_lut2[BQUEEN] = QUEEN_ATTACKS;
-
     tf_index_lut2[WKING] = KING_ATTACKS;
     tf_index_lut2[BKING] = KING_ATTACKS;
 }
@@ -879,11 +863,6 @@ inline uint32_t fullthreats_make_index(
         + tf_index_lut2[attacker_oriented][from_oriented][to_oriented];
     return index;
 }
-
-//
-// Threats end
-//
-
 
 
 //
@@ -995,8 +974,6 @@ template <NnueType Nt, Color c> void chessposition::ThreatsAppendChangedIndices(
         insert->size += (index < NUMTHREATSFEATURES);
     }
 }
-
-
 
 
 
@@ -1292,12 +1269,10 @@ template <NnueType Nt, Color c, int N> bool chessposition::GetThreatAcccumulator
 {
     int mslast = ply;
     // A full update needs activation of all pieces (except kings for V1)
-    //int fullupdatecost = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]) - (Nt == NnueArchV1 ? 2 : 0);
-    
     while (mslast > 0 && !threatcomputationState[mslast][c])
     {
         // search for position with computed accu on stack that leads to current position by differential updates
-        // break at king move or if the dirty piece updates get too expensive
+        // break at king move crossing the vertical d/e file border
         DirtyThreats* dt = &dirtythreats[mslast];
         if (dt->us == c && ((int8_t(dt->ksq) & 0x4) != (int8_t(dt->prevKsq) & 0x4)))
             break;
