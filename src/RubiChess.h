@@ -20,9 +20,6 @@
 #define VERNUMLEGACY 2026
 #define NNUEDEFAULT nn-6b25a84c8a-20260809.nnue
 
-// enable this switch for faster SSE2 code using 16bit integers
-#define FASTSSE2
-
 // Enable to get statistical values about various search features
 //#define STATISTICS
 
@@ -832,8 +829,6 @@ typedef int8_t weight_t;
 typedef int8_t clipped_t;
 
 enum NnueFeatureType { NnueFeatuteHalfKa, NnueFeatureThreat };
-//#define MAXHALFKAINDEX 32
-//#define MAXTHREATINDEX 128
 
 class NnueIndexList {
 public:
@@ -842,28 +837,12 @@ public:
 };
 
 
-#if 0
-// All pieces and both kings for HalfKA are inputs => 32 dimensions
-typedef struct {
-    size_t size;
-    unsigned values[32];
-} NnueHalfkaIndexList;
-#endif
-
 typedef struct {
     int dirtyNum;
     PieceCode pc[3];
     int from[3];
     int to[3];
 } DirtyPieces;
-
-#if 0
-// Max number of threats not bigger than 128
-typedef struct {
-    size_t size;
-    unsigned values[128];
-} NnueThreatIndexList;
-#endif
 
 typedef struct {
     uint32_t threatdata[96];
@@ -1940,7 +1919,6 @@ public:
     template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void AccumulatorUpdate();
     template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void AccumulatorSpeculativeUpdate();
     template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void ThreatsAccumulatorRefresh();
-
 #ifdef NNUEDEBUG
     template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void AccumulatorDebug(int16_t* accumulation, int32_t* psqtAccumulation);
 #endif

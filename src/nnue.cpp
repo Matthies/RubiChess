@@ -704,6 +704,7 @@ public:
 
 //
 // Threats Features stuff here
+// Most code was taken from Stockfish with some modifications for different piece enumeration and C++-11 compatibility
 //
 
 static constexpr int numValidTargets[16] = { 0, 6, 10, 8, 8, 10, 0, 0,
@@ -713,10 +714,9 @@ struct HelperOffsets {
     int cumulativePieceOffset, cumulativeOffset;
 };
 
-// We keep this order of pieces to stay compatible with SF feature order
+// We keep this order of pieces to stay compatible with SF feature order (and trainer)
 int8_t AllPieces[12] = {
-    1,2,3,4,5,6,
-    9,10,11,12,13,14
+    1,2,3,4,5,6,9,10,11,12,13,14
 };
 
 
@@ -1104,7 +1104,7 @@ typedef uint64_t vec_i8_t;
 #define vec_packus_16(a,b)_mm_packus_epi16(a,b)
 #define vec_slli_16(a,b) _mm_slli_epi16(a,b)
 #define vec_mulhi_16(a,b) _mm_mulhi_epi16(a,b)
-// Credit: Yoshie2000
+// Credit: Yoshie2000/PlentyChess
 inline __m128i vec_convert_8_16(uint64_t x) {
     __m128i v8 = _mm_cvtsi64_si128(static_cast<int64_t>(x));
     __m128i sign = _mm_cmpgt_epi8(_mm_setzero_si128(), v8);

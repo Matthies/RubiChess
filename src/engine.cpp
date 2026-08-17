@@ -235,6 +235,8 @@ void cleanupThread(workingthread* thr)
     pos->pwnhsh.remove();
     freealigned64(pos->halfkaaccumulation);
     freealigned64(pos->psqthalfkaAccumulation);
+    freealigned64(pos->threataccumulation);
+    freealigned64(pos->psqtthreatAccumulation);
     freealigned64(pos->accucache.accumulation);
     if (pos->accucache.psqtaccumulation)
         freealigned64(pos->accucache.psqtaccumulation);
