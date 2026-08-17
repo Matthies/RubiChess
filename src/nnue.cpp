@@ -580,7 +580,7 @@ public:
     }
 
     void SpeculativeEval(chessposition* pos) {
-        pos->SpeculativeTransform<NnueArchV5, NnueFtHalfdims, NnuePsqtBuckets>(); // FIXME... check if V13 is faster
+        pos->SpeculativeTransform<NnueArchV13, NnueFtHalfdims, NnuePsqtBuckets>();
     }
     int16_t* GetFeatureWeight() {
         return NnueFt.weight;
