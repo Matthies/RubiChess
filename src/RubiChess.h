@@ -963,12 +963,16 @@ public:
         int16_t bias_temp = bias[i1];
         bias[i1] = bias[i2];
         bias[i2] = bias_temp;
-        for (unsigned int i = 0; i < inputdims; i++)
+        for (unsigned int i = 0; i < outputdims; i++)
         {
             int offset = i * ftdims;
             int16_t weight_temp = weight[offset + i1];
             weight[offset + i1] = weight[offset + i2];
             weight[offset + i2] = weight_temp;
+            offset = i * ftthreatdims;
+            int8_t threatweight_temp = threatweights[offset + i1];
+            threatweights[offset + i1] = threatweights[offset + i2];
+            threatweights[offset + i2] = threatweight_temp;
         }
     }
 #endif

@@ -935,8 +935,10 @@ void prepareSearch(chessposition* pos)
     pos->nullmoveside = 0;
     pos->nodesToNextCheck = 0;
     pos->excludemovestack[0] = 0;
-    pos->computationState[0][WHITE] = false;
-    pos->computationState[0][BLACK] = false;
+    pos->halfkacomputationState[0][WHITE] = false;
+    pos->halfkacomputationState[0][BLACK] = false;
+    pos->threatcomputationState[0][WHITE] = false;
+    pos->threatcomputationState[0][BLACK] = false;
     if (NnueCurrentArch)
         NnueCurrentArch->ResetAccumulationCache(pos);
 }
