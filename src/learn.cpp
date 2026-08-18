@@ -275,8 +275,10 @@ int chessposition::getFromSfen(PackedSfen* sfen)
     lastnullmove = -1;
     ply = 0;
     piececount = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]);
-    computationState[0][WHITE] = false;
-    computationState[0][BLACK] = false;
+    halfkacomputationState[0][WHITE] = false;
+    halfkacomputationState[0][BLACK] = false;
+    threatcomputationState[0][WHITE] = false;
+    threatcomputationState[0][BLACK] = false;
     threatSquare = 64;
     return 0;
 }
@@ -630,8 +632,10 @@ int chessposition::getNextFromBinpack(Binpack *bp)
         ept = 0;
         threatSquare = 64;
         lastnullmove = -1;
-        computationState[0][WHITE] = false;
-        computationState[0][BLACK] = false;
+        halfkacomputationState[0][WHITE] = false;
+        halfkacomputationState[0][BLACK] = false;
+        threatcomputationState[0][WHITE] = false;
+        threatcomputationState[0][BLACK] = false;
         // get the pieces
         getPosFromBinpack(bp);
         zb.getAllHashes(this);
@@ -1440,8 +1444,10 @@ sfenreader::sfenreader()
     pos = (chessposition*)allocalign64(sizeof(chessposition));
     pos->pwnhsh.setSize();
     pos->initCastleRights(rookfiles, kingfile);
-    pos->accumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
-    pos->psqtAccumulation = NnueCurrentArch ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr;
+    pos->halfkaaccumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
+    pos->psqthalfkaAccumulation = NnueCurrentArch ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr;
+    pos->threataccumulation = (NnueCurrentArch && NnueCurrentArch->GetFeatureThreatWeight() ? NnueCurrentArch->CreateAccumulationStack() : nullptr);
+    pos->psqtthreatAccumulation = (NnueCurrentArch && NnueCurrentArch->GetFeatureThreatPsqtWeight() ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr);
     if (NnueCurrentArch) {
         NnueCurrentArch->CreateAccumulationCache(pos);
         NnueCurrentArch->ResetAccumulationCache(pos);

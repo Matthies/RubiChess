@@ -40,10 +40,13 @@ U64 kingdangerMask[64][2];
 U64 fileMask[64];
 U64 rankMask[64];
 U64 betweenMask[64][64];
-U64 lineMask[64][64];
+U64 raypassMask[64][64];
 int squareDistance[64][64];  // decreased by 1 for directly indexing evaluation arrays
 alignas(64) int psqtable[14][64];
 
+// Threat feature stuff
+U64 pseudoattacks[8][64];
+U64 pawnpushorattacks[2][64];
 
 bool chessposition::w2m()
 {
@@ -709,31 +712,12 @@ const U64 rookmagics[] = {
 
 void initBitmaphelper()
 {
-    int to;
-
     initPsqtable();
     for (int from = 0; from < 64; from++)
     {
-        king_attacks[from] = knight_attacks[from] = 0ULL;
-        pawn_moves_to[from][0] = pawn_attacks_to[from][0] = pawn_moves_to_double[from][0] = 0ULL;
-        pawn_moves_to[from][1] = pawn_attacks_to[from][1] = pawn_moves_to_double[from][1] = 0ULL;
-        pawn_moves_from[from][0] = pawn_attacks_from[from][0] = pawn_moves_from_double[from][0] = 0ULL;
-        pawn_moves_from[from][1] = pawn_attacks_from[from][1] = pawn_moves_from_double[from][1] = 0ULL;
-        passedPawnMask[from][0] = passedPawnMask[from][1] = 0ULL;
-        filebarrierMask[from][0] = filebarrierMask[from][1] = 0ULL;
-        phalanxMask[from] = 0ULL;
-        kingshieldMask[from][0] = kingshieldMask[from][1] = 0ULL;
-        kingdangerMask[from][0] = kingdangerMask[from][1] = 0ULL;
-        neighbourfilesMask[from] = 0ULL;
-        fileMask[from] = 0ULL;
-        rankMask[from] = 0ULL;
-
         for (int j = 0; j < 64; j++)
         {
             squareDistance[from][j] = max(abs(RANK(from) - RANK(j)), abs(FILE(from) - FILE(j))) - 1;
-            betweenMask[from][j] = 0ULL;
-            lineMask[from][j] = 0ULL;
-
             if (abs(FILE(from) - FILE(j)) == 1)
             {
                 neighbourfilesMask[from] |= BITSET(j);
@@ -741,42 +725,15 @@ void initBitmaphelper()
                     phalanxMask[from] |= BITSET(j);
             }
             if (FILE(from) == FILE(j))
-            {
                 fileMask[from] |= BITSET(j);
-                for (int i = min(RANK(from), RANK(j)) + 1; i < max(RANK(from), RANK(j)); i++)
-                    betweenMask[from][j] |= BITSET(INDEX(i, FILE(from)));
-                for (int i = 0; i < 8; i++)
-                    lineMask[from][j] |= BITSET(INDEX(i, FILE(from)));
-            }
             if (RANK(from) == RANK(j))
-            {
                 rankMask[from] |= BITSET(j);
-                for (int i = min(FILE(from), FILE(j)) + 1; i < max(FILE(from), FILE(j)); i++)
-                    betweenMask[from][j] |= BITSET(INDEX(RANK(from), i));
-                for (int i = 0; i < 8; i++)
-                    lineMask[from][j] |= BITSET(INDEX(RANK(from), i));
-            }
-            if (from != j && abs(RANK(from) - RANK(j)) == abs(FILE(from) - FILE(j)))
-            {
-                int dx = (FILE(from) < FILE(j) ? 1 : -1);
-                int dy = (RANK(from) < RANK(j) ? 1 : -1);
-                for (int i = 1; FILE(from) +  i * dx != FILE(j); i++)
-                    betweenMask[from][j] |= BITSET(INDEX(RANK(from) + i * dy, FILE(from) + i * dx));
-
-                for (int i = -7; i < 8; i++)
-                {
-                    int r = RANK(from) + i * dy;
-                    int f = FILE(from) + i * dx;
-                    if (r >= 0 && r < 8 && f >= 0 && f < 8)
-                        lineMask[from][j] |= BITSET(INDEX(r, f));
-                }
-            }
         }
 
         for (int j = 0; j < 8; j++)
         {
             // King attacks
-            to = from + orthogonalanddiagonaloffset[j];
+            int to = from + orthogonalanddiagonaloffset[j];
             if (to >= 0 && to < 64 && abs(FILE(from) - FILE(to)) <= 1)
                 king_attacks[from] |= BITSET(to);
 
@@ -807,7 +764,7 @@ void initBitmaphelper()
             // Captures
             for (int d = -1; d <= 1; d++)
             {
-                to = from - S2MSIGN(s) * 8 + d;
+                int to = from - S2MSIGN(s) * 8 + d;
                 if (d && abs(FILE(from) - FILE(to)) <= 1 && to >= 0 && to < 64)
                     pawn_attacks_from[from][s] |= BITSET(to);
 
@@ -879,42 +836,79 @@ void initBitmaphelper()
                 epthelper[from] |= BITSET(from + 1);
         }
     }
+
+    // Threats feature stuff
+    for (int j = 0; j < 64; j++)
+    {
+        pseudoattacks[WHITE][j] = PAWNATTACK(WHITE, BITSET(j));
+        pseudoattacks[BLACK][j] = PAWNATTACK(BLACK, BITSET(j));
+        pseudoattacks[KING][j] = king_attacks[j];
+        pseudoattacks[KNIGHT][j] = knight_attacks[j];
+        pseudoattacks[QUEEN][j] = pseudoattacks[BISHOP][j] = BISHOPATTACKS(0, j);
+        pseudoattacks[QUEEN][j] |= pseudoattacks[ROOK][j] = ROOKATTACKS(0, j);
+        pawnpushorattacks[WHITE][j] = (BITSET(j) << 8) | pseudoattacks[WHITE][j];
+        pawnpushorattacks[BLACK][j] = (BITSET(j) >> 8) | pseudoattacks[BLACK][j];
+    }
+
+    for (int from = 0; from < 64; from++)
+        for (PieceType p = BISHOP; p <= ROOK; p++)
+            for (int to = 0; to < 64; to++)
+            {
+                if (pseudoattacks[p][from] & BITSET(to))
+                {
+                    raypassMask[from][to] = pieceTargets(p, from, 0) & (pieceTargets(p, to, BITSET(from)) | BITSET(to));
+                    betweenMask[from][to] = pieceTargets(p, from, BITSET(to)) & pieceTargets(p, to, BITSET(from));
+                }
+            }
 }
 
 
-void chessposition::BitboardSet(int index, PieceCode p)
+void chessposition::BitboardSet(int index, PieceCode p, DirtyThreats* dt)
 {
     myassert(index >= 0 && index < 64, this, 1, index);
     myassert(p >= BLANK && p <= BKING, this, 1, p);
     int s2m = p & 0x1;
+    mailbox[index] = p;
     piece00[p] |= BITSET(index);
     occupied00[s2m] |= BITSET(index);
     psqval += psqtable[p][index];
     phcount += phasefactor[p >> 1];
+    if (dt)
+        update_piece_threats(p, true, index, dt);
 }
 
 
-void chessposition::BitboardClear(int index, PieceCode p)
+void chessposition::BitboardClear(int index, PieceCode p, DirtyThreats* dt)
 {
     myassert(index >= 0 && index < 64, this, 1, index);
     myassert(p >= BLANK && p <= BKING, this, 1, p);
     int s2m = p & 0x1;
+    mailbox[index] = BLANK;
     piece00[p] ^= BITSET(index);
     occupied00[s2m] ^= BITSET(index);
     psqval -= psqtable[p][index];
     phcount -= phasefactor[p >> 1];
+    if (dt)
+        update_piece_threats(p, false, index, dt);
 }
 
 
-void chessposition::BitboardMove(int from, int to, PieceCode p)
+void chessposition::BitboardMove(int from, int to, PieceCode p, DirtyThreats* dt)
 {
     myassert(from >= 0 && from < 64, this, 1, from);
     myassert(to >= 0 && to < 64, this, 1, to);
     myassert(p >= BLANK && p <= BKING, this, 1, p);
+    U64 fromto = BITSET(from) | BITSET(to);
     int s2m = p & 0x1;
+    if (dt)
+        update_piece_threats(p, false, from, dt, fromto);
+    mailbox[from] = BLANK;
+    mailbox[to] = p;
     piece00[p] ^= (BITSET(from) | BITSET(to));
     occupied00[s2m] ^= (BITSET(from) | BITSET(to));
     psqval += psqtable[p][to] - psqtable[p][from];
+    if (dt)
+        update_piece_threats(p, true, to, dt, fromto);
 }
 
 
@@ -960,6 +954,25 @@ U64 chessposition::movesTo(PieceCode pc, int from)
     case PAWN:
         return ((pawn_moves_to[from][s2m] | pawn_moves_to_double[from][s2m]) & ~occ)
                 | (pawn_attacks_to[from][s2m] & (occ | (ept ? BITSET(ept) : 0ULL)));
+    case KNIGHT:
+        return knight_attacks[from];
+    case BISHOP:
+        return BISHOPATTACKS(occ, from);
+    case ROOK:
+        return ROOKATTACKS(occ, from);
+    case QUEEN:
+        return BISHOPATTACKS(occ, from) | ROOKATTACKS(occ, from);
+    case KING:
+        return king_attacks[from];
+    default:
+        return 0ULL;
+    }
+}
+
+U64 pieceTargets(PieceType pt, int from, U64 occ) // not for pawns
+{
+    switch (pt)
+    {
     case KNIGHT:
         return knight_attacks[from];
     case BISHOP:

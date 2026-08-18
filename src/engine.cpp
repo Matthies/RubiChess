@@ -221,8 +221,10 @@ void initThread(workingthread* thr)
     void* buffer = allocalign64(sizeof(chessposition));
     chessposition* pos = thr->pos = new(buffer) chessposition;
     pos->pwnhsh.setSize();
-    pos->accumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
-    pos->psqtAccumulation = NnueCurrentArch ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr;
+    pos->halfkaaccumulation = NnueCurrentArch ? NnueCurrentArch->CreateAccumulationStack() : nullptr;
+    pos->psqthalfkaAccumulation = NnueCurrentArch ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr;
+    pos->threataccumulation = (NnueCurrentArch && NnueCurrentArch->GetFeatureThreatWeight() ? NnueCurrentArch->CreateAccumulationStack() : nullptr);
+    pos->psqtthreatAccumulation = (NnueCurrentArch && NnueCurrentArch->GetFeatureThreatPsqtWeight() ? NnueCurrentArch->CreatePsqtAccumulationStack() : nullptr);
     if (NnueCurrentArch)
         NnueCurrentArch->CreateAccumulationCache(pos);
 }
@@ -231,8 +233,10 @@ void cleanupThread(workingthread* thr)
 {
     chessposition* pos = thr->pos;
     pos->pwnhsh.remove();
-    freealigned64(pos->accumulation);
-    freealigned64(pos->psqtAccumulation);
+    freealigned64(pos->halfkaaccumulation);
+    freealigned64(pos->psqthalfkaAccumulation);
+    freealigned64(pos->threataccumulation);
+    freealigned64(pos->psqtthreatAccumulation);
     freealigned64(pos->accucache.accumulation);
     if (pos->accucache.psqtaccumulation)
         freealigned64(pos->accucache.psqtaccumulation);
@@ -901,8 +905,10 @@ void prepareSearch(chessposition* pos, chessposition* rootpos)
     pos->nullmoveside = 0;
     pos->nodesToNextCheck = 0;
     pos->excludemovestack[0] = 0;
-    pos->computationState[0][WHITE] = false;
-    pos->computationState[0][BLACK] = false;
+    pos->halfkacomputationState[0][WHITE] = false;
+    pos->halfkacomputationState[0][BLACK] = false;
+    pos->threatcomputationState[0][WHITE] = false;
+    pos->threatcomputationState[0][BLACK] = false;
 
     int framesToCopy = rootpos->prerootmovenum + 1; //include stack frame of ply 0
     int startIndex = PREROOTMOVES - framesToCopy + 1;
@@ -928,8 +934,10 @@ void prepareSearch(chessposition* pos)
     pos->nullmoveside = 0;
     pos->nodesToNextCheck = 0;
     pos->excludemovestack[0] = 0;
-    pos->computationState[0][WHITE] = false;
-    pos->computationState[0][BLACK] = false;
+    pos->halfkacomputationState[0][WHITE] = false;
+    pos->halfkacomputationState[0][BLACK] = false;
+    pos->threatcomputationState[0][WHITE] = false;
+    pos->threatcomputationState[0][BLACK] = false;
     if (NnueCurrentArch)
         NnueCurrentArch->ResetAccumulationCache(pos);
 }
