@@ -1026,6 +1026,7 @@ inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define vec_add_dpbusd_32x2_large Simd::m512_add_dpbusd_32x2
 #define vec_haddx4_large Simd::m512_haddx4
 #define vec_hadd_large Simd::m512_hadd
+#define vec_zero_ft() _mm512_setzero_si512()
 #define vec_zero_psqt() _mm256_setzero_si256()
 #define vec_add_psqt_32(a,b) _mm256_add_epi32(a,b)
 #define vec_sub_psqt_32(a,b) _mm256_sub_epi32(a,b)
@@ -1065,6 +1066,7 @@ inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define vec_add_dpbusd_32x2_large Simd::m256_add_dpbusd_32x2
 #define vec_haddx4_large Simd::m256_haddx4
 #define vec_hadd_large Simd::m256_hadd
+#define vec_zero_ft() _mm256_setzero_si256()
 #define vec_zero_psqt() _mm256_setzero_si256()
 #define vec_add_psqt_32(a,b) _mm256_add_epi32(a,b)
 #define vec_sub_psqt_32(a,b) _mm256_sub_epi32(a,b)
@@ -1096,6 +1098,7 @@ typedef uint64_t vec_i8_t;
 #define vec_sub_16(a,b) _mm_sub_epi16(a,b)
 #define vec_packs(a,b) _mm_packs_epi16(a,b)
 #define vec_msb_pack_16(a,b) _mm_packs_epi16(_mm_srli_epi16(a,7),_mm_srli_epi16(b,7))
+#define vec_zero_ft() _mm_setzero_si128()
 #define vec_zero_psqt() _mm_setzero_si128()
 #define vec_add_psqt_32(a,b) _mm_add_epi32(a,b)
 #define vec_sub_psqt_32(a,b) _mm_sub_epi32(a,b)
@@ -1161,6 +1164,7 @@ inline  ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define vec_store_psqt(a,b) *(a)=(b)
 #define vec_add_psqt_32(a,b) vaddq_s32(a,b)
 #define vec_sub_psqt_32(a,b) vsubq_s32(a,b)
+#define vec_zero_ft() ft_vec_t{0}
 #define vec_zero_psqt() psqt_vec_t{0}
 #ifdef USE_ARM64
 static const uint32_t NnzMask[4] = { 1, 2, 4, 8 };
@@ -1172,7 +1176,7 @@ static const uint32_t NnzMask[4] = { 1, 2, 4, 8 };
 #define vec_add_dpbusd_32 Simd::neon_m128_add_dpbusd_32
 #endif
 #define vec_convert_8_16(a)  _mm512_cvtepi8_epi16(a)
-#define vec_packus_16(a,b) vcombine_u8(vqmovun_s16(a), vqmovun_s16(b))
+#define vec_packus_16(a,b) (ftout_vec_t)vcombine_u8(vqmovun_s16(a), vqmovun_s16(b))
 #define vec_slli_16(a,b) vshlq_s16(a, vec_set_16(b))
 #define vec_mulhi_16(a,b) vqdmulhq_s16(a,b)
 #endif
@@ -1592,7 +1596,7 @@ template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> vo
     {
         ft_vec_t* accTile = (ft_vec_t*)(acm + i * tileHeight);
         for (unsigned int j = 0; j < numRegs; j++)
-            acc[j] = vec_zero();
+            acc[j] = vec_zero_ft();
 
         // Difference calculation for the activated features
         for (unsigned int k = 0; k < addedIndices.size; k++)
@@ -1872,7 +1876,7 @@ int chessposition::Transform(clipped_t *output, int bucket)
         if (Nt == NnueArchV13)
         {
             const unsigned int numChunks = NnueFtHalfdims / 2 / MAXCHUNKSIZE;
-            ft_vec_t Zero = vec_zero();
+            ft_vec_t Zero = vec_zero_ft();
             ft_vec_t One = vec_set_16(255);
             constexpr int shift =
 #if defined(USE_SSE2)
@@ -1906,7 +1910,7 @@ int chessposition::Transform(clipped_t *output, int bucket)
         else if (Nt == NnueArchV5)
         {
             const unsigned int numChunks = NnueFtHalfdims / 2 / MAXCHUNKSIZE;
-            ft_vec_t Zero = vec_zero();
+            ft_vec_t Zero = vec_zero_ft();
             ft_vec_t One = vec_set_16(127);
 
             const ft_vec_t* in0 = (ft_vec_t*)(halfkaacm + perspectives[p] * NnueFtHalfdims);
