@@ -1330,6 +1330,7 @@ static void uciScore(workingthread *thr, int inWindow, U64 thinktime, int score,
     }
     SDEBUGDO(pos->pvmovecode[0], guiCom.log("[SDEBUG] Raw score: " + to_string(score) + "\n"););
     SDEBUGDO(pos->pvmovecode[0], pos->pvdebugout(););
+    en.lastPVMove = pos->lastpv[0];
 }
 
 
@@ -1649,6 +1650,8 @@ void mainSearch(workingthread *thr)
         // remember score for next search in case of an instamove
         en.lastbestmovescore = pos->bestmovescore[0];
 
+        if (pos->bestmove != en.lastPVMove)
+            guiCom << "info string bestmove=" << hex << pos->bestmove << " last reported pv:" << en.lastPVMove << " lastpv:" << pos->lastpv[0] << "\n";
         if (uciNeedsFinalReport || bestthr->index)
             uciScore(thr, inWindow, getTime() - en.thinkstarttime, inWindow == 1 ? pos->bestmovescore[0] : score);
 

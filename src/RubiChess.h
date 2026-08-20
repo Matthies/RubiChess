@@ -2199,6 +2199,7 @@ public:
     ponderstate_t pondersearch;
     int ponderhitbonus;
     int lastReport;
+    uint32_t lastPVMove;
     int lastbestmovescore;
     int benchdepth;
     string benchmove;
