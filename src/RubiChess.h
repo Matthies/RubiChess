@@ -143,6 +143,8 @@ void Sleep(long x);
 #endif
 #endif
 
+#define pad64(x) ((x + 63) / 64 * 64)
+
 #ifdef USE_LIBNUMA
 #include <numa.h>
 #endif
@@ -1974,6 +1976,10 @@ public:
         myos = &cout;
         freq = 0;
     }
+    ~GuiCommunication()
+    {
+        delete nullos;
+    }
     template <typename T>
     GuiCommunication& operator<<(const T& thing) {
         *myos << thing;
@@ -2446,7 +2452,7 @@ public:
     int chunkstate[2];
     U64 rndseed;
 #endif
-    uint64_t bottompadding[6];
+    uint64_t bottompadding[7];
     void idle_loop() {
         bind_thread(index);
         while (true)

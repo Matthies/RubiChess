@@ -3116,7 +3116,7 @@ bool NnueNetsource::open()
             goto cleanup;
         }
         insize = stat_buf.st_size;
-        inbuffer = (unsigned char*)allocalign64(insize);
+        inbuffer = (unsigned char*)allocalign64(pad64(insize));
         if (!inbuffer) {
             guiCom << "info string Cannot alloc buffer for network file.\n";
             goto cleanup;
@@ -3146,7 +3146,7 @@ bool NnueNetsource::open()
     }
 
     // Finally locate buffer for the NnueNetsource object, copy the network data and free the temporary buffers
-    readbuffer = (unsigned char*)allocalign64(insize);
+    readbuffer = (unsigned char*)allocalign64(pad64(insize));
     if (!readbuffer) {
         guiCom << "info string Cannot alloc read buffer for network file.\n";
         goto cleanup;
