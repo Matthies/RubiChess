@@ -1434,7 +1434,7 @@ void mainSearch(workingthread *thr)
             } else {
                 // We have a tablebase score so report this if no mate was found
                 int tbScore = pos->rootmovelist.move[0].value;
-                if ((tbScore > 0 && score < tbScore) || (tbScore < 0 && score > tbScore))
+                if ((tbScore > 0 && score < tbScore) || (tbScore < 0 && score > tbScore) || tbScore == 0)
                     // Correct with tablebase score
                     score = pos->bestmovescore[0] = tbScore;
             }
