@@ -1404,7 +1404,7 @@ void mainSearch(workingthread *thr)
                     delta = SCOREWHITEWINS;
 
                 // new aspiration window
-                if (score == alpha)
+                if (score <= alpha)
                 {
                     // research with lower alpha and reduced beta
                     beta = (alpha + beta) / 2;
@@ -1412,7 +1412,7 @@ void mainSearch(workingthread *thr)
                     delta = min(SCOREWHITEWINS, delta + delta / sps.aspincratio + sps.aspincbase);
                     inWindow = 0;
                 }
-                else if (score == beta)
+                else if (score >= beta)
                 {
                     // research with higher beta
                     beta = min(SCOREWHITEWINS, beta + delta);
@@ -1440,14 +1440,6 @@ void mainSearch(workingthread *thr)
             }
         }
 
-        // exit if STOPIMMEDIATELY
-        if (en.stopLevel == ENGINESTOPIMMEDIATELY)
-            break;
-
-        // exit when max nodes reached
-        if (en.maxnodes && !en.LimitNps && pos->nodes >= en.maxnodes)
-            break;
-
         if (pos->pvtable[0][0])
         {
             // copy new pv to lastpv
@@ -1460,6 +1452,14 @@ void mainSearch(workingthread *thr)
             }
             pos->lastpv[i] = 0;
         }
+
+        // exit if STOPIMMEDIATELY
+        if (en.stopLevel == ENGINESTOPIMMEDIATELY)
+            break;
+
+        // exit when max nodes reached
+        if (en.maxnodes && !en.LimitNps && pos->nodes >= en.maxnodes)
+            break;
 
         if (isMainThread)
             nowtime = getTime();
