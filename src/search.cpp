@@ -1330,7 +1330,6 @@ static void uciScore(workingthread *thr, int inWindow, U64 thinktime, int score,
     }
     SDEBUGDO(pos->pvmovecode[0], guiCom.log("[SDEBUG] Raw score: " + to_string(score) + "\n"););
     SDEBUGDO(pos->pvmovecode[0], pos->pvdebugout(););
-    en.lastPVMove = pos->lastpv[0];
 }
 
 
