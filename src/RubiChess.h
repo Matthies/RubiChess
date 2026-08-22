@@ -132,7 +132,13 @@ namespace rubichess {
 
 #else //_WIN32
 
+
+#ifdef NDEBUG
 #define myassert(expression, pos, num, ...) (void)(0)
+#else
+#include <cassert>
+#define myassert(expression, pos, num, ...) assert(expression)
+#endif
 void Sleep(long x);
 #if defined(__ANDROID__) or defined(__APPLE__)
 #define allocalign64(x) malloc(x)
@@ -142,6 +148,8 @@ void Sleep(long x);
 #define freealigned64(x) free(x)
 #endif
 #endif
+
+#define pad64(x) ((x + 63) / 64 * 64)
 
 #ifdef USE_LIBNUMA
 #include <numa.h>
@@ -1758,8 +1766,7 @@ public:
     uint32_t countermove[14][64];
     int16_t pawncorrectionhistory[2][CORRHISTSIZE];
     int16_t nonpawncorrectionhistory[2][2][CORRHISTSIZE];
-    int16_t* prerootconthistptr[6];
-    int16_t* conthistptr[MAXDEPTH];
+    int16_t* conthistptr[MAXDEPTH + 6];
 
     chessmovestack prerootmovestack[PREROOTMOVES];      // explicit copy from rootpos up to frame prerootmovenum including first frame of regular stack
     chessmovestack movestack[MAXDEPTH];                 // frame 0 copied from rootpos
@@ -1973,6 +1980,10 @@ public:
     {
         myos = &cout;
         freq = 0;
+    }
+    ~GuiCommunication()
+    {
+        delete nullos;
     }
     template <typename T>
     GuiCommunication& operator<<(const T& thing) {
@@ -2446,7 +2457,7 @@ public:
     int chunkstate[2];
     U64 rndseed;
 #endif
-    uint64_t bottompadding[6];
+    uint64_t bottompadding[7];
     void idle_loop() {
         bind_thread(index);
         while (true)

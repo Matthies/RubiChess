@@ -73,9 +73,12 @@ void chessposition::initCastleRights(int rookfiles[2][2], int kingfile[2])
         int col = i / 2;
         int gCastle = i % 2;
         castlerookfrom[i] = rookfiles[col][gCastle] + 56 * col;
-        castleblockers[i] = betweenMask[kingfile[col] + 56 * col][castlekingto[i]]
-            | betweenMask[castlerookfrom[i]][castlerookto[i]]
-            | BITSET(castlerookto[i]) | BITSET(castlekingto[i]);
+        if (rookfiles[col][gCastle] < 0)
+            castleblockers[i] = 0ULL;
+        else
+            castleblockers[i] = betweenMask[kingfile[col] + 56 * col][castlekingto[i]]
+                | betweenMask[castlerookfrom[i]][castlerookto[i]]
+                | BITSET(castlerookto[i]) | BITSET(castlekingto[i]);
 
         castlekingwalk[i] = betweenMask[kingfile[col] + 56 * col][castlekingto[i]] | BITSET(castlekingto[i]);
     }
@@ -866,7 +869,7 @@ void initBitmaphelper()
 void chessposition::BitboardSet(int index, PieceCode p, DirtyThreats* dt)
 {
     myassert(index >= 0 && index < 64, this, 1, index);
-    myassert(p >= BLANK && p <= BKING, this, 1, p);
+    myassert(p <= BKING, this, 1, p);
     int s2m = p & 0x1;
     mailbox[index] = p;
     piece00[p] |= BITSET(index);
@@ -881,7 +884,7 @@ void chessposition::BitboardSet(int index, PieceCode p, DirtyThreats* dt)
 void chessposition::BitboardClear(int index, PieceCode p, DirtyThreats* dt)
 {
     myassert(index >= 0 && index < 64, this, 1, index);
-    myassert(p >= BLANK && p <= BKING, this, 1, p);
+    myassert(p <= BKING, this, 1, p);
     int s2m = p & 0x1;
     mailbox[index] = BLANK;
     piece00[p] ^= BITSET(index);
@@ -897,7 +900,7 @@ void chessposition::BitboardMove(int from, int to, PieceCode p, DirtyThreats* dt
 {
     myassert(from >= 0 && from < 64, this, 1, from);
     myassert(to >= 0 && to < 64, this, 1, to);
-    myassert(p >= BLANK && p <= BKING, this, 1, p);
+    myassert(p <= BKING, this, 1, p);
     U64 fromto = BITSET(from) | BITSET(to);
     int s2m = p & 0x1;
     if (dt)

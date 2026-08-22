@@ -331,6 +331,7 @@ public:
         LayerStack[bucket].NnueSqrCl.Propagate(network.hidden1_values, network.hidden1_sqrclipped);
         LayerStack[bucket].NnueCl1.Propagate(network.hidden1_values, network.hidden1_clipped);
         memcpy(network.hidden1_sqrclipped + NnueHidden1Out, network.hidden1_clipped, NnueHidden1Out * sizeof(clipped_t));
+        memset(network.hidden1_sqrclipped + 2 * NnueHidden1Out, 0, 2 * sizeof(clipped_t));
         LayerStack[bucket].NnueHd2.Propagate(network.hidden1_sqrclipped, network.hidden2_values);
         LayerStack[bucket].NnueCl2.Propagate(network.hidden2_values, network.hidden2_clipped);
         LayerStack[bucket].NnueOut.Propagate(network.hidden2_clipped, &network.out_value);
@@ -548,7 +549,7 @@ public:
             alignas(64) clipped_t input[NnueFtOutputdims];
             alignas(64)int32_t hidden1_values[NnueHidden1Dims];
             alignas(64)int32_t hidden2_values[NnueHidden2Dims];
-            alignas(64)clipped_t hidden1_sqrclipped[MULTIPLEOFN(NnueHidden1Out, 32)];
+            alignas(64)clipped_t hidden1_sqrclipped[MULTIPLEOFN(NnueHidden1Out * 2, 32)];
             alignas(64)clipped_t hidden1_clipped[NnueHidden1Dims];
             alignas(64)clipped_t hidden2_clipped[NnueHidden2Dims];
             alignas(64)int32_t out_value;
@@ -563,6 +564,7 @@ public:
         LayerStack[bucket].NnueSqrCl.Propagate(network.hidden1_values, network.hidden1_sqrclipped);
         LayerStack[bucket].NnueCl1.Propagate(network.hidden1_values, network.hidden1_clipped);
         memcpy(network.hidden1_sqrclipped + NnueHidden1Out, network.hidden1_clipped, NnueHidden1Out * sizeof(clipped_t));
+        memset(network.hidden1_sqrclipped + 2 * NnueHidden1Out, 0, 2 * sizeof(clipped_t));
         LayerStack[bucket].NnueHd2.Propagate(network.hidden1_sqrclipped, network.hidden2_values);
         LayerStack[bucket].NnueCl2.Propagate(network.hidden2_values, network.hidden2_clipped);
         LayerStack[bucket].NnueOut.Propagate(network.hidden2_clipped, &network.out_value);
@@ -3116,7 +3118,7 @@ bool NnueNetsource::open()
             goto cleanup;
         }
         insize = stat_buf.st_size;
-        inbuffer = (unsigned char*)allocalign64(insize);
+        inbuffer = (unsigned char*)allocalign64(pad64(insize));
         if (!inbuffer) {
             guiCom << "info string Cannot alloc buffer for network file.\n";
             goto cleanup;
@@ -3146,7 +3148,7 @@ bool NnueNetsource::open()
     }
 
     // Finally locate buffer for the NnueNetsource object, copy the network data and free the temporary buffers
-    readbuffer = (unsigned char*)allocalign64(insize);
+    readbuffer = (unsigned char*)allocalign64(pad64(insize));
     if (!readbuffer) {
         guiCom << "info string Cannot alloc read buffer for network file.\n";
         goto cleanup;

@@ -61,9 +61,15 @@ ifeq ($(debug),yes)
 	CXXFLAGS += -g -O0
 	CFLAGS += -g -O0
 else
-	CXXFLAGS += -O3 -flto
-	CFLAGS += -O3
+	CXXFLAGS += -O3 -flto -DNDEBUG
+	CFLAGS += -O3 -DNDEBUG
 endif
+
+ifneq ($(sanitize),none)
+        CXXFLAGS += -g3 $(addprefix -fsanitize=,$(sanitize))
+        CFLAGS += $(addprefix -fsanitize=,$(sanitize))
+endif
+
 
 ifeq ($(UNAME_O),Android)
 	LDFLAGS += -static-libstdc++
