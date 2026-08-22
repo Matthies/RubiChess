@@ -1760,8 +1760,7 @@ public:
     uint32_t countermove[14][64];
     int16_t pawncorrectionhistory[2][CORRHISTSIZE];
     int16_t nonpawncorrectionhistory[2][2][CORRHISTSIZE];
-    int16_t* prerootconthistptr[6];
-    int16_t* conthistptr[MAXDEPTH];
+    int16_t* conthistptr[MAXDEPTH + 6];
 
     chessmovestack prerootmovestack[PREROOTMOVES];      // explicit copy from rootpos up to frame prerootmovenum including first frame of regular stack
     chessmovestack movestack[MAXDEPTH];                 // frame 0 copied from rootpos

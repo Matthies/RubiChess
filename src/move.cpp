@@ -197,7 +197,7 @@ void chessposition::evaluateMoves(chessmovelist *ml)
             int to = GETCORRECTTO(mc);
             ml->move[i].value = history[piece & S2MMASK][threatSquare][GETFROM(mc)][to];
             int pieceTo = piece * 64 + to;
-            ml->move[i].value += (conthistptr[ply - 1][pieceTo] + conthistptr[ply - 2][pieceTo] + (conthistptr[ply - 4][pieceTo] + conthistptr[ply - 6][pieceTo]) / 2);
+            ml->move[i].value += (conthistptr[ply + 5][pieceTo] + conthistptr[ply + 4][pieceTo] + (conthistptr[ply + 2][pieceTo] + conthistptr[ply][pieceTo]) / 2);
         }
         if (GETPROMOTION(mc))
             ml->move[i].value += mvv[GETPROMOTION(mc) >> 1] - mvv[PAWN];
@@ -604,7 +604,7 @@ void chessposition::update_piece_threats(unsigned pc, bool putPiece, unsigned s,
 void chessposition::playNullMove()
 {
     lastnullmove = ply;
-    conthistptr[ply] = (int16_t*)counterhistory[0][0];
+    conthistptr[ply + 6] = (int16_t*)counterhistory[0][0];
     movecode[ply++] = 0;
     state ^= S2MMASK;
     hash ^= zb.s2m ^ zb.ept[ept];
@@ -871,7 +871,7 @@ bool chessposition::playMove(uint32_t mc)
 
         PREFETCH(&tp.table[hash & tp.sizemask]);
 
-        conthistptr[ply] = (int16_t*)counterhistory[GETPIECE(mc)][GETCORRECTTO(mc)];
+        conthistptr[ply + 6] = (int16_t*)counterhistory[GETPIECE(mc)][GETCORRECTTO(mc)];
         myassert(piececount == POPCOUNT(occupied00[WHITE] | occupied00[BLACK]), this, 1, piececount);
     }
     movecode[ply++] = mc;

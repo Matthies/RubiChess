@@ -127,7 +127,7 @@ inline int chessposition::getHistory(uint32_t code)
     int to = GETCORRECTTO(code);
     int value = history[s2m][threatSquare][from][to];
     int pieceTo = pc * 64 + to;
-    value += (conthistptr[ply - 1][pieceTo] + conthistptr[ply - 2][pieceTo] + conthistptr[ply - 4][pieceTo]);
+    value += (conthistptr[ply + 5][pieceTo] + conthistptr[ply + 4][pieceTo] + conthistptr[ply + 2][pieceTo]);
 
     return value;
 }
@@ -150,8 +150,8 @@ inline void chessposition::updateHistory(uint32_t code, int value)
     for (int i : {0, 1, 3}) {
         if (i >= maxplies)
             break;
-        delta = value * (1 << HISTORYNEWSHIFT) - conthistptr[ply - 1 - i][pieceTo] * abs(value) / (1 << HISTORYAGESHIFT);
-        conthistptr[ply - 1 - i][pieceTo] += delta;
+        delta = value * (1 << HISTORYNEWSHIFT) - conthistptr[ply + 5 - i][pieceTo] * abs(value) / (1 << HISTORYAGESHIFT);
+        conthistptr[ply + 5 - i][pieceTo] += delta;
     }
 }
 
@@ -797,7 +797,7 @@ int chessposition::alphabeta(int alpha, int beta, int depth, bool cutnode)
                 int pc = GETPIECE(mc);
                 int to = GETCORRECTTO(mc);
                 int pieceTo = pc * 64 + to;
-                if (conthistptr[ply - 1][pieceTo] > he_threshold && conthistptr[ply - 2][pieceTo] > he_threshold)
+                if (conthistptr[ply + 5][pieceTo] > he_threshold && conthistptr[ply + 4][pieceTo] > he_threshold)
                 {
                     STATISTICSINC(extend_history);
                     extendMove = 1;
