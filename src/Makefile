@@ -58,12 +58,18 @@ CXXFLAGS=-std=c++11 -Wall -pedantic -Wextra -Wshadow
 CFLAGS=-Wall -pedantic -Wextra -Wshadow -Wno-implicit-function-declaration
 
 ifeq ($(debug),yes)
-	CXXFLAGS += -g -O0 -fsanitize=address,undefined
-	CFLAGS += -g -O0 -fsanitize=address,undefined
+	CXXFLAGS += -g -O0
+	CFLAGS += -g -O0
 else
 	CXXFLAGS += -O3 -flto
 	CFLAGS += -O3
 endif
+
+ifneq ($(sanitize),none)
+        CXXFLAGS += -g3 $(addprefix -fsanitize=,$(sanitize))
+        CFLAGS += $(addprefix -fsanitize=,$(sanitize))
+endif
+
 
 ifeq ($(UNAME_O),Android)
 	LDFLAGS += -static-libstdc++
