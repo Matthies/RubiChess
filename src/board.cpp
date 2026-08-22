@@ -73,9 +73,12 @@ void chessposition::initCastleRights(int rookfiles[2][2], int kingfile[2])
         int col = i / 2;
         int gCastle = i % 2;
         castlerookfrom[i] = rookfiles[col][gCastle] + 56 * col;
-        castleblockers[i] = betweenMask[kingfile[col] + 56 * col][castlekingto[i]]
-            | betweenMask[castlerookfrom[i]][castlerookto[i]]
-            | BITSET(castlerookto[i]) | BITSET(castlekingto[i]);
+        if (rookfiles[col][gCastle] < 0)
+            castleblockers[i] = 0ULL;
+        else
+            castleblockers[i] = betweenMask[kingfile[col] + 56 * col][castlekingto[i]]
+                | betweenMask[castlerookfrom[i]][castlerookto[i]]
+                | BITSET(castlerookto[i]) | BITSET(castlekingto[i]);
 
         castlekingwalk[i] = betweenMask[kingfile[col] + 56 * col][castlekingto[i]] | BITSET(castlekingto[i]);
     }
