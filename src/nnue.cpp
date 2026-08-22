@@ -549,14 +549,21 @@ public:
             alignas(64)int32_t hidden1_values[NnueHidden1Dims];
             alignas(64)int32_t hidden2_values[NnueHidden2Dims];
             alignas(64)clipped_t hidden1_sqrclipped[MULTIPLEOFN(NnueHidden1Out, 32)];
+            int8_t noise1[32];
             alignas(64)clipped_t hidden1_clipped[NnueHidden1Dims];
+            int8_t noise2[32];
             alignas(64)clipped_t hidden2_clipped[NnueHidden2Dims];
+            int8_t noise3[32];
             alignas(64)int32_t out_value;
         } network;
 
 #ifdef NNUEDEBUG
         cout << "\nPosition        : " << pos->toFen();
 #endif
+        memset(network.noise1, 0x33, 32);
+        memset(network.noise2, 0x66, 32);
+        memset(network.noise3, 0x99, 32);
+        cout << "Network size: " << sizeof(network);
         int bucket = (POPCOUNT(pos->occupied00[WHITE] | pos->occupied00[BLACK]) - 1) / 4;
         int psqt = pos->Transform<NnueArchV13, NnueFtHalfdims, NnuePsqtBuckets>(network.input, bucket);
         LayerStack[bucket].NnueHd1.Propagate(network.input, network.hidden1_values);
