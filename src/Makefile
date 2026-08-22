@@ -58,8 +58,8 @@ CXXFLAGS=-std=c++11 -Wall -pedantic -Wextra -Wshadow
 CFLAGS=-Wall -pedantic -Wextra -Wshadow -Wno-implicit-function-declaration
 
 ifeq ($(debug),yes)
-	CXXFLAGS += -g -O0
-	CFLAGS += -g -O0
+	CXXFLAGS += -g -O0 -fsanitize=address,undefined
+	CFLAGS += -g -O0 -fsanitize=address,undefined
 else
 	CXXFLAGS += -O3 -flto
 	CFLAGS += -O3
