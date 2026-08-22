@@ -132,7 +132,13 @@ namespace rubichess {
 
 #else //_WIN32
 
+
+#ifdef NDEBUG
 #define myassert(expression, pos, num, ...) (void)(0)
+#else
+#include <cassert>
+#define myassert(expression, pos, num, ...) assert(expression)
+#endif
 void Sleep(long x);
 #if defined(__ANDROID__) or defined(__APPLE__)
 #define allocalign64(x) malloc(x)

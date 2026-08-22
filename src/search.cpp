@@ -142,7 +142,7 @@ inline void chessposition::updateHistory(uint32_t code, int value)
     value = max(-HISTORYMAXDEPTH * HISTORYMAXDEPTH, min(HISTORYMAXDEPTH * HISTORYMAXDEPTH, value));
 
     int delta = value * (1 << HISTORYNEWSHIFT) - history[s2m][threatSquare][from][to] * abs(value) / (1 << HISTORYAGESHIFT);
-    myassert(history[s2m][threatSquare][from][to] + delta < MAXINT16 && history[s2m][threatSquare][from][to] + delta > MININT16, this, 2, history[s2m][from][to], delta);
+    myassert(history[s2m][threatSquare][from][to] + delta < INT16_MAX && history[s2m][threatSquare][from][to] + delta > INT16_MIN, this, 2, history[s2m][from][to], delta);
 
     history[s2m][threatSquare][from][to] += delta;
     int pieceTo = pc * 64 + to;
@@ -175,7 +175,7 @@ inline void chessposition::updateTacticalHst(uint32_t code, int value)
     value = max(-HISTORYMAXDEPTH * HISTORYMAXDEPTH, min(HISTORYMAXDEPTH * HISTORYMAXDEPTH, value));
 
     int delta = value * (1 << HISTORYNEWSHIFT) - tacticalhst[pt][to][cp] * abs(value) / (1 << HISTORYAGESHIFT);
-    myassert(tacticalhst[pt][to][cp] + delta < MAXINT16 && tacticalhst[pt][to][cp] + delta > MININT16, this, 2, tacticalhst[pt][to][cp], delta);
+    myassert(tacticalhst[pt][to][cp] + delta < INT16_MAX && tacticalhst[pt][to][cp] + delta > INT16_MIN, this, 2, tacticalhst[pt][to][cp], delta);
 
     tacticalhst[pt][to][cp] += delta;
 }

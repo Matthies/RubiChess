@@ -339,7 +339,7 @@ uint32_t chessposition::shortMove2FullMove(uint16_t c)
     PieceCode capture = mailbox[to];
     PieceType p = pc >> 1;
 
-    myassert(capture >= BLANK && capture <= BKING, this, 1, capture);
+    myassert(capture <= BKING, this, 1, capture);
     myassert(pc >= WPAWN && pc <= BKING, this, 1, pc);
 
     int myeptcastle = 0;
@@ -441,7 +441,7 @@ bool chessposition::moveIsPseudoLegal(uint32_t c)
     if (capture && (piececol == (capture & S2MMASK) || capture >= WKING))
         return false;
 
-    myassert(capture >= BLANK && capture <= BQUEEN, this, 1, capture);
+    myassert(capture <= BQUEEN, this, 1, capture);
 
     // correct target for type of piece?
     if (!(movesTo(pc, from) & BITSET(to)))
@@ -646,6 +646,7 @@ bool chessposition::playMove(uint32_t mc)
     DirtyThreats* dt;
 
     if (!LiteMode) {
+        myassert(ply < MAXDEPTH - 1, this, 1, ply);
         oldcastle = (state & CASTLEMASK);
         dp = &dirtypieces[ply + 1];
         dp->dirtyNum = 0;
