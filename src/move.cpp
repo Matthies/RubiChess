@@ -513,6 +513,7 @@ bool chessposition::moveGivesCheck(uint32_t c)
 
 inline void add_dirty_threat(DirtyThreats* dt, bool add, PieceCode pc, PieceCode threatened, unsigned s, unsigned threatenedSq)
 {
+    myassert(dt->size < 96, nullptr, 1, dt->size);
     dt->threatdata[dt->size++] = (uint32_t(add) << 31) | (pc << 20) | (threatened << 16) | (threatenedSq << 8) | s;
 }
 
