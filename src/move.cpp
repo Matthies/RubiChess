@@ -513,6 +513,7 @@ bool chessposition::moveGivesCheck(uint32_t c)
 
 inline void add_dirty_threat(DirtyThreats* dt, bool add, PieceCode pc, PieceCode threatened, unsigned s, unsigned threatenedSq)
 {
+    myassert(dt->size < 96, nullptr, 1, dt->size);
     dt->threatdata[dt->size++] = (uint32_t(add) << 31) | (pc << 20) | (threatened << 16) | (threatenedSq << 8) | s;
 }
 
@@ -817,11 +818,11 @@ bool chessposition::playMove(uint32_t mc)
             kingpos[s2m] = movestack[ply].kingpos[s2m];
             if (promote != BLANK)
             {
-                BitboardClear(to, mailbox[to], dt);
-                BitboardSet(from, pfrom, dt);
+                BitboardClear(to, mailbox[to]);
+                BitboardSet(from, pfrom);
             }
             else {
-                BitboardMove(to, from, pfrom, dt);
+                BitboardMove(to, from, pfrom);
             }
 
             if (capture != BLANK)
@@ -830,11 +831,11 @@ bool chessposition::playMove(uint32_t mc)
                 {
                     // special ep capture
                     int epfield = (from & 0x38) | (to & 0x07);
-                    BitboardSet(epfield, capture, dt);
+                    BitboardSet(epfield, capture);
                 }
                 else
                 {
-                    BitboardSet(to, capture, dt);
+                    BitboardSet(to, capture);
                 }
                 if (!LiteMode)
                     piececount++;

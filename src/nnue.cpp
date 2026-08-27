@@ -875,6 +875,7 @@ template <NnueType Nt, Color c> void chessposition::HalfkaAppendChangedIndices(D
 {
     const int ksq = kingpos[c];
     const int oksq = (Nt == NnueArchV1 ? ORIENT(c, ksq) : HMORIENT(c, ksq, ksq));
+    myassert(dp->dirtyNum <= 3, this, 1, dp->dirtyNum);
     for (int i = 0; i < dp->dirtyNum; i++) {
         PieceCode pc = dp->pc[i];
         if (Nt == NnueArchV1 && (pc >> 1) == KING)
@@ -885,6 +886,7 @@ template <NnueType Nt, Color c> void chessposition::HalfkaAppendChangedIndices(D
                 remove->values[remove->size++] = ORIENT(c, sq) + PieceToIndex[c][pc] + PS_KPEND * oksq;
             else
                 remove->values[remove->size++] = HMORIENT(c, sq, ksq) + PieceToIndex[c][pc] + PS_KAEND * KingBucket[oksq];
+            myassert(remove->size <= 128, this, 1, add->size);
         }
         sq = dp->to[i];
         if (sq >= 0) {
@@ -892,6 +894,7 @@ template <NnueType Nt, Color c> void chessposition::HalfkaAppendChangedIndices(D
                 add->values[add->size++] = ORIENT(c, sq) + PieceToIndex[c][pc] + PS_KPEND * oksq;
             else
                 add->values[add->size++] = HMORIENT(c, sq, ksq) + PieceToIndex[c][pc] + PS_KAEND * KingBucket[oksq];
+            myassert(add->size <= 128, this, 1, add->size);
         }
     }
 }
@@ -957,12 +960,14 @@ template <Color perspective> void chessposition::ThreatsAppendActiveIndices(Nnue
             }
         }
     }
+    myassert(active->size <= 64, this, 1, active->size);
 }
 
 
 template <NnueType Nt, Color c> void chessposition::ThreatsAppendChangedIndices(DirtyThreats* dt, NnueIndexList* add, NnueIndexList* remove)
 {
     const unsigned ksq = kingpos[c];
+    myassert(dt->size <= 96, this, 1, dt->size);
     for (unsigned int i = 0; i < dt->size; i++) {
         uint32_t data = dt->threatdata[i];
         bool bAdd = data >> 31;
@@ -974,6 +979,7 @@ template <NnueType Nt, Color c> void chessposition::ThreatsAppendChangedIndices(
         NnueIndexList* insert = (bAdd ? add : remove);
         insert->values[insert->size] = index;
         insert->size += (index < NUMTHREATSFEATURES);
+        myassert(insert->size <= 128, this, 1, insert->size);
     }
 }
 
@@ -1274,13 +1280,15 @@ template <NnueType Nt, Color c, int N> bool chessposition::GetHalfkaAcccumulator
 template <NnueType Nt, Color c, int N> bool chessposition::GetThreatAcccumulatorUpdateArray(int* updaterequest)
 {
     int mslast = ply;
-    // A full update needs activation of all pieces (except kings for V1)
+    int remainingupdates = 128;
     while (mslast > 0 && !threatcomputationState[mslast][c])
     {
         // search for position with computed accu on stack that leads to current position by differential updates
         // break at king move crossing the vertical d/e file border
         DirtyThreats* dt = &dirtythreats[mslast];
         if (dt->us == c && ((int8_t(dt->ksq) & 0x4) != (int8_t(dt->prevKsq) & 0x4)))
+            break;
+        if ((remainingupdates -= dt->size) < 96)
             break;
         mslast--;
     }
@@ -1299,6 +1307,7 @@ template <NnueType Nt, Color c, int N> bool chessposition::GetThreatAcccumulator
         updaterequest[0] = mslast + 1;
         updaterequest[1] = mslast + 1 == ply ? -1 : ply;
         updaterequest[2] = -1;
+        myassert(threatcomputationState[mslast][c], this, 2, mslast, c);
     }
 
     return true;
@@ -1379,10 +1388,12 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     myassert(updaterequest[N - 1] == -1, this, 1, updaterequest[N - 1]);
     NnueIndexList removedIndices[N - 1], addedIndices[N - 1];
     int lastcomputedply = updaterequest[N];
+    myassert(Ft == NnueFeatuteHalfKa ? halfkacomputationState[lastcomputedply][c] : threatcomputationState[lastcomputedply][c], this, 1, lastcomputedply);
     int nextchangedply = lastcomputedply + 1;
     int nextcomputeply;
     int chainindex = 0;
     while ((nextcomputeply = updaterequest[chainindex]) >= 0) {
+        myassert(nextcomputeply > 0 && nextcomputeply < MAXDEPTH, this, 1, nextcomputeply);
         removedIndices[chainindex].size = addedIndices[chainindex].size = 0;
         if (Ft == NnueFeatuteHalfKa)
             halfkacomputationState[nextcomputeply][c] = true;

@@ -853,8 +853,8 @@ typedef struct {
 } DirtyPieces;
 
 typedef struct {
-    uint32_t threatdata[96];
     size_t size;
+    uint32_t threatdata[96];
     unsigned us;
     unsigned prevKsq, ksq;
 } DirtyThreats;
