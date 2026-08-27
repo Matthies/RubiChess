@@ -309,8 +309,8 @@ static void benchTableFooder(bool bToErr, long long totaltime, long long totalno
 void engine::bench(int constdepth, string epdfilename, int consttime, int startnum, bool openbench)
 {
     string benchmarkfens[] = {
-        "k7/2n1n3/1nbNbn2/2NbRBn1/1nbRQR2/2NBRBN1/3N1N2/7K w - - 0 1",
-        "K7/8/8/BNQNQNB1/N5N1/R1Q1q2r/n5n1/bnqnqnbk w - - 0 1",
+        //"k7/2n1n3/1nbNbn2/2NbRBn1/1nbRQR2/2NBRBN1/3N1N2/7K w - - 0 1",
+        //"K7/8/8/BNQNQNB1/N5N1/R1Q1q2r/n5n1/bnqnqnbk w - - 0 1",
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
         "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1",
         //"2R5/r3b1k1/p2p4/P1pPp2p/6q1/2P2N1r/4Q1P1/5RK1 w - - 0 1 ",

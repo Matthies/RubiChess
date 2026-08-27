@@ -979,7 +979,7 @@ template <NnueType Nt, Color c> void chessposition::ThreatsAppendChangedIndices(
         NnueIndexList* insert = (bAdd ? add : remove);
         insert->values[insert->size] = index;
         insert->size += (index < NUMTHREATSFEATURES);
-        myassert(insert->size <= 128, this, 1, insert-size);
+        myassert(insert->size <= 128, this, 1, insert->size);
     }
 }
 
@@ -1280,12 +1280,15 @@ template <NnueType Nt, Color c, int N> bool chessposition::GetHalfkaAcccumulator
 template <NnueType Nt, Color c, int N> bool chessposition::GetThreatAcccumulatorUpdateArray(int* updaterequest)
 {
     int mslast = ply;
+    int remainingupdates = 128;
     while (mslast > 0 && !threatcomputationState[mslast][c])
     {
         // search for position with computed accu on stack that leads to current position by differential updates
         // break at king move crossing the vertical d/e file border
         DirtyThreats* dt = &dirtythreats[mslast];
         if (dt->us == c && ((int8_t(dt->ksq) & 0x4) != (int8_t(dt->prevKsq) & 0x4)))
+            break;
+        if ((remainingupdates -= dt->size) < 96)
             break;
         mslast--;
     }

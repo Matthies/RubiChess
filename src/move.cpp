@@ -818,11 +818,11 @@ bool chessposition::playMove(uint32_t mc)
             kingpos[s2m] = movestack[ply].kingpos[s2m];
             if (promote != BLANK)
             {
-                BitboardClear(to, mailbox[to], dt);
-                BitboardSet(from, pfrom, dt);
+                BitboardClear(to, mailbox[to]);
+                BitboardSet(from, pfrom);
             }
             else {
-                BitboardMove(to, from, pfrom, dt);
+                BitboardMove(to, from, pfrom);
             }
 
             if (capture != BLANK)
@@ -831,11 +831,11 @@ bool chessposition::playMove(uint32_t mc)
                 {
                     // special ep capture
                     int epfield = (from & 0x38) | (to & 0x07);
-                    BitboardSet(epfield, capture, dt);
+                    BitboardSet(epfield, capture);
                 }
                 else
                 {
-                    BitboardSet(to, capture, dt);
+                    BitboardSet(to, capture);
                 }
                 if (!LiteMode)
                     piececount++;
