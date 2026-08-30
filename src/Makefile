@@ -355,7 +355,9 @@ else
 endif
 	NETDEF = -DNNUEINCLUDED=$(EMBEDFILE)
 	NETOBJ = net
+ifneq ($(OS), Windows_NT)
 	LDFLAGS += -z noexecstack
+endif
 endif
 
 ifeq ($(GITVER),)
@@ -551,11 +553,11 @@ TRACKED_TOP += $(NETOBJ)
 ARCH_OBJS := $(TEMP_DIR)/x86-64-sse2/RubiChess.o \
              $(patsubst %,$(TEMP_DIR)/%/RubiChess.o,$(filter-out x86-64-sse2,$(UNIVERSAL_ARCHES)))
 
-UNIVERSAL_FINAL_FLAGS := -fno-exceptions -Os -static-libstdc++ -static-libgcc -z noexecstack
+UNIVERSAL_FINAL_FLAGS := -fno-exceptions -Os -static-libstdc++ -static-libgcc
 ifeq ($(OS), Windows_NT)
     UNIVERSAL_FINAL_FLAGS += -Wl,--allow-multiple-definition -static
 else
-    UNIVERSAL_FINAL_FLAGS += -lrt -lpthread
+    UNIVERSAL_FINAL_FLAGS += -lrt -lpthread  -z noexecstack
 endif
 
 # $(call arch-namespace,x86-64-avx2) => rubichess_x86_64_avx2
