@@ -54,8 +54,19 @@ ifeq ($(EXE),)
 	EXE=RubiChess
 endif
 
-CXXFLAGS=-std=c++11 -Wall -pedantic -Wextra -Wshadow
+ifeq ($(MAKELEVEL),0)
+       export ENV_CXXFLAGS := $(CXXFLAGS)
+       export ENV_DEPENDFLAGS := $(DEPENDFLAGS)
+       export ENV_LDFLAGS := $(LDFLAGS)
+endif
+
+CXXFLAGS=$(ENV_CXXFLAGS) -std=c++11 -Wall -pedantic -Wshadow
 CFLAGS=-Wall -pedantic -Wextra -Wshadow -Wno-implicit-function-declaration
+LDFLAGS=$(ENV_LDFLAGS) $(EXTRALDFLAGS)
+
+ifneq ($(OS), Windows_NT)
+	LDFLAGS += -lrt
+endif
 
 ifeq ($(debug),yes)
 	CXXFLAGS += -g -O0
@@ -65,7 +76,7 @@ else
 	CFLAGS += -O3 -DNDEBUG
 endif
 
-ifneq ($(sanitize),none)
+ifneq ($(sanitize),)
         CXXFLAGS += -g3 $(addprefix -fsanitize=,$(sanitize))
         CFLAGS += $(addprefix -fsanitize=,$(sanitize))
 endif
@@ -93,6 +104,8 @@ ifeq ($(COMP),$(filter $(COMP),gcc))
 	PGOEXTRACXXFLAGS='-fprofile-use=$(PROFDIR) -fno-peel-loops -fno-tracer -Wno-coverage-mismatch -fprofile-correction'
 	PGOEXTRALDFLAGS='-lgcov'
 	PROFMERGE=
+	CXXFLAGS += -flto -flto-partition=one
+	LDFLAGS += $(CXXFLAGS) -flto=jobserver
 endif
 
 ifeq ($(COMP),$(filter $(COMP), clang ndk icx))
@@ -170,6 +183,12 @@ endif
 
 ZLIBDIR=zlib
 CXXFLAGS += -Izlib
+
+ifeq ($(ARCH), x86-64-universal)
+   UNIVERSAL_BUILD=true
+else
+   UNIVERSAL_BUILD=false
+endif
 
 ifeq (,$(CPUFLAGS))
 ifeq ($(ARCH),native)
@@ -335,7 +354,8 @@ else
 	EMBEDFILE = $(EVALFILE)
 endif
 	NETDEF = -DNNUEINCLUDED=$(EMBEDFILE)
-	NETOBJ = net.o
+	NETOBJ = net
+	LDFLAGS += -z noexecstack
 endif
 
 ifeq ($(GITVER),)
@@ -354,8 +374,13 @@ ifneq ($(debug),yes)
 	@$(STRIP) $(EXE)$(EXEEXT)
 endif
 
+ifeq ($(UNIVERSAL_BUILD),false)
 build: net arch
 	@$(MAKE) compile MESSAGE='Compiling standard build ...'
+
+profile-build: net
+	@$(MAKE) -j1 pgo
+endif
 
 arch: libclean
 	@echo
@@ -406,13 +431,16 @@ objclean:
 	@$(RM) *.o $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(PROFEXE) $(CPUTEST) $(NETBIN) || @echo $(RM) not available.
 
 libclean:
-	@$(RM) zlib/*.o zlib/*.a || @echo $(RM) not available.
+	@$(RM) zlib/*.o zlib/*.a $(NETOBJ) || @echo $(RM) not available.
 
 profileclean: libclean
 	@$(RM) -rf $(PROFDIR) || @echo $(RM) not available.
 	@$(RM) *.clangprof-raw *.profdata || @echo $(RM) not available.
 
-clean: objclean profileclean
+universalclean:
+	@rm -rf $(TEMP_DIR)
+
+clean: objclean profileclean universalclean
 
 profilebench:
 ifneq ($(COMP),ndk)
@@ -451,9 +479,6 @@ ifneq ($(debug),yes)
 endif
 	@echo Binary $(EXE) created successfully.
 
-profile-build: net
-	@$(MAKE) -j1 pgo
-
 pgo-rename: pgo
 	@mv $(EXE) $(EXE)-$(VERSION)_$(ARCH)
 	@echo Successfully created $(EXE)-$(VERSION)_$(ARCH)
@@ -486,6 +511,101 @@ release_android:
 
 release: net
 	@$(MAKE) release_$(ARCHFAMILY)
+
+# Support for building a universal x86-64 binary
+# All credits go to anematode who introduced this first in Stockfish
+
+TEMP_DIR             := $(CURDIR)/temp_builds
+UNIVERSAL_EXE        := $(CURDIR)/$(EXE)
+
+ifeq ($(COMP), clang)
+LTO_OBJ_SUFFIX := .lto.o
+SAVE_TEMPS := -Wl,--save-temps
+else
+LTO_OBJ_SUFFIX := .ltrans0.ltrans.o
+SAVE_TEMPS := -save-temps
+endif
+
+universal-object-pgo: instrumentedcompile profilebench
+	@$(PROFMERGE)
+	@$(RM) ./$(PROFEXE)
+	@$(MAKE) compile ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS="$(PGOEXTRALDFLAGS) $(SAVE_TEMPS)" MESSAGE='Compiling optimized build ...'
+	@mv $(basename $(EXE))$(LTO_OBJ_SUFFIX) RubiChess.o
+
+universal-object-nopgo: objclean universalclean
+	$(MAKE) compile ARCH=$(ARCH) COMP=$(COMP) ENV_LDFLAGS="$(SAVE_TEMPS)"
+	@mv $(basename $(EXE))$(LTO_OBJ_SUFFIX) RubiChess.o
+
+ifeq ($(UNIVERSAL_BUILD),true)
+
+UNIVERSAL_ARCHES := x86-64-sse2 x86-64-sse3-popcnt x86-64-ssse3 x86-64-modern x86-64-avx2 x86-64-bmi2 x86-64-avx512
+UNIVERSAL_SRC_DIR    := $(CURDIR)/universal
+UNIVERSAL_ENTRY_OBJ  := $(TEMP_DIR)/entry_x86.o
+
+# Top-level tracked items in src/ (directories and files)
+TRACKED_TOP := $(shell git -C $(CURDIR) ls-files 2>/dev/null | awk -F/ '{print $$1}' | sort -u)
+TRACKED_TOP += $(NETOBJ)
+
+# Baseline x86-64 must come first in the final link (Windows --allow-multiple-definition
+# uses the first copy of inline duplicates)
+ARCH_OBJS := $(TEMP_DIR)/x86-64-sse2/RubiChess.o \
+             $(patsubst %,$(TEMP_DIR)/%/RubiChess.o,$(filter-out x86-64-sse2,$(UNIVERSAL_ARCHES)))
+
+UNIVERSAL_FINAL_FLAGS := -fno-exceptions -Os -static-libstdc++ -static-libgcc
+ifeq ($(OS), Windows_NT)
+    UNIVERSAL_FINAL_FLAGS += -Wl,--allow-multiple-definition -static
+else
+    UNIVERSAL_FINAL_FLAGS += -lrt -lpthread
+endif
+
+# $(call arch-namespace,x86-64-avx2) => rubichess_x86_64_avx2
+arch-suffix     = $(subst -,_,$(1))
+arch-namespace  = rubichess_$(call arch-suffix,$(1))
+# Itanium ABI mangled name for rubichess_<suffix>::main(int, char**)
+arch-mangled    = _ZN$(shell printf %s '$(call arch-namespace,$(1))' | wc -c)$(call arch-namespace,$(1))4mainEiPPc
+arch-cxxflags   =  -Drubichess=$(call arch-namespace,$(1)) -DUNIVERSAL_BINARY -Wl,--defsym=main=$(call arch-mangled,$(1))
+
+UOBJ_TGT ?= universal-object-pgo
+
+.PHONY: build profile-build universal-clean
+build:         UOBJ_TGT := universal-object-nopgo
+build:         net $(UNIVERSAL_EXE)
+profile-build: UOBJ_TGT := universal-object-pgo
+profile-build: net $(UNIVERSAL_EXE)
+
+$(TEMP_DIR):
+	@mkdir -p $@
+
+$(UNIVERSAL_ENTRY_OBJ): $(CURDIR)/cputest.cpp | $(TEMP_DIR)
+	$(CXX) -DUNIVERSAL_BUILD -O2 -c $< -o $@
+
+# Symlink tracked top-level items from src/ into temp_builds/<arch>/.
+$(TEMP_DIR)/%/.setup: | $(TEMP_DIR)
+	@rm -rf $(TEMP_DIR)/$*
+	@mkdir -p $(TEMP_DIR)/$*
+	@$(foreach f,$(TRACKED_TOP),ln -s $(CURDIR)/$(f) $(TEMP_DIR)/$*/$(f);)
+	@touch $@
+
+# Per-arch RubiChess.o
+.SECONDARY: $(patsubst %,$(TEMP_DIR)/%/.setup,$(UNIVERSAL_ARCHES))
+
+$(TEMP_DIR)/%/RubiChess.o: $(TEMP_DIR)/%/.setup
+	@+ENV_CXXFLAGS='$(ENV_CXXFLAGS) $(call arch-cxxflags,$*)' \
+	    $(MAKE) -C $(TEMP_DIR)/$* $(UOBJ_TGT) \
+	        ARCH=$* CXX=$(CXX)
+	@objcopy -R .group $@
+	@objcopy --rename-section .init_array=$(call arch-suffix,$*)_init $@
+	@objcopy --rename-section .ctors=$(call arch-suffix,$*)_init $@
+	@objcopy --set-section-flags $(call arch-suffix,$*)_init=alloc,data $@
+
+$(UNIVERSAL_EXE): $(ZLIBDIR)/libz.a $(UNIVERSAL_ENTRY_OBJ) $(ARCH_OBJS)
+	$(CXX) -o $@ $(UNIVERSAL_ENTRY_OBJ) $(ARCH_OBJS) $(ZLIBDIR)/libz.a $(UNIVERSAL_FINAL_FLAGS) $(NETDEF) $(NETOBJ)
+ifneq ($(debug),yes)
+	@$(STRIP) $(UNIVERSAL_EXE)$(EXEEXT)
+endif
+	@echo "Universal binary built: $@"
+
+endif  # UNIVERSAL_BUILD
 
 help:
 	@echo ""

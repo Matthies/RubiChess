@@ -20,6 +20,10 @@
 
 using namespace rubichess;
 
+#ifdef UNIVERSAL_BINARY
+namespace rubichess {
+    int main(int argc, char* argv[]);
+#endif
 
 int main(int argc, char* argv[])
 {
@@ -113,7 +117,7 @@ int main(int argc, char* argv[])
     tuneInit();
 #endif
 
-    engineHeader();
+    en.engineHeader();
     searchinit();
 
     cout.setf(ios_base::unitbuf);
@@ -229,3 +233,8 @@ int main(int argc, char* argv[])
     en.searchWaitStop();
     return 0;
 }
+
+#ifdef UNIVERSAL_BINARY
+}
+#endif
+
