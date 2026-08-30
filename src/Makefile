@@ -65,7 +65,7 @@ else
 	CFLAGS += -O3 -DNDEBUG
 endif
 
-ifneq ($(sanitize),none)
+ifneq ($(sanitize),)
         CXXFLAGS += -g3 $(addprefix -fsanitize=,$(sanitize))
         CFLAGS += $(addprefix -fsanitize=,$(sanitize))
 endif
