@@ -551,7 +551,7 @@ TRACKED_TOP += $(NETOBJ)
 ARCH_OBJS := $(TEMP_DIR)/x86-64-sse2/RubiChess.o \
              $(patsubst %,$(TEMP_DIR)/%/RubiChess.o,$(filter-out x86-64-sse2,$(UNIVERSAL_ARCHES)))
 
-UNIVERSAL_FINAL_FLAGS := -fno-exceptions -Os -static-libstdc++ -static-libgcc
+UNIVERSAL_FINAL_FLAGS := -fno-exceptions -Os -static-libstdc++ -static-libgcc -z noexecstack
 ifeq ($(OS), Windows_NT)
     UNIVERSAL_FINAL_FLAGS += -Wl,--allow-multiple-definition -static
 else
