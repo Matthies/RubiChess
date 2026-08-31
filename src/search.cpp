@@ -1628,8 +1628,10 @@ void mainSearch(workingthread *thr)
             {
                 bestscore = hthr->pos->bestmovescore[0];
                 bestthr = hthr;
+                inWindow = 1;
             }
         }
+
         if (pos->bestmove != bestthr->pos->bestmove)
         {
             // copy best moves and score from best thread to thread 0
@@ -1644,7 +1646,6 @@ void mainSearch(workingthread *thr)
             pos->bestmove = bestthr->pos->bestmove;
             pos->pondermove = bestthr->pos->pondermove;
             pos->bestmovescore[0] = bestthr->pos->bestmovescore[0];
-            inWindow = 1;
         }
 
         // remember score for next search in case of an instamove
