@@ -201,18 +201,22 @@ CPUFLAGS = "sse2"
 endif
 ifneq (,$(findstring -avx512,$(ARCH)))
 CPUFLAGS = "avx512 bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2"
+ARCHANDTUNE = -march=x86-64-v4 -mtune=silvermont
 endif
 ifneq (,$(findstring -bmi2,$(ARCH)))
 CPUFLAGS = "bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2"
+ARCHANDTUNE = -march=x86-64-v3 -mtune=silvermont
 endif
 ifneq (,$(findstring -avx2,$(ARCH)))
 CPUFLAGS = "avx2 bmi1 lzcnt popcnt ssse3 sse2"
+ARCHANDTUNE = -march=znver2 -mtune=silvermont
 endif
 ifneq (,$(findstring -modern,$(ARCH)))
 CPUFLAGS = "popcnt ssse3 sse2"
 endif
 ifneq (,$(findstring -ssse3,$(ARCH)))
 CPUFLAGS = "ssse3 sse2"
+ARCHANDTUNE = -march=k8 -mtune=silvermont
 endif
 ifneq (,$(findstring -sse3-popcnt,$(ARCH)))
 CPUFLAGS = "popcnt sse2"
@@ -400,7 +404,7 @@ $(ZLIBDIR)/libz.a:
 
 compile: $(ZLIBDIR)/libz.a
 	@echo $(MESSAGE)
-	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) *.cpp $(ZLIBDIR)/libz.a $(LDFLAGS) $(PTHREADLIB) $(EXTRALDFLAGS) $(GITDEFINE) $(NETDEF) $(NETOBJ) -o $(EXE)
+	$(CXX) $(CXXFLAGS) $(EXTRACXXFLAGS) $(ARCHFLAGS) $(ARCHANDTUNE) *.cpp $(ZLIBDIR)/libz.a $(LDFLAGS) $(PTHREADLIB) $(EXTRALDFLAGS) $(GITDEFINE) $(NETDEF) $(NETOBJ) -o $(EXE)
 
 objclean:
 	@$(RM) *.o $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(PROFEXE) $(CPUTEST) $(NETBIN) || @echo $(RM) not available.
