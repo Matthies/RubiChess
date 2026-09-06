@@ -109,6 +109,7 @@ ARCH=native
 !ENDIF
 
 # nativeflags
+ARCHANDTUNE=-march=native -mtune=native
 !IF "$(ARCH)"=="native" && !EXIST($(NATIVEFLAGS)) && "$(VSCMD_ARG_HOST_ARCH)"=="$(VSCMD_ARG_TGT_ARCH)"
 !IF [@$(CXX) /GX -DCPUTEST $(CPUTEST).cpp -o $(CPUTEST) && @$(CPUTEST) > $(NATIVEFLAGS)] != 0
 !ERROR Cannot compile and/or run $(CPUTEST) to determine cpu flags on this machine!
@@ -123,14 +124,19 @@ ARCH=native
 cpuflags: lib-clean
 !IF "$(ARCH)" == "x86-64-avx512"
 CPUFLAGS=avx512 bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2
+ARCHANDTUNE=-march=x86-64-v4 -mtune=silvermont
 !ELSEIF "$(ARCH)" == "x86-64-bmi2"
 CPUFLAGS=bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2
+ARCHANDTUNE=-march=x86-64-v3 -mtune=silvermont
 !ELSEIF "$(ARCH)" == "x86-64-avx2"
 CPUFLAGS=avx2 bmi1 lzcnt popcnt ssse3 sse2
+ARCHANDTUNE=-march=znver2 -mtune=silvermont
 !ELSEIF "$(ARCH)" == "x86-64-modern"
 CPUFLAGS=popcnt ssse3 sse2
+ARCHANDTUNE=-march=k8 -mtune=silvermont
 !ELSEIF "$(ARCH)" == "x86-64-ssse3"
 CPUFLAGS=ssse3 sse2
+ARCHANDTUNE=-march=k8 -mtune=silvermont
 !ELSEIF "$(ARCH)" == "x86-64-sse3-popcnt"
 CPUFLAGS=popcnt sse2
 !ELSEIF "$(ARCH)" == "x86-64-sse2"
@@ -224,7 +230,7 @@ compile: $(ZLIBDIR)\zlib.lib
 !IFNDEF GITID
 	@FOR /F "tokens=2" %A IN ('cmd /c "($(GIT) show --name-only --abbrev-commit || echo commit unknown) | findstr /r /c:"^commit"" ') DO @(set GITID=%A&& nmake -f Makefile.clang $* /$(MAKEFLAGS) && exit /B)
 !ELSE
-	@$(CXX) $(CXXFLAGS) $(ARCHFLAGS) $(SOURCE) $(PROFILEFLAGS) -D GITVER=\"$(GITVER)\" -D GITID=\"$(GITID)\"
+	@$(CXX) $(CXXFLAGS) $(ARCHFLAGS) $(ARCHANDTUNE) $(SOURCE) $(PROFILEFLAGS) -D GITVER=\"$(GITVER)\" -D GITID=\"$(GITID)\"
 !IFDEF USEPROFLIB
 	@$(LD) $(LDFLAGS) /OUT:$(PROFEXE).exe $(OBJ) "$(USEPROFLIB)"
 !ELSE
