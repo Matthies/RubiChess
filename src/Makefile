@@ -522,22 +522,40 @@ UNIVERSAL_EXE        := $(CURDIR)/$(EXE)
 
 ifeq ($(COMP), clang)
 LTO_OBJ_SUFFIX := .lto.o
-SAVE_TEMPS := -Wl,--save-temps
+ifneq (, $(findstring MINGW,$(UNAME_S)))
+    SAVE_TEMPS := -Wl,--lto-emit-asm
+    use_lto_emit_asm := yes
+else
+    SAVE_TEMPS := -Wl,--save-temps
+endif
+
 else
 LTO_OBJ_SUFFIX := .ltrans0.ltrans.o
 SAVE_TEMPS := -save-temps
 endif
+MODNAME := $(subst -,_,$(notdir $(CURDIR)))
+
 
 universal-object-pgo: instrumentedcompile profilebench
 	@$(PROFMERGE)
 	@$(RM) ./$(PROFEXE)
 	@$(MAKE) compile ARCH=$(ARCH) COMP=$(COMP) EXTRACXXFLAGS=$(PGOEXTRACXXFLAGS) EXTRALDFLAGS="$(PGOEXTRALDFLAGS) $(SAVE_TEMPS)" MESSAGE='Compiling optimized build ...'
+ifeq ($(use_lto_emit_asm),yes)
+	awk -v MODNAME=$(MODNAME) -f ../../rewrite_asm_sections.awk *.lto.s > renamed.s
+	$(CXX) -c renamed.s -o RubiChess.o
+else
 	@mv $(basename $(EXE))$(LTO_OBJ_SUFFIX) RubiChess.o
+endif
+
 
 universal-object-nopgo: objclean universalclean
 	$(MAKE) compile ARCH=$(ARCH) COMP=$(COMP) ENV_LDFLAGS="$(SAVE_TEMPS)"
+ifeq ($(use_lto_emit_asm),yes)
+	awk -v MODNAME=$(MODNAME) -f ../../rewrite_asm_sections.awk *.lto.s > renamed.s
+	$(CXX) -c renamed.s -o RubiChess.o
+else
 	@mv $(basename $(EXE))$(LTO_OBJ_SUFFIX) RubiChess.o
-
+endif
 ifeq ($(UNIVERSAL_BUILD),true)
 
 UNIVERSAL_ARCHES := x86-64-sse2 x86-64-sse3-popcnt x86-64-ssse3 x86-64-modern x86-64-avx2 x86-64-bmi2 x86-64-avx512
@@ -565,7 +583,18 @@ arch-suffix     = $(subst -,_,$(1))
 arch-namespace  = rubichess_$(call arch-suffix,$(1))
 # Itanium ABI mangled name for rubichess_<suffix>::main(int, char**)
 arch-mangled    = _ZN$(shell printf %s '$(call arch-namespace,$(1))' | wc -c)$(call arch-namespace,$(1))4mainEiPPc
-arch-cxxflags   =  -Drubichess=$(call arch-namespace,$(1)) -DUNIVERSAL_BINARY -Wl,--defsym=main=$(call arch-mangled,$(1))
+
+ifeq ($(OS)+$(COMP),Windows_NT+clang)
+	arch-cxxflags   =  -Drubichess=$(call arch-namespace,$(1)) -DUNIVERSAL_BINARY -DUNIVERSAL_NEEDS_MAIN_SHIM
+else
+	arch-cxxflags   =  -Drubichess=$(call arch-namespace,$(1)) -DUNIVERSAL_BINARY -Wl,--defsym=main=$(call arch-mangled,$(1))
+endif
+ifeq ($(COMP),clang)
+	OBJCOPY ?= llvm-objcopy
+else
+	OBJCOPY ?= objcopy
+endif
+
 
 UOBJ_TGT ?= universal-object-pgo
 
@@ -595,10 +624,14 @@ $(TEMP_DIR)/%/RubiChess.o: $(TEMP_DIR)/%/.setup
 	@+ENV_CXXFLAGS='$(ENV_CXXFLAGS) $(call arch-cxxflags,$*)' \
 	    $(MAKE) -C $(TEMP_DIR)/$* $(UOBJ_TGT) \
 	        ARCH=$* CXX=$(CXX)
-	@objcopy -R .group $@
-	@objcopy --rename-section .init_array=$(call arch-suffix,$*)_init $@
-	@objcopy --rename-section .ctors=$(call arch-suffix,$*)_init $@
-	@objcopy --set-section-flags $(call arch-suffix,$*)_init=alloc,data $@
+	$(OBJCOPY) -R .group $@
+ifeq ($(use_lto_emit_asm),yes)
+	$(OBJCOPY) -N main $@
+else
+	$(OBJCOPY) --rename-section .init_array=$(call arch-suffix,$*)_init $@
+	$(OBJCOPY) --rename-section .ctors=$(call arch-suffix,$*)_init $@
+	$(OBJCOPY) --set-section-flags $(call arch-suffix,$*)_init=alloc,data $@
+endif
 
 $(UNIVERSAL_EXE): $(ZLIBDIR)/libz.a $(UNIVERSAL_ENTRY_OBJ) $(ARCH_OBJS)
 	$(CXX) -o $@ $(UNIVERSAL_ENTRY_OBJ) $(ARCH_OBJS) $(ZLIBDIR)/libz.a $(UNIVERSAL_FINAL_FLAGS) $(NETDEF) $(NETOBJ)

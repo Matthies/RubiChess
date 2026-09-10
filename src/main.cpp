@@ -23,6 +23,9 @@ using namespace rubichess;
 #ifdef UNIVERSAL_BINARY
 namespace rubichess {
     int main(int argc, char* argv[]);
+
+    __attribute__((used)) // keep main alive
+
 #endif
 
 int main(int argc, char* argv[])
@@ -236,5 +239,9 @@ int main(int argc, char* argv[])
 
 #ifdef UNIVERSAL_BINARY
 }
+#ifdef UNIVERSAL_NEEDS_MAIN_SHIM
+int main(int argc, char* argv[]) { return rubichess::main(argc, argv); }
+#endif
+
 #endif
 
