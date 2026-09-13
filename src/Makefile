@@ -418,7 +418,7 @@ endif
 ifneq ($(EVALFILE),)
 		@echo Embedding networkfile $(EMBEDFILE)
 		@cp $(EMBEDFILE) $(NETBIN)
-		@ld -r -b binary $(NETBIN) -o $(NETOBJ)
+		@-ld -r -b binary $(NETBIN) -o $(NETOBJ) 2>/dev/null || /usr/bin/ld -r -b binary $(NETBIN) -o $(NETOBJ)
 endif
 
 $(ZLIBDIR)/libz.a:
@@ -600,9 +600,9 @@ UOBJ_TGT ?= universal-object-pgo
 
 .PHONY: build profile-build universal-clean
 build:         UOBJ_TGT := universal-object-nopgo
-build:         net $(UNIVERSAL_EXE)
+build:         clean net $(UNIVERSAL_EXE)
 profile-build: UOBJ_TGT := universal-object-pgo
-profile-build: net $(UNIVERSAL_EXE)
+profile-build: clean net $(UNIVERSAL_EXE)
 
 $(TEMP_DIR):
 	@mkdir -p $@
