@@ -61,7 +61,7 @@ ifeq ($(debug),yes)
 	CXXFLAGS += -g -O0
 	CFLAGS += -g -O0
 else
-	CXXFLAGS += -O3 -flto -DNDEBUG
+	CXXFLAGS += -O3 -flto -DNDEBUG -funroll-loops
 	CFLAGS += -O3 -DNDEBUG
 endif
 
@@ -202,23 +202,23 @@ CPUFLAGS = "sse2"
 endif
 ifneq (,$(findstring -avx512,$(ARCH)))
 CPUFLAGS = "avx512 bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2"
-ARCHANDTUNE = -march=x86-64-v4 -mtune=silvermont
+ARCHANDTUNE = -march=cannonlake -mtune=cannonlake
 endif
 ifneq (,$(findstring -bmi2,$(ARCH)))
 CPUFLAGS = "bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2"
-ARCHANDTUNE = -march=x86-64-v3 -mtune=silvermont
+ARCHANDTUNE = -march=haswell -mtune=haswell
 endif
 ifneq (,$(findstring -avx2,$(ARCH)))
 CPUFLAGS = "avx2 bmi1 lzcnt popcnt ssse3 sse2"
-ARCHANDTUNE = -march=znver2 -mtune=silvermont
+ARCHANDTUNE = -march=znver2 -mtune=znver2
 endif
 ifneq (,$(findstring -modern,$(ARCH)))
 CPUFLAGS = "popcnt ssse3 sse2"
-ARCHANDTUNE = -march=k8 -mtune=silvermont
+ARCHANDTUNE = -march=k8 -mtune=k8
 endif
 ifneq (,$(findstring -ssse3,$(ARCH)))
 CPUFLAGS = "ssse3 sse2"
-ARCHANDTUNE = -march=k8 -mtune=silvermont
+ARCHANDTUNE = -march=k8 -mtune=k8
 endif
 ifneq (,$(findstring -sse3-popcnt,$(ARCH)))
 CPUFLAGS = "popcnt sse2"
