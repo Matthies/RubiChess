@@ -109,13 +109,14 @@ ARCH=native
 !ENDIF
 
 # nativeflags
-ARCHANDTUNE=-march=native -mtune=native
 !IF "$(ARCH)"=="native" && !EXIST($(NATIVEFLAGS)) && "$(VSCMD_ARG_HOST_ARCH)"=="$(VSCMD_ARG_TGT_ARCH)"
 !IF [@$(CXX) /GX -DCPUTEST $(CPUTEST).cpp -o $(CPUTEST) && @$(CPUTEST) > $(NATIVEFLAGS)] != 0
 !ERROR Cannot compile and/or run $(CPUTEST) to determine cpu flags on this machine!
 !ENDIF
 !ENDIF
-!IF "$(ARCH)"!="native"
+!IF "$(ARCH)"=="native"
+ARCHANDTUNE=-march=native -mtune=native
+!ELSE
 !IF EXIST($(NATIVEFLAGS)) && [@del $(NATIVEFLAGS) 2>nul] != 0
 !ERROR Cannot delete cpu flags file $(NATIVEFLAGS)
 !ENDIF
@@ -124,19 +125,19 @@ ARCHANDTUNE=-march=native -mtune=native
 cpuflags: lib-clean
 !IF "$(ARCH)" == "x86-64-avx512"
 CPUFLAGS=avx512 bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2
-ARCHANDTUNE=-march=x86-64-v4 -mtune=silvermont
+ARCHANDTUNE=-march=cannonlake -mtune=cannonlake
 !ELSEIF "$(ARCH)" == "x86-64-bmi2"
 CPUFLAGS=bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2
-ARCHANDTUNE=-march=x86-64-v3 -mtune=silvermont
+ARCHANDTUNE=-march=haswell -mtune=haswell
 !ELSEIF "$(ARCH)" == "x86-64-avx2"
 CPUFLAGS=avx2 bmi1 lzcnt popcnt ssse3 sse2
-ARCHANDTUNE=-march=znver2 -mtune=silvermont
+ARCHANDTUNE=-march=znver2 -mtune=znver2
 !ELSEIF "$(ARCH)" == "x86-64-modern"
 CPUFLAGS=popcnt ssse3 sse2
-ARCHANDTUNE=-march=k8 -mtune=silvermont
+ARCHANDTUNE=-march=k8 -mtune=k8
 !ELSEIF "$(ARCH)" == "x86-64-ssse3"
 CPUFLAGS=ssse3 sse2
-ARCHANDTUNE=-march=k8 -mtune=silvermont
+ARCHANDTUNE=-march=k8 -mtune=k8
 !ELSEIF "$(ARCH)" == "x86-64-sse3-popcnt"
 CPUFLAGS=popcnt sse2
 !ELSEIF "$(ARCH)" == "x86-64-sse2"
