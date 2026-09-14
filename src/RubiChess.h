@@ -794,6 +794,7 @@ void BitboardDraw(U64 b);
 U64 getTime();
 void bind_thread(int index);
 string numa_configuration();
+int GetProcessId();
 string CurrentWorkingDir();
 void generateEpd(string egn);
 #ifdef _WIN32
@@ -2112,61 +2113,14 @@ enum ponderstate_t { NO, PONDERING };
 #define CPUARM64    (1 << 9)
 #define CPUDOTPROD  (1 << 10)
 
-class compilerinfo
-{
-    const string strCpuFeatures[11] = { "sse2","ssse3","popcnt","lzcnt","bmi1","avx2","bmi2", "avx512", "neon", "arm64", "dotprod"};
-public:
-    const U64 binarySupports = 0ULL
-#ifdef USE_POPCNT
-        | CPUPOPCNT
-#endif
-#ifdef USE_SSE2
-        | CPUSSE2
-#endif
-#ifdef USE_SSSE3
-        | CPUSSSE3
-#endif
-#ifdef USE_AVX2
-        | CPUAVX2
-#endif
-#ifdef USE_BMI1
-        | CPUBMI1 | CPULZCNT
-#endif
-#ifdef USE_BMI2
-        | CPUBMI2
-#endif
-#ifdef USE_AVX512
-        | CPUAVX512
-#endif
-#ifdef USE_NEON
-        | CPUNEON
-#endif
-#ifdef USE_ARM64
-        | CPUARM64
-#endif
-#ifdef USE_DOTPROD
-        | CPUDOTPROD
-#endif
-        ;
-
-    U64 machineSupports;
-    string system;
-    int cpuVendor;
-    int cpuFamily;
-    int cpuModel;
-    compilerinfo() { GetSystemInfo(); }
-    void GetSystemInfo();
-    string SystemName() { return system; }
-    string PrintCpuFeatures(U64 features, bool onlyHighest = false);
-    int GetProcessId();
-};
-
+void GetSystemInfo_x86_64(uint64_t& cpuMachineSupports, int& cpuVendor, int& cpuFamily, int& cpuModel, std::string& cpuSystem);
+string PrintCpuFeatures(uint64_t features, bool onlyHighest = false);
 
 
 class engine
 {
 public:
-    engine(compilerinfo *c);
+    engine();
     ~engine();
     const string author = "Andreas Matthies";
     U64 thinkstarttime;
@@ -2215,7 +2169,43 @@ public:
     string benchmove;
     string benchpondermove;
     ucioptions_t ucioptions;
-    compilerinfo* compinfo;
+    uint64_t cpuMachineSupports;
+    int cpuVendor;
+    int cpuFamily;
+    int cpuModel;
+    string cpuSystem;
+    const uint64_t binarySupports = 0ULL
+#ifdef USE_POPCNT
+        | CPUPOPCNT
+#endif
+#ifdef USE_SSE2
+        | CPUSSE2
+#endif
+#ifdef USE_SSSE3
+        | CPUSSSE3
+#endif
+#ifdef USE_AVX2
+        | CPUAVX2
+#endif
+#ifdef USE_BMI1
+        | CPUBMI1 | CPULZCNT
+#endif
+#ifdef USE_BMI2
+        | CPUBMI2
+#endif
+#ifdef USE_AVX512
+        | CPUAVX512
+#endif
+#ifdef USE_NEON
+        | CPUNEON
+#endif
+#ifdef USE_ARM64
+        | CPUARM64
+#endif
+#ifdef USE_DOTPROD
+        | CPUDOTPROD
+#endif
+        ;
     string ExecPath;
     set<string> searchmoves;
 
@@ -2259,7 +2249,7 @@ public:
     bool allowlargepages;
 #endif
     string name(bool full = true) {
-        string sbinary = compinfo->PrintCpuFeatures(compinfo->binarySupports, true);
+        string sbinary = PrintCpuFeatures(binarySupports, true);
         sbinary = (sbinary != "" ? " (" + sbinary + ")" : "");
         if (!full)
             return string(ENGINEVER) + sbinary;
@@ -2286,6 +2276,7 @@ public:
     void searchWaitStop(bool forceStop = true);
     void resetEndTime(U64 nowTime, int constantRootMoves = 0, int bestmovenodesratio = 128);
     void startSearchTime(bool ponderhit);
+    void engineHeader();
 };
 
 void prepareSearch(chessposition* pos, chessposition* rootpos);
@@ -2318,7 +2309,6 @@ public:
 };
 
 extern engine en;
-extern compilerinfo cinfo;
 extern GuiCommunication guiCom;
 
 

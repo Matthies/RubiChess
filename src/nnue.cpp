@@ -3116,6 +3116,7 @@ bool NnueNetsource::open()
             pathToSearch = pathToSearch.substr(0, seppos + 1);
         }
         filenames.push_back(en.ExecPath + ".." + sep + NnueNetPath);
+        filenames.push_back(en.ExecPath + ".." + sep + ".." + sep + NnueNetPath);
     }
     for (unsigned int i = 0; i < filenames.size(); i++) {
         ifstream is;

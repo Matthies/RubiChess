@@ -268,7 +268,7 @@ static void benchTableHeader(bool bToErr)
     if (bToErr)
         guiCom.switchStream();
     guiCom << "\n" << "Benchmark results\n";
-    engineHeader();
+    en.engineHeader();
     if (bToErr)
         guiCom.switchStream();
 }
