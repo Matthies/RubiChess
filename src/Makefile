@@ -439,7 +439,7 @@ objclean:
 	@$(RM) *.o $(AVX512EXE) $(BMI2EXE) $(AVX2EXE) $(DEFAULTEXE) $(SSSE3EXE) $(SSE2POPCNTEXE) $(LEGACYEXE) $(PROFEXE) $(CPUTEST) $(NETBIN) || @echo $(RM) not available.
 
 libclean:
-	@$(RM) zlib/*.o zlib/*.a $(NETOBJ) || @echo $(RM) not available.
+	@$(RM) zlib/*.o zlib/*.a || @echo $(RM) not available.
 
 profileclean: libclean
 	@$(RM) -rf $(PROFDIR) || @echo $(RM) not available.
