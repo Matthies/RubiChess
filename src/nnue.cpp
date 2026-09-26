@@ -2528,16 +2528,59 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
     uint16_t nnz[NumChunks];
     unsigned int count = 0;
     const int32_t* input32 = (int32_t*)input;
-    const uvec_t* inputVector = (const uvec_t*)input;
-
 
     constexpr unsigned int InternalInputSimdWidth = sizeof(uvec_t) / sizeof(int32_t);
     constexpr unsigned int InternalChunkSize = InternalInputSimdWidth > 8 ? InternalInputSimdWidth : 8;
     constexpr unsigned int NumInternalChunks = NumChunks / InternalChunkSize;
-    constexpr unsigned int InputsPerInternalChunk = InternalChunkSize / InternalInputSimdWidth;
-    constexpr unsigned int OutputsPerInternalChunk = InternalChunkSize / 8;
 
     // Step 1: Find indices of nonzero 32bit blocks
+#if defined(USE_AVX512ICL)
+
+    constexpr unsigned int SimdWidthIn = 64;  // 512 bits
+    constexpr unsigned int SimdWidthOut = 32;  // 512 bits / 16 bits
+    const __m512i       increment = _mm512_set1_epi16(SimdWidthOut);
+    __m512i             base = _mm512_set_epi16(  // Same permute order as _mm512_packus_epi32()
+        31, 30, 29, 28, 15, 14, 13, 12, 27, 26, 25, 24, 11, 10, 9, 8, 23, 22, 21, 20, 7, 6, 5, 4,
+        19, 18, 17, 16, 3, 2, 1, 0);
+
+    for (unsigned int i = 0; i < NumInternalChunks / 2; ++i)
+    {
+        const __m512i inputV0 = _mm512_load_si512(input + i * 2 * SimdWidthIn);
+        const __m512i inputV1 = _mm512_load_si512(input + i * 2 * SimdWidthIn + SimdWidthIn);
+
+        // Get a bitmask and gather non zero indices
+        const __m512i   inputV01 = _mm512_packs_epi32(inputV0, inputV1);
+        const __mmask32 nnzMask = _mm512_test_epi16_mask(inputV01, inputV01);
+
+        // Avoid _mm512_mask_compressstoreu_epi16() as it's 256 uOps on Zen4
+        __m512i internalnnz = _mm512_maskz_compress_epi16(nnzMask, base);
+        _mm512_storeu_si512(nnz + count, internalnnz);
+
+        count += POPCOUNT32(nnzMask);
+        base = _mm512_add_epi16(base, increment);
+    }
+
+#elif defined(USE_AVX512)
+
+    const __m512i       increment = _mm512_set1_epi32(InternalInputSimdWidth);
+    __m512i base = _mm512_set_epi32(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+
+    for (unsigned int i = 0; i < NumInternalChunks; ++i)
+    {
+        const __m512i inputV = _mm512_load_si512(input + i * InternalInputSimdWidth * sizeof(uint32_t));
+
+        // Get a bitmask and gather non zero indices
+        const __mmask16 nnzMask = _mm512_test_epi32_mask(inputV, inputV);
+        const __m512i   nnzV = _mm512_maskz_compress_epi32(nnzMask, base);
+        _mm512_mask_cvtepi32_storeu_epi16(nnz + count, 0xFFFF, nnzV);
+        count += POPCOUNT32(nnzMask);
+        base = _mm512_add_epi32(base, increment);
+    }
+
+#else
+
+    constexpr unsigned int InputsPerInternalChunk = InternalChunkSize / InternalInputSimdWidth;
+    const uvec_t* inputVector = (const uvec_t*)input;
     vec128_t base = vec128_zero;
     vec128_t increment = vec128_set_16(8);
     for (unsigned int i = 0; i < NumInternalChunks; ++i)
@@ -2564,15 +2607,12 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
             }
 #endif
         }
-        for (unsigned int j = 0; j < OutputsPerInternalChunk; ++j)
-        {
-            const unsigned int lookup = (internalnnz >> (j * 8)) & 0xFF;
-            const vec128_t offsets = vec128_load((vec128_t*)(&lookup_indices[lookup]));
-            vec128_storeu((vec128_t*)(nnz + count), vec128_add(base, offsets));
-            count += POPCOUNT32(lookup);
-            base = vec128_add(base, increment);
-        }
+        const vec128_t offsets = vec128_load((vec128_t*)(&lookup_indices[internalnnz]));
+        vec128_storeu((vec128_t*)(nnz + count), vec128_add(base, offsets));
+        count += POPCOUNT32(internalnnz);
+        base = vec128_add(base, increment);
     }
+#endif
 
 #ifdef STATISTICS
     total_evals++;

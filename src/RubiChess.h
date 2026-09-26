@@ -2100,18 +2100,19 @@ typedef map<string, ucioption_t>::iterator optionmapiterator;
 #define NODESPERCHECK 0xfff
 enum ponderstate_t { NO, PONDERING };
 
-
-#define CPUSSE2     (1 << 0)
-#define CPUSSSE3    (1 << 1)
-#define CPUPOPCNT   (1 << 2)
-#define CPULZCNT    (1 << 3)
-#define CPUBMI1     (1 << 4)
-#define CPUAVX2     (1 << 5)
-#define CPUBMI2     (1 << 6)
-#define CPUAVX512   (1 << 7)
-#define CPUNEON     (1 << 8)
-#define CPUARM64    (1 << 9)
-#define CPUDOTPROD  (1 << 10)
+// FIXME: Code doubled in cputest.cpp
+#define CPUSSE2         (1 << 0)
+#define CPUSSSE3        (1 << 1)
+#define CPUPOPCNT       (1 << 2)
+#define CPULZCNT        (1 << 3)
+#define CPUBMI1         (1 << 4)
+#define CPUAVX2         (1 << 5)
+#define CPUBMI2         (1 << 6)
+#define CPUAVX512       (1 << 7)
+#define CPUAVX512ICL    (1 << 8)
+#define CPUNEON         (1 << 9)
+#define CPUARM64        (1 << 10)
+#define CPUDOTPROD      (1 << 11)
 
 void GetSystemInfo_x86_64(uint64_t& cpuMachineSupports, int& cpuVendor, int& cpuFamily, int& cpuModel, std::string& cpuSystem);
 string PrintCpuFeatures(uint64_t features, bool onlyHighest = false);
@@ -2195,6 +2196,9 @@ public:
 #endif
 #ifdef USE_AVX512
         | CPUAVX512
+#endif
+#ifdef USE_AVX512ICL
+        | CPUAVX512ICL
 #endif
 #ifdef USE_NEON
         | CPUNEON

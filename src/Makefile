@@ -29,6 +29,7 @@ lzcnt = no
 avx2 = no
 bmi2 = no
 avx512 = no
+avx512icl = no
 neon = no
 arm64 = no
 dotprod = no
@@ -223,6 +224,10 @@ ifneq (,$(findstring -avx512,$(ARCH)))
 CPUFLAGS = "avx512 bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2"
 ARCHANDTUNE = -march=cannonlake -mtune=cannonlake
 endif
+ifneq (,$(findstring -avx512icl,$(ARCH)))
+CPUFLAGS = "avx512icl avx512 bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2"
+ARCHANDTUNE = -march=icelake-client -mtune=icelake-client
+endif
 ifneq (,$(findstring -bmi2,$(ARCH)))
 CPUFLAGS = "bmi2 avx2 bmi1 lzcnt popcnt ssse3 sse2"
 ARCHANDTUNE = -march=haswell -mtune=haswell
@@ -259,6 +264,9 @@ CPUFLAGS += " dotprod"
 endif
 endif
 
+ifneq (,$(findstring avx512icl,$(CPUFLAGS)))
+	avx512icl = yes
+endif
 ifneq (,$(findstring avx512,$(CPUFLAGS)))
 	avx512 = yes
 endif
@@ -302,6 +310,9 @@ ifeq ($(bits),64)
 	CXXFLAGS += -DIS_64BIT
 endif
 
+ifeq ($(avx512icl),yes)
+	ARCHFLAGS += -DUSE_AVX512ICL -mavx512cd -mavx512vl -mavx512dq -mavx512ifma -mavx512vbmi -mavx512vbmi2 -mavx512vpopcntdq -mavx512bitalg -mavx512vnni -mvpclmulqdq -mgfni -mvaes
+endif
 ifeq ($(avx512),yes)
 	ARCHFLAGS += -DUSE_AVX512 -mavx512f -mavx512bw
 endif
@@ -397,19 +408,20 @@ arch: libclean
 	@echo "Bits: $(bits)"
 	@echo "CPU features:"
 	@echo "============="
-	@echo "avx512 : $(avx512)"
-	@echo "bmi2   : $(bmi2)"
-	@echo "avx2   : $(avx2)"
-	@echo "bmi1   : $(bmi1)"
-	@echo "lzcnt  : $(lzcnt)"
-	@echo "popcnt : $(popcnt)"
-	@echo "ssse3  : $(ssse3)"
-	@echo "sse2   : $(sse2)"
-	@echo "neon   : $(neon)"
-	@echo "arm64  : $(arm64)"
-	@echo "dotprod: $(dotprod)"
-	@echo "debug  : $(debug)"
-	@echo "libnuma: $(HASLIBNUMA)"
+	@echo "avx512icl : $(avx512icl)"
+	@echo "avx512    : $(avx512)"
+	@echo "bmi2      : $(bmi2)"
+	@echo "avx2      : $(avx2)"
+	@echo "bmi1      : $(bmi1)"
+	@echo "lzcnt     : $(lzcnt)"
+	@echo "popcnt    : $(popcnt)"
+	@echo "ssse3     : $(ssse3)"
+	@echo "sse2      : $(sse2)"
+	@echo "neon      : $(neon)"
+	@echo "arm64     : $(arm64)"
+	@echo "dotprod   : $(dotprod)"
+	@echo "debug     : $(debug)"
+	@echo "libnuma   : $(HASLIBNUMA)"
 
 net:
 ifeq ($(EVALFILE),$(filter $(EVALFILE),default))
@@ -492,6 +504,7 @@ pgo-rename: pgo
 	@echo Successfully created $(EXE)-$(VERSION)_$(ARCH)
 
 release_x86:
+	@$(MAKE) pgo-rename  ARCH=x86-$(bits)-avx512icl
 	@$(MAKE) pgo-rename  ARCH=x86-$(bits)-avx512
 	@$(MAKE) pgo-rename  ARCH=x86-$(bits)-bmi2
 	@$(MAKE) pgo-rename  ARCH=x86-$(bits)-avx2

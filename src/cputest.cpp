@@ -26,19 +26,22 @@
 #define CPUVENDORINTEL      1
 #define CPUVENDORAMD        2
 
-#define CPUSSE2     (1 << 0)
-#define CPUSSSE3    (1 << 1)
-#define CPUPOPCNT   (1 << 2)
-#define CPULZCNT    (1 << 3)
-#define CPUBMI1     (1 << 4)
-#define CPUAVX2     (1 << 5)
-#define CPUBMI2     (1 << 6)
-#define CPUAVX512   (1 << 7)
-#define CPUNEON     (1 << 8)
-#define CPUARM64    (1 << 9)
-#define CPUDOTPROD  (1 << 10)
+// FIXME: Code doubled in RubiChess.h
+#define CPUSSE2         (1 << 0)
+#define CPUSSSE3        (1 << 1)
+#define CPUPOPCNT       (1 << 2)
+#define CPULZCNT        (1 << 3)
+#define CPUBMI1         (1 << 4)
+#define CPUAVX2         (1 << 5)
+#define CPUBMI2         (1 << 6)
+#define CPUAVX512       (1 << 7)
+#define CPUAVX512ICL    (1 << 8)
+#define CPUNEON         (1 << 9)
+#define CPUARM64        (1 << 10)
+#define CPUDOTPROD      (1 << 11)
 
 std::map<std::string, uint32_t> flagsOfArch = {
+    {  "x86_64_avx512icl", CPUAVX512ICL | CPUAVX512 | CPUBMI2 | CPUAVX2 | CPUBMI1 | CPULZCNT | CPUSSSE3 | CPUPOPCNT | CPUSSE2 },
     {  "x86_64_avx512", CPUAVX512 | CPUBMI2 | CPUAVX2 | CPUBMI1 | CPULZCNT | CPUSSSE3 | CPUPOPCNT | CPUSSE2 },
     {  "x86_64_bmi2", CPUBMI2 | CPUAVX2 | CPUBMI1 | CPULZCNT | CPUSSSE3 | CPUPOPCNT | CPUSSE2 },
     {  "x86_64_avx2", CPUAVX2 | CPUBMI1 | CPULZCNT | CPUSSSE3 | CPUPOPCNT | CPUSSE2 },
@@ -73,6 +76,7 @@ DEFINE_BUILD(x86_64_sse3_popcnt)
 DEFINE_BUILD(x86_64_avx2)
 DEFINE_BUILD(x86_64_bmi2)
 DEFINE_BUILD(x86_64_avx512)
+DEFINE_BUILD(x86_64_avx512icl)
 #endif // UNIVERSAL_BUILD
 
 #if defined(_M_X64) || defined(__amd64)
@@ -145,7 +149,27 @@ namespace rubichess {
                 if (CPUInfo[1] & (1 << 3)) cpuMachineSupports |= CPUBMI1;
                 if (CPUInfo[1] & (1 << 8)) cpuMachineSupports |= CPUBMI2;
                 if (CPUInfo[1] & (1 << 5)) cpuMachineSupports |= CPUAVX2;
-                if (CPUInfo[1] & ((1 << 16) | (1 << 30))) cpuMachineSupports |= CPUAVX512; // AVX512F + AVX512BW needed
+                if (CPUInfo[1] & (0
+                    | (1 << 16)     // avx512f
+                    | (1 << 30)     // avx512bw
+                    )) 
+                    cpuMachineSupports |= CPUAVX512;
+                if ((cpuMachineSupports & CPUAVX512) 
+                    && (CPUInfo[1] & (0
+                    | (1 << 28)     // avx512cd
+                    | (1 << 31)     // avx512vl
+                    | (1 << 17)     // avx512dq
+                    | (1 << 21)     // avx512ifma
+                    | (1 << 1)      // avx512vbmi
+                    | (1 << 6)))    // avx512vbmi2
+                    && (CPUInfo[2] && (0
+                    | (1 << 14)     // avx512vpopcntdq
+                    | (1 << 12)     // avx512bitalg
+                    | (1 << 11)     // avx512vnni
+                    | (1 << 10)     // vpclmulqdq
+                    | (1 << 8)      // gfni
+                    | (1 << 9))))   // vae
+                    cpuMachineSupports |= CPUAVX512ICL;
             }
         }
 
@@ -184,7 +208,7 @@ namespace rubichess {
 
     std::string PrintCpuFeatures(uint64_t f, bool onlyHighest)
     {
-        const std::string strCpuFeatures[11] = { "sse2","ssse3","popcnt","lzcnt","bmi1","avx2","bmi2", "avx512", "neon", "arm64", "dotprod" };
+        const std::string strCpuFeatures[] = { "sse2","ssse3","popcnt","lzcnt","bmi1","avx2","bmi2", "avx512", "avx512icl", "neon", "arm64", "dotprod" };
 
         std::string s = "";
         for (int i = 0; f; i++, f = f >> 1)
@@ -207,6 +231,7 @@ namespace rubichess {
 
         GetSystemInfo_x86_64(cpuMachineSupports, cpuVendor, cpuFamily, cpuModel, cpuSystem);
 
+        TESTARCH(x86_64_avx512icl)
         TESTARCH(x86_64_avx512)
         TESTARCH(x86_64_bmi2)
         TESTARCH(x86_64_avx2)
