@@ -50,7 +50,7 @@ enum {
 };
 
 // table to translate PieceCode to PieceSquare index for both POVs respecting the piece order special to RubiChess
-uint32_t PieceToIndex[2][16] = {
+static constexpr uint16_t PieceToIndex[2][16] = {
   { 0, 0, PS_WPAWN, PS_BPAWN, PS_WKNIGHT, PS_BKNIGHT, PS_WBISHOP, PS_BBISHOP, PS_WROOK, PS_BROOK, PS_WQUEEN, PS_BQUEEN, PS_KING, PS_KING, 0, 0 },
   { 0, 0, PS_BPAWN, PS_WPAWN, PS_BKNIGHT, PS_WKNIGHT, PS_BBISHOP, PS_WBISHOP, PS_BROOK, PS_WROOK, PS_BQUEEN, PS_WQUEEN, PS_KING, PS_KING, 0, 0 }
 };
@@ -1697,6 +1697,82 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     unsigned int index;
     NnueIndexList addedIndices, removedIndices;
     addedIndices.size = removedIndices.size = 0;
+#if defined(USE_AVX512ICL)
+#if 0
+#if defined(USE_AVX512ICL)
+    PSQFeatureSet::write_indices(entry.pieces, pos.piece_array(), removedBB, addedBB, perspective,
+        ksq, removed, added);
+#else
+    while (removedBB)
+    {
+        Square sq = pop_lsb(removedBB);
+        removed.push_back(PSQFeatureSet::make_index(perspective, sq, entry.pieces[sq], ksq));
+    }
+    while (addedBB)
+    {
+        Square sq = pop_lsb(addedBB);
+        added.push_back(PSQFeatureSet::make_index(perspective, sq, pos.piece_on(sq), ksq));
+    }
+#endif
+
+
+    void HalfKAv2_hm::write_indices(const std::array<Piece, SQUARE_NB>&oldPieces,
+        const std::array<Piece, SQUARE_NB>&newPieces,
+        Bitboard                            removedBB,
+        Bitboard                            addedBB,
+        Color                               perspective,
+        Square                              ksq,
+        IndexList & removed,
+        IndexList & added) {
+#endif
+        auto* write_removed = removed.make_space(popcount(removedBB));
+        auto* write_added = added.make_space(popcount(addedBB));
+
+        const __m512i vecOldPieces = _mm512_loadu_si512(oldPieces.data());
+        const __m512i vecNewPieces = _mm512_loadu_si512(newPieces.data());
+
+        alignas(64) static constexpr uint16_t psiTable[COLOR_NB][16] = PieceToIndex;
+#if 0
+        {
+          {PS_NONE, PS_W_PAWN, PS_W_KNIGHT, PS_W_BISHOP, PS_W_ROOK, PS_W_QUEEN, PS_KING, PS_NONE,
+           PS_NONE, PS_B_PAWN, PS_B_KNIGHT, PS_B_BISHOP, PS_B_ROOK, PS_B_QUEEN, PS_KING, PS_NONE},
+          {PS_NONE, PS_B_PAWN, PS_B_KNIGHT, PS_B_BISHOP, PS_B_ROOK, PS_B_QUEEN, PS_KING, PS_NONE,
+           PS_NONE, PS_W_PAWN, PS_W_KNIGHT, PS_W_BISHOP, PS_W_ROOK, PS_W_QUEEN, PS_KING, PS_NONE} };
+#endif
+        const uint16_t flip = 56 * perspective;
+        const __m512i  orient = _mm512_set1_epi16((uint16_t)OrientTBL[ksq] ^ flip);
+        const __m512i  psi =
+            _mm512_castsi256_si512(_mm256_loadu_si256((const __m256i*) psiTable[perspective]));
+        const __m512i psi_plus_bucket =
+            _mm512_add_epi16(psi, _mm512_set1_epi16((uint16_t)KingBuckets[int(ksq) ^ flip]));
+
+        __m512i removed_squares = _mm512_maskz_compress_epi8(removedBB, AllSquares);
+        __m512i added_squares = _mm512_maskz_compress_epi8(addedBB, AllSquares);
+        __m512i removed_pieces = _mm512_maskz_compress_epi8(removedBB, vecOldPieces);
+        __m512i added_pieces = _mm512_maskz_compress_epi8(addedBB, vecNewPieces);
+
+        removed_squares = _mm512_cvtepi8_epi16(_mm512_castsi512_si256(removed_squares));
+        added_squares = _mm512_cvtepi8_epi16(_mm512_castsi512_si256(added_squares));
+        removed_pieces = _mm512_cvtepi8_epi16(_mm512_castsi512_si256(removed_pieces));
+        added_pieces = _mm512_cvtepi8_epi16(_mm512_castsi512_si256(added_pieces));
+
+        const __m512i removed_indices =
+            _mm512_or_si512(_mm512_xor_si512(removed_squares, orient),
+                _mm512_permutexvar_epi16(removed_pieces, psi_plus_bucket));
+        const __m512i added_indices =
+            _mm512_or_si512(_mm512_xor_si512(added_squares, orient),
+                _mm512_permutexvar_epi16(added_pieces, psi_plus_bucket));
+
+        _mm512_storeu_si512(write_removed,
+            _mm512_cvtepu16_epi32(_mm512_castsi512_si256(removed_indices)));
+        _mm512_storeu_si512(write_removed + 16,
+            _mm512_cvtepu16_epi32(_mm512_extracti64x4_epi64(removed_indices, 1)));
+        _mm512_storeu_si512(write_added, _mm512_cvtepu16_epi32(_mm512_castsi512_si256(added_indices)));
+        _mm512_storeu_si512(write_added + 16,
+            _mm512_cvtepu16_epi32(_mm512_extracti64x4_epi64(added_indices, 1)));
+
+#else
+
     for (int p = WPAWN; p <= (Nt == NnueArchV1 ? BQUEEN : BKING); p++)
     {
         U64 addedbb = piece00[p] & ~cachedpiece00[p];
@@ -1718,6 +1794,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
                 removedIndices.values[removedIndices.size++] = HMORIENT(c, index, ksq) + PieceToIndex[c][p] + PS_KAEND * KingBucket[oksq];
         }
     }
+#endif
 
     memcpy(cachedpiece00, piece00, sizeof(piece00));
 
