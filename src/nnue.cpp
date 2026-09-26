@@ -198,7 +198,8 @@ public:
         p->accucache.psqtaccumulation = nullptr;
     }
     void ResetAccumulationCache(chessposition* p) {
-        memset(p->accucache.piece00, 0, sizeof(p->accucache.piece00));
+        memset(p->accucache.pieceBB, 0, sizeof(p->accucache.pieceBB));
+        memset(p->accucache.mailbox, 0, sizeof(p->accucache.mailbox));
         for (int i = 0; i < 2 * 64; i++) {
             memcpy(p->accucache.accumulation + i * NnueFtHalfdims, NnueFt.bias, NnueFtHalfdims * sizeof(int16_t));
         }
@@ -379,7 +380,8 @@ public:
         p->accucache.psqtaccumulation = (int32_t*)allocalign64(2 * 64 * NnuePsqtBuckets * sizeof(int32_t));
     }
     void ResetAccumulationCache(chessposition* p) {
-        memset(p->accucache.piece00, 0, 2 * sizeof(p->accucache.piece00[WHITE]));
+        memset(p->accucache.pieceBB, 0, sizeof(p->accucache.pieceBB));
+        memset(p->accucache.mailbox, 0, sizeof(p->accucache.mailbox));
         for (int i = 0; i < 2 * 64; i++)
             memcpy(p->accucache.accumulation + i * NnueFtHalfdims, NnueFt.bias, NnueFtHalfdims * sizeof(int16_t));
             
@@ -613,7 +615,8 @@ public:
         p->accucache.psqtaccumulation = (int32_t*)allocalign64(4 * 64 * NnuePsqtBuckets * sizeof(int32_t));
     }
     void ResetAccumulationCache(chessposition* p) {
-        memset(p->accucache.piece00, 0, 2 * sizeof(p->accucache.piece00[WHITE]));
+        memset(p->accucache.pieceBB, 0, sizeof(p->accucache.pieceBB));
+        memset(p->accucache.mailbox, 0, sizeof(p->accucache.mailbox));
         for (int i = 0; i < 2 * 64; i++)
             memcpy(p->accucache.accumulation + i * NnueFtHalfdims, NnueFt.bias, NnueFtHalfdims * sizeof(int16_t));
 
@@ -1679,6 +1682,43 @@ template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> vo
 
 }
 
+U64 getChangedPieces(uint8_t *oldmailbox, uint8_t *newmailbox)
+{
+#if defined(USE_AVX2)
+    U64 sameBB = 0;
+
+    for (int i = 0; i < 64; i += 32)
+    {
+        const __m256i old_v = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&oldmailbox[i]));
+        const __m256i new_v = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&newmailbox[i]));
+        const __m256i cmpEqual = _mm256_cmpeq_epi8(old_v, new_v);
+        const std::uint32_t equalMask = _mm256_movemask_epi8(cmpEqual);
+        sameBB |= (U64)(equalMask) << i;
+    }
+    return ~sameBB;
+#elif defined(USE_NEON)
+    uint8x16x4_t old_v = vld4q_u8(reinterpret_cast<const uint8_t*>(oldmailbox));
+    uint8x16x4_t new_v = vld4q_u8(reinterpret_cast<const uint8_t*>(newmailbox));
+    auto         cmp = [=](const int i) { return vceqq_u8(old_v.val[i], new_v.val[i]); };
+
+    uint8x16_t cmp0_1 = vsriq_n_u8(cmp(1), cmp(0), 1);
+    uint8x16_t cmp2_3 = vsriq_n_u8(cmp(3), cmp(2), 1);
+    uint8x16_t merged = vsriq_n_u8(cmp2_3, cmp0_1, 2);
+    merged = vsriq_n_u8(merged, merged, 4);
+    uint8x8_t sameBB = vshrn_n_u16(vreinterpretq_u16_u8(merged), 4);
+
+    return ~vget_lane_u64(vreinterpret_u64_u8(sameBB), 0);
+
+#else
+    U64 changed = 0;
+
+    for (unsigned int i = 0; i < 64; i++)
+        changed |= ((U64)(oldmailbox[i] != newmailbox[i]) << i);
+
+    return changed;
+#endif
+}
+
 
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::HalfkaAccumulatorRefresh()
 {
@@ -1691,12 +1731,19 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 
     const int ksq = kingpos[c];
     const int oksq = (Nt == NnueArchV1 ? ORIENT(c, ksq) : HMORIENT(c, ksq, ksq));
-    U64* cachedpiece00 = (U64*) & (accucache.piece00[c][ksq]);
+    //U64* cachedpiece00 = (U64*) & (accucache.piece00[c][ksq]);
+    uint8_t* cachedmailbox = accucache.mailbox[c][ksq];
+    U64 changedbb = getChangedPieces(cachedmailbox, mailbox);
+    U64 removedbb = changedbb & accucache.pieceBB[c][ksq];
+    U64 piecesbb = piece00[0] | piece00[1];
+    U64 addedbb = changedbb & piecesbb;
+
     int16_t* cacheaccumulation = accucache.accumulation + (c * 64 + ksq) * NnueFtHalfdims;
     int32_t* cachepsqtaccumulation = accucache.psqtaccumulation + (c * 64 + ksq) * NnuePsqtBuckets;
     unsigned int index;
     NnueIndexList addedIndices, removedIndices;
     addedIndices.size = removedIndices.size = 0;
+#if 0
     for (int p = WPAWN; p <= (Nt == NnueArchV1 ? BQUEEN : BKING); p++)
     {
         U64 addedbb = piece00[p] & ~cachedpiece00[p];
@@ -1718,8 +1765,27 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
                 removedIndices.values[removedIndices.size++] = HMORIENT(c, index, ksq) + PieceToIndex[c][p] + PS_KAEND * KingBucket[oksq];
         }
     }
+#else
+    while (addedbb)
+    {
+        index = pullLsb(&addedbb);
+        if (Nt == NnueArchV1)
+            addedIndices.values[addedIndices.size++] = ORIENT(c, index) + PieceToIndex[c][mailbox[index]] + PS_KPEND * oksq;
+        else
+            addedIndices.values[addedIndices.size++] = HMORIENT(c, index, ksq) + PieceToIndex[c][mailbox[index]] + PS_KAEND * KingBucket[oksq];
+    }
+    while (removedbb)
+    {
+        index = pullLsb(&removedbb);
+        if (Nt == NnueArchV1)
+            removedIndices.values[removedIndices.size++] = ORIENT(c, index) + PieceToIndex[c][cachedmailbox[index]] + PS_KPEND * oksq;
+        else
+            removedIndices.values[removedIndices.size++] = HMORIENT(c, index, ksq) + PieceToIndex[c][cachedmailbox[index]] + PS_KAEND * KingBucket[oksq];
+    }
 
-    memcpy(cachedpiece00, piece00, sizeof(piece00));
+#endif
+    memcpy((void*)accucache.mailbox[c][ksq], mailbox, sizeof(mailbox));
+    accucache.pieceBB[c][ksq] = piecesbb;
 
     int16_t* weight = NnueCurrentArch->GetFeatureWeight();
     int32_t* psqtweight = NnueCurrentArch->GetFeaturePsqtWeight();
