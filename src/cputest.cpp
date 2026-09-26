@@ -162,7 +162,7 @@ namespace rubichess {
                     | (1 << 21)     // avx512ifma
                     | (1 << 1)      // avx512vbmi
                     | (1 << 6)))    // avx512vbmi2
-                    && (CPUInfo[2] && (0
+                    && (CPUInfo[2] & (0
                     | (1 << 14)     // avx512vpopcntdq
                     | (1 << 12)     // avx512bitalg
                     | (1 << 11)     // avx512vnni
