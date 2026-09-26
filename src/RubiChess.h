@@ -1701,7 +1701,8 @@ enum PvAbortType {
 #endif
 
 struct AccumulatorCache {
-    U64 piece00[2][64][14];
+    uint8_t mailbox[2][BOARDSIZE][BOARDSIZE];
+    U64 pieceBB[2][BOARDSIZE];
     int16_t* accumulation;
     int32_t* psqtaccumulation;
 };
