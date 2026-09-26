@@ -145,7 +145,7 @@ static void uciSetContempt()
 
 engine::engine()
 {
-    GetSystemInfo_x86_64(cpuMachineSupports, cpuVendor, cpuFamily, cpuModel, cpuSystem);
+    GetSystemInfo(cpuMachineSupports, cpuVendor, cpuFamily, cpuModel, cpuSystem);
 #ifdef _WIN32
     LARGE_INTEGER f;
     QueryPerformanceFrequency(&f);

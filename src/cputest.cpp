@@ -95,7 +95,8 @@ static void cpuid(int32_t out[4], int32_t x) {
 namespace rubichess {
 #endif
 
-    void GetSystemInfo_x86_64(uint64_t& cpuMachineSupports, int& cpuVendor, int& cpuFamily, int& cpuModel, std::string& cpuSystem)
+#if defined(_M_X64) || defined(__amd64)
+    void GetSystemInfo(uint64_t& cpuMachineSupports, int& cpuVendor, int& cpuFamily, int& cpuModel, std::string& cpuSystem)
     {
         cpuMachineSupports = 0;
         cpuVendor = CPUVENDORUNKNOWN;
@@ -181,6 +182,34 @@ namespace rubichess {
             cpuMachineSupports ^= CPUBMI2;
         }
     }
+#else
+    void GetSystemInfo(uint64_t& cpuMachineSupports, int& cpuVendor, int& cpuFamily, int& cpuModel, std::string& cpuSystem)
+    {
+#if defined(__ARM_ARCH) || defined(_M_ARM64) || defined(_M_ARM)
+#if __ARM_ARCH == 6
+        cpuSystem = "ArmV6 platform not supporting any SIMD";
+        cpuMachineSupports = 0;
+#elif __ARM_ARCH == 7 || defined(_M_ARM)
+        cpuSystem = "ArmV7 platform supporting NEON";
+        cpuMachineSupports = CPUNEON;
+#elif defined(__aarch64__) || defined(_M_ARM64)
+#ifdef __ARM_FEATURE_DOTPROD
+        cpuSystem = "ArmV8.2+DotProd (AArch64) platform supporting NEON";
+        cpuMachineSupports = CPUNEON | CPUARM64 | CPUDOTPROD;
+#else
+        cpuSystem = "ArmV8 (AArch64) platform supporting NEON";
+        cpuMachineSupports = CPUNEON | CPUARM64;
+#endif
+#else
+        cpuSystem = "ArmV8 32bit platform supporting NEON"; // does this exist??
+        cpuMachineSupports = CPUNEON;
+#endif
+#else
+        system = "Some non-x86-64-non-arm platform.";
+        cpuMachineSupports = 0ULL;
+#endif
+    }
+#endif
 
     std::string PrintCpuFeatures(uint64_t f, bool onlyHighest)
     {
@@ -205,8 +234,9 @@ namespace rubichess {
         int cpuModel = 0;
         std::string cpuSystem;
 
-        GetSystemInfo_x86_64(cpuMachineSupports, cpuVendor, cpuFamily, cpuModel, cpuSystem);
+        GetSystemInfo(cpuMachineSupports, cpuVendor, cpuFamily, cpuModel, cpuSystem);
 
+#if defined(_M_X64) || defined(__amd64)
         TESTARCH(x86_64_avx512)
         TESTARCH(x86_64_bmi2)
         TESTARCH(x86_64_avx2)
@@ -215,7 +245,9 @@ namespace rubichess {
         TESTARCH(x86_64_sse3_popcnt)
         TESTARCH(x86_64_sse2)
         //TESTARCH(x86_64)
-
+#else
+        // ToDo: Universal ARM
+#endif
         std::cout << "No good arch found\n";
         return -1;
     }
@@ -235,9 +267,8 @@ int main()
     int cpuFamily;
     int cpuModel;
     std::string cpuSystem;
-    rubichess::GetSystemInfo_x86_64(cpuMachineSupports, cpuVendor, cpuFamily, cpuModel, cpuSystem);
+    rubichess::GetSystemInfo(cpuMachineSupports, cpuVendor, cpuFamily, cpuModel, cpuSystem);
     std::cout << rubichess::PrintCpuFeatures(cpuMachineSupports, false) << "\n";
-
 }
 
 #endif
