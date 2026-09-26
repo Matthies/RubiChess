@@ -2113,7 +2113,7 @@ enum ponderstate_t { NO, PONDERING };
 #define CPUARM64    (1 << 9)
 #define CPUDOTPROD  (1 << 10)
 
-void GetSystemInfo_x86_64(uint64_t& cpuMachineSupports, int& cpuVendor, int& cpuFamily, int& cpuModel, std::string& cpuSystem);
+void GetSystemInfo(uint64_t& cpuMachineSupports, int& cpuVendor, int& cpuFamily, int& cpuModel, std::string& cpuSystem);
 string PrintCpuFeatures(uint64_t features, bool onlyHighest = false);
 
 
