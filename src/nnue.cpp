@@ -1689,16 +1689,16 @@ U64 getChangedPieces(uint8_t *oldmailbox, uint8_t *newmailbox)
 
     for (int i = 0; i < 64; i += 32)
     {
-        const __m256i old_v = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&oldmailbox[i]));
-        const __m256i new_v = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&newmailbox[i]));
+        const __m256i old_v = _mm256_loadu_si256((__m256i*)&oldmailbox[i]);
+        const __m256i new_v = _mm256_loadu_si256((__m256i*)&newmailbox[i]);
         const __m256i cmpEqual = _mm256_cmpeq_epi8(old_v, new_v);
         const std::uint32_t equalMask = _mm256_movemask_epi8(cmpEqual);
         sameBB |= (U64)(equalMask) << i;
     }
     return ~sameBB;
 #elif defined(USE_NEON)
-    uint8x16x4_t old_v = vld4q_u8(reinterpret_cast<const uint8_t*>(oldmailbox));
-    uint8x16x4_t new_v = vld4q_u8(reinterpret_cast<const uint8_t*>(newmailbox));
+    uint8x16x4_t old_v = vld4q_u8(oldmailbox);
+    uint8x16x4_t new_v = vld4q_u8(newmailbox);
     auto         cmp = [=](const int i) { return vceqq_u8(old_v.val[i], new_v.val[i]); };
 
     uint8x16_t cmp0_1 = vsriq_n_u8(cmp(1), cmp(0), 1);
