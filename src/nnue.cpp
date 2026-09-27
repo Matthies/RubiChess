@@ -1684,7 +1684,15 @@ template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> vo
 
 U64 getChangedPieces(uint8_t *oldmailbox, uint8_t *newmailbox)
 {
-#if defined(USE_AVX2)
+#if defined(USE_AVX512)
+
+    const __m512i old_v = _mm512_loadu_si512((__m512i*)oldmailbox);
+    const __m512i new_v = _mm512_loadu_si512((__m512i*)newmailbox);
+    const __mmask64 cmpEqual = _mm512_cmpeq_epi8_mask(old_v, new_v);
+    const std::uint64_t equalMask = (uint64_t)cmpEqual; //_mm512_movepi8_mask(cmpEqual);
+    return ~equalMask;
+
+#elif defined(USE_AVX2)
     U64 sameBB = 0;
 
     for (int i = 0; i < 64; i += 32)
