@@ -876,7 +876,7 @@ template <NnueType Nt, Color c> void chessposition::HalfkaAppendChangedIndices(D
     const int ksq = kingpos[c];
     const int oksq = (Nt == NnueArchV1 ? ORIENT(c, ksq) : HMORIENT(c, ksq, ksq));
     myassert(dp->dirtyNum <= 3, this, 1, dp->dirtyNum);
-    for (int i = 0; i < dp->dirtyNum; i++) {
+    for (unsigned int i = 0; i < dp->dirtyNum; i++) {
         PieceCode pc = dp->pc[i];
         if (Nt == NnueArchV1 && (pc >> 1) == KING)
             continue;
@@ -1042,6 +1042,7 @@ inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define vec_store_psqt(a,b) _mm256_store_si256(a,b)
 #define vec_nnz(a) _mm512_cmpgt_epi32_mask(a, _mm512_setzero_si512())
 #define vec_set_32(a) _mm512_set1_epi32(a)
+#define vec_add_32(a,b) _mm512_add_epi32(a,b)
 #define vec_add_dpbusd_32 Simd::m512_add_dpbusd_32
 #define vec_convert_8_16(a)  _mm512_cvtepi8_epi16(a)
 #define vec_packus_16(a,b) _mm512_packus_epi16(a,b)
@@ -1082,6 +1083,7 @@ inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define vec_store_psqt(a,b) _mm256_store_si256(a,b)
 #define vec_nnz(a) _mm256_movemask_ps(_mm256_castsi256_ps(_mm256_cmpgt_epi32(a, _mm256_setzero_si256())))
 #define vec_set_32(a) _mm256_set1_epi32(a)
+#define vec_add_32(a,b) _mm256_add_epi32(a,b)
 #define vec_add_dpbusd_32 Simd::m256_add_dpbusd_32
 #define vec_convert_8_16(a) _mm256_cvtepi8_epi16(a)
 #define vec_packus_16(a,b) _mm256_packus_epi16(a,b)
@@ -1697,7 +1699,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     unsigned int index;
     NnueIndexList addedIndices, removedIndices;
     addedIndices.size = removedIndices.size = 0;
-#if defined(USE_AVX512ICL)
+#if 0
 #if 0
 #if defined(USE_AVX512ICL)
     PSQFeatureSet::write_indices(entry.pieces, pos.piece_array(), removedBB, addedBB, perspective,
@@ -2601,10 +2603,19 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
 {
     static constexpr unsigned int ChunkSize = 4;
     constexpr unsigned int NumChunks = MULTIPLEOFN(inputdims, 8) / ChunkSize;
-    constexpr unsigned int NumRegs = outputdims > OutputSimdWidth ? outputdims / OutputSimdWidth : 1;
+    constexpr unsigned int NumAccums = outputdims > OutputSimdWidth ? outputdims / OutputSimdWidth : 1;
+    // If we're using high-latency dot product instructions, split the accumulators
+    // to create 3 separate dependency chains and merge at the end
+    constexpr unsigned int NumRegs =
+#if defined(USE_AVX512ICL) || defined(USE_DOTPROD)
+        3 * NumAccums;
+#else
+        NumAccums;
+#endif
+
     uint16_t nnz[NumChunks];
     unsigned int count = 0;
-    const int32_t* input32 = (int32_t*)input;
+    //const int32_t* input32 = (int32_t*)input;
 
     constexpr unsigned int InternalInputSimdWidth = sizeof(uvec_t) / sizeof(int32_t);
     constexpr unsigned int InternalChunkSize = InternalInputSimdWidth > 8 ? InternalInputSimdWidth : 8;
@@ -2702,15 +2713,57 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
     // Step 2: Process the collected nonzero blocks
     const acc_vec_t* biasvec = (const acc_vec_t*)bias;
     acc_vec_t acc[NumRegs];
-    for (unsigned int k = 0; k < NumRegs; ++k)
+    for (unsigned int k = 0; k < NumAccums; ++k)
         acc[k] = biasvec[k];
 
-    for (unsigned int j = 0; j < count; ++j)
+    const uint16_t* start = nnz;
+    const uint16_t* end = nnz + count;
+
+    // convince GCC to not do weird pointer arithmetic in the following loop
+    const int8_t* weights_cp = weight;
+#if defined(USE_AVX512ICL) || defined(USE_NEON_DOTPROD)
+#if defined(USE_AVX512ICL)
+    for (unsigned int k = NumAccums; k < NumRegs; ++k)
+        acc[k] = vec_zero();
+#else
+    for (unsigned int k = NumAccums; k < NumRegs; ++k)
+        acc[k] = vdupq_n_s32(0);
+#endif
+
+    while (start < end - 2)
     {
-        const uint16_t i = nnz[j];
-        const sprsin_vec_t in = vec_set_32(input32[i]);
-        const sprsin_vec_t* col = (const sprsin_vec_t*)&weight[i * outputdims * ChunkSize];
-        for (unsigned int k = 0; k < NumRegs; ++k)
+        const ptrdiff_t i0 = *start++;
+        const ptrdiff_t i1 = *start++;
+        const ptrdiff_t i2 = *start++;
+        const sprsin_vec_t in0 = vec_set_32(*(int32_t*)(input + i0 * sizeof(int32_t)));
+        const sprsin_vec_t in1 = vec_set_32(*(int32_t*)(input + i1 * sizeof(int32_t)));
+        const sprsin_vec_t in2 = vec_set_32(*(int32_t*)(input + i2 * sizeof(int32_t)));
+        const sprsin_vec_t* col0 = (const sprsin_vec_t*)&weights_cp[i0 * outputdims * ChunkSize];
+        const sprsin_vec_t* col1 = (const sprsin_vec_t*)&weights_cp[i1 * outputdims * ChunkSize];
+        const sprsin_vec_t* col2 = (const sprsin_vec_t*)&weights_cp[i2 * outputdims * ChunkSize];
+        for (unsigned int k = 0; k < NumAccums; ++k)
+        {
+            vec_add_dpbusd_32(acc[k], in0, col0[k]);
+            vec_add_dpbusd_32(acc[k + NumAccums], in1, col1[k]);
+            vec_add_dpbusd_32(acc[k + 2 * NumAccums], in2, col2[k]);
+        }
+    }
+#if defined(USE_AVX512ICL)
+    for (unsigned int k = 0; k < NumAccums; ++k)
+        acc[k] = vec_add_32(vec_add_32(acc[k], acc[k + NumAccums]), acc[k + 2 * NumAccums]);
+#else
+    for (unsigned int k = 0; k < NumAccums; ++k)
+        acc[k] = vaddq_s32(vaddq_s32(acc[k], acc[k + NumAccums]), acc[k + 2 * NumAccums]);
+#endif
+#endif
+
+
+    while (start < end)
+    {
+        const ptrdiff_t i = *start++;
+        const sprsin_vec_t in = vec_set_32(*(int32_t*)(input + i * sizeof(int32_t)));
+        const sprsin_vec_t* col = (const sprsin_vec_t*)&weights_cp[i * outputdims * ChunkSize];
+        for (unsigned int k = 0; k < NumAccums; ++k)
             vec_add_dpbusd_32(acc[k], in, col[k]);
 #if NNUEDEBUG == 1
         cout << hex << setfill('0') << setw(3) << i << " " << setfill('0') << setw(8) << input32[i] << "  ";
@@ -2723,7 +2776,7 @@ inline void NnueNetworkLayer<inputdims, outputdims>::PropagateSparse(clipped_t* 
     }
 
     acc_vec_t* outptr = (acc_vec_t*)output;
-    for (unsigned int k = 0; k < NumRegs; ++k)
+    for (unsigned int k = 0; k < NumAccums; ++k)
         outptr[k] = acc[k];
 }
 #endif

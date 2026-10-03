@@ -847,14 +847,14 @@ public:
 
 
 typedef struct {
-    int dirtyNum;
+    unsigned int dirtyNum;
     PieceCode pc[3];
     int from[3];
     int to[3];
 } DirtyPieces;
 
 typedef struct {
-    size_t size;
+    unsigned int size;
     uint32_t threatdata[96];
     unsigned us;
     unsigned prevKsq, ksq;
