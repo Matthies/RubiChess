@@ -188,7 +188,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions);USE_SSE2;USE_SSSE3;USE_POPCNT;USE_BMI1;USE_AVX2</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions);xUSE_SSE2;xUSE_SSSE3;USE_POPCNT;USE_BMI1;xUSE_AVX2</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

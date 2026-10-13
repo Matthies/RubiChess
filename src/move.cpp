@@ -618,10 +618,8 @@ void chessposition::playNullMove()
     dt->us = 2;  // easiest way to make the "needs update" test fail
     dt->size = 0;
 
-    halfkacomputationState[ply][WHITE] = false;
-    halfkacomputationState[ply][BLACK] = false;
-    threatcomputationState[ply][WHITE] = false;
-    threatcomputationState[ply][BLACK] = false;
+    computationState[ply][WHITE] = false;
+    computationState[ply][BLACK] = false;
 }
 
 
@@ -655,10 +653,8 @@ bool chessposition::playMove(uint32_t mc)
         dt->us = s2m;
         dt->prevKsq = kingpos[s2m];
         dt->size = 0;
-        halfkacomputationState[ply + 1][WHITE] = false;
-        halfkacomputationState[ply + 1][BLACK] = false;
-        threatcomputationState[ply + 1][WHITE] = false;
-        threatcomputationState[ply + 1][BLACK] = false;
+        computationState[ply + 1][WHITE] = false;
+        computationState[ply + 1][BLACK] = false;
     }
     else {
         dp = nullptr;
