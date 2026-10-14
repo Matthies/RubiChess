@@ -1247,7 +1247,7 @@ template <NnueType Nt, Color c, int N> bool chessposition::GetAcccumulatorUpdate
     int mslast = ply;
     // A full update needs activation of all pieces (except kings for V1)
     int fullupdatecost = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]) - (Nt == NnueArchV1 ? 2 : 0);
-    int remainingupdates = 128;
+    size_t remainingupdates = 128;
 
     while (mslast > 0 && !computationState[mslast][c])
     {
@@ -1391,13 +1391,13 @@ void FeaturesDebug(int c, NnueIndexList addedIndices, NnueIndexList removedIndic
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets, int N> void chessposition::AccumulatorIncrementalUpdate(int* updaterequest)
 {
 #if NNUEDEBUG == 1
-    cout << "\nAccumulatorIncrementalUpdate (" << (Ft == NnueFeatuteHalfKa ? "HalfKA" : "Threats") << ")\n";
+    cout << "\nAccumulatorIncrementalUpdate\n";
     NnueIndexList removedIndicesDebug, addedIndicesDebug;
     removedIndicesDebug.size = addedIndicesDebug.size = 0;
 #endif
     STATISTICSINC(nnue_accupdate_inc);
     myassert(updaterequest[N - 1] == -1, this, 1, updaterequest[N - 1]);
-    NnueIndexList removedIndices[N - 1], addedIndices[N - 1];
+    NnueIndexList removedHalfkaIndices[N - 1], addedHalfkaIndices[N - 1], removedThreatIndices[N - 1], addedThreatIndices[N - 1];
     int lastcomputedply = updaterequest[N];
     myassert(Ft == NnueFeatuteHalfKa ? halfkacomputationState[lastcomputedply][c] : threatcomputationState[lastcomputedply][c], this, 1, lastcomputedply);
     int nextchangedply = lastcomputedply + 1;
@@ -1405,11 +1405,11 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     int chainindex = 0;
     while ((nextcomputeply = updaterequest[chainindex]) >= 0) {
         myassert(nextcomputeply > 0 && nextcomputeply < MAXDEPTH, this, 1, nextcomputeply);
-        removedIndices[chainindex].size = addedIndices[chainindex].size = 0;
+        removedHalfkaIndices[chainindex].size = addedHalfkaIndices[chainindex].size = removedThreatIndices[chainindex].size = addedThreatIndices[chainindex].size = 0;
         computationState[nextcomputeply][c] = true;
         while (nextchangedply <= nextcomputeply) {
-            HalfkaAppendChangedIndices<Nt, c>(&dirtypieces[nextchangedply], &addedIndices[chainindex], &removedIndices[chainindex]);
-            ThreatsAppendChangedIndices<Nt, c>(&dirtythreats[nextchangedply], &addedIndices[chainindex], &removedIndices[chainindex]);
+            HalfkaAppendChangedIndices<Nt, c>(&dirtypieces[nextchangedply], &addedHalfkaIndices[chainindex], &removedHalfkaIndices[chainindex]);
+            ThreatsAppendChangedIndices<Nt, c>(&dirtythreats[nextchangedply], &addedThreatIndices[chainindex], &removedThreatIndices[chainindex]);
             nextchangedply++;
         }
         chainindex++;
@@ -1417,10 +1417,14 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 #if NNUEDEBUG == 1
     for (unsigned i = 0; updaterequest[i] >= 0; i++)
     {
-        for (size_t j = 0; j < addedIndices[i].size; j++)
-            addedIndicesDebug.values[addedIndicesDebug.size++] = addedIndices[i].values[j];
-        for (size_t j = 0; j < removedIndices[i].size; j++)
-            removedIndicesDebug.values[removedIndicesDebug.size++] = removedIndices[i].values[j];
+        for (size_t j = 0; j < addedHalfkaIndices[i].size; j++)
+            addedIndicesDebug.values[addedIndicesDebug.size++] = addedHalfkaIndices[i].values[j];
+        for (size_t j = 0; j < addedThreatIndices[i].size; j++)
+            addedIndicesDebug.values[addedIndicesDebug.size++] = addedThreatIndices[i].values[j];
+        for (size_t j = 0; j < removedHalfkaIndices[i].size; j++)
+            removedIndicesDebug.values[removedIndicesDebug.size++] = removedHalfkaIndices[i].values[j];
+        for (size_t j = 0; j < removedThreatIndices[i].size; j++)
+            removedIndicesDebug.values[removedIndicesDebug.size++] = removedThreatIndices[i].values[j];
     }
 #endif
 
@@ -1433,13 +1437,8 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     int32_t* psqtacmbase = psqtAccumulation;
 
 #ifdef USE_SIMD
-#if defined(USE_SSE2) && !defined(USE_AVX512)
-    // Avoid spilling the registers (thanks anematode); looks hacky, maybe find a better solution later
-    constexpr unsigned int maxParallelRegs = NUM_REGS / (1 + (Ft == NnueFeatureThreat));
-#else
-    constexpr unsigned int maxParallelRegs = NUM_REGS;
-#endif
-    constexpr unsigned int numRegs = (maxParallelRegs > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : maxParallelRegs);
+    constexpr unsigned int numRegs = (NUM_REGS > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : NUM_REGS);
+    // FIXME: Before accu merge the numRegs of threat accumulator was halfened if defined(USE_SSE2) && !defined(USE_AVX512)
     constexpr unsigned int tileHeight = numRegs * SIMD_WIDTH / 16;
     ft_vec_t acc[numRegs];
     psqt_vec_t psqt[NUM_PSQT_REGS];
@@ -1451,53 +1450,53 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
         for (unsigned int l = 0; updaterequest[l] >= 0; l++)
         {
             // Difference calculation for the deactivated features
-            for (unsigned int k = 0; k < removedIndices[l].size; k++)
+            for (unsigned int k = 0; k < removedHalfkaIndices[l].size; k++)
             {
-                unsigned int index = removedIndices[l].values[k];
+                unsigned int index = removedHalfkaIndices[l].values[k];
                 const unsigned int offset = NnueFtHalfdims * index + i * tileHeight;
-                if (Ft == NnueFeatuteHalfKa) {
-                    ft_vec_t* column = (ft_vec_t*)(weight16 + offset);
-                    for (unsigned int j = 0; j < numRegs; j++)
-                        acc[j] = vec_sub_16(acc[j], column[j]);
-                }
-                else {
-                    vec_i8_t* column = (vec_i8_t*)(weight8 + offset);
-#ifdef USE_NEON
-                    for (unsigned int j = 0; j < numRegs; j += 2)
-                    {
-                        acc[j] = vsubw_s8(acc[j], vget_low_s8(column[j / 2]));
-                        acc[j + 1] = vsubw_high_s8(acc[j + 1], column[j / 2]);
-                    }
-#else
-                    for (unsigned int j = 0; j < numRegs; j++)
-                        acc[j] = vec_sub_16(acc[j], vec_convert_8_16(column[j]));
-#endif
-                }
+                ft_vec_t* column = (ft_vec_t*)(weight16 + offset);
+                for (unsigned int j = 0; j < numRegs; j++)
+                    acc[j] = vec_sub_16(acc[j], column[j]);
             }
-
-            // Difference calculation for the activated features
-            for (unsigned int k = 0; k < addedIndices[l].size; k++)
+            for (unsigned int k = 0; k < addedHalfkaIndices[l].size; k++)
             {
-                unsigned int index = addedIndices[l].values[k];
+                unsigned int index = addedHalfkaIndices[l].values[k];
                 const unsigned int offset = NnueFtHalfdims * index + i * tileHeight;
-                if (Ft == NnueFeatuteHalfKa) {
-                    ft_vec_t* column = (ft_vec_t*)(weight16 + offset);
-                    for (unsigned int j = 0; j < numRegs; j++)
-                        acc[j] = vec_add_16(acc[j], column[j]);
-                }
-                else {
-                    vec_i8_t* column = (vec_i8_t*)(weight8 + offset);
+                ft_vec_t* column = (ft_vec_t*)(weight16 + offset);
+                for (unsigned int j = 0; j < numRegs; j++)
+                    acc[j] = vec_add_16(acc[j], column[j]);
+            }
+            for (unsigned int k = 0; k < removedThreatIndices[l].size; k++)
+            {
+                unsigned int index = removedThreatIndices[l].values[k];
+                const unsigned int offset = NnueFtHalfdims * index + i * tileHeight;
+                vec_i8_t* column = (vec_i8_t*)(weight8 + offset);
 #ifdef USE_NEON
-                    for (unsigned int j = 0; j < numRegs; j += 2)
-                    {
-                        acc[j] = vaddw_s8(acc[j], vget_low_s8(column[j / 2]));
-                        acc[j + 1] = vaddw_high_s8(acc[j + 1], column[j / 2]);
-                    }
-#else
-                    for (unsigned int j = 0; j < numRegs; j++)
-                        acc[j] = vec_add_16(acc[j], vec_convert_8_16(column[j]));
-#endif
+                for (unsigned int j = 0; j < numRegs; j += 2)
+                {
+                    acc[j] = vsubw_s8(acc[j], vget_low_s8(column[j / 2]));
+                    acc[j + 1] = vsubw_high_s8(acc[j + 1], column[j / 2]);
                 }
+#else
+                for (unsigned int j = 0; j < numRegs; j++)
+                    acc[j] = vec_sub_16(acc[j], vec_convert_8_16(column[j]));
+#endif
+            }
+            for (unsigned int k = 0; k < addedThreatIndices[l].size; k++)
+            {
+                unsigned int index = addedThreatIndices[l].values[k];
+                const unsigned int offset = NnueFtHalfdims * index + i * tileHeight;
+                vec_i8_t* column = (vec_i8_t*)(weight8 + offset);
+#ifdef USE_NEON
+                for (unsigned int j = 0; j < numRegs; j += 2)
+                {
+                    acc[j] = vaddw_s8(acc[j], vget_low_s8(column[j / 2]));
+                    acc[j + 1] = vaddw_high_s8(acc[j + 1], column[j / 2]);
+                }
+#else
+                for (unsigned int j = 0; j < numRegs; j++)
+                    acc[j] = vec_add_16(acc[j], vec_convert_8_16(column[j]));
+#endif
             }
 
             accTile = (ft_vec_t*)(acmbase + (updaterequest[l] * 2 + c) * NnueFtHalfdims + i * tileHeight);
@@ -1514,9 +1513,9 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
             psqt[j] = vec_load_psqt(&accTilePsqt[j]);
         for (unsigned int l = 0; updaterequest[l] >= 0; l++)
         {
-            for (unsigned int k = 0; k < removedIndices[l].size; k++)
+            for (unsigned int k = 0; k < removedHalfkaIndices[l].size; k++)
             {
-                unsigned int index = removedIndices[l].values[k];
+                unsigned int index = removedHalfkaIndices[l].values[k];
                 unsigned int offset = NnuePsqtBuckets * index + i * PSQT_TILE_HEIGHT;
                 psqt_vec_t* columnPsqt = (psqt_vec_t*)(psqtweight + offset);
 
@@ -1524,11 +1523,30 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
                     psqt[j] = vec_sub_psqt_32(psqt[j], columnPsqt[j]);
             }
 
-            for (unsigned int k = 0; k < addedIndices[l].size; k++)
+            for (unsigned int k = 0; k < addedHalfkaIndices[l].size; k++)
             {
-                unsigned int index = addedIndices[l].values[k];
+                unsigned int index = addedHalfkaIndices[l].values[k];
                 unsigned int offset = NnuePsqtBuckets * index + i * PSQT_TILE_HEIGHT;
                 psqt_vec_t* columnPsqt = (psqt_vec_t*)(psqtweight + offset);
+
+                for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
+                    psqt[j] = vec_add_psqt_32(psqt[j], columnPsqt[j]);
+            }
+            for (unsigned int k = 0; k < removedThreatIndices[l].size; k++)
+            {
+                unsigned int index = removedThreatIndices[l].values[k];
+                unsigned int offset = NnuePsqtBuckets * index + i * PSQT_TILE_HEIGHT;
+                psqt_vec_t* columnPsqt = (psqt_vec_t*)(threatpsqtweight + offset);
+
+                for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
+                    psqt[j] = vec_sub_psqt_32(psqt[j], columnPsqt[j]);
+            }
+
+            for (unsigned int k = 0; k < addedThreatIndices[l].size; k++)
+            {
+                unsigned int index = addedThreatIndices[l].values[k];
+                unsigned int offset = NnuePsqtBuckets * index + i * PSQT_TILE_HEIGHT;
+                psqt_vec_t* columnPsqt = (psqt_vec_t*)(threatpsqtweight + offset);
 
                 for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
                     psqt[j] = vec_add_psqt_32(psqt[j], columnPsqt[j]);
@@ -1550,29 +1568,49 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
         int16_t* acm = acmbase + (lastcomputedply * 2 + c) * NnueFtHalfdims;
         int32_t* psqtacm = psqtacmbase + (lastcomputedply * 2 + c) * NnuePsqtBuckets;
         // Difference calculation for the deactivated features
-        for (unsigned int k = 0; k < removedIndices[l].size; k++)
+        for (unsigned int k = 0; k < removedHalfkaIndices[l].size; k++)
         {
-            unsigned int index = removedIndices[l].values[k];
+            unsigned int index = removedHalfkaIndices[l].values[k];
             const unsigned int offset = NnueFtHalfdims * index;
 
             for (unsigned int j = 0; j < NnueFtHalfdims; j++)
-                *(acm + j) -= (Ft == NnueFeatuteHalfKa ? weight16[offset + j] : weight8[offset + j]);
+                *(acm + j) -= weight16[offset + j];
 
             for (unsigned int i = 0; i < NnuePsqtBuckets; i++)
                 *(psqtacm + i) -= psqtweight[index * NnuePsqtBuckets + i];
         }
-
-        // Difference calculation for the activated features
-        for (unsigned int k = 0; k < addedIndices[l].size; k++)
+        for (unsigned int k = 0; k < addedHalfkaIndices[l].size; k++)
         {
-            unsigned int index = addedIndices[l].values[k];
+            unsigned int index = addedHalfkaIndices[l].values[k];
             const unsigned int offset = NnueFtHalfdims * index;
 
             for (unsigned int j = 0; j < NnueFtHalfdims; j++)
-                *(acm + j) += (Ft == NnueFeatuteHalfKa ? weight16[offset + j] : weight8[offset + j]);
+                *(acm + j) += weight16[offset + j];
 
             for (unsigned int i = 0; i < NnuePsqtBuckets; i++)
                 *(psqtacm + i) += psqtweight[index * NnuePsqtBuckets + i];
+        }
+        for (unsigned int k = 0; k < removedThreatIndices[l].size; k++)
+        {
+            unsigned int index = removedThreatIndices[l].values[k];
+            const unsigned int offset = NnueFtHalfdims * index;
+
+            for (unsigned int j = 0; j < NnueFtHalfdims; j++)
+                *(acm + j) -= weight8[offset + j];
+
+            for (unsigned int i = 0; i < NnuePsqtBuckets; i++)
+                *(psqtacm + i) -= threatpsqtweight[index * NnuePsqtBuckets + i];
+        }
+        for (unsigned int k = 0; k < addedThreatIndices[l].size; k++)
+        {
+            unsigned int index = addedThreatIndices[l].values[k];
+            const unsigned int offset = NnueFtHalfdims * index;
+
+            for (unsigned int j = 0; j < NnueFtHalfdims; j++)
+                *(acm + j) += weight8[offset + j];
+
+            for (unsigned int i = 0; i < NnuePsqtBuckets; i++)
+                *(psqtacm + i) += threatpsqtweight[index * NnuePsqtBuckets + i];
         }
     }
 #endif
@@ -1583,6 +1621,8 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 #endif
 }
 
+
+#if 0
 template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::ThreatsAccumulatorRefresh()
 {
 #if NNUEDEBUG == 1
@@ -1686,16 +1726,16 @@ template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> vo
 #endif
 
 }
-
+#endif
 
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::AccumulatorRefresh()
 {
 #if NNUEDEBUG == 1
-    cout << "Half KA V2 AccumulatorRefresh\n";
+    cout << "AccumulatorRefresh\n";
 #endif
     // Full update of accumulator using Finny tables cache
     STATISTICSINC(nnue_accupdate_full);
-    halfkacomputationState[ply][c] = true;
+    computationState[ply][c] = true;
 
     const int ksq = kingpos[c];
     const int oksq = (Nt == NnueArchV1 ? ORIENT(c, ksq) : HMORIENT(c, ksq, ksq));
@@ -1703,8 +1743,9 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     int16_t* cacheaccumulation = accucache.accumulation + (c * 64 + ksq) * NnueFtHalfdims;
     int32_t* cachepsqtaccumulation = accucache.psqtaccumulation + (c * 64 + ksq) * NnuePsqtBuckets;
     unsigned int index;
-    NnueIndexList addedIndices, removedIndices;
-    addedIndices.size = removedIndices.size = 0;
+    NnueIndexList addedHalfkaIndices, removedHalfkaIndices, activeThreatIndices;
+    addedHalfkaIndices.size = removedHalfkaIndices.size = activeThreatIndices.size = 0;
+
     for (int p = WPAWN; p <= (Nt == NnueArchV1 ? BQUEEN : BKING); p++)
     {
         U64 addedbb = piece00[p] & ~cachedpiece00[p];
@@ -1712,25 +1753,30 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
         {
             index = pullLsb(&addedbb);
             if (Nt == NnueArchV1)
-                addedIndices.values[addedIndices.size++] = ORIENT(c, index) + PieceToIndex[c][p] + PS_KPEND * oksq;
+                addedHalfkaIndices.values[addedHalfkaIndices.size++] = ORIENT(c, index) + PieceToIndex[c][p] + PS_KPEND * oksq;
             else
-                addedIndices.values[addedIndices.size++] = HMORIENT(c, index, ksq) + PieceToIndex[c][p] + PS_KAEND * KingBucket[oksq];
+                addedHalfkaIndices.values[addedHalfkaIndices.size++] = HMORIENT(c, index, ksq) + PieceToIndex[c][p] + PS_KAEND * KingBucket[oksq];
         }
         U64 removedbb = ~piece00[p] & cachedpiece00[p];
         while (removedbb)
         {
             index = pullLsb(&removedbb);
             if (Nt == NnueArchV1)
-                removedIndices.values[removedIndices.size++] = ORIENT(c, index) + PieceToIndex[c][p] + PS_KPEND * oksq;
+                removedHalfkaIndices.values[removedHalfkaIndices.size++] = ORIENT(c, index) + PieceToIndex[c][p] + PS_KPEND * oksq;
             else
-                removedIndices.values[removedIndices.size++] = HMORIENT(c, index, ksq) + PieceToIndex[c][p] + PS_KAEND * KingBucket[oksq];
+                removedHalfkaIndices.values[removedHalfkaIndices.size++] = HMORIENT(c, index, ksq) + PieceToIndex[c][p] + PS_KAEND * KingBucket[oksq];
         }
     }
+    ThreatsAppendActiveIndices<c>(&activeThreatIndices);
 
     memcpy(cachedpiece00, piece00, sizeof(piece00));
 
-    int16_t* weight = NnueCurrentArch->GetFeatureWeight();
-    int32_t* psqtweight = NnueCurrentArch->GetFeaturePsqtWeight();
+    int16_t* halfkaweight = NnueCurrentArch->GetFeatureWeight();
+    int32_t* halfkapsqtweight = NnueCurrentArch->GetFeaturePsqtWeight();
+    int8_t* threatweight = NnueCurrentArch->GetFeatureThreatWeight();
+    int32_t* threatpsqtweight = NnueCurrentArch->GetFeatureThreatPsqtWeight();
+    int16_t* acm = accumulation + (ply * 2 + c) * NnueFtHalfdims;
+    int32_t* psqtacm = psqtAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
 
 #ifdef USE_SIMD
     constexpr unsigned int numRegs = (NUM_REGS > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : NUM_REGS);
@@ -1745,27 +1791,48 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
             acc[j] = vec_load(&accTile[j]);
 
         // Difference calculation for the deactivated features
-        for (unsigned int k = 0; k < removedIndices.size; k++)
+        for (unsigned int k = 0; k < removedHalfkaIndices.size; k++)
         {
-            index = removedIndices.values[k];
+            index = removedHalfkaIndices.values[k];
             const unsigned int offset = NnueFtHalfdims * index + i * tileHeight;
-            ft_vec_t* column = (ft_vec_t*)(weight + offset);
+            ft_vec_t* column = (ft_vec_t*)(halfkaweight + offset);
             for (unsigned int j = 0; j < numRegs; j++)
                 acc[j] = vec_sub_16(acc[j], column[j]);
         }
 
         // Difference calculation for the activated features
-        for (unsigned int k = 0; k < addedIndices.size; k++)
+        for (unsigned int k = 0; k < addedHalfkaIndices.size; k++)
         {
-            index = addedIndices.values[k];
+            index = addedHalfkaIndices.values[k];
             const unsigned int offset = NnueFtHalfdims * index + i * tileHeight;
-            ft_vec_t* column = (ft_vec_t*)(weight + offset);
+            ft_vec_t* column = (ft_vec_t*)(halfkaweight + offset);
             for (unsigned int j = 0; j < numRegs; j++)
                 acc[j] = vec_add_16(acc[j], column[j]);
         }
 
         for (unsigned int j = 0; j < numRegs; j++)
             vec_store(&accTile[j], acc[j]);
+
+        for (unsigned int k = 0; k < activeThreatIndices.size; k++)
+        {
+            index = activeThreatIndices.values[k];
+            const unsigned int offset = NnueFtHalfdims * index + i * tileHeight;
+            vec_i8_t* column = (vec_i8_t*)(threatweight + offset);
+#ifdef USE_NEON
+            for (unsigned int j = 0; j < numRegs; j += 2)
+            {
+                acc[j] = vaddw_s8(acc[j], vget_low_s8(column[j / 2]));
+                acc[j + 1] = vaddw_high_s8(acc[j + 1], column[j / 2]);
+            }
+#else
+            for (unsigned int j = 0; j < numRegs; j++)
+                acc[j] = vec_add_16(acc[j], vec_convert_8_16(column[j]));
+#endif
+        }
+
+        ft_vec_t* acmTile = (ft_vec_t*)(acm + i * tileHeight);
+        for (unsigned int j = 0; j < numRegs; j++)
+            vec_store(&acmTile[j], acc[j]);
     }
 
     for (unsigned int i = 0; i < NnuePsqtBuckets / PSQT_TILE_HEIGHT; i++)
@@ -1774,21 +1841,21 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
         for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
             psqt[j] = vec_load_psqt(&accTilePsqt[j]);
 
-        for (unsigned int k = 0; k < removedIndices.size; k++)
+        for (unsigned int k = 0; k < removedHalfkaIndices.size; k++)
         {
-            index = removedIndices.values[k];
+            index = removedHalfkaIndices.values[k];
             unsigned int offset = NnuePsqtBuckets * index + i * PSQT_TILE_HEIGHT;
-            psqt_vec_t* columnPsqt = (psqt_vec_t*)(psqtweight + offset);
+            psqt_vec_t* columnPsqt = (psqt_vec_t*)(halfkapsqtweight + offset);
 
             for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
                 psqt[j] = vec_sub_psqt_32(psqt[j], columnPsqt[j]);
         }
 
-        for (unsigned int k = 0; k < addedIndices.size; k++)
+        for (unsigned int k = 0; k < addedHalfkaIndices.size; k++)
         {
-            index = addedIndices.values[k];
+            index = addedHalfkaIndices.values[k];
             unsigned int offset = NnuePsqtBuckets * index + i * PSQT_TILE_HEIGHT;
-            psqt_vec_t* columnPsqt = (psqt_vec_t*)(psqtweight + offset);
+            psqt_vec_t* columnPsqt = (psqt_vec_t*)(halfkapsqtweight + offset);
 
             for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
                 psqt[j] = vec_add_psqt_32(psqt[j], columnPsqt[j]);
@@ -1796,44 +1863,68 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 
         for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
             vec_store_psqt(&accTilePsqt[j], psqt[j]);
+
+        for (unsigned int k = 0; k < activeThreatIndices.size; k++)
+        {
+            index = activeThreatIndices.values[k];
+            unsigned int offset = NnuePsqtBuckets * index + i * PSQT_TILE_HEIGHT;
+            psqt_vec_t* columnPsqt = (psqt_vec_t*)(threatpsqtweight + offset);
+
+            for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
+                psqt[j] = vec_add_psqt_32(psqt[j], columnPsqt[j]);
+        }
+
+        psqt_vec_t* psqtacmTile = (psqt_vec_t*)(psqtacm + i * PSQT_TILE_HEIGHT);
+        for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
+            vec_store_psqt(&psqtacmTile[j], psqt[j]);
+
     }
 #else // USE_SIMD
     // Difference calculation for the deactivated features
-    for (unsigned int k = 0; k < removedIndices.size; k++)
+    for (unsigned int k = 0; k < removedHalfkaIndices.size; k++)
     {
-        index = removedIndices.values[k];
+        index = removedHalfkaIndices.values[k];
         const unsigned int offset = NnueFtHalfdims * index;
 
         for (unsigned int j = 0; j < NnueFtHalfdims; j++)
-            *(cacheaccumulation + j) -= weight[offset + j];
+            *(cacheaccumulation + j) -= halfkaweight[offset + j];
 
         for (unsigned int i = 0; i < NnuePsqtBuckets; i++)
-            *(cachepsqtaccumulation + i) -= psqtweight[index * NnuePsqtBuckets + i];
+            *(cachepsqtaccumulation + i) -= halfkapsqtweight[index * NnuePsqtBuckets + i];
     }
 
     // Difference calculation for the activated features
-    for (unsigned int k = 0; k < addedIndices.size; k++)
+    for (unsigned int k = 0; k < addedHalfkaIndices.size; k++)
     {
-        index = addedIndices.values[k];
+        index = addedHalfkaIndices.values[k];
         const unsigned int offset = NnueFtHalfdims * index;
 
         for (unsigned int j = 0; j < NnueFtHalfdims; j++)
-            *(cacheaccumulation + j) += weight[offset + j];
+            *(cacheaccumulation + j) += halfkaweight[offset + j];
 
         for (unsigned int i = 0; i < NnuePsqtBuckets; i++)
-            *(cachepsqtaccumulation + i) += psqtweight[index * NnuePsqtBuckets + i];
+            *(cachepsqtaccumulation + i) += halfkapsqtweight[index * NnuePsqtBuckets + i];
+    }
+    memcpy(acm, cacheaccumulation, NnueFtHalfdims * sizeof(int16_t));
+    memcpy(psqtacm, cachepsqtaccumulation, NnuePsqtBuckets * sizeof(int32_t));
+
+    for (unsigned int k = 0; k < activeThreatIndices.size; k++)
+    {
+        unsigned int index = activeThreatIndices.values[k];
+        const unsigned int offset = NnueFtHalfdims * index;
+
+        for (unsigned int j = 0; j < NnueFtHalfdims; j++)
+            *(acm + j) += threatweight[offset + j];
+
+        for (unsigned int i = 0; i < NnuePsqtBuckets; i++)
+            *(psqtacm + i) += threatpsqtweight[index * NnuePsqtBuckets + i];
     }
 #endif
 
-    int16_t* acm = halfkaaccumulation + (ply * 2 + c) * NnueFtHalfdims;
-    memcpy(acm, cacheaccumulation, NnueFtHalfdims * sizeof(int16_t));
-
-    int32_t* psqtacm = psqthalfkaAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
-    memcpy(psqtacm, cachepsqtaccumulation, NnuePsqtBuckets * sizeof(int32_t));
-
 #if NNUEDEBUG == 1
-    FeaturesDebug(c, addedIndices, removedIndices);
-    AccumulatorDebug<Nt, c, NnueFtHalfdims, NnuePsqtBuckets>(halfkaaccumulation, psqthalfkaAccumulation);
+    FeaturesDebug(c, addedHalfkaIndices, removedHalfkaIndices);
+    FeaturesDebug(c, activeThreatIndices);
+    AccumulatorDebug<Nt, c, NnueFtHalfdims, NnuePsqtBuckets>(accumulation, psqtAccumulation);
 #endif
 }
 
@@ -1904,12 +1995,13 @@ int chessposition::Transform(clipped_t *output, int bucket)
             const ft_vec_t* in0 = (ft_vec_t*)(acm + perspectives[p] * NnueFtHalfdims);
             const ft_vec_t* in1 = (ft_vec_t*)(acm + perspectives[p] * NnueFtHalfdims + NnueFtHalfdims / 2);
             ftout_vec_t* out = (ftout_vec_t*)&output[offset];
-            for (unsigned int i = 0; i < numChunks; i += 2)
+            for (unsigned int i = 0; i < numChunks; i++)
             {
-                const ft_vec_t acc0a = in0[i + 0];
-                const ft_vec_t acc0b = in0[i + 1];
-                const ft_vec_t acc1a = in1[i + 0];
-                const ft_vec_t acc1b = in1[i + 1];
+                const unsigned int di = i * 2;
+                const ft_vec_t acc0a = in0[di + 0];
+                const ft_vec_t acc0b = in0[di + 1];
+                const ft_vec_t acc1a = in1[di + 0];
+                const ft_vec_t acc1b = in1[di + 1];
 
                 const ft_vec_t sum0a = vec_slli_16(vec_max_16(vec_min_16(acc0a, One), Zero), shift);
                 const ft_vec_t sum0b = vec_slli_16(vec_max_16(vec_min_16(acc0b, One), Zero), shift);
