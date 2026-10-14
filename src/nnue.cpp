@@ -1342,7 +1342,8 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
         computationState[nextcomputeply][c] = true;
         while (nextchangedply <= nextcomputeply) {
             HalfkaAppendChangedIndices<Nt, c>(&dirtypieces[nextchangedply], &addedHalfkaIndices[chainindex], &removedHalfkaIndices[chainindex]);
-            ThreatsAppendChangedIndices<Nt, c>(&dirtythreats[nextchangedply], &addedThreatIndices[chainindex], &removedThreatIndices[chainindex]);
+            if (Nt == NnueArchV13)
+                ThreatsAppendChangedIndices<Nt, c>(&dirtythreats[nextchangedply], &addedThreatIndices[chainindex], &removedThreatIndices[chainindex]);
             nextchangedply++;
         }
         chainindex++;
@@ -1600,7 +1601,8 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
                 removedHalfkaIndices.values[removedHalfkaIndices.size++] = HMORIENT(c, index, ksq) + PieceToIndex[c][p] + PS_KAEND * KingBucket[oksq];
         }
     }
-    ThreatsAppendActiveIndices<c>(&activeThreatIndices);
+    if (Nt == NnueArchV13)
+        ThreatsAppendActiveIndices<c>(&activeThreatIndices);
 
     memcpy(cachedpiece00, piece00, sizeof(piece00));
 
