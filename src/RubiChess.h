@@ -839,10 +839,10 @@ typedef int8_t clipped_t;
 
 enum NnueFeatureType { NnueFeatuteHalfKa, NnueFeatureThreat };
 
-#define NNUEINDEXLISTSIZE 512
+#define NNUEINDEXLISTSIZE 511
 class NnueIndexList {
 public:
-    size_t size;
+    unsigned int size;
     unsigned values[NNUEINDEXLISTSIZE];
 };
 
