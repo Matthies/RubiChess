@@ -1560,116 +1560,11 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
 }
 
 
-#if 0
-template <Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::ThreatsAccumulatorRefresh()
-{
-#if NNUEDEBUG == 1
-    cout << "Threats AccumulatorRefresh\n";
-#endif
-    // Full update of threats feature accumulator
-    threatcomputationState[ply][c] = true;
-    NnueIndexList addedIndices;
-    addedIndices.size = 0;
-    ThreatsAppendActiveIndices<c>(&addedIndices);
-
-    int8_t* weight = NnueCurrentArch->GetFeatureThreatWeight();
-    int32_t* psqtweight = NnueCurrentArch->GetFeatureThreatPsqtWeight();
-    int16_t* acm = threataccumulation + (ply * 2 + c) * NnueFtHalfdims;
-    int32_t* psqtacm = psqtthreatAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
-
-
-#ifdef USE_SIMD
-#if defined(USE_SSE2) && !defined(USE_AVX512)
-    // Avoid spilling the registers (thanks anematode); looks hacky, maybe find a better solution later
-    constexpr unsigned int maxParallelRegs = NUM_REGS / 2;
-#else
-    constexpr unsigned int maxParallelRegs = NUM_REGS;
-#endif
-    constexpr unsigned int numRegs = (maxParallelRegs > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : maxParallelRegs);
-    constexpr unsigned int tileHeight = numRegs * SIMD_WIDTH / 16;
-    ft_vec_t acc[numRegs];
-    psqt_vec_t psqt[NUM_PSQT_REGS];
-    unsigned int index;
-
-    for (unsigned int i = 0; i < NnueFtHalfdims / tileHeight; i++)
-    {
-        ft_vec_t* accTile = (ft_vec_t*)(acm + i * tileHeight);
-        for (unsigned int j = 0; j < numRegs; j++)
-            acc[j] = vec_zero_ft();
-
-        // Difference calculation for the activated features
-        for (unsigned int k = 0; k < addedIndices.size; k++)
-        {
-            index = addedIndices.values[k];
-            const unsigned int offset = NnueFtHalfdims * index + i * tileHeight;
-            vec_i8_t* column = (vec_i8_t*)(weight + offset);
-#ifdef USE_NEON
-            for (unsigned int j = 0; j < numRegs; j += 2)
-            {
-                acc[j] = vaddw_s8(acc[j], vget_low_s8(column[j / 2]));
-                acc[j + 1] = vaddw_high_s8(acc[j + 1], column[j / 2]);
-            }
-#else
-            for (unsigned int j = 0; j < numRegs; j++)
-                acc[j] = vec_add_16(acc[j], vec_convert_8_16(column[j]));
-#endif
-        }
-
-        for (unsigned int j = 0; j < numRegs; j++)
-            vec_store(&accTile[j], acc[j]);
-    }
-
-    for (unsigned int i = 0; i < NnuePsqtBuckets / PSQT_TILE_HEIGHT; i++)
-    {
-        psqt_vec_t* accTilePsqt = (psqt_vec_t*)(psqtacm + i * PSQT_TILE_HEIGHT);
-        for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
-            psqt[j] = vec_zero_psqt();
-
-        for (unsigned int k = 0; k < addedIndices.size; k++)
-        {
-            index = addedIndices.values[k];
-            unsigned int offset = NnuePsqtBuckets * index + i * PSQT_TILE_HEIGHT;
-            psqt_vec_t* columnPsqt = (psqt_vec_t*)(psqtweight + offset);
-
-            for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
-                psqt[j] = vec_add_psqt_32(psqt[j], columnPsqt[j]);
-        }
-
-        for (unsigned int j = 0; j < NUM_PSQT_REGS; j++)
-            vec_store_psqt(&accTilePsqt[j], psqt[j]);
-    }
-
-#else
-    memset(acm, 0, NnueFtHalfdims * sizeof(int16_t));
-    memset(psqtacm, 0, NnuePsqtBuckets * sizeof(int32_t));
-
-    // Difference calculation for the activated features
-    for (unsigned int k = 0; k < addedIndices.size; k++)
-    {
-        unsigned int index = addedIndices.values[k];
-        const unsigned int offset = NnueFtHalfdims * index;
-
-        for (unsigned int j = 0; j < NnueFtHalfdims; j++)
-            *(acm + j) += weight[offset + j];
-
-        for (unsigned int i = 0; i < NnuePsqtBuckets; i++)
-            *(psqtacm + i) += psqtweight[index * NnuePsqtBuckets + i];
-    }
-#endif
-
-#if NNUEDEBUG == 1
-    FeaturesDebug(c, addedIndices);
-    AccumulatorDebug<NnueArchV13, c, NnueFtHalfdims, NnuePsqtBuckets>(threataccumulation, psqtthreatAccumulation);
-
-#endif
-
-}
-#endif
 
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::AccumulatorRefresh()
 {
 #if NNUEDEBUG == 1
-    cout << "AccumulatorRefresh\n";
+    cout << "\nAccumulatorRefresh\n";
 #endif
     // Full update of accumulator using Finny tables cache
     STATISTICSINC(nnue_accupdate_full);
