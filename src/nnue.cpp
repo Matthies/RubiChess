@@ -1245,9 +1245,7 @@ alignas(64) static const array<array<uint16_t, 8>, 256> lookup_indices = []() {
 template <NnueType Nt, Color c, int N> bool chessposition::GetAcccumulatorUpdateArray(int* updaterequest)
 {
     int mslast = ply;
-    // A full update needs activation of all pieces (except kings for V1)
-    int fullupdatecost = POPCOUNT(occupied00[WHITE] | occupied00[BLACK]) - (Nt == NnueArchV1 ? 2 : 0);
-    size_t remainingupdates = 128;
+    size_t remainingupdates = NNUEINDEXLISTSIZE;
 
     while (mslast > 0 && !computationState[mslast][c])
     {
@@ -1255,11 +1253,9 @@ template <NnueType Nt, Color c, int N> bool chessposition::GetAcccumulatorUpdate
         // break at king move or if the dirty piece updates get too expensive
         DirtyPieces* dp = &dirtypieces[mslast];
         DirtyThreats* dt = &dirtythreats[mslast];
-        if (dt->us == c && ((int8_t(dt->ksq) & 0x4) != (int8_t(dt->prevKsq) & 0x4)))
-            break;
         if ((remainingupdates -= dt->size) < 96)
             break;
-        if (dp->pc[0] == (WKING | c) || (fullupdatecost -= dp->dirtyNum + 1) < 0)
+        if (dp->pc[0] == (WKING | c))
             break;
         mslast--;
     }
@@ -1283,44 +1279,6 @@ template <NnueType Nt, Color c, int N> bool chessposition::GetAcccumulatorUpdate
     return true;
 }
 
-#if 0
-template <NnueType Nt, Color c, int N> bool chessposition::GetThreatAcccumulatorUpdateArray(int* updaterequest)
-{
-    int mslast = ply;
-    int remainingupdates = 128;
-    while (mslast > 0 && !threatcomputationState[mslast][c])
-    {
-        // search for position with computed accu on stack that leads to current position by differential updates
-        // break at king move crossing the vertical d/e file border
-        DirtyThreats* dt = &dirtythreats[mslast];
-        if (dt->us == c && ((int8_t(dt->ksq) & 0x4) != (int8_t(dt->prevKsq) & 0x4)))
-            break;
-        if ((remainingupdates -= dt->size) < 96)
-            break;
-        mslast--;
-    }
-
-    if (!threatcomputationState[mslast][c])
-        return false;
-
-    updaterequest[N] = mslast;
-    if (N == 2) // speculative update: only update the current accumulator
-    {
-        updaterequest[0] = ply;
-        updaterequest[1] = -1;
-    }
-    if (N == 3) // update for evaluation: accumulator of current ply and accumulator following the last computed
-    {
-        updaterequest[0] = mslast + 1;
-        updaterequest[1] = mslast + 1 == ply ? -1 : ply;
-        updaterequest[2] = -1;
-        myassert(threatcomputationState[mslast][c], this, 2, mslast, c);
-    }
-
-    return true;
-}
-#endif
-
 
 template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePsqtBuckets> void chessposition::AccumulatorUpdate()
 {
@@ -1333,18 +1291,6 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
         else
             AccumulatorRefresh< Nt, c, NnueFtHalfdims, NnuePsqtBuckets>();
     }
-
-#if 0
-    if (Nt == NnueArchV13)
-    {
-        if (!threatcomputationState[ply][c]) {
-            if (GetThreatAcccumulatorUpdateArray<Nt, c, 3>(updatechain))
-                AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 3, NnueFeatureThreat>(updatechain);
-            else
-                ThreatsAccumulatorRefresh<c, NnueFtHalfdims, NnuePsqtBuckets>();
-        }
-    }
-#endif
 }
 
 
@@ -1360,19 +1306,6 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
         else
             AccumulatorRefresh< Nt, c, NnueFtHalfdims, NnuePsqtBuckets>();
     }
-
-#if 0
-    if (Nt == NnueArchV13)
-    {
-        if (!threatcomputationState[ply][c]) {
-            if (GetThreatAcccumulatorUpdateArray<Nt, c, 2>(updatechain))
-                AccumulatorIncrementalUpdate< Nt, c, NnueFtHalfdims, NnuePsqtBuckets, 2, NnueFeatureThreat>(updatechain);
-            else
-                ThreatsAccumulatorRefresh<c, NnueFtHalfdims, NnuePsqtBuckets>();
-        }
-    }
-#endif
-
 }
 
 #if NNUEDEBUG == 1
@@ -1437,8 +1370,13 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     int32_t* psqtacmbase = psqtAccumulation;
 
 #ifdef USE_SIMD
-    constexpr unsigned int numRegs = (NUM_REGS > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : NUM_REGS);
-    // FIXME: Before accu merge the numRegs of threat accumulator was halfened if defined(USE_SSE2) && !defined(USE_AVX512)
+#if defined(USE_SSE2) && !defined(USE_AVX512)
+    // Avoid spilling the registers (thanks anematode); looks hacky, maybe find a better solution later
+    constexpr unsigned int maxParallelRegs = NUM_REGS / 2;
+#else
+    constexpr unsigned int maxParallelRegs = NUM_REGS;
+#endif
+    constexpr unsigned int numRegs = (maxParallelRegs > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : maxParallelRegs);
     constexpr unsigned int tileHeight = numRegs * SIMD_WIDTH / 16;
     ft_vec_t acc[numRegs];
     psqt_vec_t psqt[NUM_PSQT_REGS];
@@ -1779,7 +1717,13 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     int32_t* psqtacm = psqtAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
 
 #ifdef USE_SIMD
-    constexpr unsigned int numRegs = (NUM_REGS > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : NUM_REGS);
+#if defined(USE_SSE2) && !defined(USE_AVX512)
+    // Avoid spilling the registers (thanks anematode); looks hacky, maybe find a better solution later
+    constexpr unsigned int maxParallelRegs = NUM_REGS / 2;
+#else
+    constexpr unsigned int maxParallelRegs = NUM_REGS;
+#endif
+    constexpr unsigned int numRegs = (maxParallelRegs > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : maxParallelRegs);
     constexpr unsigned int tileHeight = numRegs * SIMD_WIDTH / 16;
     ft_vec_t acc[numRegs];
     psqt_vec_t psqt[NUM_PSQT_REGS];
