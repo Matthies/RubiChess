@@ -1341,6 +1341,7 @@ void mainSearch(workingthread *thr)
     int delta = 8;
     int maxdepth;
     int inWindow = 1;
+    bool uciNeedsFinalReport;
 
 #ifdef TDEBUG
     en.bStopCount = false;
@@ -1369,6 +1370,8 @@ void mainSearch(workingthread *thr)
     bool isDraw = (pos->testRepetition() >= 2) || (pos->halfmovescounter >= 100);
     do
     {
+        uciNeedsFinalReport = true;
+
         pos->seldepth = thr->depth;
         if (pos->rootmovelist.length == 0)
         {
@@ -1505,8 +1508,10 @@ void mainSearch(workingthread *thr)
 
                 if (en.pondersearch != PONDERING || thr->depth < maxdepth) {
                     U64 thinkTime = nowtime - en.thinkstarttime;
-                    if (!en.tmEnabled || uciScoreOutputNeeded(inWindow, thinkTime))
+                    if (!en.tmEnabled || uciScoreOutputNeeded(inWindow, thinkTime)) {
                         uciScore(thr, inWindow, thinkTime, inWindow == 1 ? pos->bestmovescore[0] : score);
+                        uciNeedsFinalReport = (inWindow != 1);
+                    }
                 }
             }
         }
@@ -1622,6 +1627,7 @@ void mainSearch(workingthread *thr)
                 bestscore = hthr->pos->bestmovescore[0];
                 bestthr = hthr;
                 inWindow = 1;
+                uciNeedsFinalReport = true;
             }
         }
 
@@ -1644,7 +1650,9 @@ void mainSearch(workingthread *thr)
         // remember score for next search in case of an instamove
         en.lastbestmovescore = pos->bestmovescore[0];
 
-        uciScore(thr, inWindow, getTime() - en.thinkstarttime, inWindow == 1 ? pos->bestmovescore[0] : score);
+        if (uciNeedsFinalReport) {
+            uciScore(thr, 1, getTime() - en.thinkstarttime, pos->bestmovescore[0]);
+        }
 
         string strBestmove;
         string strPonder = "";
