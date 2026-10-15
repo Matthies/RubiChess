@@ -1009,7 +1009,7 @@ typedef __m128i sml_vec_t;
 
 // Macros for propagation of big layers and feature transformation
 #ifdef USE_AVX512
-#define NUM_REGS 16
+#define NUM_FT_REGS 16
 #define NUM_PSQT_REGS 1
 #define SIMD_WIDTH 512
 #define MAXCHUNKSIZE 64
@@ -1050,7 +1050,7 @@ inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 
 
 #elif defined(USE_AVX2)
-#define NUM_REGS 16
+#define NUM_FT_REGS 8
 #define NUM_PSQT_REGS 1
 #define SIMD_WIDTH 256
 #define MAXCHUNKSIZE 32
@@ -1089,7 +1089,7 @@ inline ft_vec_t vec_msb_pack_16(ft_vec_t a, ft_vec_t b) {
 #define vec_mulhi_16(a,b) _mm256_mulhi_epi16(a,b)
 
 #elif defined(USE_SSE2)
-#define NUM_REGS 16
+#define NUM_FT_REGS 8
 #define NUM_PSQT_REGS 2
 #define SIMD_WIDTH 128
 #define MAXCHUNKSIZE 16
@@ -1138,7 +1138,7 @@ typedef __m128i ft_vec_t, ftout_vec_t, in_vec_t, acc_vec_t, weight_vec_t, bias_v
 #endif
 
 #elif defined(USE_NEON)
-#define NUM_REGS 16
+#define NUM_FT_REGS 16
 #define NUM_PSQT_REGS 2
 #define SIMD_WIDTH 128
 #define MAXCHUNKSIZE 16
@@ -1190,7 +1190,7 @@ static const uint32_t NnzMask[4] = { 1, 2, 4, 8 };
 #endif
 
 #else
-#define NUM_REGS 1
+#define NUM_FT_REGS 1
 #define NUM_PSQT_REGS 1
 #define SIMD_WIDTH 1
 typedef int16_t ft_vec_t;
@@ -1371,13 +1371,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     int32_t* psqtacmbase = psqtAccumulation;
 
 #ifdef USE_SIMD
-#if defined(USE_SSE2) && !defined(USE_AVX512)
-    // Avoid spilling the registers (thanks anematode); looks hacky, maybe find a better solution later
-    constexpr unsigned int maxParallelRegs = NUM_REGS / 2;
-#else
-    constexpr unsigned int maxParallelRegs = NUM_REGS;
-#endif
-    constexpr unsigned int numRegs = (maxParallelRegs > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : maxParallelRegs);
+    constexpr unsigned int numRegs = (NUM_FT_REGS > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : NUM_FT_REGS);
     constexpr unsigned int tileHeight = numRegs * SIMD_WIDTH / 16;
     ft_vec_t acc[numRegs];
     psqt_vec_t psqt[NUM_PSQT_REGS];
@@ -1614,13 +1608,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     int32_t* psqtacm = psqtAccumulation + (ply * 2 + c) * NnuePsqtBuckets;
 
 #ifdef USE_SIMD
-#if defined(USE_SSE2) && !defined(USE_AVX512)
-    // Avoid spilling the registers (thanks anematode); looks hacky, maybe find a better solution later
-    constexpr unsigned int maxParallelRegs = NUM_REGS / 2;
-#else
-    constexpr unsigned int maxParallelRegs = NUM_REGS;
-#endif
-    constexpr unsigned int numRegs = (maxParallelRegs > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : maxParallelRegs);
+    constexpr unsigned int numRegs = (NUM_FT_REGS > NnueFtHalfdims * 16 / SIMD_WIDTH ? NnueFtHalfdims * 16 / SIMD_WIDTH : NUM_FT_REGS);
     constexpr unsigned int tileHeight = numRegs * SIMD_WIDTH / 16;
     ft_vec_t acc[numRegs];
     psqt_vec_t psqt[NUM_PSQT_REGS];
