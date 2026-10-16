@@ -1341,7 +1341,7 @@ void mainSearch(workingthread *thr)
     int delta = 8;
     int maxdepth;
     int inWindow = 1;
-    bool uciNeedsFinalReport = true;    // Flag to indicate that at immediate stop a last pv line should be written
+    bool uciNeedsFinalReport;
 
 #ifdef TDEBUG
     en.bStopCount = false;
@@ -1370,6 +1370,8 @@ void mainSearch(workingthread *thr)
     bool isDraw = (pos->testRepetition() >= 2) || (pos->halfmovescounter >= 100);
     do
     {
+        uciNeedsFinalReport = true;
+
         pos->seldepth = thr->depth;
         if (pos->rootmovelist.length == 0)
         {
@@ -1418,12 +1420,10 @@ void mainSearch(workingthread *thr)
                     beta = min(SCOREWHITEWINS, beta + delta);
                     delta = min(SCOREWHITEWINS, delta + delta / sps.aspincratio + sps.aspincbase);
                     inWindow = 2;
-                    uciNeedsFinalReport = !isMultiPV;
                 }
                 else
                 {
                     inWindow = 1;
-                    uciNeedsFinalReport = !isMultiPV;
                     if (thr->depth > 4 && !isMultiPV) {
                         // next depth with new aspiration window
                         delta = sps.aspinitialdelta;
@@ -1433,7 +1433,6 @@ void mainSearch(workingthread *thr)
                 }
             } else {
                 // We have a tablebase score so report this if no mate was found
-                uciNeedsFinalReport = !isMultiPV;
                 int tbScore = pos->rootmovelist.move[0].value;
                 if ((tbScore > 0 && score < tbScore) || (tbScore < 0 && score > tbScore) || tbScore == 0)
                     // Correct with tablebase score
@@ -1483,7 +1482,6 @@ void mainSearch(workingthread *thr)
                 if (!en.tmEnabled || uciScoreOutputNeeded(inWindow, thinkTime)) {
                     for (int i = 0; i < maxmoveindex; i++)
                         uciScore(thr, inWindow, thinkTime, pos->bestmovescore[i], i);
-                    uciNeedsFinalReport = false;
                 }
             }
             else {
@@ -1512,7 +1510,7 @@ void mainSearch(workingthread *thr)
                     U64 thinkTime = nowtime - en.thinkstarttime;
                     if (!en.tmEnabled || uciScoreOutputNeeded(inWindow, thinkTime)) {
                         uciScore(thr, inWindow, thinkTime, inWindow == 1 ? pos->bestmovescore[0] : score);
-                        uciNeedsFinalReport = false;
+                        uciNeedsFinalReport = (inWindow != 1);
                     }
                 }
             }
@@ -1629,6 +1627,7 @@ void mainSearch(workingthread *thr)
                 bestscore = hthr->pos->bestmovescore[0];
                 bestthr = hthr;
                 inWindow = 1;
+                uciNeedsFinalReport = true;
             }
         }
 
@@ -1651,8 +1650,9 @@ void mainSearch(workingthread *thr)
         // remember score for next search in case of an instamove
         en.lastbestmovescore = pos->bestmovescore[0];
 
-        if (uciNeedsFinalReport || bestthr->index)
-            uciScore(thr, inWindow, getTime() - en.thinkstarttime, inWindow == 1 ? pos->bestmovescore[0] : score);
+        if (uciNeedsFinalReport) {
+            uciScore(thr, 1, getTime() - en.thinkstarttime, pos->bestmovescore[0]);
+        }
 
         string strBestmove;
         string strPonder = "";
