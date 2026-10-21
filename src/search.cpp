@@ -1440,7 +1440,7 @@ void mainSearch(workingthread *thr)
             }
         }
 
-        if (pos->pvtable[0][0])
+        if (pos->pvtable[0][0] == pos->bestmove)
         {
             // copy new pv to lastpv
             int i = 0;
