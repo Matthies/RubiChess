@@ -1332,7 +1332,7 @@ template <NnueType Nt, Color c, unsigned int NnueFtHalfdims, unsigned int NnuePs
     myassert(updaterequest[N - 1] == -1, this, 1, updaterequest[N - 1]);
     alignas(64) NnueIndexList removedHalfkaIndices[N - 1], addedHalfkaIndices[N - 1], removedThreatIndices[N - 1], addedThreatIndices[N - 1];
     int lastcomputedply = updaterequest[N];
-    myassert(Ft == NnueFeatuteHalfKa ? halfkacomputationState[lastcomputedply][c] : threatcomputationState[lastcomputedply][c], this, 1, lastcomputedply);
+    myassert(computationState[lastcomputedply][c], this, 1, lastcomputedply);
     int nextchangedply = lastcomputedply + 1;
     int nextcomputeply;
     int chainindex = 0;
