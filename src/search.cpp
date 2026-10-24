@@ -1370,7 +1370,7 @@ void mainSearch(workingthread *thr)
     bool isDraw = (pos->testRepetition() >= 2) || (pos->halfmovescounter >= 100);
     do
     {
-        uciNeedsFinalReport = true;
+        uciNeedsFinalReport = !isMultiPV;
 
         pos->seldepth = thr->depth;
         if (pos->rootmovelist.length == 0)
@@ -1474,9 +1474,6 @@ void mainSearch(workingthread *thr)
             if (isMultiPV)
             {
                 // Avoid output of incomplete iterations
-                if (en.stopLevel == ENGINESTOPIMMEDIATELY)
-                    break;
-
                 U64 thinkTime = nowtime - en.thinkstarttime;
                 int maxmoveindex = min(en.MultiPV, pos->rootmovelist.length);
                 if (!en.tmEnabled || uciScoreOutputNeeded(inWindow, thinkTime)) {
