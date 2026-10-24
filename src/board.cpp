@@ -169,7 +169,6 @@ int chessposition::getFromFen(const char* sFen)
         }
         if (num)
         {
-            mailbox[index] = p;
             BitboardSet(index, p);
             file++;
         }

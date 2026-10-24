@@ -675,10 +675,13 @@ bool chessposition::playMove(uint32_t mc)
         PieceCode kingpc = (PieceCode)(WKING | s2m);
         PieceCode rookpc = (PieceCode)(WROOK | s2m);
 
+        BitboardClear(kingfrom, kingpc, dt);
+        BitboardClear(rookfrom, rookpc, dt);
+        BitboardSet(kingto, kingpc, dt);
+        BitboardSet(rookto, rookpc, dt);
         if (kingfrom != kingto)
         {
             kingpos[s2m] = kingto;
-            BitboardMove(kingfrom, kingto, kingpc, dt);
             if (!LiteMode) {
                 hash ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
                 nonpawnhash[s2m] ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
@@ -690,7 +693,6 @@ bool chessposition::playMove(uint32_t mc)
         }
         if (rookfrom != rookto)
         {
-            BitboardMove(rookfrom, rookto, rookpc, dt);
             if (!LiteMode) {
                 hash ^= zb.boardtable[(rookfrom << 4) | rookpc] ^ zb.boardtable[(rookto << 4) | rookpc];
                 nonpawnhash[s2m] ^= zb.boardtable[(rookfrom << 4) | rookpc] ^ zb.boardtable[(rookto << 4) | rookpc];
@@ -909,11 +911,10 @@ void chessposition::unplayMove(uint32_t mc)
         PieceCode kingpc = (PieceCode)(WKING | s2m);
         PieceCode rookpc = (PieceCode)(WROOK | s2m);
 
-        if (kingfrom != kingto)
-            BitboardMove(kingto, kingfrom, kingpc);
-
-        if (rookfrom != rookto)
-            BitboardMove(rookto, rookfrom, rookpc);
+        BitboardClear(kingto, kingpc);
+        BitboardClear(rookto, rookpc);
+        BitboardSet(kingfrom, kingpc);
+        BitboardSet(rookfrom, rookpc);
     }
     else
     {
