@@ -679,29 +679,23 @@ bool chessposition::playMove(uint32_t mc)
         BitboardClear(rookfrom, rookpc, dt);
         BitboardSet(kingto, kingpc, dt);
         BitboardSet(rookto, rookpc, dt);
-        if (kingfrom != kingto)
-        {
-            kingpos[s2m] = kingto;
-            if (!LiteMode) {
-                hash ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
-                nonpawnhash[s2m] ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
-                dp->pc[0] = kingpc;
-                dp->from[0] = kingfrom;
-                dp->to[0] = kingto;
-                dp->dirtyNum = 1;
-            }
+        kingpos[s2m] = kingto;
+        if (!LiteMode) {
+            hash ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
+            nonpawnhash[s2m] ^= zb.boardtable[(kingfrom << 4) | kingpc] ^ zb.boardtable[(kingto << 4) | kingpc];
+            dp->pc[0] = kingpc;
+            dp->from[0] = kingfrom;
+            dp->to[0] = kingto;
+            dp->dirtyNum = 1;
         }
-        if (rookfrom != rookto)
-        {
-            if (!LiteMode) {
-                hash ^= zb.boardtable[(rookfrom << 4) | rookpc] ^ zb.boardtable[(rookto << 4) | rookpc];
-                nonpawnhash[s2m] ^= zb.boardtable[(rookfrom << 4) | rookpc] ^ zb.boardtable[(rookto << 4) | rookpc];
-                int di = dp->dirtyNum;
-                dp->pc[di] = rookpc;
-                dp->from[di] = rookfrom;
-                dp->to[di] = rookto;
-                dp->dirtyNum++;
-            }
+        if (!LiteMode) {
+            hash ^= zb.boardtable[(rookfrom << 4) | rookpc] ^ zb.boardtable[(rookto << 4) | rookpc];
+            nonpawnhash[s2m] ^= zb.boardtable[(rookfrom << 4) | rookpc] ^ zb.boardtable[(rookto << 4) | rookpc];
+            int di = dp->dirtyNum;
+            dp->pc[di] = rookpc;
+            dp->from[di] = rookfrom;
+            dp->to[di] = rookto;
+            dp->dirtyNum++;
         }
         state &= (s2m ? ~(BQCMASK | BKCMASK) : ~(WQCMASK | WKCMASK));
     }
