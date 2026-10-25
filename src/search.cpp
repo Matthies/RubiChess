@@ -1440,7 +1440,7 @@ void mainSearch(workingthread *thr)
             }
         }
 
-        if (pos->pvtable[0][0])
+        if (pos->pvtable[0][0] == pos->bestmove)
         {
             // copy new pv to lastpv
             int i = 0;
@@ -1473,10 +1473,6 @@ void mainSearch(workingthread *thr)
             // search was successfull
             if (isMultiPV)
             {
-                // Avoid output of incomplete iterations
-                if (en.stopLevel == ENGINESTOPIMMEDIATELY)
-                    break;
-
                 U64 thinkTime = nowtime - en.thinkstarttime;
                 int maxmoveindex = min(en.MultiPV, pos->rootmovelist.length);
                 if (!en.tmEnabled || uciScoreOutputNeeded(inWindow, thinkTime)) {
@@ -1651,7 +1647,14 @@ void mainSearch(workingthread *thr)
         en.lastbestmovescore = pos->bestmovescore[0];
 
         if (uciNeedsFinalReport) {
-            uciScore(thr, 1, getTime() - en.thinkstarttime, pos->bestmovescore[0]);
+            U64 thinktime = getTime() - en.thinkstarttime;
+            if (isMultiPV) {
+                const int maxmoveindex = min(en.MultiPV, pos->rootmovelist.length);
+                for (int i = 0; i < maxmoveindex && pos->bestmovescore[i] > NOSCORE; i++)
+                    uciScore(thr, inWindow, thinktime, pos->bestmovescore[i], i);
+            } else {
+                uciScore(thr, 1, thinktime, pos->bestmovescore[0]);
+            }
         }
 
         string strBestmove;
