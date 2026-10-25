@@ -1473,7 +1473,6 @@ void mainSearch(workingthread *thr)
             // search was successfull
             if (isMultiPV)
             {
-                // Avoid output of incomplete iterations
                 U64 thinkTime = nowtime - en.thinkstarttime;
                 int maxmoveindex = min(en.MultiPV, pos->rootmovelist.length);
                 if (!en.tmEnabled || uciScoreOutputNeeded(inWindow, thinkTime)) {
