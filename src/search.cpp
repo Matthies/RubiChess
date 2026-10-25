@@ -1370,7 +1370,7 @@ void mainSearch(workingthread *thr)
     bool isDraw = (pos->testRepetition() >= 2) || (pos->halfmovescounter >= 100);
     do
     {
-        uciNeedsFinalReport = !isMultiPV;
+        uciNeedsFinalReport = true;
 
         pos->seldepth = thr->depth;
         if (pos->rootmovelist.length == 0)
@@ -1648,7 +1648,14 @@ void mainSearch(workingthread *thr)
         en.lastbestmovescore = pos->bestmovescore[0];
 
         if (uciNeedsFinalReport) {
-            uciScore(thr, 1, getTime() - en.thinkstarttime, pos->bestmovescore[0]);
+            U64 thinktime = getTime() - en.thinkstarttime;
+            if (isMultiPV) {
+                const int maxmoveindex = min(en.MultiPV, pos->rootmovelist.length);
+                for (int i = 0; i < maxmoveindex && pos->bestmovescore[i] > NOSCORE; i++)
+                    uciScore(thr, inWindow, thinktime, pos->bestmovescore[i], i);
+            } else {
+                uciScore(thr, 1, thinktime, pos->bestmovescore[0]);
+            }
         }
 
         string strBestmove;
