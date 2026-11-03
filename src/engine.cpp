@@ -212,7 +212,7 @@ void engine::registerOptions()
     ucioptions.Register(nullptr, "Clear Hash", ucibutton, "", 0, 0, uciClearHash);
     ucioptions.Register(&Contempt, "Contempt", ucispin, "0", -100, 100, uciSetContempt);
     ucioptions.Register(&RatingAdv, "UCI_RatingAdv", ucispin, "0", -10000, 10000, uciSetContempt);
-    ucioptions.Register(&ContemptRatio, "ContemptRatio", ucispin, "4", 0, 16, uciSetContempt);
+    ucioptions.Register(&ContemptRatio, "ContemptRatio", ucispin, "0", 0, 16, uciSetContempt);
     ucioptions.Register(&LimitNps, "LimitNps", ucispin, "0", 0, INT_MAX, nullptr);
 }
 
